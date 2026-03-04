@@ -49,3 +49,6 @@ static/uploads/
 *.tmp
 temp/
 tmp/
+
+# ملفات ثقيلة (تجاوز حد GitHub 100MB)
+*.glb
