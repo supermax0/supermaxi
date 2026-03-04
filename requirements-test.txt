@@ -1,0 +1,21 @@
+# متطلبات الاختبارات (Test Requirements)
+# Accounting System - Testing Dependencies
+
+# إطار الاختبار
+pytest>=7.4.0
+pytest-cov>=4.1.0          # تغطية الكود (Code Coverage)
+pytest-mock>=3.11.1        # Mock objects للاختبارات
+pytest-asyncio>=0.21.0     # للاختبارات غير المتزامنة (إذا لزم الأمر)
+
+# أدوات مساعدة للاختبارات
+coverage>=7.2.0            # تغطية الكود
+freezegun>=1.2.0           # للتحكم في الوقت في الاختبارات (اختياري)
+
+# ملاحظة:
+# - pytest: إطار الاختبار الرئيسي
+# - pytest-cov: لقياس تغطية الكود
+# - pytest-mock: للمحاكاة (Mocking)
+# - coverage: أداة قياس التغطية
+
+# للتثبيت:
+# pip install -r requirements-test.txt

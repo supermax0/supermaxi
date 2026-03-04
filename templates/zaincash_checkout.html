@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block title %}الدفع عبر زين كاش - Finora{% endblock %}
+{% block page_title %}💸 إتمام الدفع — زين كاش{% endblock %}
+
+{% block content %}
+<style>
+    .checkout-wrap {
+        max-width: 600px;
+        margin: 40px auto;
+        padding: 0 20px;
+    }
+
+    .checkout-card {
+        background: var(--card, rgba(15, 23, 42, .8));
+        border: 1px solid rgba(99, 102, 241, .22);
+        border-radius: 24px;
+        padding: 40px;
+        backdrop-filter: blur(14px);
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+        text-align: center;
+    }
+
+    .zc-logo {
+        width: 120px;
+        margin-bottom: 20px;
+    }
+
+    .info-box {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px dashed rgba(255, 255, 255, 0.2);
+        padding: 20px;
+        border-radius: 12px;
+        margin-bottom: 30px;
+    }
+
+    .zc-number {
+        font-size: 28px;
+        font-weight: 900;
+        color: #ef4444;
+        /* ZainCash Red */
+        letter-spacing: 2px;
+        margin: 10px 0;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+        text-align: right;
+    }
+
+    .form-group label {
+        display: block;
+        font-size: 14px;
+        font-weight: 700;
+        margin-bottom: 10px;
+        color: var(--text, #f1f5f9);
+    }
+
+    .form-group input {
+        width: 100%;
+        padding: 14px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, .1);
+        background: rgba(15, 23, 42, .7);
+        color: var(--text, #f1f5f9);
+        font-size: 15px;
+        font-family: 'Tajawal', sans-serif;
+        box-sizing: border-box;
+    }
+
+    .btn-submit {
+        display: block;
+        width: 100%;
+        padding: 16px;
+        border-radius: 16px;
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        color: #fff;
+        font-size: 18px;
+        font-weight: 900;
+        border: none;
+        cursor: pointer;
+        transition: .3s;
+        box-shadow: 0 8px 25px rgba(239, 68, 68, .35);
+        font-family: 'Tajawal', sans-serif;
+        margin-top: 20px;
+    }
+
+    .btn-submit:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 35px rgba(239, 68, 68, .5);
+    }
+</style>
+
+<div class="checkout-wrap">
+    <div class="checkout-card">
+        <h2>الدفع عبر ZainCash</h2>
+        <p style="color:#94a3b8; margin-bottom: 30px;">يرجى تحويل المبلغ المطلوب إلى الرقم أدناه ثم إرفاق صورة الوصل
+            لتفعيل نظامك المحاسبي.</p>
+
+        <div class="info-box">
+            <p style="font-size: 14px; color: #cbd5e1;">رقم محفظة زين كاش المعتمد:</p>
+            <div class="zc-number">07800000000</div>
+            <p style="font-size: 18px; color: #fff; margin-top:15px;">المبلغ المطلوب: <strong>{{ amount|default('0') }}
+                    دينار</strong></p>
+        </div>
+
+        <form method="post" action="/payments/zaincash-submit" enctype="multipart/form-data">
+            <input type="hidden" name="amount" value="{{ amount }}">
+
+            <div class="form-group">
+                <label>اسم الشركة المطلوب (باللغة الإنجليزية أو اسم قصير بدون مسافات، مثال: acme)</label>
+                <input type="text" name="tenant_name" required placeholder="مثال: mycompany">
+            </div>
+
+            <div class="form-group">
+                <label>اسم المالك الكامل</label>
+                <input type="text" name="owner_name" required placeholder="الاسم الرباعي">
+            </div>
+
+            <div class="form-group">
+                <label>رقم الهاتف</label>
+                <input type="tel" name="phone" required placeholder="07...">
+            </div>
+
+            <div class="form-group">
+                <label>البريد الإلكتروني</label>
+                <input type="email" name="email" required placeholder="example@gmail.com">
+            </div>
+
+            <div class="form-group">
+                <label>رقم المرجع (إن وجد)</label>
+                <input type="text" name="zaincash_reference" placeholder="رقم العملية من تطبيق زين كاش">
+            </div>
+
+            <div class="form-group">
+                <label>صورة إيصال التحويل (Screenshot) *</label>
+                <input type="file" name="receipt_image" accept="image/*" required style="padding:10px;">
+            </div>
+
+            <button type="submit" class="btn-submit">
+                إرسال طلب الاشتراك <i class="fas fa-paper-plane" style="margin-right:8px;"></i>
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

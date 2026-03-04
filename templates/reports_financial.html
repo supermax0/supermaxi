@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+{% block title %}التقرير المالي الشامل{% endblock %}
+{% block page_title %}التقرير المالي الشامل{% endblock %}
+
+{% block content %}
+<style>
+.report-page { max-width: 1000px; margin: 0 auto 32px; padding: 24px; font-family: 'Tajawal', sans-serif; direction: rtl; text-align: right; background: var(--card); border-radius: 20px; border: 1px solid var(--border-light); box-shadow: 0 18px 40px rgba(15,23,42,0.35); color: var(--text); }
+.report-section { margin-bottom: 24px; }
+.report-section h2 { font-size: 20px; color: var(--text); border-bottom: 1px solid var(--border-light); padding-bottom: 8px; margin-bottom: 12px; }
+.report-section h3 { font-size: 16px; color: var(--text-muted); margin: 12px 0 8px; }
+.report-table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; background: var(--card-alt); border-radius: 12px; overflow: hidden; }
+.report-table th, .report-table td { padding: 10px 12px; border: 1px solid var(--border-light); text-align: right; }
+.report-table th { background: rgba(148,163,184,0.12); color: var(--text); font-weight: 600; }
+.report-table .amount { font-family: inherit; }
+.report-cover { text-align: center; padding: 32px 20px; border: 1px solid var(--border-light); border-radius: 18px; margin-bottom: 28px; background: rgba(148,163,184,0.10); }
+.report-cover h1 { font-size: 26px; margin-bottom: 8px; color: var(--text); }
+.report-cover .meta { color: var(--text-muted); font-size: 14px; margin-top: 16px; }
+.report-note { background: rgba(250,204,21,0.10); border: 1px solid rgba(250,204,21,0.5); border-radius: 8px; padding: 10px 14px; margin: 10px 0; font-size: 13px; }
+.report-no-data { color: var(--text-muted); font-style: italic; }
+
+/* شريط الفترات والأزرار (لا يطبع) */
+.report-actions {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-light);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+}
+.report-actions .report-period-label { color: var(--text-muted); font-size: 14px; margin-left: 8px; }
+.report-actions .report-period-link {
+  color: var(--primary);
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: background 0.2s, color 0.2s;
+}
+.report-actions .report-period-link:hover { background: rgba(99, 102, 241, 0.15); color: var(--primary); }
+.report-actions .report-sep { color: var(--text-muted); font-weight: 300; }
+.report-actions .report-btn-back {
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 20px;
+  background: var(--primary);
+  color: #fff;
+  border-radius: 12px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.report-actions .report-btn-back:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35); color: #fff; }
+.report-actions .report-btn-print {
+  padding: 10px 20px;
+  background: var(--success);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.report-actions .report-btn-print:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35); }
+
+.report-table tbody tr:hover { background: rgba(148, 163, 184, 0.08); }
+.report-section ul { margin: 8px 0; padding-right: 20px; }
+.report-section ul li { margin: 6px 0; color: var(--text); }
+.report-section strong { color: var(--text); }
+
+/* Light Mode */
+:root[data-theme="light"] .report-page { background: #fff; box-shadow: 0 4px 20px rgba(0,0,0,0.08); border-color: #e2e8f0; color: #0f172a; }
+:root[data-theme="light"] .report-section h2 { color: #0f172a; border-color: #e2e8f0; }
+:root[data-theme="light"] .report-section h3 { color: #475569; }
+:root[data-theme="light"] .report-table { background: #f8fafc; }
+:root[data-theme="light"] .report-table th { background: #f1f5f9; color: #334155; }
+:root[data-theme="light"] .report-table th, :root[data-theme="light"] .report-table td { border-color: #e2e8f0; color: #334155; }
+:root[data-theme="light"] .report-table tbody tr:hover { background: #f1f5f9; }
+:root[data-theme="light"] .report-cover { background: #f1f5f9; border-color: #e2e8f0; }
+:root[data-theme="light"] .report-cover h1 { color: #0f172a; }
+:root[data-theme="light"] .report-cover .meta { color: #64748b; }
+:root[data-theme="light"] .report-note { background: #fef9c3; border-color: #f59e0b; color: #78350f; }
+:root[data-theme="light"] .report-no-data { color: #64748b; }
+:root[data-theme="light"] .report-section ul li, :root[data-theme="light"] .report-section strong { color: #0f172a; }
+:root[data-theme="light"] .report-actions .report-period-label { color: #64748b; }
+:root[data-theme="light"] .report-actions .report-period-link { color: #2563eb; }
+:root[data-theme="light"] .report-actions .report-period-link:hover { background: #eff6ff; }
+
+@media print { .no-print { display: none !important; } .report-page { max-width: 100%; margin: 0; padding: 0; box-shadow: none; border: none; background: white; } }
+</style>
+
+<div class="report-page">
+  <!-- 1️⃣ صفحة الغلاف -->
+  <section class="report-section report-cover">
+    <h1>{{ company_name }}</h1>
+    <p><strong>نوع التقرير:</strong> تقرير مالي شامل</p>
+    <p><strong>الفترة المالية:</strong> {{ period_label }}</p>
+    <p><strong>من:</strong> {{ date_from.strftime('%Y-%m-%d') if date_from else '—' }} <strong>إلى:</strong> {{ date_to.strftime('%Y-%m-%d') if date_to else '—' }}</p>
+    <p class="meta">تم إنشاؤه تلقائياً من النظام — {% if report_generated_at %}{{ report_generated_at.strftime('%Y-%m-%d %H:%M') }}{% endif %}</p>
+  </section>
+
+  <!-- 2️⃣ الملخص التنفيذي -->
+  <section class="report-section">
+    <h2>الملخص التنفيذي</h2>
+    <p>أداء الشركة المالي خلال الفترة <strong>{{ period_label }}</strong>:</p>
+    <ul>
+      <li>إجمالي الإيرادات: <strong>{{ "{:,}".format(total_revenue) }} د.ع</strong></li>
+      <li>صافي الربح/الخسارة: <strong>{{ "{:,}".format(net_profit_period) }} د.ع</strong>{% if net_profit_period < 0 %} (خسارة){% endif %}</li>
+      {% if growth_revenue_pct is not none %}
+      <li>نسبة تغيّر الإيرادات مقارنة بـ {{ prev_label or 'الفترة السابقة' }}: <strong>{{ growth_revenue_pct }}%</strong></li>
+      {% endif %}
+      {% if growth_profit_pct is not none %}
+      <li>نسبة تغيّر الربح: <strong>{{ growth_profit_pct }}%</strong></li>
+      {% endif %}
+    </ul>
+    <p>جميع الأرقام أعلاه مستخرجة من سجلات النظام دون تخمين.</p>
+  </section>
+
+  <!-- 3️⃣ تقرير الأرباح والخسائر -->
+  <section class="report-section">
+    <h2>تقرير الأرباح والخسائر (Income Statement)</h2>
+    <table class="report-table">
+      <thead>
+        <tr><th>البند</th><th>المبلغ (د.ع)</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>إجمالي الإيرادات (المبيعات)</td><td class="amount">{{ "{:,}".format(total_revenue) }}</td></tr>
+        <tr><td>تكلفة البضاعة المباعة</td><td class="amount">({{ "{:,}".format(cogs_period) }})</td></tr>
+        <tr><td><strong>إجمالي الربح</strong></td><td class="amount"><strong>{{ "{:,}".format(gross_profit) }}</strong></td></tr>
+        <tr><td>إجمالي المصاريف</td><td class="amount">({{ "{:,}".format(expenses_period) }})</td></tr>
+        <tr><td><strong>صافي الربح / الخسارة</strong></td><td class="amount"><strong>{{ "{:,}".format(net_profit_period) }}</strong></td></tr>
+      </tbody>
+    </table>
+    {% if expenses_breakdown %}
+    <h3>تفصيل المصاريف حسب النوع</h3>
+    <table class="report-table">
+      <thead><tr><th>الفئة</th><th>المبلغ (د.ع)</th></tr></thead>
+      <tbody>
+        {% for e in expenses_breakdown %}
+        <tr><td>{{ e.category }}</td><td class="amount">{{ "{:,}".format(e.amount) }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="report-no-data">لا يوجد تفصيل مصاريف للفترة.</p>
+    {% endif %}
+  </section>
+
+  <!-- 4️⃣ الميزانية العمومية (مبسطة) -->
+  <section class="report-section">
+    <h2>الميزانية العمومية (Balance Sheet) — أرصدة كما في النظام</h2>
+    <table class="report-table">
+      <thead><tr><th>البند</th><th>المبلغ (د.ع)</th></tr></thead>
+      <tbody>
+        <tr><td>الأصول المتداولة — النقدية</td><td class="amount">{{ "{:,}".format(cash_balance) }}</td></tr>
+        <tr><td>الأصول المتداولة — المخزون</td><td class="amount">{{ "{:,}".format(inventory_value) }}</td></tr>
+        <tr><td>الأصول المتداولة — الذمم المدينة</td><td class="amount">{{ "{:,}".format(accounts_receivable) }}</td></tr>
+        <tr><td><strong>إجمالي الأصول</strong></td><td class="amount"><strong>{{ "{:,}".format(total_assets) }}</strong></td></tr>
+        <tr><td>الالتزامات — ديون الموردين</td><td class="amount">{{ "{:,}".format(supplier_debts) }}</td></tr>
+        <tr><td>الالتزامات — مستحقات النقل</td><td class="amount">{{ "{:,}".format(shipping_due) }}</td></tr>
+        <tr><td><strong>إجمالي الالتزامات</strong></td><td class="amount"><strong>{{ "{:,}".format(total_liabilities) }}</strong></td></tr>
+      </tbody>
+    </table>
+    <p class="report-note">{{ equity_note }}</p>
+  </section>
+
+  <!-- 5️⃣ التدفق النقدي (مبسط) -->
+  <section class="report-section">
+    <h2>التدفق النقدي (Cash Flow) — ملخص</h2>
+    <p>الرصيد النقدي الحالي (كما في النظام): <strong>{{ "{:,}".format(cash_balance) }} د.ع</strong>.</p>
+    <p class="report-no-data">تفصيل التدفقات التشغيلية/الاستثمارية/التمويلية يعتمد على سجلات الحركات النقدية في النظام؛ إن لم تكن مضافة فالنظام يعرض الرصيد النقدي المحسوب من المبيعات والمصاريف والمدفوعات.</p>
+  </section>
+
+  <!-- 6️⃣ تحليل مالي -->
+  <section class="report-section">
+    <h2>تحليل مالي</h2>
+    <ul>
+      {% if profit_margin_pct is not none %}
+      <li>هامش الربح (صافي الربح / الإيرادات): <strong>{{ profit_margin_pct }}%</strong></li>
+      {% else %}
+      <li>هامش الربح: لا يوجد إيرادات للفترة.</li>
+      {% endif %}
+      {% if expense_to_revenue_pct is not none %}
+      <li>نسبة المصاريف إلى الإيرادات: <strong>{{ expense_to_revenue_pct }}%</strong></li>
+      {% endif %}
+      {% if liquidity_ratio is not none %}
+      <li>قوة السيولة (الأصول / الالتزامات): <strong>{{ liquidity_ratio }}</strong></li>
+      {% else %}
+      <li>قوة السيولة: لا التزامات مسجلة أو لا يمكن الحساب.</li>
+      {% endif %}
+    </ul>
+  </section>
+
+  <!-- 7️⃣ المخزون -->
+  <section class="report-section">
+    <h2>المخزون</h2>
+    <p>إجمالي قيمة المخزون: <strong>{{ "{:,}".format(inventory_value) }} د.ع</strong>.</p>
+    <p>عدد المنتجات ذات مخزون منخفض (≤ 2): <strong>{{ low_stock_count }}</strong>. عدد المنتجات بدون كمية: <strong>{{ zero_stock_count }}</strong>.</p>
+    {% if low_stock_count > 0 or zero_stock_count > 0 %}
+    <p class="report-note">يُنصح بمراجعة صفحة المخزون لتفاصيل المواد الناقصة والراكدة.</p>
+    {% endif %}
+  </section>
+
+  <!-- 8️⃣ الذمم -->
+  <section class="report-section">
+    <h2>الذمم</h2>
+    <table class="report-table">
+      <tr><td>ذمم العملاء (الذمم المدينة)</td><td class="amount">{{ "{:,}".format(accounts_receivable) }} د.ع</td></tr>
+      <tr><td>ذمم الموردين</td><td class="amount">{{ "{:,}".format(supplier_debts) }} د.ع</td></tr>
+      <tr><td><strong>إجمالي الذمم (الالتزامات المذكورة)</strong></td><td class="amount"><strong>{{ "{:,}".format(total_liabilities) }} د.ع</strong></td></tr>
+    </table>
+  </section>
+
+  <!-- 9️⃣ الملاحظات المحاسبية -->
+  <section class="report-section">
+    <h2>الملاحظات المحاسبية</h2>
+    <ul>
+      <li>جميع الأرقام مستخرجة من سجلات النظام الرسمية (فواتير، مصاريف، مخزون، موردين، نقدية) دون تقدير أو افتراض.</li>
+      {% if net_profit_period < 0 %}
+      <li class="report-note"><strong>تحذير:</strong> صافي الربح للفترة سالب (خسارة). يُنصح بمراجعة المصاريف والإيرادات.</li>
+      {% endif %}
+      {% if cash_balance < 0 %}
+      <li class="report-note"><strong>تحذير:</strong> عجز نقدي حسب السجلات. يُنصح بمراجعة التحصيلات والمدفوعات.</li>
+      {% endif %}
+      <li>توصية: مراجعة المنتجات ذات المخزون المنخفض والذمم المدينة لتحسين التدفق النقدي.</li>
+    </ul>
+  </section>
+
+  <!-- 🔟 الخاتمة -->
+  <section class="report-section">
+    <h2>الخاتمة</h2>
+    <p>هذا التقرير تم توليده تلقائياً من نظام المحاسبة. جميع الأرقام مستخرجة من السجلات الرسمية. التقرير جاهز للطباعة أو التصدير PDF (استخدم طباعة المتصفح واختر «حفظ كـ PDF»).</p>
+  </section>
+
+  <div class="no-print report-actions">
+    <span class="report-period-label">الفترة:</span>
+    <a href="/reports/financial?period_type=this_month" class="report-period-link">هذا الشهر</a>
+    <a href="/reports/financial?period_type=last_month" class="report-period-link">الشهر الماضي</a>
+    <a href="/reports/financial?period_type=this_year" class="report-period-link">السنة الحالية</a>
+    <a href="/reports/financial?period_type=last_30_days" class="report-period-link">آخر 30 يوم</a>
+    <span class="report-sep">|</span>
+    <a href="/reports" class="report-btn-back">العودة إلى التقارير</a>
+    <button type="button" class="report-btn-print" onclick="window.print()">طباعة / PDF</button>
+  </div>
+</div>
+{% endblock %}

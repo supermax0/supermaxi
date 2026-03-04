@@ -1,0 +1,1083 @@
+{% extends "base.html" %}
+{% block title %}{{ _('delivery_agents') }}{% endblock %}
+{% block page_title %}🚚 {{ _('delivery_agents_page_title') }}{% endblock %}
+{% block content %}
+
+<link rel="stylesheet" href="/static/css/global-improvements.css">
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-spinner"></div>
+</div>
+
+<style>
+/* ================= VARIABLES ================= */
+:root {
+  --agents-primary: var(--primary);
+  --agents-success: var(--success);
+  --agents-danger: var(--danger);
+  --agents-warning: var(--warning);
+  --agents-text: var(--text);
+  --agents-muted: var(--text-muted);
+  --agents-card: var(--card);
+}
+
+/* ================= BODY (scoped) ================= */
+.agents-page {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.agents-page button,
+.agents-page a,
+.agents-page input,
+.agents-page select,
+.agents-page textarea {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ================= STATS GRID ================= */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.stat-card {
+  background: linear-gradient(145deg, var(--agents-card), rgba(30, 41, 59, 0.8));
+  border-radius: 20px;
+  padding: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: visible;
+  pointer-events: auto;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.stat-card > * {
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
+}
+
+.stat-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--agents-primary), var(--agents-success));
+  pointer-events: none;
+  opacity: 0.8;
+  transition: opacity 0.3s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+.stat-card:hover::before {
+  opacity: 1;
+}
+
+.stat-icon {
+  font-size: 36px;
+  margin-bottom: 14px;
+  opacity: 0.95;
+  transition: transform 0.3s ease;
+}
+
+.stat-card:hover .stat-icon {
+  transform: scale(1.1);
+}
+
+.stat-label {
+  font-size: 13px;
+  color: var(--agents-muted);
+  margin-bottom: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.stat-value {
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--agents-text);
+  line-height: 1.2;
+  letter-spacing: -0.5px;
+}
+
+.stat-card.primary .stat-value { 
+  color: var(--agents-primary);
+  text-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+}
+.stat-card.success .stat-value { 
+  color: var(--agents-success);
+  text-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+}
+.stat-card.warning .stat-value { 
+  color: var(--agents-warning);
+  text-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
+}
+
+/* ================= CARDS ================= */
+.card {
+  background: linear-gradient(145deg, var(--agents-card), rgba(30, 41, 59, 0.8));
+  border-radius: 20px;
+  padding: 28px;
+  margin-bottom: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: visible;
+  pointer-events: auto;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+.card > * {
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
+}
+
+.card:hover {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+  border-color: rgba(99, 102, 241, 0.2);
+}
+
+.card h3 {
+  color: var(--agents-text);
+  margin: 0 0 24px;
+  padding-bottom: 18px;
+  border-bottom: 2px solid rgba(99, 102, 241, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+/* ================= FORM ================= */
+.add-form {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  pointer-events: auto;
+}
+
+.add-form > div {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+}
+
+.add-form label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--agents-muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.add-form input,
+.add-form select {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--agents-text);
+  font-size: 15px;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  min-height: 44px;
+  box-sizing: border-box;
+  pointer-events: auto;
+}
+
+.add-form input::placeholder {
+  color: var(--agents-muted);
+  opacity: 0.6;
+}
+
+.add-form input:focus,
+.add-form select:focus {
+  outline: none;
+  border-color: var(--agents-primary);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.add-form .btn {
+  align-self: flex-end;
+  min-height: 44px;
+  padding: 12px 24px;
+  font-size: 15px;
+}
+
+/* ================= SEARCH & FILTERS ================= */
+.search-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 20px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.search-filters input,
+.search-filters select {
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--agents-text);
+  font-size: 15px;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  min-height: 44px;
+  box-sizing: border-box;
+  pointer-events: auto;
+}
+
+.search-filters input::placeholder {
+  color: var(--agents-muted);
+  opacity: 0.6;
+}
+
+.search-filters input:hover,
+.search-filters select:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.search-filters input:focus,
+.search-filters select:focus {
+  outline: none;
+  border-color: var(--agents-primary);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15), 0 4px 12px rgba(99, 102, 241, 0.1);
+  transform: translateY(-1px);
+}
+
+/* ================= TABLE ================= */
+.table-container {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 650px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01));
+  margin-top: 20px;
+  -webkit-overflow-scrolling: touch;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.table-container::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.table-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(99, 102, 241, 0.5), rgba(99, 102, 241, 0.3));
+  border-radius: 3px;
+  transition: background 0.3s ease;
+}
+
+.table-container::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(99, 102, 241, 0.7), rgba(99, 102, 241, 0.5));
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  background: transparent;
+  min-width: 800px;
+}
+
+th {
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--agents-muted);
+  font-weight: 600;
+  font-size: 13px;
+  text-align: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  white-space: nowrap;
+  pointer-events: auto;
+}
+
+td {
+  padding: 18px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  color: var(--agents-text);
+  text-align: center;
+  vertical-align: middle;
+  transition: background-color 0.2s ease;
+  pointer-events: auto;
+}
+
+td > div {
+  pointer-events: auto;
+  position: relative;
+  z-index: 10;
+}
+
+tbody tr {
+  transition: background-color 0.2s ease;
+  pointer-events: auto;
+}
+
+tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+tbody tr:hover {
+  background: rgba(99, 102, 241, 0.1);
+}
+
+tbody tr:hover td {
+  pointer-events: auto;
+}
+
+tbody tr td > div {
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 100;
+}
+
+tbody tr:hover td {
+  pointer-events: auto;
+}
+
+tbody tr td > div {
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 100;
+}
+
+td strong {
+  font-weight: 600;
+  color: var(--agents-text);
+}
+
+.total-cell {
+  color: var(--agents-success);
+  font-weight: 600;
+  font-size: 15px;
+}
+
+/* ================= BUTTONS ================= */
+.btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 100 !important;
+  text-decoration: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.btn-primary {
+  background: var(--agents-primary);
+  color: white;
+}
+
+.btn-success {
+  background: var(--agents-success);
+  color: white;
+}
+
+.btn-danger {
+  background: var(--agents-danger);
+  color: white;
+}
+
+.btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.btn:active {
+  transform: translateY(0);
+  opacity: 0.95;
+}
+
+.btn::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  transform: translate(-50%, -50%);
+  transition: width 0.3s, height 0.3s;
+  pointer-events: none !important;
+  z-index: -1;
+}
+
+.btn:active::before {
+  width: 200px;
+  height: 200px;
+}
+
+.btn span,
+.btn * {
+  pointer-events: none !important;
+  position: relative;
+  z-index: 1;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ================= LOADING & TOAST ================= */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.loading-overlay.active {
+  display: flex;
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(99, 102, 241, 0.2);
+  border-top-color: var(--agents-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.button-loading {
+  position: relative;
+  color: transparent !important;
+  pointer-events: none;
+}
+
+.button-loading::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  pointer-events: none;
+}
+
+.toast-container {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: calc(100% - 32px);
+  max-width: 500px;
+  pointer-events: none;
+}
+
+.toast {
+  min-width: 280px;
+  max-width: 100%;
+  width: 100%;
+  padding: 16px 20px;
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  animation: slideInDown 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: auto;
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.toast::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  opacity: 0.6;
+}
+
+.toast.success {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(5, 150, 105, 0.95));
+  color: #fff;
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.toast.error {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.95), rgba(220, 38, 38, 0.95));
+  color: #fff;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.toast.warning {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.95), rgba(217, 119, 6, 0.95));
+  color: #fff;
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* ================= EMPTY STATE ================= */
+.empty-state {
+  text-align: center;
+  padding: 50px 20px;
+  color: var(--agents-muted);
+}
+
+.empty-state-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.empty-state-text {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--agents-text);
+}
+
+.empty-state-subtext {
+  font-size: 14px;
+  color: var(--agents-muted);
+}
+
+/* ================= RESPONSIVE ================= */
+@media (max-width: 768px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+  
+  .card {
+    padding: 16px;
+  }
+  
+  .card h3 {
+    font-size: 16px;
+  }
+  
+  .search-filters {
+    grid-template-columns: 1fr;
+    padding: 12px;
+  }
+  
+  .add-form {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+  
+  .add-form > div {
+    width: 100%;
+  }
+  
+  .add-form .btn {
+    width: 100%;
+    align-self: stretch;
+  }
+  
+  .btn {
+    width: 100%;
+  }
+  
+  .table-container {
+    max-height: 500px;
+  }
+  
+  table {
+    min-width: 700px;
+  }
+  
+  th, td {
+    padding: 12px;
+    font-size: 13px;
+  }
+  
+  td > div {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  td .btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .card {
+    padding: 12px;
+  }
+  
+  .search-filters {
+    padding: 10px;
+  }
+  
+  .table-container {
+    max-height: 400px;
+  }
+  
+  table {
+    min-width: 600px;
+  }
+  
+  th, td {
+    padding: 10px;
+    font-size: 12px;
+  }
+  
+  /* Loading Overlay Mobile */
+  .loading-overlay {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  
+  .loading-spinner {
+    width: 70px;
+    height: 70px;
+    border-width: 6px;
+  }
+  
+  .loading-spinner::after {
+    width: 50px;
+    height: 50px;
+    margin: -25px 0 0 -25px;
+  }
+  
+  /* Toast Mobile */
+  .toast-container {
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-width: none;
+    transform: none;
+    gap: 10px;
+  }
+  
+  .toast {
+    min-width: auto;
+    padding: 16px 18px;
+    font-size: 14px;
+    border-radius: 12px;
+  }
+}
+
+/* ================= LIGHT MODE FIXES ================= */
+:root[data-theme="light"] .agents-page .stat-card,
+:root[data-theme="light"] .agents-page .card,
+:root[data-theme="light"] .agents-page .search-filters,
+:root[data-theme="light"] .agents-page .table-container {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(2, 6, 23, 0.08);
+  box-shadow: 0 16px 34px rgba(2, 6, 23, 0.08);
+}
+
+:root[data-theme="light"] .agents-page .stat-label,
+:root[data-theme="light"] .agents-page .add-form label {
+  color: rgba(15, 23, 42, 0.65);
+}
+
+:root[data-theme="light"] .agents-page .stat-value {
+  color: #0f172a;
+  text-shadow: none;
+}
+
+:root[data-theme="light"] .agents-page .add-form input,
+:root[data-theme="light"] .agents-page .add-form select,
+:root[data-theme="light"] .agents-page .search-filters input,
+:root[data-theme="light"] .agents-page .search-filters select {
+  background: rgba(255, 255, 255, 0.94);
+  border-color: rgba(2, 6, 23, 0.10);
+  color: #0f172a;
+}
+
+:root[data-theme="light"] .agents-page th {
+  background: rgba(241, 245, 249, 0.96);
+  color: rgba(15, 23, 42, 0.75);
+  border-bottom-color: rgba(2, 6, 23, 0.10);
+}
+
+:root[data-theme="light"] .agents-page td {
+  color: #0f172a;
+  border-bottom-color: rgba(2, 6, 23, 0.08);
+}
+
+:root[data-theme="light"] .agents-page tbody tr:nth-child(even) {
+  background: rgba(2, 6, 23, 0.02);
+}
+
+:root[data-theme="light"] .agents-page tbody tr:hover {
+  background: rgba(37, 99, 235, 0.06);
+}
+</style>
+
+<div class="agents-page">
+
+<!-- ============ STATS CARDS ============ -->
+{% set total_agents = agents_data|length %}
+{% set total_orders_all = agents_data|sum(attribute="total_orders") or 0 %}
+{% set total_amount_all = agents_data|sum(attribute="total_amount") or 0 %}
+{% set total_reports_all = agents_data|sum(attribute="reports_count") or 0 %}
+
+<div class="stats-grid">
+  <div class="stat-card primary">
+    <div class="stat-icon">🚚</div>
+    <div class="stat-label">{{ _('agents_stat_total_agents') }}</div>
+    <div class="stat-value">{{ total_agents }}</div>
+  </div>
+  <div class="stat-card success">
+    <div class="stat-icon">📦</div>
+    <div class="stat-label">{{ _('agents_stat_total_orders') }}</div>
+    <div class="stat-value">{{ total_orders_all }}</div>
+  </div>
+  <div class="stat-card warning">
+    <div class="stat-icon">💰</div>
+    <div class="stat-label">{{ _('agents_stat_total_sales') }}</div>
+    <div class="stat-value">{{ "{:,.0f}".format(total_amount_all) }} {{ _('agents_currency_iqd') }}</div>
+  </div>
+  <div class="stat-card success">
+    <div class="stat-icon">📋</div>
+    <div class="stat-label">{{ _('agents_stat_total_reports') }}</div>
+    <div class="stat-value">{{ total_reports_all }}</div>
+  </div>
+</div>
+
+<!-- ============ ADD AGENT FORM ============ -->
+<div class="card">
+  <h3>➕ {{ _('agents_add_title') }}</h3>
+  
+  <form class="add-form" onsubmit="addAgent(event)" id="addAgentForm">
+    <div>
+      <label>{{ _('agents_field_name_label') }}</label>
+      <input type="text" id="agentName" placeholder="{{ _('agents_field_name_placeholder') }}" required>
+    </div>
+    <div>
+      <label>{{ _('agents_field_phone_label') }}</label>
+      <input type="text" id="agentPhone" placeholder="{{ _('agents_field_phone_placeholder') }}">
+    </div>
+    <button type="submit" class="btn btn-primary" id="addAgentBtn">
+      <span>➕</span>
+      <span>{{ _('agents_add_button') }}</span>
+    </button>
+  </form>
+</div>
+
+<!-- ============ AGENTS LIST ============ -->
+<div class="card">
+  <h3>📋 {{ _('agents_list_title') }}</h3>
+  
+  <!-- Search & Filters -->
+  <div class="search-filters">
+    <input type="text" id="searchInput" placeholder="{{ _('agents_search_placeholder') }}" onkeyup="filterTable()">
+    <select id="filterAgent" onchange="filterTable()">
+      <option value="">{{ _('agents_filter_all_agents') }}</option>
+      {% for data in agents_data %}
+      <option value="{{ data.agent.name }}">{{ data.agent.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  
+  <!-- Table -->
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>{{ _('agents_th_name') }}</th>
+          <th>{{ _('agents_th_phone') }}</th>
+          <th>{{ _('agents_th_orders') }}</th>
+          <th>{{ _('agents_th_total_amount') }}</th>
+          <th>{{ _('agents_th_actions') }}</th>
+        </tr>
+      </thead>
+      <tbody id="agentsTableBody">
+        {% if agents_data %}
+          {% for data in agents_data %}
+          <tr data-search="{{ data.agent.name }} {{ data.agent.phone or '' }}" data-agent-name="{{ data.agent.name }}">
+            <td>{{ loop.index }}</td>
+            <td><strong>{{ data.agent.name }}</strong></td>
+            <td>{{ data.agent.phone or '—' }}</td>
+            <td>{{ data.total_orders }}</td>
+            <td class="total-cell">{{ "{:,.0f}".format(data.total_amount) }} د.ع</td>
+            <td>
+              <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; pointer-events: auto !important; position: relative; z-index: 100;">
+                <a href="/agents/{{ data.agent.id }}/reports" class="btn btn-success" style="padding: 10px 18px; font-size: 14px; min-width: 100px; pointer-events: auto !important; z-index: 100 !important; position: relative; touch-action: manipulation; -webkit-tap-highlight-color: transparent;">
+                  👁️ عرض
+                </a>
+                <button class="btn btn-danger" onclick="deleteAgent({{ data.agent.id }}, '{{ data.agent.name }}')" style="padding: 10px 18px; font-size: 14px; min-width: 100px; pointer-events: auto !important; z-index: 100 !important; position: relative; touch-action: manipulation; -webkit-tap-highlight-color: transparent;">
+                  🗑️ حذف
+                </button>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="6" class="empty-state">
+              <div class="empty-state-icon">🚚</div>
+              <div class="empty-state-text">{{ _('agents_empty_title') }}</div>
+              <div class="empty-state-subtext">{{ _('agents_empty_subtitle') }}</div>
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+// ==================== Toast Notifications ====================
+function showToast(message, type = 'info') {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  
+  const icons = {
+    success: '✅',
+    error: '❌',
+    warning: '⚠️',
+    info: 'ℹ️'
+  };
+  
+  toast.innerHTML = `
+    <span style="font-size: 18px;">${icons[type] || icons.info}</span>
+    <span style="flex: 1;">${message}</span>
+  `;
+  
+  container.appendChild(toast);
+  
+  setTimeout(() => {
+    toast.style.animation = 'slideInDown 0.3s ease reverse';
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+
+// ==================== Loading Overlay ====================
+function showLoading() {
+  document.getElementById('loadingOverlay').classList.add('active');
+}
+
+function hideLoading() {
+  document.getElementById('loadingOverlay').classList.remove('active');
+}
+
+// ==================== Add Agent ====================
+function addAgent(event) {
+  event.preventDefault();
+  
+  const name = document.getElementById('agentName').value.trim();
+  const phone = document.getElementById('agentPhone').value.trim();
+  const btn = document.getElementById('addAgentBtn');
+  
+  if (!name) {
+    showToast('{{ _("agents_err_name_required") }}', 'warning');
+    return;
+  }
+  
+  btn.classList.add('button-loading');
+  showLoading();
+  
+  fetch('/agents/add', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ name, phone })
+  })
+  .then(r => r.json())
+  .then(data => {
+    hideLoading();
+    btn.classList.remove('button-loading');
+    
+    if (data.success) {
+      showToast('{{ _("agents_toast_add_success") }}', 'success');
+      document.getElementById('addAgentForm').reset();
+      setTimeout(() => location.reload(), 1000);
+    } else {
+      showToast(data.error || '{{ _("agents_err_generic") }}', 'error');
+    }
+  })
+  .catch(error => {
+    hideLoading();
+    btn.classList.remove('button-loading');
+    showToast('{{ _("agents_err_add") }}', 'error');
+    console.error(error);
+  });
+}
+
+// ==================== Delete Agent ====================
+function deleteAgent(agentId, agentName) {
+  if (!confirm(`{{ _("agents_confirm_delete") }}`.replace('{name}', agentName))) {
+    return;
+  }
+  
+  showLoading();
+  
+  fetch('/agents/delete/' + agentId, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'}
+  })
+  .then(r => r.json())
+  .then(data => {
+    hideLoading();
+    
+    if (data.success) {
+      showToast('{{ _("agents_toast_delete_success") }}', 'success');
+      setTimeout(() => location.reload(), 1000);
+    } else {
+      showToast(data.error || '{{ _("agents_err_generic") }}', 'error');
+    }
+  })
+  .catch(error => {
+    hideLoading();
+    showToast('{{ _("agents_err_delete") }}', 'error');
+    console.error(error);
+  });
+}
+
+// ==================== Filter Table ====================
+function filterTable() {
+  const searchInput = document.getElementById('searchInput').value.toLowerCase();
+  const agentFilter = document.getElementById('filterAgent').value;
+  const rows = document.querySelectorAll('#agentsTableBody tr');
+  
+  let visibleCount = 0;
+  
+  rows.forEach(row => {
+    const searchText = row.getAttribute('data-search') || '';
+    const agentName = row.getAttribute('data-agent-name') || '';
+    
+    const matchesSearch = !searchInput || searchText.toLowerCase().includes(searchInput);
+    const matchesAgent = !agentFilter || agentName === agentFilter;
+    
+    if (matchesSearch && matchesAgent) {
+      row.style.display = '';
+      visibleCount++;
+    } else {
+      row.style.display = 'none';
+    }
+  });
+  
+  // Show empty state if no results
+  const tableBody = document.getElementById('agentsTableBody');
+  let emptyState = document.getElementById('emptyState');
+  
+  if (visibleCount === 0 && !emptyState) {
+    emptyState = document.createElement('tr');
+    emptyState.id = 'emptyState';
+    emptyState.innerHTML = `
+      <td colspan="6" class="empty-state">
+        <div class="empty-state-icon">🔍</div>
+        <div class="empty-state-text">{{ _('agents_empty_filter_title') }}</div>
+        <div class="empty-state-subtext">{{ _('agents_empty_filter_subtitle') }}</div>
+      </td>
+    `;
+    tableBody.appendChild(emptyState);
+  } else if (visibleCount > 0 && emptyState) {
+    emptyState.remove();
+  }
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+  if (document.getElementById('searchInput')) {
+    filterTable();
+  }
+});
+</script>
+
+</div>
+{% endblock %}

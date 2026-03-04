@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}المساعد الذكي - جاري التطوير{% endblock %}
+{% block page_title %}🤖 المساعد الذكي{% endblock %}
+{% block content %}
+
+<style>
+.under-development {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 70vh;
+  text-align: center;
+  padding: 40px;
+}
+
+.development-icon {
+  font-size: 120px;
+  margin-bottom: 30px;
+  animation: pulse 2s infinite;
+  filter: drop-shadow(0 0 30px rgba(59, 130, 246, 0.5));
+}
+
+@keyframes pulse {
+  0%, 100% { 
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% { 
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+.development-title {
+  font-size: 48px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 20px;
+}
+
+.development-message {
+  font-size: 24px;
+  color: var(--text-muted);
+  margin-bottom: 40px;
+  line-height: 1.8;
+}
+
+.development-info {
+  background: linear-gradient(135deg, rgba(17, 24, 39, 0.9), rgba(11, 18, 32, 0.9));
+  padding: 30px;
+  border-radius: 20px;
+  border: 2px solid rgba(59, 130, 246, 0.3);
+  max-width: 600px;
+  margin-top: 30px;
+}
+
+.development-info p {
+  color: var(--text-muted);
+  font-size: 16px;
+  line-height: 1.8;
+  margin-bottom: 15px;
+}
+
+.development-info .features {
+  text-align: right;
+  margin-top: 20px;
+}
+
+.development-info .features li {
+  color: var(--text);
+  margin-bottom: 10px;
+  padding-right: 20px;
+  position: relative;
+}
+
+.development-info .features li::before {
+  content: "✨";
+  position: absolute;
+  right: 0;
+}
+
+.loader-container {
+  margin: 30px 0;
+}
+
+.loader {
+  display: inline-block;
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(59, 130, 246, 0.2);
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+</style>
+
+<div class="under-development">
+  <div class="development-icon">🚧</div>
+  <h1 class="development-title">جاري التطوير</h1>
+  <p class="development-message">
+    المساعد الذكي قيد التطوير حالياً<br>
+    سيتم إطلاقه قريباً مع ميزات متقدمة
+  </p>
+  
+  <div class="loader-container">
+    <div class="loader"></div>
+  </div>
+  
+  <div class="development-info">
+    <p><strong>الميزات القادمة:</strong></p>
+    <ul class="features">
+      <li>تحليل ذكي متقدم للبيانات</li>
+      <li>اكتشاف تلقائي للأخطاء الحسابية</li>
+      <li>إصلاحات تلقائية للأخطاء</li>
+      <li>تقارير شاملة قابلة للطباعة</li>
+      <li>تنبؤات ذكية بناءً على البيانات</li>
+      <li>نظام تعلم من الأخطاء</li>
+    </ul>
+  </div>
+</div>
+
+{% endblock %}

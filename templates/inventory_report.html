@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block page_title %}تقرير المنتج{% endblock %}
+{% block content %}
+
+<style>
+/* ================= PRODUCT REPORT ================= */
+.card{
+  background:rgba(255,255,255,.9);
+  backdrop-filter:blur(14px);
+  border-radius:20px;
+  padding:24px;
+  box-shadow:0 20px 40px rgba(0,0,0,.08);
+  animation:fade .3s ease;
+}
+
+/* ================= TITLE ================= */
+.card h3{
+  margin:0 0 18px;
+  font-size:18px;
+  font-weight:800;
+  color:#0f172a;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+/* ================= TABLE ================= */
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:14px;
+  margin-bottom:20px;
+}
+
+th{
+  padding:14px;
+  background:#f8fafc;
+  color:#64748b;
+  font-weight:700;
+  text-align:center;
+}
+
+td{
+  padding:14px;
+  border-bottom:1px solid #e5e7eb;
+  text-align:center;
+  font-weight:600;
+}
+
+tr:hover{
+  background:#f1f5f9;
+  transition:.2s;
+}
+
+/* ================= STATUS COLORS ================= */
+td:first-child{
+  font-weight:700;
+}
+
+td:first-child:contains("تم الطلب"){color:#2563eb}
+td:first-child:contains("جاري الشحن"){color:#f59e0b}
+td:first-child:contains("تم التوصيل"){color:#16a34a}
+td:first-child:contains("مرتجع"){color:#dc2626}
+
+/* ================= PRINT BUTTON ================= */
+.pos-btn{
+  padding:14px 22px;
+  border:none;
+  border-radius:18px;
+  background:linear-gradient(135deg,#2563eb,#3b82f6);
+  color:#fff;
+  font-weight:800;
+  cursor:pointer;
+  transition:.25s;
+}
+
+.pos-btn:hover{
+  transform:translateY(-2px);
+  box-shadow:0 10px 20px rgba(0,0,0,.2);
+}
+
+/* ================= PRINT MODE ================= */
+@media print{
+  body{
+    background:#fff;
+  }
+  .pos-btn{
+    display:none;
+  }
+  .card{
+    box-shadow:none;
+    border:1px solid #000;
+  }
+}
+
+/* ================= MOBILE ================= */
+@media(max-width:700px){
+  table thead{
+    display:none;
+  }
+
+  table tr{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    padding:14px;
+    margin-bottom:14px;
+    background:#fff;
+    border-radius:14px;
+    box-shadow:0 10px 20px rgba(0,0,0,.08);
+  }
+
+  table td{
+    padding:0;
+    border:none;
+  }
+
+  table td::before{
+    content:attr(data-label);
+    display:block;
+    font-size:11px;
+    color:#64748b;
+    margin-bottom:4px;
+  }
+}
+
+/* ================= ANIMATION ================= */
+@keyframes fade{
+  from{opacity:0;transform:translateY(10px)}
+  to{opacity:1}
+}
+</style>
+
+<div class="card">
+<h3>📄 {{ product.name }}</h3>
+
+<table style="width:100%">
+<tr><th>الحالة</th><th>عدد الطلبات</th><th>المبلغ</th></tr>
+{% for k,v in report.items() %}
+<tr>
+  <td>{{ k }}</td>
+  <td>{{ v.count }}</td>
+  <td>{{ v.total }}</td>
+</tr>
+{% endfor %}
+</table>
+
+<button onclick="window.print()" class="pos-btn">🖨 طباعة التقرير</button>
+</div>
+{% endblock %}

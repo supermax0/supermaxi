@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="{{ current_lang or 'ar' }}" dir="{{ 'rtl' if (current_lang or 'ar') == 'ar' else 'ltr' }}">
+<head>
+<meta charset="UTF-8">
+<title>{{ _('supplier_statement_page_title') }}</title>
+
+<style>
+body{
+    font-family: Tahoma;
+    background:#fff;
+    color:#000;
+    margin:40px;
+}
+
+h1,h2,h3{
+    margin:0 0 10px;
+}
+
+.header{
+    display:flex;
+    justify-content:space-between;
+    border-bottom:2px solid #000;
+    padding-bottom:10px;
+    margin-bottom:20px;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    margin-bottom:20px;
+}
+
+th,td{
+    border:1px solid #000;
+    padding:6px;
+    font-size:14px;
+    text-align:center;
+}
+
+.summary{
+    width:50%;
+}
+
+.summary td{
+    font-weight:bold;
+}
+
+.print-btn{
+    position:fixed;
+    top:20px;
+    left:20px;
+    padding:8px 14px;
+    background:#000;
+    color:#fff;
+    border:none;
+    cursor:pointer;
+}
+
+/* 🖨️ إعدادات الطباعة */
+@media print{
+    .print-btn{
+        display:none;
+    }
+    body{
+        margin:0;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<button class="print-btn" onclick="window.print()">🖨️ {{ _('supplier_statement_print_btn') }}</button>
+
+<div class="header">
+    <div>
+        <h2>{{ _('supplier_statement_page_title') }}</h2>
+        <p>{{ _('supplier_statement_label_name') }}: <strong>{{ supplier.name }}</strong></p>
+        <p>{{ _('supplier_statement_label_phone') }}: {{ supplier.phone or "-" }}</p>
+    </div>
+    <div>
+        <p>{{ _('supplier_statement_label_date') }}: {{ today.strftime("%Y-%m-%d") }}</p>
+    </div>
+</div>
+
+<h3>{{ _('supplier_statement_purchases_title') }}</h3>
+<table>
+    <tr>
+        <th>{{ _('supplier_statement_col_product') }}</th>
+        <th>{{ _('supplier_statement_col_quantity') }}</th>
+        <th>{{ _('supplier_statement_col_price') }}</th>
+        <th>{{ _('supplier_statement_col_total') }}</th>
+        <th>{{ _('supplier_statement_col_date') }}</th>
+    </tr>
+    {% for p in purchases %}
+    <tr>
+        <td>{{ p.product.name }}</td>
+        <td>{{ p.quantity }}</td>
+        <td>{{ p.price }}</td>
+        <td>{{ p.total }}</td>
+        <td>{{ p.purchase_date }}</td>
+    </tr>
+    {% else %}
+    <tr>
+        <td colspan="5">{{ _('supplier_statement_no_purchases_short') }}</td>
+    </tr>
+    {% endfor %}
+</table>
+
+<h3>{{ _('supplier_statement_section_payments') }}</h3>
+<table>
+    <tr>
+        <th>{{ _('supplier_statement_col_date') }}</th>
+        <th>{{ _('supplier_statement_amount') }}</th>
+        <th>{{ _('supplier_statement_note_label') }}</th>
+    </tr>
+    {% for pay in payments %}
+    <tr>
+        <td>{{ pay.created_at.strftime("%Y-%m-%d") }}</td>
+        <td>{{ pay.amount }}</td>
+        <td>{{ pay.note or "-" }}</td>
+    </tr>
+    {% endfor %}
+</table>
+
+<h3>{{ _('supplier_statement_section_summary') }}</h3>
+<table class="summary">
+    <tr>
+        <td>{{ _('supplier_statement_total_purchases') }}</td>
+        <td>{{ total_purchase }}</td>
+    </tr>
+    <tr>
+        <td>{{ _('supplier_statement_total_paid') }}</td>
+        <td>{{ total_paid }}</td>
+    </tr>
+    <tr>
+        <td>{{ _('supplier_statement_remaining') }}</td>
+        <td>{{ remaining }}</td>
+    </tr>
+</table>
+
+</body>
+</html>

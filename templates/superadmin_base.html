@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}مركز القيادة - Finora{% endblock %}</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='IMG_0200.png') }}">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='IMG_0200.png') }}">
+    <!-- Google Fonts -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Tajawal:wght@400;500;700;800&display=swap"
+        rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-color: #070b14;
+            --surface-color: #0f172a;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --primary: #6366f1;
+            --primary-glow: rgba(99, 102, 241, 0.2);
+            --success: #10b981;
+            --success-glow: rgba(16, 185, 129, 0.15);
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --accent: #8b5cf6;
+
+            --sidebar-width: 280px;
+            --radius-lg: 24px;
+            --radius-md: 16px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --shadow-premium: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Tajawal', 'Cairo', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image:
+                radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.05) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.05) 0px, transparent 50%);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            overflow-x: hidden;
+            font-size: 15px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Essential Utility Classes */
+        .glass {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+        }
+
+        .premium-card {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            transition: var(--transition);
+        }
+
+        .premium-card:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-premium);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: linear-gradient(180deg, #0f172a 0%, #070b14 100%);
+            border-left: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            bottom: 20px;
+            z-index: 100;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-premium);
+        }
+
+        .sidebar-header {
+            padding: 32px 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .sidebar-header .logo-icon {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border-radius: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 22px;
+            color: #fff;
+            box-shadow: 0 8px 16px rgba(99, 102, 241, 0.3);
+        }
+
+        .sidebar-header h2 {
+            font-size: 18px;
+            font-weight: 800;
+            background: linear-gradient(to bottom, #fff, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-links {
+            padding: 10px 16px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 12px 18px;
+            border-radius: 14px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+            transition: var(--transition);
+        }
+
+        .nav-link i {
+            font-size: 18px;
+            width: 20px;
+            text-align: center;
+            transition: var(--transition);
+        }
+
+        .nav-link:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.05);
+            transform: translateX(-4px);
+        }
+
+        .nav-link.active {
+            background: linear-gradient(90deg, var(--primary-glow) 0%, transparent 100%);
+            color: var(--primary);
+            position: relative;
+        }
+
+        .nav-link.active::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 20%;
+            height: 60%;
+            width: 4px;
+            background: var(--primary);
+            border-radius: 4px 0 0 4px;
+        }
+
+        .nav-link.active i {
+            color: var(--primary);
+        }
+
+        .badge {
+            background: var(--danger);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 800;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-right: auto;
+            box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
+        }
+
+        .sidebar-footer {
+            padding: 24px 16px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .logout-btn {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            padding: 12px 18px;
+            color: #ef4444;
+            background: rgba(239, 68, 68, 0.05);
+            border-radius: 14px;
+            text-decoration: none;
+            font-weight: 700;
+            transition: var(--transition);
+        }
+
+        .logout-btn:hover {
+            background: #ef4444;
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-right: calc(var(--sidebar-width) + 40px);
+            margin-left: 20px;
+            flex-grow: 1;
+            padding: 40px 0;
+            min-height: 100vh;
+        }
+
+        .top-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            padding: 0 8px;
+        }
+
+        .page-title {
+            font-size: 28px;
+            font-weight: 900;
+            letter-spacing: -0.5px;
+            margin: 0;
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 8px 8px 8px 24px;
+            background: rgba(15, 23, 42, 0.4);
+            border-radius: 40px;
+            border: 1px solid var(--border-color);
+            backdrop-filter: blur(10px);
+        }
+
+        .user-avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        .user-info {
+            display: flex;
+            flex-direction: column;
+            text-align: left;
+        }
+
+        .user-name {
+            font-weight: 800;
+            font-size: 14px;
+            color: #fff;
+        }
+
+        .user-role {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 700;
+        }
+
+        /* Alerts */
+        .alert {
+            padding: 16px 24px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-weight: 600;
+            border: 1px solid transparent;
+            animation: slideIn 0.4s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .alert-success {
+            background: rgba(16, 185, 129, 0.1);
+            color: #10b981;
+            border-color: rgba(16, 185, 129, 0.2);
+        }
+
+        .alert-error {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border-color: rgba(239, 68, 68, 0.2);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        {% block extra_style %}
+        {% endblock %}
+    </style>
+    {% block head %}{% endblock %}
+</head>
+
+<body>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo-icon"><i class="fas fa-layer-group"></i></div>
+            <h2>Finora Engine</h2>
+        </div>
+
+        <nav class="nav-links">
+            <a href="/superadmin/" class="nav-link {% if request.path == '/superadmin/' %}active{% endif %}">
+                <i class="fas fa-chart-pie"></i>
+                لوحة القيادة (Dashboard)
+            </a>
+            <a href="/superadmin/requests"
+                class="nav-link {% if '/superadmin/requests' in request.path %}active{% endif %}">
+                <i class="fas fa-money-check-alt"></i>
+                طلبات ZainCash
+                {% if pending_count and pending_count > 0 %}
+                <span class="badge">{{ pending_count }}</span>
+                {% endif %}
+            </a>
+            <a href="/superadmin/tenants"
+                class="nav-link {% if '/superadmin/tenants' in request.path and '/superadmin/tenants/create' not in request.path %}active{% endif %}">
+                <i class="fas fa-building"></i>
+                الشركات المسجلة
+            </a>
+            <a href="/superadmin/tenants/create"
+                class="nav-link {% if '/superadmin/tenants/create' in request.path %}active{% endif %}">
+                <i class="fas fa-plus-circle"></i>
+                إنشاء شركة
+            </a>
+            <a href="/superadmin/links" class="nav-link {% if '/superadmin/links' in request.path %}active{% endif %}">
+                <i class="fas fa-link"></i>
+                دليل الصفحات (كل الروابط)
+            </a>
+            <a href="/superadmin/plans" class="nav-link {% if '/superadmin/plans' in request.path %}active{% endif %}">
+                <i class="fas fa-layer-group"></i>
+                خطط الاشتراك
+            </a>
+            <a href="/superadmin/settings"
+                class="nav-link {% if '/superadmin/settings' in request.path %}active{% endif %}">
+                <i class="fas fa-cog"></i>
+                إعدادات النظام
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="/superadmin/logout" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i>
+                تسجيل الخروج
+            </a>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="top-header">
+            <h1 class="page-title">{% block page_title %}لوحة الإدارة العليا{% endblock %}</h1>
+            <div class="user-profile">
+                <div class="user-info">
+                    <span class="user-name">SuperMax</span>
+                    <span class="user-role">المدير العام (Super Admin)</span>
+                </div>
+                <div class="user-avatar"><i class="fas fa-user-shield"></i></div>
+            </div>
+        </div>
+
+        <div class="flash-messages">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            {% for category, message in messages %}
+            {% set alert_class = 'alert-success' if category == 'message' or category == 'success' else 'alert-error' if
+            category == 'error' else 'alert-warning' %}
+            <div class="alert {{ alert_class }}">
+                <i
+                    class="fas {% if 'success' in alert_class %}fa-check-circle{% elif 'error' in alert_class %}fa-exclamation-circle{% else %}fa-info-circle{% endif %}"></i>
+                {{ message }}
+            </div>
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
+        </div>
+
+        {% block content %}{% endblock %}
+    </main>
+
+    {% block scripts %}{% endblock %}
+</body>
+
+</html>

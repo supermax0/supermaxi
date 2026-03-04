@@ -1,0 +1,420 @@
+/* ======================================================
+   Modern SaaS Admin (RTL) — Design System
+   - Tokens + Dark/Light themes
+   - Global components (cards, buttons, tables, forms, modals)
+   - Utilities
+   Loaded after existing CSS to gradually unify UI.
+====================================================== */
+
+/* ---------------------------
+   1) Theme tokens (mapped)
+--------------------------- */
+
+:root {
+  /* Spacing scale */
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  /* Radii */
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --radius-xl: 22px;
+  --radius-pill: 999px;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-1: 120ms;
+  --dur-2: 180ms;
+  --dur-3: 240ms;
+
+  /* Elevation */
+  --shadow-1: 0 10px 30px rgba(0, 0, 0, 0.20);
+  --shadow-2: 0 18px 48px rgba(0, 0, 0, 0.28);
+  --shadow-3: 0 26px 70px rgba(0, 0, 0, 0.36);
+
+  /* Ring */
+  --ring: 0 0 0 4px rgba(59, 130, 246, 0.24);
+
+  /* Typography */
+  --font-sans: 'Tajawal', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+}
+
+/* Default theme = dark */
+:root:not([data-theme]) {
+  color-scheme: dark;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Core surfaces */
+  --bg: #0a0f1c;
+  --sidebar: #0d1424;
+  --card: rgba(17, 24, 39, 0.86);
+  --card-alt: rgba(15, 23, 42, 0.86);
+  --text: #f1f5f9;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  --border: rgba(255, 255, 255, 0.10);
+  --border-light: rgba(255, 255, 255, 0.06);
+
+  /* Brand */
+  --primary: #3b82f6;
+  --primary-hover: #2563eb;
+  --primary-soft: rgba(59, 130, 246, 0.14);
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+
+  --gradient-primary: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  --gradient-sidebar: linear-gradient(180deg, #0d1424 0%, #070b16 100%);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --bg: #f3f6fb;
+  --sidebar: #ffffff;
+  --card: rgba(255, 255, 255, 0.92);
+  --card-alt: rgba(255, 255, 255, 0.80);
+  --text: #0f172a;
+  --text-muted: #475569;
+  --text-dim: #64748b;
+  --border: rgba(2, 6, 23, 0.10);
+  --border-light: rgba(2, 6, 23, 0.06);
+
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-soft: rgba(37, 99, 235, 0.10);
+  --success: #16a34a;
+  --warning: #f59e0b;
+  --danger: #dc2626;
+
+  --gradient-primary: linear-gradient(135deg, #2563eb, #7c3aed);
+  --gradient-sidebar: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+/* ---------------------------
+   2) Global base polish
+--------------------------- */
+
+html, body {
+  font-family: var(--font-sans);
+}
+
+/* Global scale (readability) */
+html {
+  font-size: 17px;
+}
+
+body {
+  line-height: 1.75;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  overflow-x: hidden;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Links */
+a { color: inherit; }
+a:focus-visible { outline: none; box-shadow: var(--ring); border-radius: 10px; }
+
+/* Safer focus for icon buttons */
+button:focus-visible,
+.theme-toggle-btn:focus-visible {
+  box-shadow: var(--ring);
+}
+
+/* Selection */
+::selection { background: var(--primary-soft); color: var(--text); }
+
+/* Reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+}
+
+/* iPhone safe-area padding helpers */
+@supports (padding: max(0px)) {
+  .page-main {
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+}
+
+/* ---------------------------
+   3) Components (compat layer)
+--------------------------- */
+
+/* Cards */
+.card {
+  background: linear-gradient(145deg, var(--card), var(--card-alt));
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-1);
+  border-radius: var(--radius-lg);
+}
+
+/* Buttons */
+.btn,
+button {
+  border-radius: 12px;
+  transition: transform var(--dur-2) var(--ease-out), background var(--dur-2) var(--ease-soft), color var(--dur-2) var(--ease-soft), box-shadow var(--dur-2) var(--ease-soft);
+}
+
+.btn:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+/* Forms */
+input, select, textarea {
+  background: rgba(15, 23, 42, 0.35);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 12px;
+}
+
+:root[data-theme="light"] input,
+:root[data-theme="light"] select,
+:root[data-theme="light"] textarea {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+/* Tables */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+table th {
+  color: var(--text-muted);
+}
+table td, table th {
+  border-color: var(--border-light) !important;
+}
+
+/* Badges / status */
+.badge, .pill, .status {
+  border-radius: var(--radius-pill);
+}
+
+/* Modals overlay (generic) */
+.modal {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* Buttons — variants (opt-in via classes, but also improves default .btn) */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border: 1px solid transparent;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.btn:hover { background: var(--primary-hover); transform: translateY(-1px); }
+.btn:active { transform: translateY(0); }
+
+.btn.btn-secondary,
+.btn-secondary {
+  background: rgba(148, 163, 184, 0.14);
+  border-color: var(--border);
+  color: var(--text);
+}
+.btn.btn-secondary:hover,
+.btn-secondary:hover { background: rgba(148, 163, 184, 0.22); }
+
+.btn.btn-ghost,
+.btn-ghost {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text);
+}
+.btn.btn-ghost:hover,
+.btn-ghost:hover { background: rgba(59, 130, 246, 0.10); border-color: var(--border-light); }
+
+.btn.btn-danger,
+.btn-danger {
+  background: rgba(239, 68, 68, 0.14);
+  border-color: rgba(239, 68, 68, 0.22);
+  color: #fecaca;
+}
+:root[data-theme="light"] .btn.btn-danger,
+:root[data-theme="light"] .btn-danger {
+  color: #7f1d1d;
+}
+.btn.btn-danger:hover,
+.btn-danger:hover { background: rgba(239, 68, 68, 0.22); }
+
+/* Tables — SaaS defaults */
+table th {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+table td {
+  color: var(--text);
+}
+
+table tr:hover td {
+  background: rgba(59, 130, 246, 0.06);
+}
+
+/* Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid var(--border-light);
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--text);
+}
+
+.badge.badge-danger { background: rgba(239, 68, 68, 0.14); color: #fecaca; border-color: rgba(239, 68, 68, 0.22); }
+:root[data-theme="light"] .badge.badge-danger { color: #7f1d1d; }
+.badge.badge-success { background: rgba(16, 185, 129, 0.14); color: #bbf7d0; border-color: rgba(16, 185, 129, 0.22); }
+:root[data-theme="light"] .badge.badge-success { color: #14532d; }
+.badge.badge-warning { background: rgba(245, 158, 11, 0.14); color: #fde68a; border-color: rgba(245, 158, 11, 0.22); }
+:root[data-theme="light"] .badge.badge-warning { color: #78350f; }
+
+/* Layout tweaks for light theme (keep existing structure) */
+:root[data-theme="light"] .content {
+  background: linear-gradient(180deg, rgba(2, 6, 23, 0.03), rgba(2, 6, 23, 0) 35%), var(--bg);
+}
+
+:root[data-theme="light"] .sidebar {
+  box-shadow: 0 18px 48px rgba(2, 6, 23, 0.10);
+}
+
+/* ------------------------------------------------------
+   Light mode compatibility overrides
+   Many pages define dark .card backgrounds inline; force
+   readable SaaS light surfaces across the app.
+------------------------------------------------------ */
+
+:root[data-theme="light"] .page-main .card,
+:root[data-theme="light"] .page-main .report-card,
+:root[data-theme="light"] .page-main .metric-card,
+:root[data-theme="light"] .page-main .inv-box,
+:root[data-theme="light"] .page-main .orders-stat-card,
+:root[data-theme="light"] .page-main .orders-actions-card {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.96)) !important;
+  border-color: var(--border) !important;
+  box-shadow: 0 12px 30px rgba(2, 6, 23, 0.10) !important;
+  color: var(--text) !important;
+}
+
+:root[data-theme="light"] .page-main .card *,
+:root[data-theme="light"] .page-main .report-card *,
+:root[data-theme="light"] .page-main .metric-card * {
+  color: inherit;
+}
+
+/* Alerts/list items that were dark in light mode */
+:root[data-theme="light"] #alerts li,
+:root[data-theme="light"] .toast {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+
+/* Charts containers */
+:root[data-theme="light"] canvas {
+  filter: saturate(1.05) contrast(1.05);
+}
+
+/* Dashboard/metrics: disable gradient text on light theme (improves contrast) */
+:root[data-theme="light"] .count,
+:root[data-theme="light"] .metric-count,
+:root[data-theme="light"] .dashboard-card-highlight .count,
+:root[data-theme="light"] .metric-card .count {
+  background: none !important;
+  -webkit-text-fill-color: var(--text) !important;
+  color: var(--text) !important;
+}
+
+/* Improve muted text contrast in light theme */
+:root[data-theme="light"] .card > div:first-child,
+:root[data-theme="light"] small,
+:root[data-theme="light"] .muted {
+  color: var(--text-muted) !important;
+}
+
+/* ---------------------------
+   4) Utilities
+--------------------------- */
+.u-flex { display: flex; }
+.u-flex-col { display: flex; flex-direction: column; }
+.u-center { display: flex; align-items: center; justify-content: center; }
+.u-gap-8 { gap: 8px; }
+.u-gap-12 { gap: 12px; }
+.u-gap-16 { gap: 16px; }
+.u-gap-20 { gap: 20px; }
+.u-mb-8 { margin-bottom: 8px; }
+.u-mb-12 { margin-bottom: 12px; }
+.u-mb-16 { margin-bottom: 16px; }
+.u-mb-24 { margin-bottom: 24px; }
+.u-mt-16 { margin-top: 16px; }
+.u-mt-24 { margin-top: 24px; }
+
+/* ---------------------------
+   5) Print safety
+--------------------------- */
+@media print {
+  body { background: #fff !important; color: #000 !important; }
+  .sidebar, .topbar, .mobile-bottom-nav, .no-print { display: none !important; }
+  .content, .page-main { margin: 0 !important; padding: 0 !important; }
+  .card { box-shadow: none !important; background: #fff !important; border-color: #e5e7eb !important; }
+}
+
+/* ---------------------------
+   6) Mobile polish (RTL)
+--------------------------- */
+@media (max-width: 640px) {
+  /* Keep global header compact even if a page has .topbar styles */
+  .content > header.topbar {
+    align-items: center !important;
+  }
+
+  .content > header.topbar .page-title {
+    font-size: 15px;
+  }
+
+  .content > header.topbar .toggle {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  .content > header.topbar .user-info span {
+    max-width: 160px;
+  }
+}
+

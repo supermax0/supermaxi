@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+
+{% block title %}إعدادات الواجهة{% endblock %}
+{% block page_title %}🎨 إعدادات الواجهة{% endblock %}
+
+{% block content %}
+<style>
+.appearance-page {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.appearance-card {
+  background: var(--card);
+  border-radius: 20px;
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-sm);
+  padding: 24px 24px 20px;
+  margin-bottom: 20px;
+}
+
+.appearance-header {
+  margin-bottom: 24px;
+}
+
+.appearance-header h2 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.appearance-header p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.appearance-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.field-help {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.appearance-select,
+.appearance-input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border-light);
+  background: var(--card-alt);
+  color: var(--text);
+  font-size: 14px;
+}
+
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--border-light);
+}
+
+.switch-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.switch-label strong {
+  font-size: 14px;
+  color: var(--text);
+}
+
+.switch-label span {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.btn-save-appearance {
+  margin-top: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 12px;
+  border: none;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-save-appearance:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+@media (max-width: 768px) {
+  .appearance-page {
+    padding: 16px;
+  }
+}
+
+:root[data-theme="light"] .appearance-card {
+  background: #ffffff;
+  border-color: #e5e7eb;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+:root[data-theme="light"] .appearance-select,
+:root[data-theme="light"] .appearance-input {
+  background: #f9fafb;
+  border-color: #e5e7eb;
+  color: #111827;
+}
+
+:root[data-theme="light"] .switch-row {
+  background: #f9fafb;
+  border-color: #e5e7eb;
+}
+</style>
+
+<div class="appearance-page">
+  <div class="appearance-card">
+    <div class="appearance-header">
+      <h2><i class="fas fa-palette"></i> مظهر النظام</h2>
+      <p>تحكم في الثيم وحجم الخط وبعض عناصر الواجهة العامة.</p>
+    </div>
+
+    <div class="appearance-grid">
+      <div class="field-group">
+        <label class="field-label" for="defaultTheme">الثيم الافتراضي</label>
+        <select id="defaultTheme" class="appearance-select">
+          <option value="system" {% if settings.default_theme == 'system' %}selected{% endif %}>حسب إعدادات الجهاز</option>
+          <option value="light" {% if settings.default_theme == 'light' %}selected{% endif %}>فاتح</option>
+          <option value="dark" {% if settings.default_theme == 'dark' %}selected{% endif %}>داكن</option>
+        </select>
+        <div class="field-help">يُستخدم عندما لا يكون للمستخدم اختيار محفوظ في المتصفح.</div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label" for="fontScale">حجم الخط</label>
+        <select id="fontScale" class="appearance-select">
+          <option value="sm" {% if settings.font_scale == 'sm' %}selected{% endif %}>صغير</option>
+          <option value="md" {% if settings.font_scale == 'md' %}selected{% endif %}>متوسط (افتراضي)</option>
+          <option value="lg" {% if settings.font_scale == 'lg' %}selected{% endif %}>كبير</option>
+        </select>
+        <div class="field-help">يؤثر على حجم النصوص في أغلب الصفحات (قيد التطوير التدريجي).</div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label" for="defaultCurrency">العملة الافتراضية</label>
+        <input id="defaultCurrency" class="appearance-input" type="text" value="{{ settings.default_currency or 'د.ع' }}">
+        <div class="field-help">يُستخدم في التقارير وبعض الشاشات كرمز عملة افتراضي.</div>
+      </div>
+    </div>
+
+    <div style="margin-top: 20px; display: flex; flex-direction: column; gap: 12px;">
+      <div class="switch-row">
+        <div class="switch-label">
+          <strong>تفعيل المساعد المالي (AI)</strong>
+          <span>السماح باستخدام المساعد في الداشبورد وصفحة المساعد.</span>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="aiEnabled" {% if settings.ai_enabled %}checked{% endif %}>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <button type="button" class="btn-save-appearance" id="saveAppearanceBtn">
+      <i class="fas fa-save"></i>
+      حفظ إعدادات الواجهة
+    </button>
+  </div>
+</div>
+
+<script>
+function showToast(message, type) {
+  try {
+    if (window.showToastGlobal) {
+      window.showToastGlobal(message, type);
+      return;
+    }
+  } catch (e) {}
+  alert(message);
+}
+
+document.getElementById("saveAppearanceBtn").addEventListener("click", function () {
+  const btn = this;
+  btn.disabled = true;
+
+  const payload = {
+    default_theme: document.getElementById("defaultTheme").value,
+    font_scale: document.getElementById("fontScale").value,
+    default_currency: document.getElementById("defaultCurrency").value,
+    ai_enabled: document.getElementById("aiEnabled").checked,
+    ui_flags: {}
+  };
+
+  fetch("/settings/appearance/update", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  })
+    .then(r => r.json())
+    .then(data => {
+      btn.disabled = false;
+      if (data && data.success) {
+        showToast("تم حفظ إعدادات الواجهة بنجاح ✅", "success");
+      } else {
+        showToast("حدث خطأ أثناء الحفظ", "error");
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      btn.disabled = false;
+      showToast("خطأ في الاتصال بالخادم", "error");
+    });
+});
+</script>
+
+{% endblock %}
+

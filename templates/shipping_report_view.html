@@ -1,0 +1,599 @@
+{% extends "base.html" %}
+{% block title %}كشف {{ report.report_number }} - {{ report.shipping_company_name }}{% endblock %}
+{% block page_title %}📋 كشف {{ report.report_number }}{% endblock %}
+{% block content %}
+
+<!-- مكتبة الباركود -->
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+
+<style>
+:root {
+  --report-primary: var(--primary);
+  --report-success: var(--success);
+  --report-card: var(--card);
+  --report-text: var(--text);
+  --report-muted: var(--text-muted);
+}
+
+.shipping-report-view-page{
+  color: var(--report-text);
+}
+
+.shipping-report-view-page .report-header {
+  background: linear-gradient(145deg, rgba(17, 24, 39, 0.9), rgba(11, 18, 32, 0.9));
+  border-radius: 20px;
+  padding: 24px;
+  margin-bottom: 24px;
+  border: 1px solid rgba(59, 130, 246, 0.1);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.shipping-report-view-page .report-header .info {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.shipping-report-view-page .report-header .info-item {
+  background: rgba(15, 23, 42, 0.6);
+  padding: 16px;
+  border-radius: 12px;
+}
+
+.shipping-report-view-page .report-header .info-item .label {
+  font-size: 13px;
+  color: var(--report-muted);
+  margin-bottom: 6px;
+}
+
+.shipping-report-view-page .report-header .info-item .value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--report-text);
+}
+
+.shipping-report-view-page .report-header .info-item .value[style*="color: var(--report-success)"] {
+  color: var(--report-success) !important;
+}
+
+.shipping-report-view-page .report-actions {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.shipping-report-view-page .btn {
+  padding: 12px 24px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.shipping-report-view-page .btn-primary {
+  background: linear-gradient(135deg, var(--report-primary), #2563eb);
+  color: white;
+}
+
+.shipping-report-view-page .btn-success {
+  background: linear-gradient(135deg, var(--report-success), #059669);
+  color: white;
+}
+
+.shipping-report-view-page .btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+.shipping-report-view-page .report-table {
+  background: linear-gradient(145deg, rgba(17, 24, 39, 0.9), rgba(11, 18, 32, 0.9));
+  border-radius: 20px;
+  padding: 24px;
+  overflow-x: auto;
+  border: 1px solid rgba(59, 130, 246, 0.1);
+}
+
+.shipping-report-view-page .report-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.shipping-report-view-page .report-table th {
+  padding: 14px 12px;
+  text-align: center;
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95));
+  color: var(--report-text);
+  font-weight: 700;
+  font-size: 14px;
+  border-bottom: 2px solid rgba(59, 130, 246, 0.3);
+  letter-spacing: 0.5px;
+}
+
+.shipping-report-view-page .report-table td {
+  padding: 14px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 14px;
+  text-align: center;
+}
+
+.shipping-report-view-page .report-table tbody tr:nth-child(even) {
+  background: rgba(15, 23, 42, 0.4);
+}
+
+.shipping-report-view-page .report-table tr:hover {
+  background: rgba(59, 130, 246, 0.15) !important;
+  transform: scale(1.002);
+  transition: all 0.2s ease;
+}
+
+.shipping-report-view-page .order-details {
+  background: rgba(15, 23, 42, 0.4);
+  padding: 12px;
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
+/* Light mode readability */
+:root[data-theme="light"] .shipping-report-view-page .report-header,
+:root[data-theme="light"] .shipping-report-view-page .report-table {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(2, 6, 23, 0.08);
+  box-shadow: 0 16px 34px rgba(2, 6, 23, 0.08);
+}
+
+:root[data-theme="light"] .shipping-report-view-page .report-header .info-item {
+  background: rgba(241, 245, 249, 0.90);
+}
+
+:root[data-theme="light"] .shipping-report-view-page .report-table th {
+  background: rgba(241, 245, 249, 0.96);
+  color: rgba(15, 23, 42, 0.80);
+  border-bottom-color: rgba(2, 6, 23, 0.10);
+}
+
+:root[data-theme="light"] .shipping-report-view-page .report-table td {
+  border-bottom-color: rgba(2, 6, 23, 0.08);
+}
+
+:root[data-theme="light"] .shipping-report-view-page .report-table tbody tr:nth-child(even) {
+  background: rgba(2, 6, 23, 0.03);
+}
+
+:root[data-theme="light"] .shipping-report-view-page .report-table tr:hover {
+  background: rgba(37, 99, 235, 0.05) !important;
+}
+
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 0.8cm;
+  }
+  
+  body {
+    background: white !important;
+    color: #000 !important;
+    font-family: 'Tajawal', 'Arial', 'Tahoma', sans-serif;
+    line-height: 1.6;
+  }
+  
+  .report-header,
+  .report-table {
+    background: white !important;
+    border: 2px solid #000 !important;
+    page-break-inside: avoid;
+    box-shadow: none !important;
+  }
+  
+  .report-header {
+    padding: 20px !important;
+    border-bottom: 4px solid #1a1a1a !important;
+    position: relative;
+  }
+  
+  .report-header::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    right: 50%;
+    transform: translateX(50%);
+    width: 100px;
+    height: 4px;
+    background: #3b82f6;
+  }
+  
+  .report-header h2 {
+    color: #000 !important;
+    font-size: 26px !important;
+    font-weight: 800 !important;
+    margin-bottom: 15px !important;
+  }
+  
+  .report-header .info {
+    display: flex !important;
+    justify-content: center !important;
+    gap: 15px !important;
+    flex-wrap: wrap !important;
+    margin-top: 15px !important;
+  }
+  
+  .report-header .info-item {
+    background: #f8f9fa !important;
+    border: 1px solid #ddd !important;
+    padding: 10px 16px !important;
+    border-radius: 8px !important;
+  }
+  
+  .report-header .info-item .label {
+    color: #555 !important;
+    font-size: 12px !important;
+  }
+  
+  .report-header .info-item .value {
+    color: #000 !important;
+    font-weight: 700 !important;
+  }
+  
+  .report-actions {
+    display: none !important;
+  }
+  
+  .report-table {
+    padding: 20px !important;
+  }
+  
+  .report-table table {
+    border: 1px solid #000 !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+  }
+  
+  .report-table th {
+    background: linear-gradient(135deg, #1a1a1a, #2d2d2d) !important;
+    color: white !important;
+    border: 1px solid #000 !important;
+    padding: 12px 8px !important;
+    font-weight: 700 !important;
+    font-size: 13px !important;
+    text-align: center !important;
+  }
+  
+  .report-table td {
+    border: 1px solid #ddd !important;
+    padding: 10px 8px !important;
+    color: #000 !important;
+    background: white !important;
+    font-size: 12px !important;
+    text-align: center !important;
+  }
+  
+  .report-table tbody tr:nth-child(even) {
+    background: #f8f9fa !important;
+  }
+  
+  .report-table tbody tr:hover {
+    background: #e3f2fd !important;
+  }
+  
+  .order-id-text {
+    font-weight: 700 !important;
+    color: #1a1a1a !important;
+  }
+  
+  /* إخفاء رقم الطلب النصي وإظهار الباركود فقط عند الطباعة */
+  .order-id-text {
+    display: none !important;
+  }
+  
+  .order-id-barcode {
+    display: block !important;
+  }
+  
+  .order-id-barcode svg {
+    max-width: 140px !important;
+    height: 45px !important;
+  }
+  
+  /* تحسين صف الإجمالي */
+  tr[style*="background: rgba(59, 130, 246, 0.1)"] {
+    background: linear-gradient(135deg, #e8f5e9, #c8e6c9) !important;
+  }
+  
+  tr[style*="background: rgba(59, 130, 246, 0.1)"] td {
+    border-top: 3px solid #4caf50 !important;
+    border-bottom: 3px solid #4caf50 !important;
+    padding: 15px 8px !important;
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    color: #1b5e20 !important;
+  }
+  
+  tr[style*="background: rgba(59, 130, 246, 0.1)"] td:first-child {
+    border-right: 3px solid #4caf50 !important;
+  }
+  
+  /* تحسين المبالغ */
+  td[style*="color: var(--report-success)"] {
+    color: #1b5e20 !important;
+    font-weight: 700 !important;
+    font-size: 13px !important;
+  }
+  
+  /* إخفاء العناصر الإدارية */
+  .no-print,
+  button,
+  a[href],
+  div[style*="margin-top: 24px"][style*="padding: 20px"] {
+    display: none !important;
+  }
+}
+
+/* إخفاء الباركود على الشاشة وإظهاره فقط عند الطباعة */
+.order-id-barcode {
+  display: none;
+}
+</style>
+
+<div class="shipping-report-view-page">
+<div class="report-header">
+  <h2>🚚 شركة النقل: {{ report.shipping_company_name }}</h2>
+  <div class="info">
+    <div class="info-item">
+      <div class="label">رقم الكشف</div>
+      <div class="value">#{{ report.report_number }}</div>
+    </div>
+    <div class="info-item">
+      <div class="label">عدد الطلبات</div>
+      <div class="value">{{ report.orders_count }}</div>
+    </div>
+    <div class="info-item">
+      <div class="label">إجمالي المبلغ</div>
+      <div class="value" style="color: var(--report-success);">{{ "{:,.0f}".format(report.total_amount) }} د.ع</div>
+    </div>
+    <div class="info-item">
+      <div class="label">التاريخ</div>
+      <div class="value">{{ report.created_at.strftime('%Y-%m-%d %H:%M') if report.created_at else "—" }}</div>
+    </div>
+    <div class="info-item">
+      <div class="label">أنشأه</div>
+      <div class="value">{{ report.created_by or "—" }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="report-actions no-print">
+  <button class="btn btn-primary" onclick="window.print()">🖨️ طباعة</button>
+  {% if current_role == "admin" %}
+    <a href="/delivery/reports?company_id={{ report.shipping_company_id }}" class="btn btn-success">← العودة للأرشيف</a>
+  {% else %}
+  <a href="/delivery/archive" class="btn btn-success">← العودة للأرشيف</a>
+  {% endif %}
+</div>
+
+{% if current_role == "admin" %}
+<!-- Modal for Execute Report -->
+<div id="executeReportModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 9999; padding: 20px; align-items: center; justify-content: center;">
+  <div style="background: linear-gradient(145deg, rgba(17, 24, 39, 0.98), rgba(11, 18, 32, 0.98)); border-radius: 20px; padding: 32px; max-width: 500px; width: 100%; border: 1px solid rgba(59, 130, 246, 0.3); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);">
+    <h2 style="color: #f1f5f9; font-size: 24px; margin: 0 0 24px 0; text-align: center;">تنفيذ الكشف</h2>
+    <div style="margin-bottom: 24px; padding: 20px; background: rgba(16, 185, 129, 0.1); border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.3);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <span style="color: #94a3b8; font-size: 16px;">مبلغ الطلبات الواصلة:</span>
+        <span id="deliveredAmountDisplay" style="color: #10b981; font-size: 24px; font-weight: 700;">0 د.ع</span>
+      </div>
+    </div>
+    <div style="margin-bottom: 24px;">
+      <label style="display: block; color: #f1f5f9; font-size: 16px; margin-bottom: 8px; font-weight: 600;">المصروف (الكروة):</label>
+      <input type="number" id="expenseAmountInput" min="0" step="100" placeholder="أدخل مبلغ الكروة" style="width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(15,23,42,0.6); color: #f1f5f9; font-size: 16px; font-weight: 600;">
+    </div>
+    <div style="display: flex; gap: 12px;">
+      <button onclick="closeExecuteReportModal()" style="flex: 1; padding: 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(239, 68, 68, 0.2); color: #ef4444; font-weight: 600; cursor: pointer; transition: all 0.3s ease;">إلغاء</button>
+      <button onclick="confirmExecuteReport()" style="flex: 1; padding: 14px; border-radius: 12px; border: none; background: linear-gradient(135deg, #10b981, #059669); color: white; font-weight: 600; cursor: pointer; transition: all 0.3s ease;">✅ تأكيد</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentReportId = null;
+
+function executeReport(reportId) {
+  currentReportId = reportId;
+  
+  // جلب مبلغ الطلبات الواصلة
+  fetch('/delivery/get-delivered-amount/' + reportId)
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) {
+        alert('❌ ' + data.error);
+        return;
+      }
+      
+      // عرض المبلغ الواصل
+      const deliveredAmount = data.delivered_amount || 0;
+      document.getElementById('deliveredAmountDisplay').textContent = deliveredAmount.toLocaleString('ar-EG') + ' د.ع';
+      
+      // إظهار النافذة
+      document.getElementById('executeReportModal').style.display = 'flex';
+      document.getElementById('expenseAmountInput').value = '';
+      document.getElementById('expenseAmountInput').focus();
+    })
+    .catch(error => {
+      alert('❌ حدث خطأ أثناء جلب البيانات');
+      console.error(error);
+    });
+}
+
+function closeExecuteReportModal() {
+  document.getElementById('executeReportModal').style.display = 'none';
+  currentReportId = null;
+}
+
+function confirmExecuteReport() {
+  if (!currentReportId) return;
+  
+  const expenseAmount = document.getElementById('expenseAmountInput').value;
+  const expenseAmountNum = parseFloat(expenseAmount) || 0;
+  
+  fetch('/delivery/execute-report/' + currentReportId, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      expense_amount: expenseAmountNum
+    })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      alert('✅ ' + data.message);
+      location.reload();
+    } else {
+      alert('❌ ' + (data.error || 'حدث خطأ أثناء التنفيذ'));
+    }
+  })
+  .catch(error => {
+    alert('❌ حدث خطأ أثناء التنفيذ');
+    console.error(error);
+  });
+}
+
+// إغلاق النافذة عند الضغط خارجها
+document.addEventListener('DOMContentLoaded', function() {
+  const modal = document.getElementById('executeReportModal');
+  if (modal) {
+    modal.addEventListener('click', function(e) {
+      if (e.target === modal) {
+        closeExecuteReportModal();
+      }
+    });
+  }
+});
+</script>
+{% endif %}
+
+<div class="report-table">
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>رقم الطلب</th>
+        <th>الزبون</th>
+        <th>الهاتف</th>
+        <th>المحافظة</th>
+        <th>المبلغ</th>
+        <th>حالة الطلب</th>
+        <th>حالة الدفع</th>
+        {% if current_role == "admin" and not report.is_executed and status_selections %}
+        <th>الحالة المحددة</th>
+        {% endif %}
+        <th>التاريخ</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for order in orders_data %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
+            <span class="order-id-text"><strong>#{{ order.id }}</strong></span>
+            <svg class="order-id-barcode" id="barcode-{{ order.id }}"></svg>
+          </div>
+        </td>
+        <td><strong>{{ order.customer_name }}</strong></td>
+        <td style="direction: ltr; text-align: center; font-family: 'Courier New', monospace; font-weight: 600;">{{ order.customer_phone }}</td>
+        <td>{{ order.customer_city }}</td>
+        <td style="color: var(--report-success); font-weight: 700; font-size: 14px;">{{ "{:,.0f}".format(order.total) }} د.ع</td>
+        <td>{{ order.status }}</td>
+        <td>{{ order.payment_status }}</td>
+        {% if current_role == "admin" and not report.is_executed and status_selections %}
+        <td>
+          {% if status_selections.get(order.id|string) %}
+            {% set selected_status = status_selections.get(order.id|string) %}
+            {% if selected_status == "واصل" %}
+              <span style="color: #10b981; font-weight: 600;">✅ واصل</span>
+            {% elif selected_status == "ملغي" %}
+              <span style="color: #ef4444; font-weight: 600;">❌ ملغي</span>
+            {% elif selected_status == "مؤجل" %}
+              <span style="color: #f59e0b; font-weight: 600;">⏸️ مؤجل</span>
+            {% else %}
+              <span>{{ selected_status }}</span>
+            {% endif %}
+          {% else %}
+            <span style="color: var(--report-muted);">—</span>
+          {% endif %}
+        </td>
+        {% endif %}
+        <td>{{ order.created_at }}</td>
+      </tr>
+      {% endfor %}
+      <tr class="total-summary-row" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.2)); font-weight: 700;">
+        <td colspan="5" style="text-align: right; padding-right: 25px; font-size: 16px;">💰 المجموع الكلي:</td>
+        <td style="color: var(--report-success); font-size: 18px; font-weight: 800;">{{ "{:,.0f}".format(report.total_amount) }} دينار عراقي</td>
+        <td colspan="{% if current_role == 'admin' and not report.is_executed and status_selections %}4{% else %}3{% endif %}"></td>
+      </tr>
+    </tbody>
+  </table>
+  
+  {% if current_role == "admin" %}
+    {% if report.is_executed %}
+    <div style="margin-top: 24px; padding: 20px; background: rgba(107, 114, 128, 0.1); border-radius: 12px; text-align: center; border: 1px solid rgba(107, 114, 128, 0.3);">
+      <p style="color: #6b7280; margin: 0; font-size: 16px; font-weight: 600;">
+        ✓ تم تنفيذ هذا الكشف مسبقاً
+      </p>
+    </div>
+    {% elif report.order_status_selections and status_selections and status_selections|length > 0 %}
+    <div style="margin-top: 24px; padding: 20px; background: rgba(16, 185, 129, 0.1); border-radius: 12px; text-align: center; border: 1px solid rgba(16, 185, 129, 0.3);">
+      <p style="color: #10b981; margin: 0 0 16px 0; font-size: 16px; font-weight: 600;">
+        ✅ هناك {{ status_selections|length }} طلب(ات) بحالات محفوظة جاهزة للتنفيذ
+      </p>
+      <button class="btn btn-success" onclick="executeReport({{ report.id }})" style="background: linear-gradient(135deg, #10b981, #059669); font-size: 18px; padding: 16px 32px;">
+        ✅ تنفيذ التغييرات
+      </button>
+      <p style="color: #10b981; margin: 12px 0 0 0; font-size: 14px;">
+        سيتم تطبيق: الواصل → مسدد | الملغي → ملغي | المؤجل → تم الطلب
+      </p>
+    </div>
+    {% else %}
+    <div style="margin-top: 24px; padding: 20px; background: rgba(245, 158, 11, 0.1); border-radius: 12px; text-align: center; border: 1px solid rgba(245, 158, 11, 0.3);">
+      <p style="color: #f59e0b; margin: 0; font-size: 16px; font-weight: 600;">
+        ⏳ في انتظار شركة النقل لتحديد الحالات
+      </p>
+    </div>
+    {% endif %}
+  {% endif %}
+</div>
+
+{% if report.notes %}
+<div class="report-header" style="margin-top: 24px;">
+  <h3>ملاحظات:</h3>
+  <p style="color: var(--report-muted); white-space: pre-wrap;">{{ report.notes }}</p>
+</div>
+{% endif %}
+
+<script>
+// إنشاء الباركود لكل طلب
+document.addEventListener('DOMContentLoaded', function() {
+  {% for order in orders_data %}
+  try {
+    JsBarcode("#barcode-{{ order.id }}", "{{ order.id }}", {
+      format: "CODE128",
+      width: 2,
+      height: 50,
+      displayValue: true,
+      fontSize: 14,
+      margin: 5
+    });
+  } catch (e) {
+    console.error('Error generating barcode for order {{ order.id }}:', e);
+  }
+  {% endfor %}
+});
+</script>
+
+</div>
+{% endblock %}
+

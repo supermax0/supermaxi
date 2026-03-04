@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}بوابة الدفع التجريبية — Finora{% endblock %}
+{% block page_title %}🛡️ بوابة دفع Finora (محاكاة){% endblock %}
+
+{% block content %}
+<style>
+    .mock-wrap {
+        max-width: 600px;
+        margin: 60px auto;
+        padding: 40px;
+        background: var(--card);
+        border: 2px solid var(--primary);
+        border-radius: 32px;
+        text-align: center;
+        box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    .order-info {
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 20px;
+        padding: 24px;
+        margin-bottom: 32px;
+        text-align: right;
+    }
+
+    .info-line {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 12px;
+    }
+
+    .label {
+        color: var(--muted);
+    }
+
+    .value {
+        font-weight: 700;
+        color: var(--text);
+    }
+
+    .sim-buttons {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .btn-sim {
+        padding: 18px;
+        border-radius: 16px;
+        font-weight: 900;
+        cursor: pointer;
+        border: none;
+        transition: .3s;
+        font-size: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+    }
+
+    .btn-success {
+        background: #10b981;
+        color: #fff;
+    }
+
+    .btn-failed {
+        background: #ef4444;
+        color: #fff;
+    }
+
+    .btn-pending {
+        background: #f59e0b;
+        color: #fff;
+    }
+
+    .btn-sim:hover {
+        transform: translateY(-3px);
+        filter: brightness(1.1);
+    }
+</style>
+
+<div class="mock-wrap">
+    <h2 style="margin-bottom:12px">محاكاة عملية الدفع</h2>
+    <p style="color:var(--muted); margin-bottom:32px">هذه الصفحة لأغراض التطوير فقط. اختر حالة العملية التي تريد
+        محاكاتها.</p>
+
+    <div class="order-info">
+        <div class="info-line">
+            <span class="label">رقم الطلب:</span>
+            <span class="value">#{{ order.id }}</span>
+        </div>
+        <div class="info-line">
+            <span class="label">المبلغ:</span>
+            <span class="value">{{ "{:,}".format(order.amount) }} {{ order.currency }}</span>
+        </div>
+        <div class="info-line">
+            <span class="label">الخطة:</span>
+            <span class="value">{{ order.plan_key }} ({{ order.billing_period }})</span>
+        </div>
+    </div>
+
+    <div class="sim-buttons">
+        <button class="btn-sim btn-success" onclick="simulate('success')">
+            <i class="fas fa-check-circle"></i> محاكاة نجاح الدفع
+        </button>
+        <button class="btn-sim btn-failed" onclick="simulate('failed')">
+            <i class="fas fa-times-circle"></i> محاكاة فشل الدفع
+        </button>
+    </div>
+
+    <div style="margin-top:24px; font-size:12px; color:var(--muted)">
+        سيتم إرسال Callback لخادم Finora لتحديث حالة الاشتراك فوراً.
+    </div>
+</div>
+
+<script>
+    async function simulate(status) {
+        if (!confirm('هل أنت متأكد من محاكاة حالة: ' + status + '؟')) return;
+
+        const btn = event.currentTarget;
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري المعالجة...';
+
+        try {
+            const resp = await fetch('/payments/simulate/{{ order.id }}/' + status, { method: 'POST' });
+            const data = await resp.json();
+            if (data.success) {
+                window.location.href = data.redirect;
+            } else {
+                alert('فشلت عملية المحاكاة');
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        } catch (e) {
+            alert('خطأ في الاتصال');
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    }
+</script>
+{% endblock %}

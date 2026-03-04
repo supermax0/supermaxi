@@ -1,0 +1,9 @@
+# Finora — متطلبات التشغيل
+Flask
+Flask-SQLAlchemy
+python-dotenv
+werkzeug
+reportlab
+pandas
+gunicorn
+Flask-Compress

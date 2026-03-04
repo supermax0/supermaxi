@@ -1,0 +1,203 @@
+{% extends "superadmin_base.html" %}
+
+{% block title %}تعديل الخطة: {{ plan.name }} - Finora{% endblock %}
+
+{% block extra_style %}
+<style>
+    .edit-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 40px;
+    }
+
+    .settings-card {
+        padding: 30px;
+        background: var(--surface-color);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+    }
+
+    .form-group {
+        margin-bottom: 24px;
+    }
+
+    .form-label {
+        display: block;
+        font-weight: 700;
+        margin-bottom: 10px;
+        color: var(--text-main);
+    }
+
+    .form-input {
+        width: 100%;
+        padding: 12px 16px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        color: #fff;
+        font-weight: 600;
+        transition: var(--transition);
+    }
+
+    .form-input:focus {
+        border-color: var(--primary);
+        background: rgba(255, 255, 255, 0.08);
+        outline: none;
+        box-shadow: 0 0 0 4px var(--primary-glow);
+    }
+
+    .feature-toggle-list {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+
+    .feature-toggle {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+        cursor: pointer;
+        transition: var(--transition);
+    }
+
+    .feature-toggle:hover {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .feature-toggle input {
+        width: 18px;
+        height: 18px;
+        accent-color: var(--primary);
+        cursor: pointer;
+    }
+
+    .feature-toggle span {
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .btn-save {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        width: 100%;
+        padding: 16px;
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        border: none;
+        border-radius: 14px;
+        color: #fff;
+        font-weight: 800;
+        font-size: 16px;
+        cursor: pointer;
+        transition: var(--transition);
+        margin-top: 30px;
+        box-shadow: 0 10px 20px rgba(99, 102, 241, 0.2);
+    }
+
+    .btn-save:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 15px 30px rgba(99, 102, 241, 0.3);
+    }
+</style>
+{% endblock %}
+
+{% block page_title %}تعديل الخطة: {{ plan.name }}{% endblock %}
+
+{% block content %}
+<form action="{{ url_for('superadmin.edit_plan', plan_id=plan.id) }}" method="POST">
+    <div class="edit-grid">
+        <!-- Basic Info & Limits -->
+        <div class="settings-card">
+            <h3 style="margin-bottom: 24px;"><i class="fas fa-info-circle"></i> المعلومات الأساسية والحدود</h3>
+
+            <div class="form-group">
+                <label class="form-label">اسم الخطة</label>
+                <input type="text" name="name" class="form-input" value="{{ plan.name }}" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">السعر الشهري الحالي (IQD)</label>
+                <input type="number" name="price_monthly" class="form-input" value="{{ plan.price_monthly }}" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">السعر الشهري الأصلي (IQD) - اتركه فارغاً إذا لا يوجد خصم</label>
+                <input type="number" name="original_price_monthly" class="form-input"
+                    value="{{ plan.original_price_monthly if plan.original_price_monthly else '' }}">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">السعر السنوي الحالي (IQD)</label>
+                <input type="number" name="price_yearly" class="form-input" value="{{ plan.price_yearly }}" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">السعر السنوي الأصلي (IQD) - اتركه فارغاً إذا لا يوجد خصم</label>
+                <input type="number" name="original_price_yearly" class="form-input"
+                    value="{{ plan.original_price_yearly if plan.original_price_yearly else '' }}">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">أقصى عدد للمستخدمين (اتركه فارغاً لغير محدود)</label>
+                <input type="number" name="max_users" class="form-input"
+                    value="{{ plan.max_users if plan.max_users else '' }}">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">أقصى عدد طلبات شهرياً (اتركه فارغاً لغير محدود)</label>
+                <input type="number" name="max_orders_monthly" class="form-input"
+                    value="{{ plan.max_orders_monthly if plan.max_orders_monthly else '' }}">
+            </div>
+        </div>
+
+        <!-- Features Matrix -->
+        <div class="settings-card">
+            <h3 style="margin-bottom: 24px;"><i class="fas fa-tasks"></i> الميزات المفعّلة لهذه الخطة</h3>
+
+            {% set feats = plan.get_features() %}
+            <div class="feature-toggle-list">
+                {% set feature_labels = [
+                ('orders', 'إدارة الطلبات'),
+                ('pos', 'نقطة البيع (POS)'),
+                ('inventory', 'المخزون'),
+                ('customers', 'إدارة الزبائن'),
+                ('cashflow', 'التحصيل والمدفوعات'),
+                ('printing', 'الطباعة والفواتير'),
+                ('expenses', 'إدارة المصروفات'),
+                ('suppliers', 'الموردون'),
+                ('purchases', 'المشتريات'),
+                ('shipping', 'شركات النقل'),
+                ('reports_adv', 'تقارير مالية متقدمة'),
+                ('rbac', 'صلاحيات RBAC'),
+                ('agents', 'مناديب التوصيل'),
+                ('accounts', 'دفتر الحسابات'),
+                ('ai_assistant', 'مساعد AI'),
+                ('messages', 'نظام الرسائل')
+                ] %}
+
+                {% for key, label in feature_labels %}
+                <label class="feature-toggle">
+                    <input type="checkbox" name="feat_{{ key }}" {% if feats.get(key) %}checked{% endif %}>
+                    <span>{{ label }}</span>
+                </label>
+                {% endfor %}
+            </div>
+
+            <button type="submit" class="btn-save">
+                <i class="fas fa-save"></i> حفظ التغييرات على هذه الخطة
+            </button>
+
+            <a href="{{ url_for('superadmin.plans_list') }}"
+                style="display: block; text-align: center; margin-top: 20px; color: var(--text-muted); text-decoration: none; font-weight: 600;">
+                <i class="fas fa-arrow-right"></i> العودة لقائمة الخطط
+            </a>
+        </div>
+    </div>
+</form>
+{% endblock %}

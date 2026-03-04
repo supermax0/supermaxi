@@ -1,0 +1,7 @@
+{
+    "livePreviewUseDevServer": true,
+    "livePreviewServerProjectPath": "/index",
+    "livePreviewHotReloadSupported": true,
+    "livePreviewFramework": "Custom",
+    "livePreviewServerURL": "127.0.0.1:5000"
+}

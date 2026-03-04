@@ -1,0 +1,147 @@
+أنت Senior Software Architect + AI Engineer.
+مهمتك تطوير نظام محاسبي قائم بالفعل، وإضافة طبقة ذكاء اصطناعي (AI Layer) إليه
+بدون كسر أي كود موجود، وبدون تغيير أسماء الملفات أو الـ routes الحالية.
+
+⚠️ قواعد صارمة:
+1. لا تحذف أي ملف موجود.
+2. لا تغيّر أسماء Routes أو Blueprints.
+3. أي إضافة تكون Modular وقابلة للفصل.
+4. أي كود جديد يوضع في ملفات جديدة فقط.
+5. التزم بأسلوب Flask Best Practices.
+6. افترض أن النظام قيد الاستخدام الحقيقي (Production Mindset).
+7. لا تضف Features تجريبية أو غير مستقرة.
+
+---
+
+## 🧩 النظام الحالي (افترض التالي):
+- Backend: Flask
+- Architecture: Blueprints
+- Database: SQLite + SQLAlchemy
+- Frontend: HTML + CSS + JavaScript
+- Dashboard يحتوي:
+  - إحصائيات مبيعات
+  - أرباح وخسائر
+  - مخزون
+  - Charts (Chart.js)
+- APIs موجودة مثل:
+  /api/monthly_stats
+  /api/alerts
+
+---
+
+## 🎯 الهدف
+إضافة ذكاء اصطناعي يستخدم OpenAI API ليعمل كـ:
+- محلل مالي
+- محاسب ذكي
+- مساعد قرار
+- مولّد تقارير
+- Chat داخلي داخل النظام
+
+---
+
+## 🏗 المطلوب منك تنفيذه خطوة خطوة
+
+### 1️⃣ تصميم المعمارية
+- صمّم AI Layer منفصلة عن:
+  - Business Logic
+  - Database Models
+- أنشئ:
+  - ai/
+    - ai_service.py
+    - ai_prompts.py
+    - ai_routes.py
+    - ai_utils.py
+
+اشرح دور كل ملف باختصار داخل التعليقات.
+
+---
+
+### 2️⃣ OpenAI Integration
+- استخدم OpenAI API بطريقة آمنة
+- لا تضع API Key مباشرة بالكود
+- اعتمد على Environment Variables
+- أنشئ Wrapper Function مسؤولة فقط عن:
+  - إرسال Prompt
+  - استلام Response
+  - Error Handling
+
+---
+
+### 3️⃣ Prompt Engineering
+- أنشئ System Prompt احترافي خاص بالمحاسبة
+- افصله في ملف مستقل (ai_prompts.py)
+- اجعل الـ Prompt:
+  - لا يخمّن
+  - يطلب بيانات ناقصة
+  - يعطي تحذيرات
+  - يعطي اقتراحات عملية فقط
+
+---
+
+### 4️⃣ Data Pipeline
+- لا تسمح للـ AI بالوصول المباشر إلى DB
+- أنشئ Data Collector يقوم بـ:
+  - تجميع البيانات (Aggregates)
+  - تلخيص آخر 30 / 60 يوم
+  - اختيار Top / Worst Products
+- أرسل فقط Data نظيفة ومحدودة
+
+---
+
+### 5️⃣ API Endpoint
+- أنشئ Blueprint جديد:
+  /ai/analyze
+- يقبل:
+  - type (sales / profit / inventory / report)
+  - period
+- يرجع:
+  - JSON منسق
+  - جاهز للعرض في Dashboard
+
+---
+
+### 6️⃣ Frontend Integration
+- أضف Chat UI بسيط داخل Dashboard
+- باستخدام:
+  - HTML
+  - CSS
+  - Vanilla JS
+- لا تستخدم Frameworks إضافية
+- اربط الواجهة مع /ai/analyze
+
+---
+
+### 7️⃣ Use Cases مطلوبة
+نفّذ دعم الحالات التالية:
+- "حلل أرباح هذا الشهر"
+- "ليش المبيعات نازلة؟"
+- "أي منتج دا يسبب خسارة؟"
+- "سوي تقرير إداري مختصر"
+
+---
+
+### 8️⃣ Security & Stability
+- Rate Limiting بسيط
+- Timeout Handling
+- Logging للأخطاء
+- Validation للمدخلات
+
+---
+
+### 9️⃣ Output Expectations
+عند الانتهاء:
+- الكود يكون نظيف
+- قابل للتوسعة
+- مفهوم لمطور آخر
+- مع تعليقات واضحة
+- بدون كسر أي شي شغال
+
+---
+
+## 🧠 أسلوب التنفيذ
+- فكّر قبل ما تكتب كود
+- نفّذ خطوة خطوة
+- لا تفترض أشياء غير مذكورة
+- إذا تحتاج افتراض، اكتبه كتعليق
+
+ابدأ الآن بتنفيذ الخطة بالكامل.

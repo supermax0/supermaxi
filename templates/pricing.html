@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}خطط الاشتراك{% endblock %}
+{% block page_title %}💳 خطط الاشتراك الشهرية{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 1100px; margin: 0 auto;">
+  <div class="card-header">
+    اختر الخطة المناسبة لشركتك
+  </div>
+  <div class="card-body">
+    <p style="margin-bottom: 24px; color: var(--muted);">
+      هذا النظام يعمل كـ SaaS (نظام كخدمة). اختر واحدة من الخطط أدناه، ثم أكمل بيانات شركتك لإنشاء لوحة تحكم خاصة باسم
+      شركتك.
+    </p>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px;">
+      {% for plan in plans %}
+      <div
+        style="border-radius: 16px; border: 1px solid rgba(148,163,184,0.3); padding: 20px; background: rgba(15,23,42,0.8); position: relative;">
+        <h3 style="margin: 0 0 8px; font-size: 20px; color: var(--text);">{{ plan.name }}</h3>
+        <p style="margin: 0 0 16px; color: var(--muted); font-size: 14px;">{{ plan.description }}</p>
+        <div
+          style="font-size: 26px; font-weight: 800; margin-bottom: 16px; color: var(--primary); display: flex; align-items: baseline; gap: 10px;">
+          {% if plan.original_price and plan.original_price > plan.price %}
+          <span
+            style="text-decoration: line-through; opacity: 0.5; font-size: 16px; color: var(--muted); font-weight: 400;">
+            {{ "{:,}".format(plan.original_price) }}
+          </span>
+          {% endif %}
+          <span>{{ "{:,}".format(plan.price) }} <span style="font-size: 14px; color: var(--muted);">د.ع /
+              شهر</span></span>
+        </div>
+        <ul style="list-style: none; padding: 0; margin: 0 0 20px; font-size: 14px; color: var(--muted);">
+          {% for feat in plan.features %}
+          <li style="margin-bottom: 6px;">✅ {{ feat }}</li>
+          {% endfor %}
+        </ul>
+        <form method="get" action="/signup">
+          <input type="hidden" name="plan" value="{{ plan.key }}">
+          <button type="submit" class="btn btn-primary" style="width: 100%;">
+            اشترك في {{ plan.name }}
+          </button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

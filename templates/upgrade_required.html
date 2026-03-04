@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% block title %}ترقية الخطة — Finora{% endblock %}
+{% block page_title %}🔒 ترقية مطلوبة{% endblock %}
+
+{% block content %}
+<style>
+    .upg-wrap {
+        max-width: 680px;
+        margin: 60px auto;
+        text-align: center;
+        padding: 0 20px
+    }
+
+    .upg-icon {
+        font-size: 80px;
+        margin-bottom: 24px;
+        animation: bounce 2s infinite
+    }
+
+    @keyframes bounce {
+
+        0%,
+        100% {
+            transform: translateY(0)
+        }
+
+        50% {
+            transform: translateY(-12px)
+        }
+    }
+
+    .upg-title {
+        font-size: 28px;
+        font-weight: 900;
+        margin-bottom: 12px
+    }
+
+    .upg-sub {
+        color: #94a3b8;
+        font-size: 17px;
+        margin-bottom: 40px;
+        line-height: 1.7
+    }
+
+    .plan-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 36px
+    }
+
+    .upg-card {
+        background: rgba(15, 23, 42, .8);
+        border: 1px solid rgba(99, 102, 241, .2);
+        border-radius: 20px;
+        padding: 28px 20px;
+        transition: .3s;
+        text-align: center
+    }
+
+    .upg-card:hover {
+        border-color: rgba(99, 102, 241, .5);
+        transform: translateY(-4px)
+    }
+
+    .upg-card.current {
+        border-color: rgba(148, 163, 184, .3);
+        opacity: .6
+    }
+
+    .upg-card.hot {
+        border-color: #6366f1;
+        background: rgba(99, 102, 241, .1);
+        box-shadow: 0 0 40px rgba(99, 102, 241, .2)
+    }
+
+    .upg-card .cn {
+        font-size: 18px;
+        font-weight: 900;
+        margin-bottom: 6px
+    }
+
+    .upg-card .cp {
+        font-size: 22px;
+        font-weight: 900;
+        color: #60a5fa;
+        margin-bottom: 4px
+    }
+
+    .upg-card .cp small {
+        font-size: 12px;
+        color: #94a3b8;
+        font-weight: 500
+    }
+
+    .upg-badge {
+        display: inline-block;
+        padding: 3px 12px;
+        border-radius: 8px;
+        font-size: 11px;
+        font-weight: 800;
+        margin-bottom: 12px
+    }
+
+    .btn-upg {
+        display: inline-block;
+        width: 100%;
+        padding: 13px;
+        border-radius: 14px;
+        font-size: 14px;
+        font-weight: 800;
+        text-decoration: none;
+        transition: .3s;
+        font-family: 'Tajawal', sans-serif;
+        margin-top: 12px;
+        border: none;
+        cursor: pointer
+    }
+
+    .btn-upg-primary {
+        background: linear-gradient(135deg, #3b82f6, #6366f1);
+        color: #fff;
+        box-shadow: 0 6px 20px rgba(99, 102, 241, .3)
+    }
+
+    .btn-upg-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 30px rgba(99, 102, 241, .5)
+    }
+
+    .btn-upg-outline {
+        background: transparent;
+        color: #94a3b8;
+        border: 1px solid rgba(255, 255, 255, .1)
+    }
+
+    .btn-back {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: #94a3b8;
+        text-decoration: none;
+        font-size: 15px;
+        margin-bottom: 32px;
+        transition: .2s
+    }
+
+    .btn-back:hover {
+        color: #f1f5f9
+    }
+</style>
+
+<div class="upg-wrap">
+    <a href="javascript:history.back()" class="btn-back">
+        <i class="fas fa-arrow-right"></i> العودة
+    </a>
+
+    <div class="upg-icon">🔒</div>
+    <div class="upg-title">هذه الميزة تحتاج خطة أعلى</div>
+    <p class="upg-sub">
+        خطّتك الحالية <strong style="color:#f1f5f9">{{ current_plan.name }}</strong>
+        لا تشمل هذه الخاصية.<br>
+        رقّي اشتراكك واستمتع بكل الميزات.
+    </p>
+
+    <div class="plan-cards">
+
+        <!-- Pro -->
+        <div class="upg-card {% if plan_key == 'pro' %}current{% elif plan_key != 'enterprise' %}hot{% endif %}">
+            <span class="upg-badge" style="background:rgba(99,102,241,.15);color:#a5b4fc">⭐ الأكثر طلباً</span>
+            <div class="cn">🔵 المتقدمة</div>
+            <div class="cp">45,000 <small>د.ع/شهر</small></div>
+            <div style="font-size:13px;color:#94a3b8;margin-bottom:8px">15 مستخدم · 10,000 طلب</div>
+            <div style="font-size:12px;color:#6ee7b7;font-weight:700">✅ RBAC · موردون · تقارير</div>
+            {% if plan_key == 'basic' %}
+            <a href="/signup?plan=pro" class="btn-upg btn-upg-primary">الترقية الآن</a>
+            {% else %}
+            <div class="btn-upg btn-upg-outline">خطّتك الحالية</div>
+            {% endif %}
+        </div>
+
+        <!-- Enterprise -->
+        <div class="upg-card {% if plan_key == 'enterprise' %}current{% endif %}">
+            <span class="upg-badge" style="background:rgba(139,92,246,.15);color:#c4b5fd">👑 الشركات</span>
+            <div class="cn">🟣 الشركات</div>
+            <div class="cp">90,000 <small>د.ع/شهر</small></div>
+            <div style="font-size:13px;color:#94a3b8;margin-bottom:8px">∞ مستخدمين · ∞ طلبات</div>
+            <div style="font-size:12px;color:#fcd34d;font-weight:700">✅ AI · رسائل · كل الميزات</div>
+            {% if plan_key != 'enterprise' %}
+            <a href="/signup?plan=enterprise" class="btn-upg btn-upg-primary"
+                style="background:linear-gradient(135deg,#8b5cf6,#ec4899)">الترقية للشركات</a>
+            {% else %}
+            <div class="btn-upg btn-upg-outline">خطّتك الحالية</div>
+            {% endif %}
+        </div>
+
+    </div>
+
+    <p style="color:#94a3b8;font-size:13px">
+        هل تحتاج مساعدة؟
+        <a href="/#pricing" style="color:#60a5fa;font-weight:700">اطّلع على مقارنة الخطط</a>
+    </p>
+
+</div>
+{% endblock %}

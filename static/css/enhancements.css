@@ -1,0 +1,559 @@
+/* ======================================================
+   GLOBAL ENHANCEMENTS FOR ALL PAGES
+====================================================== */
+
+/* ======================================================
+   VOICE ASSISTANT CONTAINER
+====================================================== */
+.voice-assistant-container {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    z-index: 9999;
+    flex-direction: row-reverse;
+}
+
+/* ======================================================
+   VOICE SPEECH DISPLAY
+====================================================== */
+.voice-speech-display {
+    background: linear-gradient(135deg, rgba(17, 24, 39, 0.95), rgba(11, 18, 32, 0.95));
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 16px;
+    padding: 12px 20px;
+    min-width: 200px;
+    max-width: 400px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity: 0.95;
+}
+
+.voice-speech-display.listening {
+    border-color: rgba(239, 68, 68, 0.5);
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95));
+    box-shadow: 0 10px 30px rgba(239, 68, 68, 0.3);
+    animation: speech-pulse 1.5s infinite;
+}
+
+.speech-label {
+    font-size: 20px;
+    flex-shrink: 0;
+    animation: mic-bounce 0.5s infinite;
+}
+
+.voice-speech-display.listening .speech-label {
+    animation: mic-bounce 0.5s infinite;
+}
+
+.speech-text {
+    color: #f1f5f9;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.5;
+    flex: 1;
+    text-align: right;
+    direction: rtl;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.voice-speech-display.listening .speech-text {
+    color: #fbbf24;
+    font-weight: 600;
+}
+
+@keyframes speech-pulse {
+    0%, 100% {
+        box-shadow: 0 10px 30px rgba(239, 68, 68, 0.3);
+    }
+    50% {
+        box-shadow: 0 10px 40px rgba(239, 68, 68, 0.5);
+    }
+}
+
+/* ======================================================
+   VOICE ASSISTANT BUTTON
+====================================================== */
+.voice-assistant-btn {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    border: 3px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    box-shadow: 0 10px 30px rgba(59, 130, 246, 0.5), 0 0 0 0 rgba(59, 130, 246, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: voice-pulse 2s infinite;
+    font-family: inherit;
+    position: relative;
+    overflow: visible;
+    backdrop-filter: blur(10px);
+    flex-shrink: 0;
+}
+
+.voice-assistant-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 12px 30px rgba(59, 130, 246, 0.6);
+}
+
+.voice-assistant-btn.listening {
+    background: linear-gradient(135deg, #ef4444, #f59e0b);
+    animation: listening-pulse 1s infinite;
+}
+
+.voice-assistant-btn.listening i {
+    animation: mic-bounce 0.5s infinite;
+}
+
+.voice-assistant-btn.waiting {
+    background: linear-gradient(135deg, #64748b, #475569);
+    opacity: 0.8;
+}
+
+.voice-assistant-btn.waiting i {
+    animation: waiting-pulse 2s infinite;
+}
+
+.voice-assistant-btn.wake-word {
+    background: linear-gradient(135deg, #10b981, #059669);
+    animation: wake-word-pulse 0.5s;
+}
+
+/* Voice Visualizer - مؤشر التردد الصوتي */
+.voice-visualizer {
+    position: absolute;
+    left: -50px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 4px;
+    height: 40px;
+    width: 45px;
+    pointer-events: none;
+}
+
+.viz-bar {
+    width: 4px;
+    background: linear-gradient(to top, #3b82f6, #8b5cf6, #ec4899);
+    border-radius: 3px;
+    min-height: 5px;
+    max-height: 100%;
+    transition: height 0.05s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.1s ease;
+    opacity: 0.5;
+    height: 25%;
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.6);
+}
+
+.voice-assistant-btn.listening .viz-bar {
+    background: linear-gradient(to top, #ef4444, #f59e0b, #fbbf24);
+    opacity: 1;
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.8);
+    animation: bar-pulse 0.3s ease infinite;
+}
+
+.voice-assistant-btn.waiting .viz-bar {
+    background: linear-gradient(to top, #64748b, #475569, #334155);
+    opacity: 0.6;
+    box-shadow: 0 0 6px rgba(100, 116, 139, 0.5);
+}
+
+.voice-assistant-btn.wake-word .viz-bar {
+    background: linear-gradient(to top, #10b981, #059669, #047857);
+    opacity: 1;
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.9);
+    animation: bar-pulse 0.2s ease infinite;
+}
+
+@keyframes bar-pulse {
+    0%, 100% {
+        transform: scaleY(1);
+        opacity: 0.8;
+    }
+    50% {
+        transform: scaleY(1.1);
+        opacity: 1;
+    }
+}
+
+@keyframes waiting-pulse {
+    0%, 100% {
+        opacity: 0.5;
+    }
+    50% {
+        opacity: 1;
+    }
+}
+
+@keyframes wake-word-pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.2);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.voice-assistant-btn:active {
+    transform: scale(0.95);
+}
+
+@keyframes voice-pulse {
+    0%, 100% {
+        box-shadow: 0 10px 30px rgba(59, 130, 246, 0.5), 0 0 0 0 rgba(59, 130, 246, 0.4);
+    }
+    50% {
+        box-shadow: 0 10px 40px rgba(59, 130, 246, 0.7), 0 0 0 10px rgba(59, 130, 246, 0);
+    }
+}
+
+@keyframes listening-pulse {
+    0%, 100% {
+        box-shadow: 0 8px 20px rgba(239, 68, 68, 0.5);
+        transform: scale(1);
+    }
+    50% {
+        box-shadow: 0 12px 40px rgba(239, 68, 68, 0.8);
+        transform: scale(1.05);
+    }
+}
+
+@keyframes mic-bounce {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.2);
+    }
+}
+
+/* ======================================================
+   VOICE ASSISTANT RESPONSIVE DESIGN
+====================================================== */
+@media (max-width: 1024px) {
+    .voice-assistant-btn {
+        width: 56px;
+        height: 56px;
+        font-size: 17px;
+        bottom: 28px;
+        right: 28px;
+    }
+}
+
+@media (max-width: 768px) {
+    .voice-assistant-btn {
+        width: 60px;
+        height: 60px;
+        font-size: 18px;
+        bottom: 24px;
+        right: 24px;
+        box-shadow: 0 8px 20px rgba(59, 130, 246, 0.5);
+    }
+    
+    .voice-assistant-btn:hover {
+        transform: scale(1.08);
+    }
+    
+    .voice-visualizer {
+        left: -42px;
+        height: 32px;
+        width: 38px;
+        gap: 3px;
+    }
+    
+    .viz-bar {
+        width: 3px;
+    }
+}
+
+@media (max-width: 480px) {
+    .voice-assistant-btn {
+        width: 56px;
+        height: 56px;
+        font-size: 17px;
+        bottom: 20px;
+        right: 20px;
+        box-shadow: 0 6px 18px rgba(59, 130, 246, 0.5);
+    }
+    
+    .voice-assistant-btn.listening {
+        animation: listening-pulse-mobile 1s infinite;
+    }
+    
+    .voice-visualizer {
+        left: -38px;
+        height: 28px;
+        width: 32px;
+        gap: 2.5px;
+    }
+    
+    .viz-bar {
+        width: 2.5px;
+    }
+}
+
+@keyframes listening-pulse-mobile {
+    0%, 100% {
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.5);
+        transform: scale(1);
+    }
+    50% {
+        box-shadow: 0 8px 24px rgba(239, 68, 68, 0.8);
+        transform: scale(1.03);
+    }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+    .voice-assistant-btn:hover {
+        transform: none;
+    }
+    
+    .voice-assistant-btn:active {
+        transform: scale(0.92);
+    }
+    
+    .voice-assistant-btn.listening:active {
+        transform: scale(0.95);
+    }
+}
+
+/* Landscape orientation */
+@media (max-height: 600px) and (orientation: landscape) {
+    .voice-assistant-btn {
+        bottom: 16px;
+        right: 16px;
+        width: 48px;
+        height: 48px;
+        font-size: 14px;
+    }
+}
+
+/* ======================================================
+
+/* =======================
+   ENHANCED SEARCH
+======================= */
+.enhanced-search {
+  position: relative;
+}
+
+.enhanced-search input {
+  padding-right: 50px !important;
+}
+
+.enhanced-search::after {
+  content: "🔍";
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  font-size: 20px;
+  opacity: 0.5;
+}
+
+/* =======================
+   LOADING STATES
+======================= */
+.btn-loading {
+  position: relative;
+  color: transparent !important;
+  pointer-events: none;
+}
+
+.btn-loading::after {
+  content: "";
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  top: 50%;
+  left: 50%;
+  margin-left: -10px;
+  margin-top: -10px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* =======================
+   ENHANCED TABLES
+======================= */
+.enhanced-table {
+  position: relative;
+}
+
+.enhanced-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  backdrop-filter: blur(10px);
+}
+
+.enhanced-table tbody tr {
+  animation: fadeInRow 0.3s ease-out;
+}
+
+@keyframes fadeInRow {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* =======================
+   ENHANCED MODALS
+======================= */
+.enhanced-modal {
+  animation: modalFadeIn 0.3s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* =======================
+   ENHANCED FORMS
+======================= */
+.enhanced-form input:invalid:not(:placeholder-shown) {
+  border-color: var(--danger, #ef4444);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.enhanced-form input:valid:not(:placeholder-shown) {
+  border-color: var(--success, #10b981);
+}
+
+/* =======================
+   ENHANCED CARDS
+======================= */
+.enhanced-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.enhanced-card:hover {
+  transform: translateY(-4px);
+}
+
+/* =======================
+   PRINT ENHANCEMENTS
+======================= */
+@media print {
+  @page {
+    size: A4;
+    margin: 1.5cm;
+  }
+  
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-header {
+    text-align: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #000;
+  }
+  
+  .print-footer {
+    margin-top: 30px;
+    padding-top: 15px;
+    border-top: 1px solid #ccc;
+    font-size: 11px;
+    color: #666;
+    text-align: left;
+  }
+  
+  table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+  }
+  
+  th, td {
+    border: 1px solid #000 !important;
+    padding: 8px !important;
+    color: #000 !important;
+    background: white !important;
+  }
+  
+  th {
+    background: #f0f0f0 !important;
+    font-weight: bold;
+  }
+  
+  tbody tr:nth-child(even) {
+    background: #f9f9f9 !important;
+  }
+}
+
+/* =======================
+   RESPONSIVE ENHANCEMENTS
+======================= */
+@media (max-width: 768px) {
+  .enhanced-table {
+    font-size: 13px;
+  }
+  
+  .enhanced-card {
+    padding: 16px !important;
+  }
+}
+
+/* =======================
+   ACCESSIBILITY
+======================= */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Focus visible for keyboard navigation */
+*:focus-visible {
+  outline: 2px solid var(--primary, #3b82f6);
+  outline-offset: 2px;
+}
+

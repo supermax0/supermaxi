@@ -1,0 +1,1460 @@
+{% extends "base.html" %}
+{% block title %}{{ _('reports') }}{% endblock %}
+{% block page_title %}📊 {{ _('reports_page_title') }}{% endblock %}
+
+{% block content %}
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-spinner"></div>
+</div>
+
+<style>
+  /* ======================================================
+   MODERN REPORTS UI - GLASSMORPHISM DESIGN
+   ====================================================== */
+
+  :root {
+    /* Color System */
+    --reports-primary: var(--primary);
+    --reports-primary-light: color-mix(in srgb, var(--primary) 70%, white 30%);
+    --reports-primary-dark: color-mix(in srgb, var(--primary) 78%, black 22%);
+    --reports-success: var(--success);
+    --reports-danger: var(--danger);
+    --reports-warning: var(--warning);
+    --reports-purple: var(--accent, #8b5cf6);
+    --reports-orange: var(--warning);
+
+    /* Dark Theme */
+    --reports-bg: var(--bg);
+    --reports-surface: var(--card);
+    --reports-surface-light: var(--card-alt);
+
+    /* Glass Effect */
+    --glass-bg: var(--card);
+    --glass-border: var(--border-light);
+    --glass-hover: rgba(59, 130, 246, 0.08);
+
+    /* Text Colors */
+    --reports-text: var(--text);
+    --reports-text-secondary: var(--text-muted);
+    --reports-muted: var(--text-muted);
+
+    /* Spacing System (8px base) */
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+
+    /* Border Radius */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-full: 9999px;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
+    --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.3);
+  }
+
+  /* ================= GRID ================= */
+  .reports-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--spacing-lg);
+    margin-bottom: var(--spacing-xl);
+  }
+
+  /* ================= CARDS ================= */
+  .report-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg) var(--spacing-xl);
+    box-shadow: var(--shadow-sm);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid var(--glass-border);
+    position: relative;
+    overflow: hidden;
+    pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 140px;
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+  }
+
+  .card-content {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .report-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--glass-hover);
+  }
+
+  .report-card span {
+    font-size: 14px;
+    color: var(--reports-muted);
+    font-weight: 500;
+    display: block;
+    letter-spacing: 0.3px;
+    margin-bottom: var(--spacing-xs);
+  }
+
+  .report-card strong {
+    display: block;
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--reports-text);
+    line-height: 1.2;
+  }
+
+  .card-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+    margin-right: var(--spacing-md);
+    transition: transform 0.3s ease;
+  }
+
+  .report-card:hover .card-icon {
+    transform: scale(1.1) rotate(5deg);
+  }
+
+  .report-card .view-more {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--reports-primary);
+    margin-top: var(--spacing-md);
+    opacity: 0.8;
+    transition: all 0.3s ease;
+  }
+
+  .report-card:hover .view-more {
+    opacity: 1;
+    gap: 8px;
+  }
+
+  /* ================= CARD THEMES ================= */
+  .report-card.blue .card-icon {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(99, 102, 241, 0.05));
+    color: var(--reports-primary);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+  }
+
+  .report-card.blue:hover {
+    border-color: rgba(99, 102, 241, 0.3);
+    box-shadow: 0 10px 30px rgba(99, 102, 241, 0.15);
+  }
+
+  .report-card.blue .view-more {
+    color: var(--reports-primary);
+  }
+
+  .report-card.green .card-icon {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.05));
+    color: var(--reports-success);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+  }
+
+  .report-card.green:hover {
+    border-color: rgba(16, 185, 129, 0.3);
+    box-shadow: 0 10px 30px rgba(16, 185, 129, 0.15);
+  }
+
+  .report-card.green .view-more {
+    color: var(--reports-success);
+  }
+
+  .report-card.purple .card-icon {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(139, 92, 246, 0.05));
+    color: var(--reports-purple);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+  }
+
+  .report-card.purple:hover {
+    border-color: rgba(139, 92, 246, 0.3);
+    box-shadow: 0 10px 30px rgba(139, 92, 246, 0.15);
+  }
+
+  .report-card.purple .view-more {
+    color: var(--reports-purple);
+  }
+
+  .report-card.orange .card-icon {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.05));
+    color: var(--reports-orange);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+  }
+
+  .report-card.orange:hover {
+    border-color: rgba(245, 158, 11, 0.3);
+    box-shadow: 0 10px 30px rgba(245, 158, 11, 0.15);
+  }
+
+  .report-card.orange .view-more {
+    color: var(--reports-orange);
+  }
+
+  .report-card.red .card-icon {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.05));
+    color: var(--reports-danger);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+  }
+
+  .report-card.red:hover {
+    border-color: rgba(239, 68, 68, 0.3);
+    box-shadow: 0 10px 30px rgba(239, 68, 68, 0.15);
+  }
+
+  .report-card.red .view-more {
+    color: var(--reports-danger);
+  }
+
+  .report-card.gray .card-icon {
+    background: linear-gradient(135deg, rgba(107, 114, 128, 0.15), rgba(107, 114, 128, 0.05));
+    color: #9ca3af;
+    border: 1px solid rgba(107, 114, 128, 0.2);
+  }
+
+  .report-card.gray:hover {
+    border-color: rgba(107, 114, 128, 0.3);
+    box-shadow: 0 10px 30px rgba(107, 114, 128, 0.15);
+  }
+
+  .report-card.gray .view-more {
+    color: #9ca3af;
+  }
+
+  /* ================= FINANCIAL REPORT CARD ================= */
+  .report-card.comprehensive {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
+    border: 1px solid rgba(139, 92, 246, 0.3);
+  }
+
+  .report-card.comprehensive::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at top right, rgba(139, 92, 246, 0.15), transparent 60%);
+    pointer-events: none;
+  }
+
+  .report-card.comprehensive:hover {
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: 0 15px 40px rgba(139, 92, 246, 0.2);
+    border-color: rgba(139, 92, 246, 0.5);
+  }
+
+  .report-card.comprehensive .card-icon {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: white;
+    border: none;
+    box-shadow: 0 8px 16px rgba(139, 92, 246, 0.3);
+  }
+
+  .report-card.comprehensive span {
+    color: var(--reports-purple);
+    font-weight: 700;
+    font-size: 15px;
+  }
+
+  .report-card.comprehensive strong {
+    font-size: 18px;
+    line-height: 1.4;
+    margin-top: var(--spacing-xs);
+  }
+
+  .report-card.comprehensive .view-more {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: white;
+    padding: 8px 16px;
+    border-radius: var(--radius-full);
+    display: inline-flex;
+    margin-top: var(--spacing-md);
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+  }
+
+  /* ================= MODAL ================= */
+  .modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    padding: var(--spacing-xl);
+    pointer-events: auto;
+    animation: fadeInModal 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .modal.show {
+    display: flex;
+  }
+
+  @keyframes fadeInModal {
+    from {
+      opacity: 0;
+      backdrop-filter: blur(0px);
+    }
+
+    to {
+      opacity: 1;
+      backdrop-filter: blur(12px);
+    }
+  }
+
+  .modal-box {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95));
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    width: 100%;
+    max-width: 1400px;
+    max-height: 85vh;
+    border-radius: var(--radius-xl);
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    animation: scaleUpModal 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    pointer-events: auto;
+    position: relative;
+    z-index: 10001;
+  }
+
+  @keyframes scaleUpModal {
+    from {
+      opacity: 0;
+      transform: translateY(20px) scale(0.97);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-lg) var(--spacing-xl);
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    flex-shrink: 0;
+    pointer-events: auto;
+    position: relative;
+  }
+
+  /* Subtle top glow for the header */
+  .modal-header::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.5), transparent);
+  }
+
+  .modal-header h3 {
+    color: #f8fafc;
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: 0.3px;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+  }
+
+  .modal-header-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+    align-items: center;
+  }
+
+  .close-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--reports-text-secondary);
+    font-size: 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+    flex-shrink: 0;
+  }
+
+  .close-btn:hover {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--reports-danger);
+    border-color: rgba(239, 68, 68, 0.3);
+    transform: scale(1.05);
+  }
+
+  .close-btn:active {
+    transform: scale(0.95);
+  }
+
+  .print-btn {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--reports-success);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    padding: 8px 16px;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    pointer-events: auto;
+    flex-shrink: 0;
+    height: 36px;
+  }
+
+  .print-btn:hover {
+    background: var(--reports-success);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+  }
+
+  .print-btn:active {
+    transform: translateY(0);
+  }
+
+  /* ================= TABLE ================= */
+  .table-wrap {
+    flex: 1;
+    overflow: auto;
+    padding: var(--spacing-md) var(--spacing-xl) var(--spacing-xl);
+    background: transparent;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(99, 102, 241, 0.4) transparent;
+    position: relative;
+  }
+
+  /* Thin decorative line below header */
+  .table-wrap::before {
+    content: '';
+    position: sticky;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    z-index: 11;
+  }
+
+  .table-wrap::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .table-wrap::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .table-wrap::-webkit-scrollbar-thumb {
+    background: rgba(99, 102, 241, 0.4);
+    border-radius: var(--radius-full);
+  }
+
+  .table-wrap::-webkit-scrollbar-thumb:hover {
+    background: rgba(99, 102, 241, 0.6);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 14px;
+    background: rgba(15, 23, 42, 0.6);
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    overflow: hidden;
+  }
+
+  th {
+    background: rgba(30, 41, 59, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    padding: 16px 20px;
+    text-align: center;
+    color: #94a3b8;
+    font-weight: 600;
+    font-size: 13px;
+    border-bottom: 2px solid rgba(99, 102, 241, 0.2);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  th:first-child {
+    border-top-right-radius: var(--radius-lg);
+  }
+
+  th:last-child {
+    border-top-left-radius: var(--radius-lg);
+  }
+
+  td {
+    padding: 14px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    color: #e2e8f0;
+    text-align: center;
+    transition: all 0.2s ease;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  tbody tr {
+    transition: all 0.2s ease;
+  }
+
+  tbody tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.015);
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  tbody tr:hover {
+    background: rgba(99, 102, 241, 0.05);
+  }
+
+  tbody tr:hover td {
+    color: #f8fafc;
+  }
+
+  /* ================= TOTAL ROW ================= */
+  .total-row {
+    background: rgba(99, 102, 241, 0.15) !important;
+    border-top: 2px solid rgba(99, 102, 241, 0.4) !important;
+    font-weight: 700 !important;
+  }
+
+  .total-row td {
+    border-bottom: none !important;
+    padding: 20px 24px !important;
+  }
+
+  .total-row-success {
+    background: rgba(16, 185, 129, 0.15) !important;
+    border-top-color: rgba(16, 185, 129, 0.5) !important;
+  }
+
+  .total-row-danger {
+    background: rgba(239, 68, 68, 0.15) !important;
+    border-top-color: rgba(239, 68, 68, 0.5) !important;
+  }
+
+  .total-label {
+    text-align: right !important;
+    font-size: 16px !important;
+    color: #cbd5e1 !important;
+    padding-right: 28px !important;
+  }
+
+  .total-amount {
+    font-size: 20px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.5px !important;
+  }
+
+  /* ================= LIGHT MODE OVERRIDES ================= */
+  :root[data-theme="light"] .modal-box {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.95));
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  }
+
+  :root[data-theme="light"] .modal-header {
+    background: rgba(0, 0, 0, 0.02);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  }
+
+  :root[data-theme="light"] .modal-header h3 {
+    color: var(--reports-text);
+  }
+
+  :root[data-theme="light"] .modal-header::after {
+    background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.3), transparent);
+  }
+
+  :root[data-theme="light"] table {
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+  }
+
+  :root[data-theme="light"] th {
+    background: rgba(241, 245, 249, 0.9);
+    color: #475569;
+    border-bottom: 2px solid rgba(99, 102, 241, 0.2);
+  }
+
+  :root[data-theme="light"] td {
+    color: #334155;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  }
+
+  :root[data-theme="light"] tbody tr:nth-child(even) {
+    background: rgba(0, 0, 0, 0.015);
+  }
+
+  :root[data-theme="light"] tbody tr:hover {
+    background: rgba(99, 102, 241, 0.08);
+  }
+
+  :root[data-theme="light"] tbody tr:hover td {
+    color: var(--reports-text);
+  }
+
+  :root[data-theme="light"] .total-label {
+    color: #475569 !important;
+  }
+
+  :root[data-theme="light"] .summary-box {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.08));
+    border: 1px solid rgba(139, 92, 246, 0.15);
+  }
+
+  :root[data-theme="light"] .summary-box p {
+    color: #475569;
+  }
+
+  :root[data-theme="light"] .summary-box::after {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  }
+
+  :root[data-theme="light"] .close-btn {
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    background: rgba(0, 0, 0, 0.03);
+    color: #64748b;
+  }
+
+  :root[data-theme="light"] .close-btn:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--reports-danger);
+    border-color: rgba(239, 68, 68, 0.2);
+  }
+
+  .total-amount-success {
+    color: var(--reports-success) !important;
+  }
+
+  .total-amount-danger {
+    color: var(--reports-danger) !important;
+  }
+
+  .report-profit-positive {
+    color: var(--reports-success);
+  }
+
+  .report-profit-negative {
+    color: var(--reports-danger);
+  }
+
+  .amount-cell {
+    font-weight: 600;
+  }
+
+  .amount-success {
+    color: var(--reports-success);
+  }
+
+  .amount-danger {
+    color: var(--reports-danger);
+  }
+
+  .amount-warning {
+    color: var(--reports-warning);
+  }
+
+  /* ================= LOADING & TOAST ================= */
+  .loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    pointer-events: auto;
+  }
+
+  .loading-overlay.show {
+    display: flex;
+  }
+
+  .loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid rgba(99, 102, 241, 0.2);
+    border-top-color: var(--reports-primary);
+    border-radius: var(--radius-full);
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .toast-container {
+    position: fixed;
+    top: var(--spacing-lg);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10001;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    width: calc(100% - var(--spacing-xl));
+    max-width: 500px;
+    pointer-events: none;
+  }
+
+  .toast {
+    min-width: 280px;
+    max-width: 100%;
+    width: 100%;
+    padding: var(--spacing-md) var(--spacing-lg);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    animation: slideInDown 0.4s ease-out;
+    pointer-events: auto;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+  }
+
+  .toast.success {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(5, 150, 105, 0.95));
+    color: #fff;
+  }
+
+  .toast.error {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.95), rgba(220, 38, 38, 0.95));
+    color: #fff;
+  }
+
+  .toast.warning {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.95), rgba(217, 119, 6, 0.95));
+    color: #fff;
+  }
+
+  .toast.info {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.95), rgba(79, 70, 229, 0.95));
+    color: #fff;
+  }
+
+  .toast.fade-out {
+    animation: fadeOutToast 0.3s ease-out forwards;
+  }
+
+  .toast-icon {
+    font-size: 18px;
+  }
+
+  .toast-text {
+    flex: 1;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  @keyframes slideInDown {
+    from {
+      opacity: 0;
+      transform: translateX(-50%) translateY(-20px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  }
+
+  @keyframes fadeOutToast {
+    to {
+      opacity: 0;
+      transform: translateX(-50%) translateY(-20px);
+    }
+  }
+
+  /* ================= NO DATA ================= */
+  .no-data {
+    text-align: center;
+    padding: var(--spacing-xl);
+    color: var(--reports-muted);
+    font-size: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-md);
+  }
+
+  .no-data::before {
+    content: "📊";
+    font-size: 64px;
+    opacity: 0.5;
+  }
+
+  .loading {
+    text-align: center;
+    padding: var(--spacing-xl);
+    color: var(--reports-muted);
+    font-size: 16px;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+
+    0%,
+    100% {
+      opacity: 1;
+    }
+
+    50% {
+      opacity: 0.5;
+    }
+  }
+
+  /* ================= SUMMARY BOX ================= */
+  .summary-box {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.15));
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: var(--spacing-md) var(--spacing-xl);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--spacing-lg);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .summary-box::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-md);
+  }
+
+  .summary-box::before {
+    content: '📊';
+    font-size: 28px;
+    opacity: 0.9;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 8px;
+    border-radius: 12px;
+  }
+
+  .summary-box p {
+    margin: 0;
+    font-size: 16px;
+    color: #e2e8f0;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    flex: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .summary-box p strong {
+    font-size: 22px;
+    color: var(--reports-primary-light);
+    font-weight: 800;
+  }
+
+  /* ================= PRINT STYLES ================= */
+  @media print {
+    @page {
+      size: A4 landscape;
+      margin: 1cm;
+    }
+
+    body * {
+      visibility: hidden;
+    }
+
+    .modal-box,
+    .modal-box * {
+      visibility: visible;
+    }
+
+    .modal-box {
+      position: absolute;
+      inset: 0;
+      box-shadow: none;
+      border: 2px solid #000;
+      background: white;
+      padding: 20px;
+      margin: 0;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+
+    .close-btn,
+    .print-btn {
+      display: none !important;
+    }
+
+    .modal-header {
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid #000;
+    }
+
+    .modal-header h3 {
+      color: #000 !important;
+      font-size: 24px;
+    }
+
+    th,
+    td {
+      border: 1px solid #000 !important;
+      color: #000 !important;
+      background: white !important;
+      padding: 10px 8px !important;
+      font-size: 12px !important;
+    }
+
+    th {
+      background: #f0f0f0 !important;
+      font-weight: bold;
+    }
+
+    .table-wrap {
+      border: 1px solid #000 !important;
+      max-height: none !important;
+      overflow: visible !important;
+      background: white !important;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+
+    table {
+      width: 100% !important;
+      border-collapse: collapse !important;
+    }
+
+    tbody tr:nth-child(even) {
+      background: #f9f9f9 !important;
+    }
+
+    .modal-box::before {
+      content: "نظام المحاسبة - " attr(data-report-title);
+      display: block;
+      text-align: center;
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #000;
+      color: #000;
+    }
+
+    .modal-box::after {
+      content: "تاريخ الطباعة: " attr(data-print-date);
+      display: block;
+      text-align: left;
+      font-size: 10px;
+      margin-top: 20px;
+      padding-top: 10px;
+      border-top: 1px solid #ccc;
+      color: #666;
+    }
+  }
+
+  /* ================= RESPONSIVE ================= */
+  @media (max-width: 768px) {
+    .reports-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--spacing-md);
+    }
+
+    .report-card {
+      padding: var(--spacing-md);
+    }
+
+    .report-card strong {
+      font-size: 24px;
+    }
+
+    .modal-box {
+      margin: var(--spacing-md);
+      max-height: 95vh;
+    }
+
+    .modal-header {
+      padding: var(--spacing-md) var(--spacing-lg);
+      flex-direction: column;
+      align-items: flex-start;
+      gap: var(--spacing-md);
+    }
+
+    .modal-header h3 {
+      font-size: 20px;
+    }
+
+    .modal-header-actions {
+      width: 100%;
+      justify-content: space-between;
+    }
+
+    .table-wrap {
+      padding: var(--spacing-md);
+    }
+
+    .table-wrap {
+      font-size: 13px;
+    }
+
+    th,
+    td {
+      padding: var(--spacing-sm);
+      font-size: 12px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .reports-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .report-card strong {
+      font-size: 22px;
+    }
+
+    .modal-header h3 {
+      font-size: 18px;
+    }
+
+    .table-wrap {
+      font-size: 12px;
+    }
+
+    th,
+    td {
+      padding: var(--spacing-xs) var(--spacing-sm);
+    }
+
+    .toast-container {
+      top: var(--spacing-md);
+      left: var(--spacing-md);
+      right: var(--spacing-md);
+      width: auto;
+      max-width: none;
+      transform: none;
+    }
+
+    @keyframes slideInDown {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  }
+</style>
+
+<!-- ================= DASHBOARD ================= -->
+<div class="reports-grid">
+  <div class="report-card blue" onclick="loadReport('sales', reportsTitleSales)">
+    <div class="card-content">
+      <div>
+        <span>{{ _('reports_card_sales') }}</span>
+        <strong>{{ total_sales }} <small style="font-size:16px;">{{ _('reports_currency_iqd') }}</small></strong>
+      </div>
+      <div class="card-icon">
+        <i class="fas fa-chart-line"></i>
+      </div>
+    </div>
+    <div class="view-more">
+      {{ _('reports_view_details') }} <i class="fas fa-arrow-left"></i>
+    </div>
+  </div>
+
+  <div class="report-card green" onclick="loadReport('profit', reportsTitleProfit)">
+    <div class="card-content">
+      <div>
+        <span>{{ _('reports_card_profit') }}</span>
+        <strong class="{% if profit >= 0 %}report-profit-positive{% else %}report-profit-negative{% endif %}">
+          {{ profit }} <small style="font-size:16px;">{{ _('reports_currency_iqd') }}</small>
+        </strong>
+      </div>
+      <div class="card-icon">
+        <i class="fas fa-hand-holding-usd"></i>
+      </div>
+    </div>
+    <div class="view-more">
+      {{ _('reports_view_details') }} <i class="fas fa-arrow-left"></i>
+    </div>
+  </div>
+
+  <div class="report-card purple" onclick="loadReport('expenses', reportsTitleExpenses)">
+    <div class="card-content">
+      <div>
+        <span>{{ _('reports_card_expenses') }}</span>
+        <strong>{{ total_expenses }} <small style="font-size:16px;">{{ _('reports_currency_iqd') }}</small></strong>
+      </div>
+      <div class="card-icon">
+        <i class="fas fa-file-invoice-dollar"></i>
+      </div>
+    </div>
+    <div class="view-more">
+      {{ _('reports_view_details') }} <i class="fas fa-arrow-left"></i>
+    </div>
+  </div>
+
+  <div class="report-card orange" onclick="loadReport('inventory', reportsTitleInventory)">
+    <div class="card-content">
+      <div>
+        <span>{{ _('reports_card_inventory') }}</span>
+        <strong>{{ inventory_value }} <small style="font-size:16px;">{{ _('reports_currency_iqd') }}</small></strong>
+      </div>
+      <div class="card-icon">
+        <i class="fas fa-box-open"></i>
+      </div>
+    </div>
+    <div class="view-more">
+      {{ _('reports_view_details') }} <i class="fas fa-arrow-left"></i>
+    </div>
+  </div>
+
+  <div class="report-card red" onclick="loadReport('returned', reportsTitleReturned)">
+    <div class="card-content">
+      <div>
+        <span>{{ _('reports_card_returns') }}</span>
+        <strong>{{ returned_total }} <small style="font-size:16px;">{{ _('reports_currency_iqd') }}</small></strong>
+      </div>
+      <div class="card-icon">
+        <i class="fas fa-undo-alt"></i>
+      </div>
+    </div>
+    <div class="view-more">
+      {{ _('reports_view_details') }} <i class="fas fa-arrow-left"></i>
+    </div>
+  </div>
+
+  <div class="report-card gray" onclick="loadReport('shipping', reportsTitleShipping)">
+    <div class="card-content">
+      <div>
+        <span>{{ _('reports_card_shipping') }}</span>
+        <strong>{{ _('reports_card_receivables') }}</strong>
+      </div>
+      <div class="card-icon">
+        <i class="fas fa-truck-fast"></i>
+      </div>
+    </div>
+    <div class="view-more">
+      {{ _('reports_view_details') }} <i class="fas fa-arrow-left"></i>
+    </div>
+  </div>
+
+  <div class="report-card gray" onclick="loadReport('suppliers', reportsTitleSuppliers)">
+    <div class="card-content">
+      <div>
+        <span>{{ _('reports_card_supplier_debts') }}</span>
+        <strong>{{ supplier_debts }} <small style="font-size:16px;">{{ _('reports_currency_iqd') }}</small></strong>
+      </div>
+      <div class="card-icon">
+        <i class="fas fa-building"></i>
+      </div>
+    </div>
+    <div class="view-more">
+      {{ _('reports_view_details') }} <i class="fas fa-arrow-left"></i>
+    </div>
+  </div>
+
+  <a href="/reports/financial?period_type=this_month" class="report-card comprehensive">
+    <div class="card-content">
+      <div>
+        <span>{{ _('reports_card_comprehensive') }}</span>
+        <strong></strong>
+      </div>
+      <div class="card-icon">
+        <i class="fas fa-file-pdf"></i>
+      </div>
+    </div>
+    <div class="view-more">
+      {{ _('reports_open_report') }} <i class="fas fa-external-link-alt"></i>
+    </div>
+  </a>
+</div>
+
+<!-- ================= MODAL ================= -->
+<div class="modal" id="modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3 id="modalTitle"></h3>
+      <div class="modal-header-actions">
+        <button class="print-btn" onclick="printReport()">
+          <i class="fa fa-print"></i> {{ _('reports_print') }}
+        </button>
+        <button class="close-btn" onclick="closeModal()">×</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <div id="modalContent"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Injected translations for report modals and messages
+  const reportsTitleSales = "{{ _('reports_title_sales') }}";
+  const reportsTitleProfit = "{{ _('reports_title_profit') }}";
+  const reportsTitleExpenses = "{{ _('reports_title_expenses') }}";
+  const reportsTitleInventory = "{{ _('reports_title_inventory') }}";
+  const reportsTitleReturned = "{{ _('reports_title_returned') }}";
+  const reportsTitleShipping = "{{ _('reports_title_shipping') }}";
+  const reportsTitleSuppliers = "{{ _('reports_title_suppliers') }}";
+  const reportsLoading = "{{ _('reports_loading') }}";
+  const reportsNoData = "{{ _('reports_no_data') }}";
+  const reportsErrLoad = "{{ _('reports_err_load') }}";
+  const reportsToastErr = "{{ _('reports_toast_err_load') }}";
+  const reportsTotalLabel = "{{ _('reports_total_label') }}";
+  const reportsTotalRemaining = "{{ _('reports_total_remaining_debts') }}";
+  const reportsCurrency = "{{ _('reports_currency_iqd') }}";
+
+  // ==================== UTILITY FUNCTIONS ====================
+  function showToast(message, type = 'info') {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+
+    const icons = {
+      success: '✅',
+      error: '❌',
+      warning: '⚠️',
+      info: 'ℹ️'
+    };
+
+    toast.innerHTML = `
+    <span class="toast-icon">${icons[type] || icons.info}</span>
+    <span class="toast-text">${message}</span>
+  `;
+
+    container.appendChild(toast);
+
+    setTimeout(() => {
+      toast.classList.add('fade-out');
+      setTimeout(() => {
+        if (toast.parentNode) {
+          toast.parentNode.removeChild(toast);
+        }
+      }, 300);
+    }, 3000);
+  }
+
+  function showLoading() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+      overlay.classList.add('show');
+    }
+  }
+
+  function hideLoading() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+      overlay.classList.remove('show');
+    }
+  }
+
+  // ==================== REPORT FUNCTIONS ====================
+  function loadReport(type, title) {
+    const modal = document.getElementById('modal');
+    const modalContent = document.getElementById('modalContent');
+    const modalBox = document.querySelector('.modal-box');
+
+    // Show modal and loading
+    modal.classList.add('show');
+    modalContent.innerHTML = '<div class="loading">' + reportsLoading + '</div>';
+    showLoading();
+
+    // Store type for later use
+    modalBox.setAttribute('data-report-type', type);
+    document.getElementById('modalTitle').innerText = title;
+
+    fetch(`/reports/${type}`)
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP error! status: ${r.status}`);
+        return r.json();
+      })
+      .then(data => {
+        hideLoading();
+        let html = '';
+
+        // Set print attributes
+        const printDate = new Date().toLocaleDateString('ar-IQ');
+        modalBox.setAttribute('data-report-title', title);
+        modalBox.setAttribute('data-print-date', printDate);
+
+        // Handle summary box for expenses
+        if (data['تفاصيل']) {
+          html += `<div class="summary-box">
+                   <p>${reportsTotalLabel} ${data['إجمالي المصاريف'] || data['الإجمالي'] || '0'} ${reportsCurrency}</p>
+                 </div>`;
+          data = data['تفاصيل'];
+        }
+
+        if (!data || data.length === 0) {
+          html = '<div class="no-data">' + reportsNoData + '</div>';
+        } else {
+          html += '<table><thead><tr>';
+          Object.keys(data[0]).forEach(k => html += `<th>${k}</th>`);
+          html += '</tr></thead><tbody>';
+
+          let totalAmount = 0;
+
+          data.forEach((row, index) => {
+            html += '<tr>';
+            Object.entries(row).forEach(([key, v]) => {
+              // Check if value is a currency amount
+              if (typeof v === 'string' && v.includes('د.ع')) {
+                const amount = parseInt(v.replace(/[^0-9]/g, ''));
+                if (!isNaN(amount)) {
+                  // Only add to total if it's the "المتبقي" column
+                  if (key === 'المتبقي') {
+                    totalAmount += amount;
+                  }
+                }
+                // Color code: green for paid, red for debt, orange for remaining
+                let amountClass = 'amount-success'; // default green
+                if (key === 'المتبقي') {
+                  amountClass = 'amount-danger'; // red for remaining debt
+                } else if (key === 'المدفوع') {
+                  amountClass = 'amount-success'; // green for paid
+                } else if (key === 'إجمالي الدين') {
+                  amountClass = 'amount-warning'; // orange for total debt
+                }
+                html += `<td class="amount-cell ${amountClass}">${v}</td>`;
+              } else {
+                html += `<td>${v || '—'}</td>`;
+              }
+            });
+            html += '</tr>';
+          });
+
+          // Add total row if there are amounts
+          const reportType = modalBox.getAttribute('data-report-type');
+          if (totalAmount > 0 && reportType === 'suppliers') {
+            html += `<tr class="total-row total-row-danger">
+                     <td colspan="${Object.keys(data[0]).length - 1}" class="total-label">${reportsTotalRemaining}</td>
+                     <td class="total-amount total-amount-danger">${totalAmount.toLocaleString()} ${reportsCurrency}</td>
+                   </tr>`;
+          } else if (totalAmount > 0) {
+            html += `<tr class="total-row total-row-success">
+                     <td colspan="${Object.keys(data[0]).length - 1}" class="total-label">${reportsTotalLabel}</td>
+                     <td class="total-amount total-amount-success">${totalAmount.toLocaleString()} ${reportsCurrency}</td>
+                   </tr>`;
+          }
+
+          html += '</tbody></table>';
+        }
+
+        modalContent.innerHTML = html;
+      })
+      .catch(error => {
+        hideLoading();
+        console.error('Error loading report:', error);
+        modalContent.innerHTML = `<div class="no-data">${reportsErrLoad} ${error.message}</div>`;
+        showToast(reportsToastErr, 'error');
+      });
+  }
+
+  function printReport() {
+    window.print();
+  }
+
+  function closeModal() {
+    const modal = document.getElementById('modal');
+    modal.classList.remove('show');
+  }
+
+  // Close modal when clicking outside
+  document.getElementById('modal').addEventListener('click', function (e) {
+    if (e.target.id === 'modal') {
+      closeModal();
+    }
+  });
+
+  // Close modal with Escape key
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      const modal = document.getElementById('modal');
+      if (modal.classList.contains('show')) {
+        closeModal();
+      }
+    }
+  });
+</script>
+
+{% endblock %}

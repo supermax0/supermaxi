@@ -1,0 +1,319 @@
+{% extends "superadmin_base.html" %}
+{% block title %}لوحة القيادة - مركز التحكم{% endblock %}
+{% block page_title %}الإحصائيات والمؤشرات العامة{% endblock %}
+
+{% block extra_style %}
+<style>
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 24px;
+        margin-bottom: 48px;
+    }
+
+    .metric-card {
+        padding: 32px 24px;
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        min-height: 180px;
+    }
+
+    .metric-icon-bg {
+        position: absolute;
+        top: -10px;
+        left: -10px;
+        font-size: 80px;
+        opacity: 0.05;
+        transform: rotate(-15deg);
+        transition: var(--transition);
+        z-index: 1;
+    }
+
+    .metric-card:hover .metric-icon-bg {
+        opacity: 0.1;
+        transform: rotate(0deg) scale(1.1);
+    }
+
+    .metric-info {
+        position: relative;
+        z-index: 2;
+    }
+
+    .metric-title {
+        font-size: 13px;
+        color: var(--text-muted);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .metric-value {
+        font-size: 36px;
+        font-weight: 900;
+        color: #fff;
+        margin-bottom: 8px;
+        letter-spacing: -1px;
+    }
+
+    .metric-footer {
+        font-size: 12px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: auto;
+    }
+
+    /* Card Variants */
+    .metric-revenue {
+        border-bottom: 4px solid var(--success);
+    }
+
+    .metric-revenue .metric-footer {
+        color: var(--success);
+    }
+
+    .metric-pending {
+        border-bottom: 4px solid var(--warning);
+    }
+
+    .metric-pending .metric-footer {
+        color: var(--warning);
+    }
+
+    .metric-active {
+        border-bottom: 4px solid var(--primary);
+    }
+
+    .metric-active .metric-footer {
+        color: var(--primary);
+    }
+
+    .metric-rejected {
+        border-bottom: 4px solid var(--danger);
+    }
+
+    .metric-rejected .metric-footer {
+        color: var(--danger);
+    }
+
+    /* Recent Requests Section */
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+    }
+
+    .section-title {
+        font-size: 20px;
+        font-weight: 800;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .btn-action {
+        padding: 10px 20px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        color: #fff;
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 700;
+        transition: var(--transition);
+    }
+
+    .btn-action:hover {
+        background: var(--primary);
+        border-color: var(--primary);
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    }
+
+    /* Modern Table Enhancement */
+    .table-card {
+        overflow: hidden;
+        padding: 0;
+    }
+
+    .custom-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .custom-table th {
+        background: rgba(255, 255, 255, 0.02);
+        padding: 20px 24px;
+        text-align: right;
+        font-size: 12px;
+        font-weight: 800;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .custom-table td {
+        padding: 20px 24px;
+        border-bottom: 1px solid var(--border-color);
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .custom-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .custom-table tbody tr {
+        transition: var(--transition);
+    }
+
+    .custom-table tbody tr:hover {
+        background: rgba(255, 255, 255, 0.01);
+    }
+
+    .status-badge {
+        padding: 6px 14px;
+        border-radius: 30px;
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+
+    .status-pending {
+        background: rgba(245, 158, 11, 0.1);
+        color: #f59e0b;
+        border: 1px solid rgba(245, 158, 11, 0.2);
+    }
+
+    .status-approved {
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+        border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    .status-rejected {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+        border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+
+    .amount-text {
+        font-family: 'Tajawal', sans-serif;
+        font-weight: 800;
+        color: var(--success);
+    }
+
+    .id-text {
+        color: var(--text-muted);
+        font-size: 12px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="metrics-grid">
+    <div class="premium-card metric-card metric-revenue">
+        <i class="fas fa-coins metric-icon-bg"></i>
+        <div class="metric-info">
+            <div class="metric-title">إجمالي المبيعات</div>
+            <div class="metric-value">{{ "{:,.0f}".format(total_revenue) }} د.ع</div>
+        </div>
+        <div class="metric-footer">
+            <i class="fas fa-chart-line"></i>
+            <span>إجمالي الإيرادات المحققة</span>
+        </div>
+    </div>
+
+    <div class="premium-card metric-card metric-pending">
+        <i class="fas fa-clock metric-icon-bg"></i>
+        <div class="metric-info">
+            <div class="metric-title">بانتظار المراجعة</div>
+            <div class="metric-value">{{ pending_count }}</div>
+        </div>
+        <div class="metric-footer">
+            <i class="fas fa-exclamation-circle"></i>
+            <span>طلبات دفع ZainCash جديدة</span>
+        </div>
+    </div>
+
+    <div class="premium-card metric-card metric-active">
+        <i class="fas fa-building metric-icon-bg"></i>
+        <div class="metric-info">
+            <div class="metric-title">الشركات النشطة</div>
+            <div class="metric-value">{{ active_tenants }}</div>
+        </div>
+        <div class="metric-footer">
+            <i class="fas fa-check-double"></i>
+            <span>إجمالي الشركات المسجلة</span>
+        </div>
+    </div>
+
+    <div class="premium-card metric-card metric-rejected">
+        <i class="fas fa-ban metric-icon-bg"></i>
+        <div class="metric-info">
+            <div class="metric-title">الطلبات المرفوضة</div>
+            <div class="metric-value">{{ rejected_count }}</div>
+        </div>
+        <div class="metric-footer">
+            <i class="fas fa-times-circle"></i>
+            <span>أحدث الطلبات غير المكتملة</span>
+        </div>
+    </div>
+</div>
+
+<div class="section-header">
+    <div class="section-title">
+        <i class="fas fa-bolt" style="color: var(--warning)"></i>
+        <span>أحدث طلبات الدفع والتسجيل</span>
+    </div>
+    <a href="/superadmin/requests" class="btn-action">عرض جميع الطلبات</a>
+</div>
+
+<div class="premium-card table-card">
+    <table class="custom-table">
+        <thead>
+            <tr>
+                <th>رقم الطلب</th>
+                <th>الشركة</th>
+                <th>المبلغ</th>
+                <th>التاريخ</th>
+                <th>الحالة</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for req in recent_requests %}
+            <tr>
+                <td class="id-text">#{{ req.id }}</td>
+                <td style="color: #fff; font-weight: 800;">{{ req.tenant_name }}</td>
+                <td class="amount-text">{{ "{:,.0f}".format(req.amount) }} د.ع</td>
+                <td style="color: var(--text-muted); font-size: 13px;">{{ req.created_at.strftime('%Y-%m-%d %H:%M') }}
+                </td>
+                <td>
+                    <span class="status-badge status-{{ req.status }}">
+                        {% if req.status == 'pending' %}قيد الانتظار
+                        {% elif req.status == 'approved' %}مكتمل
+                        {% else %}مرفوض{% endif %}
+                    </span>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="5" style="text-align: center; padding: 60px; color: var(--text-muted);">
+                    <i class="fas fa-inbox" style="font-size: 40px; margin-bottom: 16px; opacity: 0.3;"></i>
+                    <p>لا توجد طلبات حديثة حالياً</p>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

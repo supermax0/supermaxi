@@ -1,0 +1,1527 @@
+{% extends "base.html" %}
+{% block title %}{{ _('customers') }}{% endblock %}
+{% block page_title %}👥 {{ _('customers_page_title') }}{% endblock %}
+
+{% block content %}
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+<script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.js"></script>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-spinner"></div>
+</div>
+
+<style>
+  /* ======================================================
+   MODERN CUSTOMERS UI - GLASSMORPHISM DESIGN
+   ====================================================== */
+
+  :root {
+    /* Map to global SaaS tokens (Dark/Light aware) */
+    --cust-primary: var(--primary);
+    --cust-primary-light: var(--primary-hover);
+    --cust-primary-dark: #1d4ed8;
+    --cust-success: var(--success);
+    --cust-danger: var(--danger);
+    --cust-warning: var(--warning);
+    --cust-purple: var(--accent, #8b5cf6);
+
+    /* Glass Effect */
+    --glass-bg: linear-gradient(145deg, var(--card), var(--card-alt));
+    --glass-border: var(--border-light);
+    --glass-hover: var(--border);
+
+    /* Text Colors */
+    --cust-text: var(--text);
+    --cust-text-secondary: var(--text-muted);
+    --cust-muted: var(--text-muted);
+
+    /* Spacing System (8px base) */
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+
+    /* Border Radius */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-full: 9999px;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
+    --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.3);
+  }
+
+  /* AG Grid Custom Styles for Customers */
+  .ag-theme-quartz-dark .ag-row {
+    cursor: pointer;
+  }
+
+  .cust-actions-grid {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+  }
+
+  .cust-actions-grid .cust-action {
+    padding: 4px 10px;
+    font-size: 12px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+  }
+
+  .cust-actions-grid .btn-orders {
+    background: rgba(99, 102, 241, 0.2);
+    color: #818cf8;
+  }
+
+  .cust-actions-grid .btn-edit {
+    background: rgba(16, 185, 129, 0.2);
+    color: #34d399;
+  }
+
+  .cust-actions-grid .btn-delete {
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+  }
+
+  .cust-actions-grid .cust-action:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.2);
+  }
+
+  /* ================= STATS GRID ================= */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--spacing-lg);
+    margin-bottom: var(--spacing-xl);
+  }
+
+  .stat-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--shadow-md);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    pointer-events: auto;
+  }
+
+  .stat-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 4px;
+    height: 100%;
+    opacity: 0.8;
+    border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--glass-hover);
+  }
+
+  .stat-card:hover::before {
+    opacity: 1;
+  }
+
+  .stat-card.primary::before {
+    background: linear-gradient(180deg, var(--cust-primary), var(--cust-primary-dark));
+  }
+
+  .stat-card.success::before {
+    background: linear-gradient(180deg, var(--cust-success), #059669);
+  }
+
+  .stat-card.warning::before {
+    background: linear-gradient(180deg, var(--cust-warning), #d97706);
+  }
+
+  .stat-icon {
+    font-size: 32px;
+    margin-bottom: var(--spacing-sm);
+    opacity: 0.9;
+  }
+
+  .stat-label {
+    font-size: 13px;
+    color: var(--cust-muted);
+    margin-bottom: var(--spacing-xs);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--cust-text);
+    line-height: 1.2;
+  }
+
+  .stat-card.primary .stat-value {
+    color: var(--cust-primary-light);
+  }
+
+  .stat-card.success .stat-value {
+    color: var(--cust-success);
+  }
+
+  .stat-card.warning .stat-value {
+    color: var(--cust-warning);
+  }
+
+  /* ================= CARDS ================= */
+  .card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--shadow-md);
+    animation: fadeInUp 0.5s ease;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 4px;
+    height: 100%;
+    background: linear-gradient(180deg, var(--cust-primary), var(--cust-success));
+    border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+    opacity: 0.7;
+    transition: opacity 0.3s ease;
+  }
+
+  .card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--glass-hover);
+  }
+
+  .card:hover::before {
+    opacity: 1;
+  }
+
+  /* ================= SEARCH & FILTERS ================= */
+  .search-filters {
+    display: flex;
+    gap: var(--spacing-md);
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+  }
+
+  .search-filters input,
+  .search-filters select {
+    flex: 1;
+    min-width: 200px;
+    padding: 12px var(--spacing-md);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--glass-border);
+    background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: var(--cust-text);
+    font-size: 14px;
+    transition: all 0.2s ease;
+    font-family: inherit;
+  }
+
+  .search-filters input:focus,
+  .search-filters select:focus {
+    outline: none;
+    border-color: var(--cust-primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    background: rgba(15, 23, 42, 0.7);
+  }
+
+  .search-filters input::placeholder {
+    color: var(--cust-muted);
+  }
+
+  .search-stats {
+    margin-top: var(--spacing-md);
+    color: var(--cust-muted);
+    font-size: 13px;
+    padding-top: var(--spacing-md);
+    border-top: 1px solid var(--glass-border);
+  }
+
+  /* ================= BUTTONS ================= */
+  .btn {
+    padding: 10px 18px;
+    border-radius: var(--radius-md);
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-xs);
+    white-space: nowrap;
+    pointer-events: auto;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--cust-primary), var(--cust-primary-light));
+    color: white;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    background: linear-gradient(135deg, var(--cust-primary-light), var(--cust-primary));
+  }
+
+  .btn-success {
+    background: linear-gradient(135deg, var(--cust-success), #059669);
+    color: white;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .btn-success:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    background: linear-gradient(135deg, #059669, var(--cust-success));
+  }
+
+  .btn-danger {
+    background: linear-gradient(135deg, var(--cust-danger), #dc2626);
+    color: white;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .btn-danger:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    background: linear-gradient(135deg, #dc2626, var(--cust-danger));
+  }
+
+  .btn-muted {
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--cust-primary-light);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+  }
+
+  .btn-muted:hover {
+    background: var(--cust-primary);
+    color: white;
+    border-color: var(--cust-primary);
+  }
+
+  .btn:active {
+    transform: translateY(0);
+  }
+
+  /* ================= TABLE ================= */
+  .table-container {
+    overflow-x: auto;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--glass-border);
+    background: rgba(15, 23, 42, 0.3);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    margin-top: var(--spacing-md);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(99, 102, 241, 0.3) transparent;
+  }
+
+  .table-container::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .table-container::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .table-container::-webkit-scrollbar-thumb {
+    background: rgba(99, 102, 241, 0.3);
+    border-radius: var(--radius-full);
+  }
+
+  .table-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(99, 102, 241, 0.5);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 14px;
+    min-width: 800px;
+  }
+
+  th {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.15));
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: var(--spacing-md);
+    text-align: center;
+    color: var(--cust-text-secondary);
+    font-weight: 700;
+    font-size: 13px;
+    border-bottom: 2px solid rgba(99, 102, 241, 0.3);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  td {
+    padding: var(--spacing-md);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    color: var(--cust-text);
+    text-align: center;
+    transition: all 0.2s ease;
+  }
+
+  tbody tr {
+    transition: all 0.2s ease;
+    animation: slideInRight 0.3s ease;
+    animation-fill-mode: both;
+  }
+
+  tbody tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  tbody tr:hover {
+    background: rgba(99, 102, 241, 0.08);
+  }
+
+  tbody tr:hover td {
+    background: transparent;
+  }
+
+  td .btn {
+    margin: 0 var(--spacing-xs);
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+
+  /* ================= MODAL ================= */
+  .modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    padding: var(--spacing-md);
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  .modal.show {
+    display: flex;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
+  .modal-box {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    padding: var(--spacing-xl);
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--shadow-lg);
+    animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    z-index: 10001;
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(40px) scale(0.95);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  .modal-box h3 {
+    color: var(--cust-text);
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0 0 var(--spacing-lg);
+    padding-bottom: var(--spacing-md);
+    border-bottom: 1px solid var(--glass-border);
+    text-align: center;
+    letter-spacing: 0.2px;
+  }
+
+  .modal-box input,
+  .modal-box textarea {
+    width: 100%;
+    padding: 12px var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--glass-border);
+    background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: var(--cust-text);
+    font-size: 14px;
+    transition: all 0.2s ease;
+    font-family: inherit;
+    box-sizing: border-box;
+  }
+
+  .modal-box input:focus,
+  .modal-box textarea:focus {
+    outline: none;
+    border-color: var(--cust-primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    background: rgba(15, 23, 42, 0.7);
+  }
+
+  .modal-box textarea {
+    min-height: 100px;
+    resize: none;
+  }
+
+  /* ================= Row actions ================= */
+  .row-actions {
+    display: inline-flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  /* ================= Orders modal (table) ================= */
+  .orders-summary {
+    background: rgba(59, 130, 246, 0.10);
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--spacing-lg);
+    border: 1px solid rgba(59, 130, 246, 0.18);
+  }
+
+  .orders-table-wrap {
+    max-height: 420px;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--glass-border);
+    background: rgba(2, 6, 23, 0.14);
+  }
+
+  :root[data-theme="light"] .orders-table-wrap {
+    background: rgba(255, 255, 255, 0.92);
+    border-color: rgba(2, 6, 23, 0.08);
+  }
+
+  .orders-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 14px;
+    min-width: 560px;
+  }
+
+  .orders-table th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    padding: var(--spacing-sm);
+    background: rgba(99, 102, 241, 0.10);
+    border-bottom: 1px solid var(--glass-border);
+    color: var(--cust-text-secondary);
+    font-weight: 800;
+    white-space: nowrap;
+  }
+
+  .orders-table td {
+    padding: var(--spacing-sm);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    color: var(--cust-text);
+    vertical-align: middle;
+  }
+
+  :root[data-theme="light"] .orders-table td {
+    border-bottom-color: rgba(2, 6, 23, 0.06);
+  }
+
+  .orders-amount {
+    color: var(--cust-success);
+    font-weight: 800;
+  }
+
+  .orders-date {
+    color: var(--cust-muted);
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .orders-status {
+    font-weight: 800;
+  }
+
+  .orders-status.is-paid {
+    color: var(--cust-success);
+  }
+
+  .orders-status.is-return {
+    color: var(--cust-danger);
+  }
+
+  .orders-status.is-other {
+    color: var(--cust-warning);
+  }
+
+  .orders-total-row td {
+    background: rgba(16, 185, 129, 0.10);
+    font-weight: 900;
+    border-top: 2px solid rgba(16, 185, 129, 0.22);
+  }
+
+  .orders-close-btn {
+    width: 100%;
+    margin-top: var(--spacing-lg);
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+    background: rgba(148, 163, 184, 0.14);
+    color: var(--cust-text);
+    border: 1px solid var(--glass-border);
+    cursor: pointer;
+    font-weight: 800;
+  }
+
+  .orders-close-btn:hover {
+    background: rgba(148, 163, 184, 0.22);
+  }
+
+  /* ================= Light mode readability ================= */
+  :root[data-theme="light"] .table-container {
+    background: rgba(255, 255, 255, 0.92);
+    border-color: rgba(2, 6, 23, 0.08);
+  }
+
+  :root[data-theme="light"] th {
+    background: rgba(241, 245, 249, 0.96);
+    color: #0f172a;
+    border-bottom-color: rgba(2, 6, 23, 0.10);
+  }
+
+  :root[data-theme="light"] td {
+    color: #0f172a;
+    border-bottom-color: rgba(2, 6, 23, 0.06);
+  }
+
+  :root[data-theme="light"] tbody tr:nth-child(even) {
+    background: rgba(2, 6, 23, 0.02);
+  }
+
+  :root[data-theme="light"] tbody tr:hover {
+    background: rgba(37, 99, 235, 0.06);
+  }
+
+  :root[data-theme="light"] .search-filters input,
+  :root[data-theme="light"] .search-filters select,
+  :root[data-theme="light"] .modal-box input,
+  :root[data-theme="light"] .modal-box textarea {
+    background: rgba(255, 255, 255, 0.92);
+    border-color: rgba(2, 6, 23, 0.10);
+    color: #0f172a;
+  }
+
+  :root[data-theme="light"] .modal-box {
+    background: rgba(255, 255, 255, 0.92);
+    border-color: rgba(2, 6, 23, 0.08);
+  }
+
+  :root[data-theme="light"] .btn-muted {
+    color: #1d4ed8;
+    border-color: rgba(37, 99, 235, 0.18);
+  }
+
+  .modal-box .btn-submit,
+  .modal-box .orders-close-btn {
+    width: 100%;
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+    border: none;
+    background: linear-gradient(135deg, var(--cust-primary), var(--cust-primary-light));
+    color: white;
+    font-weight: 700;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    margin-top: var(--spacing-sm);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .modal-box .btn-submit:hover,
+  .modal-box .orders-close-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    filter: brightness(1.1);
+  }
+
+  .modal-box .btn-submit:active,
+  .modal-box .orders-close-btn:active {
+    transform: translateY(0);
+  }
+
+  .modal-close {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    z-index: 10;
+    line-height: 1;
+    padding: 0;
+  }
+
+  .modal-close:hover {
+    background: #ef4444;
+    color: white;
+    transform: rotate(90deg);
+  }
+
+  /* ================= LOADING & TOAST ================= */
+  .loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    pointer-events: auto;
+  }
+
+  .loading-overlay.show {
+    display: flex;
+  }
+
+  .loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid rgba(99, 102, 241, 0.2);
+    border-top-color: var(--cust-primary);
+    border-radius: var(--radius-full);
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .toast-container {
+    position: fixed;
+    top: var(--spacing-lg);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10001;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    width: calc(100% - var(--spacing-xl));
+    max-width: 500px;
+    pointer-events: none;
+  }
+
+  .toast {
+    min-width: 280px;
+    max-width: 100%;
+    width: 100%;
+    padding: var(--spacing-md) var(--spacing-lg);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    animation: slideInDown 0.4s ease-out;
+    pointer-events: auto;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+  }
+
+  .toast.success {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(5, 150, 105, 0.95));
+    color: #fff;
+  }
+
+  .toast.error {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.95), rgba(220, 38, 38, 0.95));
+    color: #fff;
+  }
+
+  .toast.warning {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.95), rgba(217, 119, 6, 0.95));
+    color: #fff;
+  }
+
+  .toast.info {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.95), rgba(79, 70, 229, 0.95));
+    color: #fff;
+  }
+
+  .toast.fade-out {
+    animation: fadeOutToast 0.3s ease-out forwards;
+  }
+
+  @keyframes slideInDown {
+    from {
+      opacity: 0;
+      transform: translateX(-50%) translateY(-20px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  }
+
+  @keyframes fadeOutToast {
+    to {
+      opacity: 0;
+      transform: translateX(-50%) translateY(-20px);
+    }
+  }
+
+  /* ================= EMPTY STATE ================= */
+  .empty-state {
+    text-align: center;
+    padding: var(--spacing-xl);
+    color: var(--cust-muted);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-md);
+  }
+
+  .empty-state-icon {
+    font-size: 64px;
+    opacity: 0.5;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+
+    0%,
+    100% {
+      opacity: 0.5;
+      transform: scale(1);
+    }
+
+    50% {
+      opacity: 0.8;
+      transform: scale(1.05);
+    }
+  }
+
+  .empty-state-text {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--cust-text);
+  }
+
+  .empty-state-subtext {
+    font-size: 14px;
+    color: var(--cust-muted);
+  }
+
+  /* ================= ANIMATIONS ================= */
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slideInRight {
+    from {
+      opacity: 0;
+      transform: translateX(-20px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  tbody tr:nth-child(1) {
+    animation-delay: 0.05s;
+  }
+
+  tbody tr:nth-child(2) {
+    animation-delay: 0.1s;
+  }
+
+  tbody tr:nth-child(3) {
+    animation-delay: 0.15s;
+  }
+
+  tbody tr:nth-child(4) {
+    animation-delay: 0.2s;
+  }
+
+  tbody tr:nth-child(5) {
+    animation-delay: 0.25s;
+  }
+
+  /* ================= RESPONSIVE ================= */
+  @media (max-width: 768px) {
+    .stats-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--spacing-md);
+    }
+
+    .card {
+      padding: var(--spacing-md);
+    }
+
+    .search-filters {
+      flex-direction: column;
+    }
+
+    .search-filters input,
+    .search-filters select {
+      width: 100%;
+    }
+
+    table {
+      min-width: auto;
+    }
+
+    th,
+    td {
+      padding: var(--spacing-sm);
+      font-size: 13px;
+    }
+
+    td .btn {
+      display: block;
+      margin: var(--spacing-xs) 0;
+      width: 100%;
+    }
+
+    .modal-box {
+      padding: var(--spacing-lg);
+      margin: var(--spacing-md);
+    }
+
+    .toast-container {
+      top: var(--spacing-md);
+      left: var(--spacing-md);
+      right: var(--spacing-md);
+      width: auto;
+      max-width: none;
+      transform: none;
+    }
+
+    @keyframes slideInDown {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  }
+
+  @media (max-width: 480px) {
+    .stats-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .stat-value {
+      font-size: 20px;
+    }
+  }
+</style>
+
+<!-- ============ STATS CARDS ============ -->
+{% set total_customers = customers|length %}
+{% set customers_with_orders = customers|selectattr("id")|list|length %}
+
+<div class="stats-grid">
+  <div class="stat-card primary">
+    <div class="stat-icon">👥</div>
+    <div class="stat-label">{{ _('customers_stat_total') }}</div>
+    <div class="stat-value">{{ total_customers }}</div>
+  </div>
+  <div class="stat-card success">
+    <div class="stat-icon">📋</div>
+    <div class="stat-label">{{ _('customers_stat_active') }}</div>
+    <div class="stat-value">{{ customers_with_orders }}</div>
+  </div>
+</div>
+
+<!-- ============ SEARCH & FILTERS ============ -->
+<div class="card">
+  <div class="search-filters">
+    <input id="searchInput" placeholder="{{ _('customers_search_placeholder') }}" onkeyup="updateSearch()">
+    <select id="cityFilter" onchange="updateSearch()">
+      <option value="">{{ _('customers_all_cities') }}</option>
+      {% for city in cities %}
+      <option value="{{ city }}">{{ city }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn-premium" onclick="openAdd()">
+      <span>➕</span>
+      <span>{{ _('customers_add_button') }}</span>
+    </button>
+  </div>
+  <div id="searchStats" class="search-stats"></div>
+</div>
+
+<!-- ============ CUSTOMERS TABLE ============ -->
+<div class="card">
+  <div class="table-container" style="height: 600px;">
+    <div id="customersTable" class="ag-theme-finora" style="height: 100%; width: 100%;"></div>
+  </div>
+</div>
+
+<!-- ================= CUSTOMERS DATA (JSON) ================= -->
+<script type="application/json" id="customersData">
+[
+  {% for c in customers %}
+  {
+    "id": {{ c.id }},
+    "name": {{ c.name|tojson }},
+    "phone": {{ (c.phone or '—')|tojson }},
+    "phone2": {{ (c.phone2 or '')|tojson }},
+    "city": {{ (c.city or '—')|tojson }},
+    "address": {{ (c.address or '—')|tojson }},
+    "notes": {{ (c.notes or '')|tojson }}
+  }{% if not loop.last %},{% endif %}
+  {% endfor %}
+]
+</script>
+
+<!-- ============ MODAL ============ -->
+<div class="modal" id="modal">
+  <div class="modal-box" id="modalContent"></div>
+</div>
+
+<script>
+  // ==================== Toast Notifications ====================
+  function showToast(message, type = 'info') {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+
+    const icons = {
+      success: '✅',
+      error: '❌',
+      warning: '⚠️',
+      info: 'ℹ️'
+    };
+
+    toast.innerHTML = `
+    <span style="font-size: 18px;">${icons[type] || icons.info}</span>
+    <span style="flex: 1;font-size: 14px;line-height: 1.5;">${message}</span>
+  `;
+
+    container.appendChild(toast);
+
+    setTimeout(() => {
+      toast.classList.add('fade-out');
+      setTimeout(() => {
+        if (toast.parentNode) {
+          toast.parentNode.removeChild(toast);
+        }
+      }, 300);
+    }, 3000);
+  }
+
+  // ==================== Loading Overlay ====================
+  function showLoading() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+      overlay.classList.add('show');
+    }
+  }
+
+  function hideLoading() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+      overlay.classList.remove('show');
+    }
+  }
+
+  // ==================== Modal Management ====================
+  function openModal(content) {
+    const modal = document.getElementById('modal');
+    const modalContent = document.getElementById('modalContent');
+    if (modal && modalContent) {
+      modalContent.innerHTML = content;
+      modal.classList.add('show');
+      document.body.style.overflow = 'hidden';
+    }
+  }
+
+  function closeModal() {
+    const modal = document.getElementById('modal');
+    if (modal) {
+      modal.classList.remove('show');
+      document.body.style.overflow = '';
+    }
+  }
+
+  function openAdd() {
+    const content = `
+      <div style="position: relative;">
+        <button class="modal-close" onclick="closeModal()">×</button>
+        <h3>👤 {{ _('customers_add_modal_title') }}</h3>
+        <form id="customerForm" onsubmit="submitCustomer(event)">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div>
+              <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--cust-muted);">{{ _('customers_field_full_name') }}</label>
+              <input type="text" id="cust_name" name="name" required placeholder="{{ _('customers_placeholder_full_name') }}">
+            </div>
+            <div>
+              <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--cust-muted);">{{ _('customers_field_phone') }}</label>
+              <input type="text" id="cust_phone" name="phone" required placeholder="{{ _('customers_placeholder_phone') }}">
+            </div>
+          </div>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+             <div>
+              <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--cust-muted);">{{ _('customers_field_phone2') }}</label>
+              <input type="text" id="cust_phone2" name="phone2" placeholder="{{ _('customers_placeholder_optional') }}">
+            </div>
+            <div>
+              <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--cust-muted);">{{ _('customers_field_city') }}</label>
+              <input type="text" id="cust_city" name="city" list="citiesList" placeholder="{{ _('customers_placeholder_city') }}">
+              <datalist id="citiesList">
+                {% for city in cities %}<option value="{{ city }}">{% endfor %}
+              </datalist>
+            </div>
+          </div>
+
+          <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--cust-muted);">{{ _('customers_field_address') }}</label>
+          <input type="text" id="cust_address" name="address" placeholder="{{ _('customers_placeholder_address') }}">
+
+          <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--cust-muted);">{{ _('customers_field_notes') }}</label>
+          <textarea id="cust_notes" name="notes" placeholder="{{ _('customers_placeholder_notes') }}"></textarea>
+
+          <button type="submit" class="btn-submit">
+            <span>💾</span> {{ _('customers_save_customer') }}
+          </button>
+        </form>
+      </div>
+    `;
+    openModal(content);
+  }
+
+  async function submitCustomer(event) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    const data = Object.fromEntries(formData.entries());
+
+    showLoading();
+    try {
+      const resp = await fetch('/customers/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const res = await resp.json();
+      if (res.success) {
+        showToast("{{ _('customers_toast_add_success') }}", "success");
+        setTimeout(() => location.reload(), 1000);
+      } else {
+        showToast(res.error || "{{ _('customers_toast_add_error') }}", "error");
+      }
+    } catch (err) {
+      showToast("{{ _('customers_toast_server_error') }}", "error");
+    } finally {
+      hideLoading();
+    }
+  }
+
+  function editCustomer(id, name, phone, phone2, city, address, notes) {
+    const content = `
+      <div style="position: relative;">
+        <button class="modal-close" onclick="closeModal()">×</button>
+        <h3>✏️ {{ _('customers_edit_modal_title') }}</h3>
+        <form id="editForm" onsubmit="updateCustomer(event, ${id})">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div>
+              <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--cust-muted);">{{ _('customers_field_full_name') }}</label>
+              <input type="text" name="name" value="${name}" required>
+            </div>
+            <div>
+              <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--cust-muted);">{{ _('customers_field_phone') }}</label>
+              <input type="text" name="phone" value="${phone}" required>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div>
+              <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--cust-muted);">{{ _('customers_field_phone2') }}</label>
+              <input type="text" name="phone2" value="${phone2}">
+            </div>
+            <div>
+              <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--cust-muted);">{{ _('customers_field_city') }}</label>
+              <input type="text" name="city" value="${city}" list="citiesList">
+            </div>
+          </div>
+
+          <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--cust-muted);">{{ _('customers_field_address') }}</label>
+          <input type="text" name="address" value="${address}">
+
+          <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--cust-muted);">{{ _('customers_field_notes') }}</label>
+          <textarea name="notes">${notes}</textarea>
+
+          <button type="submit" class="btn-submit">
+            <span>🔄</span> {{ _('customers_update_customer') }}
+          </button>
+        </form>
+      </div>
+    `;
+    openModal(content);
+  }
+
+  async function updateCustomer(event, id) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    const data = Object.fromEntries(formData.entries());
+
+    showLoading();
+    try {
+      const resp = await fetch(`/customers/update/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const res = await resp.json();
+      if (res.success) {
+        showToast("{{ _('customers_toast_update_success') }}", "success");
+        setTimeout(() => location.reload(), 1000);
+      } else {
+        showToast(res.error || "{{ _('customers_toast_update_error') }}", "error");
+      }
+    } catch (err) {
+      showToast("{{ _('customers_toast_server_error') }}", "error");
+    } finally {
+      hideLoading();
+    }
+  }
+
+  async function deleteCustomer(id, name) {
+    if (!confirm(`{{ _('customers_confirm_delete') }}`.replace('{name}', name))) return;
+
+    showLoading();
+    try {
+      const resp = await fetch(`/customers/delete/${id}`);
+      const res = await resp.json();
+      if (res.success) {
+        showToast("{{ _('customers_toast_delete_success') }}", "success");
+        setTimeout(() => location.reload(), 1000);
+      } else {
+        showToast(res.error || "{{ _('customers_toast_delete_error') }}", "error");
+      }
+    } catch (err) {
+      showToast("{{ _('customers_toast_server_error') }}", "error");
+    } finally {
+      hideLoading();
+    }
+  }
+
+  async function viewOrders(id) {
+    showLoading();
+    try {
+      const resp = await fetch(`/customers/orders/${id}`);
+      const orders = await resp.json();
+
+      let totalAmount = 0;
+      let rowsHtml = '';
+
+      if (orders.length === 0) {
+        rowsHtml = '<tr><td colspan="5" style="padding:40px; color:var(--cust-muted)">{{ _("customers_no_orders") }}</td></tr>';
+      } else {
+        orders.forEach(o => {
+          totalAmount += o.total;
+          const statusClass = o.payment === 'paid' ? 'is-paid' : (o.status === 'returned' ? 'is-return' : 'is-other');
+          rowsHtml += `
+            <tr>
+              <td>#${o.id}</td>
+              <td class="orders-amount">${o.total.toLocaleString()}</td>
+              <td class="orders-status ${statusClass}">${o.status}</td>
+              <td class="orders-status ${o.payment === 'paid' ? 'is-paid' : ''}">${o.payment}</td>
+              <td class="orders-date">${o.date}</td>
+            </tr>
+          `;
+        });
+      }
+
+      const content = `
+        <div style="position: relative; padding-top: 5px;">
+          <button class="modal-close" onclick="closeModal()" title="{{ _('customers_close') }}">×</button>
+          <h3>📦 {{ _('customers_orders_title') }}</h3>
+          
+          <div class="orders-summary" style="display:flex; justify-content:space-between; align-items:center; background: var(--glass-bg); border: 1px solid var(--glass-border); padding: 15px; border-radius: 12px; margin-bottom: 20px; box-shadow: var(--shadow-sm);">
+             <span style="font-size: 14px; color: var(--cust-muted); font-weight: 500;">{{ _('customers_orders_total_withdrawals') }}</span>
+             <strong style="font-size:22px; color:var(--cust-success); font-weight: 900; letter-spacing: 0.5px;">${totalAmount.toLocaleString()} <small style="font-size: 12px; font-weight: 500;">{{ _('customers_currency_iqd') }}</small></strong>
+          </div>
+
+          <div class="orders-table-wrap">
+            <table class="orders-table">
+              <thead>
+                <tr>
+                  <th style="width: 80px;">{{ _('customers_orders_col_order') }}</th>
+                  <th>{{ _('customers_orders_col_amount') }}</th>
+                  <th>{{ _('customers_orders_col_status') }}</th>
+                  <th>{{ _('customers_orders_col_payment') }}</th>
+                  <th>{{ _('customers_orders_col_date') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rowsHtml}
+              </tbody>
+            </table>
+          </div>
+          
+          <button class="orders-close-btn" onclick="closeModal()">
+             <span>❌</span> {{ _('customers_close_window') }}
+          </button>
+        </div>
+      `;
+      openModal(content);
+    } catch (err) {
+      showToast("{{ _('customers_toast_orders_error') }}", "error");
+    } finally {
+      hideLoading();
+    }
+  }
+
+  // ==================== AG Grid Initialization ====================
+  let gridApi;
+
+  function initAgGrid() {
+    const customersDataElement = document.getElementById("customersData");
+    if (!customersDataElement) return;
+
+    let rowData = [];
+    try {
+      rowData = JSON.parse(customersDataElement.textContent.trim());
+    } catch (e) {
+      console.error("Error parsing customers data:", e);
+      return;
+    }
+
+    const columnDefs = [
+      { headerName: "#", field: "id", width: 70, sortable: true },
+      {
+        headerName: "{{ _('customers_col_name') }}",
+        field: "name",
+        flex: 1,
+        minWidth: 150,
+        cellRenderer: params => `<strong>${params.value}</strong>`
+      },
+      { headerName: "{{ _('customers_col_phone') }}", field: "phone", width: 130 },
+      { headerName: "{{ _('customers_col_city') }}", field: "city", width: 120 },
+      { headerName: "{{ _('customers_col_address') }}", field: "address", flex: 1, minWidth: 200 },
+      {
+        headerName: "{{ _('customers_col_actions') }}",
+        field: "actions",
+        width: 250,
+        pinned: 'left',
+        sortable: false,
+        filter: false,
+        cellRenderer: params => {
+          const c = params.data;
+          const nameEscaped = (c.name || '').replace(/'/g, "\\'");
+          const phoneEscaped = (c.phone || '').replace(/'/g, "\\'");
+          const phone2Escaped = (c.phone2 || '').replace(/'/g, "\\'");
+          const cityEscaped = (c.city || '').replace(/'/g, "\\'");
+          const addressEscaped = (c.address || '').replace(/'/g, "\\'");
+          const notesEscaped = (c.notes || '').replace(/'/g, "\\'");
+
+          return `
+          <div class="cust-actions-grid" style="display: flex; gap: 8px; justify-content: center; align-items: center; height: 100%;">
+            <button class="cust-action btn-orders" onclick="viewOrders(${c.id})" title="{{ _('customers_action_view_orders') }}">
+              <span>🛒</span> {{ _('customers_action_orders') }}
+            </button>
+            <button class="cust-action btn-edit" onclick="editCustomer(${c.id}, '${nameEscaped}', '${phoneEscaped}', '${phone2Escaped}', '${cityEscaped}', '${addressEscaped}', '${notesEscaped}')" title="{{ _('customers_action_edit') }}">
+              <span>✏️</span> {{ _('customers_action_edit') }}
+            </button>
+            <button class="cust-action btn-delete" onclick="deleteCustomer(${c.id}, '${nameEscaped}')" title="{{ _('customers_action_delete') }}">
+              <span>🗑️</span> {{ _('customers_action_delete') }}
+            </button>
+          </div>
+        `;
+        }
+      }
+    ];
+
+    const gridOptions = {
+      columnDefs: columnDefs,
+      rowData: rowData,
+      rowHeight: 52,
+      headerHeight: 48,
+      pagination: true,
+      paginationPageSize: 20,
+      paginationPageSizeSelector: [10, 20, 50, 100],
+      enableRtl: true,
+      animateRows: true,
+      defaultColDef: {
+        sortable: true,
+        filter: true,
+        resizable: true,
+        floatingFilter: true
+      },
+      onGridReady: (params) => {
+        gridApi = params.api;
+        updateSearchStats();
+      },
+      onFilterChanged: () => {
+        updateSearchStats();
+      },
+      isExternalFilterPresent: () => {
+        const cityFilter = document.getElementById('cityFilter').value;
+        return cityFilter !== '';
+      },
+      doesExternalFilterPass: (node) => {
+        const cityFilter = document.getElementById('cityFilter').value;
+        return node.data.city === cityFilter;
+      }
+    };
+
+    const eGridDiv = document.querySelector('#customersTable');
+    agGrid.createGrid(eGridDiv, gridOptions);
+  }
+
+  function updateSearchStats() {
+    if (!gridApi) return;
+    const visibleCount = gridApi.getDisplayedRowCount();
+
+    // Total raw count from original data
+    const customersDataElement = document.getElementById("customersData");
+    const totalRaw = customersDataElement ? JSON.parse(customersDataElement.textContent).length : 0;
+
+    const statsEl = document.getElementById('searchStats');
+    if (statsEl) {
+      statsEl.innerHTML = `
+      {{ _('customers_stats_show') }} <strong style="color:var(--cust-primary-light)">${visibleCount}</strong> {{ _('customers_stats_of') }} <strong>${totalRaw}</strong> {{ _('customers_stats_customers_word') }}
+    `;
+    }
+  }
+
+  function updateSearch() {
+    const searchQuery = document.getElementById('searchInput').value;
+    if (gridApi) {
+      gridApi.setGridOption('quickFilterText', searchQuery);
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    initAgGrid();
+
+    // Close modal on outside click
+    document.getElementById('modal').addEventListener('click', function (e) {
+      if (e.target.id === 'modal') {
+        closeModal();
+      }
+    });
+
+    // ESC to close modal
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        closeModal();
+      }
+
+      // Ctrl/Cmd + F to focus search
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault();
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) searchInput.focus();
+      }
+    });
+  });
+</script>
+
+{% endblock %}

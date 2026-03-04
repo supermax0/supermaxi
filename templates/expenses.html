@@ -1,0 +1,1166 @@
+{% extends "base.html" %}
+{% block title %}{{ _('expenses') }}{% endblock %}
+{% block page_title %}💰 {{ _('expenses_page_title') }}{% endblock %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.js"></script>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-spinner"></div>
+</div>
+
+<style>
+  /* ================= VARIABLES ================= */
+  :root {
+    --expenses-primary: var(--danger);
+    --expenses-secondary: var(--warning);
+    --expenses-success: var(--success);
+    --expenses-danger: var(--danger);
+    --expenses-warning: var(--warning);
+    --expenses-info: var(--primary);
+    --expenses-card: var(--card);
+    --expenses-text: var(--text);
+    --expenses-muted: var(--text-muted);
+    --expenses-border: var(--border-light);
+  }
+
+  /* ================= PAGE SCOPE ================= */
+  .expenses-page {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .expenses-page button,
+  .expenses-page a,
+  .expenses-page input,
+  .expenses-page select,
+  .expenses-page textarea {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* ================= SUMMARY CARDS ================= */
+  .exp-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+  }
+
+  .exp-summary-card {
+    background: var(--expenses-card);
+    padding: 24px;
+    border-radius: 16px;
+    border: 1px solid var(--expenses-border);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    pointer-events: auto;
+  }
+
+  .exp-summary-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--expenses-primary), var(--expenses-secondary));
+    pointer-events: none;
+  }
+
+  .exp-summary-card h4 {
+    color: var(--expenses-muted);
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .exp-summary-card .value {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--expenses-text);
+    margin: 8px 0;
+    line-height: 1.2;
+  }
+
+  .exp-summary-card.total .value {
+    color: var(--expenses-danger);
+  }
+
+  .exp-summary-card.month .value {
+    color: var(--expenses-warning);
+  }
+
+  .exp-summary-card.today .value {
+    color: var(--expenses-info);
+  }
+
+  .exp-summary-card .subtitle {
+    color: var(--expenses-muted);
+    font-size: 12px;
+    margin-top: 4px;
+  }
+
+  /* ================= GRID LAYOUT ================= */
+  .exp-grid {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 24px;
+    margin-top: 24px;
+  }
+
+  /* ================= FORM CARD ================= */
+  .exp-form-card {
+    background: var(--expenses-card);
+    padding: 24px;
+    border-radius: 16px;
+    border: 1px solid var(--expenses-border);
+    position: relative;
+    overflow: hidden;
+    pointer-events: auto;
+  }
+
+  .exp-form-card h3 {
+    color: var(--expenses-text);
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0 0 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .exp-form-card .form-grid {
+    display: grid;
+    gap: 16px;
+  }
+
+  .exp-form-card input,
+  .exp-form-card select,
+  .exp-form-card textarea {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--expenses-text);
+    font-size: 15px;
+    transition: all 0.2s ease;
+    font-family: inherit;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    min-height: 44px;
+    box-sizing: border-box;
+    pointer-events: auto;
+  }
+
+  .exp-form-card input::placeholder,
+  .exp-form-card textarea::placeholder {
+    color: var(--expenses-muted);
+    opacity: 0.6;
+  }
+
+  .exp-form-card input:focus,
+  .exp-form-card select:focus,
+  .exp-form-card textarea:focus {
+    outline: none;
+    border-color: var(--expenses-primary);
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+  }
+
+  .exp-form-card textarea {
+    resize: vertical;
+    min-height: 80px;
+  }
+
+  .exp-form-card .btn-premium {
+    width: 60%;
+    margin: 10px auto;
+  }
+
+  .exp-form-card button:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+  }
+
+  .exp-form-card button:active {
+    transform: translateY(0);
+  }
+
+  /* AG Grid Custom Styles for Expenses */
+  .ag-theme-quartz-dark .ag-row {
+    cursor: pointer;
+  }
+
+  .ag-theme-quartz-dark .ag-header-cell-label {
+    justify-content: flex-end;
+  }
+
+  .ag-theme-quartz-dark .ag-cell {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  .exp-actions-grid {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    padding: 4px 0;
+  }
+
+  .exp-actions-grid .delete-btn {
+    padding: 4px 12px;
+    font-size: 11px;
+    border-radius: 6px;
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--expenses-danger);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    text-decoration: none;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .exp-actions-grid .delete-btn:hover {
+    background: rgba(239, 68, 68, 0.3);
+    transform: translateY(-1px);
+  }
+
+  /* ================= TABLE CARD ================= */
+  .exp-table-card {
+    background: var(--expenses-card);
+    padding: 24px;
+    border-radius: 16px;
+    border: 1px solid var(--expenses-border);
+    position: relative;
+    overflow: hidden;
+    pointer-events: auto;
+  }
+
+  .exp-table-card h3 {
+    color: var(--expenses-text);
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0 0 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  /* ================= FILTERS ================= */
+  .exp-filters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .exp-filters input,
+  .exp-filters select {
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--expenses-text);
+    font-size: 14px;
+    transition: all 0.2s ease;
+    font-family: inherit;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    min-height: 44px;
+    box-sizing: border-box;
+    pointer-events: auto;
+  }
+
+  .exp-filters input::placeholder {
+    color: var(--expenses-muted);
+    opacity: 0.6;
+  }
+
+  .exp-filters input:focus,
+  .exp-filters select:focus {
+    outline: none;
+    border-color: var(--expenses-primary);
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+  }
+
+  .exp-filters button {
+    padding: 12px 20px;
+    background: rgba(239, 68, 68, 0.2);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 10px;
+    color: var(--expenses-danger);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-height: 44px;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    pointer-events: auto;
+  }
+
+  .exp-filters button:hover {
+    background: rgba(239, 68, 68, 0.3);
+    transform: translateY(-1px);
+  }
+
+  /* ================= TABLE ================= */
+  .exp-table-wrapper {
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 600px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.02);
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .exp-table-wrapper::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .exp-table-wrapper::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .exp-table-wrapper::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+  }
+
+  .exp-table-wrapper::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
+
+  .exp-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: transparent;
+    font-size: 14px;
+    min-width: 800px;
+  }
+
+  .exp-table thead {
+    background: rgba(255, 255, 255, 0.05);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  .exp-table th {
+    padding: 16px;
+    text-align: right;
+    color: var(--expenses-muted);
+    font-weight: 600;
+    font-size: 13px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    white-space: nowrap;
+    letter-spacing: 0.2px;
+    pointer-events: auto;
+  }
+
+  .exp-table td {
+    padding: 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    color: var(--expenses-text);
+    font-size: 14px;
+  }
+
+  .exp-table tbody tr {
+    transition: background 0.2s ease;
+  }
+
+  .exp-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .exp-table td strong {
+    font-weight: 600;
+    color: var(--expenses-text);
+  }
+
+  /* ================= CATEGORY BADGES ================= */
+  .exp-category-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .exp-category-badge.rent {
+    background: rgba(139, 92, 246, 0.2);
+    color: #a78bfa;
+    border: 1px solid rgba(139, 92, 246, 0.3);
+  }
+
+  .exp-category-badge.salary {
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+  }
+
+  .exp-category-badge.electricity {
+    background: rgba(251, 191, 36, 0.2);
+    color: #fbbf24;
+    border: 1px solid rgba(251, 191, 36, 0.3);
+  }
+
+  .exp-category-badge.internet {
+    background: rgba(16, 185, 129, 0.2);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+  }
+
+  .exp-category-badge.advertising {
+    background: rgba(236, 72, 153, 0.2);
+    color: #f472b6;
+    border: 1px solid rgba(236, 72, 153, 0.3);
+  }
+
+  .exp-category-badge.maintenance {
+    background: rgba(245, 158, 11, 0.2);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+  }
+
+  .exp-category-badge.other {
+    background: rgba(107, 114, 128, 0.2);
+    color: #9ca3af;
+    border: 1px solid rgba(107, 114, 128, 0.3);
+  }
+
+  .exp-amount {
+    font-weight: 600;
+    color: var(--expenses-danger);
+    font-size: 15px;
+  }
+
+  /* ================= ACTIONS ================= */
+  .exp-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .exp-actions a {
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    pointer-events: auto;
+  }
+
+  .exp-actions .delete-btn {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--expenses-danger);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
+
+  .exp-actions .delete-btn:hover {
+    background: rgba(239, 68, 68, 0.3);
+    transform: translateY(-1px);
+  }
+
+  /* ================= EMPTY STATE ================= */
+  .exp-empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--expenses-muted);
+  }
+
+  .exp-empty-icon {
+    font-size: 64px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+  }
+
+  .exp-empty-text {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--expenses-text);
+  }
+
+  /* ================= RESPONSIVE ================= */
+  @media (max-width: 1024px) {
+    .exp-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .exp-summary {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+
+    .exp-form-card,
+    .exp-table-card {
+      padding: 16px;
+    }
+
+    .exp-form-card h3,
+    .exp-table-card h3 {
+      font-size: 16px;
+    }
+
+    .exp-filters {
+      grid-template-columns: 1fr;
+      padding: 12px;
+    }
+
+    .exp-table-wrapper {
+      max-height: 500px;
+    }
+
+    .exp-table {
+      min-width: 700px;
+    }
+
+    .exp-table th,
+    .exp-table td {
+      padding: 12px;
+      font-size: 13px;
+    }
+
+    .exp-actions {
+      flex-direction: column;
+      width: 100%;
+    }
+
+    .exp-actions a {
+      width: 100%;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .exp-summary {
+      grid-template-columns: 1fr;
+    }
+
+    .exp-form-card,
+    .exp-table-card {
+      padding: 12px;
+    }
+
+    .exp-filters {
+      padding: 10px;
+    }
+
+    .exp-table-wrapper {
+      max-height: 400px;
+    }
+
+    .exp-table {
+      min-width: 600px;
+    }
+
+    .exp-table th,
+    .exp-table td {
+      padding: 10px;
+      font-size: 12px;
+    }
+
+    /* Loading Overlay Mobile */
+    .loading-overlay {
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .loading-spinner {
+      width: 70px;
+      height: 70px;
+      border-width: 6px;
+    }
+
+    .loading-spinner::after {
+      width: 50px;
+      height: 50px;
+      margin: -25px 0 0 -25px;
+    }
+
+    /* Toast Mobile */
+    .toast-container {
+      top: 12px;
+      left: 12px;
+      right: 12px;
+      width: auto;
+      max-width: none;
+      transform: none;
+      gap: 10px;
+    }
+
+    .toast {
+      min-width: auto;
+      padding: 16px 18px;
+      font-size: 14px;
+      border-radius: 12px;
+    }
+  }
+
+  /* ================= LOADING & TOAST ================= */
+  .loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .loading-overlay.active {
+    display: flex;
+    opacity: 1;
+    animation: fadeIn 0.3s ease;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
+  .loading-spinner {
+    width: 60px;
+    height: 60px;
+    border: 5px solid rgba(239, 68, 68, 0.15);
+    border-top-color: var(--expenses-primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    box-shadow: 0 8px 24px rgba(239, 68, 68, 0.3), 0 0 0 4px rgba(239, 68, 68, 0.1);
+    position: relative;
+  }
+
+  .loading-spinner::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 40px;
+    height: 40px;
+    margin: -20px 0 0 -20px;
+    border: 3px solid rgba(239, 68, 68, 0.1);
+    border-top-color: rgba(239, 68, 68, 0.5);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite reverse;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .button-loading {
+    position: relative;
+    color: transparent !important;
+    pointer-events: none;
+  }
+
+  .button-loading::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    pointer-events: none;
+  }
+
+  .toast-container {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: calc(100% - 32px);
+    max-width: 500px;
+    pointer-events: none;
+  }
+
+  .toast {
+    min-width: 280px;
+    max-width: 100%;
+    width: 100%;
+    padding: 16px 20px;
+    border-radius: 14px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    animation: slideInDown 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: auto;
+    box-sizing: border-box;
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .toast::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    opacity: 0.6;
+  }
+
+  .expenses-page .loading-overlay {
+    pointer-events: auto;
+  }
+
+  /* ================= LIGHT MODE FIXES ================= */
+  :root[data-theme="light"] .expenses-page .exp-summary-card,
+  :root[data-theme="light"] .expenses-page .exp-form-card,
+  :root[data-theme="light"] .expenses-page .exp-table-card {
+    background: rgba(255, 255, 255, 0.92);
+    border-color: rgba(2, 6, 23, 0.08);
+    box-shadow: 0 16px 34px rgba(2, 6, 23, 0.08);
+  }
+
+  :root[data-theme="light"] .expenses-page .exp-form-card h3,
+  :root[data-theme="light"] .expenses-page .exp-table-card h3,
+  :root[data-theme="light"] .expenses-page .exp-summary-card h4,
+  :root[data-theme="light"] .expenses-page .exp-summary-card .subtitle {
+    color: rgba(15, 23, 42, 0.70);
+  }
+
+  :root[data-theme="light"] .expenses-page .exp-form-card input,
+  :root[data-theme="light"] .expenses-page .exp-form-card select,
+  :root[data-theme="light"] .expenses-page .exp-form-card textarea,
+  :root[data-theme="light"] .expenses-page .exp-filters input,
+  :root[data-theme="light"] .expenses-page .exp-filters select {
+    background: rgba(255, 255, 255, 0.94);
+    border-color: rgba(2, 6, 23, 0.10);
+    color: #0f172a;
+  }
+
+  :root[data-theme="light"] .expenses-page .exp-filters {
+    background: rgba(2, 6, 23, 0.03);
+    border-color: rgba(2, 6, 23, 0.08);
+  }
+
+  :root[data-theme="light"] .expenses-page .exp-table-wrapper {
+    background: rgba(255, 255, 255, 0.94);
+    border-color: rgba(2, 6, 23, 0.08);
+  }
+
+  :root[data-theme="light"] .expenses-page .exp-table thead {
+    background: rgba(241, 245, 249, 0.96);
+  }
+
+  :root[data-theme="light"] .expenses-page .exp-table th {
+    color: rgba(15, 23, 42, 0.75);
+    border-bottom-color: rgba(2, 6, 23, 0.10);
+  }
+
+  :root[data-theme="light"] .expenses-page .exp-table td {
+    color: #0f172a;
+    border-bottom-color: rgba(2, 6, 23, 0.08);
+  }
+
+  :root[data-theme="light"] .expenses-page .exp-table tbody tr:hover {
+    background: rgba(37, 99, 235, 0.05);
+  }
+
+  :root[data-theme="light"] .expenses-page .exp-actions .delete-btn {
+    background: rgba(239, 68, 68, 0.10);
+    border-color: rgba(239, 68, 68, 0.25);
+  }
+
+  .toast.success {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(5, 150, 105, 0.95));
+    color: #fff;
+    border-color: rgba(16, 185, 129, 0.3);
+  }
+
+  .toast.error {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.95), rgba(220, 38, 38, 0.95));
+    color: #fff;
+    border-color: rgba(239, 68, 68, 0.3);
+  }
+
+  .toast.warning {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.95), rgba(217, 119, 6, 0.95));
+    color: #fff;
+    border-color: rgba(245, 158, 11, 0.3);
+  }
+
+  @keyframes slideInDown {
+    from {
+      opacity: 0;
+      transform: translateX(-50%) translateY(-30px) scale(0.95);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0) scale(1);
+    }
+  }
+</style>
+
+<div class="expenses-page">
+  <!-- ================= SUMMARY CARDS ================= -->
+  <div class="exp-summary">
+    <div class="exp-summary-card total">
+      <h4>{{ _('expenses_stat_total') }}</h4>
+      <div class="value">{{ "{:,.0f}".format(total) }}</div>
+      <div class="subtitle">{{ _('expenses_stat_total_subtitle') }}</div>
+    </div>
+    <div class="exp-summary-card month">
+      <h4>{{ _('expenses_stat_month') }}</h4>
+      <div class="value">{{ "{:,.0f}".format(month_total) }}</div>
+      <div class="subtitle">{{ current_month_name }}</div>
+    </div>
+    <div class="exp-summary-card today">
+      <h4>{{ _('expenses_stat_today') }}</h4>
+      <div class="value">{{ "{:,.0f}".format(today_total) }}</div>
+      <div class="subtitle">{{ today_date }}</div>
+    </div>
+  </div>
+
+  <div class="exp-grid">
+    <!-- ================= ADD EXPENSE FORM ================= -->
+    <div class="exp-form-card">
+      <h3>
+        <span>➕</span>
+        <span>{{ _('expenses_add_title') }}</span>
+      </h3>
+
+      <form method="post" class="form-grid">
+        <input name="title" placeholder="{{ _('expenses_field_title_placeholder') }}" required>
+
+        <select name="category" required>
+          <option value="">{{ _('expenses_field_category_placeholder') }}</option>
+          <option value="rent">🏠 {{ _('expenses_cat_rent') }}</option>
+          <option value="salary">💰 {{ _('expenses_cat_salary') }}</option>
+          <option value="electricity">⚡ {{ _('expenses_cat_electricity') }}</option>
+          <option value="internet">🌐 {{ _('expenses_cat_internet') }}</option>
+          <option value="advertising">📢 {{ _('expenses_cat_advertising') }}</option>
+          <option value="maintenance">🔧 {{ _('expenses_cat_maintenance') }}</option>
+          <option value="other">📦 {{ _('expenses_cat_other') }}</option>
+        </select>
+
+        <input name="amount" type="number" step="0.01" min="0" placeholder="{{ _('expenses_field_amount_placeholder') }}" required>
+
+        <input name="expense_date" type="date" value="{{ default_date }}" required>
+
+        <textarea name="note" placeholder="{{ _('expenses_field_note_placeholder') }}"></textarea>
+
+        <button type="submit" class="btn-premium">
+          <span>💾</span>
+          <span>{{ _('expenses_save_button') }}</span>
+        </button>
+      </form>
+    </div>
+
+    <!-- ================= EXPENSES TABLE ================= -->
+    <div class="exp-table-card">
+      <h3>
+        <span>📋</span>
+        <span>{{ _('expenses_table_title') }}</span>
+      </h3>
+
+      <!-- Filters -->
+      <div class="exp-filters">
+        <input type="text" id="searchInput" placeholder="{{ _('expenses_filter_search_placeholder') }}">
+        <select id="filterCategory">
+          <option value="">{{ _('expenses_filter_category_all') }}</option>
+          <option value="rent">{{ _('expenses_cat_rent') }}</option>
+          <option value="salary">{{ _('expenses_cat_salary') }}</option>
+          <option value="electricity">{{ _('expenses_cat_electricity') }}</option>
+          <option value="internet">{{ _('expenses_cat_internet') }}</option>
+          <option value="advertising">{{ _('expenses_cat_advertising') }}</option>
+          <option value="maintenance">{{ _('expenses_cat_maintenance') }}</option>
+          <option value="other">{{ _('expenses_cat_other') }}</option>
+        </select>
+        <input type="date" id="filterDateFrom" placeholder="{{ _('expenses_filter_date_from') }}">
+        <input type="date" id="filterDateTo" placeholder="{{ _('expenses_filter_date_to') }}">
+        <button onclick="clearFilters()">🗑️ {{ _('expenses_filter_clear') }}</button>
+      </div>
+
+      <!-- Desktop Table View -->
+      <div class="exp-table-wrapper" style="height: 600px;">
+        <div id="expensesTable" class="ag-theme-finora" style="height: 100%; width: 100%;"></div>
+      </div>
+
+      <!-- ================= EXPENSES DATA (JSON) ================= -->
+      <script type="application/json" id="expensesData">
+[
+  {% for e in expenses %}
+  {{ {
+    "id": e.id,
+    "date": e.expense_date.strftime('%Y-%m-%d') if e.expense_date else '',
+    "category": e.category,
+    "category_name": (
+      _('expenses_cat_rent') if e.category == 'rent' else
+      _('expenses_cat_salary') if e.category == 'salary' else
+      _('expenses_cat_electricity') if e.category == 'electricity' else
+      _('expenses_cat_internet') if e.category == 'internet' else
+      _('expenses_cat_advertising') if e.category == 'advertising' else
+      _('expenses_cat_maintenance') if e.category == 'maintenance' else
+      _('expenses_cat_other')
+    ),
+    "title": e.title or '',
+    "amount": (e.amount or 0)|int,
+    "employee_name": (e.employee.name if e.employee else 'النظام'),
+    "notes": e.notes or ''
+  }|tojson }}{% if not loop.last %},{% endif %}
+  {% endfor %}
+]
+      </script>
+    </div>
+  </div>
+
+  <script>
+    // ==================== AG Grid Initialization ====================
+    let gridApi;
+
+    function initAgGrid() {
+      const expensesDataElement = document.getElementById("expensesData");
+      if (!expensesDataElement) return;
+
+      let rowData = [];
+      try {
+        rowData = JSON.parse(expensesDataElement.textContent.trim());
+      } catch (e) {
+        console.error("Error parsing expenses data:", e);
+        return;
+      }
+
+      const columnDefs = [
+        {
+          headerName: "{{ _('expenses_col_date') }}",
+          field: "date",
+          width: 120,
+          cellRenderer: params => `<span style="color: var(--expenses-muted);">${params.value}</span>`
+        },
+        {
+          headerName: "{{ _('expenses_col_category') }}",
+          field: "category_name",
+          width: 120,
+          cellRenderer: params => {
+            const cat = params.data.category;
+            return `<span class="exp-category-badge ${cat}">${params.value}</span>`;
+          }
+        },
+        {
+          headerName: "{{ _('expenses_col_title') }}",
+          field: "title",
+          flex: 1.5,
+          minWidth: 150,
+          cellRenderer: params => `<strong>${params.value}</strong>`
+        },
+        {
+          headerName: "{{ _('expenses_col_amount') }}",
+          field: "amount",
+          width: 130,
+          type: 'numericColumn',
+          cellRenderer: params => `<span class="exp-amount">${params.value.toLocaleString()} {{ _('expenses_currency_iqd') }}</span>`
+        },
+        { headerName: "{{ _('expenses_col_employee') }}", field: "employee_name", width: 120, cellStyle: { color: 'var(--expenses-muted)' } },
+        {
+          headerName: "{{ _('expenses_col_notes') }}",
+          field: "notes",
+          flex: 1,
+          minWidth: 150,
+          cellStyle: { color: 'var(--expenses-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+          tooltipField: 'notes'
+        },
+        {
+          headerName: "{{ _('expenses_col_actions') }}",
+          field: "actions",
+          width: 100,
+          sortable: false,
+          filter: false,
+          cellRenderer: params => {
+            const e = params.data;
+            return `
+              <div class="exp-actions-grid">
+                <a href="/expenses/delete/${e.id}" class="delete-btn" onclick="return confirm('{{ _('expenses_confirm_delete') }}')">{{ _('expenses_action_delete') }}</a>
+              </div>
+            `;
+          }
+        }
+      ];
+
+      const gridOptions = {
+        columnDefs: columnDefs,
+        rowData: rowData,
+        rowHeight: 52,
+        headerHeight: 48,
+        pagination: true,
+        paginationPageSize: 20,
+        paginationPageSizeSelector: [10, 20, 50, 100],
+        enableRtl: true,
+        animateRows: true,
+        defaultColDef: {
+          sortable: true,
+          filter: true,
+          resizable: true,
+          floatingFilter: true
+        },
+        onGridReady: (params) => {
+          gridApi = params.api;
+        },
+        isExternalFilterPresent: () => {
+          const categoryFilter = document.getElementById('filterCategory').value;
+          const dateFrom = document.getElementById('filterDateFrom').value;
+          const dateTo = document.getElementById('filterDateTo').value;
+          return categoryFilter !== '' || dateFrom !== '' || dateTo !== '';
+        },
+        doesExternalFilterPass: (node) => {
+          const categoryFilter = document.getElementById('filterCategory').value;
+          const dateFrom = document.getElementById('filterDateFrom').value;
+          const dateTo = document.getElementById('filterDateTo').value;
+
+          const matchesCategory = !categoryFilter || node.data.category === categoryFilter;
+          const date = node.data.date;
+          const matchesDateFrom = !dateFrom || date >= dateFrom;
+          const matchesDateTo = !dateTo || date <= dateTo;
+
+          return matchesCategory && matchesDateFrom && matchesDateTo;
+        }
+      };
+
+      const eGridDiv = document.querySelector('#expensesTable');
+      agGrid.createGrid(eGridDiv, gridOptions);
+      eGridDiv.classList.add('ag-theme-finora');
+      eGridDiv.classList.remove('ag-theme-quartz-dark');
+    }
+
+    function applyFilters() {
+      const searchTerm = document.getElementById("searchInput")?.value || '';
+      if (gridApi) {
+        gridApi.setGridOption('quickFilterText', searchTerm);
+        gridApi.onFilterChanged();
+      }
+    }
+
+    function clearFilters() {
+      if (document.getElementById("searchInput")) document.getElementById("searchInput").value = '';
+      if (document.getElementById("filterCategory")) document.getElementById("filterCategory").value = '';
+      if (document.getElementById("filterDateFrom")) document.getElementById("filterDateFrom").value = '';
+      if (document.getElementById("filterDateTo")) document.getElementById("filterDateTo").value = '';
+      applyFilters();
+    }
+
+    // Event listeners
+    document.addEventListener("DOMContentLoaded", function () {
+      if (document.getElementById('expensesTable')) {
+        initAgGrid();
+      }
+
+      const searchInput = document.getElementById("searchInput");
+      const filterCategory = document.getElementById("filterCategory");
+      const filterDateFrom = document.getElementById("filterDateFrom");
+      const filterDateTo = document.getElementById("filterDateTo");
+
+      if (searchInput) searchInput.addEventListener("keyup", applyFilters);
+      if (filterCategory) filterCategory.addEventListener("change", applyFilters);
+      if (filterDateFrom) filterDateFrom.addEventListener("change", applyFilters);
+      if (filterDateTo) filterDateTo.addEventListener("change", applyFilters);
+    });
+
+    // ==================== Toast Notifications ====================
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      if (!container) return;
+
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+
+      const icons = {
+        success: '✅',
+        error: '❌',
+        warning: '⚠️',
+        info: 'ℹ️'
+      };
+
+      toast.innerHTML = `
+    <span style="font-size: 18px;">${icons[type] || icons.info}</span>
+    <span style="flex: 1;">${message}</span>
+  `;
+
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.style.animation = 'slideInDown 0.3s ease reverse';
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    // ==================== Loading Overlay ====================
+    function showLoading() {
+      const overlay = document.getElementById('loadingOverlay');
+      if (overlay) {
+        overlay.classList.add('active');
+      }
+    }
+
+    function hideLoading() {
+      const overlay = document.getElementById('loadingOverlay');
+      if (overlay) {
+        overlay.classList.remove('active');
+      }
+    }
+  </script>
+
+</div>
+{% endblock %}

@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>كشوفات {{ shipping_company.name }}</title>
+    <script>
+      (function() {
+        try {
+          var saved = localStorage.getItem("theme");
+          var theme = saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+          document.documentElement.setAttribute("data-theme", theme);
+        } catch (e) {
+          document.documentElement.setAttribute("data-theme", "dark");
+        }
+      })();
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/saas-admin.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* Use global SaaS tokens; keep local alias only */
+            --muted: var(--text-muted);
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Tajawal', system-ui, -apple-system, sans-serif;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: linear-gradient(145deg, rgba(17, 24, 39, 0.9), rgba(11, 18, 32, 0.9));
+            border-radius: 20px;
+            padding: 32px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(59, 130, 246, 0.1);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 12px;
+            color: var(--text);
+        }
+
+        .header .company-name {
+            font-size: 24px;
+            color: var(--primary);
+            margin-bottom: 24px;
+            font-weight: 700;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-top: 24px;
+        }
+
+        .stat-card {
+            background: rgba(15, 23, 42, 0.6);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .stat-card .label {
+            font-size: 14px;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+
+        .stat-card .value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .stat-card.success .value {
+            color: var(--success);
+        }
+
+        .stat-card.warning .value {
+            color: var(--warning);
+        }
+
+        .section {
+            background: linear-gradient(145deg, rgba(17, 24, 39, 0.9), rgba(11, 18, 32, 0.9));
+            border-radius: 20px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(59, 130, 246, 0.1);
+        }
+
+        .section-title {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: var(--text);
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+        }
+
+        thead {
+            background: rgba(15, 23, 42, 0.6);
+        }
+
+        th, td {
+            padding: 12px 16px;
+            text-align: right;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            color: var(--muted);
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        td {
+            color: var(--text);
+            font-size: 15px;
+        }
+
+        tr:hover {
+            background: rgba(15, 23, 42, 0.3);
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 4px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--muted);
+            font-size: 18px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+        }
+
+        .badge-warning {
+            background: rgba(245, 158, 11, 0.2);
+            color: #f59e0b;
+        }
+
+        .badge-danger {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        @media print {
+            body {
+                padding: 0;
+            }
+            .btn {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h1 style="margin: 0;">🚚 كشوفات الشحن</h1>
+                {% if is_logged_in %}
+                <a href="/delivery/logout" class="btn btn-primary" style="text-decoration: none; padding: 10px 20px;">تسجيل خروج</a>
+                {% endif %}
+            </div>
+            <div class="company-name">{{ shipping_company.name }}</div>
+            
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="label">عدد الطلبات</div>
+                    <div class="value">{{ total_orders }}</div>
+                </div>
+                <div class="stat-card success">
+                    <div class="label">إجمالي المبلغ</div>
+                    <div class="value">{{ "{:,.0f}".format(total_amount) }} د.ع</div>
+                </div>
+                <div class="stat-card warning">
+                    <div class="label">المستحقات</div>
+                    <div class="value">{{ "{:,.0f}".format(due_amount) }} د.ع</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- الكشوفات -->
+        <div class="section">
+            <h2 class="section-title">📋 الكشوفات</h2>
+            {% if reports %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>رقم الكشف</th>
+                        <th>عدد الطلبات</th>
+                        <th>إجمالي المبلغ</th>
+                        <th>التاريخ</th>
+                        <th>أنشأه</th>
+                        <th>إجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for report in reports %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td><strong>#{{ report.report_number }}</strong></td>
+                        <td>{{ report.orders_count }}</td>
+                        <td style="color: var(--success); font-weight: 600;">{{ "{:,.0f}".format(report.total_amount) }} د.ع</td>
+                        <td>{{ report.created_at.strftime('%Y-%m-%d %H:%M') if report.created_at else "—" }}</td>
+                        <td>{{ report.created_by or "—" }}</td>
+                        <td>
+                            <a href="/delivery/report/{{ report.id }}?token={{ access_token }}" class="btn btn-primary" target="_blank">👁️ عرض</a>
+                            <a href="/delivery/report/{{ report.id }}?token={{ access_token }}" class="btn btn-success" target="_blank" onclick="window.print()">🖨️ طباعة</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state">لا توجد كشوفات حالياً</div>
+            {% endif %}
+        </div>
+
+        <!-- الطلبات -->
+        <div class="section">
+            <h2 class="section-title">📦 الطلبات</h2>
+            {% if orders %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>رقم الطلب</th>
+                        <th>اسم الزبون</th>
+                        <th>رقم الهاتف</th>
+                        <th>المبلغ</th>
+                        <th>حالة الطلب</th>
+                        <th>حالة الدفع</th>
+                        <th>التاريخ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                    <tr>
+                        <td><strong>#{{ order.id }}</strong></td>
+                        <td>{{ order.customer.name if order.customer else order.customer_name or "—" }}</td>
+                        <td>{{ order.customer.phone if order.customer else "—" }}</td>
+                        <td style="color: var(--success); font-weight: 600;">{{ "{:,.0f}".format(order.total) }} د.ع</td>
+                        <td>
+                            <span class="badge 
+                                {% if order.status == 'تم التوصيل' %}badge-success
+                                {% elif order.status == 'ملغي' or order.status == 'راجع' %}badge-danger
+                                {% else %}badge-warning{% endif %}">
+                                {{ order.status }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge 
+                                {% if order.payment_status == 'مسدد' %}badge-success
+                                {% elif order.payment_status == 'مرتجع' %}badge-danger
+                                {% else %}badge-warning{% endif %}">
+                                {{ order.payment_status }}
+                            </span>
+                        </td>
+                        <td>{{ order.created_at.strftime('%Y-%m-%d %H:%M') if order.created_at else "—" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state">لا توجد طلبات حالياً</div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

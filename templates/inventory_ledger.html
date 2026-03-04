@@ -1,0 +1,692 @@
+{% extends "base.html" %}
+{% block title %}سجل حركات المخزون{% endblock %}
+{% block page_title %}سجل حركات المخزون{% endblock %}
+
+{% block content %}
+<div class="ledger-page">
+
+<style>
+/* ================= CSS Variables ================= */
+:root {
+  /* map to global SaaS tokens */
+  --ledger-primary: var(--primary);
+  --ledger-success: var(--success);
+  --ledger-danger: var(--danger);
+  --ledger-warning: var(--warning);
+}
+
+/* ================= Main Container ================= */
+.ledger-page {
+  padding: 0;
+  direction: rtl;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+/* ================= Cards ================= */
+.ledger-card {
+  background: linear-gradient(145deg, var(--card), var(--card-alt));
+  border: 1px solid var(--border-light);
+  border-radius: 20px;
+  padding: 28px;
+  margin-bottom: 24px;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.ledger-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 6px;
+  height: 100%;
+  background: linear-gradient(180deg, #3b82f6, #10b981);
+  border-radius: 0 20px 20px 0;
+  opacity: 0.8;
+}
+
+.ledger-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.ledger-h3 {
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 800;
+  margin: 0 0 14px 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ================= Stats ================= */
+.ledger-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.ledger-stat {
+  background: linear-gradient(145deg, var(--card), var(--card-alt));
+  border: 1px solid var(--border-light);
+  border-radius: 18px;
+  padding: 16px;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.ledger-stat:hover {
+  transform: translateY(-2px);
+}
+
+.ledger-stat-label {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.ledger-stat-value {
+  font-size: 26px;
+  font-weight: 900;
+  color: var(--text);
+}
+
+.ledger-stat-value.is-warning { color: var(--ledger-warning); }
+.ledger-stat-value.is-danger { color: var(--ledger-danger); }
+.ledger-stat-value.is-success { color: var(--ledger-success); }
+
+/* ================= Product Selector ================= */
+.ledger-product-selector {
+  margin-bottom: 24px;
+}
+
+.ledger-select {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: rgba(15, 23, 42, 0.35);
+  color: var(--text);
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+:root[data-theme="light"] .ledger-select {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.ledger-select:focus {
+  outline: none;
+  border-color: var(--ledger-primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* ================= Empty State ================= */
+.ledger-empty {
+  text-align: center;
+  padding: 48px 26px;
+  min-height: 380px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.ledger-empty-icon {
+  font-size: 72px;
+  margin-bottom: 20px;
+  opacity: 0.5;
+}
+
+.ledger-empty-title {
+  font-weight: 900;
+  font-size: 20px;
+  color: var(--text);
+  margin: 0 0 10px 0;
+}
+
+.ledger-empty-desc {
+  color: var(--text-muted);
+  margin: 0 0 12px 0;
+  line-height: 1.8;
+  font-size: 15px;
+  max-width: 420px;
+}
+
+.ledger-empty-hint {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+/* ================= Movements Table ================= */
+.ledger-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-top: 16px;
+  border-radius: 18px;
+  border: 1px solid var(--border-light);
+  background: rgba(2, 6, 23, 0.12);
+}
+
+:root[data-theme="light"] .ledger-table-wrap {
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.ledger-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 980px;
+}
+
+.ledger-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: rgba(30, 41, 59, 0.82);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  padding: 14px 16px;
+  text-align: right;
+  color: var(--text-muted);
+  font-weight: 800;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border-light);
+  white-space: nowrap;
+}
+
+.ledger-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text);
+  transition: all 0.2s ease;
+  vertical-align: middle;
+}
+
+.ledger-table tr {
+  transition: all 0.3s ease;
+}
+
+.ledger-table tr:hover {
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.ledger-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* ================= Movement Types ================= */
+.movement-type {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.movement-type.opening {
+  background: rgba(59, 130, 246, 0.2);
+  color: var(--ledger-primary);
+}
+
+.movement-type.purchase {
+  background: rgba(16, 185, 129, 0.2);
+  color: var(--ledger-success);
+}
+
+.movement-type.sale {
+  background: rgba(239, 68, 68, 0.2);
+  color: var(--ledger-danger);
+}
+
+.movement-type.return {
+  background: rgba(245, 158, 11, 0.2);
+  color: var(--ledger-warning);
+}
+
+/* ================= Cards View (Mobile) ================= */
+.ledger-cards-view {
+  display: none;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.ledger-movement-card {
+  background: linear-gradient(145deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.7));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 20px;
+  transition: all 0.3s ease;
+}
+
+.ledger-movement-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.ledger-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ledger-card-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.ledger-card-date {
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+.ledger-card-body {
+  display: grid;
+  gap: 12px;
+}
+
+.ledger-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ledger-card-label {
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.ledger-card-value {
+  color: #f1f5f9;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.ledger-card-value.in {
+  color: var(--ledger-success);
+}
+
+.ledger-card-value.out {
+  color: var(--ledger-danger);
+}
+
+/* ================= Summary ================= */
+.ledger-summary {
+  background: linear-gradient(145deg, rgba(59, 130, 246, 0.1), rgba(16, 185, 129, 0.1));
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.ledger-summary-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 16px;
+}
+
+.ledger-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
+}
+
+.ledger-summary-item {
+  text-align: center;
+}
+
+.ledger-summary-label {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.ledger-summary-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* ================= Responsive ================= */
+@media (max-width: 768px) {
+  .ledger-page {
+    padding: 0;
+  }
+  
+  .ledger-card {
+    padding: 20px;
+    border-radius: 16px;
+  }
+  
+  .ledger-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  
+  .ledger-stat {
+    padding: 16px;
+  }
+  
+  .ledger-stat-value {
+    font-size: 24px;
+  }
+  
+  .ledger-table-wrap {
+    display: none;
+  }
+  
+  .ledger-cards-view {
+    display: grid;
+  }
+  
+  .ledger-summary-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 769px) {
+  .ledger-cards-view {
+    display: none !important;
+  }
+  
+  .ledger-table-wrap {
+    display: block !important;
+  }
+}
+
+/* ================= Light Mode Contrast Fix =================
+   Some earlier selectors use an invalid ::root prefix.
+   These valid overrides ensure readability in light theme. */
+:root[data-theme="light"] .ledger-select {
+  background: rgba(255, 255, 255, 0.92);
+  color: #0f172a;
+  border-color: rgba(2, 6, 23, 0.10);
+}
+
+:root[data-theme="light"] .ledger-table-wrap {
+  border-color: rgba(2, 6, 23, 0.08);
+  background: rgba(255, 255, 255, 0.92);
+}
+
+:root[data-theme="light"] .ledger-table th {
+  background: rgba(241, 245, 249, 0.96);
+  color: #0f172a;
+  border-bottom-color: rgba(2, 6, 23, 0.10);
+}
+
+:root[data-theme="light"] .ledger-table td {
+  color: #0f172a;
+  border-bottom-color: rgba(2, 6, 23, 0.06);
+}
+
+:root[data-theme="light"] .ledger-table tr:hover {
+  background: rgba(37, 99, 235, 0.06);
+}
+
+:root[data-theme="light"] .movement-type.opening { background: rgba(37, 99, 235, 0.12); color: #1d4ed8; }
+:root[data-theme="light"] .movement-type.purchase { background: rgba(22, 163, 74, 0.12); color: #166534; }
+:root[data-theme="light"] .movement-type.sale { background: rgba(220, 38, 38, 0.12); color: #991b1b; }
+:root[data-theme="light"] .movement-type.return { background: rgba(245, 158, 11, 0.14); color: #92400e; }
+</style>
+
+<!-- ================= Stats ================= -->
+<div class="ledger-stats">
+  <div class="ledger-stat">
+    <div class="ledger-stat-label">إجمالي المنتجات</div>
+    <div class="ledger-stat-value">{{ total_products }}</div>
+  </div>
+  <div class="ledger-stat">
+    <div class="ledger-stat-label">منخفض المخزون</div>
+    <div class="ledger-stat-value is-warning">{{ low_stock_count }}</div>
+  </div>
+  <div class="ledger-stat">
+    <div class="ledger-stat-label">نافد من المخزون</div>
+    <div class="ledger-stat-value is-danger">{{ out_of_stock_count }}</div>
+  </div>
+  <div class="ledger-stat">
+    <div class="ledger-stat-label">متوازن</div>
+    <div class="ledger-stat-value is-success">{{ balanced_count }}</div>
+  </div>
+</div>
+
+<!-- ================= Product Selector ================= -->
+<div class="ledger-card">
+  <h3 class="ledger-h3">
+    <span>📋</span>
+    <span>اختر منتج لعرض سجل الحركات</span>
+  </h3>
+  
+  <select class="ledger-select" id="productSelector" onchange="loadMovements()">
+    <option value="">-- اختر منتج --</option>
+    {% for p in products %}
+    <option value="{{ p.id }}" {% if request.args.get('product_id')|int == p.id %}selected{% endif %}>
+      {{ p.name }} (المخزون: {{ p.quantity }})
+    </option>
+    {% endfor %}
+  </select>
+</div>
+
+<!-- ================= Empty State ================= -->
+<div class="ledger-card ledger-empty" id="ledgerEmptyState">
+  <div class="ledger-empty-icon">📋</div>
+  <h4 class="ledger-empty-title">لم يُختر أي منتج بعد</h4>
+  <p class="ledger-empty-desc">هذه المساحة مخصصة لعرض سجل الحركات (وارد / صادر / رصيد) للمنتج الذي تختاره.</p>
+  <p class="ledger-empty-hint">اختر منتجاً من القائمة «اختر منتج لعرض سجل الحركات» أعلاه وسيظهر الجدول والملخص هنا.</p>
+</div>
+
+<!-- ================= Movements Display ================= -->
+<div id="movementsContainer" style="display:none;">
+  <div class="ledger-card">
+    <h3 class="ledger-h3">
+      <span>📊</span>
+      <span id="productNameHeader">سجل الحركات</span>
+    </h3>
+    
+    <!-- Summary -->
+    <div class="ledger-summary" id="summaryContainer">
+      <div class="ledger-summary-title">ملخص الحركات</div>
+      <div class="ledger-summary-grid">
+        <div class="ledger-summary-item">
+          <div class="ledger-summary-label">إجمالي الوارد</div>
+          <div class="ledger-summary-value" id="totalIn" style="color: var(--ledger-success);">0</div>
+        </div>
+        <div class="ledger-summary-item">
+          <div class="ledger-summary-label">إجمالي الصادر</div>
+          <div class="ledger-summary-value" id="totalOut" style="color: var(--ledger-danger);">0</div>
+        </div>
+        <div class="ledger-summary-item">
+          <div class="ledger-summary-label">الرصيد الحالي</div>
+          <div class="ledger-summary-value" id="currentBalance" style="color: var(--ledger-primary);">0</div>
+        </div>
+        <div class="ledger-summary-item">
+          <div class="ledger-summary-label">عدد الحركات</div>
+          <div class="ledger-summary-value" id="movementsCount">0</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Desktop Table View -->
+    <div class="ledger-table-wrap" id="tableView">
+      <table class="ledger-table" id="movementsTable">
+        <thead>
+          <tr>
+            <th>التاريخ</th>
+            <th>نوع الحركة</th>
+            <th>الوارد</th>
+            <th>الصادر</th>
+            <th>الرصيد بعد</th>
+            <th>تكلفة الوحدة</th>
+            <th>إجمالي التكلفة</th>
+            <th>الوصف</th>
+          </tr>
+        </thead>
+        <tbody id="movementsTableBody">
+        </tbody>
+      </table>
+    </div>
+    
+    <!-- Mobile Cards View -->
+    <div class="ledger-cards-view" id="cardsView">
+      <div id="movementsCards">
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ================= Load Movements =================
+function loadMovements() {
+  const productId = document.getElementById('productSelector').value;
+  
+  if (!productId) {
+    document.getElementById('movementsContainer').style.display = 'none';
+    const empty = document.getElementById('ledgerEmptyState');
+    if (empty) empty.style.display = 'block';
+    return;
+  }
+  const empty = document.getElementById('ledgerEmptyState');
+  if (empty) empty.style.display = 'none';
+  
+  // Show loading
+  document.getElementById('movementsContainer').style.display = 'block';
+  document.getElementById('movementsTableBody').innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:#64748b;">جاري التحميل...</td></tr>';
+  document.getElementById('movementsCards').innerHTML = '<div style="text-align:center;padding:40px;color:#64748b;">جاري التحميل...</div>';
+  
+  // Fetch movements
+  fetch(`/inventory/ledger/api/product/${productId}`)
+    .then(response => response.json())
+    .then(data => {
+      displayMovements(data);
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      document.getElementById('movementsTableBody').innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:#ef4444;">حدث خطأ أثناء تحميل البيانات</td></tr>';
+    });
+}
+
+// ================= Display Movements =================
+function displayMovements(data) {
+  const movements = data.movements || [];
+  const summary = data.summary || {};
+  
+  // Update summary
+  document.getElementById('productNameHeader').textContent = `سجل حركات: ${summary.product_name || ''}`;
+  document.getElementById('totalIn').textContent = summary.total_in || 0;
+  document.getElementById('totalOut').textContent = summary.total_out || 0;
+  document.getElementById('currentBalance').textContent = summary.calculated_balance || 0;
+  document.getElementById('movementsCount').textContent = summary.movements_count || 0;
+  
+  // Clear previous content
+  const tableBody = document.getElementById('movementsTableBody');
+  const cardsContainer = document.getElementById('movementsCards');
+  tableBody.innerHTML = '';
+  cardsContainer.innerHTML = '';
+  
+  if (movements.length === 0) {
+    tableBody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:#64748b;">لا توجد حركات مسجلة</td></tr>';
+    cardsContainer.innerHTML = '<div style="text-align:center;padding:40px;color:#64748b;">لا توجد حركات مسجلة</div>';
+    return;
+  }
+  
+  // Display table rows
+  movements.forEach(m => {
+    const row = document.createElement('tr');
+    const typeClass = {
+      'opening_stock': 'opening',
+      'purchase': 'purchase',
+      'sale': 'sale',
+      'return_sale': 'return'
+    }[m.type] || '';
+    
+    row.innerHTML = `
+      <td>${m.date}</td>
+      <td><span class="movement-type ${typeClass}">${m.type_ar}</span></td>
+      <td style="color: var(--ledger-success);font-weight:600;">${m.quantity_in > 0 ? '+' + m.quantity_in : '—'}</td>
+      <td style="color: var(--ledger-danger);font-weight:600;">${m.quantity_out > 0 ? '-' + m.quantity_out : '—'}</td>
+      <td style="font-weight:700;">${m.balance_after}</td>
+      <td>${m.cost_per_unit.toLocaleString('ar')} د.ع</td>
+      <td>${m.total_cost.toLocaleString('ar')} د.ع</td>
+      <td style="font-size:13px;color:#94a3b8;">${m.description}</td>
+    `;
+    tableBody.appendChild(row);
+  });
+  
+  // Display cards (mobile)
+  movements.forEach(m => {
+    const typeClass = {
+      'opening_stock': 'opening',
+      'purchase': 'purchase',
+      'sale': 'sale',
+      'return_sale': 'return'
+    }[m.type] || '';
+    
+    const card = document.createElement('div');
+    card.className = 'ledger-movement-card';
+    card.innerHTML = `
+      <div class="ledger-card-header">
+        <div class="ledger-card-title">${m.type_ar}</div>
+        <div class="ledger-card-date">${m.date}</div>
+      </div>
+      <div class="ledger-card-body">
+        ${m.quantity_in > 0 ? `
+        <div class="ledger-card-row">
+          <span class="ledger-card-label">الوارد:</span>
+          <span class="ledger-card-value in">+${m.quantity_in}</span>
+        </div>
+        ` : ''}
+        ${m.quantity_out > 0 ? `
+        <div class="ledger-card-row">
+          <span class="ledger-card-label">الصادر:</span>
+          <span class="ledger-card-value out">-${m.quantity_out}</span>
+        </div>
+        ` : ''}
+        <div class="ledger-card-row">
+          <span class="ledger-card-label">الرصيد بعد:</span>
+          <span class="ledger-card-value">${m.balance_after}</span>
+        </div>
+        <div class="ledger-card-row">
+          <span class="ledger-card-label">التكلفة:</span>
+          <span class="ledger-card-value">${m.total_cost.toLocaleString('ar')} د.ع</span>
+        </div>
+        <div class="ledger-card-row">
+          <span class="ledger-card-label">الوصف:</span>
+          <span class="ledger-card-value" style="font-size:12px;color:#94a3b8;">${m.description}</span>
+        </div>
+      </div>
+    `;
+    cardsContainer.appendChild(card);
+  });
+}
+
+// ================= Initialize =================
+document.addEventListener('DOMContentLoaded', function() {
+  // Auto-load if product_id in URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const productId = urlParams.get('product_id');
+  if (productId) {
+    document.getElementById('productSelector').value = productId;
+    loadMovements();
+  } else {
+    const empty = document.getElementById('ledgerEmptyState');
+    if (empty) empty.style.display = 'block';
+  }
+});
+</script>
+
+</div>
+{% endblock %}

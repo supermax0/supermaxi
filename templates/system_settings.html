@@ -1,0 +1,1212 @@
+{% extends "base.html" %}
+
+{% block title %}إعدادات النظام - الصلاحيات{% endblock %}
+
+{% block content %}
+<style>
+  .system-settings-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+
+  .system-settings-header {
+    margin-bottom: 32px;
+  }
+
+  .system-settings-header h1 {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .system-settings-header p {
+    color: var(--text-muted);
+    font-size: 16px;
+  }
+
+  .permissions-section {
+    background: linear-gradient(145deg, rgba(17, 24, 39, 0.95), rgba(11, 18, 32, 0.95));
+    border-radius: 20px;
+    padding: 32px;
+    border: 1px solid rgba(59, 130, 246, 0.15);
+    margin-bottom: 24px;
+  }
+
+  .permissions-section-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .employees-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 16px;
+  }
+
+  .employees-table th {
+    background: rgba(15, 23, 42, 0.6);
+    color: var(--text);
+    font-weight: 600;
+    padding: 16px;
+    text-align: right;
+    border-bottom: 2px solid var(--border);
+    font-size: 14px;
+  }
+
+  .employees-table td {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    font-size: 14px;
+  }
+
+  .employees-table tr:hover {
+    background: rgba(59, 130, 246, 0.05);
+  }
+
+  .role-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  .role-admin {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: #fff;
+  }
+
+  .role-cashier {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: #fff;
+  }
+
+  .status-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .status-active {
+    background: rgba(16, 185, 129, 0.2);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+  }
+
+  .status-inactive {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
+
+  .action-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .btn-action {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .btn-role {
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--primary);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+  }
+
+  .btn-role:hover {
+    background: rgba(59, 130, 246, 0.25);
+    transform: translateY(-2px);
+  }
+
+  .btn-status {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--success);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+  }
+
+  .btn-status:hover {
+    background: rgba(16, 185, 129, 0.25);
+    transform: translateY(-2px);
+  }
+
+  .btn-password {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+  }
+
+  .btn-password:hover {
+    background: rgba(245, 158, 11, 0.25);
+    transform: translateY(-2px);
+  }
+
+  .modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(5px);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .modal.show {
+    display: flex;
+  }
+
+  .modal-content {
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+    padding: 40px;
+    border-radius: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 40px 100px rgba(0, 0, 0, 0.6);
+    color: #fff;
+  }
+
+  .modal-header {
+    margin-bottom: 24px;
+  }
+
+  .modal-header h3 {
+    font-size: 22px;
+    font-weight: 800;
+    color: #fff;
+    margin-bottom: 12px;
+  }
+
+  .modal-header p {
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+
+  .modal-body {
+    margin-bottom: 24px;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+
+  /* Custom Scrollbar for Modal Body */
+  .modal-body::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .modal-body::-webkit-scrollbar-track {
+    background: rgba(15, 23, 42, 0.5);
+    border-radius: 4px;
+  }
+
+  .modal-body::-webkit-scrollbar-thumb {
+    background: rgba(59, 130, 246, 0.5);
+    border-radius: 4px;
+  }
+
+  .modal-body::-webkit-scrollbar-thumb:hover {
+    background: rgba(59, 130, 246, 0.7);
+  }
+
+  .form-group {
+    margin-bottom: 20px;
+  }
+
+  .form-group label {
+    color: var(--text-muted);
+    font-weight: 700;
+    font-size: 13px;
+    margin-bottom: 10px;
+    display: block;
+  }
+
+  .form-group select,
+  .form-group input {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    padding: 14px 18px;
+    border-radius: 12px;
+    color: #fff;
+    font-family: inherit;
+  }
+
+  .form-group select:focus,
+  .form-group input:focus {
+    border-color: var(--primary);
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .modal-footer {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+  }
+
+  .btn-modal {
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-weight: 800;
+    transition: var(--transition);
+  }
+
+  .btn-primary-modal {
+    background: var(--primary);
+    color: #fff;
+  }
+
+  .btn-primary-modal:hover {
+    background: var(--primary-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+  }
+
+  .btn-secondary-modal {
+    background: rgba(100, 116, 139, 0.2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .btn-secondary-modal:hover {
+    background: rgba(100, 116, 139, 0.3);
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+  }
+
+  .empty-state i {
+    font-size: 64px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+  }
+
+  .empty-state h3 {
+    font-size: 20px;
+    margin-bottom: 8px;
+    color: var(--text);
+  }
+
+  /* Permission Item Styles */
+  .permission-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 16px;
+    margin-bottom: 12px;
+    border: 1px solid var(--border-color);
+    transition: var(--transition);
+  }
+
+  .permission-item:hover {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: var(--primary);
+    transform: translateX(-5px);
+  }
+
+  .permission-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .permission-info i {
+    width: 40px;
+    height: 40px;
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--primary);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+  }
+
+  .permission-info div {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .permission-info label {
+    font-weight: 800;
+    font-size: 14px;
+    color: #fff;
+    margin: 0;
+  }
+
+  .permission-info span {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  /* Toggle Switch Styles */
+  .toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 52px;
+    height: 28px;
+    cursor: pointer;
+  }
+
+  .toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    background-color: rgba(255, 255, 255, 0.05);
+    transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 34px;
+    border: 1px solid var(--border-color);
+  }
+
+  .toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    right: 4px;
+    bottom: 3px;
+    background-color: #fff;
+    transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 50%;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  }
+
+  .toggle-switch input:checked+.toggle-slider {
+    background-color: var(--primary);
+    border-color: var(--primary);
+  }
+
+  .toggle-switch input:checked+.toggle-slider:before {
+    transform: translateX(-24px);
+  }
+
+  .toggle-switch:hover .toggle-slider {
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+  }
+
+  .general-note {
+    padding: 12px;
+    background: rgba(16, 185, 129, 0.1);
+    border-radius: 8px;
+    border-right: 3px solid #10b981;
+    margin-top: 16px;
+  }
+
+  .general-note small {
+    color: #94a3b8;
+    font-size: 12px;
+    display: block;
+  }
+
+  :root[data-theme="light"] .general-note {
+    background: #ecfdf5;
+    border-right-color: #10b981;
+  }
+
+  :root[data-theme="light"] .general-note small {
+    color: #047857;
+  }
+
+  /* وضع الفاتح – كروت أوضح ونص داكن */
+  :root[data-theme="light"] .permissions-section {
+    background: #ffffff;
+    border-color: #e5e7eb;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.06);
+  }
+
+  :root[data-theme="light"] .permissions-section-title {
+    border-bottom-color: #e5e7eb;
+    color: #0f172a;
+  }
+
+  :root[data-theme="light"] .permission-item {
+    background: #f9fafb;
+    border-color: #e5e7eb;
+  }
+
+  :root[data-theme="light"] .permission-item:hover {
+    background: #eff6ff;
+    border-color: #2563eb;
+  }
+
+  :root[data-theme="light"] .employees-table th {
+    background: #f3f4f6;
+    color: #111827;
+    border-bottom-color: #e5e7eb;
+  }
+
+  :root[data-theme="light"] .employees-table td {
+    border-bottom-color: #e5e7eb;
+    color: #111827;
+  }
+
+  :root[data-theme="light"] .modal-content {
+    background: #ffffff;
+    border-color: #e5e7eb;
+  }
+
+  :root[data-theme="light"] .form-group label {
+    color: #0f172a;
+  }
+
+  :root[data-theme="light"] .form-group select,
+  :root[data-theme="light"] .form-group input {
+    background: #f9fafb;
+    border-color: #e5e7eb;
+    color: #111827;
+  }
+
+  :root[data-theme="light"] .status-active {
+    background: #dcfce7;
+    border-color: #bbf7d0;
+  }
+
+  :root[data-theme="light"] .status-inactive {
+    background: #fee2e2;
+    border-color: #fecaca;
+  }
+
+  @media (max-width: 768px) {
+    .system-settings-container {
+      padding: 16px;
+    }
+
+    .employees-table {
+      font-size: 12px;
+    }
+
+    .employees-table th,
+    .employees-table td {
+      padding: 12px 8px;
+    }
+
+    .action-buttons {
+      flex-direction: column;
+    }
+
+    .btn-action {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+</style>
+
+<div class="system-settings-container">
+  <div class="system-settings-header" style="margin-bottom: 40px;">
+    <h1 style="font-size: 28px; font-weight: 800; display: flex; align-items: center; gap: 15px;">
+      <i class="fas fa-user-shield" style="color: var(--primary);"></i>
+      إعدادات الصلاحيات والوصول
+    </h1>
+    <p style="color: var(--text-muted); margin-top: 8px;">إدارة وتخصيص مستويات الوصول للموظفين والمستخدمين في المنشأة
+    </p>
+  </div>
+
+  <!-- =======================
+       General Settings (إعدادات عامة)
+  ======================= -->
+  <div class="premium-card" style="margin-bottom: 32px; padding: 32px;">
+    <div class="permissions-section-title" style="border: none; margin-bottom: 24px;">
+      <i class="fas fa-sliders-h"></i>
+      تفضيلات التنبيهات
+    </div>
+
+    <div class="permission-item"
+      style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 20px; border-radius: 16px;">
+      <div class="permission-info">
+        <i class="fas fa-bell" style="color: var(--primary); font-size: 18px;"></i>
+        <div>
+          <label style="font-size: 15px; font-weight: 800;">أصوات التنبيه التفاعلية</label>
+          <span style="font-size: 13px;">تشغيل نغمات صوتية عند إجراء العمليات الأساسية (تسديد / إلغاء)</span>
+        </div>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="soundsEnabled" checked onchange="toggleSounds(this.checked)">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <div
+      style="margin-top: 20px; padding: 14px 20px; background: rgba(16, 185, 129, 0.05); border-radius: 12px; border-right: 4px solid var(--success); display: flex; align-items: center; gap: 12px;">
+      <i class="fas fa-lightbulb" style="color: var(--success);"></i>
+      <span style="font-size: 13px; color: var(--text-muted);">
+        تساعد الأصوات في تأكيد العمليات السريعة دون الحاجة للنظر الدائم للشاشة.
+      </span>
+    </div>
+  </div>
+
+  <!-- =======================
+       Permissions Management (إدارة الصلاحيات)
+  ======================= -->
+  <div class="premium-card" style="padding: 0; overflow: hidden;">
+    <div
+      style="padding: 32px 32px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+      <div class="permissions-section-title" style="border: none; margin: 0;">
+        <i class="fas fa-users-cog"></i>
+        فريق العمل والصلاحيات
+      </div>
+    </div>
+
+    {% if employees %}
+    <div style="overflow-x: auto;">
+      <table class="employees-table" style="margin: 0;">
+        <thead>
+          <tr style="background: rgba(255,255,255,0.02);">
+            <th style="padding: 20px 32px;">الموظف</th>
+            <th style="padding: 20px 32px;">الوظيفة / الصلاحية</th>
+            <th style="padding: 20px 32px;">الحالة</th>
+            <th style="padding: 20px 32px; text-align: left;">الإجراءات</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for employee in employees %}
+          <tr style="transition: var(--transition);">
+            <td style="padding: 20px 32px;">
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <div
+                  style="width: 36px; height: 36px; border-radius: 10px; background: var(--surface-color); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; color: var(--primary); font-weight: 800;">
+                  {{ employee.name[:1] }}
+                </div>
+                <div style="display: flex; flex-direction: column;">
+                  <span style="font-weight: 800; color: #fff;">{{ employee.name }}</span>
+                  <span style="font-size: 12px; color: var(--text-muted);">@{{ employee.username }}</span>
+                </div>
+              </div>
+            </td>
+            <td style="padding: 20px 32px;">
+              <span class="role-badge role-{{ employee.role }}"
+                style="border-radius: 8px; font-weight: 800; letter-spacing: 0.5px;">
+                {% if employee.role == 'admin' %}مدير النظام{% else %}كاشير (مبيعات){% endif %}
+              </span>
+            </td>
+            <td style="padding: 20px 32px;">
+              <span class="status-badge status-{% if employee.is_active %}active{% else %}inactive{% endif %}"
+                style="border-radius: 8px; font-size: 11px;">
+                <i class="fas {{ 'fa-check-circle' if employee.is_active else 'fa-minus-circle' }}"></i>
+                {{ 'حساب نشط' if employee.is_active else 'معطل مؤقتاً' }}
+              </span>
+            </td>
+            <td style="padding: 20px 32px; text-align: left;">
+              <div class="action-buttons" style="justify-content: flex-start; gap: 10px;">
+                <button class="btn-action btn-role" onclick="openRoleModal({{ employee.id }}, '{{ employee.role }}')"
+                  title="تغيير الدور">
+                  <i class="fas fa-user-tag"></i>
+                </button>
+                <button class="btn-action btn-permissions"
+                  onclick="openPermissionsModal({{ employee.id }}, '{{ employee.name }}')" title="الصلاحيات التفصيلية"
+                  style="background: rgba(139, 92, 246, 0.1); color: #a78bfa; border: 1px solid rgba(139, 92, 246, 0.2);">
+                  <i class="fas fa-fingerprint"></i>
+                </button>
+                <button class="btn-action btn-password"
+                  onclick="openPasswordModal({{ employee.id }}, '{{ employee.username }}')" title="تغيير كلمة المرور">
+                  <i class="fas fa-lock-open"></i>
+                </button>
+                <button class="btn-action btn-status"
+                  onclick="toggleEmployeeStatus({{ employee.id }}, {{ employee.is_active|lower }})"
+                  title="{{ 'تعطيل الحساب' if employee.is_active else 'تفعيل الحساب' }}"
+                  style="background: {{ 'rgba(239, 68, 68, 0.1)' if employee.is_active else 'rgba(16, 185, 129, 0.1)' }}; color: {{ '#ef4444' if employee.is_active else '#10b981' }}; border: 1px solid {{ 'rgba(239, 68, 68, 0.2)' if employee.is_active else 'rgba(16, 185, 129, 0.2)' }};">
+                  <i class="fas {{ 'fa-user-slash' if employee.is_active else 'fa-user-check' }}"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state" style="padding: 100px 0;">
+      <i class="fas fa-user-plus" style="font-size: 48px; opacity: 0.1; margin-bottom: 20px;"></i>
+      <h3 style="font-weight: 800; color: #fff;">لم يتم إضافة موظفين بعد</h3>
+      <p>ابدأ بإضافة فريق عملك لتوزيع المهام والصلاحيات</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+
+<!-- Modal تغيير الصلاحية -->
+<div id="roleModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>تغيير الصلاحية</h3>
+      <p id="roleModalEmployeeName"></p>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>الصلاحية الحالية</label>
+        <input type="text" id="currentRole" readonly style="background: rgba(100, 116, 139, 0.2); cursor: not-allowed;">
+      </div>
+      <div class="form-group">
+        <label>الصلاحية الجديدة</label>
+        <select id="newRole">
+          <option value="cashier">كاشير</option>
+          <option value="admin">مدير</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-modal btn-secondary-modal" onclick="closeRoleModal()">
+        <i class="fas fa-times"></i>
+        إلغاء
+      </button>
+      <button class="btn-modal btn-primary-modal" onclick="saveRole()">
+        <i class="fas fa-save"></i>
+        حفظ
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal الصلاحيات -->
+<div id="permissionsModal" class="modal">
+  <div class="modal-content" style="max-width: 500px;">
+    <div class="modal-header">
+      <h3 style="display: flex; align-items: center; gap: 10px;">
+        <i class="fas fa-shield-alt" style="color: var(--primary);"></i>
+        الصلاحيات
+      </h3>
+      <p id="permissionsModalEmployeeName" style="color: var(--text-muted); margin-top: 5px;"></p>
+    </div>
+    <div class="modal-body" style="padding: 0; max-height: 70vh; overflow-y: auto;">
+      <div class="permission-item" data-perm="can_see_orders">
+        <div class="permission-info">
+          <i class="fas fa-shopping-cart" style="color: #3b82f6;"></i>
+          <div>
+            <label>رؤية الطلبات (عام)</label>
+            <span>عرض صفحة الطلبات</span>
+          </div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="perm_can_see_orders">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div
+        style="margin: 16px 0; padding: 12px; background: rgba(59, 130, 246, 0.1); border-radius: 8px; border-right: 3px solid #3b82f6;">
+        <strong style="color: #3b82f6;">🔍 صلاحيات رؤية الطلبات حسب الحالة:</strong>
+      </div>
+
+      <div class="permission-item" data-perm="can_see_orders_placed" style="margin-right: 20px;">
+        <div class="permission-info">
+          <i class="fas fa-clock" style="color: #f59e0b;"></i>
+          <div>
+            <label>طلبات "تم الطلب"</label>
+            <span>رؤية الطلبات الجديدة</span>
+          </div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="perm_can_see_orders_placed">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div class="permission-item" data-perm="can_see_orders_delivered" style="margin-right: 20px;">
+        <div class="permission-info">
+          <i class="fas fa-check-circle" style="color: #10b981;"></i>
+          <div>
+            <label>طلبات "واصلة"</label>
+            <span>رؤية الطلبات الواصلة</span>
+          </div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="perm_can_see_orders_delivered">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div class="permission-item" data-perm="can_see_orders_returned" style="margin-right: 20px;">
+        <div class="permission-info">
+          <i class="fas fa-undo" style="color: #ef4444;"></i>
+          <div>
+            <label>طلبات "راجعة"</label>
+            <span>رؤية الطلبات المرتجعة</span>
+          </div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="perm_can_see_orders_returned">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div class="permission-item" data-perm="can_see_orders_shipped" style="margin-right: 20px;">
+        <div class="permission-info">
+          <i class="fas fa-shipping-fast" style="color: #8b5cf6;"></i>
+          <div>
+            <label>طلبات "مشحونة"</label>
+            <span>رؤية الطلبات المشحونة</span>
+          </div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="perm_can_see_orders_shipped">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div class="permission-item" data-perm="can_edit_price">
+        <div class="permission-info">
+          <i class="fas fa-dollar-sign" style="color: #10b981;"></i>
+          <div>
+            <label>تعديل السعر</label>
+            <span>تغيير أسعار المنتجات</span>
+          </div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="perm_can_edit_price">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div class="permission-item" data-perm="can_see_reports">
+        <div class="permission-info">
+          <i class="fas fa-chart-bar" style="color: #f59e0b;"></i>
+          <div>
+            <label>رؤية التقارير</label>
+            <span>عرض التقارير والإحصائيات</span>
+          </div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="perm_can_see_reports">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div class="permission-item" data-perm="can_manage_inventory">
+        <div class="permission-info">
+          <i class="fas fa-boxes" style="color: #8b5cf6;"></i>
+          <div>
+            <label>إدارة المخزون</label>
+            <span>إضافة وتعديل المنتجات</span>
+          </div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="perm_can_manage_inventory">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div class="permission-item" data-perm="can_see_expenses">
+        <div class="permission-info">
+          <i class="fas fa-receipt" style="color: #ec4899;"></i>
+          <div>
+            <label>المصاريف</label>
+            <span>رؤية صفحة المصاريف</span>
+          </div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="perm_can_see_expenses">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div class="permission-item" data-perm="can_manage_suppliers">
+        <div class="permission-info">
+          <i class="fas fa-truck" style="color: #06b6d4;"></i>
+          <div>
+            <label>الموردين</label>
+            <span>رؤية وإدارة الموردين</span>
+          </div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="perm_can_manage_suppliers">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div class="permission-item" data-perm="can_see_accounts">
+        <div class="permission-info">
+          <i class="fas fa-wallet" style="color: #f97316;"></i>
+          <div>
+            <label>الحسابات</label>
+            <span>رؤية صفحة الحسابات</span>
+          </div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="perm_can_see_accounts">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div class="permission-item" data-perm="can_see_financial">
+        <div class="permission-info">
+          <i class="fas fa-money-bill-wave" style="color: #ef4444;"></i>
+          <div>
+            <label>البيانات المالية</label>
+            <span>عرض الحسابات والماليات</span>
+          </div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="perm_can_see_financial">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-modal btn-secondary-modal" onclick="closePermissionsModal()">
+        <i class="fas fa-times"></i>
+        إلغاء
+      </button>
+      <button class="btn-modal btn-primary-modal" onclick="savePermissions()">
+        <i class="fas fa-save"></i>
+        حفظ
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal تغيير كلمة المرور -->
+<div id="passwordModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>تغيير كلمة المرور</h3>
+      <p id="passwordModalEmployeeName"></p>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>كلمة المرور الجديدة</label>
+        <input type="password" id="newPassword" placeholder="أدخل كلمة المرور الجديدة">
+      </div>
+      <div class="form-group">
+        <label>تأكيد كلمة المرور</label>
+        <input type="password" id="confirmPassword" placeholder="أكد كلمة المرور">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-modal btn-secondary-modal" onclick="closePasswordModal()">
+        <i class="fas fa-times"></i>
+        إلغاء
+      </button>
+      <button class="btn-modal btn-primary-modal" onclick="savePassword()">
+        <i class="fas fa-save"></i>
+        حفظ
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let currentEmployeeId = null;
+
+  function openRoleModal(employeeId, currentRole) {
+    currentEmployeeId = employeeId;
+    const employeeRow = event.target.closest('tr');
+    const employeeName = employeeRow.querySelector('td').textContent.trim();
+
+    document.getElementById('roleModalEmployeeName').textContent = `الموظف: ${employeeName}`;
+    document.getElementById('currentRole').value = currentRole === 'admin' ? 'مدير' : 'كاشير';
+    document.getElementById('newRole').value = currentRole;
+    document.getElementById('roleModal').classList.add('show');
+  }
+
+  function closeRoleModal() {
+    document.getElementById('roleModal').classList.remove('show');
+    currentEmployeeId = null;
+  }
+
+  function saveRole() {
+    if (!currentEmployeeId) return;
+
+    const newRole = document.getElementById('newRole').value;
+
+    showLoading();
+    fetch('/settings/system/update-role', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        employee_id: currentEmployeeId,
+        role: newRole
+      })
+    })
+      .then(r => r.json())
+      .then(data => {
+        hideLoading();
+        if (data.success) {
+          showToast('✅ ' + data.message, 'success');
+          closeRoleModal();
+          setTimeout(() => location.reload(), 1000);
+        } else {
+          showToast('❌ ' + (data.error || 'حدث خطأ'), 'error');
+        }
+      })
+      .catch(error => {
+        hideLoading();
+        showToast('❌ حدث خطأ في الاتصال', 'error');
+        console.error(error);
+      });
+  }
+
+  function toggleEmployeeStatus(employeeId, currentStatus) {
+    const newStatus = !currentStatus;
+
+    showLoading();
+    fetch('/settings/system/update-status', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        employee_id: parseInt(employeeId),
+        is_active: newStatus
+      })
+    })
+      .then(r => r.json())
+      .then(data => {
+        hideLoading();
+        if (data.success) {
+          showToast('✅ ' + data.message, 'success');
+          setTimeout(() => location.reload(), 800);
+        } else {
+          showToast('❌ ' + (data.error || 'حدث خطأ'), 'error');
+        }
+      })
+      .catch(error => {
+        hideLoading();
+        showToast('❌ حدث خطأ في الاتصال', 'error');
+        console.error(error);
+      });
+  }
+
+  function openPasswordModal(employeeId, username) {
+    currentEmployeeId = employeeId;
+    document.getElementById('passwordModalEmployeeName').textContent = `اسم المستخدم: ${username}`;
+    document.getElementById('newPassword').value = '';
+    document.getElementById('confirmPassword').value = '';
+    document.getElementById('passwordModal').classList.add('show');
+  }
+
+  function closePasswordModal() {
+    document.getElementById('passwordModal').classList.remove('show');
+    currentEmployeeId = null;
+  }
+
+  function savePassword() {
+    if (!currentEmployeeId) return;
+
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+
+    if (!newPassword || !confirmPassword) {
+      showToast('❌ يرجى إدخال كلمة المرور', 'error');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      showToast('❌ كلمات المرور غير متطابقة', 'error');
+      return;
+    }
+
+    if (newPassword.length < 4) {
+      showToast('❌ كلمة المرور يجب أن تكون 4 أحرف على الأقل', 'error');
+      return;
+    }
+
+    showLoading();
+    fetch('/settings/system/update-password', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        employee_id: currentEmployeeId,
+        password: newPassword
+      })
+    })
+      .then(r => r.json())
+      .then(data => {
+        hideLoading();
+        if (data.success) {
+          showToast('✅ ' + data.message, 'success');
+          closePasswordModal();
+        } else {
+          showToast('❌ ' + (data.error || 'حدث خطأ'), 'error');
+        }
+      })
+      .catch(error => {
+        hideLoading();
+        showToast('❌ حدث خطأ في الاتصال', 'error');
+        console.error(error);
+      });
+  }
+
+  // إغلاق Modal عند الضغط خارجها
+  document.addEventListener('click', function (e) {
+    if (e.target.classList.contains('modal')) {
+      closeRoleModal();
+      closePermissionsModal();
+      closePasswordModal();
+    }
+  });
+
+  function openPermissionsModal(employeeId, employeeName) {
+    currentEmployeeId = employeeId;
+    const nameEl = document.getElementById('permissionsModalEmployeeName');
+    if (nameEl) {
+      nameEl.textContent = employeeName;
+    }
+
+    // جلب الصلاحيات الحالية
+    showLoading();
+    fetch(`/settings/system/get-permissions/${employeeId}`)
+      .then(r => r.json())
+      .then(data => {
+        hideLoading();
+        if (data.success) {
+          const perms = data.permissions;
+          document.getElementById('perm_can_see_orders').checked = perms.can_see_orders || false;
+          document.getElementById('perm_can_see_orders_placed').checked = perms.can_see_orders_placed || false;
+          document.getElementById('perm_can_see_orders_delivered').checked = perms.can_see_orders_delivered || false;
+          document.getElementById('perm_can_see_orders_returned').checked = perms.can_see_orders_returned || false;
+          document.getElementById('perm_can_see_orders_shipped').checked = perms.can_see_orders_shipped || false;
+          document.getElementById('perm_can_edit_price').checked = perms.can_edit_price || false;
+          document.getElementById('perm_can_see_reports').checked = perms.can_see_reports || false;
+          document.getElementById('perm_can_manage_inventory').checked = perms.can_manage_inventory || false;
+          document.getElementById('perm_can_see_expenses').checked = perms.can_see_expenses || false;
+          document.getElementById('perm_can_manage_suppliers').checked = perms.can_manage_suppliers || false;
+          document.getElementById('perm_can_see_accounts').checked = perms.can_see_accounts || false;
+          document.getElementById('perm_can_see_financial').checked = perms.can_see_financial || false;
+
+          const modal = document.getElementById('permissionsModal');
+          if (modal) {
+            modal.classList.add('show');
+          }
+        } else {
+          showToast('❌ ' + (data.error || 'حدث خطأ'), 'error');
+        }
+      })
+      .catch(error => {
+        hideLoading();
+        showToast('❌ حدث خطأ في الاتصال', 'error');
+        console.error(error);
+      });
+  }
+
+  function closePermissionsModal() {
+    const modal = document.getElementById('permissionsModal');
+    if (modal) {
+      modal.classList.remove('show');
+    }
+    currentEmployeeId = null;
+  }
+
+  function savePermissions() {
+    if (!currentEmployeeId) return;
+
+    const permissions = {
+      employee_id: currentEmployeeId,
+      can_see_orders: document.getElementById('perm_can_see_orders').checked,
+      can_see_orders_placed: document.getElementById('perm_can_see_orders_placed').checked,
+      can_see_orders_delivered: document.getElementById('perm_can_see_orders_delivered').checked,
+      can_see_orders_returned: document.getElementById('perm_can_see_orders_returned').checked,
+      can_see_orders_shipped: document.getElementById('perm_can_see_orders_shipped').checked,
+      can_edit_price: document.getElementById('perm_can_edit_price').checked,
+      can_see_reports: document.getElementById('perm_can_see_reports').checked,
+      can_manage_inventory: document.getElementById('perm_can_manage_inventory').checked,
+      can_see_expenses: document.getElementById('perm_can_see_expenses').checked,
+      can_manage_suppliers: document.getElementById('perm_can_manage_suppliers').checked,
+      can_see_accounts: document.getElementById('perm_can_see_accounts').checked,
+      can_see_financial: document.getElementById('perm_can_see_financial').checked
+    };
+
+    showLoading();
+    fetch('/settings/system/update-permissions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(permissions)
+    })
+      .then(r => r.json())
+      .then(data => {
+        hideLoading();
+        if (data.success) {
+          showToast('✅ ' + data.message, 'success');
+          closePermissionsModal();
+        } else {
+          showToast('❌ ' + (data.error || 'حدث خطأ'), 'error');
+        }
+      })
+      .catch(error => {
+        hideLoading();
+        showToast('❌ حدث خطأ في الاتصال', 'error');
+        console.error(error);
+      });
+  }
+
+  // ========================
+  // Sound Settings (إعدادات الصوت)
+  // ========================
+  // تحميل إعدادات الصوت عند فتح الصفحة
+  document.addEventListener('DOMContentLoaded', function () {
+    const soundsEnabled = localStorage.getItem('sounds_enabled');
+    const soundsCheckbox = document.getElementById('soundsEnabled');
+    if (soundsCheckbox) {
+      soundsCheckbox.checked = soundsEnabled === null ? true : soundsEnabled === 'true'; // افتراضي: مفعل
+    }
+  });
+
+  // تفعيل/تعطيل الأصوات
+  function toggleSounds(enabled) {
+    localStorage.setItem('sounds_enabled', enabled ? 'true' : 'false');
+    if (enabled) {
+      showToast('🔊 تم تفعيل الأصوات', 'success');
+    } else {
+      showToast('🔇 تم تعطيل الأصوات', 'info');
+    }
+  }
+
+  // إغلاق Modal عند الضغط على ESC
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      closeRoleModal();
+      closePermissionsModal();
+      closePasswordModal();
+    }
+  });
+</script>
+{% endblock %}

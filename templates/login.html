@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+{% block title %}تسجيل الدخول — Finora{% endblock %}
+{% block page_title %}🔐 تسجيل الدخول للنظام{% endblock %}
+
+{% block content %}
+<style>
+    .login-wrap {
+        max-width: 480px;
+        margin: 40px auto;
+        padding: 0 20px;
+    }
+
+    .login-card {
+        background: var(--card, rgba(15, 23, 42, .8));
+        border: 1px solid rgba(99, 102, 241, .22);
+        border-radius: 24px;
+        padding: 40px;
+        backdrop-filter: blur(14px);
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+    }
+
+    .login-header {
+        text-align: center;
+        margin-bottom: 32px;
+    }
+
+    .login-header .logo-icon {
+        font-size: 48px;
+        margin-bottom: 16px;
+        background: linear-gradient(135deg, #6366f1, #a855f7);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        display: inline-block;
+    }
+
+    .login-header h2 {
+        font-size: 26px;
+        font-weight: 900;
+        margin-bottom: 8px;
+    }
+
+    .login-header p {
+        color: var(--text-muted, #94a3b8);
+        font-size: 15px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        font-size: 14px;
+        font-weight: 700;
+        margin-bottom: 10px;
+        color: var(--text, #f1f5f9);
+    }
+
+    .input-icon-wrap {
+        position: relative;
+    }
+
+    .input-icon-wrap i {
+        position: absolute;
+        right: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #6366f1;
+        opacity: 0.7;
+    }
+
+    .form-group input {
+        width: 100%;
+        padding: 14px 44px 14px 16px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, .1);
+        background: rgba(15, 23, 42, .7);
+        color: var(--text, #f1f5f9);
+        font-size: 15px;
+        font-family: 'Tajawal', sans-serif;
+        transition: .3s;
+        box-sizing: border-box;
+    }
+
+    .form-group input:focus {
+        outline: none;
+        border-color: #6366f1;
+        box-shadow: 0 0 0 4px rgba(99, 102, 241, .15);
+        background: rgba(15, 23, 42, .9);
+    }
+
+    .btn-login {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        width: 100%;
+        padding: 16px;
+        border-radius: 16px;
+        background: linear-gradient(135deg, #3b82f6, #6366f1);
+        color: #fff;
+        font-size: 17px;
+        font-weight: 900;
+        border: none;
+        cursor: pointer;
+        transition: .3s;
+        box-shadow: 0 8px 25px rgba(99, 102, 241, .35);
+        font-family: 'Tajawal', sans-serif;
+        margin-top: 10px;
+    }
+
+    .btn-login:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 35px rgba(99, 102, 241, .5);
+    }
+
+    .alert-err {
+        background: rgba(239, 68, 68, .1);
+        border: 1px solid rgba(239, 68, 68, .3);
+        border-radius: 14px;
+        padding: 14px 16px;
+        margin-bottom: 24px;
+        color: #fca5a5;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        animation: shake 0.4s ease-in-out;
+    }
+
+    @keyframes shake {
+
+        0%,
+        100% {
+            transform: translateX(0);
+        }
+
+        25% {
+            transform: translateX(-5px);
+        }
+
+        75% {
+            transform: translateX(5px);
+        }
+    }
+
+    .login-footer {
+        text-align: center;
+        margin-top: 28px;
+        padding-top: 24px;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .login-footer p {
+        font-size: 14px;
+        color: #94a3b8;
+        margin-bottom: 12px;
+    }
+
+    .login-footer a {
+        color: #6366f1;
+        text-decoration: none;
+        font-weight: 700;
+        transition: 0.2s;
+    }
+
+    .login-footer a:hover {
+        color: #818cf8;
+        text-decoration: underline;
+    }
+
+    .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: #94a3b8 !important;
+        font-weight: 500 !important;
+        margin-top: 16px;
+    }
+</style>
+
+<div class="login-wrap">
+    <div class="login-card">
+        <div class="login-header">
+            <div class="logo-icon"><i class="fas fa-shield-alt"></i></div>
+            <h2>مرحباً بعودتك</h2>
+            <p>سجل دخولك لإدارة أعمالك بذكاء</p>
+        </div>
+
+        {% if error %}
+        <div class="alert-err">
+            <i class="fas fa-exclamation-triangle"></i>
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <form method="post" action="/login">
+            <div class="form-group">
+                <label for="tenant_slug">معرف الشركة (Company ID)</label>
+                <div class="input-icon-wrap">
+                    <i class="fas fa-building"></i>
+                    <input type="text" id="tenant_slug" name="tenant_slug"
+                        placeholder="مثال: alnoor (بدون مسافات، إنجليزي)" value="{{ request.args.get('tenant', '') }}"
+                        required dir="ltr" autofocus autocomplete="off">
+                </div>
+                <small style="display:block; margin-top:6px; color: var(--text-muted); font-size: 12px;"> </small>
+            </div>
+
+            <div class="form-group">
+                <label for="username">اسم المستخدم</label>
+                <div class="input-icon-wrap">
+                    <i class="fas fa-user"></i>
+                    <input type="text" id="username" name="username" placeholder="مثال: admin" required dir="ltr"
+                        autocomplete="username">
+                </div>
+                <small style="display:block; margin-top:6px; color: var(--text-muted); font-size: 12px;"></small>
+            </div>
+
+            <div class="form-group">
+                <label for="password">كلمة المرور</label>
+                <div class="input-icon-wrap">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="password" name="password" placeholder="أدخل كلمة المرور" required
+                        dir="ltr">
+                </div>
+            </div>
+
+            <button type="submit" class="btn-login">
+                <span>دخول للنظام</span>
+                <i class="fas fa-sign-in-alt"></i>
+            </button>
+
+            <div class="login-footer">
+                <p>ليس لديك حساب؟ <a href="/signup">ابدأ تجربتك المجانية الآن</a></p>
+                <a href="/" class="back-link"><i class="fas fa-arrow-right"></i> العودة للموقع الرسمي</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

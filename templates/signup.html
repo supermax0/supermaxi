@@ -1,0 +1,557 @@
+{% extends "base.html" %}
+{% block title %}إنشاء حساب — Finora{% endblock %}
+{% block page_title %}🚀 إنشاء حساب جديد{% endblock %}
+
+{% block content %}
+<style>
+  .su-wrap {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 0 40px
+  }
+
+  .su-card {
+    background: var(--card, rgba(15, 23, 42, .8));
+    border: 1px solid rgba(99, 102, 241, .22);
+    border-radius: 22px;
+    padding: 40px;
+    backdrop-filter: blur(14px)
+  }
+
+  .su-header {
+    text-align: center;
+    margin-bottom: 36px
+  }
+
+  .su-header h2 {
+    font-size: 24px;
+    font-weight: 900;
+    margin-bottom: 8px
+  }
+
+  .su-header p {
+    color: var(--text-muted, #94a3b8);
+    font-size: 15px
+  }
+
+  /* Billing toggle */
+  .billing-toggle {
+    display: flex;
+    background: rgba(15, 23, 42, .6);
+    border: 1px solid rgba(99, 102, 241, .2);
+    border-radius: 14px;
+    padding: 4px;
+    gap: 0;
+    margin: 0 auto 32px;
+    width: fit-content
+  }
+
+  .billing-toggle label {
+    padding: 10px 28px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-muted, #94a3b8);
+    transition: .25s;
+    user-select: none
+  }
+
+  .billing-toggle input {
+    display: none
+  }
+
+  .billing-toggle input:checked+label {
+    background: linear-gradient(135deg, #3b82f6, #6366f1);
+    color: #fff;
+    box-shadow: 0 4px 18px rgba(99, 102, 241, .35)
+  }
+
+  .save-badge {
+    display: inline-block;
+    background: #10b981;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 8px;
+    margin-right: 4px;
+    vertical-align: middle
+  }
+
+  /* Plan cards */
+  .plan-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px
+  }
+
+  .plan-opt {
+    border: 2px solid rgba(99, 102, 241, .2);
+    border-radius: 16px;
+    padding: 20px;
+    cursor: pointer;
+    transition: .3s;
+    position: relative;
+    background: rgba(15, 23, 42, .5)
+  }
+
+  .plan-opt:hover {
+    border-color: rgba(99, 102, 241, .5)
+  }
+
+  .plan-opt.selected {
+    border-color: #6366f1;
+    background: rgba(99, 102, 241, .1)
+  }
+
+  .plan-opt .badge-hot {
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #fff;
+    padding: 3px 14px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 800;
+    white-space: nowrap
+  }
+
+  .plan-name {
+    font-size: 16px;
+    font-weight: 800;
+    margin-bottom: 6px
+  }
+
+  .plan-price-display {
+    font-size: 22px;
+    font-weight: 900;
+    color: #60a5fa;
+    margin-bottom: 4px
+  }
+
+  .plan-price-display small {
+    font-size: 12px;
+    color: #94a3b8;
+    font-weight: 500
+  }
+
+  .plan-period-note {
+    font-size: 11px;
+    color: #94a3b8
+  }
+
+  .plan-feats {
+    list-style: none;
+    margin-top: 12px;
+    font-size: 13px;
+    color: #94a3b8
+  }
+
+  .plan-feats li {
+    padding: 3px 0
+  }
+
+  .plan-feats li::before {
+    content: '✅ ';
+    margin-left: 4px
+  }
+
+  /* Form grid */
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px
+  }
+
+  .form-group label {
+    display: block;
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--text, #f1f5f9)
+  }
+
+  .form-group label span.req {
+    color: #ef4444;
+    margin-right: 3px
+  }
+
+  .form-group input {
+    width: 100%;
+    padding: 14px 16px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, .1);
+    background: rgba(15, 23, 42, .7);
+    color: var(--text, #f1f5f9);
+    font-size: 15px;
+    font-family: 'Tajawal', sans-serif;
+    transition: .3s
+  }
+
+  .form-group input:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, .15)
+  }
+
+  .form-group input.valid {
+    border-color: #10b981
+  }
+
+  .form-group input.invalid {
+    border-color: #ef4444
+  }
+
+  .field-hint {
+    font-size: 12px;
+    color: #94a3b8;
+    margin-top: 5px
+  }
+
+  .field-error {
+    font-size: 12px;
+    color: #ef4444;
+    margin-top: 5px;
+    display: none
+  }
+
+  .form-group input.invalid~.field-error {
+    display: block
+  }
+
+  .full-col {
+    grid-column: 1/-1
+  }
+
+  .alert-err {
+    background: rgba(239, 68, 68, .12);
+    border: 1px solid rgba(239, 68, 68, .35);
+    border-radius: 14px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    color: #fca5a5;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px
+  }
+
+  .btn-submit {
+    display: block;
+    width: 100%;
+    padding: 18px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #3b82f6, #6366f1);
+    color: #fff;
+    font-size: 17px;
+    font-weight: 900;
+    border: none;
+    cursor: pointer;
+    transition: .3s;
+    box-shadow: 0 8px 30px rgba(99, 102, 241, .3);
+    font-family: 'Tajawal', sans-serif;
+    margin-top: 8px
+  }
+
+  .btn-submit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 40px rgba(99, 102, 241, .5)
+  }
+
+  .form-footer {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 14px;
+    color: #94a3b8
+  }
+
+  .form-footer a {
+    color: #60a5fa;
+    text-decoration: none;
+    font-weight: 700
+  }
+
+  /* Summary bar */
+  .summary-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(99, 102, 241, .1);
+    border: 1px solid rgba(99, 102, 241, .25);
+    border-radius: 14px;
+    padding: 16px 20px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+    gap: 12px
+  }
+
+  .summary-bar .sum-item {
+    font-size: 14px;
+    color: #94a3b8
+  }
+
+  .summary-bar .sum-item strong {
+    color: #f1f5f9;
+    display: block;
+    font-size: 16px
+  }
+
+  .summary-total {
+    font-size: 20px;
+    font-weight: 900;
+    color: #60a5fa
+  }
+
+  @media(max-width:600px) {
+    .plan-row {
+      grid-template-columns: 1fr
+    }
+
+    .billing-toggle label {
+      padding: 10px 18px
+    }
+  }
+</style>
+
+<div class="su-wrap">
+
+  <!-- Error -->
+  {% if error %}
+  <div class="alert-err"><i class="fas fa-exclamation-circle" style="color:#ef4444;font-size:18px;flex-shrink:0"></i> {{
+    error }}</div>
+  {% endif %}
+
+  <!-- Billing Toggle -->
+  <div class="su-header">
+    <h2>اختر خطتك وأنشئ حسابك</h2>
+    <p>كل المعلومات في خطوة واحدة. لا بيانات بنكية مطلوبة الآن.</p>
+  </div>
+
+  <div class="billing-toggle" id="billingToggle">
+    <input type="radio" name="billing_ui" id="b_monthly" value="monthly" {% if billing !='yearly' %}checked{% endif %}>
+    <label for="b_monthly">شهري</label>
+    <input type="radio" name="billing_ui" id="b_yearly" value="yearly" {% if billing=='yearly' %}checked{% endif %}>
+    <label for="b_yearly"><span class="save-badge">وفّر 17%</span> سنوي</label>
+  </div>
+
+  <!-- Plan Selector -->
+  <div class="plan-row" id="planRow">
+    <div class="plan-opt {% if selected_plan.key == 'basic' %}selected{% endif %}" onclick="selectPlan('basic')">
+      <div class="plan-name">🟢 الأساسية</div>
+      <div class="plan-price-display" id="p_basic">
+        25,000 <small>د.ع/شهر</small>
+      </div>
+      <div class="plan-period-note" id="pn_basic">يُدفع شهرياً</div>
+      <ul class="plan-feats">
+        <li>5 مستخدمين</li>
+        <li>حتى 1,000 طلب/شهر</li>
+        <li>POS + مخزون + زبائن</li>
+      </ul>
+    </div>
+
+    <div class="plan-opt {% if selected_plan.key == 'pro' %}selected{% endif %}" onclick="selectPlan('pro')"
+      style="position:relative">
+      <div class="badge-hot">⭐ الأكثر طلباً</div>
+      <div class="plan-name">🔵 المتقدمة</div>
+      <div class="plan-price-display" id="p_pro">
+        45,000 <small>د.ع/شهر</small>
+      </div>
+      <div class="plan-period-note" id="pn_pro">يُدفع شهرياً</div>
+      <ul class="plan-feats">
+        <li>15 مستخدم</li>
+        <li>حتى 10,000 طلب/شهر</li>
+        <li>+ تقارير + RBAC + موردين</li>
+      </ul>
+    </div>
+
+    <div class="plan-opt {% if selected_plan.key == 'enterprise' %}selected{% endif %}"
+      onclick="selectPlan('enterprise')">
+      <div class="plan-name">🟣 الشركات</div>
+      <div class="plan-price-display" id="p_enterprise">
+        90,000 <small>د.ع/شهر</small>
+      </div>
+      <div class="plan-period-note" id="pn_enterprise">يُدفع شهرياً</div>
+      <ul class="plan-feats">
+        <li>غير محدود</li>
+        <li>طلبات غير محدودة</li>
+        <li>+ دعم أولوية + AI</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Summary Bar -->
+  <div class="summary-bar" id="summaryBar">
+    <div class="sum-item">الخطة المختارة <strong id="sum_plan">-</strong></div>
+    <div class="sum-item">نوع الاشتراك <strong id="sum_billing">-</strong></div>
+    <div class="sum-item">المدة <strong id="sum_period">-</strong></div>
+    <div class="summary-total" id="sum_total">0 د.ع</div>
+  </div>
+
+  <!-- Form -->
+  <div class="su-card">
+    <form method="post" action="/signup" onsubmit="return validateForm()" novalidate>
+      <input type="hidden" name="plan_key" id="plan_key_input" value="{{ selected_plan.key }}">
+      <input type="hidden" name="billing" id="billing_input" value="{{ billing or 'monthly' }}">
+
+      <div class="form-grid">
+
+        <div class="form-group">
+          <label for="company_name">اسم الشركة / المشروع <span class="req">*</span></label>
+          <input type="text" id="company_name" name="company_name" placeholder="مثال: متجر النور" required
+            value="{{ (form.company_name if form else '') | default('') }}" oninput="liveCheck(this,1)">
+          <div class="field-hint">اسم نشاطك التجاري كما تريده يظهر في النظام</div>
+          <div class="field-error" id="err_company">يرجى إدخال اسم الشركة أو المشروع</div>
+        </div>
+
+        <div class="form-group">
+          <label for="contact_name">اسمك الكامل <span class="req">*</span></label>
+          <input type="text" id="contact_name" name="contact_name" placeholder="مثال: محمد أحمد" required
+            value="{{ (form.contact_name if form else '') | default('') }}" oninput="liveCheck(this,1)">
+          <div class="field-hint">اسم صاحب الحساب (الأدمن)</div>
+          <div class="field-error" id="err_contact">يرجى إدخال اسمك الكامل</div>
+        </div>
+
+        <div class="form-group">
+          <label for="email">البريد الإلكتروني</label>
+          <input type="email" id="email" name="email" placeholder="example@domain.com"
+            value="{{ (form.email if form else '') | default('') }}">
+          <div class="field-hint">اختياري — للتواصل والاسترداد</div>
+        </div>
+
+        <div class="form-group">
+          <label for="phone">رقم الهاتف</label>
+          <input type="text" id="phone" name="phone" placeholder="07xxxxxxxxx"
+            value="{{ (form.phone if form else '') | default('') }}">
+          <div class="field-hint">اختياري</div>
+        </div>
+
+        <div class="form-group">
+          <label for="username">اسم المستخدم <span class="req">*</span></label>
+          <input type="text" id="username" name="username" placeholder="مثال: admin" required
+            value="{{ (form.username if form else '') | default('') }}" dir="ltr" oninput="liveCheck(this,3)">
+          <div class="field-hint">ستستخدمه لتسجيل الدخول. 3 أحرف على الأقل.</div>
+          <div class="field-error" id="err_username">يجب أن يكون 3 أحرف على الأقل (أرقام وحروف إنجليزية)</div>
+        </div>
+
+        <div style="grid-column:1/-1"></div>
+
+        <div class="form-group">
+          <label for="password">كلمة المرور <span class="req">*</span></label>
+          <input type="password" id="password" name="password" placeholder="6 أحرف على الأقل" required dir="ltr"
+            oninput="liveCheck(this,6);checkMatch()">
+          <div class="field-hint">6 أحرف على الأقل</div>
+          <div class="field-error" id="err_pw">كلمة المرور يجب أن تكون 6 أحرف على الأقل</div>
+        </div>
+
+        <div class="form-group">
+          <label for="password2">تأكيد كلمة المرور <span class="req">*</span></label>
+          <input type="password" id="password2" name="password2" placeholder="أعد كتابة كلمة المرور" required dir="ltr"
+            oninput="checkMatch()">
+          <div class="field-error" id="err_pw2">كلمة المرور وتأكيدها غير متطابقتين</div>
+        </div>
+
+      </div>
+
+      <div style="margin-top:28px">
+        <button type="submit" class="btn-submit">
+          <i class="fas fa-rocket"></i> إنشاء الحساب والدخول للنظام
+        </button>
+      </div>
+
+      <p class="form-footer">
+        <a href="/"><i class="fas fa-home"></i> عودة للموقع</a>
+        <span style="margin: 0 10px; opacity: 0.3">|</span>
+        لديك حساب بالفعل؟ <a href="/login">تسجيل الدخول <i class="fas fa-sign-in-alt"></i></a>
+      </p>
+    </form>
+  </div>
+
+</div>
+
+<script>
+  const PRICES = {
+    basic: { monthly: 25000, yearly: 250000, name: 'الأساسية' },
+    pro: { monthly: 45000, yearly: 450000, name: 'المتقدمة' },
+    enterprise: { monthly: 90000, yearly: 900000, name: 'الشركات' }
+  };
+
+  let currentPlan = '{{ selected_plan.key }}';
+  let currentBilling = '{{ billing or "monthly" }}';
+
+  function fmt(n) { return n.toLocaleString('ar-IQ') }
+
+  function updateUI() {
+    const yearly = currentBilling === 'yearly';
+    Object.keys(PRICES).forEach(k => {
+      const p = PRICES[k];
+      const pr = yearly ? p.yearly : p.monthly;
+      const el = document.getElementById('p_' + k);
+      const note = document.getElementById('pn_' + k);
+      if (el) el.innerHTML = fmt(pr) + ' <small>د.ع/' + (yearly ? 'سنة' : 'شهر') + '</small>';
+      if (note) note.textContent = yearly ? 'يُدفع سنوياً — وفّر شهرين!' : 'يُدفع شهرياً';
+    });
+    // summary
+    const p = PRICES[currentPlan];
+    const total = yearly ? p.yearly : p.monthly;
+    document.getElementById('sum_plan').textContent = p.name;
+    document.getElementById('sum_billing').textContent = yearly ? 'سنوي' : 'شهري';
+    document.getElementById('sum_period').textContent = yearly ? '12 شهر' : 'شهر واحد';
+    document.getElementById('sum_total').textContent = fmt(total) + ' د.ع';
+    document.getElementById('billing_input').value = currentBilling;
+  }
+
+  function selectPlan(key) {
+    currentPlan = key;
+    document.querySelectorAll('.plan-opt').forEach(el => el.classList.remove('selected'));
+    event.currentTarget.classList.add('selected');
+    document.getElementById('plan_key_input').value = key;
+    updateUI();
+  }
+
+  document.querySelectorAll('input[name="billing_ui"]').forEach(inp => {
+    inp.addEventListener('change', () => {
+      currentBilling = inp.value;
+      updateUI();
+    });
+  });
+
+  // live validation
+  function liveCheck(el, minLen) {
+    if (el.value.trim().length >= minLen) { el.classList.add('valid'); el.classList.remove('invalid') }
+    else { el.classList.remove('valid'); el.classList.add('invalid') }
+  }
+
+  function checkMatch() {
+    const p1 = document.getElementById('password');
+    const p2 = document.getElementById('password2');
+    if (!p2.value) return;
+    if (p1.value === p2.value) { p2.classList.add('valid'); p2.classList.remove('invalid') }
+    else { p2.classList.remove('valid'); p2.classList.add('invalid') }
+  }
+
+  function validateForm() {
+    let ok = true;
+    const fields = [
+      { id: 'company_name', min: 1 },
+      { id: 'contact_name', min: 1 },
+      { id: 'username', min: 3 },
+      { id: 'password', min: 6 },
+    ];
+    fields.forEach(f => {
+      const el = document.getElementById(f.id);
+      if (el.value.trim().length < f.min) { el.classList.add('invalid'); ok = false }
+    });
+    const p1 = document.getElementById('password').value;
+    const p2 = document.getElementById('password2');
+    if (p1 !== p2.value) { p2.classList.add('invalid'); ok = false }
+    return ok;
+  }
+
+  // Init
+  updateUI();
+</script>
+{% endblock %}

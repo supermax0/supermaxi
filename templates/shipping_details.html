@@ -1,0 +1,440 @@
+{% extends "base.html" %}
+{% block title %}تفاصيل الشحنة{% endblock %}
+{% block page_title %}تفاصيل الشحنة{% endblock %}
+
+{% block content %}
+
+<style>
+/* ===== VARIABLES ===== */
+:root {
+  --shipment-primary: #3b82f6;
+  --shipment-success: #10b981;
+  --shipment-warning: #f59e0b;
+  --shipment-danger: #ef4444;
+  --shipment-bg: #0b1220;
+  --shipment-card: #111827;
+  --shipment-border: rgba(255, 255, 255, 0.08);
+  --shipment-text: #f1f5f9;
+  --shipment-muted: #94a3b8;
+}
+
+/* ===== CARD STYLES ===== */
+.card {
+  background: linear-gradient(145deg, rgba(17, 24, 39, 0.9), rgba(11, 18, 32, 0.9));
+  border-radius: 24px;
+  padding: 32px;
+  border: 1px solid rgba(59, 130, 246, 0.15);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  position: relative;
+  overflow: hidden;
+  animation: slideIn 0.5s ease-out;
+}
+
+.card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 8px;
+  height: 100%;
+  background: linear-gradient(180deg, var(--shipment-primary), var(--shipment-success));
+  border-radius: 0 24px 24px 0;
+  opacity: 0.8;
+}
+
+.card::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
+  z-index: 0;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ===== HEADER ===== */
+.card h3 {
+  color: var(--shipment-text);
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+.card h3::before {
+  content: "";
+  width: 40px;
+  height: 40px;
+  background: rgba(59, 130, 246, 0.2);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+
+/* ===== INFO ITEMS ===== */
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+  position: relative;
+  z-index: 1;
+}
+
+.info-item {
+  background: rgba(30, 41, 59, 0.4);
+  border-radius: 18px;
+  padding: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.3s ease;
+}
+
+.info-item:hover {
+  background: rgba(30, 41, 59, 0.6);
+  transform: translateY(-4px);
+  border-color: rgba(59, 130, 246, 0.2);
+  box-shadow: 0 12px 25px rgba(0, 0, 0, 0.2);
+}
+
+.info-item strong {
+  display: block;
+  font-size: 15px;
+  color: var(--shipment-muted);
+  margin-bottom: 10px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+.info-item p {
+  font-size: 22px;
+  color: var(--shipment-text);
+  font-weight: 600;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* ===== STATUS BADGE ===== */
+.status-badge {
+  display: inline-block;
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 15px;
+  text-align: center;
+  margin-top: 8px;
+}
+
+.status-ordered {
+  background: rgba(245, 158, 11, 0.2);
+  color: var(--shipment-warning);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.status-shipping {
+  background: rgba(59, 130, 246, 0.2);
+  color: var(--shipment-primary);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.status-delivered {
+  background: rgba(16, 185, 129, 0.2);
+  color: var(--shipment-success);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.status-returned {
+  background: rgba(239, 68, 68, 0.2);
+  color: var(--shipment-danger);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* ===== AMOUNT STYLING ===== */
+.amount {
+  font-size: 28px !important;
+  font-weight: 700 !important;
+  background: linear-gradient(135deg, #10b981, #3b82f6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ===== ACTION BUTTONS ===== */
+.action-buttons {
+  display: flex;
+  gap: 16px;
+  margin-top: 40px;
+  position: relative;
+  z-index: 1;
+}
+
+.action-btn {
+  flex: 1;
+  padding: 18px;
+  border-radius: 16px;
+  border: none;
+  font-weight: 600;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-decoration: none;
+}
+
+.print-btn {
+  background: linear-gradient(135deg, var(--shipment-primary), #2563eb);
+  color: white;
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+}
+
+.print-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 15px 30px rgba(59, 130, 246, 0.4);
+}
+
+.back-btn {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--shipment-text);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.back-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  transform: translateY(-3px);
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .card {
+    padding: 24px;
+    margin: 16px;
+  }
+  
+  .info-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .info-item {
+    padding: 20px;
+  }
+  
+  .info-item p {
+    font-size: 20px;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .card h3 {
+    font-size: 24px;
+  }
+}
+
+@media (max-width: 480px) {
+  .card {
+    padding: 20px;
+  }
+  
+  .info-item {
+    padding: 16px;
+  }
+  
+  .info-item p {
+    font-size: 18px;
+  }
+  
+  .action-btn {
+    padding: 16px;
+    font-size: 15px;
+  }
+}
+
+/* ===== PRINT STYLES ===== */
+@media print {
+  .card {
+    box-shadow: none !important;
+    border: 2px solid #000 !important;
+    background: white !important;
+    color: #000 !important;
+  }
+  
+  .card::before, .card::after {
+    display: none !important;
+  }
+  
+  .card h3 {
+    color: #000 !important;
+    border-bottom: 2px solid #000 !important;
+  }
+  
+  .info-item {
+    background: white !important;
+    border: 1px solid #000 !important;
+  }
+  
+  .info-item strong {
+    color: #666 !important;
+  }
+  
+  .info-item p {
+    color: #000 !important;
+  }
+  
+  .action-buttons {
+    display: none !important;
+  }
+}
+</style>
+
+<div class="card">
+    <h3>🧾 معلومات الشحنة</h3>
+    
+    <div class="info-grid">
+        <div class="info-item">
+            <strong>رقم الطلب</strong>
+            <p>#{{ invoice.id }}</p>
+        </div>
+        
+        <div class="info-item">
+            <strong>الزبون</strong>
+            <p>{{ invoice.customer_name }}</p>
+        </div>
+        
+        <div class="info-item">
+            <strong>حالة الشحنة</strong>
+            <p>
+                <span class="status-badge 
+                    {% if invoice.shipping_status == 'تم الطلب' %}status-ordered
+                    {% elif invoice.shipping_status == 'جاري الشحن' %}status-shipping
+                    {% elif invoice.shipping_status == 'تم التوصيل' %}status-delivered
+                    {% elif invoice.shipping_status == 'مرتجع' %}status-returned
+                    {% endif %}">
+                    {{ invoice.shipping_status }}
+                </span>
+            </p>
+        </div>
+        
+        <div class="info-item">
+            <strong>المبلغ الإجمالي</strong>
+            <p class="amount">{{ invoice.total }}</p>
+        </div>
+        
+        {% if invoice.shipping_company %}
+        <div class="info-item">
+            <strong>شركة النقل</strong>
+            <p>{{ invoice.shipping_company }}</p>
+        </div>
+        {% endif %}
+        
+        {% if invoice.shipping_date %}
+        <div class="info-item">
+            <strong>تاريخ الشحن</strong>
+            <p>{{ invoice.shipping_date }}</p>
+        </div>
+        {% endif %}
+        
+        {% if invoice.estimated_delivery %}
+        <div class="info-item">
+            <strong>تاريخ التوصيل المتوقع</strong>
+            <p>{{ invoice.estimated_delivery }}</p>
+        </div>
+        {% endif %}
+        
+        {% if invoice.tracking_number %}
+        <div class="info-item">
+            <strong>رقم التتبع</strong>
+            <p>{{ invoice.tracking_number }}</p>
+        </div>
+        {% endif %}
+        
+        {% if invoice.notes %}
+        <div class="info-item">
+            <strong>ملاحظات إضافية</strong>
+            <p>{{ invoice.notes }}</p>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="action-buttons">
+        <button class="action-btn print-btn" onclick="window.print()">
+            <span>🖨️</span>
+            <span>طباعة التفاصيل</span>
+        </button>
+        <a href="/orders" class="action-btn back-btn">
+            <span>←</span>
+            <span>العودة للطلبات</span>
+        </a>
+    </div>
+</div>
+
+<script>
+// Barcode Scanner Support - يمكن القراءة من أي مكان في الصفحة
+let barcodeBuffer = '';
+let barcodeTimeout;
+
+document.addEventListener('keypress', function(e) {
+  // إذا كان المستخدم يكتب في حقل input أو textarea، تجاهل
+  if (document.activeElement.tagName === 'INPUT' || 
+      document.activeElement.tagName === 'TEXTAREA') {
+    return;
+  }
+  
+  // إذا كان الحرف رقم أو حرف
+  if (e.key.length === 1 && /[0-9a-zA-Z]/.test(e.key)) {
+    barcodeBuffer += e.key;
+    clearTimeout(barcodeTimeout);
+    
+    barcodeTimeout = setTimeout(function() {
+      // إذا كان الباركود أطول من 3 أحرف، اعتبره باركود
+      if (barcodeBuffer.length >= 3) {
+        handleBarcodeScan(barcodeBuffer);
+      }
+      barcodeBuffer = '';
+    }, 100);
+  }
+});
+
+function handleBarcodeScan(barcode) {
+  // البحث عن الفاتورة بالباركود
+  fetch(`/orders/search-by-barcode?barcode=${encodeURIComponent(barcode)}`)
+    .then(r => r.json())
+    .then(data => {
+      if (data.success && data.invoice) {
+        // الانتقال إلى صفحة الفاتورة
+        window.location.href = `/orders/invoice/${data.invoice.id}`;
+      } else {
+        alert('⚠️ لم يتم العثور على فاتورة بهذا الباركود: ' + barcode);
+      }
+    })
+    .catch(error => {
+      console.error('Barcode search error:', error);
+      alert('❌ حدث خطأ أثناء البحث عن الباركود');
+    });
+}
+</script>
+
+{% endblock %}

@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>كشف الطلبات</title>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+  <style>
+    @page {
+      size: A4 landscape;
+      margin: 0.8cm;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Tajawal', 'Arial', 'Tahoma', sans-serif;
+      direction: rtl;
+      padding: 20px;
+      color: #000;
+      background: #f5f5f5;
+      line-height: 1.6;
+    }
+    
+    .print-container {
+      max-width: 100%;
+      background: white;
+      padding: 30px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    .print-header {
+      text-align: center;
+      margin-bottom: 25px;
+      padding-bottom: 15px;
+      border-bottom: 4px solid #1a1a1a;
+      position: relative;
+    }
+    
+    .print-header::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      right: 50%;
+      transform: translateX(50%);
+      width: 100px;
+      height: 4px;
+      background: #3b82f6;
+    }
+    
+    .print-header h1 {
+      font-size: 28px;
+      margin-bottom: 12px;
+      color: #000;
+      font-weight: 800;
+      letter-spacing: 1px;
+    }
+    
+    .report-info {
+      text-align: center;
+      margin-bottom: 25px;
+      font-size: 14px;
+      color: #555;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    
+    .report-info span {
+      background: #f8f9fa;
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: 1px solid #e0e0e0;
+      font-weight: 600;
+    }
+    
+    .report-info .report-number {
+      color: #3b82f6;
+      border-color: #3b82f6;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      font-size: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    th {
+      background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
+      color: white;
+      padding: 12px 8px;
+      text-align: center;
+      font-weight: 700;
+      font-size: 13px;
+      border: 1px solid #000;
+      letter-spacing: 0.5px;
+    }
+    
+    td {
+      border: 1px solid #ddd;
+      padding: 10px 8px;
+      text-align: center;
+      font-size: 11.5px;
+    }
+    
+    tbody tr {
+      transition: background 0.2s;
+    }
+    
+    tbody tr:nth-child(even) {
+      background: #f8f9fa;
+    }
+    
+    tbody tr:hover {
+      background: #e3f2fd !important;
+    }
+    
+    .order-id-text {
+      display: inline-block;
+      font-weight: 700;
+      color: #1a1a1a;
+      font-size: 13px;
+    }
+    
+    .order-id-barcode {
+      display: none !important;
+    }
+    
+    .total-row {
+      background: linear-gradient(135deg, #e8f5e9, #c8e6c9) !important;
+      font-weight: bold;
+      font-size: 14px;
+    }
+    
+    .total-row td {
+      border-top: 3px solid #4caf50;
+      border-bottom: 3px solid #4caf50;
+      padding: 15px 8px;
+    }
+    
+    .total-row td:first-child {
+      border-right: 3px solid #4caf50;
+    }
+    
+    .count-row {
+      background: linear-gradient(135deg, #fff3cd, #ffe082) !important;
+      font-weight: bold;
+      font-size: 13px;
+    }
+    
+    .count-row td {
+      border-top: 2px solid #ffc107;
+      border-bottom: 2px solid #ffc107;
+      padding: 12px 8px;
+    }
+    
+    .print-footer {
+      margin-top: 30px;
+      padding-top: 15px;
+      border-top: 3px solid #1a1a1a;
+      text-align: center;
+      font-size: 11px;
+      color: #666;
+      font-weight: 500;
+    }
+    
+    .print-btn {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      padding: 14px 28px;
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 16px;
+      box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+      z-index: 1000;
+      font-family: 'Tajawal', sans-serif;
+      transition: all 0.3s ease;
+    }
+    
+    .print-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 25px rgba(59, 130, 246, 0.5);
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    }
+    
+    .print-btn:active {
+      transform: translateY(-1px);
+    }
+    
+    @media print {
+      body {
+        background: white;
+        padding: 0;
+      }
+      
+      .print-container {
+        box-shadow: none;
+        padding: 0;
+      }
+      
+      .no-print {
+        display: none !important;
+      }
+      
+      .order-id-text {
+        display: none !important;
+      }
+      
+      .order-id-barcode {
+        display: block !important;
+      }
+      
+      .order-id-barcode svg {
+        max-width: 140px;
+        height: 45px;
+      }
+      
+      table {
+        box-shadow: none;
+      }
+      
+      tbody tr:hover {
+        background: inherit !important;
+      }
+      
+      @page {
+        size: A4 landscape;
+        margin: 0.8cm;
+      }
+
+      /* كل كشف يكون في ورقة منفصلة عند الطباعة */
+      .page-break {
+        page-break-before: always;
+      }
+    }
+    
+    /* تحسينات إضافية */
+    .barcode-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+    }
+    
+    .phone-cell {
+      direction: ltr;
+      text-align: center;
+      font-family: 'Courier New', monospace;
+      font-weight: 600;
+    }
+    
+    .total-cell {
+      color: #1b5e20;
+      font-size: 14px;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <button class="print-btn no-print" onclick="window.print()">🖨️ طباعة الكشف</button>
+  
+  <div class="print-container">
+    <div class="print-header">
+      <h1>📋 {% if agent_name %}كشف مندوب التوصيل: {{ agent_name }}{% else %}كشف الطلبات{% endif %}</h1>
+      <div class="report-info" id="reportInfo">
+        {% if agent_name %}
+        <span style="background: #e3f2fd; color: #1565c0; padding: 10px 20px; border-radius: 10px; font-size: 16px; font-weight: 700; border: 2px solid #1976d2;">
+          👤 المندوب: <strong>{{ agent_name }}</strong>
+        </span>
+        {% endif %}
+        <span class="report-number">رقم الكشف: <strong id="reportNumber"></strong></span>
+        <span>تاريخ الطباعة: <strong id="printDate"></strong></span>
+      </div>
+    </div>
+  
+    <!-- الجدول الرئيسي للطلبات -->
+    <table id="ordersTable">
+      <thead>
+        <tr>
+          <th>رقم الفاتورة</th>
+          <th>رقم الهاتف</th>
+          <th>الكمية</th>
+          <th>المجموع</th>
+          <th>المحافظة</th>
+          <th>العنوان</th>
+          {% if not agent_name %}
+          <th>شركة النقل</th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody id="ordersBody">
+        <!-- سيتم ملؤها بواسطة JavaScript -->
+      </tbody>
+    </table>
+
+    {% if agent_name %}
+    <!-- كشف المنتجات التفصيلي للمندوب - في ورقة منفصلة عند الطباعة -->
+    <div class="page-break">
+      <h3 style="margin-top: 28px; font-size: 18px;">📄 كشف المنتجات حسب أرقام الوصولات</h3>
+      <table id="itemsTable" style="margin-top: 10px;">
+        <thead>
+          <tr>
+            <th>رقم الوصل</th>
+            <th>نوع المنتج</th>
+            <th>الكمية</th>
+            <th>العنوان</th>
+          </tr>
+        </thead>
+        <tbody id="itemsBody">
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  
+    <div class="print-footer">
+      <p>📄 تم إنشاء هذا الكشف تلقائياً من نظام المحاسبة | © جميع الحقوق محفوظة</p>
+    </div>
+  </div>
+
+  <script>
+    // جلب بيانات الطلبات من URL parameters أو localStorage
+    function getOrdersData() {
+      // محاولة جلب من URL parameters
+      const urlParams = new URLSearchParams(window.location.search);
+      const orderIds = urlParams.get('ids');
+      
+      // جلب معرف المندوب من URL إذا كان موجوداً
+      const agentId = urlParams.get('agent_id');
+      
+      if (orderIds) {
+        // جلب البيانات من الخادم
+        let fetchUrl = '/orders/get-print-report-data?ids=' + encodeURIComponent(orderIds);
+        if (agentId) {
+          fetchUrl += '&agent_id=' + encodeURIComponent(agentId);
+        }
+        
+        fetch(fetchUrl)
+          .then(r => r.json())
+          .then(data => {
+            if (data.success && data.orders) {
+              renderReport(data);
+            } else {
+              document.body.innerHTML = '<div style="text-align:center;padding:40px;color:#666"><h2>❌ لم يتم العثور على بيانات الطلبات</h2></div>';
+            }
+          })
+          .catch(error => {
+            console.error('Error fetching orders:', error);
+            document.body.innerHTML = '<div style="text-align:center;padding:40px;color:#666"><h2>❌ حدث خطأ أثناء تحميل البيانات</h2></div>';
+          });
+      } else {
+        document.body.innerHTML = '<div style="text-align:center;padding:40px;color:#666"><h2>❌ لم يتم تحديد أي طلبات</h2></div>';
+      }
+    }
+    
+    function renderReport(data) {
+      const reportNumber = "RPT-" + new Date().getTime().toString().slice(-6);
+      const printDate = new Date().toLocaleDateString("ar-IQ") + " - " + new Date().toLocaleTimeString("ar-IQ");
+      const hasAgentName = {% if agent_name %}true{% else %}false{% endif %};
+      
+      document.getElementById('reportNumber').textContent = reportNumber;
+      document.getElementById('printDate').textContent = printDate;
+      
+      const tbody = document.getElementById('ordersBody');
+      let total = 0;
+      let orderCount = 0;
+      
+      if (data.orders && Array.isArray(data.orders)) {
+        data.orders.forEach(order => {
+          if (order && order.id) {
+            orderCount++;
+            const orderTotal = parseInt(order.total) || 0;
+            total += orderTotal;
+            
+            const row = document.createElement('tr');
+            const shippingColumn = hasAgentName ? '' : `<td>${order.shipping || "—"}</td>`;
+            row.innerHTML = `
+              <td>
+                <div class="barcode-container">
+                  <span class="order-id-text">#${order.id || "—"}</span>
+                  <svg class="order-id-barcode" id="barcode-${order.id}" style="display:none;max-width:140px;height:45px;"></svg>
+                </div>
+              </td>
+              <td class="phone-cell">${order.phone || "—"}</td>
+              <td><strong>${order.quantity || 0}</strong></td>
+              <td class="total-cell">${orderTotal.toLocaleString()} د.ع</td>
+              <td>${order.city || "—"}</td>
+              <td style="max-width: 150px; word-wrap: break-word;">${order.address || "—"}</td>
+              ${shippingColumn}
+            `;
+            tbody.appendChild(row);
+          }
+        });
+      }
+      
+      // إضافة صف الإجمالي
+      const totalRow = document.createElement('tr');
+      totalRow.className = 'total-row';
+      const colspan = hasAgentName ? 6 : 7;
+      totalRow.innerHTML = `
+        <td colspan="3" style="text-align:right;padding-right:25px;font-size:16px">💰 المجموع الكلي:</td>
+        <td colspan="${colspan - 3}" style="text-align:center;font-size:20px;color:#1b5e20">${total.toLocaleString()} دينار عراقي</td>
+      `;
+      tbody.appendChild(totalRow);
+      
+      // إضافة صف عدد الطلبات
+      const countRow = document.createElement('tr');
+      countRow.className = 'count-row';
+      countRow.innerHTML = `
+        <td colspan="${colspan}" style="text-align:center;font-size:15px;color:#856404">
+          📦 عدد الطلبات: <strong>${orderCount || data.count || 0}</strong> طلب
+        </td>
+      `;
+      tbody.appendChild(countRow);
+      
+      // إذا كان الكشف خاص بالمندوب، توليد جدول المنتجات
+      if (hasAgentName) {
+        renderItemsForAgent(data);
+      }
+
+      // إنشاء الباركود بعد تحميل DOM
+      setTimeout(() => {
+        generateBarcodes(data.orders || []);
+      }, 300);
+    }
+    
+    function renderItemsForAgent(data) {
+      const tbody = document.getElementById('itemsBody');
+      if (!tbody) return;
+
+      const orders = Array.isArray(data.orders) ? data.orders : [];
+      if (!orders.length) {
+        tbody.innerHTML = '<tr><td colspan="4">لا توجد بيانات منتجات لعرضها</td></tr>';
+        return;
+      }
+
+      // نستخدم نفس API تفاصيل الطلب حتى يكون اسم المنتج والكمية مطابقين تماماً
+      const ids = orders.map(o => o && o.id).filter(Boolean);
+      if (!ids.length) {
+        tbody.innerHTML = '<tr><td colspan="4">لا توجد بيانات منتجات لعرضها</td></tr>';
+        return;
+      }
+
+      fetch('/orders/print-selected', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ ids })
+      })
+      .then(r => r.json())
+      .then(details => {
+        tbody.innerHTML = '';
+        const rows = Array.isArray(details.orders) ? details.orders : [];
+        if (!rows.length) {
+          tbody.innerHTML = '<tr><td colspan="4">لا توجد بيانات منتجات لعرضها</td></tr>';
+          return;
+        }
+
+        rows.forEach(entry => {
+          if (!entry || !entry.order) return;
+          const orderId = entry.order.id;
+          const address = entry.order.address || '—';
+          const products = Array.isArray(entry.items) ? entry.items : [];
+
+          if (!products.length) {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td>#${orderId}</td>
+              <td>—</td>
+              <td>0</td>
+              <td style="max-width: 220px; word-wrap: break-word; text-align: right;">${address}</td>
+            `;
+            tbody.appendChild(row);
+            return;
+          }
+
+          products.forEach(p => {
+            if (!p) return;
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td>#${orderId}</td>
+              <td>${p.name || ""}</td>
+              <td>${p.qty || p.quantity || 0}</td>
+              <td style="max-width: 220px; word-wrap: break-word; text-align: right;">${address}</td>
+            `;
+            tbody.appendChild(row);
+          });
+        });
+      })
+      .catch(err => {
+        console.error('Error loading items for agent report', err);
+        tbody.innerHTML = '<tr><td colspan="4">حدث خطأ أثناء تحميل تفاصيل المنتجات</td></tr>';
+      });
+    }
+
+    function generateBarcodes(orders) {
+      if (typeof JsBarcode === 'undefined') {
+        setTimeout(() => generateBarcodes(orders), 100);
+        return;
+      }
+      
+      let created = 0;
+      orders.forEach(function(order) {
+        if (order && order.id) {
+          try {
+            const barcodeEl = document.getElementById('barcode-' + order.id);
+            if (barcodeEl) {
+              JsBarcode(barcodeEl, order.id.toString(), {
+                format: "CODE128",
+                width: 2,
+                height: 50,
+                displayValue: true,
+                fontSize: 14,
+                margin: 5
+              });
+              created++;
+            }
+          } catch (e) {
+            console.error('Error generating barcode for order', order.id, ':', e);
+          }
+        }
+      });
+      
+      console.log('Created ' + created + ' barcodes');
+    }
+    
+    // البدء بعد تحميل الصفحة
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      getOrdersData();
+    } else {
+      window.addEventListener('load', getOrdersData);
+    }
+  </script>
+</body>
+</html>

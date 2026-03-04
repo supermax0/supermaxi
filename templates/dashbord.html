@@ -1,0 +1,2462 @@
+{% extends "base.html" %}
+{% block content %}
+{% if show_data is defined and show_data == False %}
+<div class="dashboard-welcome">
+  <h1 class="dashboard-welcome-title">{{ _('dashboard_welcome_title') }}</h1>
+  <p class="dashboard-welcome-subtitle">{{ _('dashboard_welcome_subtitle') }}</p>
+  <div class="dashboard-welcome-actions">
+    <a href="/pos" class="dashboard-welcome-pos-btn">
+      <i class="fas fa-cash-register"></i>
+      {{ _('dashboard_welcome_pos') }}
+    </a>
+  </div>
+</div>
+{% else %}
+
+<!-- Chart.js Library -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<style>
+  /* =======================
+   VARIABLES
+======================= */
+  :root {
+    /* Map dashboard palette to global SaaS tokens (Dark/Light compatible) */
+    --dashboard-primary: var(--primary);
+    --dashboard-success: var(--success);
+    --dashboard-warning: var(--warning);
+    --dashboard-danger: var(--danger);
+    --dashboard-purple: var(--accent, #8b5cf6);
+    --dashboard-bg: var(--bg);
+    --dashboard-card: var(--card);
+    --dashboard-border: var(--border-light);
+    --dashboard-text: var(--text);
+    --dashboard-muted: var(--text-muted);
+  }
+
+  /* =======================
+   LAYOUT
+======================= */
+  .dashboard-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--dashboard-border);
+  }
+
+  .dashboard-topbar>div:first-child {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--dashboard-text);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .dashboard-topbar-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  .dashboard-topbar-actions .btn,
+  .dashboard-topbar-actions button {
+    min-height: 40px;
+    padding: 8px 12px;
+    border-radius: 12px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .dashboard-topbar-actions .btn .btn-icon,
+  .dashboard-topbar-actions button .btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  .dashboard-topbar-actions .btn .btn-label,
+  .dashboard-topbar-actions button .btn-label {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1.1;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 24px;
+  }
+
+  .card {
+    background: linear-gradient(145deg, rgba(17, 24, 39, 0.9), rgba(11, 18, 32, 0.9));
+    padding: 24px;
+    border-radius: 20px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(59, 130, 246, 0.15);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+  }
+
+  :root[data-theme="light"] .card {
+    background: var(--card);
+    border: 1px solid var(--border-light);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+  }
+
+  .card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 6px;
+    height: 100%;
+    background: linear-gradient(180deg, var(--dashboard-primary), var(--dashboard-success));
+    border-radius: 0 20px 20px 0;
+    opacity: 0.7;
+  }
+
+  .card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.35);
+    border-color: rgba(59, 130, 246, 0.25);
+  }
+
+  :root[data-theme="light"] .card:hover {
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+    border-color: var(--primary);
+  }
+
+  .count {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--dashboard-text);
+    display: block;
+    margin-top: 10px;
+    background: linear-gradient(135deg, #f1f5f9, #cbd5e1);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  :root[data-theme="light"] .count {
+    background: none;
+    -webkit-text-fill-color: var(--dashboard-text);
+    color: var(--dashboard-text);
+  }
+
+  .card>div:first-child {
+    font-size: 15px;
+    color: var(--dashboard-muted);
+    font-weight: 500;
+    letter-spacing: 0.5px;
+  }
+
+  /* =======================
+   BUTTONS
+======================= */
+  button,
+  .btn {
+    padding: 8px 16px;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+  }
+
+  .btn-pos {
+    background: linear-gradient(135deg, var(--dashboard-primary), #2563eb);
+    color: #fff;
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+  }
+
+  .btn-search {
+    background: rgba(14, 165, 233, 0.15);
+    color: #0ea5e9;
+    border: 1px solid rgba(14, 165, 233, 0.2);
+  }
+
+  .btn-profit {
+    background: rgba(22, 163, 74, 0.15);
+    color: #16a34a;
+    border: 1px solid rgba(22, 163, 74, 0.2);
+  }
+
+  .dashboard-add-expense-btn {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.22);
+  }
+
+  .dashboard-add-expense-btn:hover {
+    background: rgba(245, 158, 11, 0.22);
+  }
+
+  .dashboard-period-btn {
+    background: rgba(148, 163, 184, 0.14);
+    color: var(--dashboard-text);
+    border: 1px solid rgba(148, 163, 184, 0.22);
+  }
+
+  .dashboard-period-btn:hover {
+    background: rgba(148, 163, 184, 0.20);
+  }
+
+  /* Better contrast in Light theme for tinted buttons */
+  :root[data-theme="light"] .btn-search {
+    background: rgba(37, 99, 235, 0.12);
+    border-color: rgba(37, 99, 235, 0.25);
+    color: #2563eb;
+  }
+
+  :root[data-theme="light"] .btn-profit {
+    background: rgba(22, 163, 74, 0.12);
+    border-color: rgba(22, 163, 74, 0.25);
+    color: #16a34a;
+  }
+
+  :root[data-theme="light"] .dashboard-add-expense-btn {
+    background: rgba(245, 158, 11, 0.14);
+    border-color: rgba(245, 158, 11, 0.28);
+    color: #d97706;
+  }
+
+  .btn-exec {
+    background: linear-gradient(135deg, var(--dashboard-purple), #7c3aed);
+    color: #fff;
+    box-shadow: 0 8px 20px rgba(139, 92, 246, 0.3);
+  }
+
+  .btn-pos:hover,
+  .btn-search:hover,
+  .btn-profit:hover,
+  .btn-exec:hover {
+    transform: translateY(-3px);
+  }
+
+  .btn-pos:hover {
+    box-shadow: 0 15px 30px rgba(59, 130, 246, 0.4);
+  }
+
+  .btn-search:hover {
+    background: rgba(14, 165, 233, 0.25);
+  }
+
+  .btn-profit:hover {
+    background: rgba(22, 163, 74, 0.25);
+  }
+
+  .btn-exec:hover {
+    box-shadow: 0 15px 30px rgba(139, 92, 246, 0.4);
+  }
+
+  /* =======================
+   TABLE
+======================= */
+  table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin-top: 16px;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  th {
+    padding: 18px 16px;
+    background: rgba(30, 41, 59, 0.8);
+    color: var(--dashboard-muted);
+    font-weight: 600;
+    text-align: center;
+    border-bottom: 2px solid rgba(59, 130, 246, 0.2);
+  }
+
+  :root[data-theme="light"] th {
+    background: #f8fafc;
+    color: #475569;
+    border-bottom: 2px solid var(--border-light);
+  }
+
+  td {
+    padding: 20px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    color: var(--dashboard-text);
+    text-align: center;
+    transition: all 0.2s ease;
+  }
+
+  :root[data-theme="light"] td {
+    border-bottom: 1px solid var(--border-light);
+  }
+
+  tbody tr {
+    transition: all 0.3s ease;
+  }
+
+  tbody tr:hover {
+    background: rgba(59, 130, 246, 0.05);
+    transform: scale(1.002);
+  }
+
+  /* =======================
+   ORDER COLORING
+======================= */
+  .row-ordered {
+    background: rgba(245, 158, 11, 0.1);
+  }
+
+  .row-delivered {
+    background: rgba(16, 185, 129, 0.1);
+  }
+
+  .row-returned {
+    background: rgba(239, 68, 68, 0.1);
+  }
+
+  /* =======================
+   MODALS
+======================= */
+  .modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(8px);
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
+  .modal .card {
+    width: 95%;
+    max-width: 900px;
+    animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 18px;
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .modal h3 {
+    color: var(--dashboard-text);
+    font-size: 18px;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .modal input {
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(15, 23, 42, 0.6);
+    color: var(--dashboard-text);
+    font-size: 14px;
+    margin-bottom: 12px;
+    transition: all 0.3s ease;
+  }
+
+  :root[data-theme="light"] .modal input {
+    background: #fff;
+    border: 1px solid var(--border-light);
+    color: var(--text);
+  }
+
+  .modal input:focus {
+    outline: none;
+    border-color: var(--dashboard-primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    background: rgba(15, 23, 42, 0.8);
+  }
+
+  .modal input::placeholder {
+    color: var(--dashboard-muted);
+  }
+
+  /* =======================
+   ALERTS (Enhanced)
+======================= */
+  #alerts {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  #alerts li {
+    padding: 16px 20px;
+    margin-bottom: 12px;
+    background: rgba(30, 41, 59, 0.5);
+    border-radius: 14px;
+    border-left: 4px solid var(--dashboard-warning);
+    color: var(--dashboard-text);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+
+  #alerts li::before {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--dashboard-warning);
+    transition: width 0.3s ease;
+  }
+
+  #alerts li:hover {
+    background: rgba(30, 41, 59, 0.7);
+    transform: translateX(-5px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+
+  #alerts li:hover::before {
+    width: 100%;
+    opacity: 0.1;
+  }
+
+  #alerts li.alert-success {
+    border-left-color: var(--dashboard-success);
+  }
+
+  #alerts li.alert-success::before {
+    background: var(--dashboard-success);
+  }
+
+  #alerts li.alert-danger {
+    border-left-color: var(--dashboard-danger);
+  }
+
+  #alerts li.alert-danger::before {
+    background: var(--dashboard-danger);
+  }
+
+  #alerts li.alert-warning {
+    border-left-color: var(--dashboard-warning);
+  }
+
+  #alerts li.alert-warning::before {
+    background: var(--dashboard-warning);
+  }
+
+  #alerts li.alert-info {
+    border-left-color: var(--dashboard-primary);
+  }
+
+  #alerts li.alert-info::before {
+    background: var(--dashboard-primary);
+  }
+
+  #alerts li .alert-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+  }
+
+  #alerts li .alert-message {
+    flex: 1;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  #alerts li:last-child {
+    margin-bottom: 0;
+  }
+
+  /* =======================
+   PROFIT MODAL (Enhanced)
+======================= */
+  #profitModal .card {
+    text-align: center;
+    max-width: 800px;
+    width: 95%;
+  }
+
+  #profitModal h2 {
+    color: var(--dashboard-text);
+    font-size: 24px;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  #profitModal h1 {
+    font-size: 56px;
+    color: var(--dashboard-success);
+    margin: 20px 0;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--dashboard-success), #22d3ee);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  #profitChartContainer {
+    margin: 30px 0;
+    height: 300px;
+    position: relative;
+  }
+
+  /* =======================
+   CHARTS CONTAINER
+======================= */
+  .charts-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin-bottom: 24px;
+  }
+
+  .chart-card {
+    background: linear-gradient(145deg, rgba(17, 24, 39, 0.9), rgba(11, 18, 32, 0.9));
+    padding: 24px;
+    border-radius: 20px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(59, 130, 246, 0.15);
+  }
+
+  :root[data-theme="light"] .chart-card {
+    background: var(--card);
+    border: 1px solid var(--border-light);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+  }
+
+  .chart-card h4 {
+    color: var(--dashboard-text);
+    font-size: 16px;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+
+  .chart-meta {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .chart-meta-item {
+    padding: 8px 10px;
+    border-radius: 12px;
+    background: rgba(15, 23, 42, 0.65);
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  :root[data-theme="light"] .chart-meta-item {
+    background: rgba(30, 41, 59, 0.05);
+    border: 1px solid rgba(30, 41, 59, 0.1);
+  }
+
+  .chart-meta-label {
+    font-size: 11px;
+    color: var(--dashboard-muted);
+  }
+
+  :root[data-theme="light"] .chart-meta-label {
+    color: #475569;
+  }
+
+  .chart-meta-value {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--dashboard-text);
+  }
+
+  :root[data-theme="light"] .chart-meta-value {
+    color: #0f172a;
+  }
+
+  .chart-wrapper {
+    position: relative;
+    height: 250px;
+  }
+
+  /* =======================
+   RESPONSIVE
+======================= */
+  @media (max-width: 768px) {
+    .dashboard-topbar {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 16px;
+    }
+
+    .dashboard-topbar>div:last-child {
+      width: 100%;
+      display: block;
+    }
+
+    .dashboard-topbar-actions {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .dashboard-topbar-actions .btn,
+    .dashboard-topbar-actions button {
+      width: 100%;
+      justify-content: center;
+      padding: 12px 12px;
+      font-size: 14px;
+      border-radius: 16px;
+      min-height: 48px;
+      flex-direction: column;
+      gap: 6px;
+      text-align: center;
+    }
+
+    .dashboard-topbar-actions .btn .btn-icon,
+    .dashboard-topbar-actions button .btn-icon {
+      font-size: 20px;
+    }
+
+    .dashboard-topbar-actions .btn .btn-label,
+    .dashboard-topbar-actions button .btn-label {
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .dashboard-period-btn {
+      grid-column: 1 / -1;
+    }
+
+    .grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .card {
+      padding: 20px;
+    }
+
+    .count {
+      font-size: 28px;
+    }
+
+    .modal .card {
+      padding: 20px;
+      margin: 20px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .grid {
+      grid-template-columns: 1fr;
+    }
+
+    .dashboard-topbar-actions {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .dashboard-topbar-actions .btn,
+    .dashboard-topbar-actions button {
+      font-size: 12px;
+      padding: 8px 8px;
+      min-height: 40px;
+    }
+
+    .card {
+      padding: 16px;
+    }
+
+    .count {
+      font-size: 24px;
+    }
+
+    table {
+      font-size: 13px;
+    }
+
+    th,
+    td {
+      padding: 14px 12px;
+    }
+  }
+
+  /* =======================
+   SEARCH MODAL OPTIMIZATION
+   ======================= */
+  .search-bar-integrated {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .search-bar-integrated input {
+    margin-bottom: 0 !important;
+    flex: 1;
+  }
+
+  .search-bar-integrated .btn {
+    padding: 0 16px;
+    height: 44px;
+    /* Matches input height */
+  }
+
+  .search-actions-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .search-action-btn {
+    width: 100%;
+    justify-content: center;
+    font-size: 12px !important;
+    padding: 6px 4px !important;
+  }
+
+  @media (max-width: 768px) {
+    .search-actions-row {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .search-results-wrap thead {
+      display: none;
+    }
+
+    .search-results-wrap table,
+    .search-results-wrap tbody,
+    .search-results-wrap tr,
+    .search-results-wrap td {
+      display: block;
+      width: 100%;
+    }
+
+    .search-results-wrap tr {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      margin-bottom: 16px;
+      padding: 16px;
+      position: relative;
+    }
+
+    .search-results-wrap td {
+      text-align: right;
+      padding: 8px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .search-results-wrap td:last-child {
+      border-bottom: none;
+      margin-top: 10px;
+      padding-top: 15px;
+    }
+
+    .search-results-wrap td:before {
+      content: attr(data-label);
+      font-weight: 700;
+      color: var(--dashboard-muted);
+      font-size: 12px;
+    }
+
+    /* Checkbox & ID positioning */
+    .search-results-wrap td:first-child {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      width: auto;
+      border: none;
+      padding: 0;
+    }
+
+    .search-results-wrap td:first-child:before {
+      content: "";
+    }
+
+    .search-results-wrap td:nth-child(2) {
+      font-size: 18px;
+      color: var(--dashboard-primary);
+      border-bottom: 2px solid rgba(59, 130, 246, 0.2);
+      margin-bottom: 10px;
+      padding-bottom: 10px;
+    }
+
+    .search-results-wrap td:nth-child(2):before {
+      content: "رقم الطلب";
+    }
+
+    /* Status radios row */
+    .search-results-wrap td.status-cell {
+      justify-content: flex-end;
+      gap: 15px;
+    }
+  }
+</style>
+
+<!-- =======================
+     TOP BAR
+======================= -->
+<div class="dashboard-topbar">
+  <div>👤 {{ employee_name }}</div>
+  <div class="dashboard-topbar-actions">
+    <a href="/pos" class="btn btn-pos">
+      <span class="btn-icon">🛒</span>
+      <span class="btn-label">{{ _('dashboard_pos') }}</span>
+    </a>
+    <button class="btn btn-search" onclick="openSearch()">
+      <span class="btn-icon">🔍</span>
+      <span class="btn-label">{{ _('dashboard_search') }}</span>
+    </button>
+    <button class="btn btn-profit" onclick="openProfit()">
+      <span class="btn-icon">💰</span>
+      <span class="btn-label">{{ _('dashboard_profit_today') }}</span>
+    </button>
+    <button class="btn dashboard-add-expense-btn" onclick="openAddExpense()">
+      <span class="btn-icon">➕</span>
+      <span class="btn-label">{{ _('dashboard_add_expense') }}</span>
+    </button>
+    <button class="btn dashboard-period-btn" id="periodBtn" onclick="openPeriodModal()">
+      <span class="btn-icon">📅</span>
+      <span class="btn-label" id="periodLabel">{{ _('dashboard_today') }}</span>
+      <span class="dashboard-period-caret">▼</span>
+    </button>
+  </div>
+</div>
+
+<!-- =======================
+     REPORT CARDS - Row 1: Cash Balance
+======================= -->
+<div class="grid dashboard-grid-single">
+  <div class="card dashboard-card-highlight is-cash">
+    <div class="metric-title">💰 {{ _('dashboard_cash_balance_title') }}</div>
+    <div id="cashBalance" class="count metric-count">0 د.ع</div>
+    <div class="metric-note">{{ _('dashboard_cash_balance_note') }}</div>
+  </div>
+</div>
+
+<!-- =======================
+     REPORT CARDS - Row 2: Sales
+======================= -->
+<div class="grid dashboard-grid-metrics">
+  <div class="card metric-card is-sales">
+    <div class="metric-title">📊 {{ _('dashboard_total_sales_title') }}</div>
+    <div id="sales" class="count metric-count">0</div>
+    <div class="metric-note" id="salesPeriodLabel">{{ _('dashboard_for_selected_period') }}</div>
+  </div>
+  <div class="card metric-card is-cash-sales">
+    <div class="metric-title">💵 {{ _('dashboard_cash_sales_title') }}</div>
+    <div id="cashSales" class="count metric-count">0</div>
+    <div class="metric-note">{{ _('dashboard_cash_sales_note') }}</div>
+  </div>
+  <div class="card metric-card is-credit-sales">
+    <div class="metric-title">📋 {{ _('dashboard_credit_sales_title') }}</div>
+    <div id="creditSales" class="count metric-count">0</div>
+    <div class="metric-note">{{ _('dashboard_credit_sales_note') }}</div>
+  </div>
+</div>
+
+<!-- =======================
+     REPORT CARDS - Row 3: Profit
+======================= -->
+<div class="grid dashboard-grid-single">
+  <div class="card dashboard-card-highlight is-profit">
+    <div class="metric-title">💎 {{ _('dashboard_profit_title') }}</div>
+    <div id="periodProfit" class="count metric-count">0 د.ع</div>
+    <div class="metric-note">{{ _('dashboard_profit_note') }}</div>
+  </div>
+</div>
+
+<!-- =======================
+     REPORT CARDS - Row 4: Inventory & Liabilities
+======================= -->
+<div class="grid dashboard-grid-metrics">
+  <div class="card metric-card is-inventory">
+    <div class="metric-title">📦 {{ _('dashboard_inventory_value_title') }}</div>
+    <div id="inventory" class="count metric-count">0</div>
+    <div class="metric-note">{{ _('dashboard_inventory_value_note') }}</div>
+  </div>
+  <div class="card metric-card is-liabilities">
+    <div class="metric-title">⚖️ {{ _('dashboard_liabilities_title') }}</div>
+    <div id="liabilities" class="count metric-count">0</div>
+    <div class="metric-note">{{ _('dashboard_liabilities_note') }}</div>
+  </div>
+</div>
+
+<!-- =======================
+     REPORT CARDS - Row 5: Additional Info (Hidden by default, can be shown if needed)
+======================= -->
+<div class="grid" style="display:none;" id="additionalInfoRow">
+  <div class="card">
+    <div>{{ _('dashboard_expenses_total_title') }}</div>
+    <div id="expenses" class="count">0</div>
+  </div>
+  <div class="card metric-card is-agent-dues" onclick="showAgentDuesDetails()" title="اضغط لعرض التفاصيل">
+    <div class="metric-card-icon-title">
+      <span class="emoji">🚚</span>
+      <span>{{ _('dashboard_agent_dues_title') }}</span>
+    </div>
+    <div id="agentCommissions" class="count metric-count">0</div>
+    <div class="metric-note">{{ _('dashboard_agent_dues_note') }}</div>
+  </div>
+</div>
+
+<!-- =======================
+     ORDER CARDS
+======================= -->
+<div class="grid">
+  <div class="card">{{ _('dashboard_orders_all') }} <span id="c_all" class="count">0</span></div>
+  <div class="card">{{ _('dashboard_orders_ordered') }} <span id="c_ordered" class="count">0</span></div>
+  <div class="card">{{ _('dashboard_orders_shipping') }} <span id="c_shipping" class="count">0</span></div>
+  <div class="card">{{ _('dashboard_orders_delivered') }} <span id="c_delivered" class="count">0</span></div>
+  <div class="card">{{ _('dashboard_orders_returned') }} <span id="c_returned" class="count">0</span></div>
+</div>
+
+<!-- =======================
+     ALERTS
+======================= -->
+<div class="card">
+  <h4>⚠️ {{ _('dashboard_alerts_title') }}</h4>
+  <ul id="alerts"></ul>
+</div>
+
+<!-- =======================
+     SEARCH MODAL
+======================= -->
+<div id="searchModal" class="modal">
+  <div class="card">
+    <h3>🔍 {{ _('dashboard_search_order_title') }}</h3>
+
+    <div class="search-bar-integrated">
+      <input id="q" placeholder="{{ _('dashboard_search_order_placeholder') }}"
+        onkeyup="if(event.key==='Enter') search()">
+      <button onclick="search()" class="btn btn-primary">{{ _('dashboard_search_button') }}</button>
+    </div>
+
+    <div class="search-actions-row">
+      <button onclick="selectAll()" class="btn btn-sm search-action-btn">{{ _('dashboard_select_all') }}</button>
+      <button onclick="deselectAll()" class="btn btn-sm search-action-btn">{{ _('dashboard_deselect_all') }}</button>
+      <button onclick="clearSearchResults()" class="btn btn-sm search-action-btn is-danger">🗑️ {{
+        _('dashboard_clear_results') }}</button>
+      <button onclick="executeBulk()" class="btn btn-primary search-action-btn is-primary">🚀 {{
+        _('dashboard_execute_bulk') }}</button>
+    </div>
+
+    <div class="search-results-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:30px"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"></th>
+            <th>#</th>
+            <th>{{ _('dashboard_th_customer') }}</th>
+            <th>{{ _('dashboard_th_phone') }}</th>
+            <th>{{ _('dashboard_th_amount') }}</th>
+            <th>{{ _('dashboard_th_ordered') }}</th>
+            <th>{{ _('dashboard_th_delivered') }}</th>
+            <th>{{ _('dashboard_th_returned') }}</th>
+            <th>{{ _('dashboard_th_action') }}</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+
+    <button onclick="closeSearch()" class="btn modal-close-btn-soft">
+      {{ _('dashboard_close') }}
+    </button>
+  </div>
+</div>
+
+<!-- =======================
+     CHARTS SECTION
+======================= -->
+<div class="charts-container">
+  <div class="chart-card">
+    <h4>📈 {{ _('dashboard_sales_chart_title') }}</h4>
+    <div class="chart-meta">
+      <div class="chart-meta-item">
+        <span class="chart-meta-label">{{ _('dashboard_chart_total_7_days') }}</span>
+        <span id="salesTotal7" class="chart-meta-value">0 د.ع</span>
+      </div>
+      <div class="chart-meta-item">
+        <span class="chart-meta-label">{{ _('dashboard_chart_avg_daily') }}</span>
+        <span id="salesAvg7" class="chart-meta-value">0 د.ع</span>
+      </div>
+    </div>
+    <div class="chart-wrapper">
+      <canvas id="salesChart"></canvas>
+    </div>
+  </div>
+  <div class="chart-card">
+    <h4>💰 {{ _('dashboard_profit_chart_title') }}</h4>
+    <div class="chart-meta">
+      <div class="chart-meta-item">
+        <span class="chart-meta-label">{{ _('dashboard_chart_total_7_days') }}</span>
+        <span id="profitTotal7" class="chart-meta-value">0 د.ع</span>
+      </div>
+      <div class="chart-meta-item">
+        <span class="chart-meta-label">{{ _('dashboard_chart_avg_daily') }}</span>
+        <span id="profitAvg7" class="chart-meta-value">0 د.ع</span>
+      </div>
+    </div>
+    <div class="chart-wrapper">
+      <canvas id="profitChart"></canvas>
+    </div>
+  </div>
+  <div class="chart-card">
+    <h4>📊 {{ _('dashboard_status_chart_title') }}</h4>
+    <div class="chart-wrapper">
+      <canvas id="statusChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- =======================
+     ADD EXPENSE MODAL
+======================= -->
+<div id="addExpenseModal" class="modal">
+  <div class="card">
+    <h3>➕ {{ _('dashboard_add_expense_title') }}</h3>
+
+    <input type="text" id="expenseTitle" placeholder="{{ _('dashboard_expense_title_placeholder') }}"
+      style="margin-bottom:16px;">
+
+    <select id="expenseCategory" style="margin-bottom:16px;">
+      <option value="">{{ _('dashboard_expense_category_placeholder') }}</option>
+      <option value="إيجار">🏠 {{ _('dashboard_expense_category_rent') }}</option>
+      <option value="رواتب">💰 {{ _('dashboard_expense_category_salaries') }}</option>
+      <option value="كهرباء">⚡ {{ _('dashboard_expense_category_electricity') }}</option>
+      <option value="إنترنت">🌐 {{ _('dashboard_expense_category_internet') }}</option>
+      <option value="إعلان">📢 {{ _('dashboard_expense_category_ads') }}</option>
+      <option value="صيانة">🔧 {{ _('dashboard_expense_category_maintenance') }}</option>
+      <option value="أخرى">📦 {{ _('dashboard_expense_category_other') }}</option>
+    </select>
+
+    <input type="number" id="expenseAmount" placeholder="{{ _('dashboard_expense_amount_placeholder') }}" min="0"
+      step="0.01" style="margin-bottom:16px;">
+
+    <input type="date" id="expenseDate" style="margin-bottom:16px;">
+
+    <textarea id="expenseNote" placeholder="{{ _('dashboard_expense_note_placeholder') }}"
+      style="min-height:80px;margin-bottom:16px;resize:vertical;"></textarea>
+
+    <div class="expense-form-actions">
+      <button class="btn modal-close-btn-soft" onclick="closeAddExpense()">
+        {{ _('dashboard_cancel') }}
+      </button>
+      <button class="btn btn-danger" onclick="submitExpense()">
+        {{ _('dashboard_save') }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- =======================
+     PERIOD MODAL
+======================= -->
+<div id="periodModal" class="modal" onclick="if(event.target===this) closePeriodModal()">
+  <div class="card period-modal-card" onclick="event.stopPropagation()">
+    <h3 class="period-modal-title">
+      <span>📅</span>
+      <span>{{ _('dashboard_period_modal_title') }}</span>
+    </h3>
+
+    <div class="period-options-grid">
+      <button onclick="selectPeriod('last_30_days')" class="period-option" data-period="last_30_days">
+        <span>📅 {{ _('dashboard_period_last_30_days') }}</span>
+        <span class="period-badge">{{ _('dashboard_period_default_badge') }}</span>
+      </button>
+      <button onclick="selectPeriod('today')" class="period-option" data-period="today">
+        <span>✅ {{ _('dashboard_today') }}</span>
+      </button>
+      <button onclick="selectPeriod('yesterday')" class="period-option" data-period="yesterday">
+        <span>📆 {{ _('dashboard_period_yesterday') }}</span>
+      </button>
+      <button onclick="selectPeriod('last_7_days')" class="period-option" data-period="last_7_days">
+        <span>📊 {{ _('dashboard_period_last_7_days') }}</span>
+      </button>
+      <button onclick="selectPeriod('this_month')" class="period-option" data-period="this_month">
+        <span>🗓️ {{ _('dashboard_period_this_month') }}</span>
+      </button>
+      <button onclick="selectPeriod('last_month')" class="period-option" data-period="last_month">
+        <span>📅 {{ _('dashboard_period_last_month') }}</span>
+      </button>
+      <button onclick="selectPeriod('this_year')" class="period-option" data-period="this_year">
+        <span>📆 {{ _('dashboard_period_this_year') }}</span>
+      </button>
+      <button onclick="selectPeriod('last_year')" class="period-option" data-period="last_year">
+        <span>📅 {{ _('dashboard_period_last_year') }}</span>
+      </button>
+    </div>
+
+    <div class="period-custom-range">
+      <h4 class="period-custom-range-title">{{ _('dashboard_period_custom_range_title') }}</h4>
+      <div class="period-custom-range-fields">
+        <input type="date" id="customDateFrom">
+        <input type="date" id="customDateTo">
+        <button class="period-apply-btn" onclick="applyCustomPeriod()">
+          ✅ {{ _('dashboard_period_apply_custom') }}
+        </button>
+      </div>
+    </div>
+
+    <button class="btn modal-close-btn-soft" onclick="closePeriodModal()">
+      {{ _('dashboard_close') }}
+    </button>
+  </div>
+</div>
+
+<style>
+  .period-option {
+    padding: 14px 18px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(15, 23, 42, 0.6);
+    color: var(--dashboard-text);
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    text-align: right;
+  }
+
+  .period-option:hover {
+    background: rgba(59, 130, 246, 0.15);
+    border-color: rgba(59, 130, 246, 0.3);
+    transform: translateX(-4px);
+  }
+
+  .period-option.active {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(37, 99, 235, 0.15));
+    border-color: rgba(59, 130, 246, 0.4);
+  }
+
+  .period-badge {
+    font-size: 11px;
+    background: rgba(16, 185, 129, 0.2);
+    color: #10b981;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-weight: 600;
+  }
+
+  /* =======================
+   PERIOD MODAL - Mobile Responsive (Bottom Sheet)
+======================= */
+  #periodModal .card {
+    max-height: min(90vh, 740px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  @media (max-width: 768px) {
+
+    /* اجعل نافذة الفترة مثل Bottom Sheet */
+    #periodModal {
+      align-items: flex-end;
+      justify-content: center;
+      padding: 0;
+    }
+
+    #periodModal .card {
+      width: 100% !important;
+      max-width: none !important;
+      margin: 0 !important;
+      border-radius: 18px 18px 0 0 !important;
+      max-height: 92vh;
+      padding: 18px 14px !important;
+    }
+
+    #periodModal h3 {
+      font-size: 18px;
+      margin-bottom: 14px;
+      padding-bottom: 12px;
+    }
+
+    .period-option {
+      padding: 14px 14px;
+      font-size: 15px;
+    }
+
+    .period-badge {
+      font-size: 10px;
+      padding: 4px 6px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    #periodModal .card {
+      max-height: 94vh;
+      padding: 16px 12px !important;
+    }
+  }
+</style>
+
+<!-- =======================
+     PROFIT MODAL (Enhanced)
+======================= -->
+<div id="profitModal" class="modal">
+  <div class="card">
+    <h2>💰 {{ _('dashboard_profit_today') }}</h2>
+    <h1 id="profitBig">0</h1>
+    <div id="profitChartContainer">
+      <canvas id="profitModalChart"></canvas>
+    </div>
+    <button class="btn modal-close-btn-soft" onclick="profitModal.style.display='none'">
+      {{ _('dashboard_close') }}
+    </button>
+  </div>
+</div>
+
+<!-- =======================
+     AI ASSISTANT (محلل مالي / مساعد قرار)
+======================= -->
+<div class="card ai-assistant-card" style="margin-top:24px;">
+  <h3 class="ai-assistant-title">
+    <span>🧠</span>
+    <span>{{ _('dashboard_ai_title') }}</span>
+  </h3>
+  <p class="ai-assistant-desc">{{ _('dashboard_ai_desc') }}</p>
+  <div class="ai-assistant-form">
+    <div class="ai-assistant-row">
+      <label>{{ _('dashboard_ai_type_label') }}</label>
+      <select id="aiAnalyzeType">
+        <option value="report">{{ _('dashboard_ai_type_report') }}</option>
+        <option value="profit">{{ _('dashboard_ai_type_profit') }}</option>
+        <option value="sales">{{ _('dashboard_ai_type_sales') }}</option>
+        <option value="inventory">{{ _('dashboard_ai_type_inventory') }}</option>
+      </select>
+    </div>
+    <div class="ai-assistant-row">
+      <label>{{ _('dashboard_ai_period_label') }}</label>
+      <select id="aiPeriod">
+        <option value="last_30_days">{{ _('dashboard_period_last_30_days') }}</option>
+        <option value="this_month">{{ _('dashboard_period_this_month') }}</option>
+        <option value="last_month">{{ _('dashboard_period_last_month') }}</option>
+        <option value="last_7_days">{{ _('dashboard_period_last_7_days') }}</option>
+        <option value="this_year">{{ _('dashboard_period_this_year') }}</option>
+      </select>
+    </div>
+    <div class="ai-assistant-row">
+      <label>{{ _('dashboard_ai_message_label') }}</label>
+      <input type="text" id="aiMessage" placeholder="{{ _('dashboard_ai_message_placeholder') }}">
+    </div>
+    <button type="button" class="btn btn-primary" id="aiAnalyzeBtn" onclick="runAiAnalyze()">
+      {{ _('dashboard_ai_button') }}
+    </button>
+  </div>
+  <div id="aiAnalyzeResult" class="ai-assistant-result" style="display:none;"></div>
+  <div id="aiAnalyzeError" class="ai-assistant-error" style="display:none;"></div>
+</div>
+<style>
+  .ai-assistant-card {
+    max-width: 720px;
+  }
+
+  .ai-assistant-title {
+    font-size: 20px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--dashboard-text);
+  }
+
+  .ai-assistant-desc {
+    color: var(--dashboard-muted);
+    font-size: 14px;
+    margin-bottom: 20px;
+  }
+
+  .ai-assistant-form .ai-assistant-row {
+    margin-bottom: 14px;
+  }
+
+  .ai-assistant-form label {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--dashboard-muted);
+    font-size: 13px;
+  }
+
+  .ai-assistant-form select,
+  .ai-assistant-form input {
+    width: 100%;
+    max-width: 400px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(15, 23, 42, 0.6);
+    color: var(--dashboard-text);
+  }
+
+  .ai-assistant-form #aiAnalyzeBtn {
+    margin-top: 10px;
+  }
+
+  .ai-assistant-result {
+    margin-top: 20px;
+    padding: 18px;
+    background: rgba(15, 23, 42, 0.6);
+    border-radius: 14px;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    color: var(--dashboard-text);
+    white-space: pre-wrap;
+    text-align: right;
+  }
+
+  .ai-assistant-error {
+    margin-top: 12px;
+    padding: 14px;
+    background: rgba(239, 68, 68, 0.15);
+    border-radius: 12px;
+    color: #fca5a5;
+  }
+</style>
+
+<!-- =======================
+     JAVASCRIPT
+======================= -->
+<script>
+  /* =======================
+     Load Dashboard
+  ======================= */
+  // ========================
+  // Period Management
+  // ========================
+  let currentPeriod = { type: "last_30_days", date_from: null, date_to: null };
+
+  function load(periodType = "last_30_days", dateFrom = null, dateTo = null) {
+    // ==========================
+    // تحديث الفترة الحالية (بدون إعادة تحميل الصفحة - AJAX فقط)
+    // ==========================
+    currentPeriod = { type: periodType, date_from: dateFrom, date_to: dateTo };
+
+    // إظهار مؤشر التحميل الخفيف (اختياري)
+    // يمكن إضافة fade effect للكروت إذا لزم الأمر
+
+    // بناء URL مع معاملات الفترة
+    let url = "/api/index/reports?period_type=" + periodType;
+    if (dateFrom) url += "&date_from=" + dateFrom;
+    if (dateTo) url += "&date_to=" + dateTo;
+
+    // جلب البيانات باستخدام AJAX (بدون إعادة تحميل الصفحة)
+    fetch(url)
+      .then(r => r.json())
+      .then(d => {
+        // تحديث الفترة المعروضة
+        document.getElementById("periodLabel").innerText = d.period_label || "اليوم";
+        document.getElementById("salesPeriodLabel").innerText = "للفترة: " + (d.period_label || "اليوم");
+
+        // الصف الأول: الرصيد النقدي
+        document.getElementById("cashBalance").innerText = formatNumber(d.cash_balance || 0) + " د.ع";
+
+        // الصف الثاني: المبيعات
+        document.getElementById("sales").innerText = formatNumber(d.sales || 0) + " د.ع";
+        document.getElementById("cashSales").innerText = formatNumber(d.cash_sales || 0) + " د.ع";
+        document.getElementById("creditSales").innerText = formatNumber(d.credit_sales || 0) + " د.ع";
+
+        // الصف الثالث: الأرباح
+        document.getElementById("periodProfit").innerText = formatNumber(d.period_profit || 0) + " د.ع";
+
+        // الصف الرابع: المخزون والالتزامات
+        document.getElementById("inventory").innerText = formatNumber(d.inventory || 0) + " د.ع";
+        const liabilities = (d.debts || 0) + (d.shipping || 0);
+        document.getElementById("liabilities").innerText = formatNumber(liabilities) + " د.ع";
+
+        // معلومات إضافية (مخفية)
+        if (document.getElementById("expenses")) document.getElementById("expenses").innerText = formatNumber(d.expenses || 0) + " د.ع";
+        if (document.getElementById("agentCommissions")) document.getElementById("agentCommissions").innerText = formatNumber(d.agent_commissions || 0) + " د.ع";
+      })
+      .catch(error => {
+        console.error("Error loading dashboard data:", error);
+        // في حالة الخطأ، نعرض رسالة للمستخدم (اختياري)
+      });
+
+    fetch("/api/index/orders-count").then(r => r.json()).then(d => {
+      document.getElementById("c_all").innerText = d.all;
+      document.getElementById("c_ordered").innerText = d.ordered;
+      document.getElementById("c_shipping").innerText = d.shipping;
+      document.getElementById("c_delivered").innerText = d.delivered;
+      document.getElementById("c_returned").innerText = d.returned;
+    });
+
+    fetch("/api/index/alerts").then(r => r.json()).then(list => {
+      const alertsContainer = document.getElementById("alerts");
+      alertsContainer.innerHTML = "";
+
+      if (list.length === 0) {
+        const li = document.createElement("li");
+        li.className = "alert-success";
+        li.innerHTML = `
+        <span class="alert-icon">✅</span>
+        <span class="alert-message">لا توجد تنبيهات حالياً - كل شيء يعمل بشكل طبيعي</span>
+      `;
+        alertsContainer.appendChild(li);
+      } else {
+        list.forEach(a => {
+          const li = document.createElement("li");
+          li.className = `alert-${a.type || "warning"}`;
+
+          const message = typeof a === "string" ? a : a.message;
+          const icon = typeof a === "object" && a.icon ? a.icon : "⚠️";
+
+          li.innerHTML = `
+          <span class="alert-icon">${icon}</span>
+          <span class="alert-message">${message}</span>
+        `;
+
+          if (typeof a === "object" && a.action) {
+            li.style.cursor = "pointer";
+            li.onclick = () => {
+              if (a.action) window.location.href = a.action;
+            };
+          }
+
+          alertsContainer.appendChild(li);
+        });
+      }
+    });
+  }
+
+  /* =======================
+     Profit (Enhanced with Chart)
+  ======================= */
+  let profitModalChart = null;
+
+  function openProfit() {
+    fetch("/api/index/today-profit")
+      .then(r => r.json())
+      .then(d => {
+        document.getElementById("profitBig").innerText = formatNumber(d.profit) + " د.ع";
+        document.getElementById("profitModal").style.display = "flex";
+
+        // Load chart data
+        loadProfitChart();
+      })
+  }
+
+  function loadProfitChart() {
+    fetch("/api/index/charts")
+      .then(r => r.json())
+      .then(data => {
+        const ctx = document.getElementById("profitModalChart");
+        if (profitModalChart) {
+          profitModalChart.destroy();
+        }
+
+        profitModalChart = new Chart(ctx, {
+          type: "line",
+          data: {
+            labels: data.labels,
+            datasets: [{
+              label: "الربح (د.ع)",
+              data: data.profit,
+              borderColor: getChartTheme().success,
+              backgroundColor: getChartTheme().theme === "light" ? "rgba(22, 163, 74, 0.12)" : "rgba(16, 185, 129, 0.10)",
+              pointRadius: 2,
+              pointHoverRadius: 6,
+              tension: 0.4,
+              fill: true
+            }]
+          },
+          options: (function () {
+            const t = getChartTheme();
+            const o = commonChartOptions();
+            o.plugins.legend = {
+              display: true,
+              position: "top",
+              labels: { color: t.muted, font: { size: 12, weight: "700" } }
+            };
+            return o;
+          })()
+        });
+      });
+  }
+
+  /* =======================
+     Period Modal
+  ======================= */
+  function openPeriodModal() {
+    document.getElementById("periodModal").style.display = "flex";
+    // تحديث الأزرار النشطة
+    document.querySelectorAll('.period-option').forEach(btn => {
+      if (btn.dataset.period === currentPeriod.type) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+  }
+
+  function closePeriodModal() {
+    document.getElementById("periodModal").style.display = "none";
+  }
+
+  function selectPeriod(periodType) {
+    closePeriodModal();
+    load(periodType);
+  }
+
+  function applyCustomPeriod() {
+    const dateFrom = document.getElementById("customDateFrom").value;
+    const dateTo = document.getElementById("customDateTo").value;
+
+    if (!dateFrom || !dateTo) {
+      alert("⚠️ يرجى تحديد تاريخ البداية والنهاية");
+      return;
+    }
+
+    if (new Date(dateFrom) > new Date(dateTo)) {
+      alert("⚠️ تاريخ البداية يجب أن يكون قبل تاريخ النهاية");
+      return;
+    }
+
+    closePeriodModal();
+    load("custom", dateFrom, dateTo);
+  }
+
+  /* =======================
+     Search
+  ======================= */
+  function openSearch() {
+    document.getElementById("searchModal").style.display = "flex";
+  }
+
+  function closeSearch() {
+    document.getElementById("searchModal").style.display = "none";
+  }
+
+  function search() {
+    const query = document.getElementById("q").value;
+    if (!query) {
+      showToast("⚠️ الرجاء إدخال رقم للبحث", "warning");
+      return;
+    }
+
+    showLoading();
+    fetch("/api/index/search?q=" + query)
+      .then(r => r.json())
+      .then(list => {
+        hideLoading();
+        const rowsContainer = document.getElementById("rows");
+        // لا نمسح النتائج السابقة - نضيف النتائج الجديدة فقط
+
+        if (list.length === 0) {
+          showToast("❌ لم يتم العثور على نتائج", "warning");
+          return;
+        }
+
+        // حساب عدد الطلبات الجديدة (غير موجودة مسبقاً)
+        let addedCount = 0;
+        const existingIds = new Set();
+        // جمع جميع IDs الموجودة حالياً
+        rowsContainer.querySelectorAll("tr").forEach(row => {
+          const id = row.id.replace("r", "");
+          if (id) existingIds.add(parseInt(id));
+        });
+
+        list.forEach(o => {
+          // التحقق إذا كان الطلب موجوداً مسبقاً
+          if (existingIds.has(o.id)) {
+            return; // تخطي الطلبات المكررة
+          }
+
+          let tr = document.createElement("tr");
+          tr.id = "r" + o.id;
+          tr.className = "row-ordered";
+
+          tr.innerHTML = `
+          <td data-label="تحديد"><input type="checkbox" class="row-checkbox" data-id="${o.id}"></td>
+          <td data-label="رقم الطلب"><strong>${o.id}</strong></td>
+          <td data-label="الزبون">${o.customer || "—"}</td>
+          <td data-label="الهاتف">${o.phone || "—"}</td>
+          <td data-label="المبلغ" style="color:var(--dashboard-success);font-weight:600">${formatNumber(o.total)} د.ع</td>
+
+          <td data-label="تم الطلب" class="status-cell"><input type="radio" name="s${o.id}" checked
+              onclick="setRowColor(${o.id},'ordered')"></td>
+
+          <td data-label="واصل" class="status-cell"><input type="radio" name="s${o.id}"
+              onclick="setRowColor(${o.id},'delivered')"></td>
+
+          <td data-label="مرتجع" class="status-cell"><input type="radio" name="s${o.id}"
+              onclick="setRowColor(${o.id},'returned')"></td>
+
+          <td data-label="إجراء"><button class="btn btn-exec" onclick="exec(${o.id})">🚀 تنفيذ</button></td>
+        `;
+          rowsContainer.appendChild(tr);
+          addedCount++;
+        });
+
+        if (addedCount > 0) {
+          showToast(`✅ تم إضافة ${addedCount} طلب جديد (إجمالي: ${rowsContainer.querySelectorAll("tr").length})`, "success");
+        } else {
+          showToast("ℹ️ جميع الطلبات موجودة مسبقاً", "info");
+        }
+
+        // تحديث حالة checkbox تحديد الكل
+        document.getElementById("selectAllCheckbox").checked = false;
+
+        // مسح حقل البحث بعد البحث الناجح
+        document.getElementById("q").value = "";
+      })
+      .catch(error => {
+        hideLoading();
+        showToast("❌ حدث خطأ أثناء البحث", "error");
+        console.error(error);
+      });
+  }
+
+  /* =======================
+     Row Coloring
+  ======================= */
+  function setRowColor(id, type) {
+    const row = document.getElementById("r" + id);
+    row.className =
+      type === "ordered" ? "row-ordered" :
+        type === "delivered" ? "row-delivered" :
+          "row-returned";
+  }
+
+  /* =======================
+     Execute Order
+  ======================= */
+  function exec(id) {
+    const radio = document.querySelector(`input[name=s${id}]:checked`);
+    if (!radio) return;
+
+    const action = radio.parentElement.previousElementSibling.textContent === "واصل" ? "delivered" :
+      radio.parentElement.previousElementSibling.previousElementSibling.textContent === "مرتجع" ? "returned" : "ordered";
+
+    showLoading();
+    fetch("/api/index/execute", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, action })
+    })
+      .then(r => r.json())
+      .then(res => {
+        hideLoading();
+        if (res.success !== false) {
+          document.getElementById("r" + id).remove();
+          showToast("✅ تم تنفيذ الطلب بنجاح", "success");
+          load();
+        } else {
+          showToast("❌ حدث خطأ أثناء التنفيذ", "error");
+        }
+      })
+      .catch(error => {
+        hideLoading();
+        showToast("❌ حدث خطأ أثناء التنفيذ", "error");
+        console.error(error);
+      });
+  }
+
+  /* =======================
+     Select All / Deselect All
+  ======================= */
+  function selectAll() {
+    document.querySelectorAll(".row-checkbox").forEach(cb => cb.checked = true);
+    document.getElementById("selectAllCheckbox").checked = true;
+  }
+
+  function deselectAll() {
+    document.querySelectorAll(".row-checkbox").forEach(cb => cb.checked = false);
+    document.getElementById("selectAllCheckbox").checked = false;
+  }
+
+  function toggleSelectAll() {
+    const checked = document.getElementById("selectAllCheckbox").checked;
+    document.querySelectorAll(".row-checkbox").forEach(cb => cb.checked = checked);
+  }
+
+  /* =======================
+     Clear Search Results
+  ======================= */
+  function clearSearchResults() {
+    const rowsContainer = document.getElementById("rows");
+    const count = rowsContainer.querySelectorAll("tr").length;
+
+    if (count === 0) {
+      showToast("ℹ️ لا توجد نتائج للمسح", "info");
+      return;
+    }
+
+    if (confirm(`⚠️ هل تريد مسح جميع النتائج (${count} طلب)؟`)) {
+      rowsContainer.innerHTML = "";
+      document.getElementById("selectAllCheckbox").checked = false;
+      showToast(`✅ تم مسح ${count} طلب`, "success");
+    }
+  }
+
+  /* =======================
+     Bulk Execute
+  ======================= */
+  function executeBulk() {
+    const selected = Array.from(document.querySelectorAll(".row-checkbox:checked")).map(cb => parseInt(cb.dataset.id));
+
+    if (selected.length === 0) {
+      showToast("⚠️ الرجاء تحديد طلبات للتنفيذ", "warning");
+      return;
+    }
+
+    if (!confirm(`⚠️ هل أنت متأكد من تنفيذ ${selected.length} طلب؟`)) {
+      return;
+    }
+
+    showLoading();
+
+    // الحصول على الإجراء المحدد لكل طلب
+    const orders = selected.map(id => {
+      const radio = document.querySelector(`input[name=s${id}]:checked`);
+      let action = "ordered";
+      if (radio) {
+        const row = radio.closest("tr");
+        const cells = row.querySelectorAll("td");
+        // البحث عن الإجراء من الأعمدة (تم الطلب = 5, واصل = 6, مرتجع = 7)
+        if (cells[6] && cells[6].querySelector("input[type='radio']:checked")) {
+          action = "delivered";
+        } else if (cells[7] && cells[7].querySelector("input[type='radio']:checked")) {
+          action = "returned";
+        } else {
+          action = "ordered";
+        }
+      }
+      return { id, action };
+    });
+
+    fetch("/api/index/execute-bulk", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ orders })
+    })
+      .then(r => r.json())
+      .then(res => {
+        hideLoading();
+        if (res.success) {
+          // ==========================
+          // تشغيل الأصوات عند تنفيذ الطلبات
+          // ==========================
+          // التحقق من نوع الإجراء لتحديد الصوت المناسب
+          const hasPaid = orders.some(o => o.action === "paid" || o.action === "delivered");
+          const hasCanceled = orders.some(o => o.action === "returned" || o.action === "cancel");
+
+          if (hasPaid) {
+            playSuccessSound(); // صوت النجاح عند تسديد الطلب
+          } else if (hasCanceled) {
+            playCancelSound(); // صوت التحذير عند إلغاء الطلب
+          }
+
+          showToast(`✅ تم تنفيذ ${res.executed || selected.length} طلب بنجاح`, "success");
+          // إزالة الطلبات المنفذة
+          selected.forEach(id => {
+            const row = document.getElementById("r" + id);
+            if (row) row.remove();
+          });
+          load(currentPeriod.type, currentPeriod.date_from, currentPeriod.date_to); // تحديث الداشبورد بالفترة الحالية (بدون إعادة تحميل)
+        } else {
+          showToast(res.error || "❌ حدث خطأ أثناء التنفيذ الجماعي", "error");
+        }
+      })
+      .catch(error => {
+        hideLoading();
+        showToast("❌ حدث خطأ أثناء التنفيذ الجماعي", "error");
+        console.error(error);
+      });
+  }
+
+  /* =======================
+     Charts Initialization
+  ======================= */
+  let salesChart = null;
+  let profitChart = null;
+  let statusChart = null;
+
+  function getChartTheme() {
+    const root = document.documentElement;
+    const theme = root.getAttribute("data-theme") || "dark";
+    const cs = getComputedStyle(root);
+    const getVar = (v, fallback) => (cs.getPropertyValue(v).trim() || fallback);
+
+    const isLight = theme === "light";
+    const text = isLight ? "#1e293b" : "#f1f5f9";
+    const muted = isLight ? "#64748b" : "#94a3b8";
+    const primary = isLight ? "#2563eb" : "#3b82f6";
+    const success = isLight ? "#16a34a" : "#10b981";
+    const grid = isLight ? "rgba(0, 0, 0, 0.05)" : "rgba(255, 255, 255, 0.06)";
+    const tooltipBg = isLight ? "#ffffff" : "#111827";
+    const tooltipBorder = isLight ? "#e2e8f0" : "rgba(255,255,255,0.10)";
+
+    return { theme, text, muted, primary, success, grid, tooltipBg, tooltipBorder };
+  }
+
+  function commonChartOptions() {
+    const t = getChartTheme();
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: { top: 10, left: 8, right: 8, bottom: 6 } },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: t.tooltipBg,
+          borderColor: t.tooltipBorder,
+          borderWidth: 1,
+          titleColor: t.text,
+          bodyColor: t.text,
+          padding: 12,
+          cornerRadius: 12,
+          displayColors: true,
+          boxWidth: 8,
+          boxHeight: 8,
+          usePointStyle: true,
+          callbacks: {
+            label: function (ctx) {
+              const v = ctx.parsed && typeof ctx.parsed.y !== "undefined" ? ctx.parsed.y : ctx.parsed;
+              return `${ctx.dataset.label}: ${formatNumber(v || 0)} د.ع`;
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            color: t.muted,
+            font: { size: 12, weight: "600" },
+            callback: function (v) { return formatNumber(v); }
+          },
+          grid: { color: t.grid }
+        },
+        x: {
+          ticks: {
+            color: t.muted,
+            font: { size: 12, weight: "600" },
+            maxRotation: 0
+          },
+          grid: { color: t.grid }
+        }
+      }
+    };
+  }
+
+  function initCharts() {
+    fetch("/api/index/charts")
+      .then(r => r.json())
+      .then(data => {
+        const t = getChartTheme();
+        const baseOpts = commonChartOptions();
+
+        // Summaries (totals & averages for the last 7 days)
+        const sum = arr => (arr || []).reduce((acc, v) => acc + (v || 0), 0);
+        const safeLen = arr => (arr && arr.length) ? arr.length : 0;
+
+        const totalSales = sum(data.sales);
+        const totalProfit = sum(data.profit);
+        const avgSales = safeLen(data.sales) ? Math.round(totalSales / safeLen(data.sales)) : 0;
+        const avgProfit = safeLen(data.profit) ? Math.round(totalProfit / safeLen(data.profit)) : 0;
+
+        const salesTotalEl = document.getElementById("salesTotal7");
+        const salesAvgEl = document.getElementById("salesAvg7");
+        const profitTotalEl = document.getElementById("profitTotal7");
+        const profitAvgEl = document.getElementById("profitAvg7");
+
+        if (salesTotalEl) salesTotalEl.innerText = formatNumber(totalSales) + " د.ع";
+        if (salesAvgEl) salesAvgEl.innerText = formatNumber(avgSales) + " د.ع";
+        if (profitTotalEl) profitTotalEl.innerText = formatNumber(totalProfit) + " د.ع";
+        if (profitAvgEl) profitAvgEl.innerText = formatNumber(avgProfit) + " د.ع";
+
+        // Sales Chart
+        const salesCtx = document.getElementById("salesChart");
+        if (salesChart) salesChart.destroy();
+
+        salesChart = new Chart(salesCtx, {
+          type: "bar",
+          data: {
+            labels: data.labels,
+            datasets: [{
+              label: "المبيعات (د.ع)",
+              data: data.sales,
+              backgroundColor: t.theme === "light" ? "rgba(37, 99, 235, 0.35)" : "rgba(59, 130, 246, 0.45)",
+              borderColor: t.primary,
+              borderWidth: 2,
+              borderRadius: 10,
+              barThickness: 18,
+              maxBarThickness: 22
+            }]
+          },
+          options: baseOpts
+        });
+
+        // Profit Chart
+        const profitCtx = document.getElementById("profitChart");
+        if (profitChart) profitChart.destroy();
+
+        profitChart = new Chart(profitCtx, {
+          type: "line",
+          data: {
+            labels: data.labels,
+            datasets: [{
+              label: "الربح (د.ع)",
+              data: data.profit,
+              borderColor: t.success,
+              backgroundColor: t.theme === "light" ? "rgba(22, 163, 74, 0.12)" : "rgba(16, 185, 129, 0.10)",
+              pointRadius: 2,
+              pointHoverRadius: 5,
+              pointBorderColor: t.success,
+              pointBackgroundColor: t.theme === "light" ? "#fff" : t.success,
+              tension: 0.4,
+              fill: true
+            }]
+          },
+          options: baseOpts
+        });
+
+        // Status Distribution Chart (Invoices by status)
+        const statusCtx = document.getElementById("statusChart");
+        if (statusCtx) {
+          if (statusChart) statusChart.destroy();
+
+          const statusSource = data.status || {};
+          const statusConfig = [
+            { key: "ordered", label: "تم الطلب", bg: "rgba(59, 130, 246, 0.55)", border: "rgba(59, 130, 246, 1)" },
+            { key: "shipping", label: "جاري الشحن", bg: "rgba(14, 165, 233, 0.55)", border: "rgba(14, 165, 233, 1)" },
+            { key: "delivered", label: "تم التوصيل", bg: "rgba(16, 185, 129, 0.55)", border: "rgba(16, 185, 129, 1)" },
+            { key: "paid", label: "مسدد", bg: "rgba(132, 204, 22, 0.55)", border: "rgba(132, 204, 22, 1)" },
+            { key: "returned", label: "مرتجع / ملغي", bg: "rgba(239, 68, 68, 0.55)", border: "rgba(239, 68, 68, 1)" }
+          ];
+
+          const labels = statusConfig.map(s => s.label);
+          const values = statusConfig.map(s => Number(statusSource[s.key] || 0));
+          const bgColors = statusConfig.map(s => s.bg);
+          const borderColors = statusConfig.map(s => s.border);
+
+          const tooltipCfg = commonChartOptions().plugins.tooltip;
+
+          statusChart = new Chart(statusCtx, {
+            type: "doughnut",
+            data: {
+              labels,
+              datasets: [{
+                data: values,
+                backgroundColor: bgColors,
+                borderColor: borderColors,
+                borderWidth: 1.5,
+                hoverOffset: 6
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              cutout: "60%",
+              plugins: {
+                legend: {
+                  display: true,
+                  position: "bottom",
+                  labels: {
+                    color: t.muted,
+                    font: { size: 11, weight: "600" },
+                    usePointStyle: true
+                  }
+                },
+                tooltip: tooltipCfg
+              }
+            }
+          });
+        }
+      });
+  }
+
+  // Re-init charts when theme changes (keeps axes/grid readable)
+  (function () {
+    let t = null;
+    const obs = new MutationObserver(() => {
+      clearTimeout(t);
+      t = setTimeout(() => {
+        if (document.getElementById("salesChart") && document.getElementById("profitChart")) {
+          initCharts();
+        }
+      }, 80);
+    });
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  })();
+
+  /* =======================
+     Real-time Notifications
+  ======================= */
+  let lastOrderId = null;
+
+  function checkNewOrders() {
+    fetch("/api/index/new-orders")
+      .then(r => r.json())
+      .then(data => {
+        if (lastOrderId === null) {
+          lastOrderId = data.last_order_id;
+          return;
+        }
+
+        if (data.last_order_id && data.last_order_id > lastOrderId) {
+          // New orders detected
+          data.new_orders.forEach(order => {
+            if (order.id > lastOrderId) {
+              showToast(
+                `📦 طلب جديد #${order.id}\nالزبون: ${order.customer}\nالمبلغ: ${order.total} د.ع`,
+                "info",
+                5000
+              );
+            }
+          });
+
+          lastOrderId = data.last_order_id;
+          load(currentPeriod.type, currentPeriod.date_from, currentPeriod.date_to); // Refresh dashboard with current period
+        }
+      })
+      .catch(err => console.error("Error checking new orders:", err));
+  }
+
+  /* =======================
+     Format Number
+  ======================= */
+  function formatNumber(num) {
+    if (num === null || num === undefined || isNaN(num)) {
+      return "0";
+    }
+    return Number(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  }
+
+  // المساعد الذكي – تحليل عبر /ai/analyze
+  function runAiAnalyze() {
+    var typeEl = document.getElementById("aiAnalyzeType");
+    var periodEl = document.getElementById("aiPeriod");
+    var msgEl = document.getElementById("aiMessage");
+    var btn = document.getElementById("aiAnalyzeBtn");
+    var resultEl = document.getElementById("aiAnalyzeResult");
+    var errEl = document.getElementById("aiAnalyzeError");
+    if (!typeEl || !periodEl || !btn || !resultEl || !errEl) return;
+    resultEl.style.display = "none";
+    errEl.style.display = "none";
+    btn.disabled = true;
+    btn.textContent = "جاري التحليل...";
+    var payload = {
+      type: (typeEl.value || "report").trim(),
+      period: (periodEl.value || "last_30_days").trim(),
+      message: (msgEl && msgEl.value) ? msgEl.value.trim() : ""
+    };
+    fetch("/ai/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    })
+      .then(function (r) {
+        return r.json().then(function (data) {
+          if (!r.ok) throw { status: r.status, data: data };
+          return data;
+        });
+      })
+      .then(function (data) {
+        if (data.success && data.analysis) {
+          resultEl.textContent = data.analysis;
+          resultEl.style.display = "block";
+        } else {
+          errEl.textContent = data.error || "حدث خطأ غير متوقع.";
+          errEl.style.display = "block";
+        }
+      })
+      .catch(function (e) {
+        var msg = (e.data && e.data.error) ? e.data.error : (e.message || "فشل الاتصال بالخادم.");
+        errEl.textContent = msg;
+        errEl.style.display = "block";
+      })
+      .finally(function () {
+        btn.disabled = false;
+        btn.textContent = "تحليل";
+      });
+  }
+
+  // ========================
+  // Sound Management (إدارة الأصوات)
+  // ========================
+  // ==========================
+  // تصحيح: أصوات عند تسديد/إلغاء الطلبات
+  // ==========================
+  // الصوت يُشغل فقط عند:
+  // 1. تسديد الطلب (action === "paid")
+  // 2. إلغاء الطلب (action === "cancel" أو status === "ملغي")
+  // لا يُشغل عند فتح الصفحة أو التحديث أو عرض البيانات
+  // ==========================
+
+  // فحص إعدادات الصوت من localStorage (افتراضي: مفعل)
+  function getSoundsEnabled() {
+    const saved = localStorage.getItem('sounds_enabled');
+    return saved === null ? true : saved === 'true'; // افتراضي: مفعل
+  }
+
+  // حفظ إعدادات الصوت في localStorage
+  function setSoundsEnabled(enabled) {
+    localStorage.setItem('sounds_enabled', enabled ? 'true' : 'false');
+  }
+
+  // تشغيل صوت النجاح (عند تسديد الطلب)
+  function playSuccessSound() {
+    if (!getSoundsEnabled()) return; // إذا كان الصوت معطل، لا نفعل شيئاً
+
+    try {
+      // استخدام Web Audio API لإنشاء صوت بسيط (بدون ملف صوتي خارجي)
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      oscillator.frequency.value = 800; // تردد النجاح (نغمة عالية)
+      oscillator.type = 'sine';
+
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.3);
+    } catch (e) {
+      // إذا فشل Web Audio API، لا نفعل شيئاً (Silent Fail)
+      console.log("Sound not available:", e);
+    }
+  }
+
+  // تشغيل صوت التحذير/الإلغاء (عند إلغاء الطلب)
+  function playCancelSound() {
+    if (!getSoundsEnabled()) return; // إذا كان الصوت معطل، لا نفعل شيئاً
+
+    try {
+      // استخدام Web Audio API لإنشاء صوت بسيط (بدون ملف صوتي خارجي)
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      oscillator.frequency.value = 400; // تردد الإلغاء (نغمة منخفضة)
+      oscillator.type = 'sawtooth';
+
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.4);
+    } catch (e) {
+      // إذا فشل Web Audio API، لا نفعل شيئاً (Silent Fail)
+      console.log("Sound not available:", e);
+    }
+  }
+
+  // ========================
+  // Initialize Dashboard (Load with default period: last 30 days)
+  // ========================
+  // استدعاء load عند تحميل الصفحة مع الفترة الافتراضية (آخر 30 يوم من السنة الحالية)
+  window.addEventListener("DOMContentLoaded", function () {
+    load("last_30_days");
+  });
+
+  /* =======================
+     Show Delivered Paid Details
+  ======================= */
+  function showDeliveredPaidDetails() {
+    fetch("/api/index/delivered-paid-details")
+      .then(r => r.json())
+      .then(data => {
+        const modal = document.createElement("div");
+        modal.className = "modal";
+        modal.style.display = "flex";
+        modal.innerHTML = `
+        <div class="card" style="max-width:900px;width:95%">
+          <h3>✅ المبيعات الواصلة والمسددة - التفاصيل</h3>
+          <div style="margin:20px 0;padding:20px;background:rgba(16,185,129,0.1);border-radius:12px;border:1px solid rgba(16,185,129,0.3)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px">
+              <span style="font-size:18px;color:var(--dashboard-text)">إجمالي المبيعات:</span>
+              <span style="font-size:24px;font-weight:700;color:#10b981">${formatNumber(data.total)} د.ع</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px">
+              <span style="font-size:18px;color:var(--dashboard-text)">عدد الطلبات:</span>
+              <span style="font-size:24px;font-weight:700;color:var(--dashboard-text)">${data.count} طلب</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:18px;color:var(--dashboard-text)">متوسط قيمة الطلب:</span>
+              <span style="font-size:24px;font-weight:700;color:var(--dashboard-primary)">${formatNumber(data.average)} د.ع</span>
+            </div>
+          </div>
+          <div style="max-height:400px;overflow-y:auto;border-radius:12px;border:1px solid rgba(255,255,255,0.05);margin:20px 0">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>الزبون</th>
+                  <th>المبلغ</th>
+                  <th>التاريخ</th>
+                  <th>الحالة</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${data.orders.map(o => `
+                  <tr>
+                    <td><strong>${o.id}</strong></td>
+                    <td>${o.customer || "—"}</td>
+                    <td style="color:#10b981;font-weight:600">${formatNumber(o.total)} د.ع</td>
+                    <td>${o.date}</td>
+                    <td><span style="background:rgba(16,185,129,0.2);padding:4px 8px;border-radius:6px;font-size:12px">✅ ${o.status}</span></td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
+          <button onclick="this.closest('.modal').remove()" style="background:rgba(255,255,255,0.08);color:var(--dashboard-text);border:1px solid rgba(255,255,255,0.1);width:100%;padding:14px;border-radius:12px;margin-top:20px;cursor:pointer">
+            إغلاق
+          </button>
+        </div>
+      `;
+        document.body.appendChild(modal);
+        modal.addEventListener("click", function (e) {
+          if (e.target === modal) {
+            modal.remove();
+          }
+        });
+      })
+      .catch(err => {
+        console.error("Error loading details:", err);
+        showToast("❌ حدث خطأ أثناء جلب التفاصيل", "error");
+      });
+  }
+
+  /* =======================
+     Show Agent Dues Details
+  ======================= */
+  function showAgentDuesDetails() {
+    fetch("/api/index/agent-dues-details")
+      .then(r => r.json())
+      .then(data => {
+        const modal = document.createElement("div");
+        modal.className = "modal";
+        modal.style.display = "flex";
+        modal.innerHTML = `
+        <div class="card" style="max-width:900px;width:95%">
+          <h3>🚚 مستحقات مندوب التوصيل - التفاصيل</h3>
+          <div style="margin:20px 0;padding:20px;background:rgba(139,92,246,0.1);border-radius:12px;border:1px solid rgba(139,92,246,0.3)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px">
+              <span style="font-size:18px;color:var(--dashboard-text)">إجمالي المستحقات:</span>
+              <span style="font-size:24px;font-weight:700;color:#8b5cf6">${formatNumber(data.total)} د.ع</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px">
+              <span style="font-size:18px;color:var(--dashboard-text)">عدد الطلبات:</span>
+              <span style="font-size:24px;font-weight:700;color:var(--dashboard-text)">${data.count} طلب</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:18px;color:var(--dashboard-text)">متوسط قيمة الطلب:</span>
+              <span style="font-size:24px;font-weight:700;color:var(--dashboard-primary)">${formatNumber(data.average)} د.ع</span>
+            </div>
+          </div>
+          <div style="max-height:400px;overflow-y:auto;border-radius:12px;border:1px solid rgba(255,255,255,0.05);margin:20px 0">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>الزبون</th>
+                  <th>مندوب التوصيل</th>
+                  <th>المبلغ</th>
+                  <th>التاريخ</th>
+                  <th>الحالة</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${data.orders.map(o => `
+                  <tr>
+                    <td><strong>${o.id}</strong></td>
+                    <td>${o.customer || "—"}</td>
+                    <td>${o.agent || "—"}</td>
+                    <td style="color:#8b5cf6;font-weight:600">${formatNumber(o.total)} د.ع</td>
+                    <td>${o.date}</td>
+                    <td><span style="background:rgba(139,92,246,0.2);padding:4px 8px;border-radius:6px;font-size:12px">🚚 ${o.status}</span></td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
+          <button onclick="this.closest('.modal').remove()" style="background:rgba(255,255,255,0.08);color:var(--dashboard-text);border:1px solid rgba(255,255,255,0.1);width:100%;padding:14px;border-radius:12px;margin-top:20px;cursor:pointer">
+            إغلاق
+          </button>
+        </div>
+      `;
+        document.body.appendChild(modal);
+        modal.addEventListener("click", function (e) {
+          if (e.target === modal) {
+            modal.remove();
+          }
+        });
+      })
+      .catch(error => {
+        showToast("❌ حدث خطأ أثناء جلب التفاصيل", "error");
+        console.error(error);
+      });
+  }
+
+  // Make showAgentDuesDetails globally available
+  window.showAgentDuesDetails = showAgentDuesDetails;
+
+  /* =======================
+     Init
+  ======================= */
+  // ==========================
+  // تصحيح: منع التحديث التلقائي للصفحة
+  // ==========================
+  // تم إزالة setInterval(load, 5000) لمنع التحديث التلقائي المزعج
+  // التحديث يكون فقط:
+  // 1. عند تغيير الفترة الزمنية (عبر AJAX)
+  // 2. عند حدث (بيع/شراء/حركة نقدية) - يُستدعى load() يدوياً
+  // ==========================
+  load();
+  initCharts();
+  // setInterval(load, 5000); // تم إزالته - منع التحديث التلقائي
+  setInterval(checkNewOrders, 3000); // Check for new orders every 3 seconds (للطلبات الجديدة فقط)
+  setInterval(initCharts, 30000); // Refresh charts every 30 seconds (للرسوم فقط)
+
+  // Close modals when clicking outside
+  document.getElementById('searchModal').addEventListener('click', function (e) {
+    if (e.target.id === 'searchModal') {
+      closeSearch();
+    }
+  });
+
+  document.getElementById('profitModal').addEventListener('click', function (e) {
+    if (e.target.id === 'profitModal') {
+      document.getElementById('profitModal').style.display = 'none';
+    }
+  });
+
+  document.getElementById('addExpenseModal').addEventListener('click', function (e) {
+    if (e.target.id === 'addExpenseModal') {
+      closeAddExpense();
+    }
+  });
+
+  /* =======================
+     Add Expense Functions
+  ======================= */
+  function openAddExpense() {
+    document.getElementById('addExpenseModal').style.display = 'flex';
+    // Set today's date as default
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('expenseDate').value = today;
+  }
+
+  function closeAddExpense() {
+    document.getElementById('addExpenseModal').style.display = 'none';
+    // Clear form
+    document.getElementById('expenseTitle').value = '';
+    document.getElementById('expenseCategory').value = '';
+    document.getElementById('expenseAmount').value = '';
+    document.getElementById('expenseNote').value = '';
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('expenseDate').value = today;
+  }
+
+  function submitExpense() {
+    const title = document.getElementById('expenseTitle').value.trim();
+    const category = document.getElementById('expenseCategory').value;
+    const amount = document.getElementById('expenseAmount').value;
+    const note = document.getElementById('expenseNote').value.trim();
+    const expenseDate = document.getElementById('expenseDate').value;
+
+    if (!title) {
+      showToast('⚠️ الرجاء إدخال عنوان المصروف', 'warning');
+      return;
+    }
+
+    if (!category) {
+      showToast('⚠️ الرجاء اختيار فئة المصروف', 'warning');
+      return;
+    }
+
+    if (!amount || parseFloat(amount) <= 0) {
+      showToast('⚠️ الرجاء إدخال مبلغ صحيح', 'warning');
+      return;
+    }
+
+    showLoading();
+
+    fetch('/api/index/add-expense', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        title: title,
+        category: category,
+        amount: parseFloat(amount),
+        note: note,
+        expense_date: expenseDate
+      })
+    })
+      .then(r => r.json())
+      .then(data => {
+        hideLoading();
+        if (data.success) {
+          showToast('✅ تم إضافة المصروف بنجاح', 'success');
+          closeAddExpense();
+          load(currentPeriod.type, currentPeriod.date_from, currentPeriod.date_to); // Refresh dashboard with current period
+        } else {
+          showToast('❌ ' + (data.error || 'حدث خطأ أثناء إضافة المصروف'), 'error');
+        }
+      })
+      .catch(error => {
+        hideLoading();
+        showToast('❌ حدث خطأ أثناء إضافة المصروف', 'error');
+        console.error(error);
+      });
+  }
+</script>
+
+{% endif %}
+{% endblock %}

@@ -1,0 +1,702 @@
+{% extends "superadmin_base.html" %}
+{% block title %}إدارة الشركات - Finora{% endblock %}
+{% block page_title %}إدارة الشركات والمنشآت{% endblock %}
+
+{% block extra_style %}
+<style>
+    .table-card {
+        padding: 0;
+        overflow: hidden;
+    }
+
+    .custom-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .custom-table th {
+        background: rgba(255, 255, 255, 0.02);
+        padding: 20px 24px;
+        text-align: right;
+        font-size: 12px;
+        font-weight: 800;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .custom-table td {
+        padding: 18px 24px;
+        border-bottom: 1px solid var(--border-color);
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .custom-table tbody tr {
+        transition: var(--transition);
+    }
+
+    .custom-table tbody tr:hover {
+        background: rgba(255, 255, 255, 0.01);
+    }
+
+    .tenant-info {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+
+    .tenant-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        color: #fff;
+        font-size: 16px;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+    }
+
+    .tenant-details-text {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .tenant-name-text {
+        font-weight: 800;
+        color: #fff;
+        line-height: 1.2;
+    }
+
+    .tenant-slug-text {
+        font-size: 12px;
+        color: var(--text-muted);
+        font-family: monospace;
+    }
+
+    .status-badge {
+        padding: 6px 14px;
+        border-radius: 30px;
+        font-size: 11px;
+        font-weight: 800;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .status-active {
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+        border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    .status-expired {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+        border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+
+    .btn-create {
+        padding: 12px 24px;
+        background: var(--primary);
+        color: #fff;
+        border-radius: 14px;
+        font-weight: 800;
+        font-size: 14px;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        transition: var(--transition);
+        box-shadow: 0 10px 20px rgba(99, 102, 241, 0.2);
+    }
+
+    .btn-create:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 15px 30px rgba(99, 102, 241, 0.3);
+    }
+
+    .btn-action-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border-color);
+        color: var(--text-main);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: var(--transition);
+    }
+
+    .btn-action-icon:hover {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: #fff;
+    }
+
+    /* Modal Styling */
+    .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(8px);
+        z-index: 1000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        animation: fadeIn 0.3s ease-out;
+    }
+
+    .modal-overlay.active {
+        display: flex;
+    }
+
+    .premium-modal {
+        width: 100%;
+        max-width: 600px;
+        max-height: 90vh;
+        overflow-y: auto;
+        animation: slideUp 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    .modal-header {
+        padding: 30px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-title {
+        font-size: 20px;
+        font-weight: 800;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .modal-close {
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        font-size: 24px;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+
+    .modal-close:hover {
+        color: #fff;
+    }
+
+    .modal-body {
+        padding: 30px;
+    }
+
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 14px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .detail-label {
+        color: var(--text-muted);
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .detail-value {
+        color: #fff;
+        font-weight: 700;
+        font-size: 14px;
+        text-align: left;
+    }
+
+    .action-group {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 20px;
+        margin-top: 24px;
+    }
+
+    .action-title {
+        font-size: 14px;
+        font-weight: 800;
+        color: var(--primary);
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn-update {
+        width: 100%;
+        padding: 12px;
+        background: var(--surface-color);
+        border: 1px solid var(--border-color);
+        color: #fff;
+        border-radius: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: var(--transition);
+        margin-top: 12px;
+    }
+
+    .btn-update:hover {
+        background: var(--primary);
+        border-color: var(--primary);
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 32px; display: flex; justify-content: flex-end;">
+    <a href="{{ url_for('superadmin.tenants_create') }}" class="btn-create">
+        <i class="fas fa-plus"></i> إنشاء شركة جديدة
+    </a>
+</div>
+
+<div class="premium-card table-card">
+    <table class="custom-table">
+        <thead>
+            <tr>
+                <th>الشركة</th>
+                <th>تاريخ التسجيل</th>
+                <th>انتهاء الاشتراك</th>
+                <th>قاعدة البيانات</th>
+                <th>الحالة</th>
+                <th>إجراءات</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for tenant in tenants %}
+            <tr class="tenant-row" data-name="{{ tenant.name }}" data-slug="{{ tenant.slug }}"
+                data-db="{{ tenant.db_path }}"
+                data-created="{{ tenant.created_at.strftime('%Y-%m-%d') if tenant.created_at else '—' }}"
+                data-end="{{ tenant.subscription_end_date.strftime('%Y-%m-%d') if tenant.subscription_end_date else '—' }}"
+                data-status="{% if not tenant.is_active %}معطلة{% elif tenant.is_subscription_valid() %}نشطة{% else %}منتهية{% endif %}">
+                <td>
+                    <div class="tenant-info">
+                        <div class="tenant-icon">{{ tenant.name[:1] }}</div>
+                        <div class="tenant-details-text">
+                            <span class="tenant-name-text">{{ tenant.name }}</span>
+                            <span class="tenant-slug-text">{{ tenant.slug }}</span>
+                        </div>
+                    </div>
+                </td>
+                <td style="color: var(--text-muted);">{{ tenant.created_at.strftime('%Y-%m-%d') }}</td>
+                <td style="color: #fff; font-weight: 800;">
+                    <i class="far fa-calendar-alt"
+                        style="color: var(--primary); margin-left: 6px; font-size: 13px;"></i>
+                    {{ tenant.subscription_end_date.strftime('%Y-%m-%d') if tenant.subscription_end_date else '—' }}
+                </td>
+                <td><code
+                        style="background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 6px; font-size: 12px; color: var(--accent);">{{ tenant.db_path }}</code>
+                </td>
+                <td>
+                    <span
+                        class="status-badge {% if not tenant.is_active %}status-expired{% elif tenant.is_subscription_valid() %}status-active{% else %}status-expired{% endif %}">
+                        <i
+                            class="fas {% if not tenant.is_active %}fa-pause-circle{% elif tenant.is_subscription_valid() %}fa-check-circle{% else %}fa-exclamation-triangle{% endif %}"></i>
+                        {% if not tenant.is_active %}معطلة{% elif tenant.is_subscription_valid() %}نشطة{% else
+                        %}منتهية{% endif %}
+                    </span>
+                </td>
+                <td>
+                    <button class="btn-action-icon btn-details-trigger" data-slug="{{ tenant.slug }}">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 80px; color: var(--text-muted);">
+                    <i class="fas fa-building" style="font-size: 48px; margin-bottom: 20px; opacity: 0.2;"></i>
+                    <p style="font-size: 16px; font-weight: 700;">لا توجد شركات مسجلة في النظام حالياً</p>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Simple Detail Modal -->
+<div id="tenantModal" class="modal-overlay">
+    <div class="premium-card premium-modal">
+        <div class="modal-header">
+            <div class="modal-title"><i class="fas fa-info-circle"></i> <span id="m-title">تفاصيل الشركة</span></div>
+            <button class="modal-close"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <div id="m-content">
+                <div class="detail-row"><span class="detail-label">الاسم الكامل</span><span class="detail-value"
+                        id="m-name"></span></div>
+                <div class="detail-row"><span class="detail-label">المعرف الفريد</span><span class="detail-value"
+                        id="m-slug" style="color: var(--primary);"></span></div>
+                <div class="detail-row"><span class="detail-label">قاعدة البيانات</span><span class="detail-value"
+                        id="m-db"></span></div>
+                <div class="detail-row"><span class="detail-label">تاريخ التسجيل</span><span class="detail-value"
+                        id="m-created"></span></div>
+                <div class="detail-row"><span class="detail-label">انتهاء الاشتراك</span><span class="detail-value"
+                        id="m-end"></span></div>
+                <div class="detail-row"><span class="detail-label">حالة الحساب</span><span class="detail-value"
+                        id="m-status"></span></div>
+            </div>
+
+            <div class="action-group"
+                style="background: rgba(59, 130, 246, 0.05); border-color: rgba(59, 130, 246, 0.2);">
+                <div class="action-title" style="color: #fff;"><i class="fas fa-crown"></i> إدارة الاشتراك</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                        <label class="detail-label">خطة الاشتراك</label>
+                        <select id="m-plan-select"
+                            style="background: var(--surface-color); border: 1px solid var(--border-color); color: #fff; padding: 10px; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                            <option value="basic">الأساسية</option>
+                            <option value="pro">المتقدمة</option>
+                            <option value="enterprise">الشركات</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                        <label class="detail-label">تاريخ الانتهاء</label>
+                        <input type="date" id="m-end-input"
+                            style="background: var(--surface-color); border: 1px solid var(--border-color); color: #fff; padding: 10px; border-radius: 8px; font-weight: 600;">
+                    </div>
+                </div>
+                <button class="btn-update" id="m-save-plan"
+                    style="background: var(--primary); border-color: var(--primary); color: #fff; margin-top: 5px;">
+                    <i class="fas fa-save"></i> حفظ تغييرات الاشتراك
+                </button>
+            </div>
+
+            <div class="action-group">
+                <div class="action-title"><i class="fas fa-tools"></i> أدوات الإدارة</div>
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <button class="btn-update" id="open-reset-pwd-modal">
+                        <i class="fas fa-key"></i> تغيير كلمة مرور المسؤول
+                    </button>
+                    <button class="btn-update" id="m-toggle-status">
+                        <i class="fas fa-power-off"></i> <span id="m-toggle-text">تعطيل الحساب مؤقتاً</span>
+                    </button>
+                    <button class="btn-update" id="m-reset-db"
+                        style="background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.2); color: #ef4444;">
+                        <i class="fas fa-database"></i> إعادة تعيين قاعدة البيانات
+                    </button>
+                    <button class="btn-update" id="m-delete-tenant"
+                        style="background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.3); color: #ef4444; font-weight: 900;">
+                        <i class="fas fa-trash-alt"></i> حذف الشركة نهائياً من النظام
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Password Reset Modal -->
+<div id="passwordResetModal" class="modal-overlay">
+    <div class="premium-card premium-modal" style="max-width: 450px;">
+        <div class="modal-header">
+            <div class="modal-title"><i class="fas fa-key"></i> تغيير كلمة مرور المسؤول</div>
+            <button class="modal-close reset-modal-close"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">
+                سيتم تغيير كلمة مرور مستخدم <strong>admin</strong> للشركة: <span id="reset-pwd-slug"
+                    style="color: var(--primary);"></span>
+            </p>
+            <div style="margin-bottom: 24px;">
+                <label style="display: block; color: #fff; font-weight: 700; font-size: 13px; margin-bottom: 10px;">كلمة
+                    المرور الجديدة</label>
+                <input type="text" id="new-admin-password" placeholder="أدخل كلمة المرور الجديدة..."
+                    style="width: 100%; padding: 14px 18px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); border-radius: 12px; color: #fff; font-weight: 700;">
+            </div>
+            <button class="btn-create" id="confirm-reset-pwd"
+                style="width: 100%; justify-content: center; padding: 14px;">
+                تأكيد تغيير كلمة المرور
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const modal = document.getElementById('tenantModal');
+        const closeBtn = modal.querySelector('.modal-close');
+
+        document.querySelectorAll('.btn-details-trigger').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const slug = this.dataset.slug;
+
+                // Show loading state or at least clear previous
+                document.getElementById('m-name').textContent = 'جاري التحميل...';
+
+                fetch(`/superadmin/tenants/details/${slug}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.ok) {
+                            document.getElementById('m-name').textContent = data.name;
+                            document.getElementById('m-slug').textContent = data.slug;
+                            document.getElementById('m-db').textContent = data.db_path;
+                            document.getElementById('m-created').textContent = data.created_at;
+                            document.getElementById('m-end').textContent = data.subscription_end_date;
+
+                            // Plan info
+                            document.getElementById('m-plan-select').value = data.plan_key || 'basic';
+                            document.getElementById('m-end-input').value = data.subscription_end_date === '—' ? '' : data.subscription_end_date;
+
+                            // Status
+                            const isExpired = data.subscription_end_date !== '—' && new Date(data.subscription_end_date) < new Date().setHours(0, 0, 0, 0);
+                            const statusText = !data.is_active ? 'معطلة' : (isExpired ? 'منتهية' : 'نشطة');
+                            document.getElementById('m-status').textContent = statusText;
+
+                            // Update toggle button text
+                            const toggleBtn = document.getElementById('m-toggle-status');
+                            const toggleText = document.getElementById('m-toggle-text');
+                            if (data.is_active) {
+                                toggleText.textContent = 'تعطيل الحساب مؤقتاً';
+                                toggleBtn.style.background = 'rgba(239, 68, 68, 0.1)';
+                                toggleBtn.style.color = '#ef4444';
+                            } else {
+                                toggleText.textContent = 'إعادة تفعيل الحساب';
+                                toggleBtn.style.background = 'rgba(16, 185, 129, 0.1)';
+                                toggleBtn.style.color = '#10b981';
+                            }
+
+                            modal.classList.add('active');
+                        } else {
+                            alert('خطأ في جلب البيانات: ' + data.error);
+                        }
+                    })
+                    .catch(() => alert('فشل الاتصال بالسيرفر'));
+            });
+        });
+
+        closeBtn.addEventListener('click', () => modal.classList.remove('active'));
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('active'); });
+
+        // Password Reset Modal Handlers
+        const pwdModal = document.getElementById('passwordResetModal');
+        const openPwdBtn = document.getElementById('open-reset-pwd-modal');
+        const closePwdBtn = pwdModal.querySelector('.reset-modal-close');
+        const confirmPwdBtn = document.getElementById('confirm-reset-pwd');
+        const pwdInput = document.getElementById('new-admin-password');
+
+        openPwdBtn.addEventListener('click', () => {
+            document.getElementById('reset-pwd-slug').textContent = document.getElementById('m-slug').textContent;
+            pwdInput.value = '';
+            pwdModal.classList.add('active');
+        });
+
+        closePwdBtn.addEventListener('click', () => pwdModal.classList.remove('active'));
+        pwdModal.addEventListener('click', (e) => { if (e.target === pwdModal) pwdModal.classList.remove('active'); });
+
+        confirmPwdBtn.addEventListener('click', function () {
+            const slug = document.getElementById('reset-pwd-slug').textContent;
+            const newPassword = pwdInput.value.trim();
+
+            if (!newPassword) {
+                alert('يجب إدخال كلمة مرور جديدة.');
+                return;
+            }
+
+            if (!confirm(`هل أنت متأكد من تغيير كلمة المرور للشركة ${slug}؟`)) return;
+
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
+            this.disabled = true;
+
+            fetch(`/superadmin/tenants/reset-password/${slug}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password: newPassword })
+            })
+                .then(r => r.json())
+                .then(data => {
+                    this.innerHTML = 'تأكيد تغيير كلمة المرور';
+                    this.disabled = false;
+                    if (data.ok) {
+                        alert(data.message || 'تم تغيير كلمة المرور بنجاح.');
+                        pwdModal.classList.remove('active');
+                    } else {
+                        alert('حدث خطأ: ' + (data.error || 'غير معروف'));
+                    }
+                })
+                .catch(() => {
+                    this.innerHTML = 'تأكيد تغيير كلمة المرور';
+                    this.disabled = false;
+                    alert('فشل الاتصال بالسيرفر');
+                });
+        });
+
+        // Handle Reset Database
+        document.getElementById('m-reset-db').addEventListener('click', function () {
+            const slug = document.getElementById('m-slug').textContent;
+
+            // Strong confirmation for DB reset
+            const confirm1 = confirm(`تحذير: هذا الإجراء سيقوم بحذف كافة البيانات (الفواتير، المنتجات، الموظفين) للشركة: ${slug} بشكل نهائي. هل تريد الاستمرار؟`);
+            if (!confirm1) return;
+
+            const typedSlug = prompt(`لتأكيد الحذف، يرجى كتابة معرف الشركة (${slug}):`);
+            if (typedSlug !== slug) {
+                if (typedSlug !== null) alert('المعرف غير مطابق. تم إلغاء العملية.');
+                return;
+            }
+
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري المسح وإعادة التهيئة...';
+            this.disabled = true;
+
+            fetch(`/superadmin/tenants/reset-db/${slug}`, { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    this.innerHTML = '<i class="fas fa-database"></i> إعادة تعيين قاعدة البيانات بالكامل';
+                    this.disabled = false;
+                    if (data.ok) {
+                        alert(data.message || 'تمت إعادة تعيين قاعدة البيانات بنجاح.');
+                        location.reload();
+                    } else {
+                        alert('حدث خطأ: ' + (data.error || 'غير معروف'));
+                    }
+                })
+                .catch(() => {
+                    this.innerHTML = '<i class="fas fa-database"></i> إعادة تعيين قاعدة البيانات بالكامل';
+                    this.disabled = false;
+                    alert('فشل الاتصال بالسيرفر');
+                });
+        });
+
+        // Toggle Active Status
+        document.getElementById('m-toggle-status').addEventListener('click', function () {
+            const slug = document.getElementById('m-slug').textContent;
+            const currentStatus = document.getElementById('m-status').textContent;
+            const action = currentStatus === 'نشطة' ? 'تعطيل' : 'تفعيل';
+
+            if (!confirm(`هل أنت متأكد من ${action} حساب هذه الشركة؟`)) return;
+
+            this.disabled = true;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري المعالجة...';
+
+            fetch(`/superadmin/tenants/toggle-status/${slug}`, { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.ok) {
+                        alert(data.message);
+                        location.reload();
+                    } else {
+                        alert('حدث خطأ: ' + (data.error || 'غير معروف'));
+                        this.disabled = false;
+                        this.innerHTML = `<i class="fas fa-power-off"></i> <span id="m-toggle-text">${action === 'تعطيل' ? 'تعطيل الحساب مؤقتاً' : 'إعادة تفعيل الحساب'}</span>`;
+                    }
+                })
+                .catch(() => {
+                    alert('فشل الاتصال بالسيرفر');
+                    this.disabled = false;
+                    this.innerHTML = `<i class="fas fa-power-off"></i> <span id="m-toggle-text">${action === 'تعطيل' ? 'تعطيل الحساب مؤقتاً' : 'إعادة تفعيل الحساب'}</span>`;
+                });
+        });
+
+        // Delete Tenant Final
+        document.getElementById('m-delete-tenant').addEventListener('click', function () {
+            const slug = document.getElementById('m-slug').textContent;
+
+            // Multiple confirmations for safety
+            if (!confirm(`تحذير نهائي: سيتم حذف الشركة (${slug}) وقاعدة بياناتها وكافة ملفاتها "نهائياً" من السيرفر. هذا الإجراء لا يمكن التراجع عنه!`)) return;
+
+            const typedSlug = prompt(`لتأكيد الحذف النهائي الشامل، يرجى كتابة اسم المعرف (${slug}):`);
+            if (typedSlug !== slug) {
+                if (typedSlug !== null) alert('المعرف غير مطابق. تم إلغاء عملية الحذف.');
+                return;
+            }
+
+            this.disabled = true;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحذف النهائي...';
+
+            fetch(`/superadmin/tenants/delete/${slug}`, { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.ok) {
+                        alert(data.message);
+                        location.reload();
+                    } else {
+                        alert('حدث خطأ: ' + (data.error || 'غير معروف'));
+                        this.disabled = false;
+                        this.innerHTML = '<i class="fas fa-trash-alt"></i> حذف الشركة نهائياً من النظام';
+                    }
+                })
+                .catch(() => {
+                    alert('فشل الاتصال بالسيرفر');
+                    this.disabled = false;
+                    this.innerHTML = '<i class="fas fa-trash-alt"></i> حذف الشركة نهائياً من النظام';
+                });
+        });
+
+        // Save Subscription Changes
+        document.getElementById('m-save-plan').addEventListener('click', function () {
+            const slug = document.getElementById('m-slug').textContent;
+            const planKey = document.getElementById('m-plan-select').value;
+            const subEnd = document.getElementById('m-end-input').value;
+
+            if (!slug || slug === '—') return;
+            if (!confirm('هل أنت متأكد من تغيير خطة الاشتراك و/أو تاريخ الانتهاء؟')) return;
+
+            this.disabled = true;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
+
+            fetch(`/superadmin/tenants/update-plan/${slug}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    plan_key: planKey,
+                    subscription_end: subEnd
+                })
+            })
+                .then(r => r.json())
+                .then(data => {
+                    this.disabled = false;
+                    this.innerHTML = '<i class="fas fa-save"></i> حفظ تغييرات الاشتراك';
+                    if (data.ok) {
+                        alert(data.message);
+                        location.reload();
+                    } else {
+                        alert('حدث خطأ: ' + (data.error || 'غير معروف'));
+                    }
+                })
+                .catch(() => {
+                    this.disabled = false;
+                    this.innerHTML = '<i class="fas fa-save"></i> حفظ تغييرات الاشتراك';
+                    alert('فشل الاتصال بالسيرفر');
+                });
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% block title %}نجحت العملية — Finora{% endblock %}
+{% block page_title %}🎉 مبروك! تم التفعيل{% endblock %}
+
+{% block content %}
+<style>
+    .success-wrap {
+        max-width: 600px;
+        margin: 80px auto;
+        text-align: center;
+        padding: 40px;
+        background: var(--card);
+        border: 1px solid var(--bord);
+        border-radius: 32px;
+        backdrop-filter: blur(20px);
+        box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4);
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* Success Animation */
+    .success-icon {
+        width: 120px;
+        height: 120px;
+        background: linear-gradient(135deg, #10b981, #34d399);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 60px;
+        color: #fff;
+        margin: 0 auto 32px;
+        box-shadow: 0 0 50px rgba(16, 185, 129, 0.4);
+        animation: scaleIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes scaleIn {
+        0% {
+            transform: scale(0);
+            opacity: 0;
+        }
+
+        100% {
+            transform: scale(1);
+            opacity: 1;
+        }
+    }
+
+    .success-title {
+        font-size: 32px;
+        font-weight: 900;
+        margin-bottom: 16px;
+        background: linear-gradient(135deg, #fff, #94a3b8);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .success-msg {
+        font-size: 18px;
+        color: var(--muted);
+        line-height: 1.6;
+        margin-bottom: 40px;
+    }
+
+    .confetti {
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        background: var(--primary);
+        border-radius: 2px;
+        opacity: 0;
+    }
+
+    .btn-dash {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        padding: 18px 48px;
+        border-radius: 20px;
+        background: linear-gradient(135deg, var(--primary), #6366f1);
+        color: #fff;
+        font-size: 18px;
+        font-weight: 900;
+        text-decoration: none;
+        transition: .3s;
+        box-shadow: 0 10px 30px rgba(59, 130, 246, 0.4);
+    }
+
+    .btn-dash:hover {
+        transform: translateY(-4px) scale(1.02);
+        box-shadow: 0 15px 45px rgba(59, 130, 246, 0.6);
+    }
+
+    .info-card {
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 18px;
+        padding: 20px;
+        margin-bottom: 32px;
+        text-align: right;
+    }
+
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        font-size: 14px;
+    }
+
+    .info-label {
+        color: var(--muted);
+    }
+
+    .info-val {
+        font-weight: 700;
+        color: var(--text);
+    }
+</style>
+
+<div class="success-wrap">
+    <div id="confetti-container"></div>
+
+    <div class="success-icon">
+        <i class="fas fa-check"></i>
+    </div>
+
+    <h2 class="success-title">تم استلام طلبك بنجاح!</h2>
+    <p class="success-msg">
+        شكراً لاختيارك Finora. لقد تم استلام طلب الاشتراك وصورة الإيصال بنجاح. سيقوم فريق الإدارة بمراجعة الطلب وتفعيل
+        النظام الخاص بك في أقرب وقت. سيتم إرسال رسالة إليك قريباً!
+    </p>
+
+    <div class="info-card">
+        <div class="info-row">
+            <span class="info-label">تاريخ الطلب:</span>
+            <span class="info-val">
+                <script>document.write(new Date().toLocaleDateString('en-CA'))</script>
+            </span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">حالة الطلب:</span>
+            <span class="info-val" style="color:#f59e0b">قيد المراجعة 🕒</span>
+        </div>
+    </div>
+
+    <a href="/" class="btn-dash">
+        <i class="fas fa-rocket"></i> الدخول إلى لوحة التحكم
+    </a>
+</div>
+
+<script>
+    // Simple confetti effect
+    const container = document.getElementById('confetti-container');
+    const colors = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444'];
+
+    for (let i = 0; i < 50; i++) {
+        const c = document.createElement('div');
+        c.className = 'confetti';
+        c.style.left = Math.random() * 100 + '%';
+        c.style.top = Math.random() * 100 + '%';
+        c.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        c.style.transform = `rotate(${Math.random() * 360}deg)`;
+        container.appendChild(c);
+
+        const animation = c.animate([
+            { transform: `translate(0, 0) rotate(0deg)`, opacity: 1 },
+            { transform: `translate(${(Math.random() - 0.5) * 500}px, ${(Math.random() + 0.5) * 500}px) rotate(${Math.random() * 720}deg)`, opacity: 0 }
+        ], {
+            duration: Math.random() * 2000 + 1000,
+            easing: 'cubic-bezier(0, .9, .57, 1)',
+            delay: Math.random() * 500
+        });
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,520 @@
+{% extends "base.html" %}
+{% block title %}المساعد المالي{% endblock %}
+{% block page_title %}المساعد المالي{% endblock %}
+
+{% block content %}
+<style>
+.ai-chat-page {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.ai-chat-card {
+  padding: 18px;
+}
+
+.ai-chat-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.ai-chat-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  font-size: 20px;
+  color: var(--text);
+  margin: 0;
+}
+
+.ai-chat-subtitle {
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.ai-chat-actions {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.ai-chat-actions .btn {
+  padding: 10px 14px;
+  font-size: 13px;
+  border-radius: 14px;
+}
+
+.ai-chat-layout {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 16px;
+  align-items: stretch;
+}
+
+.ai-settings {
+  padding: 16px;
+}
+
+.ai-settings h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.ai-field {
+  margin-bottom: 12px;
+}
+
+.ai-field label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.ai-field select,
+.ai-field input {
+  width: 100%;
+  padding: 12px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: rgba(15, 23, 42, 0.35);
+  color: var(--text);
+}
+
+:root[data-theme="light"] .ai-field select,
+:root[data-theme="light"] .ai-field input {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.ai-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.ai-chip {
+  border: 1px solid var(--border);
+  background: rgba(59, 130, 246, 0.10);
+  color: var(--text);
+  padding: 8px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
+}
+
+.ai-chip:hover { transform: translateY(-1px); border-color: var(--border-light); }
+.ai-chip:active { transform: translateY(0); }
+
+.ai-chat {
+  display: flex;
+  flex-direction: column;
+  /* Prevent page from growing with long chats */
+  height: clamp(520px, calc(100vh - 320px), 760px);
+  min-height: 520px;
+}
+
+.ai-messages {
+  flex: 1;
+  overflow: auto;
+  min-height: 0; /* critical for overflow in flex column */
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid var(--border-light);
+  background: rgba(2, 6, 23, 0.18);
+  direction: rtl;
+}
+
+:root[data-theme="light"] .ai-messages {
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.ai-msg {
+  display: flex;
+  margin-bottom: 12px;
+}
+
+.ai-msg.user { justify-content: flex-end; }
+.ai-msg.assistant { justify-content: flex-start; }
+
+.ai-bubble {
+  max-width: 86%;
+  width: fit-content;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-1);
+  white-space: pre-wrap;
+  overflow-wrap: break-word; /* avoid breaking short words/letters */
+  word-break: break-word;
+  unicode-bidi: plaintext;
+  text-align: right;
+  line-height: 1.7;
+  font-size: 14px;
+}
+
+.ai-msg.user .ai-bubble {
+  background: rgba(148, 163, 184, 0.14);
+  color: var(--text);
+  border-top-right-radius: 6px;
+}
+
+.ai-msg.assistant .ai-bubble {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.22), rgba(139, 92, 246, 0.16));
+  color: var(--text);
+  border-top-left-radius: 6px;
+}
+
+:root[data-theme="light"] .ai-msg.assistant .ai-bubble {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.10), rgba(124, 58, 237, 0.08));
+}
+
+.ai-meta {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 6px;
+}
+
+.ai-compose {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.ai-input {
+  width: 100%;
+  min-height: 48px;
+  max-height: 160px;
+  resize: none;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: rgba(15, 23, 42, 0.35);
+  color: var(--text);
+  outline: none;
+}
+
+:root[data-theme="light"] .ai-input {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.ai-send {
+  min-width: 120px;
+  border-radius: 16px;
+}
+
+.ai-note {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+@media (max-width: 900px) {
+  .ai-chat-layout {
+    grid-template-columns: 1fr;
+  }
+  .ai-chat {
+    height: clamp(460px, calc(100vh - 380px), 720px);
+    min-height: 460px;
+  }
+  .ai-send {
+    min-width: 110px;
+  }
+}
+</style>
+
+<div class="ai-chat-page">
+  <div class="card ai-chat-card">
+    <div class="ai-chat-head">
+      <div>
+        <h2 class="ai-chat-title">
+          <span>🧠</span>
+          <span>المساعد المالي</span>
+        </h2>
+        <div class="ai-chat-subtitle">
+          اسأل عن الأرباح، المبيعات، المخزون، أو اطلب استشارة إدارية. التحليل يعتمد على بيانات النظام للفترة المختارة.
+        </div>
+      </div>
+      <div class="ai-chat-actions">
+        <button type="button" class="btn btn-secondary" id="aiClearBtn">مسح</button>
+        <button type="button" class="btn btn-ghost" id="aiExportBtn">نسخ</button>
+      </div>
+    </div>
+
+    <div class="ai-chat-layout">
+      <div class="card ai-settings">
+        <h4>الإعدادات</h4>
+        <div class="ai-field">
+          <label for="aiType">نوع التحليل</label>
+          <select id="aiType">
+            <option value="report">استشارة/تقرير إداري</option>
+            <option value="profit">أرباح</option>
+            <option value="sales">مبيعات</option>
+            <option value="inventory">مخزون</option>
+          </select>
+        </div>
+        <div class="ai-field">
+          <label for="aiPeriod">الفترة</label>
+          <select id="aiPeriod">
+            <option value="today">اليوم</option>
+            <option value="this_week">هذا الأسبوع</option>
+            <option value="this_month">هذا الشهر</option>
+            <option value="last_month">الشهر الماضي</option>
+            <option value="this_year">هذه السنة</option>
+            <option value="last_30_days" selected>آخر 30 يوم</option>
+            <option value="custom">فترة مخصصة</option>
+          </select>
+        </div>
+        <div class="ai-field" id="aiCustomDates" style="display:none">
+          <label>تاريخ مخصص</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <input type="date" id="aiDateFrom" />
+            <input type="date" id="aiDateTo" />
+          </div>
+        </div>
+
+        <div class="ai-field">
+          <label>أسئلة سريعة</label>
+          <div class="ai-chips">
+            <div class="ai-chip" data-msg="حلّل أرباح الفترة واشرح الأسباب وخطة تحسين.">تحليل أرباح</div>
+            <div class="ai-chip" data-msg="ليش المبيعات نزلت؟ اذكر 3 أسباب محتملة من البيانات وخطوات عملية.">هبوط مبيعات</div>
+            <div class="ai-chip" data-msg="شنو المنتجات اللي تحتاج إعادة طلب؟ اعطني قائمة مختصرة.">إعادة طلب</div>
+            <div class="ai-chip" data-msg="سوّي ملخص إداري مختصر للفترة (نقاط).">ملخص إداري</div>
+          </div>
+        </div>
+
+        <div class="ai-note">
+          تلميح: اكتب سؤالك بوضوح (شنو تريد + الفترة + الهدف). Enter للإرسال، Shift+Enter سطر جديد.
+        </div>
+      </div>
+
+      <div class="ai-chat">
+        <div class="ai-messages" id="aiMessages" aria-live="polite"></div>
+        <div class="ai-compose">
+          <textarea class="ai-input" id="aiInput" placeholder="اكتب سؤالك هنا..."></textarea>
+          <button class="btn ai-send" id="aiSendBtn" type="button">إرسال</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  const STORAGE_KEY = 'finora_ai_chat_v1';
+  const MAX_MESSAGES = 60;
+
+  const els = {
+    messages: document.getElementById('aiMessages'),
+    input: document.getElementById('aiInput'),
+    send: document.getElementById('aiSendBtn'),
+    clear: document.getElementById('aiClearBtn'),
+    export: document.getElementById('aiExportBtn'),
+    type: document.getElementById('aiType'),
+    period: document.getElementById('aiPeriod'),
+    custom: document.getElementById('aiCustomDates'),
+    dateFrom: document.getElementById('aiDateFrom'),
+    dateTo: document.getElementById('aiDateTo')
+  };
+
+  function nowTime() {
+    try {
+      return new Date().toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+  }
+
+  function escapeHtml(s) {
+    return String(s || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function loadState() {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    try { return JSON.parse(raw); } catch { return null; }
+  }
+
+  function saveState(state) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch {}
+  }
+
+  let state = loadState() || {
+    type: 'report',
+    period: 'last_30_days',
+    date_from: '',
+    date_to: '',
+    messages: [
+      { role: 'assistant', text: 'هلا! اسألني عن الأرباح/المبيعات/المخزون أو اطلب استشارة إدارية، وراح أجاوب حسب بيانات النظام للفترة المختارة.', time: nowTime() }
+    ]
+  };
+
+  function setControlsFromState() {
+    els.type.value = state.type || 'report';
+    els.period.value = state.period || 'last_30_days';
+    els.dateFrom.value = state.date_from || '';
+    els.dateTo.value = state.date_to || '';
+    els.custom.style.display = (els.period.value === 'custom') ? '' : 'none';
+  }
+
+  function pushMessage(role, text, meta) {
+    const msg = { role, text: String(text || ''), time: nowTime(), meta: meta || null };
+    state.messages.push(msg);
+    if (state.messages.length > MAX_MESSAGES) state.messages = state.messages.slice(-MAX_MESSAGES);
+    saveState(state);
+    renderMessages();
+    scrollToBottom();
+  }
+
+  function renderMessages() {
+    const html = state.messages.map(m => {
+      const metaLine = m.meta && m.meta.label ? `<div class="ai-meta">${escapeHtml(m.meta.label)}</div>` : '';
+      return `
+        <div class="ai-msg ${m.role}">
+          <div>
+            <div class="ai-bubble">${escapeHtml(m.text)}</div>
+            <div class="ai-meta">${escapeHtml(m.time || '')}</div>
+            ${metaLine}
+          </div>
+        </div>
+      `;
+    }).join('');
+    els.messages.innerHTML = html || '';
+  }
+
+  function scrollToBottom() {
+    try { els.messages.scrollTop = els.messages.scrollHeight; } catch {}
+  }
+
+  function setBusy(busy) {
+    els.send.disabled = !!busy;
+    els.type.disabled = !!busy;
+    els.period.disabled = !!busy;
+    els.dateFrom.disabled = !!busy;
+    els.dateTo.disabled = !!busy;
+    els.send.textContent = busy ? 'جارٍ...' : 'إرسال';
+  }
+
+  async function callAnalyze(userText) {
+    const payload = {
+      type: (els.type.value || 'report'),
+      period: (els.period.value || 'last_30_days'),
+      message: userText || ''
+    };
+
+    if (payload.period === 'custom') {
+      payload.date_from = (els.dateFrom.value || '').trim();
+      payload.date_to = (els.dateTo.value || '').trim();
+    }
+
+    const res = await fetch('/ai/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'تعذر تنفيذ التحليل.');
+    }
+    return data;
+  }
+
+  async function send() {
+    const text = (els.input.value || '').trim();
+    if (!text) return;
+
+    pushMessage('user', text);
+    els.input.value = '';
+    els.input.focus();
+
+    state.type = els.type.value;
+    state.period = els.period.value;
+    state.date_from = els.dateFrom.value;
+    state.date_to = els.dateTo.value;
+    saveState(state);
+
+    setBusy(true);
+    try {
+      const data = await callAnalyze(text);
+      const label = data.period_label ? `الفترة: ${data.period_label}` : '';
+      pushMessage('assistant', data.analysis || 'تم.', label ? { label } : null);
+    } catch (e) {
+      pushMessage('assistant', `صار خطأ: ${e.message || e}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function clearChat() {
+    state.messages = [
+      { role: 'assistant', text: 'تم مسح المحادثة. شنو تحب تسأل؟', time: nowTime() }
+    ];
+    saveState(state);
+    renderMessages();
+    scrollToBottom();
+  }
+
+  function exportChat() {
+    const text = state.messages.map(m => {
+      const who = m.role === 'user' ? 'الموظف' : 'المساعد';
+      return `[${m.time || ''}] ${who}: ${m.text}`;
+    }).join('\n\n');
+    navigator.clipboard?.writeText(text).then(() => {
+      pushMessage('assistant', 'نسخت المحادثة للحافظة.');
+    }).catch(() => {
+      pushMessage('assistant', 'ما قدرت أنسخ تلقائياً. جرّب تحديد النص ونسخه.');
+    });
+  }
+
+  // Events
+  els.send.addEventListener('click', send);
+  els.clear.addEventListener('click', clearChat);
+  els.export.addEventListener('click', exportChat);
+
+  els.input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      send();
+    }
+  });
+
+  els.period.addEventListener('change', function() {
+    els.custom.style.display = (els.period.value === 'custom') ? '' : 'none';
+  });
+
+  document.querySelectorAll('.ai-chip').forEach(chip => {
+    chip.addEventListener('click', function() {
+      const msg = chip.getAttribute('data-msg') || '';
+      els.input.value = msg;
+      els.input.focus();
+    });
+  });
+
+  // Init
+  setControlsFromState();
+  renderMessages();
+  scrollToBottom();
+})();
+</script>
+{% endblock %}
+

@@ -1,0 +1,1728 @@
+{% extends "base.html" %}
+{% block title %}{{ _('employees') }}{% endblock %}
+{% block page_title %}👥 {{ _('employees_page_title') }}{% endblock %}
+
+{% block content %}
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+<script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.js"></script>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-spinner"></div>
+</div>
+
+<style>
+  /* ======================================================
+   MODERN EMPLOYEES UI - GLASSMORPHISM DESIGN
+   ====================================================== */
+
+  :root {
+    /* Color System */
+    --emp-primary: #6366f1;
+    --emp-primary-light: #818cf8;
+    --emp-primary-dark: #4f46e5;
+    --emp-success: #10b981;
+    --emp-danger: #ef4444;
+    --emp-warning: #f59e0b;
+    --emp-purple: #8b5cf6;
+
+    /* Dark Theme */
+    --emp-bg: #0f172a;
+    --emp-surface: #1e293b;
+    --emp-surface-light: rgba(30, 41, 59, 0.6);
+
+    /* Glass Effect */
+    --glass-bg: rgba(30, 41, 59, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-hover: rgba(255, 255, 255, 0.1);
+
+    /* Text Colors */
+    --emp-text: #f1f5f9;
+    --emp-text-secondary: #cbd5e1;
+    --emp-muted: #94a3b8;
+
+    /* Spacing System (8px base) */
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+
+    /* Border Radius */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-full: 9999px;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
+    --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.3);
+  }
+
+  /* Light Theme Overrides */
+  [data-theme="light"] {
+    --emp-bg: #f8fafc;
+    --emp-surface: #ffffff;
+    --emp-surface-light: rgba(255, 255, 255, 0.8);
+    --glass-bg: rgba(255, 255, 255, 0.9);
+    --glass-border: rgba(0, 0, 0, 0.08);
+    --glass-hover: rgba(0, 0, 0, 0.12);
+    --emp-text: #0f172a;
+    --emp-text-secondary: #334155;
+    --emp-muted: #64748b;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+  }
+
+  /* When in light mode, invert input text colors for contrast */
+  [data-theme="light"] .card form input,
+  [data-theme="light"] .card form select,
+  [data-theme="light"] .search-filters input,
+  [data-theme="light"] .search-filters select,
+  [data-theme="light"] .group-content input,
+  [data-theme="light"] .group-content select {
+    background: #ffffff;
+    color: #0f172a;
+    border-color: rgba(0, 0, 0, 0.1);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+  }
+
+  [data-theme="light"] .group-header {
+    background: rgba(0, 0, 0, 0.02);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  }
+
+  [data-theme="light"] .modal-content {
+    background: #ffffff;
+    border-color: rgba(0, 0, 0, 0.1);
+  }
+
+  [data-theme="light"] th {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.05));
+    border-bottom-color: rgba(99, 102, 241, 0.2);
+  }
+
+  [data-theme="light"] td {
+    border-bottom-color: rgba(0, 0, 0, 0.05);
+  }
+
+  [data-theme="light"] tbody tr:nth-child(even) {
+    background: rgba(0, 0, 0, 0.02);
+  }
+
+  [data-theme="light"] tbody tr:hover {
+    background: rgba(99, 102, 241, 0.05);
+  }
+
+  /* Make empty state text visible in light mode */
+  [data-theme="light"] .empty-state-text {
+    color: var(--emp-text);
+  }
+
+  [data-theme="light"] .empty-state-subtext {
+    color: var(--emp-muted);
+  }
+
+
+  /* AG Grid Custom Styles for Employees */
+  .ag-theme-finora .ag-row {
+    cursor: pointer;
+  }
+
+  .emp-actions-grid {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    flex-wrap: wrap;
+    padding: 4px 0;
+  }
+
+  .emp-actions-grid .emp-action {
+    padding: 4px 8px;
+    font-size: 11px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    gap: 4px;
+  }
+
+  .emp-actions-grid .btn-toggle {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+  }
+
+  .emp-actions-grid .btn-pages {
+    background: rgba(139, 92, 246, 0.2);
+    color: #a78bfa;
+  }
+
+  .emp-actions-grid .btn-roles {
+    background: rgba(99, 102, 241, 0.2);
+    color: #818cf8;
+  }
+
+  .emp-actions-grid .btn-view {
+    background: rgba(16, 185, 129, 0.2);
+    color: #34d399;
+  }
+
+  .emp-actions-grid .btn-delivery-page {
+    background: rgba(16, 185, 129, 0.2);
+    color: #34d399;
+  }
+
+  .emp-actions-grid .emp-action:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.2);
+  }
+
+  /* ================= STATS GRID ================= */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: var(--spacing-lg);
+    margin-bottom: var(--spacing-xl);
+  }
+
+  .stat-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--shadow-md);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    pointer-events: auto;
+  }
+
+  .stat-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 4px;
+    height: 100%;
+    opacity: 0.8;
+    border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--glass-hover);
+  }
+
+  .stat-card:hover::before {
+    opacity: 1;
+  }
+
+  .stat-card.primary::before {
+    background: linear-gradient(180deg, var(--emp-primary), var(--emp-primary-dark));
+  }
+
+  .stat-card.success::before {
+    background: linear-gradient(180deg, var(--emp-success), #059669);
+  }
+
+  .stat-card.warning::before {
+    background: linear-gradient(180deg, var(--emp-warning), #d97706);
+  }
+
+  .stat-card.danger::before {
+    background: linear-gradient(180deg, var(--emp-danger), #dc2626);
+  }
+
+  .stat-icon {
+    font-size: 36px;
+    margin-bottom: var(--spacing-sm);
+    opacity: 0.9;
+  }
+
+  .stat-label {
+    font-size: 13px;
+    color: var(--emp-muted);
+    margin-bottom: var(--spacing-xs);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--emp-text);
+    line-height: 1.2;
+  }
+
+  .stat-card.primary .stat-value {
+    color: var(--emp-primary-light);
+  }
+
+  .stat-card.success .stat-value {
+    color: var(--emp-success);
+  }
+
+  .stat-card.warning .stat-value {
+    color: var(--emp-warning);
+  }
+
+  .stat-card.danger .stat-value {
+    color: var(--emp-danger);
+  }
+
+  /* ================= CARDS ================= */
+  .card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--shadow-md);
+    animation: fadeInUp 0.5s ease;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 4px;
+    height: 100%;
+    background: linear-gradient(180deg, var(--emp-primary), var(--emp-success));
+    border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+    opacity: 0.7;
+    transition: opacity 0.3s ease;
+  }
+
+  .card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--glass-hover);
+  }
+
+  .card:hover::before {
+    opacity: 1;
+  }
+
+  .card h3 {
+    margin: 0 0 var(--spacing-lg);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--emp-text);
+    padding-bottom: var(--spacing-md);
+    border-bottom: 1px solid var(--glass-border);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    letter-spacing: 0.2px;
+  }
+
+  /* ================= FORMS ================= */
+  .card form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--spacing-md);
+  }
+
+  .card form input,
+  .card form select {
+    padding: 12px var(--spacing-md);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--glass-border);
+    background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: var(--emp-text);
+    font-size: 14px;
+    transition: all 0.2s ease;
+    font-family: inherit;
+  }
+
+  .card form input:focus,
+  .card form select:focus {
+    outline: none;
+    border-color: var(--emp-primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    background: rgba(15, 23, 42, 0.7);
+  }
+
+  .card form input::placeholder {
+    color: var(--emp-muted);
+  }
+
+  .card form button {
+    grid-column: 1 / -1;
+    padding: var(--spacing-md);
+    border: none;
+    border-radius: var(--radius-md);
+    background: linear-gradient(135deg, var(--emp-success), #059669);
+    color: white;
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+    box-shadow: var(--shadow-sm);
+    pointer-events: auto;
+    margin-top: var(--spacing-xs);
+  }
+
+  .card form button:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    background: linear-gradient(135deg, #059669, var(--emp-success));
+  }
+
+  .card form button:active {
+    transform: translateY(0);
+  }
+
+  .card form button.button-loading {
+    position: relative;
+    color: transparent !important;
+    pointer-events: none;
+  }
+
+  .card form button.button-loading::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #fff;
+    border-radius: var(--radius-full);
+    animation: spin 0.6s linear infinite;
+  }
+
+  /* ================= SEARCH & FILTERS ================= */
+  .search-filters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+    padding: var(--spacing-lg);
+    background: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--glass-border);
+  }
+
+  .search-filters input,
+  .search-filters select {
+    padding: 12px var(--spacing-md);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--glass-border);
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: var(--emp-text);
+    font-size: 14px;
+    transition: all 0.2s ease;
+  }
+
+  .search-filters input:focus,
+  .search-filters select:focus {
+    outline: none;
+    border-color: var(--emp-primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    background: rgba(15, 23, 42, 0.8);
+  }
+
+  .search-filters input::placeholder {
+    color: var(--emp-muted);
+  }
+
+  /* ================= TABLE ================= */
+  .table-container {
+    overflow-x: auto;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--glass-border);
+    background: rgba(15, 23, 42, 0.3);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    margin-top: var(--spacing-md);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(99, 102, 241, 0.3) transparent;
+  }
+
+  .table-container::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .table-container::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .table-container::-webkit-scrollbar-thumb {
+    background: rgba(99, 102, 241, 0.3);
+    border-radius: var(--radius-full);
+  }
+
+  .table-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(99, 102, 241, 0.5);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 14px;
+    min-width: 1000px;
+  }
+
+  th {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.15));
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: var(--spacing-md);
+    text-align: center;
+    color: var(--emp-text-secondary);
+    font-weight: 700;
+    font-size: 13px;
+    border-bottom: 2px solid rgba(99, 102, 241, 0.3);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  td {
+    padding: var(--spacing-md);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    color: var(--emp-text);
+    text-align: center;
+    transition: all 0.2s ease;
+  }
+
+  tbody tr {
+    transition: all 0.2s ease;
+    animation: slideInRight 0.3s ease;
+    animation-fill-mode: both;
+  }
+
+  tbody tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  tbody tr:hover {
+    background: rgba(99, 102, 241, 0.08);
+  }
+
+  tbody tr:hover td {
+    background: transparent;
+  }
+
+  /* ================= STATUS & ROLE BADGES ================= */
+  .status-badge,
+  .role-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: var(--radius-full);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+
+  .status-active {
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--emp-success);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+  }
+
+  .status-inactive {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--emp-danger);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
+
+  .role-cashier {
+    background: rgba(99, 102, 241, 0.2);
+    color: var(--emp-primary-light);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+  }
+
+  .role-admin {
+    background: rgba(139, 92, 246, 0.2);
+    color: var(--emp-purple);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+  }
+
+  /* ================= ACTION LINKS ================= */
+  td a {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: var(--radius-md);
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--emp-primary-light);
+    font-weight: 600;
+    font-size: 13px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    pointer-events: auto;
+    white-space: nowrap;
+  }
+
+  td a:hover {
+    background: var(--emp-primary);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+    border-color: var(--emp-primary);
+  }
+
+  td a:active {
+    transform: translateY(0);
+  }
+
+  /* ================= MODAL ================= */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    padding: var(--spacing-md);
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  .modal-overlay.show {
+    display: flex;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
+  .modal-content {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    padding: var(--spacing-xl);
+    border-radius: var(--radius-lg);
+    max-width: 600px;
+    width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--shadow-lg);
+    animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    z-index: 10001;
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(40px) scale(0.95);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  .modal-content h3 {
+    margin: 0 0 var(--spacing-lg);
+    color: var(--emp-text);
+    font-size: 22px;
+    font-weight: 700;
+  }
+
+  .modal-content .close-btn {
+    position: absolute;
+    top: var(--spacing-lg);
+    left: var(--spacing-lg);
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-full);
+    border: none;
+    background: rgba(239, 68, 68, 0.9);
+    color: white;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+
+  .modal-content .close-btn:hover {
+    background: var(--emp-danger);
+    transform: scale(1.1);
+  }
+
+  .modal-content label {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md);
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--spacing-sm);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .modal-content label:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .modal-content input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: var(--emp-primary);
+  }
+
+  .modal-content button {
+    padding: var(--spacing-md) var(--spacing-lg);
+    border: none;
+    border-radius: var(--radius-md);
+    background: var(--emp-primary);
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: 100%;
+    margin-top: var(--spacing-md);
+  }
+
+  .modal-content button:hover {
+    background: var(--emp-primary-light);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+
+  /* ================= LOADING & TOAST ================= */
+  .loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    pointer-events: auto;
+  }
+
+  .loading-overlay.show {
+    display: flex;
+  }
+
+  .loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid rgba(99, 102, 241, 0.2);
+    border-top-color: var(--emp-primary);
+    border-radius: var(--radius-full);
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .toast-container {
+    position: fixed;
+    top: var(--spacing-lg);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10001;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    width: calc(100% - var(--spacing-xl));
+    max-width: 500px;
+    pointer-events: none;
+  }
+
+  .toast {
+    min-width: 280px;
+    max-width: 100%;
+    width: 100%;
+    padding: var(--spacing-md) var(--spacing-lg);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    animation: slideInDown 0.4s ease-out;
+    pointer-events: auto;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+  }
+
+  .toast.success {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(5, 150, 105, 0.95));
+    color: #fff;
+  }
+
+  .toast.error {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.95), rgba(220, 38, 38, 0.95));
+    color: #fff;
+  }
+
+  .toast.warning {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.95), rgba(217, 119, 6, 0.95));
+    color: #fff;
+  }
+
+  .toast.info {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.95), rgba(79, 70, 229, 0.95));
+    color: #fff;
+  }
+
+  .toast.fade-out {
+    animation: fadeOutToast 0.3s ease-out forwards;
+  }
+
+  @keyframes slideInDown {
+    from {
+      opacity: 0;
+      transform: translateX(-50%) translateY(-20px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  }
+
+  @keyframes fadeOutToast {
+    to {
+      opacity: 0;
+      transform: translateX(-50%) translateY(-20px);
+    }
+  }
+
+  /* ================= EMPTY STATE ================= */
+  .empty-state {
+    text-align: center;
+    padding: var(--spacing-xl);
+    color: var(--emp-muted);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-md);
+  }
+
+  .empty-state-icon {
+    font-size: 64px;
+    opacity: 0.5;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+
+    0%,
+    100% {
+      opacity: 0.5;
+      transform: scale(1);
+    }
+
+    50% {
+      opacity: 0.8;
+      transform: scale(1.05);
+    }
+  }
+
+  .empty-state-text {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--emp-text);
+  }
+
+  .empty-state-subtext {
+    font-size: 14px;
+    color: var(--emp-muted);
+  }
+
+  /* ================= ANIMATIONS ================= */
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slideInRight {
+    from {
+      opacity: 0;
+      transform: translateX(-20px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  tbody tr:nth-child(1) {
+    animation-delay: 0.05s;
+  }
+
+  tbody tr:nth-child(2) {
+    animation-delay: 0.1s;
+  }
+
+  tbody tr:nth-child(3) {
+    animation-delay: 0.15s;
+  }
+
+  tbody tr:nth-child(4) {
+    animation-delay: 0.2s;
+  }
+
+  tbody tr:nth-child(5) {
+    animation-delay: 0.25s;
+  }
+
+  /* ================= RESPONSIVE ================= */
+  @media (max-width: 768px) {
+    .stats-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--spacing-md);
+    }
+
+    .card {
+      padding: var(--spacing-md);
+    }
+
+    .card form {
+      grid-template-columns: 1fr;
+    }
+
+    .search-filters {
+      grid-template-columns: 1fr;
+      padding: var(--spacing-md);
+    }
+
+    table {
+      min-width: auto;
+    }
+
+    th,
+    td {
+      padding: var(--spacing-sm);
+      font-size: 13px;
+    }
+
+    td a {
+      padding: 6px 12px;
+      font-size: 12px;
+    }
+
+    .modal-content {
+      padding: var(--spacing-lg);
+      max-height: 90vh;
+    }
+
+    .toast-container {
+      top: var(--spacing-md);
+      left: var(--spacing-md);
+      right: var(--spacing-md);
+      width: auto;
+      max-width: none;
+      transform: none;
+    }
+
+    @keyframes slideInDown {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  }
+
+  @media (max-width: 480px) {
+    .stats-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .card h3 {
+      font-size: 18px;
+    }
+
+    .stat-value {
+      font-size: 24px;
+    }
+
+    .status-badge,
+    .role-badge {
+      padding: 4px 10px;
+      font-size: 11px;
+    }
+  }
+
+  /* ================= COLLAPSIBLE GROUPS ================= */
+  .collapsible-group.collapsed .group-content {
+    display: none;
+  }
+
+  .collapsible-group.collapsed .toggle-btn {
+    transform: rotate(180deg);
+  }
+</style>
+
+<!-- ============ STATS CARDS ============ -->
+{% set total_employees = employees|length %}
+{% set active_employees = employees|selectattr("is_active")|list|length %}
+{% set total_orders = stats.values()|sum(attribute="orders") or 0 %}
+{% set total_sales = stats.values()|sum(attribute="sales") or 0 %}
+
+<div class="stats-grid">
+  <div class="stat-card primary">
+    <div class="stat-icon">👥</div>
+    <div class="stat-label">{{ _('employees_stat_total') }}</div>
+    <div class="stat-value">{{ total_employees }}</div>
+  </div>
+  <div class="stat-card success">
+    <div class="stat-icon">✅</div>
+    <div class="stat-label">{{ _('employees_stat_active') }}</div>
+    <div class="stat-value">{{ active_employees }}</div>
+  </div>
+  <div class="stat-card warning">
+    <div class="stat-icon">📦</div>
+    <div class="stat-label">{{ _('employees_stat_orders') }}</div>
+    <div class="stat-value">{{ total_orders }}</div>
+  </div>
+  <div class="stat-card success">
+    <div class="stat-icon">💰</div>
+    <div class="stat-label">{{ _('employees_stat_sales') }}</div>
+    <div class="stat-value">{{ "{:,.0f}".format(total_sales) }} {{ _('employees_currency_iqd') }}</div>
+  </div>
+</div>
+
+<!-- ============ ADD EMPLOYEE ============ -->
+<div class="collapsible-group collapsed" id="groupAddEmployee"
+  style="background:var(--glass-bg); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border-radius:var(--radius-lg); margin-bottom:var(--spacing-lg); border:1px solid var(--glass-border); box-shadow:var(--shadow-md); overflow:hidden; transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position:relative;">
+  <div class="group-header" onclick="toggleSection('groupAddEmployee')"
+    style="padding:var(--spacing-lg); display:flex; justify-content:space-between; align-items:center; cursor:pointer; background:rgba(255,255,255,0.02); border-bottom:1px solid rgba(255,255,255,0.05); user-select:none;">
+    <h3
+      style="margin:0; font-size:18px; font-weight:700; color:var(--emp-text); display:flex; align-items:center; gap:var(--spacing-sm);">
+      <span
+        style="display:flex; align-items:center; justify-content:center; width:36px; height:36px; background:linear-gradient(135deg, rgba(99,102,241,0.2), rgba(139,92,246,0.2)); border-radius:10px; color:var(--emp-primary-light);">➕</span>
+      {{ _('employees_add_title') }}
+    </h3>
+    <button type="button" class="toggle-btn"
+      style="background:transparent; border:none; color:var(--emp-muted); cursor:pointer; font-size:14px; padding:8px; display:flex; align-items:center; justify-content:center; transition:transform 0.3s ease;">
+      <i class="fas fa-chevron-up"></i>
+    </button>
+  </div>
+  <div class="group-content" style="padding:var(--spacing-lg); transition:all 0.3s ease;">
+    <form method="post" id="employeeForm" onsubmit="handleEmployeeSubmit(event)"
+      style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--spacing-md);">
+      <input name="name" id="emp_name" placeholder="{{ _('employees_placeholder_name') }}" required
+        style="width:100%; padding:12px var(--spacing-md); border-radius:var(--radius-md); border:1px solid var(--glass-border); background:rgba(15, 23, 42, 0.6); color:var(--emp-text);">
+      <input name="username" id="emp_username" placeholder="{{ _('employees_placeholder_username') }}" required
+        style="width:100%; padding:12px var(--spacing-md); border-radius:var(--radius-md); border:1px solid var(--glass-border); background:rgba(15, 23, 42, 0.6); color:var(--emp-text);">
+      <input name="password" type="password" id="emp_password" placeholder="{{ _('employees_placeholder_password') }}" required
+        style="width:100%; padding:12px var(--spacing-md); border-radius:var(--radius-md); border:1px solid var(--glass-border); background:rgba(15, 23, 42, 0.6); color:var(--emp-text);">
+
+      <select name="role" id="emp_role"
+        style="width:100%; padding:12px var(--spacing-md); border-radius:var(--radius-md); border:1px solid var(--glass-border); background:rgba(15, 23, 42, 0.6); color:var(--emp-text);">
+        <option value="cashier">{{ _('employees_role_cashier') }}</option>
+        <option value="admin">{{ _('employees_role_admin') }}</option>
+      </select>
+
+      <input name="salary" type="number" id="emp_salary" placeholder="{{ _('employees_placeholder_salary') }}" min="0"
+        style="width:100%; padding:12px var(--spacing-md); border-radius:var(--radius-md); border:1px solid var(--glass-border); background:rgba(15, 23, 42, 0.6); color:var(--emp-text);">
+      <input name="commission" type="number" id="emp_commission" placeholder="{{ _('employees_placeholder_commission') }}" min="0" max="100"
+        style="width:100%; padding:12px var(--spacing-md); border-radius:var(--radius-md); border:1px solid var(--glass-border); background:rgba(15, 23, 42, 0.6); color:var(--emp-text);">
+
+      <button type="submit" id="employeeSubmitBtn"
+        style="grid-column: 1 / -1; padding: var(--spacing-md); border: none; border-radius: var(--radius-md); background: linear-gradient(135deg, var(--emp-success), #059669); color: white; font-weight: 600; font-size: 15px; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: var(--spacing-sm); box-shadow: var(--shadow-sm);">
+        <span>💾</span>
+        <span>{{ _('employees_save_button') }}</span>
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- ============ ADD DELIVERY AGENT ACCOUNT ============ -->
+<div class="collapsible-group collapsed" id="groupAddAgent"
+  style="background:var(--glass-bg); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border-radius:var(--radius-lg); margin-bottom:var(--spacing-lg); border:1px solid var(--glass-border); box-shadow:var(--shadow-md); overflow:hidden; transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position:relative;">
+  <div class="group-header" onclick="toggleSection('groupAddAgent')"
+    style="padding:var(--spacing-lg); display:flex; justify-content:space-between; align-items:center; cursor:pointer; background:rgba(255,255,255,0.02); border-bottom:1px solid rgba(255,255,255,0.05); user-select:none;">
+    <h3
+      style="margin:0; font-size:18px; font-weight:700; color:var(--emp-text); display:flex; align-items:center; gap:var(--spacing-sm);">
+      <span
+        style="display:flex; align-items:center; justify-content:center; width:36px; height:36px; background:linear-gradient(135deg, rgba(16,185,129,0.2), rgba(5,150,105,0.2)); border-radius:10px; color:var(--emp-success);">🚚</span>
+      {{ _('employees_add_agent_title') }}
+    </h3>
+    <button type="button" class="toggle-btn"
+      style="background:transparent; border:none; color:var(--emp-muted); cursor:pointer; font-size:14px; padding:8px; display:flex; align-items:center; justify-content:center; transition:transform 0.3s ease;">
+      <i class="fas fa-chevron-up"></i>
+    </button>
+  </div>
+  <div class="group-content" style="padding:var(--spacing-lg); transition:all 0.3s ease;">
+    <form id="agentAccountForm" onsubmit="addAgentAccount(event)"
+      style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--spacing-md);">
+      <select name="agent_id" id="agent_id" required
+        style="width:100%; padding:12px var(--spacing-md); border-radius:var(--radius-md); border:1px solid var(--glass-border); background:rgba(15, 23, 42, 0.6); color:var(--emp-text);">
+        <option value="">{{ _('employees_select_agent') }}</option>
+        {% for agent in delivery_agents %}
+        <option value="{{ agent.id }}">{{ agent.name }}</option>
+        {% endfor %}
+      </select>
+      <input type="text" id="agent_username" placeholder="{{ _('employees_placeholder_username') }}" required
+        style="width:100%; padding:12px var(--spacing-md); border-radius:var(--radius-md); border:1px solid var(--glass-border); background:rgba(15, 23, 42, 0.6); color:var(--emp-text);">
+      <input type="password" id="agent_password" placeholder="{{ _('employees_placeholder_password') }}" required
+        style="width:100%; padding:12px var(--spacing-md); border-radius:var(--radius-md); border:1px solid var(--glass-border); background:rgba(15, 23, 42, 0.6); color:var(--emp-text);">
+
+      <button type="submit" class="btn-premium"
+        style="grid-column: 1 / -1; padding: var(--spacing-md); border: none; border-radius: var(--radius-md); background: linear-gradient(135deg, var(--emp-success), #059669); color: white; font-weight: 600; font-size: 15px; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: var(--spacing-sm); box-shadow: var(--shadow-sm);">
+        <span>💾</span>
+        <span>{{ _('employees_save_account') }}</span>
+      </button>
+    </form>
+  </div>
+</div>
+
+<div class="collapsible-group" id="groupEmpFilters"
+  style="background:var(--glass-bg); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border-radius:var(--radius-lg); margin-bottom:var(--spacing-lg); border:1px solid var(--glass-border); box-shadow:var(--shadow-md); overflow:hidden; transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position:relative;">
+  <div class="group-header" onclick="toggleSection('groupEmpFilters')"
+    style="padding:var(--spacing-lg); display:flex; justify-content:space-between; align-items:center; cursor:pointer; background:rgba(255,255,255,0.02); border-bottom:1px solid rgba(255,255,255,0.05); user-select:none;">
+    <h3
+      style="margin:0; font-size:18px; font-weight:700; color:var(--emp-text); display:flex; align-items:center; gap:var(--spacing-sm);">
+      <span
+        style="display:flex; align-items:center; justify-content:center; width:36px; height:36px; background:linear-gradient(135deg, rgba(245,158,11,0.2), rgba(217,119,6,0.2)); border-radius:10px; color:var(--emp-warning);">🔍</span>
+      {{ _('employees_search_title') }}
+    </h3>
+    <button type="button" class="toggle-btn"
+      style="background:transparent; border:none; color:var(--emp-muted); cursor:pointer; font-size:14px; padding:8px; display:flex; align-items:center; justify-content:center; transition:transform 0.3s ease;">
+      <i class="fas fa-chevron-up"></i>
+    </button>
+  </div>
+  <div class="group-content" style="padding:var(--spacing-lg); transition:all 0.3s ease;">
+    <div class="search-filters" style="margin-bottom:0; padding:0; border:none; background:transparent;">
+      <input type="text" id="searchInput" placeholder="{{ _('employees_search_placeholder') }}" onkeyup="updateSearch()"
+        style="width:100%; padding:12px var(--spacing-md); border-radius:var(--radius-md); border:1px solid var(--glass-border); background:rgba(15, 23, 42, 0.6); color:var(--emp-text);">
+      <select id="filterRole" onchange="updateRoleFilter()"
+        style="width:100%; padding:12px var(--spacing-md); border-radius:var(--radius-md); border:1px solid var(--glass-border); background:rgba(15, 23, 42, 0.6); color:var(--emp-text);">
+        <option value="">{{ _('employees_filter_all_roles') }}</option>
+        <option value="cashier">{{ _('employees_role_cashier') }}</option>
+        <option value="admin">{{ _('employees_role_admin') }}</option>
+        <option value="delivery">{{ _('employees_role_delivery') }}</option>
+      </select>
+      <select id="filterStatus" onchange="updateStatusFilter()"
+        style="width:100%; padding:12px var(--spacing-md); border-radius:var(--radius-md); border:1px solid var(--glass-border); background:rgba(15, 23, 42, 0.6); color:var(--emp-text);">
+        <option value="">{{ _('employees_filter_all_statuses') }}</option>
+        <option value="active">{{ _('employees_status_active') }}</option>
+        <option value="inactive">{{ _('employees_status_inactive') }}</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<div class="card"
+  style="padding:0; overflow:hidden; border-radius:var(--radius-lg); background:var(--glass-bg); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border:1px solid var(--glass-border); box-shadow:var(--shadow-md);">
+  <div class="table-container"
+    style="margin-top:0; border:none; border-radius:0; height: calc(100vh - 350px); min-height: 400px;">
+    <div id="employeesTable" class="ag-theme-finora" style="height: 100%; width: 100%;"></div>
+  </div>
+</div>
+
+<!-- ================= EMPLOYEES DATA (JSON) ================= -->
+<script type="application/json" id="employeesData">
+[
+  {% for e in employees %}
+  {% set s = stats.get(e.id, {"orders":0,"sales":0}) %}
+  {% set commission_value = (s.sales * e.commission_percent / 100) | int %}
+  {% set total_due = e.salary + commission_value %}
+  {
+    "id": {{ e.id }},
+    "name": {{ e.name|tojson }},
+    "username": {{ e.username|tojson }},
+    "role": "{{ e.role }}",
+    "role_name": "{% if e.role=='cashier' %}{{ _('employees_role_cashier') }}{% else %}{{ _('employees_role_admin') }}{% endif %}",
+    "status": "{{ 'active' if e.is_active else 'inactive' }}",
+    "status_name": "{% if e.is_active %}{{ _('employees_status_active') }}{% else %}{{ _('employees_status_inactive') }}{% endif %}",
+    "orders": {{ s.orders }},
+    "sales": {{ s.sales|int }},
+    "salary": {{ e.salary|int }},
+    "commission": {{ e.commission_percent }},
+    "total_due": {{ total_due }},
+    "is_delivery": false
+  }{% if not loop.last or (delivery_agents | selectattr("username") | list) %},{% endif %}
+  {% endfor %}
+
+  {% for agent in delivery_agents %}
+  {% if agent.username %}
+  {% set s = agent_stats.get(agent.id, {"orders":0,"sales":0}) %}
+  {
+    "id": {{ agent.id }},
+    "name": "🚚 " + {{ agent.name|tojson }},
+    "username": {{ agent.username|tojson }},
+    "role": "delivery",
+    "role_name": "{{ _('employees_role_delivery') }}",
+    "status": "active",
+    "status_name": "{{ _('employees_status_active') }}",
+    "orders": {{ s.orders }},
+    "sales": {{ s.sales|int }},
+    "salary": 0,
+    "commission": 0,
+    "total_due": 0,
+    "is_delivery": true
+  }{% if not loop.last %},{% endif %}
+  {% endif %}
+  {% endfor %}
+]
+</script>
+
+<script type="application/json" id="pagesData">
+{{ pages|tojson if pages else '[]' }}
+</script>
+
+<script>
+  // ==================== Toast Notifications ====================
+  function showToast(message, type = 'info') {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+
+    const icons = {
+      success: '✅',
+      error: '❌',
+      warning: '⚠️',
+      info: 'ℹ️'
+    };
+
+    toast.innerHTML = `
+    <span style="font-size: 18px;">${icons[type] || icons.info}</span>
+    <span style="flex: 1;font-size: 14px;line-height: 1.5;">${message}</span>
+  `;
+
+    container.appendChild(toast);
+
+    setTimeout(() => {
+      toast.classList.add('fade-out');
+      setTimeout(() => {
+        if (toast.parentNode) {
+          toast.parentNode.removeChild(toast);
+        }
+      }, 300);
+    }, 3000);
+  }
+
+  // ==================== Loading Overlay ====================
+  function showLoading() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+      overlay.classList.add('show');
+    }
+  }
+
+  function hideLoading() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+      overlay.classList.remove('show');
+    }
+  }
+
+  // ==================== Employee Form Submit ====================
+  function handleEmployeeSubmit(event) {
+    event.preventDefault();
+
+    const btn = document.getElementById('employeeSubmitBtn');
+    btn.classList.add('button-loading');
+
+    const form = event.target;
+    const formData = new FormData(form);
+
+    fetch('/employees/', {
+      method: 'POST',
+      body: formData
+    })
+      .then(response => {
+        if (response.ok) {
+          showToast("{{ _('employees_toast_add_success') }}", 'success');
+          setTimeout(() => {
+            location.reload();
+          }, 1000);
+        } else {
+          throw new Error("{{ _('employees_err_add_failed') }}");
+        }
+      })
+      .catch(error => {
+        btn.classList.remove('button-loading');
+        showToast(error.message, 'error');
+      });
+  }
+
+  // ==================== Add Agent Account ====================
+  function addAgentAccount(event) {
+    event.preventDefault();
+
+    const agentId = document.getElementById('agent_id').value;
+    const username = document.getElementById('agent_username').value.trim();
+    const password = document.getElementById('agent_password').value.trim();
+
+    if (!agentId || !username || !password) {
+      showToast("{{ _('employees_err_fill_all') }}", 'warning');
+      return;
+    }
+
+    showLoading();
+
+    fetch('/employees/add-agent-account', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        agent_id: agentId,
+        username: username,
+        password: password
+      })
+    })
+      .then(r => r.json())
+      .then(data => {
+        hideLoading();
+        if (data.success) {
+          showToast(data.message, 'success');
+          document.getElementById('agentAccountForm').reset();
+          setTimeout(() => {
+            location.reload();
+          }, 1000);
+        } else {
+          showToast(data.error || "{{ _('employees_err_generic') }}", 'error');
+        }
+      })
+      .catch(error => {
+        hideLoading();
+        showToast("{{ _('employees_err_add_failed') }}", 'error');
+        console.error(error);
+      });
+  }
+
+  // ==================== Confirm Toggle ====================
+  const empConfirmDisable = "{{ _('employees_confirm_disable') }}";
+  const empConfirmEnable = "{{ _('employees_confirm_enable') }}";
+  function confirmToggle(event, name, isActive) {
+    event.preventDefault();
+    const action = isActive ? empConfirmDisable : empConfirmEnable;
+
+    if (confirm(action.replace('{name}', name))) {
+      showLoading();
+      window.location.href = event.target.closest('a').href;
+      return true;
+    }
+    return false;
+  }
+
+  // ==================== AG Grid Initialization ====================
+  let gridApi;
+
+  function initAgGrid() {
+    const employeesDataElement = document.getElementById("employeesData");
+    if (!employeesDataElement) return;
+
+    let rowData = [];
+    try {
+      rowData = JSON.parse(employeesDataElement.textContent.trim());
+    } catch (e) {
+      console.error("Error parsing employees data:", e);
+      return;
+    }
+
+    const columnDefs = [
+      {
+        headerName: "{{ _('employees_col_name') }}",
+        field: "name",
+        flex: 1.5,
+        minWidth: 150,
+        cellRenderer: params => `<strong>${params.value}</strong>`
+      },
+      { headerName: "{{ _('employees_col_username') }}", field: "username", width: 120 },
+      {
+        headerName: "{{ _('employees_col_role') }}",
+        field: "role_name",
+        width: 120,
+        cellRenderer: params => {
+          const role = params.data.role;
+          return `<span class="role-badge ${role === 'delivery' ? '' : 'role-' + role}" 
+                  style="${role === 'delivery' ? 'background: rgba(16, 185, 129, 0.2); color: var(--emp-success); border: 1px solid rgba(16, 185, 129, 0.3);' : ''}">
+                  ${params.value}
+                </span>`;
+        }
+      },
+      {
+        headerName: "{{ _('employees_col_status') }}",
+        field: "status_name",
+        width: 100,
+        cellRenderer: params => {
+          const cls = params.data.status === 'active' ? 'status-active' : 'status-inactive';
+          return `<span class="status-badge ${cls}">${params.value}</span>`;
+        }
+      },
+      { headerName: "{{ _('employees_col_orders') }}", field: "orders", width: 90, type: 'numericColumn' },
+      {
+        headerName: "{{ _('employees_col_sales') }}",
+        field: "sales",
+        width: 130,
+        type: 'numericColumn',
+        cellRenderer: params => `<span style="color:var(--emp-success);font-weight:600">${params.value.toLocaleString()} {{ _('employees_currency_iqd') }}</span>`
+      },
+      {
+        headerName: "{{ _('employees_col_salary') }}",
+        field: "salary",
+        width: 110,
+        type: 'numericColumn',
+        cellRenderer: params => params.data.is_delivery ? '—' : `${params.value.toLocaleString()} {{ _('employees_currency_iqd') }}`
+      },
+      {
+        headerName: "{{ _('employees_col_commission') }}",
+        field: "commission",
+        width: 80,
+        type: 'numericColumn',
+        cellRenderer: params => params.data.is_delivery ? '—' : `${params.value}%`
+      },
+      {
+        headerName: "{{ _('employees_col_total_due') }}",
+        field: "total_due",
+        width: 120,
+        type: 'numericColumn',
+        cellRenderer: params => params.data.is_delivery ? '—' : `<span style="color:var(--emp-warning);font-weight:700">${params.value.toLocaleString()} {{ _('employees_currency_iqd') }}</span>`
+      },
+      {
+        headerName: "{{ _('employees_col_actions') }}",
+        field: "actions",
+        width: 320,
+        sortable: false,
+        filter: false,
+        cellRenderer: params => {
+          const e = params.data;
+          const nameEscaped = e.name.replace(/'/g, "\\'");
+
+          if (e.is_delivery) {
+            return `
+            <div class="emp-actions-grid" style="display: flex; gap: 8px; justify-content: center; align-items: center; height: 100%;">
+              <a href="/delivery-agent/login" target="_blank" class="action-btn" title="{{ _('employees_action_agent_page') }}">
+                <i class="fas fa-truck"></i>
+              </a>
+            </div>
+          `;
+          }
+
+          const isActive = e.status === 'active';
+          return `
+          <div class="emp-actions-grid" style="display: flex; gap: 8px; justify-content: center; align-items: center; height: 100%;">
+            <a href="/employees/toggle/${e.id}" class="action-btn" onclick="return confirmToggle(event, '${nameEscaped}', ${isActive})" title="${isActive ? '{{ _('employees_action_disable') }}' : '{{ _('employees_action_enable') }}'}">
+              <i class="fas ${isActive ? 'fa-user-slash' : 'fa-user-check'}"></i>
+            </a>
+            <button class="action-btn" onclick="openPagesModal(${e.id}, '${nameEscaped}')" title="{{ _('employees_action_pages') }}">
+              <i class="fas fa-file-invoice"></i>
+            </button>
+            <a href="/permissions/employee-roles/${e.id}" class="action-btn" title="{{ _('employees_action_roles') }}">
+              <i class="fas fa-user-shield"></i>
+            </a>
+            <button class="action-btn" onclick="viewEmployeeOrders(${e.id}, '${nameEscaped}')" title="{{ _('employees_action_view') }}">
+              <i class="fas fa-eye"></i>
+            </button>
+          </div>
+        `;
+        }
+      }
+    ];
+
+    const gridOptions = {
+      columnDefs: columnDefs,
+      rowData: rowData,
+      rowHeight: 60,
+      headerHeight: 48,
+      pagination: true,
+      paginationPageSize: 20,
+      paginationPageSizeSelector: [10, 20, 50, 100],
+      enableRtl: true,
+      animateRows: true,
+      defaultColDef: {
+        sortable: true,
+        filter: true,
+        resizable: true,
+        floatingFilter: true
+      },
+      onGridReady: (params) => {
+        gridApi = params.api;
+      },
+      isExternalFilterPresent: () => {
+        const roleFilter = document.getElementById('filterRole').value;
+        const statusFilter = document.getElementById('filterStatus').value;
+        return roleFilter !== '' || statusFilter !== '';
+      },
+      doesExternalFilterPass: (node) => {
+        const roleFilter = document.getElementById('filterRole').value;
+        const statusFilter = document.getElementById('filterStatus').value;
+        const matchesRole = !roleFilter || node.data.role === roleFilter;
+        const matchesStatus = !statusFilter || node.data.status === statusFilter;
+        return matchesRole && matchesStatus;
+      }
+    };
+
+    const eGridDiv = document.querySelector('#employeesTable');
+    agGrid.createGrid(eGridDiv, gridOptions);
+    eGridDiv.classList.add('ag-theme-finora');
+    eGridDiv.classList.remove('ag-theme-quartz-dark');
+  }
+
+  function updateSearch() {
+    const searchQuery = document.getElementById('searchInput').value;
+    if (gridApi) {
+      gridApi.setGridOption('quickFilterText', searchQuery);
+    }
+  }
+
+  function updateRoleFilter() {
+    if (gridApi) gridApi.onFilterChanged();
+  }
+
+  function updateStatusFilter() {
+    if (gridApi) gridApi.onFilterChanged();
+  }
+
+  // ==================== Manage Pages Modal ====================
+  let allAvailablePages = [];
+  const pagesDataEl = document.getElementById('pagesData');
+  if (pagesDataEl) {
+    try {
+      allAvailablePages = JSON.parse(pagesDataEl.textContent.trim());
+    } catch (e) {
+      console.error("Error parsing pages data:", e);
+    }
+  }
+
+  function openPagesModal(employeeId, employeeName) {
+    fetch(`/employees/pages/${employeeId}`)
+      .then(r => r.json())
+      .then(data => {
+        const currentPages = data.pages.map(p => p.id);
+
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay show';
+        modal.innerHTML = `
+        <div class="modal-content">
+          <button class="close-btn" onclick="this.closest('.modal-overlay').remove()">×</button>
+          <h3>{{ _('employees_modal_pages_title') }} - ${employeeName}</h3>
+          <div id="pagesList">
+            ${allAvailablePages.map(p => `
+              <label>
+                <input type="checkbox" value="${p.id}" ${currentPages.includes(p.id) ? 'checked' : ''}>
+                <span>${p.name}</span>
+              </label>
+            `).join('')}
+          </div>
+          <button onclick="saveEmployeePages(${employeeId})">{{ _('employees_save_button') }}</button>
+        </div>
+      `;
+        document.body.appendChild(modal);
+
+        // Close on overlay click
+        modal.addEventListener('click', function (e) {
+          if (e.target === modal) {
+            modal.remove();
+          }
+        });
+
+        window.currentModal = modal;
+        window.saveEmployeePages = function (empId) {
+          const checkboxes = modal.querySelectorAll('input[type="checkbox"]:checked');
+          const pageIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+
+          fetch(`/employees/manage-pages/${empId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ page_ids: pageIds })
+          })
+            .then(r => r.json())
+            .then(data => {
+              if (data.success) {
+                showToast("{{ _('employees_toast_pages_updated') }}", 'success');
+                modal.remove();
+                setTimeout(() => location.reload(), 1000);
+              } else {
+                showToast(data.error || "{{ _('employees_err_generic') }}", 'error');
+              }
+            })
+            .catch(err => {
+              showToast("{{ _('employees_err_connection') }}", 'error');
+            });
+        };
+      })
+      .catch(err => {
+        showToast("{{ _('employees_err_fetch_data') }}", 'error');
+      });
+  }
+
+  // ==================== View Employee Orders ====================
+  const empOrdersTitle = "{{ _('employees_orders_modal_title') }}";
+  const empPagesCount = "{{ _('employees_orders_pages_count') }}";
+  const empTotalOrders = "{{ _('employees_orders_total_orders') }}";
+  const empOrderCount = "{{ _('employees_orders_order_count') }}";
+  const empNoPage = "{{ _('employees_orders_no_page') }}";
+  const empClose = "{{ _('employees_modal_close') }}";
+  const empCurrency = "{{ _('employees_currency_iqd') }}";
+  function viewEmployeeOrders(employeeId, employeeName) {
+    fetch(`/employees/view-orders/${employeeId}`)
+      .then(r => r.json())
+      .then(data => {
+        let content = `<h3>${empOrdersTitle.replace('{name}', employeeName)}</h3>`;
+        content += `<p style="color: var(--emp-muted); margin-bottom: var(--spacing-lg);">${empPagesCount}: ${data.pages_count} | ${empTotalOrders}: ${data.total_orders}</p>`;
+
+        for (let pageId in data.page_stats) {
+          const page = data.page_stats[pageId];
+          content += `<div style="margin-bottom: var(--spacing-lg); padding: var(--spacing-md); background: rgba(255,255,255,0.03); border-radius: var(--radius-md);">`;
+          content += `<h4 style="color: var(--emp-primary-light); margin-bottom: var(--spacing-sm);">${page.name} (${page.orders_count} ${empOrderCount})</h4>`;
+          if (page.orders.length > 0) {
+            content += `<ul style="list-style: none; padding: 0; margin: 0;">`;
+            page.orders.forEach(order => {
+              content += `<li style="padding: var(--spacing-xs) var(--spacing-sm); background: rgba(255,255,255,0.02); margin-bottom: var(--spacing-xs); border-radius: var(--radius-sm); color: var(--emp-text);">`;
+              content += `#${order.id} - ${order.customer_name} - ${order.total} ${empCurrency}`;
+              content += `</li>`;
+            });
+            content += `</ul>`;
+          }
+          content += `</div>`;
+        }
+
+        if (data.orders_without_page && data.orders_without_page.length > 0) {
+          content += `<div style="margin-bottom: var(--spacing-lg); padding: var(--spacing-md); background: rgba(255,255,255,0.03); border-radius: var(--radius-md);">`;
+          content += `<h4 style="color: var(--emp-warning); margin-bottom: var(--spacing-sm);">${empNoPage} (${data.orders_without_page.length} ${empOrderCount})</h4>`;
+          content += `<ul style="list-style: none; padding: 0; margin: 0;">`;
+          data.orders_without_page.forEach(order => {
+            content += `<li style="padding: var(--spacing-xs) var(--spacing-sm); background: rgba(255,255,255,0.02); margin-bottom: var(--spacing-xs); border-radius: var(--radius-sm); color: var(--emp-text);">`;
+            content += `#${order.id} - ${order.customer_name} - ${order.total} ${empCurrency}`;
+            content += `</li>`;
+          });
+          content += `</ul></div>`;
+        }
+
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay show';
+        modal.innerHTML = `
+        <div class="modal-content">
+          <button class="close-btn" onclick="this.closest('.modal-overlay').remove()">×</button>
+          ${content}
+          <button onclick="this.closest('.modal-overlay').remove()">${empClose}</button>
+        </div>
+      `;
+        document.body.appendChild(modal);
+
+        // Close on overlay click
+        modal.addEventListener('click', function (e) {
+          if (e.target === modal) {
+            modal.remove();
+          }
+        });
+      })
+      .catch(err => {
+        showToast('حدث خطأ في جلب البيانات', 'error');
+      });
+  }
+
+  // ==================== Collapsible Sections Logic ====================
+  function toggleSection(sectionId) {
+    const section = document.getElementById(sectionId);
+    if (!section) return;
+
+    const isCollapsed = section.classList.toggle('collapsed');
+
+    // Save state to localStorage
+    try {
+      const states = JSON.parse(localStorage.getItem('employees_sections_states') || '{}');
+      states[sectionId] = isCollapsed;
+      localStorage.setItem('employees_sections_states', JSON.stringify(states));
+    } catch (e) {
+      console.warn('Error saving section state:', e);
+    }
+  }
+
+  function restoreSectionStates() {
+    try {
+      const states = JSON.parse(localStorage.getItem('employees_sections_states') || '{}');
+      for (const [id, isCollapsed] of Object.entries(states)) {
+        const section = document.getElementById(id);
+        if (section) {
+          if (isCollapsed) {
+            section.classList.add('collapsed');
+          } else {
+            section.classList.remove('collapsed');
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Error restoring section states:', e);
+    }
+  }
+
+  // Initialize on page load
+  document.addEventListener('DOMContentLoaded', function () {
+    restoreSectionStates();
+    if (document.getElementById('employeesTable')) {
+      initAgGrid();
+    }
+  });
+</script>
+
+{% endblock %}

@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>كشف {{ report.report_number }} - {{ report.shipping_company_name }}</title>
+    <script>
+      (function() {
+        try {
+          var saved = localStorage.getItem("theme");
+          var theme = saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+          document.documentElement.setAttribute("data-theme", theme);
+        } catch (e) {
+          document.documentElement.setAttribute("data-theme", "dark");
+        }
+      })();
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <link rel="stylesheet" href="/static/css/saas-admin.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --report-primary: var(--primary);
+            --report-success: var(--success);
+            --report-bg: var(--bg);
+            --report-card: var(--card);
+            --report-text: var(--text);
+            --report-muted: var(--text-muted);
+        }
+
+        body {
+            background: var(--report-bg);
+            color: var(--report-text);
+            font-family: 'Tajawal', system-ui, sans-serif;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .report-header {
+            background: linear-gradient(145deg, rgba(17, 24, 39, 0.9), rgba(11, 18, 32, 0.9));
+            border-radius: 20px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(59, 130, 246, 0.1);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .report-header h2 {
+            font-size: 28px;
+            margin-bottom: 20px;
+            color: var(--report-text);
+        }
+
+        .report-header .info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-top: 20px;
+        }
+
+        .report-header .info-item {
+            background: rgba(15, 23, 42, 0.6);
+            padding: 16px;
+            border-radius: 12px;
+        }
+
+        .report-header .info-item .label {
+            font-size: 13px;
+            color: var(--report-muted);
+            margin-bottom: 6px;
+        }
+
+        .report-header .info-item .value {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--report-text);
+        }
+
+        .report-actions {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 12px;
+            border: none;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--report-primary), #2563eb);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .report-table {
+            background: linear-gradient(145deg, rgba(17, 24, 39, 0.9), rgba(11, 18, 32, 0.9));
+            border-radius: 20px;
+            padding: 24px;
+            overflow-x: auto;
+            border: 1px solid rgba(59, 130, 246, 0.1);
+        }
+
+        .report-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .report-table th {
+            padding: 14px 12px;
+            text-align: center;
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95));
+            color: var(--report-text);
+            font-weight: 700;
+            font-size: 14px;
+            border-bottom: 2px solid rgba(59, 130, 246, 0.3);
+            letter-spacing: 0.5px;
+        }
+
+        .report-table td {
+            padding: 14px 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .report-table tbody tr:nth-child(even) {
+            background: rgba(15, 23, 42, 0.4);
+        }
+
+        .report-table tr:hover {
+            background: rgba(59, 130, 246, 0.15) !important;
+            transform: scale(1.002);
+            transition: all 0.2s ease;
+        }
+
+        @media print {
+            @page {
+                size: A4 landscape;
+                margin: 0.8cm;
+            }
+            
+            body {
+                background: white !important;
+                color: #000 !important;
+                font-family: 'Tajawal', 'Arial', 'Tahoma', sans-serif;
+                padding: 0 !important;
+                line-height: 1.6;
+            }
+            
+            .report-header,
+            .report-table {
+                background: white !important;
+                border: 2px solid #000 !important;
+                page-break-inside: avoid;
+                box-shadow: none !important;
+            }
+            
+            .report-header {
+                padding: 20px !important;
+                border-bottom: 4px solid #1a1a1a !important;
+                position: relative;
+            }
+            
+            .report-header::after {
+                content: '';
+                position: absolute;
+                bottom: -2px;
+                right: 50%;
+                transform: translateX(50%);
+                width: 100px;
+                height: 4px;
+                background: #3b82f6;
+            }
+            
+            .report-header h2 {
+                color: #000 !important;
+                font-size: 26px !important;
+                font-weight: 800 !important;
+                margin-bottom: 15px !important;
+            }
+            
+            .report-header .info {
+                display: flex !important;
+                justify-content: center !important;
+                gap: 15px !important;
+                flex-wrap: wrap !important;
+                margin-top: 15px !important;
+            }
+            
+            .report-header .info-item {
+                background: #f8f9fa !important;
+                border: 1px solid #ddd !important;
+                padding: 10px 16px !important;
+                border-radius: 8px !important;
+            }
+            
+            .report-header .info-item .label {
+                color: #555 !important;
+                font-size: 12px !important;
+            }
+            
+            .report-header .info-item .value {
+                color: #000 !important;
+                font-weight: 700 !important;
+            }
+            
+            .report-actions {
+                display: none !important;
+            }
+            
+            .report-table {
+                padding: 20px !important;
+            }
+            
+            .report-table table {
+                border: 1px solid #000 !important;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+            }
+            
+            .report-table th {
+                background: linear-gradient(135deg, #1a1a1a, #2d2d2d) !important;
+                color: white !important;
+                border: 1px solid #000 !important;
+                padding: 12px 8px !important;
+                font-weight: 700 !important;
+                font-size: 13px !important;
+                text-align: center !important;
+            }
+            
+            .report-table td {
+                border: 1px solid #ddd !important;
+                padding: 10px 8px !important;
+                color: #000 !important;
+                background: white !important;
+                font-size: 12px !important;
+                text-align: center !important;
+            }
+            
+            .report-table tbody tr:nth-child(even) {
+                background: #f8f9fa !important;
+            }
+            
+            .report-table tbody tr:hover {
+                background: #e3f2fd !important;
+            }
+            
+            /* إخفاء رقم الطلب النصي وإظهار الباركود فقط عند الطباعة */
+            .order-id-text {
+                display: none !important;
+            }
+            
+            .order-id-barcode {
+                display: block !important;
+            }
+            
+            .order-id-barcode svg {
+                max-width: 140px !important;
+                height: 45px !important;
+            }
+            
+            /* تحسين صف الإجمالي */
+            .total-summary-row {
+                background: linear-gradient(135deg, #e8f5e9, #c8e6c9) !important;
+            }
+            
+            .total-summary-row td {
+                border-top: 3px solid #4caf50 !important;
+                border-bottom: 3px solid #4caf50 !important;
+                padding: 15px 8px !important;
+                font-size: 16px !important;
+                font-weight: 700 !important;
+                color: #1b5e20 !important;
+            }
+            
+            .total-summary-row td:first-child {
+                border-right: 3px solid #4caf50 !important;
+            }
+            
+            /* تحسين المبالغ */
+            td[style*="color: var(--report-success)"] {
+                color: #1b5e20 !important;
+                font-weight: 700 !important;
+                font-size: 13px !important;
+            }
+            
+            /* إخفاء العناصر الإدارية */
+            .no-print,
+            button,
+            select {
+                display: none !important;
+            }
+        }
+        
+        /* إخفاء الباركود على الشاشة وإظهاره فقط عند الطباعة */
+        .order-id-barcode {
+            display: none;
+        }
+
+        .no-print {
+            @media print {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="report-header">
+            <h2>🚚 شركة النقل: {{ report.shipping_company_name }}</h2>
+            <div class="info">
+                <div class="info-item">
+                    <div class="label">رقم الكشف</div>
+                    <div class="value">#{{ report.report_number }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="label">عدد الطلبات</div>
+                    <div class="value">{{ report.orders_count }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="label">إجمالي المبلغ</div>
+                    <div class="value" style="color: var(--report-success);">{{ "{:,.0f}".format(report.total_amount) }} د.ع</div>
+                </div>
+                <div class="info-item">
+                    <div class="label">التاريخ</div>
+                    <div class="value">{{ report.created_at.strftime('%Y-%m-%d %H:%M') if report.created_at else "—" }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="label">أنشأه</div>
+                    <div class="value">{{ report.created_by or "—" }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="report-actions no-print">
+            <button class="btn btn-primary" onclick="window.print()">🖨️ طباعة</button>
+            <a href="/delivery/dashboard" class="btn btn-primary">← العودة للصفحة الرئيسية</a>
+            {% if not report.is_executed %}
+            <button class="btn btn-success" onclick="saveOrderStatuses()" id="saveBtn" style="background: linear-gradient(135deg, #10b981, #059669); display:none;">💾 حفظ الحالات</button>
+            {% endif %}
+        </div>
+
+        {% if not report.is_executed %}
+        <div class="report-header" style="margin-bottom: 24px; background: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.3);">
+            <p style="color: #f59e0b; margin: 0; text-align: center; font-size: 16px; font-weight: 600;">
+                ⚠️ يرجى تحديد حالة كل طلب: واصل / ملغي / مؤجل
+            </p>
+            <p style="color: #f59e0b; margin: 10px 0 0 0; text-align: center; font-size: 14px;">
+                بعد تحديد الحالات، سيظهر زر "💾 حفظ الحالات" في الأعلى
+            </p>
+        </div>
+        {% else %}
+        <div class="report-header" style="margin-bottom: 24px; background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3);">
+            <p style="color: #10b981; margin: 0; text-align: center; font-size: 16px; font-weight: 600;">
+                ✅ تم تنفيذ هذا الكشف من قبل الأدمن
+            </p>
+        </div>
+        {% endif %}
+
+        <div class="report-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>رقم الطلب</th>
+                        <th>الزبون</th>
+                        <th>الهاتف</th>
+                        <th>المحافظة</th>
+                        <th>المبلغ</th>
+                        <th>حالة الطلب الحالية</th>
+                        {% if not report.is_executed %}
+                        <th>تحديد الحالة</th>
+                        {% endif %}
+                        <th>التاريخ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders_data %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>
+                            <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                                <span class="order-id-text"><strong>#{{ order.id }}</strong></span>
+                                <svg class="order-id-barcode" id="barcode-{{ order.id }}"></svg>
+                            </div>
+                        </td>
+                        <td><strong>{{ order.customer_name }}</strong></td>
+                        <td style="direction: ltr; text-align: center; font-family: 'Courier New', monospace; font-weight: 600;">{{ order.customer_phone }}</td>
+                        <td>{{ order.customer_city }}</td>
+                        <td style="color: var(--report-success); font-weight: 700; font-size: 14px;">{{ "{:,.0f}".format(order.total) }} د.ع</td>
+                        <td>{{ order.status }}</td>
+                        {% if not report.is_executed %}
+                        <td>
+                            <select class="order-status-select" data-order-id="{{ order.id }}" onchange="onStatusChange()" style="padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(15, 23, 42, 0.6); color: var(--report-text); font-size: 14px; cursor: pointer; width: 100%;">
+                                <option value="">-- اختر --</option>
+                                <option value="واصل" {% if status_selections and status_selections.get(order.id|string) == 'واصل' %}selected{% endif %}>✅ واصل</option>
+                                <option value="ملغي" {% if status_selections and status_selections.get(order.id|string) == 'ملغي' %}selected{% endif %}>❌ ملغي</option>
+                                <option value="مؤجل" {% if status_selections and status_selections.get(order.id|string) == 'مؤجل' %}selected{% endif %}>⏸️ مؤجل</option>
+                            </select>
+                        </td>
+                        {% endif %}
+                        <td>{{ order.created_at }}</td>
+                    </tr>
+                    {% endfor %}
+                    <tr class="total-summary-row" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.2)); font-weight: 700;">
+                        <td colspan="5" style="text-align: right; padding-right: 25px; font-size: 16px;">💰 المجموع الكلي:</td>
+                        <td style="color: var(--report-success); font-size: 18px; font-weight: 800;">{{ "{:,.0f}".format(report.total_amount) }} دينار عراقي</td>
+                        <td colspan="3"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        {% if report.notes %}
+        <div class="report-header" style="margin-top: 24px;">
+            <h3>ملاحظات:</h3>
+            <p style="color: var(--report-muted); white-space: pre-wrap;">{{ report.notes }}</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+        function onStatusChange() {
+            // إظهار زر الحفظ عند تغيير أي حالة
+            const saveBtn = document.getElementById('saveBtn');
+            if (saveBtn) {
+                saveBtn.style.display = 'inline-flex';
+            }
+        }
+
+        function saveOrderStatuses() {
+            const selects = document.querySelectorAll('.order-status-select');
+            const statusData = {};
+            
+            selects.forEach(select => {
+                const orderId = select.getAttribute('data-order-id');
+                const status = select.value;
+                if (status) {
+                    statusData[orderId] = status;
+                }
+            });
+
+            if (Object.keys(statusData).length === 0) {
+                alert('⚠️ يرجى تحديد حالة لطالب واحد على الأقل');
+                return;
+            }
+
+            if (!confirm('هل تريد حفظ التغييرات؟')) {
+                return;
+            }
+
+            fetch('/delivery/update-report-statuses/{{ report.id }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ status_selections: statusData })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ تم حفظ الحالات بنجاح');
+                    const saveBtn = document.getElementById('saveBtn');
+                    if (saveBtn) {
+                        saveBtn.style.display = 'none';
+                    }
+                } else {
+                    alert('❌ ' + (data.error || 'حدث خطأ أثناء الحفظ'));
+                }
+            })
+            .catch(error => {
+                alert('❌ حدث خطأ أثناء الحفظ');
+                console.error(error);
+            });
+        }
+
+        // إظهار زر الحفظ إذا كانت هناك حالات محفوظة مسبقاً
+        window.addEventListener('DOMContentLoaded', function() {
+            const selects = document.querySelectorAll('.order-status-select');
+            let hasSelection = false;
+            selects.forEach(select => {
+                if (select.value) {
+                    hasSelection = true;
+                }
+            });
+            if (hasSelection) {
+                const saveBtn = document.getElementById('saveBtn');
+                if (saveBtn) {
+                    saveBtn.style.display = 'inline-flex';
+                }
+            }
+        });
+    </script>
+    
+    <script>
+    // إنشاء الباركود لكل طلب
+    document.addEventListener('DOMContentLoaded', function() {
+        {% for order in orders_data %}
+        try {
+            JsBarcode("#barcode-{{ order.id }}", "{{ order.id }}", {
+                format: "CODE128",
+                width: 2,
+                height: 50,
+                displayValue: true,
+                fontSize: 14,
+                margin: 5
+            });
+        } catch (e) {
+            console.error('Error generating barcode for order {{ order.id }}:', e);
+        }
+        {% endfor %}
+    });
+    </script>
+</body>
+</html>

@@ -1,0 +1,932 @@
+{% extends "base.html" %}
+{% block title %}{{ _('pages') }}{% endblock %}
+{% block page_title %}📄 {{ _('pages_page_title') }}{% endblock %}
+{% block content %}
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-spinner"></div>
+</div>
+
+<style>
+  /* ================= VARIABLES ================= */
+  :root {
+    --pages-primary: #6366f1;
+    --pages-success: #10b981;
+    --pages-danger: #ef4444;
+    --pages-warning: #f59e0b;
+    --pages-text: #e2e8f0;
+    --pages-muted: #94a3b8;
+    --pages-bg: #0f172a;
+    --pages-card: #1e293b;
+    --pages-border: rgba(255, 255, 255, 0.08);
+  }
+
+  /* ================= BODY ================= */
+  body {
+    pointer-events: auto !important;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    transform: none !important;
+    will-change: auto !important;
+  }
+
+  /* Ensure all interactive elements work */
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    pointer-events: auto !important;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* ================= CONTAINER ================= */
+  .pages-container {
+    padding: 0;
+  }
+
+  /* ================= ADD PAGE FORM ================= */
+  .add-page-form {
+    background: linear-gradient(145deg, var(--pages-card), rgba(30, 41, 59, 0.8));
+    padding: 28px;
+    border-radius: 20px;
+    margin-bottom: 28px;
+    border: 1px solid var(--pages-border);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    position: relative;
+    overflow: visible;
+    pointer-events: auto;
+  }
+
+  .add-page-form h3 {
+    color: var(--pages-text);
+    margin: 0 0 24px;
+    padding-bottom: 18px;
+    border-bottom: 2px solid rgba(99, 102, 241, 0.2);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+  }
+
+  .form-group {
+    margin-bottom: 20px;
+  }
+
+  .form-group label {
+    display: block;
+    margin-bottom: 10px;
+    color: var(--pages-muted);
+    font-weight: 600;
+    font-size: 14px;
+  }
+
+  .form-group input {
+    width: 100%;
+    padding: 14px 18px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: var(--pages-text);
+    font-size: 15px;
+    transition: all 0.3s ease;
+    font-family: inherit;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    min-height: 48px;
+    box-sizing: border-box;
+    pointer-events: auto;
+  }
+
+  .form-group input::placeholder {
+    color: var(--pages-muted);
+    opacity: 0.6;
+  }
+
+  .form-group input:focus {
+    outline: none;
+    border-color: var(--pages-primary);
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15), 0 4px 12px rgba(99, 102, 241, 0.1);
+    transform: translateY(-1px);
+  }
+
+  .btn-add {
+    background: linear-gradient(135deg, var(--pages-primary), #4f46e5);
+    color: #fff;
+    border: none;
+    padding: 14px 28px;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    min-height: 48px;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    pointer-events: auto !important;
+    position: relative;
+    z-index: 100 !important;
+    letter-spacing: 0.3px;
+    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .btn-add:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
+  }
+
+  .btn-add:active {
+    transform: translateY(0);
+  }
+
+  /* ================= PAGES TABLE ================= */
+  .pages-table {
+    background: linear-gradient(145deg, var(--pages-card), rgba(30, 41, 59, 0.8));
+    border-radius: 20px;
+    overflow: hidden;
+    border: 1px solid var(--pages-border);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    position: relative;
+    overflow: visible;
+    pointer-events: auto;
+  }
+
+  .pages-table table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    background: transparent;
+  }
+
+  .pages-table th {
+    background: linear-gradient(180deg, rgba(30, 41, 59, 0.98), rgba(25, 35, 52, 0.96));
+    padding: 20px 18px;
+    text-align: right;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--pages-muted);
+    border-bottom: 3px solid rgba(99, 102, 241, 0.3);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    white-space: nowrap;
+    pointer-events: auto;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .pages-table td {
+    padding: 20px 18px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    color: var(--pages-text);
+    vertical-align: middle;
+    transition: background-color 0.2s ease;
+    pointer-events: auto;
+  }
+
+  .pages-table tr {
+    transition: background-color 0.2s ease;
+    pointer-events: auto;
+  }
+
+  .pages-table tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  .pages-table tr:hover {
+    background: rgba(99, 102, 241, 0.1);
+  }
+
+  .pages-table tr:hover td {
+    pointer-events: auto;
+  }
+
+  .pages-table td strong {
+    font-weight: 700;
+    color: var(--pages-text);
+    font-size: 15px;
+  }
+
+  /* ================= EMPLOYEES LIST ================= */
+  .employees-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .employee-tag {
+    background: rgba(99, 102, 241, 0.2);
+    color: var(--pages-primary);
+    padding: 6px 14px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    white-space: nowrap;
+  }
+
+  /* أرقام الإحصائيات في الجدول */
+  .pages-metric {
+    font-weight: 600;
+    font-size: 14px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+  }
+
+  .pages-metric--neutral {
+    background: rgba(148, 163, 184, 0.15);
+    color: var(--pages-text);
+  }
+
+  .pages-metric--danger {
+    background: rgba(239, 68, 68, 0.12);
+    color: var(--pages-danger);
+  }
+
+  .pages-metric--success {
+    background: rgba(16, 185, 129, 0.12);
+    color: var(--pages-success);
+  }
+
+  /* ================= VISIBILITY TOGGLE ================= */
+  .visibility-toggle {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    pointer-events: auto !important;
+    position: relative;
+    z-index: 10;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .visibility-toggle+span {
+    color: var(--pages-text);
+    font-size: 14px;
+    font-weight: 500;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  label[style*="display: flex"] {
+    pointer-events: auto;
+    position: relative;
+    z-index: 10;
+  }
+
+  /* ================= DELETE BUTTON ================= */
+  .btn-delete {
+    background: linear-gradient(135deg, var(--pages-danger), #dc2626);
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    pointer-events: auto !important;
+    position: relative;
+    z-index: 100 !important;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 4px 16px rgba(239, 68, 68, 0.3);
+  }
+
+  .btn-delete:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(239, 68, 68, 0.4);
+  }
+
+  .btn-delete:active {
+    transform: translateY(0);
+  }
+
+  /* ================= LOADING & TOAST ================= */
+  .loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .loading-overlay.active {
+    display: flex;
+    opacity: 1;
+    animation: fadeIn 0.3s ease;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
+  .loading-spinner {
+    width: 60px;
+    height: 60px;
+    border: 5px solid rgba(99, 102, 241, 0.15);
+    border-top-color: var(--pages-primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    box-shadow: 0 8px 24px rgba(99, 102, 241, 0.3), 0 0 0 4px rgba(99, 102, 241, 0.1);
+    position: relative;
+  }
+
+  .loading-spinner::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 40px;
+    height: 40px;
+    margin: -20px 0 0 -20px;
+    border: 3px solid rgba(99, 102, 241, 0.1);
+    border-top-color: rgba(99, 102, 241, 0.5);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite reverse;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .toast-container {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: calc(100% - 32px);
+    max-width: 500px;
+    pointer-events: none;
+  }
+
+  .toast {
+    min-width: 280px;
+    max-width: 100%;
+    width: 100%;
+    padding: 16px 20px;
+    border-radius: 14px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    animation: slideInDown 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: auto;
+    box-sizing: border-box;
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .toast::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    opacity: 0.6;
+  }
+
+  .toast.success {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(5, 150, 105, 0.95));
+    color: #fff;
+    border-color: rgba(16, 185, 129, 0.3);
+  }
+
+  .toast.error {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.95), rgba(220, 38, 38, 0.95));
+    color: #fff;
+    border-color: rgba(239, 68, 68, 0.3);
+  }
+
+  .toast.warning {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.95), rgba(217, 119, 6, 0.95));
+    color: #fff;
+    border-color: rgba(245, 158, 11, 0.3);
+  }
+
+  @keyframes slideInDown {
+    from {
+      opacity: 0;
+      transform: translateX(-50%) translateY(-30px) scale(0.95);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0) scale(1);
+    }
+  }
+
+  /* ================= EMPTY STATE ================= */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--pages-muted);
+  }
+
+  .empty-state-icon {
+    font-size: 64px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+  }
+
+  .empty-state-text {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--pages-text);
+  }
+
+  /* ================= RESPONSIVE ================= */
+  @media (max-width: 768px) {
+    .pages-container {
+      padding: 0;
+    }
+
+    .add-page-form {
+      padding: 20px;
+      border-radius: 16px;
+    }
+
+    .add-page-form h3 {
+      font-size: 18px;
+    }
+
+    .pages-table {
+      border-radius: 16px;
+      overflow-x: auto;
+    }
+
+    .pages-table table {
+      min-width: 600px;
+    }
+
+    .pages-table th,
+    .pages-table td {
+      padding: 14px 12px;
+      font-size: 13px;
+    }
+
+    .employees-list {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .btn-delete {
+      width: 100%;
+      justify-content: center;
+    }
+
+    /* Toast Mobile */
+    .toast-container {
+      top: 12px;
+      left: 12px;
+      right: 12px;
+      width: auto;
+      max-width: none;
+      transform: none;
+      gap: 10px;
+    }
+
+    .toast {
+      min-width: auto;
+      padding: 16px 18px;
+      font-size: 14px;
+      border-radius: 12px;
+    }
+
+    /* Loading Overlay Mobile */
+    .loading-overlay {
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .loading-spinner {
+      width: 70px;
+      height: 70px;
+      border-width: 6px;
+    }
+
+    .loading-spinner::after {
+      width: 50px;
+      height: 50px;
+      margin: -25px 0 0 -25px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .add-page-form {
+      padding: 16px;
+    }
+
+    .pages-table table {
+      min-width: 500px;
+    }
+
+    .pages-table th,
+    .pages-table td {
+      padding: 12px 10px;
+      font-size: 12px;
+    }
+  }
+
+  /* ================= LIGHT MODE OVERRIDES ================= */
+  :root[data-theme="light"] .pages-container {
+    padding: 0;
+  }
+
+  :root[data-theme="light"] .add-page-form {
+    background: #ffffff;
+    border-color: #e5e7eb;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  }
+
+  :root[data-theme="light"] .add-page-form .group-header {
+    background: #f9fafb !important;
+    border-bottom: 1px solid #e5e7eb !important;
+  }
+
+  :root[data-theme="light"] .add-page-form h3 {
+    color: #0f172a !important;
+  }
+
+  :root[data-theme="light"] .form-group label {
+    color: #4b5563;
+  }
+
+  :root[data-theme="light"] .form-group input {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    color: #0f172a;
+  }
+
+  :root[data-theme="light"] .form-group input::placeholder {
+    color: #94a3b8;
+  }
+
+  :root[data-theme="light"] .pages-table {
+    background: #ffffff !important;
+    border-color: #e5e7eb;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  }
+
+  :root[data-theme="light"] .pages-table th {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.05));
+    color: #4b5563;
+    border-bottom-color: rgba(99, 102, 241, 0.2);
+  }
+
+  :root[data-theme="light"] .pages-table td {
+    border-bottom-color: rgba(0, 0, 0, 0.05);
+    color: #111827;
+  }
+
+  :root[data-theme="light"] .pages-table tr:nth-child(even) {
+    background: rgba(0, 0, 0, 0.02);
+  }
+
+  :root[data-theme="light"] .pages-table tr:hover {
+    background: rgba(99, 102, 241, 0.05);
+  }
+
+  :root[data-theme="light"] .employee-tag {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border-color: #bfdbfe;
+  }
+
+  :root[data-theme="light"] .empty-state {
+    color: #6b7280;
+  }
+
+  :root[data-theme="light"] .empty-state-text {
+    color: #111827;
+  }
+
+  :root[data-theme="light"] .btn-delete {
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);
+  }
+
+  /* ================= COLLAPSIBLE GROUPS ================= */
+  .collapsible-group {
+    margin-bottom: 24px;
+  }
+
+  .collapsible-group.collapsed .group-content {
+    display: none;
+  }
+
+  .collapsible-group.collapsed .toggle-btn {
+    transform: rotate(180deg);
+  }
+
+  /* ================= BUTTON LOADING FIX ================= */
+  .button-loading {
+    position: relative;
+    color: transparent !important;
+    pointer-events: none;
+  }
+
+  .button-loading::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    pointer-events: none;
+  }
+</style>
+
+<div class="pages-container">
+  <!-- ============ ADD PAGE FORM ============ -->
+  <div class="add-page-form collapsible-group collapsed" id="groupAddPage"
+    style="padding:0; overflow:hidden; transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position:relative;">
+    <div class="group-header" onclick="toggleSection('groupAddPage')"
+      style="padding:var(--spacing-lg, 24px); display:flex; justify-content:space-between; align-items:center; cursor:pointer; background:rgba(255,255,255,0.02); border-bottom:1px solid rgba(255,255,255,0.05); user-select:none;">
+      <h3
+        style="margin:0; font-size:18px; font-weight:700; color:var(--pages-text); display:flex; align-items:center; gap:var(--spacing-sm, 8px); padding-bottom: 0; border: none;">
+        <span
+          style="display:flex; align-items:center; justify-content:center; width:36px; height:36px; background:linear-gradient(135deg, rgba(99,102,241,0.2), rgba(139,92,246,0.2)); border-radius:10px; color:var(--pages-primary);">➕</span>
+        {{ _('pages_add_title') }}
+      </h3>
+      <button type="button" class="toggle-btn"
+        style="background:transparent; border:none; color:var(--pages-muted); cursor:pointer; font-size:14px; padding:8px; display:flex; align-items:center; justify-content:center; transition:transform 0.3s ease;">
+        <i class="fas fa-chevron-up"></i>
+      </button>
+    </div>
+    <div class="group-content" style="padding:var(--spacing-lg, 24px); transition:all 0.3s ease;">
+      <form method="POST" action="/pages/" id="addPageForm" onsubmit="handleAddPage(event)">
+        <div class="form-group" style="margin-bottom: 20px;">
+          <label>{{ _('pages_field_name_label') }}</label>
+          <input type="text" name="name" id="pageName" required placeholder="{{ _('pages_field_name_placeholder') }}">
+        </div>
+        <button type="submit" class="btn-add" id="addPageBtn" style="width: 100%; justify-content: center;">
+          <span>➕</span>
+          <span>{{ _('pages_add_button') }}</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <div class="pages-table"
+    style="background:var(--pages-card); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border-radius:20px; border:1px solid var(--pages-border); box-shadow:0 8px 24px rgba(0, 0, 0, 0.2);">
+    <table>
+      <thead>
+        <tr>
+          <th>{{ _('pages_th_name') }}</th>
+          <th>{{ _('pages_th_employees') }}</th>
+          <th>{{ _('pages_th_total_orders') }}</th>
+          <th>{{ _('pages_th_returns') }}</th>
+          <th>{{ _('pages_th_delivered') }}</th>
+          <th>{{ _('pages_th_actions') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for data in pages_data %}
+        <tr>
+          <td><strong>{{ data.page.name }}</strong></td>
+          <td>
+            <div class="employees-list">
+              {% for emp in data.employees %}
+              <span class="employee-tag">{{ emp.name }}</span>
+              {% else %}
+              <span style="color: var(--pages-muted);">{{ _('pages_no_employees') }}</span>
+              {% endfor %}
+            </div>
+          </td>
+          <td><span class="pages-metric pages-metric--neutral">{{ data.orders_count }}</span></td>
+          <td><span class="pages-metric pages-metric--danger">{{ data.returned_count }}</span></td>
+          <td><span class="pages-metric pages-metric--success">{{ data.delivered_count }}</span></td>
+          <td>
+            <a href="/pages/delete/{{ data.page.id }}" class="btn-delete"
+              onclick="return confirm('{{ _('pages_confirm_delete') }}')">
+              🗑️ {{ _('pages_delete_button') }}
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="empty-state">
+            <div class="empty-state-icon">📄</div>
+            <div class="empty-state-text">{{ _('pages_empty_title') }}</div>
+            <div style="color: var(--pages-muted); font-size: 14px; margin-top: 8px;">{{ _('pages_empty_subtitle') }}</div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  // ==================== Toast Notifications ====================
+  function showToast(message, type = 'info') {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+
+    const icons = {
+      success: '✅',
+      error: '❌',
+      warning: '⚠️',
+      info: 'ℹ️'
+    };
+
+    toast.innerHTML = `
+    <span style="font-size: 18px;">${icons[type] || icons.info}</span>
+    <span style="flex: 1;">${message}</span>
+  `;
+
+    container.appendChild(toast);
+
+    setTimeout(() => {
+      toast.style.animation = 'slideInDown 0.3s ease reverse';
+      setTimeout(() => toast.remove(), 300);
+    }, 3000);
+  }
+
+  // ==================== Loading Overlay ====================
+  function showLoading() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+      overlay.classList.add('active');
+    }
+  }
+
+  function hideLoading() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+      overlay.classList.remove('active');
+    }
+  }
+
+  // ==================== Add Page Form ====================
+  function handleAddPage(event) {
+    event.preventDefault();
+
+    const form = event.target;
+    const formData = new FormData(form);
+    const btn = document.getElementById('addPageBtn');
+
+    btn.classList.add('button-loading');
+    showLoading();
+
+    fetch('/pages/', {
+      method: 'POST',
+      body: formData
+    })
+      .then(response => {
+        if (response.ok) {
+          showToast("{{ _('pages_toast_add_success') }}", 'success');
+          setTimeout(() => {
+            location.reload();
+          }, 1000);
+        } else {
+          throw new Error("{{ _('pages_err_add_failed') }}");
+        }
+      })
+      .catch(error => {
+        hideLoading();
+        btn.classList.remove('button-loading');
+        showToast('❌ ' + error.message, 'error');
+      });
+  }
+
+  // ==================== Update Visibility ====================
+  function updateVisibility(pageId, type, checked) {
+    const data = {};
+    if (type === 'cashier') {
+      data.visible_to_cashier = checked;
+    } else if (type === 'admin') {
+      data.visible_to_admin = checked;
+    }
+
+    showLoading();
+
+    fetch(`/pages/update-visibility/${pageId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(data)
+    })
+      .then(r => r.json())
+      .then(response => {
+        hideLoading();
+        if (response.success) {
+          showToast("{{ _('pages_toast_visibility_updated') }}", 'success');
+        } else {
+          showToast('❌ ' + (response.error || "{{ _('pages_err_generic') }}"), 'error');
+          // إعادة تعيين checkbox
+          const checkbox = document.querySelector(`input[data-page-id="${pageId}"][data-type="${type}"]`);
+          if (checkbox) checkbox.checked = !checked;
+        }
+      })
+      .catch(error => {
+        hideLoading();
+        console.error('Error:', error);
+        showToast("{{ _('pages_err_connection') }}", 'error');
+        // إعادة تعيين checkbox
+        const checkbox = document.querySelector(`input[data-page-id="${pageId}"][data-type="${type}"]`);
+        if (checkbox) checkbox.checked = !checked;
+      });
+  }
+
+  // ==================== Collapsible Sections Logic ====================
+  function toggleSection(sectionId) {
+    const section = document.getElementById(sectionId);
+    if (!section) return;
+
+    const isCollapsed = section.classList.toggle('collapsed');
+
+    // Save state to localStorage
+    try {
+      const states = JSON.parse(localStorage.getItem('pages_sections_states') || '{}');
+      states[sectionId] = isCollapsed;
+      localStorage.setItem('pages_sections_states', JSON.stringify(states));
+    } catch (e) {
+      console.warn('Error saving section state:', e);
+    }
+  }
+
+  function restoreSectionStates() {
+    try {
+      const states = JSON.parse(localStorage.getItem('pages_sections_states') || '{}');
+      for (const [id, isCollapsed] of Object.entries(states)) {
+        const section = document.getElementById(id);
+        if (section) {
+          if (isCollapsed) {
+            section.classList.add('collapsed');
+          } else {
+            section.classList.remove('collapsed');
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Error restoring section states:', e);
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    restoreSectionStates();
+  });
+</script>
+
+{% endblock %}

@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}خطأ في الخادم - نظام المحاسبة{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <div class="error-container py-5">
+                <div class="error-code display-1 text-danger">500</div>
+                <div class="error-title h2 mb-3">خطأ في الخادم</div>
+                <div class="error-message lead mb-4">
+                    عذرًا، حدث خطأ غير متوقع في الخادم. يرجى المحاولة مرة أخرى لاحقًا.
+                </div>
+                <div class="error-details alert alert-warning mb-4">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    إذا استمرت المشكلة، يرجى التواصل مع دعم النظام.
+                </div>
+                <div class="error-actions">
+                    <a href="{{ url_for('index.index') }}" class="btn btn-primary btn-lg me-3">
+                        <i class="bi bi-house-door"></i> العودة للرئيسية
+                    </a>
+                    <a href="mailto:support@example.com" class="btn btn-outline-danger btn-lg">
+                        <i class="bi bi-envelope"></i> الاتصال بالدعم
+                    </a>
+                </div>
+                <div class="error-tips mt-5">
+                    <h5 class="mb-3">اقتراحات قد تساعد:</h5>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-body">
+                                    <i class="bi bi-arrow-clockwise fs-1 text-primary mb-3"></i>
+                                    <h6>تحديث الصفحة</h6>
+                                    <p class="small text-muted">اضغط F5 لتحديث الصفحة</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-body">
+                                    <i class="bi bi-clock-history fs-1 text-warning mb-3"></i>
+                                    <h6>الانتظار قليلاً</h6>
+                                    <p class="small text-muted">انتظر بضع دقائق ثم حاول مرة أخرى</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-body">
+                                    <i class="bi bi-browser-edge fs-1 text-success mb-3"></i>
+                                    <h6>تغيير المتصفح</h6>
+                                    <p class="small text-muted">جرب استخدام متصفح مختلف</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

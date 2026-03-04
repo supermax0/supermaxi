@@ -1,0 +1,946 @@
+/* ======================================================
+   MOBILE RESPONSIVE - تحسينات شاملة للهواتف
+   ====================================================== */
+
+/* ==================== GLOBAL MOBILE STYLES ==================== */
+@media (max-width: 768px) {
+
+  /* تصغير الخطوط الأساسية */
+  body {
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  h1 {
+    font-size: 18px !important;
+  }
+
+  h2 {
+    font-size: 16px !important;
+  }
+
+  h3 {
+    font-size: 14px !important;
+  }
+
+  h4 {
+    font-size: 13px !important;
+  }
+
+  h5 {
+    font-size: 12px !important;
+  }
+
+  p {
+    font-size: 12px;
+    margin: 0 0 8px;
+  }
+
+  /* تصغير البطاقات */
+  .card,
+  .enhanced-card {
+    padding: 12px !important;
+    margin-bottom: 10px !important;
+    border-radius: 12px !important;
+  }
+
+  /* تصغير الأزرار */
+  .btn,
+  button {
+    padding: 7px 12px !important;
+    font-size: 12px !important;
+    border-radius: 10px !important;
+    min-height: 36px;
+    gap: 5px !important;
+  }
+
+  /* تصغير المدخلات */
+  input,
+  select,
+  textarea {
+    padding: 9px 12px !important;
+    font-size: 14px !important;
+    /* لمنع zoom على iOS */
+    border-radius: 10px !important;
+    min-height: 38px;
+  }
+
+  /* Topbar */
+  .topbar {
+    padding: 8px 12px !important;
+  }
+
+  .page-title {
+    font-size: 14px !important;
+  }
+
+  /* تصغير الجداول */
+  table {
+    font-size: 11px !important;
+  }
+
+  th,
+  td {
+    padding: 8px 6px !important;
+    font-size: 11px !important;
+  }
+
+  /* تصغير الشارات والتسميات */
+  .badge {
+    font-size: 10px !important;
+    padding: 2px 7px !important;
+  }
+
+  /* تصغير الأيقونات في القوائم */
+  .menu a {
+    padding: 10px 12px !important;
+    font-size: 13px !important;
+    gap: 10px !important;
+  }
+
+  .menu a i {
+    font-size: 15px !important;
+    width: 18px !important;
+  }
+
+  /* تصغير الـ main padding */
+  main {
+    padding: 10px !important;
+    gap: 10px !important;
+  }
+
+  /* تصغير المسافات في grid */
+  .grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .grid-cols-2,
+  .grid-cols-3,
+  .grid-cols-4 {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ==================== SMALL MOBILE (480px and below) ==================== */
+@media (max-width: 480px) {
+  body {
+    font-size: 11px;
+  }
+
+  h1 {
+    font-size: 16px !important;
+  }
+
+  h2 {
+    font-size: 14px !important;
+  }
+
+  h3 {
+    font-size: 13px !important;
+  }
+
+  h4 {
+    font-size: 12px !important;
+  }
+
+  .card,
+  .enhanced-card {
+    padding: 10px !important;
+    border-radius: 10px !important;
+  }
+
+  .btn,
+  button {
+    padding: 6px 10px !important;
+    font-size: 11px !important;
+    min-height: 34px;
+  }
+
+  main {
+    padding: 8px !important;
+    gap: 8px !important;
+  }
+
+  table {
+    font-size: 10px !important;
+  }
+
+  th,
+  td {
+    padding: 6px 4px !important;
+    font-size: 10px !important;
+  }
+}
+
+
+
+/* ==================== RESPONSIVE TABLE UTILITIES ==================== */
+.responsive-table {
+  width: 100%;
+  border-collapse: collapse;
+  display: table;
+}
+
+/* تحسين الجداول على الهواتف - تبقى كجداول منظمة */
+@media (max-width: 768px) {
+
+  /* Container للجداول مع scroll أفقي */
+  .table-wrap,
+  .table-mobile-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 12px;
+    margin: 16px 0;
+    position: relative;
+    background: rgba(17, 24, 39, 0.3);
+    padding: 8px;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+
+  /* الجدول يبقى كجدول */
+  .responsive-table {
+    display: table !important;
+    width: 100%;
+    min-width: 600px;
+    /* الحد الأدنى للعرض */
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 12px;
+  }
+
+  .responsive-table thead {
+    display: table-header-group !important;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: rgba(30, 41, 59, 0.95);
+    backdrop-filter: blur(10px);
+  }
+
+  .responsive-table tbody {
+    display: table-row-group !important;
+  }
+
+  .responsive-table tr {
+    display: table-row !important;
+    border: none;
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .responsive-table th {
+    display: table-cell !important;
+    padding: 10px 8px !important;
+    font-size: 11px !important;
+    font-weight: 600;
+    text-align: right;
+    white-space: nowrap;
+    border-bottom: 2px solid rgba(59, 130, 246, 0.3);
+    color: rgba(255, 255, 255, 0.8);
+    background: rgba(30, 41, 59, 0.95);
+    position: sticky;
+    top: 0;
+  }
+
+  .responsive-table td {
+    display: table-cell !important;
+    padding: 12px 8px !important;
+    font-size: 12px !important;
+    text-align: right;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    vertical-align: middle;
+    white-space: nowrap;
+    position: relative;
+  }
+
+  .responsive-table td:before {
+    display: none !important;
+    /* إزالة labels لأننا نستخدم جدول حقيقي */
+  }
+
+  /* تحسين الأزرار في الجداول */
+  .responsive-table .btn,
+  .responsive-table button,
+  .responsive-table .btn-small {
+    padding: 6px 10px !important;
+    font-size: 11px !important;
+    min-height: 32px;
+    min-width: 32px;
+    white-space: nowrap;
+  }
+
+  .responsive-table .btn-group-small,
+  .responsive-table .btn-group {
+    display: flex;
+    flex-direction: row;
+    gap: 6px;
+    flex-wrap: nowrap;
+    justify-content: center;
+  }
+
+  /* تحسين Selects في الجداول */
+  .responsive-table select {
+    padding: 6px 8px !important;
+    font-size: 11px !important;
+    min-width: 80px;
+    max-width: 120px;
+  }
+
+  .responsive-table .status-select,
+  .responsive-table .date-input {
+    padding: 6px 8px !important;
+    font-size: 11px !important;
+    min-width: 80px;
+  }
+
+  /* تحسين Checkboxes */
+  .responsive-table input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+  }
+
+  /* تحسين Badges في الجداول */
+  .responsive-table .status-badge,
+  .responsive-table .badge {
+    padding: 4px 8px !important;
+    font-size: 10px !important;
+    white-space: nowrap;
+  }
+
+  /* تحسين الأيقونات */
+  .responsive-table .icon,
+  .responsive-table a {
+    font-size: 14px !important;
+    min-width: 32px;
+    min-height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Striped rows للوضوح */
+  .responsive-table tbody tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  .responsive-table tbody tr:hover {
+    background: rgba(59, 130, 246, 0.1) !important;
+  }
+
+  /* تحسين الأعمدة المخفية */
+  .responsive-table .hide-mobile {
+    display: none !important;
+  }
+}
+
+/* تحسينات إضافية للشاشات الصغيرة جداً */
+@media (max-width: 480px) {
+  .responsive-table {
+    font-size: 11px;
+    min-width: 500px;
+  }
+
+  .responsive-table th {
+    padding: 8px 6px !important;
+    font-size: 10px !important;
+  }
+
+  .responsive-table td {
+    padding: 10px 6px !important;
+    font-size: 11px !important;
+  }
+
+  .responsive-table .btn,
+  .responsive-table button {
+    padding: 5px 8px !important;
+    font-size: 10px !important;
+    min-height: 28px;
+    min-width: 28px;
+  }
+
+  .responsive-table select {
+    padding: 5px 6px !important;
+    font-size: 10px !important;
+    min-width: 70px;
+  }
+}
+
+/* ==================== TABLES - MOBILE RESPONSIVE ==================== */
+/* تحويل الجداول إلى cards على الهواتف */
+@media (max-width: 768px) {
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 12px;
+    margin: 16px 0;
+  }
+
+  /* أسلوب 1: Cards بدلاً من جدول */
+  .table-mobile-cards table,
+  .table-mobile-cards thead,
+  .table-mobile-cards tbody,
+  .table-mobile-cards th,
+  .table-mobile-cards td,
+  .table-mobile-cards tr {
+    display: block;
+  }
+
+  .table-mobile-cards thead tr {
+    position: absolute;
+    top: -9999px;
+    left: -9999px;
+  }
+
+  .table-mobile-cards tr {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    margin-bottom: 16px;
+    padding: 16px;
+    background: rgba(17, 24, 39, 0.6);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+
+  .table-mobile-cards td {
+    border: none !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+    position: relative;
+    padding: 12px 0 12px 40% !important;
+    text-align: right !important;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+
+  .table-mobile-cards td:last-child {
+    border-bottom: none !important;
+  }
+
+  .table-mobile-cards td:before {
+    content: attr(data-label);
+    position: absolute;
+    right: 0;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* أسلوب 2: Scroll أفقي */
+  .table-mobile-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    display: block;
+    width: 100%;
+  }
+
+  .table-mobile-scroll table {
+    min-width: 600px;
+    width: 100%;
+  }
+
+  .table-mobile-scroll th,
+  .table-mobile-scroll td {
+    white-space: nowrap;
+    padding: 12px 8px !important;
+    font-size: 13px !important;
+  }
+
+  /* أسلوب 3: List view */
+  .table-mobile-list table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .table-mobile-list th {
+    display: none;
+  }
+
+  .table-mobile-list td {
+    display: block;
+    border: none;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .table-mobile-list td:before {
+    content: attr(data-label) ": ";
+    font-weight: 600;
+    display: inline-block;
+    min-width: 120px;
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  /* تحسين عام للجداول */
+  table {
+    font-size: 13px !important;
+  }
+
+  th,
+  td {
+    padding: 12px 8px !important;
+    font-size: 13px !important;
+  }
+
+  th {
+    font-size: 12px !important;
+    padding: 12px 8px !important;
+  }
+
+  /* إخفاء بعض الأعمدة على الشاشات الصغيرة */
+  .hide-mobile {
+    display: none !important;
+  }
+
+  /* تحسين الأزرار في الجداول */
+  table .btn,
+  table button {
+    padding: 8px 12px !important;
+    font-size: 12px !important;
+    min-height: 36px;
+  }
+
+  /* تحسين مجموعات الأزرار */
+  .btn-group {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .btn-group .btn {
+    width: 100%;
+  }
+
+  /* تحسين الأيقونات في الجداول */
+  table .icon {
+    font-size: 16px !important;
+  }
+}
+
+/* ==================== SMALL MOBILE (480px and below) ==================== */
+@media (max-width: 480px) {
+  body {
+    font-size: 13px;
+    padding: 12px !important;
+  }
+
+  h1 {
+    font-size: 20px !important;
+  }
+
+  h2 {
+    font-size: 18px !important;
+  }
+
+  h3 {
+    font-size: 16px !important;
+  }
+
+  .card,
+  .enhanced-card {
+    padding: 12px !important;
+    border-radius: 12px !important;
+  }
+
+  .btn,
+  button {
+    padding: 10px 14px !important;
+    font-size: 13px !important;
+    width: 100%;
+    margin-bottom: 8px;
+  }
+
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+    padding: 10px 14px !important;
+  }
+
+  /* تحسين الجداول بشكل أكبر */
+  th,
+  td {
+    padding: 10px 6px !important;
+    font-size: 12px !important;
+  }
+
+  th {
+    font-size: 11px !important;
+  }
+
+  /* إخفاء المزيد من الأعمدة */
+  .hide-small-mobile {
+    display: none !important;
+  }
+
+  /* تحسين Modals */
+  .modal {
+    padding: 10px !important;
+  }
+
+  .modal-box {
+    width: 95% !important;
+    max-width: 95% !important;
+    padding: 16px !important;
+    margin: 10px !important;
+  }
+
+  /* تحسين Forms */
+  form {
+    gap: 12px !important;
+  }
+
+  form input,
+  form select,
+  form textarea {
+    margin-bottom: 12px !important;
+  }
+
+  /* تحسين Statistics Cards */
+  .stat-card {
+    padding: 16px !important;
+  }
+
+  .stat-value {
+    font-size: 24px !important;
+  }
+
+  .stat-label {
+    font-size: 12px !important;
+  }
+
+  /* تحسين Navigation */
+  .nav,
+  .navbar {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .nav-item {
+    width: 100%;
+  }
+
+  /* تحسين Search */
+  .search {
+    width: 100%;
+  }
+
+  .search input {
+    width: 100%;
+  }
+
+  /* تحسين Filters */
+  .filters {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .filters select,
+  .filters input {
+    width: 100%;
+  }
+
+  /* تحسين Bulk Actions */
+  .bulk {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .bulk select,
+  .bulk button {
+    width: 100%;
+  }
+}
+
+/* ==================== TABLET (768px - 1024px) ==================== */
+@media (min-width: 481px) and (max-width: 1024px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 16px !important;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+  }
+
+  table {
+    font-size: 14px;
+  }
+
+  th,
+  td {
+    padding: 14px 10px !important;
+  }
+}
+
+/* ==================== LANDSCAPE ORIENTATION ==================== */
+@media (max-width: 900px) and (orientation: landscape) {
+  .card {
+    padding: 12px !important;
+  }
+
+  table {
+    font-size: 12px !important;
+  }
+
+  th,
+  td {
+    padding: 10px 8px !important;
+  }
+
+  .modal-box {
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+}
+
+/* ==================== TOUCH OPTIMIZATIONS ==================== */
+@media (hover: none) and (pointer: coarse) {
+
+  /* زيادة حجم مناطق اللمس */
+  .btn,
+  button {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 12px 20px !important;
+  }
+
+  a {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  /* تحسين التفاعل */
+  .btn:active,
+  button:active {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+
+  /* إزالة hover effects على الأجهزة اللمسية */
+  .btn:hover,
+  button:hover,
+  .card:hover {
+    transform: none;
+  }
+
+  /* تحسين Selects على اللمس */
+  select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23ffffff' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: left 12px center;
+    padding-left: 40px !important;
+  }
+}
+
+/* ==================== UTILITY CLASSES ==================== */
+.mobile-only {
+  display: none !important;
+}
+
+.desktop-only {
+  display: block !important;
+}
+
+@media (max-width: 768px) {
+  .mobile-only {
+    display: block !important;
+  }
+
+  .desktop-only {
+    display: none !important;
+  }
+}
+
+/* تحسين الطباعة على الهواتف */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  table {
+    font-size: 10px !important;
+  }
+
+  th,
+  td {
+    padding: 6px 4px !important;
+  }
+}
+
+/* ==================== SCROLL IMPROVEMENTS ==================== */
+.mobile-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(59, 130, 246, 0.5) rgba(15, 23, 42, 0.5);
+}
+
+.mobile-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.mobile-scroll::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.5);
+  border-radius: 3px;
+}
+
+.mobile-scroll::-webkit-scrollbar-thumb {
+  background: rgba(59, 130, 246, 0.5);
+  border-radius: 3px;
+}
+
+.mobile-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(59, 130, 246, 0.8);
+}
+
+/* ==================== FLEX IMPROVEMENTS ==================== */
+@media (max-width: 768px) {
+  .flex-row {
+    flex-direction: column !important;
+  }
+
+  .flex-wrap {
+    flex-wrap: wrap;
+  }
+
+  .flex-mobile-column {
+    flex-direction: column !important;
+  }
+
+  .justify-between {
+    justify-content: space-between;
+  }
+
+  .gap-mobile {
+    gap: 12px !important;
+  }
+}
+
+/* ==================== APP LAYOUT - MOBILE ==================== */
+@media (max-width: 768px) {
+
+  /* تحويل الشبكات إلى عمود واحد */
+  .orders-stats,
+  .stats-grid,
+  .pur-stats,
+  .ledger-stats,
+  .cash-stats,
+  .reports-grid,
+  .exp-grid,
+  .exp-summary,
+  .ledger-summary-grid,
+  .selected-actions-grid,
+  .filters-grid,
+  .search-filters,
+  .pur-filters,
+  .exp-filters,
+  .quick-nav {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* ترتيب أدوات التحكم عمودياً */
+  .bulk-actions,
+  .action-group,
+  .report-section,
+  .modal-actions,
+  .modal-header-actions,
+  .inv-toolbar,
+  .users-list-search,
+  .message-actions,
+  .chat-input-actions,
+  .page-actions,
+  .table-actions,
+  .toolbar {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+
+  /* جعل الحقول والأزرار بعرض كامل */
+  .filters-grid>*,
+  .search-filters>*,
+  .pur-filters>*,
+  .exp-filters>*,
+  .bulk-actions>*,
+  .action-group>*,
+  .report-section>*,
+  .selected-actions-grid>*,
+  .users-list-search>*,
+  .inv-toolbar>*,
+  .modal-actions>*,
+  .modal-header-actions>*,
+  .message-actions>*,
+  .chat-input-actions>* {
+    width: 100% !important;
+  }
+
+  /* تحسين عرض الجداول على الهاتف */
+  .table-container,
+  .table-wrap,
+  .pur-table-wrap,
+  .ledger-table-wrap,
+  .cash-table-wrap,
+  .exp-table-wrapper {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .search-box input {
+    width: 100% !important;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ==================== TEXT IMPROVEMENTS ==================== */
+@media (max-width: 480px) {
+  .text-small-mobile {
+    font-size: 11px !important;
+  }
+
+  .text-center-mobile {
+    text-align: center !important;
+  }
+
+  .text-left-mobile {
+    text-align: right !important;
+  }
+}
+
+/* ==================== SPACING IMPROVEMENTS ==================== */
+@media (max-width: 768px) {
+  .mb-mobile {
+    margin-bottom: 12px !important;
+  }
+
+  .mt-mobile {
+    margin-top: 12px !important;
+  }
+
+  .p-mobile {
+    padding: 12px !important;
+  }
+
+  .px-mobile {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  .py-mobile {
+    padding-top: 12px !important;
+    padding-bottom: 12px !important;
+  }
+}

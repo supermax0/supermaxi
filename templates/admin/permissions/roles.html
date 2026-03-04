@@ -1,0 +1,478 @@
+{% extends "base.html" %}
+
+{% block title %}{{ _('roles_page_title') }}{% endblock %}
+
+{% block content %}
+<style>
+    /* ================= ROOT VARIABLES ================= */
+    :root {
+        --roles-bg: #0f172a;
+        --roles-card-bg: rgba(30, 41, 59, 0.7);
+        --roles-border: rgba(255, 255, 255, 0.08);
+        --roles-text: #f8fafc;
+        --roles-text-secondary: #94a3b8;
+        --roles-primary: #6366f1;
+        --roles-primary-hover: #4f46e5;
+        --roles-success: #10b981;
+        --roles-danger: #ef4444;
+        --roles-badge-bg: rgba(99, 102, 241, 0.15);
+        --roles-badge-text: #818cf8;
+        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        --radius-lg: 12px;
+        --radius-xl: 16px;
+    }
+
+    [data-theme="light"] {
+        --roles-bg: #f8fafc;
+        --roles-card-bg: #ffffff;
+        --roles-border: rgba(0, 0, 0, 0.08);
+        --roles-text: #0f172a;
+        --roles-text-secondary: #64748b;
+        --roles-primary: #4f46e5;
+        --roles-primary-hover: #4338ca;
+        --roles-badge-bg: rgba(79, 70, 229, 0.1);
+        --roles-badge-text: #4f46e5;
+    }
+
+    /* ================= HEADER & ACTIONS ================= */
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--roles-border);
+    }
+
+    .page-title {
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--roles-text);
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .page-title i {
+        color: var(--roles-primary);
+        font-size: 28px;
+    }
+
+    .btn-add-role {
+        background: linear-gradient(135deg, var(--roles-primary), var(--roles-primary-hover));
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    }
+
+    .btn-add-role:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+        color: white;
+    }
+
+    /* ================= TABLE DESIGN ================= */
+    .roles-card {
+        background: var(--roles-card-bg);
+        border: 1px solid var(--roles-border);
+        border-radius: var(--radius-xl);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        box-shadow: var(--shadow-lg);
+        overflow: hidden;
+    }
+
+    .roles-table {
+        width: 100%;
+        margin-bottom: 0;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .roles-table th {
+        background: rgba(0, 0, 0, 0.2);
+        color: var(--roles-text-secondary);
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 13px;
+        letter-spacing: 0.5px;
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--roles-border);
+        white-space: nowrap;
+    }
+
+    [data-theme="light"] .roles-table th {
+        background: #f1f5f9;
+        color: #475569;
+    }
+
+    .roles-table td {
+        padding: 16px 20px;
+        color: var(--roles-text);
+        vertical-align: middle;
+        border-bottom: 1px solid var(--roles-border);
+        font-size: 14px;
+        transition: background-color 0.2s ease;
+    }
+
+    .roles-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .roles-table tbody tr:hover td {
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    [data-theme="light"] .roles-table tbody tr:hover td {
+        background: #f8fafc;
+    }
+
+    /* ================= BADGES ================= */
+    .perm-badge {
+        background: var(--roles-badge-bg);
+        color: var(--roles-badge-text);
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        display: inline-block;
+        margin: 2px;
+        border: 1px solid rgba(99, 102, 241, 0.2);
+        letter-spacing: 0.3px;
+    }
+
+    /* ================= ACTION BUTTONS ================= */
+    .action-btn {
+        width: 34px;
+        height: 34px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+        border: 1px solid transparent;
+        color: var(--roles-text-secondary);
+    }
+
+    .btn-edit {
+        background: rgba(99, 102, 241, 0.1);
+        color: var(--roles-primary);
+        border-color: rgba(99, 102, 241, 0.2);
+    }
+
+    .btn-edit:hover {
+        background: var(--roles-primary);
+        color: white;
+        transform: translateY(-2px);
+    }
+
+    .btn-delete {
+        background: rgba(239, 68, 68, 0.1);
+        color: var(--roles-danger);
+        border-color: rgba(239, 68, 68, 0.2);
+    }
+
+    .btn-delete:hover {
+        background: var(--roles-danger);
+        color: white;
+        transform: translateY(-2px);
+    }
+
+    /* ================= MODALS ================= */
+    .modal-content {
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95));
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        border-radius: var(--radius-xl);
+    }
+
+    [data-theme="light"] .modal-content {
+        background: #ffffff;
+        border-color: rgba(0, 0, 0, 0.1);
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+    }
+
+    .modal-header {
+        border-bottom: 1px solid var(--roles-border);
+        padding: 20px 24px;
+    }
+
+    .modal-title {
+        color: var(--roles-text);
+        font-weight: 700;
+        font-size: 20px;
+    }
+
+    .modal-body {
+        padding: 24px;
+    }
+
+    .form-label {
+        color: var(--roles-text-secondary);
+        font-weight: 600;
+        font-size: 13px;
+        margin-bottom: 8px;
+    }
+
+    .form-control {
+        background: rgba(0, 0, 0, 0.2);
+        border: 1px solid var(--roles-border);
+        color: var(--roles-text);
+        border-radius: 8px;
+        padding: 10px 16px;
+        transition: all 0.3s ease;
+    }
+
+    [data-theme="light"] .form-control {
+        background: #ffffff;
+        color: #0f172a;
+    }
+
+    .form-control:focus {
+        background: rgba(0, 0, 0, 0.3);
+        border-color: var(--roles-primary);
+        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+        color: var(--roles-text);
+    }
+
+    [data-theme="light"] .form-control:focus {
+        background: #ffffff;
+        color: #0f172a;
+    }
+
+    /* Custom Checkboxes */
+    .perm-checkbox-card {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--roles-border);
+        border-radius: 10px;
+        padding: 12px;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        height: 100%;
+    }
+
+    [data-theme="light"] .perm-checkbox-card {
+        background: #f8fafc;
+    }
+
+    .perm-checkbox-card:hover {
+        background: rgba(255, 255, 255, 0.06);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    [data-theme="light"] .perm-checkbox-card:hover {
+        background: #f1f5f9;
+        border-color: #cbd5e1;
+    }
+
+    .form-check-input {
+        width: 18px;
+        height: 18px;
+        margin-top: 0;
+        cursor: pointer;
+    }
+
+    .form-check-input:checked {
+        background-color: var(--roles-primary);
+        border-color: var(--roles-primary);
+    }
+
+    .form-check-label {
+        color: var(--roles-text);
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .modal-footer {
+        border-top: 1px solid var(--roles-border);
+        padding: 16px 24px;
+        background: rgba(0, 0, 0, 0.1);
+        border-bottom-left-radius: var(--radius-xl);
+        border-bottom-right-radius: var(--radius-xl);
+    }
+
+    [data-theme="light"] .modal-footer {
+        background: #f8fafc;
+    }
+</style>
+
+<div class="container-fluid py-4" dir="rtl">
+    <div class="page-header">
+        <h2 class="page-title"><i class="fas fa-user-shield"></i> إدارة الأدوار والصلاحيات</h2>
+        <button class="btn-add-role" data-bs-toggle="modal" data-bs-target="#addRoleModal">
+            <i class="fas fa-plus"></i> إضافة دور جديد
+        </button>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="roles-card">
+                <div class="table-responsive">
+                    <table class="roles-table">
+                        <thead>
+                            <tr>
+                                <th>{{ _('roles_th_name') }}</th>
+                                <th>{{ _('roles_th_description') }}</th>
+                                <th style="width: 50%;">{{ _('roles_th_permissions') }}</th>
+                                <th class="text-center">{{ _('roles_th_actions') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for role in roles %}
+                            <tr>
+                                <td>
+                                    <strong style="color: var(--roles-primary); font-size: 15px;">{{ role.name
+                                        }}</strong>
+                                </td>
+                                <td style="color: var(--roles-text-secondary);">{{ role.description or '---' }}</td>
+                                <td>
+                                    <div class="d-flex flex-wrap gap-1">
+                                        {% for perm in role.permissions %}
+                                        <span class="perm-badge">{{ perm.description or perm.name }}</span>
+                                        {% else %}
+                                        <span class="text-muted small">{{ _('roles_no_permissions') }}</span>
+                                        {% endfor %}
+                                    </div>
+                                </td>
+                                <td class="text-center">
+                                    <div class="d-flex justify-content-center gap-2">
+                                        <button class="action-btn btn-edit" title="{{ _('roles_action_edit') }}" data-bs-toggle="modal"
+                                            data-bs-target="#editRoleModal{{ role.id }}">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        {% if role.name not in ['admin', 'cashier'] %}
+                                        <a href="{{ url_for('permissions.delete_role', id=role.id) }}"
+                                            class="action-btn btn-delete" title="{{ _('roles_action_delete') }}"
+                                            onclick="return confirm('{{ _('roles_confirm_delete') }}')">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- Edit Role Modal -->
+                            <div class="modal fade" id="editRoleModal{{ role.id }}" tabindex="-1">
+                                <div class="modal-dialog modal-lg modal-dialog-centered">
+                                    <div class="modal-content">
+                                        <form action="{{ url_for('permissions.edit_role', id=role.id) }}" method="POST">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">{{ _('roles_edit_title') }}: <span
+                                                        style="color: var(--roles-primary);">{{ role.name }}</span></h5>
+                                                <button type="button" class="btn-close ms-0"
+                                                    style="filter: invert(1) grayscale(100%) brightness(200%);"
+                                                    data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="row mb-4">
+                                                    <div class="col-md-6 mb-3 mb-md-0">
+                                                        <label class="form-label">{{ _('roles_th_name') }}</label>
+                                                        <input type="text" name="name" class="form-control"
+                                                            value="{{ role.name }}" required {% if role.name in
+                                                            ['admin', 'cashier' ] %}readonly{% endif %}>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">{{ _('roles_th_description') }}</label>
+                                                        <input type="text" name="description" class="form-control"
+                                                            value="{{ role.description }}">
+                                                    </div>
+                                                </div>
+
+                                                <h6 class="mb-3" style="color: var(--roles-text); font-weight: 700;">
+                                                    {{ _('roles_assign_permissions') }}</h6>
+
+                                                <div class="row g-3">
+                                                    {% for group in perm_groups %}
+                                                    <div class="col-12">
+                                                        <h6 class="mt-2 mb-1"
+                                                            style="font-size: 13px; color: var(--roles-text-secondary);">
+                                                            {{ group.title }}
+                                                        </h6>
+                                                    </div>
+                                                    {% for perm in group.permissions %}
+                                                    <div class="col-md-4">
+                                                        <label class="perm-checkbox-card"
+                                                            for="perm{{ role.id }}_{{ perm.id }}">
+                                                            <input class="form-check-input m-0" type="checkbox"
+                                                                name="permissions" value="{{ perm.id }}"
+                                                                id="perm{{ role.id }}_{{ perm.id }}" {% if perm in
+                                                                role.permissions %}checked{% endif %}>
+                                                            <span class="form-check-label">
+                                                                {{ perm.description or perm.name }}
+                                                            </span>
+                                                        </label>
+                                                    </div>
+                                                    {% endfor %}
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer justify-content-start">
+                                                <button type="submit" class="btn-add-role border-0"
+                                                    style="padding: 10px 24px;">{{ _('roles_save_changes') }}</button>
+                                                <button type="button" class="btn btn-dark"
+                                                    style="background: rgba(255,255,255,0.1); border:none;"
+                                                    data-bs-dismiss="modal">{{ _('cancel') }}</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Role Modal -->
+<div class="modal fade" id="addRoleModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form action="{{ url_for('permissions.add_role') }}" method="POST">
+                <div class="modal-header">
+                    <h5 class="modal-title">{{ _('roles_add_role') }}</h5>
+                    <button type="button" class="btn-close ms-0"
+                        style="filter: invert(1) grayscale(100%) brightness(200%);" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-4">
+                        <label class="form-label">{{ _('roles_field_name_label') }}</label>
+                        <input type="text" name="name" class="form-control" placeholder="{{ _('roles_placeholder_name') }}"
+                            required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">{{ _('roles_field_description_label') }}</label>
+                        <input type="text" name="description" class="form-control"
+                            placeholder="{{ _('roles_placeholder_description') }}">
+                    </div>
+                </div>
+                <div class="modal-footer justify-content-start">
+                    <button type="submit" class="btn-add-role border-0" style="padding: 10px 24px;">{{ _('roles_add_role_button') }}</button>
+                    <button type="button" class="btn btn-dark" style="background: rgba(255,255,255,0.1); border:none;"
+                        data-bs-dismiss="modal">{{ _('cancel') }}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

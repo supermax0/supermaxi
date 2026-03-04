@@ -1,0 +1,388 @@
+{% extends "base.html" %}
+{% block title %}كشوفات الطلبات{% endblock %}
+{% block page_title %}كشوفات الطلبات المحفوظة{% endblock %}
+{% block content %}
+
+<style>
+:root {
+  --reports-primary: #3b82f6;
+  --reports-success: #10b981;
+  --reports-danger: #ef4444;
+  --reports-bg: #0b1220;
+  --reports-card: #111827;
+  --reports-text: #f1f5f9;
+  --reports-muted: #94a3b8;
+}
+
+.reports-card {
+  background: linear-gradient(145deg, rgba(17, 24, 39, 0.9), rgba(11, 18, 32, 0.9));
+  border-radius: 20px;
+  padding: 24px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(59, 130, 246, 0.1);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.report-item {
+  background: rgba(15, 23, 42, 0.6);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: all 0.3s ease;
+}
+
+.report-item:hover {
+  background: rgba(15, 23, 42, 0.8);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+.report-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.report-number {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--reports-primary);
+}
+
+.report-date {
+  color: var(--reports-muted);
+  font-size: 14px;
+}
+
+.report-info {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.report-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.report-info-label {
+  font-size: 12px;
+  color: var(--reports-muted);
+}
+
+.report-info-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--reports-text);
+}
+
+.btn {
+  padding: 10px 20px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--reports-primary), #2563eb);
+  color: white;
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+}
+
+.btn-success {
+  background: linear-gradient(135deg, var(--reports-success), #059669);
+  color: white;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+}
+
+.btn-success:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+}
+
+.report-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--reports-muted);
+}
+
+.empty-state-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+  opacity: 0.5;
+}
+</style>
+
+<div class="reports-card">
+  {% if reports %}
+    {% for report in reports %}
+    <div class="report-item">
+      <div class="report-header">
+        <div>
+          <div class="report-number">📋 {{ report.report_number }}</div>
+          <div class="report-date">{{ report.created_at.strftime("%Y-%m-%d %H:%M") if report.created_at else "" }}</div>
+        </div>
+        <div class="report-actions">
+          <button class="btn btn-primary" onclick="viewReport({{ report.id }})">👁️ عرض</button>
+          <button class="btn btn-success" onclick="printReport({{ report.id }})">🖨️ طباعة</button>
+        </div>
+      </div>
+      
+      <div class="report-info">
+        <div class="report-info-item">
+          <span class="report-info-label">عدد الطلبات</span>
+          <span class="report-info-value">{{ report.orders_count }}</span>
+        </div>
+        <div class="report-info-item">
+          <span class="report-info-label">المجموع الكلي</span>
+          <span class="report-info-value">{{ report.total_amount }} د.ع</span>
+        </div>
+        <div class="report-info-item">
+          <span class="report-info-label">أنشأه</span>
+          <span class="report-info-value">{{ report.created_by or "—" }}</span>
+        </div>
+        {% if report.notes %}
+        <div class="report-info-item" style="grid-column: 1 / -1;">
+          <span class="report-info-label">ملاحظات</span>
+          <span class="report-info-value" style="font-size: 14px; font-weight: normal;">{{ report.notes }}</span>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-state-icon">📋</div>
+      <h3>لا توجد كشوفات محفوظة</h3>
+      <p>يمكنك حفظ الكشوفات من صفحة الطلبات</p>
+    </div>
+  {% endif %}
+</div>
+
+<script>
+function viewReport(id) {
+  showLoading();
+  
+  fetch("/orders/report/" + id)
+    .then(r => r.json())
+    .then(data => {
+      hideLoading();
+      showReportModal(data);
+    })
+    .catch(error => {
+      hideLoading();
+      showToast("❌ حدث خطأ أثناء تحميل الكشف", "error");
+      console.error(error);
+    });
+}
+
+function showReportModal(data) {
+  let html = `
+    <div style="max-width:800px;width:100%">
+      <h2 style="color:var(--reports-text);margin-bottom:20px">📋 كشف ${data.report_number}</h2>
+      
+      <div style="background:rgba(15,23,42,0.6);padding:16px;border-radius:12px;margin-bottom:20px">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+          <div><strong>عدد الطلبات:</strong> ${data.orders_count}</div>
+          <div><strong>المجموع:</strong> ${data.total_amount.toLocaleString()} د.ع</div>
+          <div><strong>التاريخ:</strong> ${data.created_at}</div>
+        </div>
+      </div>
+      
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr style="background:rgba(30,41,59,0.8)">
+              <th style="padding:12px;border-bottom:2px solid rgba(59,130,246,0.2)">رقم الفاتورة</th>
+              <th style="padding:12px;border-bottom:2px solid rgba(59,130,246,0.2)">رقم الهاتف</th>
+              <th style="padding:12px;border-bottom:2px solid rgba(59,130,246,0.2)">الكمية</th>
+              <th style="padding:12px;border-bottom:2px solid rgba(59,130,246,0.2)">المجموع</th>
+              <th style="padding:12px;border-bottom:2px solid rgba(59,130,246,0.2)">المحافظة</th>
+              <th style="padding:12px;border-bottom:2px solid rgba(59,130,246,0.2)">العنوان</th>
+              <th style="padding:12px;border-bottom:2px solid rgba(59,130,246,0.2)">شركة النقل</th>
+            </tr>
+          </thead>
+          <tbody>
+  `;
+  
+  data.orders_data.forEach(order => {
+    html += `
+      <tr style="border-bottom:1px solid rgba(255,255,255,0.05)">
+        <td style="padding:12px">${order.id}</td>
+        <td style="padding:12px">${order.phone}</td>
+        <td style="padding:12px;text-align:center">${order.quantity}</td>
+        <td style="padding:12px;text-align:center">${order.total} د.ع</td>
+        <td style="padding:12px">${order.city || "—"}</td>
+        <td style="padding:12px">${order.address || "—"}</td>
+        <td style="padding:12px">${order.shipping || "—"}</td>
+      </tr>
+    `;
+  });
+  
+  html += `
+          </tbody>
+        </table>
+      </div>
+      
+      <div style="margin-top:20px;padding:16px;background:rgba(16,185,129,0.1);border-radius:12px;text-align:center">
+        <strong style="font-size:20px;color:var(--reports-success)">المجموع الكلي: ${data.total_amount.toLocaleString()} د.ع</strong>
+      </div>
+    </div>
+  `;
+  
+  document.getElementById("details").innerHTML = html;
+  document.getElementById("modal").style.display = "flex";
+}
+
+function printReport(id) {
+  showLoading();
+  
+  fetch("/orders/report/" + id)
+    .then(r => r.json())
+    .then(data => {
+      hideLoading();
+      printReportWindow(data);
+    })
+    .catch(error => {
+      hideLoading();
+      showToast("❌ حدث خطأ أثناء تحميل الكشف", "error");
+      console.error(error);
+    });
+}
+
+function printReportWindow(data) {
+  const printDate = new Date().toLocaleDateString("ar-IQ");
+  const printTime = new Date().toLocaleTimeString("ar-IQ");
+  
+  let printContent = `
+    <div style="margin-bottom:30px">
+      <h2 style="text-align:center;margin-bottom:20px;font-size:22px">كشف الطلبات</h2>
+      <div style="text-align:center;margin-bottom:20px;font-size:16px;color:#666">
+        رقم الكشف: ${data.report_number} | تاريخ الطباعة: ${printDate} - ${printTime}
+      </div>
+      
+      <table style="width:100%;border-collapse:collapse;margin-top:20px">
+        <thead>
+          <tr style="background:#f0f0f0;">
+            <th style="padding:10px;border:1px solid #000;font-weight:bold">رقم الفاتورة</th>
+            <th style="padding:10px;border:1px solid #000;font-weight:bold">رقم الهاتف</th>
+            <th style="padding:10px;border:1px solid #000;font-weight:bold">الكمية</th>
+            <th style="padding:10px;border:1px solid #000;font-weight:bold">المجموع</th>
+            <th style="padding:10px;border:1px solid #000;font-weight:bold">المحافظة</th>
+            <th style="padding:10px;border:1px solid #000;font-weight:bold">العنوان</th>
+            <th style="padding:10px;border:1px solid #000;font-weight:bold">شركة النقل</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+  
+  data.orders_data.forEach(order => {
+    printContent += `
+        <tr>
+          <td style="padding:8px;border:1px solid #000;text-align:center">${order.id}</td>
+          <td style="padding:8px;border:1px solid #000;text-align:center">${order.phone}</td>
+          <td style="padding:8px;border:1px solid #000;text-align:center">${order.quantity}</td>
+          <td style="padding:8px;border:1px solid #000;text-align:center">${order.total} د.ع</td>
+          <td style="padding:8px;border:1px solid #000">${order.city || "—"}</td>
+          <td style="padding:8px;border:1px solid #000">${order.address || "—"}</td>
+          <td style="padding:8px;border:1px solid #000">${order.shipping || "—"}</td>
+        </tr>
+    `;
+  });
+  
+  printContent += `
+        <tr style="background:#e8f5e9;font-weight:bold">
+          <td colspan="3" style="padding:12px;border:1px solid #000;text-align:left;padding-right:20px">المجموع الكلي:</td>
+          <td colspan="4" style="padding:12px;border:1px solid #000;text-align:center;font-size:18px">${data.total_amount.toLocaleString()} د.ع</td>
+        </tr>
+        <tr style="background:#fff3cd;">
+          <td colspan="7" style="padding:10px;border:1px solid #000;text-align:center;font-weight:bold">
+            عدد الطلبات: ${data.orders_count} طلب
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  `;
+  
+  const printWindow = window.open("", "_blank");
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html dir="rtl" lang="ar">
+      <head>
+        <meta charset="UTF-8">
+        <title>كشف ${data.report_number}</title>
+        <style>
+          @page { size: A4 landscape; margin: 1cm; }
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: 'Arial', 'Tahoma', sans-serif; direction: rtl; padding: 20px; color: #000; background: white; }
+          .print-header { text-align: center; margin-bottom: 30px; padding-bottom: 15px; border-bottom: 3px solid #000; }
+          .print-header h1 { font-size: 24px; margin-bottom: 10px; color: #000; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 11px; }
+          th, td { border: 1px solid #000; padding: 8px 6px; text-align: center; }
+          th { background: #f0f0f0; font-weight: bold; }
+          tbody tr:nth-child(even) { background: #f9f9f9; }
+          .print-footer { margin-top: 30px; padding-top: 15px; border-top: 2px solid #000; text-align: left; font-size: 11px; color: #666; }
+        </style>
+      </head>
+      <body>
+        <div class="print-header">
+          <h1>كشف الطلبات</h1>
+        </div>
+        ${printContent}
+        <div class="print-footer">
+          <p>تم إنشاء هذا الكشف تلقائياً من نظام المحاسبة</p>
+        </div>
+      </body>
+    </html>
+  `);
+  
+  printWindow.document.close();
+  setTimeout(() => {
+    printWindow.print();
+  }, 250);
+}
+</script>
+
+<!-- Modal for viewing reports -->
+<div class="modal" id="modal" onclick="closeModal(event)">
+  <div class="modal-box">
+    <div class="modal-actions">
+      <button class="close-btn" onclick="closeModal()">×</button>
+    </div>
+    <div id="details"></div>
+  </div>
+</div>
+
+<script>
+function closeModal(e) {
+  if (e.target.id === "modal" || e === undefined) {
+    document.getElementById("modal").style.display = "none";
+  }
+}
+</script>
+
+{% endblock %}
+

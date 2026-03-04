@@ -1,0 +1,82 @@
+You are a DevOps engineer.
+
+I want to publish my Flask SaaS project to GitHub professionally.
+
+Tasks:
+
+1. Initialize git repository
+
+git init
+
+2. Create proper .gitignore
+
+Ignore:
+
+venv/
+.env
+instance/
+*.db
+__pycache__/
+*.log
+
+3. Add README.md
+
+Include:
+
+Project name
+Description
+Features
+Installation
+Run locally
+Deployment instructions
+
+4. Add project files
+
+git add .
+
+5. Commit project
+
+git commit -m "Initial SaaS platform release"
+
+6. Create GitHub repository
+
+Repository name:
+
+finora-saas
+
+Visibility:
+
+private
+
+7. Connect local repo to GitHub
+
+git remote add origin https://github.com/supermax0/supermaxi.git
+
+8. Push code
+
+git branch -M main
+git push -u origin main
+
+9. Enable GitHub best practices
+
+Add:
+
+LICENSE
+CONTRIBUTING.md
+SECURITY.md
+
+10. Enable GitHub Actions for CI
+
+Create workflow:
+
+.github/workflows/python.yml
+
+Tasks:
+
+- install dependencies
+- lint code
+- run basic tests
+
+11. Ensure repository is clean and professional.
+
+Do NOT modify application logic.

@@ -1,0 +1,160 @@
+/* ===============================
+   Sajjad Accounting UI Theme
+   =============================== */
+
+:root{
+  --primary:#2563eb;
+  --primary-soft:#e0e7ff;
+  --bg:#f1f5f9;
+  --card:#ffffff;
+  --text:#0f172a;
+  --muted:#64748b;
+
+  --success:#16a34a;
+  --warning:#f59e0b;
+  --danger:#dc2626;
+
+  --radius:18px;
+  --shadow:0 10px 30px rgba(0,0,0,.08);
+}
+
+/* ===== Reset ===== */
+html{
+  font-size:16px;
+}
+
+body{
+  background:var(--bg);
+  color:var(--text);
+  line-height:1.7;
+}
+
+/* ===== Cards ===== */
+.card{
+  background:var(--card);
+  border-radius:var(--radius);
+  padding:22px;
+  box-shadow:var(--shadow);
+  transition:.25s ease;
+}
+
+.card:hover{
+  transform:translateY(-3px);
+}
+
+/* ===== Stats Cards ===== */
+.card h2{
+  margin:6px 0 0;
+  font-size:1.8rem;
+}
+
+.card small{
+  font-size:.85rem;
+  color:var(--muted);
+}
+
+/* ===== Tables ===== */
+table{
+  width:100%;
+  border-collapse:collapse;
+}
+
+table th{
+  text-align:right;
+  font-weight:600;
+  font-size:.9rem;
+  padding:12px;
+  color:var(--muted);
+}
+
+table td{
+  padding:12px;
+  border-top:1px solid #e5e7eb;
+  font-size:.95rem;
+}
+
+/* ===== Buttons ===== */
+button,
+.btn{
+  background:var(--primary);
+  color:#fff;
+  border:none;
+  padding:10px 16px;
+  border-radius:12px;
+  cursor:pointer;
+  font-size:.95rem;
+  transition:.2s;
+}
+
+button:hover,
+.btn:hover{
+  background:#1e40af;
+}
+
+/* ===== Inputs ===== */
+input,
+select{
+  padding:11px 14px;
+  border-radius:12px;
+  border:1px solid #e5e7eb;
+  font-size:.95rem;
+  width:100%;
+}
+
+input:focus,
+select:focus{
+  outline:none;
+  border-color:var(--primary);
+}
+
+/* ===== Status Colors ===== */
+.status-success{color:var(--success);}
+.status-warning{color:var(--warning);}
+.status-danger{color:var(--danger);}
+
+/* ===============================
+   Responsive – Mobile First
+   =============================== */
+
+/* 📱 Mobile */
+@media (max-width:600px){
+  html{font-size:14px;}
+
+  .card{
+    padding:16px;
+  }
+
+  table th,
+  table td{
+    padding:8px;
+    font-size:.85rem;
+  }
+
+  h2{
+    font-size:1.4rem;
+  }
+}
+
+/* 📲 Tablet */
+@media (min-width:601px) and (max-width:1024px){
+  html{font-size:15px;}
+}
+
+/* 💻 Laptop */
+@media (min-width:1025px) and (max-width:1600px){
+  html{font-size:16px;}
+}
+
+/* 🖥️ Large Screens / TV */
+@media (min-width:1601px){
+  html{font-size:18px;}
+
+  main{
+    max-width:1600px;
+    margin:auto;
+  }
+
+  .card{
+    padding:28px;
+  }
+}

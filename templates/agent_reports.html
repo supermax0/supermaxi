@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+{% block title %}كشوفات {{ agent.name }}{% endblock %}
+{% block page_title %}📋 كشوفات المندوب: {{ agent.name }}{% endblock %}
+{% block content %}
+
+<style>
+/* ================= VARIABLES ================= */
+:root {
+  --reports-primary: var(--primary);
+  --reports-success: var(--success);
+  --reports-card: var(--card);
+  --reports-text: var(--text);
+  --reports-muted: var(--text-muted);
+}
+
+/* ================= CARDS ================= */
+.agent-reports-page .card {
+  background: linear-gradient(145deg, rgba(17, 24, 39, 0.9), rgba(11, 18, 32, 0.9));
+  border-radius: 20px;
+  padding: 24px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(59, 130, 246, 0.1);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.agent-reports-page .info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.agent-reports-page .info-item {
+  background: rgba(15, 23, 42, 0.6);
+  padding: 16px;
+  border-radius: 12px;
+}
+
+.agent-reports-page .info-item .label {
+  font-size: 13px;
+  color: var(--reports-muted);
+  margin-bottom: 6px;
+}
+
+.agent-reports-page .info-item .value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--reports-text);
+}
+
+/* ================= TABLE ================= */
+.agent-reports-page table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 14px;
+}
+
+.agent-reports-page th {
+  padding: 18px 16px;
+  background: rgba(30, 41, 59, 0.7);
+  color: var(--reports-muted);
+  font-weight: 600;
+  text-align: center;
+  border-bottom: 2px solid rgba(59, 130, 246, 0.2);
+}
+
+.agent-reports-page td {
+  padding: 20px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  color: var(--reports-text);
+  text-align: center;
+}
+
+.agent-reports-page tbody tr:hover {
+  background: rgba(59, 130, 246, 0.05);
+}
+
+/* ================= BUTTONS ================= */
+.agent-reports-page .btn {
+  padding: 10px 20px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  margin: 0 5px;
+}
+
+.agent-reports-page .btn-primary {
+  background: linear-gradient(135deg, var(--reports-primary), #2563eb);
+  color: white;
+}
+
+.agent-reports-page .btn-success {
+  background: linear-gradient(135deg, var(--reports-success), #059669);
+  color: white;
+}
+
+.agent-reports-page .btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+.agent-reports-page .total-cell {
+  color: var(--reports-success);
+  font-weight: 700;
+  font-size: 16px;
+}
+
+/* Light mode readability */
+:root[data-theme="light"] .agent-reports-page .card {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(2, 6, 23, 0.08);
+  box-shadow: 0 16px 34px rgba(2, 6, 23, 0.08);
+}
+
+:root[data-theme="light"] .agent-reports-page .info-item {
+  background: rgba(241, 245, 249, 0.90);
+}
+
+:root[data-theme="light"] .agent-reports-page th {
+  background: rgba(241, 245, 249, 0.96);
+  color: rgba(15, 23, 42, 0.80);
+  border-bottom-color: rgba(2, 6, 23, 0.10);
+}
+
+:root[data-theme="light"] .agent-reports-page td {
+  border-bottom-color: rgba(2, 6, 23, 0.08);
+}
+
+:root[data-theme="light"] .agent-reports-page tbody tr:hover {
+  background: rgba(37, 99, 235, 0.05);
+}
+</style>
+
+<div class="agent-reports-page">
+
+<div class="card">
+  <h3 style="color:var(--reports-text);margin:0 0 20px;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.08)">
+    👤 معلومات المندوب
+  </h3>
+  
+  <div class="info-grid">
+    <div class="info-item">
+      <div class="label">اسم المندوب</div>
+      <div class="value">{{ agent.name }}</div>
+    </div>
+    <div class="info-item">
+      <div class="label">الهاتف</div>
+      <div class="value">{{ agent.phone or '—' }}</div>
+    </div>
+    <div class="info-item">
+      <div class="label">إجمالي الطلبات</div>
+      <div class="value" style="color: var(--reports-primary);">{{ total_orders }}</div>
+    </div>
+    <div class="info-item">
+      <div class="label">إجمالي المبلغ</div>
+      <div class="value" style="color: var(--reports-success);">{{ "{:,.0f}".format(total_amount) }} د.ع</div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+    <h3 style="color:var(--reports-text);margin:0;display:flex;align-items:center;gap:10px">
+      📊 كشوفات المندوب
+    </h3>
+    <a href="/agents" class="btn btn-primary">← العودة للمندوبين</a>
+  </div>
+  
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>رقم الكشف</th>
+        <th>عدد الطلبات</th>
+        <th>المبلغ</th>
+        <th>التاريخ</th>
+        <th>الإجراءات</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if reports %}
+        {% for report in reports %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td><strong>{{ report.report_number }}</strong></td>
+          <td>{{ report.orders_count }}</td>
+          <td class="total-cell">{{ "{:,.0f}".format(report.total_amount) }} د.ع</td>
+          <td>{{ report.created_at.strftime('%Y-%m-%d %H:%M') if report.created_at else '—' }}</td>
+          <td>
+            <button onclick="viewAgentOrders({{ agent.id }})" class="btn btn-success">
+              👁️ عرض
+            </button>
+            <button onclick="printAgentOrders({{ agent.id }})" class="btn btn-primary">
+              🖨️ طباعة
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td colspan="6" style="padding:40px;text-align:center;color:var(--reports-muted)">
+            لا توجد كشوفات لهذا المندوب
+          </td>
+        </tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+function viewAgentOrders(agentId) {
+  // جلب جميع طلبات المندوب وعرضها في صفحة الطباعة
+  fetch('/agents/' + agentId + '/orders')
+    .then(r => r.json())
+    .then(data => {
+      if (data.success && data.orders && data.orders.length > 0) {
+        const orderIds = data.orders.map(o => o.id);
+        const url = `/orders/print-report-page?ids=${orderIds.join(",")}&agent_id=${agentId}`;
+        window.open(url, "_blank");
+      } else {
+        alert('⚠️ لا توجد طلبات لهذا المندوب');
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('❌ حدث خطأ أثناء جلب البيانات');
+    });
+}
+
+function printAgentOrders(agentId) {
+  fetch('/agents/' + agentId + '/orders')
+    .then(r => r.json())
+    .then(data => {
+      if (data.success && data.orders && data.orders.length > 0) {
+        const orderIds = data.orders.map(o => o.id);
+        const url = `/orders/print-report-page?ids=${orderIds.join(",")}&agent_id=${agentId}`;
+        const w = window.open(url, "_blank");
+        if (w) {
+          w.addEventListener?.('load', () => {
+            try { w.print(); } catch (e) {}
+          });
+        }
+      } else {
+        alert('⚠️ لا توجد طلبات لهذا المندوب');
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('❌ حدث خطأ أثناء جلب البيانات');
+    });
+}
+</script>
+
+</div>
+{% endblock %}

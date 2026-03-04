@@ -1,0 +1,29 @@
+Act as a senior UI architect.
+
+Refactor my existing RTL Flask dashboard layout to implement a fully responsive sidebar system.
+
+Constraints:
+- Must support Arabic RTL
+- Must not modify backend or Flask routes
+- Must preserve Jinja template blocks
+- Must maintain existing styling theme (dark glass UI)
+- Must avoid layout overflow issues on iPhone Safari
+
+Technical Goals:
+- Sidebar fixed right on desktop
+- Sidebar off-canvas on mobile
+- Use transform-based sliding
+- GPU-accelerated animation
+- Add overlay layer with fade-in
+- Lock body scroll on open
+- Handle edge cases like fast tapping
+- Optimize z-index layering
+- Avoid position: absolute hacks
+
+Return:
+- Updated base.html structure
+- CSS (grouped and commented)
+- JS (clean and modular)
+- Short technical explanation
+
+Output production-ready code only.

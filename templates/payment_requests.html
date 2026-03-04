@@ -1,0 +1,229 @@
+{% extends "superadmin_base.html" %}
+{% block title %}طلبات الدفع - Super Admin{% endblock %}
+{% block page_title %}🛡️ طلبات الدفع (ZainCash){% endblock %}
+
+{% block extra_style %}
+<style>
+    .data-table-wrap {
+        border-radius: 16px;
+        padding: 0;
+        overflow: hidden;
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .data-table th {
+        text-align: right;
+        padding: 16px 24px;
+        color: var(--text-muted);
+        font-weight: 700;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 1px solid var(--border-color);
+        background-color: rgba(15, 23, 42, 0.4);
+    }
+
+    .data-table td {
+        padding: 16px 24px;
+        border-bottom: 1px solid var(--border-color);
+        font-size: 14px;
+        color: var(--text-main);
+    }
+
+    .data-table tbody tr {
+        transition: var(--transition);
+        background-color: var(--surface-color);
+    }
+
+    .data-table tbody tr:hover {
+        background-color: rgba(248, 250, 252, 0.02);
+    }
+
+    .cell-tenant {
+        font-weight: 700;
+        color: #38bdf8;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .cell-tenant small {
+        color: var(--muted);
+        font-weight: 400;
+        font-size: 12px;
+    }
+
+    .cell-amount {
+        font-weight: 700;
+        color: var(--success);
+    }
+
+    .btn-action {
+        border: none;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 13px;
+        cursor: pointer;
+        transition: 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .btn-approve {
+        background: rgba(16, 185, 129, 0.15);
+        color: var(--success);
+        border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-approve:hover {
+        background: var(--success);
+        color: #fff;
+    }
+
+    .btn-reject {
+        background: rgba(239, 68, 68, 0.15);
+        color: var(--danger);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .btn-reject:hover {
+        background: var(--danger);
+        color: #fff;
+    }
+
+    .view-receipt {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 6px 12px;
+        background: rgba(99, 102, 241, 0.1);
+        color: var(--primary);
+        border-radius: 6px;
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 600;
+        transition: 0.2s;
+    }
+
+    .view-receipt:hover {
+        background: var(--primary);
+        color: white;
+    }
+
+    .badge-status {
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .badge-pending {
+        background: rgba(245, 158, 11, 0.15);
+        color: #f59e0b;
+        border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .badge-approved {
+        background: rgba(16, 185, 129, 0.15);
+        color: #10b981;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .badge-rejected {
+        background: rgba(239, 68, 68, 0.15);
+        color: #ef4444;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="solid-card data-table-wrap">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>معلومات الشركة</th>
+                <th>المالك والتواصل</th>
+                <th>المبلغ والتاريخ</th>
+                <th>الإيصال (ZainCash)</th>
+                <th>الحالة</th>
+                <th>إجراءات الإدارة</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for req in requests %}
+            <tr>
+                <td class="cell-tenant">
+                    {{ req.tenant_name }}
+                    <small>رقم الطلب: #{{ req.id }}</small>
+                </td>
+                <td>
+                    <div style="font-weight:600">{{ req.owner_name }}</div>
+                    <div style="color:var(--muted); font-size:13px"><i class="fas fa-phone-alt"
+                            style="font-size:10px; margin-left:4px;"></i>{{ req.phone }}</div>
+                </td>
+                <td class="cell-amount">
+                    {{ "{:,.0f}".format(req.amount) }} د.ع
+                    <div style="color:var(--muted); font-size:12px; font-weight:400"><i class="far fa-clock"
+                            style="margin-left:4px;"></i>{{ req.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+                </td>
+                <td>
+                    <a href="/static/{{ req.receipt_image_path }}" target="_blank" class="view-receipt">
+                        <i class="fas fa-file-invoice-dollar"></i> عرض الإيصال
+                    </a>
+                    {% if req.zaincash_reference %}
+                    <div style="margin-top: 5px; font-size: 12px; color: var(--muted);">
+                        مرجع: <span style="font-family:monospace; color:#fff">{{ req.zaincash_reference }}</span>
+                    </div>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="badge-status badge-{{ req.status }}">
+                        {% if req.status == 'pending' %}<i class="fas fa-hourglass-half"></i> قيد المراجعة
+                        {% elif req.status == 'approved' %}<i class="fas fa-check-circle"></i> مقبول
+                        {% else %}<i class="fas fa-times-circle"></i> مرفوض{% endif %}
+                    </span>
+                </td>
+                <td>
+                    {% if req.status == 'pending' %}
+                    <div style="display:flex; gap:10px;">
+                        <form action="/superadmin/requests/{{ req.id }}/approve" method="POST">
+                            <button type="submit" class="btn-action btn-approve"
+                                onclick="return confirm('هل أنت متأكد من قبول الطلب وإنشاء بيئة حسابات خاصة بالشركة؟')">
+                                <i class="fas fa-check"></i> قبول وتفعيل
+                            </button>
+                        </form>
+                        <form action="/superadmin/requests/{{ req.id }}/reject" method="POST">
+                            <button type="submit" class="btn-action btn-reject"
+                                onclick="return confirm('تأكيد رفض هذا الطلب؟')">
+                                <i class="fas fa-times"></i> رفض
+                            </button>
+                        </form>
+                    </div>
+                    {% else %}
+                    <span style="color:var(--muted);font-size:13px"><i class="fas fa-lock" style="margin-left:5px"></i>
+                        تمت المعالجة</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 60px; color: var(--muted);">
+                    <i class="fas fa-folder-open" style="font-size: 48px; margin-bottom: 20px; opacity: 0.3;"></i>
+                    <h3>لا توجد طلبات سابقة.</h3>
+                    <p>سيتم عرض طلبات الدفع والمطالبات هنا عند وصولها.</p>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

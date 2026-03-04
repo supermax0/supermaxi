@@ -1,0 +1,51 @@
+# بيئة افتراضية
+venv/
+.venv/
+env/
+
+# بايثون
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# قاعدة البيانات والملفات المحلية
+instance/
+*.db
+*.sqlite
+*.sqlite3
+tenants/*.db
+
+# بيئة وتكوين
+.env
+.env.local
+
+# سجلات
+*.log
+logs/
+
+# IDE ومحررات
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# نظام التشغيل
+.DS_Store
+Thumbs.db
+
+# اختبارات وتغطية
+.pytest_cache/
+.coverage
+htmlcov/
+
+# مرفقات مؤقتة
+static/uploads/
+*.tmp
+temp/
+tmp/

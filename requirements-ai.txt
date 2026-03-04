@@ -1,0 +1,2 @@
+# AI layer (optional): required for /ai/analyze
+openai>=1.0.0

@@ -1,0 +1,770 @@
+{% extends "base.html" %}
+{% block title %}{{ _('cash_box') }}{% endblock %}
+{% block page_title %}{{ _('cash_box_page_title') }}{% endblock %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.js"></script>
+<div class="cash-page">
+
+  <style>
+    /* ================= CSS Variables ================= */
+    :root {
+      --cash-primary: var(--primary);
+      --cash-success: var(--success);
+      --cash-danger: var(--danger);
+      --cash-warning: var(--warning);
+    }
+
+    /* ================= Main Container ================= */
+    .cash-page {
+      padding: 20px;
+      direction: rtl;
+    }
+
+    /* ================= Cards ================= */
+    .cash-card {
+      background: linear-gradient(145deg, rgba(17, 24, 39, 0.9), rgba(11, 18, 32, 0.9));
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      padding: 28px;
+      margin-bottom: 24px;
+      backdrop-filter: blur(10px);
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cash-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 6px;
+      height: 100%;
+      background: linear-gradient(180deg, #10b981, #3b82f6);
+      border-radius: 0 20px 20px 0;
+      opacity: 0.8;
+    }
+
+    .cash-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    /* ================= Cash Balance Card ================= */
+    .cash-balance-card {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.1));
+      border: 2px solid rgba(16, 185, 129, 0.3);
+      text-align: center;
+      padding: 40px;
+    }
+
+    .cash-balance-label {
+      color: #94a3b8;
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: block;
+    }
+
+    .cash-balance-value {
+      font-size: 48px;
+      font-weight: 700;
+      color: var(--cash-success);
+      background: linear-gradient(135deg, #10b981, #059669);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 12px;
+    }
+
+    .cash-balance-subtitle {
+      color: #64748b;
+      font-size: 14px;
+    }
+
+    /* ================= Stats ================= */
+    .cash-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .cash-stat {
+      background: linear-gradient(145deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.7));
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 18px;
+      padding: 20px;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+
+    .cash-stat:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    }
+
+    .cash-stat-label {
+      color: #94a3b8;
+      font-size: 13px;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    .cash-stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: #f1f5f9;
+    }
+
+    .cash-stat-value.in {
+      color: var(--cash-success);
+    }
+
+    .cash-stat-value.out {
+      color: var(--cash-danger);
+    }
+
+    /* ================= Forms ================= */
+    .cash-form {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin-top: 20px;
+    }
+
+    .cash-form input,
+    .cash-form select,
+    .cash-form textarea {
+      padding: 16px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(15, 23, 42, 0.6);
+      color: #f1f5f9;
+      font-size: 15px;
+      transition: all 0.3s ease;
+      font-family: inherit;
+    }
+
+    .cash-form input:focus,
+    .cash-form select:focus,
+    .cash-form textarea:focus {
+      outline: none;
+      border-color: var(--cash-primary);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      background: rgba(15, 23, 42, 0.8);
+    }
+
+    .cash-form textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    .cash-btn {
+      padding: 14px 28px;
+      border-radius: 14px;
+      border: none;
+      font-weight: 600;
+      font-size: 15px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .cash-btn-primary {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+      box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+    }
+
+    .cash-btn-primary:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 15px 30px rgba(16, 185, 129, 0.4);
+    }
+
+    /* ================= Tables ================= */
+    .cash-table-wrap {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      margin-top: 20px;
+    }
+
+    .cash-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      border-radius: 18px;
+      overflow: hidden;
+    }
+
+    .cash-table th {
+      background: rgba(30, 41, 59, 0.7);
+      padding: 18px;
+      text-align: right;
+      color: #cbd5e1;
+      font-weight: 600;
+      font-size: 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      white-space: nowrap;
+    }
+
+    .cash-table td {
+      padding: 18px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+      color: #e2e8f0;
+      transition: all 0.2s ease;
+    }
+
+    .cash-table tr {
+      transition: all 0.3s ease;
+    }
+
+    .cash-table tr:hover {
+      background: rgba(59, 130, 246, 0.05);
+    }
+
+    .cash-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    /* AG Grid Custom Styles for Cash */
+    .ag-theme-quartz-dark .ag-row {
+      cursor: pointer;
+    }
+
+    .ag-theme-quartz-dark .ag-header-cell-label {
+      justify-content: flex-end;
+    }
+
+    .ag-theme-quartz-dark .ag-cell {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    .cash-movement-grid-in {
+      color: var(--cash-success);
+      font-weight: 700;
+    }
+
+    .cash-movement-grid-out {
+      color: var(--cash-danger);
+      font-weight: 700;
+    }
+
+    /* ================= Movement Types ================= */
+    .cash-movement-type {
+      display: inline-block;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .cash-movement-type.in {
+      background: rgba(16, 185, 129, 0.2);
+      color: #10b981;
+    }
+
+    .cash-movement-type.out {
+      background: rgba(239, 68, 68, 0.2);
+      color: #ef4444;
+    }
+
+    /* ================= Cards View (Mobile) ================= */
+    .cash-cards-view {
+      display: none;
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .cash-movement-card {
+      background: linear-gradient(145deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.7));
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 20px;
+      transition: all 0.3s ease;
+    }
+
+    .cash-movement-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    }
+
+    .cash-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .cash-card-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #f1f5f9;
+    }
+
+    .cash-card-date {
+      font-size: 13px;
+      color: #94a3b8;
+    }
+
+    .cash-card-body {
+      display: grid;
+      gap: 12px;
+    }
+
+    .cash-card-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .cash-card-label {
+      color: #94a3b8;
+      font-size: 13px;
+    }
+
+    .cash-card-value {
+      color: #f1f5f9;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    /* ================= Section Headers ================= */
+    .cash-section-header {
+      color: #f1f5f9;
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* ================= Flash Messages ================= */
+    .cash-flash-messages {
+      margin-bottom: 20px;
+    }
+
+    .cash-toast {
+      position: relative;
+      animation: slideDown 0.3s ease;
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+      padding: 16px 24px;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .cash-toast.error {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+    }
+
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* ================= Responsive ================= */
+    @media (max-width: 768px) {
+      .cash-page {
+        padding: 16px;
+      }
+
+      .cash-card {
+        padding: 20px;
+        border-radius: 16px;
+      }
+
+      .cash-balance-card {
+        padding: 30px 20px;
+      }
+
+      .cash-balance-value {
+        font-size: 36px;
+      }
+
+      .cash-stats {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+      }
+
+      .cash-form {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+
+      .cash-table-wrap {
+        display: none;
+      }
+
+      .cash-cards-view {
+        display: grid;
+      }
+    }
+
+    @media (min-width: 769px) {
+      .cash-cards-view {
+        display: none !important;
+      }
+
+      .cash-table-wrap {
+        display: block !important;
+      }
+    }
+
+    /* ================= Light Mode Fixes ================= */
+    :root[data-theme="light"] .cash-card {
+      background: rgba(255, 255, 255, 0.92);
+      border-color: rgba(2, 6, 23, 0.08);
+      box-shadow: 0 16px 34px rgba(2, 6, 23, 0.08);
+    }
+
+    :root[data-theme="light"] .cash-balance-card {
+      background: rgba(16, 185, 129, 0.10);
+      border-color: rgba(16, 185, 129, 0.22);
+    }
+
+    :root[data-theme="light"] .cash-balance-label {
+      color: rgba(15, 23, 42, 0.70);
+    }
+
+    :root[data-theme="light"] .cash-balance-value {
+      background: none;
+      -webkit-background-clip: initial;
+      background-clip: initial;
+      -webkit-text-fill-color: currentColor;
+      color: #0f172a;
+    }
+
+    :root[data-theme="light"] .cash-balance-subtitle {
+      color: rgba(15, 23, 42, 0.60);
+    }
+
+    :root[data-theme="light"] .cash-stat {
+      background: rgba(255, 255, 255, 0.92);
+      border-color: rgba(2, 6, 23, 0.08);
+    }
+
+    :root[data-theme="light"] .cash-stat-label {
+      color: rgba(15, 23, 42, 0.60);
+    }
+
+    :root[data-theme="light"] .cash-stat-value {
+      color: #0f172a;
+    }
+
+    :root[data-theme="light"] .cash-form input,
+    :root[data-theme="light"] .cash-form select,
+    :root[data-theme="light"] .cash-form textarea {
+      background: rgba(255, 255, 255, 0.94);
+      border-color: rgba(2, 6, 23, 0.10);
+      color: #0f172a;
+    }
+
+    :root[data-theme="light"] .cash-section-header {
+      color: #0f172a;
+      border-bottom-color: rgba(2, 6, 23, 0.10);
+    }
+
+    :root[data-theme="light"] .cash-table th {
+      background: rgba(241, 245, 249, 0.96);
+      color: rgba(15, 23, 42, 0.80);
+      border-bottom-color: rgba(2, 6, 23, 0.10);
+    }
+
+    :root[data-theme="light"] .cash-table td {
+      color: #0f172a;
+      border-bottom-color: rgba(2, 6, 23, 0.08);
+    }
+
+    :root[data-theme="light"] .cash-table tr:hover {
+      background: rgba(37, 99, 235, 0.05);
+    }
+
+    :root[data-theme="light"] .cash-movement-card {
+      background: rgba(255, 255, 255, 0.92);
+      border-color: rgba(2, 6, 23, 0.08);
+    }
+
+    :root[data-theme="light"] .cash-card-title,
+    :root[data-theme="light"] .cash-card-value {
+      color: #0f172a;
+    }
+
+    :root[data-theme="light"] .cash-card-label,
+    :root[data-theme="light"] .cash-card-date {
+      color: rgba(15, 23, 42, 0.60);
+    }
+  </style>
+
+  <!-- ================= Flash Messages ================= -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div class="cash-flash-messages">
+    {% for category, message in messages %}
+    <div class="cash-toast {% if category == 'error' %}error{% endif %}">
+      <span>{{ message }}</span>
+      <button onclick="this.parentElement.remove()" class="action-btn"
+        style="color: white; background: rgba(255,255,255,0.1);">&times;</button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
+
+  <!-- ================= Cash Balance Card ================= -->
+  <div class="cash-card cash-balance-card">
+    <span class="cash-balance-label">💰 {{ _('cash_balance_title') }}</span>
+    <div class="cash-balance-value">{{ "{:,.0f}".format(cash_balance) }} {{ _('cash_currency_iqd') }}</div>
+    <span class="cash-balance-subtitle">{{ _('cash_balance_subtitle') }}</span>
+  </div>
+
+  <!-- ================= Stats ================= -->
+  <div class="cash-stats">
+    <div class="cash-stat">
+      <div class="cash-stat-label">{{ _('cash_stat_total_in') }}</div>
+      <div class="cash-stat-value in">{{ "{:,.0f}".format(cash_summary.total_in) }} {{ _('cash_currency_iqd') }}</div>
+    </div>
+    <div class="cash-stat">
+      <div class="cash-stat-label">{{ _('cash_stat_total_out') }}</div>
+      <div class="cash-stat-value out">{{ "{:,.0f}".format(cash_summary.total_out) }} {{ _('cash_currency_iqd') }}</div>
+    </div>
+    <div class="cash-stat">
+      <div class="cash-stat-label">{{ _('cash_stat_movements_count') }}</div>
+      <div class="cash-stat-value">{{ cash_summary.movements_count }}</div>
+    </div>
+  </div>
+
+  <!-- ================= Add Cash Transaction ================= -->
+  <div class="cash-card">
+    <h3 class="cash-section-header">
+      <span>➕</span>
+      <span>{{ _('cash_add_title') }}</span>
+    </h3>
+
+    <form method="post" class="cash-form" id="cashTransactionForm" onsubmit="return validateCashForm(event)">
+      <input type="hidden" name="form_type" value="cash_transaction">
+
+      <select name="transaction_type" id="transaction_type" required>
+        <option value="cash_in">💰 {{ _('cash_type_in') }}</option>
+        <option value="cash_out">💸 {{ _('cash_type_out') }}</option>
+      </select>
+
+      <input name="reason" id="reason" placeholder="{{ _('cash_field_reason_placeholder') }}" required>
+
+      <input name="amount" type="number" id="amount" placeholder="{{ _('cash_field_amount_placeholder') }}" required min="1">
+
+      <textarea name="note" id="note" placeholder="{{ _('cash_field_note_placeholder') }}"></textarea>
+
+      <button type="submit" class="btn-premium">
+        <span>✅</span>
+        <span>{{ _('cash_save_button') }}</span>
+      </button>
+    </form>
+  </div>
+
+  <!-- ================= Cash Movements History ================= -->
+  <div class="cash-card">
+    <h3 class="cash-section-header">
+      <span>📋</span>
+      <span>{{ _('cash_history_title') }}</span>
+    </h3>
+
+    <!-- Desktop Table View -->
+    <div class="cash-table-wrap" style="height: 600px;">
+      <div id="cashTable" class="ag-theme-finora" style="height: 100%; width: 100%;"></div>
+    </div>
+
+    <!-- ================= CASH DATA (JSON) ================= -->
+    <script type="application/json" id="cashData">
+  [
+    {% for m in movements|reverse %}
+    {
+      "date": "{{ m.date }}",
+      "type": "{{ m.type }}",
+      "type_label": "{% if m.type == 'cash_in' %}{{ _('cash_type_in') }}{% else %}{{ _('cash_type_out') }}{% endif %}",
+      "reason": {{ m.reason|tojson }},
+      "amount": {{ m.amount|int }},
+      "balance_after": {{ m.balance_after|int }},
+      "description": {{ m.description|tojson if m.description else '""' }}
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ]
+  </script>
+
+    <!-- Mobile Cards View -->
+    <div class="cash-cards-view" id="cashMovementsCards">
+      {% if movements %}
+      {% for m in movements|reverse %}
+      <div class="cash-movement-card">
+        <div class="cash-card-header">
+          <div class="cash-card-title">{{ m.reason }}</div>
+          <div class="cash-card-date">{{ m.date }}</div>
+        </div>
+        <div class="cash-card-body">
+          <div class="cash-card-row">
+              <span class="cash-card-label">{{ _('cash_mobile_label_type') }}</span>
+              <span class="cash-movement-type {{ m.type }}">
+                {{ _('cash_type_in') if m.type == 'cash_in' else _('cash_type_out') }}
+              </span>
+          </div>
+          <div class="cash-card-row">
+              <span class="cash-card-label">{{ _('cash_mobile_label_amount') }}</span>
+            <span class="cash-card-value"
+              style="color:{% if m.type == 'cash_in' %}var(--cash-success){% else %}var(--cash-danger){% endif %};font-size:18px;">
+                {% if m.type == 'cash_in' %}+{% else %}-{% endif %}{{ "{:,.0f}".format(m.amount) }} {{ _('cash_currency_iqd') }}
+            </span>
+          </div>
+          <div class="cash-card-row">
+              <span class="cash-card-label">{{ _('cash_mobile_label_balance_after') }}</span>
+              <span class="cash-card-value" style="font-size:18px;">{{ "{:,.0f}".format(m.balance_after) }} {{ _('cash_currency_iqd') }}</span>
+          </div>
+          <div class="cash-card-row">
+              <span class="cash-card-label">{{ _('cash_mobile_label_description') }}</span>
+            <span class="cash-card-value" style="font-size:12px;color:#94a3b8;">{{ m.description }}</span>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+      {% else %}
+      <div style="text-align:center;padding:40px;color:#64748b;">
+        {{ _('cash_empty_state') }}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <script>
+    // ==================== AG Grid Initialization ====================
+    let gridApi;
+
+    function initAgGrid() {
+      const cashDataElement = document.getElementById("cashData");
+      if (!cashDataElement) return;
+
+      let rowData = [];
+      try {
+        rowData = JSON.parse(cashDataElement.textContent.trim());
+      } catch (e) {
+        console.error("Error parsing cash data:", e);
+        return;
+      }
+
+      const columnDefs = [
+        {
+          headerName: "{{ _('cash_col_date') }}",
+          field: "date",
+          width: 120,
+          cellRenderer: params => `<span style="color: #94a3b8;">${params.value}</span>`
+        },
+        {
+          headerName: "{{ _('cash_col_type') }}",
+          field: "type_label",
+          width: 100,
+          cellRenderer: params => `<span class="cash-movement-type ${params.data.type}">${params.value}</span>`
+        },
+        { headerName: "{{ _('cash_col_reason') }}", field: "reason", flex: 1.2, minWidth: 150 },
+        {
+          headerName: "{{ _('cash_col_amount') }}",
+          field: "amount",
+          width: 140,
+          type: 'numericColumn',
+          cellRenderer: params => {
+            const sign = params.data.type === 'cash_in' ? '+' : '-';
+            const cls = params.data.type === 'cash_in' ? 'cash-movement-grid-in' : 'cash-movement-grid-out';
+            return `<span class="${cls}">${sign}${params.value.toLocaleString()} {{ _('cash_currency_iqd') }}</span>`;
+          }
+        },
+        {
+          headerName: "{{ _('cash_col_balance_after') }}",
+          field: "balance_after",
+          width: 140,
+          type: 'numericColumn',
+          cellRenderer: params => `<strong>${params.value.toLocaleString()} {{ _('cash_currency_iqd') }}</strong>`
+        },
+        {
+          headerName: "{{ _('cash_col_description') }}",
+          field: "description",
+          flex: 1,
+          minWidth: 150,
+          cellStyle: { color: '#94a3b8', fontSize: '13px' }
+        }
+      ];
+
+      const gridOptions = {
+        columnDefs: columnDefs,
+        rowData: rowData,
+        rowHeight: 52,
+        headerHeight: 48,
+        pagination: true,
+        paginationPageSize: 20,
+        paginationPageSizeSelector: [10, 20, 50, 100],
+        enableRtl: true,
+        animateRows: true,
+        defaultColDef: {
+          sortable: true,
+          filter: true,
+          resizable: true,
+          floatingFilter: true
+        },
+        onGridReady: (params) => {
+          gridApi = params.api;
+        }
+      };
+
+      const eGridDiv = document.querySelector('#cashTable');
+      agGrid.createGrid(eGridDiv, gridOptions);
+    }
+
+    // ================= Form Validation =================
+    function validateCashForm(e) {
+      const reason = document.getElementById('reason').value.trim();
+      const amount = document.getElementById('amount').value;
+
+      if (!reason) {
+        e.preventDefault();
+        alert('{{ _('cash_err_reason_required') }}');
+        return false;
+      }
+
+      if (!amount || parseFloat(amount) <= 0) {
+        e.preventDefault();
+        alert('{{ _('cash_err_amount_required') }}');
+        return false;
+      }
+
+      return true;
+    }
+
+    // ================= Initialize =================
+    document.addEventListener('DOMContentLoaded', function () {
+      if (document.getElementById('cashTable')) {
+        initAgGrid();
+      }
+    });
+  </script>
+
+</div>
+{% endblock %}

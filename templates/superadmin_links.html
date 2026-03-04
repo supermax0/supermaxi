@@ -1,0 +1,236 @@
+{% extends "superadmin_base.html" %}
+
+{% block title %}دليل الصفحات — كل الروابط | Finora{% endblock %}
+{% block page_title %}<i class="fas fa-link"></i> دليل وصول الصفحات{% endblock %}
+
+{% block extra_style %}
+<style>
+    .links-intro {
+        margin-bottom: 40px;
+        padding: 24px 30px;
+        line-height: 1.8;
+    }
+
+    .search-section {
+        margin-bottom: 48px;
+        display: flex;
+        justify-content: center;
+    }
+
+    .search-container {
+        position: relative;
+        width: 100%;
+        max-width: 600px;
+    }
+
+    .search-container i {
+        position: absolute;
+        right: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted);
+        font-size: 18px;
+    }
+
+    .premium-search {
+        width: 100%;
+        padding: 16px 54px 16px 24px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border-color);
+        border-radius: 20px;
+        color: #fff;
+        font-size: 16px;
+        font-weight: 600;
+        font-family: 'Cairo', sans-serif;
+        transition: var(--transition);
+        backdrop-filter: blur(10px);
+    }
+
+    .premium-search:focus {
+        outline: none;
+        border-color: var(--primary);
+        background: rgba(255, 255, 255, 0.06);
+        box-shadow: 0 10px 30px rgba(99, 102, 241, 0.15);
+    }
+
+    .guide-section {
+        margin-bottom: 48px;
+    }
+
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin-bottom: 24px;
+        padding-right: 10px;
+    }
+
+    .section-header i {
+        width: 36px;
+        height: 36px;
+        background: rgba(99, 102, 241, 0.1);
+        color: var(--primary);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+    }
+
+    .section-header h2 {
+        font-size: 18px;
+        font-weight: 800;
+        color: #fff;
+        letter-spacing: 0.5px;
+    }
+
+    .link-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 20px;
+    }
+
+    .link-card {
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        text-decoration: none;
+        position: relative;
+        overflow: hidden;
+        transition: var(--transition);
+        border: 1px solid var(--border-color);
+    }
+
+    .link-card:hover {
+        transform: translateY(-5px);
+        border-color: var(--primary);
+        background: rgba(99, 102, 241, 0.03);
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+    }
+
+    .link-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .link-label {
+        font-size: 15px;
+        font-weight: 800;
+        color: #fff;
+        transition: var(--transition);
+    }
+
+    .link-card:hover .link-label {
+        color: var(--primary);
+    }
+
+    .link-template {
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--text-muted);
+        background: rgba(255, 255, 255, 0.05);
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-family: monospace;
+    }
+
+    .link-url {
+        font-size: 12px;
+        color: var(--text-muted);
+        font-family: monospace;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .link-arrow {
+        position: absolute;
+        bottom: 24px;
+        left: 24px;
+        color: var(--text-muted);
+        font-size: 14px;
+        transition: var(--transition);
+        opacity: 0.3;
+    }
+
+    .link-card:hover .link-arrow {
+        color: var(--primary);
+        opacity: 1;
+        transform: translateX(-5px);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="premium-card glass links-intro">
+    <i class="fas fa-info-circle" style="color: var(--primary); margin-left: 10px;"></i>
+    من هنا يمكنك استعراض كافة واجهات النظام والقوالب المتاحة. استخدم البحث السريع للوصول الفوري.
+    <span style="display: block; font-size: 13px; margin-top: 8px; color: var(--text-muted);">
+        * ملاحظة: بعض الصفحات تتطلب صلاحيات وصول محددة أو بيانات تجريبية.
+    </span>
+</div>
+
+<div class="search-section">
+    <div class="search-container">
+        <i class="fas fa-search"></i>
+        <input type="text" id="linkSearch" class="premium-search" placeholder="ابحث عن صفحة، قالب، أو تطبيق..."
+            autocomplete="off">
+    </div>
+</div>
+
+{% for group in pages_guide %}
+<div class="guide-section" data-group="{{ group.title }}">
+    <div class="section-header">
+        <i class="fas {{ group.icon }}"></i>
+        <h2>{{ group.title }}</h2>
+    </div>
+    <div class="link-grid">
+        {% for url, label, template in group.links %}
+        <a href="{{ url }}" target="_blank" rel="noopener" class="premium-card link-card" data-label="{{ label }}"
+            data-url="{{ url }}" data-template="{{ template }}">
+            <div class="link-card-header">
+                <span class="link-label">{{ label }}</span>
+                <span class="link-template">{{ template }}</span>
+            </div>
+            <div class="link-url">{{ url }}</div>
+            <i class="fas fa-arrow-left link-arrow"></i>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endfor %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const searchInput = document.getElementById('linkSearch');
+        const sections = document.querySelectorAll('.guide-section');
+        const cards = document.querySelectorAll('.link-card');
+
+        searchInput.addEventListener('input', function () {
+            const query = this.value.toLowerCase().trim();
+
+            sections.forEach(section => {
+                let sectionHasMatch = false;
+                const groupCards = section.querySelectorAll('.link-card');
+
+                groupCards.forEach(card => {
+                    const text = (card.dataset.label + card.dataset.url + card.dataset.template).toLowerCase();
+                    if (text.includes(query)) {
+                        card.style.display = 'flex';
+                        sectionHasMatch = true;
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+
+                section.style.display = sectionHasMatch ? 'block' : 'none';
+            });
+        });
+    });
+</script>
+{% endblock %}

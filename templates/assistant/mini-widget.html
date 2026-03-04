@@ -1,0 +1,392 @@
+<!-- مكون صغير للمساعد في جميع الصفحات -->
+<div id="assistant-mini-widget" style="
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  width: 140px;
+  height: 180px;
+  z-index: 9999;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  filter: drop-shadow(0 8px 24px rgba(255, 107, 53, 0.3));
+">
+  <div id="assistant-mini-container" style="
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, rgba(17, 24, 39, 0.95), rgba(11, 18, 32, 0.95));
+    border-radius: 20px;
+    border: 2px solid rgba(255, 107, 53, 0.6);
+    box-shadow: 
+      0 8px 32px rgba(0, 0, 0, 0.5),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+    position: relative;
+    backdrop-filter: blur(10px);
+  ">
+    <!-- Canvas للشخصية -->
+    <div id="assistant-mini-canvas" style="width: 100%; height: calc(100% - 40px); position: relative; display: flex; align-items: center; justify-content: center;"></div>
+    
+    <!-- حالة المساعد -->
+    <div id="assistant-mini-status" style="
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.9));
+      padding: 10px 8px 8px;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 600;
+      color: #fff;
+      border-top: 1px solid rgba(255, 107, 53, 0.4);
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+    ">💭 جاهزة</div>
+    
+    <!-- مؤشر المشاكل -->
+    <div id="assistant-mini-badge" style="
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      min-width: 24px;
+      height: 24px;
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      border-radius: 12px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 0 8px;
+      box-shadow: 
+        0 0 15px rgba(239, 68, 68, 0.8),
+        0 2px 8px rgba(0, 0, 0, 0.3);
+      animation: pulse 2s infinite;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+    ">!</div>
+  </div>
+</div>
+
+<style>
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+
+#assistant-mini-widget:hover {
+  transform: scale(1.08) translateY(-5px);
+  filter: drop-shadow(0 12px 32px rgba(255, 107, 53, 0.5));
+}
+
+#assistant-mini-widget:hover #assistant-mini-container {
+  border-color: rgba(255, 107, 53, 0.9);
+  box-shadow: 
+    0 12px 40px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    0 0 30px rgba(255, 107, 53, 0.3);
+}
+
+#assistant-mini-widget.alert {
+  animation: shake 0.5s;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+/* Loader Styles */
+#assistant-mini-widget .loader {
+  --color-one: #ff6b35;
+  --color-two: #8b5cf6;
+  --color-three: #ff6b3580;
+  --color-four: #8b5cf680;
+  --color-five: #ff6b3540;
+  --time-animation: 2s;
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  box-shadow: 0 0 20px 0 var(--color-three), 0 15px 40px 0 var(--color-four);
+  animation: colorize calc(var(--time-animation) * 3) ease-in-out infinite;
+}
+
+#assistant-mini-widget .loader::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border-top: solid 2px var(--color-one);
+  border-bottom: solid 2px var(--color-two);
+  background: linear-gradient(180deg, var(--color-five), var(--color-four));
+  box-shadow: inset 0 8px 8px 0 var(--color-three), inset 0 -8px 8px 0 var(--color-four);
+}
+
+#assistant-mini-widget .loader .box {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(180deg, var(--color-one) 30%, var(--color-two) 70%);
+  mask: url(#clipping-mini);
+  -webkit-mask: url(#clipping-mini);
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+#assistant-mini-widget .loader svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 80px;
+  height: 80px;
+}
+
+#assistant-mini-widget .loader svg #clipping-mini polygon:nth-child(2) {
+  transform-origin: 50% 50%;
+  animation: rotation 2s linear infinite reverse;
+}
+
+#assistant-mini-widget .loader svg #clipping-mini polygon:nth-child(3) {
+  transform-origin: 50% 60%;
+  animation: rotation 2s linear infinite;
+  animation-delay: -0.67s;
+}
+
+@keyframes rotation {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes colorize {
+  0% { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
+}
+</style>
+
+<script>
+let miniLoader = null;
+let miniVoiceEnabled = true;
+
+function initMiniAssistant() {
+  try {
+    console.log('🔧 Initializing mini assistant widget...');
+    
+    const container = document.getElementById('assistant-mini-canvas');
+    if (!container) {
+      console.warn('Container not found, retrying...');
+      setTimeout(initMiniAssistant, 100);
+      return;
+    }
+    
+    console.log('✅ Container found, creating loader...');
+    
+    container.innerHTML = `
+      <div class="loader">
+        <svg width="80" height="80" viewBox="0 0 100 100">
+          <defs>
+            <mask id="clipping-mini">
+              <polygon points="0,0 100,0 100,100 0,100" fill="black"></polygon>
+              <polygon points="25,25 75,25 50,75" fill="white"></polygon>
+              <polygon points="50,25 75,75 25,75" fill="white"></polygon>
+              <polygon points="35,35 65,35 50,65" fill="white"></polygon>
+              <polygon points="35,35 65,35 50,65" fill="white"></polygon>
+              <polygon points="35,35 65,35 50,65" fill="white"></polygon>
+              <polygon points="35,35 65,35 50,65" fill="white"></polygon>
+            </mask>
+          </defs>
+        </svg>
+        <div class="box"></div>
+      </div>
+    `;
+    
+    miniLoader = container.querySelector('.loader');
+    console.log('✅ Loader created:', miniLoader ? 'success' : 'failed');
+    
+    // تفاعل مع النقر
+    const widget = document.getElementById('assistant-mini-widget');
+    if (widget) {
+      console.log('✅ Widget found, adding event listeners...');
+      
+      widget.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('🖱️ Widget clicked, opening assistant...');
+        window.location.href = '/assistant';
+      });
+      
+      // تأثير hover
+      widget.addEventListener('mouseenter', () => {
+        if (miniLoader) {
+          miniLoader.style.transform = 'scale(1.1)';
+        }
+        const status = document.getElementById('assistant-mini-status');
+        if (status) {
+          status.style.opacity = '0.9';
+        }
+      });
+      
+      widget.addEventListener('mouseleave', () => {
+        if (miniLoader) {
+          miniLoader.style.transform = 'scale(1)';
+        }
+        const status = document.getElementById('assistant-mini-status');
+        if (status) {
+          status.style.opacity = '1';
+        }
+      });
+      
+      console.log('✅ Mini assistant initialized successfully');
+    } else {
+      console.error('❌ Widget element not found!');
+    }
+  } catch (error) {
+    console.error('❌ Error initializing mini assistant:', error);
+  }
+}
+
+function miniSpeak(text) {
+  if (!miniVoiceEnabled) return;
+  
+  if ('speechSynthesis' in window) {
+    speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'ar-SA';
+    utterance.rate = 0.88;
+    utterance.pitch = 1.2;
+    speechSynthesis.speak(utterance);
+  }
+}
+
+async function analyzeCurrentPage() {
+  try {
+    console.log('🔍 Analyzing current page...');
+    const response = await fetch('/assistant/analyze-page', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      console.error('❌ Response not OK:', response.status);
+      updateMiniWidget([]);
+      return;
+    }
+    
+    const data = await response.json();
+    console.log('📊 Analysis result:', data);
+    
+    if (data.success && data.issues) {
+      updateMiniWidget(data.issues);
+      
+      if (data.issues.length > 0) {
+        const critical = data.issues.filter(i => i.severity === 'critical');
+        if (critical.length > 0 && miniVoiceEnabled) {
+          miniSpeak(`تنبيه! يوجد ${critical.length} مشكلة حرجة.`);
+          highlightIssues(data.issues);
+        }
+      }
+    } else {
+      updateMiniWidget([]);
+    }
+  } catch (error) {
+    console.error('❌ Analysis error:', error);
+    updateMiniWidget([]);
+  }
+}
+
+function updateMiniWidget(issues) {
+  try {
+    const badge = document.getElementById('assistant-mini-badge');
+    const widget = document.getElementById('assistant-mini-widget');
+    const status = document.getElementById('assistant-mini-status');
+    const container = document.getElementById('assistant-mini-container');
+    
+    if (!widget || !status) {
+      console.warn('⚠️ Widget elements not found');
+      return;
+    }
+    
+    const critical = issues ? issues.filter(i => i.severity === 'critical').length : 0;
+    const warnings = issues ? issues.filter(i => i.severity === 'warning').length : 0;
+    
+    if (critical > 0) {
+      if (badge) {
+        badge.textContent = critical > 9 ? '9+' : critical;
+        badge.style.display = 'flex';
+        badge.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
+      }
+      widget.classList.add('alert');
+      status.textContent = '🚨 ' + critical + ' خطأ';
+      status.style.color = '#ef4444';
+      if (container) {
+        container.style.borderColor = 'rgba(239, 68, 68, 0.8)';
+        container.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 20px rgba(239, 68, 68, 0.4)';
+      }
+    } else if (warnings > 0) {
+      if (badge) {
+        badge.textContent = warnings > 9 ? '9+' : warnings;
+        badge.style.display = 'flex';
+        badge.style.background = 'linear-gradient(135deg, #f59e0b, #d97706)';
+      }
+      widget.classList.remove('alert');
+      status.textContent = '⚠️ ' + warnings + ' تحذير';
+      status.style.color = '#f59e0b';
+      if (container) {
+        container.style.borderColor = 'rgba(245, 158, 11, 0.6)';
+        container.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1)';
+      }
+    } else {
+      if (badge) {
+        badge.style.display = 'none';
+      }
+      widget.classList.remove('alert');
+      status.textContent = '✅ جاهزة';
+      status.style.color = '#10b981';
+      if (container) {
+        container.style.borderColor = 'rgba(255, 107, 53, 0.6)';
+        container.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1)';
+      }
+    }
+    
+    console.log('✅ Widget updated:', { critical, warnings });
+  } catch (error) {
+    console.error('❌ Error updating mini widget:', error);
+  }
+}
+
+function highlightIssues(issues) {
+  issues.forEach(issue => {
+    const element = document.querySelector(issue.selector);
+    if (element) {
+      element.style.transition = 'all 0.3s ease';
+      element.style.boxShadow = '0 0 20px rgba(239, 68, 68, 0.8)';
+      element.style.border = '2px solid #ef4444';
+      setTimeout(() => {
+        element.style.boxShadow = '';
+        element.style.border = '';
+      }, 5000);
+    }
+  });
+}
+
+// تهيئة عند تحميل الصفحة
+document.addEventListener('DOMContentLoaded', () => {
+  console.log('🚀 DOM loaded, initializing mini assistant...');
+  initMiniAssistant();
+  
+  // تحليل فوري بعد 3 ثواني
+  setTimeout(() => {
+    analyzeCurrentPage();
+  }, 3000);
+  
+  // تحليل تلقائي كل 30 ثانية
+  setInterval(async () => {
+    await analyzeCurrentPage();
+  }, 30000);
+});
+</script>

@@ -1,0 +1,388 @@
+{% extends "base.html" %}
+
+{% block title %}جرد المخزون{% endblock %}
+
+{% block page_title %}📦 جرد المخزون{% endblock %}
+
+{% block content %}
+<style>
+    /* تصميم مخصص لصفحة الجرد */
+    .audit-container {
+        padding: 24px;
+        padding-bottom: 80px;
+        /* Prevent overlap with mobile nav */
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .audit-header {
+        background: #fff;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        margin-bottom: 24px;
+    }
+
+    .scanner-box {
+        background: #f8fafc;
+        border: 2px dashed #94a3b8;
+        border-radius: 12px;
+        padding: 32px;
+        text-align: center;
+        transition: all 0.3s ease;
+    }
+
+    .scanner-box.scanning {
+        border-color: #3b82f6;
+        background: #eff6ff;
+    }
+
+    .scanner-input {
+        width: 0;
+        height: 0;
+        opacity: 0;
+        position: absolute;
+    }
+
+    .barcode-icon {
+        font-size: 48px;
+        color: #64748b;
+        margin-bottom: 16px;
+    }
+
+    .audit-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .stat-card {
+        background: #fff;
+        padding: 16px;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        text-align: center;
+    }
+
+    .stat-value {
+        font-size: 24px;
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    .stat-label {
+        color: #64748b;
+        font-size: 14px;
+    }
+
+    .audit-list {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+
+    .audit-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 24px;
+        border-bottom: 1px solid #e2e8f0;
+        animation: slideIn 0.3s ease;
+    }
+
+    .audit-item.matched {
+        background-color: #f0fdf4;
+        border-left: 4px solid #22c55e;
+    }
+
+    .audit-item.mismatch {
+        background-color: #fef2f2;
+        border-left: 4px solid #ef4444;
+    }
+
+    .item-details h4 {
+        margin: 0 0 4px 0;
+        font-size: 16px;
+        color: #0f172a;
+    }
+
+    .item-meta {
+        font-size: 14px;
+        color: #64748b;
+        display: flex;
+        gap: 16px;
+    }
+
+    .qty-controls {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .qty-btn {
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        border: 1px solid #e2e8f0;
+        background: #fff;
+        cursor: pointer;
+        font-weight: bold;
+        color: #475569;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .qty-btn:hover {
+        background: #f8fafc;
+    }
+
+    .actual-qty {
+        font-size: 18px;
+        font-weight: 600;
+        width: 60px;
+        text-align: center;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 4px;
+    }
+
+    .save-audit-btn {
+        background: #3b82f6;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        width: 100%;
+        margin-top: 24px;
+        transition: background 0.2s;
+    }
+
+    .save-audit-btn:hover {
+        background: #2563eb;
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+
+<div class="audit-container">
+    <div class="audit-stats">
+        <div class="stat-card">
+            <div class="stat-value" id="totalScanned">0</div>
+            <div class="stat-label">العناصر الممسوحة</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="matchedItems">0</div>
+            <div class="stat-label">مطابق للمخزون</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="mismatchedItems">0</div>
+            <div class="stat-label">يوجد عجز/زيادة</div>
+        </div>
+    </div>
+
+    <div class="audit-header">
+        <div class="scanner-box" id="scannerArea" onclick="document.getElementById('barcodeInput').focus()">
+            <div class="barcode-icon">📱</div>
+            <h3>جهاز ضوئي لجرد المخزون</h3>
+            <p style="color: #64748b; margin-top: 8px;">اضغط هنا وابدأ بمسح الباركود الخاص بالمنتجات</p>
+            <input type="text" id="barcodeInput" class="scanner-input" autofocus autocomplete="off">
+        </div>
+    </div>
+
+    <div class="audit-list">
+        <div
+            style="padding: 16px 24px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; font-weight: 600;">
+            <span>المنتج</span>
+            <span style="margin-left: 20px;">المخزون الفعلي</span>
+        </div>
+        <div id="scannedItemsList">
+            <!-- يتم إضافة العناصر الممسوحة هنا -->
+        </div>
+    </div>
+
+    <!-- TODO: إرسال تقرير الجرد وحفظ التسويات -->
+    <button class="save-audit-btn" onclick="saveAuditReport()">حفظ تقرير الجرد وإنشاء تسويات</button>
+</div>
+
+<script>
+    const productsData = JSON.parse('[{% for p in products %}{"id":{{p.id}},"name":{{p.name|tojson}},"barcode":{{(p.barcode or "")|tojson}},"expected_qty":{{p.quantity}}}{% if not loop.last %},{% endif %}{% endfor %}]');
+
+    const scannedList = document.getElementById('scannedItemsList');
+    const barcodeInput = document.getElementById('barcodeInput');
+    const scannerArea = document.getElementById('scannerArea');
+
+    // سجل العناصر التي تم جردها
+    let auditedItems = {};
+
+    // التركيز التلقائي على حقل الباركود
+    document.addEventListener('keydown', () => {
+        barcodeInput.focus();
+    });
+
+    barcodeInput.addEventListener('focus', () => {
+        scannerArea.classList.add('scanning');
+    });
+
+    barcodeInput.addEventListener('blur', () => {
+        scannerArea.classList.remove('scanning');
+        // إبقاء التركيز
+        setTimeout(() => barcodeInput.focus(), 100);
+    });
+
+    // معالجة إدخال الباركود
+    barcodeInput.addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            const barcode = this.value.trim();
+            if (barcode) {
+                processBarcode(barcode);
+            }
+            this.value = '';
+        }
+    });
+
+    function processBarcode(barcode) {
+        const product = productsData.find(p => p.barcode === barcode);
+
+        if (product) {
+            if (auditedItems[product.id]) {
+                // زيادة الكمية إذا تم المسح مسبقاً
+                updateActualQty(product.id, auditedItems[product.id].actual_qty + 1);
+            } else {
+                // إضافة عنصر جديد للقائمة
+                auditedItems[product.id] = {
+                    ...product,
+                    actual_qty: 1
+                };
+                renderAuditedItem(product.id);
+            }
+            updateStats();
+
+            // تشغيل تأثير صوتي (اختياري)
+            // new Audio('/static/beep.mp3').play();
+        } else {
+            alert("الباركود غير موجود في النظام: " + barcode);
+        }
+    }
+
+    function updateActualQty(id, newQty) {
+        if (newQty < 0) return;
+        auditedItems[id].actual_qty = newQty;
+
+        // تحديث العرض
+        const qtyInput = document.getElementById(`qty_${id}`);
+        if (qtyInput) qtyInput.value = newQty;
+
+        // تحديث حالة المطابقة
+        updateMatchStatus(id);
+        updateStats();
+    }
+
+    function handleQtyInput(id, inputElement) {
+        const val = parseInt(inputElement.value) || 0;
+        updateActualQty(id, val);
+    }
+
+    function updateMatchStatus(id) {
+        const itemDom = document.getElementById(`audit_item_${id}`);
+        const itemData = auditedItems[id];
+
+        if (!itemDom) return;
+
+        itemDom.classList.remove('matched', 'mismatch');
+        if (itemData.actual_qty === itemData.expected_qty) {
+            itemDom.classList.add('matched');
+        } else {
+            itemDom.classList.add('mismatch');
+        }
+    }
+
+    function renderAuditedItem(id) {
+        const item = auditedItems[id];
+        const statusClass = item.actual_qty === item.expected_qty ? 'matched' : 'mismatch';
+
+        const html = `
+      <div class="audit-item ${statusClass}" id="audit_item_${id}">
+        <div class="item-details">
+          <h4>${item.name}</h4>
+          <div class="item-meta">
+            <span>الباركود: ${item.barcode || '---'}</span>
+            <span>مسجل في النظام: <strong>${item.expected_qty}</strong></span>
+          </div>
+        </div>
+        <div class="qty-controls">
+          <button class="qty-btn" onclick="updateActualQty(${id}, ${item.actual_qty - 1})">-</button>
+          <input type="number" id="qty_${id}" class="actual-qty" value="${item.actual_qty}" 
+            onchange="handleQtyInput(${id}, this)">
+          <button class="qty-btn" onclick="updateActualQty(${id}, ${item.actual_qty + 1})">+</button>
+        </div>
+      </div>
+    `;
+
+        // إضافة بالبداية ليكون الأحدث ظاهراً
+        scannedList.insertAdjacentHTML('afterbegin', html);
+    }
+
+    function updateStats() {
+        let total = 0;
+        let matched = 0;
+        let mismatched = 0;
+
+        Object.values(auditedItems).forEach(item => {
+            total += item.actual_qty;
+            if (item.actual_qty === item.expected_qty) {
+                matched++;
+            } else {
+                mismatched++;
+            }
+        });
+
+        document.getElementById('totalScanned').innerText = Object.keys(auditedItems).length;
+        document.getElementById('matchedItems').innerText = matched;
+        document.getElementById('mismatchedItems').innerText = mismatched;
+    }
+
+    function saveAuditReport() {
+        if (Object.keys(auditedItems).length === 0) {
+            alert("الرجاء جرد المنتجات أولاً");
+            return;
+        }
+
+        if (confirm("هل أنت متأكد من حفظ الجرد وإجراء تسويات المخزون تلقائياً؟")) {
+            // إرسال البيانات للخادم
+            fetch('/inventory/save-audit', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ items: Object.values(auditedItems) })
+            }).then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('تم حفظ الجرد بنجاح');
+                        window.location.reload();
+                    } else {
+                        alert('حدث خطأ أثناء الحفظ');
+                    }
+                }).catch(err => {
+                    console.error(err);
+                    alert('حدث خطأ في الاتصال');
+                });
+        }
+    }
+</script>
+{% endblock %}

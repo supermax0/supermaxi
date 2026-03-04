@@ -1,0 +1,219 @@
+{% extends "superadmin_base.html" %}
+
+{% block title %}إنشاء شركة جديدة - Finora{% endblock %}
+{% block page_title %}<i class="fas fa-plus-circle"></i> إضافة منشأة جديدة{% endblock %}
+
+{% block extra_style %}
+<style>
+    .form-container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 40px;
+    }
+
+    .form-section-title {
+        font-size: 16px;
+        font-weight: 800;
+        color: var(--primary);
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        opacity: 0.9;
+    }
+
+    .form-group {
+        margin-bottom: 28px;
+    }
+
+    .form-label {
+        display: block;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--text-muted);
+        margin-bottom: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .input-wrapper {
+        position: relative;
+    }
+
+    .input-wrapper i {
+        position: absolute;
+        right: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted);
+        font-size: 16px;
+        transition: var(--transition);
+    }
+
+    .premium-input {
+        width: 100%;
+        padding: 14px 45px 14px 16px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border-color);
+        border-radius: 14px;
+        color: #fff;
+        font-size: 15px;
+        font-weight: 600;
+        font-family: 'Cairo', sans-serif;
+        transition: var(--transition);
+    }
+
+    .premium-input:focus {
+        outline: none;
+        border-color: var(--primary);
+        background: rgba(255, 255, 255, 0.05);
+        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+    }
+
+    .premium-input:focus+i {
+        color: var(--primary);
+    }
+
+    .form-hint {
+        font-size: 12px;
+        color: var(--text-muted);
+        margin-top: 8px;
+        display: block;
+        line-height: 1.5;
+    }
+
+    .slug-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(56, 189, 248, 0.1);
+        color: #38bdf8;
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-family: monospace;
+        font-size: 12px;
+        margin-top: 10px;
+        border: 1px solid rgba(56, 189, 248, 0.2);
+    }
+
+    .btn-submit {
+        width: 100%;
+        padding: 16px;
+        background: var(--primary);
+        color: #fff;
+        border: none;
+        border-radius: 14px;
+        font-size: 16px;
+        font-weight: 800;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        transition: var(--transition);
+        box-shadow: 0 10px 20px rgba(99, 102, 241, 0.2);
+    }
+
+    .btn-submit:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 15px 30px rgba(99, 102, 241, 0.3);
+    }
+
+    .btn-cancel {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 14px;
+        color: var(--text-muted);
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 14px;
+        transition: var(--transition);
+        margin-top: 16px;
+    }
+
+    .btn-cancel:hover {
+        color: #fff;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="premium-card form-container">
+    <div class="form-section-title">
+        <i class="fas fa-info-circle"></i> معلومات المنشأة الأساسية
+    </div>
+
+    <form method="POST" action="{{ url_for('superadmin.tenants_create') }}">
+        <div class="form-group">
+            <label class="form-label" for="name">اسم الشركة (للعرض)</label>
+            <div class="input-wrapper">
+                <input type="text" id="name" name="name" class="premium-input" required
+                    placeholder="مثال: شركة الحلول الذكية" maxlength="150" autocomplete="off">
+                <i class="fas fa-building"></i>
+            </div>
+            <span class="form-hint">الاسم الرسمي الذي يظهر في الفواتير والتقارير.</span>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="slug">معرف الدخول (Slug)</label>
+            <div class="input-wrapper">
+                <input type="text" id="slug" name="slug" class="premium-input" required
+                    placeholder="مثال: smart-solutions" dir="ltr" pattern="[a-z0-9\-]+" maxlength="100"
+                    autocomplete="off">
+                <i class="fas fa-link"></i>
+            </div>
+            <span class="form-hint">يُستخدم في رابط تسجيل الدخول الخاص ببالشركة. (حروف وأرقام فقط)</span>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="owner_name">اسم المدير المسؤول</label>
+            <div class="input-wrapper">
+                <input type="text" id="owner_name" name="owner_name" class="premium-input"
+                    placeholder="مثال: محمد الأحمد" maxlength="120">
+                <i class="fas fa-user-tie"></i>
+            </div>
+            <span class="form-hint">الاسم الذي سيُعرض لحساب المدير الرئيسي (admin).</span>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="trial_days">فترة التجربة (بالأيام)</label>
+            <div class="input-wrapper">
+                <input type="number" id="trial_days" name="trial_days" class="premium-input"
+                    value="{{ trial_days_default }}" min="1" max="365">
+                <i class="fas fa-calendar-check"></i>
+            </div>
+            <span class="form-hint">مدة صلاحية الحساب قبل الحاجة لتفعيل الاشتراك.</span>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="admin_password">كلمة مرور حساب المدير</label>
+            <div class="input-wrapper">
+                <input type="password" id="admin_password" name="admin_password" class="premium-input"
+                    placeholder="اتركه فارغاً لاستخدام الاهتراضي: password123">
+                <i class="fas fa-lock"></i>
+            </div>
+            <span class="form-hint">إذا لم يتم تحديد كلمة مرور، سيتم استخدام <code
+                    style="color: var(--accent);">password123</code> كافتراضي.</span>
+        </div>
+
+        <div style="margin-top: 40px;">
+            <button type="submit" class="btn-submit">
+                <i class="fas fa-plus-circle"></i> إتمام عملية الإنشاء
+            </button>
+            <a href="{{ url_for('superadmin.tenants_list') }}" class="btn-cancel">
+                <i class="fas fa-times"></i> إلغاء العملية والعودة
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('slug').addEventListener('input', function () {
+        this.value = this.value.toLowerCase().replace(/[^a-z0-9\-]/g, '');
+    });
+</script>
+{% endblock %}

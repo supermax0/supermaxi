@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>طباعة مجموعة فواتير</title>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Tajawal', 'Arial', 'Tahoma', sans-serif;
+      background: #fff;
+      color: #000;
+      line-height: 1.5;
+    }
+    
+    .invoice-container {
+      max-width: 1000px;
+      margin: 0 auto;
+      background: #fff;
+      padding: 30px;
+      page-break-after: always;
+    }
+    
+    .invoice-container:last-child {
+      page-break-after: auto;
+    }
+    
+    /* ==================== Header ==================== */
+    .invoice-top-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid #000;
+    }
+    
+    .invoice-number-top {
+      font-size: 16px;
+      font-weight: bold;
+      color: #000;
+    }
+    
+    .company-name-header {
+      flex: 1;
+      text-align: center;
+      font-size: 28px;
+      font-weight: bold;
+      color: #000;
+    }
+    
+    .company-logo-circle {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      border: 2px solid #000;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      color: #000;
+      text-align: center;
+      padding: 8px;
+      line-height: 1.3;
+    }
+    
+    .logo-line {
+      margin: 2px 0;
+      font-weight: bold;
+    }
+    
+    /* ==================== Summary & Customer Section ==================== */
+    .summary-customer-section {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    
+    .summary-box {
+      flex: 0 0 280px;
+      background: #4a5568;
+      color: #fff;
+      padding: 20px;
+      border: 2px solid #000;
+    }
+    
+    .summary-item {
+      margin-bottom: 15px;
+      font-size: 14px;
+    }
+    
+    .summary-item:last-child {
+      margin-bottom: 0;
+    }
+    
+    .summary-label {
+      font-weight: bold;
+      margin-bottom: 5px;
+      display: block;
+    }
+    
+    .summary-value {
+      font-size: 18px;
+      font-weight: bold;
+    }
+    
+    .summary-date {
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid rgba(255, 255, 255, 0.3);
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.9);
+    }
+    
+    .customer-info-box {
+      flex: 1;
+      border: 2px solid #000;
+      padding: 15px;
+      background: #fff;
+    }
+    
+    .customer-info-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 15px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #000;
+      color: #000;
+    }
+    
+    .customer-detail {
+      margin-bottom: 10px;
+      font-size: 14px;
+      color: #000;
+    }
+    
+    .customer-detail strong {
+      font-weight: bold;
+      margin-left: 8px;
+    }
+    
+    /* ==================== Products Table ==================== */
+    .products-section {
+      margin-bottom: 20px;
+    }
+    
+    .products-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 2px solid #000;
+    }
+    
+    .products-table thead {
+      background: #4a5568;
+      color: #fff;
+    }
+    
+    .products-table th {
+      padding: 10px 8px;
+      text-align: center;
+      font-weight: bold;
+      font-size: 12px;
+      border: 1px solid #000;
+    }
+    
+    .products-table td {
+      padding: 10px 8px;
+      border: 1px solid #000;
+      text-align: center;
+      font-size: 12px;
+      color: #000;
+      background: #fff;
+    }
+    
+    .products-table tbody tr:nth-child(even) {
+      background: #f9f9f9;
+    }
+    
+    .product-name-col {
+      text-align: right !important;
+      font-weight: 500;
+    }
+    
+    /* ==================== Bottom Summary ==================== */
+    .bottom-summary {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 20px;
+    }
+    
+    .total-box {
+      background: #4a5568;
+      color: #fff;
+      padding: 15px 25px;
+      border: 2px solid #000;
+      font-size: 18px;
+      font-weight: bold;
+    }
+    
+    .signature-box {
+      border: 2px solid #000;
+      padding: 15px 30px;
+      background: #fff;
+      min-width: 200px;
+    }
+    
+    .signature-label {
+      font-size: 14px;
+      font-weight: bold;
+      margin-bottom: 40px;
+      color: #000;
+    }
+    
+    .signature-line {
+      border-bottom: 2px solid #000;
+      margin-top: 5px;
+    }
+    
+    .signature-amount {
+      margin-top: 10px;
+      font-size: 16px;
+      font-weight: bold;
+      color: #000;
+    }
+    
+    /* ==================== Footer ==================== */
+    .invoice-footer {
+      border-top: 3px solid #000;
+      padding-top: 15px;
+      margin-top: 20px;
+    }
+    
+    .warranty-notes {
+      margin-bottom: 15px;
+      font-size: 12px;
+      line-height: 1.8;
+      color: #000;
+    }
+    
+    .warranty-notes p {
+      margin-bottom: 5px;
+    }
+    
+    .footer-contact {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-top: 15px;
+    }
+    
+    .footer-address-phone {
+      font-size: 14px;
+      font-weight: bold;
+      color: #000;
+      line-height: 1.8;
+    }
+    
+    .footer-codes {
+      display: flex;
+      gap: 15px;
+      align-items: flex-end;
+    }
+    
+    .code-item {
+      text-align: center;
+    }
+    
+    .code-label {
+      font-size: 11px;
+      font-weight: bold;
+      margin-bottom: 5px;
+      color: #000;
+    }
+    
+    .barcode-container, .qrcode-container {
+      background: #fff;
+      padding: 8px;
+      border: 1px solid #000;
+      display: inline-block;
+    }
+    
+    .barcode-svg {
+      max-width: 180px;
+      height: 50px;
+    }
+    
+    .qrcode-div {
+      width: 100px;
+      height: 100px;
+    }
+    
+    /* ==================== Print Styles ==================== */
+    @media print {
+      body {
+        background: white;
+      }
+      
+      .invoice-container {
+        padding: 15px;
+        max-width: 100%;
+      }
+      
+      @page {
+        size: A4;
+        margin: 0.8cm;
+      }
+      
+      .summary-customer-section {
+        page-break-inside: avoid;
+      }
+      
+      .products-section {
+        page-break-inside: avoid;
+      }
+      
+      .bottom-summary {
+        page-break-inside: avoid;
+      }
+      
+      .invoice-footer {
+        page-break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  {% for inv in batch %}
+  <div class="invoice-container">
+    <!-- ==================== Header ==================== -->
+    <div class="invoice-top-header">
+      <div class="invoice-number-top">
+        رقم الفاتوره {{ inv.order.id }}
+      </div>
+      <div class="company-name-header">
+        {% if inv.order.page_name and inv.order.page_name.strip() %}
+        {{ inv.order.page_name }}
+        {% else %}
+        {{ settings.company_name }}
+        {% endif %}
+      </div>
+      <div class="company-logo-circle" {% if settings.use_logo_image and settings.logo_path %}style="background-image: url('{{ settings.logo_path }}'); background-size: cover; background-position: center;"{% endif %}>
+        {% if not settings.use_logo_image or not settings.logo_path %}
+        {% for line in settings.logo_circle_text.split('\n') %}
+        <div class="logo-line">{{ line }}</div>
+        {% endfor %}
+        {% endif %}
+      </div>
+    </div>
+    
+    <!-- ==================== Summary & Customer ==================== -->
+    <div class="summary-customer-section">
+      <!-- Summary Box (Left) -->
+      <div class="summary-box">
+        <div class="summary-item">
+          <span class="summary-label">رقم الفاتوره</span>
+          <span class="summary-value">{{ inv.order.id }}</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">المجموع</span>
+          <span class="summary-value">{{ "{:,.2f}".format(inv.total) }} د.ع</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">المستحق</span>
+          <span class="summary-value">{{ "{:,.2f}".format(inv.due) }} د.ع</span>
+        </div>
+        <div class="summary-date">
+          {% set order_date = inv.order.created_at.strftime('%d/%m/%Y') if inv.order.created_at else '' %}
+          {% set order_time = inv.order.created_at.strftime('%I:%M %p') if inv.order.created_at else '' %}
+          {{ order_time }} {{ order_date }}
+        </div>
+      </div>
+      
+      <!-- Customer Info Box (Right) -->
+      <div class="customer-info-box">
+        <div class="customer-info-title">معلومات الزبون</div>
+        <div class="customer-detail">
+          <strong>الاسم:</strong> {{ inv.order.customer.name if inv.order.customer else inv.order.customer_name or "—" }}{% if settings.show_returned_count and (inv.returned_count > 0 or inv.cancelled_count > 0) %} <span style="background: #fff3cd; border: 1px solid #ffc107; padding: 3px 8px; border-radius: 4px; font-size: 12px; color: #856404; margin-right: 8px;">{% if inv.returned_count > 0 %}⚠️ {{ inv.returned_count }} {% if inv.returned_count == 1 %}مرتجع{% else %}مرتجعات{% endif %}{% endif %}{% if inv.returned_count > 0 and inv.cancelled_count > 0 %} | {% endif %}{% if inv.cancelled_count > 0 %}❌ {{ inv.cancelled_count }} {% if inv.cancelled_count == 1 %}ملغي{% else %}ملغيات{% endif %}{% endif %}</span>{% endif %}
+        </div>
+        <div class="customer-detail">
+          <strong>العنوان:</strong> {{ inv.order.customer.address if inv.order.customer else "—" }}
+        </div>
+        <div class="customer-detail">
+          <strong>الموبايل:</strong> {{ inv.order.customer.phone if inv.order.customer else "—" }}
+        </div>
+        <div class="customer-detail">
+          <strong>الموظف:</strong> {{ inv.order.employee_name or "—" }}
+        </div>
+      </div>
+    </div>
+    
+    <!-- ==================== Products Table ==================== -->
+    <div class="products-section">
+      <table class="products-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>المنتج</th>
+            <th>العدد</th>
+            <th>سعر القطعه</th>
+            {% if settings.show_discount_column %}<th>الخصم</th>{% endif %}
+            {% if settings.show_tax_column %}<th>الضريبه</th>{% endif %}
+            {% if settings.show_unit_price_with_tax %}<th>سعر القطعه (شامل. الضريبة)</th>{% endif %}
+            <th>المجموع</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in inv['items'] %}
+          <tr>
+            <td>{{ loop.index }}</td>
+            <td class="product-name-col">{{ item.product_name or "—" }}</td>
+            <td>{{ item.quantity }} قطعة</td>
+            <td>{{ "{:,.2f}".format(item.price) }}</td>
+            {% if settings.show_discount_column %}<td>0.00</td>{% endif %}
+            {% if settings.show_tax_column %}<td>0.00</td>{% endif %}
+            {% if settings.show_unit_price_with_tax %}<td>{{ "{:,.2f}".format(item.price) }}</td>{% endif %}
+            <td>{{ "{:,.2f}".format(item.total) }}</td>
+          </tr>
+          {% else %}
+          <tr>
+            {% set col_count = 5 %}
+            {% if settings.show_discount_column %}{% set col_count = col_count + 1 %}{% endif %}
+            {% if settings.show_tax_column %}{% set col_count = col_count + 1 %}{% endif %}
+            {% if settings.show_unit_price_with_tax %}{% set col_count = col_count + 1 %}{% endif %}
+            <td colspan="{{ col_count }}" style="padding:30px;text-align:center;font-size:16px">لا توجد منتجات في هذا الطلب</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    
+    <!-- ==================== Bottom Summary ==================== -->
+    <div class="bottom-summary">
+      <!-- Total Box (Right) -->
+      <div class="total-box">
+        المجموع: {{ "{:,.2f}".format(inv.total) }} د.ع
+      </div>
+      
+      <!-- Signature Box (Left) -->
+      <div class="signature-box">
+        <div class="signature-label">المفوض بالتوقيع</div>
+        <div class="signature-line"></div>
+        <div class="signature-amount">{{ "{:,.2f}".format(inv.total) }} د.ع</div>
+      </div>
+    </div>
+    
+    {% if inv.order.note %}
+    <!-- ==================== ملاحظة البيع ==================== -->
+    <div class="sale-notes-box" style="margin-top: 10px; padding: 8px 12px; background: #fff3cd; border: 1.5px solid #ffc107; border-radius: 6px; font-size: 12px; color: #856404; text-align: right; direction: rtl; display: inline-block; min-width: 200px; max-width: 100%;">
+      <strong style="display: block; margin-bottom: 4px; font-size: 11px;">📝 ملاحظة البيع:</strong>
+      <div style="white-space: pre-wrap; line-height: 1.5; word-wrap: break-word;">{{ inv.order.note }}</div>
+    </div>
+    {% endif %}
+    
+    <!-- ==================== Footer ==================== -->
+    <div class="invoice-footer">
+      <div class="warranty-notes">
+        {% for line in settings.warranty_notes.split('\n') %}
+        <p>{{ line }}</p>
+        {% endfor %}
+      </div>
+      
+      <div class="footer-contact">
+        <div class="footer-address-phone">
+          {% if inv.order.page_name and inv.order.page_name.strip() %}
+          <strong>{{ settings.company_name }}</strong><br>
+          {% endif %}
+          العنوان: {{ settings.company_address }}<br>
+          هاتف الشركة: {{ settings.company_phone }}
+        </div>
+        
+        <div class="footer-codes">
+          {% set visibility_settings = settings.get_visibility_settings() %}
+          {% set show_barcode = visibility_settings.get('show_barcode', True) %}
+          {% set show_qrcode = visibility_settings.get('show_qrcode', True) %}
+          {% if show_barcode %}
+          <div class="code-item">
+            <div class="code-label">باركود</div>
+            <div class="barcode-container">
+              <svg class="barcode-svg" id="barcode_{{ inv.order.id }}"></svg>
+            </div>
+          </div>
+          {% endif %}
+          {% if show_qrcode %}
+          <div class="code-item">
+            <div class="code-label">QR Code</div>
+            <div class="qrcode-container">
+              <div class="qrcode-div" id="qrcode_{{ inv.order.id }}"></div>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      {% for inv in batch %}
+        {% set visibility_settings = settings.get_visibility_settings() %}
+        {% set show_barcode = visibility_settings.get('show_barcode', True) %}
+        {% set show_qrcode = visibility_settings.get('show_qrcode', True) %}
+
+        {% if show_barcode %}
+        try {
+          JsBarcode("#barcode_{{ inv.order.id }}", "{{ inv.order.id }}", {
+            format: "CODE128",
+            width: 2,
+            height: 50,
+            displayValue: true,
+            fontSize: 12,
+            margin: 3
+          });
+        } catch (e) {
+          console.error('Barcode generation error for order {{ inv.order.id }}:', e);
+        }
+        {% endif %}
+
+        {% if show_qrcode %}
+        try {
+          const invoiceUrl = window.location.origin + '/orders/invoice/{{ inv.order.id }}';
+          const qrContainer = document.getElementById("qrcode_{{ inv.order.id }}");
+          if (qrContainer) {
+            qrContainer.innerHTML = '';
+            new QRCode(qrContainer, {
+              text: invoiceUrl,
+              width: 100,
+              height: 100,
+              colorDark: "#000000",
+              colorLight: "#ffffff",
+              correctLevel: QRCode.CorrectLevel.H
+            });
+          }
+        } catch (e) {
+          console.error('QR Code generation error for order {{ inv.order.id }}:', e);
+        }
+        {% endif %}
+      {% endfor %}
+      
+      // Auto print after codes are generated
+      setTimeout(function() {
+        window.print();
+      }, 500);
+    });
+  </script>
+</body>
+</html>

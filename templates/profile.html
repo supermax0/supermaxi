@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}الملف الشخصي - نظام المحاسبة{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4"><i class="bi bi-person-circle"></i> الملف الشخصي</h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    <div class="avatar avatar-xxl bg-primary rounded-circle d-inline-flex align-items-center justify-content-center">
+                        <i class="bi bi-person fs-1 text-white"></i>
+                    </div>
+                </div>
+                <h4>{{ current_user.username if current_user.is_authenticated else 'زائر' }}</h4>
+                <p class="text-muted">مدير النظام</p>
+                <p class="text-muted">
+                    <i class="bi bi-envelope me-2"></i>
+                    admin@example.com
+                </p>
+                <p class="text-muted">
+                    <i class="bi bi-telephone me-2"></i>
+                    +966 500 000 000
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">معلومات الحساب</h5>
+            </div>
+            <div class="card-body">
+                <form>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">اسم المستخدم</label>
+                            <input type="text" class="form-control" value="admin" readonly>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">البريد الإلكتروني</label>
+                            <input type="email" class="form-control" value="admin@example.com">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">الاسم الكامل</label>
+                            <input type="text" class="form-control" value="مدير النظام">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">الهاتف</label>
+                            <input type="text" class="form-control" value="+966 500 000 000">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">كلمة المرور الجديدة</label>
+                            <input type="password" class="form-control" placeholder="أدخل كلمة مرور جديدة">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">تأكيد كلمة المرور</label>
+                            <input type="password" class="form-control" placeholder="أعد إدخال كلمة المرور">
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary">حفظ التغييرات</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

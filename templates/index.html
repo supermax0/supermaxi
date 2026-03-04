@@ -1,0 +1,1472 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>Finora — نظام إدارة الأعمال الذكي</title>
+    <meta name="description" content="Finora نظام SaaS متكامل لإدارة الطلبات والمخزون والحسابات بكفاءة عالية.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=Inter:wght@700;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0
+        }
+
+        :root {
+            --b: #3b82f6;
+            --i: #6366f1;
+            --p: #8b5cf6;
+            --c: #06b6d4;
+            --g: #10b981;
+            --go: #f59e0b;
+            --r: #ef4444;
+            --dark: #020617;
+            --card: rgba(15, 23, 42, .8);
+            --bord: rgba(99, 102, 241, .22);
+            --text: #f1f5f9;
+            --muted: #94a3b8;
+            --rad: 22px;
+        }
+
+        html {
+            scroll-behavior: smooth
+        }
+
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background: var(--dark);
+            color: var(--text);
+            overflow-x: hidden;
+            line-height: 1.7
+        }
+
+        #bg {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none
+        }
+
+        .wrap {
+            position: relative;
+            z-index: 1
+        }
+
+        /* NAV */
+        .nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 999;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 6%;
+            background: rgba(2, 6, 23, .5);
+            backdrop-filter: blur(24px);
+            border-bottom: 1px solid var(--bord);
+            transition: .3s
+        }
+
+        .nav.sc {
+            padding: 12px 6%;
+            background: rgba(2, 6, 23, .96)
+        }
+
+        .logo {
+            font-family: 'Inter', sans-serif;
+            font-size: 28px;
+            font-weight: 900;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -1px
+        }
+
+        .logo span {
+            font-size: 11px;
+            display: block;
+            font-family: 'Tajawal', sans-serif;
+            font-weight: 600;
+            color: var(--muted);
+            -webkit-text-fill-color: var(--muted);
+            letter-spacing: 1px;
+            margin-top: -4px
+        }
+
+        .nl {
+            display: flex;
+            align-items: center;
+            gap: 30px
+        }
+
+        .nl a {
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 15px;
+            font-weight: 500;
+            transition: .2s
+        }
+
+        .nl a:hover {
+            color: var(--text)
+        }
+
+        .btn-n {
+            padding: 10px 26px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--b), var(--i));
+            color: #fff !important;
+            font-weight: 700;
+            font-size: 14px;
+            transition: .3s;
+            text-decoration: none
+        }
+
+        .btn-n:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(99, 102, 241, .45)
+        }
+
+        /* HERO */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 150px 6% 100px;
+            position: relative
+        }
+
+        .hero-glow {
+            position: absolute;
+            border-radius: 50%;
+            pointer-events: none;
+            filter: blur(100px)
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 20px;
+            border-radius: 50px;
+            background: rgba(99, 102, 241, .12);
+            border: 1px solid rgba(99, 102, 241, .3);
+            color: #a5b4fc;
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 30px;
+            animation: fd .8s ease
+        }
+
+        .badge .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--g);
+            animation: pulse 2s infinite
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1)
+            }
+
+            50% {
+                opacity: .5;
+                transform: scale(1.4)
+            }
+        }
+
+        h1 {
+            font-size: clamp(40px, 7vw, 84px);
+            font-weight: 900;
+            line-height: 1.12;
+            margin-bottom: 26px;
+            animation: fu .8s ease .1s both
+        }
+
+        .gr {
+            background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #67e8f9 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent
+        }
+
+        .sub {
+            font-size: clamp(16px, 2.4vw, 21px);
+            color: var(--muted);
+            max-width: 660px;
+            margin: 0 auto 50px;
+            animation: fu .8s ease .2s both
+        }
+
+        .acts {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+            animation: fu .8s ease .3s both
+        }
+
+        .btn {
+            padding: 16px 38px;
+            border-radius: 16px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            text-decoration: none;
+            transition: .3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            border: none
+        }
+
+        .bp {
+            background: linear-gradient(135deg, var(--b), var(--i));
+            color: #fff;
+            box-shadow: 0 0 50px rgba(99, 102, 241, .3)
+        }
+
+        .bp:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 45px rgba(99, 102, 241, .5)
+        }
+
+        .bo {
+            background: transparent;
+            color: var(--text);
+            border: 1.5px solid var(--bord)
+        }
+
+        .bo:hover {
+            border-color: var(--b);
+            color: var(--b);
+            transform: translateY(-2px)
+        }
+
+        /* STATS ROW */
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 60px;
+            margin-top: 90px;
+            flex-wrap: wrap;
+            animation: fu .8s ease .5s both
+        }
+
+        .stat-n {
+            font-size: 38px;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--b), var(--c));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent
+        }
+
+        .stat-l {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: .5px
+        }
+
+        /* LOGOS STRIP */
+        .strip {
+            padding: 40px 6%;
+            text-align: center;
+            border-top: 1px solid var(--bord);
+            border-bottom: 1px solid var(--bord)
+        }
+
+        .strip p {
+            font-size: 13px;
+            color: var(--muted);
+            margin-bottom: 24px;
+            letter-spacing: 1px;
+            text-transform: uppercase
+        }
+
+        .logos {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 48px;
+            flex-wrap: wrap;
+            opacity: .5
+        }
+
+        .logos span {
+            font-size: 20px;
+            font-weight: 900;
+            color: var(--text);
+            letter-spacing: -1px
+        }
+
+        /* SECTION */
+        section {
+            padding: 100px 6%
+        }
+
+        .sec-badge {
+            display: inline-block;
+            padding: 5px 18px;
+            border-radius: 50px;
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 18px;
+            letter-spacing: .5px
+        }
+
+        .sec-title {
+            font-size: clamp(28px, 4vw, 50px);
+            font-weight: 900;
+            line-height: 1.18;
+            margin-bottom: 14px
+        }
+
+        .sec-sub {
+            font-size: 17px;
+            color: var(--muted);
+            max-width: 580px;
+            margin: 0 auto 64px
+        }
+
+        .tc {
+            text-align: center
+        }
+
+        /* FEATURE CARDS */
+        .fg {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+            gap: 22px
+        }
+
+        .fc {
+            background: var(--card);
+            border: 1px solid var(--bord);
+            border-radius: var(--rad);
+            padding: 30px;
+            transition: .35s;
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(14px)
+        }
+
+        .fc::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, var(--hl, rgba(99, 102, 241, .08)) 0%, transparent 60%);
+            opacity: 0;
+            transition: .35s
+        }
+
+        .fc:hover {
+            transform: translateY(-7px);
+            border-color: rgba(99, 102, 241, .45);
+            box-shadow: 0 24px 60px rgba(0, 0, 0, .35)
+        }
+
+        .fc:hover::after {
+            opacity: 1
+        }
+
+        .fi {
+            width: 52px;
+            height: 52px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-bottom: 18px;
+            position: relative;
+            z-index: 1
+        }
+
+        .fc h3 {
+            font-size: 18px;
+            font-weight: 800;
+            margin-bottom: 8px;
+            position: relative;
+            z-index: 1
+        }
+
+        .fc p {
+            font-size: 14px;
+            color: var(--muted);
+            line-height: 1.75;
+            position: relative;
+            z-index: 1
+        }
+
+        .tag {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 8px;
+            margin-top: 12px;
+            position: relative;
+            z-index: 1
+        }
+
+        /* HOW IT WORKS */
+        .hw {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 28px
+        }
+
+        .hs {
+            text-align: center;
+            padding: 44px 28px;
+            background: var(--card);
+            border: 1px solid var(--bord);
+            border-radius: var(--rad);
+            backdrop-filter: blur(14px);
+            transition: .3s
+        }
+
+        .hs:hover {
+            transform: translateY(-5px);
+            border-color: rgba(99, 102, 241, .4)
+        }
+
+        .hn {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            font-weight: 900;
+            margin: 0 auto 22px;
+            background: linear-gradient(135deg, var(--b), var(--p));
+            color: #fff;
+            box-shadow: 0 8px 24px rgba(99, 102, 241, .4)
+        }
+
+        .hs h3 {
+            font-size: 19px;
+            font-weight: 800;
+            margin-bottom: 10px
+        }
+
+        .hs p {
+            font-size: 14px;
+            color: var(--muted)
+        }
+
+        /* PRICING */
+        .pg {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 26px;
+            align-items: start
+        }
+
+        .pc {
+            background: var(--card);
+            border: 1px solid var(--bord);
+            border-radius: var(--rad);
+            padding: 42px 38px;
+            position: relative;
+            transition: .4s;
+            backdrop-filter: blur(14px)
+        }
+
+        .pc:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 32px 80px rgba(0, 0, 0, .4)
+        }
+
+        .pc.hot {
+            border-color: var(--i);
+            background: linear-gradient(160deg, rgba(99, 102, 241, .18), rgba(139, 92, 246, .12));
+            box-shadow: 0 0 80px rgba(99, 102, 241, .2);
+            transform: scale(1.05)
+        }
+
+        .pc.hot:hover {
+            transform: scale(1.05) translateY(-8px)
+        }
+
+        .htag {
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, var(--i), var(--p));
+            color: #fff;
+            padding: 5px 22px;
+            border-radius: 50px;
+            font-size: 12px;
+            font-weight: 800;
+            white-space: nowrap
+        }
+
+        .pn {
+            font-size: 22px;
+            font-weight: 900;
+            margin-bottom: 6px
+        }
+
+        .pd {
+            font-size: 14px;
+            color: var(--muted);
+            margin-bottom: 26px
+        }
+
+        .pr {
+            font-size: 44px;
+            font-weight: 900;
+            line-height: 1
+        }
+
+        .pr small {
+            font-size: 15px;
+            color: var(--muted);
+            font-weight: 500
+        }
+
+        .div {
+            height: 1px;
+            background: var(--bord);
+            margin: 28px 0
+        }
+
+        .pf {
+            list-style: none;
+            margin-bottom: 32px
+        }
+
+        .pf li {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 9px 0;
+            font-size: 14.5px;
+            border-bottom: 1px solid rgba(255, 255, 255, .04)
+        }
+
+        .pf li:last-child {
+            border-bottom: none
+        }
+
+        .ck {
+            color: var(--g);
+            flex-shrink: 0;
+            margin-top: 3px
+        }
+
+        .bpl {
+            display: block;
+            width: 100%;
+            padding: 16px;
+            border-radius: 14px;
+            font-size: 15px;
+            font-weight: 700;
+            text-align: center;
+            cursor: pointer;
+            transition: .3s;
+            text-decoration: none;
+            border: none
+        }
+
+        .bpp {
+            background: linear-gradient(135deg, var(--b), var(--i));
+            color: #fff;
+            box-shadow: 0 8px 30px rgba(99, 102, 241, .3)
+        }
+
+        .bpp:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 40px rgba(99, 102, 241, .5)
+        }
+
+        .bpo {
+            background: transparent;
+            color: var(--text);
+            border: 1.5px solid var(--bord)
+        }
+
+        .bpo:hover {
+            border-color: var(--b);
+            color: var(--b)
+        }
+
+        /* TESTIMONIALS */
+        .tg {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 22px
+        }
+
+        .tc2 {
+            background: var(--card);
+            border: 1px solid var(--bord);
+            border-radius: var(--rad);
+            padding: 32px;
+            backdrop-filter: blur(14px);
+            transition: .3s
+        }
+
+        .tc2:hover {
+            transform: translateY(-5px);
+            border-color: rgba(99, 102, 241, .4)
+        }
+
+        .stars {
+            color: var(--go);
+            margin-bottom: 16px;
+            letter-spacing: 2px
+        }
+
+        .tt {
+            font-size: 15px;
+            color: #cbd5e1;
+            line-height: 1.85;
+            margin-bottom: 24px;
+            font-style: italic
+        }
+
+        .ta {
+            display: flex;
+            align-items: center;
+            gap: 14px
+        }
+
+        .av {
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: 900;
+            color: #fff;
+            flex-shrink: 0
+        }
+
+        .an {
+            font-weight: 800;
+            font-size: 15px
+        }
+
+        .ar {
+            font-size: 13px;
+            color: var(--muted)
+        }
+
+        /* FAQ */
+        .fl {
+            max-width: 780px;
+            margin: 20px auto 0
+        }
+
+        .fi2 {
+            background: var(--card);
+            border: 1px solid var(--bord);
+            border-radius: 16px;
+            margin-bottom: 12px;
+            overflow: hidden;
+            backdrop-filter: blur(14px);
+            transition: .3s
+        }
+
+        .fi2.op {
+            border-color: rgba(99, 102, 241, .45)
+        }
+
+        .fq {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 22px 28px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 700;
+            user-select: none;
+            gap: 20px
+        }
+
+        .fic {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: rgba(99, 102, 241, .12);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--i);
+            font-size: 20px;
+            transition: .3s;
+            flex-shrink: 0
+        }
+
+        .fi2.op .fic {
+            transform: rotate(45deg)
+        }
+
+        .fa2 {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height .4s ease, padding .3s;
+            padding: 0 28px;
+            color: var(--muted);
+            font-size: 15px;
+            line-height: 1.8
+        }
+
+        .fi2.op .fa2 {
+            max-height: 200px;
+            padding: 0 28px 22px
+        }
+
+        /* CTA BANNER */
+        .cta {
+            margin: 0 6% 100px;
+            background: linear-gradient(135deg, rgba(59, 130, 246, .18), rgba(139, 92, 246, .18));
+            border: 1px solid rgba(99, 102, 241, .4);
+            border-radius: 30px;
+            padding: 88px 10%;
+            text-align: center;
+            position: relative;
+            overflow: hidden
+        }
+
+        .cta::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 50% 50%, rgba(99, 102, 241, .12) 0%, transparent 70%)
+        }
+
+        .cta h2 {
+            font-size: clamp(26px, 4vw, 52px);
+            font-weight: 900;
+            margin-bottom: 16px;
+            position: relative
+        }
+
+        .cta p {
+            font-size: 18px;
+            color: var(--muted);
+            margin-bottom: 38px;
+            position: relative
+        }
+
+        /* FOOTER */
+        footer {
+            border-top: 1px solid var(--bord);
+            padding: 50px 6%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 24px
+        }
+
+        footer p {
+            font-size: 14px;
+            color: var(--muted)
+        }
+
+        .fl2 {
+            display: flex;
+            gap: 24px
+        }
+
+        .fl2 a {
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 14px;
+            transition: .2s
+        }
+
+        .fl2 a:hover {
+            color: var(--text)
+        }
+
+        /* BG SECTIONS */
+        .bg2 {
+            background: rgba(15, 23, 42, .45);
+            border-top: 1px solid var(--bord);
+            border-bottom: 1px solid var(--bord)
+        }
+
+        /* ANIMATIONS */
+        @keyframes fd {
+            from {
+                opacity: 0;
+                transform: translateY(-18px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0)
+            }
+        }
+
+        @keyframes fu {
+            from {
+                opacity: 0;
+                transform: translateY(30px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0)
+            }
+        }
+
+        .ai {
+            opacity: 0;
+            transform: translateY(40px);
+            transition: opacity .7s ease, transform .7s ease
+        }
+
+        .ai.v {
+            opacity: 1;
+            transform: translateY(0)
+        }
+
+        @media(max-width:768px) {
+            .nl {
+                display: none
+            }
+
+            section {
+                padding: 70px 5%
+            }
+
+            .hero {
+                padding: 130px 5% 70px
+            }
+
+            .stats {
+                gap: 30px
+            }
+
+            .pc.hot {
+                transform: none
+            }
+
+            .pc.hot:hover {
+                transform: translateY(-6px)
+            }
+
+            .cta {
+                padding: 50px 6%;
+                margin: 0 4% 70px
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="bg"></canvas>
+
+    <div class="wrap">
+
+        <!-- NAV -->
+        <nav class="nav" id="nav">
+            <div class="logo">Finora<span>منصة إدارة الأعمال</span></div>
+            <div class="nl">
+                <a href="#about">من نحن</a>
+                <a href="#features">الميزات</a>
+                <a href="#how">كيف يعمل</a>
+                <a href="#pricing">الأسعار</a>
+                <a href="#contact">اتصل بنا</a>
+                <a href="/login" class="btn-n">تسجيل الدخول</a>
+            </div>
+        </nav>
+
+        <!-- HERO -->
+        <section class="hero">
+            <div class="hero-glow" style="width:700px;height:700px;top:-10%;right:-15%;background:rgba(99,102,241,.15)">
+            </div>
+            <div class="hero-glow" style="width:500px;height:500px;bottom:0;left:-10%;background:rgba(6,182,212,.11)">
+            </div>
+            <div>
+                <div class="badge"><span class="dot"></span> نظام SaaS عراقي — متكامل ومتطور</div>
+                <h1>أدِر كل عملك من<br><span class="gr">لوحة واحدة</span></h1>
+                <p class="sub">Finora يجمع الطلبات، المخزون، الحسابات، الموظفين، وتقارير الأرباح في منصة سحابية واحدة
+                    سريعة وآمنة.</p>
+                <div class="acts">
+                    <a href="#pricing" class="btn bp"><i class="fas fa-rocket"></i> ابدأ مجاناً</a>
+                    <a href="#features" class="btn bo"><i class="fas fa-layer-group"></i> استكشف الميزات</a>
+                </div>
+                <div class="stats">
+                    <div>
+                        <div class="stat-n">+1,200</div>
+                        <div class="stat-l">طلب يومياً</div>
+                    </div>
+                    <div>
+                        <div class="stat-n">12+</div>
+                        <div class="stat-l">ميزة</div>
+                    </div>
+                    <div>
+                        <div class="stat-n">99.9%</div>
+                        <div class="stat-l">وقت تشغيل</div>
+                    </div>
+                    <div>
+                        <div class="stat-n">3</div>
+                        <div class="stat-l">خطط مرنة</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- STRIP -->
+        <div class="strip">
+            <p>موثوق من التجار في كل المحافظات</p>
+            <div class="logos">
+                <span>بغداد</span><span>البصرة</span><span>النجف</span><span>أربيل</span><span>الموصل</span><span>كربلاء</span>
+            </div>
+        </div>
+
+        <!-- ABOUT -->
+        <section id="about">
+            <div
+                style="display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:60px;align-items:center;">
+                <div class="ai">
+                    <span class="sec-badge" style="background:rgba(99,102,241,.12);color:#a5b4fc;">📖 من نحن</span>
+                    <div class="sec-title" style="text-align:right">قصة Finora: نبني<br><span class="gr">مستقبل العمل
+                            الذكي</span></div>
+                    <p class="sub" style="text-align:right;margin:20px 0 30px">
+                        نحن فريق من المطورين العراقيين الذين يطمحون لتحويل قطاع الأعمال والشركات الناشئة في العراق من
+                        العمل اليدوي إلى الأتمتة الكاملة.
+                        أطلقنا Finora لنكون الشريك التقني الأول لكل تاجر طموح يبحث عن السيطرة على مخزونه وتوسيع مبيعاته.
+                    </p>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;text-align:right">
+                        <div>
+                            <div style="font-size:24px;font-weight:900;color:var(--b)">رؤيتنا</div>
+                            <p style="font-size:14px;color:var(--muted)">أن نكون النظام السحابي رقم 1 في العراق بحلول
+                                2027.</p>
+                        </div>
+                        <div>
+                            <div style="font-size:24px;font-weight:900;color:var(--p)">قيمنا</div>
+                            <p style="font-size:14px;color:var(--muted)">البساطة، الأمان، والسرعة في كل تفصيل.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="ai" style="position:relative">
+                    <div
+                        style="background:linear-gradient(135deg,rgba(99,102,241,.2),rgba(6,182,212,.1));padding:40px;border-radius:30px;border:1px solid var(--bord);backdrop-filter:blur(20px);">
+                        <img src="https://img.freepik.com/free-vector/digital-technology-background-with-abstract-data-design_53876-114515.jpg"
+                            style="width:100%;border-radius:20px;opacity:.8;mix-blend-mode:lighten" alt="About Finora">
+                        <div
+                            style="position:absolute;bottom:-20px;right:-20px;background:var(--card);padding:25px;border-radius:22px;border:1px solid var(--bord);box-shadow:0 20px 40px rgba(0,0,0,.4)">
+                            <div style="font-size:32px;font-weight:900;color:var(--g)">+5,000</div>
+                            <div style="font-size:13px;color:var(--muted)">عملية ناجحة يومياً</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- FEATURES -->
+        <section id="features">
+            <div class="tc ai">
+                <span class="sec-badge" style="background:rgba(99,102,241,.12);color:#a5b4fc;">⚡ الميزات</span>
+                <div class="sec-title">كل ما يحتاجه عملك</div>
+                <p class="sec-sub">من أول طلب حتى آخر تقرير مالي — Finora يغطي كل خطوة.</p>
+            </div>
+            <div class="fg ai">
+                <div class="fc" style="--hl:rgba(59,130,246,.1)">
+                    <div class="fi" style="background:rgba(59,130,246,.15)"><i class="fas fa-boxes"
+                            style="color:#3b82f6"></i></div>
+                    <h3>إدارة الطلبات</h3>
+                    <p>تتبع كامل من إنشاء الطلب حتى التوصيل. فلترة متقدمة حسب الحالة، الموظف، شركة النقل، والتاريخ.</p>
+                    <span class="tag" style="background:rgba(59,130,246,.12);color:#93c5fd">متاح في كل الخطط</span>
+                </div>
+                <div class="fc" style="--hl:rgba(139,92,246,.1)">
+                    <div class="fi" style="background:rgba(139,92,246,.15)"><i class="fas fa-cash-register"
+                            style="color:#8b5cf6"></i></div>
+                    <h3>نقطة البيع POS</h3>
+                    <p>واجهة كاشير خفيفة وسريعة، بحث فوري عن المنتجات، وإنشاء الطلبات في ثوانٍ.</p>
+                    <span class="tag" style="background:rgba(139,92,246,.12);color:#c4b5fd">متاح في كل الخطط</span>
+                </div>
+                <div class="fc" style="--hl:rgba(16,185,129,.1)">
+                    <div class="fi" style="background:rgba(16,185,129,.15)"><i class="fas fa-warehouse"
+                            style="color:#10b981"></i></div>
+                    <h3>المخزون الذكي</h3>
+                    <p>تتبع الكميات والتكاليف، تنبيهات المنتجات المنخفضة، وتقارير حركة المخزون اليومية.</p>
+                    <span class="tag" style="background:rgba(16,185,129,.12);color:#6ee7b7">متاح في كل الخطط</span>
+                </div>
+                <div class="fc" style="--hl:rgba(6,182,212,.1)">
+                    <div class="fi" style="background:rgba(6,182,212,.15)"><i class="fas fa-users"
+                            style="color:#06b6d4"></i></div>
+                    <h3>إدارة الزبائن</h3>
+                    <p>قاعدة بيانات كاملة مع سجل الطلبات والذمم والاتصال ورقم الهاتف والمدينة.</p>
+                    <span class="tag" style="background:rgba(6,182,212,.12);color:#67e8f9">متاح في كل الخطط</span>
+                </div>
+                <div class="fc" style="--hl:rgba(245,158,11,.1)">
+                    <div class="fi" style="background:rgba(245,158,11,.15)"><i class="fas fa-chart-line"
+                            style="color:#f59e0b"></i></div>
+                    <h3>تقارير مالية</h3>
+                    <p>إيرادات، مصروفات، أرباح صافية، وقيمة المخزون — بفترات زمنية مرنة وتحليل دقيق.</p>
+                    <span class="tag" style="background:rgba(245,158,11,.12);color:#fcd34d">الخطة المتقدمة+</span>
+                </div>
+                <div class="fc" style="--hl:rgba(99,102,241,.1)">
+                    <div class="fi" style="background:rgba(99,102,241,.15)"><i class="fas fa-user-tie"
+                            style="color:#6366f1"></i></div>
+                    <h3>الموظفون والأدوار</h3>
+                    <p>أضف موظفين بصلاحيات دقيقة RBAC، وتابع أداء كل فرد في الفريق.</p>
+                    <span class="tag" style="background:rgba(99,102,241,.12);color:#a5b4fc">الخطة المتقدمة+</span>
+                </div>
+                <div class="fc" style="--hl:rgba(20,184,166,.1)">
+                    <div class="fi" style="background:rgba(20,184,166,.15)"><i class="fas fa-truck"
+                            style="color:#14b8a6"></i></div>
+                    <h3>شركات النقل</h3>
+                    <p>ربط الطلبات بشركات النقل، كشوف الشحن، ومتابعة المناديب مع طباعة التقارير.</p>
+                    <span class="tag" style="background:rgba(20,184,166,.12);color:#5eead4">الخطة المتقدمة+</span>
+                </div>
+                <div class="fc" style="--hl:rgba(236,72,153,.1)">
+                    <div class="fi" style="background:rgba(236,72,153,.15)"><i class="fas fa-wallet"
+                            style="color:#ec4899"></i></div>
+                    <h3>التحصيل والمدفوعات</h3>
+                    <p>دفعات جزئية وكاملة، إدارة الذمم، وأرصدة نقدية وآجلة بدقة احترافية.</p>
+                    <span class="tag" style="background:rgba(236,72,153,.12);color:#f9a8d4">متاح في كل الخطط</span>
+                </div>
+                <div class="fc" style="--hl:rgba(249,115,22,.1)">
+                    <div class="fi" style="background:rgba(249,115,22,.15)"><i class="fas fa-handshake"
+                            style="color:#f97316"></i></div>
+                    <h3>الموردون والمشتريات</h3>
+                    <p>تتبع المديونيات، سجل المشتريات، ومدفوعات الموردين بصورة شفافة.</p>
+                    <span class="tag" style="background:rgba(249,115,22,.12);color:#fdba74">الخطة المتقدمة+</span>
+                </div>
+                <div class="fc" style="--hl:rgba(239,68,68,.1)">
+                    <div class="fi" style="background:rgba(239,68,68,.15)"><i class="fas fa-receipt"
+                            style="color:#ef4444"></i></div>
+                    <h3>المصروفات</h3>
+                    <p>تصنيف المصروفات اليومية وإدراجها تلقائياً في حساب صافي الأرباح.</p>
+                    <span class="tag" style="background:rgba(239,68,68,.12);color:#fca5a5">الخطة المتقدمة+</span>
+                </div>
+                <div class="fc" style="--hl:rgba(14,165,233,.1)">
+                    <div class="fi" style="background:rgba(14,165,233,.15)"><i class="fas fa-shield-halved"
+                            style="color:#0ea5e9"></i></div>
+                    <h3>صلاحيات RBAC</h3>
+                    <p>أنشئ أدواراً مخصصة لكل وظيفة وحدد بدقة ما يستطيع كل موظف رؤيته أو تحريره.</p>
+                    <span class="tag" style="background:rgba(14,165,233,.12);color:#7dd3fc">الخطة المتقدمة+</span>
+                </div>
+                <div class="fc" style="--hl:rgba(132,204,22,.1)">
+                    <div class="fi" style="background:rgba(132,204,22,.15)"><i class="fas fa-print"
+                            style="color:#84cc16"></i></div>
+                    <h3>الطباعة والفواتير</h3>
+                    <p>فواتير احترافية، كشوفات الشحن، كشف المناديب، وريبورتات مجمّعة بنقرة واحدة.</p>
+                    <span class="tag" style="background:rgba(132,204,22,.12);color:#bef264">متاح في كل الخطط</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- HOW -->
+        <section id="how" class="bg2 tc">
+            <div class="ai">
+                <span class="sec-badge" style="background:rgba(16,185,129,.12);color:#6ee7b7;">🚀 كيف يعمل</span>
+                <div class="sec-title">ابدأ في <span style="color:var(--g)">3 خطوات</span></div>
+                <p class="sec-sub">لا تعقيدات ولا إعدادات صعبة. سجّل وابدأ خلال دقيقتين.</p>
+            </div>
+            <div class="hw ai">
+                <div class="hs">
+                    <div class="hn">١</div>
+                    <h3>اختر خطتك</h3>
+                    <p>اختر الخطة التي تناسب حجم عملك وسجّل بياناتك الأساسية. لا يلزم بيانات بنكية.</p>
+                </div>
+                <div class="hs">
+                    <div class="hn">٢</div>
+                    <h3>أعدّ النظام</h3>
+                    <p>أضف موظفيك، منتجاتك، وزبائنك. الواجهة بالكامل عربية وسهلة بدون خبرة تقنية.</p>
+                </div>
+                <div class="hs">
+                    <div class="hn">٣</div>
+                    <h3>ابدأ وتابع</h3>
+                    <p>سجّل طلباتك، اطّلع على تقاريرك المالية اللحظية، وخذ قراراتك بثقة.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- PRICING -->
+        <section id="pricing" class="tc">
+            <div class="ai">
+                <span class="sec-badge" style="background:rgba(245,158,11,.12);color:#fcd34d;">💎 الأسعار</span>
+                <div class="sec-title">خطط واضحة <span style="color:var(--go)">بلا مفاجآت</span></div>
+                <p class="sec-sub">ادفع شهرياً أو وفّر 17% بالدفع السنوي. ترقية في أي وقت.</p>
+            </div>
+
+            <!-- Billing Toggle -->
+            <div style="display:flex;justify-content:center;margin-bottom:40px">
+                <div
+                    style="display:flex;background:rgba(15,23,42,.7);border:1px solid rgba(99,102,241,.25);border-radius:16px;padding:5px;gap:0">
+                    <button onclick="setBilling('monthly')" id="btn_monthly"
+                        style="padding:11px 30px;border-radius:12px;border:none;cursor:pointer;font-family:'Tajawal',sans-serif;font-size:15px;font-weight:700;transition:.25s;background:linear-gradient(135deg,#3b82f6,#6366f1);color:#fff;box-shadow:0 4px 18px rgba(99,102,241,.35)">
+                        شهري</button>
+                    <button onclick="setBilling('yearly')" id="btn_yearly"
+                        style="padding:11px 30px;border-radius:12px;border:none;cursor:pointer;font-family:'Tajawal',sans-serif;font-size:15px;font-weight:700;transition:.25s;background:transparent;color:#94a3b8">
+                        <span
+                            style="background:#10b981;color:#fff;font-size:10px;font-weight:800;padding:2px 8px;border-radius:8px;margin-left:6px">وفّر
+                            17%</span>سنوي</button>
+                </div>
+            </div>
+
+            <div class="pg ai">
+                <div class="pc">
+                    <div class="pn">🟢 الأساسية</div>
+                    <div class="pd">للمشاريع الصغيرة والناشئة</div>
+                    <div class="pr" style="color:var(--b)" id="price_basic">25,000 <small>د.ع / شهر</small></div>
+                    <div id="saving_basic"></div>
+                    <div class="div"></div>
+                    <ul class="pf">
+                        <li><i class="fas fa-check-circle ck"></i> 5 مستخدمين</li>
+                        <li><i class="fas fa-check-circle ck"></i> حتى 1,000 طلب شهرياً</li>
+                        <li><i class="fas fa-check-circle ck"></i> إدارة الطلبات والمخزون</li>
+                        <li><i class="fas fa-check-circle ck"></i> نقطة البيع POS</li>
+                        <li><i class="fas fa-check-circle ck"></i> إدارة الزبائن والتحصيل</li>
+                        <li><i class="fas fa-check-circle ck"></i> الطباعة والفواتير</li>
+                        <li style="opacity:.4"><i class="fas fa-times" style="color:#475569"></i> تقارير مالية متقدمة
+                        </li>
+                        <li style="opacity:.4"><i class="fas fa-times" style="color:#475569"></i> صلاحيات RBAC</li>
+                    </ul>
+                    <a id="link_basic" href="/signup?plan=basic&billing=monthly" class="bpl bpo">ابدأ بالخطة
+                        الأساسية</a>
+                </div>
+
+                <div class="pc hot">
+                    <div class="htag">⭐ الأكثر طلباً</div>
+                    <div class="pn">🔵 المتقدمة</div>
+                    <div class="pd">للمتاجر النامية والمتوسطة</div>
+                    <div class="pr" id="price_pro"
+                        style="background:linear-gradient(135deg,var(--b),var(--p));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent">
+                        45,000 <small style="-webkit-text-fill-color:var(--muted)">د.ع / شهر</small></div>
+                    <div id="saving_pro"></div>
+                    <div class="div"></div>
+                    <ul class="pf">
+                        <li><i class="fas fa-check-circle ck"></i> 15 مستخدم</li>
+                        <li><i class="fas fa-check-circle ck"></i> حتى 10,000 طلب شهرياً</li>
+                        <li><i class="fas fa-check-circle ck"></i> كل ميزات الخطة الأساسية</li>
+                        <li><i class="fas fa-check-circle ck"></i> تقارير مالية كاملة</li>
+                        <li><i class="fas fa-check-circle ck"></i> صلاحيات RBAC متقدمة</li>
+                        <li><i class="fas fa-check-circle ck"></i> الموردون والمشتريات</li>
+                        <li><i class="fas fa-check-circle ck"></i> كشوف مناديب التوصيل</li>
+                        <li><i class="fas fa-check-circle ck"></i> إدارة المصروفات</li>
+                        <li><i class="fas fa-check-circle ck"></i> شركات النقل المتعددة</li>
+                    </ul>
+                    <a id="link_pro" href="/signup?plan=pro&billing=monthly" class="bpl bpp">ابدأ الخطة المتقدمة</a>
+                </div>
+
+                <div class="pc">
+                    <div class="pn">🟣 الشركات</div>
+                    <div class="pd">للشركات الكبيرة — كل شيء بلا حدود</div>
+                    <div class="pr" style="color:var(--p)" id="price_enterprise">90,000 <small>د.ع / شهر</small></div>
+                    <div id="saving_enterprise"></div>
+                    <div class="div"></div>
+                    <ul class="pf">
+                        <li><i class="fas fa-check-circle ck"></i> مستخدمون غير محدودين</li>
+                        <li><i class="fas fa-check-circle ck"></i> طلبات غير محدودة</li>
+                        <li><i class="fas fa-check-circle ck"></i> كل ميزات الخطة المتقدمة</li>
+                        <li><i class="fas fa-check-circle ck"></i> دعم أولوية عالية</li>
+                        <li><i class="fas fa-check-circle ck"></i> تخصيص الفواتير والواجهة</li>
+                        <li><i class="fas fa-check-circle ck"></i> نسخ احتياطي دوري</li>
+                        <li><i class="fas fa-check-circle ck"></i> لوحة تحليلات للإدارة</li>
+                        <li><i class="fas fa-check-circle ck"></i> مساعد AI للأعمال</li>
+                    </ul>
+                    <a id="link_enterprise" href="/signup?plan=enterprise&billing=monthly" class="bpl bpo">ابدأ بخطة
+                        الشركات</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- TESTIMONIALS -->
+        <section class="bg2 tc">
+            <div class="ai">
+                <span class="sec-badge" style="background:rgba(236,72,153,.12);color:#f9a8d4;">💬 آراء العملاء</span>
+                <div class="sec-title">يقولون عن Finora</div>
+                <p class="sec-sub">آلاف التجار العراقيين يثقون بـ Finora لإدارة أعمالهم.</p>
+            </div>
+            <div class="tg ai">
+                <div class="tc2">
+                    <div class="stars">★★★★★</div>
+                    <p class="tt">"قبل Finora كنت أدير طلباتي على ورق. الآن كل شيء منظم وأعرف أرباحي بدقة كل يوم."</p>
+                    <div class="ta">
+                        <div class="av" style="background:linear-gradient(135deg,#3b82f6,#6366f1)">م</div>
+                        <div>
+                            <div class="an">محمد العبيدي</div>
+                            <div class="ar">تاجر إلكتروني — بغداد</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="tc2">
+                    <div class="stars">★★★★★</div>
+                    <p class="tt">"إدارة مناديب التوصيل أصبحت أسهل بكثير. أطبع الكشف وأعطيه للمندوب والحسابات واضحة."
+                    </p>
+                    <div class="ta">
+                        <div class="av" style="background:linear-gradient(135deg,#10b981,#06b6d4)">س</div>
+                        <div>
+                            <div class="an">سارة الجابري</div>
+                            <div class="ar">صاحبة متجر — البصرة</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="tc2">
+                    <div class="stars">★★★★★</div>
+                    <p class="tt">"نظام الصلاحيات رائع — كل موظف يشوف بس اللي يخصه. والتقارير المالية تساعدني على القرار
+                        الصح."</p>
+                    <div class="ta">
+                        <div class="av" style="background:linear-gradient(135deg,#8b5cf6,#ec4899)">ع</div>
+                        <div>
+                            <div class="an">علي الموسوي</div>
+                            <div class="ar">مدير شركة توزيع — النجف</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- FAQ -->
+        <section id="faq" class="tc">
+            <div class="ai">
+                <span class="sec-badge" style="background:rgba(6,182,212,.12);color:#67e8f9;">❓ أسئلة شائعة</span>
+                <div class="sec-title">عندك سؤال؟</div>
+                <p class="sec-sub">نجاوب على أكثر الأسئلة التي يسألها عملاؤنا.</p>
+            </div>
+            <div class="fl ai">
+                <div class="fi2">
+                    <div class="fq" onclick="tf(this)">هل أحتاج خبرة تقنية؟<div class="fic"><i class="fas fa-plus"></i>
+                        </div>
+                    </div>
+                    <div class="fa2">لا إطلاقاً. Finora مصمم ليكون بسيطاً بالكامل. واجهة عربية 100%، وكل شيء واضح من أول
+                        استخدام.</div>
+                </div>
+                <div class="fi2">
+                    <div class="fq" onclick="tf(this)">هل بياناتي آمنة؟<div class="fic"><i class="fas fa-plus"></i>
+                        </div>
+                    </div>
+                    <div class="fa2">نعم. بياناتك مشفّرة ومعزولة تماماً عن باقي المشتركين. نحتفظ بنسخ احتياطية دورية.
+                    </div>
+                </div>
+                <div class="fi2">
+                    <div class="fq" onclick="tf(this)">هل يمكنني الترقية لاحقاً؟<div class="fic"><i
+                                class="fas fa-plus"></i></div>
+                    </div>
+                    <div class="fa2">بالطبع. يمكنك الترقية في أي وقت. بياناتك ستبقى كاملة وتحصل على الميزات الجديدة
+                        فوراً.</div>
+                </div>
+                <div class="fi2">
+                    <div class="fq" onclick="tf(this)">هل يعمل على الموبايل؟<div class="fic"><i class="fas fa-plus"></i>
+                        </div>
+                    </div>
+                    <div class="fa2">نعم، Finora يعمل على جميع الأجهزة — كمبيوتر، تابلت، وجوال — بدون تثبيت أي تطبيق.
+                    </div>
+                </div>
+                <div class="fi2">
+                    <div class="fq" onclick="tf(this)">ماذا يحدث عند انتهاء الاشتراك؟<div class="fic"><i
+                                class="fas fa-plus"></i></div>
+                    </div>
+                    <div class="fa2">يُعلّق الوصول مؤقتاً حتى التجديد. بياناتك ستبقى محفوظة ولن تُحذف. التجديد يعيد كل
+                        شيء فوراً.</div>
+                </div>
+                <div class="fi2">
+                    <div class="fq" onclick="tf(this)">كيف أتواصل مع الدعم؟<div class="fic"><i class="fas fa-plus"></i>
+                        </div>
+                    </div>
+                    <div class="fa2">فريق الدعم متاح عبر واتساب ورسائل مباشرة من داخل النظام. خطة الشركات تحصل على
+                        أولوية.</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CONTACT -->
+        <section id="contact" class="bg2">
+            <div class="tc ai">
+                <span class="sec-badge" style="background:rgba(6,182,212,.12);color:#67e8f9;">📞 اتصل بنا</span>
+                <div class="sec-title">تواصل معنا الآن</div>
+                <p class="sec-sub">لديك استفسار أو تحتاج مساعدة في اختيار الخطة؟ فريقنا في خدمتك.</p>
+            </div>
+
+            <div
+                style="max-width:900px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:40px;">
+                <div class="ai">
+                    <div class="fc" style="margin-bottom:20px">
+                        <div style="display:flex;gap:15px;align-items:center">
+                            <div class="fi" style="background:rgba(37,211,102,.15);margin:0"><i class="fab fa-whatsapp"
+                                    style="color:#25d366"></i></div>
+                            <div>
+                                <h3 style="margin:0">واتساب</h3>
+                                <a href="https://wa.me/9647734049148" target="_blank"
+                                    style="color:inherit;text-decoration:none;display:block">07734049148</a>
+                                <a href="tel:07734049148"
+                                    style="color:var(--muted);font-size:12px;text-decoration:none">اتصال مباشر</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="fc" style="margin-bottom:20px">
+                        <div style="display:flex;gap:15px;align-items:center">
+                            <div class="fi" style="background:rgba(59,130,246,.15);margin:0"><i class="fas fa-envelope"
+                                    style="color:#3b82f6"></i></div>
+                            <div>
+                                <h3 style="margin:0">البريد الإلكتروني</h3>
+                                <a href="mailto:supermax@supermax.space"
+                                    style="color:inherit;text-decoration:none;display:block">supermax@supermax.space</a>
+                                <a href="mailto:supermax@supermax.space"
+                                    style="color:var(--muted);font-size:12px;text-decoration:none">إرسال بريد الآن</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="fc">
+                        <div style="display:flex;gap:15px;align-items:center">
+                            <div class="fi" style="background:rgba(245,158,11,.15);margin:0"><i
+                                    class="fas fa-map-marker-alt" style="color:#f59e0b"></i></div>
+                            <div>
+                                <h3 style="margin:0">الموقع</h3>
+                                <p style="margin:0">العراق - بغداد - الكرادة</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ai">
+                    <form action="/contact" method="POST"
+                        style="background:var(--card);padding:35px;border-radius:22px;border:1px solid var(--bord);backdrop-filter:blur(20px);">
+                        <div style="margin-bottom:20px">
+                            <label style="display:block;font-size:14px;margin-bottom:8px;color:var(--muted)">الاسم
+                                الكامل</label>
+                            <input type="text" name="name" required
+                                style="width:100%;padding:14px;background:rgba(15,23,42,.6);border:1px solid var(--bord);border-radius:12px;color:var(--text);font-family:'Tajawal',sans-serif;">
+                        </div>
+                        <div style="margin-bottom:20px">
+                            <label style="display:block;font-size:14px;margin-bottom:8px;color:var(--muted)">رقم
+                                الهاتف</label>
+                            <input type="tel" name="phone" required
+                                style="width:100%;padding:14px;background:rgba(15,23,42,.6);border:1px solid var(--bord);border-radius:12px;color:var(--text);font-family:'Tajawal',sans-serif;">
+                        </div>
+                        <div style="margin-bottom:25px">
+                            <label
+                                style="display:block;font-size:14px;margin-bottom:8px;color:var(--muted)">رسالتك</label>
+                            <textarea name="message" rows="4" required
+                                style="width:100%;padding:14px;background:rgba(15,23,42,.6);border:1px solid var(--bord);border-radius:12px;color:var(--text);font-family:'Tajawal',sans-serif;resize:none;"></textarea>
+                        </div>
+                        <button type="submit" class="btn bp" style="width:100%;justify-content:center">
+                            <i class="fas fa-paper-plane"></i> إرسال الرسالة
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- CTA -->
+        <div class="cta ai">
+            <h2>جاهز تبدأ مع Finora؟ 🚀</h2>
+            <p>انضم لآلاف التجار الذين يديرون أعمالهم بكفاءة أعلى.</p>
+            <a href="#pricing" class="btn bp" style="display:inline-flex"><i class="fas fa-bolt"></i> اشترك الآن</a>
+        </div>
+
+        <!-- FOOTER -->
+        <footer>
+            <div>
+                <div
+                    style="font-family:'Inter',sans-serif;font-size:22px;font-weight:900;background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px">
+                    Finora</div>
+                <p>منصة إدارة أعمال عراقية متكاملة &copy; 2025</p>
+            </div>
+            <div class="fl2">
+                <a href="#about">من نحن</a>
+                <a href="#features">الميزات</a>
+                <a href="#pricing">الأسعار</a>
+                <a href="/privacy">سياسة الخصوصية</a>
+                <a href="/terms">شروط الخدمة</a>
+            </div>
+        </footer>
+
+    </div>
+    <script>
+        // Animated background
+        const c = document.getElementById('bg'), x = c.getContext('2d');
+        let W, H, pts = [];
+        function resize() { W = c.width = innerWidth; H = c.height = innerHeight }
+        function init() { pts = []; for (let i = 0; i < 55; i++)pts.push({ x: Math.random() * W, y: Math.random() * H, r: Math.random() * 1.5 + .5, vx: (Math.random() - .5) * .28, vy: (Math.random() - .5) * .28, col: Math.random() > .6 ? '#6366f1' : '#06b6d4' }) }
+        function draw() {
+            x.clearRect(0, 0, W, H);
+            pts.forEach((p, i) => {
+                x.beginPath(); x.arc(p.x, p.y, p.r, 0, Math.PI * 2); x.fillStyle = p.col + '33'; x.fill();
+                pts.forEach((q, j) => { if (j <= i) return; const d = Math.hypot(p.x - q.x, p.y - q.y); if (d < 140) { x.beginPath(); x.moveTo(p.x, p.y); x.lineTo(q.x, q.y); x.strokeStyle = '#6366f1' + Math.floor((1 - d / 140) * 28).toString(16).padStart(2, '0'); x.lineWidth = .5; x.stroke() } });
+                p.x += p.vx; p.y += p.vy; if (p.x < 0 || p.x > W) p.vx *= -1; if (p.y < 0 || p.y > H) p.vy *= -1;
+            });
+            requestAnimationFrame(draw);
+        }
+        resize(); init(); draw();
+        window.addEventListener('resize', () => { resize(); init(); });
+
+        // Nav scroll
+        window.addEventListener('scroll', () => document.getElementById('nav').classList.toggle('sc', scrollY > 40));
+
+        // Scroll animations
+        const obs = new IntersectionObserver(e => e.forEach(n => { if (n.isIntersecting) n.target.classList.add('v') }), { threshold: .1, rootMargin: '0px 0px -40px 0px' });
+        document.querySelectorAll('.ai').forEach(el => obs.observe(el));
+
+        // FAQ
+        function tf(el) { const it = el.parentElement, op = it.classList.contains('op'); document.querySelectorAll('.fi2').forEach(i => i.classList.remove('op')); if (!op) it.classList.add('op') }
+
+        // ── Billing Toggle ──────────────────────────────────────────
+        const PRICES = {
+            basic: { monthly: 25000, yearly: 250000, name: 'الأساسية' },
+            pro: { monthly: 45000, yearly: 450000, name: 'المتقدمة' },
+            enterprise: { monthly: 90000, yearly: 900000, name: 'الشركات' }
+        };
+
+        function fmt(n) { return n.toLocaleString('ar-IQ') }
+
+        function setBilling(mode) {
+            const yearly = mode === 'yearly';
+            // Toggle button styles
+            const bm = document.getElementById('btn_monthly');
+            const by = document.getElementById('btn_yearly');
+            if (yearly) {
+                bm.style.background = 'transparent'; bm.style.color = '#94a3b8'; bm.style.boxShadow = 'none';
+                by.style.background = 'linear-gradient(135deg,#3b82f6,#6366f1)'; by.style.color = '#fff'; by.style.boxShadow = '0 4px 18px rgba(99,102,241,.35)';
+            } else {
+                by.style.background = 'transparent'; by.style.color = '#94a3b8'; by.style.boxShadow = 'none';
+                bm.style.background = 'linear-gradient(135deg,#3b82f6,#6366f1)'; bm.style.color = '#fff'; bm.style.boxShadow = '0 4px 18px rgba(99,102,241,.35)';
+            }
+            // Update each plan price
+            Object.keys(PRICES).forEach(key => {
+                const p = PRICES[key];
+                const prEl = document.getElementById('price_' + key);
+                const svEl = document.getElementById('saving_' + key);
+                const lnEl = document.getElementById('link_' + key);
+                const price = yearly ? p.yearly : p.monthly;
+                const unit = yearly ? 'سنة' : 'شهر';
+                if (prEl) prEl.innerHTML = fmt(price) + ' <small>د.ع / ' + unit + '</small>';
+                if (svEl) svEl.innerHTML = yearly
+                    ? '<span style="display:inline-block;margin-top:6px;font-size:12px;background:rgba(16,185,129,.15);color:#6ee7b7;padding:4px 12px;border-radius:8px;font-weight:700;">🎉 وفّر ' + fmt(p.monthly * 12 - p.yearly) + ' د.ع سنوياً</span>'
+                    : '';
+                if (lnEl) lnEl.href = lnEl.href.replace(/billing=\w+/, 'billing=' + mode);
+            });
+        }
+    </script>
+
+</body>
+
+</html>

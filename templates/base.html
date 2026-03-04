@@ -1,0 +1,2568 @@
+<!DOCTYPE html>
+<html lang="{{ current_lang }}" dir="{% if current_lang in ['ar', 'ku'] %}rtl{% else %}ltr{% endif %}">
+
+<head>
+  <meta charset="UTF-8">
+  <title>{% block title %}Finora{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Finora - نظام محاسبة متكامل لإدارة المبيعات والمخزون">
+  <meta name="theme-color" content="#0a0f1c">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='IMG_0200.png') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='IMG_0200.png') }}">
+
+  <script>
+    // Apply theme early (avoid flash) using: user choice -> system settings -> device preference.
+    (function () {
+      try {
+        var saved = localStorage.getItem("theme");
+        var serverDefault = "{{ system_settings.default_theme if system_settings else 'system' }}";
+        var theme;
+
+        if (saved === "light" || saved === "dark") {
+          theme = saved;
+        } else if (serverDefault === "light" || serverDefault === "dark") {
+          theme = serverDefault;
+        } else {
+          theme = (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+        }
+
+        document.documentElement.setAttribute("data-theme", theme);
+
+        // Font scale from system settings (sm / md / lg)
+        var fontScale = "{{ system_settings.font_scale if system_settings else 'md' }}";
+        document.documentElement.setAttribute("data-font-scale", fontScale);
+      } catch (e) {
+        document.documentElement.setAttribute("data-theme", "dark");
+      }
+    })();
+  </script>
+
+  <!-- Fonts & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+  <!-- DataTables CSS -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.dataTables.min.css">
+
+  <!-- Global Enhancements -->
+  <link rel="stylesheet" href="/static/css/enhancements.css">
+  <link rel="stylesheet" href="/static/css/global-improvements.css">
+  <link rel="stylesheet" href="/static/css/mobile-responsive.css">
+
+  <style>
+    /* ======================================================
+   THEME (DARK – ENHANCED PROFESSIONAL)
+====================================================== */
+    :root {
+      --bg: #0a0f1c;
+      --sidebar: #0d1424;
+      --card: #111827;
+      --card-alt: #0f172a;
+      --border: rgba(255, 255, 255, 0.09);
+      --border-light: rgba(255, 255, 255, 0.05);
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --primary-glow: rgba(59, 130, 246, 0.15);
+      --success: #10b981;
+      --success-glow: rgba(16, 185, 129, 0.15);
+      --danger: #ef4444;
+      --danger-hover: #dc2626;
+      --danger-glow: rgba(239, 68, 68, 0.15);
+      --warning: #f59e0b;
+      --accent: #8b5cf6;
+      --radius: 16px;
+      --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+      --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.2);
+      --gradient-primary: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      --gradient-sidebar: linear-gradient(180deg, #0d1424 0%, #070b16 100%);
+    }
+
+    /* ======================================================
+   GLOBAL ENHANCEMENTS
+====================================================== */
+    * {
+      box-sizing: border-box;
+      font-family: 'Tajawal', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      font-weight: 400;
+      overflow-x: hidden;
+    }
+
+    /* Smooth scrolling */
+    html {
+      scroll-behavior: smooth;
+    }
+
+    /* Selection color */
+    ::selection {
+      background: var(--primary-glow);
+      color: var(--text);
+    }
+
+    /* ======================================================
+   LAYOUT – RTL
+====================================================== */
+    .app {
+      display: flex;
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+      isolation: isolate;
+    }
+
+    /* ======================================================
+   SIDEBAR – DESKTOP: FIXED RIGHT (RTL)
+   Off-flow so content uses margin for space
+====================================================== */
+    .sidebar {
+      width: 280px;
+      min-width: 280px;
+      background: var(--gradient-sidebar);
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      border-left: 1px solid var(--border-light);
+      box-shadow: var(--shadow-sm);
+      /* Desktop: fixed right, RTL */
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: auto;
+      z-index: 50;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Content area offset so it doesn’t sit under fixed sidebar */
+    .sidebar~.content {
+      margin-right: 280px;
+      min-width: 0;
+    }
+
+    .sidebar-mobile-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 32px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .sidebar-mobile-header .brand {
+      margin-bottom: 0;
+      padding-bottom: 0;
+      border-bottom: none;
+      flex: 1;
+      text-align: right;
+    }
+
+    .sidebar-close-btn {
+      display: none;
+      width: 44px;
+      height: 44px;
+      min-width: 44px;
+      min-height: 44px;
+      border: none;
+      border-radius: 12px;
+      background: rgba(239, 68, 68, 0.2);
+      color: #ef4444;
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      transition: background 0.2s, color 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .sidebar-close-btn:hover,
+    .sidebar-close-btn:active {
+      background: #ef4444;
+      color: #fff;
+    }
+
+    @media (min-width: 901px) {
+      .sidebar-mobile-header {
+        justify-content: center;
+      }
+
+      .sidebar-mobile-header .brand {
+        flex: none;
+        text-align: center;
+      }
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      text-align: center;
+      margin-bottom: 32px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .brand-logo {
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
+      object-fit: contain;
+    }
+
+    .brand-text {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      background: var(--gradient-primary);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .menu {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex: 1;
+    }
+
+    .menu a,
+    .menu .menu-group-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 18px;
+      border-radius: 12px;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      font-weight: 500;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .menu a i {
+      width: 20px;
+      text-align: center;
+      font-size: 18px;
+      transition: transform 0.2s;
+    }
+
+    .menu a:hover,
+    .menu .menu-group-header:hover {
+      background: rgba(59, 130, 246, 0.1);
+      color: var(--text);
+      transform: translateX(-4px);
+      /* RTL: move toward start (right) */
+    }
+
+    .menu a:hover i {
+      transform: scale(1.1);
+    }
+
+    .menu a.active,
+    .menu .menu-group-header.active {
+      background: var(--primary-glow);
+      color: var(--text);
+      border-left: 4px solid var(--primary);
+      font-weight: 600;
+      transform: translateX(0);
+    }
+
+    .menu a.active::before,
+    .menu .menu-group-header.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      width: 3px;
+      background: var(--primary);
+      border-radius: 0 2px 2px 0;
+    }
+
+    .menu a.active i,
+    .menu .menu-group-header.active i {
+      transform: scale(1.15);
+      color: var(--primary);
+    }
+
+    .menu-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .menu-group-links {
+      display: none;
+      flex-direction: column;
+      gap: 4px;
+      margin-right: 32px;
+    }
+
+    .menu-group.open .menu-group-links {
+      display: flex;
+    }
+
+    .menu-group-header-icon {
+      margin-right: auto;
+      font-size: 12px;
+    }
+
+    /* ======================================================
+   CONTENT
+====================================================== */
+    .content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      background: var(--bg);
+    }
+
+    .page-main {
+      flex: 1;
+    }
+
+    /* ======================================================
+   TOPBAR ENHANCEMENTS
+====================================================== */
+    .topbar {
+      background: var(--card);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-light);
+      padding: 16px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 40;
+    }
+
+    .topbar-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .page-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .page-title::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      background: var(--primary);
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .user-box {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 14px;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: 12px;
+      background: var(--primary-soft, rgba(59, 130, 246, 0.1));
+      transition: all 0.3s ease;
+      border: 1px solid var(--border-light);
+    }
+
+    .user-info:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--gradient-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      color: white;
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+      transition: transform 0.3s ease;
+    }
+
+    .avatar:hover {
+      transform: scale(1.05);
+    }
+
+    .user-info {
+      cursor: pointer;
+      position: relative;
+    }
+
+    /* ======================================================
+   PROFILE MODAL (PREMIUM)
+====================================================== */
+    .profile-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      animation: modalFadeIn 0.3s ease;
+    }
+
+    @keyframes modalFadeIn {
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+
+    .profile-card {
+      background: var(--card);
+      width: 400px;
+      max-width: 90%;
+      border-radius: 24px;
+      padding: 32px;
+      border: 1px solid var(--border);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      position: relative;
+      animation: cardSlideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes cardSlideUp {
+      from {
+        transform: translateY(20px) scale(0.95);
+      }
+
+      to {
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .profile-header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .profile-avatar-wrapper {
+      position: relative;
+      width: 100px;
+      height: 100px;
+      margin: 0 auto 16px;
+    }
+
+    .profile-avatar {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: var(--gradient-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      font-weight: 800;
+      color: white;
+      box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+      overflow: hidden;
+    }
+
+    .profile-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .avatar-edit-btn {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      width: 32px;
+      height: 32px;
+      background: var(--primary);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 3px solid var(--card);
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .profile-section-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+      margin-top: 24px;
+      display: block;
+    }
+
+    .profile-field {
+      margin-bottom: 16px;
+    }
+
+    .profile-input {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 16px;
+      color: var(--text);
+      font-weight: 500;
+      outline: none;
+      transition: all 0.3s;
+    }
+
+    .profile-input:focus {
+      border-color: var(--primary);
+      background: rgba(255, 255, 255, 0.08);
+      box-shadow: 0 0 0 4px var(--primary-glow);
+    }
+
+    .settings-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .setting-item {
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.2s;
+      font-size: 13px;
+    }
+
+    .setting-item:hover {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: var(--border-light);
+    }
+
+    .setting-item.active {
+      background: var(--primary-glow);
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border-light);
+    }
+
+    .btn-save {
+      flex: 1;
+      background: var(--gradient-primary);
+      color: white;
+    }
+
+    .btn-close {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text);
+    }
+
+    .logout-btn-modal {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px;
+      width: 100%;
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--danger);
+      border-radius: 14px;
+      text-decoration: none;
+      font-weight: 700;
+      margin-top: 16px;
+      transition: all 0.3s;
+      border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+
+    .logout-btn-modal:hover {
+      background: var(--danger);
+      color: white;
+      transform: translateY(-2px);
+    }
+
+    .logout-bar {
+      margin-left: 10px;
+      border-left: 1px solid var(--border);
+      padding-left: 10px;
+    }
+
+    .theme-toggle-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(15, 23, 42, 0.35);
+      color: var(--text);
+      cursor: pointer;
+      transition: background 0.2s, transform 0.2s, border-color 0.2s;
+    }
+
+    :root[data-theme="light"] .theme-toggle-btn {
+      background: rgba(255, 255, 255, 0.9);
+    }
+
+    .theme-toggle-btn:hover {
+      background: rgba(59, 130, 246, 0.12);
+      border-color: var(--border-light);
+      transform: translateY(-1px);
+    }
+
+    .theme-toggle-btn:active {
+      transform: translateY(0);
+    }
+
+    .assistant-quick-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(15, 23, 42, 0.35);
+      color: var(--text);
+      cursor: pointer;
+      transition: background 0.2s, transform 0.2s, border-color 0.2s;
+      text-decoration: none;
+    }
+
+    :root[data-theme="light"] .assistant-quick-btn {
+      background: rgba(255, 255, 255, 0.9);
+    }
+
+    .assistant-quick-btn:hover {
+      background: rgba(59, 130, 246, 0.12);
+      border-color: var(--border-light);
+      transform: translateY(-1px);
+    }
+
+    .assistant-quick-btn:active {
+      transform: translateY(0);
+    }
+
+    /* ======================================================
+   MAIN CONTENT ENHANCEMENTS
+====================================================== */
+    main {
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      flex: 1;
+      animation: fadeIn 0.5s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* ======================================================
+   CARD ENHANCEMENTS
+====================================================== */
+    .card {
+      background: linear-gradient(180deg, var(--card) 0%, var(--card-alt) 100%);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 26px;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background: var(--gradient-primary);
+      opacity: 0.7;
+    }
+
+    .card:hover {
+      box-shadow: var(--shadow);
+      transform: translateY(-2px);
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+      margin: 0;
+    }
+
+    /* ======================================================
+   TABLE ENHANCEMENTS
+====================================================== */
+    .table-container {
+      overflow-x: auto;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--card-alt);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 800px;
+    }
+
+    th,
+    td {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-light);
+      text-align: right;
+      transition: background 0.2s;
+    }
+
+    th {
+      color: var(--text-muted);
+      font-weight: 600;
+      background: rgba(255, 255, 255, 0.02);
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 2px solid var(--border);
+    }
+
+    tbody tr {
+      transition: all 0.2s ease;
+    }
+
+    tbody tr:hover {
+      background: rgba(59, 130, 246, 0.05);
+      transform: scale(1.002);
+    }
+
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    /* ======================================================
+   BUTTON ENHANCEMENTS
+====================================================== */
+    button {
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      border: none;
+      outline: none;
+      font-weight: 500;
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border-radius: 12px;
+      font-size: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+      transition: left 0.7s;
+    }
+
+    .btn:hover::after {
+      left: 100%;
+    }
+
+    .btn-primary {
+      background: var(--gradient-primary);
+      color: #fff;
+      box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, var(--success), #22d3ee);
+      color: #fff;
+      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, var(--danger), #f97316);
+      color: #fff;
+      box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .btn-outline:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: var(--primary);
+    }
+
+    /* ======================================================
+   FOOTER ENHANCEMENTS – ثابت في الأسفل
+====================================================== */
+    .footer {
+      margin-top: auto;
+      text-align: center;
+      padding: 20px;
+      font-size: 14px;
+      color: var(--text-dim);
+      border-top: 1px solid var(--border-light);
+      background: rgba(17, 24, 39, 0.5);
+      backdrop-filter: blur(10px);
+    }
+
+    .footer a {
+      color: var(--primary);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .footer a:hover {
+      color: var(--accent);
+      text-decoration: underline;
+    }
+
+    /* ======================================================
+   TOAST NOTIFICATIONS
+====================================================== */
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      z-index: 10000;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-width: 400px;
+    }
+
+    .toast {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      animation: slideInLeft 0.3s ease-out;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .toast::before {
+      content: '';
+      position: absolute;
+      right: 0;
+      top: 0;
+      width: 4px;
+      height: 100%;
+      background: var(--primary);
+    }
+
+    .toast.success::before {
+      background: var(--success);
+    }
+
+    .toast.error::before {
+      background: var(--danger);
+    }
+
+    .toast.warning::before {
+      background: var(--warning);
+    }
+
+    @keyframes slideInLeft {
+      from {
+        transform: translateX(-100%);
+        opacity: 0;
+      }
+
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    .toast.fade-out {
+      animation: fadeOut 0.3s ease-out forwards;
+    }
+
+    @keyframes fadeOut {
+      to {
+        opacity: 0;
+        transform: translateX(-100%);
+      }
+    }
+
+    .toast i {
+      font-size: 20px;
+    }
+
+    .toast.success i {
+      color: var(--success);
+    }
+
+    .toast.error i {
+      color: var(--danger);
+    }
+
+    .toast.warning i {
+      color: var(--warning);
+    }
+
+    .toast.info i {
+      color: var(--primary);
+    }
+
+    .toast-message {
+      flex: 1;
+      color: var(--text);
+      font-size: 14px;
+    }
+
+    .toast-close {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 18px;
+      padding: 0;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+
+    .toast-close:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text);
+    }
+
+    /* ======================================================
+   LOADING SPINNER
+====================================================== */
+    .loader {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255, 255, 255, 0.2);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+
+    .loading-overlay.show {
+      display: flex;
+    }
+
+    .loading-spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid rgba(255, 255, 255, 0.1);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    /* ======================================================
+   RESPONSIVE ENHANCEMENTS
+====================================================== */
+    .toggle {
+      display: none;
+      font-size: 24px;
+      cursor: pointer;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      color: var(--text);
+      transition: all 0.3s;
+      z-index: 1001;
+    }
+
+    .toggle:hover {
+      background: var(--primary);
+      color: white;
+      transform: scale(1.05);
+    }
+
+    .toggle:active {
+      transform: scale(0.95);
+    }
+
+    /* ======================================================
+   RESPONSIVE DESIGN - TABLET
+====================================================== */
+    @media (max-width: 1024px) {
+      .sidebar {
+        width: 260px;
+      }
+
+      .topbar {
+        padding: 16px 24px;
+      }
+
+      main {
+        padding: 24px;
+      }
+
+      .card {
+        padding: 24px;
+      }
+
+      .menu a {
+        padding: 12px 16px;
+        font-size: 14px;
+      }
+
+      .brand {
+        font-size: 20px;
+        margin-bottom: 28px;
+      }
+    }
+
+    /* ======================================================
+   RESPONSIVE – MOBILE: OFF-CANVAS SIDEBAR (RTL, FROM RIGHT)
+   Transform-based sliding, GPU-friendly; overlay + scroll lock
+====================================================== */
+    @media (max-width: 900px) {
+
+      /* Content full width when drawer is used */
+      .sidebar~.content {
+        margin-right: 0;
+      }
+
+      .sidebar {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: auto;
+        width: 280px;
+        /* Closed: off-canvas to the right (RTL) */
+        transform: translate3d(100%, 0, 0);
+        transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s;
+        z-index: 1000;
+        box-shadow: none;
+        pointer-events: none;
+        will-change: transform;
+      }
+
+      .sidebar.show {
+        transform: translate3d(0, 0, 0);
+        box-shadow: -25px 0 50px rgba(0, 0, 0, 0.5);
+        pointer-events: auto;
+        will-change: auto;
+      }
+
+      /* Overlay: single layer, fade-in, below sidebar */
+      .app.sidebar-open::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        z-index: 999;
+        animation: sidebarOverlayIn 0.3s ease-out forwards;
+        pointer-events: auto;
+      }
+
+      @keyframes sidebarOverlayIn {
+        from {
+          opacity: 0;
+        }
+
+        to {
+          opacity: 1;
+        }
+      }
+
+      .toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        min-height: 44px;
+      }
+
+      .sidebar-close-btn {
+        display: flex !important;
+      }
+
+      .content {
+        width: 100%;
+      }
+
+      main {
+        padding: 20px;
+      }
+
+      .topbar {
+        padding: 14px 20px;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+
+      .card {
+        padding: 20px;
+      }
+
+      .card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+      }
+
+      table {
+        min-width: 600px;
+        font-size: 13px;
+      }
+
+      th,
+      td {
+        padding: 12px 14px;
+        font-size: 13px;
+      }
+
+      .table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+      }
+
+      .toast-container {
+        left: 10px;
+        right: 10px;
+        max-width: none;
+      }
+
+      .user-box {
+        font-size: 12px;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .user-info {
+        padding: 6px 10px;
+      }
+
+      .avatar {
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
+      }
+
+      .logout {
+        padding: 8px 14px;
+        font-size: 12px;
+      }
+
+      .menu a {
+        padding: 12px 16px;
+        font-size: 14px;
+      }
+
+      .brand {
+        font-size: 20px;
+        margin-bottom: 24px;
+        padding-bottom: 12px;
+      }
+    }
+
+    /* ======================================================
+   RESPONSIVE DESIGN - MOBILE PORTRAIT
+====================================================== */
+    @media (max-width: 640px) {
+      .sidebar {
+        width: 280px;
+        box-shadow: 25px 0 50px rgba(0, 0, 0, 0.6);
+      }
+
+      main {
+        padding: 16px;
+        gap: 16px;
+      }
+
+      .card {
+        padding: 18px;
+        border-radius: 16px;
+      }
+
+      .card-header {
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+
+      .card-title {
+        font-size: 16px;
+        line-height: 1.4;
+      }
+
+      .page-title {
+        font-size: 16px;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .page-title::before {
+        width: 6px;
+        height: 6px;
+      }
+
+      .topbar {
+        padding: 12px 14px;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        grid-auto-rows: auto;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .topbar-left {
+        min-width: 0;
+        grid-column: 1 / 2;
+      }
+
+      .topbar-actions {
+        grid-column: 2 / 3;
+        justify-self: end;
+        align-self: start;
+      }
+
+      .theme-toggle-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+      }
+
+      .assistant-quick-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+      }
+
+      .page-title {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .brand {
+        font-size: 20px;
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+      }
+
+      .menu a {
+        padding: 14px 16px;
+        font-size: 14px;
+        gap: 14px;
+        border-radius: 12px;
+      }
+
+      .menu a i {
+        font-size: 18px;
+        width: 20px;
+      }
+
+      table {
+        min-width: 600px;
+        font-size: 13px;
+      }
+
+      th,
+      td {
+        padding: 12px 14px;
+        font-size: 13px;
+      }
+
+      .table-container {
+        border-radius: 12px;
+        margin: 0 -16px;
+        padding: 0 16px;
+      }
+
+      .user-box {
+        width: 100%;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+        order: 3;
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+      }
+
+      .user-info {
+        min-width: 0;
+        max-width: 100%;
+      }
+
+      .user-info span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .logout {
+        padding: 10px 16px;
+        font-size: 13px;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+
+      .btn {
+        padding: 10px 18px;
+        font-size: 13px;
+      }
+
+      input,
+      textarea,
+      select {
+        padding: 10px 14px;
+        font-size: 13px;
+      }
+    }
+
+    /* ======================================================
+   RESPONSIVE DESIGN - SMALL MOBILE
+====================================================== */
+    @media (max-width: 480px) {
+      .sidebar {
+        width: 280px;
+      }
+
+      main {
+        padding: 12px;
+        gap: 12px;
+      }
+
+      .card {
+        padding: 16px;
+        border-radius: 14px;
+      }
+
+      .card-title {
+        font-size: 15px;
+      }
+
+      .page-title {
+        font-size: 15px;
+      }
+
+      .page-title::before {
+        width: 5px;
+        height: 5px;
+      }
+
+      .brand {
+        font-size: 18px;
+        margin-bottom: 20px;
+      }
+
+      .menu a {
+        padding: 12px 14px;
+        font-size: 13px;
+        gap: 12px;
+      }
+
+      .menu a i {
+        font-size: 16px;
+        width: 18px;
+      }
+
+      table {
+        min-width: 500px;
+        font-size: 12px;
+      }
+
+      th,
+      td {
+        padding: 10px 12px;
+        font-size: 12px;
+      }
+
+      .btn {
+        padding: 10px 16px;
+        font-size: 13px;
+        width: 100%;
+        justify-content: center;
+      }
+
+      .toast-container {
+        left: 8px;
+        right: 8px;
+        bottom: 20px;
+        top: auto;
+      }
+
+      .toast {
+        padding: 14px 16px;
+        font-size: 13px;
+        border-radius: 12px;
+      }
+
+      .topbar {
+        padding: 10px 12px;
+      }
+
+      .toggle {
+        width: 40px;
+        height: 40px;
+        padding: 8px;
+        font-size: 20px;
+      }
+    }
+
+    /* ======================================================
+   RESPONSIVE DESIGN - LANDSCAPE ORIENTATION
+====================================================== */
+    @media (max-height: 600px) and (orientation: landscape) {
+      .sidebar {
+        overflow-y: auto;
+        padding: 16px;
+      }
+
+      .brand {
+        margin-bottom: 20px;
+        padding-bottom: 12px;
+        font-size: 18px;
+      }
+
+      .menu a {
+        padding: 10px 14px;
+      }
+
+      main {
+        padding: 16px;
+      }
+
+      .topbar {
+        padding: 10px 20px;
+      }
+    }
+
+    /* ======================================================
+   TOUCH DEVICE OPTIMIZATIONS
+====================================================== */
+    @media (hover: none) and (pointer: coarse) {
+      .menu a:hover {
+        transform: none;
+      }
+
+      .btn:hover {
+        transform: none;
+      }
+
+      .btn:active {
+        transform: scale(0.98);
+      }
+
+      .menu a:active {
+        background: rgba(59, 130, 246, 0.2);
+      }
+
+      input,
+      textarea,
+      select {
+        font-size: 16px;
+        /* Prevent zoom on iOS */
+      }
+    }
+
+    /* Scrollbar Styling */
+    ::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      border: 2px solid transparent;
+      background-clip: padding-box;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Loading animation for future use */
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.5;
+      }
+    }
+
+    .loading {
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    /* ======================================================
+   INPUT ENHANCEMENTS
+====================================================== */
+    input,
+    textarea,
+    select {
+      width: 100%;
+      padding: 12px 16px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text);
+      font-size: 14px;
+      font-family: inherit;
+      transition: all 0.3s ease;
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus {
+      outline: none;
+      border-color: var(--primary);
+      background: rgba(255, 255, 255, 0.05);
+      box-shadow: 0 0 0 3px var(--primary-glow);
+    }
+
+    input::placeholder,
+    textarea::placeholder {
+      color: var(--text-dim);
+    }
+
+    /* ======================================================
+   BADGE ENHANCEMENTS
+====================================================== */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text);
+    }
+
+    .badge-success {
+      background: var(--success-glow);
+      color: var(--success);
+    }
+
+    .badge-danger {
+      background: var(--danger-glow);
+      color: var(--danger);
+    }
+
+    .badge-warning {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--warning);
+    }
+
+    .badge-primary {
+      background: var(--primary-glow);
+      color: var(--primary);
+    }
+
+    /* ======================================================
+   TOOLTIP
+====================================================== */
+    .tooltip {
+      position: relative;
+      cursor: help;
+    }
+
+    .tooltip::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%) translateY(-8px);
+      background: var(--card);
+      color: var(--text);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.3s;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      z-index: 1000;
+    }
+
+    .tooltip:hover::after {
+      opacity: 1;
+      transform: translateX(-50%) translateY(-4px);
+    }
+  </style>
+  <link rel="stylesheet" href="/static/css/design-refresh.css">
+  <link rel="stylesheet" href="/static/css/saas-admin.css">
+</head>
+
+<body>
+
+  <div class="app">
+
+    <!-- ================= SIDEBAR (جميع المستخدمين المسجلين — العناصر حسب الصلاحيات) ================= -->
+    {% set is_payment_flow = request.path.startswith('/payment') or request.path.startswith('/signup') or
+    request.path.startswith('/pricing') or request.path.startswith('/login') %}
+    {% if session.get("user_id") and not is_payment_flow %}
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-mobile-header">
+        <div class="brand">
+          <img src="{{ url_for('static', filename='IMG_0200.png') }}" alt="Finora" class="brand-logo">
+          <span class="brand-text">Finora</span>
+        </div>
+        <button type="button" class="sidebar-close-btn" onclick="closeSidebar()" aria-label="إغلاق القائمة"><i
+            class="fa fa-times"></i></button>
+      </div>
+
+      <nav class="menu">
+        <a href="/"><i class="fa fa-chart-line"></i> {{ _('dashboard') }}</a>
+        {% if current_employee and (current_employee.role == "admin" or can_use_pos) %}
+        <a href="/pos"><i class="fa fa-cash-register"></i> {{ _('dashboard_welcome_pos') }}</a>
+        {% endif %}
+        {% if current_employee and (current_employee.role == "admin" or can_manage_inventory) %}
+        <a href="/inventory"><i class="fa fa-box"></i> {{ _('inventory') }}</a>
+        <a href="/inventory/audit" style="padding-right: 30px; font-size: 0.9em;"><i class="fa fa-barcode"></i> {{
+          _('inventory_audit') }}</a>
+        {% endif %}
+        {% if current_employee and (current_employee.role == "admin" or can_manage_inventory) %}
+        {% if plan_has("purchases") %}
+        <a href="/purchases"><i class="fa fa-shopping-cart"></i> {{ _('purchases') }}</a>
+        {% else %}
+        <a href="/upgrade" style="opacity:.55" title="{{ _('upgrade_plan') }}"><i class="fa fa-shopping-cart"></i>
+          {{ _('purchases') }} <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
+        {% endif %}
+        {% endif %}
+        {% if current_employee and (current_employee.role == "admin" or can_manage_suppliers) %}
+        {% if plan_has("suppliers") %}
+        <a href="/suppliers"><i class="fa fa-industry"></i> {{ _('suppliers') }}</a>
+        {% else %}
+        <a href="/upgrade" style="opacity:.55" title="{{ _('upgrade_plan') }}"><i class="fa fa-industry"></i> {{
+          _('suppliers') }} <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
+        {% endif %}
+        {% endif %}
+        {% if current_employee and (current_employee.role == "admin" or can_manage_customers) %}
+        <a href="/customers"><i class="fa fa-users"></i> {{ _('customers') }}</a>
+        {% endif %}
+        {% if current_employee and (current_employee.role == "admin" or can_see_orders) %}
+        <div class="menu-group {% if request.path.startswith('/orders') %}open{% endif %}">
+          <button type="button"
+            class="menu-group-header {% if request.path.startswith('/orders') %}active{% endif %}"
+            onclick="this.parentElement.classList.toggle('open')">
+            <i class="fa fa-receipt"></i>
+            {{ _('orders') }}
+            <span class="menu-group-header-icon">
+              <i class="fa fa-chevron-down"></i>
+            </span>
+          </button>
+          <div class="menu-group-links">
+            <a href="/orders" class="{% if request.path == '/orders/' or request.path == '/orders' %}active{% endif %}">
+              <i class="fa fa-list"></i> {{ _('orders_nav_all') }}
+            </a>
+            <a href="/orders/ordered" class="{% if '/orders/ordered' in request.path %}active{% endif %}">
+              <i class="fa fa-box-open"></i> {{ _('orders_status_ordered') }}
+            </a>
+            <a href="/orders/shipping" class="{% if '/orders/shipping' in request.path %}active{% endif %}">
+              <i class="fa fa-truck-moving"></i> {{ _('orders_status_shipping') }}
+            </a>
+            <a href="/orders/delivered" class="{% if '/orders/delivered' in request.path %}active{% endif %}">
+              <i class="fa fa-arrow-circle-up"></i> {{ _('orders_status_delivered') }}
+            </a>
+            <a href="/orders/cancelled" class="{% if '/orders/cancelled' in request.path %}active{% endif %}">
+              <i class="fa fa-trash-alt"></i> {{ _('orders_nav_cancelled') }}
+            </a>
+          </div>
+        </div>
+        {% endif %}
+        {% if current_employee and (current_employee.role == "admin" or can_see_shipping) %}
+        {% if plan_has("shipping") %}
+        <a href="/shipping"><i class="fa fa-truck"></i> {{ _('shipping') }}</a>
+        {% else %}
+        <a href="/upgrade" style="opacity:.55" title="{{ _('upgrade_plan') }}"><i class="fa fa-truck"></i> {{
+          _('shipping') }} <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
+        {% endif %}
+        {% endif %}
+        {% if current_employee and (current_employee.role == "admin" or can_see_agents) %}
+        {% if plan_has("agents") %}
+        <a href="/agents"><i class="fa fa-user-tie"></i> {{ _('delivery_agents') }}</a>
+        {% else %}
+        <a href="/upgrade" style="opacity:.55" title="{{ _('upgrade_plan') }}"><i class="fa fa-user-tie"></i> {{
+          _('delivery_agents') }} <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
+        {% endif %}
+        {% endif %}
+        {% if current_employee and (current_employee.role == "admin" or can_see_expenses) %}
+        {% if plan_has("expenses") %}
+        <a href="/expenses"><i class="fa fa-money-bill-wave"></i> {{ _('expenses') }}</a>
+        {% else %}
+        <a href="/upgrade" style="opacity:.55" title="{{ _('upgrade_plan') }}"><i class="fa fa-money-bill-wave"></i>
+          {{ _('expenses') }} <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
+        {% endif %}
+        {% endif %}
+        {% if current_employee and (current_employee.role == "admin" or can_see_accounts) %}<a href="/cash"><i
+            class="fa fa-money-bill-wave"></i> {{ _('cash_box') }}</a>{% endif %}
+        {% if current_employee and (current_employee.role == "admin" or can_see_accounts) %}
+        {% if plan_has("accounts") %}
+        <a href="/accounts"><i class="fa fa-wallet"></i> {{ _('accounts') }}</a>
+        {% else %}
+        <a href="/upgrade" style="opacity:.55" title="{{ _('upgrade_plan') }}"><i class="fa fa-wallet"></i> {{
+          _('accounts') }} <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
+        {% endif %}
+        {% endif %}
+        {% if current_employee and current_employee.role == "admin" %}<a href="/employees"><i
+            class="fa fa-user-tie"></i> {{ _('employees') }}</a>{% endif %}
+        {% if current_employee and (current_employee.role == "admin" or can_see_pages) %}
+        <a href="/pages"><i class="fa fa-file-alt"></i> {{ _('pages') }}</a>
+        {% endif %}
+        {% if current_employee and (current_employee.role == "admin" or can_see_reports) %}
+        {% if plan_has("reports_adv") %}
+        <a href="/reports"><i class="fa fa-chart-pie"></i> {{ _('reports') }}</a>
+        {% else %}
+        <a href="/upgrade" style="opacity:.55" title="{{ _('upgrade_plan') }}"><i class="fa fa-chart-pie"></i> {{
+          _('reports') }} <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
+        {% endif %}
+        {% endif %}
+        {% if current_employee and current_employee.role == "admin" %}
+        {% if plan_has("rbac") %}
+        <a href="/admin/permissions/roles"><i class="fa fa-user-shield"></i> {{ _('permissions') }}</a>
+        {% else %}
+        <a href="/upgrade" style="opacity:.55" title="{{ _('upgrade_plan') }}"><i class="fa fa-user-shield"></i> {{
+          _('permissions') }}
+          <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
+        {% endif %}
+        {% endif %}
+        {% if current_employee and current_employee.role == "admin" %}<a href="/settings"><i class="fa fa-cog"></i>
+          {{ _('settings') }}</a>{% endif %}
+        {% if current_employee and (current_employee.role == "admin" or can_see_messages) %}
+        {% if plan_has("messages") %}
+        <a href="/messages"><i class="fa fa-comments"></i> {{ _('messaging') }} <span id="messagesBadge"
+            class="badge badge-danger menu-badge">0</span></a>
+        {% else %}
+        <a href="/upgrade" style="opacity:.55" title="{{ _('upgrade_plan') }}"><i class="fa fa-comments"></i> {{
+          _('messaging') }} <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
+        {% endif %}
+        {% endif %}
+      </nav>
+
+      <!-- Plan Badge in Sidebar -->
+      {% if session.get("user_id") and current_plan %}
+      <div
+        style="margin:16px 12px 8px;padding:12px 14px;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.2);border-radius:14px;font-size:13px">
+        <div style="font-weight:800;color:#a5b4fc;margin-bottom:4px">
+          {% if plan_key == 'basic' %}🟢{% elif plan_key == 'pro' %}🔵{% else %}🟣{% endif %}
+          {{ current_plan.name }}
+        </div>
+        {% if plan_key != 'enterprise' %}
+        <a href="/#pricing" style="color:#60a5fa;font-size:12px;text-decoration:none;font-weight:700">⬆ {{
+          _('upgrade_plan') }}</a>
+        {% else %}
+        <span style="color:#10b981;font-size:12px;font-weight:700">✅ {{ _('highest_level') }}</span>
+        {% endif %}
+      </div>
+      {% endif %}
+    </aside>
+    {% endif %}
+
+    <!-- ================= CONTENT ================= -->
+    <div class="content">
+
+      <!-- ================= TOPBAR ================= -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <span class="toggle" onclick="toggleSidebar()">☰</span>
+          <div class="page-title">{% block page_title %}{{ _('dashboard') }}{% endblock %}</div>
+        </div>
+
+        {% if not is_payment_flow %}
+        <div class="topbar-actions">
+          {% if session.get("user_id") and plan_has("ai_assistant") %}
+          <a class="assistant-quick-btn" href="/assistant/chat" aria-label="{{ _('financial_assistant') }}"
+            title="{{ _('financial_assistant') }}">
+            <i class="fa fa-robot"></i>
+          </a>
+          {% endif %}
+        </div>
+
+        {% if session.get("user_id") %}
+        <div class="user-box">
+          <div class="user-info" onclick="openProfileModal()">
+            <div class="avatar" id="headerAvatar">
+              {% if current_employee and current_employee.profile_pic %}
+              <img src="/{{ current_employee.profile_pic }}"
+                style="width:100%;height:100%;border-radius:50%;object-fit:cover;">
+              {% else %}
+              {{ session.get("name", "U")[0] }}
+              {% endif %}
+            </div>
+            <span id="headerUserName">{{ session.get("name") }}</span>
+          </div>
+        </div>
+        {% endif %}
+        {% endif %}
+      </header>
+
+      <!-- ================= MAIN ================= -->
+      <main class="page-main">
+        {% if current_employee and current_employee.role != "admin" and not is_payment_flow %}
+        {% set is_orders_page = request.path.startswith('/orders') %}
+        {% set is_pos_page = request.path.startswith('/pos') %}
+        {% set is_inventory_page = request.path.startswith('/inventory') and can_manage_inventory %}
+        {% set is_expenses_page = request.path.startswith('/expenses') and can_see_expenses %}
+        {% set is_reports_page = request.path.startswith('/reports') and can_see_reports %}
+        {% if not request.path == '/' and (is_orders_page or is_pos_page or is_inventory_page or is_expenses_page or is_reports_page) %}
+        <div style="margin-bottom:12px;display:flex;justify-content:flex-start;">
+          <button type="button"
+            style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;border:1px solid var(--border-light);background:rgba(15,23,42,0.6);color:var(--text-muted);cursor:pointer;font-size:13px;"
+            onclick="window.location.href='/'">
+            <i class="fa fa-chevron-right"></i>
+            <span>{{ _('dashboard') }}</span>
+          </button>
+        </div>
+        {% endif %}
+        {% endif %}
+        {% block content %}{% endblock %}
+      </main>
+
+      </footer>
+
+    </div>
+  </div>
+
+  <!-- Profile Modal -->
+  {% if session.get("user_id") %}
+  <div id="profileModal" class="profile-modal" onclick="if(event.target==this) closeProfileModal()">
+    <div class="profile-card">
+      <div class="profile-header">
+        <div class="profile-avatar-wrapper">
+          <div class="profile-avatar" id="modalAvatar">
+            {% if current_employee and current_employee.profile_pic %}
+            <img src="/{{ current_employee.profile_pic }}">
+            {% else %}
+            {{ session.get("name", "U")[0] }}
+            {% endif %}
+          </div>
+          <label for="profilePicUpload" class="avatar-edit-btn">
+            <i class="fa fa-camera"></i>
+          </label>
+          <input type="file" id="profilePicUpload" style="display:none" accept="image/*"
+            onchange="uploadProfilePic(this)">
+        </div>
+        <h3 id="modalUserNameTitle" style="margin:0;font-weight:800">{{ session.get("name") }}</h3>
+        <p style="color:var(--text-muted);font-size:12px;margin:5px 0">{{ current_employee.username if current_employee
+          else '' }}</p>
+      </div>
+
+      <span class="profile-section-title">{{ _('personal_info') }}</span>
+      <div class="profile-field">
+        <input type="text" id="profileNameInput" class="profile-input" value="{{ session.get('name') }}"
+          placeholder="{{ _('full_name') }}">
+      </div>
+
+      <span class="profile-section-title">{{ _('system_preferences') }}</span>
+      <div class="settings-grid">
+        <div
+          class="setting-item {% if current_employee and current_employee.theme_preference == 'dark' %}active{% endif %}"
+          onclick="setProfileTheme('dark', this)">
+          <i class="fa fa-moon"></i> {{ _('theme_dark') }}
+        </div>
+        <div
+          class="setting-item {% if current_employee and current_employee.theme_preference == 'light' %}active{% endif %}"
+          onclick="setProfileTheme('light', this)">
+          <i class="fa fa-sun"></i> {{ _('theme_light') }}
+        </div>
+        <div class="setting-item {% if current_employee and current_employee.language == 'ar' %}active{% endif %}"
+          onclick="setProfileLang('ar', this)">
+          العربية
+        </div>
+        <div class="setting-item {% if current_employee and current_employee.language == 'en' %}active{% endif %}"
+          onclick="setProfileLang('en', this)">
+          English
+        </div>
+        <div class="setting-item {% if current_employee and current_employee.language == 'ku' %}active{% endif %}"
+          onclick="setProfileLang('ku', this)">
+          کوردی
+        </div>
+        <div class="setting-item {% if current_employee and current_employee.language == 'tr' %}active{% endif %}"
+          onclick="setProfileLang('tr', this)">
+          Türkçe
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-close" onclick="closeProfileModal()">{{ _('cancel') }}</button>
+        <button class="btn btn-save" onclick="saveProfileChanges()">{{ _('save_changes') }}</button>
+      </div>
+
+      <a href="/logout" class="logout-btn-modal">
+        <i class="fa fa-sign-out-alt"></i> {{ _('logout') }}
+      </a>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-spinner"></div>
+  </div>
+
+  <script>
+    // ======================================================
+    // SIDEBAR – RTL OFF-CANVAS (MODULAR)
+    // Technical: Desktop = sidebar position:fixed; right:0; content margin-right.
+    // Mobile = transform:translate3d(100%,0,0) closed, (0,0,0) open; GPU-friendly.
+    // Overlay via .app.sidebar-open::before; body overflow hidden when open;
+    // fast-tap guard (320ms) avoids double-open on iOS; single ESC handler.
+    // ======================================================
+    (function () {
+      var sidebarLastClose = 0;
+      var SIDEBAR_FAST_TAP_MS = 320;
+
+      window.toggleSidebar = function () {
+        var sidebar = document.getElementById("sidebar");
+        if (!sidebar) return;
+        if (sidebar.classList.contains("show")) {
+          closeSidebar();
+        } else {
+          openSidebar();
+        }
+      };
+
+      window.openSidebar = function () {
+        var sidebar = document.getElementById("sidebar");
+        var app = document.querySelector(".app");
+        if (!sidebar) return;
+        /* Guard: avoid re-open on fast double-tap (e.g. iPhone) */
+        if (Date.now() - sidebarLastClose < SIDEBAR_FAST_TAP_MS) return;
+        sidebar.classList.add("show");
+        if (app) app.classList.add("sidebar-open");
+        document.body.style.overflow = "hidden";
+        document.body.setAttribute("data-sidebar-open", "1");
+        document.addEventListener("click", closeSidebarOnOutsideClick, true);
+        document.addEventListener("touchstart", closeSidebarOnOutsideClick, { passive: true, capture: true });
+      };
+
+      window.closeSidebar = function () {
+        var sidebar = document.getElementById("sidebar");
+        var app = document.querySelector(".app");
+        if (!sidebar) return;
+        sidebar.classList.remove("show");
+        if (app) app.classList.remove("sidebar-open");
+        document.body.style.overflow = "";
+        document.body.removeAttribute("data-sidebar-open");
+        sidebarLastClose = Date.now();
+        document.removeEventListener("click", closeSidebarOnOutsideClick, true);
+        document.removeEventListener("touchstart", closeSidebarOnOutsideClick, true);
+      };
+
+      function closeSidebarOnOutsideClick(e) {
+        var sidebar = document.getElementById("sidebar");
+        var toggle = document.querySelector(".toggle");
+        if (!sidebar || !toggle) return;
+        var target = e.target;
+        if (!sidebar.contains(target) && !toggle.contains(target)) closeSidebar();
+      }
+    })();
+
+    // Escape closes sidebar (single handler)
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") {
+        var sidebar = document.getElementById("sidebar");
+        if (sidebar && sidebar.classList.contains("show")) closeSidebar();
+      }
+    });
+
+    // على الموبايل: إغلاق السايدبار عند الضغط على أي رابط في القائمة
+    document.querySelector(".menu")?.addEventListener("click", function () {
+      if (window.innerWidth <= 900) closeSidebar();
+    });
+
+    // ======================================================
+    // TOAST NOTIFICATIONS
+    // ======================================================
+    function showToast(message, type = "info", duration = 3000) {
+      const container = document.getElementById("toastContainer");
+      if (!container) return;
+
+      const toast = document.createElement("div");
+      toast.className = `toast ${type}`;
+
+      const icons = {
+        success: "fa-check-circle",
+        error: "fa-exclamation-circle",
+        warning: "fa-exclamation-triangle",
+        info: "fa-info-circle"
+      };
+
+      toast.innerHTML = `
+    <i class="fa ${icons[type] || icons.info}"></i>
+    <span class="toast-message">${message}</span>
+    <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+  `;
+
+      container.appendChild(toast);
+
+      // Auto remove after duration
+      setTimeout(() => {
+        toast.classList.add("fade-out");
+        setTimeout(() => toast.remove(), 300);
+      }, duration);
+
+      return toast;
+    }
+
+    // Make toast function globally available
+    window.showToast = showToast;
+
+    // ======================================================
+    // THEME TOGGLE (Dark/Light) — localStorage + prefers-color-scheme
+    // ======================================================
+    (function () {
+      var btn = document.getElementById("themeToggleBtn");
+      if (!btn) return;
+
+      function currentTheme() {
+        return document.documentElement.getAttribute("data-theme") || "dark";
+      }
+
+      function setTheme(theme) {
+        document.documentElement.setAttribute("data-theme", theme);
+        try { localStorage.setItem("theme", theme); } catch (e) { }
+        var icon = btn.querySelector("i");
+        if (icon) icon.className = theme === "light" ? "fa fa-sun" : "fa fa-moon";
+      }
+
+      // init icon
+      setTheme(currentTheme());
+
+      btn.addEventListener("click", function () {
+        setTheme(currentTheme() === "dark" ? "light" : "dark");
+      });
+    })();
+
+    // ======================================================
+    // LOADING OVERLAY
+    // ======================================================
+    function showLoading() {
+      const overlay = document.getElementById("loadingOverlay");
+      if (overlay) overlay.classList.add("show");
+    }
+
+    function hideLoading() {
+      const overlay = document.getElementById("loadingOverlay");
+      if (overlay) overlay.classList.remove("show");
+    }
+
+    window.showLoading = showLoading;
+    window.hideLoading = hideLoading;
+
+    // ======================================================
+    // ACTIVE MENU ITEM
+    // ======================================================
+    document.addEventListener("DOMContentLoaded", function () {
+      const currentPath = window.location.pathname;
+      const menuLinks = document.querySelectorAll(".menu a");
+
+      menuLinks.forEach(link => {
+        const href = link.getAttribute("href");
+        if (currentPath === href || (href !== "/" && currentPath.startsWith(href))) {
+          link.classList.add("active");
+        }
+      });
+    });
+
+    // ======================================================
+    // SMOOTH SCROLL TO TOP
+    // ======================================================
+    function scrollToTop() {
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+      });
+    }
+
+    // ======================================================
+    // KEYBOARD SHORTCUTS
+    // ======================================================
+    document.addEventListener("keydown", function (e) {
+      // Ctrl/Cmd + K to focus search (if exists)
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        const searchInput = document.querySelector("input[type='search'], input[placeholder*='بحث'], input[placeholder*='Search']");
+        if (searchInput) {
+          searchInput.focus();
+        }
+      }
+    });
+
+    // ======================================================
+    // AUTO-HIDE TOASTS ON MOBILE
+    // ======================================================
+    if (window.innerWidth <= 900) {
+      const style = document.createElement("style");
+      style.textContent = `
+    .toast-container {
+      bottom: 20px;
+      top: auto;
+    }
+  `;
+      document.head.appendChild(style);
+    }
+
+    // ======================================================
+    // PROFILE MODAL LOGIC
+    // ======================================================
+    window.openProfileModal = function () {
+      const modal = document.getElementById("profileModal");
+      if (modal) modal.style.display = "flex";
+    };
+
+    window.closeProfileModal = function () {
+      const modal = document.getElementById("profileModal");
+      if (modal) modal.style.display = "none";
+    };
+
+    window.setProfileTheme = function (theme, el) {
+      // Toggle UI
+      const items = el.parentElement.querySelectorAll('.setting-item');
+      items[0].classList.remove('active');
+      items[1].classList.remove('active');
+      el.classList.add('active');
+
+      // Apply theme
+      document.documentElement.setAttribute("data-theme", theme);
+      localStorage.setItem("theme", theme);
+
+      // Sync with topbar toggle
+      const btn = document.getElementById("themeToggleBtn");
+      if (btn) {
+        const icon = btn.querySelector("i");
+        if (icon) icon.className = theme === "light" ? "fa fa-sun" : "fa fa-moon";
+      }
+
+      // Save to DB
+      fetch('/employees/profile/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ theme: theme })
+      });
+    };
+
+    window.setProfileLang = function (lang, el) {
+      // Toggle UI
+      const items = el.parentElement.querySelectorAll('.setting-item');
+      items.forEach(item => item.classList.remove('active'));
+      el.classList.add('active');
+
+      // Save to DB
+      fetch('/employees/profile/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ language: lang })
+      }).then(() => {
+        // Reload to apply changes globally (Jinja needs to re-render with new session lang)
+        window.location.reload();
+      });
+    };
+
+    window.saveProfileChanges = function () {
+      const nameInput = document.getElementById("profileNameInput");
+      const newName = nameInput.value.trim();
+
+      if (!newName) {
+        showToast("يرجى إدخال الاسم", "error");
+        return;
+      }
+
+      fetch('/employees/profile/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newName })
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            showToast("تم تحديث الملف الشخصي بنجاح", "success");
+
+            // Update header
+            const headerName = document.getElementById("headerUserName");
+            if (headerName) headerName.textContent = newName;
+
+            const modalTitle = document.getElementById("modalUserNameTitle");
+            if (modalTitle) modalTitle.textContent = newName;
+
+            // Update avatar initials if no image
+            const modalAvatar = document.getElementById("modalAvatar");
+            if (modalAvatar && !modalAvatar.querySelector('img')) {
+              modalAvatar.textContent = newName.charAt(0).toUpperCase();
+            }
+
+            const headerAvatar = document.getElementById("headerAvatar");
+            if (headerAvatar && !headerAvatar.querySelector('img')) {
+              headerAvatar.textContent = newName.charAt(0).toUpperCase();
+            }
+
+            closeProfileModal();
+          } else {
+            showToast(data.error || "فشل التحديث", "error");
+          }
+        });
+    };
+
+    window.uploadProfilePic = function (input) {
+      if (!input.files || !input.files[0]) return;
+
+      const formData = new FormData();
+      formData.append('file', input.files[0]);
+
+      showToast("جاري رفع الصورة...", "info");
+
+      fetch('/employees/profile/upload', {
+        method: 'POST',
+        body: formData
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            showToast("تم تغيير الصورة بنجاح", "success");
+
+            // Update avatars
+            const modalAvatar = document.getElementById("modalAvatar");
+            const headerAvatar = document.getElementById("headerAvatar");
+            const picUrl = '/' + data.profile_pic;
+
+            const imgHtml = `<img src="${picUrl}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+
+            if (modalAvatar) {
+              modalAvatar.innerHTML = `<img src="${picUrl}">`;
+            }
+            if (headerAvatar) {
+              headerAvatar.innerHTML = imgHtml;
+            }
+          } else {
+            showToast(data.error || "فشل رفع الصورة", "error");
+          }
+        });
+    };
+
+    // ======================================================
+    // UPDATE UNREAD MESSAGES COUNT
+    // ======================================================
+    function updateMessagesBadge() {
+      fetch('/messages/unread-count')
+        .then(r => {
+          if (!r.ok) {
+            throw new Error('Network response was not ok');
+          }
+          return r.json();
+        })
+        .then(data => {
+          const badge = document.getElementById('messagesBadge');
+          if (badge) {
+            if (data.unread_count > 0) {
+              badge.textContent = data.unread_count;
+              badge.style.display = 'inline-flex';
+            } else {
+              badge.style.display = 'none';
+            }
+          }
+        })
+        .catch(error => {
+          // إخفاء الأخطاء الصامتة - الخادم غير متاح
+          // Silently ignore connection errors
+          if (error.name !== 'TypeError' || !error.message.includes('fetch')) {
+            // فقط سجل الأخطاء غير المتعلقة بالاتصال
+            // Only log non-connection errors
+            console.error('Error updating messages badge:', error);
+          }
+        });
+    }
+
+    // Update badge on page load
+    document.addEventListener('DOMContentLoaded', function () {
+      updateMessagesBadge();
+      // Update every 10 seconds
+      setInterval(updateMessagesBadge, 10000);
+    });
+  </script>
+
+  <!-- jQuery & DataTables -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+
+  <!-- Mini Assistant Widget - مخفي مؤقتاً -->
+  {% if False and session.get('role') == 'admin' %}
+  {% include 'assistant/mini-widget.html' %}
+  {% endif %}
+
+  {% block scripts %}{% endblock %}
+
+
+
+
+
+  <script>
+    // MOBILE BOTTOM NAVIGATION REMOVED
+    (function () {
+
+      // Get current page path
+      function getCurrentPage() {
+        const path = window.location.pathname;
+        if (path === '/' || path === '/index') return 'home';
+        if (path.startsWith('/orders')) return 'orders';
+        if (path.startsWith('/reports')) return 'reports';
+        if (path.startsWith('/agents')) return 'agents';
+        if (path.startsWith('/messages')) return 'messages';
+        return null;
+      }
+
+      // Set active nav item
+      function setActiveNavItem() {
+        const currentPage = getCurrentPage();
+        if (!currentPage) return;
+
+        const navItems = document.querySelectorAll('.mobile-bottom-nav .nav-item');
+        navItems.forEach(item => {
+          if (item.getAttribute('data-page') === currentPage) {
+            item.classList.add('active');
+          } else {
+            item.classList.remove('active');
+          }
+        });
+      }
+
+      // Update messages badge from existing badge
+      function updateMobileMessagesBadge() {
+        const desktopBadge = document.getElementById('messagesBadge');
+        const mobileBadge = document.getElementById('mobileMessagesBadge');
+
+        if (desktopBadge && mobileBadge) {
+          const count = desktopBadge.textContent.trim();
+          if (count && parseInt(count) > 0) {
+            mobileBadge.textContent = count;
+            mobileBadge.style.display = 'flex';
+          } else {
+            mobileBadge.style.display = 'none';
+          }
+        }
+      }
+
+      // Handle navigation clicks
+      function handleNavClick(e) {
+        const navItem = e.currentTarget;
+        const href = navItem.getAttribute('href');
+
+        // Add active class immediately for better UX
+        document.querySelectorAll('.mobile-bottom-nav .nav-item').forEach(item => {
+          item.classList.remove('active');
+        });
+        navItem.classList.add('active');
+
+        // If it's the same page, prevent navigation
+        if (href === window.location.pathname) {
+          e.preventDefault();
+          return false;
+        }
+
+        // Add loading state
+        navItem.style.opacity = '0.6';
+        setTimeout(() => {
+          navItem.style.opacity = '1';
+        }, 300);
+      }
+
+      // Initialize on DOM ready
+      function initMobileNav() {
+        // Only initialize on mobile devices
+        if (window.innerWidth >= 768) {
+          return;
+        }
+
+        const mobileNav = document.getElementById('mobileBottomNav');
+        if (!mobileNav) return;
+
+        // Set active item
+        setActiveNavItem();
+
+        // Update messages badge
+        updateMobileMessagesBadge();
+
+        // Add click handlers
+        const navItems = mobileNav.querySelectorAll('.nav-item');
+        navItems.forEach(item => {
+          item.addEventListener('click', handleNavClick);
+        });
+
+        // Watch for badge updates
+        const observer = new MutationObserver(updateMobileMessagesBadge);
+        const desktopBadge = document.getElementById('messagesBadge');
+        if (desktopBadge) {
+          observer.observe(desktopBadge, {
+            childList: true,
+            characterData: true,
+            subtree: true
+          });
+        }
+
+        // Update on window resize
+        let resizeTimer;
+        window.addEventListener('resize', function () {
+          clearTimeout(resizeTimer);
+          resizeTimer = setTimeout(function () {
+            if (window.innerWidth < 768) {
+              setActiveNavItem();
+            }
+          }, 250);
+        });
+      }
+
+      // Run on DOM ready
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initMobileNav);
+      } else {
+        initMobileNav();
+      }
+
+      // Also run after a short delay to ensure all elements are loaded
+      setTimeout(initMobileNav, 100);
+    })();
+  </script>
+
+</body>
+
+</html>

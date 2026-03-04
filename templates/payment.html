@@ -1,0 +1,447 @@
+{% extends "base.html" %}
+{% block title %}إتمام الدفع — Finora{% endblock %}
+{% block page_title %}💳 إتمام عملية الدفع{% endblock %}
+
+{% block content %}
+<style>
+    .pay-wrap {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding-bottom: 60px;
+    }
+
+    /* Steps */
+    .steps {
+        display: flex;
+        justify-content: center;
+        gap: 60px;
+        margin-bottom: 40px;
+        position: relative;
+    }
+
+    .steps::before {
+        content: '';
+        position: absolute;
+        top: 20px;
+        left: 30%;
+        right: 30%;
+        height: 2px;
+        background: rgba(255, 255, 255, 0.1);
+        z-index: 0;
+    }
+
+    .step {
+        position: relative;
+        z-index: 1;
+        text-align: center;
+    }
+
+    .step-n {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        background: var(--card);
+        border: 2px solid var(--bord);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        margin: 0 auto 8px;
+        color: var(--muted);
+    }
+
+    .step.done .step-n {
+        background: var(--success);
+        border-color: var(--success);
+        color: #fff;
+    }
+
+    .step.active .step-n {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: #fff;
+        box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+    }
+
+    .step-l {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--muted);
+    }
+
+    .step.active .step-l {
+        color: var(--text);
+    }
+
+    .pay-grid {
+        display: grid;
+        grid-template-columns: 1.5fr 1fr;
+        gap: 24px;
+    }
+
+    .p-card {
+        background: var(--card);
+        border: 1px solid var(--bord);
+        border-radius: 24px;
+        padding: 32px;
+        backdrop-filter: blur(14px);
+    }
+
+    .p-title {
+        font-size: 20px;
+        font-weight: 800;
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    /* Plan Summary */
+    .plan-sum {
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 24px;
+    }
+
+    .plan-sum-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 12px;
+        font-size: 15px;
+    }
+
+    .plan-sum-row:last-child {
+        margin-bottom: 0;
+        padding-top: 12px;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .plan-sum-label {
+        color: var(--muted);
+    }
+
+    .plan-sum-val {
+        font-weight: 700;
+    }
+
+    .total-val {
+        font-size: 22px;
+        color: var(--primary);
+    }
+
+    /* Payment Methods */
+    .pay-methods {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .pay-method {
+        border: 2px solid var(--bord);
+        border-radius: 16px;
+        padding: 16px;
+        cursor: pointer;
+        transition: .3s;
+        text-align: center;
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    .pay-method:hover {
+        border-color: rgba(99, 102, 241, 0.4);
+    }
+
+    .pay-method.active {
+        border-color: var(--primary);
+        background: rgba(59, 130, 246, 0.1);
+    }
+
+    .pay-method i {
+        font-size: 24px;
+        margin-bottom: 8px;
+        display: block;
+    }
+
+    /* Form */
+    .f-group {
+        margin-bottom: 20px;
+    }
+
+    .f-group label {
+        display: block;
+        font-size: 14px;
+        font-weight: 700;
+        margin-bottom: 8px;
+        color: var(--muted);
+    }
+
+    .f-group input {
+        width: 100%;
+        padding: 14px 18px;
+        border-radius: 14px;
+        border: 1px solid var(--bord);
+        background: rgba(15, 23, 42, 0.6);
+        color: var(--text);
+        font-family: 'Tajawal', sans-serif;
+        font-size: 15px;
+    }
+
+    .f-group input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .btn-pay {
+        width: 100%;
+        padding: 18px;
+        border-radius: 18px;
+        background: linear-gradient(135deg, var(--primary), #6366f1);
+        color: #fff;
+        font-size: 17px;
+        font-weight: 900;
+        border: none;
+        cursor: pointer;
+        box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+        transition: .3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+    }
+
+    .btn-pay:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 15px 35px rgba(59, 130, 246, 0.5);
+    }
+
+    .btn-pay:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    /* Card Preview */
+    .card-preview {
+        width: 100%;
+        height: 190px;
+        background: linear-gradient(135deg, #1e293b, #334155);
+        border-radius: 20px;
+        padding: 24px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        margin-bottom: 24px;
+        color: #fff;
+    }
+
+    .card-preview::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 0%, transparent 60%);
+    }
+
+    .chip {
+        width: 45px;
+        height: 32px;
+        background: #fbbf24;
+        border-radius: 6px;
+        margin-bottom: 30px;
+    }
+
+    .card-num {
+        font-size: 22px;
+        letter-spacing: 2px;
+        font-family: 'Courier New', monospace;
+        margin-bottom: 25px;
+    }
+
+    .card-bottom {
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .c-label {
+        font-size: 10px;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.6);
+        margin-bottom: 4px;
+    }
+
+    .c-val {
+        font-size: 14px;
+        font-weight: 700;
+    }
+
+    @media (max-width: 800px) {
+        .pay-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .steps {
+            gap: 30px;
+        }
+    }
+</style>
+
+<div class="pay-wrap">
+    <!-- Steps -->
+    <div class="steps">
+        <div class="step done">
+            <div class="step-n"><i class="fas fa-check"></i></div>
+            <div class="step-l">الحساب</div>
+        </div>
+        <div class="step active">
+            <div class="step-n">2</div>
+            <div class="step-l">الدفع</div>
+        </div>
+        <div class="step">
+            <div class="step-n">3</div>
+            <div class="step-l">التفعيل</div>
+        </div>
+    </div>
+
+    <div class="pay-grid">
+        <!-- Main Form -->
+        <div class="p-card">
+            <div class="p-title"><i class="fas fa-shield-alt" style="color:var(--primary)"></i> تفاصيل الدفع الآمن</div>
+
+            <div class="pay-methods">
+                <div class="pay-method active" onclick="setMethod('card')">
+                    <i class="fas fa-credit-card"></i> بطاقة ائتمان
+                </div>
+                <div class="pay-method" onclick="setMethod('zain')">
+                    <i class="fas fa-mobile-alt"></i> زين كاش
+                </div>
+            </div>
+
+            <div id="cardFields">
+                <div class="f-group">
+                    <label>الاسم على البطاقة</label>
+                    <input type="text" id="c_name" placeholder="John Doe" oninput="updateCard()">
+                </div>
+                <div class="f-group">
+                    <label>رقم البطاقة</label>
+                    <input type="text" id="c_num" placeholder="XXXX XXXX XXXX XXXX" maxlength="19"
+                        oninput="formatCardNum(this);updateCard()">
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px">
+                    <div class="f-group">
+                        <label>تاريخ الانتهاء</label>
+                        <input type="text" id="c_date" placeholder="MM/YY" maxlength="5" oninput="updateCard()">
+                    </div>
+                    <div class="f-group">
+                        <label>رمز CVV</label>
+                        <input type="password" id="c_cvv" placeholder="***" maxlength="3">
+                    </div>
+                </div>
+            </div>
+
+            <div id="zainFields" style="display:none">
+                <div class="f-group">
+                    <label>رقم محفظة زين كاش</label>
+                    <input type="text" placeholder="07XXXXXXXXX">
+                </div>
+                <p style="font-size:13px; color:var(--muted)">سيتم إرسال رمز تأكيد لهاتفك لإتمام العملية.</p>
+            </div>
+
+            <button class="btn-pay" id="payBtn" onclick="processPay()">
+                <i class="fas fa-lock"></i> دفع <span id="btnAmount">{{ "{:,}".format(plan.price) }}</span> د.ع
+            </button>
+            <div style="text-align:center; margin-top:16px; font-size:12px; color:var(--muted)">
+                <i class="fas fa-info-circle"></i> يتم تشفير بياناتك بالكامل ولا يتم تخزينها على خوادمنا.
+            </div>
+        </div>
+
+        <!-- Sidebar / Summary -->
+        <div class="p-side">
+            <div class="card-preview" id="cardPreview">
+                <div class="chip"></div>
+                <div class="card-num" id="p_num">#### #### #### ####</div>
+                <div class="card-bottom">
+                    <div>
+                        <div class="c-label">Card Holder</div>
+                        <div class="c-val" id="p_name">YOUR NAME</div>
+                    </div>
+                    <div>
+                        <div class="c-label">Expires</div>
+                        <div class="c-val" id="p_date">MM/YY</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-card" style="padding:24px">
+                <div class="p-title" style="font-size:17px; margin-bottom:16px">ملخص الطلب</div>
+                <div class="plan-sum">
+                    <div class="plan-sum-row">
+                        <span class="plan-sum-label">الخطة:</span>
+                        <span class="plan-sum-val">{{ plan.name }}</span>
+                    </div>
+                    <div class="plan-sum-row">
+                        <span class="plan-sum-label">نوع الاشتراك:</span>
+                        <span class="plan-sum-val">{{ 'سنوي' if billing == 'yearly' else 'شهري' }}</span>
+                    </div>
+                    <div class="plan-sum-row">
+                        <span class="plan-sum-label">الضريبة (0%):</span>
+                        <span class="plan-sum-val">0 د.ع</span>
+                    </div>
+                    <div class="plan-sum-row">
+                        <span class="plan-sum-label">الإجمالي:</span>
+                        <span class="plan-sum-val total-val">{{ "{:,}".format(plan.price) }} د.ع</span>
+                    </div>
+                </div>
+                <div style="font-size:13px; color:var(--muted); line-height:1.6">
+                    بإتمام عملية الدفع، أنت توافق على <a href="/terms" style="color:var(--primary)">شروط الخدمة</a> و <a
+                        href="/privacy" style="color:var(--primary)">سياسة الخصوصية</a>.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function setMethod(m) {
+        document.querySelectorAll('.pay-method').forEach(el => el.classList.remove('active'));
+        event.currentTarget.classList.add('active');
+        if (m === 'card') {
+            document.getElementById('cardFields').style.display = 'block';
+            document.getElementById('zainFields').style.display = 'none';
+            document.getElementById('cardPreview').style.opacity = '1';
+        } else {
+            document.getElementById('cardFields').style.display = 'none';
+            document.getElementById('zainFields').style.display = 'block';
+            document.getElementById('cardPreview').style.opacity = '0.3';
+        }
+    }
+
+    function formatCardNum(el) {
+        let v = el.value.replace(/\D/g, '');
+        let out = '';
+        for (let i = 0; i < v.length; i++) {
+            if (i > 0 && i % 4 === 0) out += ' ';
+            out += v[i];
+        }
+        el.value = out;
+    }
+
+    function updateCard() {
+        document.getElementById('p_name').textContent = document.getElementById('c_name').value.toUpperCase() || 'YOUR NAME';
+        document.getElementById('p_num').textContent = document.getElementById('c_num').value || '#### #### #### ####';
+        document.getElementById('p_date').textContent = document.getElementById('c_date').value || 'MM/YY';
+    }
+
+    async function processPay() {
+        const btn = document.getElementById('payBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري التحويل للدفع الآمن...';
+
+        setTimeout(() => {
+            window.location.href = `/payments/checkout?plan_key={{ plan_key }}&billing={{ billing }}`;
+        }, 800);
+    }
+</script>
+{% endblock %}

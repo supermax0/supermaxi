@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>تسجيل دخول</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<script>
+(function() {
+  try {
+    var saved = localStorage.getItem("theme");
+    var theme = saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+    document.documentElement.setAttribute("data-theme", theme);
+  } catch (e) {
+    document.documentElement.setAttribute("data-theme", "dark");
+  }
+})();
+</script>
+
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/saas-admin.css">
+
+<style>
+body {
+  font-family: 'Tajawal', sans-serif;
+  background:
+    radial-gradient(900px 420px at 120% -10%, rgba(59, 130, 246, 0.18), transparent 60%),
+    radial-gradient(760px 360px at -20% 0%, rgba(139, 92, 246, 0.14), transparent 56%),
+    var(--bg);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0;
+  padding: 20px;
+}
+
+.login-box {
+  background: linear-gradient(145deg, var(--card), var(--card-alt));
+  padding: 40px;
+  border-radius: 15px;
+  box-shadow: var(--shadow-2);
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border-light);
+}
+
+.login-box h2 {
+  color: var(--text);
+  margin-bottom: 30px;
+  font-size: 28px;
+  font-weight: 700;
+  position: relative;
+  padding-bottom: 15px;
+}
+
+.login-box h2::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: 5;
+  left: 0;
+  margin: 0 auto;
+  width: 60px;
+  height: 3px;
+  background: var(--gradient-primary);
+  border-radius: 20px;
+}
+
+.login-box input {
+  width: 86%;
+  padding: 10px;
+  margin: 15px 0;
+  border: 1px solid var(--border);
+  border-radius: 50px;
+  font-size: 16px;
+  font-family: 'Tajawal', sans-serif;
+  transition: all 0.3s ease;
+  background: rgba(15, 23, 42, 0.18);
+  color: var(--text);
+  outline: none;
+}
+
+.login-box input:focus {
+  border-color: var(--primary);
+  background: rgba(15, 23, 42, 0.22);
+  box-shadow: var(--ring);
+  transform: translateY(-2px);
+}
+
+.login-box input::placeholder {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.login-box .error {
+  color: #e74c3c;
+  margin: 15px 0;
+  padding: 10px;
+  background: rgba(231, 76, 60, 0.1);
+  border-radius: 6px;
+  border-right: 4px solid #e74c3c;
+  display: none;
+  font-size: 14px;
+}
+
+.login-box button {
+  width: 100%;
+  padding: 15px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 50px;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 10px;
+  font-family: 'Tajawal', sans-serif;
+  letter-spacing: 0.5px;
+}
+
+.login-box button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+}
+
+.login-box button:active {
+  transform: translateY(0);
+}
+
+/* Responsive Design */
+@media (max-width: 480px) {
+  .login-box {
+    padding: 30px 25px;
+    margin: 20px;
+  }
+  
+  .login-box h2 {
+    font-size: 24px;
+    margin-bottom: 25px;
+  }
+  
+  .login-box input {
+    padding: 12px;
+    font-size: 15px;
+  }
+  
+  .login-box button {
+    padding: 14px;
+    font-size: 16px;
+  }
+}
+
+/* Animation for error message */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.login-box .error.show {
+  display: block;
+  animation: fadeIn 0.3s ease;
+}
+
+/* Add some icons to inputs */
+.login-box input#u {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="%23667eea" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>');
+  background-repeat: no-repeat;
+  background-position: 95% center;
+  background-size: 20px;
+  padding-left: 45px;
+}
+
+.login-box input#p {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="%23667eea" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>');
+  background-repeat: no-repeat;
+  background-position: 95% center;
+  background-size: 20px;
+  padding-left: 45px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="login-box">
+  <h2>🔐 تسجيل الدخول</h2>
+
+  <input id="u" placeholder="اسم المستخدم">
+  <input id="p" type="password" placeholder="كلمة المرور">
+
+  <div class="error" id="err"></div>
+
+  <button id="loginBtn" onclick="login()">دخول</button>
+</div>
+
+<script>
+const err = document.getElementById("err");
+const btn = document.getElementById("loginBtn");
+
+function login() {
+  err.textContent = "";
+  err.classList.remove("show");
+
+  const username = document.getElementById("u").value.trim();
+  const password = document.getElementById("p").value.trim();
+
+  if (!username || !password) {
+    err.textContent = "الرجاء إدخال اسم المستخدم وكلمة المرور";
+    err.classList.add("show");
+    return;
+  }
+
+  btn.textContent = "جاري التحقق...";
+  btn.disabled = true;
+
+  fetch("/pos/login", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      username: username,
+      password: password
+    })
+  })
+  .then(res => res.json())
+  .then(res => {
+    if (res.status === "success") {
+      window.location.href = res.role === "admin" ? "/" : "/pos";
+    } else {
+      err.textContent = "بيانات الدخول غير صحيحة";
+      err.classList.add("show");
+    }
+  })
+  .catch(() => {
+    err.textContent = "خطأ في الاتصال بالخادم";
+    err.classList.add("show");
+  })
+  .finally(() => {
+    btn.textContent = "دخول";
+    btn.disabled = false;
+  });
+}
+
+// دعم زر Enter
+document.addEventListener("keydown", function(e) {
+  if (e.key === "Enter") {
+    login();
+  }
+});
+
+// تركيز تلقائي
+document.getElementById("u").focus();
+</script>
+
+
+</body>
+</html>

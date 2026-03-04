@@ -1,0 +1,424 @@
+{% extends "superadmin_base.html" %}
+
+{% block title %}إعدادات النظام - Finora{% endblock %}
+{% block page_title %}إعدادات النظام المركزية{% endblock %}
+
+{% block extra_style %}
+<style>
+    .settings-container {
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        gap: 40px;
+        align-items: start;
+    }
+
+    .settings-nav {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        position: sticky;
+        top: 40px;
+        padding: 24px;
+    }
+
+    .settings-tab {
+        padding: 16px 20px;
+        background: transparent;
+        border: 1px solid transparent;
+        color: var(--text-muted);
+        text-align: right;
+        border-radius: 16px;
+        font-weight: 700;
+        font-size: 14px;
+        cursor: pointer;
+        transition: var(--transition);
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        width: 100%;
+        outline: none;
+    }
+
+    .settings-tab i {
+        font-size: 18px;
+        width: 24px;
+        text-align: center;
+        opacity: 0.7;
+    }
+
+    .settings-tab:hover {
+        background: rgba(255, 255, 255, 0.05);
+        color: #fff;
+        transform: translateX(-4px);
+    }
+
+    .settings-tab.active {
+        background: var(--primary);
+        color: #fff;
+        box-shadow: 0 10px 20px rgba(99, 102, 241, 0.2);
+    }
+
+    .settings-tab.active i {
+        opacity: 1;
+    }
+
+    .settings-content-wrapper {
+        display: flex;
+        flex-direction: column;
+        gap: 32px;
+    }
+
+    .settings-section {
+        display: none;
+        animation: fadeIn 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    .settings-section.active {
+        display: block;
+    }
+
+    .section-card {
+        padding: 40px;
+    }
+
+    .section-header {
+        margin-bottom: 32px;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 24px;
+    }
+
+    .section-title {
+        font-size: 22px;
+        font-weight: 800;
+        color: #fff;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .section-desc {
+        color: var(--text-muted);
+        font-size: 14px;
+        line-height: 1.6;
+    }
+
+    .form-group {
+        margin-bottom: 28px;
+    }
+
+    .form-group label {
+        display: block;
+        font-size: 14px;
+        font-weight: 700;
+        margin-bottom: 10px;
+        color: var(--text-muted);
+        padding-right: 4px;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 14px 20px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border-color);
+        border-radius: 14px;
+        color: #fff;
+        font-size: 15px;
+        font-weight: 600;
+        transition: var(--transition);
+        outline: none;
+    }
+
+    .form-control:focus {
+        background: rgba(255, 255, 255, 0.06);
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+    }
+
+    .form-text {
+        display: block;
+        margin-top: 8px;
+        font-size: 12px;
+        color: var(--text-dim);
+        font-weight: 500;
+    }
+
+    /* Checkbox / Toggle Styling */
+    .toggle-container {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        background: rgba(255, 255, 255, 0.02);
+        padding: 16px 20px;
+        border-radius: 16px;
+        border: 1px solid var(--border-color);
+        cursor: pointer;
+        transition: var(--transition);
+    }
+
+    .toggle-container:hover {
+        background: rgba(255, 255, 255, 0.04);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 44px;
+        height: 24px;
+    }
+
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(255, 255, 255, 0.1);
+        transition: .4s;
+        border-radius: 34px;
+    }
+
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
+
+    input:checked+.slider {
+        background-color: var(--success);
+        box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+    }
+
+    input:checked+.slider:before {
+        transform: translateX(20px);
+    }
+
+    .btn-save {
+        background: var(--primary);
+        color: white;
+        border: none;
+        padding: 16px 40px;
+        border-radius: 16px;
+        font-size: 15px;
+        font-weight: 800;
+        cursor: pointer;
+        transition: var(--transition);
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3);
+    }
+
+    .btn-save:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 15px 30px rgba(99, 102, 241, 0.4);
+        filter: brightness(1.1);
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="settings-container">
+    <div class="premium-card settings-nav glass">
+        <button class="settings-tab active" data-target="general-settings">
+            <i class="fas fa-sliders-h"></i>
+            الإعدادات العامة
+        </button>
+        <button class="settings-tab" data-target="payment-settings">
+            <i class="fas fa-credit-card"></i>
+            بوابات الدفع (ZainCash)
+        </button>
+        <button type="button" class="settings-tab" data-target="notification-settings">
+            <i class="fas fa-bell"></i>
+            الإشعارات (SMTP/SMS)
+        </button>
+    </div>
+
+    <div class="settings-content-wrapper">
+        <form action="{{ url_for('superadmin.settings') }}" method="POST">
+
+            <div id="general-settings" class="settings-section active">
+                <div class="premium-card section-card">
+                    <div class="section-header">
+                        <h2 class="section-title">
+                            <i class="fas fa-cog" style="color: var(--primary)"></i>
+                            إعدادات المنصة الأساسية
+                        </h2>
+                        <p class="section-desc">تحكم بالمتغيرات الجوهرية للنظام وفترات التجربة المجانية للشركات الجديدة.
+                        </p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="appName">اسم النظام (App Name)</label>
+                        <input type="text" id="appName" name="APP_NAME" class="form-control"
+                            value="{{ settings.app_name }}" required>
+                        <small class="form-text">سيتم استخدام هذا الاسم في التقارير والرسائل الصادرة من النظام.</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="trialDays">أيام التجربة المجانية (Trial Days)</label>
+                        <input type="number" id="trialDays" name="TRIAL_DAYS" class="form-control"
+                            value="{{ settings.trial_days }}" required>
+                        <small class="form-text">عدد الأيام الممنوحة تلقائياً لكل حساب شركة جديد.</small>
+                    </div>
+                </div>
+            </div>
+
+            <div id="payment-settings" class="settings-section">
+                <div class="premium-card section-card">
+                    <div class="section-header">
+                        <h2 class="section-title">
+                            <i class="fas fa-shield-alt" style="color: var(--warning)"></i>
+                            بوابة ZainCash
+                        </h2>
+                        <p class="section-desc">تكامل بوابة الدفع ZainCash لمعالجة الاشتراكات وتجديد الخدمات تلقائياً.
+                        </p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="zaincashMerchant">معرف التاجر (Merchant ID)</label>
+                        <input type="text" id="zaincashMerchant" name="ZAINCASH_MERCHANT" class="form-control"
+                            value="{{ settings.zaincash_merchant or '' }}" placeholder="5ffsdf545sfs...">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="zaincashSecret">مفتاح السر (Secret Key)</label>
+                        <input type="password" id="zaincashSecret" name="ZAINCASH_SECRET" class="form-control"
+                            value="{{ settings.zaincash_secret or '' }}" placeholder="••••••••••••••••">
+                        <small class="form-text">يستخدم لتوقيع العمليات المالية بشكل آمن.</small>
+                    </div>
+                </div>
+            </div>
+
+            <div id="notification-settings" class="settings-section">
+                <div class="premium-card section-card">
+                    <div class="section-header">
+                        <h2 class="section-title">
+                            <i class="fas fa-envelope-open-text" style="color: var(--accent)"></i>
+                            إعدادات SMTP والرسائل
+                        </h2>
+                        <p class="section-desc">تحديد كيفية إرسال التنبيهات والرسائل الإدارية للمستخدمين.</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="toggle-container">
+                            <div class="toggle-switch">
+                                <input type="checkbox" name="NOTIFY_EMAIL_ENABLED" value="1" {% if
+                                    settings.notify_email_enabled %}checked{% endif %}>
+                                <span class="slider"></span>
+                            </div>
+                            <div style="display: flex; flex-direction: column;">
+                                <span style="font-weight: 800; color: #fff; font-size: 14px;">تفعيل إشعارات البريد
+                                    الإلكتروني</span>
+                                <span style="font-size: 12px; color: var(--text-muted);">إرسال التقارير ورموز التحقق عبر
+                                    SMTP.</span>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div class="form-group">
+                            <label>خادم SMTP (Host)</label>
+                            <input type="text" name="SMTP_HOST" class="form-control"
+                                value="{{ settings.smtp_host or '' }}" placeholder="smtp.gmail.com">
+                        </div>
+                        <div class="form-group">
+                            <label>المنفذ (Port)</label>
+                            <input type="text" name="SMTP_PORT" class="form-control"
+                                value="{{ settings.smtp_port or '' }}" placeholder="587">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>اسم المستخدم (SMTP User)</label>
+                        <input type="text" name="SMTP_USER" class="form-control" value="{{ settings.smtp_user or '' }}">
+                    </div>
+
+                    <div class="form-group">
+                        <label>كلمة المرور (App Password)</label>
+                        <input type="password" name="SMTP_PASSWORD" class="form-control"
+                            value="{{ settings.smtp_password or '' }}">
+                    </div>
+
+                    <div style="margin-top: 40px;" class="section-header">
+                        <h2 class="section-title"><i class="fas fa-comment-dots"></i> إعدادات SMS</h2>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="toggle-container">
+                            <div class="toggle-switch">
+                                <input type="checkbox" name="NOTIFY_SMS_ENABLED" value="1" {% if
+                                    settings.notify_sms_enabled %}checked{% endif %}>
+                                <span class="slider"></span>
+                            </div>
+                            <span style="font-weight: 800; color: #fff; font-size: 14px;">تفعيل الرسائل النصية
+                                القصيرة</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 40px; display: flex; justify-content: flex-end; padding-bottom: 80px;">
+                <button type="submit" class="btn-save">
+                    <i class="fas fa-check-circle"></i>
+                    حفظ جميع الإعدادات
+                </button>
+            </div>
+
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const tabs = document.querySelectorAll('.settings-tab');
+        const sections = document.querySelectorAll('.settings-section');
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const targetId = tab.getAttribute('data-target');
+                if (!targetId || !document.getElementById(targetId)) return;
+
+                tabs.forEach(t => t.classList.remove('active'));
+                sections.forEach(s => s.classList.remove('active'));
+
+                tab.classList.add('active');
+                document.getElementById(targetId).classList.add('active');
+
+                // Animate entry
+                document.getElementById(targetId).style.animation = 'none';
+                document.getElementById(targetId).offsetHeight; // trigger reflow
+                document.getElementById(targetId).style.animation = null;
+            });
+        });
+    });
+</script>
+{% endblock %}

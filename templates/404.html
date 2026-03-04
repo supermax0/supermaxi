@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}الصفحة غير موجودة - نظام المحاسبة{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <div class="error-container py-5">
+                <div class="error-code display-1 text-muted">404</div>
+                <div class="error-title h2 mb-3">الصفحة غير موجودة</div>
+                <div class="error-message lead mb-4">
+                    عذرًا، الصفحة التي تبحث عنها غير موجودة أو تم نقلها.
+                </div>
+                <div class="error-actions">
+                    <a href="{{ url_for('index.index') }}" class="btn btn-primary btn-lg me-3">
+                        <i class="bi bi-house-door"></i> العودة للرئيسية
+                    </a>
+                    <button onclick="history.back()" class="btn btn-outline-secondary btn-lg">
+                        <i class="bi bi-arrow-right"></i> العودة للخلف
+                    </button>
+                </div>
+                <div class="error-search mt-5">
+                    <p class="text-muted mb-3">جرب البحث عن ما تريد:</p>
+                    <div class="input-group w-75 mx-auto">
+                        <input type="text" id="search-input" class="form-control" placeholder="ابحث في النظام...">
+                        <button class="btn btn-primary" onclick="performSearch()">
+                            <i class="bi bi-search"></i> بحث
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function performSearch() {
+        const query = document.getElementById('search-input').value;
+        if (query.trim()) {
+            window.location.href = "{{ url_for('index.global_search') }}?q=" + encodeURIComponent(query);
+        }
+    }
+
+    // تفعيل البحث عند الضغط على Enter
+    document.getElementById('search-input').addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            performSearch();
+        }
+    });
+</script>
+{% endblock %}

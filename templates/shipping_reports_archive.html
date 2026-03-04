@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+{% block title %}أرشيف كشوفات شركة النقل{% endblock %}
+{% block page_title %}📋 أرشيف كشوفات الشركة{% endblock %}
+{% block content %}
+
+<style>
+:root {
+  --archive-primary: var(--primary);
+  --archive-success: var(--success);
+  --archive-card: var(--card);
+  --archive-text: var(--text);
+  --archive-muted: var(--text-muted);
+}
+
+.shipping-reports-archive-page{
+  color: var(--archive-text);
+}
+
+.shipping-reports-archive-page .archive-header {
+  background: linear-gradient(145deg, rgba(17, 24, 39, 0.9), rgba(11, 18, 32, 0.9));
+  border-radius: 20px;
+  padding: 24px;
+  margin-bottom: 24px;
+  border: 1px solid rgba(59, 130, 246, 0.1);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.shipping-reports-archive-page .archive-header h2 {
+  margin: 0 0 12px 0;
+  color: var(--archive-text);
+  font-size: 24px;
+}
+
+.shipping-reports-archive-page .reports-table {
+  background: linear-gradient(145deg, rgba(17, 24, 39, 0.9), rgba(11, 18, 32, 0.9));
+  border-radius: 20px;
+  padding: 24px;
+  overflow-x: auto;
+  border: 1px solid rgba(59, 130, 246, 0.1);
+}
+
+.shipping-reports-archive-page .reports-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.shipping-reports-archive-page .reports-table th {
+  padding: 14px 12px;
+  text-align: right;
+  background: rgba(15, 23, 42, 0.8);
+  color: var(--archive-text);
+  font-weight: 600;
+  font-size: 14px;
+  border-bottom: 2px solid rgba(59, 130, 246, 0.2);
+}
+
+.shipping-reports-archive-page .reports-table td {
+  padding: 14px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 14px;
+}
+
+.shipping-reports-archive-page .reports-table tr:hover {
+  background: rgba(15, 23, 42, 0.6);
+}
+
+.shipping-reports-archive-page .btn-view {
+  background: var(--archive-primary);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.shipping-reports-archive-page .btn-view:hover {
+  background: #2563eb;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.shipping-reports-archive-page .btn-print {
+  background: var(--archive-success);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  display: inline-block;
+  margin-right: 8px;
+}
+
+.shipping-reports-archive-page .btn-print:hover {
+  background: #059669;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.shipping-reports-archive-page .no-reports {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--archive-muted);
+  font-size: 18px;
+}
+
+.shipping-reports-archive-page .back-btn {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--archive-text);
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  text-decoration: none;
+  display: inline-block;
+  margin-bottom: 20px;
+  transition: all 0.3s ease;
+}
+
+.shipping-reports-archive-page .back-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Light mode readability */
+:root[data-theme="light"] .shipping-reports-archive-page .archive-header,
+:root[data-theme="light"] .shipping-reports-archive-page .reports-table {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(2, 6, 23, 0.08);
+  box-shadow: 0 16px 34px rgba(2, 6, 23, 0.08);
+}
+
+:root[data-theme="light"] .shipping-reports-archive-page .reports-table th {
+  background: rgba(241, 245, 249, 0.96);
+  color: rgba(15, 23, 42, 0.80);
+  border-bottom-color: rgba(2, 6, 23, 0.10);
+}
+
+:root[data-theme="light"] .shipping-reports-archive-page .reports-table td {
+  border-bottom-color: rgba(2, 6, 23, 0.08);
+}
+
+:root[data-theme="light"] .shipping-reports-archive-page .reports-table tr:hover {
+  background: rgba(37, 99, 235, 0.05);
+}
+</style>
+
+<div class="shipping-reports-archive-page">
+<div class="archive-header">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+    <h2 style="margin: 0;">🚚 شركة النقل: {{ shipping_company.name if shipping_company else "غير محدد" }}</h2>
+    {% if current_role == "admin" %}
+    <a href="/shipping" class="back-btn">← العودة للشحن</a>
+    {% else %}
+    <a href="/delivery/archive" class="back-btn">← العودة للأرشيف</a>
+    {% endif %}
+  </div>
+  <div style="color: var(--archive-muted); font-size: 14px;">
+    عدد الكشوفات: <strong style="color: var(--archive-text);">{{ reports|length }}</strong>
+  </div>
+</div>
+
+<div class="reports-table">
+  {% if reports %}
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>رقم الكشف</th>
+        <th>عدد الطلبات</th>
+        <th>إجمالي المبلغ</th>
+        <th>التاريخ</th>
+        <th>أنشأه</th>
+        <th>إجراءات</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for report in reports %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td><strong>#{{ report.report_number }}</strong></td>
+        <td>{{ report.orders_count }}</td>
+        <td style="color: var(--archive-success); font-weight: 600;">{{ "{:,.0f}".format(report.total_amount) }} د.ع</td>
+        <td>{{ report.created_at.strftime('%Y-%m-%d %H:%M') if report.created_at else "—" }}</td>
+        <td>{{ report.created_by or "—" }}</td>
+        <td>
+          <a href="/delivery/report/{{ report.id }}" class="btn-print" target="_blank">🖨️ طباعة</a>
+          <a href="/delivery/report/{{ report.id }}" class="btn-view" target="_blank">👁️ عرض</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="no-reports">
+    📭 لا توجد كشوفات في الأرشيف
+  </div>
+  {% endif %}
+</div>
+
+</div>
+{% endblock %}
