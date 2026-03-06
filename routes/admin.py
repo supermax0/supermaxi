@@ -15,6 +15,8 @@ def handle_500(e):
 
 DEPLOY_ROOT = os.environ.get("FINORA_DEPLOY_ROOT", "/var/www/finora/supermaxi")
 SERVICE_NAME = os.environ.get("FINORA_SERVICE_NAME", "finora")
+# إن وُجد: تخطي إعادة التشغيل (مفيد عند عدم توفر sudo أو على Windows)
+SKIP_RESTART = os.environ.get("FINORA_SKIP_RESTART", "").lower() in ("1", "true", "yes")
 
 
 def _run(cmd, cwd=None, timeout=60):
@@ -77,21 +79,33 @@ def system_update():
                 "message": _safe_str(pull.stderr) or _safe_str(pull.stdout) or "فشل سحب التحديثات من GitHub.",
             }), 500
 
-        restart = subprocess.run(
-            ["sudo", "systemctl", "restart", SERVICE_NAME],
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-        if restart.returncode != 0:
-            return jsonify({
-                "status": "error",
-                "message": _safe_str(restart.stderr) or _safe_str(restart.stdout) or "فشل إعادة تشغيل الخدمة.",
-            }), 500
+        restart_ok = False
+        if not SKIP_RESTART and os.name != "nt":
+            try:
+                restart = subprocess.run(
+                    ["sudo", "systemctl", "restart", SERVICE_NAME],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                )
+                restart_ok = restart.returncode == 0
+                if not restart_ok:
+                    log.warning("systemctl restart failed: %s", restart.stderr or restart.stdout)
+            except (FileNotFoundError, OSError) as e:
+                log.warning("Cannot run systemctl (sudo unavailable?): %s", e)
 
-        msg = "تم تحديث الموقع على VPS وإعادة تشغيل الخدمة بنجاح."
-        if pushed:
-            msg = "تم الرفع إلى GitHub وتحديث الموقع على VPS بنجاح."
+        if pushed and restart_ok:
+            msg = "تم الرفع إلى GitHub وتحديث الموقع على VPS وإعادة تشغيل الخدمة بنجاح."
+        elif pushed:
+            msg = "تم الرفع إلى GitHub وسحب التحديثات على السيرفر بنجاح." + (
+                " أعد تشغيل الخدمة يدوياً إن لزم." if not restart_ok and os.name != "nt" else ""
+            )
+        elif restart_ok:
+            msg = "تم تحديث الموقع على VPS وإعادة تشغيل الخدمة بنجاح."
+        else:
+            msg = "تم سحب التحديثات بنجاح." + (
+                " أعد تشغيل الخدمة يدوياً إن لزم." if not SKIP_RESTART and os.name != "nt" else ""
+            )
         return jsonify({"status": "success", "message": msg})
     except subprocess.TimeoutExpired:
         return jsonify({"status": "error", "message": "انتهت مهلة تنفيذ الأمر."}), 500
