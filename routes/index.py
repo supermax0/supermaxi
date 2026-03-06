@@ -52,11 +52,17 @@ def get_public_plans():
         rows = SubscriptionPlan.query.all()
         by_key = {}
         for p in rows:
+            pm = getattr(p, "price_monthly", 0) or 0
+            py = getattr(p, "price_yearly", 0) or 0
+            om = getattr(p, "original_price_monthly", None)
+            oy = getattr(p, "original_price_yearly", None)
             by_key[p.plan_key] = {
                 "key": p.plan_key,
                 "name": p.name,
-                "price_monthly": getattr(p, "price_monthly", 0) or 0,
-                "price_yearly": getattr(p, "price_yearly", 0) or 0,
+                "price_monthly": pm,
+                "price_yearly": py,
+                "original_price_monthly": int(om) if om is not None else None,
+                "original_price_yearly": int(oy) if oy is not None else None,
             }
         return by_key if by_key else None
     except Exception:

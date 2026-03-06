@@ -343,8 +343,7 @@
     {% set pd = plans_dict or {} %}
     <div class="plan-opt {% if selected_plan.key == 'basic' %}selected{% endif %}" onclick="selectPlan('basic')">
       <div class="plan-name">🟢 الأساسية</div>
-      <div class="plan-price-display" id="p_basic">
-        {{ "{:,.0f}".format(pd.get('basic', {}).get('price_monthly', 25000)) }} <small>د.ع/شهر</small>
+      <div class="plan-price-display" id="p_basic">{% set b = pd.get('basic', {}) %}{% if b.get('original_price_monthly') and b.get('original_price_monthly') > b.get('price_monthly', 0) %}<span style="text-decoration:line-through;opacity:0.6;margin-left:6px;font-size:0.9em;">{{ "{:,.0f}".format(b.get('original_price_monthly')) }}</span> {% endif %}{{ "{:,.0f}".format(b.get('price_monthly', 25000)) }} <small>د.ع/شهر</small>
       </div>
       <div class="plan-period-note" id="pn_basic">يُدفع شهرياً</div>
       <ul class="plan-feats">
@@ -358,8 +357,7 @@
       style="position:relative">
       <div class="badge-hot">⭐ الأكثر طلباً</div>
       <div class="plan-name">🔵 المتقدمة</div>
-      <div class="plan-price-display" id="p_pro">
-        {{ "{:,.0f}".format(pd.get('pro', {}).get('price_monthly', 45000)) }} <small>د.ع/شهر</small>
+      <div class="plan-price-display" id="p_pro">{% set pr = pd.get('pro', {}) %}{% if pr.get('original_price_monthly') and pr.get('original_price_monthly') > pr.get('price_monthly', 0) %}<span style="text-decoration:line-through;opacity:0.6;margin-left:6px;font-size:0.9em;">{{ "{:,.0f}".format(pr.get('original_price_monthly')) }}</span> {% endif %}{{ "{:,.0f}".format(pr.get('price_monthly', 45000)) }} <small>د.ع/شهر</small>
       </div>
       <div class="plan-period-note" id="pn_pro">يُدفع شهرياً</div>
       <ul class="plan-feats">
@@ -372,8 +370,7 @@
     <div class="plan-opt {% if selected_plan.key == 'enterprise' %}selected{% endif %}"
       onclick="selectPlan('enterprise')">
       <div class="plan-name">🟣 الشركات</div>
-      <div class="plan-price-display" id="p_enterprise">
-        {{ "{:,.0f}".format(pd.get('enterprise', {}).get('price_monthly', 90000)) }} <small>د.ع/شهر</small>
+      <div class="plan-price-display" id="p_enterprise">{% set e = pd.get('enterprise', {}) %}{% if e.get('original_price_monthly') and e.get('original_price_monthly') > e.get('price_monthly', 0) %}<span style="text-decoration:line-through;opacity:0.6;margin-left:6px;font-size:0.9em;">{{ "{:,.0f}".format(e.get('original_price_monthly')) }}</span> {% endif %}{{ "{:,.0f}".format(e.get('price_monthly', 90000)) }} <small>د.ع/شهر</small>
       </div>
       <div class="plan-period-note" id="pn_enterprise">يُدفع شهرياً</div>
       <ul class="plan-feats">
@@ -476,13 +473,13 @@
 <script>
   const PRICES = {
     {% for k, v in (plans_dict or {}).items() %}
-    "{{ k }}": { monthly: {{ v.get('price_monthly', 0) }}, yearly: {{ v.get('price_yearly', 0) }}, name: "{{ v.get('name', '') | e }}" }{% if not loop.last %},{% endif %}
+    "{{ k }}": { monthly: {{ v.get('price_monthly', 0) }}, yearly: {{ v.get('price_yearly', 0) }}, name: "{{ v.get('name', '') | e }}", original_monthly: {{ v.get('original_price_monthly') if v.get('original_price_monthly') is not none else 'null' }}, original_yearly: {{ v.get('original_price_yearly') if v.get('original_price_yearly') is not none else 'null' }} }{% if not loop.last %},{% endif %}
     {% endfor %}
   };
   if (Object.keys(PRICES).length === 0) {
-    PRICES.basic = { monthly: 25000, yearly: 250000, name: 'الأساسية' };
-    PRICES.pro = { monthly: 45000, yearly: 450000, name: 'المتقدمة' };
-    PRICES.enterprise = { monthly: 90000, yearly: 900000, name: 'الشركات' };
+    PRICES.basic = { monthly: 25000, yearly: 250000, name: 'الأساسية', original_monthly: null, original_yearly: null };
+    PRICES.pro = { monthly: 45000, yearly: 450000, name: 'المتقدمة', original_monthly: null, original_yearly: null };
+    PRICES.enterprise = { monthly: 90000, yearly: 900000, name: 'الشركات', original_monthly: null, original_yearly: null };
   }
 
   let currentPlan = '{{ selected_plan.key }}';
@@ -495,9 +492,13 @@
     Object.keys(PRICES).forEach(k => {
       const p = PRICES[k];
       const pr = yearly ? p.yearly : p.monthly;
+      const orig = yearly ? p.original_yearly : p.original_monthly;
       const el = document.getElementById('p_' + k);
       const note = document.getElementById('pn_' + k);
-      if (el) el.innerHTML = fmt(pr) + ' <small>د.ع/' + (yearly ? 'سنة' : 'شهر') + '</small>';
+      let html = '';
+      if (orig != null && orig > pr) html += '<span style="text-decoration:line-through;opacity:0.6;margin-left:6px;font-size:0.9em;">' + fmt(orig) + '</span> ';
+      html += fmt(pr) + ' <small>د.ع/' + (yearly ? 'سنة' : 'شهر') + '</small>';
+      if (el) el.innerHTML = html;
       if (note) note.textContent = yearly ? 'يُدفع سنوياً — وفّر شهرين!' : 'يُدفع شهرياً';
     });
     // summary

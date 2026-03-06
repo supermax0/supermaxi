@@ -1143,7 +1143,7 @@
                 <div class="pc">
                     <div class="pn">🟢 الأساسية</div>
                     <div class="pd">للمشاريع الصغيرة والناشئة</div>
-                    <div class="pr" style="color:var(--b)" id="price_basic">{{ "{:,.0f}".format(lp.get('basic', {}).get('price_monthly', 25000)) }} <small>د.ع / شهر</small></div>
+                    <div class="pr" style="color:var(--b)" id="price_basic">{% set b = lp.get('basic', {}) %}{% if b.get('original_price_monthly') and b.get('original_price_monthly') > b.get('price_monthly', 0) %}<span style="text-decoration:line-through;opacity:0.6;margin-left:6px;font-size:0.85em;">{{ "{:,.0f}".format(b.get('original_price_monthly')) }}</span> {% endif %}{{ "{:,.0f}".format(b.get('price_monthly', 25000)) }} <small>د.ع / شهر</small></div>
                     <div id="saving_basic"></div>
                     <div class="div"></div>
                     <ul class="pf">
@@ -1166,8 +1166,7 @@
                     <div class="pn">🔵 المتقدمة</div>
                     <div class="pd">للمتاجر النامية والمتوسطة</div>
                     <div class="pr" id="price_pro"
-                        style="background:linear-gradient(135deg,var(--b),var(--p));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent">
-                        {{ "{:,.0f}".format(lp.get('pro', {}).get('price_monthly', 45000)) }} <small style="-webkit-text-fill-color:var(--muted)">د.ع / شهر</small></div>
+                        style="background:linear-gradient(135deg,var(--b),var(--p));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent">{% set pr = lp.get('pro', {}) %}{% if pr.get('original_price_monthly') and pr.get('original_price_monthly') > pr.get('price_monthly', 0) %}<span style="text-decoration:line-through;opacity:0.6;margin-left:6px;font-size:0.85em;-webkit-text-fill-color:var(--muted);">{{ "{:,.0f}".format(pr.get('original_price_monthly')) }}</span> {% endif %}{{ "{:,.0f}".format(pr.get('price_monthly', 45000)) }} <small style="-webkit-text-fill-color:var(--muted)">د.ع / شهر</small></div>
                     <div id="saving_pro"></div>
                     <div class="div"></div>
                     <ul class="pf">
@@ -1187,7 +1186,7 @@
                 <div class="pc">
                     <div class="pn">🟣 الشركات</div>
                     <div class="pd">للشركات الكبيرة — كل شيء بلا حدود</div>
-                    <div class="pr" style="color:var(--p)" id="price_enterprise">{{ "{:,.0f}".format(lp.get('enterprise', {}).get('price_monthly', 90000)) }} <small>د.ع / شهر</small></div>
+                    <div class="pr" style="color:var(--p)" id="price_enterprise">{% set e = lp.get('enterprise', {}) %}{% if e.get('original_price_monthly') and e.get('original_price_monthly') > e.get('price_monthly', 0) %}<span style="text-decoration:line-through;opacity:0.6;margin-left:6px;font-size:0.85em;">{{ "{:,.0f}".format(e.get('original_price_monthly')) }}</span> {% endif %}{{ "{:,.0f}".format(e.get('price_monthly', 90000)) }} <small>د.ع / شهر</small></div>
                     <div id="saving_enterprise"></div>
                     <div class="div"></div>
                     <ul class="pf">
@@ -1436,16 +1435,16 @@
         // FAQ
         function tf(el) { const it = el.parentElement, op = it.classList.contains('op'); document.querySelectorAll('.fi2').forEach(i => i.classList.remove('op')); if (!op) it.classList.add('op') }
 
-        // ── Billing Toggle (الأسعار من قاعدة البيانات) ──────────────────────────────────────────
+        // ── Billing Toggle (الأسعار من قاعدة البيانات + السعر الأصلي إن وُجد) ──────────────────────────────────────────
         const PRICES = {
             {% for k, v in (landing_plans or {}).items() %}
-            "{{ k }}": { monthly: {{ v.get('price_monthly', 0) }}, yearly: {{ v.get('price_yearly', 0) }}, name: "{{ v.get('name', '') | e }}" }{% if not loop.last %},{% endif %}
+            "{{ k }}": { monthly: {{ v.get('price_monthly', 0) }}, yearly: {{ v.get('price_yearly', 0) }}, name: "{{ v.get('name', '') | e }}", original_monthly: {{ v.get('original_price_monthly') if v.get('original_price_monthly') is not none else 'null' }}, original_yearly: {{ v.get('original_price_yearly') if v.get('original_price_yearly') is not none else 'null' }} }{% if not loop.last %},{% endif %}
             {% endfor %}
         };
         if (Object.keys(PRICES).length === 0) {
-            PRICES.basic = { monthly: 25000, yearly: 250000, name: 'الأساسية' };
-            PRICES.pro = { monthly: 45000, yearly: 450000, name: 'المتقدمة' };
-            PRICES.enterprise = { monthly: 90000, yearly: 900000, name: 'الشركات' };
+            PRICES.basic = { monthly: 25000, yearly: 250000, name: 'الأساسية', original_monthly: null, original_yearly: null };
+            PRICES.pro = { monthly: 45000, yearly: 450000, name: 'المتقدمة', original_monthly: null, original_yearly: null };
+            PRICES.enterprise = { monthly: 90000, yearly: 900000, name: 'الشركات', original_monthly: null, original_yearly: null };
         }
 
         function fmt(n) { return n.toLocaleString('ar-IQ') }
@@ -1462,15 +1461,19 @@
                 by.style.background = 'transparent'; by.style.color = '#94a3b8'; by.style.boxShadow = 'none';
                 bm.style.background = 'linear-gradient(135deg,#3b82f6,#6366f1)'; bm.style.color = '#fff'; bm.style.boxShadow = '0 4px 18px rgba(99,102,241,.35)';
             }
-            // Update each plan price
+            // Update each plan price (مع السعر الأصلي المشطوب إن وُجد)
             Object.keys(PRICES).forEach(key => {
                 const p = PRICES[key];
                 const prEl = document.getElementById('price_' + key);
                 const svEl = document.getElementById('saving_' + key);
                 const lnEl = document.getElementById('link_' + key);
                 const price = yearly ? p.yearly : p.monthly;
+                const orig = yearly ? p.original_yearly : p.original_monthly;
                 const unit = yearly ? 'سنة' : 'شهر';
-                if (prEl) prEl.innerHTML = fmt(price) + ' <small>د.ع / ' + unit + '</small>';
+                let html = '';
+                if (orig != null && orig > price) html += '<span style="text-decoration:line-through;opacity:0.6;margin-left:6px;font-size:0.85em;">' + fmt(orig) + '</span> ';
+                html += fmt(price) + ' <small>د.ع / ' + unit + '</small>';
+                if (prEl) prEl.innerHTML = html;
                 if (svEl) svEl.innerHTML = yearly
                     ? '<span style="display:inline-block;margin-top:6px;font-size:12px;background:rgba(16,185,129,.15);color:#6ee7b7;padding:4px 12px;border-radius:8px;font-weight:700;">🎉 وفّر ' + fmt(p.monthly * 12 - p.yearly) + ' د.ع سنوياً</span>'
                     : '';
