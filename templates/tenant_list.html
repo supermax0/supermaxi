@@ -402,6 +402,17 @@
             <div class="action-group">
                 <div class="action-title"><i class="fas fa-tools"></i> أدوات الإدارة</div>
                 <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <div style="display:flex;flex-direction:column;gap:6px;">
+                        <label class="detail-label">رابط تسجيل الدخول الخاص بالشركة</label>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <input type="text" id="m-login-url" readonly
+                                style="flex:1;padding:10px 12px;border-radius:10px;border:1px solid var(--border-color);background:rgba(15,23,42,0.6);color:#e5e7eb;font-size:12px;direction:ltr;">
+                            <button type="button" class="btn-update" id="m-copy-login-url"
+                                style="padding:8px 12px;white-space:nowrap;">
+                                <i class="fas fa-copy"></i> نسخ الرابط
+                            </button>
+                        </div>
+                    </div>
                     <button class="btn-update" id="open-reset-pwd-modal">
                         <i class="fas fa-key"></i> تغيير كلمة مرور المسؤول
                     </button>
@@ -471,6 +482,7 @@
                             document.getElementById('m-db').textContent = data.db_path;
                             document.getElementById('m-created').textContent = data.created_at;
                             document.getElementById('m-end').textContent = data.subscription_end_date;
+                            document.getElementById('m-login-url').value = data.login_url || '';
 
                             // Plan info
                             document.getElementById('m-plan-select').value = data.plan_key || 'basic';
@@ -558,6 +570,24 @@
                     alert('فشل الاتصال بالسيرفر');
                 });
         });
+
+        // نسخ رابط تسجيل الدخول
+        const copyLoginBtn = document.getElementById('m-copy-login-url');
+        const loginUrlInput = document.getElementById('m-login-url');
+        if (copyLoginBtn && loginUrlInput) {
+            copyLoginBtn.addEventListener('click', () => {
+                if (!loginUrlInput.value) return;
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(loginUrlInput.value).then(() => {
+                        alert('تم نسخ رابط تسجيل الدخول إلى الحافظة.');
+                    });
+                } else {
+                    loginUrlInput.select();
+                    document.execCommand('copy');
+                    alert('تم نسخ رابط تسجيل الدخول إلى الحافظة.');
+                }
+            });
+        }
 
         // Handle Reset Database
         document.getElementById('m-reset-db').addEventListener('click', function () {

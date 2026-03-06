@@ -280,6 +280,31 @@ def login():
         return redirect("/pos")
 
 
+@index_bp.route("/login/<tenant_slug>", methods=["GET", "POST"])
+def login_tenant(tenant_slug):
+    """
+    مسار مختصر لتسجيل دخول شركة محددة عبر رابط خاص:
+    مثال: https://finora.company/login/super
+    بحيث لا يحتاج المستخدم لإدخال معرف الشركة يدوياً.
+    """
+    tenant_slug = (tenant_slug or "").strip().lower()
+    if request.method == "GET":
+        # إذا مسجل دخول بالفعل، توجيه مباشر
+        if "user_id" in session and session.get("tenant_slug") == tenant_slug:
+            return redirect("/" if session.get("role") == "admin" else "/pos")
+        # إعادة استخدام نفس صفحة login لكن مع تمرير tenant في الـ query (للـ placeholder وللقيمة)
+        return render_template("login.html", fixed_tenant_slug=tenant_slug)
+
+    # POST: نستخدم نفس منطق login الأساسي لكن مع tenant_slug من الـ path إذا لم يرسل في الـ form
+    if not request.form.get("tenant_slug"):
+        # حقن الـ slug في النموذج بحيث تعمل دالة login العادية كما هي
+        from werkzeug.datastructures import ImmutableMultiDict
+        form = request.form.to_dict(flat=True)
+        form["tenant_slug"] = tenant_slug
+        request.form = ImmutableMultiDict(form)
+    return login()
+
+
 # =================================================
 # Logout (تسجيل الخروج)
 # =================================================

@@ -68,9 +68,6 @@ def dashboard():
 
     # زيارات صفحة الهبوط (إجمالي + زيارات اليوم من Core DB)
     try:
-        from flask import g
-        from models.system_analytics import SystemAnalytics
-
         old_tenant = getattr(g, "tenant", None)
         g.tenant = None
         landing_row = SystemAnalytics.query.filter_by(
@@ -207,6 +204,14 @@ def tenant_details(slug):
         admin_name = admin_emp.name if admin_emp else "—"
         plan_key = tenant_row.plan_key if tenant_row else "basic"
         plan_name = tenant_row.plan_name if tenant_row else "الخطة الأساسية"
+
+        # رابط تسجيل الدخول الخاص بالشركة
+        try:
+            base_url = request.host_url.rstrip("/")
+        except Exception:
+            base_url = ""
+        login_url = f"{base_url}/login/{tenant.slug}"
+
         return jsonify({
             "ok": True,
             "name": tenant.name,
@@ -220,6 +225,7 @@ def tenant_details(slug):
             "admin_password": None,
             "plan_key": plan_key,
             "plan_name": plan_name,
+            "login_url": login_url,
         })
     except Exception as e:
         g.tenant = None

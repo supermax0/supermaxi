@@ -195,16 +195,26 @@
         </div>
         {% endif %}
 
-        <form method="post" action="/login">
+        <form method="post" action="{{ url_for('index.login_tenant', tenant_slug=fixed_tenant_slug) if fixed_tenant_slug else '/login' }}">
             <div class="form-group">
                 <label for="tenant_slug">معرف الشركة (Company ID)</label>
                 <div class="input-icon-wrap">
                     <i class="fas fa-building"></i>
+                    {% if fixed_tenant_slug %}
+                    <input type="text" id="tenant_slug" name="tenant_slug"
+                        value="{{ fixed_tenant_slug }}" readonly dir="ltr" autocomplete="off"
+                        style="background:rgba(148,163,184,0.1); cursor:not-allowed;">
+                    {% else %}
                     <input type="text" id="tenant_slug" name="tenant_slug"
                         placeholder="مثال: alnoor (بدون مسافات، إنجليزي)" value="{{ request.args.get('tenant', '') }}"
                         required dir="ltr" autofocus autocomplete="off">
+                    {% endif %}
                 </div>
-                <small style="display:block; margin-top:6px; color: var(--text-muted); font-size: 12px;"> </small>
+                <small style="display:block; margin-top:6px; color: var(--text-muted); font-size: 12px;">
+                    {% if fixed_tenant_slug %}
+                    هذا الرابط خاص بالشركة <strong>{{ fixed_tenant_slug }}</strong>، أدخل اسم المستخدم وكلمة المرور فقط.
+                    {% endif %}
+                </small>
             </div>
 
             <div class="form-group">
