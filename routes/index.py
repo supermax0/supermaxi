@@ -34,6 +34,37 @@ from utils.cash_calculations import calculate_cash_balance
 
 index_bp = Blueprint("index", __name__)
 
+# خطط الاشتراك من قاعدة البيانات (للصفحة الرئيسية والتسجيل) — fallback إذا كانت الجداول فارغة
+FALLBACK_PLANS = {
+    "basic": {"key": "basic", "name": "الخطة الأساسية", "price_monthly": 25000, "price_yearly": 250000},
+    "pro": {"key": "pro", "name": "الخطة المتقدمة", "price_monthly": 45000, "price_yearly": 450000},
+    "enterprise": {"key": "enterprise", "name": "خطة الشركات", "price_monthly": 90000, "price_yearly": 900000},
+}
+
+
+def get_public_plans():
+    """جلب خطط الاشتراك من قاعدة البيانات الأساسية (Core) للاستخدام في الهبوط والتسجيل."""
+    from flask import g
+    from models.core.subscription_plan import SubscriptionPlan
+    old_tenant = getattr(g, "tenant", None)
+    g.tenant = None
+    try:
+        rows = SubscriptionPlan.query.all()
+        by_key = {}
+        for p in rows:
+            by_key[p.plan_key] = {
+                "key": p.plan_key,
+                "name": p.name,
+                "price_monthly": getattr(p, "price_monthly", 0) or 0,
+                "price_yearly": getattr(p, "price_yearly", 0) or 0,
+            }
+        return by_key if by_key else None
+    except Exception:
+        return None
+    finally:
+        g.tenant = old_tenant
+
+
 # =================================================
 # PAGE (الرئيسية)
 # =================================================
@@ -41,7 +72,8 @@ index_bp = Blueprint("index", __name__)
 def index():
     # إذا لم يكن مسجل دخول، عرض صفحة الهبوط (landing) التي أصبح اسمها index.html
     if "user_id" not in session:
-        return render_template("index.html")
+        landing_plans = get_public_plans() or FALLBACK_PLANS
+        return render_template("index.html", landing_plans=landing_plans)
     
     # إذا كان مسجل دخول (آدمن أو كاشير)
     if session.get("role") == "cashier":
@@ -281,19 +313,16 @@ def payment_success():
 def signup():
     from werkzeug.security import generate_password_hash
 
-    PLANS = {
-        "basic": {"key": "basic", "name": "الخطة الأساسية",  "price_monthly": 25000, "price_yearly": 250000},
-        "pro":   {"key": "pro",   "name": "الخطة المتقدمة",  "price_monthly": 45000, "price_yearly": 450000},
-        "enterprise": {"key": "enterprise", "name": "خطة الشركات", "price_monthly": 90000, "price_yearly": 900000},
-    }
+    PLANS = get_public_plans() or FALLBACK_PLANS
 
     if request.method == "GET":
         plan_key    = request.args.get("plan", "basic")
         billing     = request.args.get("billing", "monthly")  # monthly | yearly
-        plan        = PLANS.get(plan_key, PLANS["basic"])
+        plan        = PLANS.get(plan_key, PLANS.get("basic", FALLBACK_PLANS["basic"]))
         return render_template("signup.html",
             selected_plan=plan,
             plans=list(PLANS.values()),
+            plans_dict=PLANS,
             billing=billing)
 
     # ── POST: إنشاء Tenant + Admin ──────────────────────────
@@ -307,11 +336,11 @@ def signup():
     plan_key     = request.form.get("plan_key", "basic")
     billing      = request.form.get("billing", "monthly")
 
-    plan = PLANS.get(plan_key, PLANS["basic"])
+    plan = PLANS.get(plan_key, PLANS.get("basic", FALLBACK_PLANS["basic"]))
 
     def render_err(msg):
         return render_template("signup.html",
-            selected_plan=plan, plans=list(PLANS.values()),
+            selected_plan=plan, plans=list(PLANS.values()), plans_dict=PLANS,
             billing=billing, error=msg, form=request.form)
 
     # Validation

@@ -340,10 +340,11 @@
 
   <!-- Plan Selector -->
   <div class="plan-row" id="planRow">
+    {% set pd = plans_dict or {} %}
     <div class="plan-opt {% if selected_plan.key == 'basic' %}selected{% endif %}" onclick="selectPlan('basic')">
       <div class="plan-name">🟢 الأساسية</div>
       <div class="plan-price-display" id="p_basic">
-        25,000 <small>د.ع/شهر</small>
+        {{ "{:,.0f}".format(pd.get('basic', {}).get('price_monthly', 25000)) }} <small>د.ع/شهر</small>
       </div>
       <div class="plan-period-note" id="pn_basic">يُدفع شهرياً</div>
       <ul class="plan-feats">
@@ -358,7 +359,7 @@
       <div class="badge-hot">⭐ الأكثر طلباً</div>
       <div class="plan-name">🔵 المتقدمة</div>
       <div class="plan-price-display" id="p_pro">
-        45,000 <small>د.ع/شهر</small>
+        {{ "{:,.0f}".format(pd.get('pro', {}).get('price_monthly', 45000)) }} <small>د.ع/شهر</small>
       </div>
       <div class="plan-period-note" id="pn_pro">يُدفع شهرياً</div>
       <ul class="plan-feats">
@@ -372,7 +373,7 @@
       onclick="selectPlan('enterprise')">
       <div class="plan-name">🟣 الشركات</div>
       <div class="plan-price-display" id="p_enterprise">
-        90,000 <small>د.ع/شهر</small>
+        {{ "{:,.0f}".format(pd.get('enterprise', {}).get('price_monthly', 90000)) }} <small>د.ع/شهر</small>
       </div>
       <div class="plan-period-note" id="pn_enterprise">يُدفع شهرياً</div>
       <ul class="plan-feats">
@@ -474,10 +475,15 @@
 
 <script>
   const PRICES = {
-    basic: { monthly: 25000, yearly: 250000, name: 'الأساسية' },
-    pro: { monthly: 45000, yearly: 450000, name: 'المتقدمة' },
-    enterprise: { monthly: 90000, yearly: 900000, name: 'الشركات' }
+    {% for k, v in (plans_dict or {}).items() %}
+    "{{ k }}": { monthly: {{ v.get('price_monthly', 0) }}, yearly: {{ v.get('price_yearly', 0) }}, name: "{{ v.get('name', '') | e }}" }{% if not loop.last %},{% endif %}
+    {% endfor %}
   };
+  if (Object.keys(PRICES).length === 0) {
+    PRICES.basic = { monthly: 25000, yearly: 250000, name: 'الأساسية' };
+    PRICES.pro = { monthly: 45000, yearly: 450000, name: 'المتقدمة' };
+    PRICES.enterprise = { monthly: 90000, yearly: 900000, name: 'الشركات' };
+  }
 
   let currentPlan = '{{ selected_plan.key }}';
   let currentBilling = '{{ billing or "monthly" }}';

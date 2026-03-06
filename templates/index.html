@@ -1138,11 +1138,12 @@
                 </div>
             </div>
 
+            {% set lp = landing_plans or {} %}
             <div class="pg ai">
                 <div class="pc">
                     <div class="pn">🟢 الأساسية</div>
                     <div class="pd">للمشاريع الصغيرة والناشئة</div>
-                    <div class="pr" style="color:var(--b)" id="price_basic">25,000 <small>د.ع / شهر</small></div>
+                    <div class="pr" style="color:var(--b)" id="price_basic">{{ "{:,.0f}".format(lp.get('basic', {}).get('price_monthly', 25000)) }} <small>د.ع / شهر</small></div>
                     <div id="saving_basic"></div>
                     <div class="div"></div>
                     <ul class="pf">
@@ -1166,7 +1167,7 @@
                     <div class="pd">للمتاجر النامية والمتوسطة</div>
                     <div class="pr" id="price_pro"
                         style="background:linear-gradient(135deg,var(--b),var(--p));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent">
-                        45,000 <small style="-webkit-text-fill-color:var(--muted)">د.ع / شهر</small></div>
+                        {{ "{:,.0f}".format(lp.get('pro', {}).get('price_monthly', 45000)) }} <small style="-webkit-text-fill-color:var(--muted)">د.ع / شهر</small></div>
                     <div id="saving_pro"></div>
                     <div class="div"></div>
                     <ul class="pf">
@@ -1186,7 +1187,7 @@
                 <div class="pc">
                     <div class="pn">🟣 الشركات</div>
                     <div class="pd">للشركات الكبيرة — كل شيء بلا حدود</div>
-                    <div class="pr" style="color:var(--p)" id="price_enterprise">90,000 <small>د.ع / شهر</small></div>
+                    <div class="pr" style="color:var(--p)" id="price_enterprise">{{ "{:,.0f}".format(lp.get('enterprise', {}).get('price_monthly', 90000)) }} <small>د.ع / شهر</small></div>
                     <div id="saving_enterprise"></div>
                     <div class="div"></div>
                     <ul class="pf">
@@ -1435,12 +1436,17 @@
         // FAQ
         function tf(el) { const it = el.parentElement, op = it.classList.contains('op'); document.querySelectorAll('.fi2').forEach(i => i.classList.remove('op')); if (!op) it.classList.add('op') }
 
-        // ── Billing Toggle ──────────────────────────────────────────
+        // ── Billing Toggle (الأسعار من قاعدة البيانات) ──────────────────────────────────────────
         const PRICES = {
-            basic: { monthly: 25000, yearly: 250000, name: 'الأساسية' },
-            pro: { monthly: 45000, yearly: 450000, name: 'المتقدمة' },
-            enterprise: { monthly: 90000, yearly: 900000, name: 'الشركات' }
+            {% for k, v in (landing_plans or {}).items() %}
+            "{{ k }}": { monthly: {{ v.get('price_monthly', 0) }}, yearly: {{ v.get('price_yearly', 0) }}, name: "{{ v.get('name', '') | e }}" }{% if not loop.last %},{% endif %}
+            {% endfor %}
         };
+        if (Object.keys(PRICES).length === 0) {
+            PRICES.basic = { monthly: 25000, yearly: 250000, name: 'الأساسية' };
+            PRICES.pro = { monthly: 45000, yearly: 450000, name: 'المتقدمة' };
+            PRICES.enterprise = { monthly: 90000, yearly: 900000, name: 'الشركات' };
+        }
 
         function fmt(n) { return n.toLocaleString('ar-IQ') }
 
