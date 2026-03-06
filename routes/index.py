@@ -168,6 +168,7 @@ def login():
 
     # تسجيل الجلسة (استخدام slug من قاعدة البيانات لضمان التطابق)
     session.clear()
+    session.permanent = True  # استخدام PERMANENT_SESSION_LIFETIME (مثلاً 7 أيام)
     session["tenant_slug"] = core_tenant.slug
     session["user_id"] = emp.id
     session["name"] = emp.name
@@ -367,6 +368,7 @@ def signup():
         return render_err(f"حدث خطأ أثناء إنشاء الحساب، يرجى المحاولة مجدداً. ({str(e)})")
 
     # تسجيل الجلسة
+    session.permanent = True
     session["user_id"]  = admin.id
     session["name"]     = admin.name
     session["role"]     = admin.role

@@ -42,6 +42,7 @@ def login():
         
         admin = SuperAdmin.query.filter_by(username=username).first()
         if admin and admin.check_password(password):
+            session.permanent = True  # استخدام PERMANENT_SESSION_LIFETIME (مثلاً 7 أيام) بدل انتهاء الجلسة سريعاً
             session["is_superadmin"] = True
             session["superadmin_id"] = admin.id
             return redirect(url_for("superadmin.dashboard"))

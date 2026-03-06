@@ -1,5 +1,6 @@
 # config.py — إعدادات التطبيق (تطوير / إنتاج)
 import os
+from datetime import timedelta
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
@@ -16,6 +17,8 @@ class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY", "super-secret-key-change-in-production")
     SQLALCHEMY_DATABASE_URI = _database_uri()
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    # مدة بقاء الجلسة (السوبر أدمن والعادي): 7 أيام بدل انتهائها عند إغلاق المتصفح أو بعد وقت قصير
+    PERMANENT_SESSION_LIFETIME = timedelta(days=7)
 
     # Email Settings (SMTP)
     MAIL_SERVER = os.environ.get("MAIL_SERVER", "smtp.hostinger.com")

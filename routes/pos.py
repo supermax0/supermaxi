@@ -527,6 +527,7 @@ def pos_login():
     # ===============================
     # هنا كان النقص 🔴
     # ===============================
+    session.permanent = True
     session["user_id"] = emp.id
     session["name"] = emp.name
     session["role"] = emp.role
