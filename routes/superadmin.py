@@ -64,7 +64,27 @@ def dashboard():
     total_revenue_query = db.session.query(db.func.sum(PaymentRequest.amount)).filter_by(status="approved").scalar()
     total_revenue = total_revenue_query if total_revenue_query else 0
     rejected_count = PaymentRequest.query.filter_by(status="rejected").count()
-    
+
+    # زيارات صفحة الهبوط (من Core DB)
+    try:
+        from flask import g
+        from models.system_analytics import SystemAnalytics
+
+        old_tenant = getattr(g, "tenant", None)
+        g.tenant = None
+        landing_row = SystemAnalytics.query.filter_by(
+            analysis_type="landing",
+            title="landing_page_visits"
+        ).first()
+        landing_visits = landing_row.affected_count if landing_row and landing_row.affected_count else 0
+    except Exception:
+        landing_visits = 0
+    finally:
+        try:
+            g.tenant = old_tenant
+        except Exception:
+            pass
+
     recent_requests = PaymentRequest.query.order_by(PaymentRequest.created_at.desc()).limit(5).all()
     
     return render_template("admin_dashboard.html", 
@@ -72,7 +92,8 @@ def dashboard():
         active_tenants=active_tenants, 
         total_revenue=total_revenue,
         rejected_count=rejected_count,
-        recent_requests=recent_requests
+        recent_requests=recent_requests,
+        landing_visits=landing_visits
     )
 
 @superadmin_bp.route("/requests")

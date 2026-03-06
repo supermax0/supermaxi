@@ -71,6 +71,43 @@ def get_public_plans():
         g.tenant = old_tenant
 
 
+def _increment_landing_visits():
+    """زيادة عدّاد زيارات صفحة الهبوط في قاعدة البيانات الأساسية."""
+    try:
+        from flask import g
+        from models.system_analytics import SystemAnalytics
+
+        old_tenant = getattr(g, "tenant", None)
+        g.tenant = None
+
+        row = SystemAnalytics.query.filter_by(
+            analysis_type="landing",
+            title="landing_page_visits"
+        ).first()
+
+        if not row:
+            row = SystemAnalytics(
+                analysis_type="landing",
+                title="landing_page_visits",
+                description="عدد زيارات صفحة الهبوط العامة",
+                severity="info",
+                affected_count=1,
+            )
+            db.session.add(row)
+        else:
+            row.affected_count = (row.affected_count or 0) + 1
+
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        print(f"[landing] failed to record visit: {e}")
+    finally:
+        try:
+            g.tenant = old_tenant
+        except Exception:
+            pass
+
+
 # =================================================
 # PAGE (الرئيسية)
 # =================================================
@@ -78,6 +115,7 @@ def get_public_plans():
 def index():
     # إذا لم يكن مسجل دخول، عرض صفحة الهبوط (landing) التي أصبح اسمها index.html
     if "user_id" not in session:
+        _increment_landing_visits()
         landing_plans = get_public_plans() or FALLBACK_PLANS
         return render_template("index.html", landing_plans=landing_plans)
     
@@ -96,6 +134,7 @@ def index():
 # =================================================
 @index_bp.route("/landing")
 def landing():
+    _increment_landing_visits()
     return redirect("/")
 
 

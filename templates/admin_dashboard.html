@@ -104,6 +104,14 @@
         color: var(--danger);
     }
 
+    .metric-landing {
+        border-bottom: 4px solid var(--accent);
+    }
+
+    .metric-landing .metric-footer {
+        color: var(--accent);
+    }
+
     /* Recent Requests Section */
     .section-header {
         display: flex;
@@ -266,6 +274,18 @@
         <div class="metric-footer">
             <i class="fas fa-times-circle"></i>
             <span>أحدث الطلبات غير المكتملة</span>
+        </div>
+    </div>
+
+    <div class="premium-card metric-card metric-landing">
+        <i class="fas fa-mouse-pointer metric-icon-bg"></i>
+        <div class="metric-info">
+            <div class="metric-title">زيارات صفحة الهبوط</div>
+            <div class="metric-value">{{ "{:,.0f}".format(landing_visits or 0) }}</div>
+        </div>
+        <div class="metric-footer">
+            <i class="fas fa-globe"></i>
+            <span>إجمالي زيارات الصفحة العامة (finora.company)</span>
         </div>
     </div>
 </div>
