@@ -1,9 +1,11 @@
 # Finora — متطلبات التشغيل
 Flask
 Flask-SQLAlchemy
+Flask-Migrate
 python-dotenv
 werkzeug
 reportlab
 pandas
 gunicorn
 Flask-Compress
+psycopg2-binary

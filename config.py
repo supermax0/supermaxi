@@ -5,10 +5,10 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 
 def _database_uri():
-    url = os.environ.get("DATABASE_URL")
-    if url:
-        return url
-    return "sqlite:///" + os.path.join(BASE_DIR, "database.db")
+    return os.environ.get(
+        "DATABASE_URL",
+        "postgresql://finora:password@localhost/finora_db"
+    )
 
 
 class Config:

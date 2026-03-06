@@ -6,6 +6,9 @@
     <meta name="viewport" content="width=device-width,initial-scale=1.0">
     <title>Finora — نظام إدارة الأعمال الذكي</title>
     <meta name="description" content="Finora نظام SaaS متكامل لإدارة الطلبات والمخزون والحسابات بكفاءة عالية.">
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='IMG_0200.png') }}">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='IMG_0200.png') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link
         href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=Inter:wght@700;900&display=swap"
@@ -893,7 +896,13 @@
 
         <!-- NAV -->
         <nav class="nav" id="nav">
-            <div class="logo">Finora<span>منصة إدارة الأعمال</span></div>
+            <div class="logo" style="display:flex;align-items:center;gap:10px;">
+                <img src="{{ url_for('static', filename='IMG_0200.png') }}" alt="Finora logo"
+                    style="width:34px;height:34px;border-radius:12px;object-fit:cover;box-shadow:0 4px 10px rgba(15,23,42,.6);background:#020617;">
+                <div>
+                    Finora<span>منصة إدارة الأعمال</span>
+                </div>
+            </div>
             <div class="nl">
                 <a href="#about">من نحن</a>
                 <a href="#features">الميزات</a>
@@ -976,8 +985,8 @@
                 <div class="ai" style="position:relative">
                     <div
                         style="background:linear-gradient(135deg,rgba(99,102,241,.2),rgba(6,182,212,.1));padding:40px;border-radius:30px;border:1px solid var(--bord);backdrop-filter:blur(20px);">
-                        <img src="https://img.freepik.com/free-vector/digital-technology-background-with-abstract-data-design_53876-114515.jpg"
-                            style="width:100%;border-radius:20px;opacity:.8;mix-blend-mode:lighten" alt="About Finora">
+                        <img src="{{ url_for('static', filename='image.png') }}"
+                            style="width:100%;border-radius:20px;opacity:.9;object-fit:cover" alt="About Finora">
                         <div
                             style="position:absolute;bottom:-20px;right:-20px;background:var(--card);padding:25px;border-radius:22px;border:1px solid var(--bord);box-shadow:0 20px 40px rgba(0,0,0,.4)">
                             <div style="font-size:32px;font-weight:900;color:var(--g)">+5,000</div>

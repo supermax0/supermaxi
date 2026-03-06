@@ -126,6 +126,12 @@ else:
 
 db.init_app(app)
 
+try:
+    from flask_migrate import Migrate
+    migrate = Migrate(app, db)
+except ImportError:
+    migrate = None
+
 # =====================================
 # Create Tables + Admin Account
 # =====================================
@@ -137,6 +143,15 @@ with app.app_context():
     from models.core.global_setting import GlobalSetting
 
     db.create_all()
+
+    # Database health check on startup
+    try:
+        from sqlalchemy import text
+        db.session.execute(text("SELECT 1"))
+        db.session.commit()
+        print("Database connection OK.")
+    except Exception as e:
+        print(f"Database health check: {e}")
     
     # =====================================
     # DB Init: Core Database defaults

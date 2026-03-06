@@ -357,6 +357,12 @@
       z-index: 40;
     }
 
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
     .topbar-actions {
       display: inline-flex;
       align-items: center;
@@ -1737,6 +1743,7 @@
     <!-- ================= SIDEBAR (جميع المستخدمين المسجلين — العناصر حسب الصلاحيات) ================= -->
     {% set is_payment_flow = request.path.startswith('/payment') or request.path.startswith('/signup') or
     request.path.startswith('/pricing') or request.path.startswith('/login') %}
+    {% set is_admin = session.get("role") == "admin" or (current_employee and current_employee.role == "admin") %}
     {% if session.get("user_id") and not is_payment_flow %}
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-mobile-header">
@@ -1750,15 +1757,16 @@
 
       <nav class="menu">
         <a href="/"><i class="fa fa-chart-line"></i> {{ _('dashboard') }}</a>
-        {% if current_employee and (current_employee.role == "admin" or can_use_pos) %}
+        {% set show_pos = is_admin or not current_employee or can_use_pos or (current_employee and current_employee.role == "cashier") %}
+        {% if show_pos %}
         <a href="/pos"><i class="fa fa-cash-register"></i> {{ _('dashboard_welcome_pos') }}</a>
         {% endif %}
-        {% if current_employee and (current_employee.role == "admin" or can_manage_inventory) %}
+        {% if is_admin or (current_employee and can_manage_inventory) %}
         <a href="/inventory"><i class="fa fa-box"></i> {{ _('inventory') }}</a>
         <a href="/inventory/audit" style="padding-right: 30px; font-size: 0.9em;"><i class="fa fa-barcode"></i> {{
           _('inventory_audit') }}</a>
         {% endif %}
-        {% if current_employee and (current_employee.role == "admin" or can_manage_inventory) %}
+        {% if is_admin or (current_employee and can_manage_inventory) %}
         {% if plan_has("purchases") %}
         <a href="/purchases"><i class="fa fa-shopping-cart"></i> {{ _('purchases') }}</a>
         {% else %}
@@ -1766,7 +1774,7 @@
           {{ _('purchases') }} <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
         {% endif %}
         {% endif %}
-        {% if current_employee and (current_employee.role == "admin" or can_manage_suppliers) %}
+        {% if is_admin or (current_employee and can_manage_suppliers) %}
         {% if plan_has("suppliers") %}
         <a href="/suppliers"><i class="fa fa-industry"></i> {{ _('suppliers') }}</a>
         {% else %}
@@ -1774,10 +1782,12 @@
           _('suppliers') }} <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
         {% endif %}
         {% endif %}
-        {% if current_employee and (current_employee.role == "admin" or can_manage_customers) %}
+        {% set show_customers = is_admin or not current_employee or can_manage_customers or (current_employee and current_employee.role == "cashier") %}
+        {% if show_customers %}
         <a href="/customers"><i class="fa fa-users"></i> {{ _('customers') }}</a>
         {% endif %}
-        {% if current_employee and (current_employee.role == "admin" or can_see_orders) %}
+        {% set show_orders = is_admin or not current_employee or can_see_orders or (current_employee and current_employee.role == "cashier") %}
+        {% if show_orders %}
         <div class="menu-group {% if request.path.startswith('/orders') %}open{% endif %}">
           <button type="button"
             class="menu-group-header {% if request.path.startswith('/orders') %}active{% endif %}"
@@ -1807,7 +1817,7 @@
           </div>
         </div>
         {% endif %}
-        {% if current_employee and (current_employee.role == "admin" or can_see_shipping) %}
+        {% if is_admin or (current_employee and can_see_shipping) %}
         {% if plan_has("shipping") %}
         <a href="/shipping"><i class="fa fa-truck"></i> {{ _('shipping') }}</a>
         {% else %}
@@ -1815,7 +1825,7 @@
           _('shipping') }} <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
         {% endif %}
         {% endif %}
-        {% if current_employee and (current_employee.role == "admin" or can_see_agents) %}
+        {% if is_admin or (current_employee and can_see_agents) %}
         {% if plan_has("agents") %}
         <a href="/agents"><i class="fa fa-user-tie"></i> {{ _('delivery_agents') }}</a>
         {% else %}
@@ -1823,7 +1833,7 @@
           _('delivery_agents') }} <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
         {% endif %}
         {% endif %}
-        {% if current_employee and (current_employee.role == "admin" or can_see_expenses) %}
+        {% if is_admin or (current_employee and can_see_expenses) %}
         {% if plan_has("expenses") %}
         <a href="/expenses"><i class="fa fa-money-bill-wave"></i> {{ _('expenses') }}</a>
         {% else %}
@@ -1831,9 +1841,9 @@
           {{ _('expenses') }} <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
         {% endif %}
         {% endif %}
-        {% if current_employee and (current_employee.role == "admin" or can_see_accounts) %}<a href="/cash"><i
+        {% if is_admin or (current_employee and can_see_accounts) %}<a href="/cash"><i
             class="fa fa-money-bill-wave"></i> {{ _('cash_box') }}</a>{% endif %}
-        {% if current_employee and (current_employee.role == "admin" or can_see_accounts) %}
+        {% if is_admin or (current_employee and can_see_accounts) %}
         {% if plan_has("accounts") %}
         <a href="/accounts"><i class="fa fa-wallet"></i> {{ _('accounts') }}</a>
         {% else %}
@@ -1841,12 +1851,12 @@
           _('accounts') }} <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
         {% endif %}
         {% endif %}
-        {% if current_employee and current_employee.role == "admin" %}<a href="/employees"><i
+        {% if is_admin %}<a href="/employees"><i
             class="fa fa-user-tie"></i> {{ _('employees') }}</a>{% endif %}
-        {% if current_employee and (current_employee.role == "admin" or can_see_pages) %}
+        {% if is_admin or (current_employee and can_see_pages) %}
         <a href="/pages"><i class="fa fa-file-alt"></i> {{ _('pages') }}</a>
         {% endif %}
-        {% if current_employee and (current_employee.role == "admin" or can_see_reports) %}
+        {% if is_admin or (current_employee and can_see_reports) %}
         {% if plan_has("reports_adv") %}
         <a href="/reports"><i class="fa fa-chart-pie"></i> {{ _('reports') }}</a>
         {% else %}
@@ -1854,7 +1864,7 @@
           _('reports') }} <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
         {% endif %}
         {% endif %}
-        {% if current_employee and current_employee.role == "admin" %}
+        {% if is_admin %}
         {% if plan_has("rbac") %}
         <a href="/admin/permissions/roles"><i class="fa fa-user-shield"></i> {{ _('permissions') }}</a>
         {% else %}
@@ -1863,9 +1873,9 @@
           <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
         {% endif %}
         {% endif %}
-        {% if current_employee and current_employee.role == "admin" %}<a href="/settings"><i class="fa fa-cog"></i>
+        {% if is_admin %}<a href="/settings"><i class="fa fa-cog"></i>
           {{ _('settings') }}</a>{% endif %}
-        {% if current_employee and (current_employee.role == "admin" or can_see_messages) %}
+        {% if is_admin or (current_employee and can_see_messages) %}
         {% if plan_has("messages") %}
         <a href="/messages"><i class="fa fa-comments"></i> {{ _('messaging') }} <span id="messagesBadge"
             class="badge badge-danger menu-badge">0</span></a>
@@ -1954,8 +1964,6 @@
         {% endif %}
         {% block content %}{% endblock %}
       </main>
-
-      </footer>
 
     </div>
   </div>
