@@ -12,6 +12,19 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'pdf'}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+def _zaincash_transfer_phone():
+    """رقم تحويل زين كاش من إعدادات السوبر أدمن (قاعدة Core)."""
+    old_tenant = getattr(g, "tenant", None)
+    g.tenant = None
+    try:
+        from models.core.global_setting import GlobalSetting
+        return GlobalSetting.get_setting("ZAINCASH_TRANSFER_PHONE", "07734049148")
+    except Exception:
+        return "07734049148"
+    finally:
+        g.tenant = old_tenant
+
+
 @payments_bp.route("/checkout", methods=["POST", "GET"])
 def checkout():
     if request.method == "POST":
@@ -30,8 +43,9 @@ def checkout():
     
     plan_data = PRICES.get(plan_key, PRICES["basic"])
     amount = plan_data["yearly"] if billing_period == "yearly" else plan_data["monthly"]
+    zaincash_transfer_phone = _zaincash_transfer_phone()
 
-    return render_template("zaincash_checkout.html", amount=amount, plan_key=plan_key)
+    return render_template("zaincash_checkout.html", amount=amount, plan_key=plan_key, zaincash_transfer_phone=zaincash_transfer_phone)
 
 
 @payments_bp.route("/zaincash-submit", methods=["POST"])

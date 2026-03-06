@@ -313,6 +313,13 @@
                             value="{{ settings.zaincash_secret or '' }}" placeholder="••••••••••••••••">
                         <small class="form-text">يستخدم لتوقيع العمليات المالية بشكل آمن.</small>
                     </div>
+
+                    <div class="form-group">
+                        <label for="zaincashTransferPhone">رقم تحويل زين كاش (محفظة استلام الدفع)</label>
+                        <input type="text" id="zaincashTransferPhone" name="ZAINCASH_TRANSFER_PHONE" class="form-control"
+                            value="{{ settings.zaincash_transfer_phone or '07734049148' }}" placeholder="07734049148" dir="ltr">
+                        <small class="form-text">الرقم الذي يظهر للعميل في صفحة الدفع لتحويل المبلغ إليه.</small>
+                    </div>
                 </div>
             </div>
 

@@ -843,6 +843,9 @@ app.register_blueprint(permissions_bp, url_prefix="/admin/permissions")
 from routes.superadmin import superadmin_bp
 app.register_blueprint(superadmin_bp)
 
+from routes.admin import admin_bp
+app.register_blueprint(admin_bp)
+
 # =====================================
 # Logging
 # =====================================

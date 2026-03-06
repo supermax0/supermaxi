@@ -402,11 +402,13 @@ def settings():
         trial_days = request.form.get("TRIAL_DAYS", "14")
         zaincash_secret = request.form.get("ZAINCASH_SECRET", "")
         zaincash_merchant = request.form.get("ZAINCASH_MERCHANT", "")
+        zaincash_transfer_phone = request.form.get("ZAINCASH_TRANSFER_PHONE", "07734049148").strip()
         
         GlobalSetting.set_setting("APP_NAME", app_name, "اسم النظام العام للمنصة")
         GlobalSetting.set_setting("TRIAL_DAYS", trial_days, "عدد أيام التجربة المجانية للشركات")
         GlobalSetting.set_setting("ZAINCASH_SECRET", zaincash_secret, "كلمة سر حساب مركز زين كاش")
         GlobalSetting.set_setting("ZAINCASH_MERCHANT", zaincash_merchant, "رقم تعريف تاجر زين كاش")
+        GlobalSetting.set_setting("ZAINCASH_TRANSFER_PHONE", zaincash_transfer_phone, "رقم تحويل زين كاش (محفظة استلام الدفع)")
         
         # إعدادات الإشعارات (SMS/Email)
         GlobalSetting.set_setting("NOTIFY_EMAIL_ENABLED", "1" if request.form.get("NOTIFY_EMAIL_ENABLED") else "0", "تفعيل إشعارات البريد")
@@ -428,6 +430,7 @@ def settings():
         "trial_days": GlobalSetting.get_setting("TRIAL_DAYS", "14"),
         "zaincash_secret": GlobalSetting.get_setting("ZAINCASH_SECRET", ""),
         "zaincash_merchant": GlobalSetting.get_setting("ZAINCASH_MERCHANT", ""),
+        "zaincash_transfer_phone": GlobalSetting.get_setting("ZAINCASH_TRANSFER_PHONE", "07734049148"),
         "notify_email_enabled": GlobalSetting.get_setting("NOTIFY_EMAIL_ENABLED", "0") == "1",
         "smtp_host": GlobalSetting.get_setting("SMTP_HOST", ""),
         "smtp_port": GlobalSetting.get_setting("SMTP_PORT", "587"),
