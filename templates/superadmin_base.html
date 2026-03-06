@@ -470,17 +470,25 @@
                 btn.disabled = true;
                 btn.classList.add('updating');
                 fetch('/admin/system-update', { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json' }, credentials: 'same-origin' })
-                    .then(function(r) { return r.json(); })
+                    .then(function(r) {
+                        var ct = (r.headers.get('Content-Type') || '').toLowerCase();
+                        if (ct.indexOf('application/json') === -1) {
+                            return r.text().then(function(text) {
+                                throw new Error('الخادم أعاد صفحة HTML بدل JSON (قد يكون المسار غير متوفر على السيرفر أو حدث خطأ).');
+                            });
+                        }
+                        return r.json();
+                    })
                     .then(function(data) {
                         btn.disabled = false;
                         btn.classList.remove('updating');
-                        if (data.status === 'success') alert('تم تحديث النظام بنجاح. سيتم إعادة تشغيل الخدمة.');
-                        else alert('خطأ: ' + (data.message || 'فشل التحديث'));
+                        if (data && data.status === 'success') alert('تم تحديث النظام بنجاح. سيتم إعادة تشغيل الخدمة.');
+                        else alert('خطأ: ' + (data && data.message ? data.message : 'فشل التحديث'));
                     })
                     .catch(function(err) {
                         btn.disabled = false;
                         btn.classList.remove('updating');
-                        alert('خطأ في الاتصال: ' + (err.message || 'فشل التحديث'));
+                        alert(err && err.message ? err.message : 'خطأ في الاتصال.');
                     });
             });
         }
