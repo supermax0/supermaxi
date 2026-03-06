@@ -72,7 +72,7 @@ def get_public_plans():
 
 
 def _increment_landing_visits():
-    """زيادة عدّاد زيارات صفحة الهبوط في قاعدة البيانات الأساسية."""
+    """زيادة عدّاد زيارات صفحة الهبوط (إجمالي + زيارات اليوم) في قاعدة البيانات الأساسية."""
     try:
         from flask import g
         from models.system_analytics import SystemAnalytics
@@ -80,22 +80,36 @@ def _increment_landing_visits():
         old_tenant = getattr(g, "tenant", None)
         g.tenant = None
 
+        today_key = date.today().isoformat()
+
         row = SystemAnalytics.query.filter_by(
             analysis_type="landing",
             title="landing_page_visits"
         ).first()
 
         if not row:
+            daily = {today_key: 1}
             row = SystemAnalytics(
                 analysis_type="landing",
                 title="landing_page_visits",
                 description="عدد زيارات صفحة الهبوط العامة",
                 severity="info",
                 affected_count=1,
+                related_data=json.dumps({"daily": daily}),
             )
             db.session.add(row)
         else:
+            # إجمالي الزيارات
             row.affected_count = (row.affected_count or 0) + 1
+            # زيارات اليوم (داخل related_data.daily)
+            try:
+                data = json.loads(row.related_data) if row.related_data else {}
+            except Exception:
+                data = {}
+            daily = data.get("daily", {})
+            daily[today_key] = int(daily.get(today_key, 0)) + 1
+            data["daily"] = daily
+            row.related_data = json.dumps(data)
 
         db.session.commit()
     except Exception as e:

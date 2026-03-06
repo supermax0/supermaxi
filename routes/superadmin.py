@@ -1,6 +1,7 @@
 import os
 import shutil
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
+import json
 from flask import Blueprint, render_template, request, session, redirect, url_for, flash, g, current_app
 from werkzeug.security import check_password_hash, generate_password_hash
 from extensions import db
@@ -65,7 +66,7 @@ def dashboard():
     total_revenue = total_revenue_query if total_revenue_query else 0
     rejected_count = PaymentRequest.query.filter_by(status="rejected").count()
 
-    # زيارات صفحة الهبوط (من Core DB)
+    # زيارات صفحة الهبوط (إجمالي + زيارات اليوم من Core DB)
     try:
         from flask import g
         from models.system_analytics import SystemAnalytics
@@ -76,9 +77,18 @@ def dashboard():
             analysis_type="landing",
             title="landing_page_visits"
         ).first()
-        landing_visits = landing_row.affected_count if landing_row and landing_row.affected_count else 0
+        landing_visits_total = landing_row.affected_count if landing_row and landing_row.affected_count else 0
+        landing_visits_today = 0
+        if landing_row and landing_row.related_data:
+            try:
+                data = json.loads(landing_row.related_data)
+                daily = data.get("daily", {})
+                landing_visits_today = int(daily.get(date.today().isoformat(), 0))
+            except Exception:
+                landing_visits_today = 0
     except Exception:
-        landing_visits = 0
+        landing_visits_total = 0
+        landing_visits_today = 0
     finally:
         try:
             g.tenant = old_tenant
@@ -93,7 +103,8 @@ def dashboard():
         total_revenue=total_revenue,
         rejected_count=rejected_count,
         recent_requests=recent_requests,
-        landing_visits=landing_visits
+        landing_visits=landing_visits_total,
+        landing_visits_today=landing_visits_today
     )
 
 @superadmin_bp.route("/requests")

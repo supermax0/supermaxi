@@ -280,12 +280,24 @@
     <div class="premium-card metric-card metric-landing">
         <i class="fas fa-mouse-pointer metric-icon-bg"></i>
         <div class="metric-info">
-            <div class="metric-title">زيارات صفحة الهبوط</div>
+            <div class="metric-title">زيارات صفحة الهبوط (إجمالي)</div>
             <div class="metric-value">{{ "{:,.0f}".format(landing_visits or 0) }}</div>
         </div>
         <div class="metric-footer">
             <i class="fas fa-globe"></i>
             <span>إجمالي زيارات الصفحة العامة (finora.company)</span>
+        </div>
+    </div>
+
+    <div class="premium-card metric-card metric-landing">
+        <i class="fas fa-bullseye metric-icon-bg"></i>
+        <div class="metric-info">
+            <div class="metric-title">الزيارات النشطة (اليوم)</div>
+            <div class="metric-value">{{ "{:,.0f}".format(landing_visits_today or 0) }}</div>
+        </div>
+        <div class="metric-footer">
+            <i class="fas fa-calendar-day"></i>
+            <span>عدد زيارات صفحة الهبوط خلال هذا اليوم</span>
         </div>
     </div>
 </div>
