@@ -253,7 +253,7 @@
         }
         .btn-system-update:hover { background: rgba(99, 102, 241, 0.25); border-color: var(--primary); }
         .btn-system-update:disabled { opacity: 0.7; cursor: not-allowed; }
-        .btn-system-update.updating .fa-sync-alt { animation: spin 0.8s linear infinite; }
+        .btn-system-update.updating i { animation: spin 0.8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
         .page-title {
@@ -428,9 +428,9 @@
         <div class="top-header">
             <h1 class="page-title">{% block page_title %}لوحة الإدارة العليا{% endblock %}</h1>
             <div class="top-header-actions">
-                <button type="button" id="systemUpdateBtn" class="btn-system-update" title="تحديث النظام (git pull + إعادة تشغيل الخدمة)">
-                    <i class="fa fa-sync-alt"></i>
-                    <span>تحديث النظام</span>
+                <button type="button" id="systemUpdateBtn" class="btn-system-update" title="رفع التغييرات إلى GitHub ثم سحبها على VPS وإعادة تشغيل الخدمة">
+                    <i class="fa fa-cloud-upload-alt"></i>
+                    <span>رفع على GitHub وتحديث VPS</span>
                 </button>
                 <div class="user-profile">
                     <div class="user-info">
@@ -482,7 +482,7 @@
                     .then(function(data) {
                         btn.disabled = false;
                         btn.classList.remove('updating');
-                        if (data && data.status === 'success') alert('تم تحديث النظام بنجاح. سيتم إعادة تشغيل الخدمة.');
+                        if (data && data.status === 'success') alert(data.message || 'تم الرفع إلى GitHub وتحديث الخدمة على VPS بنجاح.');
                         else alert('خطأ: ' + (data && data.message ? data.message : 'فشل التحديث'));
                     })
                     .catch(function(err) {
