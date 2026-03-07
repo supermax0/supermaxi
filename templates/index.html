@@ -1295,6 +1295,145 @@
                 font-size: 16px !important;
             }
         }
+
+        /* ── مساعد الذكاء الاصطناعي (شات صفحة الهبوط) ── */
+        .landing-chat-btn {
+            position: fixed;
+            bottom: 24px;
+            left: 24px;
+            z-index: 999;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--b), var(--i));
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(99, 102, 241, .5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            transition: transform .2s, box-shadow .2s;
+        }
+        .landing-chat-btn:hover { transform: scale(1.05); box-shadow: 0 6px 28px rgba(99, 102, 241, .6); }
+        .landing-chat-btn.open { display: none; }
+
+        .landing-chat-panel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            max-height: 85vh;
+            z-index: 1000;
+            background: var(--card);
+            border: 1px solid var(--bord);
+            border-radius: 20px 20px 0 0;
+            box-shadow: 0 -8px 40px rgba(0,0,0,.4);
+            display: none;
+            flex-direction: column;
+            backdrop-filter: blur(20px);
+        }
+        .landing-chat-panel.show { display: flex; }
+
+        .landing-chat-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--bord);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(15, 23, 42, .6);
+        }
+        .landing-chat-header h3 {
+            font-size: 18px;
+            font-weight: 800;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .landing-chat-header h3 i { color: var(--c); }
+        .landing-chat-close {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            border: 1px solid var(--bord);
+            background: transparent;
+            color: var(--muted);
+            cursor: pointer;
+            font-size: 18px;
+            transition: .2s;
+        }
+        .landing-chat-close:hover { background: rgba(99, 102, 241, .15); color: var(--text); }
+
+        .landing-chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            min-height: 220px;
+            max-height: 50vh;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .landing-msg {
+            max-width: 88%;
+            padding: 12px 16px;
+            border-radius: 16px;
+            font-size: 15px;
+            line-height: 1.6;
+        }
+        .landing-msg.user {
+            align-self: flex-end;
+            background: linear-gradient(135deg, var(--b), var(--i));
+            color: #fff;
+            border-bottom-left-radius: 4px;
+        }
+        .landing-msg.assistant {
+            align-self: flex-start;
+            background: rgba(15, 23, 42, .9);
+            border: 1px solid var(--bord);
+            border-bottom-right-radius: 4px;
+        }
+        .landing-msg.error { background: rgba(239, 68, 68, .2); border-color: var(--r); color: #fca5a5; }
+        .landing-msg.typing { color: var(--muted); font-style: italic; }
+
+        .landing-chat-form {
+            padding: 16px 20px 24px;
+            border-top: 1px solid var(--bord);
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+        .landing-chat-input {
+            flex: 1;
+            padding: 14px 18px;
+            border-radius: 14px;
+            border: 1px solid var(--bord);
+            background: rgba(15, 23, 42, .6);
+            color: var(--text);
+            font-family: 'Tajawal', sans-serif;
+            font-size: 15px;
+            resize: none;
+            min-height: 48px;
+            max-height: 120px;
+        }
+        .landing-chat-input::placeholder { color: var(--muted); }
+        .landing-chat-send {
+            padding: 14px 22px;
+            border-radius: 14px;
+            border: none;
+            background: linear-gradient(135deg, var(--b), var(--i));
+            color: #fff;
+            font-family: 'Tajawal', sans-serif;
+            font-weight: 700;
+            font-size: 15px;
+            cursor: pointer;
+            transition: .2s;
+            flex-shrink: 0;
+        }
+        .landing-chat-send:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(99, 102, 241, .4); }
+        .landing-chat-send:disabled { opacity: .6; cursor: not-allowed; transform: none; }
     </style>
 </head>
 
@@ -1820,6 +1959,25 @@
         </footer>
 
     </div>
+
+    <!-- مساعد Finora بالذكاء الاصطناعي -->
+    <button type="button" class="landing-chat-btn" id="landingChatBtn" aria-label="فتح مساعد Finora">
+        <i class="fas fa-robot"></i>
+    </button>
+    <div class="landing-chat-panel" id="landingChatPanel">
+        <div class="landing-chat-header">
+            <h3><i class="fas fa-robot"></i> مساعد Finora</h3>
+            <button type="button" class="landing-chat-close" id="landingChatClose" aria-label="إغلاق">×</button>
+        </div>
+        <div class="landing-chat-messages" id="landingChatMessages">
+            <div class="landing-msg assistant">مرحباً! أنا مساعد Finora. اسألني عن الميزات، الأسعار، أو أي استفسار عن المنصة.</div>
+        </div>
+        <form class="landing-chat-form" id="landingChatForm">
+            <textarea class="landing-chat-input" id="landingChatInput" placeholder="اكتب سؤالك هنا..." rows="1"></textarea>
+            <button type="submit" class="landing-chat-send" id="landingChatSend"><i class="fas fa-paper-plane"></i></button>
+        </form>
+    </div>
+
     <script>
         // Animated background
         const c = document.getElementById('bg'), x = c.getContext('2d');
@@ -1893,6 +2051,91 @@
                 if (lnEl) lnEl.href = lnEl.href.replace(/billing=\w+/, 'billing=' + mode);
             });
         }
+
+        // ── مساعد Finora (شات الذكاء الاصطناعي) ──
+        (function() {
+            var btn = document.getElementById('landingChatBtn');
+            var panel = document.getElementById('landingChatPanel');
+            var closeBtn = document.getElementById('landingChatClose');
+            var messagesEl = document.getElementById('landingChatMessages');
+            var form = document.getElementById('landingChatForm');
+            var input = document.getElementById('landingChatInput');
+            var sendBtn = document.getElementById('landingChatSend');
+            var chatHistory = [];
+
+            function openPanel() {
+                panel.classList.add('show');
+                if (btn) btn.classList.add('open');
+                if (input) input.focus();
+            }
+            function closePanel() {
+                panel.classList.remove('show');
+                if (btn) btn.classList.remove('open');
+            }
+            if (btn) btn.addEventListener('click', openPanel);
+            if (closeBtn) closeBtn.addEventListener('click', closePanel);
+
+            function addMessage(content, role, isError) {
+                var div = document.createElement('div');
+                div.className = 'landing-msg ' + (role || 'assistant') + (isError ? ' error' : '');
+                div.textContent = content;
+                messagesEl.appendChild(div);
+                messagesEl.scrollTop = messagesEl.scrollHeight;
+            }
+            function removeTyping() {
+                var typing = messagesEl.querySelector('.landing-msg.typing');
+                if (typing) typing.remove();
+            }
+
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                var text = (input.value || '').trim();
+                if (!text) return;
+                input.value = '';
+                addMessage(text, 'user');
+                chatHistory.push({ role: 'user', content: text });
+
+                sendBtn.disabled = true;
+                var typingEl = document.createElement('div');
+                typingEl.className = 'landing-msg assistant typing';
+                typingEl.textContent = 'جاري الكتابة...';
+                messagesEl.appendChild(typingEl);
+                messagesEl.scrollTop = messagesEl.scrollHeight;
+
+                fetch('/api/landing-chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: text, history: chatHistory })
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    removeTyping();
+                    if (data.success && data.reply) {
+                        addMessage(data.reply, 'assistant');
+                        chatHistory.push({ role: 'assistant', content: data.reply });
+                    } else {
+                        addMessage(data.error || 'حدث خطأ. جرّب لاحقاً.', 'assistant', true);
+                    }
+                })
+                .catch(function() {
+                    removeTyping();
+                    addMessage('تعذر الاتصال. تحقق من الإنترنت وجرّب مرة أخرى.', 'assistant', true);
+                })
+                .finally(function() {
+                    sendBtn.disabled = false;
+                    if (input) input.focus();
+                });
+            });
+
+            if (input) {
+                input.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        form.dispatchEvent(new Event('submit'));
+                    }
+                });
+            }
+        })();
     </script>
 
 </body>
