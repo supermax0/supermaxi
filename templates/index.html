@@ -2239,9 +2239,9 @@
 
         // ── Billing Toggle (الأسعار من قاعدة البيانات + السعر الأصلي إن وُجد) ──────────────────────────────────────────
         const PRICES = {
-            {% for k, v in (landing_plans or { }).items() %}
-        "{{ k }}": { monthly: { { v.get('price_monthly', 0) } }, yearly: { { v.get('price_yearly', 0) } }, name: "{{ v.get('name', '') | e }}", original_monthly: { { v.get('original_price_monthly') if v.get('original_price_monthly') is not none else 'null' } }, original_yearly: { { v.get('original_price_yearly') if v.get('original_price_yearly') is not none else 'null' } } } {% if not loop.last %}, {% endif %}
-        {% endfor %}
+            {% for k, v in (landing_plans or {}).items() %}
+            "{{ k }}": { monthly: {{ v.get('price_monthly', 0) }}, yearly: {{ v.get('price_yearly', 0) }}, name: "{{ v.get('name', '') | e }}", original_monthly: {{ v.get('original_price_monthly') if v.get('original_price_monthly') is not none else 'null' }}, original_yearly: {{ v.get('original_price_yearly') if v.get('original_price_yearly') is not none else 'null' }} }{% if not loop.last %},{% endif %}
+            {% endfor %}
         };
         if (Object.keys(PRICES).length === 0) {
             PRICES.basic = { monthly: 25000, yearly: 250000, name: 'الأساسية', original_monthly: null, original_yearly: null };
