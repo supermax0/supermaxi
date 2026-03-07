@@ -1470,28 +1470,81 @@
             bottom: 24px;
             left: 24px;
             z-index: 999;
-            width: 56px;
-            height: 56px;
+            width: 60px;
+            height: 60px;
             border-radius: 50%;
-            background: linear-gradient(135deg, var(--b), var(--i));
+            background: linear-gradient(135deg, #6366f1, #8b5cf6, #06b6d4);
             color: #fff;
             border: none;
             cursor: pointer;
-            box-shadow: 0 4px 20px rgba(99, 102, 241, .5);
+            box-shadow: 0 6px 30px rgba(99, 102, 241, .5);
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 24px;
-            transition: transform .2s, box-shadow .2s;
+            transition: transform .3s cubic-bezier(.34, 1.56, .64, 1), box-shadow .3s;
+            animation: chatBtnFloat 3s ease-in-out infinite;
+        }
+
+        .landing-chat-btn::before {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6, #06b6d4);
+            opacity: .4;
+            animation: chatPulseRing 2s ease-out infinite;
+            z-index: -1;
+        }
+
+        @keyframes chatBtnFloat {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-5px);
+            }
+        }
+
+        @keyframes chatPulseRing {
+            0% {
+                transform: scale(1);
+                opacity: .4;
+            }
+
+            100% {
+                transform: scale(1.5);
+                opacity: 0;
+            }
         }
 
         .landing-chat-btn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 6px 28px rgba(99, 102, 241, .6);
+            transform: scale(1.12) translateY(-2px);
+            box-shadow: 0 10px 40px rgba(99, 102, 241, .65);
+            animation: none;
         }
 
         .landing-chat-btn.open {
             display: none;
+        }
+
+        /* Chat Panel — slide-up overlay */
+        .landing-chat-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(2, 6, 23, .5);
+            z-index: 999;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .3s;
+        }
+
+        .landing-chat-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
         }
 
         .landing-chat-panel {
@@ -1501,122 +1554,250 @@
             right: 0;
             max-height: 85vh;
             z-index: 1000;
-            background: var(--card);
-            border: 1px solid var(--bord);
-            border-radius: 20px 20px 0 0;
-            box-shadow: 0 -8px 40px rgba(0, 0, 0, .4);
-            display: none;
+            background: linear-gradient(180deg, rgba(15, 23, 42, .97) 0%, rgba(2, 6, 23, .98) 100%);
+            border: 1px solid rgba(99, 102, 241, .25);
+            border-bottom: none;
+            border-radius: 24px 24px 0 0;
+            box-shadow: 0 -12px 60px rgba(0, 0, 0, .5), 0 0 40px rgba(99, 102, 241, .08);
             flex-direction: column;
-            backdrop-filter: blur(20px);
+            backdrop-filter: blur(30px);
+            transform: translateY(100%);
+            transition: transform .35s cubic-bezier(.32, .72, .24, 1);
+            display: flex;
+            visibility: hidden;
         }
 
         .landing-chat-panel.show {
-            display: flex;
+            transform: translateY(0);
+            visibility: visible;
         }
 
+        /* Header */
         .landing-chat-header {
-            padding: 16px 20px;
-            border-bottom: 1px solid var(--bord);
+            padding: 16px 22px;
+            border-bottom: 1px solid rgba(99, 102, 241, .18);
             display: flex;
             align-items: center;
             justify-content: space-between;
-            background: rgba(15, 23, 42, .6);
+            background: linear-gradient(135deg, rgba(99, 102, 241, .1) 0%, rgba(6, 182, 212, .06) 100%);
+            border-radius: 24px 24px 0 0;
+        }
+
+        .landing-chat-header-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .landing-chat-avatar {
+            width: 42px;
+            height: 42px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #6366f1, #06b6d4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(99, 102, 241, .35);
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .landing-chat-avatar::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            right: -2px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--g);
+            border: 2.5px solid rgba(15, 23, 42, .95);
+            box-shadow: 0 0 6px rgba(16, 185, 129, .5);
         }
 
         .landing-chat-header h3 {
-            font-size: 18px;
+            font-size: 17px;
             font-weight: 800;
             margin: 0;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+            line-height: 1.3;
         }
 
-        .landing-chat-header h3 i {
-            color: var(--c);
+        .landing-chat-header h3 small {
+            display: block;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--g);
+            margin-top: 1px;
         }
 
         .landing-chat-close {
-            width: 40px;
-            height: 40px;
+            width: 38px;
+            height: 38px;
             border-radius: 12px;
-            border: 1px solid var(--bord);
-            background: transparent;
+            border: 1px solid rgba(99, 102, 241, .2);
+            background: rgba(99, 102, 241, .08);
             color: var(--muted);
             cursor: pointer;
             font-size: 18px;
-            transition: .2s;
+            transition: .25s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .landing-chat-close:hover {
-            background: rgba(99, 102, 241, .15);
+            background: rgba(99, 102, 241, .2);
             color: var(--text);
+            transform: rotate(90deg);
         }
 
+        /* Messages */
         .landing-chat-messages {
             flex: 1;
             overflow-y: auto;
-            padding: 20px;
-            min-height: 220px;
-            max-height: 50vh;
+            padding: 22px 20px;
+            min-height: 240px;
+            max-height: 55vh;
             display: flex;
             flex-direction: column;
-            gap: 14px;
+            gap: 16px;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(99, 102, 241, .3) transparent;
+        }
+
+        .landing-chat-messages::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .landing-chat-messages::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .landing-chat-messages::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, .3);
+            border-radius: 10px;
         }
 
         .landing-msg {
-            max-width: 88%;
-            padding: 12px 16px;
-            border-radius: 16px;
-            font-size: 15px;
-            line-height: 1.6;
+            max-width: 85%;
+            padding: 13px 18px;
+            border-radius: 18px;
+            font-size: 14.5px;
+            line-height: 1.7;
+            position: relative;
+            animation: msgSlideIn .3s ease;
+        }
+
+        @keyframes msgSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .landing-msg.user {
             align-self: flex-end;
             background: linear-gradient(135deg, var(--b), var(--i));
             color: #fff;
-            border-bottom-left-radius: 4px;
+            border-bottom-left-radius: 6px;
+            box-shadow: 0 4px 16px rgba(99, 102, 241, .25);
         }
 
         .landing-msg.assistant {
             align-self: flex-start;
-            background: rgba(15, 23, 42, .9);
-            border: 1px solid var(--bord);
-            border-bottom-right-radius: 4px;
+            background: rgba(30, 41, 59, .7);
+            border: 1px solid rgba(99, 102, 241, .15);
+            border-bottom-right-radius: 6px;
+            color: var(--text);
         }
 
         .landing-msg.error {
-            background: rgba(239, 68, 68, .2);
-            border-color: var(--r);
+            background: rgba(239, 68, 68, .12);
+            border-color: rgba(239, 68, 68, .3);
             color: #fca5a5;
         }
 
         .landing-msg.typing {
             color: var(--muted);
-            font-style: italic;
+            font-style: normal;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 14px 20px;
+        }
+
+        .typing-dots {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .typing-dots span {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--i);
+            animation: typingBounce 1.2s ease-in-out infinite;
+        }
+
+        .typing-dots span:nth-child(2) {
+            animation-delay: .15s;
+        }
+
+        .typing-dots span:nth-child(3) {
+            animation-delay: .3s;
+        }
+
+        @keyframes typingBounce {
+
+            0%,
+            60%,
+            100% {
+                transform: translateY(0);
+                opacity: .4;
+            }
+
+            30% {
+                transform: translateY(-6px);
+                opacity: 1;
+            }
         }
 
         .landing-chat-form {
-            padding: 16px 20px 24px;
-            border-top: 1px solid var(--bord);
+            padding: 16px 20px 22px;
+            border-top: 1px solid rgba(99, 102, 241, .15);
             display: flex;
             gap: 10px;
+            background: rgba(15, 23, 42, .4);
             align-items: flex-end;
         }
 
         .landing-chat-input {
             flex: 1;
             padding: 14px 18px;
-            border-radius: 14px;
-            border: 1px solid var(--bord);
-            background: rgba(15, 23, 42, .6);
+            border-radius: 16px;
+            border: 1.5px solid rgba(99, 102, 241, .2);
+            background: rgba(15, 23, 42, .7);
             color: var(--text);
             font-family: 'Tajawal', sans-serif;
             font-size: 15px;
             resize: none;
             min-height: 48px;
             max-height: 120px;
+            transition: border-color .25s, box-shadow .25s;
+        }
+
+        .landing-chat-input:focus {
+            outline: none;
+            border-color: rgba(99, 102, 241, .5);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, .1), 0 0 20px rgba(99, 102, 241, .08);
         }
 
         .landing-chat-input::placeholder {
@@ -1624,28 +1805,32 @@
         }
 
         .landing-chat-send {
-            padding: 14px 22px;
+            width: 48px;
+            height: 48px;
             border-radius: 14px;
             border: none;
-            background: linear-gradient(135deg, var(--b), var(--i));
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
             color: #fff;
-            font-family: 'Tajawal', sans-serif;
-            font-weight: 700;
-            font-size: 15px;
+            font-size: 18px;
             cursor: pointer;
-            transition: .2s;
+            transition: .3s cubic-bezier(.34, 1.56, .64, 1);
             flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 14px rgba(99, 102, 241, .3);
         }
 
         .landing-chat-send:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 16px rgba(99, 102, 241, .4);
+            transform: scale(1.08) translateY(-1px);
+            box-shadow: 0 6px 22px rgba(99, 102, 241, .45);
         }
 
         .landing-chat-send:disabled {
-            opacity: .6;
+            opacity: .5;
             cursor: not-allowed;
             transform: none;
+            box-shadow: none;
         }
     </style>
 </head>
@@ -2192,14 +2377,19 @@
     <button type="button" class="landing-chat-btn" id="landingChatBtn" aria-label="فتح مساعد Finora">
         <i class="fas fa-robot"></i>
     </button>
+    <div class="landing-chat-overlay" id="landingChatOverlay"></div>
     <div class="landing-chat-panel" id="landingChatPanel">
         <div class="landing-chat-header">
-            <h3><i class="fas fa-robot"></i> مساعد Finora</h3>
-            <button type="button" class="landing-chat-close" id="landingChatClose" aria-label="إغلاق">×</button>
+            <div class="landing-chat-header-info">
+                <div class="landing-chat-avatar"><i class="fas fa-robot"></i></div>
+                <h3>مساعد Finora<small>متصل الآن</small></h3>
+            </div>
+            <button type="button" class="landing-chat-close" id="landingChatClose" aria-label="إغلاق"><i
+                    class="fas fa-times"></i></button>
         </div>
         <div class="landing-chat-messages" id="landingChatMessages">
-            <div class="landing-msg assistant">مرحباً! أنا مساعد Finora. اسألني عن الميزات، الأسعار، أو أي استفسار عن
-                المنصة.</div>
+            <div class="landing-msg assistant">مرحباً! 👋 أنا مساعد Finora الذكي. اسألني عن الميزات، الأسعار، أو أي
+                استفسار عن المنصة وسأساعدك فوراً.</div>
         </div>
         <form class="landing-chat-form" id="landingChatForm">
             <textarea class="landing-chat-input" id="landingChatInput" placeholder="اكتب سؤالك هنا..."
@@ -2239,9 +2429,9 @@
 
         // ── Billing Toggle (الأسعار من قاعدة البيانات + السعر الأصلي إن وُجد) ──────────────────────────────────────────
         const PRICES = {
-            {% for k, v in (landing_plans or {}).items() %}
-            "{{ k }}": { monthly: {{ v.get('price_monthly', 0) }}, yearly: {{ v.get('price_yearly', 0) }}, name: "{{ v.get('name', '') | e }}", original_monthly: {{ v.get('original_price_monthly') if v.get('original_price_monthly') is not none else 'null' }}, original_yearly: {{ v.get('original_price_yearly') if v.get('original_price_yearly') is not none else 'null' }} }{% if not loop.last %},{% endif %}
-            {% endfor %}
+            {% for k, v in (landing_plans or { }).items() %}
+        "{{ k }}": { monthly: { { v.get('price_monthly', 0) } }, yearly: { { v.get('price_yearly', 0) } }, name: "{{ v.get('name', '') | e }}", original_monthly: { { v.get('original_price_monthly') if v.get('original_price_monthly') is not none else 'null' } }, original_yearly: { { v.get('original_price_yearly') if v.get('original_price_yearly') is not none else 'null' } } } {% if not loop.last %}, {% endif %}
+        {% endfor %}
         };
         if (Object.keys(PRICES).length === 0) {
             PRICES.basic = { monthly: 25000, yearly: 250000, name: 'الأساسية', original_monthly: null, original_yearly: null };
@@ -2287,6 +2477,7 @@
         (function () {
             var btn = document.getElementById('landingChatBtn');
             var panel = document.getElementById('landingChatPanel');
+            var overlay = document.getElementById('landingChatOverlay');
             var closeBtn = document.getElementById('landingChatClose');
             var messagesEl = document.getElementById('landingChatMessages');
             var form = document.getElementById('landingChatForm');
@@ -2296,15 +2487,18 @@
 
             function openPanel() {
                 panel.classList.add('show');
+                if (overlay) overlay.classList.add('show');
                 if (btn) btn.classList.add('open');
-                if (input) input.focus();
+                setTimeout(function () { if (input) input.focus(); }, 350);
             }
             function closePanel() {
                 panel.classList.remove('show');
+                if (overlay) overlay.classList.remove('show');
                 if (btn) btn.classList.remove('open');
             }
             if (btn) btn.addEventListener('click', openPanel);
             if (closeBtn) closeBtn.addEventListener('click', closePanel);
+            if (overlay) overlay.addEventListener('click', closePanel);
 
             function addMessage(content, role, isError) {
                 var div = document.createElement('div');
@@ -2329,7 +2523,7 @@
                 sendBtn.disabled = true;
                 var typingEl = document.createElement('div');
                 typingEl.className = 'landing-msg assistant typing';
-                typingEl.textContent = 'جاري الكتابة...';
+                typingEl.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
                 messagesEl.appendChild(typingEl);
                 messagesEl.scrollTop = messagesEl.scrollHeight;
 
