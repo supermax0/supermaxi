@@ -2114,9 +2114,18 @@
       }
     });
 
-    // على الموبايل: إغلاق السايدبار عند الضغط على أي رابط في القائمة
-    document.querySelector(".menu")?.addEventListener("click", function () {
-      if (window.innerWidth <= 900) closeSidebar();
+    // على الموبايل: إغلاق السايدبار فقط عند الضغط على رابط فعلي (a)، وليس عند الضغط على زر فتح القائمة الفرعية (الطلبات)
+    document.querySelector(".menu")?.addEventListener("click", function (e) {
+      if (window.innerWidth > 900) return;
+      var target = e.target;
+      while (target && target !== this) {
+        if (target.tagName === "A" && target.getAttribute("href")) {
+          closeSidebar();
+          return;
+        }
+        if (target.classList && target.classList.contains("menu-group-header")) return;
+        target = target.parentElement;
+      }
     });
 
     // ======================================================

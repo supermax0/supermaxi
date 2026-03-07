@@ -55,6 +55,38 @@
     gap: 10px;
   }
 
+  .dashboard-user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .dashboard-user-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 20px;
+    font-weight: 800;
+    box-shadow: 0 6px 18px rgba(37, 99, 235, 0.5);
+    overflow: hidden;
+  }
+
+  .dashboard-user-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .dashboard-user-name {
+    font-weight: 700;
+    color: var(--dashboard-text);
+  }
+
   .dashboard-topbar-actions {
     display: flex;
     flex-wrap: wrap;
@@ -840,7 +872,16 @@
      TOP BAR
 ======================= -->
 <div class="dashboard-topbar">
-  <div>👤 {{ employee_name }}</div>
+  <div class="dashboard-user">
+    <div class="dashboard-user-avatar">
+      {% if current_employee and current_employee.profile_pic %}
+      <img src="/{{ current_employee.profile_pic }}" alt="{{ employee_name }}">
+      {% else %}
+      {{ employee_name[0] if employee_name else "?" }}
+      {% endif %}
+    </div>
+    <div class="dashboard-user-name">{{ employee_name }}</div>
+  </div>
   <div class="dashboard-topbar-actions">
     <a href="/pos" class="btn btn-pos">
       <span class="btn-icon">🛒</span>
