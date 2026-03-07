@@ -141,6 +141,7 @@ with app.app_context():
     from models.core.tenant import Tenant
     from models.core.payment_request import PaymentRequest
     from models.core.global_setting import GlobalSetting
+    from models.core.landing_visit import LandingVisit
 
     db.create_all()
 

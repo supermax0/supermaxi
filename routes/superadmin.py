@@ -67,30 +67,20 @@ def dashboard():
     rejected_count = PaymentRequest.query.filter_by(status="rejected").count()
 
     # زيارات صفحة الهبوط (إجمالي + زيارات اليوم من Core DB)
+    landing_visits_total = 0
+    landing_visits_today = 0
     try:
+        from models.core.landing_visit import LandingVisit
         old_tenant = getattr(g, "tenant", None)
         g.tenant = None
-        landing_row = SystemAnalytics.query.filter_by(
-            analysis_type="landing",
-            title="landing_page_visits"
-        ).first()
-        landing_visits_total = landing_row.affected_count if landing_row and landing_row.affected_count else 0
-        landing_visits_today = 0
-        if landing_row and landing_row.related_data:
-            try:
-                data = json.loads(landing_row.related_data)
-                daily = data.get("daily", {})
-                landing_visits_today = int(daily.get(date.today().isoformat(), 0))
-            except Exception:
-                landing_visits_today = 0
-    except Exception:
-        landing_visits_total = 0
-        landing_visits_today = 0
-    finally:
         try:
+            row = LandingVisit.query.get(LandingVisit.RECORD_ID)
+            landing_visits_total = (row.total_count or 0) if row else 0
+            landing_visits_today = LandingVisit.get_today_count()
+        finally:
             g.tenant = old_tenant
-        except Exception:
-            pass
+    except Exception:
+        pass
 
     recent_requests = PaymentRequest.query.order_by(PaymentRequest.created_at.desc()).limit(5).all()
     
