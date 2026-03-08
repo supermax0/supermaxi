@@ -905,8 +905,8 @@ except (ImportError, AttributeError):
 # Autoposter: جدولة المنشورات (اختياري — يعمل عند تشغيل flask run)
 # =====================================
 try:
-    from apscheduler.schedulers.background import BackgroundScheduler
-    from apscheduler.triggers.interval import IntervalTrigger
+    from apscheduler.schedulers.background import BackgroundScheduler  # type: ignore[import-untyped]
+    from apscheduler.triggers.interval import IntervalTrigger  # type: ignore[import-untyped]
     from routes.autoposter import run_scheduled_posts_for_all_tenants
     _scheduler = BackgroundScheduler()
     _scheduler.add_job(
