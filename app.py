@@ -902,21 +902,27 @@ except (ImportError, AttributeError):
     pass
 
 # =====================================
-# Autoposter: جدولة المنشورات (اختياري — يعمل عند تشغيل flask run)
+# Autoposter: جدولة المنشورات (اختياري — لا يعيق تشغيل التطبيق)
+# الاستيراد داخل الدالة حتى لا يفشل تحميل التطبيق إن كانت الوحدة تسبب خطأ
 # =====================================
+_scheduler = None
 try:
     from apscheduler.schedulers.background import BackgroundScheduler  # type: ignore[import-untyped]
     from apscheduler.triggers.interval import IntervalTrigger  # type: ignore[import-untyped]
-    from routes.autoposter import run_scheduled_posts_for_all_tenants
+
+    def _run_autoposter_scheduled():
+        try:
+            from routes.autoposter import run_scheduled_posts_for_all_tenants
+            run_scheduled_posts_for_all_tenants(app)
+        except Exception:
+            pass
+
     _scheduler = BackgroundScheduler()
-    _scheduler.add_job(
-        lambda: run_scheduled_posts_for_all_tenants(app),
-        IntervalTrigger(minutes=1),
-        id="autoposter_scheduled",
-    )
+    _scheduler.add_job(_run_autoposter_scheduled, IntervalTrigger(minutes=1), id="autoposter_scheduled")
     _scheduler.start()
-except Exception:
-    pass  # apscheduler غير مثبت أو خطأ — النشر التلقائي يعمل بدون الجدولة
+except Exception as e:
+    import sys
+    print("Autoposter scheduler skipped:", e, file=sys.stderr)
 
 # =====================================
 # Run
