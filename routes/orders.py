@@ -11,6 +11,7 @@ from models.shipping import ShippingCompany
 from models.report import Report
 from models.shipping_report import ShippingReport
 from models.invoice_settings import InvoiceSettings
+from models.invoice_template import TenantTemplateSettings
 from models.delivery_agent import DeliveryAgent
 from datetime import datetime, date
 from sqlalchemy import func
@@ -787,14 +788,45 @@ def invoice_page(order_id):
     # Get invoice settings
     settings = InvoiceSettings.get_settings()
     
-    return render_template("invoice.html",
+    # Get active invoice template
+    template_file = "invoice.html"
+    template_styles = {}
+    
+    if "tenant_id" in session or "user_id" in session:
+        # User ID is used since TenantTemplateSettings is tied to users.id
+        from flask import session
+        # If tenant system is used
+        from models.tenant import Tenant
+        
+        # We need the tenant_id, if SaaS it might be in session
+        uid = session.get("tenant_id") or session.get("user_id")
+        t_settings = TenantTemplateSettings.query.filter_by(tenant_id=uid).first()
+        if t_settings and t_settings.active_template:
+            # We assume templates are in templates/invoices/
+            template_file = f"invoices/{t_settings.active_template.html_file_name}"
+            template_styles = {
+                "primary": t_settings.primary_color,
+                "secondary": t_settings.secondary_color,
+                "custom_css": t_settings.custom_css
+            }
+            
+    # Fallback to basic invoice.html if the specific template file doesn't exist yet
+    import os
+    from flask import current_app
+    if template_file != "invoice.html":
+        full_path = os.path.join(current_app.template_folder, template_file.replace('/', os.sep))
+        if not os.path.exists(full_path):
+            template_file = "invoice.html"
+    
+    return render_template(template_file,
         order=order,
         items=items,
         total=total,
         due=due,
         returned_count=returned_count,
         cancelled_count=cancelled_count,
-        settings=settings
+        settings=settings,
+        template_styles=template_styles
     )
 
 # =====================================================
@@ -855,7 +887,24 @@ def print_batch():
             "cancelled_count": cancelled_count,
         })
 
-    return render_template("print_batch.html", batch=batch, settings=settings)
+    # Get active invoice template
+    template_file = "print_batch.html"
+    template_styles = {}
+    
+    if "tenant_id" in session or "user_id" in session:
+        uid = session.get("tenant_id") or session.get("user_id")
+        t_settings = TenantTemplateSettings.query.filter_by(tenant_id=uid).first()
+        if t_settings and t_settings.active_template:
+            # Note: For batch printing, we'll need specific batch templates, 
+            # or we loop through the single invoice template. For now, we'll pass the styles 
+            # and use the default batch template unless a specific batch one exists.
+            template_styles = {
+                "primary": t_settings.primary_color,
+                "secondary": t_settings.secondary_color,
+                "custom_css": t_settings.custom_css
+            }
+
+    return render_template(template_file, batch=batch, settings=settings, template_styles=template_styles)
 
 # =====================================================
 # Export Excel (All Orders)

@@ -1,0 +1,656 @@
+{% extends "base.html" %}
+{% block title %}متجر قوالب الفواتير{% endblock %}
+{% block page_title %}🛒 متجر قوالب الفواتير{% endblock %}
+{% block content %}
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-spinner"></div>
+</div>
+
+<style>
+    /* ================= VARIABLES ================= */
+    :root {
+        --store-primary: #6366f1;
+        --store-success: #10b981;
+        --store-danger: #ef4444;
+        --store-warning: #f59e0b;
+        --store-text: #e2e8f0;
+        --store-muted: #94a3b8;
+        --store-bg: #0f172a;
+        --store-card: #1e293b;
+        --store-border: rgba(255, 255, 255, 0.08);
+    }
+
+    body {
+        pointer-events: auto !important;
+    }
+
+    /* ================= GRID ================= */
+    .templates-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 24px;
+        margin-bottom: 40px;
+    }
+
+    /* ================= CARD ================= */
+    .template-card {
+        background: linear-gradient(145deg, var(--store-card), rgba(30, 41, 59, 0.8));
+        border-radius: 20px;
+        border: 1px solid var(--store-border);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        position: relative;
+    }
+
+    .template-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+        border-color: rgba(99, 102, 241, 0.3);
+    }
+
+    /* Active Badge */
+    .active-badge {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        background: linear-gradient(135deg, var(--store-success), #059669);
+        color: #fff;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 700;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .template-img-container {
+        height: 200px;
+        background: rgba(0, 0, 0, 0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .template-img-container i {
+        font-size: 64px;
+        color: rgba(255, 255, 255, 0.1);
+    }
+
+    /* If thumbnail_url exists */
+    .template-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .template-content {
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+    }
+
+    .template-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--store-text);
+        margin: 0 0 8px;
+    }
+
+    .template-desc {
+        color: var(--store-muted);
+        font-size: 14px;
+        line-height: 1.6;
+        margin-bottom: 20px;
+        flex: 1;
+    }
+
+    .template-price-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-top: 16px;
+        border-top: 1px solid var(--store-border);
+    }
+
+    .price-tag {
+        font-size: 20px;
+        font-weight: 800;
+        color: var(--store-primary);
+    }
+
+    /* Status Tags */
+    .status-tag {
+        padding: 4px 10px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .status-tag.free {
+        background: rgba(16, 185, 129, 0.15);
+        color: var(--store-success);
+    }
+
+    .status-tag.purchased {
+        background: rgba(99, 102, 241, 0.15);
+        color: var(--store-primary);
+    }
+
+    .status-tag.pending {
+        background: rgba(245, 158, 11, 0.15);
+        color: var(--store-warning);
+    }
+
+    .status-tag.premium {
+        background: rgba(239, 68, 68, 0.15);
+        color: var(--store-danger);
+    }
+
+    /* ================= BUTTONS ================= */
+    .card-actions {
+        display: flex;
+        gap: 12px;
+    }
+
+    .btn-base {
+        flex: 1;
+        padding: 12px 16px;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-align: center;
+        border: none;
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+        text-decoration: none;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, var(--store-primary), #4f46e5);
+        color: #fff;
+        box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3);
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+    }
+
+    .btn-outline {
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: var(--store-text);
+    }
+
+    .btn-outline:hover {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .btn-success {
+        background: linear-gradient(135deg, var(--store-success), #059669);
+        color: #fff;
+        box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-warning {
+        background: linear-gradient(135deg, var(--store-warning), #d97706);
+        color: #fff;
+        cursor: default;
+    }
+
+    /* ================= LIGHT MODE ================= */
+    :root[data-theme="light"] .template-card {
+        background: #ffffff;
+        border-color: #e5e7eb;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    :root[data-theme="light"] .template-title {
+        color: #0f172a;
+    }
+
+    :root[data-theme="light"] .template-img-container {
+        background: #f1f5f9;
+    }
+
+    :root[data-theme="light"] .template-price-row {
+        border-color: #e5e7eb;
+    }
+
+    :root[data-theme="light"] .btn-outline {
+        border-color: #cbd5e1;
+        color: #4b5563;
+    }
+
+    :root[data-theme="light"] .btn-outline:hover {
+        background: #f8fafc;
+        border-color: #94a3b8;
+        color: #0f172a;
+    }
+
+    /* ================= MODAL ================= */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(8px);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 9990;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .modal-overlay.active {
+        display: flex;
+        opacity: 1;
+    }
+
+    .payment-modal {
+        background: var(--store-card);
+        border: 1px solid var(--store-border);
+        border-radius: 24px;
+        width: 90%;
+        max-width: 450px;
+        padding: 30px;
+        transform: translateY(20px) scale(0.95);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .modal-overlay.active .payment-modal {
+        transform: translateY(0) scale(1);
+    }
+
+    :root[data-theme="light"] .payment-modal {
+        background: #ffffff;
+        border-color: #e5e7eb;
+    }
+
+    .close-modal {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background: transparent;
+        border: none;
+        color: var(--store-muted);
+        font-size: 20px;
+        cursor: pointer;
+        transition: 0.2s;
+    }
+
+    .close-modal:hover {
+        color: var(--store-danger);
+        transform: rotate(90deg);
+    }
+
+    .modal-title {
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--store-text);
+        margin: 0 0 10px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    :root[data-theme="light"] .modal-title {
+        color: #0f172a;
+    }
+
+    .wallet-box {
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px dashed rgba(239, 68, 68, 0.4);
+        padding: 16px;
+        border-radius: 12px;
+        text-align: center;
+        margin: 20px 0;
+    }
+
+    .wallet-box h4 {
+        color: var(--store-danger);
+        font-size: 18px;
+        margin: 0 0 5px;
+    }
+
+    .wallet-box p {
+        color: var(--store-text);
+        margin: 0;
+        font-size: 14px;
+    }
+
+    :root[data-theme="light"] .wallet-box p {
+        color: #4b5563;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        color: var(--store-muted);
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .form-group input {
+        width: 100%;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: var(--store-text);
+        padding: 14px 16px;
+        border-radius: 12px;
+        font-size: 15px;
+        transition: 0.3s;
+    }
+
+    .form-group input:focus {
+        border-color: var(--store-primary);
+        outline: none;
+        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+    }
+
+    :root[data-theme="light"] .form-group input {
+        background: #fff;
+        border-color: #cbd5e1;
+        color: #0f172a;
+    }
+
+    /* Toasts */
+    .toast-container {
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 10000;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        width: calc(100% - 32px);
+        max-width: 400px;
+        pointer-events: none;
+    }
+
+    .toast {
+        padding: 16px 20px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        animation: slideInDown 0.4s ease;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: #fff;
+        font-weight: 600;
+    }
+
+    .toast.success {
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.9), rgba(5, 150, 105, 0.9));
+    }
+
+    .toast.error {
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.9), rgba(220, 38, 38, 0.9));
+    }
+
+    @keyframes slideInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+
+<!-- ================= TEMPLATES GRID ================= -->
+<div class="templates-grid">
+    {% for tmpl in templates %}
+    <div class="template-card">
+
+        {% if tmpl.id == active_id %}
+        <div class="active-badge">
+            <i class="fas fa-check-circle"></i> مفعل حالياً
+        </div>
+        {% endif %}
+
+        <div class="template-img-container">
+            {% if tmpl.thumbnail_url %}
+            <img src="{{ tmpl.thumbnail_url }}" class="template-img" alt="{{ tmpl.name }}">
+            {% else %}
+            <i class="fas fa-file-invoice"></i>
+            {% endif %}
+        </div>
+
+        <div class="template-content">
+            <h3 class="template-title">{{ tmpl.name }}</h3>
+            <div class="template-desc">{{ tmpl.description }}</div>
+
+            <div class="template-price-row">
+                <div>
+                    {% if tmpl.price == 0 %}
+                    <span class="status-tag free">مجاني</span>
+                    {% else %}
+                    {% set s = purchased_ids.get(tmpl.id) %}
+                    {% if s == 'approved' %}
+                    <span class="status-tag purchased">مُشترى</span>
+                    {% elif s == 'pending' %}
+                    <span class="status-tag pending">قيد المراجعة</span>
+                    {% else %}
+                    <span class="status-tag premium">مدفوع</span>
+                    {% endif %}
+                    {% endif %}
+                </div>
+                <div class="price-tag">
+                    {% if tmpl.price == 0 %}0 د.ع{% else %}{{ "{:,.0f}".format(tmpl.price) }} د.ع{% endif %}
+                </div>
+            </div>
+
+            <div class="card-actions">
+                <!-- Preview Button (Fake link for now) -->
+                <button type="button" class="btn-base btn-outline" onclick="alert('صفحة المعاينة تحت التطوير')">
+                    <i class="fas fa-eye"></i> معاينة
+                </button>
+
+                {% if tmpl.id == active_id %}
+                <button type="button" class="btn-base btn-success"
+                    onclick="window.location.href='/admin/invoice-templates/customize'">
+                    <i class="fas fa-paint-brush"></i> تخصيص
+                </button>
+                {% elif tmpl.price == 0 or purchased_ids.get(tmpl.id) == 'approved' %}
+                <button type="button" class="btn-base btn-primary" onclick="activateTemplate({{ tmpl.id }})">
+                    <i class="fas fa-check"></i> تفعيل
+                </button>
+                {% elif purchased_ids.get(tmpl.id) == 'pending' %}
+                <button type="button" class="btn-base btn-warning" disabled>
+                    <i class="fas fa-clock"></i> قيد المراجعة
+                </button>
+                {% else %}
+                <button type="button" class="btn-base btn-primary"
+                    onclick="openBuyModal({{ tmpl.id }}, '{{ tmpl.name }}', {{ tmpl.price }})">
+                    <i class="fas fa-shopping-cart"></i> شراء
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div style="grid-column: 1 / -1; text-align: center; padding: 60px; color: var(--store-muted);">
+        <i class="fas fa-box-open" style="font-size: 48px; opacity: 0.5; margin-bottom: 16px;"></i>
+        <h3>لا توجد قوالب حتى الآن</h3>
+        <p>يرجى إضافة القوالب إلى قاعدة البيانات أولاً.</p>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- ================= ZAIN CASH PAYMENT MODAL ================= -->
+<div class="modal-overlay" id="buyModalOverlay">
+    <div class="payment-modal">
+        <button type="button" class="close-modal" onclick="closeBuyModal()"><i class="fas fa-times"></i></button>
+        <h3 class="modal-title">
+            <i class="fas fa-wallet" style="color: var(--store-danger);"></i> الدفع عبر زين كاش
+        </h3>
+        <p style="color: var(--store-muted); font-size: 14px; margin-bottom: 10px;">
+            لشراء قالب <strong id="modalTemplateName" style="color: var(--store-text);"></strong>، يرجى تحويل مبلغ
+            <strong id="modalTemplatePrice" style="color: var(--store-primary);"></strong> د.ع إلى محفظة زين كاش
+            التالية:
+        </p>
+
+        <!-- Hardcoded Zain Cash Number for now, can be dynamic later -->
+        <div class="wallet-box">
+            <h4>0780 000 0000</h4>
+            <p>محفظة الإدارة (زين كاش)</p>
+        </div>
+
+        <form id="buyForm" onsubmit="submitPurchase(event)">
+            <input type="hidden" id="modalTemplateId" name="template_id">
+
+            <div class="form-group">
+                <label>رقم الحوالة (الرقم المرجعي)</label>
+                <input type="text" id="referenceNumber" required
+                    placeholder="أدخل رقم الحوالة المكون من 11 رقم أو أكثر">
+            </div>
+
+            <button type="submit" class="btn-base btn-primary" style="width: 100%; margin-top: 10px;">
+                <i class="fas fa-paper-plane"></i> إرسال وثيقة الدفع
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+    function showToast(message, type = 'success') {
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i> <span>${message}</span>`;
+        container.appendChild(toast);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(-20px)';
+            toast.style.transition = '0.3s';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    function showLoading() {
+        document.getElementById('loadingOverlay').classList.add('active');
+    }
+    function hideLoading() {
+        document.getElementById('loadingOverlay').classList.remove('active');
+    }
+
+    // Handle Free Activation / Already Purchased Activation
+    function activateTemplate(id) {
+        if (!confirm('هل أنت متأكد من تفعيل هذا القالب لجميع فواتير المبيعات الخاصة بك؟')) return;
+        showLoading();
+        fetch(`/admin/invoice-templates/activate/${id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        })
+            .then(r => r.json())
+            .then(data => {
+                hideLoading();
+                if (data.success) {
+                    showToast(data.message, 'success');
+                    setTimeout(() => window.location.reload(), 1500);
+                } else {
+                    showToast(data.message, 'error');
+                }
+            })
+            .catch(err => {
+                hideLoading();
+                showToast('حدث خطأ بالاتصال بالخادم.', 'error');
+            });
+    }
+
+    // Modal Handling
+    const modalOverlay = document.getElementById('buyModalOverlay');
+    function openBuyModal(id, name, price) {
+        document.getElementById('modalTemplateId').value = id;
+        document.getElementById('modalTemplateName').textContent = name;
+        document.getElementById('modalTemplatePrice').textContent = new Intl.NumberFormat().format(price);
+        document.getElementById('referenceNumber').value = '';
+
+        modalOverlay.style.display = 'flex';
+        // Trigger reflow
+        void modalOverlay.offsetWidth;
+        modalOverlay.classList.add('active');
+    }
+
+    function closeBuyModal() {
+        modalOverlay.classList.remove('active');
+        setTimeout(() => { modalOverlay.style.display = 'none'; }, 300);
+    }
+
+    // Close modal on outside click
+    modalOverlay.addEventListener('click', (e) => {
+        if (e.target === modalOverlay) closeBuyModal();
+    });
+
+    // Submit Purchase (Manual Zain Cash Transfer)
+    function submitPurchase(e) {
+        e.preventDefault();
+        const id = document.getElementById('modalTemplateId').value;
+        const ref = document.getElementById('referenceNumber').value.trim();
+
+        if (!ref) {
+            showToast('يرجى إدخال رقم الحوالة', 'error');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('reference_number', ref);
+
+        showLoading();
+        fetch(`/admin/invoice-templates/buy/${id}`, {
+            method: 'POST',
+            body: formData
+        })
+            .then(r => r.json())
+            .then(data => {
+                hideLoading();
+                if (data.success) {
+                    closeBuyModal();
+                    showToast(data.message, 'success');
+                    setTimeout(() => window.location.reload(), 2000);
+                } else {
+                    showToast(data.message, 'error');
+                }
+            })
+            .catch(err => {
+                hideLoading();
+                showToast('حدث خطأ بالاتصال بالخادم.', 'error');
+            });
+    }
+</script>
+{% endblock %}

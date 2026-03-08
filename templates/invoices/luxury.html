@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <title>فاتورة رقم #{{ order.id }}</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;700;800&family=Playfair+Display:ital,wght@1,600&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <style>
+        /* ================= DYNAMIC STYLES ================= */
+        :root {
+            --primary-color: {
+                    {
+                    template_styles.primary if template_styles and template_styles.primary else '#d4af37'
+                }
+            }
+
+            ;
+
+            /* Metallic Gold */
+            --secondary-color: {
+                    {
+                    template_styles.secondary if template_styles and template_styles.secondary else '#111111'
+                }
+            }
+
+            ;
+            /* Deep Black */
+            --text-main: #222;
+            --border-color: #eee;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background: #fbfbfb;
+            padding: 50px 20px;
+            color: var(--text-main);
+        }
+
+        .invoice {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 60px;
+            border: 1px solid #eaeaea;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.06);
+            position: relative;
+        }
+
+        /* Actions */
+        .actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 50px;
+            border-bottom: 1px solid #f0f0f0;
+            padding-bottom: 20px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: 1px solid var(--secondary-color);
+            background: var(--secondary-color);
+            color: var(--primary-color);
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: 0.3s;
+            text-transform: uppercase;
+        }
+
+        .btn:hover {
+            background: #000;
+            color: #fff;
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--secondary-color);
+        }
+
+        .btn-outline:hover {
+            background: #f9f9f9;
+            color: var(--secondary-color);
+        }
+
+        /* Header Area */
+        .header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .logo-text {
+            font-family: 'Playfair Display', serif;
+            font-size: 38px;
+            color: var(--secondary-color);
+            letter-spacing: 3px;
+            font-weight: 600;
+            font-style: italic;
+            margin-bottom: 15px;
+        }
+
+        .logo-line {
+            width: 40px;
+            height: 1px;
+            background: var(--primary-color);
+            margin: 0 auto 15px;
+        }
+
+        .company-details {
+            font-size: 12px;
+            color: #777;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        /* Title Block */
+        .title-area {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 40px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 20px;
+        }
+
+        .title-area h2 {
+            font-size: 16px;
+            color: var(--text-main);
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            font-weight: 800;
+        }
+
+        .invoice-id {
+            font-size: 20px;
+            color: var(--primary-color);
+            font-family: 'Playfair Display', serif;
+        }
+
+        /* Info Grids */
+        .grid {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 50px;
+        }
+
+        .col {
+            width: 45%;
+        }
+
+        .col h3 {
+            font-size: 12px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-bottom: 20px;
+            font-weight: normal;
+        }
+
+        .data-row {
+            display: flex;
+            margin-bottom: 12px;
+            font-size: 13px;
+        }
+
+        .data-label {
+            width: 100px;
+            color: #999;
+        }
+
+        .data-value {
+            font-weight: 700;
+            color: var(--secondary-color);
+        }
+
+        /* Risk Info */
+        .risk-info {
+            background: #fff5f5;
+            border: 1px dashed #fc8181;
+            color: #e53e3e;
+            text-align: center;
+            padding: 12px;
+            font-size: 13px;
+            margin-bottom: 30px;
+            letter-spacing: 1px;
+        }
+
+        /* Table Items */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 50px;
+        }
+
+        th {
+            padding: 15px 10px;
+            text-align: right;
+            border-top: 1px solid var(--secondary-color);
+            border-bottom: 1px solid var(--secondary-color);
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #555;
+            letter-spacing: 2px;
+        }
+
+        td {
+            padding: 20px 10px;
+            border-bottom: 1px solid #f2f2f2;
+            font-size: 14px;
+            vertical-align: middle;
+        }
+
+        .product-name {
+            font-weight: 700;
+            color: var(--secondary-color);
+        }
+
+        .price-value {
+            color: var(--secondary-color);
+        }
+
+        /* Summary Section */
+        .summary-section {
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .summary-box {
+            width: 320px;
+            background: var(--secondary-color);
+            color: #fff;
+            padding: 30px;
+        }
+
+        .s-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            font-size: 14px;
+            color: #aaa;
+        }
+
+        .s-val {
+            color: #fff;
+            font-weight: normal;
+        }
+
+        .s-grand {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .s-grand-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--primary-color);
+        }
+
+        .s-grand-val {
+            font-size: 24px;
+            font-family: 'Playfair Display', serif;
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        /* Note */
+        .invoice-note {
+            margin-top: 30px;
+            font-size: 13px;
+            color: #666;
+            font-style: italic;
+            text-align: center;
+        }
+
+        /* Footer */
+        .footer {
+            margin-top: 80px;
+            text-align: center;
+        }
+
+        .footer-line {
+            width: 100px;
+            height: 1px;
+            background: #ddd;
+            margin: 0 auto 20px;
+        }
+
+        .thank-you {
+            font-family: 'Playfair Display', serif;
+            font-size: 24px;
+            color: var(--secondary-color);
+            font-style: italic;
+            margin-bottom: 10px;
+        }
+
+        .footer-note {
+            font-size: 11px;
+            color: #999;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 20px;
+        }
+
+        .barcode-svg {
+            opacity: 0.5;
+        }
+
+            {
+            % if template_styles and template_styles.custom_css %
+        }
+
+            {
+                {
+                template_styles.custom_css | safe
+            }
+        }
+
+            {
+            % endif %
+        }
+
+        @media print {
+            body {
+                background: #fff;
+                padding: 0;
+            }
+
+            .invoice {
+                box-shadow: none;
+                border: none;
+                padding: 20px;
+            }
+
+            .actions {
+                display: none !important;
+            }
+
+            .summary-box {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="invoice">
+
+        <div class="actions no-print">
+            <div style="font-size: 12px; letter-spacing: 4px; color: #999; text-transform: uppercase;">Luxury Template
+            </div>
+            <div>
+                <a href="/orders" class="btn btn-outline">عودة</a>
+                <button class="btn" onclick="window.print()">طباعة الفاتورة</button>
+            </div>
+        </div>
+
+        <div class="header">
+            <div class="logo-text">{{ settings.store_name if settings and settings.store_name else 'Premium Brand' }}
+            </div>
+            <div class="logo-line"></div>
+            <div class="company-details">
+                Authentic & Exclusive
+                {% if settings and settings.phone1 %}<br>{{ settings.phone1 }}{% endif %}
+            </div>
+        </div>
+
+        <div class="title-area">
+            <h2>Invoice</h2>
+            <div class="invoice-id">No. {{ order.id }}</div>
+        </div>
+
+        {% if returned_count > 0 or cancelled_count > 0 %}
+        <div class="risk-info">
+            Security Notice: Client has ({{ returned_count }}) returned & ({{ cancelled_count }}) cancelled orders
+            historically.
+        </div>
+        {% endif %}
+
+        <div class="grid">
+            <div class="col">
+                <h3>Client Details</h3>
+                <div class="data-row">
+                    <span class="data-label">Name</span>
+                    <span class="data-value">{{ order.customer.name }}</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Contact</span>
+                    <span class="data-value" style="direction:ltr; text-align:right;">{{ order.customer.phone }}</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Region</span>
+                    <span class="data-value">{{ order.customer.city }}</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Address</span>
+                    <span class="data-value">{{ order.customer.address or 'N/A' }}</span>
+                </div>
+            </div>
+            <div class="col">
+                <h3>Transaction Details</h3>
+                <div class="data-row">
+                    <span class="data-label">Date</span>
+                    <span class="data-value">{{ order.created_at.strftime('%B %d, %Y') if order.created_at else ''
+                        }}</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Status</span>
+                    <span class="data-value">{{ order.status }}</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Payment</span>
+                    <span class="data-value" style="color:var(--primary-color);">{{ order.payment_status or "Pending"
+                        }}</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Agent</span>
+                    <span class="data-value">{{ order.employee_name }}</span>
+                </div>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 5%; text-align: center;">Item</th>
+                    <th style="width: 50%; text-align: right;">Description</th>
+                    <th style="width: 15%; text-align: center;">Price</th>
+                    <th style="width: 10%; text-align: center;">Qty</th>
+                    <th style="width: 20%; text-align: left;">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td style="text-align: center; color: #aaa;">{{ loop.index }}</td>
+                    <td class="product-name">{{ item.product_name or (item.product.name if item.product else 'Unknown
+                        Item') }}</td>
+                    <td class="price-value" style="text-align: center;">{{ "{:,.0f}".format(item.price) }}</td>
+                    <td style="text-align: center;">{{ item.quantity }}</td>
+                    <td class="price-value" style="text-align: left;">{{ "{:,.0f}".format(item.total) }} IQD</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="summary-section">
+            <div class="summary-box">
+                <div class="s-row">
+                    <span>Subtotal</span>
+                    <span class="s-val">{{ "{:,.0f}".format(total) }}</span>
+                </div>
+                {% if due < total %} <div class="s-row">
+                    <span>Discount</span>
+                    <span class="s-val" style="color: var(--primary-color);">- {{ "{:,.0f}".format(total - due)
+                        }}</span>
+            </div>
+            {% endif %}
+            <div class="s-grand">
+                <span class="s-grand-label">Total Amount</span>
+                <span class="s-grand-val">{{ "{:,.0f}".format(due) }}</span>
+            </div>
+        </div>
+    </div>
+
+    {% if order.note %}
+    <div class="invoice-note">
+        "{{ order.note }}"
+    </div>
+    {% endif %}
+
+    <div class="footer">
+        <div class="footer-line"></div>
+        <div class="thank-you">Thank you for your business.</div>
+        <div class="footer-note">{{ settings.invoice_note if settings and settings.invoice_note else 'We hope you enjoy
+            your purchase. All items are authenticated.' }}</div>
+        <svg id="barcode-luxury" class="barcode-svg"></svg>
+    </div>
+    </div>
+
+    <script>
+        JsBarcode("#barcode-luxury", "{{ order.id }}", {
+            format: "CODE128",
+            width: 1,
+            height: 40,
+            displayValue: false,
+            margin: 0,
+            lineColor: "#111"
+        });
+    </script>
+</body>
+
+</html>

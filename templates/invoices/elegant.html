@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <title>فاتورة رقم #{{ order.id }}</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Tajawal:wght@400;500;700&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <style>
+        /* ================= DYNAMIC STYLES ================= */
+        :root {
+            --primary-color: {
+                    {
+                    template_styles.primary if template_styles and template_styles.primary else '#78350f'
+                }
+            }
+
+            ;
+
+            /* Amber/Brown */
+            --secondary-color: {
+                    {
+                    template_styles.secondary if template_styles and template_styles.secondary else '#fef3c7'
+                }
+            }
+
+            ;
+            --text-color: #333;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background: #fdfbf7;
+            padding: 40px 20px;
+            color: var(--text-color);
+        }
+
+        .invoice {
+            max-width: 850px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 60px;
+            border: 1px solid #eaeaea;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.03);
+            position: relative;
+        }
+
+        /* Elegant border decoration */
+        .invoice::before {
+            content: '';
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            right: 15px;
+            bottom: 15px;
+            border: 1px solid var(--primary-color);
+            opacity: 0.15;
+            pointer-events: none;
+        }
+
+        .actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 20px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .btn {
+            padding: 10px 24px;
+            border: 1px solid var(--primary-color);
+            background: transparent;
+            color: var(--primary-color);
+            font-family: inherit;
+            font-size: 14px;
+            letter-spacing: 1px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: 0.3s;
+        }
+
+        .btn:hover {
+            background: var(--primary-color);
+            color: #fff;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .header h1 {
+            font-family: 'Amiri', serif;
+            font-size: 42px;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+            font-weight: normal;
+        }
+
+        .header p {
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            font-size: 13px;
+            color: #777;
+        }
+
+        .invoice-title-wrapper {
+            text-align: center;
+            margin-bottom: 40px;
+            position: relative;
+        }
+
+        .invoice-title-wrapper::after {
+            content: '';
+            display: block;
+            width: 60px;
+            height: 1px;
+            background: var(--primary-color);
+            margin: 20px auto 0;
+        }
+
+        .invoice-title-wrapper h2 {
+            font-family: 'Amiri', serif;
+            font-size: 24px;
+            font-weight: normal;
+            letter-spacing: 1px;
+        }
+
+        .info-section {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 50px;
+        }
+
+        .info-block {
+            width: 45%;
+        }
+
+        .info-block h3 {
+            font-family: 'Amiri', serif;
+            font-size: 18px;
+            color: var(--primary-color);
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+        .info-row {
+            display: flex;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .info-row span:first-child {
+            width: 100px;
+            color: #777;
+        }
+
+        .info-row span:last-child {
+            font-weight: 500;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 40px;
+        }
+
+        th {
+            padding: 15px 10px;
+            font-family: 'Amiri', serif;
+            font-size: 16px;
+            font-weight: normal;
+            color: var(--primary-color);
+            border-bottom: 1px solid var(--primary-color);
+            text-align: right;
+        }
+
+        td {
+            padding: 15px 10px;
+            font-size: 14px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        td.amount {
+            font-weight: bold;
+        }
+
+        .summary {
+            width: 300px;
+            margin-left: auto;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 15px;
+        }
+
+        .grand-total {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid var(--primary-color);
+            font-size: 22px;
+            font-family: 'Amiri', serif;
+            color: var(--primary-color);
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 60px;
+            color: #888;
+            font-size: 13px;
+        }
+
+        .footer-note {
+            font-style: italic;
+            font-family: 'Amiri', serif;
+            font-size: 16px;
+            margin-bottom: 20px;
+            color: var(--primary-color);
+        }
+
+        .barcode-container {
+            margin-top: 30px;
+            display: flex;
+            justify-content: center;
+            opacity: 0.7;
+        }
+
+            {
+            % if template_styles and template_styles.custom_css %
+        }
+
+            {
+                {
+                template_styles.custom_css | safe
+            }
+        }
+
+            {
+            % endif %
+        }
+
+        @media print {
+            body {
+                background: #fff;
+                padding: 0;
+            }
+
+            .invoice {
+                box-shadow: none;
+                border: none;
+                padding: 20px;
+            }
+
+            .invoice::before {
+                opacity: 0;
+            }
+
+            .actions {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="invoice">
+        <div class="actions no-print">
+            <div style="font-family: 'Amiri', serif; font-size:20px; color:var(--primary-color);">فاتورة أنيقة</div>
+            <div>
+                <a href="/orders" class="btn">العودة للطلبات</a>
+                <button class="btn" onclick="window.print()" style="background:var(--primary-color); color:#fff;">طباعة
+                    الفاتورة</button>
+            </div>
+        </div>
+
+        <div class="header">
+            <h1>{{ settings.store_name if settings and settings.store_name else 'Boutique' }}</h1>
+            <p>Luxury & Authenticity</p>
+        </div>
+
+        <div class="invoice-title-wrapper">
+            <h2>فاتــــورة المبيـعــــات</h2>
+            <div style="font-size:14px; margin-top:10px; color:#777; letter-spacing:1px;">NO. {{ order.id }}</div>
+        </div>
+
+        {% if returned_count > 0 or cancelled_count > 0 %}
+        <div
+            style="text-align:center; padding: 10px; background: #fff5f5; border: 1px dashed #fc8181; color: #c53030; margin-bottom: 30px; font-size: 13px;">
+            يرجى الانتباه: للزبون سجل يتضمن ({{ returned_count }} راجع / {{ cancelled_count }} ملغي)
+        </div>
+        {% endif %}
+
+        <div class="info-section">
+            <div class="info-block">
+                <h3>بيانات الزبون</h3>
+                <div class="info-row"><span>الاسم المستلم</span><span>{{ order.customer.name }}</span></div>
+                <div class="info-row"><span>رقم الهاتف</span><span style="direction:ltr; text-align:right;">{{
+                        order.customer.phone }}</span></div>
+                <div class="info-row"><span>المحافظة</span><span>{{ order.customer.city }}</span></div>
+                <div class="info-row"><span>العنوان</span><span>{{ order.customer.address or '-' }}</span></div>
+            </div>
+            <div class="info-block">
+                <h3>تفاصيل العملية</h3>
+                <div class="info-row"><span>التاريخ</span><span>{{ order.created_at.strftime('%Y/%m/%d') if
+                        order.created_at else '' }}</span></div>
+                <div class="info-row"><span>الحالة</span><span>{{ order.status }}</span></div>
+                <div class="info-row"><span>الدفع</span><span>{{ order.payment_status or "غير مدفوع" }}</span></div>
+                <div class="info-row"><span>البائع</span><span>{{ order.employee_name }}</span></div>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:5%; text-align:center;">#</th>
+                    <th style="width:40%;">البيان (المنتج)</th>
+                    <th style="width:20%;">السعر الإفرادي</th>
+                    <th style="width:15%; text-align:center;">الكمية</th>
+                    <th style="width:20%;">المجموع</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td style="text-align:center; color:#999;">{{ loop.index }}</td>
+                    <td>{{ item.product_name or (item.product.name if item.product else 'Unknown') }}</td>
+                    <td>{{ "{:,.0f}".format(item.price) }}</td>
+                    <td style="text-align:center;">{{ item.quantity }}</td>
+                    <td class="amount">{{ "{:,.0f}".format(item.total) }} د.ع</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="summary">
+            <div class="summary-row">
+                <span>مجموع المنتجات</span>
+                <span>{{ "{:,.0f}".format(total) }} د.ع</span>
+            </div>
+            {% if due < total %} <div class="summary-row" style="color: #65a30d;">
+                <span>الخصم</span>
+                <span>- {{ "{:,.0f}".format(total - due) }} د.ع</span>
+        </div>
+        {% endif %}
+        <div class="summary-row grand-total">
+            <span>الإجمالي المستحق</span>
+            <span>{{ "{:,.0f}".format(due) }} د.ع</span>
+        </div>
+    </div>
+
+    {% if order.note %}
+    <div style="margin-top:40px; border-top:1px solid #eee; padding-top:20px; font-size:13px; color:#666;">
+        <strong style="color:#333;">تفاصيل إضافية:</strong> {{ order.note }}
+    </div>
+    {% endif %}
+
+    <div class="footer">
+        <div class="footer-note">{{ settings.invoice_note if settings and settings.invoice_note else 'نشكركم لثقتكم
+            باختيار ما يناسب ذوقكم الرفيع.' }}</div>
+        <div style="letter-spacing:1px; text-transform:uppercase;">
+            {% if settings and settings.phone1 %}CONTACT: <span style="font-family:sans-serif; letter-spacing:0;">{{
+                settings.phone1 }}</span>{% endif %}
+        </div>
+        <div class="barcode-container">
+            <svg id="barcode-elegant"></svg>
+        </div>
+    </div>
+    </div>
+
+    <script>
+        JsBarcode("#barcode-elegant", "{{ order.id }}", {
+            format: "CODE128",
+            width: 1,
+            height: 30,
+            displayValue: false,
+            margin: 0,
+            lineColor: "{{ template_styles.primary if template_styles and template_styles.primary else '#78350f' }}"
+        });
+    </script>
+</body>
+
+</html>

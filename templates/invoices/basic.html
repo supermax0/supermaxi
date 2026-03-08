@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>فاتورة رقم #{{ order.id }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <style>
+        /* ================= DYNAMIC STYLES ================= */
+        :root {
+            --primary-color: {
+                    {
+                    template_styles.primary if template_styles and template_styles.primary else '#2563eb'
+                }
+            }
+
+            ;
+
+            --secondary-color: {
+                    {
+                    template_styles.secondary if template_styles and template_styles.secondary else '#1e40af'
+                }
+            }
+
+            ;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Tajawal', 'Arial', 'Tahoma', sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            color: #000;
+            line-height: 1.5;
+        }
+
+        .invoice-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            border-top: 6px solid var(--primary-color);
+            border-radius: 8px;
+        }
+
+        .invoice-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #ddd;
+        }
+
+        .invoice-actions h1 {
+            font-size: 24px;
+            color: #333;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: #fff;
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+            color: #fff;
+        }
+
+        /* ==================== Header ==================== */
+        .invoice-top-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .invoice-number-top {
+            font-size: 16px;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .company-name-header {
+            flex: 1;
+            text-align: center;
+            font-size: 28px;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .store-contact {
+            text-align: center;
+            font-size: 13px;
+            margin-top: 5px;
+            color: #555;
+        }
+
+        /* ==================== Summary & Customer ==================== */
+        .summary-customer-section {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .summary-box {
+            flex: 0 0 280px;
+            background: var(--primary-color);
+            color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .summary-box h3 {
+            font-size: 18px;
+            margin-bottom: 10px;
+            opacity: 0.9;
+        }
+
+        .summary-box .amount {
+            font-size: 36px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .summary-box .amount span {
+            font-size: 16px;
+            opacity: 0.8;
+        }
+
+        .customer-info-box {
+            flex: 1;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            background: #fafafa;
+        }
+
+        .customer-info-box h3 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #333;
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 5px;
+            display: inline-block;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .info-item i {
+            color: var(--primary-color);
+            width: 20px;
+            text-align: center;
+        }
+
+        .info-item .label {
+            font-weight: bold;
+            color: #555;
+            font-size: 13px;
+        }
+
+        .info-item .value {
+            font-size: 15px;
+            font-weight: bold;
+            color: #000;
+        }
+
+        /* ==================== Table ==================== */
+        .table-container {
+            margin-bottom: 30px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #ddd;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: center;
+        }
+
+        thead th {
+            background-color: var(--primary-color);
+            color: #fff;
+            padding: 12px;
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        tbody td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+            font-size: 14px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        tbody tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        tfoot td {
+            padding: 15px 12px;
+            font-weight: bold;
+            font-size: 16px;
+            background-color: #f1f5f9;
+            border-top: 2px solid #ddd;
+        }
+
+        .grand-total {
+            color: var(--primary-color);
+            font-size: 18px !important;
+        }
+
+        /* ==================== Footer ==================== */
+        .invoice-footer-area {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px dashed #ccc;
+        }
+
+        .footer-note {
+            font-size: 14px;
+            color: #666;
+            max-width: 60%;
+        }
+
+        .barcode-area {
+            text-align: center;
+        }
+
+        /* ==================== Custom CSS ==================== */
+            {
+            % if template_styles and template_styles.custom_css %
+        }
+
+            {
+                {
+                template_styles.custom_css | safe
+            }
+        }
+
+            {
+            % endif %
+        }
+
+        /* ==================== Print ==================== */
+        @media print {
+            body {
+                background: none;
+                padding: 0;
+            }
+
+            .invoice-container {
+                box-shadow: none;
+                border: none;
+                padding: 0;
+                max-width: 100%;
+            }
+
+            .invoice-actions {
+                display: none !important;
+            }
+
+            .summary-box {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            thead th {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="invoice-container">
+
+        <div class="invoice-actions no-print">
+            <h1>إدارة الفاتورة</h1>
+            <div class="action-buttons">
+                <a href="/orders" class="btn btn-secondary"><i class="fas fa-arrow-right"></i> رجوع</a>
+                <button class="btn btn-primary" onclick="window.print()"><i class="fas fa-print"></i> طباعة
+                    الفاتورة</button>
+            </div>
+        </div>
+
+        <!-- Header -->
+        <div class="invoice-top-header">
+            <div class="invoice-number-top">
+                فاتورة مبيعات<br>
+                <span style="font-size: 20px;">#{{ order.id }}</span>
+            </div>
+            <div>
+                <div class="company-name-header">{{ settings.store_name if settings and settings.store_name else 'اسم
+                    المتجر' }}</div>
+                {% if settings and (settings.phone1 or settings.phone2) %}
+                <div class="store-contact">
+                    <i class="fas fa-phone"></i> {{ settings.phone1 }} {% if settings.phone2 %} - {{ settings.phone2
+                    }}{% endif %}
+                </div>
+                {% endif %}
+            </div>
+            <div style="text-align:left;">
+                <span style="font-weight:bold; color:#666;">التاريخ:</span><br>
+                {{ order.created_at.strftime('%Y-%m-%d') if order.created_at else '' }}
+            </div>
+        </div>
+
+        <!-- Summary & Customer -->
+        <div class="summary-customer-section">
+            <div class="summary-box">
+                <h3>المبلغ المطلوب</h3>
+                <div class="amount">{{ "{:,.0f}".format(due) }} <span>د.ع</span></div>
+                <div
+                    style="font-size:14px; background:rgba(255,255,255,0.2); padding:5px 10px; border-radius:5px; display:inline-block; margin:0 auto;">
+                    {{ order.payment_status or "غير مسدد" }} - {{ order.status }}
+                </div>
+            </div>
+
+            <div class="customer-info-box">
+                <h3>معلومات الزبون</h3>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <i class="fas fa-user"></i>
+                        <div>
+                            <div class="label">الاسم</div>
+                            <div class="value">{{ order.customer.name }}</div>
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <i class="fas fa-phone"></i>
+                        <div>
+                            <div class="label">الهاتف</div>
+                            <div class="value">{{ order.customer.phone }} {% if order.customer.phone2 %} / {{
+                                order.customer.phone2 }}{% endif %}</div>
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <div>
+                            <div class="label">المحافظة</div>
+                            <div class="value">{{ order.customer.city }}</div>
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <i class="fas fa-home"></i>
+                        <div>
+                            <div class="label">العنوان</div>
+                            <div class="value">{{ order.customer.address or 'لا يوجد' }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Banner (Returns/Canceled) -->
+        {% if returned_count > 0 or cancelled_count > 0 %}
+        <div
+            style="background-color: #fef2f2; border: 1px solid #f87171; color: #b91c1c; padding: 12px; border-radius: 8px; margin-bottom: 20px; font-weight: bold; text-align: center; font-size:14px;">
+            <i class="fas fa-exclamation-triangle"></i>
+            ملاحظة: هذا الزبون لديه
+            {% if returned_count > 0 %} <span style="background:#fee2e2; padding:2px 8px; border-radius:4px;">{{
+                returned_count }} طلبات راجعة</span> {% endif %}
+            {% if cancelled_count > 0 %} <span style="background:#fee2e2; padding:2px 8px; border-radius:4px;">{{
+                cancelled_count }} طلبات ملغية</span> {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Items Table -->
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 5%;">#</th>
+                        <th style="width: 45%; text-align: right;">المنتج</th>
+                        <th style="width: 15%;">السعر</th>
+                        <th style="width: 15%;">الكمية</th>
+                        <th style="width: 20%;">المجموع</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td style="text-align: right;">{{ item.product_name or (item.product.name if item.product else
+                            'منتج محذوف') }}</td>
+                        <td>{{ "{:,.0f}".format(item.price) }} د.ع</td>
+                        <td>{{ item.quantity }}</td>
+                        <td>{{ "{:,.0f}".format(item.total) }} د.ع</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="4" style="text-align: left;">المجموع الكلي:</td>
+                        <td class="grand-total">{{ "{:,.0f}".format(total) }} د.ع</td>
+                    </tr>
+                    <!-- Discount could go here if implemented -->
+                </tfoot>
+            </table>
+        </div>
+
+        <!-- Notes if any -->
+        {% if order.note %}
+        <div
+            style="margin-bottom: 20px; padding: 15px; background: #fffbeb; border-radius: 8px; border-right: 4px solid #f59e0b;">
+            <strong style="color: #b45309;"><i class="fas fa-sticky-note"></i> ملاحظات الطلب:</strong><br>
+            {{ order.note }}
+        </div>
+        {% endif %}
+
+        <!-- Footer -->
+        <div class="invoice-footer-area">
+            <div class="footer-note">
+                <strong>سياسة المتجر:</strong><br>
+                {{ settings.invoice_note if settings and settings.invoice_note else 'شكراً لتسوقكم معنا!' }}
+            </div>
+            <div class="barcode-area">
+                <svg id="barcode"></svg>
+                <script>
+                    JsBarcode("#barcode", "{{ order.id }}", {
+                        format: "CODE128",
+                        width: 2,
+                        height: 40,
+                        displayValue: true,
+                        fontSize: 14,
+                        margin: 0
+                    });
+                </script>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+
+</html>

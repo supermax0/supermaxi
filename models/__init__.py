@@ -26,3 +26,8 @@ from .account import Account, AccountType
 from .journal_entry import JournalEntry
 from .payment_order import PaymentOrder
 from .payment_log import PaymentLog
+
+# ======================================================
+# Invoice Templates (قوالب الفواتير)
+# ======================================================
+from .invoice_template import InvoiceTemplate, TenantTemplatePurchase, TenantTemplateSettings

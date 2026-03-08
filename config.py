@@ -30,6 +30,11 @@ class Config:
     MAIL_DEFAULT_SENDER = os.environ.get("MAIL_DEFAULT_SENDER", MAIL_USERNAME)
     CONTACT_EMAIL = os.environ.get("CONTACT_EMAIL", "")
 
+    # النشر التلقائي لفيسبوك (Autoposter)
+    FACEBOOK_APP_ID = os.environ.get("FACEBOOK_APP_ID", "")
+    FACEBOOK_APP_SECRET = os.environ.get("FACEBOOK_APP_SECRET", "")
+    FACEBOOK_API_VERSION = os.environ.get("FACEBOOK_API_VERSION", "v21.0")
+
 
 class DevelopmentConfig(Config):
     """إعدادات بيئة التطوير."""

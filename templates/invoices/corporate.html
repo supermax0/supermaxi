@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <title>فاتورة رقم #{{ order.id }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <style>
+        /* ================= DYNAMIC STYLES ================= */
+        :root {
+            --primary-color: {
+                    {
+                    template_styles.primary if template_styles and template_styles.primary else '#1e3a8a'
+                }
+            }
+
+            ;
+
+            /* Deep Blue */
+            --secondary-color: {
+                    {
+                    template_styles.secondary if template_styles and template_styles.secondary else '#dbeafe'
+                }
+            }
+
+            ;
+            --text-main: #1e293b;
+            --text-light: #64748b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background: #f1f5f9;
+            padding: 40px 20px;
+            color: var(--text-main);
+        }
+
+        .invoice {
+            max-width: 900px;
+            margin: 0 auto;
+            background: #fff;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            position: relative;
+        }
+
+        .top-bar {
+            height: 15px;
+            background: var(--primary-color);
+            width: 100%;
+        }
+
+        .invoice-content {
+            padding: 50px;
+        }
+
+        /* ACTIONS (No Print) */
+        .actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 20px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            background: var(--primary-color);
+            color: #fff;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            border-radius: 4px;
+        }
+
+        .btn:hover {
+            background: #172554;
+        }
+
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #1e293b;
+        }
+
+        .btn-secondary:hover {
+            background: #cbd5e1;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 50px;
+        }
+
+        .company-logo {
+            font-size: 32px;
+            font-weight: 800;
+            color: var(--primary-color);
+            letter-spacing: -1px;
+        }
+
+        .company-details {
+            font-size: 13px;
+            color: var(--text-light);
+            text-align: left;
+            line-height: 1.6;
+        }
+
+        .invoice-title {
+            font-size: 40px;
+            font-weight: 800;
+            color: var(--text-main);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 5px;
+        }
+
+        .meta-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .meta-box {
+            background: var(--secondary-color);
+            padding: 20px;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .meta-box h3 {
+            font-size: 13px;
+            color: var(--primary-color);
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .meta-row {
+            display: flex;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .meta-row span:first-child {
+            width: 90px;
+            color: var(--text-light);
+            font-weight: 600;
+        }
+
+        .meta-row span:last-child {
+            font-weight: bold;
+            color: var(--text-main);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+
+        th {
+            background: var(--primary-color);
+            color: #fff;
+            padding: 12px 15px;
+            font-size: 14px;
+            text-transform: uppercase;
+            border: 1px solid var(--primary-color);
+        }
+
+        td {
+            padding: 15px;
+            font-size: 14px;
+            border: 1px solid #e2e8f0;
+            border-top: none;
+        }
+
+        tr:nth-child(even) {
+            background: #fafafa;
+        }
+
+        .totals-area {
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .totals-box {
+            width: 350px;
+        }
+
+        .totals-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 15px;
+            font-size: 15px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .totals-row.grand-title {
+            background: var(--primary-color);
+            color: #fff;
+            border: none;
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 10px;
+            border-radius: 4px;
+            padding: 15px;
+        }
+
+        .footer {
+            margin-top: 60px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .footer-terms {
+            width: 60%;
+        }
+
+        .footer-terms h4 {
+            font-size: 14px;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+        }
+
+        .footer-terms p {
+            font-size: 12px;
+            color: var(--text-light);
+            line-height: 1.6;
+        }
+
+        .barcode-wrap {
+            text-align: center;
+        }
+
+            {
+            % if template_styles and template_styles.custom_css %
+        }
+
+            {
+                {
+                template_styles.custom_css | safe
+            }
+        }
+
+            {
+            % endif %
+        }
+
+        @media print {
+            body {
+                background: #fff;
+                padding: 0;
+            }
+
+            .invoice {
+                box-shadow: none;
+                border: none;
+                border-top: 15px solid var(--primary-color);
+                padding: 0;
+            }
+
+            .top-bar {
+                display: none;
+            }
+
+            .invoice-content {
+                padding: 0;
+            }
+
+            .actions {
+                display: none !important;
+            }
+
+            .meta-box,
+            th,
+            .totals-row.grand-title {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="invoice">
+        <div class="top-bar no-print"></div>
+        <div class="invoice-content">
+
+            <div class="actions no-print">
+                <h2 style="font-size: 18px; color:var(--primary-color);">فاتورة الشركات (Corporate)</h2>
+                <div>
+                    <a href="/orders" class="btn btn-secondary">رجوع</a>
+                    <button class="btn" onclick="window.print()">طباعة</button>
+                </div>
+            </div>
+
+            <div class="header">
+                <div>
+                    <div class="invoice-title">INVOICE</div>
+                    <div style="font-size: 16px; color: var(--text-light); font-weight:bold;">رقم الفاتورة: #{{ order.id
+                        }}</div>
+                </div>
+                <div class="company-details">
+                    <div class="company-logo">{{ settings.store_name if settings and settings.store_name else 'اسم
+                        المؤسسة' }}</div>
+                    <div>{{ settings.phone1 if settings and settings.phone1 else '' }}</div>
+                    <div>{{ settings.phone2 if settings and settings.phone2 else '' }}</div>
+                </div>
+            </div>
+
+            {% if returned_count > 0 or cancelled_count > 0 %}
+            <div
+                style="background: #fee2e2; border-left: 4px solid #ef4444; padding: 15px; margin-bottom: 30px; color: #b91c1c; font-size: 14px; font-weight: bold;">
+                نظام المخاطر: يوجد سجل سابق لهذا الزبون ({{ returned_count }} راجع / {{ cancelled_count }} ملغي).
+            </div>
+            {% endif %}
+
+            <div class="meta-grid">
+                <div class="meta-box">
+                    <h3>بيانات الطرف الأول (المُصدّر)</h3>
+                    <div class="meta-row"><span>الشركة</span><span>{{ settings.store_name if settings and
+                            settings.store_name else 'المتجر' }}</span></div>
+                    <div class="meta-row"><span>المندوب</span><span>{{ order.employee_name }}</span></div>
+                    <div class="meta-row"><span>التاريخ</span><span>{{ order.created_at.strftime('%Y-%m-%d') if
+                            order.created_at else '' }}</span></div>
+                </div>
+                <div class="meta-box">
+                    <h3>بيانات الطرف الثاني (العميل)</h3>
+                    <div class="meta-row"><span>الاسم</span><span>{{ order.customer.name }}</span></div>
+                    <div class="meta-row"><span>الهاتف</span><span style="direction:ltr;">{{ order.customer.phone
+                            }}</span></div>
+                    <div class="meta-row"><span>العنوان</span><span>{{ order.customer.city }} - {{
+                            order.customer.address or '' }}</span></div>
+                </div>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:5%; text-align:center;">#</th>
+                        <th style="width:45%; text-align:right;">وصف المنتج / الخدمة</th>
+                        <th style="width:15%; text-align:center;">سعر الوحدة</th>
+                        <th style="width:15%; text-align:center;">الكمية</th>
+                        <th style="width:20%; text-align:left;">الإجمالي</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td style="text-align:center;">{{ loop.index }}</td>
+                        <td style="font-weight:bold;">{{ item.product_name or (item.product.name if item.product else
+                            'منتج غير معروف') }}</td>
+                        <td style="text-align:center;">{{ "{:,.0f}".format(item.price) }}</td>
+                        <td style="text-align:center;">{{ item.quantity }}</td>
+                        <td style="text-align:left; font-weight:bold;">{{ "{:,.0f}".format(item.total) }} د.ع</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <div class="totals-area">
+                <div class="totals-box">
+                    <div class="totals-row">
+                        <span style="color:var(--text-light); font-weight:bold;">الإجمالي الفرعي</span>
+                        <span style="font-weight:bold;">{{ "{:,.0f}".format(total) }} د.ع</span>
+                    </div>
+                    {% if due < total %} <div class="totals-row">
+                        <span style="color:var(--text-light); font-weight:bold;">الخصميات</span>
+                        <span style="color:#ef4444; font-weight:bold;">- {{ "{:,.0f}".format(total - due) }} د.ع</span>
+                </div>
+                {% endif %}
+                <div class="totals-row grand-title">
+                    <span>المبلغ المستحق</span>
+                    <span>{{ "{:,.0f}".format(due) }} د.ع</span>
+                </div>
+                <div
+                    style="text-align:center; font-size:13px; font-weight:bold; margin-top:10px; color:var(--text-light);">
+                    حالة الدفع: {{ order.payment_status or "غير مدفوع" }}
+                </div>
+            </div>
+        </div>
+
+        {% if order.note %}
+        <div style="margin-top:20px; font-size:14px;">
+            <strong>ملاحظات مرفقة:</strong> {{ order.note }}
+        </div>
+        {% endif %}
+
+        <div class="footer">
+            <div class="footer-terms">
+                <h4>الشروط والأحكام</h4>
+                <p>{{ settings.invoice_note if settings and settings.invoice_note else 'هذه فاتورة رسمية صادرة من نظام
+                    الشركة. يرجى الاحتفاظ بها للمراجعة أو الإرجاع حسب سياسة الاسترجاع المعتمدة.' }}</p>
+            </div>
+            <div class="barcode-wrap">
+                <svg id="barcode-corp"></svg>
+            </div>
+        </div>
+
+    </div>
+    </div>
+
+    <script>
+        JsBarcode("#barcode-corp", "{{ order.id }}", {
+            format: "CODE128",
+            width: 2,
+            height: 35,
+            displayValue: true,
+            fontSize: 13,
+            margin: 0,
+            lineColor: "{{ template_styles.primary if template_styles and template_styles.primary else '#1e3a8a' }}"
+        });
+    </script>
+</body>
+
+</html>

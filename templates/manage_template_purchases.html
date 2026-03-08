@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}إدارة طلبات شراء القوالب{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>إدارة طلبات الشراء - قوالب الفواتير</h2>
+    </div>
+
+    <!-- Stats summary -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">إجمالي الطلبات</h5>
+                    <p class="card-text fs-4">{{ purchases|length }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-dark">
+                <div class="card-body">
+                    <h5 class="card-title">قيد الانتظار</h5>
+                    <p class="card-text fs-4">{{ purchases|selectattr('status', 'equalto', 'pending')|list|length }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover table-striped mb-0 text-center">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>رقم الطلب</th>
+                            <th>التاريخ</th>
+                            <th>التاجر / المستخدم</th>
+                            <th>اسم القالب</th>
+                            <th>المبلغ الواصل</th>
+                            <th>رقم الحوالة (Zain Cash)</th>
+                            <th>المرفقات</th>
+                            <th>الحالة</th>
+                            <th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in purchases %}
+                        <tr>
+                            <td>#{{ p.id }}</td>
+                            <td>{{ p.created_at.strftime('%Y-%m-%d %H:%M') if p.created_at else '-' }}</td>
+                            <td>{{ p.user.name if p.user else 'مستخدم غير معروف' }}</td>
+                            <td>
+                                {% if p.template %}
+                                <span class="badge bg-secondary">{{ p.template.name }}</span>
+                                {% else %}
+                                <span class="text-danger">قالب محذوف</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-success fw-bold">{{ "{:,.0f}".format(p.amount_paid) }} د.ع</td>
+                            <td class="font-monospace user-select-all">{{ p.reference_number }}</td>
+                            <td>
+                                {% if p.receipt_image %}
+                                <a href="{{ url_for('static', filename='uploads/receipts/' + p.receipt_image) }}"
+                                    target="_blank" class="btn btn-sm btn-info">
+                                    <i class="fas fa-image"></i> عرض
+                                </a>
+                                {% else %}
+                                <span class="text-muted">لا يوجد</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if p.status == 'pending' %}
+                                <span class="badge bg-warning text-dark">قيد الانتظار</span>
+                                {% elif p.status == 'approved' %}
+                                <span class="badge bg-success">مقبول ومفعل</span>
+                                {% elif p.status == 'rejected' %}
+                                <span class="badge bg-danger">مرفوض</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if p.status == 'pending' %}
+                                <button onclick="approvePurchase({{ p.id }})" class="btn btn-sm btn-success">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                <button onclick="rejectPurchase({{ p.id }})" class="btn btn-sm btn-danger">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="9" class="text-center py-4 text-muted">لا توجد أي طلبات شراء مسجلة حالياً.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function approvePurchase(purchaseId) {
+        if (confirm('هل أنت متأكد من الموافقة على طلب الشراء؟ سيؤدي ذلك لفتح القالب للتاجر لاستخدامه.')) {
+            fetch(`/superadmin/invoice-purchases/approve/${purchaseId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message);
+                        location.reload();
+                    } else {
+                        alert(data.message || 'حدث خطأ');
+                    }
+                });
+        }
+    }
+
+    function rejectPurchase(purchaseId) {
+        if (confirm('هل أنت متأكد من رفض طلب الشراء؟ (عادةً يتم الرفض عند عدم تطابق رقم الحوالة)')) {
+            fetch(`/superadmin/invoice-purchases/reject/${purchaseId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message);
+                        location.reload();
+                    } else {
+                        alert(data.message || 'حدث خطأ');
+                    }
+                });
+        }
+    }
+</script>
+{% endblock %}

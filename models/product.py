@@ -14,8 +14,12 @@ class Product(db.Model):
     )
 
     name = db.Column(db.String(150), nullable=False)
-    barcode = db.Column(db.String(100), unique=True, nullable=True)
+    barcode = db.Column(db.String(100), nullable=True)
     buy_price = db.Column(db.Integer, nullable=False)
+
+    __table_args__ = (
+        db.UniqueConstraint('tenant_id', 'barcode', name='_product_barcode_tenant_uc'),
+    )
     sale_price = db.Column(db.Integer, nullable=False)
 
     shipping_cost = db.Column(db.Integer, default=0)

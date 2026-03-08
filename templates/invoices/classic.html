@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <title>فاتورة رقم #{{ order.id }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <style>
+        /* ================= DYNAMIC STYLES (Fallback for Classic) ================= */
+        :root {
+            --primary-color: {
+                    {
+                    template_styles.primary if template_styles and template_styles.primary else '#111'
+                }
+            }
+
+            ;
+
+            --secondary-color: {
+                    {
+                    template_styles.secondary if template_styles and template_styles.secondary else '#666'
+                }
+            }
+
+            ;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background: #e2e8f0;
+            padding: 40px 20px;
+            color: #000;
+        }
+
+        .invoice {
+            max-width: 900px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 40px;
+            border: 1px solid #ccc;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+        }
+
+        /* ACTIONS (No Print) */
+        .actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 20px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: 1px solid #000;
+            background: transparent;
+            color: #000;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn:hover {
+            background: #000;
+            color: #fff;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            border-bottom: 4px double #000;
+            padding-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            letter-spacing: -1px;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+            color: var(--primary-color);
+        }
+
+        .header .subtitle {
+            font-size: 14px;
+            color: var(--secondary-color);
+        }
+
+        .invoice-details {
+            text-align: left;
+        }
+
+        .invoice-details h2 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .invoice-details p {
+            font-size: 14px;
+            margin: 2px 0;
+        }
+
+        /* Layout */
+        .boxes {
+            display: flex;
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        .box {
+            flex: 1;
+            border: 1px solid #000;
+            padding: 20px;
+            position: relative;
+        }
+
+        .box-title {
+            position: absolute;
+            top: -12px;
+            right: 20px;
+            background: #fff;
+            padding: 0 10px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .box p {
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .box strong {
+            display: inline-block;
+            width: 80px;
+        }
+
+        /* Table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+
+        th,
+        td {
+            border: 1px solid #000;
+            padding: 12px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        th {
+            background: #f9f9f9;
+            font-weight: bold;
+        }
+
+        td.text-right {
+            text-align: right;
+        }
+
+        .totals-wrapper {
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .totals {
+            width: 350px;
+            border: 1px solid #000;
+        }
+
+        .totals-row {
+            display: flex;
+            border-bottom: 1px solid #000;
+        }
+
+        .totals-row:last-child {
+            border-bottom: none;
+        }
+
+        .totals-col-label {
+            flex: 1;
+            padding: 10px;
+            font-weight: bold;
+            background: #f9f9f9;
+            border-left: 1px solid #000;
+        }
+
+        .totals-col-value {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+        }
+
+        .grand-total {
+            font-size: 18px;
+            font-weight: bold;
+            background: #000;
+            color: #fff;
+        }
+
+        /* Note & Footer */
+        .note {
+            margin-top: 40px;
+            padding: 15px;
+            border-left: 4px solid #000;
+            background: #f9f9f9;
+            font-size: 13px;
+        }
+
+        .footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-top: 50px;
+            border-top: 1px solid #000;
+            padding-top: 20px;
+        }
+
+        .signature {
+            width: 200px;
+            border-bottom: 1px solid #000;
+            text-align: center;
+            padding-bottom: 5px;
+            font-size: 14px;
+        }
+
+        /* Warnings */
+        .warning-box {
+            border: 2px dashed #000;
+            padding: 10px;
+            text-align: center;
+            margin-bottom: 20px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        /* Custom CSS */
+            {
+            % if template_styles and template_styles.custom_css %
+        }
+
+            {
+                {
+                template_styles.custom_css | safe
+            }
+        }
+
+            {
+            % endif %
+        }
+
+        @media print {
+            body {
+                background: #fff;
+                padding: 0;
+            }
+
+            .invoice {
+                border: none;
+                box-shadow: none;
+                padding: 0;
+                margin: 0;
+                max-width: 100%;
+            }
+
+            .actions {
+                display: none !important;
+            }
+
+            .grand-total {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="invoice">
+
+        <div class="actions no-print">
+            <h2>استعراض الفاتورة</h2>
+            <div>
+                <a href="/orders" class="btn">رجوع</a>
+                <button class="btn" onclick="window.print()">طباعة الآن</button>
+            </div>
+        </div>
+
+        <div class="header">
+            <div>
+                <h1>{{ settings.store_name if settings and settings.store_name else 'اسم المتجر' }}</h1>
+                <div class="subtitle">فواتير رسمية للتميز والأصالة</div>
+                {% if settings and settings.phone1 %}
+                <div style="font-size:12px; margin-top:5px; font-family: monospace;">Tel: {{ settings.phone1 }} {% if
+                    settings.phone2 %}| {{ settings.phone2 }}{% endif %}</div>
+                {% endif %}
+            </div>
+            <div class="invoice-details">
+                <h2>فاتورة مبيعات</h2>
+                <p><strong>رقم الفاتورة:</strong> {{ order.id }}</p>
+                <p><strong>التاريخ:</strong> {{ order.created_at.strftime('%Y/%m/%d') if order.created_at else '' }}</p>
+                <p><strong>الحالة:</strong> {{ order.payment_status or "غير مسدد" }}</p>
+            </div>
+        </div>
+
+        {% if returned_count > 0 or cancelled_count > 0 %}
+        <div class="warning-box">
+            تنبيه: هذا الزبون لديه سجل يتضمن ({{ returned_count }} راجع) و ({{ cancelled_count }} ملغي).
+        </div>
+        {% endif %}
+
+        <div class="boxes">
+            <div class="box">
+                <div class="box-title">بيانات الزبون</div>
+                <p><strong>الاسم:</strong> {{ order.customer.name }}</p>
+                <p><strong>الهاتف:</strong> <span style="font-family: monospace;">{{ order.customer.phone }}</span></p>
+                <p><strong>المحافظة:</strong> {{ order.customer.city }}</p>
+                <p><strong>العنوان:</strong> {{ order.customer.address or '-' }}</p>
+            </div>
+            <div class="box">
+                <div class="box-title">معلومات إضافية</div>
+                <p><strong>اسم الموظف:</strong> {{ order.employee_name }}</p>
+                <p><strong>حالة الطلب:</strong> {{ order.status }}</p>
+                {% if order.shipping_company %}
+                <p><strong>شركة التوصيل:</strong> {{ order.shipping_company.name }}</p>
+                {% endif %}
+                <div style="margin-top: 15px; text-align:center;">
+                    <svg id="barcode-classic"></svg>
+                </div>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:5%">#</th>
+                    <th style="width:45%">البيــان</th>
+                    <th style="width:15%">السعر الإفرادي</th>
+                    <th style="width:15%">الكمية</th>
+                    <th style="width:20%">المجموع</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td class="text-right">{{ item.product_name or (item.product.name if item.product else 'منتج محذوف')
+                        }}</td>
+                    <td>{{ "{:,.0f}".format(item.price) }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>{{ "{:,.0f}".format(item.total) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="totals-wrapper">
+            <div class="totals">
+                <div class="totals-row">
+                    <div class="totals-col-label">الإجمالي الفرعي</div>
+                    <div class="totals-col-value">{{ "{:,.0f}".format(total) }}</div>
+                </div>
+                <div class="totals-row grand-total">
+                    <div class="totals-col-label" style="background: transparent; color: #fff; border-color: #fff;">
+                        المطلوب (د.ع)</div>
+                    <div class="totals-col-value">{{ "{:,.0f}".format(due) }}</div>
+                </div>
+            </div>
+        </div>
+
+        {% if order.note %}
+        <div class="note">
+            <strong>ملاحظات:</strong> {{ order.note }}
+        </div>
+        {% endif %}
+
+        <div class="footer">
+            <div style="font-size: 12px; color: #555;">
+                {{ settings.invoice_note if settings and settings.invoice_note else 'شكراً لاختياركم منتجاتنا.' }}
+            </div>
+            <div>
+                <div class="signature">التوقيع / الختم</div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        JsBarcode("#barcode-classic", "{{ order.id }}", {
+            format: "CODE128",
+            width: 1.5,
+            height: 30,
+            displayValue: true,
+            fontSize: 12,
+            margin: 0
+        });
+    </script>
+</body>
+
+</html>

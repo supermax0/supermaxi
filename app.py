@@ -25,6 +25,9 @@ from models.assistant_memory import AssistantMemory
 from models.delivery_agent import DeliveryAgent
 from models.page import Page
 from models.role import Role, Permission
+from models.autoposter_facebook_page import AutoposterFacebookPage
+from models.autoposter_post import AutoposterPost
+from models.autoposter_notification import AutoposterNotification
 
 # Routes
 from routes.index import index_bp
@@ -50,8 +53,8 @@ from routes.assistant import assistant_bp
 from routes.agents import agents_bp
 from routes.delivery_agent import delivery_agent_bp
 from routes.pages import pages_bp
-
-
+from routes.invoice_store import invoice_store_bp
+from routes.autoposter import autoposter_bp
 
     
 
@@ -716,6 +719,7 @@ def require_login():
         "/superadmin",
         "/messages/unread-count",  # واجهة للشارة — تُرجع JSON بدون إعادة توجيه
         "/api/landing-chat",  # مساعد الذكاء الاصطناعي لصفحة الهبوط
+        "/autoposter/api/facebook/callback",  # OAuth callback من فيسبوك (يُوجّه للتسجيل إن لزم)
     ]
 
     # السماح للمسارات المفتوحة: "/" تطابق تامة، الباقي يبدأ بـ المسار
@@ -848,6 +852,9 @@ app.register_blueprint(superadmin_bp)
 from routes.admin import admin_bp
 app.register_blueprint(admin_bp)
 
+app.register_blueprint(invoice_store_bp)
+app.register_blueprint(autoposter_bp)
+
 # =====================================
 # Logging
 # =====================================
@@ -893,6 +900,23 @@ try:
         flask_compress.Compress(app)
 except (ImportError, AttributeError):
     pass
+
+# =====================================
+# Autoposter: جدولة المنشورات (اختياري — يعمل عند تشغيل flask run)
+# =====================================
+try:
+    from apscheduler.schedulers.background import BackgroundScheduler
+    from apscheduler.triggers.interval import IntervalTrigger
+    from routes.autoposter import run_scheduled_posts_for_all_tenants
+    _scheduler = BackgroundScheduler()
+    _scheduler.add_job(
+        lambda: run_scheduled_posts_for_all_tenants(app),
+        IntervalTrigger(minutes=1),
+        id="autoposter_scheduled",
+    )
+    _scheduler.start()
+except Exception:
+    pass  # apscheduler غير مثبت أو خطأ — النشر التلقائي يعمل بدون الجدولة
 
 # =====================================
 # Run

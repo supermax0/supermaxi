@@ -1391,19 +1391,26 @@
             /* Chat widget small mobile */
             .landing-chat-btn {
                 bottom: max(16px, env(safe-area-inset-bottom, 16px));
-                left: 12px;
+                right: 12px;
+                left: auto;
                 width: 48px;
                 height: 48px;
                 font-size: 20px;
             }
 
             .landing-chat-panel {
+                bottom: 0;
+                right: 0;
+                width: 100%;
+                max-width: 100%;
                 max-height: 85vh;
-                border-radius: 16px 16px 0 0;
+                border-radius: 20px 20px 0 0;
+                transform-origin: bottom center;
             }
 
             .landing-chat-header {
                 padding: 12px 14px;
+                border-radius: 20px 20px 0 0;
             }
 
             .landing-chat-header h3 {
@@ -1420,8 +1427,8 @@
 
             .landing-chat-messages {
                 padding: 14px;
-                min-height: 160px;
-                max-height: 42vh;
+                min-height: 250px;
+                max-height: 60vh;
                 gap: 12px;
             }
 
@@ -1468,7 +1475,8 @@
         .landing-chat-btn {
             position: fixed;
             bottom: 24px;
-            left: 24px;
+            right: 24px;
+            left: auto;
             z-index: 999;
             width: 60px;
             height: 60px;
@@ -1549,26 +1557,30 @@
 
         .landing-chat-panel {
             position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
+            bottom: 24px;
+            right: 24px;
+            left: auto;
+            width: 380px;
+            max-width: calc(100vw - 48px);
             max-height: 85vh;
             z-index: 1000;
             background: linear-gradient(180deg, rgba(15, 23, 42, .97) 0%, rgba(2, 6, 23, .98) 100%);
             border: 1px solid rgba(99, 102, 241, .25);
-            border-bottom: none;
-            border-radius: 24px 24px 0 0;
-            box-shadow: 0 -12px 60px rgba(0, 0, 0, .5), 0 0 40px rgba(99, 102, 241, .08);
+            border-radius: 24px;
+            box-shadow: 0 12px 60px rgba(0, 0, 0, .6), 0 0 40px rgba(99, 102, 241, .08);
             flex-direction: column;
             backdrop-filter: blur(30px);
-            transform: translateY(100%);
-            transition: transform .35s cubic-bezier(.32, .72, .24, 1);
+            transform: translateY(20px) scale(0.95);
+            opacity: 0;
+            transition: transform .35s cubic-bezier(.34, 1.56, .64, 1), opacity .25s ease;
             display: flex;
             visibility: hidden;
+            transform-origin: bottom right;
         }
 
         .landing-chat-panel.show {
-            transform: translateY(0);
+            transform: translateY(0) scale(1);
+            opacity: 1;
             visibility: visible;
         }
 
@@ -1658,8 +1670,8 @@
             flex: 1;
             overflow-y: auto;
             padding: 22px 20px;
-            min-height: 240px;
-            max-height: 55vh;
+            min-height: 380px;
+            max-height: 65vh;
             display: flex;
             flex-direction: column;
             gap: 16px;
@@ -1681,13 +1693,14 @@
         }
 
         .landing-msg {
-            max-width: 85%;
-            padding: 13px 18px;
-            border-radius: 18px;
-            font-size: 14.5px;
-            line-height: 1.7;
+            max-width: 88%;
+            padding: 14px 20px;
+            border-radius: 20px;
+            font-size: 15px;
+            line-height: 1.75;
             position: relative;
             animation: msgSlideIn .3s ease;
+            word-wrap: break-word;
         }
 
         @keyframes msgSlideIn {
@@ -1704,18 +1717,23 @@
 
         .landing-msg.user {
             align-self: flex-end;
-            background: linear-gradient(135deg, var(--b), var(--i));
-            color: #fff;
-            border-bottom-left-radius: 6px;
-            box-shadow: 0 4px 16px rgba(99, 102, 241, .25);
+            background: linear-gradient(135deg, #4f46e5, #0ea5e9);
+            color: #ffffff;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 4px 16px rgba(79, 70, 229, 0.3);
         }
 
         .landing-msg.assistant {
             align-self: flex-start;
-            background: rgba(30, 41, 59, .7);
-            border: 1px solid rgba(99, 102, 241, .15);
-            border-bottom-right-radius: 6px;
-            color: var(--text);
+            background: rgba(30, 41, 59, 0.85);
+            border: 1px solid rgba(99, 102, 241, 0.25);
+            border-bottom-right-radius: 4px;
+            color: #f1f5f9;
+        }
+
+        .landing-msg.assistant strong {
+            color: #818cf8;
+            font-weight: 700;
         }
 
         .landing-msg.error {
@@ -2428,11 +2446,15 @@
         function tf(el) { const it = el.parentElement, op = it.classList.contains('op'); document.querySelectorAll('.fi2').forEach(i => i.classList.remove('op')); if (!op) it.classList.add('op') }
 
         // ── Billing Toggle (الأسعار من قاعدة البيانات + السعر الأصلي إن وُجد) ──────────────────────────────────────────
-        const PRICES = {
-            {% for k, v in (landing_plans or { }).items() %}
-        "{{ k }}": { monthly: { { v.get('price_monthly', 0) } }, yearly: { { v.get('price_yearly', 0) } }, name: "{{ v.get('name', '') | e }}", original_monthly: { { v.get('original_price_monthly') if v.get('original_price_monthly') is not none else 'null' } }, original_yearly: { { v.get('original_price_yearly') if v.get('original_price_yearly') is not none else 'null' } } } {% if not loop.last %}, {% endif %}
+        const PRICES = {};
+        {% for k, v in (landing_plans or { }).items() %}
+        PRICES["{{ k }}"] = {};
+        PRICES["{{ k }}"].monthly = {{ v.get('price_monthly', 0) }};
+        PRICES["{{ k }}"].yearly = {{ v.get('price_yearly', 0) }};
+        PRICES["{{ k }}"].name = "{{ v.get('name', '') | e }}";
+        PRICES["{{ k }}"].original_monthly = {{ v.get('original_price_monthly') if v.get('original_price_monthly') is not none else 'null' }};
+        PRICES["{{ k }}"].original_yearly = {{ v.get('original_price_yearly') if v.get('original_price_yearly') is not none else 'null' }};
         {% endfor %}
-        };
         if (Object.keys(PRICES).length === 0) {
             PRICES.basic = { monthly: 25000, yearly: 250000, name: 'الأساسية', original_monthly: null, original_yearly: null };
             PRICES.pro = { monthly: 45000, yearly: 450000, name: 'المتقدمة', original_monthly: null, original_yearly: null };
@@ -2503,7 +2525,19 @@
             function addMessage(content, role, isError) {
                 var div = document.createElement('div');
                 div.className = 'landing-msg ' + (role || 'assistant') + (isError ? ' error' : '');
-                div.textContent = content;
+
+                if (role === 'assistant' && !isError) {
+                    var html = content
+                        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') // Escape first
+                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold **text**
+                        .replace(/\*(.*?)\*/g, '<em>$1</em>') // Italic *text*
+                        .replace(/\n\s*\-\s/g, '<br>• ') // Lists -
+                        .replace(/\n/g, '<br>'); // Newlines
+                    div.innerHTML = html;
+                } else {
+                    div.textContent = content;
+                }
+
                 messagesEl.appendChild(div);
                 messagesEl.scrollTop = messagesEl.scrollHeight;
             }

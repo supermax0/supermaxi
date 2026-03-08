@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <title>رصيد رقم #{{ order.id }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <style>
+        /* ================= DYNAMIC STYLES ================= */
+        :root {
+
+            /* For thermal, colors are usually black and white only, but we allow primary for screen preview */
+            --primary-color: {
+                    {
+                    template_styles.primary if template_styles and template_styles.primary else '#000000'
+                }
+            }
+
+            ;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Tajawal', Courier, monospace;
+            background: #e2e8f0;
+            padding: 20px;
+            color: #000;
+        }
+
+        .invoice {
+            width: 80mm;
+            /* Standard thermal printer width */
+            margin: 0 auto;
+            background: #fff;
+            padding: 15px;
+            padding-top: 50px;
+            /* Space for buttons */
+            padding-bottom: 20mm;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        /* ACTIONS (No Print) */
+        .actions {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px dashed #000;
+            padding-bottom: 10px;
+        }
+
+        .btn {
+            padding: 5px 10px;
+            border: 1px solid #000;
+            background: #fff;
+            color: #000;
+            font-family: inherit;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+
+        .btn-print {
+            background: var(--primary-color);
+            color: #fff;
+            border: none;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .text-left {
+            text-align: left;
+        }
+
+        .bold {
+            font-weight: bold;
+        }
+
+        .store-name {
+            font-size: 18px;
+            margin-bottom: 3px;
+            font-weight: 800;
+            color: var(--primary-color);
+        }
+
+        .store-contact {
+            font-size: 11px;
+            margin-bottom: 15px;
+        }
+
+        .divider {
+            border-bottom: 1px dashed #000;
+            margin: 10px 0;
+        }
+
+        .order-info {
+            font-size: 12px;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+
+        .order-info span {
+            display: inline-block;
+            width: 60px;
+            font-weight: bold;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+            margin-bottom: 15px;
+        }
+
+        th {
+            border-bottom: 1px dashed #000;
+            border-top: 1px dashed #000;
+            padding: 5px 0;
+            text-align: right;
+        }
+
+        td {
+            padding: 5px 0;
+            vertical-align: top;
+        }
+
+        .col-qty {
+            width: 15%;
+            text-align: center;
+        }
+
+        .col-price {
+            width: 25%;
+            text-align: center;
+        }
+
+        .col-total {
+            width: 25%;
+            text-align: left;
+        }
+
+        .col-name {
+            width: 35%;
+            padding-left: 5px;
+        }
+
+        .totals {
+            font-size: 13px;
+            margin-bottom: 15px;
+        }
+
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+
+        .grand-total {
+            font-weight: bold;
+            font-size: 16px;
+            border-top: 1px dashed #000;
+            padding-top: 5px;
+            margin-top: 5px;
+        }
+
+        .footer {
+            text-align: center;
+            font-size: 11px;
+            margin-top: 20px;
+        }
+
+        .barcode-svg {
+            margin: 15px auto;
+            display: block;
+            max-width: 100%;
+        }
+
+        /* Custom CSS */
+            {
+            % if template_styles and template_styles.custom_css %
+        }
+
+            {
+                {
+                template_styles.custom_css | safe
+            }
+        }
+
+            {
+            % endif %
+        }
+
+        @media print {
+            body {
+                background: #fff;
+                padding: 0;
+            }
+
+            .invoice {
+                width: 100%;
+                margin: 0;
+                padding: 0;
+                box-shadow: none;
+                border: none;
+                padding-top: 0;
+            }
+
+            .actions {
+                display: none !important;
+            }
+
+            /* Remove all background colors for pure black & white printing */
+            .store-name,
+            .btn-print,
+            th,
+            td,
+            span,
+            div,
+            p {
+                color: #000 !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="invoice">
+
+        <div class="actions no-print">
+            <a href="/orders" class="btn">رجوع</a>
+            <button class="btn btn-print" onclick="window.print()">طباعة الرصيد</button>
+        </div>
+
+        <div class="text-center">
+            <div class="store-name">{{ settings.store_name if settings and settings.store_name else 'اسم المتجر' }}
+            </div>
+            {% if settings and settings.phone1 %}
+            <div class="store-contact">هاتف: {{ settings.phone1 }}</div>
+            {% endif %}
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="order-info">
+            <div><span>رقم الطلب:</span> {{ order.id }}</div>
+            <div><span>التاريخ:</span> {{ order.created_at.strftime('%Y/%m/%d %H:%M') if order.created_at else '' }}
+            </div>
+            <div><span>الزبون:</span> {{ order.customer.name }}</div>
+            <div><span>هاتف:</span> {{ order.customer.phone }}</div>
+            <div><span>الدفع:</span> {{ order.payment_status or "غير مدفوع" }}</div>
+        </div>
+
+        {% if cancelled_count > 0 or returned_count > 0 %}
+        <div class="divider"></div>
+        <div style="font-size:11px; text-align:center; font-weight:bold;">
+            *** تنبيه موظف ***<br>
+            سجل الزبون: {{ returned_count }} راجع / {{ cancelled_count }} ملغي
+        </div>
+        {% endif %}
+
+        <div class="divider"></div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th class="col-name">الصنف</th>
+                    <th class="col-qty text-center">كمية</th>
+                    <th class="col-price text-center">سعر</th>
+                    <th class="col-total text-left">إجمالي</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td class="col-name">{{ item.product_name or (item.product.name if item.product else 'محذوف') }}
+                    </td>
+                    <td class="col-qty text-center">{{ item.quantity }}</td>
+                    <td class="col-price text-center">{{ "{:,.0f}".format(item.price) }}</td>
+                    <td class="col-total text-left">{{ "{:,.0f}".format(item.total) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="totals">
+            <div class="total-row">
+                <span>مجموع المنتجات</span>
+                <span>{{ "{:,.0f}".format(total) }}</span>
+            </div>
+            {% if due < total %} <div class="total-row">
+                <span>خصم</span>
+                <span>- {{ "{:,.0f}".format(total - due) }}</span>
+        </div>
+        {% endif %}
+        <div class="total-row grand-total">
+            <span>المطلوب دفعه</span>
+            <span>{{ "{:,.0f}".format(due) }} د.ع</span>
+        </div>
+    </div>
+
+    <div class="divider"></div>
+
+    {% if order.note %}
+    <div style="font-size: 11px; font-weight:bold; margin-bottom: 15px;">
+        ملاحظات: {{ order.note }}
+    </div>
+    <div class="divider"></div>
+    {% endif %}
+
+    <div class="footer">
+        <div style="margin-bottom: 10px;">{{ settings.invoice_note if settings and settings.invoice_note else 'شكراً
+            لتسوقكم!' }}</div>
+        <div style="font-size:9px;">بواسطة: {{ order.employee_name }}</div>
+
+        <svg id="barcode-thermal" class="barcode-svg"></svg>
+    </div>
+
+    </div>
+
+    <script>
+        JsBarcode("#barcode-thermal", "{{ order.id }}", {
+            format: "CODE128",
+            width: 1.5,
+            height: 35,
+            displayValue: true,
+            fontSize: 12,
+            margin: 0
+        });
+    </script>
+</body>
+
+</html>
