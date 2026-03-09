@@ -1,21 +1,39 @@
 import React from "react";
 import { NodeEditor } from "./NodeEditor";
 
+const NODE_TYPES = [
+  { id: "start", label: "Start" },
+  { id: "ai", label: "AI Agent" },
+  { id: "image", label: "Image Generator" },
+  { id: "caption", label: "Caption Generator" },
+  { id: "publisher", label: "Publisher" },
+  { id: "scheduler", label: "Scheduler" },
+  { id: "comment-listener", label: "Comment Listener" },
+  { id: "auto-reply", label: "Auto Reply" },
+  { id: "end", label: "End" },
+];
+
 export const App: React.FC = () => {
+  const handleDragStart = (event: React.DragEvent<HTMLLIElement>, nodeType: string) => {
+    event.dataTransfer.setData("application/reactflow", nodeType);
+    event.dataTransfer.effectAllowed = "move";
+  };
+
   return (
     <div className="flex h-screen bg-bg text-white">
       <aside className="w-64 border-l border-slate-800 bg-panel/80 backdrop-blur px-4 py-6">
         <h2 className="mb-4 text-lg font-bold">عُقد العمل</h2>
         <ul className="space-y-2 text-sm text-slate-200">
-          <li>Start</li>
-          <li>AI Agent</li>
-          <li>Image Generator</li>
-          <li>Caption</li>
-          <li>Publisher</li>
-          <li>Scheduler</li>
-          <li>Comment Listener</li>
-          <li>Auto Reply</li>
-          <li>End</li>
+          {NODE_TYPES.map((node) => (
+            <li
+              key={node.id}
+              draggable
+              onDragStart={(event) => handleDragStart(event, node.id)}
+              className="cursor-move rounded border border-slate-700 bg-slate-800/60 px-3 py-2 text-xs hover:border-emerald-500 hover:bg-slate-700"
+            >
+              {node.label}
+            </li>
+          ))}
         </ul>
       </aside>
       <main className="flex flex-1 flex-col">
