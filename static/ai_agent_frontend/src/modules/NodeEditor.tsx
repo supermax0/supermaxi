@@ -3,33 +3,29 @@ import ReactFlow, {
   Background,
   Controls,
   MiniMap,
-  Node,
-  Edge,
-  useEdgesState,
-  useNodesState,
+  Connection,
   useReactFlow,
 } from "reactflow";
 import "reactflow/dist/style.css";
-
-const initialNodes: Node[] = [
-  {
-    id: "start-1",
-    type: "default",
-    position: { x: 0, y: 0 },
-    data: { label: "Start" },
-  },
-];
-const initialEdges: Edge[] = [];
+import { nodeTypes } from "./NodeTypes";
+import { useEditorStore } from "./store";
 
 export const NodeEditor: React.FC = () => {
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const nodes = useEditorStore((s) => s.nodes);
+  const edges = useEditorStore((s) => s.edges);
+  const onNodesChange = useEditorStore((s) => s.onNodesChange);
+  const onEdgesChange = useEditorStore((s) => s.onEdgesChange);
+  const addConnection = useEditorStore((s) => s.addConnection);
+  const addNode = useEditorStore((s) => s.addNode);
+  const setSelectedNodeId = useEditorStore((s) => s.setSelectedNodeId);
   const reactFlowWrapper = useRef<HTMLDivElement | null>(null);
   const { project } = useReactFlow();
 
   const onConnect = useCallback(
-    (connection: any) => setEdges((eds) => [...eds, { ...connection, id: `${Date.now()}` }]),
-    [setEdges],
+    (connection: Connection) => {
+      addConnection(connection);
+    },
+    [addConnection],
   );
 
   const onDragOver = useCallback((event: React.DragEvent) => {
@@ -62,22 +58,33 @@ export const NodeEditor: React.FC = () => {
         end: "End",
       };
 
-      const newNode: Node = {
+      const newNode = {
         id,
-        type: "default",
+        type: nodeType,
         position,
         data: {
           label: labelMap[nodeType] || nodeType,
         },
       };
 
-      setNodes((nds) => nds.concat(newNode));
+      addNode(newNode);
     },
-    [project, setNodes],
+    [project, addNode],
   );
 
+  const onNodeClick = useCallback(
+    (_event: React.MouseEvent, node: any) => {
+      setSelectedNodeId(node.id);
+    },
+    [setSelectedNodeId],
+  );
+
+  const onPaneClick = useCallback(() => {
+    setSelectedNodeId(undefined);
+  }, [setSelectedNodeId]);
+
   return (
-    <div ref={reactFlowWrapper} className="h-full w-full">
+    <div ref={reactFlowWrapper} className="relative h-full w-full">
       <ReactFlow
         fitView
         nodes={nodes}
@@ -87,10 +94,18 @@ export const NodeEditor: React.FC = () => {
         onConnect={onConnect}
         onDrop={onDrop}
         onDragOver={onDragOver}
+        onNodeClick={onNodeClick}
+        onPaneClick={onPaneClick}
+        nodeTypes={nodeTypes}
       >
         <Background />
         <MiniMap />
         <Controls position="top-left" />
+        {nodes.length === 0 && (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-slate-500">
+            اسحب عقدة Start من القائمة لبدء إنشاء الوورك فلو.
+          </div>
+        )}
       </ReactFlow>
     </div>
   );
