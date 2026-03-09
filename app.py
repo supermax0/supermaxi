@@ -758,6 +758,9 @@ def require_login():
 @app.context_processor
 def inject_system_settings():
     """تمرير إعدادات النظام العامة لجميع القوالب باسم system_settings."""
+    # لا نستعلم عن SystemSettings في مسارات الإدارة العليا (قاعدة Core قد لا تحتوي الجدول)
+    if request.path.startswith("/superadmin"):
+        return {"system_settings": None}
     try:
         settings = SystemSettings.get_settings()
     except Exception:
