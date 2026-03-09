@@ -10,3 +10,4 @@ gunicorn
 Flask-Compress
 psycopg2-binary
 APScheduler
+requests

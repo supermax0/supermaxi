@@ -139,12 +139,13 @@ except ImportError:
 # Create Tables + Admin Account
 # =====================================
 with app.app_context():
-    # Import core models so create_all() knows what tables to create
+    # Import core models so create_all() knows what tables to create (including FKs e.g. users)
     from models.core.super_admin import SuperAdmin
     from models.core.tenant import Tenant
     from models.core.payment_request import PaymentRequest
     from models.core.global_setting import GlobalSetting
     from models.core.landing_visit import LandingVisit
+    from models.user import User  # جدول users مطلوب لـ tenant_template_purchases / tenant_template_settings
 
     db.create_all()
 
