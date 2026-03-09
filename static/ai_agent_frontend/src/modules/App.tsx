@@ -1,4 +1,5 @@
 import React from "react";
+import { ReactFlowProvider } from "reactflow";
 import { NodeEditor } from "./NodeEditor";
 
 const NODE_TYPES = [
@@ -53,7 +54,9 @@ export const App: React.FC = () => {
         </header>
         <div className="flex flex-1">
           <section className="flex-1">
-            <NodeEditor />
+            <ReactFlowProvider>
+              <NodeEditor />
+            </ReactFlowProvider>
           </section>
           <aside className="w-80 border-r border-slate-800 bg-panel/80 px-4 py-4">
             <h2 className="mb-2 text-sm font-semibold">إعدادات العقدة</h2>
