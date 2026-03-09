@@ -40,7 +40,7 @@
     function performSearch() {
         const query = document.getElementById('search-input').value;
         if (query.trim()) {
-            window.location.href = "{{ url_for('index.global_search') }}?q=" + encodeURIComponent(query);
+            window.location.href = "{{ url_for('index.index_search') }}?q=" + encodeURIComponent(query);
         }
     }
 

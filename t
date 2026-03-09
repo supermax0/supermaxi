@@ -1,229 +1,151 @@
-Build a full **AI Agent page** inside my project called **AutoPoster**.
+Continue implementing the AI Agent / Visual Workflow Builder inside the Autoposter project.
 
-The page must implement a **Visual AI Automation Builder** where users can create automated workflows for social media using drag-and-drop nodes.
+The system already contains:
 
-The system must be production-ready, modular, and designed for future expansion.
+* Backend models (Agent, AgentWorkflow, AgentExecution, AgentExecutionLog)
+* REST APIs for agents and workflows
+* Basic workflow execution engine
+* React + React Flow frontend under static/ai_agent_frontend
+* A page at /autoposter/ai-agent rendering a basic React Flow canvas
 
----
-
-MAIN FEATURE
-
-Create a page called:
-
-/ai-agent
-
-Inside the AutoPoster dashboard.
-
-This page must allow users to visually build AI automations.
+Now implement the next stage: a **fully functional Node Editor**.
 
 ---
 
-VISUAL WORKFLOW BUILDER
+OBJECTIVE
 
-Implement a drag-and-drop workflow builder similar to:
+Turn the current React Flow canvas into a complete workflow builder similar to Zapier / n8n.
 
-* Zapier
-* n8n
-* Langflow
-* OpenAI Agent Builder
+Users must be able to visually build workflows using nodes and connections.
+
+---
+
+NODE SIDEBAR
+
+Add a left sidebar listing available nodes:
+
+Start
+AI Agent
+Image Generator
+Caption Generator
+Publisher
+Scheduler
+Comment Listener
+Auto Reply
+End
+
+Each node must be draggable into the canvas.
+
+---
+
+DRAG AND DROP
 
 Users must be able to:
 
-* drag nodes
-* connect nodes
-* configure nodes
-* execute workflows
+drag nodes from the sidebar
+drop them on the canvas
+connect nodes using edges
 
-Use a **node based interface**.
-
-Each node represents an action.
+Use React Flow drag and connect features.
 
 ---
 
-CORE NODES
+NODE SETTINGS PANEL
 
-Start Node
+When a node is clicked, open a configuration panel on the right side.
 
-AI Agent Node
-Uses OpenAI to generate content.
-
-Image Generator Node
-Generates images from prompts.
-
-Caption Generator Node
-Creates captions and hashtags.
-
-Publisher Node
-Publishes to social platforms.
-
-Scheduler Node
-Schedules posts.
-
-Comment Listener Node
-Fetches comments.
-
-Auto Reply Node
-Uses AI to reply to comments.
-
-End Node
-
----
-
-NODE CONFIGURATION PANEL
-
-When a node is clicked open a side panel.
-
-Allow users to configure:
+Allow editing node settings such as:
 
 name
 instructions
-model
-inputs
-outputs
+AI model
+platform
+schedule time
+reply rules
 
-Example instructions:
-
-"You are a marketing AI that generates engaging social media content."
+Store the configuration inside node.data.
 
 ---
 
-WORKFLOW EXECUTION ENGINE
+WORKFLOW STATE
 
-Create a backend system that reads the workflow.
-
-Workflow must be stored as JSON.
-
-Example structure:
+The frontend must maintain:
 
 nodes
 edges
-settings
+workflow settings
 
-The engine must execute nodes in sequence based on connections.
+The workflow must be serializable to JSON.
 
----
+Example:
 
-AI INTEGRATION
-
-Use OpenAI models to power:
-
-content generation
-caption writing
-comment replies
-decision making
+{
+"nodes": [...],
+"edges": [...]
+}
 
 ---
 
-IMAGE GENERATION
+SAVE WORKFLOW
 
-Integrate an image generator API.
+Connect the editor to the backend API:
 
-The agent must be able to send prompts and receive images.
+POST /autoposter/api/workflows
+PUT /autoposter/api/workflows/<id>
 
----
-
-SOCIAL MEDIA PUBLISHING
-
-Create service modules for:
-
-Instagram
-Facebook
-TikTok
-
-The workflow should pass content to the publisher node.
+Send nodes and edges as JSON.
 
 ---
 
-COMMENT AUTO REPLY
+LOAD WORKFLOW
 
-The system must monitor comments.
-
-When a new comment arrives:
-
-send comment to AI
-generate reply
-publish reply
+When opening a workflow, load its nodes and edges from the API and render them in React Flow.
 
 ---
 
-DATABASE STRUCTURE
+NODE TYPES
 
-Create tables for:
+Implement custom node components for:
 
-agents
-workflows
-nodes
-executions
-comments
+StartNode
+AINode
+ImageNode
+CaptionNode
+PublisherNode
+SchedulerNode
+CommentListenerNode
+AutoReplyNode
+EndNode
 
----
-
-SYSTEM ARCHITECTURE
-
-Frontend
-React
-React Flow for node editor
-Tailwind UI
-
-Backend
-Python Flask or FastAPI
-
-Workflow Engine
-Executes nodes
-
-Queue System
-Redis or Celery
-
-Database
-PostgreSQL
+Each node must display an icon and label.
 
 ---
 
-FILE STRUCTURE
+UI LAYOUT
 
-autoposter
-│
-├ ai_agent
-│
-├ workflow_builder
-│
-├ nodes
-│
-├ engine
-│
-├ services
-│
-└ api
+Page layout:
+
+Left Sidebar → node library
+Center Canvas → React Flow editor
+Right Panel → node configuration
+
+Use Tailwind CSS for styling.
 
 ---
 
-EXTRA FEATURES
+EXECUTION SUPPORT
 
-Workflow testing mode
-Execution logs
-Node error handling
-Workflow templates
+Ensure that the JSON produced by the editor matches the structure expected by the backend workflow execution engine.
 
 ---
 
-DESIGN
+GOAL
 
-Modern dark dashboard UI.
+After this step the user should be able to:
 
-Left sidebar with node tools.
-
-Center canvas for workflow.
-
-Right panel for node settings.
-
----
-
-FINAL RESULT
-
-A complete AI automation builder where users can create AI agents that:
-
-generate content
-create images
-publish posts
-reply to comments
-run automatically
+create workflows
+drag nodes
+connect nodes
+configure nodes
+save workflows
+run workflows from the backend
