@@ -97,6 +97,7 @@
                 <label>صورة أو فيديو (اختياري)</label>
                 <div class="drop-zone" id="dropZone"><input type="file" id="mediaInput" accept="image/*,video/mp4,video/quicktime" multiple style="display:none"><span class="drop-text">اسحب ملفاً هنا أو</span> <button type="button" class="link-btn" id="browseMedia">اختر ملف</button><br><span class="field-help">صور: jpg, png, gif, webp — فيديو: mp4 (حد 100 ميجا)</span></div>
                 <div class="media-preview-wrap" id="mediaPreview" style="margin-top:8px;min-height:40px;"></div>
+                <div class="linear-progress" id="uploadProgress" hidden><div class="bar"></div></div>
               </div>
               <div class="form-group">
                 <label>نوع النشر</label>
@@ -113,6 +114,8 @@
                 <button type="button" class="btn btn-primary" id="publishBtn"><span class="btn-text">نشر الآن</span><span class="btn-loader"></span></button>
                 <button type="button" class="btn btn-secondary" id="scheduleBtn" style="margin-right:8px"><span class="btn-text">جدولة المنشور</span><span class="btn-loader"></span></button>
               </div>
+              <div class="linear-progress" id="postProgress" hidden><div class="bar"></div></div>
+              <div class="field-help" id="postProgressText"></div>
             </div>
             <div class="card preview-card"><h3 class="card-title">معاينة</h3><div class="post-preview" id="postPreview"><div class="preview-placeholder">ستظهر المعاينة هنا</div></div></div>
           </div>

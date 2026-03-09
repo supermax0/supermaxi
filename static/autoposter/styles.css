@@ -494,6 +494,28 @@ input, textarea, select { font-family: inherit; }
   cursor: pointer;
 }
 
+.linear-progress {
+  position: relative;
+  width: 100%;
+  height: 3px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+  margin-top: 6px;
+}
+.linear-progress .bar {
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-dim));
+  animation: linear-loading 1.1s infinite;
+}
+@keyframes linear-loading {
+  0%   { transform: translateX(-100%); }
+  50%  { transform: translateX(0%); }
+  100% { transform: translateX(200%); }
+}
+
 .pages-select-wrap {
   display: flex;
   flex-wrap: wrap;
@@ -514,6 +536,16 @@ input, textarea, select { font-family: inherit; }
   background: rgba(0, 212, 255, 0.15);
   border-color: var(--accent);
   color: var(--accent);
+}
+.page-chip.posting {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(0, 212, 255, 0.3);
+}
+.page-chip.posted {
+  border-color: var(--success);
+}
+.page-chip.error {
+  border-color: var(--danger);
 }
 
 .form-actions {

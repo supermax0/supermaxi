@@ -329,6 +329,9 @@
   const previewPostBtn = document.getElementById('previewPostBtn');
   const publishBtn = document.getElementById('publishBtn');
   const pageChips = document.querySelectorAll('.page-chip[data-id]');
+  const uploadProgress = document.getElementById('uploadProgress');
+  const postProgress = document.getElementById('postProgress');
+  const postProgressText = document.getElementById('postProgressText');
 
   if (postEditor && charCount) {
     postEditor.addEventListener('input', () => {
@@ -390,7 +393,9 @@
     const isVideo = file.type.startsWith('video/');
     const fd = new FormData();
     fd.append('file', file);
+    if (uploadProgress) uploadProgress.hidden = false;
     const res = await apiFetch('/api/upload', { method: 'POST', body: fd });
+    if (uploadProgress) uploadProgress.hidden = true;
     if (!res || !res.ok) {
       const err = await res?.json().catch(() => ({}));
       toast(err?.error || 'فشل رفع الملف', 'error');
@@ -502,30 +507,59 @@
         toast('اختر صفحة واحدة على الأقل', 'warning');
         return;
       }
+
       publishBtn.classList.add('loading');
       publishBtn.disabled = true;
-      const res = await apiFetch('/api/posts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      const origText = publishBtn.querySelector('.btn-text')?.textContent || 'نشر الآن';
+
+      if (postProgress) postProgress.hidden = false;
+
+      const chips = Array.from(document.querySelectorAll('.page-chip[data-id]'));
+      for (let i = 0; i < pageIds.length; i++) {
+        const pageId = pageIds[i];
+        const chip = chips.find(c => c.getAttribute('data-id') === pageId);
+        chip?.classList.remove('posted', 'error');
+        chip?.classList.add('posting');
+        if (postProgressText) {
+          postProgressText.textContent = `جاري النشر على الصفحة ${i + 1} من ${pageIds.length}`;
+        }
+        if (publishBtn.querySelector('.btn-text')) {
+          publishBtn.querySelector('.btn-text').textContent = `نشر (${i + 1}/${pageIds.length})`;
+        }
+
+        const res = await apiFetch('/api/posts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...payload, page_ids: [pageId] }),
+        });
+        const data = await res?.json().catch(() => ({}));
+
+        if (res && res.ok && data.success) {
+          chip?.classList.remove('posting');
+          chip?.classList.add('posted');
+        } else {
+          chip?.classList.remove('posting');
+          chip?.classList.add('error');
+          toast(data?.error || 'فشل النشر لصفحة واحدة أو أكثر', 'error');
+        }
+      }
+
       publishBtn.classList.remove('loading');
       publishBtn.disabled = false;
-      if (!res) return;
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data.success) {
-        toast(data.errors && data.errors.length ? `نُشر على: ${(data.published || []).join(', ')}. أخطاء: ${data.errors.join('; ')}` : 'تم نشر المنشور بنجاح', data.errors?.length ? 'warning' : 'success');
-        if (postEditor) postEditor.value = '';
-        if (charCount) charCount.textContent = '0';
-        if (mediaPreview) mediaPreview.innerHTML = '';
-        uploadedMedia = { url: null, type: null };
-        updatePreview();
-        loadStats();
-        loadNotifications();
-        loadScheduled();
-      } else {
-        toast(data.error || 'فشل النشر', 'error');
+      if (publishBtn.querySelector('.btn-text')) {
+        publishBtn.querySelector('.btn-text').textContent = origText;
       }
+      if (postProgress) postProgress.hidden = true;
+      if (postProgressText) postProgressText.textContent = '';
+
+      if (postEditor) postEditor.value = '';
+      if (charCount) charCount.textContent = '0';
+      if (mediaPreview) mediaPreview.innerHTML = '';
+      uploadedMedia = { url: null, type: null };
+      updatePreview();
+      loadStats();
+      loadNotifications();
+      loadScheduled();
     });
   }
 
@@ -557,28 +591,56 @@
       }
       scheduleBtn.classList.add('loading');
       scheduleBtn.disabled = true;
-      const res = await apiFetch('/api/posts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...payload, scheduled_at: scheduledAt }),
-      });
+
+      if (postProgress) postProgress.hidden = false;
+      const origText = scheduleBtn.querySelector('.btn-text')?.textContent || 'جدولة المنشور';
+      const chips = Array.from(document.querySelectorAll('.page-chip[data-id]'));
+
+      for (let i = 0; i < pageIds.length; i++) {
+        const pageId = pageIds[i];
+        const chip = chips.find(c => c.getAttribute('data-id') === pageId);
+        chip?.classList.remove('posted', 'error');
+        chip?.classList.add('posting');
+        if (postProgressText) {
+          postProgressText.textContent = `جاري جدولة الصفحة ${i + 1} من ${pageIds.length}`;
+        }
+        if (scheduleBtn.querySelector('.btn-text')) {
+          scheduleBtn.querySelector('.btn-text').textContent = `جدولة (${i + 1}/${pageIds.length})`;
+        }
+
+        const res = await apiFetch('/api/posts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...payload, page_ids: [pageId], scheduled_at: scheduledAt }),
+        });
+        const data = await res?.json().catch(() => ({}));
+
+        if (res && res.ok && data.success) {
+          chip?.classList.remove('posting');
+          chip?.classList.add('posted');
+        } else {
+          chip?.classList.remove('posting');
+          chip?.classList.add('error');
+          toast(data?.error || 'فشل جدولة إحدى الصفحات', 'error');
+        }
+      }
+
       scheduleBtn.classList.remove('loading');
       scheduleBtn.disabled = false;
-      if (!res) return;
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data.success) {
-        toast('تم جدولة المنشور بنجاح', 'success');
-        if (postEditor) postEditor.value = '';
-        if (charCount) charCount.textContent = '0';
-        if (mediaPreview) mediaPreview.innerHTML = '';
-        uploadedMedia = { url: null, type: null };
-        if (scheduleAtEl) scheduleAtEl.value = '';
-        updatePreview();
-        loadScheduled();
-        loadStats();
-      } else {
-        toast(data.error || 'فشل الجدولة', 'error');
+      if (scheduleBtn.querySelector('.btn-text')) {
+        scheduleBtn.querySelector('.btn-text').textContent = origText;
       }
+      if (postProgress) postProgress.hidden = true;
+      if (postProgressText) postProgressText.textContent = '';
+
+      if (postEditor) postEditor.value = '';
+      if (charCount) charCount.textContent = '0';
+      if (mediaPreview) mediaPreview.innerHTML = '';
+      uploadedMedia = { url: null, type: null };
+      if (scheduleAtEl) scheduleAtEl.value = '';
+      updatePreview();
+      loadScheduled();
+      loadStats();
     });
   }
 
