@@ -720,8 +720,18 @@
   if (scheduleBtn) {
     scheduleBtn.addEventListener('click', async () => {
       const scheduleAtEl = document.getElementById('scheduleAt');
-      const scheduledAt = scheduleAtEl ? scheduleAtEl.value : '';
-      const { payload, pageIds, text } = getPostPayload(scheduledAt || null);
+      const scheduledAtLocal = scheduleAtEl ? scheduleAtEl.value : '';
+
+      // تحويل الوقت المحلي من حقل datetime-local إلى UTC ISO
+      let scheduledAtIso = '';
+      if (scheduledAtLocal) {
+        const d = new Date(scheduledAtLocal);
+        if (!isNaN(d.getTime())) {
+          scheduledAtIso = d.toISOString();
+        }
+      }
+
+      const { payload, pageIds, text } = getPostPayload(scheduledAtIso || null);
       if (payload.post_type === 'story' && !payload.image_url && !payload.video_url) {
         toast('الستوري يتطلب صورة أو فيديو', 'warning');
         return;
@@ -738,7 +748,7 @@
         toast('اختر صفحة واحدة على الأقل', 'warning');
         return;
       }
-      if (!scheduledAt) {
+      if (!scheduledAtIso) {
         toast('اختر تاريخ ووقت الجدولة', 'warning');
         return;
       }
@@ -764,7 +774,7 @@
         const res = await apiFetch('/api/posts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...payload, page_ids: [pageId], scheduled_at: scheduledAt }),
+          body: JSON.stringify({ ...payload, page_ids: [pageId], scheduled_at: scheduledAtIso }),
         });
         const data = await res?.json().catch(() => ({}));
 

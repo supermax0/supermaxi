@@ -46,6 +46,7 @@ from routes.suppliers import suppliers_bp
 from routes.expenses import expenses_bp
 from routes.accounts import accounts_bp
 from routes.ai import ai_bp
+from routes.social_ai_routes import social_ai_bp
 from routes.settings import settings_bp
 from routes.messages import messages_bp
 from routes.delivery import delivery_bp
@@ -827,6 +828,7 @@ def inject_plan_context():
 app.register_blueprint(index_bp)
 app.register_blueprint(payments_bp)
 app.register_blueprint(ai_bp, url_prefix="/ai")
+app.register_blueprint(social_ai_bp, url_prefix="/social-ai")
 
 app.register_blueprint(pos_bp)
 app.register_blueprint(employees_bp, url_prefix="/employees")
@@ -937,6 +939,50 @@ def _start_autoposter_scheduler():
         print("Autoposter scheduler skipped:", e, file=sys.stderr)
 
 _start_autoposter_scheduler()
+
+# =====================================
+# Social AI Scheduler
+# =====================================
+def _start_social_ai_scheduler():
+    """مجدول بسيط لمعالجة social_posts المجدولة لكل المستأجرين."""
+    import os
+    import sys
+
+    if os.environ.get("SERVER_SOFTWARE", "").startswith("gunicorn/") or "gunicorn" in (sys.argv[0] or ""):
+        return
+
+    try:
+        from apscheduler.schedulers.background import BackgroundScheduler  # type: ignore[import-untyped]
+        from apscheduler.triggers.interval import IntervalTrigger  # type: ignore[import-untyped]
+        from flask import g
+        from models.tenant import Tenant  # type: ignore[attr-defined]
+        from social_ai.scheduler import process_scheduled_social_posts
+
+        def _run_social_ai_scheduled():
+            with app.app_context():
+                try:
+                    tenants = Tenant.query.all()
+                except Exception:
+                    tenants = []
+                for t in tenants:
+                    slug = getattr(t, "slug", None)
+                    if not slug:
+                        continue
+                    g.tenant = slug
+                    try:
+                        process_scheduled_social_posts()
+                    except Exception:
+                        db.session.rollback()
+                    finally:
+                        g.tenant = None
+
+        scheduler = BackgroundScheduler()
+        scheduler.add_job(_run_social_ai_scheduled, IntervalTrigger(minutes=1), id="social_ai_scheduled")
+        scheduler.start()
+    except Exception:
+        pass
+
+_start_social_ai_scheduler()
 
 # =====================================
 # Run
