@@ -1,14 +1,76 @@
-{% extends "base.html" %}
-{% block title %}AI Agent Builder | Autoposter{% endblock %}
-{% block page_title %}⚙️ AI Agent Builder{% endblock %}
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Agent Builder | Autoposter</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='autoposter/styles.css') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script>
+    window.AI_AGENT_API_BASE = "{{ request.script_root or '' }}/autoposter/api";
+  </script>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <span class="logo-icon">◇</span>
+          <span class="logo-text">نشر تلقائي</span>
+        </div>
+        <button class="sidebar-toggle" id="sidebarToggle" aria-label="إظهار/إخفاء القائمة">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="{{ request.script_root or '' }}/autoposter" class="nav-item">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/>
+          </svg>
+          <span class="nav-label">لوحة التحكم</span>
+        </a>
+        <a href="{{ request.script_root or '' }}/autoposter/ai-agent" class="nav-item active">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="16" rx="2"/>
+            <path d="M8 9h8M8 13h5"/>
+          </svg>
+          <span class="nav-label">AI Agent Builder</span>
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <a href="{{ request.script_root or '' }}/" class="nav-item">← العودة للمنصة</a>
+      </div>
+    </aside>
 
-{% block content %}
-<div id="ai-agent-root"></div>
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="menu-btn" id="menuBtn" aria-label="القائمة">☰</button>
+          <div class="search-wrap">
+            <input type="search" class="search-input" placeholder="بحث في الوورك فلو..." disabled>
+          </div>
+        </div>
+        <div class="topbar-right">
+          <span class="page-title">AI Agent Builder</span>
+        </div>
+      </header>
 
-<script>
-  window.AI_AGENT_API_BASE = "{{ request.script_root or '' }}/autoposter/api";
-</script>
+      <div class="content">
+        <section class="page active" id="page-ai-agent">
+          <div class="page-header">
+            <h1 class="page-title">منشئ الوورك فلو الذكي</h1>
+            <p class="page-subtitle">ابنِ تدفقات عمل للنشر والردود التلقائية باستخدام العقد البصرية.</p>
+          </div>
+          <div class="card" style="padding: 0; overflow: hidden; min-height: 600px;">
+            <div id="ai-agent-root"></div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
 
-<script type="module" src="{{ url_for('static', filename='ai_agent_frontend/dist/assets/ai-agent.js') }}"></script>
-{% endblock %}
-
+  <script type="module" src="{{ url_for('static', filename='ai_agent_frontend/dist/assets/ai-agent.js') }}"></script>
+</body>
+</html>
