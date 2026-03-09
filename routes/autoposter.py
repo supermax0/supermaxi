@@ -145,6 +145,10 @@ def api_facebook_callback():
         return redirect(url_for("autoposter.dashboard") + "?facebook=error")
     if not session.get("user_id"):
         return redirect(url_for("index.login") + "?next=/autoposter/")
+    # ضروري: تعيين المستأجر من الجلسة حتى تُحفظ الصفحات في قاعدة الشركة وليس Core
+    tenant_slug = session.get("tenant_slug")
+    if tenant_slug:
+        g.tenant = tenant_slug
     scheme = request.environ.get("HTTP_X_FORWARDED_PROTO") or request.scheme or "https"
     base = f"{scheme}://{request.host}".rstrip("/")
     redirect_uri = f"{base}/autoposter/api/facebook/callback"

@@ -1,49 +1,237 @@
-I want to add a "System Update" button in the top navigation bar of my Flask SaaS application (Finora).
+You are working on a Flask SaaS project called Finora.
 
-Requirements:
+The project already has:
+- Flask
+- SQLAlchemy
+- Multi-tenant architecture
+- Blueprints
+- Gunicorn + Nginx deployment
+- APScheduler installed
+- A module called autoposter
 
-1. Add a new admin-only API route:
-POST /admin/system-update
+Your task is to implement a complete Facebook Auto Poster system.
 
-2. The route must:
-- Run git pull inside /var/www/finora/supermaxi
-- Restart the finora service using systemctl restart finora
-- Return JSON response {status: "success"} or {status: "error"}
+Do NOT break existing routes or database structure.
 
-3. The command execution should be done safely using subprocess.
+------------------------------------------------
 
-Example Python logic:
+GOAL
 
-import subprocess
+Create a professional Facebook Auto Poster module that can:
 
-subprocess.run(["git","pull"], cwd="/var/www/finora/supermaxi")
-subprocess.run(["systemctl","restart","finora"])
+1. Connect Facebook Pages
+2. Store page access tokens
+3. Create posts
+4. Schedule posts
+5. Automatically publish scheduled posts
 
-4. Only allow admin users to trigger this endpoint.
+------------------------------------------------
 
-5. In the base.html topbar add a button:
+FEATURES TO IMPLEMENT
 
-<button id="systemUpdateBtn">
-Update System
-</button>
+1) Facebook OAuth Login
 
-6. Add JavaScript that calls the endpoint:
+Route:
 
-fetch('/admin/system-update',{
-method:'POST'
-})
-.then(r=>r.json())
-.then(data=>{
-alert("System Updated Successfully")
-})
+/autoposter/connect-facebook
 
-7. Show loading spinner while updating.
+Redirect to Facebook OAuth:
 
-8. The button should appear only for admin role.
+https://www.facebook.com/v21.0/dialog/oauth
 
-9. Make sure the UI matches the existing Finora dashboard style.
+Scopes:
 
-10. Keep all code modular and place the route in routes/admin.py
+pages_show_list
+pages_manage_posts
+pages_read_engagement
+pages_manage_metadata
 
-Goal:
-Allow the SaaS admin to update the entire system from the dashboard without SSH access.
+------------------------------------------------
+
+2) Facebook OAuth Callback
+
+Route:
+
+/autoposter/api/facebook/callback
+
+Steps:
+
+- receive OAuth code
+- exchange code for access token
+- request user pages:
+
+GET https://graph.facebook.com/v21.0/me/accounts
+
+Store pages in database.
+
+------------------------------------------------
+
+3) Database Models
+
+Create models if missing:
+
+AutoposterFacebookPage
+
+fields:
+
+id
+tenant_id
+page_id
+page_name
+access_token
+created_at
+
+-----------------------------------------------
+
+AutoposterPost
+
+fields:
+
+id
+tenant_id
+page_id
+message
+image_url
+status
+scheduled_at
+published_at
+facebook_post_id
+created_at
+
+status values:
+
+draft
+scheduled
+published
+failed
+
+------------------------------------------------
+
+4) Create Post API
+
+Route:
+
+POST /autoposter/api/posts/create
+
+Payload:
+
+{
+    page_id,
+    message,
+    image_url (optional),
+    scheduled_at (optional)
+}
+
+If scheduled_at is empty -> publish immediately.
+
+------------------------------------------------
+
+5) Publish Post Function
+
+Create function:
+
+publish_post(page)
+
+Call:
+
+POST https://graph.facebook.com/{page_id}/feed
+
+params:
+
+message
+access_token
+
+Save returned post id.
+
+------------------------------------------------
+
+6) Scheduler
+
+Use APScheduler.
+
+Run every minute.
+
+Function:
+
+run_scheduled_posts_for_all_tenants()
+
+Steps:
+
+- load scheduled posts
+- check scheduled_at <= now
+- publish post
+- update status to published
+
+------------------------------------------------
+
+7) Dashboard UI
+
+Page:
+
+/autoposter
+
+Add pages management UI:
+
+Button:
+
+"ربط صفحة"
+
+Show:
+
+page_name
+status
+connected pages
+
+-----------------------------------------------
+
+Posts UI:
+
+Create post form:
+
+message
+image
+schedule date
+
+Table:
+
+scheduled posts
+published posts
+
+------------------------------------------------
+
+8) Security
+
+Use tenant_id filtering everywhere.
+
+Example:
+
+query.filter_by(tenant_id=current_tenant.id)
+
+------------------------------------------------
+
+9) Error Handling
+
+Add try/except around Facebook API calls.
+
+Log errors to console.
+
+------------------------------------------------
+
+10) Code Quality
+
+- Follow blueprint structure
+- Keep routes in routes/autoposter.py
+- Models in models/autoposter.py
+- Services in services/facebook_service.py
+
+------------------------------------------------
+
+OUTPUT
+
+Generate:
+
+- Flask routes
+- SQLAlchemy models
+- Facebook service class
+- Scheduler integration
+- Clean production-ready code
