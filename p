@@ -1,66 +1,56 @@
-I have two Python Flask projects.
+Fix the integration between the React (Vite) build and the Flask Autoposter page `/autoposter/ai-agent`.
 
-Project 1:
-A deployed accounting SaaS platform running on a VPS with HTTPS and a domain.
+Problem:
+The React project inside `static/ai_agent_frontend` is built successfully with Vite and generates files inside:
 
-Project 2:
-A Facebook Auto Poster system that connects Facebook pages using OAuth and publishes posts.
+static/ai_agent_frontend/dist/
+static/ai_agent_frontend/dist/assets/
+
+Example build output:
+dist/index.html
+dist/assets/index.css
+dist/assets/ai-agent.js
+
+However, the Flask template currently loads old files like:
+
+styles.css
+ai-agent.js
+
+which causes the layout to break.
 
 Goal:
-Integrate the Auto Poster system into the existing accounting platform as a module instead of running it separately.
+Update the Flask template that renders `/autoposter/ai-agent` so it correctly loads the built Vite files.
 
-Requirements:
+Tasks:
 
-1. Convert the Auto Poster project into a Flask Blueprint called "autoposter".
-2. Mount it inside the main Flask app under the route:
+1. Find the template responsible for `/autoposter/ai-agent` (likely inside `templates/autoposter/ai_agent.html` or similar).
 
-/autoposter
+2. Remove any references to old static files like:
 
-Example URLs:
+   * styles.css
+   * ai-agent.js (outside dist)
 
-* /autoposter/dashboard
-* /autoposter/pages
-* /autoposter/create
-* /autoposter/api/facebook/login
-* /autoposter/api/facebook/callback
+3. Replace them with the correct Vite build assets:
 
-3. Move all routes from the Auto Poster project into the blueprint.
+<link rel="stylesheet" href="/static/ai_agent_frontend/dist/assets/index.css">
 
-4. Use environment variables for Facebook credentials:
-   FACEBOOK_APP_ID
-   FACEBOOK_APP_SECRET
+<script type="module" src="/static/ai_agent_frontend/dist/assets/ai-agent.js"></script>
 
-5. Update the OAuth redirect URL to:
+4. Ensure the template contains a root element for React:
 
-https://mydomain.com/autoposter/api/facebook/callback
+<div id="root"></div>
 
-6. Ensure the Facebook OAuth flow:
+5. If necessary, update the Flask route to serve the page correctly:
 
-* Login with Facebook
-* Request permissions:
-  pages_show_list
-  pages_manage_posts
-  pages_read_engagement
-* Fetch pages via:
-  /me/accounts
+@app.route("/autoposter/ai-agent")
+def ai_agent():
+return render_template("autoposter/ai_agent.html")
 
-7. Store Facebook pages and tokens in the database.
+6. Ensure Flask static paths correctly resolve to:
 
-8. Ensure the module works inside the existing authentication system of the SaaS platform.
+/static/ai_agent_frontend/dist/assets/
 
-9. Keep templates inside:
+7. Do not modify the React code. Only fix the Flask template integration.
 
-templates/autoposter/
-
-and static files inside:
-
-static/autoposter/
-
-10. Do not break the existing accounting platform routes.
-
-11. Provide the final structure of the project and the code needed to register the blueprint in the main Flask app.
-
-Tech stack:
-Python Flask, HTML, CSS, JavaScript, Facebook Graph API.
-
-The solution must be production-ready and compatible with deployment on a VPS using HTTPS.
+Expected result:
+The AI Agent Builder page loads the React Flow UI correctly with proper CSS and layout, using the Vite production build files.

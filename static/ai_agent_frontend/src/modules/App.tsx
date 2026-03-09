@@ -171,7 +171,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-bg text-white">
+    <div className="flex h-full text-white">
       <aside className="w-64 border-l border-slate-800 bg-panel/80 backdrop-blur px-4 py-6">
         <h2 className="mb-4 text-lg font-bold">عُقد العمل</h2>
         <ul className="space-y-2 text-sm text-slate-200">
@@ -188,7 +188,7 @@ export const App: React.FC = () => {
         </ul>
       </aside>
       <main className="flex flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-slate-800 bg-panel/80 px-4 py-3">
+        <header className="flex items-center justify-between border-b border-slate-800 bg-panel/80 px-4 py-2">
           <div className="flex items-center gap-3">
             <h1 className="text-base font-semibold">AI Agent Workflow Builder</h1>
             <input
@@ -218,8 +218,8 @@ export const App: React.FC = () => {
             </button>
           </div>
         </header>
-        <div className="flex flex-1">
-          <section className="flex-1">
+        <div className="flex flex-1 gap-4 bg-[#050816] p-4">
+          <section className="flex-1 rounded-lg border border-slate-800 bg-slate-950/60">
             <ReactFlowProvider>
               <NodeEditor />
             </ReactFlowProvider>
