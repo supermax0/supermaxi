@@ -1,25 +1,43 @@
 from __future__ import annotations
 
-"""طبقة التعامل مع OpenAI لتوليد المحتوى للنشر على السوشيال."""
+"""طبقة التعامل مع OpenAI لتوليد المحتوى للنشر على السوشيال.
+
+مصمَّمة بحيث لا تكسر تشغيل التطبيق إذا لم تكن مكتبة openai مثبتة
+أو لم يتم ضبط المفتاح؛ في هذه الحالة تُرفع RuntimeError فقط عند
+استخدام وظائف الذكاء الاصطناعي، وليس عند استيراد الموديول.
+"""
 
 from typing import Optional
 
-from openai import OpenAI  # type: ignore[import-untyped]
 from flask import current_app
 
 
-_client: Optional[OpenAI] = None
+_client: Optional[object] = None
 
 
-def get_client() -> OpenAI:
-  """إرجاع عميل OpenAI باستخدام الإعدادات من Flask config."""
-  global _client
-  if _client is None:
-      api_key = current_app.config.get("OPENAI_API_KEY")
-      if not api_key:
-          raise RuntimeError("OPENAI_API_KEY غير مضبوط في إعدادات التطبيق")
-      _client = OpenAI(api_key=api_key)
-  return _client
+def get_client():
+    """إرجاع عميل OpenAI باستخدام الإعدادات من Flask config.
+
+    يتم الاستيراد بشكل كسول لتجنّب فشل التطبيق إذا لم تُثبّت مكتبة openai.
+    """
+    global _client
+    if _client is not None:
+        return _client
+
+    try:
+        from openai import OpenAI  # type: ignore[import-untyped]
+    except Exception as exc:
+        raise RuntimeError(
+            "مكتبة openai غير مثبتة على الخادم أو لا تدعم OpenAI()، "
+            "ثبّت الحزمة openai الأحدث أو عطّل مميزات Social AI."
+        ) from exc
+
+    api_key = current_app.config.get("OPENAI_API_KEY")
+    if not api_key:
+        raise RuntimeError("OPENAI_API_KEY غير مضبوط في إعدادات التطبيق")
+
+    _client = OpenAI(api_key=api_key)
+    return _client
 
 
 def generate_caption(topic: str, tone: str = "تسويقي", language: str = "ar") -> str:
