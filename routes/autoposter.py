@@ -50,6 +50,9 @@ def _ensure_autoposter_tables():
                 if "video_url" not in post_cols:
                     conn.execute(text("ALTER TABLE autoposter_posts ADD COLUMN video_url VARCHAR(512)"))
                     conn.commit()
+                if "post_type" not in post_cols:
+                    conn.execute(text("ALTER TABLE autoposter_posts ADD COLUMN post_type VARCHAR(20) DEFAULT 'post'"))
+                    conn.commit()
     except Exception:
         pass
 
@@ -235,6 +238,13 @@ def api_posts_create():
     image_url = (data.get("image_url") or "").strip() or None
     video_url = (data.get("video_url") or "").strip() or None
     scheduled_at = data.get("scheduled_at")
+    post_type = (data.get("post_type") or "post").strip().lower()
+    if post_type not in ("post", "story", "reels"):
+        post_type = "post"
+    if post_type == "story" and not image_url and not video_url:
+        return jsonify({"error": "الستوري يتطلب صورة أو فيديو"}), 400
+    if post_type == "reels" and not video_url:
+        return jsonify({"error": "الريلز يتطلب فيديو"}), 400
     if not text and not image_url and not video_url:
         return jsonify({"error": "الرجاء إدخال محتوى أو رفع صورة/فيديو"}), 400
     if not page_ids:
@@ -258,6 +268,7 @@ def api_posts_create():
                 content=content,
                 image_url=image_url,
                 video_url=video_url,
+                post_type=post_type,
                 status="scheduled",
                 scheduled_at=at,
             )
@@ -275,12 +286,20 @@ def api_posts_create():
             content=content,
             image_url=image_url,
             video_url=video_url,
+            post_type=post_type,
             status="publishing",
         )
         db.session.add(post)
         db.session.commit()
         try:
-            result = publish_post(page.access_token, content, photo_url=image_url, video_url=video_url)
+            result = publish_post(
+                page.access_token,
+                content,
+                photo_url=image_url,
+                video_url=video_url,
+                post_type=post_type,
+                page_id=page.page_id,
+            )
             post.status = "published"
             post.published_at = datetime.utcnow()
             post.facebook_post_id = result.get("id") or result.get("post_id")
@@ -315,6 +334,13 @@ def api_scheduled_create():
     scheduled_at = data.get("scheduled_at")
     image_url = (data.get("image_url") or "").strip() or None
     video_url = (data.get("video_url") or "").strip() or None
+    post_type = (data.get("post_type") or "post").strip().lower()
+    if post_type not in ("post", "story", "reels"):
+        post_type = "post"
+    if post_type == "story" and not image_url and not video_url:
+        return jsonify({"error": "الستوري يتطلب صورة أو فيديو"}), 400
+    if post_type == "reels" and not video_url:
+        return jsonify({"error": "الريلز يتطلب فيديو"}), 400
     if not text and not image_url and not video_url:
         return jsonify({"error": "محتوى أو صورة/فيديو مطلوب"}), 400
     if not page_ids or not scheduled_at:
@@ -335,6 +361,7 @@ def api_scheduled_create():
             content=text or "",
             image_url=image_url,
             video_url=video_url,
+            post_type=post_type,
             status="scheduled",
             scheduled_at=at,
         )
@@ -463,6 +490,8 @@ def run_scheduled_posts_for_all_tenants(app):
                             post.content,
                             photo_url=getattr(post, "image_url", None),
                             video_url=getattr(post, "video_url", None),
+                            post_type=getattr(post, "post_type", None) or "post",
+                            page_id=page.page_id,
                         )
                         post.status = "published"
                         post.published_at = datetime.utcnow()

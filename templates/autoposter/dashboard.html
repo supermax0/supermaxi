@@ -98,6 +98,15 @@
                 <div class="drop-zone" id="dropZone"><input type="file" id="mediaInput" accept="image/*,video/mp4,video/quicktime" multiple style="display:none"><span class="drop-text">اسحب ملفاً هنا أو</span> <button type="button" class="link-btn" id="browseMedia">اختر ملف</button><br><span class="field-help">صور: jpg, png, gif, webp — فيديو: mp4 (حد 100 ميجا)</span></div>
                 <div class="media-preview-wrap" id="mediaPreview" style="margin-top:8px;min-height:40px;"></div>
               </div>
+              <div class="form-group">
+                <label>نوع النشر</label>
+                <div class="post-type-options" style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:6px">
+                  <label class="post-type-option"><input type="radio" name="postType" value="post" checked> <span>منشور عادي</span></label>
+                  <label class="post-type-option"><input type="radio" name="postType" value="story"> <span>ستوري</span></label>
+                  <label class="post-type-option"><input type="radio" name="postType" value="reels"> <span>ريلز</span></label>
+                </div>
+                <span class="field-help">الستوري: صورة أو فيديو. الريلز: فيديو فقط.</span>
+              </div>
               <div class="form-group"><label>اختر الصفحات</label><div class="pages-select-wrap" id="pagesSelectWrap"><span class="text-muted">لا توجد صفحات. </span><button type="button" class="link-btn" id="managePagesBtn">إدارة الصفحات</button></div></div>
               <div class="form-group"><label>جدولة (اختياري)</label><input type="datetime-local" id="scheduleAt" class="form-control" style="max-width:280px"></div>
               <div class="form-actions">

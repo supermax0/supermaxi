@@ -12,6 +12,7 @@ class AutoposterPost(db.Model):
     content = db.Column(db.Text, nullable=False)
     image_url = db.Column(db.String(512), nullable=True)
     video_url = db.Column(db.String(512), nullable=True)
+    post_type = db.Column(db.String(20), default="post")  # post | story | reels
     status = db.Column(db.String(20), default="draft")
     scheduled_at = db.Column(db.DateTime, nullable=True)
     published_at = db.Column(db.DateTime, nullable=True)
@@ -27,6 +28,7 @@ class AutoposterPost(db.Model):
             "content": self.content,
             "image_url": self.image_url,
             "video_url": self.video_url,
+            "post_type": getattr(self, "post_type", None) or "post",
             "status": self.status,
             "scheduled_at": self.scheduled_at.isoformat() if self.scheduled_at else None,
             "published_at": self.published_at.isoformat() if self.published_at else None,

@@ -120,18 +120,21 @@
     const ul = document.getElementById('scheduledList');
     const empty = document.getElementById('scheduledEmpty');
     if (ul) {
-      ul.innerHTML = list.map(p => `
+      ul.innerHTML = list.map(p => {
+        const typeLabel = { post: 'منشور', story: 'ستوري', reels: 'ريلز' }[p.post_type] || p.post_type || 'منشور';
+        return `
         <li class="scheduled-item">
           <div class="scheduled-info">
             <strong>${escapeHtml((p.content || '').slice(0, 50))}${(p.content || '').length > 50 ? '...' : ''}</strong>
-            <span>${p.scheduled_at ? formatDateTime(p.scheduled_at) : ''} · ${escapeHtml(p.page_name || '')}</span>
+            <span>${p.scheduled_at ? formatDateTime(p.scheduled_at) : ''} · ${escapeHtml(p.page_name || '')} · <em>${typeLabel}</em></span>
           </div>
           <div class="scheduled-actions">
             <button class="icon-btn small" title="تعديل">✎</button>
             <button class="icon-btn small" title="حذف">🗑</button>
           </div>
         </li>
-      `).join('');
+      `;
+      }).join('');
     }
     if (empty) empty.style.display = list.length ? 'none' : 'block';
   }
@@ -466,10 +469,13 @@
     const text = (postEditor && postEditor.value) || '';
     const selected = document.querySelectorAll('.page-chip.selected[data-id]');
     const pageIds = Array.from(selected).map(c => c.getAttribute('data-id'));
+    const postTypeEl = document.querySelector('input[name="postType"]:checked');
+    const postType = (postTypeEl && postTypeEl.value) || 'post';
     const payload = {
       text,
       content: text,
       page_ids: pageIds,
+      post_type: postType,
       image_url: uploadedMedia.type === 'image' ? uploadedMedia.url : undefined,
       video_url: uploadedMedia.type === 'video' ? uploadedMedia.url : undefined,
     };
@@ -480,6 +486,14 @@
   if (publishBtn) {
     publishBtn.addEventListener('click', async () => {
       const { payload, pageIds, text } = getPostPayload(null);
+      if (payload.post_type === 'story' && !payload.image_url && !payload.video_url) {
+        toast('الستوري يتطلب صورة أو فيديو', 'warning');
+        return;
+      }
+      if (payload.post_type === 'reels' && !payload.video_url) {
+        toast('الريلز يتطلب فيديو', 'warning');
+        return;
+      }
       if (!text.trim() && !payload.image_url && !payload.video_url) {
         toast('الرجاء إدخال محتوى أو رفع صورة/فيديو', 'warning');
         return;
@@ -521,6 +535,14 @@
       const scheduleAtEl = document.getElementById('scheduleAt');
       const scheduledAt = scheduleAtEl ? scheduleAtEl.value : '';
       const { payload, pageIds, text } = getPostPayload(scheduledAt || null);
+      if (payload.post_type === 'story' && !payload.image_url && !payload.video_url) {
+        toast('الستوري يتطلب صورة أو فيديو', 'warning');
+        return;
+      }
+      if (payload.post_type === 'reels' && !payload.video_url) {
+        toast('الريلز يتطلب فيديو', 'warning');
+        return;
+      }
       if (!text.trim() && !payload.image_url && !payload.video_url) {
         toast('الرجاء إدخال محتوى أو رفع صورة/فيديو', 'warning');
         return;
