@@ -72,17 +72,62 @@
           <td>${escapeHtml(p.name)}</td>
           <td><code>${escapeHtml(p.id)}</code></td>
           <td><span class="status-badge ${p.status === 'connected' ? 'connected' : 'warning'}">${p.status === 'connected' ? 'متصل' : 'انتهت صلاحية التوكن'}</span></td>
-          <td><button class="icon-btn small">⋮</button></td>
+          <td>
+            <button class="icon-btn small" type="button" title="إجراءات">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="5" cy="12" r="1.5"></circle>
+                <circle cx="12" cy="12" r="1.5"></circle>
+                <circle cx="19" cy="12" r="1.5"></circle>
+              </svg>
+            </button>
+          </td>
         </tr>
-      `).join('') || '<tr><td colspan="5" class="text-muted">لا توجد صفحات. اربط صفحة من فيسبوك.</td></tr>';
+      `).join('') || `
+        <tr>
+          <td colspan="5">
+            <div class="empty-state small">
+              <p>لا توجد صفحات متصلة بعد.</p>
+              <button type="button" class="btn btn-primary btn-sm" data-connect-page="1">ربط صفحة فيسبوك</button>
+            </div>
+          </td>
+        </tr>
+      `;
     }
     if (wrap) {
       const chips = pages.length
         ? pages.map(p => `<div class="page-chip ${pages.length === 1 ? 'selected' : ''}" data-id="${escapeAttr(p.id)}">${escapeHtml(p.name)}</div>`).join('')
-        : '<span class="text-muted">لا توجد صفحات. </span>';
+        : '<span class="text-muted">لا توجد صفحات متصلة بعد. اربط صفحة من قسم الصفحات.</span>';
       wrap.innerHTML = chips + '<button type="button" class="link-btn" id="managePagesBtn">إدارة الصفحات</button>';
       wrap.querySelector('#managePagesBtn')?.addEventListener('click', () => showPage('pages'));
-      wrap.querySelectorAll('.page-chip').forEach(chip => chip.addEventListener('click', () => chip.classList.toggle('selected')));
+      wrap.querySelectorAll('.page-chip').forEach(chip => chip.addEventListener('click', () => {
+        chip.classList.toggle('selected');
+        updateSelectedPagesSummary();
+      }));
+      updateSelectedPagesSummary();
+    }
+  }
+
+  function updateSelectedPagesSummary() {
+    const wrap = document.getElementById('pagesSelectWrap');
+    if (!wrap) return;
+    let summary = wrap.querySelector('.pages-selected-summary');
+    if (!summary) {
+      summary = document.createElement('div');
+      summary.className = 'pages-selected-summary field-help';
+      wrap.appendChild(summary);
+    }
+    const hasPages = wrap.querySelector('.page-chip');
+    if (!hasPages) {
+      summary.textContent = '';
+      return;
+    }
+    const selectedCount = wrap.querySelectorAll('.page-chip.selected').length;
+    if (!selectedCount) {
+      summary.textContent = 'لم يتم تحديد أي صفحة بعد.';
+    } else if (selectedCount === 1) {
+      summary.textContent = 'صفحة واحدة محددة.';
+    } else {
+      summary.textContent = `${selectedCount} صفحات محددة.`;
     }
   }
 
@@ -139,6 +184,50 @@
     if (empty) empty.style.display = list.length ? 'none' : 'block';
   }
 
+  async function loadDrafts() {
+    const res = await apiFetch('/api/drafts');
+    if (!res || !res.ok) return;
+    const data = await res.json();
+    const drafts = data.drafts || [];
+    const ul = document.getElementById('draftsList');
+    if (!ul) return;
+    if (!drafts.length) {
+      ul.innerHTML = '<li class="text-muted">لا توجد مسودات بعد</li>';
+      return;
+    }
+    window.__AUTOPOSTER_DRAFTS__ = drafts;
+    ul.innerHTML = drafts.map(d => `
+      <li class="scheduled-item" data-draft-id="${d.id}">
+        <div class="scheduled-info">
+          <strong>${escapeHtml((d.content || '').slice(0, 50))}${(d.content || '').length > 50 ? '...' : ''}</strong>
+          <span>${escapeHtml(d.page_name || '')} · ${d.post_type === 'story' ? 'ستوري' : d.post_type === 'reels' ? 'ريلز' : 'منشور'}</span>
+        </div>
+        <div class="scheduled-actions">
+          <button type="button" class="icon-btn small draft-load-btn">تحميل</button>
+        </div>
+      </li>
+    `).join('');
+  }
+
+  let templatesCache = [];
+
+  async function loadTemplates() {
+    const res = await apiFetch('/api/templates');
+    if (!res || !res.ok) return;
+    const data = await res.json();
+    const list = data.templates || [];
+    templatesCache = list;
+    const select = document.getElementById('templateSelect');
+    if (!select) return;
+    const current = select.value;
+    select.innerHTML = '<option value=\"\">بدون قالب</option>' +
+      list.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
+    if (current) {
+      const hasCurrent = list.some(t => String(t.id) === String(current));
+      if (hasCurrent) select.value = current;
+    }
+  }
+
   function escapeHtml(s) {
     if (s == null) return '';
     const d = document.createElement('div');
@@ -171,6 +260,9 @@
     loadPages();
     loadNotifications();
     loadScheduled();
+    loadDrafts();
+    loadTemplates();
+    loadAnalytics();
   });
 
   async function loadSettings() {
@@ -183,6 +275,50 @@
     if (appSecretEl) {
       appSecretEl.value = data.facebook_app_secret_set ? '••••••••' : '';
       appSecretEl.placeholder = data.facebook_app_secret_set ? 'اتركه فارغاً للإبقاء على القيمة الحالية' : 'أدخل سر التطبيق';
+    }
+  }
+
+  async function loadAnalytics() {
+    const res = await apiFetch('/api/analytics');
+    if (!res || !res.ok) return;
+    const data = await res.json().catch(() => ({}));
+    const summaryEl = document.getElementById('analyticsSummary');
+    const topEl = document.getElementById('topPostsList');
+    if (summaryEl && data.summary) {
+      const s = data.summary;
+      const byType = s.by_type || {};
+      const byPage = s.by_page || [];
+      summaryEl.innerHTML = `
+        <div class="summary-row">
+          <div><strong>إجمالي المنشورات المنشورة:</strong> ${s.total_published || 0}</div>
+        </div>
+        <div class="summary-row">
+          <strong>حسب النوع:</strong>
+          <span>منشورات: ${byType.post || 0}</span> ·
+          <span>ستوري: ${byType.story || 0}</span> ·
+          <span>ريلز: ${byType.reels || 0}</span>
+        </div>
+        <div class="summary-row">
+          <strong>أكثر الصفحات نشاطاً:</strong>
+          ${(byPage.length ? byPage.map(p => `<span>${escapeHtml(p.page_name || '')}: ${p.count}</span>`).join(' · ') : 'لا توجد بيانات بعد')}
+        </div>
+      `;
+    }
+    if (topEl && Array.isArray(data.top_posts)) {
+      const items = data.top_posts;
+      topEl.innerHTML = items.length ? items.map((p, idx) => `
+        <li>
+          <div class="rank">${idx + 1}</div>
+          <div>
+            <strong>${escapeHtml((p.content || '').slice(0, 80))}</strong>
+            <div class="top-post-meta">
+              <span>${escapeHtml(p.page_name || '')}</span> ·
+              <span>${p.post_type === 'story' ? 'ستوري' : p.post_type === 'reels' ? 'ريلز' : 'منشور'}</span> ·
+              <span>${p.published_at ? formatDateTime(p.published_at) : ''}</span>
+            </div>
+          </div>
+        </li>
+      `).join('') : '<li class="text-muted">لا توجد بيانات بعد</li>';
     }
   }
 
@@ -234,6 +370,15 @@
   } else {
     const fab = document.getElementById('fabCreate');
     if (fab) fab.classList.remove('hidden');
+  }
+
+  const goToCreateFromDashboard = document.getElementById('goToCreateFromDashboard');
+  if (goToCreateFromDashboard) {
+    goToCreateFromDashboard.addEventListener('click', (e) => {
+      e.preventDefault();
+      showPage('create');
+      window.location.hash = '#create';
+    });
   }
 
   // ----- Sidebar toggle (mobile) -----
@@ -332,11 +477,18 @@
   const uploadProgress = document.getElementById('uploadProgress');
   const postProgress = document.getElementById('postProgress');
   const postProgressText = document.getElementById('postProgressText');
+  const saveDraftBtn = document.getElementById('saveDraftBtn');
+  const saveTemplateBtn = document.getElementById('saveTemplateBtn');
 
   if (postEditor && charCount) {
     postEditor.addEventListener('input', () => {
       const len = postEditor.value.length;
       charCount.textContent = len;
+      if (len >= 4500) {
+        charCount.style.color = 'var(--warning)';
+      } else {
+        charCount.style.color = '';
+      }
       updatePreview();
     });
   }
@@ -440,6 +592,7 @@
   pageChips.forEach(chip => {
     chip.addEventListener('click', () => {
       chip.classList.toggle('selected');
+      updateSelectedPagesSummary();
     });
   });
 
@@ -644,6 +797,107 @@
     });
   }
 
+  if (saveDraftBtn) {
+    saveDraftBtn.addEventListener('click', async () => {
+      const { payload, pageIds, text } = getPostPayload(null);
+      if (!text.trim() && !payload.image_url && !payload.video_url) {
+        toast('لا يمكن حفظ مسودة بدون محتوى أو وسائط', 'warning');
+        return;
+      }
+      if (!pageIds.length) {
+        toast('اختر صفحة واحدة على الأقل للمسودة', 'warning');
+        return;
+      }
+      const res = await apiFetch('/api/drafts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res) return;
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        toast('تم حفظ المسودة', 'success');
+        loadDrafts();
+      } else {
+        toast(data.error || 'فشل حفظ المسودة', 'error');
+      }
+    });
+  }
+
+  if (saveTemplateBtn) {
+    saveTemplateBtn.addEventListener('click', async () => {
+      const { payload, pageIds, text } = getPostPayload(null);
+      if (!text.trim() && !payload.image_url && !payload.video_url) {
+        toast('لا يمكن حفظ قالب بدون محتوى أو وسائط', 'warning');
+        return;
+      }
+      const name = window.prompt('اسم القالب', 'منشور بدون عنوان');
+      if (!name) return;
+      const res = await apiFetch('/api/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          content: text,
+          post_type: payload.post_type,
+          image_url: payload.image_url,
+          video_url: payload.video_url,
+        }),
+      });
+      if (!res) return;
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        toast('تم حفظ القالب', 'success');
+        loadTemplates();
+      } else {
+        toast(data.error || 'فشل حفظ القالب', 'error');
+      }
+    });
+  }
+
+  const templateSelect = document.getElementById('templateSelect');
+  if (templateSelect) {
+    templateSelect.addEventListener('change', () => {
+      const id = templateSelect.value;
+      if (!id) return;
+      const tpl = templatesCache.find(t => String(t.id) === String(id));
+      if (!tpl) return;
+      if (postEditor) {
+        postEditor.value = tpl.content || '';
+        if (charCount) charCount.textContent = String(postEditor.value.length);
+      }
+      const radio = document.querySelector(`input[name="postType"][value="${tpl.post_type || 'post'}"]`);
+      if (radio) radio.checked = true;
+
+      // تعيين الميديا إن وُجدت في القالب (بدون رفع جديد)
+      uploadedMedia = { url: tpl.video_url || tpl.image_url || null, type: tpl.video_url ? 'video' : (tpl.image_url ? 'image' : null) };
+      if (mediaPreview) {
+        mediaPreview.innerHTML = '';
+        if (uploadedMedia.url && uploadedMedia.type) {
+          const wrap = document.createElement('div');
+          wrap.className = 'media-preview-item';
+          const media = uploadedMedia.type === 'video'
+            ? Object.assign(document.createElement('video'), { src: uploadedMedia.url, controls: true, muted: true, style: 'max-width:100%;max-height:160px' })
+            : Object.assign(document.createElement('img'), { src: uploadedMedia.url, style: 'max-width:100%;max-height:160px' });
+          wrap.appendChild(media);
+          const remove = document.createElement('button');
+          remove.type = 'button';
+          remove.className = 'remove-media';
+          remove.textContent = '×';
+          remove.addEventListener('click', () => {
+            wrap.remove();
+            uploadedMedia = { url: null, type: null };
+            updatePreview();
+          });
+          wrap.appendChild(remove);
+          mediaPreview.appendChild(wrap);
+        }
+      }
+      updatePreview();
+      showPage('create');
+    });
+  }
+
   // ----- Pages: select all -----
   document.getElementById('selectAllPages')?.addEventListener('change', function() {
     document.querySelectorAll('.page-check').forEach(cb => { cb.checked = this.checked; });
@@ -806,13 +1060,13 @@
       btn.classList.add('active');
       const view = btn.dataset.view;
       const calendarCard = document.getElementById('calendarCard');
-      if (calendarCard) calendarCard.style.display = view === 'calendar' ? 'block' : 'block';
+      if (calendarCard) calendarCard.style.display = view === 'calendar' ? 'block' : 'none';
     });
   });
 
-  // ----- ربط صفحة فيسبوك -----
+  // ----- ربط صفحة فيسبوك وعمليات أخرى بالنقر -----
   document.addEventListener('click', (e) => {
-    const connectPageBtn = e.target.closest('#connectPageBtn');
+    const connectPageBtn = e.target.closest('#connectPageBtn, [data-connect-page]');
     if (connectPageBtn) {
       e.preventDefault();
       (async () => {
@@ -825,6 +1079,58 @@
           toast(data.error || 'لم يتم ضبط تطبيق فيسبوك. أضف FACEBOOK_APP_ID و FACEBOOK_APP_SECRET.', 'warning');
         }
       })();
+      return;
+    }
+
+    const draftBtn = e.target.closest('.draft-load-btn');
+    if (draftBtn) {
+      e.preventDefault();
+      const li = draftBtn.closest('[data-draft-id]');
+      const id = li?.getAttribute('data-draft-id');
+      if (!id || !window.__AUTOPOSTER_DRAFTS__) return;
+      const d = window.__AUTOPOSTER_DRAFTS__.find(x => String(x.id) === String(id));
+      if (!d) return;
+      showPage('create');
+      if (postEditor) {
+        postEditor.value = d.content || '';
+        if (charCount) charCount.textContent = String(postEditor.value.length);
+      }
+      const radio = document.querySelector(`input[name="postType"][value="${d.post_type || 'post'}"]`);
+      if (radio) radio.checked = true;
+
+      // تحديد الصفحة
+      document.querySelectorAll('.page-chip.selected').forEach(chip => chip.classList.remove('selected'));
+      if (d.page_id) {
+        const chip = document.querySelector(`.page-chip[data-id="${CSS.escape(String(d.page_id))}"]`);
+        chip?.classList.add('selected');
+      }
+
+      // تعيين الميديا من المسودة (إن وجدت)
+      uploadedMedia = { url: d.video_url || d.image_url || null, type: d.video_url ? 'video' : (d.image_url ? 'image' : null) };
+      if (mediaPreview) {
+        mediaPreview.innerHTML = '';
+        if (uploadedMedia.url && uploadedMedia.type) {
+          const wrap = document.createElement('div');
+          wrap.className = 'media-preview-item';
+          const media = uploadedMedia.type === 'video'
+            ? Object.assign(document.createElement('video'), { src: uploadedMedia.url, controls: true, muted: true, style: 'max-width:100%;max-height:160px' })
+            : Object.assign(document.createElement('img'), { src: uploadedMedia.url, style: 'max-width:100%;max-height:160px' });
+          const remove = document.createElement('button');
+          remove.type = 'button';
+          remove.className = 'remove-media';
+          remove.textContent = '×';
+          remove.addEventListener('click', () => {
+            wrap.remove();
+            uploadedMedia = { url: null, type: null };
+            updatePreview();
+          });
+          wrap.appendChild(media);
+          wrap.appendChild(remove);
+          mediaPreview.appendChild(wrap);
+        }
+      }
+      updatePreview();
+      updateSelectedPagesSummary();
     }
   });
 

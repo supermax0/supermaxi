@@ -7,12 +7,17 @@ from extensions import db
 from models.autoposter_facebook_page import AutoposterFacebookPage
 from models.autoposter_post import AutoposterPost
 from models.autoposter_notification import AutoposterNotification
+from models.autoposter_template import AutoposterTemplate
 from routes.autoposter_facebook import (
     get_oauth_url,
     exchange_code_for_user_token,
     get_long_lived_token,
     get_pages_with_tokens,
-    publish_post,
+)
+from services.autoposter_service import (
+    publish_now_for_pages,
+    schedule_posts_for_pages,
+    run_scheduled_posts_for_all_tenants as service_run_scheduled_for_all_tenants,
 )
 
 autoposter_bp = Blueprint("autoposter", __name__, url_prefix="/autoposter", static_folder="../static/autoposter", static_url_path="/static/autoposter")
@@ -28,7 +33,7 @@ def _ensure_autoposter_tables():
         from extensions_tenant import get_tenant_engine
         from sqlalchemy import inspect, text
         engine = get_tenant_engine(tenant_slug)
-        for model in (AutoposterFacebookPage, AutoposterPost, AutoposterNotification):
+        for model in (AutoposterFacebookPage, AutoposterPost, AutoposterNotification, AutoposterTemplate):
             model.__table__.create(engine, checkfirst=True)
         # إضافة أعمدة فيسبوك لجدول system_settings إن وُجد ولم تكن الأعمدة موجودة
         inspector = inspect(engine)
@@ -52,6 +57,15 @@ def _ensure_autoposter_tables():
                     conn.commit()
                 if "post_type" not in post_cols:
                     conn.execute(text("ALTER TABLE autoposter_posts ADD COLUMN post_type VARCHAR(20) DEFAULT 'post'"))
+                    conn.commit()
+                if "retry_count" not in post_cols:
+                    conn.execute(text("ALTER TABLE autoposter_posts ADD COLUMN retry_count INTEGER DEFAULT 0"))
+                    conn.commit()
+                if "last_attempt_at" not in post_cols:
+                    conn.execute(text("ALTER TABLE autoposter_posts ADD COLUMN last_attempt_at DATETIME"))
+                    conn.commit()
+                if "channel" not in post_cols:
+                    conn.execute(text("ALTER TABLE autoposter_posts ADD COLUMN channel VARCHAR(30) DEFAULT 'facebook_page'"))
                     conn.commit()
     except Exception:
         pass
@@ -261,56 +275,24 @@ def api_posts_create():
             at = datetime.fromisoformat(scheduled_at.replace("Z", "+00:00"))
         except Exception:
             return jsonify({"error": "صيغة التاريخ غير صحيحة"}), 400
-        for page in pages:
-            post = AutoposterPost(
-                page_id=page.page_id,
-                page_name=page.name,
-                content=content,
-                image_url=image_url,
-                video_url=video_url,
-                post_type=post_type,
-                status="scheduled",
-                scheduled_at=at,
-            )
-            db.session.add(post)
-        db.session.commit()
-        _add_notification("تم جدولة المنشور", f"سيُنشر في {at}")
-        return jsonify({"success": True, "scheduled_at": scheduled_at})
-
-    published = []
-    errors = []
-    for page in pages:
-        post = AutoposterPost(
-            page_id=page.page_id,
-            page_name=page.name,
+        schedule_posts_for_pages(
+            pages=pages,
             content=content,
             image_url=image_url,
             video_url=video_url,
             post_type=post_type,
-            status="publishing",
+            scheduled_at=at,
         )
-        db.session.add(post)
-        db.session.commit()
-        try:
-            result = publish_post(
-                page.access_token,
-                content,
-                photo_url=image_url,
-                video_url=video_url,
-                post_type=post_type,
-                page_id=page.page_id,
-            )
-            post.status = "published"
-            post.published_at = datetime.utcnow()
-            post.facebook_post_id = result.get("id") or result.get("post_id")
-            db.session.commit()
-            published.append(post.page_name)
-        except Exception as e:
-            post.status = "failed"
-            post.error_message = str(e)
-            db.session.commit()
-            errors.append(f"{page.name}: {e}")
+        _add_notification("تم جدولة المنشور", f"سيُنشر في {at}")
+        return jsonify({"success": True, "scheduled_at": scheduled_at})
 
+    published, errors = publish_now_for_pages(
+        pages=pages,
+        content=content,
+        image_url=image_url,
+        video_url=video_url,
+        post_type=post_type,
+    )
     if errors and not published:
         return jsonify({"error": "; ".join(errors)}), 500
     _add_notification("تم نشر المنشور", f"نُشر على: {', '.join(published)}")
@@ -371,6 +353,102 @@ def api_scheduled_create():
     return jsonify({"success": True, "scheduled_at": scheduled_at})
 
 
+# --- API: القوالب (Templates) ---
+@autoposter_bp.route("/api/templates", methods=["GET"])
+@require_autoposter_login
+def api_templates_list():
+    items = AutoposterTemplate.query.order_by(AutoposterTemplate.created_at.desc()).all()
+    return jsonify({"templates": [t.to_dict() for t in items]})
+
+
+@autoposter_bp.route("/api/templates", methods=["POST"])
+@require_autoposter_login
+def api_templates_save():
+    data = request.get_json() or {}
+    name = (data.get("name") or "").strip()
+    content = (data.get("content") or "").strip()
+    post_type = (data.get("post_type") or "post").strip().lower()
+    if not name or not content:
+        return jsonify({"error": "الاسم والمحتوى مطلوبان"}), 400
+    if post_type not in ("post", "story", "reels"):
+        post_type = "post"
+    image_url = (data.get("image_url") or "").strip() or None
+    video_url = (data.get("video_url") or "").strip() or None
+    template_id = data.get("id")
+    if template_id:
+        tpl = AutoposterTemplate.query.get(template_id)
+        if not tpl:
+            return jsonify({"error": "القالب غير موجود"}), 404
+        tpl.name = name
+        tpl.content = content
+        tpl.post_type = post_type
+        tpl.image_url = image_url
+        tpl.video_url = video_url
+    else:
+        tpl = AutoposterTemplate(
+            name=name,
+            content=content,
+            post_type=post_type,
+            image_url=image_url,
+            video_url=video_url,
+        )
+        db.session.add(tpl)
+    db.session.commit()
+    return jsonify({"success": True, "template": tpl.to_dict()})
+
+
+@autoposter_bp.route("/api/templates/<int:template_id>", methods=["DELETE"])
+@require_autoposter_login
+def api_templates_delete(template_id):
+    tpl = AutoposterTemplate.query.get_or_404(template_id)
+    db.session.delete(tpl)
+    db.session.commit()
+    return jsonify({"success": True})
+
+
+# --- API: المسودات (Drafts) ---
+@autoposter_bp.route("/api/drafts", methods=["GET"])
+@require_autoposter_login
+def api_drafts_list():
+    posts = AutoposterPost.query.filter_by(status="draft").order_by(AutoposterPost.created_at.desc()).limit(20).all()
+    return jsonify({"drafts": [p.to_dict() for p in posts]})
+
+
+@autoposter_bp.route("/api/drafts", methods=["POST"])
+@require_autoposter_login
+def api_drafts_create():
+    data = request.get_json() or {}
+    text = (data.get("text") or data.get("content") or "").strip()
+    page_ids = data.get("page_ids") or []
+    image_url = (data.get("image_url") or "").strip() or None
+    video_url = (data.get("video_url") or "").strip() or None
+    post_type = (data.get("post_type") or "post").strip().lower()
+    if post_type not in ("post", "story", "reels"):
+        post_type = "post"
+    if not text and not image_url and not video_url:
+        return jsonify({"error": "لا يمكن حفظ مسودة بدون محتوى أو وسائط"}), 400
+    if not page_ids:
+        return jsonify({"error": "اختر صفحة واحدة على الأقل للمسودة"}), 400
+
+    pages = AutoposterFacebookPage.query.filter(AutoposterFacebookPage.page_id.in_(page_ids)).all()
+    if not pages:
+        return jsonify({"error": "لم يتم العثور على الصفحات المحددة"}), 400
+
+    for page in pages:
+        post = AutoposterPost(
+            page_id=page.page_id,
+            page_name=page.name,
+            content=text or "",
+            image_url=image_url,
+            video_url=video_url,
+            post_type=post_type,
+            status="draft",
+        )
+        db.session.add(post)
+    db.session.commit()
+    return jsonify({"success": True})
+
+
 # --- API: الإشعارات ---
 @autoposter_bp.route("/api/notifications", methods=["GET"])
 @require_autoposter_login
@@ -392,13 +470,34 @@ def api_notifications_read():
 @autoposter_bp.route("/api/analytics", methods=["GET"])
 @require_autoposter_login
 def api_analytics():
-    posts = AutoposterPost.query.filter_by(status="published").order_by(AutoposterPost.published_at.desc()).limit(10).all()
+    # كل المنشورات المنشورة لهذه الشركة (يمكن تضييق الفترة لاحقاً)
+    posts = AutoposterPost.query.filter_by(status="published").order_by(AutoposterPost.published_at.desc()).all()
+    total = len(posts)
+    by_type = {}
+    by_page = {}
+    for p in posts:
+        pt = (getattr(p, "post_type", None) or "post").lower()
+        by_type[pt] = by_type.get(pt, 0) + 1
+        key = p.page_name or p.page_id or "صفحة غير معروفة"
+        by_page[key] = by_page.get(key, 0) + 1
+
+    top_posts = posts[:10]
+    top_pages = sorted(by_page.items(), key=lambda kv: kv[1], reverse=True)[:5]
+
     return jsonify({
-        "engagement": [],
-        "growth": [],
+        "summary": {
+            "total_published": total,
+            "by_type": by_type,
+            "by_page": [{"page_name": name, "count": count} for name, count in top_pages],
+        },
         "top_posts": [
-            {"content": (p.content or "")[:50], "published_at": p.published_at.isoformat() if p.published_at else None}
-            for p in posts
+            {
+                "content": (p.content or "")[:80],
+                "published_at": p.published_at.isoformat() if p.published_at else None,
+                "page_name": p.page_name,
+                "post_type": (getattr(p, "post_type", None) or "post").lower(),
+            }
+            for p in top_posts
         ],
     })
 
@@ -453,56 +552,5 @@ def api_logout():
 
 # --- جدولة المنشورات (يستدعيها المخطط من app.py) ---
 def run_scheduled_posts_for_all_tenants(app):
-    """تشغيل المنشورات المجدولة لكل الشركات النشطة."""
-    with app.app_context():
-        from flask import g
-        from models.core.tenant import Tenant as CoreTenant
-        from datetime import datetime
-
-        g.tenant = None
-        try:
-            tenants = CoreTenant.query.filter_by(is_active=True).all()
-        except Exception:
-            tenants = []
-        for t in tenants:
-            slug = getattr(t, "slug", None)
-            if not slug:
-                continue
-            g.tenant = slug
-            try:
-                now = datetime.utcnow()
-                posts = AutoposterPost.query.filter(
-                    AutoposterPost.status == "scheduled",
-                    AutoposterPost.scheduled_at <= now,
-                ).all()
-                for post in posts:
-                    post.status = "publishing"
-                    db.session.commit()
-                    try:
-                        page = AutoposterFacebookPage.query.filter_by(page_id=post.page_id).first()
-                        if not page or not page.access_token:
-                            post.status = "failed"
-                            post.error_message = "صفحة غير متصلة أو انتهى التوكن"
-                            db.session.commit()
-                            continue
-                        result = publish_post(
-                            page.access_token,
-                            post.content,
-                            photo_url=getattr(post, "image_url", None),
-                            video_url=getattr(post, "video_url", None),
-                            post_type=getattr(post, "post_type", None) or "post",
-                            page_id=page.page_id,
-                        )
-                        post.status = "published"
-                        post.published_at = datetime.utcnow()
-                        post.facebook_post_id = result.get("id") or result.get("post_id")
-                        post.error_message = None
-                        db.session.commit()
-                    except Exception as e:
-                        post.status = "failed"
-                        post.error_message = str(e)
-                        db.session.commit()
-            except Exception:
-                db.session.rollback()
-            finally:
-                g.tenant = None
+    """تغليف لاستدعاء خدمة الجدولة من ملف الخدمات (للتوافق مع app.py)."""
+    service_run_scheduled_for_all_tenants(app)

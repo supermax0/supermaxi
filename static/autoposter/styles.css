@@ -1,4 +1,10 @@
-/* ===== Variables ===== */
+/* ===== Design system variables =====
+   - الألوان: الخلفيات، النصوص، الألوان المساعدة (accent/success/warning/error/info)
+   - المسافات: تعتمد بشكل أساسي على مضاعفات 4px داخل البطاقات والعناصر
+   - الزوايا والظلال: لتوحيد الإحساس بالبطاقات والزجاج (glassmorphism)
+   - الخطوط: DM Sans للعربية/اللاتينية و JetBrains Mono للأكواد
+   - الانتقالات: transition موحّد للحركات البسيطة (hover/focus)
+*/
 :root {
   --bg-base: #0c0e17;
   --bg-elevated: #12151f;
@@ -430,6 +436,14 @@ input, textarea, select { font-family: inherit; }
 .editor-actions { margin-top: 0.5rem; }
 .char-count { font-size: 0.8rem; color: var(--text-muted); }
 
+/* نصوص مساعدة تحت الحقول (labels، عدادات، شروحات) */
+.field-help {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
 .media-upload { margin-bottom: 1.25rem; }
 .drop-zone {
   border: 2px dashed var(--border);
@@ -553,6 +567,21 @@ input, textarea, select { font-family: inherit; }
   gap: 0.75rem;
   justify-content: flex-end;
   margin-top: 1rem;
+}
+
+/* ملخصات مختصرة داخل البطاقات (مثلاً تحليلات ملخصة أو نصوص ثانوية) */
+.summary-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* ملخص عدد الصفحات المحددة في شاشة الإنشاء */
+.pages-selected-summary {
+  margin-top: 0.35rem;
 }
 
 /* Buttons */
@@ -1033,6 +1062,9 @@ input, textarea, select { font-family: inherit; }
   color: var(--text-muted);
   font-size: 0.9rem;
 }
+.empty-state.small {
+  padding: 1.5rem 1rem;
+}
 .empty-state svg {
   width: 64px;
   height: 64px;
@@ -1102,4 +1134,15 @@ input, textarea, select { font-family: inherit; }
   :root { --sidebar-width: 100%; }
   .form-actions { flex-direction: column; }
   .form-actions .btn { width: 100%; }
+}
+
+/* ===== Focus states & keyboard accessibility ===== */
+.btn:focus-visible,
+.nav-item:focus-visible,
+.link-btn:focus-visible,
+.page-chip:focus-visible,
+.user-btn:focus-visible,
+.icon-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-glow);
 }

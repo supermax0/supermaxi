@@ -12,12 +12,15 @@ class AutoposterPost(db.Model):
     content = db.Column(db.Text, nullable=False)
     image_url = db.Column(db.String(512), nullable=True)
     video_url = db.Column(db.String(512), nullable=True)
+    channel = db.Column(db.String(30), default="facebook_page")
     post_type = db.Column(db.String(20), default="post")  # post | story | reels
     status = db.Column(db.String(20), default="draft")
     scheduled_at = db.Column(db.DateTime, nullable=True)
     published_at = db.Column(db.DateTime, nullable=True)
     facebook_post_id = db.Column(db.String(128), nullable=True)
     error_message = db.Column(db.Text, nullable=True)
+    retry_count = db.Column(db.Integer, default=0)
+    last_attempt_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def to_dict(self):
@@ -28,10 +31,12 @@ class AutoposterPost(db.Model):
             "content": self.content,
             "image_url": self.image_url,
             "video_url": self.video_url,
+            "channel": getattr(self, "channel", None) or "facebook_page",
             "post_type": getattr(self, "post_type", None) or "post",
             "status": self.status,
             "scheduled_at": self.scheduled_at.isoformat() if self.scheduled_at else None,
             "published_at": self.published_at.isoformat() if self.published_at else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "error_message": self.error_message,
+            "retry_count": getattr(self, "retry_count", 0),
         }

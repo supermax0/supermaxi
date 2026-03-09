@@ -80,12 +80,71 @@
         <section class="page active" id="page-dashboard">
           <div class="page-header">
             <h1 class="page-title">لوحة التحكم</h1>
-            <p class="page-subtitle">نشر تلقائي لصفحات فيسبوك</p>
+            <p class="page-subtitle">نظرة عامة على نشاط النشر، أداء الصفحات، وآخر الإشعارات.</p>
+            <button type="button" class="btn btn-primary btn-sm" id="goToCreateFromDashboard">إنشاء منشور جديد</button>
           </div>
           <div class="stats-grid">
-            <div class="stat-card"><div class="stat-icon pages"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div class="stat-content"><span class="stat-value" data-count="0">0</span><span class="stat-label">الصفحات المتصلة</span></div></div>
-            <div class="stat-card"><div class="stat-icon posts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div><div class="stat-content"><span class="stat-value" data-count="0">0</span><span class="stat-label">المنشورات المنشورة</span></div></div>
-            <div class="stat-card"><div class="stat-icon scheduled"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div><div class="stat-content"><span class="stat-value" data-count="0">0</span><span class="stat-label">المجدولة</span></div></div>
+            <div class="stat-card">
+              <div class="stat-icon pages">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+              </div>
+              <div class="stat-content">
+                <span class="stat-value" data-count="0">0</span>
+                <span class="stat-label">الصفحات المتصلة</span>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon posts">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              </div>
+              <div class="stat-content">
+                <span class="stat-value" data-count="0">0</span>
+                <span class="stat-label">المنشورات المنشورة</span>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon scheduled">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              </div>
+              <div class="stat-content">
+                <span class="stat-value" data-count="0">0</span>
+                <span class="stat-label">المجدولة</span>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon engagement">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              </div>
+              <div class="stat-content">
+                <span class="stat-value" data-count="0">0%</span>
+                <span class="stat-label">متوسط التفاعل</span>
+              </div>
+            </div>
+          </div>
+          <div class="dashboard-grid">
+            <div class="card chart-card">
+              <h3 class="card-title">أداء النشر خلال الأيام الأخيرة</h3>
+              <div class="chart-placeholder">
+                <canvas id="perfChart" width="400" height="200"></canvas>
+              </div>
+            </div>
+            <div class="card">
+              <h3 class="card-title">آخر النشاط</h3>
+              <ul class="activity-list">
+                <li>
+                  <span class="activity-dot success"></span>
+                  <span>تم نشر منشور بنجاح على إحدى الصفحات.</span>
+                </li>
+                <li>
+                  <span class="activity-dot info"></span>
+                  <span>تم ربط صفحة فيسبوك جديدة.</span>
+                </li>
+                <li>
+                  <span class="activity-dot warning"></span>
+                  <span>لا توجد بيانات كافية بعد لعرض النشاط التفصيلي.</span>
+                </li>
+              </ul>
+            </div>
           </div>
         </section>
         <section class="page" id="page-create">
@@ -108,6 +167,13 @@
                 </div>
                 <span class="field-help">الستوري: صورة أو فيديو. الريلز: فيديو فقط.</span>
               </div>
+              <div class="form-group">
+                <label>القوالب المحفوظة</label>
+                <select id="templateSelect" class="form-control" style="max-width:280px">
+                  <option value="">بدون قالب</option>
+                </select>
+                <span class="field-help">اختر قالباً لملء المحتوى بسرعة.</span>
+              </div>
               <div class="form-group"><label>اختر الصفحات</label><div class="pages-select-wrap" id="pagesSelectWrap"><span class="text-muted">لا توجد صفحات. </span><button type="button" class="link-btn" id="managePagesBtn">إدارة الصفحات</button></div></div>
               <div class="form-group"><label>جدولة (اختياري)</label><input type="datetime-local" id="scheduleAt" class="form-control" style="max-width:280px"></div>
               <div class="form-actions">
@@ -116,6 +182,10 @@
               </div>
               <div class="linear-progress" id="postProgress" hidden><div class="bar"></div></div>
               <div class="field-help" id="postProgressText"></div>
+              <div class="form-actions" style="margin-top:0.75rem;justify-content:flex-start">
+                <button type="button" class="btn btn-ghost btn-sm" id="saveDraftBtn">حفظ كمسودة</button>
+                <button type="button" class="btn btn-ghost btn-sm" id="saveTemplateBtn">حفظ كقالب</button>
+              </div>
             </div>
             <div class="card preview-card"><h3 class="card-title">معاينة</h3><div class="post-preview" id="postPreview"><div class="preview-placeholder">ستظهر المعاينة هنا</div></div></div>
           </div>
@@ -125,27 +195,81 @@
           <div class="card"><div class="table-wrap"><table class="data-table"><thead><tr><th><input type="checkbox" id="selectAllPages" aria-label="تحديد الكل"></th><th>اسم الصفحة</th><th>معرف الصفحة</th><th>الحالة</th><th></th></tr></thead><tbody id="pagesTableBody"><tr><td colspan="5" class="text-muted">لا توجد صفحات. اربط صفحة من فيسبوك.</td></tr></tbody></table></div></div>
         </section>
         <section class="page" id="page-scheduled">
-          <div class="page-header"><h1 class="page-title">المنشورات المجدولة</h1></div>
-          <div class="card"><h3 class="card-title">القادمة</h3><ul class="scheduled-list" id="scheduledList"></ul><div class="empty-state" id="scheduledEmpty"><p>لا توجد منشورات مجدولة</p></div></div>
+          <div class="page-header">
+            <h1 class="page-title">المنشورات المجدولة</h1>
+            <div class="view-toggle">
+              <button type="button" class="toggle-btn active" data-view="list">قائمة</button>
+              <button type="button" class="toggle-btn" data-view="calendar">تقويم</button>
+            </div>
+          </div>
+          <div class="scheduled-layout">
+            <div class="card" id="calendarCard">
+              <div class="calendar-header">
+                <button type="button" class="icon-btn small" id="calPrev" aria-label="الشهر السابق">‹</button>
+                <h3 class="card-title" id="calMonthYear"></h3>
+                <button type="button" class="icon-btn small" id="calNext" aria-label="الشهر التالي">›</button>
+              </div>
+              <div class="calendar-grid" id="calendarGrid"></div>
+            </div>
+            <div class="card">
+              <h3 class="card-title">القادمة</h3>
+              <ul class="scheduled-list" id="scheduledList"></ul>
+              <div class="empty-state" id="scheduledEmpty"><p>لا توجد منشورات مجدولة</p></div>
+            </div>
+          </div>
+          <div class="card" style="margin-top:1rem">
+            <h3 class="card-title">المسودات</h3>
+            <ul class="scheduled-list" id="draftsList"><li class="text-muted">لا توجد مسودات بعد</li></ul>
+          </div>
         </section>
         <section class="page" id="page-analytics">
-          <div class="page-header"><h1 class="page-title">التحليلات</h1></div>
-          <div class="card"><h3 class="card-title">أفضل المنشورات</h3><ul class="top-posts-list" id="topPostsList"><li class="text-muted">لا توجد بيانات بعد</li></ul></div>
+          <div class="page-header">
+            <h1 class="page-title">التحليلات</h1>
+          </div>
+          <div class="analytics-grid">
+            <div class="card chart-card wide">
+              <h3 class="card-title">ملخص الأداء</h3>
+              <div class="analytics-summary" id="analyticsSummary"></div>
+            </div>
+            <div class="card chart-card">
+              <h3 class="card-title">تفاعل الأيام الأخيرة</h3>
+              <div class="chart-placeholder">
+                <canvas id="engagementChart" width="400" height="200"></canvas>
+              </div>
+            </div>
+            <div class="card chart-card">
+              <h3 class="card-title">نمو عدد المنشورات</h3>
+              <div class="chart-placeholder">
+                <canvas id="growthChart" width="300" height="200"></canvas>
+              </div>
+            </div>
+            <div class="card">
+              <h3 class="card-title">أفضل المنشورات</h3>
+              <ul class="top-posts-list" id="topPostsList">
+                <li class="text-muted">لا توجد بيانات بعد</li>
+              </ul>
+            </div>
+          </div>
         </section>
         <section class="page" id="page-settings">
-          <div class="page-header"><h1 class="page-title">إعدادات فيسبوك</h1><p class="page-subtitle">معرف التطبيق وسر التطبيق من <a href="https://developers.facebook.com/" target="_blank" rel="noopener">Facebook for Developers</a></p></div>
+          <div class="page-header">
+            <h1 class="page-title">إعدادات فيسبوك</h1>
+            <p class="page-subtitle">معرف التطبيق وسر التطبيق من <a href="https://developers.facebook.com/" target="_blank" rel="noopener">Facebook for Developers</a></p>
+          </div>
           <div class="card">
-            <form id="facebookSettingsForm" class="form-grid">
+            <form id="facebookSettingsForm" class="settings-grid">
               <div class="form-group">
                 <label for="fbAppId">معرف التطبيق (App ID)</label>
-                <input type="text" id="fbAppId" name="facebook_app_id" placeholder="مثال: 1234567890123456" autocomplete="off">
+                <input type="text" id="fbAppId" name="facebook_app_id" class="input-text" placeholder="مثال: 1234567890123456" autocomplete="off">
               </div>
               <div class="form-group">
                 <label for="fbAppSecret">سر التطبيق (App Secret)</label>
-                <input type="password" id="fbAppSecret" name="facebook_app_secret" placeholder="اتركه فارغاً للإبقاء على القيمة الحالية" autocomplete="off">
+                <input type="password" id="fbAppSecret" name="facebook_app_secret" class="input-text" placeholder="اتركه فارغاً للإبقاء على القيمة الحالية" autocomplete="off">
                 <span class="field-help">يُخزّن في إعدادات الشركة. إن لم تُدخلهما هنا، يُستخدم ما في ملف .env على السيرفر.</span>
               </div>
-              <div class="form-actions"><button type="submit" class="btn btn-primary" id="saveSettingsBtn">حفظ الإعدادات</button></div>
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary" id="saveSettingsBtn">حفظ الإعدادات</button>
+              </div>
             </form>
           </div>
         </section>
