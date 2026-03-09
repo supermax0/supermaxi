@@ -116,7 +116,8 @@ def to_locale_string(value):
         return value
 
 app.config["UPLOAD_FOLDER"] = "static/uploads/messages"
-app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50MB max file size
+# حد رفع الملفات (للرسائل، النشر التلقائي صورة/فيديو حتى 100 ميجا، إلخ)
+app.config["MAX_CONTENT_LENGTH"] = 110 * 1024 * 1024  # 110MB (ليسمح برفع فيديو 100MB في autoposter)
 
 # في التطوير فقط: إعادة تحميل القوالب وتقليل كاش الملفات
 if not app.config.get("DEBUG"):
