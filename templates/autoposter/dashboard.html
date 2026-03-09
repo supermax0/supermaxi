@@ -44,6 +44,10 @@
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
           <span class="nav-label">التحليلات</span>
         </a>
+        <a href="#settings" class="nav-item" data-page="settings">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span class="nav-label">إعدادات فيسبوك</span>
+        </a>
       </nav>
       <div class="sidebar-footer">
         <a href="{{ request.script_root or '' }}/" class="nav-item">← العودة للمنصة</a>
@@ -106,6 +110,23 @@
         <section class="page" id="page-analytics">
           <div class="page-header"><h1 class="page-title">التحليلات</h1></div>
           <div class="card"><h3 class="card-title">أفضل المنشورات</h3><ul class="top-posts-list" id="topPostsList"><li class="text-muted">لا توجد بيانات بعد</li></ul></div>
+        </section>
+        <section class="page" id="page-settings">
+          <div class="page-header"><h1 class="page-title">إعدادات فيسبوك</h1><p class="page-subtitle">معرف التطبيق وسر التطبيق من <a href="https://developers.facebook.com/" target="_blank" rel="noopener">Facebook for Developers</a></p></div>
+          <div class="card">
+            <form id="facebookSettingsForm" class="form-grid">
+              <div class="form-group">
+                <label for="fbAppId">معرف التطبيق (App ID)</label>
+                <input type="text" id="fbAppId" name="facebook_app_id" placeholder="مثال: 1234567890123456" autocomplete="off">
+              </div>
+              <div class="form-group">
+                <label for="fbAppSecret">سر التطبيق (App Secret)</label>
+                <input type="password" id="fbAppSecret" name="facebook_app_secret" placeholder="اتركه فارغاً للإبقاء على القيمة الحالية" autocomplete="off">
+                <span class="field-help">يُخزّن في إعدادات الشركة. إن لم تُدخلهما هنا، يُستخدم ما في ملف .env على السيرفر.</span>
+              </div>
+              <div class="form-actions"><button type="submit" class="btn btn-primary" id="saveSettingsBtn">حفظ الإعدادات</button></div>
+            </form>
+          </div>
         </section>
       </div>
     </main>

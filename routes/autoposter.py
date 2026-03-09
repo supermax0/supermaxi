@@ -18,6 +18,33 @@ from routes.autoposter_facebook import (
 autoposter_bp = Blueprint("autoposter", __name__, url_prefix="/autoposter", static_folder="../static/autoposter", static_url_path="/static/autoposter")
 
 
+@autoposter_bp.before_request
+def _ensure_autoposter_tables():
+    """التأكد من وجود جداول النشر التلقائي وأعمدة فيسبوك في إعدادات النظام."""
+    tenant_slug = getattr(g, "tenant", None)
+    if not tenant_slug:
+        return
+    try:
+        from extensions_tenant import get_tenant_engine
+        from sqlalchemy import inspect, text
+        engine = get_tenant_engine(tenant_slug)
+        for model in (AutoposterFacebookPage, AutoposterPost, AutoposterNotification):
+            model.__table__.create(engine, checkfirst=True)
+        # إضافة أعمدة فيسبوك لجدول system_settings إن وُجد ولم تكن الأعمدة موجودة
+        inspector = inspect(engine)
+        if "system_settings" in inspector.get_table_names():
+            cols = {c["name"] for c in inspector.get_columns("system_settings")}
+            with engine.connect() as conn:
+                if "facebook_app_id" not in cols:
+                    conn.execute(text("ALTER TABLE system_settings ADD COLUMN facebook_app_id VARCHAR(100)"))
+                    conn.commit()
+                if "facebook_app_secret" not in cols:
+                    conn.execute(text("ALTER TABLE system_settings ADD COLUMN facebook_app_secret VARCHAR(255)"))
+                    conn.commit()
+    except Exception:
+        pass
+
+
 def require_autoposter_login(f):
     @wraps(f)
     def inner(*args, **kwargs):
@@ -95,18 +122,19 @@ def api_pages_list():
 @autoposter_bp.route("/api/facebook/connect", methods=["GET"])
 @require_autoposter_login
 def api_facebook_connect():
-    if not request.environ.get("HTTP_HOST"):
+    if not getattr(request, "host", None):
         return jsonify({"error": "لم يتم ضبط الاستضافة", "url": None}), 400
     scheme = request.environ.get("HTTP_X_FORWARDED_PROTO") or request.scheme or "https"
     base = f"{scheme}://{request.host}".rstrip("/")
     redirect_uri = f"{base}/autoposter/api/facebook/callback"
     try:
-        url = get_oauth_url(redirect_uri=redirect_uri)
+        result = get_oauth_url(redirect_uri=redirect_uri)
+        url_str = result[0] if isinstance(result, (list, tuple)) else result
     except Exception:
         return jsonify({"error": "لم يتم ضبط FACEBOOK_APP_ID أو الإعدادات", "url": None}), 400
-    if not url or "client_id" not in url:
+    if not url_str or "client_id" not in str(url_str):
         return jsonify({"error": "لم يتم ضبط FACEBOOK_APP_ID في الإعدادات", "url": None}), 400
-    return jsonify({"url": url})
+    return jsonify({"url": url_str})
 
 
 # --- OAuth Callback ---
@@ -260,6 +288,44 @@ def api_analytics():
             for p in posts
         ],
     })
+
+
+# --- API: إعدادات فيسبوك (معرف التطبيق وسر التطبيق) ---
+@autoposter_bp.route("/api/settings", methods=["GET"])
+@require_autoposter_login
+def api_settings_get():
+    try:
+        from models.system_settings import SystemSettings
+        s = SystemSettings.get_settings()
+        app_id = (getattr(s, "facebook_app_id", None) or "").strip()
+        app_secret = (getattr(s, "facebook_app_secret", None) or "").strip()
+        return jsonify({
+            "facebook_app_id": app_id,
+            "facebook_app_secret": "••••••••" if app_secret else "",
+            "facebook_app_secret_set": bool(app_secret),
+        })
+    except Exception:
+        return jsonify({"facebook_app_id": "", "facebook_app_secret": "", "facebook_app_secret_set": False})
+
+
+@autoposter_bp.route("/api/settings", methods=["POST"])
+@require_autoposter_login
+def api_settings_post():
+    data = request.get_json() or {}
+    app_id = (data.get("facebook_app_id") or "").strip()
+    app_secret = (data.get("facebook_app_secret") or "").strip()
+    try:
+        from models.system_settings import SystemSettings
+        s = SystemSettings.get_settings()
+        s.facebook_app_id = app_id if app_id else None
+        # إذا أرسل سراً جديداً (غير ••••) حدّثه، وإلا احتفظ بالقديم
+        if app_secret and app_secret != "••••••••":
+            s.facebook_app_secret = app_secret
+        db.session.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 # --- تسجيل الخروج (من واجهة النشر التلقائي يعيد لصفحة المنصة) ---

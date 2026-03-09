@@ -1,18 +1,39 @@
 # خدمة فيسبوك OAuth ونشر المنشورات — للنشر التلقائي تحت /autoposter
 import requests
 from urllib.parse import urlencode
-from flask import current_app
+from flask import current_app, g
+
+
+def _get_facebook_config():
+    """معرف التطبيق وسر التطبيق: من إعدادات الشركة أولاً، ثم من .env."""
+    app_id = ""
+    app_secret = ""
+    if getattr(g, "tenant", None):
+        try:
+            from models.system_settings import SystemSettings
+            s = SystemSettings.get_settings()
+            if s:
+                app_id = (getattr(s, "facebook_app_id", None) or "").strip()
+                app_secret = (getattr(s, "facebook_app_secret", None) or "").strip()
+        except Exception:
+            pass
+    if not app_id:
+        app_id = (current_app.config.get("FACEBOOK_APP_ID") or "").strip()
+    if not app_secret:
+        app_secret = (current_app.config.get("FACEBOOK_APP_SECRET") or "").strip()
+    return app_id, app_secret
 
 
 def get_oauth_url(redirect_uri=None):
     """رابط تسجيل الدخول إلى فيسبوك لربط الصفحات. إذا مرّرت redirect_uri استُخدم كما هو."""
+    app_id, _ = _get_facebook_config()
     if not redirect_uri:
         base = current_app.config.get("BASE_URL", "").rstrip("/")
         if not base:
             base = (current_app.config.get("PREFERRED_URL_SCHEME") or "https") + "://" + (current_app.config.get("SERVER_NAME") or "localhost")
         redirect_uri = f"{base}/autoposter/api/facebook/callback"
     params = {
-        "client_id": current_app.config.get("FACEBOOK_APP_ID") or "",
+        "client_id": app_id,
         "redirect_uri": redirect_uri,
         "scope": "pages_show_list,pages_read_engagement,pages_manage_posts,pages_manage_engagement",
         "response_type": "code",
@@ -22,12 +43,13 @@ def get_oauth_url(redirect_uri=None):
 
 
 def exchange_code_for_user_token(code, redirect_uri):
+    app_id, app_secret = _get_facebook_config()
     url = "https://graph.facebook.com/v21.0/oauth/access_token"
     r = requests.get(
         url,
         params={
-            "client_id": current_app.config["FACEBOOK_APP_ID"],
-            "client_secret": current_app.config["FACEBOOK_APP_SECRET"],
+            "client_id": app_id,
+            "client_secret": app_secret,
             "redirect_uri": redirect_uri,
             "code": code,
         },
@@ -38,13 +60,14 @@ def exchange_code_for_user_token(code, redirect_uri):
 
 
 def get_long_lived_token(short_token):
+    app_id, app_secret = _get_facebook_config()
     url = "https://graph.facebook.com/v21.0/oauth/access_token"
     r = requests.get(
         url,
         params={
             "grant_type": "fb_exchange_token",
-            "client_id": current_app.config["FACEBOOK_APP_ID"],
-            "client_secret": current_app.config["FACEBOOK_APP_SECRET"],
+            "client_id": app_id,
+            "client_secret": app_secret,
             "fb_exchange_token": short_token,
         },
         timeout=15,

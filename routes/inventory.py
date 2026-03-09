@@ -3,6 +3,7 @@ from extensions import db
 from models.product import Product
 from models.order_item import OrderItem
 from models.invoice import Invoice
+from models.supplier import Supplier
 # من models.purchase تم نقله إلى purchases.py
 from models.employee import Employee
 from models.account_transaction import AccountTransaction

@@ -170,6 +170,19 @@
     loadScheduled();
   });
 
+  async function loadSettings() {
+    const res = await apiFetch('/api/settings');
+    if (!res || !res.ok) return;
+    const data = await res.json();
+    const appIdEl = document.getElementById('fbAppId');
+    const appSecretEl = document.getElementById('fbAppSecret');
+    if (appIdEl) appIdEl.value = data.facebook_app_id || '';
+    if (appSecretEl) {
+      appSecretEl.value = data.facebook_app_secret_set ? '••••••••' : '';
+      appSecretEl.placeholder = data.facebook_app_secret_set ? 'اتركه فارغاً للإبقاء على القيمة الحالية' : 'أدخل سر التطبيق';
+    }
+  }
+
   // ----- Navigation -----
   const navItems = document.querySelectorAll('.nav-item[data-page]');
   const pages = document.querySelectorAll('.page');
@@ -196,17 +209,25 @@
       showPage(page);
       if (page === 'dashboard') animateStats();
       if (page === 'analytics') drawAnalyticsCharts();
+      if (page === 'settings') loadSettings();
     });
   });
 
   // Hash navigation
   window.addEventListener('hashchange', () => {
     const hash = (window.location.hash || '#dashboard').slice(1);
-    if (hash && document.getElementById(`page-${hash}`)) showPage(hash);
+    if (hash && document.getElementById(`page-${hash}`)) {
+      showPage(hash);
+      if (hash === 'settings') loadSettings();
+      if (hash === 'analytics') drawAnalyticsCharts();
+    }
   });
   if (window.location.hash) {
     const hash = window.location.hash.slice(1);
-    if (document.getElementById(`page-${hash}`)) showPage(hash);
+    if (document.getElementById(`page-${hash}`)) {
+      showPage(hash);
+      if (hash === 'settings') loadSettings();
+    }
   } else {
     const fab = document.getElementById('fabCreate');
     if (fab) fab.classList.remove('hidden');
@@ -657,6 +678,31 @@
   if (managePagesBtn) {
     managePagesBtn.addEventListener('click', () => {
       showPage('pages');
+    });
+  }
+
+  // ----- إعدادات فيسبوك (معرف التطبيق وسر التطبيق) -----
+  const facebookSettingsForm = document.getElementById('facebookSettingsForm');
+  if (facebookSettingsForm) {
+    facebookSettingsForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('saveSettingsBtn');
+      const appId = (document.getElementById('fbAppId')?.value || '').trim();
+      const appSecret = (document.getElementById('fbAppSecret')?.value || '').trim();
+      if (btn) { btn.disabled = true; btn.textContent = 'جاري الحفظ...'; }
+      const res = await apiFetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ facebook_app_id: appId, facebook_app_secret: appSecret }),
+      });
+      if (btn) { btn.disabled = false; btn.textContent = 'حفظ الإعدادات'; }
+      if (res && res.ok) {
+        toast('تم حفظ إعدادات فيسبوك', 'success');
+        if (appSecret && appSecret !== '••••••••') document.getElementById('fbAppSecret').value = '••••••••';
+      } else {
+        const err = await res?.json().catch(() => ({}));
+        toast(err?.error || 'فشل الحفظ', 'error');
+      }
     });
   }
 

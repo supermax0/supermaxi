@@ -22,6 +22,10 @@ class SystemSettings(db.Model):
     # AI assistant toggle (global switch)
     ai_enabled = db.Column(db.Boolean, default=True)
 
+    # النشر التلقائي لفيسبوك (اختياري — إن تُركا فارغين يُستخدم .env)
+    facebook_app_id = db.Column(db.String(100), nullable=True)
+    facebook_app_secret = db.Column(db.String(255), nullable=True)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
