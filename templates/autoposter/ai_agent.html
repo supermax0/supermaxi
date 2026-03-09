@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}AI Agent Builder | Autoposter{% endblock %}
+{% block page_title %}⚙️ AI Agent Builder{% endblock %}
+
+{% block content %}
+<div id="ai-agent-root"></div>
+
+<script>
+  window.AI_AGENT_API_BASE = "{{ request.script_root or '' }}/autoposter/api";
+</script>
+
+<script type="module" src="{{ url_for('static', filename='ai_agent_frontend/dist/assets/ai-agent.js') }}"></script>
+{% endblock %}
+

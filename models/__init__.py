@@ -18,6 +18,13 @@ from .system_alert import SystemAlert
 from .assistant_memory import AssistantMemory
 from .role import Role, Permission
 from .tenant import Tenant  # SaaS multi-tenant support
+from .ai_agent import (
+    Agent,
+    AgentWorkflow,
+    AgentExecution,
+    AgentExecutionLog,
+    AgentComment,
+)
 
 # ======================================================
 # Accounting Models (النماذج المحاسبية)

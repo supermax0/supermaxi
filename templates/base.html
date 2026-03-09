@@ -1741,8 +1741,12 @@
   <div class="app">
 
     <!-- ================= SIDEBAR (جميع المستخدمين المسجلين — العناصر حسب الصلاحيات) ================= -->
-    {% set is_payment_flow = request.path.startswith('/payment') or request.path.startswith('/signup') or
-    request.path.startswith('/pricing') or request.path.startswith('/login') %}
+    {# اعتبر مسار /superadmin أيضاً كمسار خارجي عن لوحة الشركة حتى لا تظهر القائمة الجانبية معها #}
+    {% set is_payment_flow = request.path.startswith('/payment')
+      or request.path.startswith('/signup')
+      or request.path.startswith('/pricing')
+      or request.path.startswith('/login')
+      or request.path.startswith('/superadmin') %}
     {% set is_admin = session.get("role") == "admin" or (current_employee and current_employee.role == "admin") %}
     {% if session.get("user_id") and not is_payment_flow %}
     <aside class="sidebar" id="sidebar">

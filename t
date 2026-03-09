@@ -1,237 +1,229 @@
-You are working on a Flask SaaS project called Finora.
+Build a full **AI Agent page** inside my project called **AutoPoster**.
 
-The project already has:
-- Flask
-- SQLAlchemy
-- Multi-tenant architecture
-- Blueprints
-- Gunicorn + Nginx deployment
-- APScheduler installed
-- A module called autoposter
+The page must implement a **Visual AI Automation Builder** where users can create automated workflows for social media using drag-and-drop nodes.
 
-Your task is to implement a complete Facebook Auto Poster system.
+The system must be production-ready, modular, and designed for future expansion.
 
-Do NOT break existing routes or database structure.
+---
 
-------------------------------------------------
+MAIN FEATURE
 
-GOAL
+Create a page called:
 
-Create a professional Facebook Auto Poster module that can:
+/ai-agent
 
-1. Connect Facebook Pages
-2. Store page access tokens
-3. Create posts
-4. Schedule posts
-5. Automatically publish scheduled posts
+Inside the AutoPoster dashboard.
 
-------------------------------------------------
+This page must allow users to visually build AI automations.
 
-FEATURES TO IMPLEMENT
+---
 
-1) Facebook OAuth Login
+VISUAL WORKFLOW BUILDER
 
-Route:
+Implement a drag-and-drop workflow builder similar to:
 
-/autoposter/connect-facebook
+* Zapier
+* n8n
+* Langflow
+* OpenAI Agent Builder
 
-Redirect to Facebook OAuth:
+Users must be able to:
 
-https://www.facebook.com/v21.0/dialog/oauth
+* drag nodes
+* connect nodes
+* configure nodes
+* execute workflows
 
-Scopes:
+Use a **node based interface**.
 
-pages_show_list
-pages_manage_posts
-pages_read_engagement
-pages_manage_metadata
+Each node represents an action.
 
-------------------------------------------------
+---
 
-2) Facebook OAuth Callback
+CORE NODES
 
-Route:
+Start Node
 
-/autoposter/api/facebook/callback
+AI Agent Node
+Uses OpenAI to generate content.
 
-Steps:
+Image Generator Node
+Generates images from prompts.
 
-- receive OAuth code
-- exchange code for access token
-- request user pages:
+Caption Generator Node
+Creates captions and hashtags.
 
-GET https://graph.facebook.com/v21.0/me/accounts
+Publisher Node
+Publishes to social platforms.
 
-Store pages in database.
+Scheduler Node
+Schedules posts.
 
-------------------------------------------------
+Comment Listener Node
+Fetches comments.
 
-3) Database Models
+Auto Reply Node
+Uses AI to reply to comments.
 
-Create models if missing:
+End Node
 
-AutoposterFacebookPage
+---
 
-fields:
+NODE CONFIGURATION PANEL
 
-id
-tenant_id
-page_id
-page_name
-access_token
-created_at
+When a node is clicked open a side panel.
 
------------------------------------------------
+Allow users to configure:
 
-AutoposterPost
+name
+instructions
+model
+inputs
+outputs
 
-fields:
+Example instructions:
 
-id
-tenant_id
-page_id
-message
-image_url
-status
-scheduled_at
-published_at
-facebook_post_id
-created_at
+"You are a marketing AI that generates engaging social media content."
 
-status values:
+---
 
-draft
-scheduled
-published
-failed
+WORKFLOW EXECUTION ENGINE
 
-------------------------------------------------
+Create a backend system that reads the workflow.
 
-4) Create Post API
+Workflow must be stored as JSON.
 
-Route:
+Example structure:
 
-POST /autoposter/api/posts/create
+nodes
+edges
+settings
 
-Payload:
+The engine must execute nodes in sequence based on connections.
 
-{
-    page_id,
-    message,
-    image_url (optional),
-    scheduled_at (optional)
-}
+---
 
-If scheduled_at is empty -> publish immediately.
+AI INTEGRATION
 
-------------------------------------------------
+Use OpenAI models to power:
 
-5) Publish Post Function
+content generation
+caption writing
+comment replies
+decision making
 
-Create function:
+---
 
-publish_post(page)
+IMAGE GENERATION
 
-Call:
+Integrate an image generator API.
 
-POST https://graph.facebook.com/{page_id}/feed
+The agent must be able to send prompts and receive images.
 
-params:
+---
 
-message
-access_token
+SOCIAL MEDIA PUBLISHING
 
-Save returned post id.
+Create service modules for:
 
-------------------------------------------------
+Instagram
+Facebook
+TikTok
 
-6) Scheduler
+The workflow should pass content to the publisher node.
 
-Use APScheduler.
+---
 
-Run every minute.
+COMMENT AUTO REPLY
 
-Function:
+The system must monitor comments.
 
-run_scheduled_posts_for_all_tenants()
+When a new comment arrives:
 
-Steps:
+send comment to AI
+generate reply
+publish reply
 
-- load scheduled posts
-- check scheduled_at <= now
-- publish post
-- update status to published
+---
 
-------------------------------------------------
+DATABASE STRUCTURE
 
-7) Dashboard UI
+Create tables for:
 
-Page:
+agents
+workflows
+nodes
+executions
+comments
 
-/autoposter
+---
 
-Add pages management UI:
+SYSTEM ARCHITECTURE
 
-Button:
+Frontend
+React
+React Flow for node editor
+Tailwind UI
 
-"ربط صفحة"
+Backend
+Python Flask or FastAPI
 
-Show:
+Workflow Engine
+Executes nodes
 
-page_name
-status
-connected pages
+Queue System
+Redis or Celery
 
------------------------------------------------
+Database
+PostgreSQL
 
-Posts UI:
+---
 
-Create post form:
+FILE STRUCTURE
 
-message
-image
-schedule date
+autoposter
+│
+├ ai_agent
+│
+├ workflow_builder
+│
+├ nodes
+│
+├ engine
+│
+├ services
+│
+└ api
 
-Table:
+---
 
-scheduled posts
-published posts
+EXTRA FEATURES
 
-------------------------------------------------
+Workflow testing mode
+Execution logs
+Node error handling
+Workflow templates
 
-8) Security
+---
 
-Use tenant_id filtering everywhere.
+DESIGN
 
-Example:
+Modern dark dashboard UI.
 
-query.filter_by(tenant_id=current_tenant.id)
+Left sidebar with node tools.
 
-------------------------------------------------
+Center canvas for workflow.
 
-9) Error Handling
+Right panel for node settings.
 
-Add try/except around Facebook API calls.
+---
 
-Log errors to console.
+FINAL RESULT
 
-------------------------------------------------
+A complete AI automation builder where users can create AI agents that:
 
-10) Code Quality
-
-- Follow blueprint structure
-- Keep routes in routes/autoposter.py
-- Models in models/autoposter.py
-- Services in services/facebook_service.py
-
-------------------------------------------------
-
-OUTPUT
-
-Generate:
-
-- Flask routes
-- SQLAlchemy models
-- Facebook service class
-- Scheduler integration
-- Clean production-ready code
+generate content
+create images
+publish posts
+reply to comments
+run automatically
