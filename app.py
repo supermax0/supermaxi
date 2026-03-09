@@ -903,26 +903,35 @@ except (ImportError, AttributeError):
 
 # =====================================
 # Autoposter: جدولة المنشورات (اختياري — لا يعيق تشغيل التطبيق)
-# الاستيراد داخل الدالة حتى لا يفشل تحميل التطبيق إن كانت الوحدة تسبب خطأ
+# لا يُشغّل المجدول تحت Gunicorn (متعدد العمال) لتجنب فشل الـ worker
 # =====================================
 _scheduler = None
-try:
-    from apscheduler.schedulers.background import BackgroundScheduler  # type: ignore[import-untyped]
-    from apscheduler.triggers.interval import IntervalTrigger  # type: ignore[import-untyped]
-
-    def _run_autoposter_scheduled():
-        try:
-            from routes.autoposter import run_scheduled_posts_for_all_tenants
-            run_scheduled_posts_for_all_tenants(app)
-        except Exception:
-            pass
-
-    _scheduler = BackgroundScheduler()
-    _scheduler.add_job(_run_autoposter_scheduled, IntervalTrigger(minutes=1), id="autoposter_scheduled")
-    _scheduler.start()
-except Exception as e:
+def _start_autoposter_scheduler():
+    global _scheduler
+    import os
     import sys
-    print("Autoposter scheduler skipped:", e, file=sys.stderr)
+    # لا نشغّل المجدول تحت Gunicorn (يتسبب أحياناً بفشل تحميل الـ worker)
+    if os.environ.get("SERVER_SOFTWARE", "").startswith("gunicorn/") or "gunicorn" in (sys.argv[0] or ""):
+        return
+    try:
+        from apscheduler.schedulers.background import BackgroundScheduler  # type: ignore[import-untyped]
+        from apscheduler.triggers.interval import IntervalTrigger  # type: ignore[import-untyped]
+
+        def _run_autoposter_scheduled():
+            try:
+                from routes.autoposter import run_scheduled_posts_for_all_tenants
+                run_scheduled_posts_for_all_tenants(app)
+            except Exception:
+                pass
+
+        _scheduler = BackgroundScheduler()
+        _scheduler.add_job(_run_autoposter_scheduled, IntervalTrigger(minutes=1), id="autoposter_scheduled")
+        _scheduler.start()
+    except Exception as e:
+        import sys
+        print("Autoposter scheduler skipped:", e, file=sys.stderr)
+
+_start_autoposter_scheduler()
 
 # =====================================
 # Run
