@@ -561,6 +561,22 @@ input, textarea, select { font-family: inherit; }
   background: rgba(255, 255, 255, 0.05);
 }
 .btn-ghost:hover { color: var(--text); background: rgba(255, 255, 255, 0.08); }
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.btn-secondary:hover { background: rgba(255, 255, 255, 0.15); }
+.btn-secondary.loading .btn-text { visibility: hidden; }
+.btn-secondary.loading .btn-loader {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255,255,255,0.2);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
 .btn-sm { padding: 0.45rem 0.9rem; font-size: 0.85rem; }
 
 .post-preview {

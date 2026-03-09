@@ -41,6 +41,15 @@ def _ensure_autoposter_tables():
                 if "facebook_app_secret" not in cols:
                     conn.execute(text("ALTER TABLE system_settings ADD COLUMN facebook_app_secret VARCHAR(255)"))
                     conn.commit()
+        if "autoposter_posts" in inspector.get_table_names():
+            post_cols = {c["name"] for c in inspector.get_columns("autoposter_posts")}
+            with engine.connect() as conn:
+                if "image_url" not in post_cols:
+                    conn.execute(text("ALTER TABLE autoposter_posts ADD COLUMN image_url VARCHAR(512)"))
+                    conn.commit()
+                if "video_url" not in post_cols:
+                    conn.execute(text("ALTER TABLE autoposter_posts ADD COLUMN video_url VARCHAR(512)"))
+                    conn.commit()
     except Exception:
         pass
 
@@ -176,15 +185,58 @@ def api_facebook_callback():
     return redirect(url_for("autoposter.dashboard") + "#pages")
 
 
-# --- API: نشر فوري ---
+# --- API: رفع صورة أو فيديو ---
+UPLOAD_ALLOWED = ("image/jpeg", "image/png", "image/gif", "image/webp", "video/mp4", "video/quicktime")
+UPLOAD_MAX_MB = 100
+
+@autoposter_bp.route("/api/upload", methods=["POST"])
+@require_autoposter_login
+def api_upload():
+    if "file" not in request.files and "media" not in request.files:
+        return jsonify({"error": "لم يُرفع ملف"}), 400
+    file = request.files.get("file") or request.files.get("media")
+    if not file or not file.filename:
+        return jsonify({"error": "لم يُرفع ملف"}), 400
+    ct = (file.content_type or "").split(";")[0].strip().lower()
+    if ct not in UPLOAD_ALLOWED:
+        return jsonify({"error": "نوع الملف غير مدعوم. استخدم صورة (jpg, png, gif, webp) أو فيديو (mp4)."}), 400
+    import uuid
+    import os
+    from flask import current_app
+    ext = os.path.splitext(file.filename)[1] or (".mp4" if "video" in ct else ".jpg")
+    if ext.lower() not in (".jpg", ".jpeg", ".png", ".gif", ".webp", ".mp4", ".mov"):
+        ext = ".jpg" if "image" in ct else ".mp4"
+    name = f"{uuid.uuid4().hex}{ext}"
+    upload_dir = os.path.join(current_app.root_path, "static", "autoposter", "uploads")
+    os.makedirs(upload_dir, exist_ok=True)
+    path = os.path.join(upload_dir, name)
+    try:
+        file.save(path)
+        size_mb = os.path.getsize(path) / (1024 * 1024)
+        if size_mb > UPLOAD_MAX_MB:
+            os.remove(path)
+            return jsonify({"error": f"حجم الملف أكبر من {UPLOAD_MAX_MB} ميجا"}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    url = f"{request.script_root or ''}/static/autoposter/uploads/{name}"
+    if request.url_root:
+        from urllib.parse import urljoin
+        url = urljoin(request.url_root, url.lstrip("/"))
+    return jsonify({"url": url, "type": "video" if "video" in ct else "image"})
+
+
+# --- API: نشر فوري أو مجدول (يدعم صورة/فيديو) ---
 @autoposter_bp.route("/api/posts", methods=["POST"])
 @require_autoposter_login
 def api_posts_create():
     data = request.get_json() or {}
     text = (data.get("text") or data.get("content") or "").strip()
     page_ids = data.get("page_ids") or []
-    if not text:
-        return jsonify({"error": "الرجاء إدخال محتوى المنشور"}), 400
+    image_url = (data.get("image_url") or "").strip() or None
+    video_url = (data.get("video_url") or "").strip() or None
+    scheduled_at = data.get("scheduled_at")
+    if not text and not image_url and not video_url:
+        return jsonify({"error": "الرجاء إدخال محتوى أو رفع صورة/فيديو"}), 400
     if not page_ids:
         return jsonify({"error": "اختر صفحة واحدة على الأقل"}), 400
 
@@ -192,19 +244,43 @@ def api_posts_create():
     if not pages:
         return jsonify({"error": "لم يتم العثور على الصفحات المحددة"}), 400
 
+    content = text or ""
+
+    if scheduled_at:
+        try:
+            at = datetime.fromisoformat(scheduled_at.replace("Z", "+00:00"))
+        except Exception:
+            return jsonify({"error": "صيغة التاريخ غير صحيحة"}), 400
+        for page in pages:
+            post = AutoposterPost(
+                page_id=page.page_id,
+                page_name=page.name,
+                content=content,
+                image_url=image_url,
+                video_url=video_url,
+                status="scheduled",
+                scheduled_at=at,
+            )
+            db.session.add(post)
+        db.session.commit()
+        _add_notification("تم جدولة المنشور", f"سيُنشر في {at}")
+        return jsonify({"success": True, "scheduled_at": scheduled_at})
+
     published = []
     errors = []
     for page in pages:
         post = AutoposterPost(
             page_id=page.page_id,
             page_name=page.name,
-            content=text,
+            content=content,
+            image_url=image_url,
+            video_url=video_url,
             status="publishing",
         )
         db.session.add(post)
         db.session.commit()
         try:
-            result = publish_post(page.access_token, text)
+            result = publish_post(page.access_token, content, photo_url=image_url, video_url=video_url)
             post.status = "published"
             post.published_at = datetime.utcnow()
             post.facebook_post_id = result.get("id") or result.get("post_id")
@@ -237,8 +313,12 @@ def api_scheduled_create():
     text = (data.get("text") or data.get("content") or "").strip()
     page_ids = data.get("page_ids") or []
     scheduled_at = data.get("scheduled_at")
-    if not text or not page_ids or not scheduled_at:
-        return jsonify({"error": "محتوى، صفحات، ووقت الجدولة مطلوبة"}), 400
+    image_url = (data.get("image_url") or "").strip() or None
+    video_url = (data.get("video_url") or "").strip() or None
+    if not text and not image_url and not video_url:
+        return jsonify({"error": "محتوى أو صورة/فيديو مطلوب"}), 400
+    if not page_ids or not scheduled_at:
+        return jsonify({"error": "صفحات ووقت الجدولة مطلوبة"}), 400
     try:
         at = datetime.fromisoformat(scheduled_at.replace("Z", "+00:00"))
     except Exception:
@@ -252,7 +332,9 @@ def api_scheduled_create():
         post = AutoposterPost(
             page_id=page.page_id,
             page_name=page.name,
-            content=text,
+            content=text or "",
+            image_url=image_url,
+            video_url=video_url,
             status="scheduled",
             scheduled_at=at,
         )
@@ -376,7 +458,12 @@ def run_scheduled_posts_for_all_tenants(app):
                             post.error_message = "صفحة غير متصلة أو انتهى التوكن"
                             db.session.commit()
                             continue
-                        result = publish_post(page.access_token, post.content)
+                        result = publish_post(
+                            page.access_token,
+                            post.content,
+                            photo_url=getattr(post, "image_url", None),
+                            video_url=getattr(post, "video_url", None),
+                        )
                         post.status = "published"
                         post.published_at = datetime.utcnow()
                         post.facebook_post_id = result.get("id") or result.get("post_id")

@@ -87,14 +87,19 @@ def get_pages_with_tokens(user_access_token):
     return r.json().get("data", [])
 
 
-def publish_post(page_access_token, message, photo_url=None):
-    if photo_url:
-        url = "https://graph.facebook.com/v21.0/me/photos"
+def publish_post(page_access_token, message, photo_url=None, video_url=None):
+    """ينشر منشوراً (نص فقط، أو مع صورة، أو مع فيديو). الفيديو له أولوية على الصورة إن وُجد الاثنان."""
+    version = "v21.0"
+    if video_url:
+        url = f"https://graph.facebook.com/{version}/me/videos"
+        payload = {"access_token": page_access_token, "file_url": video_url, "description": message or ""}
+    elif photo_url:
+        url = f"https://graph.facebook.com/{version}/me/photos"
         payload = {"access_token": page_access_token, "url": photo_url, "message": message or ""}
     else:
-        url = "https://graph.facebook.com/v21.0/me/feed"
+        url = f"https://graph.facebook.com/{version}/me/feed"
         payload = {"access_token": page_access_token, "message": message or ""}
-    r = requests.post(url, data=payload, timeout=30)
+    r = requests.post(url, data=payload, timeout=60 if video_url else 30)
     if r.status_code != 200:
         err = r.json() if r.text else {}
         raise Exception(err.get("error", {}).get("message", r.text))

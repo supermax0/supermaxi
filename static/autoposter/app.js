@@ -375,33 +375,44 @@
 
   if (browseMedia) browseMedia.addEventListener('click', () => mediaInput && mediaInput.click());
 
+  let uploadedMedia = { url: null, type: null };
+
   if (mediaInput) {
     mediaInput.addEventListener('change', (e) => handleFiles(e.target.files));
   }
 
-  function handleFiles(files) {
+  async function handleFiles(files) {
     if (!files || !files.length || !mediaPreview) return;
-    Array.from(files).forEach(file => {
-      const isVideo = file.type.startsWith('video/');
-      const url = URL.createObjectURL(file);
-      const wrap = document.createElement('div');
-      wrap.className = 'media-preview-item';
-      const media = isVideo
-        ? Object.assign(document.createElement('video'), { src: url, controls: true, muted: true })
-        : Object.assign(document.createElement('img'), { src: url });
-      const remove = document.createElement('button');
-      remove.type = 'button';
-      remove.className = 'remove-media';
-      remove.textContent = '×';
-      remove.addEventListener('click', () => {
-        wrap.remove();
-        URL.revokeObjectURL(url);
-        updatePreview();
-      });
-      wrap.appendChild(media);
-      wrap.appendChild(remove);
-      mediaPreview.appendChild(wrap);
+    const file = files[0];
+    const isVideo = file.type.startsWith('video/');
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await apiFetch('/api/upload', { method: 'POST', body: fd });
+    if (!res || !res.ok) {
+      const err = await res?.json().catch(() => ({}));
+      toast(err?.error || 'فشل رفع الملف', 'error');
+      return;
+    }
+    const data = await res.json();
+    uploadedMedia = { url: data.url, type: data.type || (isVideo ? 'video' : 'image') };
+    mediaPreview.innerHTML = '';
+    const wrap = document.createElement('div');
+    wrap.className = 'media-preview-item';
+    const media = data.type === 'video'
+      ? Object.assign(document.createElement('video'), { src: data.url, controls: true, muted: true, style: 'max-width:100%;max-height:160px' })
+      : Object.assign(document.createElement('img'), { src: data.url, style: 'max-width:100%;max-height:160px' });
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'remove-media';
+    remove.textContent = '×';
+    remove.addEventListener('click', () => {
+      wrap.remove();
+      uploadedMedia = { url: null, type: null };
+      updatePreview();
     });
+    wrap.appendChild(media);
+    wrap.appendChild(remove);
+    mediaPreview.appendChild(wrap);
     updatePreview();
   }
 
@@ -451,25 +462,38 @@
     });
   }
 
+  function getPostPayload(scheduledAt) {
+    const text = (postEditor && postEditor.value) || '';
+    const selected = document.querySelectorAll('.page-chip.selected[data-id]');
+    const pageIds = Array.from(selected).map(c => c.getAttribute('data-id'));
+    const payload = {
+      text,
+      content: text,
+      page_ids: pageIds,
+      image_url: uploadedMedia.type === 'image' ? uploadedMedia.url : undefined,
+      video_url: uploadedMedia.type === 'video' ? uploadedMedia.url : undefined,
+    };
+    if (scheduledAt) payload.scheduled_at = scheduledAt;
+    return { payload, pageIds, text };
+  }
+
   if (publishBtn) {
     publishBtn.addEventListener('click', async () => {
-      const text = (postEditor && postEditor.value) || '';
-      const selected = document.querySelectorAll('.page-chip.selected[data-id]');
-      if (!text.trim()) {
-        toast('الرجاء إدخال محتوى المنشور', 'warning');
+      const { payload, pageIds, text } = getPostPayload(null);
+      if (!text.trim() && !payload.image_url && !payload.video_url) {
+        toast('الرجاء إدخال محتوى أو رفع صورة/فيديو', 'warning');
         return;
       }
-      if (!selected.length) {
+      if (!pageIds.length) {
         toast('اختر صفحة واحدة على الأقل', 'warning');
         return;
       }
-      const pageIds = Array.from(selected).map(c => c.getAttribute('data-id'));
       publishBtn.classList.add('loading');
       publishBtn.disabled = true;
       const res = await apiFetch('/api/posts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, page_ids: pageIds }),
+        body: JSON.stringify(payload),
       });
       publishBtn.classList.remove('loading');
       publishBtn.disabled = false;
@@ -480,11 +504,58 @@
         if (postEditor) postEditor.value = '';
         if (charCount) charCount.textContent = '0';
         if (mediaPreview) mediaPreview.innerHTML = '';
+        uploadedMedia = { url: null, type: null };
         updatePreview();
         loadStats();
         loadNotifications();
+        loadScheduled();
       } else {
         toast(data.error || 'فشل النشر', 'error');
+      }
+    });
+  }
+
+  const scheduleBtn = document.getElementById('scheduleBtn');
+  if (scheduleBtn) {
+    scheduleBtn.addEventListener('click', async () => {
+      const scheduleAtEl = document.getElementById('scheduleAt');
+      const scheduledAt = scheduleAtEl ? scheduleAtEl.value : '';
+      const { payload, pageIds, text } = getPostPayload(scheduledAt || null);
+      if (!text.trim() && !payload.image_url && !payload.video_url) {
+        toast('الرجاء إدخال محتوى أو رفع صورة/فيديو', 'warning');
+        return;
+      }
+      if (!pageIds.length) {
+        toast('اختر صفحة واحدة على الأقل', 'warning');
+        return;
+      }
+      if (!scheduledAt) {
+        toast('اختر تاريخ ووقت الجدولة', 'warning');
+        return;
+      }
+      scheduleBtn.classList.add('loading');
+      scheduleBtn.disabled = true;
+      const res = await apiFetch('/api/posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...payload, scheduled_at: scheduledAt }),
+      });
+      scheduleBtn.classList.remove('loading');
+      scheduleBtn.disabled = false;
+      if (!res) return;
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        toast('تم جدولة المنشور بنجاح', 'success');
+        if (postEditor) postEditor.value = '';
+        if (charCount) charCount.textContent = '0';
+        if (mediaPreview) mediaPreview.innerHTML = '';
+        uploadedMedia = { url: null, type: null };
+        if (scheduleAtEl) scheduleAtEl.value = '';
+        updatePreview();
+        loadScheduled();
+        loadStats();
+      } else {
+        toast(data.error || 'فشل الجدولة', 'error');
       }
     });
   }
