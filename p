@@ -1,141 +1,70 @@
-Extend the AI Agent Workflow Builder with **Knowledge Base nodes** that allow the system to store and retrieve product and pricing information.
+You are a senior DevOps engineer.
 
-The goal is to allow the AI Agent to answer questions using real business data such as products, prices, and specifications.
+Create a FULL production deployment script for a Flask SaaS project.
 
----
+Project details:
 
-NEW NODE TYPES
+Project path:
+/var/www/finora/supermaxi
 
-knowledge_upload
-knowledge_search
+Stack:
+Flask
+Gunicorn
+Python venv
+Systemd service
+Git
 
----
+The script must be named:
 
-1. KNOWLEDGE UPLOAD NODE
+deploy.sh
 
-type: "knowledge_upload"
+Goals of the script:
 
-Purpose:
-Upload product information, price lists, or specifications into the system knowledge base.
+1. Pull latest code from Git
+2. Activate virtual environment
+3. Install new dependencies if requirements.txt changed
+4. Run database migrations if they exist
+5. Safely restart the application
+6. Ensure port conflicts are cleaned
+7. Log deployment output
 
-Frontend settings:
+Requirements:
 
-Upload type:
+The script must:
 
-file
-manual_entry
+- Stop existing gunicorn processes safely
+- Kill anything using port 8000
+- Pull latest git code
+- Activate the venv
+- Install dependencies
+- Restart systemd service "supermaxi"
+- If service not running, start gunicorn manually
 
-Fields:
+Use this configuration:
 
-Product name
-Price
-Description
-Specifications
+APP_DIR=/var/www/finora/supermaxi
+VENV=$APP_DIR/venv
+SERVICE=supermaxi
+PORT=8000
 
-Allow uploading:
+Add colored console output for steps.
 
-CSV
-Excel
-JSON
+Example steps:
 
-Example JSON node:
+[1] Updating repository
+[2] Installing dependencies
+[3] Restarting service
+[4] Deployment completed
 
-{
-"type": "knowledge_upload",
-"data": {
-"source": "file",
-"file_type": "csv"
-}
-}
+Also create a log file:
 
-Backend behavior:
+/var/log/supermaxi_deploy.log
 
-Store product data in database table:
+The script must be safe to run multiple times.
 
-products
+Add error handling.
 
-Structure:
+After writing the script, also output the commands needed to:
 
-id
-name
-price
-description
-specifications
-
----
-
-2. KNOWLEDGE SEARCH NODE
-
-type: "knowledge_search"
-
-Purpose:
-Search products and prices using user questions.
-
-Frontend settings:
-
-Search source:
-
-products
-pricing
-specifications
-
-Query variable:
-
-{{message_text}}
-
-Example JSON:
-
-{
-"type": "knowledge_search",
-"data": {
-"query": "{{message_text}}"
-}
-}
-
-Backend function:
-
-def run_knowledge_search(node, context):
-
-```
-query = context.get("message_text")
-
-results = search_products(query)
-
-context["knowledge_results"] = results
-```
-
----
-
-3. AI AGENT INTEGRATION
-
-The AI Agent node must receive product data from the context.
-
-Example prompt:
-
-Use the following product information to answer the user:
-
-{{knowledge_results}}
-
-User question:
-
-{{message_text}}
-
----
-
-WORKFLOW EXAMPLE
-
-WhatsApp automation:
-
-whatsapp_listener
-↓
-knowledge_search
-↓
-AI Agent
-↓
-whatsapp_send
-
----
-
-RESULT
-
-The AI agent will be able to answer customer questions using real data about products, prices, and specifications stored in the system.
+- make the script executable
+- run the script
