@@ -174,6 +174,7 @@ def api_agents_create():
     return jsonify({"success": True, "agent": agent.to_dict()})
 
 
+@autoposter_bp.route("/workflows", methods=["GET"])
 @autoposter_bp.route("/api/workflows", methods=["GET"])
 @require_autoposter_login
 def api_workflows_list():

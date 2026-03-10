@@ -1,102 +1,77 @@
-You are a senior Python + Flask + React debugging engineer.
+You are a senior Flask + React engineer working on a SaaS project called **Finora**.
 
-I have a Flask SaaS project called **Finora** that contains an AI Agent Workflow Builder (React + Vite frontend) served inside Flask.
+The system contains an **AI Agent Workflow Builder** (React frontend built with Vite) that loads workflow data from a Flask API.
 
-Current problem:
-The frontend is requesting the wrong API path:
+Current issue:
 
-/autoposter/api/api/api/workflows
+The frontend is requesting:
 
-This causes:
+GET /api/workflows?workflow_id=1
+
+But Flask currently only exposes:
+
+/workflows
+
+So the browser receives:
 
 404 NOT FOUND
 
-The correct endpoint should be:
-
-/autoposter/api/workflows
+Your task is to fix the backend so **both endpoints work** without breaking existing code.
 
 Project structure:
 
 Flask backend
-React frontend built with Vite
-
-Relevant folders:
-
 /var/www/finora/supermaxi/routes/autoposter.py
-/var/www/finora/supermaxi/static/ai_agent_frontend/src/modules/App.tsx
 
-Current issues:
-
-1. React fetch path duplicates `/api`
-2. Flask blueprint may also contain `/api`
-3. Combined result becomes `/api/api/api`
-4. Workflow API therefore returns 404
-
-Your task is to fix the architecture cleanly.
+React frontend
+/static/ai_agent_frontend/src/modules/App.tsx
 
 Steps:
 
-1. Fix the Flask Blueprint inside `routes/autoposter.py`
+1. Open `routes/autoposter.py`.
 
-Blueprint must be:
+2. Locate the existing route that serves workflows:
 
-autoposter_bp = Blueprint(
-"autoposter",
-**name**,
-url_prefix="/autoposter"
-)
+@autoposter_bp.route("/workflows")
 
-NOT `/autoposter/api`.
+3. Modify it so it supports **both URLs**:
 
-2. Add a proper API route inside the same blueprint:
+@autoposter_bp.route("/workflows")
+@autoposter_bp.route("/api/workflows")
 
-@autoposter_bp.route("/api/workflows", methods=["GET"])
-def api_workflows():
+4. The function must read the query parameter:
 
-```
 workflow_id = request.args.get("workflow_id")
 
-return {
-    "nodes": [],
-    "edges": []
+5. Return JSON with:
+
+{
+"nodes": [],
+"edges": []
 }
-```
 
-3. Fix the React fetch path inside:
+Example structure:
 
-static/ai_agent_frontend/src/modules/App.tsx
+return {
+"nodes": [
+{"id":"1","type":"start","position":{"x":250,"y":50}}
+],
+"edges":[]
+}
 
-Find any of these:
+6. Do NOT change any unrelated routes.
 
-fetch("workflows")
-fetch("/workflows")
-fetch("/api/api/workflows")
-
-Replace them with:
-
-fetch(`/autoposter/api/workflows?workflow_id=${workflowId}`)
-
-4. Ensure there is NO duplicated `/api`.
-
-5. Do not modify unrelated code.
-
-6. After fixing, output the exact commands needed to rebuild the frontend:
-
-cd static/ai_agent_frontend
-npm install
-npm run build
-
-And restart gunicorn:
-
-pkill -9 -f gunicorn
-venv/bin/gunicorn -w 3 -b 127.0.0.1:8000 app:app
+7. Do NOT modify React code.
 
 Goal:
 
-Final API call from browser must be:
+Both of these must work:
 
-/autoposter/api/workflows?workflow_id=1
+/workflows?workflow_id=1
+/api/workflows?workflow_id=1
 
-and return HTTP 200 with JSON.
+Return HTTP 200 with JSON.
 
-Make minimal clean changes.
+Also ensure the route uses `jsonify()` if Flask requires it.
+
+Keep the change minimal and safe.
