@@ -1,126 +1,73 @@
-You are a senior full-stack engineer specialized in Flask + React + Vite deployments.
+You are working inside a Flask project.
 
-Your task is to diagnose and fix why the AI Agent Workflow Builder works in development but appears broken in production.
+Problem:
+The React Workflow Builder calls:
 
-Project architecture:
+/workflows?workflow_id=1
 
-Backend:
-Flask
-Gunicorn
-systemd service
-
-Server path:
-/var/www/finora/supermaxi
-
-Frontend:
-React + Vite
-
-Frontend source directory:
-static/ai_agent_frontend/
-
-Built frontend output:
-static/ai_agent_frontend/dist/
-
-Current build assets:
-static/ai_agent_frontend/dist/assets/ai-agent.js
-static/ai_agent_frontend/dist/assets/index.css
-
-Problem description:
-
-In development the workflow builder renders nodes correctly.
-
-In production the page loads but the workflow canvas shows only the Start node and the UI looks incomplete.
-
-Browser DevTools Network tab shows that only styles.css loads and the main Vite bundle ai-agent.js is not loaded.
+but the server redirects to /login instead of returning JSON.
 
 Goal:
+Create a proper API endpoint that returns workflow nodes and edges in JSON so the ReactFlow UI can render them.
 
-Ensure the Flask template correctly loads the Vite build assets so the React workflow builder runs in production exactly as in development.
+Steps:
 
-Steps to perform:
+1. Search the project for any existing route related to "workflows".
+2. If none returns JSON, add a new Flask route.
 
-1. Locate the Flask template that renders the AI Agent page:
-   likely templates/ai_agent.html or templates/autoposter/ai_agent.html
+Add this route to the main Flask app (app.py) or an appropriate routes file:
 
-2. Ensure the template loads the built assets using Flask static routing.
+```python
+from flask import jsonify, request
+from flask_login import current_user
 
-Add the following to the template:
+@app.route("/workflows")
+def workflows_api():
+    if not current_user.is_authenticated:
+        return jsonify({"error": "not_authenticated"}), 401
 
-<link rel="stylesheet" href="{{ url_for('static', filename='ai_agent_frontend/dist/assets/index.css') }}">
+    workflow_id = request.args.get("workflow_id")
 
-<div id="root"></div>
+    return jsonify({
+        "nodes": [
+            {"id":"1","type":"start","position":{"x":250,"y":50}},
+            {"id":"2","type":"ai","position":{"x":250,"y":200}},
+            {"id":"3","type":"image","position":{"x":250,"y":350}},
+            {"id":"4","type":"caption","position":{"x":250,"y":500}},
+            {"id":"5","type":"publisher","position":{"x":250,"y":650}},
+            {"id":"6","type":"scheduler","position":{"x":250,"y":800}},
+            {"id":"7","type":"comment-listener","position":{"x":250,"y":950}},
+            {"id":"8","type":"auto-reply","position":{"x":250,"y":1100}},
+            {"id":"9","type":"end","position":{"x":250,"y":1250}}
+        ],
+        "edges":[
+            {"id":"e1","source":"1","target":"2"},
+            {"id":"e2","source":"2","target":"3"},
+            {"id":"e3","source":"3","target":"4"},
+            {"id":"e4","source":"4","target":"5"},
+            {"id":"e5","source":"5","target":"6"},
+            {"id":"e6","source":"6","target":"7"},
+            {"id":"e7","source":"7","target":"8"},
+            {"id":"e8","source":"8","target":"9"}
+        ]
+    })
+```
 
-<script type="module"
-src="{{ url_for('static', filename='ai_agent_frontend/dist/assets/ai-agent.js') }}">
-</script>
+3. Ensure the endpoint returns JSON and never redirects to /login.
+4. Save the file.
+5. Restart Gunicorn:
 
-3. Ensure the React app mounts into the correct element:
-
-document.getElementById("root")
-
-4. Verify that the static directory structure is correct:
-
-static/
-ai_agent_frontend/
-dist/
-assets/
-ai-agent.js
-index.css
-
-5. Add debugging logs to confirm that the React workflow initializes.
-
-6. Ensure the autoposter route returns the correct template.
-
-Example Flask route:
-
-@app.route("/autoposter/ai-agent")
-def ai_agent():
-return render_template("ai_agent.html")
-
-7. Ensure Gunicorn serves static files correctly through Flask.
-
-8. Verify that visiting:
-
-/static/ai_agent_frontend/dist/assets/ai-agent.js
-
-returns HTTP 200.
-
-9. If the React bundle is missing, create a build step:
-
-cd static/ai_agent_frontend
-npm install
-npm run build
-
-10. Ensure the dist folder is committed to Git and deployed to the server.
-
-11. Ensure the workflow builder initializes automatically when the page loads.
+```bash
+pkill -f gunicorn
+venv/bin/gunicorn -w 3 -b 127.0.0.1:8000 app:app &
+```
 
 Expected result:
 
-Opening
+Calling
 
-/autoposter/ai-agent
+curl http://127.0.0.1:8000/workflows?workflow_id=1
 
-should load:
+should return JSON with nodes and edges instead of redirecting to /login.
 
-index.css
-ai-agent.js
-
-and the full AI Agent Workflow Builder UI should render with nodes such as:
-
-Start
-AI Agent
-Image Generator
-Caption Generator
-Publisher
-Scheduler
-Comment Listener
-Auto Reply
-End
-
-At the end provide:
-
-• Files modified
-• Exact template fix
-• Any missing static assets
-• Deployment steps
+This will allow the React Workflow Builder to display all nodes.
