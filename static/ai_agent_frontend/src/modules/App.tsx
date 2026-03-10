@@ -114,7 +114,7 @@ export const App: React.FC = () => {
         const params = new URLSearchParams(window.location.search);
         const workflowId = params.get("workflow_id");
         if (workflowId) {
-          const res = await fetch(`${apiBase}/workflows/${workflowId}`);
+          const res = await fetch(`/api/workflows?workflow_id=${workflowId}`);
           if (!res.ok) return;
           const data = await res.json();
           const wf = data.workflow as {
