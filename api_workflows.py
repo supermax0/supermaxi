@@ -4,7 +4,7 @@ from flask import Blueprint, jsonify, request
 from flask_login import current_user
 
 
-workflow_api = Blueprint("workflow_api", __name__)
+workflow_api = Blueprint("workflow_api", __name__, url_prefix="/autoposter/api")
 
 
 @workflow_api.route("/workflows")
