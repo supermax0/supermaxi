@@ -177,6 +177,12 @@ def api_agents_create():
 @autoposter_bp.route("/api/workflows", methods=["GET"])
 @require_autoposter_login
 def api_workflows_list():
+    workflow_id = request.args.get("workflow_id", type=int)
+    if workflow_id is not None:
+        w = AgentWorkflow.query.get(workflow_id)
+        if not w:
+            return jsonify({"error": "workflow not found"}), 404
+        return jsonify({"workflow": w.to_dict()})
     agent_id = request.args.get("agent_id", type=int)
     q = AgentWorkflow.query
     if agent_id:

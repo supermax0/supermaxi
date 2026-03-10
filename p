@@ -1,73 +1,102 @@
-You are working inside a Flask project.
+You are a senior Python + Flask + React debugging engineer.
 
-Problem:
-The React Workflow Builder calls:
+I have a Flask SaaS project called **Finora** that contains an AI Agent Workflow Builder (React + Vite frontend) served inside Flask.
 
-/workflows?workflow_id=1
+Current problem:
+The frontend is requesting the wrong API path:
 
-but the server redirects to /login instead of returning JSON.
+/autoposter/api/api/api/workflows
 
-Goal:
-Create a proper API endpoint that returns workflow nodes and edges in JSON so the ReactFlow UI can render them.
+This causes:
+
+404 NOT FOUND
+
+The correct endpoint should be:
+
+/autoposter/api/workflows
+
+Project structure:
+
+Flask backend
+React frontend built with Vite
+
+Relevant folders:
+
+/var/www/finora/supermaxi/routes/autoposter.py
+/var/www/finora/supermaxi/static/ai_agent_frontend/src/modules/App.tsx
+
+Current issues:
+
+1. React fetch path duplicates `/api`
+2. Flask blueprint may also contain `/api`
+3. Combined result becomes `/api/api/api`
+4. Workflow API therefore returns 404
+
+Your task is to fix the architecture cleanly.
 
 Steps:
 
-1. Search the project for any existing route related to "workflows".
-2. If none returns JSON, add a new Flask route.
+1. Fix the Flask Blueprint inside `routes/autoposter.py`
 
-Add this route to the main Flask app (app.py) or an appropriate routes file:
+Blueprint must be:
 
-```python
-from flask import jsonify, request
-from flask_login import current_user
+autoposter_bp = Blueprint(
+"autoposter",
+**name**,
+url_prefix="/autoposter"
+)
 
-@app.route("/workflows")
-def workflows_api():
-    if not current_user.is_authenticated:
-        return jsonify({"error": "not_authenticated"}), 401
+NOT `/autoposter/api`.
 
-    workflow_id = request.args.get("workflow_id")
+2. Add a proper API route inside the same blueprint:
 
-    return jsonify({
-        "nodes": [
-            {"id":"1","type":"start","position":{"x":250,"y":50}},
-            {"id":"2","type":"ai","position":{"x":250,"y":200}},
-            {"id":"3","type":"image","position":{"x":250,"y":350}},
-            {"id":"4","type":"caption","position":{"x":250,"y":500}},
-            {"id":"5","type":"publisher","position":{"x":250,"y":650}},
-            {"id":"6","type":"scheduler","position":{"x":250,"y":800}},
-            {"id":"7","type":"comment-listener","position":{"x":250,"y":950}},
-            {"id":"8","type":"auto-reply","position":{"x":250,"y":1100}},
-            {"id":"9","type":"end","position":{"x":250,"y":1250}}
-        ],
-        "edges":[
-            {"id":"e1","source":"1","target":"2"},
-            {"id":"e2","source":"2","target":"3"},
-            {"id":"e3","source":"3","target":"4"},
-            {"id":"e4","source":"4","target":"5"},
-            {"id":"e5","source":"5","target":"6"},
-            {"id":"e6","source":"6","target":"7"},
-            {"id":"e7","source":"7","target":"8"},
-            {"id":"e8","source":"8","target":"9"}
-        ]
-    })
+@autoposter_bp.route("/api/workflows", methods=["GET"])
+def api_workflows():
+
+```
+workflow_id = request.args.get("workflow_id")
+
+return {
+    "nodes": [],
+    "edges": []
+}
 ```
 
-3. Ensure the endpoint returns JSON and never redirects to /login.
-4. Save the file.
-5. Restart Gunicorn:
+3. Fix the React fetch path inside:
 
-```bash
-pkill -f gunicorn
-venv/bin/gunicorn -w 3 -b 127.0.0.1:8000 app:app &
-```
+static/ai_agent_frontend/src/modules/App.tsx
 
-Expected result:
+Find any of these:
 
-Calling
+fetch("workflows")
+fetch("/workflows")
+fetch("/api/api/workflows")
 
-curl http://127.0.0.1:8000/workflows?workflow_id=1
+Replace them with:
 
-should return JSON with nodes and edges instead of redirecting to /login.
+fetch(`/autoposter/api/workflows?workflow_id=${workflowId}`)
 
-This will allow the React Workflow Builder to display all nodes.
+4. Ensure there is NO duplicated `/api`.
+
+5. Do not modify unrelated code.
+
+6. After fixing, output the exact commands needed to rebuild the frontend:
+
+cd static/ai_agent_frontend
+npm install
+npm run build
+
+And restart gunicorn:
+
+pkill -9 -f gunicorn
+venv/bin/gunicorn -w 3 -b 127.0.0.1:8000 app:app
+
+Goal:
+
+Final API call from browser must be:
+
+/autoposter/api/workflows?workflow_id=1
+
+and return HTTP 200 with JSON.
+
+Make minimal clean changes.

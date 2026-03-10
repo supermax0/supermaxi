@@ -97,6 +97,8 @@ export const App: React.FC = () => {
     () => ((window as any).AI_AGENT_API_BASE as string) || "/autoposter/api",
     [],
   );
+  /** Fixed base for workflow API to avoid duplicated /api in path (e.g. /autoposter/api/api/workflows). */
+  const workflowsApiBase = "/autoposter/api";
 
   const loginUrl = useMemo(
     () => ((window as any).AUTOPOSTER_LOGIN_URL as string) || "/login",
@@ -114,7 +116,7 @@ export const App: React.FC = () => {
         const params = new URLSearchParams(window.location.search);
         const workflowId = params.get("workflow_id");
         if (workflowId) {
-          const res = await fetch(`/api/workflows?workflow_id=${workflowId}`);
+          const res = await fetch(`${workflowsApiBase}/workflows?workflow_id=${workflowId}`);
           if (!res.ok) return;
           const data = await res.json();
           const wf = data.workflow as {
@@ -151,7 +153,7 @@ export const App: React.FC = () => {
         }
         // mode === "new" أو بدون mode: نترك الـ initialNodes كما هي
 
-        const res = await fetch(`${apiBase}/workflows`);
+        const res = await fetch(`${workflowsApiBase}/workflows`);
         if (!res.ok) return;
         const data = await res.json();
         const workflows = (data.workflows || []) as Array<{
@@ -176,7 +178,7 @@ export const App: React.FC = () => {
           meta: {
             name: wf.name,
             description: wf.description || "",
-            isActive: wf.is_active !== False,
+            isActive: wf.is_active !== false,
           },
         });
       } catch {
@@ -323,7 +325,7 @@ export const App: React.FC = () => {
       };
 
       if (currentMeta.id) {
-        const res = await fetch(`${apiBase}/workflows/${currentMeta.id}`, {
+        const res = await fetch(`${workflowsApiBase}/workflows/${currentMeta.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -333,7 +335,7 @@ export const App: React.FC = () => {
         setMeta({ id: data.workflow?.id, agentId });
         showToast("success", "تم حفظ الوورك فلو بنجاح.");
       } else {
-        const res = await fetch(`${apiBase}/workflows`, {
+        const res = await fetch(`${workflowsApiBase}/workflows`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -385,7 +387,7 @@ export const App: React.FC = () => {
     }
     setIsRunning(true);
     try {
-      const res = await fetch(`${apiBase}/workflows/${currentMeta.id}/run`, {
+      const res = await fetch(`${workflowsApiBase}/workflows/${currentMeta.id}/run`, {
         method: "POST",
       });
       if (!res.ok) throw new Error("failed");
