@@ -57,6 +57,7 @@ from routes.delivery_agent import delivery_agent_bp
 from routes.pages import pages_bp
 from routes.invoice_store import invoice_store_bp
 from routes.autoposter import autoposter_bp
+from api_workflows import workflow_api
 
     
 
@@ -862,6 +863,7 @@ app.register_blueprint(admin_bp)
 
 app.register_blueprint(invoice_store_bp)
 app.register_blueprint(autoposter_bp)
+app.register_blueprint(workflow_api)
 
 # =====================================
 # Simple Workflow API for React builder
