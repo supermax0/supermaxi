@@ -127,14 +127,13 @@ export const App: React.FC = () => {
             is_active?: boolean;
             graph?: { nodes?: Node[]; edges?: Edge[] };
           };
-          if (!wf || !wf.graph) return;
+          if (!wf) return;
           const graph = wf.graph || {};
           const nodes = (graph.nodes || []) as Node[];
           const edges = (graph.edges || []) as Edge[];
-          if (!nodes.length) return;
           loadFromGraph({
-            nodes,
-            edges,
+            nodes: nodes.length ? nodes : [{ id: "start-1", type: "start", position: { x: 0, y: 0 }, data: { label: "Start" } }],
+            edges: edges || [],
             id: wf.id,
             agentId: wf.agent_id,
             meta: {
