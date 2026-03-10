@@ -1,79 +1,294 @@
 import React from "react";
-import type { NodeProps } from "reactflow";
+import { Handle, Position, type NodeProps } from "reactflow";
 
 type BasicNodeData = {
   label?: string;
   subtitle?: string;
+  task?: string;
+  prompt?: string;
 };
 
 const baseNodeClasses =
-  "rounded-lg border px-3 py-2 text-xs shadow-sm bg-slate-900/80 border-slate-700";
+  "rounded-[12px] border-2 p-3 text-xs bg-[#0f172a] relative min-w-[160px] transition-all duration-150";
+const baseNodeShadow = { boxShadow: "0 4px 20px rgba(0,0,0,0.25)" };
 
-const titleClasses = "font-semibold text-slate-50";
-const subtitleClasses = "mt-1 text-[10px] text-slate-400";
+const titleClasses = "font-semibold text-[#e5e7eb]";
+const subtitleClasses = "mt-1.5 text-[10px] text-slate-400";
 
-const StartNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => (
-  <div className={`${baseNodeClasses} border-emerald-500/70`}>
-    <div className={titleClasses}>⏵ {data.label || "Start"}</div>
-    {data.subtitle && <div className={subtitleClasses}>{data.subtitle}</div>}
-  </div>
-);
+const handleClass =
+  "!w-3 !h-3 !border-2 !border-[#334155] !bg-[#111827] hover:!border-[#38bdf8] hover:!bg-[#1e293b]";
 
-const AINode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => (
-  <div className={`${baseNodeClasses} border-violet-500/70`}>
-    <div className={titleClasses}>🤖 {data.label || "AI Agent"}</div>
-    {data.subtitle && <div className={subtitleClasses}>{data.subtitle}</div>}
-  </div>
-);
+const StartNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
+  const topic = (data as any).topic as string | undefined;
+  const subtitle =
+    data.subtitle || (topic && topic.trim() ? `الموضوع: ${topic.trim().length > 20 ? `${topic.trim().slice(0, 20)}…` : topic.trim()}` : "بداية الوورك فلو");
 
-const ImageNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => (
-  <div className={`${baseNodeClasses} border-sky-500/70`}>
-    <div className={titleClasses}>🖼 {data.label || "Image Generator"}</div>
-    {data.subtitle && <div className={subtitleClasses}>{data.subtitle}</div>}
-  </div>
-);
+  return (
+    <div className={`${baseNodeClasses} border-[#22c55e]`} style={baseNodeShadow}>
+      <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
+      <div className={titleClasses}>⏵ {data.label || "Start"}</div>
+      {subtitle && <div className={subtitleClasses}>{subtitle}</div>}
+    </div>
+  );
+};
 
-const CaptionNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => (
-  <div className={baseNodeClasses}>
-    <div className={titleClasses}>✏️ {data.label || "Caption"}</div>
-    {data.subtitle && <div className={subtitleClasses}>{data.subtitle}</div>}
-  </div>
-);
+const AINode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
+  const task = data.task || "generate_post";
+  const promptPreview =
+    data.prompt && data.prompt.length > 40 ? `${data.prompt.slice(0, 40)}…` : data.prompt;
 
-const PublisherNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => (
-  <div className={`${baseNodeClasses} border-emerald-400/70`}>
-    <div className={titleClasses}>📤 {data.label || "Publisher"}</div>
-    {data.subtitle && <div className={subtitleClasses}>{data.subtitle}</div>}
-  </div>
-);
+  const subtitle =
+    promptPreview ||
+    data.subtitle ||
+    (task === "reply_comment"
+      ? "AI Comment Reply"
+      : task === "write_caption"
+      ? "Generate Caption"
+      : "Generate AI content");
 
-const SchedulerNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => (
-  <div className={`${baseNodeClasses} border-cyan-400/70`}>
-    <div className={titleClasses}>⏰ {data.label || "Scheduler"}</div>
-    {data.subtitle && <div className={subtitleClasses}>{data.subtitle}</div>}
-  </div>
-);
+  return (
+    <div className={`${baseNodeClasses} border-[#8b5cf6]`} style={baseNodeShadow}>
+      <Handle type="target" position={Position.Top} id="in" className={handleClass} />
+      <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
+      <div className={titleClasses}>🤖 {data.label || "AI Agent"}</div>
+      {subtitle && <div className={subtitleClasses}>{subtitle}</div>}
+    </div>
+  );
+};
 
-const CommentListenerNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => (
-  <div className={`${baseNodeClasses} border-amber-400/70`}>
-    <div className={titleClasses}>💬 {data.label || "Comment Listener"}</div>
-    {data.subtitle && <div className={subtitleClasses}>{data.subtitle}</div>}
-  </div>
-);
+const ImageNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
+  const promptPreview =
+    data.prompt && data.prompt.length > 40 ? `${data.prompt.slice(0, 40)}…` : data.prompt;
+  const subtitle = promptPreview || data.subtitle || "Generate marketing image";
 
-const AutoReplyNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => (
-  <div className={`${baseNodeClasses} border-indigo-400/70`}>
-    <div className={titleClasses}>✨ {data.label || "Auto Reply"}</div>
-    {data.subtitle && <div className={subtitleClasses}>{data.subtitle}</div>}
-  </div>
-);
+  return (
+    <div className={`${baseNodeClasses} border-[#ec4899]`} style={baseNodeShadow}>
+      <Handle type="target" position={Position.Top} id="in" className={handleClass} />
+      <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
+      <div className={titleClasses}>🖼 {data.label || "Image Generator"}</div>
+      {subtitle && <div className={subtitleClasses}>{subtitle}</div>}
+    </div>
+  );
+};
 
-const EndNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => (
-  <div className={`${baseNodeClasses} border-rose-500/70`}>
-    <div className={titleClasses}>■ {data.label || "End"}</div>
-    {data.subtitle && <div className={subtitleClasses}>{data.subtitle}</div>}
-  </div>
-);
+const CaptionNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
+  const subtitle =
+    data.subtitle ||
+    (data as any).style ||
+    ((data as any).source === "{{topic}}"
+      ? "From topic"
+      : (data as any).source === "{{text}}"
+      ? "From text"
+      : undefined);
+
+  return (
+    <div className={`${baseNodeClasses} border-[#3b82f6]`} style={baseNodeShadow}>
+      <Handle type="target" position={Position.Top} id="in" className={handleClass} />
+      <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
+      <div className={titleClasses}>✏️ {data.label || "Caption Generator"}</div>
+      {subtitle && <div className={subtitleClasses}>{subtitle}</div>}
+    </div>
+  );
+};
+
+const PublisherNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
+  const platforms = ((data as any).platforms as string[] | undefined) || [];
+  const platformsLabel = platforms.length ? platforms.join(", ") : undefined;
+  const subtitle = platformsLabel || data.subtitle || "Select platforms & mode";
+
+  return (
+    <div className={`${baseNodeClasses} border-[#f97316]`} style={baseNodeShadow}>
+      <Handle type="target" position={Position.Top} id="in" className={handleClass} />
+      <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
+      <div className={titleClasses}>📤 {data.label || "Publisher"}</div>
+      {subtitle && <div className={subtitleClasses}>{subtitle}</div>}
+    </div>
+  );
+};
+
+const SchedulerNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
+  const scheduleType = (data as any).schedule_type || "daily";
+  const time = (data as any).time || "20:00";
+  const subtitle = data.subtitle || `${scheduleType} @ ${time}`;
+
+  return (
+    <div className={`${baseNodeClasses} border-[#06b6d4]`} style={baseNodeShadow}>
+      <Handle type="target" position={Position.Top} id="in" className={handleClass} />
+      <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
+      <div className={titleClasses}>⏰ {data.label || "Scheduler"}</div>
+      {subtitle && <div className={subtitleClasses}>{subtitle}</div>}
+    </div>
+  );
+};
+
+const CommentListenerNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
+  const platforms = ((data as any).platforms as string[] | undefined) || [];
+  const mode = (data as any).mode || "keywords_only";
+  const subtitle =
+    data.subtitle ||
+    (platforms.length ? `${platforms.join(", ")} • ${mode}` : "Select platforms & mode");
+
+  return (
+    <div className={`${baseNodeClasses} border-[#eab308]`} style={baseNodeShadow}>
+      <Handle type="target" position={Position.Top} id="in" className={handleClass} />
+      <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
+      <div className={titleClasses}>💬 {data.label || "Comment Listener"}</div>
+      {subtitle && <div className={subtitleClasses}>{subtitle}</div>}
+    </div>
+  );
+};
+
+const AutoReplyNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
+  const mode = (data as any).mode || "template";
+  const template = (data as any).template as string | undefined;
+  let subtitle = data.subtitle;
+  if (!subtitle) {
+    if (mode === "ai_generated") subtitle = "رد مُولَّد بالذكاء الاصطناعي";
+    else if (template && template.trim()) {
+      const short = template.trim().length > 28 ? `${template.trim().slice(0, 28)}…` : template.trim();
+      subtitle = short;
+    } else subtitle = "قالب ثابت";
+  }
+
+  return (
+    <div className={`${baseNodeClasses} border-[#ef4444]`} style={baseNodeShadow}>
+      <Handle type="target" position={Position.Top} id="in" className={handleClass} />
+      <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
+      <div className={titleClasses}>✨ {data.label || "Auto Reply"}</div>
+      {subtitle && <div className={subtitleClasses}>{subtitle}</div>}
+    </div>
+  );
+};
+
+const MemoryNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
+  const key = (data as any).key as string | undefined;
+  const subtitle =
+    data.subtitle ||
+    (key && key.trim()
+      ? `تخزين في المفتاح: ${key.trim().length > 18 ? `${key.trim().slice(0, 18)}…` : key.trim()}`
+      : "تخزين قيمة في الـ context");
+
+  return (
+    <div className={`${baseNodeClasses} border-[#10b981]`} style={baseNodeShadow}>
+      <Handle type="target" position={Position.Top} id="in" className={handleClass} />
+      <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
+      <div className={titleClasses}>🧺 {data.label || "Store Data"}</div>
+      {subtitle && <div className={subtitleClasses}>{subtitle}</div>}
+    </div>
+  );
+};
+
+const KnowledgeNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
+  const mode = (data as any).mode || "replace";
+  const subtitle =
+    data.subtitle ||
+    (mode === "append" ? "إضافة للمعرفة الحالية" : "استبدال قاعدة المعرفة لهذا الوكيل");
+
+  return (
+    <div className={`${baseNodeClasses} border-[#6366f1]`} style={baseNodeShadow}>
+      <Handle type="target" position={Position.Top} id="in" className={handleClass} />
+      <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
+      <div className={titleClasses}>📚 {data.label || "Knowledge / Catalog"}</div>
+      {subtitle && <div className={subtitleClasses}>{subtitle}</div>}
+    </div>
+  );
+};
+
+const EndNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
+  const note = (data as any).note as string | undefined;
+  const subtitle =
+    data.subtitle || (note && note.trim() ? (note.trim().length > 24 ? `${note.trim().slice(0, 24)}…` : note.trim()) : "حفظ السياق وإنهاء");
+
+  return (
+    <div className={`${baseNodeClasses} border-[#64748b]`} style={baseNodeShadow}>
+      <Handle type="target" position={Position.Top} id="in" className={handleClass} />
+      <div className={titleClasses}>■ {data.label || "End"}</div>
+      {subtitle && <div className={subtitleClasses}>{subtitle}</div>}
+    </div>
+  );
+};
+
+const WhatsAppListenerNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
+  const phoneId = (data as any).phone_id as string | undefined;
+  const enabled = (data as any).enabled ?? true;
+  const subtitle =
+    data.subtitle ||
+    (phoneId && phoneId.trim()
+      ? `Webhook ${enabled ? "مفعل" : "معطّل"} • ${phoneId.trim().length > 18 ? `${phoneId.trim().slice(0, 18)}…` : phoneId.trim()}`
+      : enabled
+      ? "استقبال رسائل واتساب"
+      : "Webhook معطّل");
+
+  return (
+    <div className={`${baseNodeClasses} border-[#22c55e]`} style={baseNodeShadow}>
+      <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
+      <div className={titleClasses}>📲 {data.label || "WhatsApp Listener"}</div>
+      {subtitle && <div className={subtitleClasses}>{subtitle}</div>}
+    </div>
+  );
+};
+
+const WhatsAppSendNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
+  const mode = (data as any).mode || "message";
+  const to = (data as any).to as string | undefined;
+  const subtitle =
+    data.subtitle ||
+    (to && to.trim()
+      ? `${mode === "call" ? "اتصال" : "رسالة"} → ${to.trim().length > 18 ? `${to.trim().slice(0, 18)}…` : to.trim()}`
+      : mode === "call"
+      ? "اتصال واتساب"
+      : "رسالة واتساب");
+
+  return (
+    <div className={`${baseNodeClasses} border-[#16a34a]`} style={baseNodeShadow}>
+      <Handle type="target" position={Position.Top} id="in" className={handleClass} />
+      <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
+      <div className={titleClasses}>📱 {data.label || "WhatsApp Send"}</div>
+      {subtitle && <div className={subtitleClasses}>{subtitle}</div>}
+    </div>
+  );
+};
+
+const TelegramListenerNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
+  const botToken = (data as any).bot_token as string | undefined;
+  const enabled = (data as any).enabled ?? true;
+  const subtitle =
+    data.subtitle ||
+    (botToken && botToken.trim()
+      ? `Webhook ${enabled ? "مفعل" : "معطّل"}`
+      : enabled
+      ? "استقبال رسائل تيليجرام"
+      : "Webhook معطّل");
+
+  return (
+    <div className={`${baseNodeClasses} border-[#0ea5e9]`} style={baseNodeShadow}>
+      <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
+      <div className={titleClasses}>✈️ {data.label || "Telegram Listener"}</div>
+      {subtitle && <div className={subtitleClasses}>{subtitle}</div>}
+    </div>
+  );
+};
+
+const TelegramSendNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
+  const mode = (data as any).mode || "message";
+  const to = (data as any).to as string | undefined;
+  const subtitle =
+    data.subtitle ||
+    (to && to.trim()
+      ? `${mode === "call" ? "اتصال" : "رسالة"} → ${to.trim().length > 18 ? `${to.trim().slice(0, 18)}…` : to.trim()}`
+      : mode === "call"
+      ? "اتصال تيليجرام"
+      : "رسالة تيليجرام");
+
+  return (
+    <div className={`${baseNodeClasses} border-[#0284c7]`} style={baseNodeShadow}>
+      <Handle type="target" position={Position.Top} id="in" className={handleClass} />
+      <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
+      <div className={titleClasses}>✈️ {data.label || "Telegram Send"}</div>
+      {subtitle && <div className={subtitleClasses}>{subtitle}</div>}
+    </div>
+  );
+};
 
 export const nodeTypes = {
   start: StartNode,
@@ -85,5 +300,11 @@ export const nodeTypes = {
   "comment-listener": CommentListenerNode,
   "auto-reply": AutoReplyNode,
   end: EndNode,
+  whatsapp_listener: WhatsAppListenerNode,
+  whatsapp_send: WhatsAppSendNode,
+  telegram_listener: TelegramListenerNode,
+  telegram_send: TelegramSendNode,
+  memory_store: MemoryNode,
+  knowledge_base: KnowledgeNode,
 };
 

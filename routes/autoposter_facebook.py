@@ -88,31 +88,12 @@ def get_pages_with_tokens(user_access_token):
 
 
 def publish_post(page_access_token, message, photo_url=None, video_url=None, post_type="post", page_id=None):
-    """نشر على صفحة فيسبوك (حالياً كمنشور / فيديو عادي).
-
-    ملاحظة هامة:
-    - واجهات Stories / Reels في فيسبوك تتطلب صلاحيات خاصة ومراجعة من Meta.
-    - حتى لا يفشل النشر بسبب نقص الصلاحيات، نقوم حالياً بنشر كل الأنواع
-      كمنشور عادي (صور / فيديو) على الصفحة، بينما نحتفظ بـ post_type
-      في قاعدة البيانات للعرض والتحليلات فقط.
-    """
-    version = "v21.0"
-    base = f"https://graph.facebook.com/{version}"
-    me_or_page = page_id if page_id else "me"
-
-    # حالياً: كل الأنواع تُعامل كمنشور عادي (feed / photos / videos)
-    if video_url:
-        url = f"{base}/{me_or_page}/videos"
-        payload = {"access_token": page_access_token, "file_url": video_url, "description": message or ""}
-    elif photo_url:
-        url = f"{base}/{me_or_page}/photos"
-        payload = {"access_token": page_access_token, "url": photo_url, "message": message or ""}
-    else:
-        url = f"{base}/{me_or_page}/feed"
-        payload = {"access_token": page_access_token, "message": message or ""}
-
-    r = requests.post(url, data=payload, timeout=60 if video_url else 30)
-    if r.status_code != 200:
-        err = r.json() if r.text else {}
-        raise Exception(err.get("error", {}).get("message", r.text))
-    return r.json()
+    """نشر على صفحة فيسبوك (نص / صورة / فيديو). يُستخدم من Autoposter و AI Agent."""
+    from platforms.facebook import publish_facebook_post
+    return publish_facebook_post(
+        page_access_token,
+        message or "",
+        photo_url=photo_url,
+        video_url=video_url,
+        page_id=page_id,
+    )

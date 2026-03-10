@@ -16,6 +16,7 @@
 <body>
   <div class="app">
     <aside class="sidebar" id="sidebar">
+      <button type="button" class="sidebar-expand-tab" id="sidebarExpandTab" aria-label="فتح القائمة">◀</button>
       <div class="sidebar-header">
         <div class="logo">
           <span class="logo-icon">◇</span>
@@ -199,7 +200,15 @@
         </section>
         <section class="page" id="page-pages">
           <div class="page-header"><h1 class="page-title">إدارة الصفحات</h1><p class="page-subtitle">صفحات فيسبوك المتصلة</p><button class="btn btn-primary btn-sm" id="connectPageBtn">+ ربط صفحة</button></div>
-          <div class="card"><div class="table-wrap"><table class="data-table"><thead><tr><th><input type="checkbox" id="selectAllPages" aria-label="تحديد الكل"></th><th>اسم الصفحة</th><th>معرف الصفحة</th><th>الحالة</th><th></th></tr></thead><tbody id="pagesTableBody"><tr><td colspan="5" class="text-muted">لا توجد صفحات. اربط صفحة من فيسبوك.</td></tr></tbody></table></div></div>
+          <div class="card"><div class="table-wrap"><table class="data-table"><thead><tr><th><input type="checkbox" id="selectAllPages" aria-label="تحديد الكل"></th><th>اسم الصفحة</th><th>معرف الصفحة</th><th>الحالة</th><th class="text-right">إجراءات</th></tr></thead><tbody id="pagesTableBody"><tr><td colspan="5" class="text-muted">لا توجد صفحات. اربط صفحة من فيسبوك.</td></tr></tbody></table></div></div>
+          <div class="card" style="margin-top:1rem; background: var(--panel-secondary, #1a1f2e); border-left: 3px solid #1877f2;">
+            <h3 class="card-title" style="font-size:0.95rem;">نظام النشر على فيسبوك</h3>
+            <ol style="margin:0; padding-right:1.2rem; font-size:0.85rem; color: var(--text-secondary, #94a3b8); line-height:1.6;">
+              <li><strong style="color: var(--text-primary, #e2e8f0);">الإعدادات:</strong> من الإعدادات أدخل Facebook App ID و App Secret (من تطبيقك في Meta for Developers).</li>
+              <li><strong style="color: var(--text-primary, #e2e8f0);">ربط الصفحات:</strong> اضغط «+ ربط صفحة» ثم سجّل الدخول بفيسبوك واختر الصفحات — ستُستخدم للنشر العادي ولعقدة Publisher في AI Agent.</li>
+              <li><strong style="color: var(--text-primary, #e2e8f0);">النشر:</strong> من «إنشاء منشور» للنشر الفوري أو المجدول، أو من AI Agent Builder (عقدة Publisher واختر فيسبوك).</li>
+            </ol>
+          </div>
         </section>
         <section class="page" id="page-scheduled">
           <div class="page-header">
@@ -260,8 +269,8 @@
         </section>
         <section class="page" id="page-settings">
           <div class="page-header">
-            <h1 class="page-title">إعدادات فيسبوك</h1>
-            <p class="page-subtitle">معرف التطبيق وسر التطبيق من <a href="https://developers.facebook.com/" target="_blank" rel="noopener">Facebook for Developers</a></p>
+            <h1 class="page-title">إعدادات التكاملات</h1>
+            <p class="page-subtitle">اضبط مفاتيح فيسبوك و OpenAI لاستخدام النشر التلقائي و AI Agent.</p>
           </div>
           <div class="card">
             <form id="facebookSettingsForm" class="settings-grid">
@@ -273,6 +282,26 @@
                 <label for="fbAppSecret">سر التطبيق (App Secret)</label>
                 <input type="password" id="fbAppSecret" name="facebook_app_secret" class="input-text" placeholder="اتركه فارغاً للإبقاء على القيمة الحالية" autocomplete="off">
                 <span class="field-help">يُخزّن في إعدادات الشركة. إن لم تُدخلهما هنا، يُستخدم ما في ملف .env على السيرفر.</span>
+              </div>
+              <div class="form-group">
+                <label for="openaiApiKey">OpenAI API Key</label>
+                <input type="password" id="openaiApiKey" name="openai_api_key" class="input-text" placeholder="sk-..." autocomplete="off">
+                <span class="field-help">يُستخدم لتوليد المحتوى في AI Agent Builder. إن تركته فارغاً يُستخدم المفتاح من ملف .env (إن وُجد).</span>
+              </div>
+              <div class="form-group">
+                <label for="openaiModel">OpenAI Model (اختياري)</label>
+                <input type="text" id="openaiModel" name="openai_model" class="input-text" placeholder="مثال: gpt-4o-mini" autocomplete="off">
+                <span class="field-help">اتركه فارغاً لاستخدام القيمة الافتراضية من إعدادات الخادم.</span>
+              </div>
+              <div class="form-group">
+                <label for="geminiApiKey">Gemini API Key</label>
+                <input type="password" id="geminiApiKey" name="gemini_api_key" class="input-text" placeholder="AIzaSy..." autocomplete="off">
+                <span class="field-help">مفتاح Gemini من Google AI Studio. يُستخدم حالياً للتخزين ويمكن ربطه لاحقاً كمزوّد إضافي لـ AI Agent.</span>
+              </div>
+              <div class="form-group">
+                <label for="geminiModel">Gemini Model (اختياري)</label>
+                <input type="text" id="geminiModel" name="gemini_model" class="input-text" placeholder="مثال: gemini-2.0-flash" autocomplete="off">
+                <span class="field-help">اتركه فارغاً لاستخدام القيمة الافتراضية من إعدادات الخادم.</span>
               </div>
               <div class="form-actions">
                 <button type="submit" class="btn btn-primary" id="saveSettingsBtn">حفظ الإعدادات</button>

@@ -1,0 +1,49 @@
+"""نشر على صفحة فيسبوك عبر Graph API — يُستخدم من Autoposter و AI Agent."""
+
+from __future__ import annotations
+
+from typing import Any, Dict
+
+import requests
+
+
+def publish_facebook_post(
+    page_access_token: str,
+    message: str,
+    *,
+    photo_url: str | None = None,
+    video_url: str | None = None,
+    page_id: str | None = None,
+) -> Dict[str, Any]:
+    """نشر منشور على صفحة فيسبوك (نص فقط، صورة، أو فيديو). يرجع استجابة الـ API (يحتوي id أو post_id)."""
+    version = "v21.0"
+    base = f"https://graph.facebook.com/{version}"
+    me_or_page = page_id if page_id else "me"
+
+    if video_url:
+        url = f"{base}/{me_or_page}/videos"
+        payload: Dict[str, Any] = {
+            "access_token": page_access_token,
+            "file_url": video_url,
+            "description": message or "",
+        }
+    elif photo_url:
+        url = f"{base}/{me_or_page}/photos"
+        payload = {
+            "access_token": page_access_token,
+            "url": photo_url,
+            "message": message or "",
+        }
+    else:
+        url = f"{base}/{me_or_page}/feed"
+        payload = {
+            "access_token": page_access_token,
+            "message": message or "",
+        }
+
+    r = requests.post(url, data=payload, timeout=60 if video_url else 30)
+    if r.status_code != 200:
+        err = r.json() if r.text else {}
+        msg = (err.get("error") or {}).get("message", r.text)
+        raise RuntimeError(msg or f"HTTP {r.status_code}")
+    return r.json()

@@ -2,9 +2,118 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --wf-bg: #0b1220;
+  --wf-canvas: #1e293b;
+  --wf-card: #111827;
+  --wf-border: #334155;
+  --wf-text: #e5e7eb;
+  --wf-accent: #22c55e;
+  --wf-edge: #38bdf8;
+}
+
 html,
 body,
 #ai-agent-root {
   height: 100%;
+  min-height: 0;
+  background: var(--wf-bg);
+}
+#ai-agent-root {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* React Flow canvas grid */
+.react-flow__background pattern circle {
+  fill: var(--wf-canvas) !important;
+}
+
+/* Edge default stroke */
+.react-flow__edge-path {
+  stroke: var(--wf-edge);
+  transition: filter 0.2s ease;
+}
+.react-flow__edge.selected .react-flow__edge-path,
+.react-flow__edge:hover .react-flow__edge-path {
+  filter: drop-shadow(0 0 4px var(--wf-edge));
+}
+
+/* Node hover scale */
+.react-flow__node {
+  transition: transform 0.15s ease;
+}
+.react-flow__node:hover {
+  transform: scale(1.02);
+}
+
+/* Resizer grip */
+.wf-resizer {
+  user-select: none;
+}
+.wf-resizer:hover,
+.wf-resizer:active {
+  background: rgba(30, 41, 59, 0.5);
+}
+.wf-resizer:hover > div {
+  background: #38bdf8;
+}
+
+/* Canvas wrapper: full size for React Flow */
+.reactflow-wrapper {
+  width: 100%;
+  height: 100%;
+}
+
+/* Grid responsive: below 1200px canvas + settings only; node library is toggle sidebar */
+@media (max-width: 1199px) {
+  .wf-grid-narrow {
+    grid-template-columns: 1fr 300px !important;
+  }
+  .wf-panel-canvas {
+    grid-column: 1;
+  }
+  .wf-panel-settings {
+    grid-column: 2;
+  }
+  .wf-resizer,
+  .wf-node-library-in-grid {
+    display: none !important;
+  }
+}
+@media (min-width: 1200px) {
+  .wf-node-library-overlay {
+    display: none !important;
+  }
+}
+
+/* Node library cards: soft shadow + hover */
+.wf-node-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* Running state: pulse على كل العقد لإظهار أن التنفيذ يعمل */
+@keyframes wf-node-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 14px rgba(34, 197, 94, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+  }
+}
+
+.wf-running .react-flow__node {
+  animation: wf-node-pulse 1.4s ease-out infinite;
+}
+
+.wf-running .react-flow__edge-path {
+  stroke-width: 2.2px;
+  filter: drop-shadow(0 0 6px #22c55e);
 }
 

@@ -59,18 +59,18 @@
    THEME (DARK – ENHANCED PROFESSIONAL)
 ====================================================== */
     :root {
-      --bg: #0a0f1c;
-      --sidebar: #0d1424;
-      --card: #111827;
-      --card-alt: #0f172a;
-      --border: rgba(255, 255, 255, 0.09);
-      --border-light: rgba(255, 255, 255, 0.05);
-      --text: #f1f5f9;
+      --bg: #080c14;
+      --sidebar: rgba(13, 20, 36, 0.85);
+      --card: rgba(17, 24, 39, 0.7);
+      --card-alt: rgba(15, 23, 42, 0.75);
+      --border: rgba(255, 255, 255, 0.08);
+      --border-light: rgba(255, 255, 255, 0.04);
+      --text: #f8fafc;
       --text-muted: #94a3b8;
       --text-dim: #64748b;
       --primary: #3b82f6;
       --primary-hover: #2563eb;
-      --primary-glow: rgba(59, 130, 246, 0.15);
+      --primary-glow: rgba(59, 130, 246, 0.2);
       --success: #10b981;
       --success-glow: rgba(16, 185, 129, 0.15);
       --danger: #ef4444;
@@ -79,10 +79,12 @@
       --warning: #f59e0b;
       --accent: #8b5cf6;
       --radius: 16px;
-      --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
-      --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.2);
+      --shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.4);
+      --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.25);
       --gradient-primary: linear-gradient(135deg, #3b82f6, #8b5cf6);
-      --gradient-sidebar: linear-gradient(180deg, #0d1424 0%, #070b16 100%);
+      --gradient-sidebar: linear-gradient(180deg, rgba(13, 20, 36, 0.95) 0%, rgba(7, 11, 22, 0.98) 100%);
+      --glass-bg: rgba(255, 255, 255, 0.03);
+      --glass-border: rgba(255, 255, 255, 0.07);
     }
 
     /* ======================================================
@@ -132,6 +134,8 @@
       width: 280px;
       min-width: 280px;
       background: var(--gradient-sidebar);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
       padding: 24px 20px;
       display: flex;
       flex-direction: column;
@@ -146,6 +150,7 @@
       z-index: 50;
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     /* Content area offset so it doesn’t sit under fixed sidebar */
@@ -730,12 +735,14 @@
    CARD ENHANCEMENTS
 ====================================================== */
     .card {
-      background: linear-gradient(180deg, var(--card) 0%, var(--card-alt) 100%);
+      background: var(--card);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
       border: 1px solid var(--border);
       border-radius: var(--radius);
       padding: 26px;
       box-shadow: var(--shadow-sm);
-      transition: all 0.3s ease;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       position: relative;
       overflow: hidden;
     }
@@ -1743,10 +1750,10 @@
     <!-- ================= SIDEBAR (جميع المستخدمين المسجلين — العناصر حسب الصلاحيات) ================= -->
     {# اعتبر مسار /superadmin أيضاً كمسار خارجي عن لوحة الشركة حتى لا تظهر القائمة الجانبية معها #}
     {% set is_payment_flow = request.path.startswith('/payment')
-      or request.path.startswith('/signup')
-      or request.path.startswith('/pricing')
-      or request.path.startswith('/login')
-      or request.path.startswith('/superadmin') %}
+    or request.path.startswith('/signup')
+    or request.path.startswith('/pricing')
+    or request.path.startswith('/login')
+    or request.path.startswith('/superadmin') %}
     {% set is_admin = session.get("role") == "admin" or (current_employee and current_employee.role == "admin") %}
     {% if session.get("user_id") and not is_payment_flow %}
     <aside class="sidebar" id="sidebar">

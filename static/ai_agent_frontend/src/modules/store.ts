@@ -28,6 +28,8 @@ type EditorStore = {
   onEdgesChange: (changes: EdgeChange[]) => void;
   addConnection: (connection: Connection) => void;
   addNode: (node: Node) => void;
+  removeNode: (id: string) => void;
+  removeEdge: (id: string) => void;
   setSelectedNodeId: (id?: string) => void;
   updateNodeData: (id: string, data: Record<string, unknown>) => void;
   loadFromGraph: (payload: {
@@ -82,6 +84,18 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   addNode: (node) =>
     set((state) => ({
       nodes: state.nodes.concat(node),
+    })),
+
+  removeNode: (id) =>
+    set((state) => ({
+      nodes: state.nodes.filter((n) => n.id !== id),
+      edges: state.edges.filter((e) => e.source !== id && e.target !== id),
+      selectedNodeId: state.selectedNodeId === id ? undefined : state.selectedNodeId,
+    })),
+
+  removeEdge: (id) =>
+    set((state) => ({
+      edges: state.edges.filter((e) => e.id !== id),
     })),
 
   setSelectedNodeId: (id) => set({ selectedNodeId: id }),

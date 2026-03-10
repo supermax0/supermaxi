@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any, Dict, List
+import re
 
 from flask import current_app
 
 from extensions import db
 from models.ai_agent import AgentExecution, AgentExecutionLog, AgentWorkflow
-from social_ai.ai_engine import generate_caption
+from social_ai.ai_engine import generate_caption, generate_comment_reply, get_client
 from social_ai.image_generator import generate_image
 from social_ai.publish_manager import publish_post_to_accounts
+from social_ai.messaging import send_whatsapp_message, send_telegram_message
 from models.social_account import SocialAccount
 from models.social_post import SocialPost
 
@@ -30,11 +33,426 @@ def _build_graph(workflow: AgentWorkflow) -> List[NodeDef]:
     return nodes
 
 
-def execute_workflow(execution: AgentExecution) -> None:
+def _render_prompt(template: str, context: Dict[str, Any]) -> str:
+    """استبدال {{var}} بقيم من الـ context."""
+
+    def _repl(match: re.Match[str]) -> str:
+        key = match.group(1).strip()
+        value = context.get(key)
+        return "" if value is None else str(value)
+
+    return re.sub(r"\{\{\s*([\w\.]+)\s*\}\}", _repl, template)
+
+
+def _render_template(template: str, context: Dict[str, Any]) -> str:
+    """مساعد بسيط لاستدعاء _render_prompt من اسم أوضح لعقد الإرسال."""
+    return _render_prompt(template, context)
+
+
+def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
+    """تشغيل عقدة AI مرنة باستخدام إعدادات العقدة."""
+    data = node.data or {}
+
+    # إعدادات المهمة
+    task = data.get("task") or "generate_post"
+    topic = data.get("topic") or context.get("topic") or ""
+    base_context = dict(context)
+    base_context.setdefault("topic", topic)
+
+    # قالب الـ prompt
+    template = data.get("prompt") or ""
+    if not template:
+        if task == "reply_comment":
+            template = "اكتب رداً لبقاً ومهنياً على هذا التعليق:\n\n{{comment_text}}"
+        elif task == "write_caption":
+            template = "اكتب كابشن تسويقي لمنشور عن {{topic}}"
+        elif task == "generate_topic":
+            template = "اقترح 5 أفكار لموضوعات منشورات حول {{topic}}"
+        else:
+            template = "أنشئ منشوراً تسويقياً جذاباً عن {{topic}}"
+
+    prompt = _render_prompt(template, base_context)
+
+    # إعدادات النموذج
+    model = data.get("model") or current_app.config.get("OPENAI_MODEL", "gpt-4o-mini")
+    temperature = float(data.get("temperature") or 0.7)
+    max_tokens = int(data.get("max_tokens") or 500)
+
+    # إعدادات المحتوى
+    language = data.get("language") or "ar"
+    tone = data.get("tone") or "marketing"
+    target_audience = data.get("target_audience") or ""
+
+    system_parts = [
+        "أنت مساعد خبير في كتابة محتوى للسوشيال ميديا والرد على العملاء.",
+        f"اللغة المطلوبة: {'العربية' if language == 'ar' else 'English'}.",
+    ]
+    if tone:
+        system_parts.append(f"الأسلوب: {tone}.")
+    if target_audience:
+        system_parts.append(f"الجمهور المستهدف: {target_audience}.")
+
+    knowledge = context.get("knowledge")
+    if isinstance(knowledge, str) and knowledge.strip():
+        # نضيف جزء مختصر من الكتالوج إلى الـ system prompt حتى لا يطول كثيراً
+        trimmed = knowledge.strip()
+        if len(trimmed) > 4000:
+            trimmed = trimmed[:4000]
+        system_parts.append("استخدم معلومات الكتالوج التالية عند الإجابة عن الأسئلة أو كتابة المحتوى:\n" + trimmed)
+
+    system_prompt = " ".join(system_parts)
+
+    client = get_client()
+    resp = client.chat.completions.create(
+        model=model,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": prompt},
+        ],
+    )
+    text = (resp.choices[0].message.content or "").strip()
+
+    result: Dict[str, Any] = {
+        "text": text,
+        "topic": topic,
+    }
+
+    # تحديث السياق بناءً على نوع المهمة
+    if task in {"generate_post", "write_caption"}:
+        result["caption"] = text
+    if task == "generate_topic" and text:
+        result["generated_topics"] = text
+    if task == "reply_comment":
+        result["reply_text"] = text
+
+    return result
+
+
+def run_image_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
+    """تشغيل عقدة Image باستخدام مزوّد Nano Banana أو OpenAI."""
+    data = node.data or {}
+    base_context = dict(context)
+
+    template = data.get("prompt") or "Create a marketing image about {{topic}}"
+    prompt = _render_prompt(template, base_context)
+
+    style = data.get("style") or "photorealistic"
+    size = data.get("size") or "1024x1024"
+    provider = (data.get("provider") or "nanobanana").lower()
+
+    image_url: str
+
+    if provider == "openai":
+        client = get_client()
+        # نستخدم نموذج الصور الافتراضي ما لم يتم ضبطه في الإعدادات
+        model = current_app.config.get("OPENAI_IMAGE_MODEL", "gpt-image-1")
+        # تحويل أسماء الـ style إلى نمط OpenAI (vivid/natural) بشكل مبسط
+        style_map = {
+          "minimal": "natural",
+          "photorealistic": "natural",
+          "cinematic": "vivid",
+          "illustration": "vivid",
+          "3d": "vivid",
+        }
+        oa_style = style_map.get(style, "vivid")
+
+        resp = client.images.generate(
+            model=model,
+            prompt=prompt,
+            size=size,
+            style=oa_style,
+        )
+        # مكتبة openai الجديدة ترجع data[0].url
+        image_url = resp.data[0].url  # type: ignore[assignment]
+    else:
+        # Nano Banana – نمرر الـ prompt، ويمكن استخدام style/size لاحقاً إذا تم توسيع generate_image
+        image_url = generate_image(prompt)
+
+    result: Dict[str, Any] = {"image_url": image_url}
+    context["image_url"] = image_url
+    return result
+
+
+def run_publisher_node(node: NodeDef, context: Dict[str, Any], execution: AgentExecution) -> Dict[str, Any]:
+    """تشغيل عقدة Publisher باستخدام إعدادات المنصات والمحتوى."""
+    data = node.data or {}
+
+    # 1) تحديد المنصات
+    platforms = data.get("platforms") or ["facebook"]
+    if isinstance(platforms, str):
+        platforms = [platforms]
+
+    # 2) تحديد نوع المنشور (حالياً نستخدمه فقط للمستقبل)
+    post_type = data.get("post_type") or "image_post"
+
+    # 3) caption
+    caption_source = data.get("caption_source") or "{{text}}"
+    if caption_source == "custom":
+        caption_template = data.get("caption_custom") or ""
+    else:
+        caption_template = caption_source
+    caption = _render_prompt(caption_template, context).strip()
+
+    # 4) image url
+    image_source = data.get("image_source") or "{{image_url}}"
+    if image_source == "custom_url":
+        image_template = data.get("image_custom_url") or ""
+    else:
+        image_template = image_source
+    image_url = _render_prompt(image_template, context).strip() or None
+
+    publish_mode = data.get("publish_mode") or "publish_now"
+
+    # 5) اختيار حسابات السوشيال حسب المنصات
+    tenant_slug = getattr(execution.workflow.agent, "tenant_slug", None)
+    acc_q = SocialAccount.query
+    if tenant_slug:
+        acc_q = acc_q.filter_by(tenant_slug=tenant_slug)
+    if platforms:
+        acc_q = acc_q.filter(SocialAccount.platform.in_(platforms))
+    accounts = acc_q.all()
+    if not accounts:
+        raise RuntimeError("لا توجد حسابات سوشيال مطابقة للمنصات المحددة.")
+
+    # 6) إنشاء SocialPost
+    post_status = "draft"
+    if publish_mode == "publish_now":
+        post_status = "draft"  # سيتم تحديثه بواسطة publish_post_to_accounts / المنصات
+    elif publish_mode == "schedule":
+        post_status = "scheduled"
+
+    post = SocialPost(
+        tenant_slug=tenant_slug,
+        user_id=execution.workflow.agent.user_id,
+        topic=context.get("topic") or "",
+        caption=caption or context.get("caption") or "",
+        image_url=image_url,
+        status=post_status,
+    )
+    db.session.add(post)
+    db.session.commit()
+
+    publish_result: Dict[str, str] = {}
+
+    if publish_mode == "publish_now":
+        # إعادة استخدام مدير النشر ليتكفّل بالتفاصيل والمنصات
+        publish_post_to_accounts(post, accounts)
+        for acc in accounts:
+            publish_result[acc.platform] = "submitted"
+    else:
+        for acc in accounts:
+            publish_result[acc.platform] = publish_mode
+
+    result: Dict[str, Any] = {
+        "publish_result": publish_result,
+        "post_id": post.id,
+        "caption": post.caption,
+        "image_url": post.image_url,
+    }
+
+    context.update(result)
+    return result
+
+
+def run_caption_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
+    """توليد كابشن اعتماداً على نص مصدر + إعدادات الأسلوب/اللغة."""
+    data = node.data or {}
+
+    source = data.get("source") or "{{text}}"
+    if source == "custom":
+        template = data.get("source_custom") or ""
+    else:
+        template = source
+
+    base_text = _render_prompt(template, context).strip()
+
+    style = data.get("style") or "marketing"
+    language = data.get("language") or "arabic"
+    max_length = int(data.get("max_length") or 200)
+
+    # إذا ماكو نص أساس، نستخدم topic كبديل
+    if not base_text:
+        base_text = str(context.get("topic") or "")
+
+    client = get_client()
+
+    lang_desc = "العربية" if language == "arabic" else "English"
+    style_desc = {
+        "marketing": "تسويقي جذاب مع دعوة لاتخاذ إجراء",
+        "short": "قصير ومباشر",
+        "storytelling": "على شكل قصة قصيرة مشوّقة",
+        "informative": "معلوماتي يركّز على الفوائد والمواصفات",
+    }.get(style, "تسويقي جذاب")
+
+    system_prompt = (
+        f"أنت خبير كتابة كابشن لمنشورات السوشيال ميديا. اكتب الكابشن بلغة {lang_desc} "
+        f"وبأسلوب {style_desc}. لا تتجاوز تقريباً {max_length} حرفاً."
+    )
+
+    user_prompt = f"النص/الفكرة الأساسية للكابشن:\n{base_text}\n"
+
+    resp = client.chat.completions.create(
+        model=current_app.config.get("OPENAI_MODEL", "gpt-4o-mini"),
+        temperature=0.7,
+        max_tokens=max_length * 3 // 2,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+    )
+    caption = (resp.choices[0].message.content or "").strip()
+
+    result: Dict[str, Any] = {"caption": caption}
+    context["caption"] = caption
+    return result
+
+
+def run_scheduler_node(node: NodeDef, context: Dict[str, Any], execution: AgentExecution) -> Dict[str, Any]:
+    """تسجيل إعدادات الجدولة في الـ context (الجدولة الفعلية تتم عبر مجدول خارجي أو APScheduler لاحقاً)."""
+    data = node.data or {}
+    schedule_type = data.get("schedule_type") or "daily"
+    time_str = data.get("time") or "20:00"
+    timezone = data.get("timezone") or "Asia/Baghdad"
+
+    result: Dict[str, Any] = {
+        "scheduled": True,
+        "schedule_type": schedule_type,
+        "time": time_str,
+        "timezone": timezone,
+        "workflow_id": execution.workflow_id,
+    }
+    context.update(result)
+    return result
+
+
+def run_whatsapp_send_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
+    """إرسال رسالة واتساب باستخدام بيانات العقدة والسياق."""
+    data = node.data or {}
+    phone_tmpl = str(data.get("phone") or data.get("to") or context.get("from_phone") or "")
+    msg_tmpl = str(data.get("message") or data.get("template") or context.get("reply_text") or context.get("message_text") or "")
+
+    phone = _render_template(phone_tmpl, context).strip()
+    message = _render_template(msg_tmpl, context).strip()
+
+    if phone and message:
+        send_whatsapp_message(phone, message)
+
+    result: Dict[str, Any] = {
+        "whatsapp_phone": phone,
+        "whatsapp_message": message,
+    }
+    context.update(result)
+    return result
+
+
+def run_telegram_send_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
+    """إرسال رسالة تيليجرام باستخدام بيانات العقدة والسياق."""
+    data = node.data or {}
+    chat_tmpl = str(data.get("chat_id") or data.get("to") or context.get("chat_id") or "")
+    msg_tmpl = str(data.get("message") or data.get("template") or context.get("reply_text") or context.get("message_text") or "")
+
+    chat_id = _render_template(chat_tmpl, context).strip()
+    message = _render_template(msg_tmpl, context).strip()
+
+    if chat_id and message:
+        send_telegram_message(chat_id, message)
+
+    result: Dict[str, Any] = {
+        "telegram_chat_id": chat_id,
+        "telegram_message": message,
+    }
+    context.update(result)
+    return result
+
+
+def run_memory_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
+    """تخزين قيمة معيّنة من السياق (أو من قالب) داخل الـ context تحت مفتاح معيّن."""
+    data = node.data or {}
+    key = str(data.get("key") or "").strip()
+    template = str(data.get("value_template") or data.get("value") or "").strip()
+    if not key:
+        return {}
+    value = _render_template(template or f"{{{{{key}}}}}", context).strip()
+    context[key] = value
+    return {key: value}
+
+
+def run_knowledge_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
+    """تحديث كتالوج / قاعدة المعرفة الخاصة بالوكيل داخل الـ context."""
+    data = node.data or {}
+    catalog = str(data.get("catalog") or "").strip()
+    mode = data.get("mode") or "replace"
+    rendered = _render_template(catalog, context).strip()
+
+    if not rendered:
+        return {}
+
+    if mode == "append" and isinstance(context.get("knowledge"), str):
+        new_value = (context.get("knowledge") or "") + "\n" + rendered
+    else:
+        new_value = rendered
+
+    context["knowledge"] = new_value
+    return {"knowledge": new_value}
+
+def run_comment_listener_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
+    """محاكاة جلب تعليق (في الإنتاج: استدعاء واجهات فيسبوك/إنستغرام وجلب التعليقات الحقيقية)."""
+    data = node.data or {}
+    platforms = data.get("platforms") or ["facebook"]
+    if isinstance(platforms, str):
+        platforms = [platforms]
+    keywords = data.get("keywords") or []
+    mode = data.get("mode") or "keywords_only"
+
+    # في التشغيل الفعلي: استدعاء API لجلب التعليقات ثم فلترتها حسب keywords/mode
+    # هنا نضع بيانات محاكاة ليستمر الوورك فلو
+    comment_text = context.get("comment_text") or "محتوى تعليق محاكى (للاختبار)"
+    comment_id = context.get("comment_id") or f"comment_{node.id}_{id(node)}"
+    platform = (platforms[0] if platforms else "facebook")
+
+    result: Dict[str, Any] = {
+        "comment_text": comment_text,
+        "comment_id": comment_id,
+        "platform": platform,
+    }
+    context.update(result)
+    return result
+
+
+def run_auto_reply_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
+    """توليد رد على التعليق (قالب أو AI) وحفظه في الـ context (الإرسال الفعلي عبر واجهات المنصات لاحقاً)."""
+    data = node.data or {}
+    mode = data.get("mode") or "template"
+    template = data.get("template") or "شكراً لتعليقك!"
+    comment_text = context.get("comment_text") or ""
+    tone = data.get("tone") or "friendly"
+    language = data.get("language") or "ar"
+
+    if mode == "ai_generated":
+        reply_text = generate_comment_reply(
+            comment_text,
+            context.get("caption"),
+            tone=tone,
+            language=language,
+        )
+    else:
+        reply_text = _render_prompt(template, context).strip() or template
+
+    result: Dict[str, Any] = {
+        "reply_text": reply_text,
+        "reply_status": "sent",
+    }
+    context.update(result)
+    return result
+
+
+def execute_workflow(execution: AgentExecution, initial_context: Dict[str, Any] | None = None) -> None:
     """تنفيذ بسيط للـWorkflow بدعم العقد الأساسية."""
     workflow = execution.workflow
     nodes = _build_graph(workflow)
-    context: Dict[str, Any] = {}
+    context: Dict[str, Any] = dict(initial_context or {})
 
     def log(node: NodeDef, status: str, input_obj: Any = None, output_obj: Any = None, error: str | None = None):
         log_row = AgentExecutionLog(
@@ -54,45 +472,48 @@ def execute_workflow(execution: AgentExecution) -> None:
             node_input = dict(context)
             try:
                 if node.type == "start":
-                    # يمكن تمرير قيم ابتدائية من data لاحقاً
-                    log(node, "success", node_input, context)
+                    context["started_at"] = datetime.now(timezone.utc).isoformat()
+                    if (node.data or {}).get("topic"):
+                        context["topic"] = (node.data or {}).get("topic", "").strip()
+                    log(node, "success", node_input, {"started_at": context.get("started_at"), "topic": context.get("topic")})
                 elif node.type == "ai":
-                    topic = node.data.get("topic") or node_input.get("topic") or ""
-                    caption = generate_caption(topic or "منشور تسويقي")
-                    context["caption"] = caption
-                    log(node, "success", node_input, {"caption": caption})
+                    ai_output = run_ai_node(node, context)
+                    # دمج المخرجات مع الـ context
+                    context.update(ai_output)
+                    log(node, "success", node_input, ai_output)
                 elif node.type == "image":
-                    prompt = node.data.get("prompt") or node_input.get("image_prompt") or node_input.get("caption") or ""
-                    image_url = generate_image(prompt or "social media marketing image")
-                    context["image_url"] = image_url
-                    log(node, "success", node_input, {"image_url": image_url})
+                    img_output = run_image_node(node, context)
+                    log(node, "success", node_input, img_output)
                 elif node.type == "caption":
-                    # حالياً نعيد استخدام caption الموجود، يمكن توسيعها للهاشتاغات
-                    caption = context.get("caption") or node_input.get("caption") or ""
-                    context["caption"] = caption
-                    log(node, "success", node_input, {"caption": caption})
+                    cap_output = run_caption_node(node, context)
+                    log(node, "success", node_input, cap_output)
                 elif node.type == "publisher":
-                    tenant_slug = getattr(execution.workflow.agent, "tenant_slug", None)
-                    acc_q = SocialAccount.query
-                    if tenant_slug:
-                        acc_q = acc_q.filter_by(tenant_slug=tenant_slug)
-                    accounts = acc_q.all()
-                    if not accounts:
-                        raise RuntimeError("لا توجد حسابات سوشيال للنشر.")
-                    post = SocialPost(
-                        tenant_slug=tenant_slug,
-                        user_id=execution.workflow.agent.user_id,
-                        topic=context.get("topic") or "",
-                        caption=context.get("caption") or "",
-                        image_url=context.get("image_url"),
-                        status="draft",
-                    )
-                    db.session.add(post)
-                    db.session.commit()
-                    publish_post_to_accounts(post, accounts)
-                    log(node, "success", node_input, {"published_post_id": post.id})
+                    pub_output = run_publisher_node(node, context, execution)
+                    log(node, "success", node_input, pub_output)
+                elif node.type == "scheduler":
+                    sched_output = run_scheduler_node(node, context, execution)
+                    log(node, "success", node_input, sched_output)
+                elif node.type == "comment-listener":
+                    listener_output = run_comment_listener_node(node, context)
+                    log(node, "success", node_input, listener_output)
+                elif node.type == "auto-reply":
+                    reply_output = run_auto_reply_node(node, context)
+                    log(node, "success", node_input, reply_output)
+                elif node.type == "whatsapp_send":
+                    wa_output = run_whatsapp_send_node(node, context)
+                    log(node, "success", node_input, wa_output)
+                elif node.type == "telegram_send":
+                    tg_output = run_telegram_send_node(node, context)
+                    log(node, "success", node_input, tg_output)
+                elif node.type == "memory_store":
+                    mem_output = run_memory_node(node, context)
+                    log(node, "success", node_input, mem_output)
+                elif node.type == "knowledge_base":
+                    kb_output = run_knowledge_node(node, context)
+                    log(node, "success", node_input, kb_output)
                 elif node.type == "end":
-                    log(node, "success", node_input, context)
+                    # حفظ لقطة السياق النهائية في اللوج
+                    log(node, "success", node_input, dict(context))
                 else:
                     # عقد غير معروفة – نتجاوزها لكن نسجّل في اللوج
                     log(node, "failed", node_input, None, f"نوع عقدة غير معروف: {node.type}")

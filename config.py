@@ -35,6 +35,17 @@ class Config:
     FACEBOOK_APP_SECRET = os.environ.get("FACEBOOK_APP_SECRET", "")
     FACEBOOK_API_VERSION = os.environ.get("FACEBOOK_API_VERSION", "v21.0")
 
+    # الذكاء الاصطناعي (AI Agent / OpenAI / Gemini)
+    OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "").strip()
+    OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
+    OPENAI_IMAGE_MODEL = os.environ.get("OPENAI_IMAGE_MODEL", "dall-e-3")
+    GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
+    GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
+
+    # تكامل واتساب Cloud API (لرسائل الوكلاء)
+    WHATSAPP_ACCESS_TOKEN = os.environ.get("WHATSAPP_ACCESS_TOKEN", "").strip()
+    WHATSAPP_PHONE_NUMBER_ID = os.environ.get("WHATSAPP_PHONE_NUMBER_ID", "").strip()
+
 
 class DevelopmentConfig(Config):
     """إعدادات بيئة التطوير."""

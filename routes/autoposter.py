@@ -6,9 +6,10 @@ from flask import Blueprint, request, session, redirect, url_for, jsonify, rende
 from extensions import db
 from models.autoposter_facebook_page import AutoposterFacebookPage
 from models.autoposter_post import AutoposterPost
+from models.social_account import SocialAccount
 from models.autoposter_notification import AutoposterNotification
 from models.autoposter_template import AutoposterTemplate
-from models.ai_agent import Agent, AgentWorkflow, AgentExecution, AgentExecutionLog
+from models.ai_agent import Agent, AgentWorkflow, AgentExecution, AgentExecutionLog, AgentComment
 from social_ai.workflow_engine import execute_workflow
 from routes.autoposter_facebook import (
     get_oauth_url,
@@ -93,7 +94,15 @@ def _add_notification(title, body=None):
 @autoposter_bp.route("/dashboard")
 @require_autoposter_login
 def dashboard():
-    return render_template("autoposter/dashboard.html")
+    """الصفحة الرئيسية للنشر التلقائي + قائمة وكلاء AI في السايد بار."""
+    from models.ai_agent import Agent
+
+    tenant_slug = session.get("tenant_slug")
+    q = Agent.query
+    if tenant_slug:
+        q = q.filter_by(tenant_slug=tenant_slug)
+    agents = q.order_by(Agent.created_at.desc()).all()
+    return render_template("autoposter/dashboard.html", ai_agents=agents)
 
 
 @autoposter_bp.route("/pages")
@@ -224,7 +233,20 @@ def api_workflows_update(workflow_id: int):
 @autoposter_bp.route("/api/workflows/<int:workflow_id>", methods=["DELETE"])
 @require_autoposter_login
 def api_workflows_delete(workflow_id: int):
+    """حذف Workflow واحد وكل ما يتعلّق به من تنفيذات وسجلات حتى لا يحدث خطأ قيود علاقات."""
     w = AgentWorkflow.query.get_or_404(workflow_id)
+
+    # احذف كل عمليات التنفيذ المرتبطة بهذا الوورك فلو مع سجلاتها والتعليقات المرتبطة بها
+    executions = list(w.executions)
+    for exe in executions:
+        # حذف التعليقات المرتبطة بهذا التنفيذ (أو يمكنك فقط فك الارتباط إن أردت الحفاظ عليها)
+        AgentComment.query.filter_by(handled_by_execution_id=exe.id).delete()
+        # حذف سجلات التنفيذ
+        AgentExecutionLog.query.filter_by(execution_id=exe.id).delete()
+        # حذف التنفيذ نفسه
+        db.session.delete(exe)
+
+    # وأخيراً حذف الوورك فلو
     db.session.delete(w)
     db.session.commit()
     return jsonify({"success": True})
@@ -266,6 +288,45 @@ def api_pages_list():
     return jsonify({"pages": [p.to_dict() for p in pages]})
 
 
+@autoposter_bp.route("/api/pages/<page_id>", methods=["DELETE"])
+@require_autoposter_login
+def api_page_delete(page_id):
+    """حذف صفحة فيسبوك من النظام (تُزال من القائمة ولا يعود النشر عليها حتى يعيد المستخدم ربطها)."""
+    page = AutoposterFacebookPage.query.filter_by(page_id=page_id).first()
+    if not page:
+        return jsonify({"error": "الصفحة غير موجودة"}), 404
+    tenant_slug = getattr(g, "tenant", None)
+    if tenant_slug:
+        SocialAccount.query.filter_by(
+            tenant_slug=tenant_slug,
+            platform="facebook",
+            account_id=page_id,
+        ).delete()
+    db.session.delete(page)
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
+@autoposter_bp.route("/api/pages/<page_id>/disconnect", methods=["POST"])
+@require_autoposter_login
+def api_page_disconnect(page_id):
+    """فك ارتباط الصفحة (مسح التوكن — تبقى في القائمة لكن لا يمكن النشر حتى إعادة الربط)."""
+    page = AutoposterFacebookPage.query.filter_by(page_id=page_id).first()
+    if not page:
+        return jsonify({"error": "الصفحة غير موجودة"}), 404
+    page.access_token = ""
+    tenant_slug = getattr(g, "tenant", None)
+    if tenant_slug:
+        for acc in SocialAccount.query.filter_by(
+            tenant_slug=tenant_slug,
+            platform="facebook",
+            account_id=page_id,
+        ):
+            acc.access_token = ""
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
 # --- API: ربط فيسبوك (إرجاع رابط OAuth) ---
 @autoposter_bp.route("/api/facebook/connect", methods=["GET"])
 @require_autoposter_login
@@ -305,19 +366,42 @@ def api_facebook_callback():
         long_token = get_long_lived_token(short_token)
         pages_data = get_pages_with_tokens(long_token)
         for p in pages_data:
-            existing = AutoposterFacebookPage.query.filter_by(page_id=p["id"]).first()
+            page_id = p["id"]
+            page_name = p.get("name", "صفحة")
+            page_token = p.get("access_token", "")
+            existing = AutoposterFacebookPage.query.filter_by(page_id=page_id).first()
             if existing:
-                existing.name = p.get("name", existing.name)
-                existing.access_token = p.get("access_token", existing.access_token)
+                existing.name = page_name
+                existing.access_token = page_token
             else:
                 fp = AutoposterFacebookPage(
-                    page_id=p["id"],
-                    name=p.get("name", "صفحة"),
-                    access_token=p.get("access_token", ""),
+                    page_id=page_id,
+                    name=page_name,
+                    access_token=page_token,
                 )
                 db.session.add(fp)
+            # مزامنة مع SocialAccount حتى يستخدمها AI Agent (عقدة Publisher)
+            if tenant_slug and page_token:
+                acc = SocialAccount.query.filter_by(
+                    tenant_slug=tenant_slug,
+                    platform="facebook",
+                    account_id=page_id,
+                ).first()
+                if acc:
+                    acc.username = page_name
+                    acc.access_token = page_token
+                else:
+                    acc = SocialAccount(
+                        tenant_slug=tenant_slug,
+                        user_id=session.get("user_id"),
+                        platform="facebook",
+                        account_id=page_id,
+                        username=page_name,
+                        access_token=page_token,
+                    )
+                    db.session.add(acc)
         db.session.commit()
-        _add_notification("تم ربط الصفحات", "تم ربط صفحات فيسبوك بنجاح.")
+        _add_notification("تم ربط الصفحات", "تم ربط صفحات فيسبوك بنجاح. يمكنك النشر من لوحة التحكم أو من AI Agent.")
     except Exception as e:
         db.session.rollback()
         return redirect(url_for("autoposter.dashboard") + "?facebook=error&msg=" + str(e))
@@ -633,13 +717,40 @@ def api_settings_get():
         s = SystemSettings.get_settings()
         app_id = (getattr(s, "facebook_app_id", None) or "").strip()
         app_secret = (getattr(s, "facebook_app_secret", None) or "").strip()
+
+        # AI settings (OpenAI / Gemini) are stored inside ui_flags JSON لتجنّب الحاجة لهجرة قاعدة البيانات.
+        flags = s.get_ui_flags()
+        openai_key = (flags.get("openai_api_key") or "").strip()
+        openai_model = (flags.get("openai_model") or "").strip()
+        openai_image_model = (flags.get("openai_image_model") or "").strip()
+        gemini_key = (flags.get("gemini_api_key") or "").strip()
+        gemini_model = (flags.get("gemini_model") or "").strip()
+
         return jsonify({
             "facebook_app_id": app_id,
             "facebook_app_secret": "••••••••" if app_secret else "",
             "facebook_app_secret_set": bool(app_secret),
+            "openai_api_key": "••••••••" if openai_key else "",
+            "openai_api_key_set": bool(openai_key),
+            "openai_model": openai_model,
+            "openai_image_model": openai_image_model,
+            "gemini_api_key": "••••••••" if gemini_key else "",
+            "gemini_api_key_set": bool(gemini_key),
+            "gemini_model": gemini_model,
         })
     except Exception:
-        return jsonify({"facebook_app_id": "", "facebook_app_secret": "", "facebook_app_secret_set": False})
+        return jsonify({
+            "facebook_app_id": "",
+            "facebook_app_secret": "",
+            "facebook_app_secret_set": False,
+            "openai_api_key": "",
+            "openai_api_key_set": False,
+            "openai_model": "",
+            "openai_image_model": "",
+            "gemini_api_key": "",
+            "gemini_api_key_set": False,
+            "gemini_model": "",
+        })
 
 
 @autoposter_bp.route("/api/settings", methods=["POST"])
@@ -648,6 +759,11 @@ def api_settings_post():
     data = request.get_json() or {}
     app_id = (data.get("facebook_app_id") or "").strip()
     app_secret = (data.get("facebook_app_secret") or "").strip()
+    openai_key = (data.get("openai_api_key") or "").strip()
+    openai_model = (data.get("openai_model") or "").strip()
+    openai_image_model = (data.get("openai_image_model") or "").strip()
+    gemini_key = (data.get("gemini_api_key") or "").strip()
+    gemini_model = (data.get("gemini_model") or "").strip()
     try:
         from models.system_settings import SystemSettings
         s = SystemSettings.get_settings()
@@ -655,6 +771,25 @@ def api_settings_post():
         # إذا أرسل سراً جديداً (غير ••••) حدّثه، وإلا احتفظ بالقديم
         if app_secret and app_secret != "••••••••":
             s.facebook_app_secret = app_secret
+
+        # تحديث إعدادات OpenAI / Gemini في ui_flags
+        flags = s.get_ui_flags()
+        if openai_key:
+            # لا نحدّث القيمة إذا أرسل المستخدم placeholder
+            if openai_key != "••••••••":
+                flags["openai_api_key"] = openai_key
+        # إن لم يُرسل المفتاح وسبق تخزين واحد نتركه كما هو
+        if openai_model:
+            flags["openai_model"] = openai_model
+        if openai_image_model:
+            flags["openai_image_model"] = openai_image_model
+        if gemini_key:
+            if gemini_key != "••••••••":
+                flags["gemini_api_key"] = gemini_key
+        if gemini_model:
+            flags["gemini_model"] = gemini_model
+        s.set_ui_flags(flags)
+
         db.session.commit()
         return jsonify({"success": True})
     except Exception as e:
@@ -676,3 +811,71 @@ def api_logout():
 def run_scheduled_posts_for_all_tenants(app):
     """تغليف لاستدعاء خدمة الجدولة من ملف الخدمات (للتوافق مع app.py)."""
     service_run_scheduled_for_all_tenants(app)
+
+
+# --- Webhooks: WhatsApp / Telegram (تشغيل الوكلاء من الرسائل الواردة) ---
+@autoposter_bp.route("/api/webhooks/whatsapp", methods=["POST"])
+def whatsapp_webhook():
+    """Webhook مبسّط لرسائل واتساب: يتوقع workflow_id في كويري سترنج ويشغّل الوكيل."""
+    data = request.get_json() or {}
+    workflow_id = request.args.get("workflow_id", type=int)
+    if not workflow_id:
+        return jsonify({"success": False, "error": "workflow_id مطلوب في مسار الاستدعاء"}), 400
+
+    w = AgentWorkflow.query.get_or_404(workflow_id)
+
+    message_text = (
+        data.get("message_text")
+        or data.get("text")
+        or data.get("body")
+        or ""
+    )
+    from_phone = data.get("from_phone") or data.get("from") or ""
+    message_id = data.get("message_id") or data.get("id") or ""
+
+    exe = AgentExecution(workflow_id=w.id, status="running")
+    db.session.add(exe)
+    db.session.commit()
+
+    ctx = {
+        "message_text": message_text,
+        "from_phone": from_phone,
+        "message_id": message_id,
+        "platform": "whatsapp",
+    }
+
+    execute_workflow(exe, initial_context=ctx)
+    db.session.refresh(exe)
+    return jsonify({"success": True, "execution": exe.to_dict()})
+
+
+@autoposter_bp.route("/api/webhooks/telegram", methods=["POST"])
+def telegram_webhook():
+    """Webhook مبسّط لرسائل تيليجرام: يتوقع workflow_id في كويري سترنج ويشغّل الوكيل."""
+    data = request.get_json() or {}
+    workflow_id = request.args.get("workflow_id", type=int)
+    if not workflow_id:
+        return jsonify({"success": False, "error": "workflow_id مطلوب في مسار الاستدعاء"}), 400
+
+    w = AgentWorkflow.query.get_or_404(workflow_id)
+
+    message = data.get("message") or {}
+    message_text = message.get("text") or data.get("message_text") or ""
+    chat = message.get("chat") or {}
+    chat_id = chat.get("id") or data.get("chat_id") or ""
+    username = chat.get("username") or data.get("username") or ""
+
+    exe = AgentExecution(workflow_id=w.id, status="running")
+    db.session.add(exe)
+    db.session.commit()
+
+    ctx = {
+        "message_text": message_text,
+        "chat_id": chat_id,
+        "username": username,
+        "platform": "telegram",
+    }
+
+    execute_workflow(exe, initial_context=ctx)
+    db.session.refresh(exe)
+    return jsonify({"success": True, "execution": exe.to_dict()})

@@ -11,60 +11,47 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <script>
     window.AI_AGENT_API_BASE = "{{ request.script_root or '' }}/autoposter/api";
+    window.AUTOPOSTER_LOGIN_URL = "{{ request.script_root or '' }}/login";
+    window.AI_AGENT_SETTINGS_URL = "{{ request.script_root or '' }}/autoposter#settings";
   </script>
 </head>
 <body>
-  <div class="app">
-    <aside class="sidebar" id="sidebar">
+  <div class="app app-ai-agents">
+    <aside class="sidebar" id="agentsSidebar">
       <div class="sidebar-header">
         <div class="logo">
           <span class="logo-icon">◇</span>
-          <span class="logo-text">نشر تلقائي</span>
+          <span class="logo-text">وكلاء الذكاء</span>
         </div>
-        <button class="sidebar-toggle" id="sidebarToggle" aria-label="إظهار/إخفاء القائمة">
-          <span></span><span></span><span></span>
-        </button>
       </div>
       <nav class="sidebar-nav">
-        <a href="{{ request.script_root or '' }}/autoposter" class="nav-item">
+        <a href="{{ request.script_root or '' }}/autoposter/ai-agent?mode=comment-reply" class="nav-item">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/>
+            <path d="M12 5v14M5 12h14"/>
           </svg>
-          <span class="nav-label">لوحة التحكم</span>
+          <span class="nav-label">وكيل الرد على التعليقات</span>
         </a>
-        <a href="{{ request.script_root or '' }}/autoposter/ai-agent" class="nav-item active">
+        <a href="{{ request.script_root or '' }}/autoposter/ai-agent?mode=new" class="nav-item">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="4" width="18" height="16" rx="2"/>
-            <path d="M8 9h8M8 13h5"/>
+            <path d="M12 5v14M5 12h14"/>
           </svg>
-          <span class="nav-label">AI Agent Builder</span>
+          <span class="nav-label">وكيل جديد</span>
         </a>
+        <div id="agentsList">
+          <div class="nav-item" style="opacity:0.6;cursor:default;">
+            <span class="nav-label">لا يوجد أي وكيل بعد</span>
+          </div>
+        </div>
       </nav>
       <div class="sidebar-footer">
         <a href="{{ request.script_root or '' }}/" class="nav-item">← العودة للمنصة</a>
       </div>
     </aside>
 
-    <main class="main">
-      <header class="topbar">
-        <div class="topbar-left">
-          <button class="menu-btn" id="menuBtn" aria-label="القائمة">☰</button>
-          <div class="search-wrap">
-            <input type="search" class="search-input" placeholder="بحث في الوورك فلو..." disabled>
-          </div>
-        </div>
-        <div class="topbar-right">
-          <span class="page-title">AI Agent Builder</span>
-        </div>
-      </header>
-
-      <div class="content">
+    <main class="main main-ai-agent">
+      <div class="content content-ai-agent">
         <section class="page active" id="page-ai-agent">
-          <div class="page-header">
-            <h1 class="page-title">منشئ الوورك فلو الذكي</h1>
-            <p class="page-subtitle">ابنِ تدفقات عمل للنشر والردود التلقائية باستخدام العقد البصرية.</p>
-          </div>
-          <div class="card" style="padding: 0; overflow: hidden; min-height: 600px;">
+          <div class="card card-ai-agent">
             <div id="ai-agent-root"></div>
           </div>
         </section>
@@ -73,5 +60,64 @@
   </div>
 
   <script type="module" src="{{ url_for('static', filename='ai_agent_frontend/dist/assets/ai-agent.js') }}"></script>
+  <script>
+    (function () {
+      var base = window.AI_AGENT_API_BASE || "{{ request.script_root or '' }}/autoposter/api";
+      var list = document.getElementById('agentsList');
+      if (!base || !list) return;
+
+      function reloadAgents() {
+        fetch(base + '/workflows')
+          .then(function (res) { return res.ok ? res.json() : null; })
+          .then(function (data) {
+            if (!data || !Array.isArray(data.workflows) || !data.workflows.length) {
+              list.innerHTML =
+                '<div class="nav-item" style="opacity:0.6;cursor:default;"><span class="nav-label">لا يوجد أي وكيل بعد</span></div>';
+              return;
+            }
+            list.innerHTML = '';
+            data.workflows.forEach(function (wf) {
+              var a = document.createElement('a');
+              a.href = "{{ request.script_root or '' }}/autoposter/ai-agent?workflow_id=" + encodeURIComponent(wf.id);
+              a.className = 'nav-item';
+              a.innerHTML =
+                '<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+                '<rect x="3" y="4" width="18" height="16" rx="2"/>' +
+                '<path d="M8 9h8M8 13h5"/>' +
+                '</svg>' +
+                '<span class="nav-label">' + (wf.name || 'وكيل بدون اسم') + '</span>';
+
+              // حذف الوكيل من القائمة ومن قاعدة البيانات عن طريق كلك يمين
+              a.addEventListener('contextmenu', function (e) {
+                e.preventDefault();
+                var ok = confirm('حذف هذا الوكيل بالكامل من القائمة؟');
+                if (!ok) return;
+                fetch(base + '/workflows/' + encodeURIComponent(wf.id), { method: 'DELETE' })
+                  .then(function (res) {
+                    if (!res || !res.ok) {
+                      alert('تعذر حذف الوكيل، حاول مرة أخرى.');
+                      return;
+                    }
+                    // إذا كنت على نفس الوكيل المحذوف، ارجع لوضع وكيل جديد
+                    if (window.location.search.indexOf('workflow_id=' + wf.id) !== -1) {
+                      window.location.href = "{{ request.script_root or '' }}/autoposter/ai-agent?mode=new";
+                    } else {
+                      reloadAgents();
+                    }
+                  })
+                  .catch(function () {
+                    alert('حدث خطأ أثناء حذف الوكيل.');
+                  });
+              });
+
+              list.appendChild(a);
+            });
+          })
+          .catch(function () {});
+      }
+
+      reloadAgents();
+    })();
+  </script>
 </body>
 </html>

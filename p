@@ -1,56 +1,141 @@
-Fix the integration between the React (Vite) build and the Flask Autoposter page `/autoposter/ai-agent`.
+Extend the AI Agent Workflow Builder with **Knowledge Base nodes** that allow the system to store and retrieve product and pricing information.
 
-Problem:
-The React project inside `static/ai_agent_frontend` is built successfully with Vite and generates files inside:
+The goal is to allow the AI Agent to answer questions using real business data such as products, prices, and specifications.
 
-static/ai_agent_frontend/dist/
-static/ai_agent_frontend/dist/assets/
+---
 
-Example build output:
-dist/index.html
-dist/assets/index.css
-dist/assets/ai-agent.js
+NEW NODE TYPES
 
-However, the Flask template currently loads old files like:
+knowledge_upload
+knowledge_search
 
-styles.css
-ai-agent.js
+---
 
-which causes the layout to break.
+1. KNOWLEDGE UPLOAD NODE
 
-Goal:
-Update the Flask template that renders `/autoposter/ai-agent` so it correctly loads the built Vite files.
+type: "knowledge_upload"
 
-Tasks:
+Purpose:
+Upload product information, price lists, or specifications into the system knowledge base.
 
-1. Find the template responsible for `/autoposter/ai-agent` (likely inside `templates/autoposter/ai_agent.html` or similar).
+Frontend settings:
 
-2. Remove any references to old static files like:
+Upload type:
 
-   * styles.css
-   * ai-agent.js (outside dist)
+file
+manual_entry
 
-3. Replace them with the correct Vite build assets:
+Fields:
 
-<link rel="stylesheet" href="/static/ai_agent_frontend/dist/assets/index.css">
+Product name
+Price
+Description
+Specifications
 
-<script type="module" src="/static/ai_agent_frontend/dist/assets/ai-agent.js"></script>
+Allow uploading:
 
-4. Ensure the template contains a root element for React:
+CSV
+Excel
+JSON
 
-<div id="root"></div>
+Example JSON node:
 
-5. If necessary, update the Flask route to serve the page correctly:
+{
+"type": "knowledge_upload",
+"data": {
+"source": "file",
+"file_type": "csv"
+}
+}
 
-@app.route("/autoposter/ai-agent")
-def ai_agent():
-return render_template("autoposter/ai_agent.html")
+Backend behavior:
 
-6. Ensure Flask static paths correctly resolve to:
+Store product data in database table:
 
-/static/ai_agent_frontend/dist/assets/
+products
 
-7. Do not modify the React code. Only fix the Flask template integration.
+Structure:
 
-Expected result:
-The AI Agent Builder page loads the React Flow UI correctly with proper CSS and layout, using the Vite production build files.
+id
+name
+price
+description
+specifications
+
+---
+
+2. KNOWLEDGE SEARCH NODE
+
+type: "knowledge_search"
+
+Purpose:
+Search products and prices using user questions.
+
+Frontend settings:
+
+Search source:
+
+products
+pricing
+specifications
+
+Query variable:
+
+{{message_text}}
+
+Example JSON:
+
+{
+"type": "knowledge_search",
+"data": {
+"query": "{{message_text}}"
+}
+}
+
+Backend function:
+
+def run_knowledge_search(node, context):
+
+```
+query = context.get("message_text")
+
+results = search_products(query)
+
+context["knowledge_results"] = results
+```
+
+---
+
+3. AI AGENT INTEGRATION
+
+The AI Agent node must receive product data from the context.
+
+Example prompt:
+
+Use the following product information to answer the user:
+
+{{knowledge_results}}
+
+User question:
+
+{{message_text}}
+
+---
+
+WORKFLOW EXAMPLE
+
+WhatsApp automation:
+
+whatsapp_listener
+↓
+knowledge_search
+↓
+AI Agent
+↓
+whatsapp_send
+
+---
+
+RESULT
+
+The AI agent will be able to answer customer questions using real data about products, prices, and specifications stored in the system.

@@ -68,18 +68,15 @@
     if (tbody) {
       tbody.innerHTML = pages.map(p => `
         <tr>
-          <td><input type="checkbox" class="page-check"></td>
+          <td><input type="checkbox" class="page-check" data-page-id="${escapeAttr(p.id)}"></td>
           <td>${escapeHtml(p.name)}</td>
           <td><code>${escapeHtml(p.id)}</code></td>
           <td><span class="status-badge ${p.status === 'connected' ? 'connected' : 'warning'}">${p.status === 'connected' ? 'متصل' : 'انتهت صلاحية التوكن'}</span></td>
-          <td>
-            <button class="icon-btn small" type="button" title="إجراءات">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="5" cy="12" r="1.5"></circle>
-                <circle cx="12" cy="12" r="1.5"></circle>
-                <circle cx="19" cy="12" r="1.5"></circle>
-              </svg>
-            </button>
+          <td class="text-right">
+            <div class="page-actions">
+              <button type="button" class="btn btn-ghost btn-sm page-disconnect" data-page-id="${escapeAttr(p.id)}" data-page-name="${escapeAttr(p.name)}" title="فك الارتباط">فك الارتباط</button>
+              <button type="button" class="btn btn-ghost btn-sm text-danger page-delete" data-page-id="${escapeAttr(p.id)}" data-page-name="${escapeAttr(p.name)}" title="حذف">حذف</button>
+            </div>
           </td>
         </tr>
       `).join('') || `
@@ -258,6 +255,7 @@
     if (!ok) return;
     loadStats();
     loadPages();
+    loadSettings();
     loadNotifications();
     loadScheduled();
     loadDrafts();
@@ -271,10 +269,28 @@
     const data = await res.json();
     const appIdEl = document.getElementById('fbAppId');
     const appSecretEl = document.getElementById('fbAppSecret');
+    const openaiKeyEl = document.getElementById('openaiApiKey');
+    const openaiModelEl = document.getElementById('openaiModel');
+    const geminiKeyEl = document.getElementById('geminiApiKey');
+    const geminiModelEl = document.getElementById('geminiModel');
     if (appIdEl) appIdEl.value = data.facebook_app_id || '';
     if (appSecretEl) {
       appSecretEl.value = data.facebook_app_secret_set ? '••••••••' : '';
       appSecretEl.placeholder = data.facebook_app_secret_set ? 'اتركه فارغاً للإبقاء على القيمة الحالية' : 'أدخل سر التطبيق';
+    }
+    if (openaiKeyEl) {
+      openaiKeyEl.value = data.openai_api_key_set ? '••••••••' : '';
+      openaiKeyEl.placeholder = data.openai_api_key_set ? 'اتركه فارغاً للإبقاء على القيمة الحالية' : 'sk-...';
+    }
+    if (openaiModelEl) {
+      openaiModelEl.value = data.openai_model || '';
+    }
+    if (geminiKeyEl) {
+      geminiKeyEl.value = data.gemini_api_key_set ? '••••••••' : '';
+      geminiKeyEl.placeholder = data.gemini_api_key_set ? 'اتركه فارغاً للإبقاء على القيمة الحالية' : 'AIzaSy...';
+    }
+    if (geminiModelEl) {
+      geminiModelEl.value = data.gemini_model || '';
     }
   }
 
@@ -381,13 +397,23 @@
     });
   }
 
-  // ----- Sidebar toggle (mobile) -----
+  // ----- Sidebar toggle: collapse on desktop, open/close on mobile -----
   const sidebar = document.getElementById('sidebar');
   const menuBtn = document.getElementById('menuBtn');
   const sidebarToggle = document.getElementById('sidebarToggle');
+  const expandTab = document.getElementById('sidebarExpandTab');
 
-  if (menuBtn) menuBtn.addEventListener('click', () => sidebar.classList.toggle('open'));
-  if (sidebarToggle) sidebarToggle.addEventListener('click', () => sidebar.classList.toggle('open'));
+  function toggleSidebar() {
+    if (window.innerWidth <= 992) {
+      sidebar.classList.toggle('open');
+    } else {
+      sidebar.classList.toggle('collapsed');
+    }
+  }
+
+  if (menuBtn) menuBtn.addEventListener('click', toggleSidebar);
+  if (sidebarToggle) sidebarToggle.addEventListener('click', toggleSidebar);
+  if (expandTab) expandTab.addEventListener('click', function () { sidebar.classList.remove('collapsed'); });
 
   // ----- Stat counters animation -----
   function animateValue(el, end, duration = 1200, suffix = '') {
@@ -1092,6 +1118,44 @@
       return;
     }
 
+    const disconnectBtn = e.target.closest('.page-disconnect');
+    if (disconnectBtn) {
+      e.preventDefault();
+      const pageId = disconnectBtn.getAttribute('data-page-id');
+      const pageName = disconnectBtn.getAttribute('data-page-name') || 'الصفحة';
+      if (!pageId || !confirm(`فك ارتباط «${pageName}»؟ لن يتم النشر عليها حتى تعيد ربطها.`)) return;
+      (async () => {
+        const res = await apiFetch(`/api/pages/${encodeURIComponent(pageId)}/disconnect`, { method: 'POST' });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.ok) {
+          toast('تم فك الارتباط.');
+          loadPages();
+        } else {
+          toast(data.error || 'فشل فك الارتباط.', 'error');
+        }
+      })();
+      return;
+    }
+
+    const deleteBtn = e.target.closest('.page-delete');
+    if (deleteBtn) {
+      e.preventDefault();
+      const pageId = deleteBtn.getAttribute('data-page-id');
+      const pageName = deleteBtn.getAttribute('data-page-name') || 'الصفحة';
+      if (!pageId || !confirm(`حذف «${pageName}» من القائمة؟ يمكنك ربطها مجدداً لاحقاً.`)) return;
+      (async () => {
+        const res = await apiFetch(`/api/pages/${encodeURIComponent(pageId)}`, { method: 'DELETE' });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.ok) {
+          toast('تم الحذف.');
+          loadPages();
+        } else {
+          toast(data.error || 'فشل الحذف.', 'error');
+        }
+      })();
+      return;
+    }
+
     const draftBtn = e.target.closest('.draft-load-btn');
     if (draftBtn) {
       e.preventDefault();
@@ -1152,7 +1216,7 @@
     });
   }
 
-  // ----- إعدادات فيسبوك (معرف التطبيق وسر التطبيق) -----
+  // ----- إعدادات التكاملات (فيسبوك + OpenAI) -----
   const facebookSettingsForm = document.getElementById('facebookSettingsForm');
   if (facebookSettingsForm) {
     facebookSettingsForm.addEventListener('submit', async (e) => {
@@ -1160,16 +1224,29 @@
       const btn = document.getElementById('saveSettingsBtn');
       const appId = (document.getElementById('fbAppId')?.value || '').trim();
       const appSecret = (document.getElementById('fbAppSecret')?.value || '').trim();
+      const openaiKey = (document.getElementById('openaiApiKey')?.value || '').trim();
+      const openaiModel = (document.getElementById('openaiModel')?.value || '').trim();
+      const geminiKey = (document.getElementById('geminiApiKey')?.value || '').trim();
+      const geminiModel = (document.getElementById('geminiModel')?.value || '').trim();
       if (btn) { btn.disabled = true; btn.textContent = 'جاري الحفظ...'; }
       const res = await apiFetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ facebook_app_id: appId, facebook_app_secret: appSecret }),
+        body: JSON.stringify({
+          facebook_app_id: appId,
+          facebook_app_secret: appSecret,
+          openai_api_key: openaiKey,
+          openai_model: openaiModel,
+          gemini_api_key: geminiKey,
+          gemini_model: geminiModel,
+        }),
       });
       if (btn) { btn.disabled = false; btn.textContent = 'حفظ الإعدادات'; }
       if (res && res.ok) {
-        toast('تم حفظ إعدادات فيسبوك', 'success');
+        toast('تم حفظ الإعدادات', 'success');
         if (appSecret && appSecret !== '••••••••') document.getElementById('fbAppSecret').value = '••••••••';
+        if (openaiKey && openaiKey !== '••••••••') document.getElementById('openaiApiKey').value = '••••••••';
+        if (geminiKey && geminiKey !== '••••••••') document.getElementById('geminiApiKey').value = '••••••••';
       } else {
         const err = await res?.json().catch(() => ({}));
         toast(err?.error || 'فشل الحفظ', 'error');
