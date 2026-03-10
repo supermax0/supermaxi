@@ -1,70 +1,126 @@
-You are a senior DevOps engineer.
+You are a senior full-stack engineer specialized in Flask + React + Vite deployments.
 
-Create a FULL production deployment script for a Flask SaaS project.
+Your task is to diagnose and fix why the AI Agent Workflow Builder works in development but appears broken in production.
 
-Project details:
+Project architecture:
 
-Project path:
-/var/www/finora/supermaxi
-
-Stack:
+Backend:
 Flask
 Gunicorn
-Python venv
-Systemd service
-Git
+systemd service
 
-The script must be named:
+Server path:
+/var/www/finora/supermaxi
 
-deploy.sh
+Frontend:
+React + Vite
 
-Goals of the script:
+Frontend source directory:
+static/ai_agent_frontend/
 
-1. Pull latest code from Git
-2. Activate virtual environment
-3. Install new dependencies if requirements.txt changed
-4. Run database migrations if they exist
-5. Safely restart the application
-6. Ensure port conflicts are cleaned
-7. Log deployment output
+Built frontend output:
+static/ai_agent_frontend/dist/
 
-Requirements:
+Current build assets:
+static/ai_agent_frontend/dist/assets/ai-agent.js
+static/ai_agent_frontend/dist/assets/index.css
 
-The script must:
+Problem description:
 
-- Stop existing gunicorn processes safely
-- Kill anything using port 8000
-- Pull latest git code
-- Activate the venv
-- Install dependencies
-- Restart systemd service "supermaxi"
-- If service not running, start gunicorn manually
+In development the workflow builder renders nodes correctly.
 
-Use this configuration:
+In production the page loads but the workflow canvas shows only the Start node and the UI looks incomplete.
 
-APP_DIR=/var/www/finora/supermaxi
-VENV=$APP_DIR/venv
-SERVICE=supermaxi
-PORT=8000
+Browser DevTools Network tab shows that only styles.css loads and the main Vite bundle ai-agent.js is not loaded.
 
-Add colored console output for steps.
+Goal:
 
-Example steps:
+Ensure the Flask template correctly loads the Vite build assets so the React workflow builder runs in production exactly as in development.
 
-[1] Updating repository
-[2] Installing dependencies
-[3] Restarting service
-[4] Deployment completed
+Steps to perform:
 
-Also create a log file:
+1. Locate the Flask template that renders the AI Agent page:
+   likely templates/ai_agent.html or templates/autoposter/ai_agent.html
 
-/var/log/supermaxi_deploy.log
+2. Ensure the template loads the built assets using Flask static routing.
 
-The script must be safe to run multiple times.
+Add the following to the template:
 
-Add error handling.
+<link rel="stylesheet" href="{{ url_for('static', filename='ai_agent_frontend/dist/assets/index.css') }}">
 
-After writing the script, also output the commands needed to:
+<div id="root"></div>
 
-- make the script executable
-- run the script
+<script type="module"
+src="{{ url_for('static', filename='ai_agent_frontend/dist/assets/ai-agent.js') }}">
+</script>
+
+3. Ensure the React app mounts into the correct element:
+
+document.getElementById("root")
+
+4. Verify that the static directory structure is correct:
+
+static/
+ai_agent_frontend/
+dist/
+assets/
+ai-agent.js
+index.css
+
+5. Add debugging logs to confirm that the React workflow initializes.
+
+6. Ensure the autoposter route returns the correct template.
+
+Example Flask route:
+
+@app.route("/autoposter/ai-agent")
+def ai_agent():
+return render_template("ai_agent.html")
+
+7. Ensure Gunicorn serves static files correctly through Flask.
+
+8. Verify that visiting:
+
+/static/ai_agent_frontend/dist/assets/ai-agent.js
+
+returns HTTP 200.
+
+9. If the React bundle is missing, create a build step:
+
+cd static/ai_agent_frontend
+npm install
+npm run build
+
+10. Ensure the dist folder is committed to Git and deployed to the server.
+
+11. Ensure the workflow builder initializes automatically when the page loads.
+
+Expected result:
+
+Opening
+
+/autoposter/ai-agent
+
+should load:
+
+index.css
+ai-agent.js
+
+and the full AI Agent Workflow Builder UI should render with nodes such as:
+
+Start
+AI Agent
+Image Generator
+Caption Generator
+Publisher
+Scheduler
+Comment Listener
+Auto Reply
+End
+
+At the end provide:
+
+• Files modified
+• Exact template fix
+• Any missing static assets
+• Deployment steps
