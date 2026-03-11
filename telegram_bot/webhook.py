@@ -11,10 +11,16 @@ import logging
 from typing import Any
 
 import requests
-from flask import Blueprint, current_app, jsonify, request
+from flask import Blueprint, current_app, g, jsonify, request, session
 
+from telegram_bot.agent_templates import (
+    create_agent_from_template,
+    list_templates,
+    get_template,
+)
 from telegram_bot.ai_agent import generate_ai_reply
 from telegram_bot.listener import parse_telegram_update
+from telegram_bot.ready_agent import ensure_telegram_agent
 from telegram_bot.sender import send_telegram_reply
 
 logger = logging.getLogger(__name__)
@@ -108,6 +114,70 @@ def setup_webhook():
         return jsonify({"ok": True, "webhook_url": webhook_url, "telegram_response": body}), 200
     except Exception as e:
         logger.exception("setup-webhook error: %s", e)
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@telegram_bp.route("/agent-templates", methods=["GET"])
+def agent_templates_list():
+    """قائمة قوالب الوكلاء الجاهزة (تيليجرام، واتساب، رد التعليقات)."""
+    return jsonify({"ok": True, "templates": list_templates()}), 200
+
+
+@telegram_bp.route("/create-from-template", methods=["POST"])
+def create_from_template():
+    """
+    إنشاء وكيل جديد + workflow من قالب.
+    Body: { "template_id": "telegram" | "whatsapp" | "comment_reply", "agent_name": "اختياري", "workflow_name": "اختياري" }
+    """
+    try:
+        data = request.get_json() or {}
+        template_id = (data.get("template_id") or "").strip()
+        if not template_id:
+            return jsonify({"ok": False, "error": "template_id مطلوب"}), 400
+        if not get_template(template_id):
+            return jsonify({"ok": False, "error": f"قالب غير موجود: {template_id}"}), 400
+
+        tenant_slug = getattr(g, "tenant", None)
+        user_id = data.get("user_id") or session.get("user_id")
+
+        agent, workflow = create_agent_from_template(
+            template_id,
+            tenant_slug=tenant_slug,
+            user_id=user_id,
+            agent_name=(data.get("agent_name") or "").strip() or None,
+            workflow_name=(data.get("workflow_name") or "").strip() or None,
+        )
+        return jsonify({
+            "ok": True,
+            "agent_id": agent.id,
+            "workflow_id": workflow.id,
+            "agent": agent.to_dict(),
+            "workflow": workflow.to_dict(),
+        }), 201
+    except ValueError as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+    except Exception as e:
+        logger.exception("create_from_template failed: %s", e)
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@telegram_bp.route("/ensure-agent", methods=["GET"])
+def ensure_agent():
+    """
+    إنشاء وكيل تيليجرام جاهز (Agent + Workflow) إن لم يكن موجوداً.
+    مفيد لاستخدامه مع مسار الـ webhook الذي يتطلب workflow_id (مثلاً من لوحة Autoposter).
+    """
+    try:
+        tenant_slug = getattr(g, "tenant", None)
+        agent, workflow = ensure_telegram_agent(tenant_slug=tenant_slug)
+        return jsonify({
+            "ok": True,
+            "agent_id": agent.id,
+            "workflow_id": workflow.id,
+            "message": "الوكيل جاهز. استخدم workflow_id في استدعاء webhook مع workflow_id.",
+        }), 200
+    except Exception as e:
+        logger.exception("ensure_agent failed: %s", e)
         return jsonify({"ok": False, "error": str(e)}), 500
 
 

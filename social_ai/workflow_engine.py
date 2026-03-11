@@ -727,6 +727,9 @@ def execute_workflow(execution: AgentExecution, initial_context: Dict[str, Any] 
                 elif node.type == "telegram_send":
                     tg_output = run_telegram_send_node(node, context)
                     log(node, "success", node_input, tg_output)
+                elif node.type in ("telegram_listener", "whatsapp_listener"):
+                    # عقدة استقبال: البيانات (message_text, chat_id) موجودة في السياق من الـ webhook
+                    log(node, "success", node_input, {"message_text": context.get("message_text"), "chat_id": context.get("chat_id")})
                 elif node.type == "memory_store":
                     mem_output = run_memory_node(node, context)
                     log(node, "success", node_input, mem_output)
