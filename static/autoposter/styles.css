@@ -1213,6 +1213,122 @@ select {
   color: var(--warning);
 }
 
+/* ===== إدارة الصفحات (Pages Management) ===== */
+.pages-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.pages-header .page-header-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.pages-header .page-subtitle {
+  margin-top: 0.25rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.pages-management-card {
+  overflow: hidden;
+  border-radius: var(--radius-md, 10px);
+}
+
+.pages-management-card .table-wrap {
+  overflow-x: auto;
+}
+
+.pages-table.data-table th,
+.pages-table.data-table td {
+  padding: 0.9rem 1rem;
+  vertical-align: middle;
+}
+
+.pages-table .col-check {
+  width: 2.5rem;
+  text-align: center;
+}
+
+.pages-table .col-check input {
+  cursor: pointer;
+}
+
+.pages-table .col-logo {
+  width: 4rem;
+}
+
+.page-logo-wrap {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.page-logo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.page-logo-fallback {
+  display: none;
+  position: absolute;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: rgba(24, 119, 242, 0.2);
+}
+
+.page-logo-fallback.show {
+  display: flex;
+}
+
+.pages-table .col-name {
+  font-weight: 500;
+}
+
+.pages-table .col-id code.page-id {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.pages-table .col-actions .page-actions {
+  justify-content: flex-end;
+}
+
+.pages-table tbody tr.page-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.pages-table .empty-cell {
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+.btn-danger {
+  color: var(--error, #ef4444);
+}
+
+.btn-danger:hover {
+  color: #ff6b6b;
+  background: rgba(239, 68, 68, 0.1);
+}
+
 /* ===== Scheduled ===== */
 .view-toggle {
   display: flex;

@@ -260,8 +260,32 @@
           </div>
         </section>
         <section class="page" id="page-pages">
-          <div class="page-header"><h1 class="page-title">إدارة الصفحات</h1><p class="page-subtitle">صفحات فيسبوك المتصلة</p><button class="btn btn-primary btn-sm" id="connectPageBtn">+ ربط صفحة</button></div>
-          <div class="card"><div class="table-wrap"><table class="data-table"><thead><tr><th><input type="checkbox" id="selectAllPages" aria-label="تحديد الكل"></th><th>اسم الصفحة</th><th>معرف الصفحة</th><th>الحالة</th><th class="text-right">إجراءات</th></tr></thead><tbody id="pagesTableBody"><tr><td colspan="5" class="text-muted">لا توجد صفحات. اربط صفحة من فيسبوك.</td></tr></tbody></table></div></div>
+          <div class="page-header pages-header">
+            <div class="page-header-text">
+              <h1 class="page-title">إدارة الصفحات</h1>
+              <p class="page-subtitle">صفحات فيسبوك المتصلة — اختر الصفحات للنشر أو فك الارتباط</p>
+            </div>
+            <button type="button" class="btn btn-primary" id="connectPageBtn">+ ربط صفحة</button>
+          </div>
+          <div class="card pages-management-card">
+            <div class="table-wrap">
+              <table class="data-table pages-table">
+                <thead>
+                  <tr>
+                    <th class="col-check"><input type="checkbox" id="selectAllPages" aria-label="تحديد الكل"></th>
+                    <th class="col-logo">الشعار</th>
+                    <th class="col-name">اسم الصفحة</th>
+                    <th class="col-id">معرف الصفحة</th>
+                    <th class="col-status">الحالة</th>
+                    <th class="col-actions text-right">إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody id="pagesTableBody">
+                  <tr><td colspan="6" class="empty-cell"><span class="text-muted">لا توجد صفحات. اربط صفحة من فيسبوك.</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
           <div class="card" style="margin-top:1rem; background: var(--panel-secondary, #1a1f2e); border-left: 3px solid #1877f2;">
             <h3 class="card-title" style="font-size:0.95rem;">نظام النشر على فيسبوك</h3>
             <ol style="margin:0; padding-right:1.2rem; font-size:0.85rem; color: var(--text-secondary, #94a3b8); line-height:1.6;">

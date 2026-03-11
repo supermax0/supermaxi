@@ -66,22 +66,31 @@
     const tbody = document.getElementById('pagesTableBody');
     const wrap = document.getElementById('pagesSelectWrap');
     if (tbody) {
-      tbody.innerHTML = pages.map(p => `
-        <tr>
-          <td><input type="checkbox" class="page-check" data-page-id="${escapeAttr(p.id)}"></td>
-          <td>${escapeHtml(p.name)}</td>
-          <td><code>${escapeHtml(p.id)}</code></td>
-          <td><span class="status-badge ${p.status === 'connected' ? 'connected' : 'warning'}">${p.status === 'connected' ? 'متصل' : 'انتهت صلاحية التوكن'}</span></td>
-          <td class="text-right">
+      const logoUrl = (id) => `https://graph.facebook.com/${encodeURIComponent(id)}/picture?type=square&width=80`;
+      tbody.innerHTML = pages.length
+        ? pages.map(p => `
+        <tr class="page-row">
+          <td class="col-check"><input type="checkbox" class="page-check" data-page-id="${escapeAttr(p.id)}" aria-label="تحديد ${escapeAttr(p.name)}"></td>
+          <td class="col-logo">
+            <div class="page-logo-wrap">
+              <img class="page-logo" src="${logoUrl(p.id)}" alt="" width="44" height="44" loading="lazy" onerror="this.style.display='none';this.nextElementSibling?.classList?.add('show');">
+              <span class="page-logo-fallback">${escapeHtml((p.name || 'ص').charAt(0))}</span>
+            </div>
+          </td>
+          <td class="col-name"><strong>${escapeHtml(p.name)}</strong></td>
+          <td class="col-id"><code class="page-id">${escapeHtml(p.id)}</code></td>
+          <td class="col-status"><span class="status-badge ${p.status === 'connected' ? 'connected' : 'warning'}">${p.status === 'connected' ? 'متصل' : 'انتهت صلاحية التوكن'}</span></td>
+          <td class="col-actions text-right">
             <div class="page-actions">
               <button type="button" class="btn btn-ghost btn-sm page-disconnect" data-page-id="${escapeAttr(p.id)}" data-page-name="${escapeAttr(p.name)}" title="فك الارتباط">فك الارتباط</button>
-              <button type="button" class="btn btn-ghost btn-sm text-danger page-delete" data-page-id="${escapeAttr(p.id)}" data-page-name="${escapeAttr(p.name)}" title="حذف">حذف</button>
+              <button type="button" class="btn btn-ghost btn-sm btn-danger page-delete" data-page-id="${escapeAttr(p.id)}" data-page-name="${escapeAttr(p.name)}" title="حذف">حذف</button>
             </div>
           </td>
         </tr>
-      `).join('') || `
+      `).join('')
+        : `
         <tr>
-          <td colspan="5">
+          <td colspan="6">
             <div class="empty-state small">
               <p>لا توجد صفحات متصلة بعد.</p>
               <button type="button" class="btn btn-primary btn-sm" data-connect-page="1">ربط صفحة فيسبوك</button>
