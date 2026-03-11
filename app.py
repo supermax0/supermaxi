@@ -58,6 +58,8 @@ from routes.delivery_agent import delivery_agent_bp
 from routes.pages import pages_bp
 from routes.invoice_store import invoice_store_bp
 from routes.autoposter import autoposter_bp
+from models.ai_agent import AgentWorkflow, AgentExecution
+from social_ai.workflow_engine import execute_workflow
 
 # =====================================
 # App Setup
@@ -983,6 +985,98 @@ def _start_social_ai_scheduler():
         pass
 
 _start_social_ai_scheduler()
+
+# =====================================
+# AI Agent Workflows Scheduler
+# =====================================
+def _start_ai_agent_scheduler():
+    """
+    مجدول بسيط لتشغيل Workflows الخاصة بالـ AI Agents بشكل دوري
+    (مثل وكيل الرد على التعليقات، وكيل تيليجرام، واتساب...).
+    """
+    import os
+    import sys
+
+    # لا نشغّل المجدول تحت Gunicorn لنفس الأسباب المذكورة أعلاه
+    if os.environ.get("SERVER_SOFTWARE", "").startswith("gunicorn/") or "gunicorn" in (sys.argv[0] or ""):
+        return
+
+    try:
+        from apscheduler.schedulers.background import BackgroundScheduler  # type: ignore[import-untyped]
+        from apscheduler.triggers.interval import IntervalTrigger  # type: ignore[import-untyped]
+        from flask import g
+        from models.tenant import Tenant  # type: ignore[attr-defined]
+        from datetime import datetime, timedelta, timezone
+
+        def _run_ai_agent_workflows():
+            """
+            لكل مستأجر (tenant) نشغّل كل الـ workflows المفعّلة التي تحتوي عقدة
+            comment-listener أو whatsapp_listener أو telegram_listener.
+            """
+            with app.app_context():
+                try:
+                    tenants = Tenant.query.all()
+                except Exception:
+                    tenants = []
+
+                now = datetime.now(timezone.utc)
+                min_interval = timedelta(seconds=5)
+
+                for t in tenants:
+                    slug = getattr(t, "slug", None)
+                    if not slug:
+                        continue
+
+                    g.tenant = slug
+                    try:
+                        # قراءة كل الـ workflows المفعّلة لهذا المستأجر
+                        q = AgentWorkflow.query.filter_by(is_active=True)
+                        workflows = q.all()
+                        for wf in workflows:
+                            graph = wf.graph_json or {}
+                            nodes = graph.get("nodes") or []
+                            has_listener = any(
+                                (n.get("type") in ("comment-listener", "whatsapp_listener", "telegram_listener"))
+                                for n in nodes
+                            )
+                            if not has_listener:
+                                continue
+
+                            # تفادي تشغيل نفس الـ workflow بشكل متوازي أو بشكل مفرط
+                            last_exe = (
+                                wf.executions.order_by(AgentExecution.started_at.desc()).first()
+                            )
+                            if last_exe:
+                                if last_exe.status == "running":
+                                    continue
+                                if last_exe.started_at:
+                                    started_at = last_exe.started_at
+                                    if started_at.tzinfo is None:
+                                        started_at = started_at.replace(tzinfo=timezone.utc)
+                                    if now - started_at < min_interval:
+                                        continue
+
+                            exe = AgentExecution(workflow_id=wf.id, status="running")
+                            db.session.add(exe)
+                            db.session.commit()
+
+                            try:
+                                execute_workflow(exe)
+                            except Exception:
+                                db.session.rollback()
+                    finally:
+                        g.tenant = None
+
+        scheduler = BackgroundScheduler()
+        # تشغيل كل 5 ثواني لمراقبة الرسائل/التعليقات
+        scheduler.add_job(_run_ai_agent_workflows, IntervalTrigger(seconds=5), id="ai_agent_workflows")
+        scheduler.start()
+    except Exception:
+        # فشل المجدول يجب ألا يمنع تشغيل التطبيق الأساسي
+        pass
+
+
+_start_ai_agent_scheduler()
 
 # =====================================
 # Run
