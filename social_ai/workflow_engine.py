@@ -1,20 +1,27 @@
 from __future__ import annotations
 
+import re
+import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Dict, List
-import re
 
 from flask import current_app
 
 from extensions import db
 from models.ai_agent import AgentExecution, AgentExecutionLog, AgentWorkflow
-from social_ai.ai_engine import generate_caption, generate_comment_reply, get_client
-from social_ai.image_generator import generate_image
-from social_ai.publish_manager import publish_post_to_accounts
-from social_ai.messaging import send_whatsapp_message, send_telegram_message
+from models.comment_log import CommentLog, is_comment_already_replied
 from models.social_account import SocialAccount
 from models.social_post import SocialPost
+from models.autoposter_facebook_page import AutoposterFacebookPage
+from models.autoposter_post import AutoposterPost
+from social_ai.ai_engine import generate_caption, generate_comment_reply, get_client
+from social_ai.image_generator import generate_image
+from social_ai.messaging import send_telegram_message, send_whatsapp_message
+from social_ai.publish_manager import publish_post_to_accounts
+from services.facebook_service import fetch_comments as fb_fetch_comments, reply_comment as fb_reply_comment
+from services.instagram_service import fetch_comments as ig_fetch_comments, reply_comment as ig_reply_comment
+from services.tiktok_service import fetch_comments as tiktok_fetch_comments, reply_comment as tiktok_reply_comment
 
 
 @dataclass
@@ -398,7 +405,14 @@ def run_knowledge_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]
     return {"knowledge": new_value}
 
 def run_comment_listener_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
-    """محاكاة جلب تعليق (في الإنتاج: استدعاء واجهات فيسبوك/إنستغرام وجلب التعليقات الحقيقية)."""
+    """
+    جلب تعليق حقيقي من المنصات المدعومة.
+
+    - لفيسبوك: يمر على كل الصفحات المتصلة وكل المنشورات المعروفة (autoposter_posts) ويجلب التعليقات.
+    - لإنستغرام/تيك توك: يعتمد على المعرف الممرَّر في سياق الوورك فلو أو إعدادات العقدة (media_id / video_id).
+
+    يرجع أول تعليق جديد (لم يتم الرد عليه سابقاً) ليعالج في هذا التشغيل، وتُعالج باقي التعليقات في تشغيلات لاحقة.
+    """
     data = node.data or {}
     platforms = data.get("platforms") or ["facebook"]
     if isinstance(platforms, str):
@@ -406,23 +420,124 @@ def run_comment_listener_node(node: NodeDef, context: Dict[str, Any]) -> Dict[st
     keywords = data.get("keywords") or []
     mode = data.get("mode") or "keywords_only"
 
-    # في التشغيل الفعلي: استدعاء API لجلب التعليقات ثم فلترتها حسب keywords/mode
-    # هنا نضع بيانات محاكاة ليستمر الوورك فلو
-    comment_text = context.get("comment_text") or "محتوى تعليق محاكى (للاختبار)"
-    comment_id = context.get("comment_id") or f"comment_{node.id}_{id(node)}"
-    platform = (platforms[0] if platforms else "facebook")
+    tenant_slug = context.get("tenant_slug")
 
-    result: Dict[str, Any] = {
-        "comment_text": comment_text,
-        "comment_id": comment_id,
-        "platform": platform,
-    }
-    context.update(result)
-    return result
+    def _matches_keywords(text: str) -> bool:
+        if not keywords or mode == "all_comments":
+            return True
+        lower = (text or "").lower()
+        for kw in keywords:
+            if isinstance(kw, str) and kw.strip().lower() in lower:
+                return True
+        return False
+
+    # 1) فيسبوك: كل الصفحات وكل المنشورات المعروفة في النظام
+    if "facebook" in platforms:
+        fb_pages_q = AutoposterFacebookPage.query
+        fb_posts_q = AutoposterPost.query
+        if tenant_slug:
+            # صفحات ومنشورات كل تينانت عادة في نفس قاعدة بيانات التينانت؛ لا نحتاج فلتر إضافي هنا.
+            pass
+
+        pages = fb_pages_q.all()
+        if pages:
+            # نبحث في منشورات النشر التلقائي التي تحتوي على facebook_post_id
+            posts = (
+                fb_posts_q.filter(AutoposterPost.facebook_post_id.isnot(None))
+                .order_by(AutoposterPost.created_at.desc())
+                .limit(50)
+                .all()
+            )
+            for post in posts:
+                post_id = post.facebook_post_id
+                if not post_id:
+                    continue
+                comments = fb_fetch_comments(post_id=str(post_id), limit=50)
+                for c in comments:
+                    comment_id = str(c.get("id") or "")
+                    text = c.get("message") or ""
+                    username = (c.get("from") or {}).get("name")
+                    timestamp = c.get("created_time")
+                    if not comment_id or not text:
+                        continue
+                    # حماية من التكرار
+                    if is_comment_already_replied(tenant_slug, "facebook", comment_id):
+                        continue
+                    # فلتر الكلمات المفتاحية إن لزم
+                    if not _matches_keywords(text):
+                        continue
+                    result: Dict[str, Any] = {
+                        "platform": "facebook",
+                        "comment_id": comment_id,
+                        "comment_text": text,
+                        "username": username,
+                        "timestamp": timestamp,
+                        "page_id": post.page_id,
+                        "page_name": post.page_name,
+                    }
+                    context.update(result)
+                    return result
+
+    # 2) إنستغرام: يعتمد على media_id الممرّر
+    if "instagram" in platforms:
+        media_id = (data.get("media_id") or context.get("media_id") or "").strip()
+        if media_id:
+            comments = ig_fetch_comments(media_id=media_id, limit=50)
+            for c in comments:
+                comment_id = str(c.get("id") or "")
+                text = c.get("text") or ""
+                username = c.get("username")
+                timestamp = c.get("timestamp")
+                if not comment_id or not text:
+                    continue
+                if is_comment_already_replied(tenant_slug, "instagram", comment_id):
+                    continue
+                if not _matches_keywords(text):
+                    continue
+                result = {
+                    "platform": "instagram",
+                    "comment_id": comment_id,
+                    "comment_text": text,
+                    "username": username,
+                    "timestamp": timestamp,
+                }
+                context.update(result)
+                return result
+
+    # 3) تيك توك: يعتمد على video_id الممرّر
+    if "tiktok" in platforms:
+        video_id = (data.get("video_id") or context.get("video_id") or "").strip()
+        if video_id:
+            comments = tiktok_fetch_comments(video_id=video_id, limit=50)
+            for c in comments:
+                comment_id = str(c.get("comment_id") or c.get("id") or "")
+                text = c.get("text") or c.get("comment_text") or ""
+                username = (c.get("user") or {}).get("display_name") if isinstance(c.get("user"), dict) else c.get("user_name")
+                timestamp = c.get("create_time") or c.get("timestamp")
+                if not comment_id or not text:
+                    continue
+                if is_comment_already_replied(tenant_slug, "tiktok", comment_id):
+                    continue
+                if not _matches_keywords(text):
+                    continue
+                result = {
+                    "platform": "tiktok",
+                    "comment_id": comment_id,
+                    "comment_text": text,
+                    "username": username,
+                    "timestamp": timestamp,
+                }
+                context.update(result)
+                return result
+
+    # إذا لم يتم العثور على أي تعليق مناسب، لا نغيّر السياق لكن نرجع حالة فارغة
+    return {"platform": None, "comment_id": None, "comment_text": "", "username": None}
 
 
 def run_auto_reply_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
     """توليد رد على التعليق (قالب أو AI) وحفظه في الـ context (الإرسال الفعلي عبر واجهات المنصات لاحقاً)."""
+    if context.get("keyword_matched") is False:
+        return {"reply_text": "", "reply_status": "skipped_no_keyword"}
     data = node.data or {}
     mode = data.get("mode") or "template"
     template = data.get("template") or "شكراً لتعليقك!"
@@ -448,11 +563,103 @@ def run_auto_reply_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any
     return result
 
 
+def run_keyword_filter_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
+    """فلتر التعليقات حسب كلمات مفتاحية: إذا وُجدت كلمة في النص نمرّر للعقدة التالية وإلا نهمل."""
+    data = node.data or {}
+    keywords_raw = data.get("keywords") or []
+    keywords = [k.strip().lower() for k in (keywords_raw if isinstance(keywords_raw, list) else []) if k]
+    comment_text = (context.get("comment_text") or context.get("text") or "").lower()
+    matched = any(kw in comment_text for kw in keywords) if keywords else True
+    result: Dict[str, Any] = {"keyword_matched": matched}
+    context["keyword_matched"] = matched
+    return result
+
+
+def run_duplicate_protection_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
+    """التحقق من أن التعليق لم يُرد عليه مسبقاً (حماية من التكرار)."""
+    platform = (context.get("platform") or "facebook").lower()
+    comment_id = str(context.get("comment_id") or "")
+    tenant_slug = context.get("tenant_slug")
+    already = is_comment_already_replied(tenant_slug, platform, comment_id) if comment_id else False
+    result: Dict[str, Any] = {"already_replied": already}
+    context["already_replied"] = already
+    return result
+
+
+# تخزين بسيط لمحدّد المعدل (في الإنتاج يُفضّل Redis أو جدول)
+_rate_limit_last_ts: Dict[str, float] = {}
+_rate_limit_count: Dict[str, List[float]] = {}
+
+
+def run_rate_limiter_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
+    """تأخير بين الردود وحد أقصى للردود في الدقيقة."""
+    data = node.data or {}
+    delay_sec = float(data.get("delay_between_replies") or 5)
+    max_per_minute = int(data.get("max_replies_per_minute") or 20)
+    key = str(context.get("workflow_id") or "default")
+    now = time.time()
+    if key in _rate_limit_last_ts and (now - _rate_limit_last_ts[key]) < delay_sec:
+        context["rate_limited"] = True
+        return {"rate_limited": True}
+    times = _rate_limit_count.setdefault(key, [])
+    times[:] = [t for t in times if now - t < 60]
+    if len(times) >= max_per_minute:
+        context["rate_limited"] = True
+        return {"rate_limited": True}
+    times.append(now)
+    _rate_limit_last_ts[key] = now
+    context["rate_limited"] = False
+    return {"rate_limited": False}
+
+
+def run_publish_reply_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
+    """نشر الرد على التعليق إلى فيسبوك / إنستغرام / تيك توك."""
+    if context.get("keyword_matched") is False:
+        return {"published": False, "reason": "keyword_not_matched"}
+    if context.get("already_replied") or context.get("rate_limited"):
+        return {"published": False, "reason": "skipped"}
+    reply_text = context.get("reply_text") or context.get("ai_reply") or ""
+    if not reply_text:
+        return {"published": False, "reason": "no_reply"}
+    platform = (context.get("platform") or "facebook").lower()
+    comment_id = str(context.get("comment_id") or "")
+    if not comment_id:
+        return {"published": False, "reason": "no_comment_id"}
+    ok = False
+    if platform == "facebook":
+        ok = fb_reply_comment(comment_id, reply_text)
+    elif platform == "instagram":
+        ok = ig_reply_comment(comment_id, reply_text)
+    elif platform == "tiktok":
+        ok = tiktok_reply_comment(comment_id, reply_text)
+    result: Dict[str, Any] = {"published": ok, "platform": platform, "comment_id": comment_id}
+    context.update(result)
+    return result
+
+
+def run_logging_node(node: NodeDef, context: Dict[str, Any], execution: AgentExecution) -> Dict[str, Any]:
+    """تسجيل الحدث في جدول comment_logs."""
+    log_row = CommentLog(
+        tenant_slug=context.get("tenant_slug"),
+        platform=context.get("platform") or "facebook",
+        comment_id=str(context.get("comment_id") or ""),
+        username=context.get("username"),
+        comment_text=context.get("comment_text") or context.get("text") or "",
+        ai_reply=context.get("reply_text") or context.get("ai_reply"),
+        execution_id=execution.id,
+    )
+    db.session.add(log_row)
+    db.session.commit()
+    return {"logged": True, "log_id": log_row.id}
+
+
 def execute_workflow(execution: AgentExecution, initial_context: Dict[str, Any] | None = None) -> None:
     """تنفيذ بسيط للـWorkflow بدعم العقد الأساسية."""
     workflow = execution.workflow
     nodes = _build_graph(workflow)
     context: Dict[str, Any] = dict(initial_context or {})
+    context.setdefault("workflow_id", workflow.id)
+    context.setdefault("tenant_slug", getattr(workflow.agent, "tenant_slug", None))
 
     def log(node: NodeDef, status: str, input_obj: Any = None, output_obj: Any = None, error: str | None = None):
         log_row = AgentExecutionLog(
@@ -499,6 +706,21 @@ def execute_workflow(execution: AgentExecution, initial_context: Dict[str, Any] 
                 elif node.type == "auto-reply":
                     reply_output = run_auto_reply_node(node, context)
                     log(node, "success", node_input, reply_output)
+                elif node.type == "keyword-filter":
+                    kw_output = run_keyword_filter_node(node, context)
+                    log(node, "success", node_input, kw_output)
+                elif node.type == "duplicate-protection":
+                    dup_output = run_duplicate_protection_node(node, context)
+                    log(node, "success", node_input, dup_output)
+                elif node.type == "rate-limiter":
+                    rl_output = run_rate_limiter_node(node, context)
+                    log(node, "success", node_input, rl_output)
+                elif node.type == "publish-reply":
+                    pub_reply_output = run_publish_reply_node(node, context)
+                    log(node, "success", node_input, pub_reply_output)
+                elif node.type == "logging":
+                    log_output = run_logging_node(node, context, execution)
+                    log(node, "success", node_input, log_output)
                 elif node.type == "whatsapp_send":
                     wa_output = run_whatsapp_send_node(node, context)
                     log(node, "success", node_input, wa_output)

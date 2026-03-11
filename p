@@ -1,77 +1,251 @@
-You are a senior Flask + React engineer working on a SaaS project called **Finora**.
+Develop an advanced Facebook Comment Listener system inside the existing autoposter backend.
 
-The system contains an **AI Agent Workflow Builder** (React frontend built with Vite) that loads workflow data from a Flask API.
+IMPORTANT ARCHITECTURE RULES
+- Do NOT change existing database structure unless adding new fields
+- Do NOT break existing routes
+- Do NOT modify working autoposter features
+- Only ADD new modules
 
-Current issue:
+The system must automatically detect new Facebook posts/videos and fetch comments from them.
 
-The frontend is requesting:
+----------------------------------
 
-GET /api/workflows?workflow_id=1
+GOAL
 
-But Flask currently only exposes:
+Create a background listener that:
 
-/workflows
+1) Fetches all Facebook pages connected to the system
+2) Automatically detects NEW posts or videos
+3) Saves their IDs in database
+4) Continuously fetches comments
+5) Sends comments to AI workflow
+6) Publishes automatic replies
 
-So the browser receives:
+----------------------------------
 
-404 NOT FOUND
+DATABASE
 
-Your task is to fix the backend so **both endpoints work** without breaking existing code.
+Use existing tables if possible:
 
-Project structure:
+AutoposterFacebookPage
+AutoposterPost
 
-Flask backend
-/var/www/finora/supermaxi/routes/autoposter.py
+If needed add:
 
-React frontend
-/static/ai_agent_frontend/src/modules/App.tsx
+last_comment_time
+last_scan_time
 
-Steps:
+Example schema extension:
 
-1. Open `routes/autoposter.py`.
+AutoposterPost
+- id
+- page_id
+- facebook_post_id
+- created_time
+- last_comment_time
 
-2. Locate the existing route that serves workflows:
+----------------------------------
 
-@autoposter_bp.route("/workflows")
+STEP 1
+FETCH FACEBOOK PAGES
 
-3. Modify it so it supports **both URLs**:
+Load all Facebook pages stored in database.
 
-@autoposter_bp.route("/workflows")
-@autoposter_bp.route("/api/workflows")
+Example:
 
-4. The function must read the query parameter:
+pages = AutoposterFacebookPage.query.all()
 
-workflow_id = request.args.get("workflow_id")
+----------------------------------
 
-5. Return JSON with:
+STEP 2
+AUTO DETECT NEW POSTS AND VIDEOS
+
+For every page call:
+
+GET
+https://graph.facebook.com/v19.0/{page-id}/posts
+
+Fields required:
+
+id
+message
+created_time
+permalink_url
+attachments
+
+If the post contains video or reel the attachments will contain type=video.
+
+Save every new post_id into AutoposterPost if not already stored.
+
+----------------------------------
+
+STEP 3
+SAVE VIDEO IDs
+
+If attachments contain video data extract:
+
+video_id
+
+Example:
+
+attachments{
+  media_type
+  target{
+     id
+  }
+}
+
+Save video_id into database.
+
+----------------------------------
+
+STEP 4
+FETCH COMMENTS
+
+For every stored post call:
+
+GET
+/{post-id}/comments
+
+fields:
+
+id
+message
+from
+created_time
+
+----------------------------------
+
+STEP 5
+IGNORE OLD COMMENTS
+
+Use last_comment_time.
+
+Only process comments newer than the last processed comment.
+
+----------------------------------
+
+STEP 6
+SEND COMMENT TO WORKFLOW
+
+Each comment should produce event:
 
 {
-"nodes": [],
-"edges": []
+ "platform": "facebook",
+ "page_id": "...",
+ "post_id": "...",
+ "comment_id": "...",
+ "username": "...",
+ "text": "...",
+ "created_time": "..."
 }
 
-Example structure:
+Send event to AI node.
 
-return {
-"nodes": [
-{"id":"1","type":"start","position":{"x":250,"y":50}}
-],
-"edges":[]
+----------------------------------
+
+STEP 7
+AI RESPONSE
+
+Send comment text to OpenAI.
+
+Example prompt:
+
+"You are a social media assistant.
+Reply to this Facebook comment politely and helpfully."
+
+Generate response.
+
+----------------------------------
+
+STEP 8
+POST REPLY
+
+Publish reply using:
+
+POST
+/{comment-id}/comments
+
+payload:
+
+{
+ "message": "AI reply"
 }
 
-6. Do NOT change any unrelated routes.
+----------------------------------
 
-7. Do NOT modify React code.
+STEP 9
+RUN BACKGROUND LISTENER
 
-Goal:
+Create a background loop:
 
-Both of these must work:
+run_comment_listener()
 
-/workflows?workflow_id=1
-/api/workflows?workflow_id=1
+It should run every:
 
-Return HTTP 200 with JSON.
+30 seconds
 
-Also ensure the route uses `jsonify()` if Flask requires it.
+----------------------------------
 
-Keep the change minimal and safe.
+STEP 10
+OPTIMIZATION
+
+Limit scanning to:
+
+last 10 posts per page.
+
+----------------------------------
+
+FILES TO CREATE
+
+social_ai/
+   facebook_listener.py
+   comment_processor.py
+   ai_responder.py
+
+----------------------------------
+
+facebook_listener.py responsibilities
+
+- detect pages
+- detect posts
+- detect new videos
+- fetch comments
+
+----------------------------------
+
+comment_processor.py responsibilities
+
+- filter old comments
+- send comment to workflow
+
+----------------------------------
+
+ai_responder.py responsibilities
+
+- call OpenAI
+- generate reply
+- publish reply
+
+----------------------------------
+
+SECURITY
+
+Handle:
+
+- expired access tokens
+- rate limits
+- duplicate replies
+
+----------------------------------
+
+RESULT
+
+System automatically:
+
+- detects new videos
+- detects new posts
+- fetches comments
+- replies automatically with AI
+
+No manual configuration needed.

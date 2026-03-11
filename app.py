@@ -29,6 +29,7 @@ from models.role import Role, Permission
 from models.autoposter_facebook_page import AutoposterFacebookPage
 from models.autoposter_post import AutoposterPost
 from models.autoposter_notification import AutoposterNotification
+from models.comment_log import CommentLog
 
 # Routes
 from routes.index import index_bp

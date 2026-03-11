@@ -7,6 +7,9 @@ from flask import Blueprint, jsonify, render_template, request, session, g
 from extensions import db
 from models.social_account import SocialAccount
 from models.social_post import SocialPost
+from services.facebook_service import fetch_comments as fb_fetch_comments
+from services.instagram_service import fetch_comments as ig_fetch_comments
+from services.tiktok_service import fetch_comments as tiktok_fetch_comments
 from social_ai.content_generator import create_ai_post
 
 
@@ -36,6 +39,9 @@ def api_accounts_list():
     q = SocialAccount.query
     if tenant_slug:
         q = q.filter_by(tenant_slug=tenant_slug)
+    platform = (request.args.get("platform") or "").strip().lower()
+    if platform:
+        q = q.filter_by(platform=platform)
     items = q.order_by(SocialAccount.created_at.desc()).all()
     return jsonify({"accounts": [a.to_dict() for a in items]})
 
@@ -51,6 +57,84 @@ def api_posts_list():
         q = q.filter_by(status=status)
     posts = q.order_by(SocialPost.created_at.desc()).limit(50).all()
     return jsonify({"posts": [p.to_dict() for p in posts]})
+
+
+@social_ai_bp.route("/api/comments/preview", methods=["POST"])
+def api_comments_preview():
+    """
+    واجهة بسيطة لعقدة Comment Listener:
+    - تجلب تعليقات منشور واحد من المنصة المحددة.
+    - تُستخدم فقط للمعاينة في واجهة العقدة (بوكس التعليقات).
+    يعتمد نوع المعرف حسب المنصة:
+    - Facebook: post_id
+    - Instagram: media_id
+    - TikTok: video_id
+    """
+    data = request.get_json() or {}
+    platform = (data.get("platform") or "facebook").strip().lower()
+    limit = int(data.get("limit") or 10)
+
+    post_id = (data.get("post_id") or "").strip()
+    media_id = (data.get("media_id") or "").strip()
+    video_id = (data.get("video_id") or "").strip()
+
+    # نختار المعرف المناسب لكل منصة
+    try:
+        comments_raw: list[dict] = []
+        if platform == "facebook":
+            if not post_id:
+                return jsonify({"success": False, "error": "post_id مطلوب لفيسبوك"}), 400
+            comments_raw = fb_fetch_comments(post_id=post_id, limit=limit)
+        elif platform == "instagram":
+            if not media_id:
+                return jsonify({"success": False, "error": "media_id مطلوب لإنستغرام"}), 400
+            comments_raw = ig_fetch_comments(media_id=media_id, limit=limit)
+        elif platform == "tiktok":
+            if not video_id:
+                return jsonify({"success": False, "error": "video_id مطلوب لتيك توك"}), 400
+            comments_raw = tiktok_fetch_comments(video_id=video_id, limit=limit)
+        else:
+            return jsonify({"success": False, "error": f"منصة غير مدعومة: {platform}"}), 400
+
+        # توحيد شكل البيانات لعقدة الـ UI
+        normalized: list[dict] = []
+        for c in comments_raw:
+            if platform == "facebook":
+                normalized.append(
+                    {
+                        "platform": "facebook",
+                        "comment_id": c.get("id"),
+                        "username": (c.get("from") or {}).get("name"),
+                        "text": c.get("message") or "",
+                        "timestamp": c.get("created_time"),
+                    }
+                )
+            elif platform == "instagram":
+                normalized.append(
+                    {
+                        "platform": "instagram",
+                        "comment_id": c.get("id"),
+                        "username": c.get("username"),
+                        "text": c.get("text") or "",
+                        "timestamp": c.get("timestamp"),
+                    }
+                )
+            else:  # tiktok
+                normalized.append(
+                    {
+                        "platform": "tiktok",
+                        "comment_id": c.get("comment_id") or c.get("id"),
+                        "username": (c.get("user") or {}).get("display_name")
+                        if isinstance(c.get("user"), dict)
+                        else c.get("user_name"),
+                        "text": c.get("text") or c.get("comment_text") or "",
+                        "timestamp": c.get("create_time") or c.get("timestamp"),
+                    }
+                )
+
+        return jsonify({"success": True, "platform": platform, "comments": normalized})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @social_ai_bp.route("/api/generate", methods=["POST"])

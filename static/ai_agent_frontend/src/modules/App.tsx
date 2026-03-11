@@ -17,7 +17,12 @@ const NODE_TYPES: Array<{ id: string; label: string; icon: string; description: 
   { id: "publisher", label: "Publisher", icon: "📤", description: "نشر على المنصات المختارة", color: "#f97316" },
   { id: "scheduler", label: "Scheduler", icon: "⏰", description: "جدولة النشر لوقت محدد", color: "#06b6d4" },
   { id: "comment-listener", label: "Comment Listener", icon: "💬", description: "مراقبة التعليقات والتفاعل", color: "#eab308" },
+  { id: "keyword-filter", label: "Keyword Filter", icon: "🔍", description: "فلترة التعليقات حسب كلمات مفتاحية", color: "#a855f7" },
   { id: "auto-reply", label: "Auto Reply", icon: "✨", description: "رد تلقائي على التعليقات", color: "#ef4444" },
+  { id: "publish-reply", label: "Publish Reply", icon: "📣", description: "نشر الرد على التعليق (FB/IG/TikTok)", color: "#f59e0b" },
+  { id: "rate-limiter", label: "Rate Limiter", icon: "⏱", description: "تأخير بين الردود وحد أقصى للدقيقة", color: "#14b8a6" },
+  { id: "logging", label: "Logging", icon: "📋", description: "تسجيل الأحداث في comment_logs", color: "#78716c" },
+  { id: "duplicate-protection", label: "Duplicate Protection", icon: "🛡", description: "عدم الرد مرتين على نفس التعليق", color: "#64748b" },
   { id: "memory_store", label: "Store Data", icon: "🧺", description: "تخزين حقل من البيانات في سياق الوكيل", color: "#10b981" },
   { id: "knowledge_base", label: "Knowledge / Catalog", icon: "📚", description: "رفع كتالوج المنتجات أو قاعدة معرفة للـ AI", color: "#6366f1" },
   { id: "whatsapp_listener", label: "WhatsApp Listener", icon: "📲", description: "استقبال رسائل واتساب (Webhook)", color: "#22c55e" },
@@ -489,10 +494,63 @@ export const App: React.FC = () => {
 
   const handleCommentListenerFieldChange =
     (field: string) =>
-    (e: React.ChangeEvent<HTMLSelectElement | HTMLTextAreaElement>) => {
+    (e: React.ChangeEvent<HTMLSelectElement | HTMLTextAreaElement | HTMLInputElement>) => {
       if (!selectedNode || selectedNode.type !== "comment-listener") return;
       updateNodeData(selectedNode.id, { [field]: e.target.value });
     };
+
+  const [commentsPreview, setCommentsPreview] = useState<
+    Array<{ platform: string; comment_id: string; username?: string; text: string; timestamp?: string }>
+  >([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentsError, setCommentsError] = useState<string | null>(null);
+
+  const handleLoadCommentsPreview = async () => {
+    if (!selectedNode || selectedNode.type !== "comment-listener") return;
+    const data = selectedNode.data as any;
+    const platforms: string[] = data.platforms || ["facebook"];
+    const platform = (platforms[0] || "facebook") as string;
+
+    const postIdKey = platform === "facebook" ? "post_id" : platform === "instagram" ? "media_id" : "video_id";
+    const idValue = (data[postIdKey] as string | undefined)?.trim();
+    if (!idValue) {
+      setCommentsError(
+        platform === "facebook"
+          ? "أدخل معرف منشور فيسبوك (post_id) أولاً."
+          : platform === "instagram"
+          ? "أدخل معرف منشور إنستغرام (media_id) أولاً."
+          : "أدخل معرف فيديو تيك توك (video_id) أولاً.",
+      );
+      setCommentsPreview([]);
+      return;
+    }
+
+    setCommentsLoading(true);
+    setCommentsError(null);
+    try {
+      const body: any = { platform, limit: 10 };
+      body[postIdKey] = idValue;
+      const res = await fetch("/social-ai/api/comments/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(txt || "فشل جلب التعليقات.");
+      }
+      const json = await res.json();
+      if (!json.success) {
+        throw new Error(json.error || "فشل جلب التعليقات.");
+      }
+      setCommentsPreview(json.comments || []);
+    } catch (e: any) {
+      setCommentsError(e.message || "فشل جلب التعليقات.");
+      setCommentsPreview([]);
+    } finally {
+      setCommentsLoading(false);
+    }
+  };
 
   const handleAutoReplyFieldChange =
     (field: string) =>
@@ -1278,7 +1336,7 @@ export const App: React.FC = () => {
                     <div className="mt-2 border-t border-slate-800 pt-2 text-[11px] font-semibold text-slate-400">
                       إعدادات مراقبة التعليقات
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       <div>
                         <div className="mb-1 text-[11px] text-slate-400">المنصات</div>
                         <div className="flex flex-wrap gap-2">
@@ -1335,6 +1393,85 @@ export const App: React.FC = () => {
                           <option value="all_comments">كل التعليقات</option>
                           <option value="keywords_only">فقط عند وجود كلمات التريغر</option>
                         </select>
+                      </div>
+                      <div className="mt-3 border-t border-slate-800 pt-3">
+                        <div className="mb-2 text-[11px] font-semibold text-slate-400">
+                          معاينة التعليقات (Facebook / Instagram / TikTok)
+                        </div>
+                        <div className="space-y-2">
+                          <input
+                            className="w-full rounded-lg border border-[#334155] bg-[#1e293b] px-2 py-1.5 text-xs text-[#e5e7eb] focus:border-[#22c55e] focus:outline-none"
+                            placeholder="معرف منشور فيسبوك (post_id) أو media_id / video_id حسب المنصة الأولى المختارة"
+                            value={
+                              (() => {
+                                const data = selectedNode.data as any;
+                                const platforms: string[] = data.platforms || ["facebook"];
+                                const platform = (platforms[0] || "facebook") as string;
+                                const key =
+                                  platform === "facebook"
+                                    ? "post_id"
+                                    : platform === "instagram"
+                                    ? "media_id"
+                                    : "video_id";
+                                return data[key] || "";
+                              })()
+                            }
+                            onChange={(e) => {
+                              const data = selectedNode.data as any;
+                              const platforms: string[] = data.platforms || ["facebook"];
+                              const platform = (platforms[0] || "facebook") as string;
+                              const key =
+                                platform === "facebook"
+                                  ? "post_id"
+                                  : platform === "instagram"
+                                  ? "media_id"
+                                  : "video_id";
+                              updateNodeData(selectedNode.id, { [key]: e.target.value });
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={handleLoadCommentsPreview}
+                            className="w-full rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                            disabled={commentsLoading}
+                          >
+                            {commentsLoading ? "جارٍ جلب التعليقات..." : "عرض التعليقات الأخيرة"}
+                          </button>
+                          {commentsError && (
+                            <div className="rounded border border-rose-500/60 bg-rose-900/40 px-2 py-1 text-[10px] text-rose-100">
+                              {commentsError}
+                            </div>
+                          )}
+                          {!!commentsPreview.length && (
+                            <div className="max-h-40 overflow-y-auto rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-[11px] text-slate-200 space-y-1.5">
+                              {commentsPreview.map((c) => (
+                                <div
+                                  key={`${c.platform}-${c.comment_id}`}
+                                  className="rounded bg-slate-800/70 px-2 py-1.5"
+                                >
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className="text-[10px] text-slate-400">
+                                      {c.username || "بدون اسم"} • {c.platform}
+                                    </span>
+                                    {c.timestamp && (
+                                      <span className="text-[9px] text-slate-500">
+                                        {new Date(c.timestamp).toLocaleString()}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="mt-0.5 text-[11px] text-slate-100">
+                                    {c.text || ""}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {!commentsLoading && !commentsError && !commentsPreview.length && (
+                            <div className="rounded border border-dashed border-slate-700/70 bg-slate-900/40 px-2 py-2 text-[10px] text-slate-500">
+                              أدخل معرف المنشور واضغط على زر &quot;عرض التعليقات الأخيرة&quot; لعرض عينة من تعليقات هذا المنشور.
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </>
@@ -1432,6 +1569,109 @@ export const App: React.FC = () => {
                         </div>
                       </div>
                     </div>
+                  </>
+                )}
+
+                {selectedNode.type === "keyword-filter" && (
+                  <>
+                    <div className="mt-2 border-t border-slate-800 pt-2 text-[11px] font-semibold text-slate-400">
+                      إعدادات فلتر الكلمات المفتاحية
+                    </div>
+                    <div className="space-y-2">
+                      <label className="mb-1 block text-[11px] text-slate-400">
+                        الكلمات المفتاحية (سطر واحد لكل كلمة — إذا وُجدت في التعليق يُمرّر للتالي)
+                      </label>
+                      <textarea
+                        className="h-[100px] w-full resize-none overflow-y-auto rounded-lg border border-[#334155] bg-[#1e293b] px-2 py-1.5 text-xs text-[#e5e7eb] focus:border-[#22c55e] focus:outline-none"
+                        placeholder="price&#10;buy&#10;how much"
+                        value={
+                          Array.isArray((selectedNode.data as any)?.keywords)
+                            ? (selectedNode.data as any).keywords.join("\n")
+                            : ""
+                        }
+                        onChange={(e) =>
+                          updateNodeData(selectedNode.id, {
+                            keywords: e.target.value
+                              .split("\n")
+                              .map((s) => s.trim().toLowerCase())
+                              .filter(Boolean),
+                          })
+                        }
+                      />
+                    </div>
+                  </>
+                )}
+
+                {selectedNode.type === "publish-reply" && (
+                  <>
+                    <div className="mt-2 border-t border-slate-800 pt-2 text-[11px] font-semibold text-slate-400">
+                      نشر الرد على التعليق
+                    </div>
+                    <p className="mt-1 text-[10px] text-slate-500">
+                      ينشر نص الرد من العقدة السابقة (reply_text أو ai_reply) على المنصة حسب حقل platform في السياق (facebook / instagram / tiktok).
+                    </p>
+                  </>
+                )}
+
+                {selectedNode.type === "rate-limiter" && (
+                  <>
+                    <div className="mt-2 border-t border-slate-800 pt-2 text-[11px] font-semibold text-slate-400">
+                      حد المعدل
+                    </div>
+                    <div className="space-y-2">
+                      <div>
+                        <label className="mb-1 block text-[11px] text-slate-400">التأخير بين الردود (ثانية)</label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={60}
+                          className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none"
+                          value={(selectedNode.data as any)?.delay_between_replies ?? 5}
+                          onChange={(e) =>
+                            updateNodeData(selectedNode.id, {
+                              delay_between_replies: Math.max(1, Math.min(60, parseInt(e.target.value, 10) || 5)),
+                            })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-[11px] text-slate-400">أقصى ردود في الدقيقة</label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={100}
+                          className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none"
+                          value={(selectedNode.data as any)?.max_replies_per_minute ?? 20}
+                          onChange={(e) =>
+                            updateNodeData(selectedNode.id, {
+                              max_replies_per_minute: Math.max(1, Math.min(100, parseInt(e.target.value, 10) || 20)),
+                            })
+                          }
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {selectedNode.type === "logging" && (
+                  <>
+                    <div className="mt-2 border-t border-slate-800 pt-2 text-[11px] font-semibold text-slate-400">
+                      تسجيل الأحداث
+                    </div>
+                    <p className="mt-1 text-[10px] text-slate-500">
+                      يحفظ الحدث (platform, comment_id, username, comment_text, ai_reply) في جدول comment_logs.
+                    </p>
+                  </>
+                )}
+
+                {selectedNode.type === "duplicate-protection" && (
+                  <>
+                    <div className="mt-2 border-t border-slate-800 pt-2 text-[11px] font-semibold text-slate-400">
+                      حماية من التكرار
+                    </div>
+                    <p className="mt-1 text-[10px] text-slate-500">
+                      يتحقق من أن التعليق لم يُرد عليه مسبقاً؛ إذا وُجد في السجل يتم تخطي نشر الرد.
+                    </p>
                   </>
                 )}
 

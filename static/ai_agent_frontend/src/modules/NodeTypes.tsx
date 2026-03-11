@@ -290,6 +290,69 @@ const TelegramSendNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
   );
 };
 
+const KeywordFilterNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
+  const keywords = ((data as any).keywords as string[]) || [];
+  const subtitle = data.subtitle || (keywords.length ? `${keywords.length} كلمة` : "أضف كلمات مفتاحية");
+  return (
+    <div className={`${baseNodeClasses} border-[#a855f7]`} style={baseNodeShadow}>
+      <Handle type="target" position={Position.Top} id="in" className={handleClass} />
+      <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
+      <div className={titleClasses}>🔍 {data.label || "Keyword Filter"}</div>
+      {subtitle && <div className={subtitleClasses}>{subtitle}</div>}
+    </div>
+  );
+};
+
+const PublishReplyNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
+  const subtitle = data.subtitle || "نشر الرد على FB/IG/TikTok";
+  return (
+    <div className={`${baseNodeClasses} border-[#f59e0b]`} style={baseNodeShadow}>
+      <Handle type="target" position={Position.Top} id="in" className={handleClass} />
+      <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
+      <div className={titleClasses}>📣 {data.label || "Publish Reply"}</div>
+      {subtitle && <div className={subtitleClasses}>{subtitle}</div>}
+    </div>
+  );
+};
+
+const RateLimiterNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
+  const delay = (data as any).delay_between_replies ?? 5;
+  const max = (data as any).max_replies_per_minute ?? 20;
+  const subtitle = data.subtitle || `${delay}s تأخير، ${max}/دقيقة`;
+  return (
+    <div className={`${baseNodeClasses} border-[#14b8a6]`} style={baseNodeShadow}>
+      <Handle type="target" position={Position.Top} id="in" className={handleClass} />
+      <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
+      <div className={titleClasses}>⏱ {data.label || "Rate Limiter"}</div>
+      {subtitle && <div className={subtitleClasses}>{subtitle}</div>}
+    </div>
+  );
+};
+
+const LoggingNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
+  const subtitle = data.subtitle || "تسجيل في comment_logs";
+  return (
+    <div className={`${baseNodeClasses} border-[#78716c]`} style={baseNodeShadow}>
+      <Handle type="target" position={Position.Top} id="in" className={handleClass} />
+      <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
+      <div className={titleClasses}>📋 {data.label || "Logging"}</div>
+      {subtitle && <div className={subtitleClasses}>{subtitle}</div>}
+    </div>
+  );
+};
+
+const DuplicateProtectionNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
+  const subtitle = data.subtitle || "عدم الرد مرتين على نفس التعليق";
+  return (
+    <div className={`${baseNodeClasses} border-[#64748b]`} style={baseNodeShadow}>
+      <Handle type="target" position={Position.Top} id="in" className={handleClass} />
+      <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
+      <div className={titleClasses}>🛡 {data.label || "Duplicate Protection"}</div>
+      {subtitle && <div className={subtitleClasses}>{subtitle}</div>}
+    </div>
+  );
+};
+
 export const nodeTypes = {
   start: StartNode,
   ai: AINode,
@@ -298,7 +361,12 @@ export const nodeTypes = {
   publisher: PublisherNode,
   scheduler: SchedulerNode,
   "comment-listener": CommentListenerNode,
+  "keyword-filter": KeywordFilterNode,
   "auto-reply": AutoReplyNode,
+  "publish-reply": PublishReplyNode,
+  "rate-limiter": RateLimiterNode,
+  logging: LoggingNode,
+  "duplicate-protection": DuplicateProtectionNode,
   end: EndNode,
   whatsapp_listener: WhatsAppListenerNode,
   whatsapp_send: WhatsAppSendNode,

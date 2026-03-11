@@ -52,9 +52,34 @@ def send_whatsapp_message(phone: str, message: str) -> None:
 
 
 def send_telegram_message(chat_id: str, message: str) -> None:
-    """إرسال رسالة تيليجرام عبر Bot API (حالياً تسجيل فقط، يمكن توسيعها لاحقاً)."""
+    """
+    إرسال رسالة تيليجرام عبر Bot API.
+
+    يعتمد على:
+    - TELEGRAM_BOT_TOKEN في إعدادات التطبيق (Config)
+    """
     if not chat_id or not message:
         return
-    current_app.logger.info("Telegram send: chat_id=%s message=%s", chat_id, message)
-    # يمكن لاحقاً استخدام TELEGRAM_BOT_TOKEN من الإعدادات واستدعاء Telegram Bot API هنا.
+
+    bot_token = current_app.config.get("TELEGRAM_BOT_TOKEN") or ""
+    if not bot_token:
+        current_app.logger.warning("Telegram send skipped: TELEGRAM_BOT_TOKEN is not set")
+        return
+
+    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+    payload: dict[str, Any] = {
+        "chat_id": chat_id,
+        "text": message,
+    }
+
+    try:
+        resp = requests.post(url, json=payload, timeout=10)
+        if resp.status_code >= 400:
+            current_app.logger.error(
+                "Telegram send failed: status=%s body=%s", resp.status_code, resp.text
+            )
+        else:
+            current_app.logger.info("Telegram send OK: chat_id=%s", chat_id)
+    except Exception as exc:  # pragma: no cover
+        current_app.logger.exception("Telegram send error: %s", exc)
 
