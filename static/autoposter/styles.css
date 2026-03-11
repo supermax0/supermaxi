@@ -1603,7 +1603,7 @@ select {
   list-style: none;
   padding: 0;
   margin: 0;
-  max-height: 320px;
+  max-height: 380px;
   overflow-y: auto;
 }
 
@@ -1613,31 +1613,47 @@ select {
   padding: 0.85rem 1rem;
   border-bottom: 1px solid var(--border);
   font-size: 0.9rem;
-  transition: background var(--transition);
+  transition: background 0.15s ease, border-color 0.15s ease;
+  cursor: pointer;
+  border-left: 3px solid transparent;
 }
 
 .notif-item:hover {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.notif-item.unread {
+  background: rgba(var(--accent-rgb, 59, 130, 246), 0.06);
+  border-left-color: var(--accent);
+}
+
+.notif-item.unread:hover {
+  background: rgba(var(--accent-rgb, 59, 130, 246), 0.1);
 }
 
 .notif-item:last-child {
   border-bottom: none;
 }
 
-.notif-item .notif-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--accent);
+.notif-item .notif-icon {
   flex-shrink: 0;
-  margin-top: 0.35rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 0.8rem;
+  margin-top: 0.15rem;
 }
 
-.notif-item:not(.unread) .notif-dot {
-  opacity: 0.3;
+.notif-item.unread .notif-icon {
+  background: rgba(var(--accent-rgb, 59, 130, 246), 0.2);
+  color: var(--accent);
 }
 
-.notif-item div {
+.notif-item .notif-body {
   flex: 1;
   min-width: 0;
 }
@@ -1651,13 +1667,35 @@ select {
   margin: 0;
   color: var(--text-muted);
   font-size: 0.85rem;
+  line-height: 1.35;
 }
 
 .notif-item time {
   font-size: 0.75rem;
   color: var(--text-muted);
-  margin-top: 0.25rem;
+  margin-top: 0.35rem;
   display: block;
+}
+
+.notif-empty {
+  padding: 1.5rem 1rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+/* دعم النقطة الزرقاء القديمة إن وُجدت */
+.notif-item .notif-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+  margin-top: 0.35rem;
+}
+
+.notif-item:not(.unread) .notif-dot {
+  opacity: 0.3;
 }
 
 .dropdown-footer {

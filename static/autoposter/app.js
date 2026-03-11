@@ -128,6 +128,27 @@
     }
   }
 
+  function notifIcon(title) {
+    if (!title) return '●';
+    if (title.includes('نشر') && !title.includes('جدول')) return '✓';
+    if (title.includes('جدول')) return '📅';
+    if (title.includes('ربط') || title.includes('صفحات')) return '🔗';
+    return '●';
+  }
+
+  async function markNotifRead(notifId) {
+    const res = await apiFetch(`/api/notifications/${notifId}/read`, { method: 'POST' });
+    if (!res || !res.ok) return;
+    const el = document.querySelector(`.notif-item[data-notif-id="${notifId}"]`);
+    if (el) el.classList.remove('unread');
+    const badge = document.getElementById('notifBadge');
+    if (badge) {
+      const n = parseInt(badge.textContent, 10) || 0;
+      badge.textContent = Math.max(0, n - 1);
+      if (badge.textContent === '0') badge.style.display = 'none';
+    }
+  }
+
   async function loadNotifications() {
     const res = await apiFetch('/api/notifications');
     if (!res || !res.ok) return;
@@ -135,23 +156,51 @@
     const list = data.notifications || [];
     const container = document.getElementById('notifList');
     const badge = document.getElementById('notifBadge');
-    const unreadCount = list.filter(n => !n.read).length;
+    const unreadCount = data.unread_count != null ? data.unread_count : list.filter(n => !n.read).length;
     if (badge) {
       badge.textContent = unreadCount;
       badge.style.display = unreadCount ? '' : 'none';
     }
     if (container) {
-      container.innerHTML = list.slice(0, 10).map(n => `
-        <li class="notif-item ${n.read ? '' : 'unread'}">
-          <span class="notif-dot"></span>
-          <div>
+      const maxItems = 25;
+      container.innerHTML = list.length
+        ? list.slice(0, maxItems).map(n => `
+        <li class="notif-item ${n.read ? '' : 'unread'}" data-notif-id="${n.id}" role="button" tabindex="0" title="${n.read ? '' : 'اضغط لتعليم كمقروء'}">
+          <span class="notif-icon" aria-hidden="true">${notifIcon(n.title)}</span>
+          <div class="notif-body">
             <strong>${escapeHtml(n.title)}</strong>
-            <p>${escapeHtml(n.body || '')}</p>
-            <time>${formatTime(n.created_at)}</time>
+            ${n.body ? `<p>${escapeHtml(n.body)}</p>` : ''}
+            <time datetime="${n.created_at || ''}">${formatNotifTime(n.created_at)}</time>
           </div>
         </li>
-      `).join('') || '<li class="text-muted">لا توجد إشعارات</li>';
+      `).join('')
+        : '<li class="notif-empty">لا توجد إشعارات</li>';
+      container.querySelectorAll('.notif-item[data-notif-id]').forEach(li => {
+        const id = li.getAttribute('data-notif-id');
+        if (!id) return;
+        li.addEventListener('click', () => {
+          if (li.classList.contains('unread')) {
+            markNotifRead(id);
+            li.classList.remove('unread');
+          }
+        });
+      });
     }
+  }
+
+  function formatNotifTime(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    const now = new Date();
+    const diffMin = (now - d) / 60000;
+    if (diffMin < 1) return 'الآن';
+    if (diffMin < 60) return `منذ ${Math.floor(diffMin)} دقيقة`;
+    const diffH = diffMin / 60;
+    if (diffH < 24) return `منذ ${Math.floor(diffH)} ساعة`;
+    const diffDay = diffH / 24;
+    if (diffDay < 2) return 'أمس';
+    if (diffDay < 7) return `منذ ${Math.floor(diffDay)} أيام`;
+    return d.toLocaleDateString('ar', { dateStyle: 'short' });
   }
 
   async function loadScheduled() {

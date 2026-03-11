@@ -812,7 +812,11 @@ def api_drafts_create():
 @require_autoposter_login
 def api_notifications():
     items = AutoposterNotification.query.order_by(AutoposterNotification.created_at.desc()).limit(50).all()
-    return jsonify({"notifications": [n.to_dict() for n in items]})
+    unread_count = sum(1 for n in items if not n.read)
+    return jsonify({
+        "notifications": [n.to_dict() for n in items],
+        "unread_count": unread_count,
+    })
 
 
 @autoposter_bp.route("/api/notifications/read", methods=["POST"])
@@ -820,6 +824,17 @@ def api_notifications():
 def api_notifications_read():
     for n in AutoposterNotification.query.all():
         n.read = True
+    db.session.commit()
+    return jsonify({"success": True})
+
+
+@autoposter_bp.route("/api/notifications/<int:notif_id>/read", methods=["POST"])
+@require_autoposter_login
+def api_notification_mark_read(notif_id):
+    n = AutoposterNotification.query.get(notif_id)
+    if not n:
+        return jsonify({"error": "الإشعار غير موجود"}), 404
+    n.read = True
     db.session.commit()
     return jsonify({"success": True})
 
