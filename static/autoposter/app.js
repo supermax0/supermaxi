@@ -111,6 +111,70 @@
       }));
       updateSelectedPagesSummary();
     }
+
+    // Create page sidebar: pages list with logo, name, platform icon, toggle
+    const createList = document.getElementById('createPagesList');
+    const createEmpty = document.getElementById('createPagesEmpty');
+    const fbIconSvg = '<svg class="create-page-platform" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>';
+    if (createList) {
+      if (createEmpty) createEmpty.style.display = pages.length ? 'none' : 'block';
+      if (!pages.length) {
+        createList.innerHTML = '<li class="create-pages-empty" id="createPagesEmpty">لا توجد صفحات. <a href="#" id="managePagesLinkFromCreate">ربط صفحة</a></li>';
+        document.getElementById('managePagesLinkFromCreate')?.addEventListener('click', (e) => { e.preventDefault(); showPage('pages'); });
+      } else {
+        createList.innerHTML = pages.map(p => {
+        const logoUrl = `https://graph.facebook.com/${encodeURIComponent(p.id)}/picture?type=square&width=80`;
+        const selected = pages.length === 1 ? ' selected' : '';
+        const checked = pages.length === 1 ? ' checked' : '';
+        return `<li class="create-page-item${selected}" data-id="${escapeAttr(p.id)}" data-name="${escapeAttr(p.name)}" role="button" tabindex="0">
+          <img class="create-page-logo" src="${logoUrl}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling?.classList?.add('show');">
+          <span class="create-page-logo-fallback" style="display:none">${escapeHtml((p.name || 'ص').charAt(0))}</span>
+          <div class="create-page-info">
+            <span class="create-page-name">${escapeHtml(p.name)}</span>
+            <div class="create-page-meta">${fbIconSvg} <span>فيسبوك</span></div>
+          </div>
+          <input type="checkbox" class="create-page-toggle" aria-label="اختر ${escapeAttr(p.name)}"${checked}>
+        </li>`;
+        }).join('');
+        createList.querySelectorAll('.create-page-item').forEach(item => {
+          const cb = item.querySelector('.create-page-toggle');
+          const syncSelection = () => {
+            const checked = cb && cb.checked;
+            item.classList.toggle('selected', !!checked);
+            updateCreateSelectedCount();
+            syncCreatePageToChips();
+            if (typeof updatePreview === 'function') updatePreview();
+          };
+          item.addEventListener('click', (e) => {
+            if (e.target === cb) return;
+            e.preventDefault();
+            if (cb) { cb.checked = !cb.checked; syncSelection(); }
+          });
+          if (cb) cb.addEventListener('change', syncSelection);
+        });
+      }
+      updateCreateSelectedCount();
+    }
+  }
+
+  function updateCreateSelectedCount() {
+    const list = document.getElementById('createPagesList');
+    const el = document.getElementById('createSelectedCount');
+    if (!el || !list) return;
+    const n = list.querySelectorAll('.create-page-item input:checked').length;
+    el.textContent = n ? `${n} محددة` : '0 محددة';
+  }
+
+  function syncCreatePageToChips() {
+    const list = document.getElementById('createPagesList');
+    const wrap = document.getElementById('pagesSelectWrap');
+    if (!list || !wrap) return;
+    const ids = Array.from(list.querySelectorAll('.create-page-item input:checked')).map(cb => cb.closest('.create-page-item')?.getAttribute('data-id')).filter(Boolean);
+    wrap.querySelectorAll('.page-chip').forEach(chip => {
+      const id = chip.getAttribute('data-id');
+      chip.classList.toggle('selected', ids.includes(id));
+    });
+    updateSelectedPagesSummary();
   }
 
   function updateSelectedPagesSummary() {
@@ -577,42 +641,57 @@
     });
   }
 
+  function getFirstSelectedPage() {
+    const createList = document.getElementById('createPagesList');
+    if (createList) {
+      const first = createList.querySelector('.create-page-item input:checked');
+      const item = first && first.closest('.create-page-item');
+      if (item) return { id: item.getAttribute('data-id'), name: item.getAttribute('data-name') || '' };
+    }
+    const chip = document.querySelector('.page-chip.selected[data-id]');
+    if (chip) return { id: chip.getAttribute('data-id'), name: (chip.textContent || '').trim() };
+    return null;
+  }
+
   function updatePreview() {
     if (!postPreview) return;
     const text = (postEditor && postEditor.value) || '';
     const media = mediaPreview ? mediaPreview.querySelectorAll('img, video') : [];
     const placeholder = postPreview.querySelector('.preview-placeholder');
     if (!text.trim() && media.length === 0) {
+      postPreview.classList.remove('preview-has-content');
       if (placeholder) placeholder.style.display = 'block';
-      const content = postPreview.querySelector('.preview-content');
-      const mediaWrap = postPreview.querySelector('.preview-media');
-      if (content) content.remove();
-      if (mediaWrap) mediaWrap.remove();
+      const card = postPreview.querySelector('.preview-fb-card');
+      if (card) card.remove();
       return;
     }
     if (placeholder) placeholder.style.display = 'none';
-    let content = postPreview.querySelector('.preview-content');
-    if (!content) {
-      content = document.createElement('div');
-      content.className = 'preview-content';
-      postPreview.appendChild(content);
+    postPreview.classList.add('preview-has-content');
+    let card = postPreview.querySelector('.preview-fb-card');
+    if (!card) {
+      card = document.createElement('div');
+      card.className = 'preview-fb-card';
+      postPreview.appendChild(card);
     }
-    content.textContent = text || '(لا يوجد نص)';
-    let mediaWrap = postPreview.querySelector('.preview-media');
-    if (media.length) {
-      if (!mediaWrap) {
-        mediaWrap = document.createElement('div');
-        mediaWrap.className = 'preview-media';
-        postPreview.appendChild(mediaWrap);
-      }
-      mediaWrap.innerHTML = '';
+    const page = getFirstSelectedPage();
+    const logoUrl = page && page.id ? `https://graph.facebook.com/${encodeURIComponent(page.id)}/picture?type=square&width=80` : '';
+    card.innerHTML = `
+      <div class="preview-fb-header">
+        ${logoUrl ? `<img class="preview-fb-avatar" src="${logoUrl}" alt="" onerror="this.style.display='none';this.nextElementSibling?.classList?.add('show');"><span class="preview-fb-avatar-fallback" style="display:none">${page && page.name ? escapeHtml(page.name.charAt(0)) : 'ص'}</span>` : `<span class="preview-fb-avatar-fallback show">${page && page.name ? escapeHtml(page.name.charAt(0)) : 'ص'}</span>`}
+        <span class="preview-fb-name">${page && page.name ? escapeHtml(page.name) : 'صفحة فيسبوك'}</span>
+      </div>
+      <div class="preview-fb-body">${escapeHtml(text || '(لا يوجد نص)')}</div>
+      ${media.length ? `<div class="preview-fb-media"></div>` : ''}
+    `;
+    const mediaWrap = card.querySelector('.preview-fb-media');
+    if (mediaWrap && media.length) {
       media.forEach(m => {
         const clone = m.cloneNode(true);
         clone.style.maxWidth = '100%';
-        clone.style.maxHeight = '120px';
+        clone.style.maxHeight = '280px';
         mediaWrap.appendChild(clone);
       });
-    } else if (mediaWrap) mediaWrap.innerHTML = '';
+    }
   }
 
   if (browseMedia) browseMedia.addEventListener('click', () => mediaInput && mediaInput.click());
@@ -784,8 +863,15 @@
 
   function getPostPayload(scheduledAt) {
     const text = (postEditor && postEditor.value) || '';
-    const selected = document.querySelectorAll('.page-chip.selected[data-id]');
-    const pageIds = Array.from(selected).map(c => c.getAttribute('data-id'));
+    const createList = document.getElementById('createPagesList');
+    let pageIds = [];
+    if (createList && createList.closest('.page.active')) {
+      pageIds = Array.from(createList.querySelectorAll('.create-page-item input:checked')).map(cb => cb.closest('.create-page-item')?.getAttribute('data-id')).filter(Boolean);
+    }
+    if (!pageIds.length) {
+      const selected = document.querySelectorAll('.page-chip.selected[data-id]');
+      pageIds = Array.from(selected).map(c => c.getAttribute('data-id'));
+    }
     const postTypeEl = document.querySelector('input[name="postType"]:checked');
     const postType = (postTypeEl && postTypeEl.value) || 'post';
     const payload = {
@@ -1338,12 +1424,20 @@
       const radio = document.querySelector(`input[name="postType"][value="${d.post_type || 'post'}"]`);
       if (radio) radio.checked = true;
 
-      // تحديد الصفحة
+      // تحديد الصفحة (chips + sidebar)
       document.querySelectorAll('.page-chip.selected').forEach(chip => chip.classList.remove('selected'));
+      document.querySelectorAll('#createPagesList .create-page-item input:checked').forEach(cb => { cb.checked = false; });
+      document.querySelectorAll('#createPagesList .create-page-item').forEach(item => item.classList.remove('selected'));
       if (d.page_id) {
         const chip = document.querySelector(`.page-chip[data-id="${CSS.escape(String(d.page_id))}"]`);
         chip?.classList.add('selected');
+        const sidebarItem = document.querySelector(`#createPagesList .create-page-item[data-id="${CSS.escape(String(d.page_id))}"]`);
+        if (sidebarItem) {
+          const input = sidebarItem.querySelector('.create-page-toggle');
+          if (input) { input.checked = true; sidebarItem.classList.add('selected'); }
+        }
       }
+      updateCreateSelectedCount();
 
       // تعيين الميديا من المسودة (إن وجدت)
       uploadedMedia = { url: d.video_url || d.image_url || null, type: d.video_url ? 'video' : (d.image_url ? 'image' : null) };
@@ -1381,6 +1475,25 @@
       showPage('pages');
     });
   }
+
+  // Create page sidebar: search filter + manage links
+  const createPagesSearch = document.getElementById('createPagesSearch');
+  if (createPagesSearch) {
+    createPagesSearch.addEventListener('input', () => {
+      const q = (createPagesSearch.value || '').trim().toLowerCase();
+      const list = document.getElementById('createPagesList');
+      if (!list) return;
+      list.querySelectorAll('.create-page-item').forEach(item => {
+        const name = (item.getAttribute('data-name') || '').toLowerCase();
+        item.style.display = !q || name.includes(q) ? '' : 'none';
+      });
+    });
+  }
+  document.getElementById('managePagesBtnFromSidebar')?.addEventListener('click', () => showPage('pages'));
+  document.getElementById('managePagesLinkFromCreate')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    showPage('pages');
+  });
 
   // ----- إعدادات التكاملات (فيسبوك + OpenAI) -----
   const facebookSettingsForm = document.getElementById('facebookSettingsForm');

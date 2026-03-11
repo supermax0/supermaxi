@@ -1,77 +1,106 @@
-Create a button called "Fix All" in Finora Deploy Studio.
+You are a senior frontend engineer.
 
-When the user clicks the button, the program must execute a full automatic repair
-and deployment pipeline for a Flask + Gunicorn + Nginx server.
+Redesign the "Create Post" page for a social media autoposter dashboard.
+The UI must be modern, clean, and optimized for Arabic (RTL layout).
 
-The tool already has these configuration fields:
-- Server SSH (user@host)
-- Server password
-- Server project path
-- Nginx service name
-- Gunicorn bind
-- Workers
+Tech stack:
 
-Use those values dynamically.
+* HTML
+* CSS
+* Vanilla JavaScript
+* Responsive design
+* Dark theme UI
+* Glass / modern dashboard style
 
-When the button is clicked, the application must connect to the server via SSH
-and run the following commands in order:
+Page layout must contain 3 main sections:
 
-1) Navigate to the project directory
-cd {SERVER_PROJECT_PATH}
+1. RIGHT SIDEBAR (Pages Panel)
 
-2) Mark repository as safe
-git config --global --add safe.directory {SERVER_PROJECT_PATH}
+* Fixed width: 300px
+* Scrollable
+* Shows all connected social pages
+* Each page item contains:
 
-3) Update project from GitHub
-git fetch origin
-git reset --hard origin/main
+  * Page logo
+  * Page name
+  * Platform icon (Facebook / Instagram / TikTok)
+  * Toggle checkbox to enable posting
+* Selected pages should be highlighted
+* Add search input at top to filter pages
 
-4) Activate virtual environment if it exists
-if [ -d "venv" ]; then source venv/bin/activate; fi
+2. CENTER EDITOR (Post Composer)
 
-5) Install dependencies
-if [ -f "requirements.txt" ]; then pip install -r requirements.txt; fi
+* Main writing area
+* Large textarea for post content
+* Character counter (e.g., 0 / 5000)
+* Media uploader supporting drag & drop
+* Support image/video preview before publishing
+* Post type selector:
 
-6) Clean python cache
-find . -name "*.pyc" -delete
-find . -name "__pycache__" -type d -exec rm -rf {} +
+  * Post
+  * Story
+  * Reel
+* Schedule selector (date + time)
+* Buttons:
 
-7) Clean static cache
-rm -rf static/build || true
+  * Publish Now
+  * Schedule
+  * Save Draft
 
-8) Kill old gunicorn processes
-pkill -9 gunicorn || true
-fuser -k 8000/tcp || true
+3. BOTTOM PREVIEW (Live Preview)
 
-9) Restart application service
-systemctl restart finora
+* Live rendering of how the post will appear
+* Show preview card similar to Facebook post
+* Include:
 
-10) Restart nginx
-systemctl restart {NGINX_SERVICE_NAME}
+  * Page logo
+  * Page name
+  * Post text
+  * Uploaded media preview
+* Update automatically when user types
 
-11) Check service status
-systemctl status finora --no-pager
+Design requirements:
 
-12) Verify gunicorn port
-lsof -i :8000
+* Use CSS Grid layout
+* Sidebar on the right side (RTL layout)
+* Center editor takes remaining width
+* Preview panel fixed at bottom
+* Smooth transitions and hover states
+* Rounded cards
+* Soft shadows
+* Dark gradient background
 
-The output of each command must be displayed live in the Terminal/Log Output panel.
+CSS design style:
 
-If any command fails:
-- capture the error
-- attempt one automatic retry
-- continue execution
+* Dark navy background
+* Blue accent color
+* Glass card style
+* Rounded corners (12px)
+* Subtle border highlights
 
-When the process completes successfully,
-display:
+JS functionality:
 
-"System repaired and deployment completed successfully."
+* Live preview updates while typing
+* Drag & drop media upload
+* Display uploaded image/video preview
+* Toggle page selection
+* Character counter update
 
-The Fix All button should therefore:
-- update code
-- repair git issues
-- clean cache
-- restart gunicorn
-- restart nginx
-- verify port status
-- show logs in the terminal window
+Responsive behavior:
+
+* On small screens:
+
+  * Sidebar collapses
+  * Editor becomes full width
+  * Preview becomes accordion
+
+Output must include:
+
+1. Full HTML structure
+2. Complete CSS styling
+3. JavaScript interactions
+4. Clean component structure
+5. Comments explaining sections
+
+Goal:
+Create a professional autoposter interface similar to tools like Buffer, Hootsuite, or Meta Business Suite.
