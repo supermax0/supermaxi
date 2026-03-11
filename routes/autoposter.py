@@ -581,61 +581,80 @@ def api_media_check():
         }), 500
 
 
+def _make_absolute_media_url(url: str | None) -> str | None:
+    """تحويل رابط وسائط نسبي إلى رابط مطلق ليُستخدم في استدعاء فيسبوك."""
+    if not url or not url.strip():
+        return None
+    url = url.strip()
+    if url.startswith("http://") or url.startswith("https://"):
+        return url
+    base = (current_app.config.get("BASE_URL") or "").rstrip("/") or request.url_root.rstrip("/")
+    return base + (url if url.startswith("/") else "/" + url)
+
+
 # --- API: نشر فوري أو مجدول (يدعم صورة/فيديو) ---
 @autoposter_bp.route("/api/posts", methods=["POST"])
 @require_autoposter_login
 def api_posts_create():
-    data = request.get_json() or {}
-    text = (data.get("text") or data.get("content") or "").strip()
-    page_ids = data.get("page_ids") or []
-    image_url = (data.get("image_url") or "").strip() or None
-    video_url = (data.get("video_url") or "").strip() or None
-    scheduled_at = data.get("scheduled_at")
-    post_type = (data.get("post_type") or "post").strip().lower()
-    if post_type not in ("post", "story", "reels"):
-        post_type = "post"
-    if post_type == "story" and not image_url and not video_url:
-        return jsonify({"error": "الستوري يتطلب صورة أو فيديو"}), 400
-    if post_type == "reels" and not video_url:
-        return jsonify({"error": "الريلز يتطلب فيديو"}), 400
-    if not text and not image_url and not video_url:
-        return jsonify({"error": "الرجاء إدخال محتوى أو رفع صورة/فيديو"}), 400
-    if not page_ids:
-        return jsonify({"error": "اختر صفحة واحدة على الأقل"}), 400
+    try:
+        data = request.get_json() or {}
+        text = (data.get("text") or data.get("content") or "").strip()
+        page_ids = data.get("page_ids") or []
+        image_url = (data.get("image_url") or "").strip() or None
+        video_url = (data.get("video_url") or "").strip() or None
+        scheduled_at = data.get("scheduled_at")
+        post_type = (data.get("post_type") or "post").strip().lower()
+        if post_type not in ("post", "story", "reels"):
+            post_type = "post"
+        if post_type == "story" and not image_url and not video_url:
+            return jsonify({"error": "الستوري يتطلب صورة أو فيديو"}), 400
+        if post_type == "reels" and not video_url:
+            return jsonify({"error": "الريلز يتطلب فيديو"}), 400
+        if not text and not image_url and not video_url:
+            return jsonify({"error": "الرجاء إدخال محتوى أو رفع صورة/فيديو"}), 400
+        if not page_ids:
+            return jsonify({"error": "اختر صفحة واحدة على الأقل"}), 400
 
-    pages = AutoposterFacebookPage.query.filter(AutoposterFacebookPage.page_id.in_(page_ids)).all()
-    if not pages:
-        return jsonify({"error": "لم يتم العثور على الصفحات المحددة"}), 400
+        pages = AutoposterFacebookPage.query.filter(AutoposterFacebookPage.page_id.in_(page_ids)).all()
+        if not pages:
+            return jsonify({"error": "لم يتم العثور على الصفحات المحددة"}), 400
 
-    content = text or ""
+        content = text or ""
+        image_url_abs = _make_absolute_media_url(image_url)
+        video_url_abs = _make_absolute_media_url(video_url)
 
-    if scheduled_at:
-        try:
-            at = datetime.fromisoformat(scheduled_at.replace("Z", "+00:00"))
-        except Exception:
-            return jsonify({"error": "صيغة التاريخ غير صحيحة"}), 400
-        schedule_posts_for_pages(
+        if scheduled_at:
+            try:
+                at = datetime.fromisoformat(scheduled_at.replace("Z", "+00:00"))
+            except Exception:
+                return jsonify({"error": "صيغة التاريخ غير صحيحة"}), 400
+            schedule_posts_for_pages(
+                pages=pages,
+                content=content,
+                image_url=image_url_abs or image_url,
+                video_url=video_url_abs or video_url,
+                post_type=post_type,
+                scheduled_at=at,
+            )
+            _add_notification("تم جدولة المنشور", f"سيُنشر في {at}")
+            return jsonify({"success": True, "scheduled_at": scheduled_at})
+
+        published, errors = publish_now_for_pages(
             pages=pages,
             content=content,
-            image_url=image_url,
-            video_url=video_url,
+            image_url=image_url_abs,
+            video_url=video_url_abs,
             post_type=post_type,
-            scheduled_at=at,
         )
-        _add_notification("تم جدولة المنشور", f"سيُنشر في {at}")
-        return jsonify({"success": True, "scheduled_at": scheduled_at})
-
-    published, errors = publish_now_for_pages(
-        pages=pages,
-        content=content,
-        image_url=image_url,
-        video_url=video_url,
-        post_type=post_type,
-    )
-    if errors and not published:
-        return jsonify({"error": "; ".join(errors)}), 500
-    _add_notification("تم نشر المنشور", f"نُشر على: {', '.join(published)}")
-    return jsonify({"success": True, "published": published, "errors": errors if errors else None})
+        if errors and not published:
+            return jsonify({"error": "; ".join(errors)}), 500
+        _add_notification("تم نشر المنشور", f"نُشر على: {', '.join(published)}")
+        return jsonify({"success": True, "published": published, "errors": errors if errors else None})
+    except Exception as e:
+        current_app.logger.exception("api_posts_create failed: %s", e)
+        return jsonify({
+            "error": "فشل إنشاء المنشور. جرّب مرة أخرى أو راجع السجلات.",
+        }), 500
 
 
 # --- API: المنشورات المجدولة ---
