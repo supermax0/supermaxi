@@ -571,18 +571,67 @@
     const isVideo = file.type.startsWith('video/');
     const fd = new FormData();
     fd.append('file', file);
-    if (uploadProgress) uploadProgress.hidden = false;
-    const res = await apiFetch('/api/upload', { method: 'POST', body: fd });
-    if (uploadProgress) uploadProgress.hidden = true;
-    if (!res) {
-      toast('فشل رفع الملف', 'error');
-      return;
+
+    // Progress bar: من 1% إلى 100%
+    let bar = null;
+    if (uploadProgress) {
+      uploadProgress.hidden = false;
+      uploadProgress.classList.add('determinate');
+      bar = uploadProgress.querySelector('.bar');
+      if (bar) bar.style.width = '1%';
     }
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.ok) {
-      toast(data.message || data.error || 'فشل رفع الملف', 'error');
-      return;
-    }
+
+    const uploadUrl = fullUrl('/api/upload');
+
+    const data = await new Promise((resolve) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', uploadUrl, true);
+      xhr.withCredentials = true;
+
+      xhr.upload.onprogress = (event) => {
+        if (!uploadProgress || !bar) return;
+        if (event.lengthComputable) {
+          const percent = Math.max(1, Math.min(100, (event.loaded / event.total) * 100));
+          bar.style.width = `${percent}%`;
+        }
+      };
+
+      xhr.onreadystatechange = () => {
+        if (xhr.readyState !== XMLHttpRequest.DONE) return;
+        if (uploadProgress) {
+          uploadProgress.hidden = true;
+          uploadProgress.classList.remove('determinate');
+          if (bar) bar.style.width = '0%';
+        }
+        let resp = {};
+        try {
+          resp = JSON.parse(xhr.responseText || '{}');
+        } catch {
+          // ignore
+        }
+        if (xhr.status >= 200 && xhr.status < 300 && resp.ok) {
+          resolve(resp);
+        } else {
+          toast(resp.message || resp.error || 'فشل رفع الملف', 'error');
+          resolve(null);
+        }
+      };
+
+      xhr.onerror = () => {
+        if (uploadProgress) {
+          uploadProgress.hidden = true;
+          uploadProgress.classList.remove('determinate');
+          if (bar) bar.style.width = '0%';
+        }
+        toast('فشل رفع الملف (مشكلة في الاتصال)', 'error');
+        resolve(null);
+      };
+
+      xhr.send(fd);
+    });
+
+    if (!data) return;
+
     uploadedMedia = {
       url: data.url,
       type: data.type || (isVideo ? 'video' : 'image'),
