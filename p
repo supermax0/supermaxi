@@ -1,106 +1,128 @@
-You are a senior frontend engineer.
+You are a senior Python backend engineer.
 
-Redesign the "Create Post" page for a social media autoposter dashboard.
-The UI must be modern, clean, and optimized for Arabic (RTL layout).
+Build a fully working Telegram AI bot integration for my Flask project.
+
+The system must work immediately without manual fixes.
+If something is missing in the project, automatically create it.
 
 Tech stack:
 
-* HTML
-* CSS
-* Vanilla JavaScript
-* Responsive design
-* Dark theme UI
-* Glass / modern dashboard style
+* Python
+* Flask
+* Requests
+* Telegram Bot API
+* OpenAI API (for AI replies)
 
-Page layout must contain 3 main sections:
+Project goal:
+Create an AI bot that listens to Telegram messages and automatically replies using AI.
 
-1. RIGHT SIDEBAR (Pages Panel)
+System architecture:
 
-* Fixed width: 300px
-* Scrollable
-* Shows all connected social pages
-* Each page item contains:
+Telegram User
+→ Telegram Bot API
+→ Flask Webhook `/telegram/webhook`
+→ Workflow Node `telegram_listener`
+→ AI Agent (generate reply)
+→ Node `telegram_send`
+→ Telegram user receives reply
 
-  * Page logo
-  * Page name
-  * Platform icon (Facebook / Instagram / TikTok)
-  * Toggle checkbox to enable posting
-* Selected pages should be highlighted
-* Add search input at top to filter pages
+Tasks you must implement:
 
-2. CENTER EDITOR (Post Composer)
+1. Create Flask route:
 
-* Main writing area
-* Large textarea for post content
-* Character counter (e.g., 0 / 5000)
-* Media uploader supporting drag & drop
-* Support image/video preview before publishing
-* Post type selector:
+`/telegram/webhook`
 
-  * Post
-  * Story
-  * Reel
-* Schedule selector (date + time)
-* Buttons:
+It must receive POST updates from Telegram.
 
-  * Publish Now
-  * Schedule
-  * Save Draft
+Example payload:
+{
+"message":{
+"chat":{"id":12345},
+"text":"hello"
+}
+}
 
-3. BOTTOM PREVIEW (Live Preview)
+2. Extract:
 
-* Live rendering of how the post will appear
-* Show preview card similar to Facebook post
-* Include:
+chat_id
+message_text
 
-  * Page logo
-  * Page name
-  * Post text
-  * Uploaded media preview
-* Update automatically when user types
+3. Pass message_text to the AI agent.
 
-Design requirements:
+AI prompt:
 
-* Use CSS Grid layout
-* Sidebar on the right side (RTL layout)
-* Center editor takes remaining width
-* Preview panel fixed at bottom
-* Smooth transitions and hover states
-* Rounded cards
-* Soft shadows
-* Dark gradient background
+"You are a helpful assistant for a tech store.
+Reply in Arabic.
+User message: {message_text}"
 
-CSS design style:
+4. Generate AI response using OpenAI API.
 
-* Dark navy background
-* Blue accent color
-* Glass card style
-* Rounded corners (12px)
-* Subtle border highlights
+5. Send reply to Telegram using:
 
-JS functionality:
+https://api.telegram.org/bot{BOT_TOKEN}/sendMessage
 
-* Live preview updates while typing
-* Drag & drop media upload
-* Display uploaded image/video preview
-* Toggle page selection
-* Character counter update
+Payload:
 
-Responsive behavior:
+{
+"chat_id": chat_id,
+"text": ai_reply
+}
 
-* On small screens:
+6. Create these modules if missing:
 
-  * Sidebar collapses
-  * Editor becomes full width
-  * Preview becomes accordion
+/telegram_bot
+listener.py
+sender.py
+ai_agent.py
+webhook.py
 
-Output must include:
+7. Add environment variables support:
 
-1. Full HTML structure
-2. Complete CSS styling
-3. JavaScript interactions
-4. Clean component structure
-5. Comments explaining sections
+BOT_TOKEN
+OPENAI_API_KEY
 
-Goal:
-Create a professional autoposter interface similar to tools like Buffer, Hootsuite, or Meta Business Suite.
+8. Add automatic webhook setup function:
+
+`/telegram/setup-webhook`
+
+When visited it calls:
+
+https://api.telegram.org/bot{BOT_TOKEN}/setWebhook
+
+Webhook URL:
+
+https://YOURDOMAIN/telegram/webhook
+
+9. Add logging for debugging.
+
+10. Prevent crashes if message has no text.
+
+11. Return Telegram response:
+
+{ "status":"ok" }
+
+12. Provide full working code including:
+
+Flask routes
+Telegram sender function
+AI reply generator
+Webhook setup
+
+13. Add a test endpoint:
+
+`/telegram/test`
+
+When accessed it sends a message to a test chat.
+
+14. Ensure the system runs instantly with:
+
+python app.py
+
+15. Add comments explaining each part.
+
+Final result:
+
+User sends message to Telegram bot →
+Flask receives webhook →
+AI generates response →
+Bot replies automatically.

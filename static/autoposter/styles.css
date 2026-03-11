@@ -722,7 +722,8 @@ select {
 /* ===== Create Post (Redesign: Sidebar | Editor | Bottom Preview) ===== */
 .create-layout {
   display: grid;
-  grid-template-columns: 300px 1fr;
+  /* RTL: العمود 1 يمين (الصفحات) | 2 وسط (المحرر) | 3 يسار (المعاينة) */
+  grid-template-columns: 300px 1fr 320px;
   grid-template-rows: 1fr;
   gap: 1.25rem;
   align-items: start;
@@ -904,11 +905,8 @@ select {
   border-top: 1px solid var(--border);
 }
 
-/* CENTER: Editor column */
+/* CENTER: Editor column (محرر المنشور فقط، بدون المعاينة) */
 .create-editor-column {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
   min-width: 0;
 }
 
@@ -919,9 +917,12 @@ select {
   align-items: center;
 }
 
-/* BOTTOM: Live preview card (Facebook-style) */
-.create-preview-card {
+/* LEFT (RTL): Live preview card — معاينة المنشور على اليسار */
+.create-preview-card.create-preview-left {
+  position: sticky;
+  top: 1rem;
   margin-top: 0;
+  min-width: 0;
 }
 
 .create-live-preview {
