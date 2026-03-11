@@ -568,12 +568,95 @@ class FinoraDeployStudio(tk.Tk):
 
     def _deploy_thread(self) -> None:
         try:
-            self.set_status("Deploying to server…")
+            self.set_status("Deploying to server (upload script)…")
 
             server_path = self.server_path_var.get().strip()
-            # نستخدم سكربت السيرفر الموحد server_tool.py لإجراء الدبلوي الآمن
-            # (git / pip / npm / health-check / systemd) بدلاً من أوامر متفرقة.
-            script = f"cd {server_path} && python3 server_tool.py deploy"
+            if not server_path:
+                self.append_log("[ERROR] Server project path is empty.\n")
+                self.set_status("Deploy failed (server path empty).")
+                return
+
+            nginx_service = self.nginx_service_var.get().strip() or "nginx"
+            # خدمة التطبيق في هذا السكربت اسمها finora كما في المواصفة
+            service_name = "finora"
+
+            # استخراج المنفذ من bind (مثال 127.0.0.1:8000)
+            bind = self.gunicorn_bind_var.get().strip() or "127.0.0.1:8000"
+            port = "8000"
+            if ":" in bind:
+                port = bind.split(":")[-1] or "8000"
+
+            # سكربت الدبلوي كما في الملف الذي أرسلته (upload script)
+            script = f"""#!/bin/bash
+echo "=============================="
+echo "FINORA DEPLOY SCRIPT STARTING"
+echo "=============================="
+
+PROJECT_DIR="{server_path}"
+SERVICE_NAME="{service_name}"
+NGINX_SERVICE="{nginx_service}"
+PORT="{port}"
+
+cd "$PROJECT_DIR" || exit
+
+echo ""
+echo "[1] Fix git safe directory..."
+git config --global --add safe.directory "$PROJECT_DIR"
+
+echo ""
+echo "[2] Updating code from GitHub..."
+git fetch origin
+git reset --hard origin/main
+
+echo ""
+echo "[3] Activating virtual environment..."
+if [ -d "venv" ]; then
+    source venv/bin/activate
+else
+    echo "No virtual environment found"
+fi
+
+echo ""
+echo "[4] Installing dependencies..."
+if [ -f "requirements.txt" ]; then
+    pip install -r requirements.txt
+fi
+
+echo ""
+echo "[5] Cleaning python cache..."
+find . -name "*.pyc" -delete
+find . -name "__pycache__" -type d -exec rm -rf {{}} +
+
+echo ""
+echo "[6] Cleaning static build..."
+rm -rf static/build 2>/dev/null
+
+echo ""
+echo "[7] Killing old gunicorn processes..."
+pkill -9 gunicorn 2>/dev/null
+fuser -k "$PORT"/tcp 2>/dev/null
+
+echo ""
+echo "[8] Restarting application service..."
+systemctl restart "$SERVICE_NAME"
+
+echo ""
+echo "[9] Restarting nginx..."
+systemctl restart "$NGINX_SERVICE"
+
+echo ""
+echo "[10] Checking service status..."
+systemctl status "$SERVICE_NAME" --no-pager
+
+echo ""
+echo "[11] Checking open ports..."
+lsof -i :"$PORT"
+
+echo ""
+echo "=============================="
+echo "DEPLOYMENT COMPLETE"
+echo "=============================="
+"""
 
             rc = self.run_ssh_script(script)
             if rc == 0:

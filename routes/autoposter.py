@@ -2,7 +2,7 @@
 from datetime import datetime
 from functools import wraps
 from pathlib import Path
-from flask import Blueprint, request, session, redirect, url_for, jsonify, render_template, g
+from flask import Blueprint, request, session, redirect, url_for, jsonify, render_template, g, current_app
 
 from extensions import db
 from models.autoposter_facebook_page import AutoposterFacebookPage
@@ -436,6 +436,26 @@ def api_upload():
     return jsonify(result), status_code
 
 
+def _media_url_to_static_path(media_url: str):
+    """
+    تحويل رابط وسائط (كامل أو نسبي) إلى مسار نسبي تحت static (بدون مقطع static/).
+    مثال: /static/autoposter/uploads/x.mp4 -> autoposter/uploads/x.mp4
+    """
+    from urllib.parse import urlparse
+    parsed = urlparse(media_url)
+    path = (parsed.path or "").strip().lstrip("/")
+    if not path:
+        return None
+    script_root = (request.script_root or "").strip().rstrip("/").lstrip("/")
+    if script_root and path.startswith(script_root + "/"):
+        path = path[len(script_root) + 1:]
+    if path.startswith("static/"):
+        path = path[7:]
+    if not path.startswith("autoposter/"):
+        return None
+    return path
+
+
 # --- API: فحص وسائط قبل النشر (pre-publish check) ---
 @autoposter_bp.route("/api/media/check", methods=["POST"])
 @require_autoposter_login
@@ -462,94 +482,103 @@ def api_media_check():
       \"duration_sec\": float | null
     }
     """
-    data = request.get_json() or {}
-    image_url = (data.get("image_url") or "").strip() or None
-    video_url = (data.get("video_url") or "").strip() or None
-    post_type = (data.get("post_type") or "post").strip().lower()
-
-    if not image_url and not video_url:
-        return jsonify({
-            "ok": False,
-            "error_code": "no_media",
-            "message": "لا يوجد ملف صورة أو فيديو لفحصه.",
-            "warnings": [],
-        }), 400
-
-    # نستخدم أي رابط موجود مع تفضيل الفيديو إذا كان النوع ريلز
-    media_url = video_url or image_url
-
-    # تحويل ال URL إلى مسار فعلي داخل static إن أمكن
-    from urllib.parse import urlparse
-    from werkzeug.exceptions import NotFound
-    parsed = urlparse(media_url)
-    # نتوقع أن يكون المسار تحت current_app.static_url_path
-    rel_path = parsed.path
-    static_prefix = (request.script_root or "") + (current_app.static_url_path or "/static")
-    if rel_path.startswith(static_prefix):
-        rel_path = rel_path[len(static_prefix):]
-    rel_path = rel_path.lstrip("/")
-
-    fs_path = (Path(current_app.root_path) / "static" / rel_path).resolve()
     try:
-        fs_path.relative_to(Path(current_app.root_path) / "static")
-    except ValueError:
-        # حماية بسيطة من مسارات غريبة
-        raise NotFound()
+        data = request.get_json() or {}
+        image_url = (data.get("image_url") or "").strip() or None
+        video_url = (data.get("video_url") or "").strip() or None
+        post_type = (data.get("post_type") or "post").strip().lower()
 
-    if not fs_path.exists():
+        if not image_url and not video_url:
+            return jsonify({
+                "ok": False,
+                "error_code": "no_media",
+                "message": "لا يوجد ملف صورة أو فيديو لفحصه.",
+                "warnings": [],
+            }), 400
+
+        media_url = video_url or image_url
+        rel_path = _media_url_to_static_path(media_url)
+        if not rel_path:
+            return jsonify({
+                "ok": False,
+                "error_code": "invalid_url",
+                "message": "رابط الملف غير صالح أو لا ينتمي إلى مجلد الرفع.",
+                "warnings": [],
+            }), 400
+
+        # إزالة "static/" من البداية إن وُجدت لأننا نضيف static أدناه
+        if rel_path.startswith("static/"):
+            rel_path = rel_path[7:]
+        root = Path(current_app.root_path)
+        static_root = (root / "static").resolve()
+        fs_path = (root / "static" / rel_path).resolve()
+        try:
+            fs_path.relative_to(static_root)
+        except ValueError:
+            return jsonify({
+                "ok": False,
+                "error_code": "invalid_path",
+                "message": "مسار الملف خارج مجلد الوسائط المسموح.",
+                "warnings": [],
+            }), 400
+
+        if not fs_path.exists():
+            return jsonify({
+                "ok": False,
+                "error_code": "not_found",
+                "message": "لم يتم العثور على الملف على الخادم.",
+                "warnings": [],
+            }), 404
+
+        size_bytes = fs_path.stat().st_size
+        size_mb = round(size_bytes / (1024 * 1024), 2)
+
+        ext = fs_path.suffix.lower()
+        if ext in (".jpg", ".jpeg", ".png", ".gif", ".webp"):
+            kind = "image"
+        elif ext in (".mp4", ".mov"):
+            kind = "video"
+        else:
+            kind = None
+
+        width, height, duration = None, None, None
+        if kind in ("image", "video"):
+            w, h, dur = inspect_media(fs_path, kind=kind)  # type: ignore[arg-type]
+            width, height, duration = w, h, dur
+
+        warnings = []
+        if kind == "video":
+            if size_mb > 80:
+                warnings.append("حجم الفيديو كبير (أكثر من 80 ميجا). قد يستغرق الرفع إلى فيسبوك وقتاً طويلاً أو يفشل.")
+            if duration and duration > 60 * 5:
+                warnings.append("مدة الفيديو أطول من 5 دقائق؛ قد ترفضها بعض أنواع المنشورات أو تؤثر على تجربة المتابعين.")
+            if post_type == "reels" and duration and duration > 90:
+                warnings.append("مدة الفيديو أطول من 90 ثانية؛ قد لا يُقبل كـ Reels في بعض الإعدادات.")
+        elif kind == "image":
+            if max(width or 0, height or 0) > 4000:
+                warnings.append("أبعاد الصورة كبيرة جداً؛ قد يتم ضغطها بشدة عند النشر.")
+            if size_mb > 10:
+                warnings.append("حجم الصورة كبير (أكثر من 10 ميجا). يفضّل استخدام صورة مضغوطة.")
+
+        return jsonify({
+            "ok": True,
+            "error_code": None,
+            "message": None,
+            "kind": kind,
+            "size_mb": size_mb,
+            "width": width,
+            "height": height,
+            "duration_sec": duration,
+            "warnings": warnings,
+        })
+    except Exception as e:
+        current_app.logger.exception("api_media_check failed: %s", e)
         return jsonify({
             "ok": False,
-            "error_code": "not_found",
-            "message": "لم يتم العثور على الملف على الخادم.",
+            "error_code": "check_failed",
+            "message": "فشل فحص الملف. جرّب مرة أخرى أو راجع السجلات.",
             "warnings": [],
-        }), 404
-
-    size_bytes = fs_path.stat().st_size
-    size_mb = round(size_bytes / (1024 * 1024), 2)
-
-    # تخمين النوع من الامتداد فقط لأغراض التقرير
-    ext = fs_path.suffix.lower()
-    if ext in (".jpg", ".jpeg", ".png", ".gif", ".webp"):
-        kind = "image"
-    elif ext in (".mp4", ".mov"):
-        kind = "video"
-    else:
-        kind = None
-
-    width = None
-    height = None
-    duration = None
-    if kind in ("image", "video"):
-        w, h, dur = inspect_media(fs_path, kind=kind)  # type: ignore[arg-type]
-        width, height, duration = w, h, dur
-
-    warnings = []
-
-    # منطق بسيط لبعض التحذيرات الشائعة
-    if kind == "video":
-        if size_mb > 80:
-            warnings.append("حجم الفيديو كبير (أكثر من 80 ميجا). قد يستغرق الرفع إلى فيسبوك وقتاً طويلاً أو يفشل.")
-        if duration and duration > 60 * 5:
-            warnings.append("مدة الفيديو أطول من 5 دقائق؛ قد ترفضها بعض أنواع المنشورات أو تؤثر على تجربة المتابعين.")
-        if post_type == "reels" and duration and duration > 90:
-            warnings.append("مدة الفيديو أطول من 90 ثانية؛ قد لا يُقبل كـ Reels في بعض الإعدادات.")
-    elif kind == "image":
-        if max(width or 0, height or 0) > 4000:
-            warnings.append("أبعاد الصورة كبيرة جداً؛ قد يتم ضغطها بشدة عند النشر.")
-        if size_mb > 10:
-            warnings.append("حجم الصورة كبير (أكثر من 10 ميجا). يفضّل استخدام صورة مضغوطة.")
-
-    return jsonify({
-        "ok": True,
-        "error_code": None,
-        "message": None,
-        "kind": kind,
-        "size_mb": size_mb,
-        "width": width,
-        "height": height,
-        "duration_sec": duration,
-        "warnings": warnings,
-    })
+        }), 500
 
 
 # --- API: نشر فوري أو مجدول (يدعم صورة/فيديو) ---
