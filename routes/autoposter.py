@@ -22,6 +22,7 @@ from services.autoposter_service import (
     schedule_posts_for_pages,
     run_scheduled_posts_for_all_tenants as service_run_scheduled_for_all_tenants,
 )
+from services.media_service import save_uploaded_file, inspect_media, detect_kind
 
 autoposter_bp = Blueprint("autoposter", __name__, url_prefix="/autoposter", static_folder="../static/autoposter", static_url_path="/static/autoposter")
 
@@ -423,36 +424,131 @@ UPLOAD_MAX_MB = 100
 @require_autoposter_login
 def api_upload():
     if "file" not in request.files and "media" not in request.files:
-        return jsonify({"error": "لم يُرفع ملف"}), 400
+        return jsonify({"ok": False, "error_code": "no_file", "message": "لم يُرفع ملف"}), 400
     file = request.files.get("file") or request.files.get("media")
     if not file or not file.filename:
-        return jsonify({"error": "لم يُرفع ملف"}), 400
-    ct = (file.content_type or "").split(";")[0].strip().lower()
-    if ct not in UPLOAD_ALLOWED:
-        return jsonify({"error": "نوع الملف غير مدعوم. استخدم صورة (jpg, png, gif, webp) أو فيديو (mp4)."}), 400
-    import uuid
-    import os
-    from flask import current_app
-    ext = os.path.splitext(file.filename)[1] or (".mp4" if "video" in ct else ".jpg")
-    if ext.lower() not in (".jpg", ".jpeg", ".png", ".gif", ".webp", ".mp4", ".mov"):
-        ext = ".jpg" if "image" in ct else ".mp4"
-    name = f"{uuid.uuid4().hex}{ext}"
-    upload_dir = os.path.join(current_app.root_path, "static", "autoposter", "uploads")
-    os.makedirs(upload_dir, exist_ok=True)
-    path = os.path.join(upload_dir, name)
+        return jsonify({"ok": False, "error_code": "no_file", "message": "لم يُرفع ملف"}), 400
+
+    # استخدام خدمة الوسائط الموحّدة لمعالجة الرفع والتحقق والمعاينة
+    result = save_uploaded_file(file, max_mb=UPLOAD_MAX_MB)
+    status_code = 200 if result.get("ok") else 400
+    return jsonify(result), status_code
+
+
+# --- API: فحص وسائط قبل النشر (pre-publish check) ---
+@autoposter_bp.route("/api/media/check", methods=["POST"])
+@require_autoposter_login
+def api_media_check():
+    """
+    فحص ملف (بعد الرفع) قبل تنفيذ النشر الفعلي.
+
+    يتوقع:
+    {
+      \"image_url\": \"...\" | null,
+      \"video_url\": \"...\" | null,
+      \"post_type\": \"post\" | \"story\" | \"reels\"
+    }
+    ويرجع:
+    {
+      \"ok\": bool,
+      \"warnings\": [str],
+      \"error_code\": str | null,
+      \"message\": str | null,
+      \"kind\": \"image\" | \"video\" | null,
+      \"size_mb\": float | null,
+      \"width\": int | null,
+      \"height\": int | null,
+      \"duration_sec\": float | null
+    }
+    """
+    data = request.get_json() or {}
+    image_url = (data.get("image_url") or "").strip() or None
+    video_url = (data.get("video_url") or "").strip() or None
+    post_type = (data.get("post_type") or "post").strip().lower()
+
+    if not image_url and not video_url:
+        return jsonify({
+            "ok": False,
+            "error_code": "no_media",
+            "message": "لا يوجد ملف صورة أو فيديو لفحصه.",
+            "warnings": [],
+        }), 400
+
+    # نستخدم أي رابط موجود مع تفضيل الفيديو إذا كان النوع ريلز
+    media_url = video_url or image_url
+
+    # تحويل ال URL إلى مسار فعلي داخل static إن أمكن
+    from urllib.parse import urlparse
+    from werkzeug.exceptions import NotFound
+    parsed = urlparse(media_url)
+    # نتوقع أن يكون المسار تحت current_app.static_url_path
+    rel_path = parsed.path
+    static_prefix = (request.script_root or "") + (current_app.static_url_path or "/static")
+    if rel_path.startswith(static_prefix):
+        rel_path = rel_path[len(static_prefix):]
+    rel_path = rel_path.lstrip("/")
+
+    fs_path = (Path(current_app.root_path) / "static" / rel_path).resolve()
     try:
-        file.save(path)
-        size_mb = os.path.getsize(path) / (1024 * 1024)
-        if size_mb > UPLOAD_MAX_MB:
-            os.remove(path)
-            return jsonify({"error": f"حجم الملف أكبر من {UPLOAD_MAX_MB} ميجا"}), 400
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-    url = f"{request.script_root or ''}/static/autoposter/uploads/{name}"
-    if request.url_root:
-        from urllib.parse import urljoin
-        url = urljoin(request.url_root, url.lstrip("/"))
-    return jsonify({"url": url, "type": "video" if "video" in ct else "image"})
+        fs_path.relative_to(Path(current_app.root_path) / "static")
+    except ValueError:
+        # حماية بسيطة من مسارات غريبة
+        raise NotFound()
+
+    if not fs_path.exists():
+        return jsonify({
+            "ok": False,
+            "error_code": "not_found",
+            "message": "لم يتم العثور على الملف على الخادم.",
+            "warnings": [],
+        }), 404
+
+    size_bytes = fs_path.stat().st_size
+    size_mb = round(size_bytes / (1024 * 1024), 2)
+
+    # تخمين النوع من الامتداد فقط لأغراض التقرير
+    ext = fs_path.suffix.lower()
+    if ext in (".jpg", ".jpeg", ".png", ".gif", ".webp"):
+        kind = "image"
+    elif ext in (".mp4", ".mov"):
+        kind = "video"
+    else:
+        kind = None
+
+    width = None
+    height = None
+    duration = None
+    if kind in ("image", "video"):
+        w, h, dur = inspect_media(fs_path, kind=kind)  # type: ignore[arg-type]
+        width, height, duration = w, h, dur
+
+    warnings = []
+
+    # منطق بسيط لبعض التحذيرات الشائعة
+    if kind == "video":
+        if size_mb > 80:
+            warnings.append("حجم الفيديو كبير (أكثر من 80 ميجا). قد يستغرق الرفع إلى فيسبوك وقتاً طويلاً أو يفشل.")
+        if duration and duration > 60 * 5:
+            warnings.append("مدة الفيديو أطول من 5 دقائق؛ قد ترفضها بعض أنواع المنشورات أو تؤثر على تجربة المتابعين.")
+        if post_type == "reels" and duration and duration > 90:
+            warnings.append("مدة الفيديو أطول من 90 ثانية؛ قد لا يُقبل كـ Reels في بعض الإعدادات.")
+    elif kind == "image":
+        if max(width or 0, height or 0) > 4000:
+            warnings.append("أبعاد الصورة كبيرة جداً؛ قد يتم ضغطها بشدة عند النشر.")
+        if size_mb > 10:
+            warnings.append("حجم الصورة كبير (أكثر من 10 ميجا). يفضّل استخدام صورة مضغوطة.")
+
+    return jsonify({
+        "ok": True,
+        "error_code": None,
+        "message": None,
+        "kind": kind,
+        "size_mb": size_mb,
+        "width": width,
+        "height": height,
+        "duration_sec": duration,
+        "warnings": warnings,
+    })
 
 
 # --- API: نشر فوري أو مجدول (يدعم صورة/فيديو) ---

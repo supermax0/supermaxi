@@ -574,19 +574,31 @@
     if (uploadProgress) uploadProgress.hidden = false;
     const res = await apiFetch('/api/upload', { method: 'POST', body: fd });
     if (uploadProgress) uploadProgress.hidden = true;
-    if (!res || !res.ok) {
-      const err = await res?.json().catch(() => ({}));
-      toast(err?.error || 'فشل رفع الملف', 'error');
+    if (!res) {
+      toast('فشل رفع الملف', 'error');
       return;
     }
-    const data = await res.json();
-    uploadedMedia = { url: data.url, type: data.type || (isVideo ? 'video' : 'image') };
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) {
+      toast(data.message || data.error || 'فشل رفع الملف', 'error');
+      return;
+    }
+    uploadedMedia = {
+      url: data.url,
+      type: data.type || (isVideo ? 'video' : 'image'),
+      thumbnail_url: data.thumbnail_url || null,
+      size_mb: data.size_mb,
+      width: data.width,
+      height: data.height,
+      duration_sec: data.duration_sec,
+    };
     mediaPreview.innerHTML = '';
     const wrap = document.createElement('div');
     wrap.className = 'media-preview-item';
-    const media = data.type === 'video'
-      ? Object.assign(document.createElement('video'), { src: data.url, controls: true, muted: true, style: 'max-width:100%;max-height:160px' })
-      : Object.assign(document.createElement('img'), { src: data.url, style: 'max-width:100%;max-height:160px' });
+    const mediaSrc = uploadedMedia.thumbnail_url || uploadedMedia.url;
+    const media = uploadedMedia.type === 'video'
+      ? Object.assign(document.createElement('video'), { src: mediaSrc, controls: true, muted: true, style: 'max-width:100%;max-height:160px' })
+      : Object.assign(document.createElement('img'), { src: mediaSrc, style: 'max-width:100%;max-height:160px' });
     const remove = document.createElement('button');
     remove.type = 'button';
     remove.className = 'remove-media';
@@ -597,6 +609,20 @@
       updatePreview();
     });
     wrap.appendChild(media);
+    if (uploadedMedia.size_mb || uploadedMedia.width || uploadedMedia.height || uploadedMedia.duration_sec) {
+      const meta = document.createElement('div');
+      meta.className = 'media-meta';
+      const parts = [];
+      if (uploadedMedia.size_mb) parts.push(`${uploadedMedia.size_mb.toFixed ? uploadedMedia.size_mb.toFixed(2) : uploadedMedia.size_mb} ميجا`);
+      if (uploadedMedia.width && uploadedMedia.height) parts.push(`${uploadedMedia.width}×${uploadedMedia.height}`);
+      if (uploadedMedia.duration_sec) {
+        const mins = Math.floor(uploadedMedia.duration_sec / 60);
+        const secs = Math.round(uploadedMedia.duration_sec % 60);
+        parts.push(`${mins}:${secs.toString().padStart(2, '0')} دقيقة`);
+      }
+      meta.textContent = parts.join(' · ');
+      wrap.appendChild(meta);
+    }
     wrap.appendChild(remove);
     mediaPreview.appendChild(wrap);
     updatePreview();
@@ -667,6 +693,31 @@
     return { payload, pageIds, text };
   }
 
+  async function runMediaPrecheck(payload) {
+    // لا حاجة للفحص إذا لم يوجد ميديا
+    if (!payload.image_url && !payload.video_url) return { ok: true, warnings: [] };
+    const res = await apiFetch('/api/media/check', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        image_url: payload.image_url || null,
+        video_url: payload.video_url || null,
+        post_type: payload.post_type,
+      }),
+    });
+    if (!res) return { ok: true, warnings: [] };
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) {
+      toast(data.message || 'فشل فحص الملف قبل النشر', 'error');
+      return { ok: false, warnings: [] };
+    }
+    if (Array.isArray(data.warnings) && data.warnings.length) {
+      // عرض التحذيرات كتست مجمّع
+      toast(data.warnings.join(' | '), 'warning');
+    }
+    return { ok: true, warnings: data.warnings || [] };
+  }
+
   if (publishBtn) {
     publishBtn.addEventListener('click', async () => {
       const { payload, pageIds, text } = getPostPayload(null);
@@ -686,6 +737,10 @@
         toast('اختر صفحة واحدة على الأقل', 'warning');
         return;
       }
+
+      // فحص الميديا قبل النشر
+      const pre = await runMediaPrecheck(payload);
+      if (!pre.ok) return;
 
       publishBtn.classList.add('loading');
       publishBtn.disabled = true;
@@ -778,6 +833,10 @@
         toast('اختر تاريخ ووقت الجدولة', 'warning');
         return;
       }
+
+      // فحص الميديا قبل الجدولة
+      const pre = await runMediaPrecheck(payload);
+      if (!pre.ok) return;
       scheduleBtn.classList.add('loading');
       scheduleBtn.disabled = true;
 
