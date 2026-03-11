@@ -1,57 +1,77 @@
-Build a Windows desktop application called **Finora Deploy Studio** that allows me to deploy my project to GitHub and then automatically update my Linux server.
+Create a button called "Fix All" in Finora Deploy Studio.
 
-Requirements:
+When the user clicks the button, the program must execute a full automatic repair
+and deployment pipeline for a Flask + Gunicorn + Nginx server.
 
-Create a GUI application using **Python + Tkinter (or PySide6 if preferred)**.
+The tool already has these configuration fields:
+- Server SSH (user@host)
+- Server password
+- Server project path
+- Nginx service name
+- Gunicorn bind
+- Workers
 
-The interface must contain:
+Use those values dynamically.
 
-1. A button **Push to GitHub**
-2. A button **Deploy to Server**
-3. A large **terminal/log output window**
-4. A field to configure:
+When the button is clicked, the application must connect to the server via SSH
+and run the following commands in order:
 
-   * Local project path
-   * Server SSH address
-   * Server project path
-5. A progress indicator.
+1) Navigate to the project directory
+cd {SERVER_PROJECT_PATH}
 
-Behavior:
+2) Mark repository as safe
+git config --global --add safe.directory {SERVER_PROJECT_PATH}
 
-When clicking **Push to GitHub**, the program should execute these commands inside the local project folder:
+3) Update project from GitHub
+git fetch origin
+git reset --hard origin/main
 
-git add .
-git commit -m "update"
-git push
+4) Activate virtual environment if it exists
+if [ -d "venv" ]; then source venv/bin/activate; fi
 
-When clicking **Deploy to Server**, the program should connect via SSH and execute:
+5) Install dependencies
+if [ -f "requirements.txt" ]; then pip install -r requirements.txt; fi
 
-cd /var/www/finora/supermaxi
-git pull
-pkill -f gunicorn
-source venv/bin/activate
-gunicorn app:app -b 127.0.0.1:8000 -w 3 --daemon
-systemctl restart nginx
+6) Clean python cache
+find . -name "*.pyc" -delete
+find . -name "__pycache__" -type d -exec rm -rf {} +
 
-All terminal output should appear in the UI terminal window.
+7) Clean static cache
+rm -rf static/build || true
 
-Technical requirements:
+8) Kill old gunicorn processes
+pkill -9 gunicorn || true
+fuser -k 8000/tcp || true
 
-• Use Python subprocess to run commands
-• Use threading so the UI does not freeze
-• Show live logs in the terminal window
-• Allow editing server configuration in the UI
-• Save configuration in a JSON file
-• Provide error handling and clear log messages.
+9) Restart application service
+systemctl restart finora
 
-Bonus features:
+10) Restart nginx
+systemctl restart {NGINX_SERVICE_NAME}
 
-• Button: Restart Server
-• Button: View Server Logs
-• Button: Build Frontend (run npm install + npm run build)
-• Show Git status before push
-• Dark theme UI.
+11) Check service status
+systemctl status finora --no-pager
 
-The application should be clean, modern, and easy to use for developers.
+12) Verify gunicorn port
+lsof -i :8000
 
-Return the **complete Python code** for the application.
+The output of each command must be displayed live in the Terminal/Log Output panel.
+
+If any command fails:
+- capture the error
+- attempt one automatic retry
+- continue execution
+
+When the process completes successfully,
+display:
+
+"System repaired and deployment completed successfully."
+
+The Fix All button should therefore:
+- update code
+- repair git issues
+- clean cache
+- restart gunicorn
+- restart nginx
+- verify port status
+- show logs in the terminal window

@@ -917,6 +917,13 @@ select {
   animation: linear-loading 1.1s infinite;
 }
 
+.linear-progress.determinate .bar {
+  animation: none;
+  width: 1%;
+  transform: none;
+  transition: width 0.15s ease-out;
+}
+
 @keyframes linear-loading {
   0% {
     transform: translateX(-100%);

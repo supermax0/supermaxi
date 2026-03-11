@@ -1,6 +1,7 @@
 # Blueprint النشر التلقائي لفيسبوك — يُربط تحت /autoposter
 from datetime import datetime
 from functools import wraps
+from pathlib import Path
 from flask import Blueprint, request, session, redirect, url_for, jsonify, render_template, g
 
 from extensions import db

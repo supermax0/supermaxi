@@ -643,74 +643,77 @@ class FinoraDeployStudio(tk.Tk):
 
         start = time.perf_counter()
         try:
-            self.set_status("Running Fix All checks…")
-            self.append_log("[INFO] Starting Fix All (local + server checks)…\n")
+            self.set_status("Running Fix All on server…")
+            self.append_log("[INFO] Starting full Fix All pipeline on server…\n")
 
-            # 1) فحص أوامر أساسية محلياً
-            local_checks = [
-                ["git", "--version"],
-                ["ssh", "-V"],
-                ["python", "--version"],
-                ["pip", "--version"],
-            ]
-            local_path = Path(self.local_path_var.get().strip() or ".")
-            for cmd in local_checks:
-                self.append_log(f"$ {' '.join(cmd)}\n")
-                try:
-                    proc = subprocess.Popen(
-                        cmd,
-                        cwd=str(local_path),
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.STDOUT,
-                        text=True,
-                    )
-                    assert proc.stdout is not None
-                    for line in proc.stdout:
-                        self.append_log(line)
-                    proc.wait()
-                    if proc.returncode != 0:
-                        self.append_log(f"[ERROR] Local check failed: {' '.join(cmd)} (code {proc.returncode})\n")
-                except FileNotFoundError:
-                    self.append_log(f"[ERROR] Local command not found: {cmd[0]}\n")
-
-            # 2) تثبيت paramiko إذا مفقود
-            try:
-                import paramiko  # type: ignore[import]
-                self.append_log("[INFO] paramiko already installed.\n")
-            except ImportError:
-                self.append_log("[INFO] Installing paramiko via pip…\n")
-                proc = subprocess.Popen(
-                    ["pip", "install", "paramiko"],
-                    cwd=str(local_path),
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                    text=True,
-                )
-                assert proc.stdout is not None
-                for line in proc.stdout:
-                    self.append_log(line)
-                proc.wait()
-                if proc.returncode != 0:
-                    self.append_log(f"[ERROR] Failed to install paramiko (code {proc.returncode})\n")
-                else:
-                    self.append_log("[INFO] paramiko installed successfully.\n")
-
-            # 3) فحص بسيط على السيرفر (git + gunicorn + systemctl)
             server_path = self.server_path_var.get().strip()
-            checks_script = (
-                f"cd {server_path} && "
-                "echo '--- Server checks ---' && "
-                "git --version || echo 'git NOT OK' && "
-                "which gunicorn || which venv/bin/gunicorn || echo 'gunicorn NOT OK' && "
-                "command -v systemctl || echo 'systemctl NOT OK'"
-            )
-            rc = self.run_ssh_script(checks_script)
-            if rc != 0:
-                self.append_log(f"[ERROR] Server checks script failed with code {rc}\n")
+            if not server_path:
+                self.append_log("[ERROR] Server project path is empty.\n")
+                self.set_status("Fix All failed (server path empty).")
+                return
 
-            self.append_log("[INFO] Fix All finished. راجع النتائج في اللوج وأصلح ما تبقّى يدوياً إن لزم.\n")
+            nginx_service = self.nginx_service_var.get().strip() or "nginx"
+            # استخراج المنفذ من إعداد bind (مثال 127.0.0.1:8000)
+            bind = self.gunicorn_bind_var.get().strip() or "127.0.0.1:8000"
+            port = "8000"
+            if ":" in bind:
+                port = bind.split(":")[-1] or "8000"
+
+            # نبني سكربت bash يطبق بالضبط خطوات المواصفات مع إعادة محاولة لكل أمر
+            script = f"""
+cd {server_path} || {{ echo '[ERROR] Cannot cd to {server_path}'; exit 1; }}
+
+run_cmd() {{
+  desc="$1"; shift
+  echo ""
+  echo "=== $desc ==="
+  attempt=1
+  max=2
+  while [ $attempt -le $max ]; do
+    "$@"
+    status=$?
+    if [ $status -eq 0 ]; then
+      echo "--- OK"
+      break
+    else
+      echo "--- Failed with code $status (attempt $attempt/$max)"
+      if [ $attempt -lt $max ]; then
+        echo '--- Retrying…'
+      fi
+    fi
+    attempt=$((attempt+1))
+  done
+}};
+
+run_cmd 'Mark repo as safe directory' git config --global --add safe.directory {server_path}
+run_cmd 'Git fetch origin' git fetch origin
+run_cmd 'Git reset --hard origin/main' git reset --hard origin/main
+
+run_cmd 'Activate venv if exists' bash -lc 'if [ -d "venv" ]; then source venv/bin/activate; fi'
+run_cmd 'Install Python dependencies' bash -lc 'if [ -f "requirements.txt" ]; then pip install -r requirements.txt; fi'
+
+run_cmd 'Clean Python cache' bash -lc 'find . -name "*.pyc" -delete && find . -name "__pycache__" -type d -exec rm -rf {{}} +'
+run_cmd 'Clean static cache' bash -lc 'rm -rf static/build || true'
+
+run_cmd 'Kill old gunicorn processes' bash -lc 'pkill -9 gunicorn || true'
+run_cmd 'Free port {port}' bash -lc 'fuser -k {port}/tcp || true'
+
+run_cmd 'Restart finora service' systemctl restart finora
+run_cmd 'Restart nginx' systemctl restart {nginx_service}
+run_cmd 'Check finora status' bash -lc 'systemctl status finora --no-pager || true'
+run_cmd 'Verify gunicorn port {port}' bash -lc 'lsof -i :{port} || true'
+
+echo ""
+echo "System repaired and deployment completed successfully."
+"""
+            rc = self.run_ssh_script(script)
             duration = time.perf_counter() - start
-            self.set_status(f"Fix All completed in {duration:.1f}s (see log).")
+            if rc == 0:
+                self.append_log("[INFO] Fix All pipeline finished.\n")
+                self.set_status(f"Fix All completed in {duration:.1f}s (see log).")
+            else:
+                self.append_log(f"[ERROR] Fix All script exited with code {rc}\n")
+                self.set_status(f"Fix All finished with errors in {duration:.1f}s (see log).")
         finally:
             self.set_busy(False)
 
