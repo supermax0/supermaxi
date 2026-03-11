@@ -18,6 +18,7 @@ DEFAULT_CONFIG = {
     "gunicorn_bind": "127.0.0.1:8000",
     "gunicorn_workers": 3,
     "logs_command": "journalctl -u nginx -n 100 --no-pager",
+    # كلمة السر لا نحفظها في الملف لأسباب أمان، تبقى فارغة في كل تشغيل
 }
 
 
@@ -76,7 +77,7 @@ class FinoraDeployStudio(tk.Tk):
         # Local project path
         self.local_path_var = tk.StringVar(value=self.config_data["local_project_path"])
         ttk.Label(cfg, text="Local project path:").grid(row=0, column=0, sticky="w", padx=6, pady=4)
-        local_entry = ttk.Entry(cfg, textvariable=self.local_path_var, width=60)
+        local_entry = ttk.Entry(cfg, textvariable=self.local_path_var, width=60, justify="center")
         local_entry.grid(row=0, column=1, sticky="we", padx=(0, 4), pady=4)
         browse_btn = ttk.Button(cfg, text="Browse…", command=self.browse_local_path)
         browse_btn.grid(row=0, column=2, sticky="e", padx=(0, 6), pady=4)
@@ -84,34 +85,44 @@ class FinoraDeployStudio(tk.Tk):
         # Server SSH
         self.server_ssh_var = tk.StringVar(value=self.config_data["server_ssh"])
         ttk.Label(cfg, text="Server SSH (user@host):").grid(row=1, column=0, sticky="w", padx=6, pady=4)
-        ttk.Entry(cfg, textvariable=self.server_ssh_var).grid(
+        ttk.Entry(cfg, textvariable=self.server_ssh_var, justify="center").grid(
             row=1, column=1, columnspan=2, sticky="we", padx=(0, 6), pady=4
         )
 
+        # Server password (اختياري – لا يُحفظ في ملف الإعدادات)
+        self.server_password_var = tk.StringVar(value="")
+        ttk.Label(cfg, text="Server password (optional):").grid(
+            row=2, column=0, sticky="w", padx=6, pady=4
+        )
+        pwd_entry = ttk.Entry(cfg, textvariable=self.server_password_var, show="*", justify="center")
+        pwd_entry.grid(row=2, column=1, sticky="we", padx=(0, 4), pady=4)
+        paste_btn = ttk.Button(cfg, text="Paste", width=6, command=lambda e=pwd_entry: self.paste_into(e))
+        paste_btn.grid(row=2, column=2, sticky="e", padx=(0, 6), pady=4)
+
         # Server project path
         self.server_path_var = tk.StringVar(value=self.config_data["server_project_path"])
-        ttk.Label(cfg, text="Server project path:").grid(row=2, column=0, sticky="w", padx=6, pady=4)
-        ttk.Entry(cfg, textvariable=self.server_path_var).grid(
-            row=2, column=1, columnspan=2, sticky="we", padx=(0, 6), pady=4
+        ttk.Label(cfg, text="Server project path:").grid(row=3, column=0, sticky="w", padx=6, pady=4)
+        ttk.Entry(cfg, textvariable=self.server_path_var, justify="center").grid(
+            row=3, column=1, columnspan=2, sticky="we", padx=(0, 6), pady=4
         )
 
         # Nginx service
         self.nginx_service_var = tk.StringVar(value=self.config_data["nginx_service"])
-        ttk.Label(cfg, text="Nginx service name:").grid(row=3, column=0, sticky="w", padx=6, pady=4)
-        ttk.Entry(cfg, textvariable=self.nginx_service_var).grid(
-            row=3, column=1, columnspan=2, sticky="we", padx=(0, 6), pady=4
+        ttk.Label(cfg, text="Nginx service name:").grid(row=4, column=0, sticky="w", padx=6, pady=4)
+        ttk.Entry(cfg, textvariable=self.nginx_service_var, justify="center").grid(
+            row=4, column=1, columnspan=2, sticky="we", padx=(0, 6), pady=4
         )
 
         # Gunicorn workers/bind (optional tuning)
         self.gunicorn_bind_var = tk.StringVar(value=self.config_data["gunicorn_bind"])
         self.gunicorn_workers_var = tk.StringVar(value=str(self.config_data["gunicorn_workers"]))
-        ttk.Label(cfg, text="Gunicorn bind:").grid(row=4, column=0, sticky="w", padx=6, pady=4)
-        ttk.Entry(cfg, textvariable=self.gunicorn_bind_var).grid(
-            row=4, column=1, sticky="we", padx=(0, 6), pady=4
+        ttk.Label(cfg, text="Gunicorn bind:").grid(row=5, column=0, sticky="w", padx=6, pady=4)
+        ttk.Entry(cfg, textvariable=self.gunicorn_bind_var, justify="center").grid(
+            row=5, column=1, sticky="we", padx=(0, 6), pady=4
         )
-        ttk.Label(cfg, text="Workers:").grid(row=4, column=2, sticky="e", padx=(0, 6), pady=4)
-        ttk.Entry(cfg, width=5, textvariable=self.gunicorn_workers_var).grid(
-            row=4, column=3, sticky="e", padx=(0, 6), pady=4
+        ttk.Label(cfg, text="Workers:").grid(row=5, column=2, sticky="e", padx=(0, 6), pady=4)
+        ttk.Entry(cfg, width=5, textvariable=self.gunicorn_workers_var, justify="center").grid(
+            row=5, column=3, sticky="e", padx=(0, 6), pady=4
         )
 
         cfg.columnconfigure(1, weight=1)
@@ -207,6 +218,15 @@ class FinoraDeployStudio(tk.Tk):
         self.log_text.see(tk.END)
         self.log_text.configure(state="disabled")
 
+    def paste_into(self, entry: ttk.Entry) -> None:
+        """لصق النص من الـ Clipboard داخل حقل معيّن."""
+        try:
+            text = self.clipboard_get()
+        except tk.TclError:
+            return
+        entry.delete(0, tk.END)
+        entry.insert(0, text)
+
     def set_status(self, text: str) -> None:
         self.status_var.set(text)
 
@@ -259,27 +279,76 @@ class FinoraDeployStudio(tk.Tk):
         if not server:
             self.append_log("[ERROR] Server SSH address is empty.\n")
             return 1
-        full_cmd = ["ssh", server, script]
-        self.append_log(f"$ ssh {server} '{script}'\n")
+        password = self.server_password_var.get()
+
+        # إذا ماكو باسورد: نستخدم ssh العادي (يتطلب مفاتيح أو جلسة بدون تفاعل)
+        if not password:
+            full_cmd = ["ssh", "-o", "BatchMode=yes", server, script]
+            self.append_log(f"$ ssh {server} '{script}'\n")
+            try:
+                proc = subprocess.Popen(
+                    full_cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1,
+                )
+                assert proc.stdout is not None
+                for line in proc.stdout:
+                    self.append_log(line)
+                proc.wait()
+                rc = proc.returncode
+                if rc != 0:
+                    self.append_log(f"[ERROR] SSH command failed with code {rc}\n")
+                return rc
+            except FileNotFoundError:
+                self.append_log("[ERROR] ssh command not found. Make sure OpenSSH is installed and in PATH.\n")
+                return 1
+
+        # في حالة وجود باسورد: نستخدم paramiko (يتطلب pip install paramiko)
         try:
-            proc = subprocess.Popen(
-                full_cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                bufsize=1,
+            import paramiko  # type: ignore[import]
+        except ImportError:
+            self.append_log(
+                "[ERROR] paramiko غير مثبت. ثبّته بأمر: pip install paramiko\n"
             )
-            assert proc.stdout is not None
-            for line in proc.stdout:
-                self.append_log(line)
-            proc.wait()
-            rc = proc.returncode
-            if rc != 0:
-                self.append_log(f"[ERROR] SSH command failed with code {rc}\n")
-            return rc
-        except FileNotFoundError:
-            self.append_log("[ERROR] ssh command not found. Make sure OpenSSH is installed and in PATH.\n")
             return 1
+
+        self.append_log(f"[INFO] Connecting via SSH (paramiko) to {server}…\n")
+        host, _, user = server, None, None
+        # الصيغة المعتادة user@host
+        if "@" in server:
+            user, host = server.split("@", 1)
+
+        client = paramiko.SSHClient()
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+        try:
+            client.connect(
+                hostname=host,
+                username=user,
+                password=password,
+                look_for_keys=False,
+                allow_agent=False,
+            )
+            stdin, stdout, stderr = client.exec_command(script)
+            for line in stdout:
+                self.append_log(line)
+            for line in stderr:
+                if line.strip():
+                    self.append_log(line)
+            exit_status = stdout.channel.recv_exit_status()
+            if exit_status != 0:
+                self.append_log(f"[ERROR] SSH command failed with code {exit_status}\n")
+            return exit_status
+        except Exception as e:
+            self.append_log(f"[ERROR] SSH connection failed: {e}\n")
+            return 1
+        finally:
+            try:
+                client.close()
+            except Exception:
+                pass
 
     # ---------- Button handlers ----------
 
