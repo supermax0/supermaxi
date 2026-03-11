@@ -66,9 +66,21 @@ class FinoraDeployStudio(tk.Tk):
         )
 
     def _build_ui(self) -> None:
-        # Top frame: config + buttons
+        # Header
+        header = ttk.Frame(self)
+        header.pack(side=tk.TOP, fill=tk.X, padx=12, pady=(8, 4))
+        title_label = ttk.Label(header, text="Finora Deploy Studio", font=("Segoe UI", 11, "bold"))
+        title_label.pack(side=tk.LEFT)
+        self.current_config_label = ttk.Label(
+            header,
+            text=f"Project: {self.config_data['local_project_path']}",
+            font=("Segoe UI", 8),
+        )
+        self.current_config_label.pack(side=tk.RIGHT)
+
+        # Top frame: configuration only
         top = ttk.Frame(self)
-        top.pack(side=tk.TOP, fill=tk.X, padx=12, pady=10)
+        top.pack(side=tk.TOP, fill=tk.X, padx=12, pady=(0, 6))
 
         # Config frame
         cfg = ttk.LabelFrame(top, text="Configuration")
@@ -127,24 +139,27 @@ class FinoraDeployStudio(tk.Tk):
 
         cfg.columnconfigure(1, weight=1)
 
-        # Buttons frame
-        btns = ttk.Frame(top)
-        btns.pack(side=tk.RIGHT, fill=tk.Y)
+        # Buttons bar (horizontal)
+        btns = ttk.Frame(self)
+        btns.pack(side=tk.TOP, fill=tk.X, padx=12, pady=(0, 4))
 
         self.push_btn = ttk.Button(btns, text="Push to GitHub", width=18, command=self.on_push_clicked)
-        self.push_btn.grid(row=0, column=0, padx=4, pady=4)
+        self.push_btn.pack(side=tk.LEFT, padx=4, pady=4)
 
         self.deploy_btn = ttk.Button(btns, text="Deploy to Server", width=18, command=self.on_deploy_clicked)
-        self.deploy_btn.grid(row=1, column=0, padx=4, pady=4)
+        self.deploy_btn.pack(side=tk.LEFT, padx=4, pady=4)
 
         self.restart_btn = ttk.Button(btns, text="Restart Server", width=18, command=self.on_restart_clicked)
-        self.restart_btn.grid(row=2, column=0, padx=4, pady=4)
+        self.restart_btn.pack(side=tk.LEFT, padx=4, pady=4)
 
         self.logs_btn = ttk.Button(btns, text="View Server Logs", width=18, command=self.on_view_logs_clicked)
-        self.logs_btn.grid(row=3, column=0, padx=4, pady=4)
+        self.logs_btn.pack(side=tk.LEFT, padx=4, pady=4)
 
         self.build_btn = ttk.Button(btns, text="Build Frontend", width=18, command=self.on_build_frontend_clicked)
-        self.build_btn.grid(row=4, column=0, padx=4, pady=4)
+        self.build_btn.pack(side=tk.LEFT, padx=4, pady=4)
+
+        self.fix_all_btn = ttk.Button(btns, text="Fix All", width=18, command=self.on_fix_all_clicked)
+        self.fix_all_btn.pack(side=tk.LEFT, padx=4, pady=4)
 
         # Progress + status
         status_frame = ttk.Frame(self)
@@ -157,9 +172,18 @@ class FinoraDeployStudio(tk.Tk):
         status_label = ttk.Label(status_frame, textvariable=self.status_var, anchor="e")
         status_label.pack(side=tk.RIGHT)
 
-        # Log output + command input
-        log_frame = ttk.LabelFrame(self, text="Terminal / Log Output")
-        log_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=12, pady=(4, 12))
+        # Notebook: Terminal + Error Explorer
+        notebook = ttk.Notebook(self)
+        notebook.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=12, pady=(4, 12))
+
+        terminal_frame = ttk.Frame(notebook)
+        errors_frame = ttk.Frame(notebook)
+        notebook.add(terminal_frame, text="Terminal")
+        notebook.add(errors_frame, text="Error Explorer")
+
+        # Log output + command input (Terminal tab)
+        log_frame = ttk.LabelFrame(terminal_frame, text="Terminal / Log Output")
+        log_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=4, pady=(4, 8))
 
         self.log_text = tk.Text(
             log_frame,
@@ -168,11 +192,17 @@ class FinoraDeployStudio(tk.Tk):
             insertbackground="#e5e7eb",
             wrap="word",
             state="disabled",
+            font=("Consolas", 10),
         )
         self.log_text.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         scroll = ttk.Scrollbar(log_frame, command=self.log_text.yview)
         scroll.pack(side=tk.RIGHT, fill=tk.Y)
         self.log_text.configure(yscrollcommand=scroll.set)
+
+        # تلوين الأنواع المختلفة من الرسائل
+        self.log_text.tag_config("error", foreground="#f87171")
+        self.log_text.tag_config("info", foreground="#4ade80")
+        self.log_text.tag_config("cmd", foreground="#60a5fa")
 
         # Local command input (مثل ترمنال بسيط لتنفيذ أوامر محلية مثل pip install paramiko)
         cmd_frame = ttk.Frame(log_frame)
@@ -188,6 +218,40 @@ class FinoraDeployStudio(tk.Tk):
             command=self.on_run_local_cmd_clicked,
             width=8,
         ).pack(side=tk.RIGHT)
+
+        # شريط حالة أسفل الترمنال
+        status_bar = ttk.Frame(terminal_frame)
+        status_bar.pack(side=tk.BOTTOM, fill=tk.X, padx=4, pady=(0, 4))
+        self.last_command_var = tk.StringVar(value="Last: -")
+        self.last_exit_code_var = tk.StringVar(value="Exit: -")
+        self.last_duration_var = tk.StringVar(value="Duration: -")
+        ttk.Label(status_bar, textvariable=self.last_command_var).pack(side=tk.LEFT, padx=4)
+        ttk.Label(status_bar, textvariable=self.last_exit_code_var).pack(side=tk.LEFT, padx=4)
+        ttk.Label(status_bar, textvariable=self.last_duration_var).pack(side=tk.LEFT, padx=4)
+
+        # Error Explorer tab
+        self.error_entries: list[dict] = []
+        self.errors_list = tk.Listbox(
+            errors_frame,
+            bg="#020617",
+            fg="#fca5a5",
+        )
+        self.errors_list.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=4, pady=(4, 2))
+
+        error_detail_frame = ttk.Frame(errors_frame)
+        error_detail_frame.pack(side=tk.BOTTOM, fill=tk.X, padx=4, pady=(0, 4))
+        self.error_detail_var = tk.StringVar(value="")
+        ttk.Label(error_detail_frame, textvariable=self.error_detail_var, wraplength=700).pack(
+            side=tk.LEFT, padx=4
+        )
+        ttk.Button(
+            error_detail_frame,
+            text="Copy last error",
+            command=self.copy_last_error,
+            width=14,
+        ).pack(side=tk.RIGHT, padx=4)
+
+        self.errors_list.bind("<<ListboxSelect>>", self.on_error_select)
 
         self.append_log("Finora Deploy Studio started.\n")
 
@@ -229,7 +293,23 @@ class FinoraDeployStudio(tk.Tk):
 
     def append_log(self, text: str) -> None:
         self.log_text.configure(state="normal")
-        self.log_text.insert(tk.END, text)
+        tag = None
+        if text.startswith("[ERROR]"):
+            tag = "error"
+            # حفظ في Error Explorer
+            self.error_entries.append(
+                {
+                    "time": datetime.now().strftime("%H:%M:%S"),
+                    "message": text.strip(),
+                }
+            )
+            self.refresh_error_explorer()
+        elif text.startswith("[INFO]"):
+            tag = "info"
+        elif text.startswith("$ "):
+            tag = "cmd"
+
+        self.log_text.insert(tk.END, text, tag)
         self.log_text.see(tk.END)
         self.log_text.configure(state="disabled")
 
@@ -241,6 +321,33 @@ class FinoraDeployStudio(tk.Tk):
             return
         entry.delete(0, tk.END)
         entry.insert(0, text)
+
+    # ---------- Error Explorer helpers ----------
+
+    def refresh_error_explorer(self) -> None:
+        """تحديث قائمة الأخطاء في تبويب Error Explorer."""
+        if not hasattr(self, "errors_list"):
+            return
+        self.errors_list.delete(0, tk.END)
+        for e in self.error_entries:
+            self.errors_list.insert(tk.END, f"[{e['time']}] {e['message']}")
+
+    def on_error_select(self, _event: tk.Event) -> None:
+        idx = self.errors_list.curselection()
+        if not idx:
+            return
+        entry = self.error_entries[idx[0]]
+        self.error_detail_var.set(entry["message"])
+
+    def copy_last_error(self) -> None:
+        if not self.error_entries:
+            return
+        last = self.error_entries[-1]["message"]
+        try:
+            self.clipboard_clear()
+            self.clipboard_append(last)
+        except tk.TclError:
+            pass
 
     # ---------- Local command from terminal ----------
 
@@ -255,6 +362,9 @@ class FinoraDeployStudio(tk.Tk):
         thread.start()
 
     def _run_local_cmd_thread(self, cmd_str: str) -> None:
+        import time
+
+        start = time.perf_counter()
         try:
             local_path = Path(self.local_path_var.get().strip() or ".")
             if not local_path.exists():
@@ -266,6 +376,7 @@ class FinoraDeployStudio(tk.Tk):
                 return
 
             self.append_log(f"$ {cmd_str}\n")
+            self.last_command_var.set(f"Last: {cmd_str}")
             try:
                 proc = subprocess.Popen(
                     parts,
@@ -281,6 +392,7 @@ class FinoraDeployStudio(tk.Tk):
                     self.append_log(line)
                 proc.wait()
                 rc = proc.returncode
+                self.last_exit_code_var.set(f"Exit: {rc}")
                 if rc != 0:
                     self.append_log(f"[ERROR] Command exited with code {rc}\n")
                 else:
@@ -288,13 +400,17 @@ class FinoraDeployStudio(tk.Tk):
             except FileNotFoundError:
                 self.append_log(f"[ERROR] Command not found: {parts[0]}\n")
         finally:
+            import time as _t
+
+            duration = _t.perf_counter() - start
+            self.last_duration_var.set(f"Duration: {duration:.2f}s")
             self.set_busy(False)
 
     def set_status(self, text: str) -> None:
         self.status_var.set(text)
 
     def set_busy(self, busy: bool) -> None:
-        widgets = [self.push_btn, self.deploy_btn, self.restart_btn, self.logs_btn, self.build_btn]
+        widgets = [self.push_btn, self.deploy_btn, self.restart_btn, self.logs_btn, self.build_btn, self.fix_all_btn]
         if busy:
             for w in widgets:
                 w.config(state="disabled")
@@ -460,12 +576,12 @@ class FinoraDeployStudio(tk.Tk):
             nginx_service = self.nginx_service_var.get().strip() or "nginx"
 
             # سكربت الدبلوي عن بعد (يُنفّذ داخل الشيل على السيرفر)
+            # ملاحظة: نستدعي gunicorn مباشرة من داخل venv بدون استخدام source لتجنّب اختلاف الشيل.
             script = (
                 f"cd {server_path} && "
                 "git pull && "
                 "pkill -f gunicorn || true && "
-                "source venv/bin/activate && "
-                f"gunicorn app:app -b {bind} -w {workers} --daemon && "
+                f"venv/bin/gunicorn app:app -b {bind} -w {workers} --daemon && "
                 f"systemctl restart {nginx_service}"
             )
 
@@ -495,8 +611,7 @@ class FinoraDeployStudio(tk.Tk):
             script = (
                 f"cd {server_path} && "
                 "pkill -f gunicorn || true && "
-                "source venv/bin/activate && "
-                f"gunicorn app:app -b {bind} -w {workers} --daemon && "
+                f"venv/bin/gunicorn app:app -b {bind} -w {workers} --daemon && "
                 f"systemctl restart {nginx_service}"
             )
             rc = self.run_ssh_script(script)
@@ -523,6 +638,89 @@ class FinoraDeployStudio(tk.Tk):
                 self.set_status("Logs fetched.")
             else:
                 self.set_status("Failed to fetch logs (see log).")
+        finally:
+            self.set_busy(False)
+
+    def on_fix_all_clicked(self) -> None:
+        """زر Fix All: فحص أساسي للبيئة المحلية والسيرفر ومحاولة إصلاح سريع."""
+        self.save_config()
+        thread = threading.Thread(target=self._fix_all_thread, daemon=True)
+        self.set_busy(True)
+        thread.start()
+
+    def _fix_all_thread(self) -> None:
+        import time
+
+        start = time.perf_counter()
+        try:
+            self.set_status("Running Fix All checks…")
+            self.append_log("[INFO] Starting Fix All (local + server checks)…\n")
+
+            # 1) فحص أوامر أساسية محلياً
+            local_checks = [
+                ["git", "--version"],
+                ["ssh", "-V"],
+                ["python", "--version"],
+                ["pip", "--version"],
+            ]
+            local_path = Path(self.local_path_var.get().strip() or ".")
+            for cmd in local_checks:
+                self.append_log(f"$ {' '.join(cmd)}\n")
+                try:
+                    proc = subprocess.Popen(
+                        cmd,
+                        cwd=str(local_path),
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        text=True,
+                    )
+                    assert proc.stdout is not None
+                    for line in proc.stdout:
+                        self.append_log(line)
+                    proc.wait()
+                    if proc.returncode != 0:
+                        self.append_log(f"[ERROR] Local check failed: {' '.join(cmd)} (code {proc.returncode})\n")
+                except FileNotFoundError:
+                    self.append_log(f"[ERROR] Local command not found: {cmd[0]}\n")
+
+            # 2) تثبيت paramiko إذا مفقود
+            try:
+                import paramiko  # type: ignore[import]
+                self.append_log("[INFO] paramiko already installed.\n")
+            except ImportError:
+                self.append_log("[INFO] Installing paramiko via pip…\n")
+                proc = subprocess.Popen(
+                    ["pip", "install", "paramiko"],
+                    cwd=str(local_path),
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                )
+                assert proc.stdout is not None
+                for line in proc.stdout:
+                    self.append_log(line)
+                proc.wait()
+                if proc.returncode != 0:
+                    self.append_log(f"[ERROR] Failed to install paramiko (code {proc.returncode})\n")
+                else:
+                    self.append_log("[INFO] paramiko installed successfully.\n")
+
+            # 3) فحص بسيط على السيرفر (git + gunicorn + systemctl)
+            server_path = self.server_path_var.get().strip()
+            checks_script = (
+                f"cd {server_path} && "
+                "echo '--- Server checks ---' && "
+                "git --version || echo 'git NOT OK' && "
+                "which gunicorn || which venv/bin/gunicorn || echo 'gunicorn NOT OK' && "
+                "command -v systemctl || echo 'systemctl NOT OK'"
+            )
+            rc = self.run_ssh_script(checks_script)
+            if rc != 0:
+                self.append_log(f"[ERROR] Server checks script failed with code {rc}\n")
+
+            self.append_log("[INFO] Fix All finished. راجع النتائج في اللوج وأصلح ما تبقّى يدوياً إن لزم.\n")
+            duration = time.perf_counter() - start
+            self.set_status(f"Fix All completed in {duration:.1f}s (see log).")
         finally:
             self.set_busy(False)
 
