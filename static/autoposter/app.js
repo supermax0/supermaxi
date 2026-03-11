@@ -170,7 +170,7 @@
           <div class="notif-body">
             <strong>${escapeHtml(n.title)}</strong>
             ${n.body ? `<p>${escapeHtml(n.body)}</p>` : ''}
-            <time datetime="${n.created_at || ''}">${formatNotifTime(n.created_at)}</time>
+            <time datetime="${n.created_at || ''}">${formatDateTime(n.created_at)}</time>
           </div>
         </li>
       `).join('')
