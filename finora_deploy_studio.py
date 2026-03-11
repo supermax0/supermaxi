@@ -157,7 +157,7 @@ class FinoraDeployStudio(tk.Tk):
         status_label = ttk.Label(status_frame, textvariable=self.status_var, anchor="e")
         status_label.pack(side=tk.RIGHT)
 
-        # Log output
+        # Log output + command input
         log_frame = ttk.LabelFrame(self, text="Terminal / Log Output")
         log_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=12, pady=(4, 12))
 
@@ -169,10 +169,25 @@ class FinoraDeployStudio(tk.Tk):
             wrap="word",
             state="disabled",
         )
-        self.log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.log_text.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         scroll = ttk.Scrollbar(log_frame, command=self.log_text.yview)
         scroll.pack(side=tk.RIGHT, fill=tk.Y)
         self.log_text.configure(yscrollcommand=scroll.set)
+
+        # Local command input (مثل ترمنال بسيط لتنفيذ أوامر محلية مثل pip install paramiko)
+        cmd_frame = ttk.Frame(log_frame)
+        cmd_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=(4, 0))
+        ttk.Label(cmd_frame, text="Local command:").pack(side=tk.LEFT, padx=(0, 4))
+        self.local_cmd_var = tk.StringVar(value="")
+        cmd_entry = ttk.Entry(cmd_frame, textvariable=self.local_cmd_var)
+        cmd_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 4))
+        cmd_entry.bind("<Return>", lambda _e: self.on_run_local_cmd_clicked())
+        ttk.Button(
+            cmd_frame,
+            text="Run",
+            command=self.on_run_local_cmd_clicked,
+            width=8,
+        ).pack(side=tk.RIGHT)
 
         self.append_log("Finora Deploy Studio started.\n")
 
@@ -226,6 +241,54 @@ class FinoraDeployStudio(tk.Tk):
             return
         entry.delete(0, tk.END)
         entry.insert(0, text)
+
+    # ---------- Local command from terminal ----------
+
+    def on_run_local_cmd_clicked(self) -> None:
+        cmd_str = self.local_cmd_var.get().strip()
+        if not cmd_str:
+            return
+        # نحفظ إعدادات المشروع أولاً حتى ننفّذ الأوامر داخل المسار الصحيح
+        self.save_config()
+        thread = threading.Thread(target=self._run_local_cmd_thread, args=(cmd_str,), daemon=True)
+        self.set_busy(True)
+        thread.start()
+
+    def _run_local_cmd_thread(self, cmd_str: str) -> None:
+        try:
+            local_path = Path(self.local_path_var.get().strip() or ".")
+            if not local_path.exists():
+                self.append_log(f"[ERROR] Local path does not exist: {local_path}\n")
+                return
+
+            parts = cmd_str.split()
+            if not parts:
+                return
+
+            self.append_log(f"$ {cmd_str}\n")
+            try:
+                proc = subprocess.Popen(
+                    parts,
+                    cwd=str(local_path),
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1,
+                    shell=False,
+                )
+                assert proc.stdout is not None
+                for line in proc.stdout:
+                    self.append_log(line)
+                proc.wait()
+                rc = proc.returncode
+                if rc != 0:
+                    self.append_log(f"[ERROR] Command exited with code {rc}\n")
+                else:
+                    self.append_log("[INFO] Command finished successfully.\n")
+            except FileNotFoundError:
+                self.append_log(f"[ERROR] Command not found: {parts[0]}\n")
+        finally:
+            self.set_busy(False)
 
     def set_status(self, text: str) -> None:
         self.status_var.set(text)
