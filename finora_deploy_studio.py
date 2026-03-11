@@ -571,19 +571,9 @@ class FinoraDeployStudio(tk.Tk):
             self.set_status("Deploying to server…")
 
             server_path = self.server_path_var.get().strip()
-            bind = self.gunicorn_bind_var.get().strip()
-            workers = self.gunicorn_workers_var.get().strip() or "3"
-            nginx_service = self.nginx_service_var.get().strip() or "nginx"
-
-            # سكربت الدبلوي عن بعد (يُنفّذ داخل الشيل على السيرفر)
-            # ملاحظة: نستدعي gunicorn مباشرة من داخل venv بدون استخدام source لتجنّب اختلاف الشيل.
-            script = (
-                f"cd {server_path} && "
-                "git pull && "
-                "pkill -f gunicorn || true && "
-                f"venv/bin/gunicorn app:app -b {bind} -w {workers} --daemon && "
-                f"systemctl restart {nginx_service}"
-            )
+            # نستخدم سكربت السيرفر الموحد server_tool.py لإجراء الدبلوي الآمن
+            # (git / pip / npm / health-check / systemd) بدلاً من أوامر متفرقة.
+            script = f"cd {server_path} && python3 server_tool.py deploy"
 
             rc = self.run_ssh_script(script)
             if rc == 0:
@@ -605,13 +595,13 @@ class FinoraDeployStudio(tk.Tk):
             self.set_status("Restarting server services…")
             nginx_service = self.nginx_service_var.get().strip() or "nginx"
             server_path = self.server_path_var.get().strip()
-            bind = self.gunicorn_bind_var.get().strip()
-            workers = self.gunicorn_workers_var.get().strip() or "3"
+            # اسم خدمة التطبيق في systemd يجب أن يتوافق مع server_tool.py
+            app_service = "supermaxi.service"
 
+            # إعادة تشغيل خدمة التطبيق + Nginx عبر systemd (أكثر ثباتاً من pkill / gunicorn اليدوي)
             script = (
                 f"cd {server_path} && "
-                "pkill -f gunicorn || true && "
-                f"venv/bin/gunicorn app:app -b {bind} -w {workers} --daemon && "
+                f"systemctl restart {app_service} && "
                 f"systemctl restart {nginx_service}"
             )
             rc = self.run_ssh_script(script)
