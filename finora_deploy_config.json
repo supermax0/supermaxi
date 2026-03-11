@@ -1,0 +1,9 @@
+{
+  "local_project_path": "C:\\Users\\msi\\Desktop\\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\\accounting_system",
+  "server_ssh": "root@187.124.29.5",
+  "server_project_path": "/var/www/finora/supermaxi",
+  "nginx_service": "nginx",
+  "gunicorn_bind": "127.0.0.1:8000",
+  "gunicorn_workers": 3,
+  "logs_command": "journalctl -u nginx -n 100 --no-pager"
+}

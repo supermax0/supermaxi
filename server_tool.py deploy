@@ -1,0 +1,155 @@
+#!/usr/bin/env python3
+"""
+أداة إدارة السيرفر لـ Supermaxi.
+أمر deploy هنا يحاول قدر الإمكان كشف الأخطاء (git / pip / npm / health-check)
+قبل إعادة تشغيل gunicorn. إذا فشل أي اختبار يتوقّف الدبلوي ولا يعيد تشغيل السيرفر.
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+import subprocess
+from datetime import datetime
+from pathlib import Path
+from typing import List
+
+PORT = 8000
+REPO_DIR = Path("/var/www/finora/supermaxi")
+VENV_PYTHON = REPO_DIR / "venv" / "bin" / "python"
+FRONTEND_DIR = REPO_DIR / "static" / "ai_agent_frontend"
+LOG_FILE = Path("/var/log/finora/deploy.log")
+SYSTEMD_SERVICE = "supermaxi.service"  # غيّر الاسم لو خدمتك اسمها مختلف
+
+
+def log(message: str) -> None:
+    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    line = f"[{ts}] {message}"
+    print(line)
+    try:
+        LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with LOG_FILE.open("a", encoding="utf-8") as f:
+            f.write(line + "\n")
+    except Exception:
+        # لا نرمي استثناء لو فشل تسجيل اللوج، يكفي الطباعة على الشاشة
+        pass
+
+
+def run(cmd: List[str], cwd: Path | None = None, check: bool = True) -> subprocess.CompletedProcess:
+    log(f"$ {' '.join(cmd)}  (cwd={cwd or REPO_DIR})")
+    return subprocess.run(cmd, cwd=str(cwd or REPO_DIR), check=check)
+
+
+def kill_port(port: int) -> None:
+    """محاولة تفريغ البورت بالقوة إذا كان عالقاً."""
+    log(f"Trying to free port {port}…")
+    # fuser متوفر على أغلب توزيعات لينكس
+    run(["fuser", "-k", f"{port}/tcp"], check=False)
+
+
+def kill_gunicorn() -> None:
+    """إيقاف كل عمليات gunicorn المرتبطة بالمشروع."""
+    log("Stopping gunicorn processes…")
+    run(["pkill", "-f", "gunicorn"], check=False)
+
+
+def status() -> None:
+    log(f"Checking gunicorn status on port {PORT}…")
+    run(["lsof", "-i", f":{PORT}"], check=False)
+
+
+def tail_logs() -> None:
+    if not LOG_FILE.exists():
+        print("No log file yet:", LOG_FILE)
+        return
+    run(["tail", "-n", "80", str(LOG_FILE)], check=False)
+
+
+def deploy() -> None:
+    """
+    دبلوي آمن:
+    1) git fetch/reset على origin/main
+    2) تحديث حزم Python (إن وجدت requirements.txt)
+    3) npm install + npm run build لواجهة الـ AI Agent
+    4) health-check سريع على app.py
+    5) إعادة تشغيل خدمة gunicorn عبر systemd
+    إذا فشل أي خطوة نتوقف ولا نعيد التشغيل.
+    """
+    log("=== START DEPLOY ===")
+
+    try:
+        # 0) تأكد أن المسار موجود
+        if not REPO_DIR.exists():
+            raise RuntimeError(f"REPO_DIR لا يوجد: {REPO_DIR}")
+
+        # 1) Git: جلب آخر كود
+        log("Pull latest code from origin/main…")
+        run(["git", "fetch", "origin"])
+        run(["git", "reset", "--hard", "origin/main"])
+
+        # 2) pip install
+        req = REPO_DIR / "requirements.txt"
+        if req.exists() and VENV_PYTHON.exists():
+            log("Installing / upgrading Python dependencies…")
+            run([str(VENV_PYTHON), "-m", "pip", "install", "-r", str(req)])
+        else:
+            log("requirements.txt أو venv غير موجودين، تخطي خطوة pip.")
+
+        # 3) بناء الفرونت
+        if FRONTEND_DIR.exists():
+            log("Running npm install for AI Agent frontend…")
+            run(["npm", "install"], cwd=FRONTEND_DIR)
+            log("Building AI Agent frontend (npm run build)…")
+            run(["npm", "run", "build"], cwd=FRONTEND_DIR)
+        else:
+            log(f"Frontend directory not found: {FRONTEND_DIR}, تخطي build.")
+
+        # 4) health-check سريع على app.py (يترجم البايثون بدون تشغيل السيرفر)
+        if VENV_PYTHON.exists():
+            log("Running quick Python health check (py_compile app.py)…")
+            run([str(VENV_PYTHON), "-m", "py_compile", "app.py"])
+        else:
+            log("لم يتم العثور على venv Python لعمل health-check، تابع بحذر.")
+
+        # 5) إعادة تشغيل الخدمة
+        log(f"Restarting systemd service: {SYSTEMD_SERVICE}…")
+        run(["systemctl", "restart", SYSTEMD_SERVICE])
+        log("Checking service status…")
+        run(["systemctl", "status", SYSTEMD_SERVICE], check=False)
+
+        log("=== DEPLOY DONE (SUCCESS) ===")
+
+    except subprocess.CalledProcessError as exc:
+        log(f"❌ فشل تنفيذ الأمر: {exc}")
+        log("تم إيقاف الدبلوي مبكراً؛ لم يتم إعادة تشغيل الخدمة حتى لا يتعطل الإنتاج.")
+    except Exception as exc:
+        log(f"❌ خطأ غير متوقع أثناء الدبلوي: {exc}")
+        log("تم إيقاف الدبلوي؛ راجع الرسالة أعلاه.")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Supermaxi server management tool")
+    sub = parser.add_subparsers(dest="cmd", required=True)
+
+    sub.add_parser("deploy", help="Pull code, run checks, restart gunicorn safely")
+    sub.add_parser("status", help="Show gunicorn processes on port 8000")
+    sub.add_parser("kill-port", help="Force free port 8000")
+    sub.add_parser("logs", help="Show last deploy logs")
+
+    args = parser.parse_args()
+
+    if args.cmd == "deploy":
+        deploy()
+    elif args.cmd == "status":
+        status()
+    elif args.cmd == "kill-port":
+        kill_gunicorn()
+        kill_port(PORT)
+    elif args.cmd == "logs":
+        tail_logs()
+
+
+if __name__ == "__main__":
+    if os.geteuid() != 0:
+        print("يفضّل تشغيل السكربت بصلاحيات sudo حتى يقدر يقتل البورت/العمليات.")
+    main()

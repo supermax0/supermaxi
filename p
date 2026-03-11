@@ -1,251 +1,57 @@
-Develop an advanced Facebook Comment Listener system inside the existing autoposter backend.
+Build a Windows desktop application called **Finora Deploy Studio** that allows me to deploy my project to GitHub and then automatically update my Linux server.
 
-IMPORTANT ARCHITECTURE RULES
-- Do NOT change existing database structure unless adding new fields
-- Do NOT break existing routes
-- Do NOT modify working autoposter features
-- Only ADD new modules
+Requirements:
 
-The system must automatically detect new Facebook posts/videos and fetch comments from them.
+Create a GUI application using **Python + Tkinter (or PySide6 if preferred)**.
 
-----------------------------------
+The interface must contain:
 
-GOAL
+1. A button **Push to GitHub**
+2. A button **Deploy to Server**
+3. A large **terminal/log output window**
+4. A field to configure:
 
-Create a background listener that:
+   * Local project path
+   * Server SSH address
+   * Server project path
+5. A progress indicator.
 
-1) Fetches all Facebook pages connected to the system
-2) Automatically detects NEW posts or videos
-3) Saves their IDs in database
-4) Continuously fetches comments
-5) Sends comments to AI workflow
-6) Publishes automatic replies
+Behavior:
 
-----------------------------------
+When clicking **Push to GitHub**, the program should execute these commands inside the local project folder:
 
-DATABASE
+git add .
+git commit -m "update"
+git push
 
-Use existing tables if possible:
+When clicking **Deploy to Server**, the program should connect via SSH and execute:
 
-AutoposterFacebookPage
-AutoposterPost
+cd /var/www/finora/supermaxi
+git pull
+pkill -f gunicorn
+source venv/bin/activate
+gunicorn app:app -b 127.0.0.1:8000 -w 3 --daemon
+systemctl restart nginx
 
-If needed add:
+All terminal output should appear in the UI terminal window.
 
-last_comment_time
-last_scan_time
+Technical requirements:
 
-Example schema extension:
+• Use Python subprocess to run commands
+• Use threading so the UI does not freeze
+• Show live logs in the terminal window
+• Allow editing server configuration in the UI
+• Save configuration in a JSON file
+• Provide error handling and clear log messages.
 
-AutoposterPost
-- id
-- page_id
-- facebook_post_id
-- created_time
-- last_comment_time
+Bonus features:
 
-----------------------------------
+• Button: Restart Server
+• Button: View Server Logs
+• Button: Build Frontend (run npm install + npm run build)
+• Show Git status before push
+• Dark theme UI.
 
-STEP 1
-FETCH FACEBOOK PAGES
+The application should be clean, modern, and easy to use for developers.
 
-Load all Facebook pages stored in database.
-
-Example:
-
-pages = AutoposterFacebookPage.query.all()
-
-----------------------------------
-
-STEP 2
-AUTO DETECT NEW POSTS AND VIDEOS
-
-For every page call:
-
-GET
-https://graph.facebook.com/v19.0/{page-id}/posts
-
-Fields required:
-
-id
-message
-created_time
-permalink_url
-attachments
-
-If the post contains video or reel the attachments will contain type=video.
-
-Save every new post_id into AutoposterPost if not already stored.
-
-----------------------------------
-
-STEP 3
-SAVE VIDEO IDs
-
-If attachments contain video data extract:
-
-video_id
-
-Example:
-
-attachments{
-  media_type
-  target{
-     id
-  }
-}
-
-Save video_id into database.
-
-----------------------------------
-
-STEP 4
-FETCH COMMENTS
-
-For every stored post call:
-
-GET
-/{post-id}/comments
-
-fields:
-
-id
-message
-from
-created_time
-
-----------------------------------
-
-STEP 5
-IGNORE OLD COMMENTS
-
-Use last_comment_time.
-
-Only process comments newer than the last processed comment.
-
-----------------------------------
-
-STEP 6
-SEND COMMENT TO WORKFLOW
-
-Each comment should produce event:
-
-{
- "platform": "facebook",
- "page_id": "...",
- "post_id": "...",
- "comment_id": "...",
- "username": "...",
- "text": "...",
- "created_time": "..."
-}
-
-Send event to AI node.
-
-----------------------------------
-
-STEP 7
-AI RESPONSE
-
-Send comment text to OpenAI.
-
-Example prompt:
-
-"You are a social media assistant.
-Reply to this Facebook comment politely and helpfully."
-
-Generate response.
-
-----------------------------------
-
-STEP 8
-POST REPLY
-
-Publish reply using:
-
-POST
-/{comment-id}/comments
-
-payload:
-
-{
- "message": "AI reply"
-}
-
-----------------------------------
-
-STEP 9
-RUN BACKGROUND LISTENER
-
-Create a background loop:
-
-run_comment_listener()
-
-It should run every:
-
-30 seconds
-
-----------------------------------
-
-STEP 10
-OPTIMIZATION
-
-Limit scanning to:
-
-last 10 posts per page.
-
-----------------------------------
-
-FILES TO CREATE
-
-social_ai/
-   facebook_listener.py
-   comment_processor.py
-   ai_responder.py
-
-----------------------------------
-
-facebook_listener.py responsibilities
-
-- detect pages
-- detect posts
-- detect new videos
-- fetch comments
-
-----------------------------------
-
-comment_processor.py responsibilities
-
-- filter old comments
-- send comment to workflow
-
-----------------------------------
-
-ai_responder.py responsibilities
-
-- call OpenAI
-- generate reply
-- publish reply
-
-----------------------------------
-
-SECURITY
-
-Handle:
-
-- expired access tokens
-- rate limits
-- duplicate replies
-
-----------------------------------
-
-RESULT
-
-System automatically:
-
-- detects new videos
-- detects new posts
-- fetches comments
-- replies automatically with AI
-
-No manual configuration needed.
+Return the **complete Python code** for the application.
