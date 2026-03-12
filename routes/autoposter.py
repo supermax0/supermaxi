@@ -120,9 +120,8 @@ def create_view():
 
 
 @autoposter_bp.route("/ai-agent")
-@require_autoposter_login
 def ai_agent_view():
-    """واجهة AI Agent / Workflow Builder (React UI داخل Autoposter)."""
+    """واجهة AI Agent / Workflow Builder — بدون تسجيل دخول."""
     return render_template("autoposter/ai_agent.html")
 
 

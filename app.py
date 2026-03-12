@@ -726,6 +726,7 @@ def require_login():
         "/messages/unread-count",  # واجهة للشارة — تُرجع JSON بدون إعادة توجيه
         "/api/landing-chat",  # مساعد الذكاء الاصطناعي لصفحة الهبوط
         "/autoposter/api/facebook/callback",  # OAuth callback من فيسبوك (يُوجّه للتسجيل إن لزم)
+        "/autoposter/ai-agent",  # AI Agent Builder — بدون تسجيل دخول
     ]
 
     # السماح للمسارات المفتوحة: "/" تطابق تامة، الباقي يبدأ بـ المسار
