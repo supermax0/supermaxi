@@ -55,6 +55,7 @@ IMAGE_MIME_TYPES = {
 VIDEO_MIME_TYPES = {
     "video/mp4",
     "video/quicktime",
+    "video/webm",
 }
 
 ALLOWED_MIME_TYPES = IMAGE_MIME_TYPES | VIDEO_MIME_TYPES
@@ -67,6 +68,7 @@ ALLOWED_EXTENSIONS = {
     ".webp",
     ".mp4",
     ".mov",
+    ".webm",
 }
 
 
@@ -131,7 +133,7 @@ def validate_mime_and_extension(
         return (
             False,
             "unsupported_type",
-            "نوع الملف غير مدعوم. استخدم صورة (jpg, png, gif, webp) أو فيديو (mp4).",
+            "نوع الملف غير مدعوم. استخدم صورة (jpg, png, gif, webp) أو فيديو (mp4 / mov / webm).",
         )
 
     ext = (Path(filename).suffix or "").lower()
@@ -140,7 +142,7 @@ def validate_mime_and_extension(
         return (
             False,
             "bad_extension",
-            "امتداد الملف غير متوافق مع النوع. استخدم الامتدادات الشائعة مثل .jpg أو .png أو .mp4.",
+            "امتداد الملف غير متوافق مع النوع. استخدم الامتدادات الشائعة مثل .jpg أو .png أو .mp4 أو .mov.",
         )
 
     kind = detect_kind(ct)
@@ -148,7 +150,7 @@ def validate_mime_and_extension(
         return (
             False,
             "unsupported_type",
-            "نوع الملف غير مدعوم. استخدم صورة (jpg, png, gif, webp) أو فيديو (mp4).",
+            "نوع الملف غير مدعوم. استخدم صورة (jpg, png, gif, webp) أو فيديو (mp4 / mov / webm).",
         )
 
     return True, None, None
@@ -373,7 +375,14 @@ def save_uploaded_file(file_storage, max_mb: int = 100) -> Dict[str, Any]:
         ext = ".mp4" if kind == "video" else ".jpg"
     safe_name = f"{uuid.uuid4().hex}{ext}"
 
-    upload_dir = get_autoposter_upload_dir()
+    # مسار الحفظ:
+    # - الصور تبقى تحت static/autoposter/uploads
+    # - الفيديوهات تذهب إلى مجلد خارجي /var/www/finora/uploads/videos (حسب المواصفة)
+    if kind == "video":
+        upload_dir = Path("/var/www/finora/uploads/videos")
+    else:
+        upload_dir = get_autoposter_upload_dir()
+    upload_dir.mkdir(parents=True, exist_ok=True)
     dest_path = upload_dir / safe_name
 
     try:
@@ -426,9 +435,13 @@ def save_uploaded_file(file_storage, max_mb: int = 100) -> Dict[str, Any]:
         # أي خطأ في هذه المرحلة لا يمنع استخدام الملف
         pass
 
-    # بناء URL عام تحت static
-    rel = dest_path.relative_to(get_media_root())
-    public_url = f"{current_app.static_url_path}/{rel.as_posix()}"
+    # بناء URL عام
+    if kind == "video" and str(dest_path).startswith("/var/www/finora/uploads/videos"):
+        # يتوافق مع location /uploads/videos/ في Nginx
+        public_url = f"/uploads/videos/{dest_path.name}"
+    else:
+        rel = dest_path.relative_to(get_media_root())
+        public_url = f"{current_app.static_url_path}/{rel.as_posix()}"
 
     return {
         "ok": True,
