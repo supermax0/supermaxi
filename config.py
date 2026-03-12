@@ -68,3 +68,5 @@ class ProductionConfig(Config):
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
     PREFERRED_URL_SCHEME = "https"
+    # تدعم finora.company و www.finora.company
+    SESSION_COOKIE_DOMAIN = os.environ.get("SESSION_COOKIE_DOMAIN", ".finora.company")
