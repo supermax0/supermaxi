@@ -1,97 +1,56 @@
-You are a senior DevOps and Flask engineer.
+You are a senior DevOps + Python engineer.
 
-Fix the Telegram webhook integration in this Flask project running behind Nginx + Gunicorn.
+Fix the Telegram bot configuration in this Flask project.
 
-Current problems:
+Environment:
 
-* Telegram webhook returns HTTP 302 (redirect to /login)
-* Telegram reports: "Wrong response from the webhook: 302 FOUND"
-* The endpoint `/telegram/webhook` is being protected by login middleware.
-* The server stack is: Nginx → Gunicorn → Flask.
-* Project root: `/var/www/finora/supermaxi`
+* Flask app behind Nginx and Gunicorn
+* Systemd service name: finora
+* Project path: /var/www/finora/supermaxi
+* Telegram webhook already works but the logs show:
+  "BOT_TOKEN not set; cannot send reply"
+  "OpenAI API key not set; skipping AI reply"
 
-Your task is to automatically fix the project so Telegram webhooks work correctly.
+Your task:
 
-Required fixes:
+1. Ensure the Telegram bot reads environment variables:
 
-1. Create a public webhook endpoint in Flask:
+   * BOT_TOKEN
+   * OPENAI_API_KEY
 
-Route:
-POST /telegram/webhook
+2. Modify the systemd service file:
+   /etc/systemd/system/finora.service
 
-Example implementation:
+   Add inside [Service]:
 
-```python
-from flask import request, jsonify
-import requests
-import os
+   Environment="BOT_TOKEN=<telegram_bot_token>"
+   Environment="OPENAI_API_KEY=<openai_api_key>"
 
-BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+3. Ensure the Flask code loads these variables using:
 
-@app.route("/telegram/webhook", methods=["POST"])
-def telegram_webhook():
-    data = request.json
-    message = data.get("message", {})
-    chat_id = message.get("chat", {}).get("id")
-    text = message.get("text", "")
+   import os
+   BOT_TOKEN = os.getenv("BOT_TOKEN")
+   OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-    if chat_id and text:
-        reply = "Message received"
+4. If they are missing, log a warning.
 
-        requests.post(
-            f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
-            json={
-                "chat_id": chat_id,
-                "text": reply
-            }
-        )
+5. After updating the service file run:
 
-    return jsonify({"ok": True})
-```
+   sudo systemctl daemon-reload
+   sudo systemctl restart finora
 
-2. Ensure this endpoint is NOT protected by authentication.
+6. Add logging so incoming Telegram updates appear in logs.
 
-If the project uses:
+7. Ensure the webhook handler sends replies using:
 
-* login_required
-* before_request login middleware
-* authentication decorators
+   https://api.telegram.org/bot{BOT_TOKEN}/sendMessage
 
-Then exclude the route `/telegram/webhook`.
+Expected result:
 
-3. Ensure Flask accepts webhook requests without redirecting to `/login`.
-
-4. Verify Nginx configuration:
-
-The server block must proxy to Gunicorn:
-
-```
-location / {
-    proxy_pass http://127.0.0.1:8000;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-Proto $scheme;
-}
-```
-
-5. Do NOT apply auth middleware on `/telegram/webhook`.
-
-6. Ensure Gunicorn service runs correctly:
-
-systemctl restart finora
-
-7. Add logging to the webhook so incoming Telegram updates appear in server logs.
-
-8. Make sure the endpoint returns HTTP 200 JSON.
-
-Expected final behaviour:
-
-Telegram
+Telegram message
 → POST /telegram/webhook
 → Flask receives update
-→ bot replies via Telegram API
-→ HTTP 200 returned
+→ AI reply generated
+→ Telegram message sent successfully.
 
-Finally print a test command:
-
-curl -X POST https://finora.company/telegram/webhook
+Output the commands needed to restart the service and verify logs.

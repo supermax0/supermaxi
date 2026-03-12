@@ -8,6 +8,7 @@ Flask blueprint لمسارات تيليجرام:
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any
 
 import requests
@@ -29,16 +30,21 @@ telegram_bp = Blueprint("telegram", __name__, url_prefix="/telegram")
 
 
 def _get_bot_token() -> str:
-    """قراءة توكن البوت من إعدادات التطبيق (BOT_TOKEN أو TELEGRAM_BOT_TOKEN)."""
+    """قراءة توكن البوت من الإعدادات أو من متغيرات البيئة (BOT_TOKEN / TELEGRAM_BOT_TOKEN)."""
     return (
         (current_app.config.get("TELEGRAM_BOT_TOKEN") or "")
         or (current_app.config.get("BOT_TOKEN") or "")
+        or (os.getenv("BOT_TOKEN") or "")
+        or (os.getenv("TELEGRAM_BOT_TOKEN") or "")
     ).strip()
 
 
 def _get_openai_key() -> str:
-    """قراءة مفتاح OpenAI من الإعدادات."""
-    return (current_app.config.get("OPENAI_API_KEY") or "").strip()
+    """قراءة مفتاح OpenAI من الإعدادات أو من متغير البيئة OPENAI_API_KEY."""
+    return (
+        (current_app.config.get("OPENAI_API_KEY") or "")
+        or (os.getenv("OPENAI_API_KEY") or "")
+    ).strip()
 
 
 def _get_openai_model() -> str:

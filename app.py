@@ -876,6 +876,14 @@ if not app.debug:
     logging.basicConfig(level=logging.INFO)
     app.logger.setLevel(logging.INFO)
 
+# تحذير عند بدء التشغيل إذا لم تُضبط متغيرات بوت تيليجرام (لظهورها في السجلات)
+_bot_token = (app.config.get("TELEGRAM_BOT_TOKEN") or app.config.get("BOT_TOKEN") or os.environ.get("BOT_TOKEN") or os.environ.get("TELEGRAM_BOT_TOKEN") or "").strip()
+_openai_key = (app.config.get("OPENAI_API_KEY") or os.environ.get("OPENAI_API_KEY") or "").strip()
+if not _bot_token:
+    app.logger.warning("BOT_TOKEN / TELEGRAM_BOT_TOKEN not set; Telegram bot will not send replies. Set in systemd Environment= or .env.")
+if not _openai_key:
+    app.logger.warning("OPENAI_API_KEY not set; Telegram AI replies will be skipped. Set in systemd Environment= or .env.")
+
 # =====================================
 # Error Handlers
 # =====================================
