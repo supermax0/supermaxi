@@ -186,7 +186,7 @@
     <div class="upload-header">
       <div>
         <div class="upload-title">رفع فيديو للأوتوبوستر</div>
-        <div class="upload-subtitle">يدعم mp4 / mov / webm حتى 2GB، مع توليد صورة مصغّرة تلقائياً.</div>
+        <div class="upload-subtitle">يدعم mp4 / mov / webm حتى 200MB، مع توليد صورة مصغّرة تلقائياً.</div>
       </div>
       <a href="{{ request.script_root or '' }}/autoposter/" class="upload-back">← الرجوع للوحة الأوتوبوستر</a>
     </div>
@@ -200,6 +200,7 @@
       <div class="upload-actions">
         <button type="button" id="selectFileBtn" class="btn-primary">اختيار ملف فيديو</button>
         <button type="button" id="cancelUploadBtn" class="btn-ghost" disabled>إلغاء الرفع</button>
+        <button type="button" id="useInPostBtn" class="btn-ghost" style="display:none">استخدام هذا الفيديو في المنشور</button>
       </div>
       <input type="file" id="fileInputHidden" accept="video/*" style="display:none">
     </div>

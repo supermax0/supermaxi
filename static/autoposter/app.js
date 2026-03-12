@@ -41,6 +41,52 @@
     return true;
   }
 
+  // في حال تم اختيار فيديو من صفحة الرفع: جلبه من sessionStorage وتهيئة المعاينة
+  function bootstrapVideoFromUploadPage() {
+    try {
+      const stored = sessionStorage.getItem('autoposter_last_video_url');
+      if (!stored) return;
+      const url = stored;
+      // نستخدمه مرة واحدة فقط
+      sessionStorage.removeItem('autoposter_last_video_url');
+      if (!mediaPreview) return;
+      uploadedMedia = {
+        url,
+        type: 'video',
+        file: null,
+        thumbnail_url: null,
+        size_mb: null,
+        width: null,
+        height: null,
+        duration_sec: null,
+      };
+      mediaPreview.innerHTML = '';
+      const wrap = document.createElement('div');
+      wrap.className = 'media-preview-item';
+      const media = Object.assign(document.createElement('video'), {
+        src: url,
+        controls: true,
+        muted: true,
+        style: 'max-width:100%;max-height:160px',
+      });
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'remove-media';
+      remove.textContent = '×';
+      remove.addEventListener('click', () => {
+        wrap.remove();
+        uploadedMedia = { url: null, type: null };
+        updatePreview();
+      });
+      wrap.appendChild(media);
+      wrap.appendChild(remove);
+      mediaPreview.appendChild(wrap);
+      updatePreview();
+    } catch (e) {
+      // تجاهل أي خطأ في التخزين
+    }
+  }
+
   async function loadStats() {
     const res = await apiFetch('/api/stats');
     if (!res || !res.ok) return;
@@ -383,6 +429,8 @@
     loadDrafts();
     loadTemplates();
     loadAnalytics();
+    // تحميل فيديو تم رفعه من صفحة الرفع المستقلة (إن وجد)
+    bootstrapVideoFromUploadPage();
   });
 
   async function loadSettings() {
@@ -943,46 +991,67 @@
       if (postProgress) postProgress.hidden = false;
 
       const chips = Array.from(document.querySelectorAll('.page-chip[data-id]'));
-      for (let i = 0; i < pageIds.length; i++) {
-        const pageId = pageIds[i];
-        const chip = chips.find(c => c.getAttribute('data-id') === pageId);
-        chip?.classList.remove('posted', 'error');
-        chip?.classList.add('posting');
-        if (postProgressText) {
-          postProgressText.textContent = `جاري النشر على الصفحة ${i + 1} من ${pageIds.length}`;
-        }
-        if (publishBtn.querySelector('.btn-text')) {
-          publishBtn.querySelector('.btn-text').textContent = `نشر (${i + 1}/${pageIds.length})`;
-        }
+      chips.forEach((chip) => {
+        chip.classList.remove('posted', 'error');
+        chip.classList.add('posting');
+      });
+      if (postProgressText) {
+        postProgressText.textContent = `جاري النشر على ${pageIds.length} صفحة...`;
+      }
+      if (publishBtn.querySelector('.btn-text')) {
+        publishBtn.querySelector('.btn-text').textContent = 'جاري النشر...';
+      }
 
-        const formData = new FormData();
-        formData.append('text', payload.text || '');
-        formData.append('content', payload.content || '');
-        formData.append('post_type', payload.post_type || 'post');
-        formData.append('page_ids', pageId);
-        if (payload.image_url) formData.append('image_url', payload.image_url);
-        // في حال استخدام رفع فيديو مباشر عبر نفس الطلب
-        // يمكن للفرونتند إرفاق File باسم "video" في formData قبل الاستدعاء.
-        if (uploadedMedia.type === 'video' && uploadedMedia.file instanceof File) {
-          formData.append('video', uploadedMedia.file);
-        } else if (payload.video_url) {
-          formData.append('video_url', payload.video_url);
-        }
+      const formData = new FormData();
+      formData.append('text', payload.text || '');
+      formData.append('content', payload.content || '');
+      formData.append('post_type', payload.post_type || 'post');
+      pageIds.forEach(id => formData.append('page_ids', id));
+      if (payload.image_url) formData.append('image_url', payload.image_url);
+      if (uploadedMedia.type === 'video' && uploadedMedia.file instanceof File) {
+        formData.append('video', uploadedMedia.file);
+      } else if (payload.video_url) {
+        formData.append('video_url', payload.video_url);
+      }
 
-        const res = await apiFetch('/api/posts', {
-          method: 'POST',
-          body: formData,
-        });
-        const data = await res?.json().catch(() => ({}));
+      const res = await apiFetch('/api/posts', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res?.json().catch(() => ({}));
 
-        if (res && res.ok && data.success) {
-          chip?.classList.remove('posting');
-          chip?.classList.add('posted');
+      const results = data?.results || {};
+      const published = Array.isArray(results.published) ? results.published : [];
+      const errors = Array.isArray(results.errors) ? results.errors : [];
+
+      const byPageId = {};
+      published.forEach((p) => { if (p.page_id) byPageId[p.page_id] = { ok: true, data: p }; });
+      errors.forEach((e) => { if (e.page_id) byPageId[e.page_id] = { ok: false, data: e }; });
+
+      let okCount = 0;
+      let errCount = 0;
+      chips.forEach((chip) => {
+        const id = chip.getAttribute('data-id');
+        chip.classList.remove('posting');
+        const entry = id && byPageId[id];
+        if (entry && entry.ok) {
+          chip.classList.add('posted');
+          okCount += 1;
+        } else if (entry && !entry.ok) {
+          chip.classList.add('error');
+          errCount += 1;
         } else {
-          chip?.classList.remove('posting');
-          chip?.classList.add('error');
-          toast(data?.error || 'فشل النشر لصفحة واحدة أو أكثر', 'error');
+          chip.classList.add('error');
+          errCount += 1;
         }
+      });
+
+      if (errCount && !okCount) {
+        toast(data?.error || 'فشل النشر لكل الصفحات', 'error');
+      } else if (errCount) {
+        toast(`تم النشر على ${okCount} صفحة وفشل في ${errCount} صفحة`, 'warning');
+      } else {
+        toast(`تم النشر على ${okCount} صفحة`, 'success');
       }
 
       publishBtn.classList.remove('loading');

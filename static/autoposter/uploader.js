@@ -13,6 +13,7 @@
   const previewMeta = document.getElementById('previewMeta');
   const errorBox = document.getElementById('errorBox');
   const successBox = document.getElementById('successBox');
+  const useInPostBtn = document.getElementById('useInPostBtn');
 
   let currentXhr = null;
 
@@ -50,7 +51,7 @@
       showError('الرجاء اختيار ملف فيديو (mp4 / mov / webm).');
       return;
     }
-    const maxBytes = 2 * 1024 * 1024 * 1024; // 2GB
+    const maxBytes = 200 * 1024 * 1024; // 200MB (متطابق مع الباكند)
     if (file.size > maxBytes) {
       showError('حجم الفيديو أكبر من 2GB.');
       return;
@@ -68,6 +69,8 @@
     const xhr = new XMLHttpRequest();
     currentXhr = xhr;
 
+    const startedAt = Date.now();
+
     xhr.open('POST', uploadUrl, true);
     xhr.withCredentials = true;
 
@@ -75,7 +78,17 @@
       if (!e.lengthComputable || !progressInner || !progressText) return;
       const percent = Math.max(1, Math.min(100, (e.loaded / e.total) * 100));
       progressInner.style.width = `${percent}%`;
-      progressText.textContent = `${percent.toFixed(0)}%`;
+      const elapsedSec = Math.max(0.1, (Date.now() - startedAt) / 1000);
+      const speedBytesPerSec = e.loaded / elapsedSec;
+      const speedMbPerSec = speedBytesPerSec / (1024 * 1024);
+      let etaText = '';
+      if (speedBytesPerSec > 0) {
+        const remaining = e.total - e.loaded;
+        const etaSec = remaining / speedBytesPerSec;
+        const etaRounded = Math.max(1, Math.round(etaSec));
+        etaText = ` — ${etaRounded}s متبقّية تقريباً`;
+      }
+      progressText.textContent = `${percent.toFixed(0)}% — ${speedMbPerSec.toFixed(2)} MB/s${etaText}`;
     };
 
     xhr.onreadystatechange = () => {
@@ -115,6 +128,19 @@
             previewVideo.src = blobUrl;
           }
           previewShell.style.display = 'block';
+        }
+        if (useInPostBtn && resp.url) {
+          useInPostBtn.style.display = 'inline-flex';
+          useInPostBtn.disabled = false;
+          useInPostBtn.onclick = () => {
+            try {
+              sessionStorage.setItem('autoposter_last_video_url', resp.url);
+            } catch (e) {
+              // ignore
+            }
+            const base = (window.AUTOPOSTER_API_BASE || '/autoposter').replace(/\/+$/, '');
+            window.location.href = `${base}/#create`;
+          };
         }
       } else if (xhr.status === 0) {
         showError('تم إلغاء الرفع.');

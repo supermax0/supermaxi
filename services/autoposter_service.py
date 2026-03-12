@@ -54,11 +54,11 @@ def publish_now_for_pages(
     image_url: str | None,
     video_url: str | None,
     post_type: str,
-) -> Tuple[List[str], List[str]]:
-    """نشر منشور فوراً لعدة صفحات في شركة واحدة."""
+) -> Tuple[List[dict], List[dict]]:
+    """نشر منشور فوراً لعدة صفحات في شركة واحدة مع نتيجة تفصيلية لكل صفحة."""
     post_type = _normalize_post_type(post_type)
-    published: List[str] = []
-    errors: List[str] = []
+    published: List[dict] = []
+    errors: List[dict] = []
 
     for page in pages:
         post = AutoposterPost(
@@ -87,12 +87,20 @@ def publish_now_for_pages(
             post.facebook_post_id = result.get("id") or result.get("post_id")
             post.error_message = None
             db.session.commit()
-            published.append(post.page_name)
+            published.append({
+                "page_id": page.page_id,
+                "page_name": page.name,
+                "post_id": post.facebook_post_id,
+            })
         except Exception as e:  # pragma: no cover - يعتمد على استجابات فيسبوك الحية
             post.status = "failed"
             post.error_message = str(e)
             db.session.commit()
-            errors.append(f"{page.name}: {e}")
+            errors.append({
+                "page_id": page.page_id,
+                "page_name": page.name,
+                "error": str(e),
+            })
 
     return published, errors
 

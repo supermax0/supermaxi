@@ -340,7 +340,7 @@ def generate_image_thumbnail(
         return None
 
 
-def save_uploaded_file(file_storage, max_mb: int = 100) -> Dict[str, Any]:
+def save_uploaded_file(file_storage, max_mb: int = 200) -> Dict[str, Any]:
     """
     معالجة كاملة لرفع ملف واحد من نوع Werkzeug FileStorage:
     - يتحقق من النوع والحجم.
