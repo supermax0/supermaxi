@@ -631,28 +631,17 @@ def api_posts_create():
             scheduled_at = form.get("scheduled_at") or None
             post_type = (form.get("post_type") or "post").strip().lower()
 
-            # حفظ ملف الفيديو إن وُجد إلى /uploads/videos/
+            # حفظ ملف الفيديو عبر خدمة الوسائط (نفس مسار api/upload: تحويل MOV→MP4، thumbnail، مسار موحّد)
             file = request.files.get("video")
             if file and file.filename:
-                from werkzeug.utils import secure_filename
-
-                upload_root = Path(current_app.root_path) / "uploads" / "videos"
-                upload_root.mkdir(parents=True, exist_ok=True)
-                safe_name = secure_filename(file.filename) or "video.mp4"
-                # إضافة طابع زمني لتفادي التعارض
-                ts = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
-                safe_name = f"{ts}_{safe_name}"
-                dest_path = upload_root / safe_name
-                file.save(dest_path)
-
-                size_bytes = dest_path.stat().st_size
-                max_bytes = 200 * 1024 * 1024
-                if size_bytes > max_bytes:
-                    dest_path.unlink(missing_ok=True)
-                    return jsonify({"error": "حجم الفيديو أكبر من 200 ميجا"}), 400
-
-                # رابط نسبي يمكن لـ nginx خدمته (تأكد من إعداد alias في الإنتاج)
-                video_url = f"/uploads/videos/{safe_name}"
+                result = save_uploaded_file(file, max_mb=UPLOAD_MAX_MB)
+                if not result.get("ok"):
+                    return jsonify({
+                        "error": result.get("message") or "فشل رفع الفيديو",
+                    }), 400
+                video_url = result.get("url") or ""
+                if not video_url:
+                    return jsonify({"error": "لم يُرجَع رابط الفيديو بعد الرفع"}), 500
         else:
             # -------- JSON (السلوك القديم) --------
             data = request.get_json() or {}

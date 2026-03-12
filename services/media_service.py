@@ -98,6 +98,32 @@ def get_autoposter_thumb_dir() -> Path:
     return base
 
 
+def get_video_upload_root() -> Path:
+    """
+    جذر مجلد رفع الفيديوهات. إن وُجد UPLOAD_VIDEO_ROOT في الإعدادات أو البيئة يُستخدم،
+    وإلا في الإنتاج يُفترض /var/www/finora/uploads/videos، ومحلياً مجلد تحت root_path.
+    """
+    root = (
+        (current_app.config.get("UPLOAD_VIDEO_ROOT") or "").strip()
+        or os.environ.get("UPLOAD_VIDEO_ROOT", "").strip()
+    )
+    if root:
+        return Path(root)
+    # محلياً: مجلد uploads/videos تحت مجلد التطبيق
+    return Path(current_app.root_path) / "uploads" / "videos"
+
+
+def get_thumbnail_upload_root() -> Path:
+    """جذر مجلد صور الثمبنايل للفيديو. نفس منطق get_video_upload_root."""
+    root = (
+        (current_app.config.get("UPLOAD_THUMBNAIL_ROOT") or "").strip()
+        or os.environ.get("UPLOAD_THUMBNAIL_ROOT", "").strip()
+    )
+    if root:
+        return Path(root)
+    return Path(current_app.root_path) / "uploads" / "thumbnails"
+
+
 def _normalize_content_type(content_type: str | None) -> str:
     if not content_type:
         return ""
@@ -375,11 +401,9 @@ def save_uploaded_file(file_storage, max_mb: int = 100) -> Dict[str, Any]:
         ext = ".mp4" if kind == "video" else ".jpg"
     safe_name = f"{uuid.uuid4().hex}{ext}"
 
-    # مسار الحفظ:
-    # - الصور تبقى تحت static/autoposter/uploads
-    # - الفيديوهات تذهب إلى مجلد خارجي /var/www/finora/uploads/videos (حسب المواصفة)
+    # مسار الحفظ: الصور تحت static/autoposter/uploads، الفيديو من get_video_upload_root (قابل للتكوين)
     if kind == "video":
-        upload_dir = Path("/var/www/finora/uploads/videos")
+        upload_dir = get_video_upload_root()
     else:
         upload_dir = get_autoposter_upload_dir()
     upload_dir.mkdir(parents=True, exist_ok=True)
@@ -474,7 +498,7 @@ def save_uploaded_file(file_storage, max_mb: int = 100) -> Dict[str, Any]:
             try:
                 import subprocess
 
-                thumb_dir = Path("/var/www/finora/uploads/thumbnails")
+                thumb_dir = get_thumbnail_upload_root()
                 thumb_dir.mkdir(parents=True, exist_ok=True)
                 thumb_name = f"{uuid.uuid4().hex}.jpg"
                 thumb_path = thumb_dir / thumb_name
@@ -508,9 +532,10 @@ def save_uploaded_file(file_storage, max_mb: int = 100) -> Dict[str, Any]:
         # أي خطأ في هذه المرحلة لا يمنع استخدام الملف
         pass
 
-    # بناء URL عام
-    if kind == "video" and str(dest_path).startswith("/var/www/finora/uploads/videos"):
-        # يتوافق مع location /uploads/videos/ في Nginx
+    # بناء URL عام للفيديو: إن كان تحت مجلد الرفع القياسي نستخدم /uploads/videos/ أو /uploads/thumbnails/
+    video_root_str = str(get_video_upload_root())
+    thumb_root_str = str(get_thumbnail_upload_root())
+    if kind == "video" and (str(dest_path).startswith(video_root_str) or "/uploads/videos" in str(dest_path)):
         public_url = f"/uploads/videos/{dest_path.name}"
     else:
         rel = dest_path.relative_to(get_media_root())

@@ -40,6 +40,10 @@
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
           <span class="nav-label">إنشاء منشور</span>
         </a>
+        <a href="{{ request.script_root or '' }}/autoposter/upload" class="nav-item">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <span class="nav-label">رفع فيديو</span>
+        </a>
         <a href="#pages" class="nav-item" data-page="pages">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           <span class="nav-label">الصفحات</span>
@@ -397,6 +401,9 @@
     </main>
   </div>
   <div class="toast-container" id="toastContainer"></div>
+  <footer class="autoposter-version" style="text-align:center;padding:8px;font-size:11px;color:rgba(148,163,184,0.7);">
+    نظام النشر التلقائي — إصدار 2.0
+  </footer>
   <script src="{{ url_for('static', filename='autoposter/app.js') }}"></script>
 </body>
 </html>

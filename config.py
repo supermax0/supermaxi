@@ -49,6 +49,10 @@ class Config:
     # بوت تيليجرام (AI bot)
     TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN") or os.environ.get("BOT_TOKEN") or ""
 
+    # مسارات رفع الفيديو والثمبنايل (للنشر التلقائي). إن تُركت فارغة يُستخدم المسار تحت مجلد التطبيق محلياً.
+    UPLOAD_VIDEO_ROOT = os.environ.get("UPLOAD_VIDEO_ROOT", "").strip()
+    UPLOAD_THUMBNAIL_ROOT = os.environ.get("UPLOAD_THUMBNAIL_ROOT", "").strip()
+
 
 class DevelopmentConfig(Config):
     """إعدادات بيئة التطوير."""
@@ -70,3 +74,6 @@ class ProductionConfig(Config):
     PREFERRED_URL_SCHEME = "https"
     # تدعم finora.company و www.finora.company
     SESSION_COOKIE_DOMAIN = os.environ.get("SESSION_COOKIE_DOMAIN", ".finora.company")
+    # في الإنتاج: مسارات رفع الفيديو والثمبنايل ليتوافقا مع Nginx alias /uploads/
+    UPLOAD_VIDEO_ROOT = os.environ.get("UPLOAD_VIDEO_ROOT", "/var/www/finora/uploads/videos")
+    UPLOAD_THUMBNAIL_ROOT = os.environ.get("UPLOAD_THUMBNAIL_ROOT", "/var/www/finora/uploads/thumbnails")
