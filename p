@@ -1,189 +1,134 @@
-You are a senior Python backend engineer and DevOps specialist.
+You are a senior Python Flask backend engineer.
 
-I have a production web application deployed with:
+I have a production web application using:
 
 * Flask
 * Gunicorn
 * Nginx
 * JavaScript frontend
-* Ubuntu server
-* Domain: finora.company
-* Project path: /var/www/finora/supermaxi
 
-The system contains an AutoPoster module that currently uses:
+Project path:
 
-POST /autoposter/api/posts
+/var/www/finora/supermaxi
 
-This endpoint uploads video and creates the post at the same time, which causes multiple issues.
+The system contains a media uploader used by the AutoPoster module.
 
----
+Currently:
 
-## PROBLEMS WE EXPERIENCED
+Images upload correctly.
+Videos fail to upload when the file format is .MOV.
 
-1. Video upload sometimes fails.
-2. POST /autoposter/api/posts returns 500 errors.
-3. Requests redirect to /login because session cookies are missing.
-4. fetch() does not include cookies.
-5. Logout does not properly clear sessions.
-6. Gunicorn sometimes fails due to port 8000 conflicts.
-7. Large uploads break the API.
-8. Flask logs are not detailed enough to debug errors.
-9. Uploads directory sometimes missing.
-10. Nginx upload configuration needs verification.
+Example failing file:
+
+IMG_0330.MOV
+
+This file comes from iPhone cameras and uses MIME type:
+
+video/quicktime
 
 ---
 
-## GOAL
+GOAL
 
-Redesign the video upload architecture to be production-safe.
-
-Instead of uploading video in the same request as post creation, implement a two-step process.
+Fix the media uploader so it supports both MP4 and MOV video files.
 
 ---
 
-## NEW ARCHITECTURE
+REQUIRED CHANGES
 
-Step 1 – Upload video:
+1. Backend (Flask)
 
-POST /autoposter/api/upload
-
-Accept multipart upload:
-
-request.files["file"]
-
-Save uploaded video to:
-
-/var/www/finora/uploads/videos
-
-Return JSON:
-
-{
-"url": "/uploads/videos/filename.mp4"
-}
-
----
-
-Step 2 – Create post:
-
-POST /autoposter/api/posts
-
-Accept JSON:
-
-{
-"text": "...",
-"video_url": "/uploads/videos/file.mp4",
-"page_ids": [123],
-"post_type": "post"
-}
-
----
-
-## BACKEND REQUIREMENTS
-
-1. Implement new route:
-
-/autoposter/api/upload
-
-2. Ensure directory is created automatically if missing.
-
-3. Add upload size limit:
-
-200MB
-
-4. Validate file types:
+Update the allowed upload MIME types to support:
 
 video/mp4
 video/quicktime
+video/webm
 
-5. Add logging for errors using:
+Example:
+
+ALLOWED_TYPES = (
+"image/jpeg",
+"image/png",
+"image/gif",
+"image/webp",
+"video/mp4",
+"video/quicktime",
+"video/webm"
+)
+
+Ensure the upload route correctly validates MIME type using:
+
+file.mimetype
+
+---
+
+2. Frontend (HTML)
+
+Update the file input to allow MOV videos.
+
+Change:
+
+<input type="file" accept="video/mp4">
+
+to:
+
+<input type="file" accept="video/*">
+
+---
+
+3. UI Text
+
+Update uploader instructions from:
+
+فيديو: mp4
+
+to:
+
+فيديو: mp4 / mov
+
+---
+
+4. Optional improvement
+
+Automatically convert MOV videos to MP4 after upload using ffmpeg:
+
+ffmpeg -i input.mov -vcodec libx264 -acodec aac output.mp4
+
+---
+
+5. Upload directory
+
+Ensure uploaded videos are saved in:
+
+/var/www/finora/uploads/videos
+
+Create the directory automatically if missing.
+
+---
+
+6. Logging
+
+Add error logging in the upload route:
 
 current_app.logger.exception()
 
-6. Ensure the posts API works without uploading files directly.
-
-7. Improve session handling:
-
-SESSION_COOKIE_SAMESITE = "Lax"
-SESSION_COOKIE_SECURE = True
-SESSION_COOKIE_HTTPONLY = True
-SESSION_COOKIE_DOMAIN = ".finora.company"
-
-8. Fix logout logic:
-
-session.clear()
-logout_user()
-delete_cookie("session")
-
 ---
 
-## FRONTEND REQUIREMENTS
+OUTPUT REQUIRED
 
-Rewrite the upload flow in JavaScript.
+Provide:
 
-Step 1 – upload video:
+1. Updated Flask upload route
+2. Updated MIME validation
+3. Updated HTML uploader input
+4. Updated UI text
+5. Optional ffmpeg conversion logic
 
-const fd = new FormData()
-fd.append("file", videoFile)
+The final result must allow uploading:
 
-await fetch("/autoposter/api/upload", {
-method: "POST",
-body: fd,
-credentials: "include"
-})
+* MP4 videos
+* MOV videos from iPhone
+* Images
 
-Step 2 – create post:
-
-await fetch("/autoposter/api/posts", {
-method: "POST",
-headers: { "Content-Type": "application/json" },
-credentials: "include",
-body: JSON.stringify({
-text,
-video_url,
-page_ids
-})
-})
-
----
-
-## NGINX CONFIGURATION
-
-Ensure Nginx supports large uploads:
-
-client_max_body_size 200M;
-
-Serve uploaded videos:
-
-location /uploads/videos/ {
-alias /var/www/finora/uploads/videos/;
-access_log off;
-expires 30d;
-}
-
----
-
-## GUNICORN CONFIGURATION
-
-Use production-safe configuration.
-
-If port conflicts occur, switch to Unix socket:
-
-/run/finora.sock
-
----
-
-## OUTPUT REQUIRED
-
-Generate:
-
-1. Flask upload route
-2. Updated posts route
-3. Updated logout route
-4. JavaScript upload logic
-5. Nginx configuration
-6. Gunicorn configuration
-7. Directory creation logic
-8. Error logging improvements
-9. A diagnostic bash script for debugging the API
-
-The final solution must be production-ready and stable.
+without breaking the existing uploader system.
+Version: 1.0.0
