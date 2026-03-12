@@ -1,56 +1,158 @@
-You are a senior DevOps + Python engineer.
+Develop a built-in "Self Healing Server Monitor" inside Finora Deploy Studio.
 
-Fix the Telegram bot configuration in this Flask project.
+The goal:
+Add a live terminal panel that continuously monitors the production server and automatically repairs common failures.
 
-Environment:
+The monitor must run 24/7 in a background thread.
 
-* Flask app behind Nginx and Gunicorn
-* Systemd service name: finora
-* Project path: /var/www/finora/supermaxi
-* Telegram webhook already works but the logs show:
-  "BOT_TOKEN not set; cannot send reply"
-  "OpenAI API key not set; skipping AI reply"
+Main features:
 
-Your task:
+1) Live Terminal Panel
+Create a terminal UI next to the existing log console.
+It must stream real-time monitoring logs.
 
-1. Ensure the Telegram bot reads environment variables:
+Display messages like:
 
-   * BOT_TOKEN
-   * OPENAI_API_KEY
+[MONITOR] Checking nginx...
+[MONITOR] Checking gunicorn...
+[MONITOR] Checking disk usage...
+[MONITOR] Checking SSL...
+[MONITOR] Checking HTTP response...
 
-2. Modify the systemd service file:
-   /etc/systemd/system/finora.service
+If an error is detected show:
 
-   Add inside [Service]:
+[ERROR DETECTED] nginx is down
+[AUTO FIX] restarting nginx...
 
-   Environment="BOT_TOKEN=<telegram_bot_token>"
-   Environment="OPENAI_API_KEY=<openai_api_key>"
+2) Continuous Health Check Loop
 
-3. Ensure the Flask code loads these variables using:
+Run every 10 seconds.
 
-   import os
-   BOT_TOKEN = os.getenv("BOT_TOKEN")
-   OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+Checks:
 
-4. If they are missing, log a warning.
+• nginx service
+• gunicorn service
+• flask response
+• HTTPS status
+• port 8000 listening
+• disk usage
+• RAM usage
+• SSL certificate validity
+• server load
+• DNS resolution
+• firewall status
 
-5. After updating the service file run:
+3) Auto Repair Actions
 
-   sudo systemctl daemon-reload
-   sudo systemctl restart finora
+If nginx is stopped:
 
-6. Add logging so incoming Telegram updates appear in logs.
+systemctl restart nginx
 
-7. Ensure the webhook handler sends replies using:
+If gunicorn is stopped:
 
-   https://api.telegram.org/bot{BOT_TOKEN}/sendMessage
+systemctl restart gunicorn
 
-Expected result:
+If port 8000 closed:
 
-Telegram message
-→ POST /telegram/webhook
-→ Flask receives update
-→ AI reply generated
-→ Telegram message sent successfully.
+restart gunicorn
 
-Output the commands needed to restart the service and verify logs.
+If SSL expired:
+
+certbot renew --nginx
+
+If disk > 90%
+
+clean logs:
+
+journalctl --vacuum-time=3d
+
+If nginx config broken:
+
+nginx -t
+then auto fix config
+
+4) HTTP Health Check
+
+Request:
+
+https://domain
+
+If response != 200
+
+restart nginx and gunicorn.
+
+5) Remote Execution
+
+All checks run via SSH from the deploy tool.
+
+Example command execution:
+
+ssh root@server "systemctl status nginx"
+
+6) Monitoring Dashboard
+
+Add small status indicators:
+
+NGINX: 🟢 / 🔴  
+GUNICORN: 🟢 / 🔴  
+HTTPS: 🟢 / 🔴  
+CPU: %  
+RAM: %  
+DISK: %
+
+7) Terminal Output Example
+
+[17:21:04] Checking nginx...
+[17:21:04] nginx running ✔
+
+[17:21:05] Checking gunicorn...
+[17:21:05] gunicorn running ✔
+
+[17:21:06] Checking HTTPS...
+[17:21:06] HTTP 200 ✔
+
+[17:21:07] Checking disk usage...
+[17:21:07] Disk 63% ✔
+
+If problem:
+
+[17:24:11] ERROR nginx stopped
+[17:24:11] Restarting nginx...
+[17:24:12] nginx restarted ✔
+
+8) Background Thread
+
+Implement as a Python thread:
+
+ServerMonitorThread()
+
+running infinite loop with sleep(10)
+
+9) Safety
+
+Avoid restart loops.
+Limit auto fix attempts.
+
+10) Button in UI
+
+Add button:
+
+"Start Monitor"
+
+Once started it runs forever.
+
+11) Logging
+
+Store monitor logs in:
+
+/var/log/finora_monitor.log
+
+12) Implementation language
+
+Python
+
+Use:
+
+paramiko for SSH
+threading
+queue for UI logs
