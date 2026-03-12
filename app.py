@@ -727,6 +727,7 @@ def require_login():
         "/api/landing-chat",  # مساعد الذكاء الاصطناعي لصفحة الهبوط
         "/autoposter/api/facebook/callback",  # OAuth callback من فيسبوك (يُوجّه للتسجيل إن لزم)
         "/autoposter/ai-agent",  # AI Agent Builder — بدون تسجيل دخول
+        "/telegram",  # بوت تيليجرام: webhook و setup و test — بدون تسجيل (ليستقبل التحديثات من Telegram)
     ]
 
     # السماح للمسارات المفتوحة: "/" تطابق تامة، الباقي يبدأ بـ المسار

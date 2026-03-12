@@ -58,9 +58,10 @@ def webhook():
         logger.warning("Telegram webhook: invalid JSON body: %s", e)
         return jsonify({"status": "ok"}), 200
 
-    logger.debug("Telegram webhook received: keys=%s", list(data.keys()))
+    logger.info("Telegram webhook: received update, keys=%s", list(data.keys()))
 
     chat_id, message_text = parse_telegram_update(data)
+    logger.info("Telegram webhook: chat_id=%s has_text=%s", chat_id, bool(message_text))
 
     # إذا لا يوجد نص (مثلاً المستخدم أرسل صورة فقط)، نرد بجملة قصيرة
     if not message_text:

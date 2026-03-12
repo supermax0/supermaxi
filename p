@@ -1,128 +1,97 @@
-You are a senior Python backend engineer.
+You are a senior DevOps and Flask engineer.
 
-Build a fully working Telegram AI bot integration for my Flask project.
+Fix the Telegram webhook integration in this Flask project running behind Nginx + Gunicorn.
 
-The system must work immediately without manual fixes.
-If something is missing in the project, automatically create it.
+Current problems:
 
-Tech stack:
+* Telegram webhook returns HTTP 302 (redirect to /login)
+* Telegram reports: "Wrong response from the webhook: 302 FOUND"
+* The endpoint `/telegram/webhook` is being protected by login middleware.
+* The server stack is: Nginx → Gunicorn → Flask.
+* Project root: `/var/www/finora/supermaxi`
 
-* Python
-* Flask
-* Requests
-* Telegram Bot API
-* OpenAI API (for AI replies)
+Your task is to automatically fix the project so Telegram webhooks work correctly.
 
-Project goal:
-Create an AI bot that listens to Telegram messages and automatically replies using AI.
+Required fixes:
 
-System architecture:
+1. Create a public webhook endpoint in Flask:
 
-Telegram User
-→ Telegram Bot API
-→ Flask Webhook `/telegram/webhook`
-→ Workflow Node `telegram_listener`
-→ AI Agent (generate reply)
-→ Node `telegram_send`
-→ Telegram user receives reply
+Route:
+POST /telegram/webhook
 
-Tasks you must implement:
+Example implementation:
 
-1. Create Flask route:
+```python
+from flask import request, jsonify
+import requests
+import os
 
-`/telegram/webhook`
+BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
-It must receive POST updates from Telegram.
+@app.route("/telegram/webhook", methods=["POST"])
+def telegram_webhook():
+    data = request.json
+    message = data.get("message", {})
+    chat_id = message.get("chat", {}).get("id")
+    text = message.get("text", "")
 
-Example payload:
-{
-"message":{
-"chat":{"id":12345},
-"text":"hello"
+    if chat_id and text:
+        reply = "Message received"
+
+        requests.post(
+            f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+            json={
+                "chat_id": chat_id,
+                "text": reply
+            }
+        )
+
+    return jsonify({"ok": True})
+```
+
+2. Ensure this endpoint is NOT protected by authentication.
+
+If the project uses:
+
+* login_required
+* before_request login middleware
+* authentication decorators
+
+Then exclude the route `/telegram/webhook`.
+
+3. Ensure Flask accepts webhook requests without redirecting to `/login`.
+
+4. Verify Nginx configuration:
+
+The server block must proxy to Gunicorn:
+
+```
+location / {
+    proxy_pass http://127.0.0.1:8000;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-Proto $scheme;
 }
-}
+```
 
-2. Extract:
+5. Do NOT apply auth middleware on `/telegram/webhook`.
 
-chat_id
-message_text
+6. Ensure Gunicorn service runs correctly:
 
-3. Pass message_text to the AI agent.
+systemctl restart finora
 
-AI prompt:
+7. Add logging to the webhook so incoming Telegram updates appear in server logs.
 
-"You are a helpful assistant for a tech store.
-Reply in Arabic.
-User message: {message_text}"
+8. Make sure the endpoint returns HTTP 200 JSON.
 
-4. Generate AI response using OpenAI API.
+Expected final behaviour:
 
-5. Send reply to Telegram using:
+Telegram
+→ POST /telegram/webhook
+→ Flask receives update
+→ bot replies via Telegram API
+→ HTTP 200 returned
 
-https://api.telegram.org/bot{BOT_TOKEN}/sendMessage
+Finally print a test command:
 
-Payload:
-
-{
-"chat_id": chat_id,
-"text": ai_reply
-}
-
-6. Create these modules if missing:
-
-/telegram_bot
-listener.py
-sender.py
-ai_agent.py
-webhook.py
-
-7. Add environment variables support:
-
-BOT_TOKEN
-OPENAI_API_KEY
-
-8. Add automatic webhook setup function:
-
-`/telegram/setup-webhook`
-
-When visited it calls:
-
-https://api.telegram.org/bot{BOT_TOKEN}/setWebhook
-
-Webhook URL:
-
-https://YOURDOMAIN/telegram/webhook
-
-9. Add logging for debugging.
-
-10. Prevent crashes if message has no text.
-
-11. Return Telegram response:
-
-{ "status":"ok" }
-
-12. Provide full working code including:
-
-Flask routes
-Telegram sender function
-AI reply generator
-Webhook setup
-
-13. Add a test endpoint:
-
-`/telegram/test`
-
-When accessed it sends a message to a test chat.
-
-14. Ensure the system runs instantly with:
-
-python app.py
-
-15. Add comments explaining each part.
-
-Final result:
-
-User sends message to Telegram bot →
-Flask receives webhook →
-AI generates response →
-Bot replies automatically.
+curl -X POST https://finora.company/telegram/webhook
