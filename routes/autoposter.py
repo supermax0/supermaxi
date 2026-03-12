@@ -2,6 +2,7 @@
 from datetime import datetime
 from functools import wraps
 from pathlib import Path
+import json
 from flask import Blueprint, request, session, redirect, url_for, jsonify, render_template, g, current_app
 
 from extensions import db
@@ -418,7 +419,7 @@ def api_facebook_callback():
 
 # --- API: رفع صورة أو فيديو ---
 UPLOAD_ALLOWED = ("image/jpeg", "image/png", "image/gif", "image/webp", "video/mp4", "video/quicktime")
-UPLOAD_MAX_MB = 100
+UPLOAD_MAX_MB = 200
 
 @autoposter_bp.route("/api/upload", methods=["POST"])
 @require_autoposter_login
@@ -596,13 +597,66 @@ def _make_absolute_media_url(url: str | None) -> str | None:
 @require_autoposter_login
 def api_posts_create():
     try:
-        data = request.get_json() or {}
-        text = (data.get("text") or data.get("content") or "").strip()
-        page_ids = data.get("page_ids") or []
-        image_url = (data.get("image_url") or "").strip() or None
-        video_url = (data.get("video_url") or "").strip() or None
-        scheduled_at = data.get("scheduled_at")
-        post_type = (data.get("post_type") or "post").strip().lower()
+        # يدعم JSON القديم + multipart الجديد
+        video_url = None
+        image_url = None
+        scheduled_at = None
+        page_ids = []
+
+        if request.files:
+            # -------- Multipart / FormData (يدعم رفع فيديو مباشر) --------
+            form = request.form
+            text = (form.get("text") or form.get("content") or "").strip()
+
+            # page_ids يمكن أن تصل كقائمة أو JSON أو نص مفصول بفواصل
+            raw_page_ids = form.getlist("page_ids[]") or form.getlist("page_ids")
+            if not raw_page_ids:
+                raw = (form.get("page_ids") or "").strip()
+                if raw:
+                    try:
+                        maybe = json.loads(raw)
+                        if isinstance(maybe, list):
+                            raw_page_ids = [str(x) for x in maybe if x]
+                    except Exception:
+                        raw_page_ids = [p.strip() for p in raw.split(",") if p.strip()]
+            page_ids = raw_page_ids
+
+            image_url = (form.get("image_url") or "").strip() or None
+            scheduled_at = form.get("scheduled_at") or None
+            post_type = (form.get("post_type") or "post").strip().lower()
+
+            # حفظ ملف الفيديو إن وُجد إلى /uploads/videos/
+            file = request.files.get("video")
+            if file and file.filename:
+                from werkzeug.utils import secure_filename
+
+                upload_root = Path(current_app.root_path) / "uploads" / "videos"
+                upload_root.mkdir(parents=True, exist_ok=True)
+                safe_name = secure_filename(file.filename) or "video.mp4"
+                # إضافة طابع زمني لتفادي التعارض
+                ts = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
+                safe_name = f"{ts}_{safe_name}"
+                dest_path = upload_root / safe_name
+                file.save(dest_path)
+
+                size_bytes = dest_path.stat().st_size
+                max_bytes = 200 * 1024 * 1024
+                if size_bytes > max_bytes:
+                    dest_path.unlink(missing_ok=True)
+                    return jsonify({"error": "حجم الفيديو أكبر من 200 ميجا"}), 400
+
+                # رابط نسبي يمكن لـ nginx خدمته (تأكد من إعداد alias في الإنتاج)
+                video_url = f"/uploads/videos/{safe_name}"
+        else:
+            # -------- JSON (السلوك القديم) --------
+            data = request.get_json() or {}
+            text = (data.get("text") or data.get("content") or "").strip()
+            page_ids = data.get("page_ids") or []
+            image_url = (data.get("image_url") or "").strip() or None
+            video_url = (data.get("video_url") or "").strip() or None
+            scheduled_at = data.get("scheduled_at")
+            post_type = (data.get("post_type") or "post").strip().lower()
+
         if post_type not in ("post", "story", "reels"):
             post_type = "post"
         if post_type == "story" and not image_url and not video_url:

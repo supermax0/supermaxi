@@ -696,7 +696,7 @@
 
   if (browseMedia) browseMedia.addEventListener('click', () => mediaInput && mediaInput.click());
 
-  let uploadedMedia = { url: null, type: null };
+  let uploadedMedia = { url: null, type: null, file: null };
 
   if (mediaInput) {
     mediaInput.addEventListener('change', (e) => handleFiles(e.target.files));
@@ -772,6 +772,7 @@
     uploadedMedia = {
       url: data.url,
       type: data.type || (isVideo ? 'video' : 'image'),
+      file: file, // الاحتفاظ بالـ File لاستخدامه في FormData عند النشر/الجدولة
       thumbnail_url: data.thumbnail_url || null,
       size_mb: data.size_mb,
       width: data.width,
@@ -954,10 +955,23 @@
           publishBtn.querySelector('.btn-text').textContent = `نشر (${i + 1}/${pageIds.length})`;
         }
 
+        const formData = new FormData();
+        formData.append('text', payload.text || '');
+        formData.append('content', payload.content || '');
+        formData.append('post_type', payload.post_type || 'post');
+        formData.append('page_ids', pageId);
+        if (payload.image_url) formData.append('image_url', payload.image_url);
+        // في حال استخدام رفع فيديو مباشر عبر نفس الطلب
+        // يمكن للفرونتند إرفاق File باسم "video" في formData قبل الاستدعاء.
+        if (uploadedMedia.type === 'video' && uploadedMedia.file instanceof File) {
+          formData.append('video', uploadedMedia.file);
+        } else if (payload.video_url) {
+          formData.append('video_url', payload.video_url);
+        }
+
         const res = await apiFetch('/api/posts', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...payload, page_ids: [pageId] }),
+          body: formData,
         });
         const data = await res?.json().catch(() => ({}));
 
@@ -1049,10 +1063,22 @@
           scheduleBtn.querySelector('.btn-text').textContent = `جدولة (${i + 1}/${pageIds.length})`;
         }
 
+        const formData = new FormData();
+        formData.append('text', payload.text || '');
+        formData.append('content', payload.content || '');
+        formData.append('post_type', payload.post_type || 'post');
+        formData.append('page_ids', pageId);
+        formData.append('scheduled_at', scheduledAtIso);
+        if (payload.image_url) formData.append('image_url', payload.image_url);
+        if (uploadedMedia.type === 'video' && uploadedMedia.file instanceof File) {
+          formData.append('video', uploadedMedia.file);
+        } else if (payload.video_url) {
+          formData.append('video_url', payload.video_url);
+        }
+
         const res = await apiFetch('/api/posts', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...payload, page_ids: [pageId], scheduled_at: scheduledAtIso }),
+          body: formData,
         });
         const data = await res?.json().catch(() => ({}));
 

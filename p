@@ -1,158 +1,72 @@
-Develop a built-in "Self Healing Server Monitor" inside Finora Deploy Studio.
+You are a senior backend engineer.
 
-The goal:
-Add a live terminal panel that continuously monitors the production server and automatically repairs common failures.
+I have a Flask web application that contains an autoposter system.
+Text posts publish correctly, but when I upload a video (~68MB) the API returns:
 
-The monitor must run 24/7 in a background thread.
+POST /autoposter/api/posts
+500 Internal Server Error
 
-Main features:
+The nginx upload limit is already 100MB and the video size is 68MB.
 
-1) Live Terminal Panel
-Create a terminal UI next to the existing log console.
-It must stream real-time monitoring logs.
+Goal:
+Fix the upload system so the API correctly supports video uploads.
 
-Display messages like:
+Tasks:
 
-[MONITOR] Checking nginx...
-[MONITOR] Checking gunicorn...
-[MONITOR] Checking disk usage...
-[MONITOR] Checking SSL...
-[MONITOR] Checking HTTP response...
+1. Inspect the endpoint:
+   /autoposter/api/posts
 
-If an error is detected show:
+2. Ensure the API supports multipart uploads instead of JSON.
 
-[ERROR DETECTED] nginx is down
-[AUTO FIX] restarting nginx...
+3. The endpoint must correctly handle:
+   - text content
+   - optional video file
+   - scheduled date (optional)
 
-2) Continuous Health Check Loop
+4. Use:
 
-Run every 10 seconds.
+request.form
+request.files
 
-Checks:
+instead of request.json when a file is uploaded.
 
-• nginx service
-• gunicorn service
-• flask response
-• HTTPS status
-• port 8000 listening
-• disk usage
-• RAM usage
-• SSL certificate validity
-• server load
-• DNS resolution
-• firewall status
+5. Save the uploaded video to:
 
-3) Auto Repair Actions
+/uploads/videos/
 
-If nginx is stopped:
+Create the folder automatically if it does not exist.
 
-systemctl restart nginx
+6. Add safe error handling so the API never crashes with 500.
+Return proper JSON errors.
 
-If gunicorn is stopped:
+7. Ensure the backend allows uploads up to 200MB.
 
-systemctl restart gunicorn
+Add:
 
-If port 8000 closed:
+app.config["MAX_CONTENT_LENGTH"] = 200 * 1024 * 1024
 
-restart gunicorn
+8. Update the frontend JS so posts are sent using FormData instead of JSON.
 
-If SSL expired:
+Correct implementation example:
 
-certbot renew --nginx
+const formData = new FormData()
+formData.append("content", content)
 
-If disk > 90%
+if(videoFile){
+   formData.append("video", videoFile)
+}
 
-clean logs:
+fetch("/autoposter/api/posts",{
+   method:"POST",
+   body:formData
+})
 
-journalctl --vacuum-time=3d
+Do NOT set Content-Type manually.
 
-If nginx config broken:
+9. Ensure compatibility with:
+Flask + Gunicorn + Nginx production setup.
 
-nginx -t
-then auto fix config
+10. Add logging so upload errors are visible in server logs.
 
-4) HTTP Health Check
-
-Request:
-
-https://domain
-
-If response != 200
-
-restart nginx and gunicorn.
-
-5) Remote Execution
-
-All checks run via SSH from the deploy tool.
-
-Example command execution:
-
-ssh root@server "systemctl status nginx"
-
-6) Monitoring Dashboard
-
-Add small status indicators:
-
-NGINX: 🟢 / 🔴  
-GUNICORN: 🟢 / 🔴  
-HTTPS: 🟢 / 🔴  
-CPU: %  
-RAM: %  
-DISK: %
-
-7) Terminal Output Example
-
-[17:21:04] Checking nginx...
-[17:21:04] nginx running ✔
-
-[17:21:05] Checking gunicorn...
-[17:21:05] gunicorn running ✔
-
-[17:21:06] Checking HTTPS...
-[17:21:06] HTTP 200 ✔
-
-[17:21:07] Checking disk usage...
-[17:21:07] Disk 63% ✔
-
-If problem:
-
-[17:24:11] ERROR nginx stopped
-[17:24:11] Restarting nginx...
-[17:24:12] nginx restarted ✔
-
-8) Background Thread
-
-Implement as a Python thread:
-
-ServerMonitorThread()
-
-running infinite loop with sleep(10)
-
-9) Safety
-
-Avoid restart loops.
-Limit auto fix attempts.
-
-10) Button in UI
-
-Add button:
-
-"Start Monitor"
-
-Once started it runs forever.
-
-11) Logging
-
-Store monitor logs in:
-
-/var/log/finora_monitor.log
-
-12) Implementation language
-
-Python
-
-Use:
-
-paramiko for SSH
-threading
-queue for UI logs
+Output:
+Return the corrected Flask route and the corrected JavaScript upload code.
