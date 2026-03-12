@@ -373,11 +373,21 @@ def login_tenant(tenant_slug):
 # =================================================
 @index_bp.route("/logout")
 def logout():
+    from flask import current_app, make_response
     tenant_slug = session.get("tenant_slug")
     session.clear()
-    if tenant_slug:
-        return redirect(f"/login?tenant={tenant_slug}")
-    return redirect("/login")
+    target = f"/login?tenant={tenant_slug}" if tenant_slug else "/login"
+    response = make_response(redirect(target))
+    # حذف كوكي الجلسة من المتصفح حتى لا يبقى أثر ويُعاد توجيهك للوحة التحكم
+    cookie_name = current_app.config.get("SESSION_COOKIE_NAME", "session")
+    cookie_domain = current_app.config.get("SESSION_COOKIE_DOMAIN") or None
+    response.delete_cookie(
+        cookie_name,
+        path="/",
+        domain=cookie_domain,
+        secure=current_app.config.get("SESSION_COOKIE_SECURE", False),
+    )
+    return response
 
 
 # =================================================
