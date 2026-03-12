@@ -120,6 +120,12 @@ def create_view():
     return redirect(url_for("autoposter.dashboard") + "#create")
 
 
+@autoposter_bp.route("/upload")
+@require_autoposter_login
+def upload_view():
+    """صفحة مستقلة لرفع فيديوهات الأوتوبوستر."""
+    return render_template("autoposter/upload.html")
+
 @autoposter_bp.route("/ai-agent")
 def ai_agent_view():
     """واجهة AI Agent / Workflow Builder — بدون تسجيل دخول."""

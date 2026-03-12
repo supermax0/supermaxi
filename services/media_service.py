@@ -429,8 +429,81 @@ def save_uploaded_file(file_storage, max_mb: int = 100) -> Dict[str, Any]:
             if thumb_res:
                 _, thumb_url = thumb_res
         else:
-            # فيديو: محاولة استخراج معلومات أساسية فقط
-            width, height, duration = inspect_media(dest_path, kind="video")
+            # فيديو: معالجة متقدمة (تحويل MOV → MP4 + thumbnail + metadata)
+            final_path = dest_path
+
+            # إن كان الامتداد MOV حوّله إلى MP4 للحفظ النهائي
+            if final_path.suffix.lower() == ".mov":
+                try:
+                    import subprocess
+
+                    mp4_name = final_path.with_suffix(".mp4")
+                    cmd = [
+                        "ffmpeg",
+                        "-y",
+                        "-i",
+                        str(final_path),
+                        "-vcodec",
+                        "libx264",
+                        "-acodec",
+                        "aac",
+                        str(mp4_name),
+                    ]
+                    proc = subprocess.run(
+                        cmd,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        check=False,
+                        text=True,
+                    )
+                    if proc.returncode == 0 and mp4_name.exists():
+                        # حذف الملف الأصلي واستبداله بالـ mp4
+                        try:
+                            final_path.unlink(missing_ok=True)
+                        except Exception:
+                            pass
+                        final_path = mp4_name
+                except Exception:
+                    # في حال فشل ffmpeg نُبقي الملف كما هو (MOV) ونستمر
+                    final_path = dest_path
+
+            # استخراج معلومات الفيديو عبر ffprobe (موجودة في inspect_media)
+            width, height, duration = inspect_media(final_path, kind="video")
+
+            # إنشاء thumbnail عند ثانية 3 إن أمكن
+            try:
+                import subprocess
+
+                thumb_dir = Path("/var/www/finora/uploads/thumbnails")
+                thumb_dir.mkdir(parents=True, exist_ok=True)
+                thumb_name = f"{uuid.uuid4().hex}.jpg"
+                thumb_path = thumb_dir / thumb_name
+                cmd = [
+                    "ffmpeg",
+                    "-y",
+                    "-i",
+                    str(final_path),
+                    "-ss",
+                    "00:00:03",
+                    "-vframes",
+                    "1",
+                    str(thumb_path),
+                ]
+                proc = subprocess.run(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    check=False,
+                    text=True,
+                )
+                if proc.returncode == 0 and thumb_path.exists():
+                    thumb_url = f"/uploads/thumbnails/{thumb_name}"
+            except Exception:
+                # thumbnail اختياري؛ أي خطأ هنا لا يكسر الرفع
+                pass
+
+            # تحديث dest_path إن تم التحويل إلى mp4
+            dest_path = final_path
     except Exception:
         # أي خطأ في هذه المرحلة لا يمنع استخدام الملف
         pass

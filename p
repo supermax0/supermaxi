@@ -1,134 +1,205 @@
-You are a senior Python Flask backend engineer.
+Create a **professional video upload system** for a Flask-based web application (Autoposter module).
+The system must support large video uploads, be optimized for Nginx serving, and provide a modern UI.
 
-I have a production web application using:
+## Backend Requirements (Python Flask)
 
-* Flask
-* Gunicorn
-* Nginx
-* JavaScript frontend
+Build a Flask module with the following capabilities:
 
-Project path:
+1. **Upload API**
+   Endpoint:
+   POST `/autoposter/api/upload`
 
-/var/www/finora/supermaxi
+Features:
 
-The system contains a media uploader used by the AutoPoster module.
+* Accept video uploads using `multipart/form-data`.
+* Supported formats: mp4, mov, webm.
+* Maximum upload size: 2GB.
+* Validate file type and size.
+* Generate a unique filename using UUID.
+* Save videos to:
 
-Currently:
+```
+/var/www/finora/uploads/videos/
+```
 
-Images upload correctly.
-Videos fail to upload when the file format is .MOV.
+Example response JSON:
 
-Example failing file:
+```json
+{
+  "ok": true,
+  "type": "video",
+  "url": "/uploads/videos/<filename>.mp4",
+  "size_mb": 4.51,
+  "thumbnail_url": "/uploads/thumbnails/<filename>.jpg"
+}
+```
 
-IMG_0330.MOV
+2. **Video Processing**
 
-This file comes from iPhone cameras and uses MIME type:
+After upload:
 
-video/quicktime
+* Convert `.mov` → `.mp4` automatically using FFmpeg.
+* Generate a thumbnail image at 3 seconds.
+* Extract metadata:
+
+  * duration
+  * width
+  * height
+
+Example command:
+
+```
+ffmpeg -i input.mov -ss 00:00:03 -vframes 1 thumbnail.jpg
+```
+
+3. **Security**
+
+Implement:
+
+* file extension validation
+* MIME validation
+* size limits
+* path sanitization
+* rate limiting
+
+4. **Error Handling**
+
+Return structured errors:
+
+```json
+{
+  "ok": false,
+  "error_code": "INVALID_FORMAT",
+  "message": "Only MP4, MOV, WEBM are supported."
+}
+```
 
 ---
 
-GOAL
+## Frontend Requirements (HTML + CSS + JS)
 
-Fix the media uploader so it supports both MP4 and MOV video files.
+Create a **modern drag-and-drop uploader UI**.
+
+Features:
+
+* Drag and drop upload area
+* Video preview
+* Upload progress bar
+* Cancel upload
+* Error messages
+* Mobile responsive design
+
+Example UI structure:
+
+```
+Upload Area
+Progress Bar
+Preview Player
+Upload Button
+```
 
 ---
 
-REQUIRED CHANGES
+## JavaScript Upload Logic
 
-1. Backend (Flask)
+Implement:
 
-Update the allowed upload MIME types to support:
-
-video/mp4
-video/quicktime
-video/webm
+* Fetch API upload
+* Real-time progress
+* Drag & drop events
+* File validation before upload
 
 Example:
 
-ALLOWED_TYPES = (
-"image/jpeg",
-"image/png",
-"image/gif",
-"image/webp",
-"video/mp4",
-"video/quicktime",
-"video/webm"
-)
+```javascript
+const formData = new FormData();
+formData.append("video", file);
 
-Ensure the upload route correctly validates MIME type using:
-
-file.mimetype
+fetch("/autoposter/api/upload", {
+    method: "POST",
+    body: formData
+});
+```
 
 ---
 
-2. Frontend (HTML)
+## Nginx Integration
 
-Update the file input to allow MOV videos.
+Configure Nginx to serve uploaded videos directly:
 
-Change:
+```
+location /uploads/ {
+    alias /var/www/finora/uploads/;
+}
+```
 
-<input type="file" accept="video/mp4">
+Benefits:
 
-to:
-
-<input type="file" accept="video/*">
-
----
-
-3. UI Text
-
-Update uploader instructions from:
-
-فيديو: mp4
-
-to:
-
-فيديو: mp4 / mov
+* reduces Flask load
+* faster video streaming
+* supports Facebook crawler
 
 ---
 
-4. Optional improvement
+## Video Player
 
-Automatically convert MOV videos to MP4 after upload using ffmpeg:
+Include a video preview component:
 
-ffmpeg -i input.mov -vcodec libx264 -acodec aac output.mp4
-
----
-
-5. Upload directory
-
-Ensure uploaded videos are saved in:
-
-/var/www/finora/uploads/videos
-
-Create the directory automatically if missing.
+```html
+<video controls width="100%">
+  <source src="/uploads/videos/sample.mp4" type="video/mp4">
+</video>
+```
 
 ---
 
-6. Logging
+## Advanced Features
 
-Add error logging in the upload route:
+Implement:
 
-current_app.logger.exception()
+* chunk upload for files >500MB
+* resume upload
+* upload queue
+* parallel uploads
+* automatic retry on failure
+* thumbnail preview
 
 ---
 
-OUTPUT REQUIRED
+## Folder Structure
+
+```
+autoposter/
+ ├─ api/
+ │   └─ upload.py
+ ├─ services/
+ │   └─ video_processor.py
+ ├─ static/
+ │   └─ uploader.js
+ ├─ templates/
+ │   └─ upload.html
+```
+
+---
+
+## Performance Goals
+
+* Upload up to **2GB videos**
+* Minimal Flask CPU usage
+* Nginx serves videos directly
+* Compatible with **Facebook autoposting**
+
+---
+
+## Output
 
 Provide:
 
-1. Updated Flask upload route
-2. Updated MIME validation
-3. Updated HTML uploader input
-4. Updated UI text
-5. Optional ffmpeg conversion logic
-
-The final result must allow uploading:
-
-* MP4 videos
-* MOV videos from iPhone
-* Images
-
-without breaking the existing uploader system.
-Version: 1.0.0
+* Flask API code
+* HTML uploader page
+* CSS styling
+* JavaScript uploader
+* FFmpeg integration
+* Nginx configuration
+* Folder structure
+* example requests and responses
