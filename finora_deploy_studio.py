@@ -2,6 +2,8 @@ import json
 import os
 import subprocess
 import threading
+import time
+import queue
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from pathlib import Path
@@ -30,6 +32,12 @@ class FinoraDeployStudio(tk.Tk):
         self.minsize(900, 550)
 
         self.config_data = self.load_config()
+
+        # Self Healing Monitor state
+        self.monitor_thread: "ServerMonitorThread | None" = None
+        self.monitor_queue: "queue.Queue[dict]" = queue.Queue()
+        self.monitor_running = False
+        self.monitor_last_status: dict[str, str] = {}
 
         self.configure(bg="#0f172a")
         self.style = ttk.Style(self)
@@ -161,7 +169,13 @@ class FinoraDeployStudio(tk.Tk):
         self.fix_all_btn = ttk.Button(btns, text="Fix All", width=18, command=self.on_fix_all_clicked)
         self.fix_all_btn.pack(side=tk.LEFT, padx=4, pady=4)
 
-        # Progress + status
+        # Self Healing Monitor control
+        self.start_monitor_btn = ttk.Button(
+            btns, text="Start Monitor", width=18, command=self.on_start_monitor_clicked
+        )
+        self.start_monitor_btn.pack(side=tk.LEFT, padx=4, pady=4)
+
+        # Progress + status + small indicators
         status_frame = ttk.Frame(self)
         status_frame.pack(side=tk.TOP, fill=tk.X, padx=12, pady=(0, 4))
 
@@ -169,8 +183,28 @@ class FinoraDeployStudio(tk.Tk):
         self.progress.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 8))
 
         self.status_var = tk.StringVar(value="Ready.")
-        status_label = ttk.Label(status_frame, textvariable=self.status_var, anchor="e")
-        status_label.pack(side=tk.RIGHT)
+        status_label = ttk.Label(status_frame, textvariable=self.status_var, anchor="w")
+        status_label.pack(side=tk.LEFT)
+
+        # Small live status indicators for monitor
+        self.nginx_status_var = tk.StringVar(value="NGINX: -")
+        self.gunicorn_status_var = tk.StringVar(value="GUNICORN: -")
+        self.https_status_var = tk.StringVar(value="HTTPS: -")
+        self.cpu_status_var = tk.StringVar(value="CPU: -")
+        self.ram_status_var = tk.StringVar(value="RAM: -")
+        self.disk_status_var = tk.StringVar(value="DISK: -")
+
+        indicators_frame = ttk.Frame(status_frame)
+        indicators_frame.pack(side=tk.RIGHT)
+        for var in (
+            self.disk_status_var,
+            self.ram_status_var,
+            self.cpu_status_var,
+            self.https_status_var,
+            self.gunicorn_status_var,
+            self.nginx_status_var,
+        ):
+            ttk.Label(indicators_frame, textvariable=var).pack(side=tk.RIGHT, padx=(4, 0))
 
         # Notebook: Terminal + Error Explorer
         notebook = ttk.Notebook(self)
@@ -254,6 +288,9 @@ class FinoraDeployStudio(tk.Tk):
         self.errors_list.bind("<<ListboxSelect>>", self.on_error_select)
 
         self.append_log("Finora Deploy Studio started.\n")
+
+        # Start polling monitor queue for UI updates
+        self.after(500, self.poll_monitor_queue)
 
     # ---------- Config ----------
 
@@ -410,7 +447,15 @@ class FinoraDeployStudio(tk.Tk):
         self.status_var.set(text)
 
     def set_busy(self, busy: bool) -> None:
-        widgets = [self.push_btn, self.deploy_btn, self.restart_btn, self.logs_btn, self.build_btn, self.fix_all_btn]
+        widgets = [
+            self.push_btn,
+            self.deploy_btn,
+            self.restart_btn,
+            self.logs_btn,
+            self.build_btn,
+            self.fix_all_btn,
+            self.start_monitor_btn,
+        ]
         if busy:
             for w in widgets:
                 w.config(state="disabled")
@@ -419,6 +464,86 @@ class FinoraDeployStudio(tk.Tk):
             for w in widgets:
                 w.config(state="normal")
             self.progress.stop()
+
+    # ---------- Self Healing Server Monitor ----------
+
+    def on_start_monitor_clicked(self) -> None:
+        """Start the background Self Healing Server Monitor once per session."""
+        if self.monitor_running:
+            messagebox.showinfo("Monitor", "Server monitor is already running.")
+            return
+
+        server = self.server_ssh_var.get().strip()
+        if not server:
+            messagebox.showerror("Monitor", "Please configure Server SSH before starting the monitor.")
+            return
+
+        self.save_config()
+
+        self.monitor_running = True
+        self.start_monitor_btn.config(state="disabled")
+        self.append_log("[INFO] Starting Self Healing Server Monitor…\n")
+
+        # Snapshot current config for the monitor thread
+        server_password = self.server_password_var.get()
+        nginx_service = self.nginx_service_var.get().strip() or "nginx"
+        bind = self.gunicorn_bind_var.get().strip() or "127.0.0.1:8000"
+        port = "8000"
+        if ":" in bind:
+            port = bind.split(":")[-1] or "8000"
+
+        self.monitor_thread = ServerMonitorThread(
+            server=server,
+            password=server_password,
+            nginx_service=nginx_service,
+            app_port=port,
+            queue_out=self.monitor_queue,
+        )
+        self.monitor_thread.daemon = True
+        self.monitor_thread.start()
+
+    def poll_monitor_queue(self) -> None:
+        """Pull messages from monitor thread and update UI safely in Tk thread."""
+        try:
+            while True:
+                item = self.monitor_queue.get_nowait()
+                kind = item.get("kind")
+                msg = item.get("message", "")
+                if kind == "log" and msg:
+                    # Already formatted with [MONITOR] / [AUTO FIX] prefixes, etc.
+                    if not msg.endswith("\n"):
+                        msg += "\n"
+                    self.append_log(msg)
+                elif kind == "status":
+                    data = item.get("data") or {}
+                    # Update small indicators
+                    nginx = data.get("nginx")
+                    gunicorn = data.get("gunicorn")
+                    https = data.get("https")
+                    cpu = data.get("cpu")
+                    ram = data.get("ram")
+                    disk = data.get("disk")
+                    if nginx is not None:
+                        self.nginx_status_var.set(f"NGINX: {nginx}")
+                    if gunicorn is not None:
+                        self.gunicorn_status_var.set(f"GUNICORN: {gunicorn}")
+                    if https is not None:
+                        self.https_status_var.set(f"HTTPS: {https}")
+                    if cpu is not None:
+                        self.cpu_status_var.set(f"CPU: {cpu}")
+                    if ram is not None:
+                        self.ram_status_var.set(f"RAM: {ram}")
+                    if disk is not None:
+                        self.disk_status_var.set(f"DISK: {disk}")
+                elif kind == "stopped":
+                    self.monitor_running = False
+                    self.start_monitor_btn.config(state="normal")
+                    self.append_log("[INFO] Server monitor stopped.\n")
+        except queue.Empty:
+            pass
+        finally:
+            # Poll again
+            self.after(1000, self.poll_monitor_queue)
 
     # ---------- Command Runners ----------
 
@@ -823,6 +948,303 @@ echo "System repaired and deployment completed successfully."
                 self.set_status("Frontend build failed (see log).")
         finally:
             self.set_busy(False)
+
+
+class ServerMonitorThread(threading.Thread):
+    """
+    Background thread that runs continuous health checks on the remote server
+    via SSH every 10 seconds and attempts simple self-healing actions.
+
+    All human-readable output is sent back to the main Tk thread using a queue.
+    """
+
+    def __init__(
+        self,
+        server: str,
+        password: str,
+        nginx_service: str,
+        app_port: str,
+        queue_out: "queue.Queue[dict]",
+        interval_seconds: int = 10,
+    ) -> None:
+        super().__init__()
+        self.server = server
+        self.password = password or ""
+        self.nginx_service = nginx_service or "nginx"
+        self.app_port = app_port or "8000"
+        self.queue_out = queue_out
+        self.interval_seconds = max(5, interval_seconds)
+        self._stop_flag = False
+        self._restart_counters: dict[str, int] = {}
+
+    def stop(self) -> None:
+        self._stop_flag = True
+
+    def _put_log(self, message: str) -> None:
+        self.queue_out.put({"kind": "log", "message": message})
+
+    def _put_status(self, data: dict) -> None:
+        self.queue_out.put({"kind": "status", "data": data})
+
+    def _safe_ssh_exec(self, script: str) -> tuple[int, str]:
+        """
+        Execute a small script on the remote server and return (exit_code, combined_output).
+        Uses paramiko when a password is provided, otherwise falls back to system ssh.
+        """
+        output_lines: list[str] = []
+
+        # Passwordless: use system ssh (keys / agent)
+        if not self.password:
+            full_cmd = ["ssh", "-o", "BatchMode=yes", self.server, script]
+            try:
+                proc = subprocess.Popen(
+                    full_cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1,
+                )
+                assert proc.stdout is not None
+                for line in proc.stdout:
+                    output_lines.append(line.rstrip())
+                proc.wait()
+                return proc.returncode, "\n".join(output_lines)
+            except FileNotFoundError:
+                return 1, "ssh command not found on local machine."
+
+        # With password: use paramiko (preferred for non-interactive monitoring)
+        try:
+            import paramiko  # type: ignore[import]
+        except ImportError:
+            return 1, "paramiko is not installed. Install with: pip install paramiko"
+
+        host = self.server
+        username = None
+        if "@" in self.server:
+            username, host = self.server.split("@", 1)
+
+        client = paramiko.SSHClient()
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        try:
+            client.connect(
+                hostname=host,
+                username=username,
+                password=self.password,
+                look_for_keys=False,
+                allow_agent=False,
+                timeout=15,
+            )
+            stdin, stdout, stderr = client.exec_command(script)
+            for line in stdout:
+                output_lines.append(line.rstrip())
+            for line in stderr:
+                if line.strip():
+                    output_lines.append(line.rstrip())
+            exit_status = stdout.channel.recv_exit_status()
+            return exit_status, "\n".join(output_lines)
+        except Exception as e:  # noqa: BLE001
+            return 1, f"SSH error: {e}"
+        finally:
+            try:
+                client.close()
+            except Exception:  # noqa: BLE001
+                pass
+
+    def _should_attempt_fix(self, key: str, max_attempts: int = 3) -> bool:
+        current = self._restart_counters.get(key, 0)
+        if current >= max_attempts:
+            return False
+        self._restart_counters[key] = current + 1
+        return True
+
+    def run(self) -> None:  # noqa: D401
+        """
+        Main monitoring loop.
+        """
+        self._put_log("[MONITOR] Self Healing Server Monitor thread started.")
+
+        # Determine domain/host for HTTP / HTTPS checks (strip user part if any)
+        host_for_http = self.server
+        if "@" in host_for_http:
+            _, host_for_http = host_for_http.split("@", 1)
+
+        while not self._stop_flag:
+            start_ts = datetime.now().strftime("%H:%M:%S")
+
+            # One health check pass implemented as a single bash script to also persist /var/log/finora_monitor.log
+            script = f"""
+LOG_FILE="/var/log/finora_monitor.log"
+NOW="{start_ts}"
+
+log() {{
+  msg="$1"
+  echo "[$NOW] $msg"
+  echo "[$NOW] $msg" >> "$LOG_FILE" 2>/dev/null || true
+}}
+
+nginx_status="unknown"
+gunicorn_status="unknown"
+https_status="unknown"
+cpu_status="unknown"
+ram_status="unknown"
+disk_status="unknown"
+
+log "[MONITOR] Checking nginx..."
+if systemctl is-active --quiet {self.nginx_service}; then
+  log "[OK] nginx running"
+  nginx_status="OK"
+else
+  log "[ERROR DETECTED] nginx is down"
+  nginx_status="DOWN"
+fi
+
+log "[MONITOR] Checking gunicorn/app service..."
+if systemctl is-active --quiet finora || systemctl is-active --quiet supermaxi; then
+  log "[OK] application service running"
+  gunicorn_status="OK"
+else
+  log "[ERROR DETECTED] application service is down"
+  gunicorn_status="DOWN"
+fi
+
+log "[MONITOR] Checking HTTPS response..."
+if command -v curl >/dev/null 2>&1; then
+  if curl -k -s -o /dev/null -w "%{{http_code}}" "https://{host_for_http}" | grep -q "^200$"; then
+    log "[OK] HTTPS 200 from https://{host_for_http}"
+    https_status="OK"
+  else
+    log "[ERROR DETECTED] HTTPS not returning 200"
+    https_status="FAIL"
+  fi
+else
+  log "[WARN] curl not installed on server."
+fi
+
+log "[MONITOR] Checking port {self.app_port}..."
+if ss -tuln 2>/dev/null | grep -q ":{self.app_port} "; then
+  log "[OK] Port {self.app_port} is listening"
+else
+  log "[ERROR DETECTED] Port {self.app_port} is not listening"
+fi
+
+log "[MONITOR] Checking disk usage..."
+disk_line=$(df -h / | tail -n 1)
+disk_pct=$(echo "$disk_line" | awk '{{print $5}}')
+disk_status="$disk_pct"
+log "[INFO] Disk usage: $disk_pct"
+
+log "[MONITOR] Checking RAM usage..."
+if command -v free >/dev/null 2>&1; then
+  ram_pct=$(free | awk '/Mem:/ {{printf "%.0f%%", $3/$2*100}}')
+  ram_status="$ram_pct"
+  log "[INFO] RAM usage: $ram_pct"
+fi
+
+log "[MONITOR] Checking CPU load..."
+if command -v uptime >/dev/null 2>&1; then
+  cpu_load=$(uptime | awk -F'load average:' '{{print $2}}' | sed 's/^ //')
+  cpu_status="$cpu_load"
+  log "[INFO] CPU load: $cpu_load"
+fi
+
+echo ""
+echo "NGINX_STATUS=$nginx_status"
+echo "GUNICORN_STATUS=$gunicorn_status"
+echo "HTTPS_STATUS=$https_status"
+echo "CPU_STATUS=$cpu_status"
+echo "RAM_STATUS=$ram_status"
+echo "DISK_STATUS=$disk_status"
+"""
+
+            rc, out = self._safe_ssh_exec(script)
+            if out:
+                for line in out.splitlines():
+                    if line.startswith("NGINX_STATUS=") or line.startswith("GUNICORN_STATUS="):
+                        # handled below
+                        continue
+                    if line.startswith("HTTPS_STATUS=") or line.startswith("CPU_STATUS="):
+                        continue
+                    if line.startswith("RAM_STATUS=") or line.startswith("DISK_STATUS="):
+                        continue
+                    self._put_log(line)
+
+            # Parse summarized status lines
+            status_payload: dict[str, str] = {}
+            for line in out.splitlines():
+                if line.startswith("NGINX_STATUS="):
+                    status_payload["nginx"] = line.split("=", 1)[1] or "-"
+                elif line.startswith("GUNICORN_STATUS="):
+                    status_payload["gunicorn"] = line.split("=", 1)[1] or "-"
+                elif line.startswith("HTTPS_STATUS="):
+                    status_payload["https"] = line.split("=", 1)[1] or "-"
+                elif line.startswith("CPU_STATUS="):
+                    status_payload["cpu"] = line.split("=", 1)[1] or "-"
+                elif line.startswith("RAM_STATUS="):
+                    status_payload["ram"] = line.split("=", 1)[1] or "-"
+                elif line.startswith("DISK_STATUS="):
+                    status_payload["disk"] = line.split("=", 1)[1] or "-"
+
+            if status_payload:
+                self._put_status(status_payload)
+
+            # Simple self-healing decisions with limited retry counts
+            if "nginx" in status_payload and status_payload["nginx"] == "DOWN":
+                if self._should_attempt_fix("nginx"):
+                    self._put_log("[AUTO FIX] Attempting to restart nginx…")
+                    fix_script = f"""
+LOG_FILE="/var/log/finora_monitor.log"
+NOW="{start_ts}"
+echo "[$NOW] [AUTO FIX] restarting nginx..." | tee -a "$LOG_FILE" 2>/dev/null || true
+systemctl restart {self.nginx_service}
+"""
+                    _, out_fix = self._safe_ssh_exec(fix_script)
+                    if out_fix:
+                        for line in out_fix.splitlines():
+                            self._put_log(line)
+            if "gunicorn" in status_payload and status_payload["gunicorn"] == "DOWN":
+                if self._should_attempt_fix("gunicorn"):
+                    self._put_log("[AUTO FIX] Attempting to restart application service (gunicorn)…")
+                    fix_script = f"""
+LOG_FILE="/var/log/finora_monitor.log"
+NOW="{start_ts}"
+echo "[$NOW] [AUTO FIX] restarting finora/supermaxi service..." | tee -a "$LOG_FILE" 2>/dev/null || true
+systemctl restart finora || systemctl restart supermaxi || true
+"""
+                    _, out_fix = self._safe_ssh_exec(fix_script)
+                    if out_fix:
+                        for line in out_fix.splitlines():
+                            self._put_log(line)
+
+            # Auto-clean logs if disk above 90%
+            disk_val = status_payload.get("disk") or ""
+            if disk_val.endswith("%"):
+                try:
+                    pct = int(disk_val.rstrip("%"))
+                    if pct >= 90 and self._should_attempt_fix("disk_cleanup", max_attempts=2):
+                        self._put_log("[AUTO FIX] Disk usage high, cleaning old journal logs…")
+                        clean_script = f"""
+LOG_FILE="/var/log/finora_monitor.log"
+NOW="{start_ts}"
+echo "[$NOW] [AUTO FIX] running journalctl vacuum..." | tee -a "$LOG_FILE" 2>/dev/null || true
+journalctl --vacuum-time=3d || true
+"""
+                        _, out_clean = self._safe_ssh_exec(clean_script)
+                        if out_clean:
+                            for line in out_clean.splitlines():
+                                self._put_log(line)
+                except ValueError:
+                    pass
+
+            if rc != 0:
+                self._put_log("[MONITOR] Monitoring script exited with non‑zero status; will retry.")
+
+            # Sleep before next iteration, but break early if asked to stop
+            for _ in range(self.interval_seconds):
+                if self._stop_flag:
+                    break
+                time.sleep(1)
+
+        self.queue_out.put({"kind": "stopped"})
 
 
 if __name__ == "__main__":
