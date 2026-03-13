@@ -24,6 +24,17 @@
       margin: 24px auto;
       padding: 0 16px 32px;
     }
+    .layout {
+      display:grid;
+      grid-template-columns:220px minmax(0,1fr);
+      gap:16px;
+      align-items:flex-start;
+    }
+    .card-grid {
+      display:grid;
+      grid-template-columns:260px minmax(0,1.6fr) minmax(0,1.2fr);
+      gap:16px;
+    }
     .btn-primary {
       background: linear-gradient(135deg,#1d4ed8,#3b82f6);
       border: none;
@@ -95,6 +106,33 @@
     .channel-status { font-size:0.75rem;color:#9ca3af; }
     .channel-status.active { color:#22c55e; }
     .channel-status.inactive { color:#f97373; }
+
+    /* استجابة للأجهزة الصغيرة */
+    @media (max-width: 1024px) {
+      .card-grid {
+        grid-template-columns: minmax(0,1fr);
+      }
+    }
+
+    @media (max-width: 768px) {
+      .content {
+        margin: 16px auto;
+        padding: 0 10px 24px;
+      }
+      .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+      }
+      .layout {
+        grid-template-columns: minmax(0,1fr);
+      }
+      aside {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+      }
+    }
   </style>
 </head>
 <body>
@@ -106,7 +144,7 @@
     </div>
   </div>
 
-  <div style="display:grid;grid-template-columns:220px minmax(0,1fr);gap:16px;align-items:flex-start;">
+  <div class="layout">
     <!-- Sidebar -->
     <aside style="border-radius:16px;background:rgba(15,23,42,0.96);border:1px solid rgba(148,163,184,0.35);padding:14px 12px;box-shadow:0 20px 40px rgba(0,0,0,0.55);">
       <div style="font-size:0.9rem;font-weight:600;margin-bottom:8px;">القائمة</div>
@@ -123,7 +161,7 @@
       </nav>
     </aside>
 
-    <div class="card-grid" style="display:grid;grid-template-columns:260px minmax(0,1.6fr) minmax(0,1.2fr);gap:16px;">
+    <div class="card-grid">
     <!-- Channels -->
     <section class="card" style="border-radius:16px;background:rgba(15,23,42,0.96);border:1px solid rgba(148,163,184,0.35);padding:14px 16px;box-shadow:0 20px 40px rgba(0,0,0,0.55);">
       <header class="card-header" style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">
