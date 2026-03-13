@@ -344,13 +344,15 @@
 
   if (uploadMediaBtn && mediaFileInput) {
     uploadMediaBtn.addEventListener('click', () => mediaFileInput.click());
-    mediaFileInput.addEventListener('change', () => {
-      const file = mediaFileInput.files && mediaFileInput.files[0];
-      if (file) {
-        uploadMediaFile(file);
-      }
-    });
   }
+
+  // جعل الهاندلر متاحاً عالمياً ليتصل به الـ onchange في الـ HTML
+  window.__publishOnMediaChange = function (fileList) {
+    const file = fileList && fileList[0];
+    if (file) {
+      uploadMediaFile(file);
+    }
+  };
 
   if (refreshJobsBtn) {
     refreshJobsBtn.addEventListener('click', loadJobs);

@@ -333,7 +333,8 @@
     </section>
     </div>
   </div>
-  <input id="mediaFile" type="file" accept="image/*,video/*" style="display:none;">
+  <input id="mediaFile" type="file" accept="image/*,video/*" style="display:none;"
+         onchange="window.__publishOnMediaChange && window.__publishOnMediaChange(this.files);">
 </div>
 
 <div id="publishToastContainer" class="toast-container"></div>
