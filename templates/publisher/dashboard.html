@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>لوحة النشر المتعدد | Finora</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='autoposter/styles.css') }}">
+  <style>
+    body {
+      background: #020617;
+      color: #e5e7eb;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    .publisher-shell {
+      max-width: 1200px;
+      margin: 24px auto;
+      padding: 16px;
+    }
+    .publisher-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.3fr);
+      gap: 16px;
+    }
+    @media (max-width: 900px) {
+      .publisher-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+    .card {
+      background: rgba(15,23,42,0.96);
+      border-radius: 16px;
+      padding: 16px 18px;
+      border: 1px solid rgba(148,163,184,0.35);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.55);
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .card-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
+    .card-subtitle {
+      font-size: 0.8rem;
+      color: #9ca3af;
+      margin-top: 2px;
+    }
+    .pill {
+      font-size: 0.75rem;
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(148,163,184,0.5);
+      color: #a5b4fc;
+      background: rgba(30,64,175,0.2);
+    }
+    .channels-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .channel-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 4px 10px;
+      background: rgba(15,23,42,0.9);
+      border: 1px solid rgba(148,163,184,0.5);
+      font-size: 0.8rem;
+      cursor: pointer;
+      user-select: none;
+    }
+    .channel-chip.selected {
+      background: linear-gradient(135deg,#1d4ed8,#3b82f6);
+      border-color: transparent;
+    }
+    .channel-type {
+      font-size: 0.72rem;
+      opacity: 0.8;
+    }
+    .field-label {
+      font-size: 0.85rem;
+      margin-bottom: 4px;
+    }
+    .textarea {
+      width: 100%;
+      min-height: 130px;
+      border-radius: 12px;
+      border: 1px solid rgba(55,65,81,0.9);
+      background: #020617;
+      color: #e5e7eb;
+      font-size: 0.9rem;
+      padding: 10px 12px;
+      resize: vertical;
+    }
+    .textarea:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 1px rgba(59,130,246,0.5);
+    }
+    .media-drop {
+      border: 1px dashed rgba(148,163,184,0.6);
+      border-radius: 14px;
+      padding: 14px 12px;
+      text-align: center;
+      background: radial-gradient(circle at top, rgba(59,130,246,0.15), transparent 55%);
+      cursor: pointer;
+      transition: border-color 0.18s ease, background-color 0.18s ease, transform 0.12s ease;
+      font-size: 0.85rem;
+    }
+    .media-drop.dragover {
+      border-color: #60a5fa;
+      background-color: rgba(15,23,42,0.9);
+      transform: translateY(-1px);
+    }
+    .media-preview {
+      margin-top: 8px;
+      display: none;
+    }
+    .media-preview video,
+    .media-preview img {
+      max-width: 100%;
+      max-height: 220px;
+      border-radius: 12px;
+      display: block;
+    }
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+      font-size: 0.75rem;
+      color: #9ca3af;
+    }
+    .control-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+      justify-content: space-between;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg,#1d4ed8,#3b82f6);
+      border: none;
+      color: white;
+      padding: 8px 18px;
+      border-radius: 999px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-primary.loading::after {
+      content: '';
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      border: 2px solid rgba(248,250,252,0.5);
+      border-top-color: transparent;
+      animation: spin 0.7s linear infinite;
+    }
+    .btn-ghost {
+      border: none;
+      background: transparent;
+      color: #9ca3af;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+    .input {
+      border-radius: 999px;
+      border: 1px solid rgba(55,65,81,0.9);
+      background: #020617;
+      color: #e5e7eb;
+      font-size: 0.82rem;
+      padding: 6px 10px;
+    }
+    .jobs-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+    .jobs-table th,
+    .jobs-table td {
+      padding: 6px 8px;
+      border-bottom: 1px solid rgba(31,41,55,0.9);
+      text-align: right;
+    }
+    .jobs-table th {
+      font-weight: 500;
+      color: #9ca3af;
+      font-size: 0.78rem;
+    }
+    .badge-status {
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 0.7rem;
+    }
+    .badge-status.pending { background: rgba(56,189,248,0.1); color: #38bdf8; }
+    .badge-status.processing { background: rgba(250,204,21,0.1); color: #facc15; }
+    .badge-status.published { background: rgba(34,197,94,0.1); color: #22c55e; }
+    .badge-status.failed { background: rgba(248,113,113,0.1); color: #f97373; }
+    .toast-container {
+      position: fixed;
+      bottom: 16px;
+      inset-inline: 0;
+      display: flex;
+      justify-content: center;
+      pointer-events: none;
+      z-index: 50;
+    }
+    .toast {
+      max-width: 420px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      background: rgba(15,23,42,0.98);
+      border: 1px solid rgba(148,163,184,0.6);
+      color: #e5e7eb;
+      pointer-events: auto;
+    }
+    .toast.error { border-color: rgba(248,113,113,0.8); color: #fecaca; }
+    .toast.success { border-color: rgba(34,197,94,0.7); color: #bbf7d0; }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="publisher-shell">
+    <div class="publisher-grid">
+      <section class="card">
+        <header class="card-header">
+          <div>
+            <div class="card-title">إنشاء مهمة نشر</div>
+            <div class="card-subtitle">اختر القنوات، اكتب المحتوى، وارفع صورة أو فيديو واحد.</div>
+          </div>
+          <span class="pill">نظام نشر متعدد القنوات</span>
+        </header>
+
+        <div class="field-label">القنوات المتاحة</div>
+        <div id="channelsList" class="channels-list">
+          <span style="font-size:0.8rem;color:#9ca3af;">جاري تحميل القنوات ...</span>
+        </div>
+
+        <div class="field-label" style="margin-top:10px;">المحتوى النصي</div>
+        <textarea id="contentInput" class="textarea" placeholder="اكتب النص الذي تريد نشره ..."></textarea>
+
+        <div style="margin-top:12px;">
+          <div class="field-label">الوسائط (صورة أو فيديو واحد)</div>
+          <div id="mediaDrop" class="media-drop">
+            اسحب ملفاً هنا أو اضغط لاختياره<br>
+            <span style="font-size:0.75rem;color:#9ca3af;">يدعم صور JPG/PNG/GIF/WEBP وفيديو MP4/MOV/WEBM (حتى 200MB تقريباً)</span>
+          </div>
+          <input type="file" id="mediaInput" accept="image/*,video/*" style="display:none">
+          <div id="mediaPreview" class="media-preview"></div>
+        </div>
+
+        <div class="control-row">
+          <div>
+            <label class="field-label" for="scheduleAt">وقت النشر (اختياري)</label>
+            <input type="datetime-local" id="scheduleAt" class="input">
+          </div>
+          <div>
+            <button type="button" id="createJobBtn" class="btn-primary">
+              <span class="btn-text">إنشاء مهمة النشر</span>
+            </button>
+            <button type="button" id="clearBtn" class="btn-ghost">تفريغ الحقول</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <header class="card-header">
+          <div>
+            <div class="card-title">آخر المهام</div>
+            <div class="card-subtitle">راقب حالة النشر لكل قناة.</div>
+          </div>
+          <button type="button" id="refreshJobsBtn" class="btn-ghost">تحديث</button>
+        </header>
+        <div style="overflow:auto;max-height:420px;">
+          <table class="jobs-table" id="jobsTable">
+            <thead>
+              <tr>
+                <th>القناة</th>
+                <th>النوع</th>
+                <th>الحالة</th>
+                <th>وقت الجدولة</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td colspan="4" style="text-align:center;color:#9ca3af;">لا توجد مهام بعد.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+  <div id="toastContainer" class="toast-container"></div>
+  <script>
+    window.PUBLISHER_API_BASE = '{{ request.script_root or "" }}/publisher';
+  </script>
+  <script src="{{ url_for('static', filename='publisher/app.js') }}"></script>
+</body>
+</html>
+

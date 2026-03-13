@@ -2,7 +2,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
-from flask import Blueprint, jsonify, request, current_app, g
+from flask import Blueprint, jsonify, request, current_app, g, render_template
 from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
 
@@ -16,6 +16,13 @@ publisher_bp = Blueprint("publisher", __name__, url_prefix="/publisher")
 
 def _get_tenant_slug() -> str:
     return getattr(g, "tenant", None) or ""
+
+
+@publisher_bp.route("/")
+@publisher_bp.route("/dashboard")
+def dashboard():
+    """لوحة نشر متعددة القنوات (واجهة ويب حديثة)."""
+    return render_template("publisher/dashboard.html")
 
 
 def _save_media(file: FileStorage) -> Optional[dict]:
