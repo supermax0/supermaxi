@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Optional
 
 from flask import Blueprint, jsonify, request, session, g
+from sqlalchemy import inspect
 
 from extensions import db
 from models.publish_channel import PublishChannel
@@ -23,6 +24,21 @@ def _get_tenant_slug() -> Optional[str]:
     if slug:
         g.tenant = slug
     return slug
+
+
+def _ensure_publish_config_table() -> None:
+    """
+    ضمان وجود جدول publish_config في قاعدة بيانات المستأجر الحالية.
+    هذا مهم لأن بعض قواعد بيانات الـ tenants قد لا تحتوي على الجدول بعد.
+    """
+    bind = db.session.get_bind()
+    if not bind:
+        return
+
+    inspector = inspect(bind)
+    tables = inspector.get_table_names()
+    if "publish_config" not in tables:
+        PublishConfig.__table__.create(bind, checkfirst=True)
 
 
 @publish_api_bp.before_request
@@ -343,6 +359,7 @@ def get_settings():
     tenant_slug = _get_tenant_slug()
     if not tenant_slug:
         return jsonify({"success": False, "error": "NO_TENANT"}), 400
+    _ensure_publish_config_table()
 
     cfg = PublishConfig.query.filter_by(tenant_slug=tenant_slug).first()
     return jsonify(
@@ -361,6 +378,7 @@ def save_settings():
     tenant_slug = _get_tenant_slug()
     if not tenant_slug:
         return jsonify({"success": False, "error": "NO_TENANT"}), 400
+    _ensure_publish_config_table()
 
     data = request.get_json() or {}
     app_id = (data.get("facebook_app_id") or "").strip() or None
