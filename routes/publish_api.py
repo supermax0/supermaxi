@@ -43,6 +43,24 @@ def _ensure_publish_config_table() -> None:
         PublishConfig.__table__.create(bind, checkfirst=True)
 
 
+def _ensure_publish_core_tables() -> None:
+    """
+    ضمان وجود جداول القنوات والمهام الأساسية للنشر.
+    يعالج حالة عدم تشغيل db.create_all() لبعض قواعد بيانات الـ tenants.
+    """
+    bind = db.session.get_bind()
+    if not bind:
+        return
+
+    inspector = inspect(bind)
+    tables = set(inspector.get_table_names())
+
+    if "publish_channels" not in tables:
+        PublishChannel.__table__.create(bind, checkfirst=True)
+    if "publish_jobs" not in tables:
+        PublishJob.__table__.create(bind, checkfirst=True)
+
+
 def _get_facebook_app_config(tenant_slug: str) -> Optional[PublishConfig]:
     _ensure_publish_config_table()
     cfg = PublishConfig.query.filter_by(tenant_slug=tenant_slug).first()
@@ -65,6 +83,7 @@ def list_channels():
     tenant_slug = _get_tenant_slug()
     if not tenant_slug:
         return jsonify({"success": False, "error": "NO_TENANT"}), 400
+    _ensure_publish_core_tables()
 
     chans = (
         PublishChannel.query.filter_by(tenant_slug=tenant_slug)
@@ -93,6 +112,7 @@ def create_channel():
     tenant_slug = _get_tenant_slug()
     if not tenant_slug:
         return jsonify({"success": False, "error": "NO_TENANT"}), 400
+    _ensure_publish_core_tables()
 
     data = request.get_json() or {}
     ch_type = (data.get("type") or "").strip()
@@ -131,6 +151,8 @@ def update_channel(channel_id: int):
     if not tenant_slug:
         return jsonify({"success": False, "error": "NO_TENANT"}), 400
 
+    _ensure_publish_core_tables()
+
     ch = PublishChannel.query.filter_by(
         id=channel_id, tenant_slug=tenant_slug
     ).first()
@@ -152,6 +174,8 @@ def delete_channel(channel_id: int):
     tenant_slug = _get_tenant_slug()
     if not tenant_slug:
         return jsonify({"success": False, "error": "NO_TENANT"}), 400
+
+    _ensure_publish_core_tables()
 
     ch = PublishChannel.query.filter_by(
         id=channel_id, tenant_slug=tenant_slug
@@ -292,6 +316,7 @@ def list_jobs():
     tenant_slug = _get_tenant_slug()
     if not tenant_slug:
         return jsonify({"success": False, "error": "NO_TENANT"}), 400
+    _ensure_publish_core_tables()
 
     status = request.args.get("status")
     channel_id = request.args.get("channel_id", type=int)
@@ -337,6 +362,8 @@ def get_job(job_id: int):
     if not tenant_slug:
         return jsonify({"success": False, "error": "NO_TENANT"}), 400
 
+    _ensure_publish_core_tables()
+
     job = PublishJob.query.filter_by(
         id=job_id, tenant_slug=tenant_slug
     ).first()
@@ -374,6 +401,7 @@ def create_jobs():
     tenant_slug = _get_tenant_slug()
     if not tenant_slug:
         return jsonify({"success": False, "error": "NO_TENANT"}), 400
+    _ensure_publish_core_tables()
 
     data = request.get_json() or {}
     text = (data.get("text") or data.get("content") or "").strip()
@@ -458,6 +486,8 @@ def cancel_job(job_id: int):
     tenant_slug = _get_tenant_slug()
     if not tenant_slug:
         return jsonify({"success": False, "error": "NO_TENANT"}), 400
+
+    _ensure_publish_core_tables()
 
     job = PublishJob.query.filter_by(
         id=job_id, tenant_slug=tenant_slug
