@@ -106,7 +106,21 @@
     </div>
   </div>
 
-  <div class="card-grid" style="display:grid;grid-template-columns:260px minmax(0,1.6fr) minmax(0,1.2fr);gap:16px;">
+  <div style="display:grid;grid-template-columns:220px minmax(0,1fr);gap:16px;align-items:flex-start;">
+    <!-- Sidebar -->
+    <aside style="border-radius:16px;background:rgba(15,23,42,0.96);border:1px solid rgba(148,163,184,0.35);padding:14px 12px;box-shadow:0 20px 40px rgba(0,0,0,0.55);">
+      <div style="font-size:0.9rem;font-weight:600;margin-bottom:8px;">القائمة</div>
+      <nav style="display:flex;flex-direction:column;gap:4px;font-size:0.85rem;">
+        <a href="{{ url_for('publish_ui.dashboard') }}" style="padding:6px 10px;border-radius:10px;background:rgba(15,23,42,0.9);border:1px solid rgba(148,163,184,0.4);color:#e5e7eb;text-decoration:none;display:block;">
+          لوحة النشر
+        </a>
+        <a href="{{ url_for('publish_ui.settings') }}" style="padding:6px 10px;border-radius:10px;background:rgba(15,23,42,0.9);border:1px solid rgba(148,163,184,0.4);color:#e5e7eb;text-decoration:none;display:block;">
+          إعدادات التطبيق (Facebook)
+        </a>
+      </nav>
+    </aside>
+
+    <div class="card-grid" style="display:grid;grid-template-columns:260px minmax(0,1.6fr) minmax(0,1.2fr);gap:16px;">
     <!-- Channels -->
     <section class="card" style="border-radius:16px;background:rgba(15,23,42,0.96);border:1px solid rgba(148,163,184,0.35);padding:14px 16px;box-shadow:0 20px 40px rgba(0,0,0,0.55);">
       <header class="card-header" style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">
@@ -199,6 +213,7 @@
         </table>
       </div>
     </section>
+    </div>
   </div>
 </div>
 
