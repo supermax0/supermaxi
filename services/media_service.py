@@ -402,11 +402,19 @@ def save_uploaded_file(file_storage, max_mb: int = 200) -> Dict[str, Any]:
     safe_name = f"{uuid.uuid4().hex}{ext}"
 
     # مسار الحفظ: الصور تحت static/autoposter/uploads، الفيديو من get_video_upload_root (قابل للتكوين)
-    if kind == "video":
-        upload_dir = get_video_upload_root()
-    else:
-        upload_dir = get_autoposter_upload_dir()
-    upload_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        if kind == "video":
+            upload_dir = get_video_upload_root()
+        else:
+            upload_dir = get_autoposter_upload_dir()
+        upload_dir.mkdir(parents=True, exist_ok=True)
+    except Exception as e:
+        current_app.logger.exception("Media upload: failed to create upload dir: %s", e)
+        return {
+            "ok": False,
+            "error_code": "save_failed",
+            "message": "تعذر إنشاء مجلد الرفع على الخادم. تحقق من المسار والصلاحيات (مثلاً /var/www/finora/uploads/videos).",
+        }
     dest_path = upload_dir / safe_name
 
     try:
@@ -532,14 +540,15 @@ def save_uploaded_file(file_storage, max_mb: int = 200) -> Dict[str, Any]:
         # أي خطأ في هذه المرحلة لا يمنع استخدام الملف
         pass
 
-    # بناء URL عام للفيديو: تقديم عبر التطبيق (/autoposter/serve/) ليعمل بدون إعداد Nginx لـ /uploads/
-    video_root_str = str(get_video_upload_root())
-    thumb_root_str = str(get_thumbnail_upload_root())
-    if kind == "video" and (str(dest_path).startswith(video_root_str) or "/uploads/videos" in str(dest_path)):
-        public_url = f"/autoposter/serve/video/{dest_path.name}"
-    else:
-        rel = dest_path.relative_to(get_media_root())
-        public_url = f"{current_app.static_url_path}/{rel.as_posix()}"
+    # بناء URL عام: فيديو عبر /autoposter/serve/، صور عبر static
+    try:
+        if kind == "video":
+            public_url = f"/autoposter/serve/video/{dest_path.name}"
+        else:
+            rel = dest_path.relative_to(get_media_root())
+            public_url = f"{current_app.static_url_path}/{rel.as_posix()}"
+    except Exception:
+        public_url = f"/autoposter/serve/video/{dest_path.name}" if kind == "video" else (f"{current_app.static_url_path}/autoposter/uploads/{dest_path.name}")
 
     return {
         "ok": True,

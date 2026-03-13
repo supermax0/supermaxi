@@ -479,8 +479,15 @@ def api_upload():
     if not file or not file.filename:
         return jsonify({"ok": False, "error_code": "no_file", "message": "لم يُرفع ملف"}), 400
 
-    # استخدام خدمة الوسائط الموحّدة لمعالجة الرفع والتحقق والمعاينة
-    result = save_uploaded_file(file, max_mb=UPLOAD_MAX_MB)
+    try:
+        result = save_uploaded_file(file, max_mb=UPLOAD_MAX_MB)
+    except Exception as e:
+        current_app.logger.exception("api_upload save_uploaded_file failed: %s", e)
+        return jsonify({
+            "ok": False,
+            "error_code": "save_failed",
+            "message": "تعذر معالجة الملف على الخادم. تحقق من مجلد الرفع ووجود ffmpeg إن لزم.",
+        }), 500
     status_code = 200 if result.get("ok") else 400
     return jsonify(result), status_code
 
@@ -775,7 +782,7 @@ def api_posts_create():
     except Exception as e:
         current_app.logger.exception("api_posts_create failed: %s", e)
         return jsonify({
-            "error": "فشل إنشاء المنشور. جرّب مرة أخرى أو راجع السجلات.",
+            "error": "هناك مشكلة في معالجة المنشور أو الفيديو. جرّب ملفاً آخر أو راجع إعدادات الخادم (مجلد الرفع، ffmpeg).",
         }), 500
 
 
