@@ -1,116 +1,75 @@
-You are a senior Python backend engineer specializing in Flask, SQLAlchemy, and production debugging.
+أنت مهندس Full-Stack خبير في Python Flask و JavaScript.
 
-I have a Flask-based application called Finora with an Autoposter system. The endpoint:
+لدي نظام نشر مبني بـ Flask.
+الواجهة Dashboard تسمح بإنشاء مهمة نشر مع نص وصورة أو فيديو.
 
-POST /autoposter/api/posts
+المشكلة الحالية:
 
-sometimes returns HTTP 500 errors. The frontend successfully uploads media (video/image), but the backend fails when inserting the post into the database or processing the request.
+1. المستخدم يستطيع اختيار الملف من الجهاز بنجاح.
+2. المتصفح يرى الملف داخل input type="file".
+3. لكن عند الضغط على زر "إنشاء مهمة" لا يتم إرسال الملف إلى السيرفر.
+4. في DevTools → Network يظهر الطلب بحجم صغير (~0.8KB) وهذا يعني أن الطلب JSON فقط وليس multipart/form-data.
+5. المهمة تُنشأ بنجاح لكن الوسائط لا تصل إلى السيرفر.
 
-System details:
+المطلوب منك:
 
-- Backend: Python Flask
-- Server: Ubuntu VPS
-- App server: Gunicorn
-- Reverse proxy: Nginx
-- Database: SQLite (multi-tenant)
-- ORM: SQLAlchemy
-- Media uploads: images and videos
-- Project path:
-  /var/www/finora/supermaxi
-- Tenants database folder:
-  /var/www/finora/supermaxi/tenants/
-- Upload folders:
-  uploads/videos
-  uploads/images
+أولاً: تشخيص المشكلة بدقة في:
 
-Tables include:
-autoposter_posts
-autoposter_templates
-autoposter_notifications
-autoposter_facebook_pages
+* HTML
+* JavaScript
+* Flask backend
 
-Common errors include:
+ثانياً: تحديد إن كان الخطأ بسبب:
 
-- SQLAlchemy IntegrityError
-- NOT NULL constraint failed
-- Invalid media upload
-- Video upload works but database insertion fails
-- Missing or None values in request.form
-- Missing directories for uploads
-- Gunicorn timeout or Nginx upload limits
+* استخدام JSON بدلاً من FormData
+* عدم قراءة input file
+* عدم إرسال الملف في fetch
+* خطأ في endpoint
+* عدم استخدام request.files في Flask
 
-Your task:
+ثالثاً: تعديل الكود بحيث يدعم رفع الصور والفيديو.
 
-1. Design a robust Flask endpoint implementation for:
+يجب أن يكون الحل النهائي كالتالي:
 
-   def api_posts_create():
+1. JavaScript يستخدم FormData لإرسال:
 
-2. Requirements for the implementation:
+   * النص
+   * الملف
 
-   - Accept form-data with:
-        page_id
-        page_name
-        content
-        image
-        video
-        scheduled_at
-   - Handle missing fields safely
-   - Prevent database NOT NULL errors
-   - Save uploaded files securely
-   - Support scheduled posts
-   - Return clear JSON responses
-   - Log errors properly
-   - Avoid crashing with HTTP 500
+2. الطلب يتم باستخدام:
+   fetch مع multipart/form-data
 
-3. Implement safe file upload:
+3. Flask يستقبل الملف باستخدام:
+   request.files
 
-   - use werkzeug.secure_filename
-   - create upload folders if missing
-   - validate file extensions
-   - generate unique filenames
-   - return relative media URLs
+4. حفظ الملف في مجلد uploads.
 
-4. Implement validation:
+5. إرجاع JSON response بعد النجاح.
 
-   - verify allowed extensions
-   - verify scheduled datetime
-   - prevent empty inserts
+أعطني الكود الكامل المصحح لهذه الملفات:
 
-5. Database insertion:
+HTML
+JavaScript
+Flask route
 
-   - insert into AutoposterPost model
-   - ensure nullable-safe values
-   - handle SQLAlchemy exceptions
+الكود يجب أن يكون Production-ready ويعمل مباشرة.
 
-6. Add structured error handling:
+مثال السلوك المطلوب:
 
-   try/except blocks
-   logger.exception
-   meaningful JSON error responses
+اختيار ملف
+↓
+الضغط على إنشاء مهمة
+↓
+رفع الملف إلى السيرفر
+↓
+حفظه في uploads
+↓
+إرجاع نجاح العملية.
 
-7. Ensure compatibility with SQLite multi-tenant setup.
+أيضاً:
 
-8. Provide production-ready code including:
+* تحقق من حجم الملف
+* دعم الفيديو والصور
+* منع الأخطاء إذا لم يتم اختيار ملف
 
-   - full Flask route
-   - helper functions
-   - safe media saving
-   - logging
-   - error handling
-
-9. Also include optional improvements:
-
-   - background queue support
-   - retry logic
-   - media compression with ffmpeg
-   - rate limit protection
-
-Output format:
-
-1) Full Python code for api_posts_create
-2) helper functions
-3) example SQLAlchemy model (AutoposterPost)
-4) explanation of how it prevents IntegrityError
-5) recommended production improvements
-
-Make the implementation secure, clean, and production-ready.
+وأعطني نسخة الكود النهائية فقط بدون شرح طويل.

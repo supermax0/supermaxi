@@ -21,10 +21,14 @@
   const uploadProgressWrapper = document.getElementById('uploadProgressWrapper');
   const uploadProgressBar = document.getElementById('uploadProgressBar');
   const uploadProgressLabel = document.getElementById('uploadProgressLabel');
+  const mediaPreviewWrapper = document.getElementById('mediaPreviewWrapper');
+  const mediaPreviewImg = document.getElementById('mediaPreviewImg');
+  const mediaPreviewVideo = document.getElementById('mediaPreviewVideo');
 
   const toastContainer = document.getElementById('publishToastContainer');
 
   let selectedChannelIds = new Set();
+  let previewObjectUrl = null;
 
   function toast(message, type = 'info', timeout = 4000) {
     if (!toastContainer) return;
@@ -254,6 +258,7 @@
       if (mediaType && data.media_type) {
         mediaType.value = data.media_type;
       }
+      showMediaPreviewFromUrl(data.url, data.media_type);
 
       toast('تم رفع الملف وربط الرابط تلقائياً.', 'success');
     };
@@ -268,6 +273,46 @@
     xhr.send(fd);
   }
 
+  const MAX_FILE_MB = 500;
+  const MAX_FILE_BYTES = MAX_FILE_MB * 1024 * 1024;
+
+  function createJobWithFormData(formData) {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', API_BASE + '/jobs');
+      xhr.withCredentials = true;
+
+      if (uploadProgressWrapper && uploadProgressBar && uploadProgressLabel) {
+        uploadProgressWrapper.style.display = 'block';
+        uploadProgressBar.style.width = '0%';
+        uploadProgressLabel.textContent = '0%';
+        xhr.upload.onprogress = function (e) {
+          if (e.lengthComputable) {
+            const pct = Math.min(100, Math.round((e.loaded / e.total) * 100));
+            uploadProgressBar.style.width = pct + '%';
+            uploadProgressLabel.textContent = pct + '%';
+          }
+        };
+      }
+
+      xhr.onload = function () {
+        if (uploadProgressWrapper) uploadProgressWrapper.style.display = 'none';
+        try {
+          const data = JSON.parse(xhr.responseText || '{}');
+          if (xhr.status >= 200 && xhr.status < 300) resolve({ ok: true, data });
+          else resolve({ ok: false, data });
+        } catch (_) {
+          resolve({ ok: false, data: {} });
+        }
+      };
+      xhr.onerror = function () {
+        if (uploadProgressWrapper) uploadProgressWrapper.style.display = 'none';
+        resolve({ ok: false, data: {} });
+      };
+      xhr.send(formData);
+    });
+  }
+
   async function createJob() {
     if (!selectedChannelIds.size) {
       toast('اختر قناة واحدة على الأقل.', 'error');
@@ -278,24 +323,24 @@
     const title = (jobTitle && jobTitle.value || '').trim();
     const mUrl = (mediaUrl && mediaUrl.value || '').trim();
     const mType = (mediaType && mediaType.value) || '';
+    const file = mediaFileInput && mediaFileInput.files && mediaFileInput.files[0];
 
-    if (!text && !mUrl) {
-      toast('أدخل نصاً أو رابط وسائط.', 'error');
+    if (!text && !mUrl && !file) {
+      toast('أدخل نصاً أو رابط وسائط أو اختر ملفاً للرفع.', 'error');
       return;
     }
 
-    const payload = {
-      title: title || null,
-      text,
-      media_url: mUrl || null,
-      media_type: mType || null,
-      channel_ids: Array.from(selectedChannelIds),
-    };
-
-    if (scheduledAt && scheduledAt.value) {
-      const d = new Date(scheduledAt.value);
-      if (!isNaN(d.getTime())) {
-        payload.scheduled_at = d.toISOString();
+    if (file) {
+      if (file.size > MAX_FILE_BYTES) {
+        toast('حجم الملف يتجاوز ' + MAX_FILE_MB + ' ميجابايت.', 'error');
+        return;
+      }
+      const type = (file.type || '').toLowerCase();
+      const isImage = type.startsWith('image/');
+      const isVideo = type.startsWith('video/');
+      if (!isImage && !isVideo) {
+        toast('الملف يجب أن يكون صورة أو فيديو.', 'error');
+        return;
       }
     }
 
@@ -304,16 +349,48 @@
       createJobBtn.classList.add('loading');
     }
 
-    const res = await apiPost('/jobs', payload);
-    const data = await res?.json().catch(() => ({}));
+    let res;
+    let data = {};
+
+    if (file) {
+      const formData = new FormData();
+      formData.append('text', text);
+      formData.append('title', title || '');
+      formData.append('channel_ids', JSON.stringify(Array.from(selectedChannelIds)));
+      if (mUrl) formData.append('media_url', mUrl);
+      if (mType) formData.append('media_type', mType);
+      if (scheduledAt && scheduledAt.value) {
+        const d = new Date(scheduledAt.value);
+        if (!isNaN(d.getTime())) formData.append('scheduled_at', d.toISOString());
+      }
+      formData.append('file', file);
+      const result = await createJobWithFormData(formData);
+      res = result.ok ? { ok: true, status: 200 } : { ok: false, status: 400 };
+      data = result.data || {};
+    } else {
+      const payload = {
+        title: title || null,
+        text,
+        media_url: mUrl || null,
+        media_type: mType || null,
+        channel_ids: Array.from(selectedChannelIds),
+      };
+      if (scheduledAt && scheduledAt.value) {
+        const d = new Date(scheduledAt.value);
+        if (!isNaN(d.getTime())) payload.scheduled_at = d.toISOString();
+      }
+      res = await apiPost('/jobs', payload);
+      data = await res?.json().catch(() => ({}));
+    }
 
     if (createJobBtn) {
       createJobBtn.disabled = false;
       createJobBtn.classList.remove('loading');
     }
 
-    if (!res || !res.ok || !data?.success) {
-      toast(data?.error || 'فشل إنشاء مهمة النشر.', 'error');
+    const ok = res && (res.ok === true || (res.status >= 200 && res.status < 300));
+    if (!ok || !data.success) {
+      toast(data.error || 'فشل إنشاء مهمة النشر.', 'error');
       return;
     }
 
@@ -323,7 +400,77 @@
     if (mediaUrl) mediaUrl.value = '';
     if (mediaType) mediaType.value = '';
     if (scheduledAt) scheduledAt.value = '';
+    if (mediaFileInput) mediaFileInput.value = '';
+    clearMediaPreview();
     loadJobs();
+  }
+
+  function clearMediaPreview() {
+    if (previewObjectUrl) {
+      try { URL.revokeObjectURL(previewObjectUrl); } catch (_) {}
+      previewObjectUrl = null;
+    }
+    if (mediaPreviewImg) {
+      mediaPreviewImg.src = '';
+      mediaPreviewImg.style.display = 'none';
+    }
+    if (mediaPreviewVideo) {
+      mediaPreviewVideo.src = '';
+      mediaPreviewVideo.pause();
+      mediaPreviewVideo.style.display = 'none';
+    }
+    if (mediaPreviewWrapper) mediaPreviewWrapper.style.display = 'none';
+  }
+
+  function showMediaPreviewFromUrl(url, kind) {
+    if (!url || !url.trim()) {
+      clearMediaPreview();
+      return;
+    }
+    if (previewObjectUrl) {
+      try { URL.revokeObjectURL(previewObjectUrl); } catch (_) {}
+      previewObjectUrl = null;
+    }
+    const k = (kind || '').toLowerCase();
+    const isVideo = k === 'video' || /\.(mp4|webm|ogg|mov|avi|mkv)(\?|$)/i.test(url);
+    if (mediaPreviewImg && mediaPreviewVideo) {
+      mediaPreviewImg.style.display = 'none';
+      mediaPreviewVideo.style.display = 'none';
+      if (isVideo) {
+        mediaPreviewVideo.src = url;
+        mediaPreviewVideo.style.display = 'block';
+      } else {
+        mediaPreviewImg.src = url;
+        mediaPreviewImg.style.display = 'block';
+      }
+      if (mediaPreviewWrapper) mediaPreviewWrapper.style.display = 'block';
+    }
+  }
+
+  function showMediaPreviewFromFile(file) {
+    if (!file) {
+      clearMediaPreview();
+      return;
+    }
+    if (previewObjectUrl) {
+      try { URL.revokeObjectURL(previewObjectUrl); } catch (_) {}
+      previewObjectUrl = null;
+    }
+    previewObjectUrl = URL.createObjectURL(file);
+    const type = (file.type || '').toLowerCase();
+    const isVideo = type.startsWith('video/');
+    if (mediaPreviewImg && mediaPreviewVideo) {
+      mediaPreviewImg.style.display = 'none';
+      mediaPreviewVideo.style.display = 'none';
+      if (isVideo) {
+        mediaPreviewVideo.src = previewObjectUrl;
+        mediaPreviewVideo.style.display = 'block';
+      } else {
+        mediaPreviewImg.src = previewObjectUrl;
+        mediaPreviewImg.style.display = 'block';
+      }
+      if (mediaPreviewWrapper) mediaPreviewWrapper.style.display = 'block';
+    }
   }
 
   function clearJobForm() {
@@ -332,6 +479,8 @@
     if (mediaUrl) mediaUrl.value = '';
     if (mediaType) mediaType.value = '';
     if (scheduledAt) scheduledAt.value = '';
+    if (mediaFileInput) mediaFileInput.value = '';
+    clearMediaPreview();
   }
 
   if (addChannelBtn) {
@@ -351,6 +500,7 @@
       const file = mediaFileInput.files && mediaFileInput.files[0];
       console.log('[publish] file selected', file && file.name, file && file.type, file && file.size);
       if (file) {
+        showMediaPreviewFromFile(file);
         uploadMediaFile(file);
       }
     });
@@ -361,9 +511,28 @@
     const file = fileList && fileList[0];
     console.log('[publish] __publishOnMediaChange', file && file.name);
     if (file) {
+      showMediaPreviewFromFile(file);
       uploadMediaFile(file);
     }
   };
+
+  if (mediaUrl) {
+    mediaUrl.addEventListener('input', function () {
+      const url = (this.value || '').trim();
+      if (url) showMediaPreviewFromUrl(url, mediaType && mediaType.value);
+      else clearMediaPreview();
+    });
+    mediaUrl.addEventListener('blur', function () {
+      const url = (this.value || '').trim();
+      if (url) showMediaPreviewFromUrl(url, mediaType && mediaType.value);
+    });
+  }
+  if (mediaType) {
+    mediaType.addEventListener('change', function () {
+      const url = (mediaUrl && mediaUrl.value || '').trim();
+      if (url) showMediaPreviewFromUrl(url, this.value);
+    });
+  }
 
   if (refreshJobsBtn) {
     refreshJobsBtn.addEventListener('click', loadJobs);

@@ -405,13 +405,51 @@ def create_jobs():
         return jsonify({"success": False, "error": "NO_TENANT"}), 400
     _ensure_publish_core_tables()
 
-    data = request.get_json() or {}
+    # دعم multipart/form-data (نص + ملف) أو application/json (نص + media_url)
+    is_multipart = "multipart/form-data" in (request.content_type or "")
+    if is_multipart:
+        data = {}
+        data["text"] = (request.form.get("text") or "").strip()
+        data["title"] = (request.form.get("title") or "").strip() or None
+        data["media_url"] = (request.form.get("media_url") or "").strip() or None
+        data["media_type"] = (request.form.get("media_type") or "").strip() or None
+        raw_ids = request.form.get("channel_ids", "[]")
+        try:
+            channel_ids = json.loads(raw_ids) if isinstance(raw_ids, str) else raw_ids
+        except Exception:
+            channel_ids = []
+        data["channel_ids"] = channel_ids if isinstance(channel_ids, list) else []
+        data["scheduled_at"] = (request.form.get("scheduled_at") or "").strip()
+
+        file_storage = request.files.get("file") if request.files else None
+        if file_storage and getattr(file_storage, "filename", None):
+            try:
+                result = save_uploaded_file(file_storage, max_mb=500)
+                if result.get("ok") and result.get("url"):
+                    data["media_url"] = result.get("url")
+                    data["media_type"] = result.get("type") or data["media_type"]
+            except Exception as exc:
+                current_app.logger.exception("publish.create_jobs file save: %s", exc)
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": "فشل حفظ الملف المرفوع.",
+                            "error_code": "upload_failed",
+                        }
+                    ),
+                    400,
+                )
+    else:
+        data = request.get_json() or {}
+        data.setdefault("channel_ids", [])
+
     text = (data.get("text") or data.get("content") or "").strip()
     title = (data.get("title") or "").strip() or None
     media_url = (data.get("media_url") or "").strip() or None
     media_type = (data.get("media_type") or "").strip() or None
-
     channel_ids = data.get("channel_ids") or []
+
     if not isinstance(channel_ids, list):
         return (
             jsonify(
@@ -425,7 +463,7 @@ def create_jobs():
             jsonify(
                 {
                     "success": False,
-                    "error": "الرجاء إدخال نص أو توفير رابط وسائط للمهمة.",
+                    "error": "الرجاء إدخال نص أو توفير رابط وسائط أو رفع ملف.",
                 }
             ),
             400,
