@@ -343,12 +343,23 @@
   }
 
   if (uploadMediaBtn && mediaFileInput) {
-    uploadMediaBtn.addEventListener('click', () => mediaFileInput.click());
+    uploadMediaBtn.addEventListener('click', () => {
+      console.log('[publish] upload button clicked');
+      mediaFileInput.click();
+    });
+    mediaFileInput.addEventListener('change', () => {
+      const file = mediaFileInput.files && mediaFileInput.files[0];
+      console.log('[publish] file selected', file && file.name, file && file.type, file && file.size);
+      if (file) {
+        uploadMediaFile(file);
+      }
+    });
   }
 
-  // جعل الهاندلر متاحاً عالمياً ليتصل به الـ onchange في الـ HTML
+  // جعل الهاندلر متاحاً عالمياً أيضاً لأي استدعاء من الـ HTML (احتياطي)
   window.__publishOnMediaChange = function (fileList) {
     const file = fileList && fileList[0];
+    console.log('[publish] __publishOnMediaChange', file && file.name);
     if (file) {
       uploadMediaFile(file);
     }

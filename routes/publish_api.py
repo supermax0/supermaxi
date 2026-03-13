@@ -3,7 +3,7 @@ from typing import Optional
 import json
 
 import requests
-from flask import Blueprint, jsonify, request, session, g, redirect, url_for
+from flask import Blueprint, jsonify, request, session, g, redirect, url_for, current_app
 from sqlalchemy import inspect
 
 from extensions import db
@@ -550,11 +550,7 @@ def upload_media():
     try:
         result = save_uploaded_file(file_storage, max_mb=500)
     except Exception as exc:
-        current_app = publish_api_bp.app  # type: ignore[attr-defined]
-        try:
-            current_app.logger.exception("publish.upload_media failed: %s", exc)
-        except Exception:
-            pass
+        current_app.logger.exception("publish.upload_media failed: %s", exc)
         return (
             jsonify(
                 {
