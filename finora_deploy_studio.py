@@ -180,7 +180,7 @@ class FinoraDeployStudio(tk.Tk):
 
         self.run_autoposter_btn = ttk.Button(
             btns,
-            text="Run Autoposter Now",
+            text="Run Publisher Jobs",
             width=18,
             command=self.on_run_autoposter_jobs_clicked,
         )
@@ -919,11 +919,11 @@ systemctl reload {nginx_service}
 
     def _run_autoposter_jobs_thread(self) -> None:
         try:
-            self.set_status("Running Autoposter jobs on server…")
+            self.set_status("Running publisher jobs on server…")
             server_path = self.server_path_var.get().strip()
             if not server_path:
                 self.append_log("[ERROR] Server project path is empty.\n")
-                self.set_status("Autoposter jobs failed (server path empty).")
+                self.set_status("Publisher jobs failed (server path empty).")
                 return
 
             script = f"""
@@ -931,20 +931,14 @@ cd {server_path} || {{ echo '[ERROR] Cannot cd to {server_path}'; exit 1; }}
 if [ -d "venv" ]; then
   source venv/bin/activate
 fi
-python - << 'PY'
-from app import app
-from routes.autoposter import run_scheduled_posts_for_all_tenants
-with app.app_context():
-    run_scheduled_posts_for_all_tenants(app)
-    print("Autoposter scheduled posts processed successfully.")
-PY
+python scripts/run_publish_jobs.py
 """
             rc = self.run_ssh_script(script)
             if rc == 0:
-                self.append_log("[INFO] Autoposter jobs executed successfully.\n")
-                self.set_status("Autoposter jobs completed.")
+                self.append_log("[INFO] Publisher jobs executed successfully.\n")
+                self.set_status("Publisher jobs completed.")
             else:
-                self.set_status("Autoposter jobs finished with errors (see log).")
+                self.set_status("Publisher jobs finished with errors (see log).")
         finally:
             self.set_busy(False)
 

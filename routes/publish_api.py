@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, session, g
 
 from extensions import db
 from models.publish_channel import PublishChannel
@@ -12,9 +12,22 @@ from services.publish_service import create_jobs_for_channels, get_channels_for_
 publish_api_bp = Blueprint("publish_api", __name__, url_prefix="/publish/api")
 
 
+def _require_login() -> bool:
+    return "user_id" in session
+
+
 def _get_tenant_slug() -> Optional[str]:
-    """في وضع التطبيق المنفصل نستخدم مستأجراً ثابتاً واحداً."""
-    return "global"
+    """استخدام tenant_slug من جلسة النظام الأساسية (SaaS)."""
+    slug = session.get("tenant_slug")
+    if slug:
+        g.tenant = slug
+    return slug
+
+
+@publish_api_bp.before_request
+def _guard():
+    if not _require_login():
+        return jsonify({"success": False, "error": "UNAUTHENTICATED"}), 401
 
 
 # ============== Channels ==============
