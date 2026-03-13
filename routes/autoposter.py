@@ -505,6 +505,47 @@ def _media_url_to_static_path(media_url: str):
     return path
 
 
+def _media_url_to_fs_path(media_url: str):
+    """
+    إرجاع مسار الملف على القرص من رابط الوسائط، أو None.
+    يدعم: /autoposter/serve/video/<name>، /autoposter/serve/thumbnail/<name>، والمسارات تحت static.
+    """
+    from urllib.parse import urlparse
+    from services.media_service import get_video_upload_root, get_thumbnail_upload_root
+    parsed = urlparse(media_url)
+    path = (parsed.path or "").strip().lstrip("/")
+    if not path:
+        return None
+    script_root = (request.script_root or "").strip().rstrip("/").lstrip("/")
+    if script_root and path.startswith(script_root + "/"):
+        path = path[len(script_root) + 1:]
+    # روابط التقديم عبر التطبيق
+    if path.startswith("autoposter/serve/video/"):
+        name = path[len("autoposter/serve/video/"):].split("/")[0] or None
+        if name and ".." not in name:
+            p = get_video_upload_root() / name
+            return p if p.exists() and p.is_file() else None
+        return None
+    if path.startswith("autoposter/serve/thumbnail/"):
+        name = path[len("autoposter/serve/thumbnail/"):].split("/")[0] or None
+        if name and ".." not in name:
+            p = get_thumbnail_upload_root() / name
+            return p if p.exists() and p.is_file() else None
+        return None
+    # مسارات static القديمة
+    rel = _media_url_to_static_path(media_url)
+    if not rel:
+        return None
+    root = Path(current_app.root_path)
+    fs_path = (root / "static" / rel).resolve()
+    static_root = (root / "static").resolve()
+    try:
+        fs_path.relative_to(static_root)
+    except ValueError:
+        return None
+    return fs_path if fs_path.exists() and fs_path.is_file() else None
+
+
 # --- API: فحص وسائط قبل النشر (pre-publish check) ---
 @autoposter_bp.route("/api/media/check", methods=["POST"])
 @require_autoposter_login
@@ -546,8 +587,8 @@ def api_media_check():
             }), 400
 
         media_url = video_url or image_url
-        rel_path = _media_url_to_static_path(media_url)
-        if not rel_path:
+        fs_path = _media_url_to_fs_path(media_url)
+        if not fs_path:
             return jsonify({
                 "ok": False,
                 "error_code": "invalid_url",
@@ -555,37 +596,13 @@ def api_media_check():
                 "warnings": [],
             }), 400
 
-        # إزالة "static/" من البداية إن وُجدت لأننا نضيف static أدناه
-        if rel_path.startswith("static/"):
-            rel_path = rel_path[7:]
-        root = Path(current_app.root_path)
-        static_root = (root / "static").resolve()
-        fs_path = (root / "static" / rel_path).resolve()
-        try:
-            fs_path.relative_to(static_root)
-        except ValueError:
-            return jsonify({
-                "ok": False,
-                "error_code": "invalid_path",
-                "message": "مسار الملف خارج مجلد الوسائط المسموح.",
-                "warnings": [],
-            }), 400
-
-        if not fs_path.exists():
-            return jsonify({
-                "ok": False,
-                "error_code": "not_found",
-                "message": "لم يتم العثور على الملف على الخادم.",
-                "warnings": [],
-            }), 404
-
         size_bytes = fs_path.stat().st_size
         size_mb = round(size_bytes / (1024 * 1024), 2)
 
         ext = fs_path.suffix.lower()
         if ext in (".jpg", ".jpeg", ".png", ".gif", ".webp"):
             kind = "image"
-        elif ext in (".mp4", ".mov"):
+        elif ext in (".mp4", ".mov", ".webm"):
             kind = "video"
         else:
             kind = None
