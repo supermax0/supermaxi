@@ -624,6 +624,27 @@ with app.app_context():
     except Exception as e:
         print(f"Migration error (subscription_plans): {e}")
 
+# #region agent log (app-level)
+def _debug_log_app(run_id: str, hypothesis_id: str, location: str, message: str, data: dict | None = None) -> None:
+    import os, json, time
+    try:
+        root = app.root_path
+        path = os.path.join(root, "debug-180817.log")
+        payload = {
+            "sessionId": "180817",
+            "runId": run_id,
+            "hypothesisId": hypothesis_id,
+            "location": location,
+            "message": message,
+            "data": data or {},
+            "timestamp": int(time.time() * 1000),
+        }
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(payload, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+# #endregion
+
 # =====================================
 # Context Processor (لتمرير البيانات لجميع القوالب)
 # =====================================
@@ -705,6 +726,22 @@ def inject_global_data():
 # =====================================
 @app.before_request
 def require_login():
+    # #region agent log
+    try:
+        _debug_log_app(
+            "run1",
+            "H1",
+            "app.require_login:entry",
+            "before_request",
+            {
+                "path": request.path,
+                "is_ajax": request.headers.get("X-Requested-With") == "XMLHttpRequest",
+                "has_user_id": "user_id" in session,
+            },
+        )
+    except Exception:
+        pass
+    # #endregion
     # مسارات مسموحة بدون تسجيل (الصفحة الرئيسية "/" تصل لـ root() فتُوجّه إلى /pricing)
     open_routes = [
         "/",
@@ -737,6 +774,18 @@ def require_login():
 
     # إذا ما مسجّل دخول
     if "user_id" not in session:
+        # #region agent log
+        try:
+            _debug_log_app(
+                "run1",
+                "H1",
+                "app.require_login:redirect_login",
+                "no user_id in session -> redirect /login",
+                {"path": request.path},
+            )
+        except Exception:
+            pass
+        # #endregion
         return redirect("/login")
 
     # التحقق من صلاحية الاشتراك (SaaS)
