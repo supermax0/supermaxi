@@ -34,6 +34,23 @@ from utils.cash_calculations import calculate_cash_balance
 
 index_bp = Blueprint("index", __name__)
 
+# #region agent log
+def _debug_log(session_id: str, hypothesis_id: str, location: str, message: str, data: dict):
+    import os
+    try:
+        from flask import current_app
+        root = getattr(current_app, "root_path", None) if current_app else None
+        if not root:
+            root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        path = os.path.join(root, "debug-180817.log")
+        import json as _json
+        payload = {"sessionId": session_id, "hypothesisId": hypothesis_id, "location": location, "message": message, "data": data, "timestamp": __import__("time").time() * 1000}
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(_json.dumps(payload, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+# #endregion
+
 # خطط الاشتراك من قاعدة البيانات (للصفحة الرئيسية والتسجيل) — fallback إذا كانت الجداول فارغة
 FALLBACK_PLANS = {
     "basic": {"key": "basic", "name": "الخطة الأساسية", "price_monthly": 25000, "price_yearly": 250000},
@@ -96,16 +113,27 @@ def _increment_landing_visits():
 # =================================================
 @index_bp.route("/")
 def index():
+    # #region agent log
+    _debug_log("180817", "H4", "index.index:entry", "index /", {"user_id_in_session": "user_id" in session, "session_keys": list(session.keys())})
+    # #endregion
     # إذا لم يكن مسجل دخول، عرض صفحة الهبوط (landing) التي أصبح اسمها index.html
     if "user_id" not in session:
         _increment_landing_visits()
         landing_plans = get_public_plans() or FALLBACK_PLANS
+        # #region agent log
+        _debug_log("180817", "H4", "index.index:serve_landing", "serving landing", {})
+        # #endregion
         return render_template("index.html", landing_plans=landing_plans)
     
     # إذا كان مسجل دخول (آدمن أو كاشير)
     if session.get("role") == "cashier":
+        # #region agent log
+        _debug_log("180817", "H4", "index.index:serve_dash_cashier", "serving dashboard cashier", {})
+        # #endregion
         return render_template("dashbord.html", is_cashier=True, show_data=False)
-        
+    # #region agent log
+    _debug_log("180817", "H4", "index.index:serve_dash_admin", "serving dashboard admin", {})
+    # #endregion
     return render_template(
         "dashbord.html",
         employee_name=session.get("name", "")
@@ -277,9 +305,16 @@ def login():
     from werkzeug.security import check_password_hash
     
     if request.method == "GET":
+        # #region agent log
+        _debug_log("180817", "H3", "index.login:GET", "login GET", {"user_id_in_session": "user_id" in session, "session_keys": list(session.keys())})
+        # #endregion
         if "user_id" in session:
             # توجيه تلقائي إذا كان مسجل دخول
-            return redirect("/" if session.get("role") == "admin" else "/pos")
+            to = "/" if session.get("role") == "admin" else "/pos"
+            # #region agent log
+            _debug_log("180817", "H3", "index.login:GET_redirect", "redirecting logged-in user", {"target": to})
+            # #endregion
+            return redirect(to)
         return render_template("login.html")
 
     # POST: التحقق من البيانات
@@ -374,6 +409,9 @@ def login_tenant(tenant_slug):
 @index_bp.route("/logout")
 def logout():
     from flask import current_app, make_response
+    # #region agent log
+    _debug_log("180817", "H1", "index.logout:entry", "logout called", {"path": request.path, "session_keys_before": list(session.keys())})
+    # #endregion
     tenant_slug = session.get("tenant_slug")
     session.clear()
     target = f"/login?tenant={tenant_slug}" if tenant_slug else "/login"
@@ -381,12 +419,18 @@ def logout():
     # حذف كوكي الجلسة من المتصفح حتى لا يبقى أثر ويُعاد توجيهك للوحة التحكم
     cookie_name = current_app.config.get("SESSION_COOKIE_NAME", "session")
     cookie_domain = current_app.config.get("SESSION_COOKIE_DOMAIN") or None
+    # #region agent log
+    _debug_log("180817", "H2", "index.logout:delete_cookie", "cookie params", {"cookie_name": cookie_name, "cookie_domain": cookie_domain, "request_has_session_cookie": cookie_name in request.cookies})
+    # #endregion
     response.delete_cookie(
         cookie_name,
         path="/",
         domain=cookie_domain,
         secure=current_app.config.get("SESSION_COOKIE_SECURE", False),
     )
+    # #region agent log
+    _debug_log("180817", "H5", "index.logout:return", "returning redirect", {"target": target})
+    # #endregion
     return response
 
 
