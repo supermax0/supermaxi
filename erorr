@@ -1,29 +1,57 @@
-Act as a senior UI architect.
+You are a senior Python DevOps engineer.
 
-Refactor my existing RTL Flask dashboard layout to implement a fully responsive sidebar system.
+Analyze the entire Flask project and automatically fix all issues preventing it from running correctly on a Linux production server with:
 
-Constraints:
-- Must support Arabic RTL
-- Must not modify backend or Flask routes
-- Must preserve Jinja template blocks
-- Must maintain existing styling theme (dark glass UI)
-- Must avoid layout overflow issues on iPhone Safari
+- Python 3.12
+- Gunicorn
+- Nginx reverse proxy
+- virtual environment (venv)
+- WSGI entry point
 
-Technical Goals:
-- Sidebar fixed right on desktop
-- Sidebar off-canvas on mobile
-- Use transform-based sliding
-- GPU-accelerated animation
-- Add overlay layer with fade-in
-- Lock body scroll on open
-- Handle edge cases like fast tapping
-- Optimize z-index layering
-- Avoid position: absolute hacks
+Perform the following tasks across the codebase:
 
-Return:
-- Updated base.html structure
-- CSS (grouped and commented)
-- JS (clean and modular)
-- Short technical explanation
+1. Detect Windows-specific paths such as:
+   venv/Scripts/python.exe
+   and convert them to Linux paths:
+   venv/bin/python
 
-Output production-ready code only.
+2. Ensure the project runs via WSGI:
+   gunicorn wsgi:app
+
+3. Verify that wsgi.py contains a valid Flask app import such as:
+   from app import app
+
+4. Ensure the Flask application object is named `app`.
+
+5. Fix any incorrect subprocess calls referencing Windows executables.
+
+6. Remove unnecessary runtime launchers like start_flask.py if they conflict with WSGI execution.
+
+7. Ensure the project can run using:
+   gunicorn -w 3 -b 127.0.0.1:8000 wsgi:app
+
+8. Validate imports for all modules:
+   routes
+   services
+   tenants
+   telegram_bot
+   utils
+
+9. Fix broken relative imports if necessary.
+
+10. Ensure the application does not crash on startup due to missing environment variables. If variables are missing, provide safe defaults.
+
+11. Ensure database initialization does not run destructive migrations automatically.
+
+12. Add a minimal startup check in wsgi.py so the app loads without crashing.
+
+13. Ensure no blocking code runs during module import (such as starting bots or background processes).
+
+14. Convert any Windows-specific subprocess usage to cross-platform Python code.
+
+15. Ensure the project structure supports production execution.
+
+Finally output:
+- all modified files
+- explanations of fixes
+- the final command required to start the server.
