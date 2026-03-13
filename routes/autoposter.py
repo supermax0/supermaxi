@@ -761,24 +761,23 @@ def api_posts_create():
             video_url=video_url_abs,
             post_type=post_type,
         )
-        if errors and not published:
-            # جميع الصفحات فشلت
-            joined_errors = "; ".join(e.get("error", "") for e in errors)
-            return jsonify({"error": joined_errors or "فشل النشر لكل الصفحات", "results": {"published": published, "errors": errors}}), 500
+        # لا نعيد 500 هنا؛ حتى لو فشلت كل الصفحات نرجع 200 مع success=False
+        all_failed = bool(errors and not published)
 
         # إشعار مختصر بالصفحات التي نُشر عليها
         published_names = [p.get("page_name") for p in published if p.get("page_name")]
         if published_names:
             _add_notification("تم نشر المنشور", f"نُشر على: {', '.join(published_names)}")
+
         return jsonify({
-            "success": True,
+            "success": not all_failed,
             "published": published_names,
             "errors": errors if errors else None,
             "results": {
                 "published": published,
                 "errors": errors,
             },
-        })
+        }), 200
     except Exception as e:
         current_app.logger.exception("api_posts_create failed: %s", e)
         return jsonify({

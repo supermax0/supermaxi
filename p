@@ -1,205 +1,116 @@
-Create a **professional video upload system** for a Flask-based web application (Autoposter module).
-The system must support large video uploads, be optimized for Nginx serving, and provide a modern UI.
+You are a senior Python backend engineer specializing in Flask, SQLAlchemy, and production debugging.
 
-## Backend Requirements (Python Flask)
+I have a Flask-based application called Finora with an Autoposter system. The endpoint:
 
-Build a Flask module with the following capabilities:
+POST /autoposter/api/posts
 
-1. **Upload API**
-   Endpoint:
-   POST `/autoposter/api/upload`
+sometimes returns HTTP 500 errors. The frontend successfully uploads media (video/image), but the backend fails when inserting the post into the database or processing the request.
 
-Features:
+System details:
 
-* Accept video uploads using `multipart/form-data`.
-* Supported formats: mp4, mov, webm.
-* Maximum upload size: 2GB.
-* Validate file type and size.
-* Generate a unique filename using UUID.
-* Save videos to:
+- Backend: Python Flask
+- Server: Ubuntu VPS
+- App server: Gunicorn
+- Reverse proxy: Nginx
+- Database: SQLite (multi-tenant)
+- ORM: SQLAlchemy
+- Media uploads: images and videos
+- Project path:
+  /var/www/finora/supermaxi
+- Tenants database folder:
+  /var/www/finora/supermaxi/tenants/
+- Upload folders:
+  uploads/videos
+  uploads/images
 
-```
-/var/www/finora/uploads/videos/
-```
+Tables include:
+autoposter_posts
+autoposter_templates
+autoposter_notifications
+autoposter_facebook_pages
 
-Example response JSON:
+Common errors include:
 
-```json
-{
-  "ok": true,
-  "type": "video",
-  "url": "/uploads/videos/<filename>.mp4",
-  "size_mb": 4.51,
-  "thumbnail_url": "/uploads/thumbnails/<filename>.jpg"
-}
-```
+- SQLAlchemy IntegrityError
+- NOT NULL constraint failed
+- Invalid media upload
+- Video upload works but database insertion fails
+- Missing or None values in request.form
+- Missing directories for uploads
+- Gunicorn timeout or Nginx upload limits
 
-2. **Video Processing**
+Your task:
 
-After upload:
+1. Design a robust Flask endpoint implementation for:
 
-* Convert `.mov` → `.mp4` automatically using FFmpeg.
-* Generate a thumbnail image at 3 seconds.
-* Extract metadata:
+   def api_posts_create():
 
-  * duration
-  * width
-  * height
+2. Requirements for the implementation:
 
-Example command:
+   - Accept form-data with:
+        page_id
+        page_name
+        content
+        image
+        video
+        scheduled_at
+   - Handle missing fields safely
+   - Prevent database NOT NULL errors
+   - Save uploaded files securely
+   - Support scheduled posts
+   - Return clear JSON responses
+   - Log errors properly
+   - Avoid crashing with HTTP 500
 
-```
-ffmpeg -i input.mov -ss 00:00:03 -vframes 1 thumbnail.jpg
-```
+3. Implement safe file upload:
 
-3. **Security**
+   - use werkzeug.secure_filename
+   - create upload folders if missing
+   - validate file extensions
+   - generate unique filenames
+   - return relative media URLs
 
-Implement:
+4. Implement validation:
 
-* file extension validation
-* MIME validation
-* size limits
-* path sanitization
-* rate limiting
+   - verify allowed extensions
+   - verify scheduled datetime
+   - prevent empty inserts
 
-4. **Error Handling**
+5. Database insertion:
 
-Return structured errors:
+   - insert into AutoposterPost model
+   - ensure nullable-safe values
+   - handle SQLAlchemy exceptions
 
-```json
-{
-  "ok": false,
-  "error_code": "INVALID_FORMAT",
-  "message": "Only MP4, MOV, WEBM are supported."
-}
-```
+6. Add structured error handling:
 
----
+   try/except blocks
+   logger.exception
+   meaningful JSON error responses
 
-## Frontend Requirements (HTML + CSS + JS)
+7. Ensure compatibility with SQLite multi-tenant setup.
 
-Create a **modern drag-and-drop uploader UI**.
+8. Provide production-ready code including:
 
-Features:
+   - full Flask route
+   - helper functions
+   - safe media saving
+   - logging
+   - error handling
 
-* Drag and drop upload area
-* Video preview
-* Upload progress bar
-* Cancel upload
-* Error messages
-* Mobile responsive design
+9. Also include optional improvements:
 
-Example UI structure:
+   - background queue support
+   - retry logic
+   - media compression with ffmpeg
+   - rate limit protection
 
-```
-Upload Area
-Progress Bar
-Preview Player
-Upload Button
-```
+Output format:
 
----
+1) Full Python code for api_posts_create
+2) helper functions
+3) example SQLAlchemy model (AutoposterPost)
+4) explanation of how it prevents IntegrityError
+5) recommended production improvements
 
-## JavaScript Upload Logic
-
-Implement:
-
-* Fetch API upload
-* Real-time progress
-* Drag & drop events
-* File validation before upload
-
-Example:
-
-```javascript
-const formData = new FormData();
-formData.append("video", file);
-
-fetch("/autoposter/api/upload", {
-    method: "POST",
-    body: formData
-});
-```
-
----
-
-## Nginx Integration
-
-Configure Nginx to serve uploaded videos directly:
-
-```
-location /uploads/ {
-    alias /var/www/finora/uploads/;
-}
-```
-
-Benefits:
-
-* reduces Flask load
-* faster video streaming
-* supports Facebook crawler
-
----
-
-## Video Player
-
-Include a video preview component:
-
-```html
-<video controls width="100%">
-  <source src="/uploads/videos/sample.mp4" type="video/mp4">
-</video>
-```
-
----
-
-## Advanced Features
-
-Implement:
-
-* chunk upload for files >500MB
-* resume upload
-* upload queue
-* parallel uploads
-* automatic retry on failure
-* thumbnail preview
-
----
-
-## Folder Structure
-
-```
-autoposter/
- ├─ api/
- │   └─ upload.py
- ├─ services/
- │   └─ video_processor.py
- ├─ static/
- │   └─ uploader.js
- ├─ templates/
- │   └─ upload.html
-```
-
----
-
-## Performance Goals
-
-* Upload up to **2GB videos**
-* Minimal Flask CPU usage
-* Nginx serves videos directly
-* Compatible with **Facebook autoposting**
-
----
-
-## Output
-
-Provide:
-
-* Flask API code
-* HTML uploader page
-* CSS styling
-* JavaScript uploader
-* FFmpeg integration
-* Nginx configuration
-* Folder structure
-* example requests and responses
+Make the implementation secure, clean, and production-ready.
