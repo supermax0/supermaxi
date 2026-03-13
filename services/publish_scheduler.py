@@ -47,6 +47,19 @@ class FacebookPageChannel:
         media_url = (job.media_url or "").strip() or None
         media_type = (job.media_type or "").strip() or None
 
+        # فيسبوك يحتاج رابط وسائط مطلقاً وقابلاً للوصول من الإنترنت
+        if media_url and media_url.startswith("/"):
+            try:
+                base_url = current_app.config.get("PUBLISH_BASE_URL") or current_app.config.get("SERVER_NAME")
+                if base_url:
+                    if not base_url.startswith("http"):
+                        base_url = "https://" + base_url.rstrip("/")
+                    else:
+                        base_url = base_url.rstrip("/")
+                    media_url = base_url + media_url
+            except Exception:
+                pass
+
         base = f"https://graph.facebook.com/v19.0/{page_id}"
         params = {"access_token": token}
         data = {}

@@ -450,6 +450,14 @@ def create_jobs():
     media_type = (data.get("media_type") or "").strip() or None
     channel_ids = data.get("channel_ids") or []
 
+    # فيسبوك وغيره يحتاجون رابطاً عاماً مطلقاً لتحميل الوسائط
+    if media_url and media_url.startswith("/"):
+        try:
+            base = request.host_url.rstrip("/")
+            media_url = base + media_url
+        except Exception:
+            pass
+
     if not isinstance(channel_ids, list):
         return (
             jsonify(
