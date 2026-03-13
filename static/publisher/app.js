@@ -4,6 +4,7 @@
   const API_BASE = (window.PUBLISHER_API_BASE || '/publisher').replace(/\/+$/, '');
 
   const channelsList = document.getElementById('channelsList');
+  const fbPagesList = document.getElementById('fbPagesList');
   const contentInput = document.getElementById('contentInput');
   const mediaDrop = document.getElementById('mediaDrop');
   const mediaInput = document.getElementById('mediaInput');
@@ -14,6 +15,8 @@
   const jobsTable = document.getElementById('jobsTable');
   const refreshJobsBtn = document.getElementById('refreshJobsBtn');
   const toastContainer = document.getElementById('toastContainer');
+  const connectFbBtn = document.getElementById('connectFbBtn');
+  const openFbSettingsBtn = document.getElementById('openFbSettingsBtn');
 
   let selectedChannels = new Set();
   let selectedFile = null;
@@ -49,6 +52,29 @@
       return null;
     }
     return res;
+  }
+
+  async function loadFbPages() {
+    if (!fbPagesList) return;
+    fbPagesList.innerHTML = '<div style="padding:4px 0;">جاري تحميل الصفحات ...</div>';
+    const res = await fetch('/autoposter/api/pages', { credentials: 'include' });
+    if (!res || !res.ok) {
+      fbPagesList.innerHTML = '<div style="padding:4px 0;">فشل تحميل الصفحات.</div>';
+      return;
+    }
+    const data = await res.json().catch(() => ({}));
+    const pages = data.pages || [];
+    if (!pages.length) {
+      fbPagesList.innerHTML = '<div style="padding:4px 0;">لا توجد صفحات متصلة بعد.</div>';
+      return;
+    }
+    fbPagesList.innerHTML = '';
+    pages.forEach(p => {
+      const row = document.createElement('div');
+      row.style.padding = '4px 0';
+      row.textContent = p.name || p.id;
+      fbPagesList.appendChild(row);
+    });
   }
 
   function renderChannels(channels) {
@@ -213,7 +239,30 @@
     refreshJobsBtn.addEventListener('click', loadJobs);
   }
 
+  if (connectFbBtn) {
+    connectFbBtn.addEventListener('click', async () => {
+      try {
+        const res = await fetch('/autoposter/api/facebook/connect', { credentials: 'include' });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.url) {
+          window.location.href = data.url;
+        } else {
+          toast(data.error || 'فشل إنشاء رابط ربط فيسبوك', 'error');
+        }
+      } catch (e) {
+        toast('فشل الاتصال بخادم فيسبوك عبر النظام.', 'error');
+      }
+    });
+  }
+
+  if (openFbSettingsBtn) {
+    openFbSettingsBtn.addEventListener('click', () => {
+      window.location.href = (window.AUTOPOSTER_LOGIN_URL || '/settings') + '#autoposter';
+    });
+  }
+
   loadChannels();
   loadJobs();
+  loadFbPages();
 })();
 

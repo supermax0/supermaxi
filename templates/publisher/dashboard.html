@@ -236,7 +236,25 @@
 </head>
 <body>
   <div class="publisher-shell">
-    <div class="publisher-grid">
+    <div style="display:grid;grid-template-columns:260px minmax(0,1fr);gap:16px;">
+      <aside class="card" style="height:max-content;position:sticky;top:16px;">
+        <header class="card-header">
+          <div>
+            <div class="card-title">قنوات فيسبوك</div>
+            <div class="card-subtitle">إدارة وربط الصفحات المتاحة للنشر.</div>
+          </div>
+        </header>
+        <div id="fbPagesList" style="font-size:0.82rem;color:#9ca3af;max-height:220px;overflow:auto;">
+          <div style="padding:4px 0;">جاري تحميل الصفحات ...</div>
+        </div>
+        <button type="button" id="connectFbBtn" class="btn-primary" style="margin-top:10px;width:100%;justify-content:center;">
+          ربط فيسبوك
+        </button>
+        <button type="button" id="openFbSettingsBtn" class="btn-ghost" style="margin-top:6px;width:100%;text-align:center;">
+          إعدادات تطبيق فيسبوك (App ID / Secret)
+        </button>
+      </aside>
+
       <section class="card">
         <header class="card-header">
           <div>
