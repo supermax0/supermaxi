@@ -47,6 +47,13 @@ class FacebookPageChannel:
         media_url = (job.media_url or "").strip() or None
         media_type = (job.media_type or "").strip() or None
 
+        if media_url and not media_type:
+            low = media_url.lower()
+            if any(low.endswith(x) or x in low for x in (".mp4", ".webm", ".mov", ".avi", ".mkv", "video")):
+                media_type = "video"
+            elif any(low.endswith(x) or x in low for x in (".jpg", ".jpeg", ".png", ".gif", ".webp", "image")):
+                media_type = "image"
+
         # فيسبوك يحتاج رابط وسائط مطلقاً وقابلاً للوصول من الإنترنت
         if media_url and media_url.startswith("/"):
             try:
@@ -72,6 +79,7 @@ class FacebookPageChannel:
                 data["caption"] = message
         elif media_url and media_type == "video":
             endpoint = base + "/videos"
+            params["file_url"] = media_url
             data = {"file_url": media_url}
             if message:
                 data["description"] = message
@@ -82,8 +90,9 @@ class FacebookPageChannel:
             if media_url and media_type in (None, "", "link"):
                 data["link"] = media_url
 
+        timeout = 120 if media_type == "video" else 60
         try:
-            resp = requests.post(endpoint, params=params, data=data, timeout=60)
+            resp = requests.post(endpoint, params=params, data=data, timeout=timeout)
         except Exception as exc:
             return PublishResult(
                 success=False,

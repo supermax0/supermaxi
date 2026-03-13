@@ -450,11 +450,19 @@ def create_jobs():
     media_type = (data.get("media_type") or "").strip() or None
     channel_ids = data.get("channel_ids") or []
 
-    # فيسبوك وغيره يحتاجون رابطاً عاماً مطلقاً لتحميل الوسائط
+    if media_url and not media_type:
+        low = media_url.lower()
+        if any(low.endswith(x) or x in low for x in (".mp4", ".webm", ".mov", ".avi", ".mkv", "video")):
+            media_type = "video"
+        elif any(low.endswith(x) or x in low for x in (".jpg", ".jpeg", ".png", ".gif", ".webp", "image")):
+            media_type = "image"
+
+    # فيسبوك وغيره يحتاجون رابطاً عاماً مطلقاً لتحميل الوسائط (مع مسار التطبيق إن وُجد)
     if media_url and media_url.startswith("/"):
         try:
-            base = request.host_url.rstrip("/")
-            media_url = base + media_url
+            base = (request.url_root or request.host_url or "").rstrip("/")
+            if base:
+                media_url = base + media_url
         except Exception:
             pass
 
