@@ -169,6 +169,31 @@ class FinoraDeployStudio(tk.Tk):
         self.fix_all_btn = ttk.Button(btns, text="Fix All", width=18, command=self.on_fix_all_clicked)
         self.fix_all_btn.pack(side=tk.LEFT, padx=4, pady=4)
 
+        # Quick maintenance / schedulers
+        self.fix_nginx_btn = ttk.Button(
+            btns,
+            text="Fix Nginx / Proxy",
+            width=18,
+            command=self.on_fix_nginx_proxy_clicked,
+        )
+        self.fix_nginx_btn.pack(side=tk.LEFT, padx=4, pady=4)
+
+        self.run_autoposter_btn = ttk.Button(
+            btns,
+            text="Run Autoposter Now",
+            width=18,
+            command=self.on_run_autoposter_jobs_clicked,
+        )
+        self.run_autoposter_btn.pack(side=tk.LEFT, padx=4, pady=4)
+
+        self.run_migrations_btn = ttk.Button(
+            btns,
+            text="Run DB create_all",
+            width=18,
+            command=self.on_run_db_create_all_clicked,
+        )
+        self.run_migrations_btn.pack(side=tk.LEFT, padx=4, pady=4)
+
         # Self Healing Monitor control
         self.start_monitor_btn = ttk.Button(
             btns, text="Start Monitor", width=18, command=self.on_start_monitor_clicked
@@ -836,6 +861,127 @@ echo "=============================="
                 self.set_status("Logs fetched.")
             else:
                 self.set_status("Failed to fetch logs (see log).")
+        finally:
+            self.set_busy(False)
+
+    def on_fix_nginx_proxy_clicked(self) -> None:
+        """زر سريع لمحاولة إصلاح إعدادات Nginx / proxy للمشروع."""
+        self.save_config()
+        thread = threading.Thread(target=self._fix_nginx_proxy_thread, daemon=True)
+        self.set_busy(True)
+        thread.start()
+
+    def _fix_nginx_proxy_thread(self) -> None:
+        try:
+            self.set_status("Fixing Nginx proxy configuration…")
+            server_path = self.server_path_var.get().strip()
+            if not server_path:
+                self.append_log("[ERROR] Server project path is empty.\n")
+                self.set_status("Fix Nginx failed (server path empty).")
+                return
+
+            nginx_service = self.nginx_service_var.get().strip() or "nginx"
+
+            script = f"""
+cd {server_path} || {{ echo '[ERROR] Cannot cd to {server_path}'; exit 1; }}
+
+CONF="/etc/nginx/sites-available/finora"
+if [ ! -f "$CONF" ]; then
+  echo "[ERROR] Nginx config $CONF not found."
+else
+  echo "=== Current finora.conf (head) ==="
+  head -n 40 "$CONF" || true
+fi
+
+echo ""
+echo "=== Testing Nginx configuration ==="
+nginx -t || exit 1
+
+echo ""
+echo "=== Reloading Nginx service ({nginx_service}) ==="
+systemctl reload {nginx_service}
+"""
+            rc = self.run_ssh_script(script)
+            if rc == 0:
+                self.append_log("[INFO] Nginx proxy check completed.\n")
+                self.set_status("Nginx proxy check completed (see log).")
+            else:
+                self.set_status("Fix Nginx finished with errors (see log).")
+        finally:
+            self.set_busy(False)
+
+    def on_run_autoposter_jobs_clicked(self) -> None:
+        """تشغيل مهام Auto-poster المجدولة يدوياً على السيرفر."""
+        self.save_config()
+        thread = threading.Thread(target=self._run_autoposter_jobs_thread, daemon=True)
+        self.set_busy(True)
+        thread.start()
+
+    def _run_autoposter_jobs_thread(self) -> None:
+        try:
+            self.set_status("Running Autoposter jobs on server…")
+            server_path = self.server_path_var.get().strip()
+            if not server_path:
+                self.append_log("[ERROR] Server project path is empty.\n")
+                self.set_status("Autoposter jobs failed (server path empty).")
+                return
+
+            script = f"""
+cd {server_path} || {{ echo '[ERROR] Cannot cd to {server_path}'; exit 1; }}
+if [ -d "venv" ]; then
+  source venv/bin/activate
+fi
+python - << 'PY'
+from app import app
+from routes.autoposter import run_scheduled_posts_for_all_tenants
+with app.app_context():
+    run_scheduled_posts_for_all_tenants(app)
+    print("Autoposter scheduled posts processed successfully.")
+PY
+"""
+            rc = self.run_ssh_script(script)
+            if rc == 0:
+                self.append_log("[INFO] Autoposter jobs executed successfully.\n")
+                self.set_status("Autoposter jobs completed.")
+            else:
+                self.set_status("Autoposter jobs finished with errors (see log).")
+        finally:
+            self.set_busy(False)
+
+    def on_run_db_create_all_clicked(self) -> None:
+        """تشغيل db.create_all() على السيرفر داخل app context."""
+        self.save_config()
+        thread = threading.Thread(target=self._run_db_create_all_thread, daemon=True)
+        self.set_busy(True)
+        thread.start()
+
+    def _run_db_create_all_thread(self) -> None:
+        try:
+            self.set_status("Running db.create_all() on server…")
+            server_path = self.server_path_var.get().strip()
+            if not server_path:
+                self.append_log("[ERROR] Server project path is empty.\n")
+                self.set_status("DB create_all failed (server path empty).")
+                return
+
+            script = f"""
+cd {server_path} || {{ echo '[ERROR] Cannot cd to {server_path}'; exit 1; }}
+if [ -d "venv" ]; then
+  source venv/bin/activate
+fi
+python - << 'PY'
+from app import app, db
+with app.app_context():
+    db.create_all()
+    print("db.create_all() completed successfully.")
+PY
+"""
+            rc = self.run_ssh_script(script)
+            if rc == 0:
+                self.append_log("[INFO] db.create_all() executed successfully.\n")
+                self.set_status("DB create_all completed.")
+            else:
+                self.set_status("DB create_all finished with errors (see log).")
         finally:
             self.set_busy(False)
 
