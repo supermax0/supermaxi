@@ -11,6 +11,7 @@ from models.publish_channel import PublishChannel
 from models.publish_job import PublishJob
 from models.publish_config import PublishConfig
 from services.publish_service import create_jobs_for_channels, get_channels_for_tenant
+from services.publish_scheduler import process_pending_jobs_for_tenant
 from services.media_service import save_uploaded_file
 
 
@@ -473,11 +474,23 @@ def create_jobs():
     except ValueError as e:
         return jsonify({"success": False, "error": str(e)}), 400
 
+    # إذا لم يُحدَّد وقت جدولة صريح، ننشر مباشرةً الآن (نفس tenant)
+    ran_now = False
+    if not scheduled_raw:
+        try:
+            processed = process_pending_jobs_for_tenant(
+                tenant_slug=tenant_slug, limit=len(jobs)
+            )
+            ran_now = processed > 0
+        except Exception:
+            ran_now = False
+
     return jsonify(
         {
             "success": True,
             "scheduled_at": scheduled_at.isoformat(),
             "job_ids": [j.id for j in jobs],
+            "ran_now": ran_now,
         }
     )
 
