@@ -1,7 +1,9 @@
 from datetime import datetime
 from typing import Optional
+import json
 
-from flask import Blueprint, jsonify, request, session, g
+import requests
+from flask import Blueprint, jsonify, request, session, g, redirect, url_for
 from sqlalchemy import inspect
 
 from extensions import db
@@ -39,6 +41,14 @@ def _ensure_publish_config_table() -> None:
     tables = inspector.get_table_names()
     if "publish_config" not in tables:
         PublishConfig.__table__.create(bind, checkfirst=True)
+
+
+def _get_facebook_app_config(tenant_slug: str) -> Optional[PublishConfig]:
+    _ensure_publish_config_table()
+    cfg = PublishConfig.query.filter_by(tenant_slug=tenant_slug).first()
+    if not cfg or not cfg.facebook_app_id or not cfg.facebook_app_secret:
+        return None
+    return cfg
 
 
 @publish_api_bp.before_request
@@ -152,6 +162,126 @@ def delete_channel(channel_id: int):
     db.session.delete(ch)
     db.session.commit()
     return jsonify({"success": True})
+
+
+# ============== Facebook Integration (OAuth + Pages) ==============
+
+
+@publish_api_bp.route("/facebook/login-url", methods=["GET"])
+def facebook_login_url():
+    tenant_slug = _get_tenant_slug()
+    if not tenant_slug:
+        return jsonify({"success": False, "error": "NO_TENANT"}), 400
+
+    cfg = _get_facebook_app_config(tenant_slug)
+    if not cfg:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "يرجى إدخال Facebook App ID و App Secret في صفحة الإعدادات أولاً.",
+                }
+            ),
+            400,
+        )
+
+    redirect_uri = request.host_url.rstrip("/") + url_for(
+        "publish_api.facebook_callback"
+    )
+    params = {
+        "client_id": cfg.facebook_app_id,
+        "redirect_uri": redirect_uri,
+        "scope": "pages_show_list,pages_read_engagement,pages_manage_posts",
+        "response_type": "code",
+    }
+    base_url = "https://www.facebook.com/v19.0/dialog/oauth"
+    query = "&".join(f"{k}={requests.utils.quote(str(v))}" for k, v in params.items())
+    login_url = f"{base_url}?{query}"
+
+    return jsonify({"success": True, "login_url": login_url})
+
+
+@publish_api_bp.route("/facebook/callback", methods=["GET"])
+def facebook_callback():
+    tenant_slug = _get_tenant_slug()
+    if not tenant_slug:
+        # لا توجد جلسة، نعيد إلى صفحة الدخول العامة
+        return redirect("/login")
+
+    cfg = _get_facebook_app_config(tenant_slug)
+    if not cfg:
+        return redirect(url_for("publish_ui.settings"))
+
+    code = request.args.get("code")
+    error = request.args.get("error")
+    if error or not code:
+        return redirect(url_for("publish_ui.dashboard"))
+
+    redirect_uri = request.host_url.rstrip("/") + url_for(
+        "publish_api.facebook_callback"
+    )
+
+    # 1) تبديل code بـ user access token
+    token_url = "https://graph.facebook.com/v19.0/oauth/access_token"
+    try:
+        resp = requests.get(
+            token_url,
+            params={
+                "client_id": cfg.facebook_app_id,
+                "client_secret": cfg.facebook_app_secret,
+                "redirect_uri": redirect_uri,
+                "code": code,
+            },
+            timeout=10,
+        )
+        data = resp.json()
+        access_token = data.get("access_token")
+    except Exception:
+        access_token = None
+
+    if not access_token:
+        return redirect(url_for("publish_ui.dashboard"))
+
+    # 2) جلب صفحات المستخدم
+    pages_url = "https://graph.facebook.com/v19.0/me/accounts"
+    pages = []
+    try:
+        resp = requests.get(
+            pages_url,
+            params={"access_token": access_token},
+            timeout=10,
+        )
+        data = resp.json()
+        pages = data.get("data") or []
+    except Exception:
+        pages = []
+
+    # 3) تخزين الصفحات كقنوات publish_channels
+    for page in pages:
+        page_id = page.get("id")
+        name = page.get("name") or "Facebook Page"
+        page_token = page.get("access_token")
+        if not page_id:
+            continue
+
+        ch = PublishChannel.query.filter_by(
+            tenant_slug=tenant_slug, type="facebook_page", external_id=page_id
+        ).first()
+        if not ch:
+            ch = PublishChannel(
+                tenant_slug=tenant_slug,
+                type="facebook_page",
+                name=name,
+                external_id=page_id,
+            )
+            db.session.add(ch)
+
+        creds = {"page_access_token": page_token, "source": "facebook_oauth"}
+        ch.credentials = json.dumps(creds, ensure_ascii=False)
+
+    db.session.commit()
+
+    return redirect(url_for("publish_ui.dashboard"))
 
 
 # ============== Jobs ==============

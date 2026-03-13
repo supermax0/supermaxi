@@ -6,6 +6,7 @@
   const channelsList = document.getElementById('channelsList');
   const jobsTable = document.getElementById('jobsTable');
   const addChannelBtn = document.getElementById('addChannelBtn');
+  const fbConnectBtn = document.getElementById('fbConnectBtn');
   const refreshJobsBtn = document.getElementById('refreshJobsBtn');
   const createJobBtn = document.getElementById('createJobBtn');
   const clearJobBtn = document.getElementById('clearJobBtn');
@@ -189,6 +190,16 @@
     loadChannels();
   }
 
+  async function connectFacebook() {
+    const res = await apiGet('/facebook/login-url');
+    const data = await res?.json().catch(() => ({}));
+    if (!res || !res.ok || !data?.success || !data.login_url) {
+      toast(data?.error || 'فشل تجهيز تسجيل الدخول إلى فيسبوك.', 'error');
+      return;
+    }
+    window.location.href = data.login_url;
+  }
+
   async function createJob() {
     if (!selectedChannelIds.size) {
       toast('اختر قناة واحدة على الأقل.', 'error');
@@ -257,6 +268,10 @@
 
   if (addChannelBtn) {
     addChannelBtn.addEventListener('click', promptNewChannel);
+  }
+
+  if (fbConnectBtn) {
+    fbConnectBtn.addEventListener('click', connectFacebook);
   }
 
   if (refreshJobsBtn) {
