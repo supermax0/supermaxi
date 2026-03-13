@@ -1,3 +1,4 @@
+
 from flask import Flask, redirect, session, url_for, request, g, jsonify, render_template, flash
 from flask_login import current_user
 print("=== FINORA APP STARTING - V1.1 (i18n check) ===")
@@ -58,6 +59,7 @@ from routes.delivery_agent import delivery_agent_bp
 from routes.pages import pages_bp
 from routes.invoice_store import invoice_store_bp
 from routes.autoposter import autoposter_bp
+from routes.publisher import publisher_bp
 from telegram_bot import telegram_bp
 from models.ai_agent import AgentWorkflow, AgentExecution
 from social_ai.workflow_engine import execute_workflow
@@ -82,7 +84,6 @@ app.config.from_object(ProductionConfig if _env == "production" else Development
 # i18n / Multi-language Setup
 # =====================================
 import json
-import os
 
 def load_translations():
     translations = {}
@@ -162,13 +163,13 @@ with app.app_context():
         print("Database connection OK.")
     except Exception as e:
         print(f"Database health check: {e}")
-    
+
     # =====================================
     # DB Init: Core Database defaults
     # =====================================
     try:
         from werkzeug.security import generate_password_hash
-        
+
         # 1. Create default SuperAdmin if none exists
         admin = SuperAdmin.query.filter_by(username="supermax").first()
         if not admin:
@@ -181,15 +182,15 @@ with app.app_context():
             print("Created default SuperAdmin account.")
     except Exception as e:
         print(f"Core DB Init note: {e}")
-        
+
     # Legacy migrations for tenants are removed since we use physical DB per tenant now.
-    
+
     # Migration: Add message file columns if needed
     try:
         from sqlalchemy import inspect, text
         inspector = inspect(db.engine)
         message_columns = [col['name'] for col in inspector.get_columns('message')] if 'message' in inspector.get_table_names() else []
-        
+
         if 'message' in inspector.get_table_names():
             if 'file_type' not in message_columns:
                 db.session.execute(text("ALTER TABLE message ADD COLUMN file_type VARCHAR(50)"))
@@ -202,7 +203,7 @@ with app.app_context():
             db.session.commit()
     except Exception as e:
         print(f"Migration note: {e}")
-    
+
     # Migration: Add shipping_company_id to employee if needed
     try:
         from sqlalchemy import inspect, text
@@ -215,7 +216,7 @@ with app.app_context():
                 print("Added shipping_company_id column to employee table.")
     except Exception as e:
         print(f"Migration note (employee shipping_company_id): {e}")
-    
+
     # Migration: Add access_token, username, password to shipping_company if needed
     try:
         from sqlalchemy import inspect, text
@@ -241,7 +242,7 @@ with app.app_context():
             print("Added access_token, username, password columns to shipping_company table.")
     except Exception as e:
         print(f"Migration note (shipping_company): {e}")
-    
+
     # Migration: Create shipping_report table if needed
     try:
         from sqlalchemy import inspect, text
@@ -279,7 +280,7 @@ with app.app_context():
             print("Shipping report table already exists.")
     except Exception as e:
         print(f"Migration note (shipping_report): {e}")
-    
+
     # Migration: Add permissions columns to employee table if needed
     try:
         from sqlalchemy import inspect, text
@@ -308,7 +309,7 @@ with app.app_context():
             print("Added permission columns to employee table.")
     except Exception as e:
         print(f"Migration note (employee permissions): {e}")
-    
+
     # Migration: Add barcode and threshold to product if needed
     try:
         from sqlalchemy import inspect, text
@@ -350,7 +351,7 @@ with app.app_context():
             print("Created delivery_agent table.")
     except Exception as e:
         print(f"Migration note (delivery_agent): {e}")
-    
+
     # Migration: Add username and password to delivery_agent if needed
     try:
         from sqlalchemy import inspect, text
@@ -365,7 +366,7 @@ with app.app_context():
             print("Added username and password columns to delivery_agent table.")
     except Exception as e:
         print(f"Migration note (delivery_agent username/password): {e}")
-    
+
     # Migration: Add delivery_agent_id to invoice if needed
     try:
         from sqlalchemy import inspect, text
@@ -378,7 +379,7 @@ with app.app_context():
                 print("Added delivery_agent_id column to invoice table.")
     except Exception as e:
         print(f"Migration note (invoice delivery_agent_id): {e}")
-    
+
     # Migration: Add page_id and page_name to invoice if needed
     try:
         from sqlalchemy import inspect, text
@@ -393,13 +394,13 @@ with app.app_context():
             print("Added page_id and page_name columns to invoice table.")
     except Exception as e:
         print(f"Migration note (invoice page_id/page_name): {e}")
-    
+
     # Migration: Create system_analytics and system_alert tables if needed
     try:
         from sqlalchemy import inspect, text
         inspector = inspect(db.engine)
         table_names = inspector.get_table_names()
-        
+
         if 'system_analytics' not in table_names:
             with db.engine.connect() as conn:
                 conn.execute(text("""
@@ -422,7 +423,7 @@ with app.app_context():
                 """))
                 conn.commit()
             print("Created system_analytics table.")
-        
+
         if 'system_alert' not in table_names:
             with db.engine.connect() as conn:
                 conn.execute(text("""
@@ -444,13 +445,13 @@ with app.app_context():
             print("Created system_alert table.")
     except Exception as e:
         print(f"Migration note (system tables): {e}")
-    
+
     # Migration: Create assistant_memory table if needed
     try:
         from sqlalchemy import inspect, text
         inspector = inspect(db.engine)
         table_names = inspector.get_table_names()
-        
+
         if 'assistant_memory' not in table_names:
             with db.engine.connect() as conn:
                 conn.execute(text("""
@@ -474,13 +475,13 @@ with app.app_context():
             print("Created assistant_memory table.")
     except Exception as e:
         print(f"Migration note (assistant_memory): {e}")
-    
+
     # Migration: Add scheduled_date to invoice table
     try:
         from sqlalchemy import inspect, text
         inspector = inspect(db.engine)
         columns = [col['name'] for col in inspector.get_columns('invoice')]
-        
+
         if 'scheduled_date' not in columns:
             with db.engine.connect() as conn:
                 conn.execute(text("ALTER TABLE invoice ADD COLUMN scheduled_date DATETIME"))
@@ -488,7 +489,7 @@ with app.app_context():
             print("Added scheduled_date column to invoice table.")
     except Exception as e:
         print(f"Migration note (scheduled_date): {e}")
-    
+
     # Migration: Add visibility columns to page if needed
     try:
         from sqlalchemy import inspect, text
@@ -503,7 +504,7 @@ with app.app_context():
             print("Added visibility columns to page table.")
     except Exception as e:
         print(f"Migration note (page visibility): {e}")
-    
+
     # Migration: Add paid_amount to invoice table
     try:
         from sqlalchemy import inspect, text
@@ -522,7 +523,7 @@ with app.app_context():
         from sqlalchemy import inspect, text
         inspector = inspect(db.engine)
         table_names = inspector.get_table_names()
-        
+
         if 'permissions' not in table_names:
             # Note: We use conn.execute for table creation to ensure it's done before any model queries
             with db.engine.connect() as conn:
@@ -572,7 +573,7 @@ with app.app_context():
         if 'employee' in inspector.get_table_names():
             columns = [col['name'] for col in inspector.get_columns('employee')]
             print(f"Current columns in 'employee': {columns}")
-            
+
             with db.engine.connect() as conn:
                 added = False
                 if 'profile_pic' not in columns:
@@ -587,7 +588,7 @@ with app.app_context():
                     conn.execute(text("ALTER TABLE employee ADD COLUMN theme_preference VARCHAR(20) DEFAULT 'dark'"))
                     added = True
                     print("--> Added 'theme_preference'")
-                
+
                 if added:
                     conn.commit()
                     print("Applied profile migrations to employee table.")
@@ -685,17 +686,17 @@ def inject_global_data():
     try:
         lang_now = session.get('language', 'ar')
         print(f"DEBUG: Session language is '{lang_now}'")
-        
+
         if "user_id" not in session:
             return {**default, "_": translate, "current_lang": lang_now}
-            
+
         employee = db.session.get(Employee, session["user_id"])
         if not employee:
             return {**default, "_": translate, "current_lang": lang_now}
-            
+
         final_lang = employee.language or lang_now
         print(f"DEBUG: Employee lang: {employee.language}, Final lang: {final_lang}")
-        
+
         return {
             "current_employee": employee,
             "can_see_orders": employee.has_permission("view_orders"),
@@ -723,6 +724,44 @@ def inject_global_data():
 # =====================================
 # Login Guard (قبل أي صفحة)
 # =====================================
+
+_OPEN_ROUTES = [
+    "/",
+    "/pos",
+    "/pos/login",
+    "/static",
+    "/pricing",
+    "/signup",
+    "/privacy",
+    "/terms",
+    "/contact",
+    "/payment",
+    "/login",
+    "/payment/success",
+    "/payments/failed",
+    "/payments/mock-gateway",
+    "/payments/simulate",
+    "/upgrade",
+    "/superadmin",
+    "/messages/unread-count",  # واجهة للشارة — تُرجع JSON بدون إعادة توجيه
+    "/api/landing-chat",  # مساعد الذكاء الاصطناعي لصفحة الهبوط
+    "/autoposter/api/facebook/callback",  # OAuth callback من فيسبوك (يُوجّه للتسجيل إن لزم)
+    "/autoposter/ai-agent",  # AI Agent Builder — بدون تسجيل دخول
+    "/telegram",  # بوت تيليجرام: webhook و setup و test — بدون تسجيل (ليستقبل التحديثات من Telegram)
+    "/publisher",  # لوحة النشر الجديدة بدون إجبار تسجيل الدخول من هنا
+]
+
+
+def _is_public_path(path: str) -> bool:
+    """تحقق إن كان المسار لا يحتاج تسجيل دخول (يُستخدم في require_login)."""
+    if path == "/":
+        return True
+    for prefix in _OPEN_ROUTES:
+        if prefix != "/" and path.startswith(prefix):
+            return True
+    return False
+
+
 @app.before_request
 def require_login():
     # #region agent log
@@ -741,34 +780,9 @@ def require_login():
     except Exception:
         pass
     # #endregion
-    # مسارات مسموحة بدون تسجيل (الصفحة الرئيسية "/" تصل لـ root() فتُوجّه إلى /pricing)
-    open_routes = [
-        "/",
-        "/pos",
-        "/pos/login",
-        "/static",
-        "/pricing",
-        "/signup",
-        "/privacy",
-        "/terms",
-        "/contact",
-        "/payment",
-        "/login",
-        "/payment/success",
-        "/payments/failed",
-        "/payments/mock-gateway",
-        "/payments/simulate",
-        "/upgrade",
-        "/superadmin",
-        "/messages/unread-count",  # واجهة للشارة — تُرجع JSON بدون إعادة توجيه
-        "/api/landing-chat",  # مساعد الذكاء الاصطناعي لصفحة الهبوط
-        "/autoposter/api/facebook/callback",  # OAuth callback من فيسبوك (يُوجّه للتسجيل إن لزم)
-        "/autoposter/ai-agent",  # AI Agent Builder — بدون تسجيل دخول
-        "/telegram",  # بوت تيليجرام: webhook و setup و test — بدون تسجيل (ليستقبل التحديثات من Telegram)
-    ]
 
-    # السماح للمسارات المفتوحة: "/" تطابق تامة، الباقي يبدأ بـ المسار
-    if request.path == "/" or any(request.path.startswith(p) for p in open_routes if p != "/"):
+    # مسارات مسموحة بدون تسجيل (الصفحة الرئيسية "/" تصل لـ root() فتُوجّه إلى /pricing)
+    if _is_public_path(request.path or ""):
         return
 
     # إذا ما مسجّل دخول
@@ -792,15 +806,15 @@ def require_login():
         tenant_slug = session.get("tenant_slug")
         if tenant_slug:
             g.tenant = tenant_slug
-            
-            # Since g.tenant is now set, any queries to Tenant by mistake 
+
+            # Since g.tenant is now set, any queries to Tenant by mistake
             # would hit the tenant DB instead of Core DB.
             # To verify their subscription, we temporally unset g.tenant
             g.tenant = None
             from models.core.tenant import Tenant as CoreTenant
             core_tenant = CoreTenant.query.filter_by(slug=tenant_slug).first()
             g.tenant = tenant_slug  # Restore
-            
+
             if not core_tenant or not core_tenant.is_subscription_valid():
                 # إنهاء الجلسة وإرجاعه لصفحة الخطط إذا انتهى الاشتراك
                 session.clear()
@@ -916,6 +930,7 @@ app.register_blueprint(admin_bp)
 app.register_blueprint(invoice_store_bp)
 app.register_blueprint(autoposter_bp)
 app.register_blueprint(telegram_bp)
+app.register_blueprint(publisher_bp)
 
 # =====================================
 # Telegram Webhook (Raw Endpoint)
