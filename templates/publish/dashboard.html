@@ -341,12 +341,44 @@
     </section>
     </div>
   </div>
-  <input id="mediaFile" type="file" accept="image/*,video/*" style="display:none;"
-         onchange="window.__publishOnMediaChange && window.__publishOnMediaChange(this.files);">
+  <input id="mediaFile" type="file" accept="image/*,video/*" style="display:none;">
 </div>
 
 <div id="publishToastContainer" class="toast-container"></div>
 
+<script>
+  (function () {
+    var input = document.getElementById('mediaFile');
+    if (!input) return;
+    function showPreviewOnly(files) {
+      var file = files && files[0];
+      if (!file) return;
+      var type = (file.type || '').toLowerCase();
+      var isVideo = type.indexOf('video/') === 0;
+      var placeholder = document.getElementById('mediaPreviewPlaceholder');
+      var img = document.getElementById('mediaPreviewImg');
+      var video = document.getElementById('mediaPreviewVideo');
+      if (placeholder) placeholder.style.display = 'none';
+      if (img && video) {
+        img.style.display = 'none';
+        video.style.display = 'none';
+        var url = URL.createObjectURL(file);
+        if (isVideo) {
+          video.src = url;
+          video.style.display = 'block';
+        } else {
+          img.src = url;
+          img.style.display = 'block';
+        }
+      }
+    }
+    input.addEventListener('change', function () {
+      var files = this.files;
+      showPreviewOnly(files);
+      if (window.__publishOnMediaChange) window.__publishOnMediaChange(files);
+    });
+  })();
+</script>
 <script>
   window.PUBLISH_API_BASE = "{{ request.script_root or '' }}/publish/api";
   (function () {

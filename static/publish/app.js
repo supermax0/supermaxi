@@ -495,23 +495,13 @@
 
   if (uploadMediaBtn && mediaFileInput) {
     uploadMediaBtn.addEventListener('click', () => {
-      console.log('[publish] upload button clicked');
       mediaFileInput.click();
-    });
-    mediaFileInput.addEventListener('change', () => {
-      const file = mediaFileInput.files && mediaFileInput.files[0];
-      console.log('[publish] file selected', file && file.name, file && file.type, file && file.size);
-      if (file) {
-        showMediaPreviewFromFile(file);
-        uploadMediaFile(file);
-      }
     });
   }
 
-  // جعل الهاندلر متاحاً عالمياً أيضاً لأي استدعاء من الـ HTML (احتياطي)
+  // يُستدعى من السكربت المضمن في الصفحة عند اختيار ملف (معاينة + رفع)
   window.__publishOnMediaChange = function (fileList) {
     const file = fileList && fileList[0];
-    console.log('[publish] __publishOnMediaChange', file && file.name);
     if (file) {
       showMediaPreviewFromFile(file);
       uploadMediaFile(file);
