@@ -22,6 +22,7 @@
   const uploadProgressBar = document.getElementById('uploadProgressBar');
   const uploadProgressLabel = document.getElementById('uploadProgressLabel');
   const mediaPreviewWrapper = document.getElementById('mediaPreviewWrapper');
+  const mediaPreviewPlaceholder = document.getElementById('mediaPreviewPlaceholder');
   const mediaPreviewImg = document.getElementById('mediaPreviewImg');
   const mediaPreviewVideo = document.getElementById('mediaPreviewVideo');
 
@@ -419,7 +420,8 @@
       mediaPreviewVideo.pause();
       mediaPreviewVideo.style.display = 'none';
     }
-    if (mediaPreviewWrapper) mediaPreviewWrapper.style.display = 'none';
+    if (mediaPreviewPlaceholder) mediaPreviewPlaceholder.style.display = '';
+    if (mediaPreviewWrapper) mediaPreviewWrapper.style.display = '';
   }
 
   function showMediaPreviewFromUrl(url, kind) {
@@ -433,6 +435,7 @@
     }
     const k = (kind || '').toLowerCase();
     const isVideo = k === 'video' || /\.(mp4|webm|ogg|mov|avi|mkv)(\?|$)/i.test(url);
+    if (mediaPreviewPlaceholder) mediaPreviewPlaceholder.style.display = 'none';
     if (mediaPreviewImg && mediaPreviewVideo) {
       mediaPreviewImg.style.display = 'none';
       mediaPreviewVideo.style.display = 'none';
@@ -443,7 +446,6 @@
         mediaPreviewImg.src = url;
         mediaPreviewImg.style.display = 'block';
       }
-      if (mediaPreviewWrapper) mediaPreviewWrapper.style.display = 'block';
     }
   }
 
@@ -459,6 +461,7 @@
     previewObjectUrl = URL.createObjectURL(file);
     const type = (file.type || '').toLowerCase();
     const isVideo = type.startsWith('video/');
+    if (mediaPreviewPlaceholder) mediaPreviewPlaceholder.style.display = 'none';
     if (mediaPreviewImg && mediaPreviewVideo) {
       mediaPreviewImg.style.display = 'none';
       mediaPreviewVideo.style.display = 'none';
@@ -469,7 +472,6 @@
         mediaPreviewImg.src = previewObjectUrl;
         mediaPreviewImg.style.display = 'block';
       }
-      if (mediaPreviewWrapper) mediaPreviewWrapper.style.display = 'block';
     }
   }
 

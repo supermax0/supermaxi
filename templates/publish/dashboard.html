@@ -277,9 +277,10 @@
               <div id="uploadProgressBar" style="width:0%;height:100%;background:linear-gradient(90deg,#1d4ed8,#3b82f6);transition:width 0.1s linear;"></div>
             </div>
           </div>
-          <div id="mediaPreviewWrapper" style="display:none;margin-top:10px;border-radius:12px;overflow:hidden;border:1px solid rgba(148,163,184,0.35);background:rgba(15,23,42,0.8);max-width:100%;">
+          <div id="mediaPreviewWrapper" style="margin-top:10px;border-radius:12px;overflow:hidden;border:1px solid rgba(148,163,184,0.35);background:rgba(15,23,42,0.8);max-width:100%;">
             <div style="padding:6px 8px;font-size:0.75rem;color:#94a3b8;">معاينة قبل النشر</div>
-            <div id="mediaPreviewContent" style="max-height:280px;display:flex;align-items:center;justify-content:center;background:#0f172a;">
+            <div id="mediaPreviewContent" style="min-height:120px;max-height:280px;display:flex;align-items:center;justify-content:center;background:#0f172a;">
+              <span id="mediaPreviewPlaceholder" style="color:#64748b;font-size:0.8rem;">ستظهر الصورة أو الفيديو هنا عند اختيار ملف أو إدخال رابط</span>
               <img id="mediaPreviewImg" alt="معاينة" style="max-width:100%;max-height:260px;object-fit:contain;display:none;">
               <video id="mediaPreviewVideo" controls style="max-width:100%;max-height:260px;display:none;"></video>
             </div>
