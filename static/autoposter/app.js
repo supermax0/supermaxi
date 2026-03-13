@@ -1020,38 +1020,18 @@
       });
       const data = await res?.json().catch(() => ({}));
 
-      const results = data?.results || {};
-      const published = Array.isArray(results.published) ? results.published : [];
-      const errors = Array.isArray(results.errors) ? results.errors : [];
-
-      const byPageId = {};
-      published.forEach((p) => { if (p.page_id) byPageId[p.page_id] = { ok: true, data: p }; });
-      errors.forEach((e) => { if (e.page_id) byPageId[e.page_id] = { ok: false, data: e }; });
-
-      let okCount = 0;
-      let errCount = 0;
-      chips.forEach((chip) => {
-        const id = chip.getAttribute('data-id');
-        chip.classList.remove('posting');
-        const entry = id && byPageId[id];
-        if (entry && entry.ok) {
-          chip.classList.add('posted');
-          okCount += 1;
-        } else if (entry && !entry.ok) {
+      if (!res || !res.ok || !data?.success) {
+        toast(data?.error || 'فشل إنشاء مهمة النشر. تحقق من الإعدادات وحاول مرة أخرى.', 'error');
+        chips.forEach((chip) => {
+          chip.classList.remove('posting');
           chip.classList.add('error');
-          errCount += 1;
-        } else {
-          chip.classList.add('error');
-          errCount += 1;
-        }
-      });
-
-      if (errCount && !okCount) {
-        toast(data?.error || 'فشل النشر لكل الصفحات', 'error');
-      } else if (errCount) {
-        toast(`تم النشر على ${okCount} صفحة وفشل في ${errCount} صفحة`, 'warning');
+        });
       } else {
-        toast(`تم النشر على ${okCount} صفحة`, 'success');
+        chips.forEach((chip) => {
+          chip.classList.remove('posting');
+          chip.classList.add('posted');
+        });
+        toast('تم إنشاء مهمة النشر. سيتم التنفيذ في الخلفية خلال لحظات.', 'success');
       }
 
       publishBtn.classList.remove('loading');

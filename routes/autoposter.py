@@ -738,45 +738,32 @@ def api_posts_create():
         image_url_abs = _make_absolute_media_url(image_url)
         video_url_abs = _make_absolute_media_url(video_url)
 
+        # من الآن فصاعداً: لا ننشر مباشرة، بل فقط ننشئ بوستات مجدولة/معلقة
+        # إذا أرسل العميل scheduled_at نستخدمه، وإلا نجعل وقت الجدولة الآن (نشر فوري عبر المجدول).
         if scheduled_at:
             try:
                 at = datetime.fromisoformat(scheduled_at.replace("Z", "+00:00"))
             except Exception:
                 return jsonify({"error": "صيغة التاريخ غير صحيحة"}), 400
-            schedule_posts_for_pages(
-                pages=pages,
-                content=content,
-                image_url=image_url_abs or image_url,
-                video_url=video_url_abs or video_url,
-                post_type=post_type,
-                scheduled_at=at,
-            )
-            _add_notification("تم جدولة المنشور", f"سيُنشر في {at}")
-            return jsonify({"success": True, "scheduled_at": scheduled_at})
+        else:
+            at = datetime.utcnow()
 
-        published, errors = publish_now_for_pages(
+        created_count = schedule_posts_for_pages(
             pages=pages,
             content=content,
-            image_url=image_url_abs,
-            video_url=video_url_abs,
+            image_url=image_url_abs or image_url,
+            video_url=video_url_abs or video_url,
             post_type=post_type,
+            scheduled_at=at,
         )
-        # لا نعيد 500 هنا؛ حتى لو فشلت كل الصفحات نرجع 200 مع success=False
-        all_failed = bool(errors and not published)
-
-        # إشعار مختصر بالصفحات التي نُشر عليها
-        published_names = [p.get("page_name") for p in published if p.get("page_name")]
-        if published_names:
-            _add_notification("تم نشر المنشور", f"نُشر على: {', '.join(published_names)}")
-
+        _add_notification(
+            "تم إنشاء مهمة نشر",
+            f"سيتم نشر المنشور على {created_count} صفحة عن طريق المجدول.",
+        )
         return jsonify({
-            "success": not all_failed,
-            "published": published_names,
-            "errors": errors if errors else None,
-            "results": {
-                "published": published,
-                "errors": errors,
-            },
+            "success": True,
+            "scheduled_at": at.isoformat(),
+            "created_count": created_count,
         }), 200
     except Exception as e:
         current_app.logger.exception("api_posts_create failed: %s", e)
