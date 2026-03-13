@@ -6,6 +6,7 @@ from flask import Blueprint, jsonify, request, session, g
 from extensions import db
 from models.publish_channel import PublishChannel
 from models.publish_job import PublishJob
+from models.publish_config import PublishConfig
 from services.publish_service import create_jobs_for_channels, get_channels_for_tenant
 
 
@@ -331,5 +332,48 @@ def cancel_job(job_id: int):
 
     job.status = "cancelled"
     db.session.commit()
+    return jsonify({"success": True})
+
+
+# ============== Settings (App ID / Secret) ==============
+
+
+@publish_api_bp.route("/settings", methods=["GET"])
+def get_settings():
+    tenant_slug = _get_tenant_slug()
+    if not tenant_slug:
+        return jsonify({"success": False, "error": "NO_TENANT"}), 400
+
+    cfg = PublishConfig.query.filter_by(tenant_slug=tenant_slug).first()
+    return jsonify(
+        {
+            "success": True,
+            "settings": {
+                "facebook_app_id": cfg.facebook_app_id if cfg else None,
+                "facebook_app_secret": cfg.facebook_app_secret if cfg else None,
+            },
+        }
+    )
+
+
+@publish_api_bp.route("/settings", methods=["POST"])
+def save_settings():
+    tenant_slug = _get_tenant_slug()
+    if not tenant_slug:
+        return jsonify({"success": False, "error": "NO_TENANT"}), 400
+
+    data = request.get_json() or {}
+    app_id = (data.get("facebook_app_id") or "").strip() or None
+    app_secret = (data.get("facebook_app_secret") or "").strip() or None
+
+    cfg = PublishConfig.query.filter_by(tenant_slug=tenant_slug).first()
+    if not cfg:
+        cfg = PublishConfig(tenant_slug=tenant_slug)
+        db.session.add(cfg)
+
+    cfg.facebook_app_id = app_id
+    cfg.facebook_app_secret = app_secret
+    db.session.commit()
+
     return jsonify({"success": True})
 

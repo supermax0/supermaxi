@@ -29,6 +29,7 @@ from .ai_agent import (
 # Publisher models (نظام النشر الجديد المستقل)
 from .publish_channel import PublishChannel
 from .publish_job import PublishJob
+from .publish_config import PublishConfig
 
 # ======================================================
 # Accounting Models (النماذج المحاسبية)
