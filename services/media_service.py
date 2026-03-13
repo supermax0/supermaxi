@@ -56,20 +56,38 @@ VIDEO_MIME_TYPES = {
     "video/mp4",
     "video/quicktime",
     "video/webm",
+    "video/x-msvideo",   # avi
+    "video/x-matroska",  # mkv
+    "video/3gpp",
+    "video/3gpp2",
+    "video/x-flv",
+    "video/ogg",
 }
 
 ALLOWED_MIME_TYPES = IMAGE_MIME_TYPES | VIDEO_MIME_TYPES
 
-ALLOWED_EXTENSIONS = {
+IMAGE_EXTENSIONS = {
     ".jpg",
     ".jpeg",
     ".png",
     ".gif",
     ".webp",
+}
+
+VIDEO_EXTENSIONS = {
     ".mp4",
     ".mov",
     ".webm",
+    ".avi",
+    ".mkv",
+    ".flv",
+    ".3gp",
+    ".3g2",
+    ".m4v",
+    ".ts",
 }
+
+ALLOWED_EXTENSIONS = IMAGE_EXTENSIONS | VIDEO_EXTENSIONS
 
 
 def get_media_root() -> Path:
@@ -133,9 +151,9 @@ def _normalize_content_type(content_type: str | None) -> str:
 def detect_kind(content_type: str) -> Optional[MediaKind]:
     """تحديد نوع الوسيط (صورة / فيديو) من MIME."""
     ct = _normalize_content_type(content_type)
-    if ct in IMAGE_MIME_TYPES:
+    if ct in IMAGE_MIME_TYPES or ct.startswith("image/"):
         return "image"
-    if ct in VIDEO_MIME_TYPES:
+    if ct in VIDEO_MIME_TYPES or ct.startswith("video/"):
         return "video"
     return None
 
@@ -155,28 +173,47 @@ def validate_mime_and_extension(
     - message: رسالة نصية عربية للواجهة.
     """
     ct = _normalize_content_type(content_type)
-    if not ct or ct not in ALLOWED_MIME_TYPES:
+    if not ct:
         return (
             False,
             "unsupported_type",
-            "نوع الملف غير مدعوم. استخدم صورة (jpg, png, gif, webp) أو فيديو (mp4 / mov / webm).",
+            "نوع الملف غير معروف. تأكد من اختيار ملف صورة أو فيديو صالح.",
+        )
+
+    # نسمح بأي image/* أو video/* حتى لو لم يكن ضمن القائمة الثابتة
+    if not (
+        ct in ALLOWED_MIME_TYPES
+        or ct.startswith("image/")
+        or ct.startswith("video/")
+    ):
+        return (
+            False,
+            "unsupported_type",
+            "نوع الملف غير مدعوم. استخدم صورة أو فيديو بصيغة شائعة (mp4, mov, mkv, avi, webm, ...).",
         )
 
     ext = (Path(filename).suffix or "").lower()
-    if ext and ext not in ALLOWED_EXTENSIONS:
-        # لا نرفض مباشرة، لكن نرجّح امتداد متوافق
-        return (
-            False,
-            "bad_extension",
-            "امتداد الملف غير متوافق مع النوع. استخدم الامتدادات الشائعة مثل .jpg أو .png أو .mp4 أو .mov.",
-        )
+    if ext:
+        if ct.startswith("image/") and ext not in IMAGE_EXTENSIONS:
+            return (
+                False,
+                "bad_extension",
+                "امتداد الصورة غير متوافق. استخدم الامتدادات الشائعة مثل .jpg أو .png أو .webp.",
+            )
+        if ct.startswith("video/") and ext not in VIDEO_EXTENSIONS:
+            # لا نرفض بقوة، فقط نحذّر المستخدم برسالة عامة
+            return (
+                True,
+                None,
+                None,
+            )
 
     kind = detect_kind(ct)
     if not kind:
         return (
             False,
             "unsupported_type",
-            "نوع الملف غير مدعوم. استخدم صورة (jpg, png, gif, webp) أو فيديو (mp4 / mov / webm).",
+            "نوع الملف غير مدعوم. استخدم صورة أو فيديو بصيغة شائعة (mp4, mov, mkv, avi, webm, ...).",
         )
 
     return True, None, None

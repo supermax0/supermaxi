@@ -18,6 +18,9 @@
   const scheduledAt = document.getElementById('scheduledAt');
   const uploadMediaBtn = document.getElementById('uploadMediaBtn');
   const mediaFileInput = document.getElementById('mediaFile');
+  const uploadProgressWrapper = document.getElementById('uploadProgressWrapper');
+  const uploadProgressBar = document.getElementById('uploadProgressBar');
+  const uploadProgressLabel = document.getElementById('uploadProgressLabel');
 
   const toastContainer = document.getElementById('publishToastContainer');
 
@@ -207,32 +210,62 @@
     const fd = new FormData();
     fd.append('file', file);
 
-    let res;
-    try {
-      res = await fetch(API_BASE + '/media/upload', {
-        method: 'POST',
-        credentials: 'include',
-        body: fd
-      });
-    } catch (e) {
+    if (uploadProgressWrapper && uploadProgressBar && uploadProgressLabel) {
+      uploadProgressWrapper.style.display = 'block';
+      uploadProgressBar.style.width = '0%';
+      uploadProgressLabel.textContent = '0%';
+    }
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', API_BASE + '/media/upload', true);
+    xhr.withCredentials = true;
+
+    xhr.upload.onprogress = function (evt) {
+      if (!evt.lengthComputable || !uploadProgressBar || !uploadProgressLabel) return;
+      const percent = Math.round((evt.loaded / evt.total) * 100);
+      uploadProgressBar.style.width = percent + '%';
+      uploadProgressLabel.textContent = percent + '%';
+    };
+
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState !== 4) return;
+
+      if (uploadProgressWrapper) {
+        setTimeout(() => {
+          uploadProgressWrapper.style.display = 'none';
+        }, 700);
+      }
+
+      let data = {};
+      try {
+        data = JSON.parse(xhr.responseText || '{}');
+      } catch (e) {
+        data = {};
+      }
+
+      if (xhr.status < 200 || xhr.status >= 300 || !data.success) {
+        toast(data.error || 'فشل رفع الملف.', 'error');
+        return;
+      }
+
+      if (mediaUrl && data.url) {
+        mediaUrl.value = data.url;
+      }
+      if (mediaType && data.media_type) {
+        mediaType.value = data.media_type;
+      }
+
+      toast('تم رفع الملف وربط الرابط تلقائياً.', 'success');
+    };
+
+    xhr.onerror = function () {
+      if (uploadProgressWrapper) {
+        uploadProgressWrapper.style.display = 'none';
+      }
       toast('فشل الاتصال بالخادم أثناء رفع الملف.', 'error');
-      return;
-    }
+    };
 
-    const data = await res?.json().catch(() => ({}));
-    if (!res || !res.ok || !data?.success) {
-      toast(data?.error || 'فشل رفع الملف.', 'error');
-      return;
-    }
-
-    if (mediaUrl && data.url) {
-      mediaUrl.value = data.url;
-    }
-    if (mediaType && data.media_type) {
-      mediaType.value = data.media_type;
-    }
-
-    toast('تم رفع الملف وربط الرابط تلقائياً.', 'success');
+    xhr.send(fd);
   }
 
   async function createJob() {
