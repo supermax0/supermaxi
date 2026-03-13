@@ -107,6 +107,45 @@
     .channel-status.active { color:#22c55e; }
     .channel-status.inactive { color:#f97373; }
 
+    .sidebar-toggle {
+      display: none;
+      border-radius: 999px;
+      border: 1px solid rgba(148,163,184,0.5);
+      background: rgba(15,23,42,0.9);
+      color: #e5e7eb;
+      font-size: 0.8rem;
+      padding: 4px 10px;
+      cursor: pointer;
+    }
+
+    .sidebar {
+      border-radius:16px;
+      background:rgba(15,23,42,0.96);
+      border:1px solid rgba(148,163,184,0.35);
+      padding:14px 12px;
+      box-shadow:0 20px 40px rgba(0,0,0,0.55);
+    }
+
+    .sidebar--mobile-hidden {
+      transform: translateX(105%);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .sidebar--mobile-visible {
+      transform: translateX(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15,23,42,0.7);
+      z-index: 30;
+    }
+
     /* استجابة للأجهزة الصغيرة */
     @media (max-width: 1024px) {
       .card-grid {
@@ -124,13 +163,25 @@
         align-items: flex-start;
         gap: 6px;
       }
+      .sidebar-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
       .layout {
         grid-template-columns: minmax(0,1fr);
       }
-      aside {
-        position: sticky;
-        top: 0;
-        z-index: 20;
+      .sidebar {
+        position: fixed;
+        inset-block: 0;
+        inset-inline-end: 0;
+        max-width: 260px;
+        width: 80%;
+        z-index: 40;
+        transition: transform 0.2s ease-out, opacity 0.2s ease-out;
+      }
+      .sidebar-overlay {
+        display: block;
       }
     }
   </style>
@@ -142,11 +193,16 @@
       <h1 class="page-title">لوحة النشر</h1>
       <p class="page-subtitle">إنشاء مهام نشر مجدولة لقنوات متعددة من مكان واحد.</p>
     </div>
+    <button id="sidebarToggle" class="sidebar-toggle" type="button">
+      القائمة
+    </button>
   </div>
+
+  <div id="sidebarOverlay" class="sidebar-overlay"></div>
 
   <div class="layout">
     <!-- Sidebar -->
-    <aside style="border-radius:16px;background:rgba(15,23,42,0.96);border:1px solid rgba(148,163,184,0.35);padding:14px 12px;box-shadow:0 20px 40px rgba(0,0,0,0.55);">
+    <aside id="publisherSidebar" class="sidebar sidebar--mobile-visible">
       <div style="font-size:0.9rem;font-weight:600;margin-bottom:8px;">القائمة</div>
       <nav style="display:flex;flex-direction:column;gap:4px;font-size:0.85rem;">
         <a href="{{ url_for('publish_ui.dashboard') }}" style="padding:6px 10px;border-radius:10px;background:rgba(15,23,42,0.9);border:1px solid rgba(148,163,184,0.4);color:#e5e7eb;text-decoration:none;display:block;">
@@ -267,6 +323,48 @@
 
 <script>
   window.PUBLISH_API_BASE = "{{ request.script_root or '' }}/publish/api";
+  (function () {
+    const sidebar = document.getElementById('publisherSidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    const toggle = document.getElementById('sidebarToggle');
+
+    if (!sidebar || !overlay || !toggle) return;
+
+    function closeSidebar() {
+      sidebar.classList.remove('sidebar--mobile-visible');
+      sidebar.classList.add('sidebar--mobile-hidden');
+      overlay.style.display = 'none';
+    }
+
+    function openSidebar() {
+      sidebar.classList.remove('sidebar--mobile-hidden');
+      sidebar.classList.add('sidebar--mobile-visible');
+      overlay.style.display = 'block';
+    }
+
+    toggle.addEventListener('click', () => {
+      const isVisible = sidebar.classList.contains('sidebar--mobile-visible');
+      if (isVisible) {
+        closeSidebar();
+      } else {
+        openSidebar();
+      }
+    });
+
+    overlay.addEventListener('click', closeSidebar);
+
+    // في الشاشات الكبيرة نضمن أن السايدبار دائماً ظاهر
+    function handleResize() {
+      if (window.innerWidth > 768) {
+        sidebar.classList.remove('sidebar--mobile-hidden');
+        sidebar.classList.add('sidebar--mobile-visible');
+        overlay.style.display = 'none';
+      }
+    }
+
+    window.addEventListener('resize', handleResize);
+    handleResize();
+  })();
 </script>
 <script src="{{ url_for('static', filename='publish/app.js') }}"></script>
 </body>
