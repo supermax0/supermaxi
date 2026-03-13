@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}لوحة النشر | Finora{% endblock %}
+{% block content %}
+<div class="content" style="padding:24px 16px 32px;">
+  <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;">
+    <div>
+      <h1 class="page-title">لوحة النشر</h1>
+      <p class="page-subtitle">إنشاء مهام نشر مجدولة لقنوات متعددة من مكان واحد.</p>
+    </div>
+  </div>
+
+  <div class="card-grid" style="display:grid;grid-template-columns:260px minmax(0,1.6fr) minmax(0,1.2fr);gap:16px;">
+    <!-- Channels -->
+    <section class="card" style="border-radius:16px;background:rgba(15,23,42,0.96);border:1px solid rgba(148,163,184,0.35);padding:14px 16px;box-shadow:0 20px 40px rgba(0,0,0,0.55);">
+      <header class="card-header" style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">
+        <div>
+          <div class="card-title" style="font-size:1rem;font-weight:600;">القنوات</div>
+          <div class="card-subtitle" style="font-size:0.8rem;color:#9ca3af;">إدارة القنوات التي يمكن النشر عليها.</div>
+        </div>
+        <button id="addChannelBtn" class="btn-primary" type="button" style="display:inline-flex;align-items:center;gap:6px;">
+          <span>إضافة قناة</span>
+        </button>
+      </header>
+      <div id="channelsList" style="display:flex;flex-direction:column;gap:6px;font-size:0.85rem;color:#e5e7eb;max-height:320px;overflow:auto;">
+        <div style="color:#9ca3af;">جاري تحميل القنوات...</div>
+      </div>
+    </section>
+
+    <!-- Create Job -->
+    <section class="card" style="border-radius:16px;background:rgba(15,23,42,0.96);border:1px solid rgba(148,163,184,0.35);padding:14px 16px;box-shadow:0 20px 40px rgba(0,0,0,0.55);">
+      <header class="card-header" style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">
+        <div>
+          <div class="card-title" style="font-size:1rem;font-weight:600;">إنشاء مهمة نشر</div>
+          <div class="card-subtitle" style="font-size:0.8rem;color:#9ca3af;">اختر القنوات، اكتب النص، وأضف رابط الوسائط.</div>
+        </div>
+      </header>
+
+      <div class="field" style="margin-bottom:8px;">
+        <label for="jobTitle" style="display:block;font-size:0.82rem;margin-bottom:4px;">عنوان (اختياري)</label>
+        <input id="jobTitle" class="input" style="width:100%;border-radius:999px;border:1px solid rgba(55,65,81,0.9);background:#020617;color:#e5e7eb;font-size:0.85rem;padding:6px 10px;">
+      </div>
+
+      <div class="field" style="margin-bottom:8px;">
+        <label for="jobText" style="display:block;font-size:0.82rem;margin-bottom:4px;">النص</label>
+        <textarea id="jobText" class="textarea" style="width:100%;min-height:140px;border-radius:12px;border:1px solid rgba(55,65,81,0.9);background:#020617;color:#e5e7eb;font-size:0.9rem;padding:8px 10px;resize:vertical;" placeholder="اكتب النص الذي تريد نشره ..."></textarea>
+      </div>
+
+      <div class="field" style="margin-bottom:8px;">
+        <label for="mediaUrl" style="display:block;font-size:0.82rem;margin-bottom:4px;">رابط الوسائط (صورة أو فيديو)</label>
+        <input id="mediaUrl" class="input" style="width:100%;border-radius:999px;border:1px solid rgba(55,65,81,0.9);background:#020617;color:#e5e7eb;font-size:0.85rem;padding:6px 10px;" placeholder="https://...">
+        <small style="display:block;font-size:0.75rem;color:#9ca3af;margin-top:2px;">يمكنك استخدام نظام الرفع الحالي للحصول على رابط فيديو/صورة ثم لصقه هنا.</small>
+      </div>
+
+      <div class="field" style="margin-bottom:8px;">
+        <label for="mediaType" style="display:block;font-size:0.82rem;margin-bottom:4px;">نوع الوسائط</label>
+        <select id="mediaType" class="input" style="width:100%;border-radius:999px;border:1px solid rgba(55,65,81,0.9);background:#020617;color:#e5e7eb;font-size:0.85rem;padding:6px 10px;">
+          <option value="">بدون</option>
+          <option value="image">صورة</option>
+          <option value="video">فيديو</option>
+          <option value="link">رابط</option>
+        </select>
+      </div>
+
+      <div class="field" style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:10px;">
+        <div>
+          <label for="scheduledAt" style="display:block;font-size:0.82rem;margin-bottom:4px;">وقت الجدولة</label>
+          <input id="scheduledAt" type="datetime-local" class="input" style="border-radius:999px;border:1px solid rgba(55,65,81,0.9);background:#020617;color:#e5e7eb;font-size:0.82rem;padding:6px 10px;">
+        </div>
+        <div style="margin-inline-start:auto;">
+          <button id="createJobBtn" class="btn-primary" type="button" style="display:inline-flex;align-items:center;gap:6px;">
+            <span>إنشاء مهمة</span>
+          </button>
+          <button id="clearJobBtn" class="btn-ghost" type="button" style="border:none;background:transparent;color:#9ca3af;font-size:0.8rem;margin-inline-start:4px;">تفريغ</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Jobs -->
+    <section class="card" style="border-radius:16px;background:rgba(15,23,42,0.96);border:1px solid rgba(148,163,184,0.35);padding:14px 16px;box-shadow:0 20px 40px rgba(0,0,0,0.55);">
+      <header class="card-header" style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">
+        <div>
+          <div class="card-title" style="font-size:1rem;font-weight:600;">آخر المهام</div>
+          <div class="card-subtitle" style="font-size:0.8rem;color:#9ca3af;">متابعة حالة النشر لكل قناة.</div>
+        </div>
+        <button id="refreshJobsBtn" class="btn-ghost" type="button" style="border:none;background:transparent;color:#9ca3af;font-size:0.8rem;">تحديث</button>
+      </header>
+      <div style="overflow:auto;max-height:420px;">
+        <table id="jobsTable" style="width:100%;border-collapse:collapse;font-size:0.8rem;">
+          <thead>
+            <tr>
+              <th style="padding:6px 8px;border-bottom:1px solid rgba(31,41,55,0.9);text-align:right;color:#9ca3af;">القناة</th>
+              <th style="padding:6px 8px;border-bottom:1px solid rgba(31,41,55,0.9);text-align:right;color:#9ca3af;">الحالة</th>
+              <th style="padding:6px 8px;border-bottom:1px solid rgba(31,41,55,0.9);text-align:right;color:#9ca3af;">وقت الجدولة</th>
+              <th style="padding:6px 8px;border-bottom:1px solid rgba(31,41,55,0.9);text-align:right;color:#9ca3af;">النتيجة</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td colspan="4" style="padding:8px 10px;color:#9ca3af;text-align:center;">لا توجد مهام بعد.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div id="publishToastContainer" class="toast-container"></div>
+
+<script>
+  window.PUBLISH_API_BASE = "{{ request.script_root or '' }}/publish/api";
+</script>
+<script src="{{ url_for('static', filename='publish/app.js') }}"></script>
+{% endblock %}
+
