@@ -14,3 +14,9 @@ def settings():
     """صفحة إعدادات النشر (App ID / Secret)."""
     return render_template("publish/settings.html")
 
+
+@publish_ui_bp.route("/facebook-connect")
+def facebook_connect():
+    """صفحة مستقلة لربط فيسبوك وجلب الصفحات."""
+    return render_template("publish/facebook_connect.html")
+
