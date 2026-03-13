@@ -521,7 +521,7 @@ def save_uploaded_file(file_storage, max_mb: int = 200) -> Dict[str, Any]:
                     text=True,
                 )
                 if proc.returncode == 0 and thumb_path.exists():
-                    thumb_url = f"/uploads/thumbnails/{thumb_name}"
+                    thumb_url = f"/autoposter/serve/thumbnail/{thumb_name}"
             except Exception:
                 # thumbnail اختياري؛ أي خطأ هنا لا يكسر الرفع
                 pass
@@ -532,11 +532,11 @@ def save_uploaded_file(file_storage, max_mb: int = 200) -> Dict[str, Any]:
         # أي خطأ في هذه المرحلة لا يمنع استخدام الملف
         pass
 
-    # بناء URL عام للفيديو: إن كان تحت مجلد الرفع القياسي نستخدم /uploads/videos/ أو /uploads/thumbnails/
+    # بناء URL عام للفيديو: تقديم عبر التطبيق (/autoposter/serve/) ليعمل بدون إعداد Nginx لـ /uploads/
     video_root_str = str(get_video_upload_root())
     thumb_root_str = str(get_thumbnail_upload_root())
     if kind == "video" and (str(dest_path).startswith(video_root_str) or "/uploads/videos" in str(dest_path)):
-        public_url = f"/uploads/videos/{dest_path.name}"
+        public_url = f"/autoposter/serve/video/{dest_path.name}"
     else:
         rel = dest_path.relative_to(get_media_root())
         public_url = f"{current_app.static_url_path}/{rel.as_posix()}"

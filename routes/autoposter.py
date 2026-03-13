@@ -423,6 +423,49 @@ def api_facebook_callback():
     return redirect(url_for("autoposter.dashboard") + "#pages")
 
 
+# --- تقديم الفيديو والثمبنايل عبر التطبيق (بديل عن Nginx /uploads/ لتجنب 404 على السيرفر) ---
+from flask import send_file
+from werkzeug.utils import secure_filename
+
+def _safe_filename(name: str) -> str:
+    """اسم ملف آمن بدون مسارات فرعية."""
+    return secure_filename(name) or "file"
+
+@autoposter_bp.route("/serve/video/<path:filename>", methods=["GET"])
+def serve_video(filename):
+    """تقديم ملف فيديو من مجلد الرفع (يعمل بدون إعداد Nginx لـ /uploads/)."""
+    from services.media_service import get_video_upload_root
+    name = _safe_filename(filename.split("/")[-1] if "/" in filename else filename)
+    if not name:
+        return jsonify({"error": "اسم ملف غير صالح"}), 400
+    root = get_video_upload_root()
+    path = root / name
+    if not path.exists() or not path.is_file():
+        return jsonify({"error": "الملف غير موجود"}), 404
+    try:
+        path.resolve().relative_to(root.resolve())
+    except ValueError:
+        return jsonify({"error": "مسار غير مسموح"}), 403
+    return send_file(path, mimetype="video/mp4", as_attachment=False, max_age=3600)
+
+@autoposter_bp.route("/serve/thumbnail/<path:filename>", methods=["GET"])
+def serve_thumbnail(filename):
+    """تقديم صورة الثمبنايل من مجلد الرفع."""
+    from services.media_service import get_thumbnail_upload_root
+    name = _safe_filename(filename.split("/")[-1] if "/" in filename else filename)
+    if not name:
+        return jsonify({"error": "اسم ملف غير صالح"}), 400
+    root = get_thumbnail_upload_root()
+    path = root / name
+    if not path.exists() or not path.is_file():
+        return jsonify({"error": "الملف غير موجود"}), 404
+    try:
+        path.resolve().relative_to(root.resolve())
+    except ValueError:
+        return jsonify({"error": "مسار غير مسموح"}), 403
+    return send_file(path, mimetype="image/jpeg", as_attachment=False, max_age=3600)
+
+
 # --- API: رفع صورة أو فيديو ---
 UPLOAD_ALLOWED = ("image/jpeg", "image/png", "image/gif", "image/webp", "video/mp4", "video/quicktime")
 UPLOAD_MAX_MB = 200
