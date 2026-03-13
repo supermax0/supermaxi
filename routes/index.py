@@ -410,24 +410,50 @@ def login_tenant(tenant_slug):
 def logout():
     from flask import current_app, make_response
     # #region agent log
-    _debug_log("180817", "H1", "index.logout:entry", "logout called", {"path": request.path, "session_keys_before": list(session.keys())})
+    _debug_log("180817", "H1", "index.logout:entry", "logout called", {
+        "path": request.path,
+        "session_keys_before": list(session.keys()),
+        "host": request.host,
+        "scheme": request.scheme,
+        "x_forwarded_proto": request.headers.get("X-Forwarded-Proto"),
+        "x_forwarded_host": request.headers.get("X-Forwarded-Host"),
+        "flask_env": current_app.config.get("ENV") or current_app.config.get("FLASK_ENV"),
+        "request_cookie_names": list(request.cookies.keys()),
+    })
     # #endregion
     tenant_slug = session.get("tenant_slug")
     session.clear()
     target = f"/login?tenant={tenant_slug}" if tenant_slug else "/login"
     response = make_response(redirect(target))
-    # حذف كوكي الجلسة من المتصفح حتى لا يبقى أثر ويُعاد توجيهك للوحة التحكم
     cookie_name = current_app.config.get("SESSION_COOKIE_NAME", "session")
     cookie_domain = current_app.config.get("SESSION_COOKIE_DOMAIN") or None
+    cookie_secure = current_app.config.get("SESSION_COOKIE_SECURE", False)
+    cookie_samesite = current_app.config.get("SESSION_COOKIE_SAMESITE")
     # #region agent log
-    _debug_log("180817", "H2", "index.logout:delete_cookie", "cookie params", {"cookie_name": cookie_name, "cookie_domain": cookie_domain, "request_has_session_cookie": cookie_name in request.cookies})
+    _debug_log("180817", "H2", "index.logout:delete_cookie", "cookie params", {
+        "cookie_name": cookie_name,
+        "cookie_domain": cookie_domain,
+        "cookie_secure": cookie_secure,
+        "request_has_session_cookie": cookie_name in request.cookies,
+    })
     # #endregion
+    # حذف كوكي الجلسة (بنفس خصائص الإعداد حتى يطابق المتصفح)
     response.delete_cookie(
         cookie_name,
         path="/",
         domain=cookie_domain,
-        secure=current_app.config.get("SESSION_COOKIE_SECURE", False),
+        secure=cookie_secure,
+        samesite=cookie_samesite,
     )
+    # على VPS/الإنتاج: حذف أيضاً بدون domain لضمان إزالة أي كوكي قديم مُخزّن بدون نطاق
+    if cookie_domain:
+        response.delete_cookie(
+            cookie_name,
+            path="/",
+            domain=None,
+            secure=cookie_secure,
+            samesite=cookie_samesite,
+        )
     # #region agent log
     _debug_log("180817", "H5", "index.logout:return", "returning redirect", {"target": target})
     # #endregion
