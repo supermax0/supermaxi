@@ -14,6 +14,26 @@ from services.publisher_service import create_jobs_for_channels
 publisher_bp = Blueprint("publisher", __name__, url_prefix="/publisher")
 
 
+# #region agent log
+def _debug_log(location: str, message: str, data: dict | None = None) -> None:
+    import os, json, time
+    try:
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        path = os.path.join(root, "debug-180817.log")
+        payload = {
+            "sessionId": "180817",
+            "location": location,
+            "message": message,
+            "data": data or {},
+            "timestamp": int(time.time() * 1000),
+        }
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(payload, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+# #endregion
+
+
 def _get_tenant_slug() -> str:
     return getattr(g, "tenant", None) or ""
 
@@ -51,10 +71,12 @@ def _save_media(file: FileStorage) -> Optional[dict]:
 @publisher_bp.route("/channels", methods=["GET"])
 def list_channels():
     tenant_slug = _get_tenant_slug()
+    _debug_log("publisher.list_channels:entry", "list_channels called", {"tenant_slug": tenant_slug})
     q = PublisherChannel.query
     if tenant_slug:
         q = q.filter_by(tenant_slug=tenant_slug)
     chans: List[PublisherChannel] = q.order_by(PublisherChannel.created_at.desc()).all()
+    _debug_log("publisher.list_channels:result", "loaded channels", {"count": len(chans)})
     return jsonify(
         {
             "success": True,
