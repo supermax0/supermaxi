@@ -546,7 +546,25 @@ def upload_media():
         )
 
     file_storage = request.files["file"]
-    result = save_uploaded_file(file_storage)
+    # نسمح بحجم أكبر للفيديوهات (مثلاً حتى 500 ميجا)
+    try:
+        result = save_uploaded_file(file_storage, max_mb=500)
+    except Exception as exc:
+        current_app = publish_api_bp.app  # type: ignore[attr-defined]
+        try:
+            current_app.logger.exception("publish.upload_media failed: %s", exc)
+        except Exception:
+            pass
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "حدث خطأ غير متوقع أثناء رفع الملف.",
+                    "error_code": "upload_exception",
+                }
+            ),
+            500,
+        )
     if not result.get("ok"):
         return (
             jsonify(
