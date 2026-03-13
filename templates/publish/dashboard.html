@@ -260,8 +260,15 @@
 
       <div class="field" style="margin-bottom:8px;">
         <label for="mediaUrl" style="display:block;font-size:0.82rem;margin-bottom:4px;">رابط الوسائط (صورة أو فيديو)</label>
-        <input id="mediaUrl" class="input" style="width:100%;border-radius:999px;border:1px solid rgba(55,65,81,0.9);background:#020617;color:#e5e7eb;font-size:0.85rem;padding:6px 10px;" placeholder="https://...">
-        <small style="display:block;font-size:0.75rem;color:#9ca3af;margin-top:2px;">يمكنك استخدام نظام الرفع الحالي للحصول على رابط فيديو/صورة ثم لصقه هنا.</small>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <input id="mediaUrl" class="input" style="width:100%;border-radius:999px;border:1px solid rgba(55,65,81,0.9);background:#020617;color:#e5e7eb;font-size:0.85rem;padding:6px 10px;" placeholder="https://...">
+          <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+            <button id="uploadMediaBtn" class="btn-ghost" type="button" style="border:1px dashed rgba(148,163,184,0.6);border-radius:999px;padding:4px 10px;font-size:0.78rem;color:#e5e7eb;background:rgba(15,23,42,0.9);">
+              اختيار ملف من الجهاز
+            </button>
+            <small style="font-size:0.75rem;color:#9ca3af;">يمكنك رفع صورة/فيديو من جهازك أو لصق رابط جاهز.</small>
+          </div>
+        </div>
       </div>
 
       <div class="field" style="margin-bottom:8px;">
@@ -317,6 +324,7 @@
     </section>
     </div>
   </div>
+  <input id="mediaFile" type="file" accept="image/*,video/*" style="display:none;">
 </div>
 
 <div id="publishToastContainer" class="toast-container"></div>

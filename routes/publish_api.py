@@ -11,6 +11,7 @@ from models.publish_channel import PublishChannel
 from models.publish_job import PublishJob
 from models.publish_config import PublishConfig
 from services.publish_service import create_jobs_for_channels, get_channels_for_tenant
+from services.media_service import save_uploaded_file
 
 
 publish_api_bp = Blueprint("publish_api", __name__, url_prefix="/publish/api")
@@ -509,6 +510,56 @@ def cancel_job(job_id: int):
     job.status = "cancelled"
     db.session.commit()
     return jsonify({"success": True})
+
+
+# ============== Media Upload (image / video) ==============
+
+
+@publish_api_bp.route("/media/upload", methods=["POST"])
+def upload_media():
+    tenant_slug = _get_tenant_slug()
+    if not tenant_slug:
+        return jsonify({"success": False, "error": "NO_TENANT"}), 400
+
+    if "file" not in request.files:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "لم يتم اختيار ملف للرفع.",
+                }
+            ),
+            400,
+        )
+
+    file_storage = request.files["file"]
+    result = save_uploaded_file(file_storage)
+    if not result.get("ok"):
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": result.get("message") or "فشل رفع الملف.",
+                    "error_code": result.get("error_code"),
+                }
+            ),
+            400,
+        )
+
+    return jsonify(
+        {
+            "success": True,
+            "url": result.get("url"),
+            "media_type": result.get("type"),
+            "meta": {
+                "size_mb": result.get("size_mb"),
+                "width": result.get("width"),
+                "height": result.get("height"),
+                "duration_sec": result.get("duration_sec"),
+                "thumbnail_url": result.get("thumbnail_url"),
+            },
+        }
+    )
 
 
 # ============== Settings (App ID / Secret) ==============

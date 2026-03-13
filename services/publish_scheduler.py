@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 from datetime import datetime
+import json
+import time
 from typing import List, Optional
 
 from flask import current_app
+
+import requests
 
 from extensions import db
 from models.publish_channel import PublishChannel
@@ -11,14 +15,97 @@ from models.publish_job import PublishJob
 from services.publish_service import PublishResult, PublisherChannel, log_publish_error
 
 
+class FacebookPageChannel:
+    """قناة نشر لصفحات فيسبوك تعتمد على page_access_token المخزن في credentials."""
+
+    def __init__(self, channel: PublishChannel):
+        self.channel = channel
+
+    def publish(self, job: PublishJob) -> PublishResult:
+        try:
+            creds = json.loads(self.channel.credentials or "{}")
+        except Exception:
+            creds = {}
+
+        token = creds.get("page_access_token")
+        if not token:
+            return PublishResult(
+                success=False,
+                error_code="no_page_token",
+                error_message="لا يوجد Page Access Token مخزّن لهذه الصفحة.",
+            )
+
+        page_id = self.channel.external_id
+        if not page_id:
+            return PublishResult(
+                success=False,
+                error_code="no_page_id",
+                error_message="لا يوجد معرّف صفحة صالح في القناة.",
+            )
+
+        message = (job.text or "").strip()
+        media_url = (job.media_url or "").strip() or None
+        media_type = (job.media_type or "").strip() or None
+
+        base = f"https://graph.facebook.com/v19.0/{page_id}"
+        params = {"access_token": token}
+        data = {}
+        endpoint = base + "/feed"
+
+        if media_url and media_type == "image":
+            endpoint = base + "/photos"
+            data = {"url": media_url}
+            if message:
+                data["caption"] = message
+        elif media_url and media_type == "video":
+            endpoint = base + "/videos"
+            data = {"file_url": media_url}
+            if message:
+                data["description"] = message
+        else:
+            endpoint = base + "/feed"
+            if message:
+                data["message"] = message
+            if media_url and media_type in (None, "", "link"):
+                data["link"] = media_url
+
+        try:
+            resp = requests.post(endpoint, params=params, data=data, timeout=60)
+        except Exception as exc:
+            return PublishResult(
+                success=False,
+                error_code="network_error",
+                error_message=f"فشل الاتصال بـ Facebook: {exc}",
+            )
+
+        try:
+            payload = resp.json()
+        except Exception:
+            payload = {}
+
+        if not resp.ok:
+            return PublishResult(
+                success=False,
+                error_code="facebook_error",
+                error_message=str(payload)[:500],
+            )
+
+        remote_id = payload.get("id") or payload.get("post_id") or payload.get("video_id")
+        if not remote_id:
+            return PublishResult(
+                success=False,
+                error_code="facebook_no_id",
+                error_message="تم الاتصال بـ Facebook لكن لم يتم إرجاع معرّف للمنشور.",
+            )
+
+        return PublishResult(success=True, remote_id=str(remote_id))
+
+
 def _get_channel_handler(channel: PublishChannel) -> Optional[PublisherChannel]:
-    """إرجاع handler مناسب حسب نوع القناة.
+    """إرجاع handler مناسب حسب نوع القناة."""
 
-    مبدئياً نرجع None ليُعتبر كأن القناة غير مدعومة حتى نضيف قنوات فعلية لاحقاً.
-    """
-
-    # TODO: إضافة قنوات حقيقية مثل FacebookPublisherChannel أو TelegramPublisherChannel
-    _ = channel
+    if channel.type == "facebook_page":
+        return FacebookPageChannel(channel)
     return None
 
 
@@ -111,9 +198,13 @@ def process_pending_jobs_for_tenant(
     )
 
     count = 0
-    for job in jobs:
+    total = len(jobs)
+    for idx, job in enumerate(jobs):
         process_job(job)
         count += 1
+        # تأخير 5 ثوانٍ بين كل مهمة وأخرى لتجنّب الضغط على المنصة (صفحة بعد صفحة)
+        if idx < total - 1:
+            time.sleep(5)
 
     return count
 

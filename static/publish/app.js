@@ -16,6 +16,8 @@
   const mediaUrl = document.getElementById('mediaUrl');
   const mediaType = document.getElementById('mediaType');
   const scheduledAt = document.getElementById('scheduledAt');
+  const uploadMediaBtn = document.getElementById('uploadMediaBtn');
+  const mediaFileInput = document.getElementById('mediaFile');
 
   const toastContainer = document.getElementById('publishToastContainer');
 
@@ -200,6 +202,39 @@
     window.location.href = data.login_url;
   }
 
+  async function uploadMediaFile(file) {
+    if (!file) return;
+    const fd = new FormData();
+    fd.append('file', file);
+
+    let res;
+    try {
+      res = await fetch(API_BASE + '/media/upload', {
+        method: 'POST',
+        credentials: 'include',
+        body: fd
+      });
+    } catch (e) {
+      toast('فشل الاتصال بالخادم أثناء رفع الملف.', 'error');
+      return;
+    }
+
+    const data = await res?.json().catch(() => ({}));
+    if (!res || !res.ok || !data?.success) {
+      toast(data?.error || 'فشل رفع الملف.', 'error');
+      return;
+    }
+
+    if (mediaUrl && data.url) {
+      mediaUrl.value = data.url;
+    }
+    if (mediaType && data.media_type) {
+      mediaType.value = data.media_type;
+    }
+
+    toast('تم رفع الملف وربط الرابط تلقائياً.', 'success');
+  }
+
   async function createJob() {
     if (!selectedChannelIds.size) {
       toast('اختر قناة واحدة على الأقل.', 'error');
@@ -272,6 +307,16 @@
 
   if (fbConnectBtn) {
     fbConnectBtn.addEventListener('click', connectFacebook);
+  }
+
+  if (uploadMediaBtn && mediaFileInput) {
+    uploadMediaBtn.addEventListener('click', () => mediaFileInput.click());
+    mediaFileInput.addEventListener('change', () => {
+      const file = mediaFileInput.files && mediaFileInput.files[0];
+      if (file) {
+        uploadMediaFile(file);
+      }
+    });
   }
 
   if (refreshJobsBtn) {
