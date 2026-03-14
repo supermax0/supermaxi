@@ -9,7 +9,7 @@
   const progressInner = document.getElementById('progressInner');
   const progressText = document.getElementById('progressText');
   const previewShell = document.getElementById('previewShell');
-  const previewVideo = document.getElementById('previewVideo');
+  const previewMediaBox = document.getElementById('previewMediaBox');
   const previewMeta = document.getElementById('previewMeta');
   const errorBox = document.getElementById('errorBox');
   const successBox = document.getElementById('successBox');
@@ -47,13 +47,15 @@
     resetUI();
 
     const type = file.type || '';
-    if (!type.startsWith('video/')) {
-      showError('الرجاء اختيار ملف فيديو (mp4 / mov / webm).');
+    const isVideo = type.startsWith('video/');
+    const isImage = type.startsWith('image/');
+    if (!isVideo && !isImage) {
+      showError('الرجاء اختيار ملف صورة (jpg, png, webp) أو فيديو (mp4, mov, webm).');
       return;
     }
-    const maxBytes = 200 * 1024 * 1024; // 200MB (متطابق مع الباكند)
+    const maxBytes = 100 * 1024 * 1024; // 100MB (متطابق مع الباكند)
     if (file.size > maxBytes) {
-      showError('حجم الفيديو أكبر من 2GB.');
+      showError('حجم الملف أكبر من 100 ميجا.');
       return;
     }
 
@@ -105,9 +107,10 @@
         // ignore
       }
       if (xhr.status >= 200 && xhr.status < 300 && resp.ok) {
-        showSuccess('تم رفع الفيديو بنجاح.');
-        if (previewShell && previewVideo && previewMeta) {
+        showSuccess(resp.type === 'video' ? 'تم رفع الفيديو بنجاح.' : 'تم رفع الصورة بنجاح.');
+        if (previewShell && previewMeta) {
           const url = resp.url || '';
+          const mediaType = resp.type || (file.type.startsWith('video/') ? 'video' : 'image');
           const sizeMb = resp.size_mb != null ? resp.size_mb : file.size / (1024 * 1024);
           const width = resp.width || null;
           const height = resp.height || null;
@@ -121,20 +124,35 @@
             parts.push(`المدة: ${mins}:${secs.toString().padStart(2, '0')} دقيقة`);
           }
           previewMeta.textContent = parts.join(' · ');
-          if (url) {
-            previewVideo.src = url;
-          } else {
-            const blobUrl = URL.createObjectURL(file);
-            previewVideo.src = blobUrl;
+          const blobUrl = URL.createObjectURL(file);
+          const src = url || blobUrl;
+          if (previewMediaBox) {
+            previewMediaBox.innerHTML = '';
+            if (mediaType === 'video') {
+              const video = document.createElement('video');
+              video.controls = true;
+              video.playsInline = true;
+              video.style.cssText = 'width:100%;max-height:320px';
+              video.src = src;
+              previewMediaBox.appendChild(video);
+            } else {
+              const img = document.createElement('img');
+              img.src = src;
+              img.alt = '';
+              img.style.cssText = 'max-width:100%;max-height:320px';
+              previewMediaBox.appendChild(img);
+            }
           }
           previewShell.style.display = 'block';
         }
         if (useInPostBtn && resp.url) {
           useInPostBtn.style.display = 'inline-flex';
           useInPostBtn.disabled = false;
+          useInPostBtn.textContent = resp.type === 'video' ? 'استخدام هذا الفيديو في المنشور' : 'استخدام هذه الصورة في المنشور';
           useInPostBtn.onclick = () => {
             try {
-              sessionStorage.setItem('autoposter_last_video_url', resp.url);
+              sessionStorage.setItem('autoposter_last_media_url', resp.url);
+              sessionStorage.setItem('autoposter_last_media_type', resp.type || 'video');
             } catch (e) {
               // ignore
             }

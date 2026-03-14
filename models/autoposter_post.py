@@ -12,6 +12,7 @@ class AutoposterPost(db.Model):
     content = db.Column(db.Text, nullable=False)
     image_url = db.Column(db.String(512), nullable=True)
     video_url = db.Column(db.String(512), nullable=True)
+    media_type = db.Column(db.String(20), nullable=True)  # image | video | reel | story
     channel = db.Column(db.String(30), default="facebook_page")
     post_type = db.Column(db.String(20), default="post")  # post | story | reels
     status = db.Column(db.String(20), default="draft")
@@ -31,6 +32,7 @@ class AutoposterPost(db.Model):
             "content": self.content,
             "image_url": self.image_url,
             "video_url": self.video_url,
+            "media_type": getattr(self, "media_type", None),
             "channel": getattr(self, "channel", None) or "facebook_page",
             "post_type": getattr(self, "post_type", None) or "post",
             "status": self.status,

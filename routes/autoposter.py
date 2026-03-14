@@ -60,6 +60,45 @@ def ai_agent_view():
 # ============== API: معلومات المستخدم الحالي ==============
 
 
+# ============== API: رفع الوسائط (صورة / فيديو) ==============
+
+
+@autoposter_bp.route("/api/upload", methods=["POST"])
+@require_autoposter_login
+def api_upload():
+    """
+    رفع ملف وسائط (صورة أو فيديو) عبر multipart/form-data.
+    المفتاح: file. حد الحجم 100MB. الصيغ: jpg, png, webp, mp4, mov.
+    """
+    file = request.files.get("file")
+    if not file or not file.filename:
+        return jsonify({"ok": False, "message": "لم يُرفع ملف", "error": "media missing"}), 400
+    from services.media_service import save_uploaded_file
+
+    result = save_uploaded_file(file, max_mb=100)
+    if not result.get("ok"):
+        return jsonify({
+            "ok": False,
+            "message": result.get("message", "فشل رفع الملف"),
+            "error": result.get("error_code", "upload_failed"),
+        }), 400
+    # تحويل الرابط إلى مطلق إن لزم (للاستخدام من الواجهة)
+    url = result.get("url") or ""
+    if url.startswith("/") and request.url_root:
+        base = (request.url_root or "").rstrip("/")
+        url = base + url
+    return jsonify({
+        "ok": True,
+        "url": url or result.get("url"),
+        "type": result.get("type"),
+        "thumbnail_url": result.get("thumbnail_url"),
+        "size_mb": result.get("size_mb"),
+        "width": result.get("width"),
+        "height": result.get("height"),
+        "duration_sec": result.get("duration_sec"),
+    })
+
+
 @autoposter_bp.route("/api/me", methods=["GET"])
 @require_autoposter_login
 def api_me():

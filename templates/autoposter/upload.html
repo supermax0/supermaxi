@@ -185,24 +185,24 @@
   <div class="upload-shell">
     <div class="upload-header">
       <div>
-        <div class="upload-title">رفع فيديو للأوتوبوستر</div>
-        <div class="upload-subtitle">يدعم mp4 / mov / webm حتى 200MB، مع توليد صورة مصغّرة تلقائياً.</div>
+        <div class="upload-title">رفع وسائط للأوتوبوستر</div>
+        <div class="upload-subtitle">صور: jpg, png, webp — فيديو: mp4, mov, webm. حد الحجم 100MB.</div>
       </div>
       <a href="{{ request.script_root or '' }}/autoposter/" class="upload-back">← الرجوع للوحة الأوتوبوستر</a>
     </div>
 
     <div id="dropZoneMain" class="drop-zone-main">
       <div class="drop-icon">⬆️</div>
-      <div class="hint-primary">اسحب فيديو هنا أو اضغط لاختياره</div>
+      <div class="hint-primary">اسحب صورة أو فيديو هنا أو اضغط لاختياره</div>
       <div class="hint-secondary">
-        صيغ مدعومة: <strong>MP4 / MOV / WEBM</strong> · حد الحجم: <strong>2GB</strong>
+        صيغ مدعومة: <strong>JPG, PNG, WEBP, MP4, MOV, WEBM</strong> · حد الحجم: <strong>100MB</strong>
       </div>
       <div class="upload-actions">
-        <button type="button" id="selectFileBtn" class="btn-primary">اختيار ملف فيديو</button>
+        <button type="button" id="selectFileBtn" class="btn-primary">اختيار ملف</button>
         <button type="button" id="cancelUploadBtn" class="btn-ghost" disabled>إلغاء الرفع</button>
         <button type="button" id="useInPostBtn" class="btn-ghost" style="display:none">استخدام هذا الفيديو في المنشور</button>
       </div>
-      <input type="file" id="fileInputHidden" accept="video/*" style="display:none">
+      <input type="file" id="fileInputHidden" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm" style="display:none">
     </div>
 
     <div id="progressShell" class="progress-shell">
@@ -217,8 +217,8 @@
 
     <div id="previewShell" class="preview-shell">
       <div class="preview-meta" id="previewMeta"></div>
-      <div class="preview-video">
-        <video id="previewVideo" controls playsinline style="width:100%;max-height:320px;"></video>
+      <div class="preview-video" id="previewMediaBox">
+        <!-- يُملأ ديناميكياً: <video> أو <img> حسب نوع الملف -->
       </div>
     </div>
 

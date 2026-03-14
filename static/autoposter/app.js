@@ -41,18 +41,19 @@
     return true;
   }
 
-  // في حال تم اختيار فيديو من صفحة الرفع: جلبه من sessionStorage وتهيئة المعاينة
+  // في حال تم اختيار وسائط من صفحة الرفع: جلب الرابط والنوع من sessionStorage وتهيئة المعاينة
   function bootstrapVideoFromUploadPage() {
     try {
-      const stored = sessionStorage.getItem('autoposter_last_video_url');
-      if (!stored) return;
-      const url = stored;
-      // نستخدمه مرة واحدة فقط
+      const storedUrl = sessionStorage.getItem('autoposter_last_media_url') || sessionStorage.getItem('autoposter_last_video_url');
+      if (!storedUrl) return;
+      const mediaType = sessionStorage.getItem('autoposter_last_media_type') || 'video';
+      sessionStorage.removeItem('autoposter_last_media_url');
+      sessionStorage.removeItem('autoposter_last_media_type');
       sessionStorage.removeItem('autoposter_last_video_url');
       if (!mediaPreview) return;
       uploadedMedia = {
-        url,
-        type: 'video',
+        url: storedUrl,
+        type: mediaType,
         file: null,
         thumbnail_url: null,
         size_mb: null,
@@ -63,12 +64,10 @@
       mediaPreview.innerHTML = '';
       const wrap = document.createElement('div');
       wrap.className = 'media-preview-item';
-      const media = Object.assign(document.createElement('video'), {
-        src: url,
-        controls: true,
-        muted: true,
-        style: 'max-width:100%;max-height:160px',
-      });
+      const isVideo = mediaType === 'video';
+      const media = isVideo
+        ? Object.assign(document.createElement('video'), { src: storedUrl, controls: true, muted: true, style: 'max-width:100%;max-height:160px' })
+        : Object.assign(document.createElement('img'), { src: storedUrl, alt: '', style: 'max-width:100%;max-height:160px' });
       const remove = document.createElement('button');
       remove.type = 'button';
       remove.className = 'remove-media';
@@ -830,10 +829,12 @@
     mediaPreview.innerHTML = '';
     const wrap = document.createElement('div');
     wrap.className = 'media-preview-item';
-    const mediaSrc = uploadedMedia.thumbnail_url || uploadedMedia.url;
+    // للفيديو: استخدم رابط الفيديو فقط (لا الثمبنايل) حتى تظهر المعاينة كفيديو
+    const videoSrc = uploadedMedia.type === 'video' ? (uploadedMedia.url || '') : '';
+    const imageSrc = uploadedMedia.type === 'image' ? (uploadedMedia.thumbnail_url || uploadedMedia.url || '') : '';
     const media = uploadedMedia.type === 'video'
-      ? Object.assign(document.createElement('video'), { src: mediaSrc, controls: true, muted: true, style: 'max-width:100%;max-height:160px' })
-      : Object.assign(document.createElement('img'), { src: mediaSrc, style: 'max-width:100%;max-height:160px' });
+      ? Object.assign(document.createElement('video'), { src: videoSrc, controls: true, muted: true, style: 'max-width:100%;max-height:160px' })
+      : Object.assign(document.createElement('img'), { src: imageSrc, style: 'max-width:100%;max-height:160px' });
     const remove = document.createElement('button');
     remove.type = 'button';
     remove.className = 'remove-media';

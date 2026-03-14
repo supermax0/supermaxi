@@ -1,50 +1,175 @@
-1) تصميم قاعدة بيانات جديدة للنشر
-إنشاء جداول بسيطة وواضحة، مثلاً:
-publish_channels:
-id, tenant_slug, type (facebook_page, whatsapp_number, telegram_bot …), name, external_id, access_token أو مفاتيح الربط.
-publish_jobs:
-id, tenant_slug, content, media_url, media_type (image/video), status (pending, processing, published, failed), scheduled_at, published_at, channel_type, channel_id, error_message, retry_count.
-لا نستخدم autoposter_posts القديمة؛ هذا نظام جديد.
-2) طبقة خدمات موحدة لكل القنوات
-ملف خدمة واحد مثلاً services/publisher_service.py يحتوي:
-create_job(channels, content, media, scheduled_at) لإنشاء publish_jobs فقط.
-process_pending_jobs_for_tenant(tenant_slug):
-يحمّل كل jobs pending أو scheduled الجاهزة،
-يستدعي دوال قناة محددة:
-publish_to_facebook(job, channel)
-publish_to_whatsapp(job, channel)
-publish_to_telegram(job, channel)
-يحدّث status, published_at, error_message, retry_count بنفس نمط إعادة المحاولة.
-3) مسارات API بسيطة وثابتة
-تحت routes/publisher.py (جديد):
-GET /publisher/channels لإرجاع القنوات المربوطة (فيسبوك/واتساب/تيليجرام).
-POST /publisher/jobs:
-يستقبل:
-text, media (ملف واحد اختياري), channel_ids[], scheduled_at.
-يحفظ الميديا في مجلد ثابت واحد (مثلاً uploads/publisher باستخدام secure_filename واسم فريد).
-ينشئ سجلات publish_jobs باستخدام publisher_service.create_job.
-يرجع دائمًا:
-200 { success: true, jobs: [...] } أو
-400 { success: false, error: 'رسالة واضحة' }.
-(لاحقًا) GET /publisher/jobs لعرض الحالة (Published / Pending / Failed).
-4) واجهة فرونتند جديدة وبسيطة
-صفحة واحدة جديدة في templates/publisher/dashboard.html + static/publisher/app.js:
-اختيار القنوات (Checkboxes).
-إدخال النص + رفع صورة/فيديو بواجهة drag & drop.
-زر “إنشاء مهمة نشر”:
-يرسل FormData إلى /publisher/jobs.
-يعرض رسالة:
-نجاح: “تم إنشاء مهمة النشر، سيتم التنفيذ تلقائياً.”
-فشل: يعرض error من الـ API.
-جدول لعرض jobs مع الأعمدة: القناة، النوع، الحالة، الوقت، رسالة الخطأ.
-5) مجدول واحد موثوق
-استخدام الدالة process_pending_jobs_for_tenant من publisher_service:
-مربوطة بـ:
-أمر كرون أو systemd timer يشغّل سكربت صغير (كما شرحت لك سابقًا) كل دقيقة.
-كل شيء عن النشر الفعلي (فيسبوك/واتساب/تيليجرام) يصبح محصوراً في هذه الخدمة وحدها:
-أي خطأ في API أو الفيديو لا يكسر /publisher/jobs؛ فقط يحدّث status وerror_message.
-6) سلوك خالٍ من الأخطاء للـ API
-جميع Endpoints الجديدة:
-لا ترجع 500 إلا لو كان هناك استثناء غير متوقَّع جدًا، مع logger.exception.
-تتعامل مع كل أخطاء المستخدم (حجم/صيغة فيديو، قنوات غير مربوطة، تاريخ خاطئ) برسائل 400 واضحة.
-حتى لو غيرنا طريقة النشر الداخلية لاحقًا أو أضفنا قنوات جديدة، واجهة /publisher/jobs تبقى ثابتة.
+You are working on a Flask SaaS project called Finora.
+
+The project has an autoposter module that publishes content to Facebook pages.
+
+There is a bug:
+
+Video uploads are not working correctly.
+The preview shows an image instead of a video and the system sends the file as an image.
+
+Fix the entire media upload pipeline.
+
+---------------------------------------------
+
+GOALS
+
+Fix media handling for:
+
+1) image
+2) video
+3) reel
+4) story
+
+Ensure that videos are uploaded correctly and published using Facebook Graph API.
+
+---------------------------------------------
+
+FRONTEND FIX
+
+Update the media preview logic.
+
+Detect file type.
+
+If image → show <img>
+If video → show <video>
+
+Example:
+
+const file = mediaInput.files[0]
+
+if (file.type.startsWith("video")) {
+
+preview.innerHTML = `
+<video controls style="max-width:100%">
+<source src="${URL.createObjectURL(file)}">
+</video>
+`
+
+} else {
+
+preview.innerHTML = `
+<img src="${URL.createObjectURL(file)}" style="max-width:100%">
+`
+
+}
+
+---------------------------------------------
+
+FORM FIX
+
+Ensure the form uses multipart upload:
+
+<form enctype="multipart/form-data">
+
+---------------------------------------------
+
+FLASK BACKEND FIX
+
+Use request.files instead of request.form.
+
+Example:
+
+file = request.files.get("media")
+
+if not file:
+    return {"error":"media missing"},400
+
+filename = secure_filename(file.filename)
+
+upload_path = os.path.join("uploads", filename)
+
+file.save(upload_path)
+
+---------------------------------------------
+
+MEDIA TYPE DETECTION
+
+Detect media type:
+
+if file.content_type.startswith("video"):
+    media_type = "video"
+else:
+    media_type = "image"
+
+Save media_type in database.
+
+---------------------------------------------
+
+FACEBOOK PUBLISHING FIX
+
+Images must be published using:
+
+POST /{page-id}/photos
+
+Videos must be published using:
+
+POST /{page-id}/videos
+
+Example video upload:
+
+url = f"https://graph.facebook.com/v21.0/{page_id}/videos"
+
+files = {
+"source": open(video_path, "rb")
+}
+
+data = {
+"description": caption,
+"access_token": page_token
+}
+
+requests.post(url, data=data, files=files)
+
+---------------------------------------------
+
+DATABASE
+
+Ensure autoposter_posts table supports media:
+
+Add columns if missing:
+
+media_type
+image_url
+video_url
+
+---------------------------------------------
+
+UI UPDATE
+
+Add media type selector:
+
+<select name="media_type">
+<option value="image">Image</option>
+<option value="video">Video</option>
+<option value="reel">Reel</option>
+<option value="story">Story</option>
+</select>
+
+---------------------------------------------
+
+VALIDATION
+
+Limit file size to 100MB.
+
+Allowed formats:
+
+Images:
+jpg
+png
+webp
+
+Videos:
+mp4
+mov
+
+---------------------------------------------
+
+OUTPUT
+
+Modify:
+
+routes/autoposter.py
+templates/autoposter/create_post.html
+services/facebook_service.py
+
+Ensure videos upload correctly and publish to Facebook pages.
