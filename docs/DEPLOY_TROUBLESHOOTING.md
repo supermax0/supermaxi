@@ -54,7 +54,7 @@ sudo journalctl -u finora -n 50 --no-pager
 
 ## 3. تقديم ملفات الوسائط (Nginx)
 
-لكي تظهر الوسائط المرفوعة في الواجهة (روابط مثل `/uploads/images/...`, `/media/...`)، يجب أن يخدم Nginx هذه المسارات من مجلد المشروع:
+الوسائط المرفوعة تُحفظ في `/var/www/finora/supermaxi/media` وتُقدَّم عبر Flask على `/autoposter/serve/media/<filename>`. لخدمة مسارات إضافية (مثل `/uploads`, `/media`) من الملفات الثابتة:
 
 ```nginx
 location /uploads {
@@ -66,4 +66,4 @@ location /media {
 }
 ```
 
-أضف هذه الـ `location` داخل الـ `server` الخاص بـ `finora.company`، ثم أعد تحميل Nginx: `sudo nginx -t && sudo systemctl reload nginx`.
+أضف هذه الـ `location` داخل الـ `server` الخاص بـ `finora.company`، ثم: `sudo nginx -t && sudo systemctl reload nginx`.

@@ -1,246 +1,89 @@
-You are working on a Flask SaaS project called Finora.
+You are a senior Python backend engineer and DevOps expert.
 
-The project already contains an autoposter module that publishes content to Facebook pages.
+The project is a production Flask application running behind:
 
-Refactor the autoposter system into a professional Media Library based architecture.
+* Nginx
+* Gunicorn
+* Linux Ubuntu
 
-DO NOT break existing routes or database structure unless necessary.
-Add new features cleanly using Flask Blueprints and SQLAlchemy.
+Project path:
 
--------------------------------------------------------
+/var/www/finora/supermaxi
 
-MAIN GOAL
+Domain:
 
-Create a robust autoposter system with:
+https://finora.company
 
-1. Media Library
-2. Video uploads
-3. Image uploads
-4. Scheduled posts
-5. Facebook publishing
-6. Clean UI
+Gunicorn runs on:
 
--------------------------------------------------------
+127.0.0.1:8000
 
-MEDIA LIBRARY SYSTEM
-
-Create a media manager.
-
-Route:
+The system includes an Autoposter module with routes such as:
 
 /autoposter/media
+/autoposter/upload
+/autoposter/api/media
+/autoposter/api/media/upload
 
-Features:
+Current problems:
 
-• upload video
-• upload images
-• preview media
-• select media when creating post
+1. The page
 
--------------------------------------------------------
+/autoposter/upload
 
-DATABASE MODELS
+sometimes returns:
 
-Create new model:
+ERR_SSL_PROTOCOL_ERROR
 
-AutoposterMedia
+2. Upload requests fail.
 
-fields:
+3. Some API endpoints return 500 errors.
 
-id
-tenant_id
-media_type (image | video)
-file_name
-file_path
-file_size
-created_at
+Your tasks:
 
--------------------------------------------------------
+1. Scan the entire Flask project.
+2. Locate the routes responsible for Autoposter upload.
+3. Fix all causes of HTTP 500 errors.
+4. Fix any redirect loops or HTTPS mismatches.
+5. Ensure uploads work correctly for:
 
-POST MODEL UPDATE
-
-Update AutoposterPost model.
-
-Add fields:
-
-media_id
-post_type
-caption
-
-post_type values:
-
-post
-video
-reel
-story
-
--------------------------------------------------------
-
-UPLOAD API
-
-Route:
-
-POST /autoposter/api/media/upload
-
-Requirements:
-
-• accept multipart/form-data
-• store file in:
-
-uploads/media/
-
-• detect media type
-
-Example:
-
-if file.content_type.startswith("video"):
-    media_type = "video"
-else:
-    media_type = "image"
-
-Save media record to database.
-
--------------------------------------------------------
-
-FRONTEND MEDIA PAGE
-
-Create page:
-
-templates/autoposter/media_library.html
-
-Display media grid:
-
-• video preview using <video>
-• image preview using <img>
-
-Example:
-
-<video controls width="200"></video>
-
--------------------------------------------------------
-
-POST CREATION PAGE
-
-Route:
-
-/autoposter/create
-
-Features:
-
-• text caption
-• page selection
-• media selection from library
-• scheduling time
-
-Example UI:
-
-Media selector dropdown.
-
--------------------------------------------------------
-
-FACEBOOK PUBLISHING
-
-Images must use:
-
-POST /{page-id}/photos
-
-Videos must use:
-
-POST /{page-id}/videos
-
-Example video publish:
-
-url = f"https://graph.facebook.com/v21.0/{page_id}/videos"
-
-files = {
-    "source": open(video_path, "rb")
-}
-
-data = {
-    "description": caption,
-    "access_token": page_token
-}
-
-requests.post(url, data=data, files=files)
-
--------------------------------------------------------
-
-SCHEDULER
-
-Use APScheduler.
-
-Run every minute.
-
-Function:
-
-run_scheduled_posts_for_all_tenants()
-
-Steps:
-
-1. find scheduled posts
-2. scheduled_at <= now
-3. publish post
-4. update status
-
-status values:
-
-draft
-scheduled
-published
-failed
-
--------------------------------------------------------
-
-FILE VALIDATION
-
-Limit uploads:
-
-Images:
 jpg
 png
 webp
-
-Videos:
 mp4
 mov
 
-Max size:
+6. Ensure uploads are saved in:
 
-500MB
+/var/www/finora/supermaxi/media
 
--------------------------------------------------------
+7. Automatically create missing folders if needed.
 
-UI IMPROVEMENTS
+8. Ensure Flask config includes:
 
-Add new sidebar section:
+MAX_CONTENT_LENGTH = 500MB
 
-Autoposter
-   ├── Dashboard
-   ├── Media Library
-   ├── Create Post
-   └── Scheduled Posts
+9. Ensure upload routes return JSON responses instead of HTML errors.
 
--------------------------------------------------------
+10. Ensure routes do not redirect to login when accessed by JavaScript API.
 
-CODE STRUCTURE
+11. Ensure compatibility with nginx proxy.
 
-Routes:
+12. Print the corrected Python code for all media routes.
 
-routes/autoposter_media.py
-routes/autoposter_posts.py
+13. Ensure the upload endpoint works with FormData in JavaScript.
 
-Services:
+14. Add proper exception handling and logging.
 
-services/facebook_service.py
+Important rules:
 
-Models:
+* DO NOT rename existing routes
+* DO NOT change database schema
+* DO NOT break existing modules
+* Only repair Autoposter upload and media API
 
-models/autoposter.py
+Finally output:
 
--------------------------------------------------------
-
-OUTPUT
-
-Generate production ready code.
-
-Ensure media uploads are reliable and large video uploads do not break the system.
+1. The corrected Flask route code.
+2. Any necessary configuration fixes.
+3. Any missing folder creation logic.

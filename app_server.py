@@ -125,8 +125,8 @@ def to_locale_string(value):
 app.config["UPLOAD_FOLDER"] = "static/uploads/messages"
 # حد رفع الملفات (للرسائل، النشر التلقائي صورة/فيديو حتى 500 ميجا)
 app.config["MAX_CONTENT_LENGTH"] = 500 * 1024 * 1024  # 500MB
-# مجلد وسائط الأوتوبوستر (مثلاً على السيرفر: /var/www/finora/supermaxi/media)
-app.config["AUTOPOSTER_MEDIA_ROOT"] = os.environ.get("AUTOPOSTER_MEDIA_ROOT") or None
+# مجلد وسائط الأوتوبوستر: إن لم يُعيَّن = جذر التطبيق/media (على السيرفر: /var/www/finora/supermaxi/media)
+app.config["AUTOPOSTER_MEDIA_ROOT"] = os.environ.get("AUTOPOSTER_MEDIA_ROOT") or os.path.join(app.root_path, "media")
 
 # في التطوير فقط: إعادة تحميل القوالب وتقليل كاش الملفات
 if not app.config.get("DEBUG"):
@@ -965,6 +965,16 @@ if not _openai_key:
 # =====================================
 # Error Handlers
 # =====================================
+from werkzeug.exceptions import RequestEntityTooLarge
+
+@app.errorhandler(RequestEntityTooLarge)
+def request_entity_too_large(e):
+    return jsonify({
+        "success": False,
+        "error": "file_too_large",
+        "message": "حد الحجم 500 ميجابايت.",
+    }), 413
+
 @app.errorhandler(404)
 def not_found(e):
     if request.accept_mimetypes.best == "application/json":

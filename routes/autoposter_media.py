@@ -20,18 +20,16 @@ MAX_UPLOAD_BYTES = 500 * 1024 * 1024  # 500MB
 
 def _upload_dir():
     """
-    مجلد رفع الوسائط: إن وُجدت AUTOPOSTER_MEDIA_ROOT (مثلاً /var/www/finora/supermaxi/media)
-    تُستخدم، وإلا uploads/media تحت جذر التطبيق. يُنشأ المجلد تلقائياً إن لم يكن موجوداً.
+    مجلد رفع الوسائط: من الإعداد AUTOPOSTER_MEDIA_ROOT أو جذر التطبيق/media
+    (على السيرفر: /var/www/finora/supermaxi/media). يُنشأ المجلد تلقائياً إن لم يكن موجوداً.
     """
     custom = current_app.config.get("AUTOPOSTER_MEDIA_ROOT")
-    if custom:
-        base = Path(custom)
-    else:
-        base = Path(current_app.root_path) / "uploads" / "media"
+    base = Path(custom) if custom else Path(current_app.root_path) / "media"
     try:
         base.mkdir(parents=True, exist_ok=True)
     except OSError as e:
-        current_app.logger.exception("autoposter_media: failed to create upload dir %s: %s", base, e)
+        if current_app.logger:
+            current_app.logger.exception("autoposter_media: failed to create upload dir %s: %s", base, e)
         raise
     return base
 

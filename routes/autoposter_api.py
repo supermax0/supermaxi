@@ -9,12 +9,12 @@ from flask import Blueprint, current_app, jsonify
 autoposter_api_bp = Blueprint("autoposter_api", __name__, url_prefix="/autoposter")
 
 # Folders to scan (relative to project root).
-# URL prefix: use /serve/media for uploads/media so Flask route serves files (avoids 404).
+# Use /serve/media so Flask route /autoposter/serve/media/<filename> serves files (avoids 404).
 MEDIA_SCAN_DIRS = [
-    ("media", "/media"),
+    ("media", "/serve/media"),
     ("uploads/images", "/uploads/images"),
     ("uploads/videos", "/uploads/videos"),
-    ("uploads/media", "/serve/media"),  # served by /autoposter/serve/media/<filename>
+    ("uploads/media", "/serve/media"),
 ]
 
 # Allowed file extensions for listing (images + videos)
