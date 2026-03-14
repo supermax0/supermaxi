@@ -283,10 +283,12 @@
       xhr.open('POST', API_BASE + '/jobs');
       xhr.withCredentials = true;
 
+      const uploadProgressText = document.getElementById('uploadProgressText');
       if (uploadProgressWrapper && uploadProgressBar && uploadProgressLabel) {
         uploadProgressWrapper.style.display = 'block';
         uploadProgressBar.style.width = '0%';
         uploadProgressLabel.textContent = '0%';
+        if (uploadProgressText) uploadProgressText.textContent = 'جاري رفع الملف وإنشاء المهمة...';
         xhr.upload.onprogress = function (e) {
           if (e.lengthComputable) {
             const pct = Math.min(100, Math.round((e.loaded / e.total) * 100));
@@ -326,8 +328,8 @@
     const mType = (mediaType && mediaType.value) || '';
     const file = mediaFileInput && mediaFileInput.files && mediaFileInput.files[0];
 
-    if (!text && !mUrl && !file) {
-      toast('أدخل نصاً أو رابط وسائط أو اختر ملفاً للرفع.', 'error');
+    if (!text && !file) {
+      toast('أدخل نصاً أو اختر ملف صورة/فيديو.', 'error');
       return;
     }
 
@@ -499,12 +501,11 @@
     });
   }
 
-  // يُستدعى من السكربت المضمن في الصفحة عند اختيار ملف (معاينة + رفع)
+  // عند اختيار ملف: معاينة فقط. الرفع يتم مرة واحدة عند الضغط على «إنشاء مهمة».
   window.__publishOnMediaChange = function (fileList) {
     const file = fileList && fileList[0];
     if (file) {
       showMediaPreviewFromFile(file);
-      uploadMediaFile(file);
     }
   };
 

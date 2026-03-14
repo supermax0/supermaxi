@@ -400,12 +400,16 @@ def get_job(job_id: int):
 
 @publish_api_bp.route("/jobs", methods=["POST"])
 def create_jobs():
+    """
+    إنشاء مهمة نشر: يقبل multipart (نص + ملف) أو JSON (نص فقط).
+    عند إرسال ملف: يُحفظ على السيرفر مرة واحدة، يُخزّن الرابط في المهمة، ثم يُنشر إلى فيسبوك من القرص.
+    """
     tenant_slug = _get_tenant_slug()
     if not tenant_slug:
         return jsonify({"success": False, "error": "NO_TENANT"}), 400
     _ensure_publish_core_tables()
 
-    # دعم multipart/form-data (نص + ملف) أو application/json (نص + media_url)
+    # دعم multipart/form-data (نص + ملف) أو application/json (نص فقط)
     is_multipart = "multipart/form-data" in (request.content_type or "")
     if is_multipart:
         data = {}
