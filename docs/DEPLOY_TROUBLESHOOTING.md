@@ -49,3 +49,21 @@ sudo journalctl -u finora -n 50 --no-pager
 2. أو إعداد Nginx يدوياً لـ `finora.company` مع `ssl_certificate` و `ssl_certificate_key` ثم `sudo systemctl reload nginx`.
 
 بعد تفعيل SSL يمكن استخدام **https://finora.company** بدون خطأ.
+
+---
+
+## 3. تقديم ملفات الوسائط (Nginx)
+
+لكي تظهر الوسائط المرفوعة في الواجهة (روابط مثل `/uploads/images/...`, `/media/...`)، يجب أن يخدم Nginx هذه المسارات من مجلد المشروع:
+
+```nginx
+location /uploads {
+    alias /var/www/finora/supermaxi/uploads;
+}
+
+location /media {
+    alias /var/www/finora/supermaxi/media;
+}
+```
+
+أضف هذه الـ `location` داخل الـ `server` الخاص بـ `finora.company`، ثم أعد تحميل Nginx: `sudo nginx -t && sudo systemctl reload nginx`.

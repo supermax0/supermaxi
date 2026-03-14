@@ -60,6 +60,7 @@ from routes.delivery_agent import delivery_agent_bp
 from routes.pages import pages_bp
 from routes.invoice_store import invoice_store_bp
 from routes.autoposter import autoposter_bp
+from routes.autoposter_api import autoposter_api_bp
 from routes.publisher import publisher_bp
 from telegram_bot import telegram_bp
 from models.ai_agent import AgentWorkflow, AgentExecution
@@ -931,6 +932,7 @@ from routes.admin import admin_bp
 app.register_blueprint(admin_bp)
 
 app.register_blueprint(invoice_store_bp)
+app.register_blueprint(autoposter_api_bp)
 app.register_blueprint(autoposter_bp)
 app.register_blueprint(telegram_bp)
 app.register_blueprint(publisher_bp)
