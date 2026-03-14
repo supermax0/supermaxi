@@ -47,11 +47,28 @@ def api_media_list():
     if not session.get("user_id"):
         return jsonify({"error": "unauthorized"}), 401
     tenant_slug = session.get("tenant_slug")
-    q = AutoposterMedia.query.order_by(AutoposterMedia.created_at.desc()).limit(200)
-    if tenant_slug:
-        q = q.filter_by(tenant_slug=tenant_slug)
-    items = q.all()
-    return jsonify({"media": [m.to_dict() for m in items]})
+    try:
+        q = AutoposterMedia.query.order_by(AutoposterMedia.created_at.desc()).limit(200)
+        if tenant_slug:
+            q = q.filter_by(tenant_slug=tenant_slug)
+        items = q.all()
+        return jsonify({"media": [m.to_dict() for m in items]})
+    except OperationalError as e:
+        # في حال كان جدول مكتبة الوسائط غير موجود، نحاول إنشاءه ثم نرجع قائمة فارغة
+        from flask import current_app
+        current_app.logger.exception("autoposter_media list operational error, trying create_all: %s", e)
+        db.session.rollback()
+        try:
+            db.create_all()
+        except Exception:
+            db.session.rollback()
+        # حتى لو فشل create_all، نرجع JSON بدون إسقاط السيرفر
+        return jsonify({"media": []})
+    except Exception as e:
+        from flask import current_app
+        current_app.logger.exception("autoposter_media list failed: %s", e)
+        db.session.rollback()
+        return jsonify({"media": []})
 
 
 @autoposter_media_bp.route("/api/media/upload", methods=["POST"])
