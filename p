@@ -1,83 +1,88 @@
-أنت مهندس برمجيات خبير في **Flask + JavaScript + Facebook Graph API**.
+Create a professional **Social Media Automation Dashboard** with a modern and powerful UI/UX.
 
-لدي نظام نشر مبني بـ **Python Flask** مع واجهة Dashboard.
-النظام يسمح بإنشاء مهمة نشر تحتوي:
+Technology stack:
+HTML5, CSS3, JavaScript (Vanilla or minimal libraries), designed to integrate with a Python Flask backend.
 
-* نص
-* صورة أو فيديو
+Design requirements:
 
-المشكلة الحالية:
+* Ultra modern SaaS style dashboard
+* Glassmorphism + soft shadows
+* Smooth animations and transitions
+* Dark mode default
+* Fully responsive (desktop, tablet, mobile)
+* Clean and minimal interface
+* Professional typography
+* High usability and clear visual hierarchy
 
-1. الفيديو يتم اختياره من الجهاز ويظهر في المعاينة داخل الواجهة.
-2. عند الضغط على "إنشاء مهمة" يتم إنشاء المهمة بنجاح.
-3. يتم نشر **النص فقط على Facebook**.
-4. الفيديو لا يتم نشره.
-5. لا يوجد أخطاء في JavaScript.
-6. طلبات Network تظهر فقط طلب إنشاء مهمة (jobs) وليس رفع فيديو.
-7. هذا يعني أن الفيديو لا يتم إرساله أو لا يتم استخدام endpoint الصحيح في Facebook.
+Layout:
 
-أريد منك تشخيص المشكلة وإصلاحها بشكل كامل.
+* Left sidebar navigation with icons
+* Top navigation bar with notifications and user profile
+* Main content area with widgets and cards
+* Animated charts and statistics
+* Status indicators
 
-المطلوب منك بالتحديد:
+Main Features UI:
 
-1. فحص الكود الذي يقوم بالنشر إلى Facebook.
+1. Dashboard overview
 
-2. التأكد من أن النظام يفرق بين:
+   * Total pages connected
+   * Total posts published
+   * Scheduled posts
+   * Engagement metrics
 
-   * الصور
-   * الفيديوهات
+2. Create Post panel
 
-3. استخدام Facebook Graph API endpoints الصحيحة:
+   * Text editor for post content
+   * Image upload
+   * Video upload
+   * Preview before posting
+   * Select multiple Facebook pages
+   * Publish button
 
-للصور:
-POST /{page-id}/photos
+3. Pages Manager
 
-للفيديو:
-POST /{page-id}/videos
+   * Display connected Facebook pages
+   * Page name
+   * Page ID
+   * Status
+   * Toggle selection
 
-4. عند رفع الفيديو يجب استخدام:
+4. Scheduled Posts
 
-files={"source": open(video_path, "rb")}
+   * Calendar view
+   * Scheduled post list
+   * Edit / delete / reschedule
 
-وليس JSON.
+5. Analytics
 
-5. التأكد أن request يتم عبر:
+   * Post performance charts
+   * Engagement metrics
+   * Page growth
 
-requests.post(url, files=files, data=data)
+UI Style:
 
-وليس:
+* Color palette: dark blue, neon accent, soft gradients
+* Modern cards with hover effects
+* Smooth button micro-interactions
+* Floating action buttons
+* Animated loading states
+* Beautiful empty states
 
-requests.post(url, json=data)
+Additional UX features:
 
-6. دعم المعاملات الصحيحة:
+* Drag & drop media upload
+* Multi-page selection
+* Success / error toast notifications
+* Modal dialogs
+* Search and filter
 
-للصور:
-caption
+Output requirements:
 
-للفيديو:
-description
+* Clean, well structured HTML
+* Modular CSS
+* Reusable components
+* JavaScript interactions
+* Ready to connect with Flask API endpoints
 
-7. التأكد أن الفيديو يتم حفظه في السيرفر أولاً ثم رفعه إلى Facebook.
-
-8. إضافة نظام كشف نوع الملف تلقائياً مثل:
-
-* mp4
-* mov
-* avi
-* jpg
-* png
-* jpeg
-
-9. إذا كان الملف فيديو يتم استخدام endpoint الفيديو.
-
-10. إعطائي الكود النهائي الكامل المصحح لجزء النشر في Flask.
-
-الكود يجب أن:
-
-* يدعم الصور والفيديو
-* يعمل مع Facebook Pages
-* يستخدم Page Access Token
-* يتعامل مع الأخطاء
-* يرجع response واضح
-
-أعطني الكود النهائي فقط بدون شرح طويل.
+The result should look like a **premium SaaS dashboard similar to Notion, Linear, or Vercel admin panels**.

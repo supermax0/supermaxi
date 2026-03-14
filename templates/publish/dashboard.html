@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='publish/dashboard.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/enhancements.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/global-improvements.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/mobile-responsive.css') }}">
@@ -186,153 +187,147 @@
     }
   </style>
 </head>
-<body>
-<div class="content">
-  <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;">
-    <div>
-      <h1 class="page-title">لوحة النشر</h1>
-      <p class="page-subtitle">إنشاء مهام نشر مجدولة لقنوات متعددة من مكان واحد.</p>
-    </div>
-    <button id="sidebarToggle" class="sidebar-toggle" type="button">
-      القائمة
-    </button>
+<body class="publish-dashboard">
+<header class="publish-topbar">
+  <div>
+    <h1>لوحة النشر</h1>
+    <p class="subtitle">أتمتة النشر على فيسبوك — واجهة احترافية</p>
   </div>
+  <button id="sidebarToggle" class="publish-btn-ghost sidebar-toggle" type="button">القائمة</button>
+</header>
 
-  <div id="sidebarOverlay" class="sidebar-overlay"></div>
+<div id="sidebarOverlay" class="sidebar-overlay"></div>
 
-  <div class="layout">
-    <!-- Sidebar -->
-    <aside id="publisherSidebar" class="sidebar sidebar--mobile-visible">
-      <div style="font-size:0.9rem;font-weight:600;margin-bottom:8px;">القائمة</div>
-      <nav style="display:flex;flex-direction:column;gap:4px;font-size:0.85rem;">
-        <a href="{{ url_for('publish_ui.dashboard') }}" style="padding:6px 10px;border-radius:10px;background:rgba(15,23,42,0.9);border:1px solid rgba(148,163,184,0.4);color:#e5e7eb;text-decoration:none;display:block;">
-          لوحة النشر
-        </a>
-        <a href="{{ url_for('publish_ui.facebook_connect') }}" style="padding:6px 10px;border-radius:10px;background:rgba(15,23,42,0.9);border:1px solid rgba(148,163,184,0.4);color:#e5e7eb;text-decoration:none;display:block;">
-          ربط فيسبوك وجلب الصفحات
-        </a>
-        <a href="{{ url_for('publish_ui.settings') }}" style="padding:6px 10px;border-radius:10px;background:rgba(15,23,42,0.9);border:1px solid rgba(148,163,184,0.4);color:#e5e7eb;text-decoration:none;display:block;">
-          إعدادات التطبيق (Facebook)
-        </a>
-      </nav>
-    </aside>
+<div class="publish-layout content">
+  <aside id="publisherSidebar" class="publish-sidebar sidebar sidebar--mobile-visible">
+    <div class="nav-label">القائمة</div>
+    <nav>
+      <a href="{{ url_for('publish_ui.dashboard') }}"><span aria-hidden="true">📊</span> لوحة النشر</a>
+      <a href="{{ url_for('publish_ui.facebook_connect') }}"><span aria-hidden="true">🔗</span> ربط فيسبوك</a>
+      <a href="{{ url_for('publish_ui.settings') }}"><span aria-hidden="true">⚙️</span> الإعدادات</a>
+    </nav>
+  </aside>
 
-    <div class="card-grid">
-    <!-- Channels -->
-    <section class="card" style="border-radius:16px;background:rgba(15,23,42,0.96);border:1px solid rgba(148,163,184,0.35);padding:14px 16px;box-shadow:0 20px 40px rgba(0,0,0,0.55);">
-      <header class="card-header" style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">
-        <div>
-          <div class="card-title" style="font-size:1rem;font-weight:600;">القنوات</div>
-          <div class="card-subtitle" style="font-size:0.8rem;color:#9ca3af;">إدارة القنوات التي يمكن النشر عليها.</div>
-        </div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-          <button id="fbConnectBtn" class="btn-primary" type="button" style="display:inline-flex;align-items:center;gap:6px;">
-            <span>ربط فيسبوك وجلب الصفحات</span>
-          </button>
-          <button id="addChannelBtn" class="btn-ghost" type="button" style="border:none;background:transparent;color:#9ca3af;font-size:0.8rem;">
-            إضافة قناة يدوياً
-          </button>
-        </div>
-      </header>
-      <div id="channelsList" style="display:flex;flex-direction:column;gap:6px;font-size:0.85rem;color:#e5e7eb;max-height:320px;overflow:auto;">
-        <div style="color:#9ca3af;">جاري تحميل القنوات...</div>
+  <div style="min-width:0;">
+    <div class="publish-stats">
+      <div class="publish-stat-card accent">
+        <div class="label">صفحات متصلة</div>
+        <div class="value" id="publishStatPages">0</div>
+      </div>
+      <div class="publish-stat-card success">
+        <div class="label">تم النشر</div>
+        <div class="value" id="publishStatPublished">0</div>
+      </div>
+      <div class="publish-stat-card primary">
+        <div class="label">مجدولة / قيد الانتظار</div>
+        <div class="value" id="publishStatScheduled">0</div>
+      </div>
+      <div class="publish-stat-card warning">
+        <div class="label">فاشلة</div>
+        <div class="value" id="publishStatFailed">0</div>
+      </div>
+    </div>
+
+    <div class="publish-main card-grid">
+    <!-- Channels / Pages Manager -->
+    <section class="publish-card card">
+      <div class="publish-card-title">مدير الصفحات</div>
+      <div class="publish-card-subtitle">اختر الصفحات التي تريد النشر عليها</div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">
+        <button id="fbConnectBtn" class="publish-btn-primary" type="button">ربط فيسبوك وجلب الصفحات</button>
+        <button id="addChannelBtn" class="publish-btn-ghost" type="button">إضافة قناة يدوياً</button>
+      </div>
+      <div id="channelsList" style="display:flex;flex-direction:column;gap:6px;max-height:320px;overflow:auto;">
+        <div class="publish-empty"><span class="icon">📡</span> جاري تحميل القنوات...</div>
       </div>
     </section>
 
-    <!-- Create Job -->
-    <section class="card" style="border-radius:16px;background:rgba(15,23,42,0.96);border:1px solid rgba(148,163,184,0.35);padding:14px 16px;box-shadow:0 20px 40px rgba(0,0,0,0.55);">
-      <header class="card-header" style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">
-        <div>
-          <div class="card-title" style="font-size:1rem;font-weight:600;">إنشاء مهمة نشر</div>
-          <div class="card-subtitle" style="font-size:0.8rem;color:#9ca3af;">اختر القنوات. النص اختياري إذا أضفت صورة أو فيديو.</div>
-        </div>
-      </header>
+    <!-- Create Post -->
+    <section class="publish-card card">
+      <div class="publish-card-title">إنشاء منشور</div>
+      <div class="publish-card-subtitle">النص اختياري إذا أضفت صورة أو فيديو</div>
 
-      <div class="field" style="margin-bottom:8px;">
-        <label for="jobTitle" style="display:block;font-size:0.82rem;margin-bottom:4px;">عنوان (اختياري)</label>
-        <input id="jobTitle" class="input" style="width:100%;border-radius:999px;border:1px solid rgba(55,65,81,0.9);background:#020617;color:#e5e7eb;font-size:0.85rem;padding:6px 10px;">
+      <div class="field" style="margin-bottom:14px;">
+        <label for="jobTitle" style="display:block;font-size:0.82rem;margin-bottom:4px;color:var(--publish-muted);">عنوان (اختياري)</label>
+        <input id="jobTitle" class="publish-input input" placeholder="عنوان المنشور">
       </div>
 
-      <div class="field" style="margin-bottom:8px;">
-        <label for="jobText" style="display:block;font-size:0.82rem;margin-bottom:4px;">النص (اختياري مع وجود صورة أو فيديو)</label>
-        <textarea id="jobText" class="textarea" style="width:100%;min-height:140px;border-radius:12px;border:1px solid rgba(55,65,81,0.9);background:#020617;color:#e5e7eb;font-size:0.9rem;padding:8px 10px;resize:vertical;" placeholder="اكتب النص إن رغبت (لا يلزم إن أضفت صورة أو فيديو)"></textarea>
+      <div class="field" style="margin-bottom:14px;">
+        <label for="jobText" style="display:block;font-size:0.82rem;margin-bottom:4px;color:var(--publish-muted);">النص</label>
+        <textarea id="jobText" class="publish-textarea textarea" placeholder="اكتب النص إن رغبت (لا يلزم مع وسائط)"></textarea>
       </div>
 
-      <div class="field" style="margin-bottom:8px;">
-        <label style="display:block;font-size:0.82rem;margin-bottom:4px;">صورة أو فيديو</label>
+      <div class="field" style="margin-bottom:14px;">
+        <label style="display:block;font-size:0.82rem;margin-bottom:6px;color:var(--publish-muted);">صورة أو فيديو</label>
         <input id="mediaUrl" type="hidden" aria-hidden="true">
-        <div style="display:flex;flex-direction:column;gap:6px;">
-          <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
-            <button id="uploadMediaBtn" class="btn-ghost" type="button" onclick="document.getElementById('mediaFile') && document.getElementById('mediaFile').click();" style="border:1px dashed rgba(148,163,184,0.6);border-radius:999px;padding:6px 14px;font-size:0.85rem;color:#e5e7eb;background:rgba(15,23,42,0.9);">
-              اختيار ملف من الجهاز
-            </button>
-            <small style="font-size:0.75rem;color:#9ca3af;">الملف يُرفع إلى السيرفر فور الاختيار. عند الضغط على «إنشاء مهمة» يُنشر إلى فيسبوك.</small>
+        <div id="publishDropzone" class="publish-dropzone" role="button" tabindex="0" title="انقر أو اسحب الملف هنا">
+          <div class="icon">📁</div>
+          <div class="hint">اسحب الملف هنا أو انقر للاختيار</div>
+          <small style="font-size:0.75rem;color:var(--publish-muted);margin-top:4px;display:block;">يُرفع فوراً إلى السيرفر. عند «إنشاء مهمة» يُنشر إلى فيسبوك.</small>
+        </div>
+        <button id="uploadMediaBtn" type="button" style="display:none;" onclick="document.getElementById('mediaFile') && document.getElementById('mediaFile').click();">اختيار ملف</button>
+        <div id="uploadProgressWrapper" style="display:none;margin-top:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.75rem;color:var(--publish-muted);margin-bottom:4px;">
+            <span id="uploadProgressText">جاري رفع الملف...</span>
+            <span id="uploadProgressLabel">0%</span>
           </div>
-          <div id="uploadProgressWrapper" style="display:none;margin-top:4px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.75rem;color:#9ca3af;margin-bottom:2px;">
-              <span id="uploadProgressText">جاري رفع الملف وإنشاء المهمة...</span>
-              <span id="uploadProgressLabel">0%</span>
-            </div>
-            <div style="width:100%;height:5px;border-radius:999px;background:rgba(15,23,42,0.9);overflow:hidden;">
-              <div id="uploadProgressBar" style="width:0%;height:100%;background:linear-gradient(90deg,#1d4ed8,#3b82f6);transition:width 0.1s linear;"></div>
-            </div>
+          <div class="publish-progress-wrap">
+            <div id="uploadProgressBar" class="publish-progress-bar" style="width:0%;"></div>
           </div>
-          <div id="mediaPreviewWrapper" style="margin-top:10px;border-radius:12px;overflow:hidden;border:1px solid rgba(148,163,184,0.35);background:rgba(15,23,42,0.8);max-width:100%;">
-            <div style="padding:6px 8px;font-size:0.75rem;color:#94a3b8;">معاينة قبل النشر</div>
-            <div id="mediaPreviewContent" style="min-height:120px;max-height:280px;display:flex;align-items:center;justify-content:center;background:#0f172a;">
-              <span id="mediaPreviewPlaceholder" style="color:#64748b;font-size:0.8rem;">ستظهر الصورة أو الفيديو هنا عند اختيار ملف</span>
-              <img id="mediaPreviewImg" alt="معاينة" style="max-width:100%;max-height:260px;object-fit:contain;display:none;">
-              <video id="mediaPreviewVideo" controls style="max-width:100%;max-height:260px;display:none;"></video>
-            </div>
+        </div>
+        <div id="mediaPreviewWrapper" style="margin-top:10px;border-radius:var(--publish-radius-sm);overflow:hidden;border:1px solid var(--publish-border);background:rgba(15,23,42,0.5);max-width:100%;">
+          <div style="padding:6px 10px;font-size:0.75rem;color:var(--publish-muted);">معاينة قبل النشر</div>
+          <div id="mediaPreviewContent" style="min-height:120px;max-height:280px;display:flex;align-items:center;justify-content:center;background:#0f172a;">
+            <span id="mediaPreviewPlaceholder" style="color:var(--publish-muted);font-size:0.8rem;">ستظهر الصورة أو الفيديو هنا</span>
+            <img id="mediaPreviewImg" alt="معاينة" style="max-width:100%;max-height:260px;object-fit:contain;display:none;">
+            <video id="mediaPreviewVideo" controls style="max-width:100%;max-height:260px;display:none;"></video>
           </div>
         </div>
       </div>
 
-      <div class="field" style="margin-bottom:8px;">
-        <label for="mediaType" style="display:block;font-size:0.82rem;margin-bottom:4px;">نوع الوسائط</label>
-        <select id="mediaType" class="input" style="width:100%;border-radius:999px;border:1px solid rgba(55,65,81,0.9);background:#020617;color:#e5e7eb;font-size:0.85rem;padding:6px 10px;">
+      <div class="field" style="margin-bottom:14px;">
+        <label for="mediaType" style="display:block;font-size:0.82rem;margin-bottom:4px;color:var(--publish-muted);">نوع الوسائط</label>
+        <select id="mediaType" class="publish-select input">
           <option value="">بدون</option>
           <option value="image">صورة</option>
           <option value="video">فيديو</option>
         </select>
       </div>
 
-      <div class="field" style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:10px;">
+      <div class="field" style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:16px;">
         <div>
-          <label for="scheduledAt" style="display:block;font-size:0.82rem;margin-bottom:4px;">وقت الجدولة</label>
-          <input id="scheduledAt" type="datetime-local" class="input" style="border-radius:999px;border:1px solid rgba(55,65,81,0.9);background:#020617;color:#e5e7eb;font-size:0.82rem;padding:6px 10px;">
+          <label for="scheduledAt" style="display:block;font-size:0.82rem;margin-bottom:4px;color:var(--publish-muted);">وقت الجدولة</label>
+          <input id="scheduledAt" type="datetime-local" class="publish-input input">
         </div>
-        <div style="margin-inline-start:auto;">
-          <button id="createJobBtn" class="btn-primary" type="button" style="display:inline-flex;align-items:center;gap:6px;">
-            <span>إنشاء مهمة</span>
-          </button>
-          <button id="clearJobBtn" class="btn-ghost" type="button" style="border:none;background:transparent;color:#9ca3af;font-size:0.8rem;margin-inline-start:4px;">تفريغ</button>
+        <div style="margin-inline-start:auto;display:flex;gap:8px;">
+          <button id="createJobBtn" class="publish-btn-primary btn-primary" type="button">إنشاء مهمة</button>
+          <button id="clearJobBtn" class="publish-btn-ghost btn-ghost" type="button">تفريغ</button>
         </div>
       </div>
     </section>
 
-    <!-- Jobs -->
-    <section class="card" style="border-radius:16px;background:rgba(15,23,42,0.96);border:1px solid rgba(148,163,184,0.35);padding:14px 16px;box-shadow:0 20px 40px rgba(0,0,0,0.55);">
-      <header class="card-header" style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">
+    <!-- Scheduled / Latest Jobs -->
+    <section class="publish-card card">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:16px;">
         <div>
-          <div class="card-title" style="font-size:1rem;font-weight:600;">آخر المهام</div>
-          <div class="card-subtitle" style="font-size:0.8rem;color:#9ca3af;">متابعة حالة النشر لكل قناة.</div>
+          <div class="publish-card-title">آخر المهام</div>
+          <div class="publish-card-subtitle">متابعة حالة النشر لكل قناة</div>
         </div>
-        <button id="refreshJobsBtn" class="btn-ghost" type="button" style="border:none;background:transparent;color:#9ca3af;font-size:0.8rem;">تحديث</button>
-      </header>
+        <button id="refreshJobsBtn" class="publish-btn-ghost" type="button">تحديث</button>
+      </div>
       <div style="overflow:auto;max-height:420px;">
-        <table id="jobsTable" style="width:100%;border-collapse:collapse;font-size:0.8rem;">
+        <table id="jobsTable" class="publish-table">
           <thead>
             <tr>
-              <th style="padding:6px 8px;border-bottom:1px solid rgba(31,41,55,0.9);text-align:right;color:#9ca3af;">القناة</th>
-              <th style="padding:6px 8px;border-bottom:1px solid rgba(31,41,55,0.9);text-align:right;color:#9ca3af;">الحالة</th>
-              <th style="padding:6px 8px;border-bottom:1px solid rgba(31,41,55,0.9);text-align:right;color:#9ca3af;">وقت الجدولة</th>
-              <th style="padding:6px 8px;border-bottom:1px solid rgba(31,41,55,0.9);text-align:right;color:#9ca3af;">النتيجة</th>
+              <th>القناة</th>
+              <th>الحالة</th>
+              <th>وقت الجدولة</th>
+              <th>النتيجة</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td colspan="4" style="padding:8px 10px;color:#9ca3af;text-align:center;">لا توجد مهام بعد.</td>
+              <td colspan="4" class="publish-empty">لا توجد مهام بعد.</td>
             </tr>
           </tbody>
         </table>
@@ -347,8 +342,34 @@
 
 <script>
   (function () {
+    var dropzone = document.getElementById('publishDropzone');
     var input = document.getElementById('mediaFile');
     if (!input) return;
+    if (dropzone) {
+      dropzone.addEventListener('click', function (e) {
+        if (e.target === dropzone || dropzone.contains(e.target)) input.click();
+      });
+      dropzone.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        dropzone.classList.add('dragover');
+      });
+      dropzone.addEventListener('dragleave', function () { dropzone.classList.remove('dragover'); });
+      dropzone.addEventListener('drop', function (e) {
+        e.preventDefault();
+        dropzone.classList.remove('dragover');
+        var files = e.dataTransfer && e.dataTransfer.files;
+        if (files && files.length) {
+          var file = files[0];
+          var type = (file.type || '').toLowerCase();
+          if (type.indexOf('image/') === 0 || type.indexOf('video/') === 0) {
+            var dt = new DataTransfer();
+            dt.items.add(file);
+            input.files = dt.files;
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        }
+      });
+    }
     function showPreviewOnly(files) {
       var file = files && files[0];
       if (!file) return;

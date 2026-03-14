@@ -91,13 +91,13 @@
     selectedChannelIds.clear();
 
     if (!channels || !channels.length) {
-      channelsList.innerHTML = '<div style="color:#9ca3af;">لا توجد قنوات بعد. اضغط على \"إضافة قناة\".</div>';
+      channelsList.innerHTML = '<div class="publish-empty"><span class="icon">📡</span> لا توجد قنوات. اضغط «ربط فيسبوك» أو «إضافة قناة».</div>';
       return;
     }
 
     channels.forEach(ch => {
       const row = document.createElement('div');
-      row.className = 'channel-row';
+      row.className = 'channel-row publish-channel-row';
       row.dataset.id = ch.id;
 
       row.innerHTML = [
@@ -131,6 +131,26 @@
       return;
     }
     renderChannels(data.channels || []);
+    updateStats(data.channels || [], null);
+  }
+
+  function updateStats(channels, jobs) {
+    const elPages = document.getElementById('publishStatPages');
+    const elPublished = document.getElementById('publishStatPublished');
+    const elScheduled = document.getElementById('publishStatScheduled');
+    const elFailed = document.getElementById('publishStatFailed');
+    if (channels && elPages) elPages.textContent = channels.length;
+    if (jobs) {
+      let published = 0, scheduled = 0, failed = 0;
+      jobs.forEach(j => {
+        if (j.status === 'published') published++;
+        else if (j.status === 'failed') failed++;
+        else scheduled++;
+      });
+      if (elPublished) elPublished.textContent = published;
+      if (elScheduled) elScheduled.textContent = scheduled;
+      if (elFailed) elFailed.textContent = failed;
+    }
   }
 
   function renderJobs(jobs) {
@@ -143,9 +163,7 @@
       const tr = document.createElement('tr');
       const td = document.createElement('td');
       td.colSpan = 4;
-      td.style.padding = '8px 10px';
-      td.style.color = '#9ca3af';
-      td.style.textAlign = 'center';
+      td.className = 'publish-empty';
       td.textContent = 'لا توجد مهام بعد.';
       tr.appendChild(td);
       tbody.appendChild(tr);
@@ -155,7 +173,7 @@
     jobs.forEach(j => {
       const tr = document.createElement('tr');
       const status = j.status || 'pending';
-      const statusClass = 'badge-status ' + status;
+      const statusClass = 'badge-status publish-badge ' + status;
       let resultCell = '';
       if (status === 'published') {
         resultCell = '<span style="color:#22c55e;">تم النشر</span>';
@@ -187,7 +205,9 @@
       toast(data?.error || 'فشل تحميل المهام.', 'error');
       return;
     }
-    renderJobs(data.jobs || []);
+    const jobs = data.jobs || [];
+    renderJobs(jobs);
+    updateStats(null, jobs);
   }
 
   async function promptNewChannel() {
@@ -566,8 +586,9 @@
     clearJobBtn.addEventListener('click', clearJobForm);
   }
 
-  // Initial load
-  loadChannels();
-  loadJobs();
+  // Initial load: channels (will update stats with channels count), then jobs (will update stats with job counts)
+  loadChannels().then(function () {
+    loadJobs();
+  });
 })();
 
