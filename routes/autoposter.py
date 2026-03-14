@@ -1,12 +1,6 @@
 from functools import wraps
 
-from flask import (
-    Blueprint,
-    jsonify,
-    render_template,
-    request,
-    session,
-)
+from flask import Blueprint, jsonify, render_template, request, session, current_app
 
 from extensions import db
 from models.ai_agent import (
@@ -83,9 +77,14 @@ def settings_view():
 
 
 def _register_autoposter_media(public_url: str, media_type: str, filename: str, size_bytes: int):
-    """تسجيل الوسائط في جدول المخزون ليُختار منها عند النشر."""
+    """تسجيل الوسائط في جدول مكتبة الأوتوبوستر ليُختار منها عند النشر.
+
+    ملاحظة مهمة: في الإنتاج قد لا يكون جدول autoposter_media منشأً بعد (خاصة على السيرفر القديم)،
+    لذلك نحاول إنشاء الجداول تلقائياً عند أول فشل من نوع OperationalError، حتى لا يفشل الرفع بصمت.
+    """
+    from models.autoposter_media import AutoposterMedia
+    from sqlalchemy.exc import OperationalError
     try:
-        from models.autoposter_media import AutoposterMedia
         tenant_slug = session.get("tenant_slug")
         rec = AutoposterMedia(
             tenant_slug=tenant_slug,
@@ -97,7 +96,21 @@ def _register_autoposter_media(public_url: str, media_type: str, filename: str, 
         db.session.add(rec)
         db.session.commit()
         return rec.id
-    except Exception:
+    except OperationalError as e:
+        # في حال لم يكن جدول autoposter_media موجوداً بعد على قاعدة بيانات الإنتاج
+        current_app.logger.exception("autoposter _register_autoposter_media OperationalError, trying create_all: %s", e)
+        db.session.rollback()
+        try:
+            db.create_all()
+            db.session.add(rec)
+            db.session.commit()
+            return rec.id
+        except Exception as e2:
+            current_app.logger.exception("autoposter _register_autoposter_media failed after create_all: %s", e2)
+            db.session.rollback()
+            return None
+    except Exception as e:
+        current_app.logger.exception("autoposter _register_autoposter_media failed: %s", e)
         db.session.rollback()
         return None
 
@@ -212,12 +225,26 @@ def api_upload_json():
 def api_media_list():
     """قائمة الوسائط المخزنة (صور/فيديو) للشركة الحالية — لاختيار واحدة عند النشر."""
     from models.autoposter_media import AutoposterMedia
+    from sqlalchemy.exc import OperationalError
     tenant_slug = session.get("tenant_slug")
-    q = AutoposterMedia.query.order_by(AutoposterMedia.created_at.desc()).limit(100)
-    if tenant_slug:
-        q = q.filter_by(tenant_slug=tenant_slug)
-    items = q.all()
-    return jsonify({"media": [m.to_dict() for m in items]})
+    try:
+        q = AutoposterMedia.query.order_by(AutoposterMedia.created_at.desc()).limit(100)
+        if tenant_slug:
+            q = q.filter_by(tenant_slug=tenant_slug)
+        items = q.all()
+        return jsonify({"success": True, "media": [m.to_dict() for m in items]})
+    except OperationalError as e:
+        current_app.logger.exception("autoposter /api/media OperationalError, trying create_all: %s", e)
+        db.session.rollback()
+        try:
+            db.create_all()
+        except Exception:
+            db.session.rollback()
+        return jsonify({"success": False, "media": []})
+    except Exception as e:
+        current_app.logger.exception("autoposter /api/media failed: %s", e)
+        db.session.rollback()
+        return jsonify({"success": False, "media": []})
 
 
 @autoposter_bp.route("/api/me", methods=["GET"])
