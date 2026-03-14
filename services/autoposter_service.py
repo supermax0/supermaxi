@@ -17,18 +17,19 @@ def _normalize_post_type(post_type: str) -> str:
     return "reels" if post_type == "reel" else post_type
 
 
-def schedule_posts_for_pages(
+def create_posts_for_pages(
     *,
     pages: Iterable[AutoposterFacebookPage],
     content: str,
     image_url: str | None,
     video_url: str | None,
     post_type: str,
-    scheduled_at: datetime,
+    status: str,
+    scheduled_at: datetime | None,
     media_id: int | None = None,
     caption: str | None = None,
 ) -> int:
-    """إنشاء سجلات منشورات مجدولة لعدة صفحات في شركة واحدة."""
+    """إنشاء سجلات منشورات في DB فقط (بدون استدعاء فيسبوك). status: pending_publish أو scheduled."""
     post_type = _normalize_post_type(post_type)
     count = 0
     for page in pages:
@@ -42,13 +43,38 @@ def schedule_posts_for_pages(
             media_id=media_id,
             channel=ChannelType.FACEBOOK_PAGE,
             post_type=post_type,
-            status="scheduled",
+            status=status,
             scheduled_at=scheduled_at,
         )
         db.session.add(post)
         count += 1
     db.session.commit()
     return count
+
+
+def schedule_posts_for_pages(
+    *,
+    pages: Iterable[AutoposterFacebookPage],
+    content: str,
+    image_url: str | None,
+    video_url: str | None,
+    post_type: str,
+    scheduled_at: datetime,
+    media_id: int | None = None,
+    caption: str | None = None,
+) -> int:
+    """إنشاء سجلات منشورات مجدولة لعدة صفحات في شركة واحدة."""
+    return create_posts_for_pages(
+        pages=pages,
+        content=content,
+        image_url=image_url,
+        video_url=video_url,
+        post_type=post_type,
+        status="scheduled",
+        scheduled_at=scheduled_at,
+        media_id=media_id,
+        caption=caption,
+    )
 
 
 def publish_now_for_pages(
@@ -114,13 +140,17 @@ def publish_now_for_pages(
 
 
 def process_scheduled_posts_for_current_tenant(now: datetime | None = None) -> None:
-    """نشر جميع المنشورات المجدولة التي حان وقتها في قاعدة بيانات المستأجر الحالي."""
+    """نشر المنشورات المجدولة و pending_publish التي حان وقتها (أو بدون وقت)."""
+    from sqlalchemy import or_
     now = now or datetime.utcnow()
     max_retries = 5
     retry_delay = timedelta(minutes=10)
     posts = AutoposterPost.query.filter(
-        AutoposterPost.status == "scheduled",
-        AutoposterPost.scheduled_at <= now,
+        AutoposterPost.status.in_(["scheduled", "pending_publish"]),
+        or_(
+            AutoposterPost.scheduled_at.is_(None),
+            AutoposterPost.scheduled_at <= now,
+        ),
     ).all()
 
     for post in posts:

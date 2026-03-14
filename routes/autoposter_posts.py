@@ -3,11 +3,12 @@
 import traceback
 from datetime import datetime
 from flask import Blueprint, current_app, jsonify, render_template, request, session
+from sqlalchemy.exc import OperationalError, IntegrityError
 from extensions import db
 from models.autoposter_facebook_page import AutoposterFacebookPage
 from models.autoposter_media import AutoposterMedia
 from models.autoposter_post import AutoposterPost
-from services.autoposter_service import publish_now_for_pages, schedule_posts_for_pages
+from services.autoposter_service import create_posts_for_pages, schedule_posts_for_pages
 
 autoposter_posts_bp = Blueprint("autoposter_posts", __name__, url_prefix="/autoposter")
 
@@ -108,7 +109,8 @@ def api_posts_create():
         return jsonify({
             "success": False,
             "error": "خطأ في الخادم. راجع السجلات.",
-        }), 500
+            "code": "server_error",
+        }), 200
 
 
 def _api_posts_create_impl():
@@ -144,40 +146,52 @@ def _api_posts_create_impl():
     image_url, video_url, _ = _resolve_media_urls(media_id, request_root)
     content = caption or ""
     tenant_slug = session.get("tenant_slug")
-    q = AutoposterFacebookPage.query.filter(
-        AutoposterFacebookPage.page_id.in_(page_ids),
-        AutoposterFacebookPage.access_token.isnot(None),
-    )
-    if tenant_slug and hasattr(AutoposterFacebookPage, "tenant_slug"):
-        q = q.filter_by(tenant_slug=tenant_slug)
-    pages = list(q.all())
-    if not pages:
-        return jsonify({"success": False, "error": "لم تُعثر على صفحات متصلة"}), 400
-    if scheduled_at:
-        count = schedule_posts_for_pages(
+
+    def _run():
+        q = AutoposterFacebookPage.query.filter(
+            AutoposterFacebookPage.page_id.in_(page_ids),
+            AutoposterFacebookPage.access_token.isnot(None),
+        )
+        if tenant_slug and hasattr(AutoposterFacebookPage, "tenant_slug"):
+            q = q.filter_by(tenant_slug=tenant_slug)
+        pages = list(q.all())
+        if not pages:
+            return jsonify({"success": False, "error": "لم تُعثر على صفحات متصلة"}), 400
+        if scheduled_at:
+            count = schedule_posts_for_pages(
+                pages=pages,
+                content=content,
+                image_url=image_url,
+                video_url=video_url,
+                post_type=post_type,
+                scheduled_at=scheduled_at,
+                media_id=media_id,
+                caption=caption or None,
+            )
+            return jsonify({"success": True, "scheduled": True, "count": count})
+        count = create_posts_for_pages(
             pages=pages,
             content=content,
             image_url=image_url,
             video_url=video_url,
             post_type=post_type,
-            scheduled_at=scheduled_at,
+            status="pending_publish",
+            scheduled_at=datetime.utcnow(),
             media_id=media_id,
             caption=caption or None,
         )
-        return jsonify({"success": True, "scheduled": True, "count": count})
-    published, errors = publish_now_for_pages(
-        pages=pages,
-        content=content,
-        image_url=image_url,
-        video_url=video_url,
-        post_type=post_type,
-        media_id=media_id,
-        caption=caption or None,
-    )
-    if errors and not published:
-        return jsonify({
-            "success": False,
-            "error": errors[0].get("error", "فشل النشر"),
-            "errors": errors,
-        }), 200
-    return jsonify({"success": True, "published": published, "errors": errors or []})
+        return jsonify({"success": True, "scheduled": False, "count": count, "message": "تم إضافة المنشور إلى قائمة النشر."})
+
+    try:
+        return _run()
+    except (OperationalError, IntegrityError) as e:
+        db.session.rollback()
+        if current_app.logger:
+            current_app.logger.warning("autoposter create post DB error: %s", e)
+        if isinstance(e, OperationalError):
+            try:
+                db.create_all()
+                return _run()
+            except Exception:
+                db.session.rollback()
+        return jsonify({"success": False, "error": "خطأ في قاعدة البيانات."}), 200

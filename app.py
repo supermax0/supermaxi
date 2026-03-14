@@ -922,9 +922,9 @@ from routes.admin import admin_bp
 app.register_blueprint(admin_bp)
 
 app.register_blueprint(invoice_store_bp)
-app.register_blueprint(autoposter_api_bp)  # GET /autoposter/api/media (filesystem scan) — registered first
+app.register_blueprint(autoposter_media_bp)  # GET /autoposter/api/media من DB (مع id) — قبل api لصفحة إنشاء المنشور
+app.register_blueprint(autoposter_api_bp)
 app.register_blueprint(autoposter_bp)
-app.register_blueprint(autoposter_media_bp)
 app.register_blueprint(autoposter_posts_bp)
 app.register_blueprint(telegram_bp)
 app.register_blueprint(publish_api_bp)

@@ -93,7 +93,7 @@
       const data = await res.json().catch(() => ({}));
       msgEl.style.display = 'block';
       if (data.success) {
-        msgEl.textContent = data.scheduled ? 'تم جدولة ' + (data.count || 0) + ' منشور.' : 'تم النشر بنجاح.';
+        msgEl.textContent = data.scheduled ? 'تم جدولة ' + (data.count || 0) + ' منشور.' : (data.message || 'تم إضافة المنشور إلى قائمة النشر.');
         msgEl.style.background = 'rgba(34,197,94,0.2)';
         msgEl.style.color = '#86efac';
         if (!data.scheduled) caption.value = '';
