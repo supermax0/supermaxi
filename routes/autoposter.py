@@ -51,6 +51,13 @@ def dashboard_redirect():
     return redirect(url_for("autoposter.ai_agent_view"))
 
 
+@autoposter_bp.route("/upload")
+@require_autoposter_login
+def upload_page():
+    """صفحة رفع وسائط (صورة/فيديو) ثم استخدامها في المنشور."""
+    return render_template("autoposter/upload.html")
+
+
 @autoposter_bp.route("/ai-agent")
 def ai_agent_view():
     """واجهة AI Agent / Workflow Builder — بدون أي منطق نشر أو ربط صفحات."""
@@ -63,12 +70,33 @@ def ai_agent_view():
 # ============== API: رفع الوسائط (صورة / فيديو) ==============
 
 
+def _register_autoposter_media(public_url: str, media_type: str, filename: str, size_bytes: int):
+    """تسجيل الوسائط في جدول المخزون ليُختار منها عند النشر."""
+    try:
+        from models.autoposter_media import AutoposterMedia
+        tenant_slug = session.get("tenant_slug")
+        rec = AutoposterMedia(
+            tenant_slug=tenant_slug,
+            public_url=public_url,
+            media_type=media_type,
+            filename=filename,
+            size_bytes=size_bytes,
+        )
+        db.session.add(rec)
+        db.session.commit()
+        return rec.id
+    except Exception:
+        db.session.rollback()
+        return None
+
+
 @autoposter_bp.route("/api/upload", methods=["POST"])
 @require_autoposter_login
 def api_upload():
     """
     رفع ملف وسائط (صورة أو فيديو) عبر multipart/form-data.
     المفتاح: file. حد الحجم 100MB. الصيغ: jpg, png, webp, mp4, mov.
+    يُخزّن الملف على السيرفر ويُسجّل في مكتبة الوسائط.
     """
     file = request.files.get("file")
     if not file or not file.filename:
@@ -82,21 +110,102 @@ def api_upload():
             "message": result.get("message", "فشل رفع الملف"),
             "error": result.get("error_code", "upload_failed"),
         }), 400
+    public_url = result.get("url") or ""
+    size_mb = result.get("size_mb") or 0
+    size_bytes = int(size_mb * 1024 * 1024) if size_mb else None
+    media_id = _register_autoposter_media(
+        public_url,
+        result.get("type") or "video",
+        file.filename or "",
+        size_bytes or 0,
+    )
     # تحويل الرابط إلى مطلق إن لزم (للاستخدام من الواجهة)
-    url = result.get("url") or ""
+    url = public_url
     if url.startswith("/") and request.url_root:
         base = (request.url_root or "").rstrip("/")
         url = base + url
-    return jsonify({
+    out = {
         "ok": True,
-        "url": url or result.get("url"),
+        "url": url,
         "type": result.get("type"),
         "thumbnail_url": result.get("thumbnail_url"),
         "size_mb": result.get("size_mb"),
         "width": result.get("width"),
         "height": result.get("height"),
         "duration_sec": result.get("duration_sec"),
-    })
+    }
+    if media_id:
+        out["media_id"] = media_id
+    return jsonify(out)
+
+
+@autoposter_bp.route("/api/upload/json", methods=["POST"])
+@require_autoposter_login
+def api_upload_json():
+    """
+    رفع وسائط عبر JSON: { "filename": "x.mp4", "data": "base64..." }.
+    بديل عند صعوبة multipart (بعض الشبكات أو الوكلاء).
+    حد الحجم 100MB.
+    """
+    data = request.get_json(silent=True) or {}
+    b64 = data.get("data") or ""
+    filename = (data.get("filename") or "").strip() or "video.mp4"
+    content_type = (data.get("content_type") or "").strip()
+    if not b64:
+        return jsonify({"ok": False, "message": "المحتوى (data) مطلوب بصيغة base64", "error": "data missing"}), 400
+    import base64
+    try:
+        raw = base64.b64decode(b64, validate=True)
+    except Exception:
+        return jsonify({"ok": False, "message": "المحتوى ليس base64 صالحاً", "error": "invalid_base64"}), 400
+    if not content_type:
+        content_type = "video/mp4" if filename.lower().endswith((".mp4", ".mov", ".webm")) else "image/jpeg"
+    from services.media_service import save_uploaded_bytes
+    result = save_uploaded_bytes(raw, filename, content_type, max_mb=100)
+    if not result.get("ok"):
+        return jsonify({
+            "ok": False,
+            "message": result.get("message", "فشل حفظ الملف"),
+            "error": result.get("error_code", "upload_failed"),
+        }), 400
+    public_url = result.get("url") or ""
+    size_mb = result.get("size_mb") or 0
+    size_bytes = int(size_mb * 1024 * 1024) if size_mb else len(raw)
+    media_id = _register_autoposter_media(
+        public_url,
+        result.get("type") or "video",
+        filename,
+        size_bytes,
+    )
+    url = public_url
+    if url.startswith("/") and request.url_root:
+        url = (request.url_root or "").rstrip("/") + url
+    out = {
+        "ok": True,
+        "url": url,
+        "type": result.get("type"),
+        "thumbnail_url": result.get("thumbnail_url"),
+        "size_mb": result.get("size_mb"),
+        "width": result.get("width"),
+        "height": result.get("height"),
+        "duration_sec": result.get("duration_sec"),
+    }
+    if media_id:
+        out["media_id"] = media_id
+    return jsonify(out)
+
+
+@autoposter_bp.route("/api/media", methods=["GET"])
+@require_autoposter_login
+def api_media_list():
+    """قائمة الوسائط المخزنة (صور/فيديو) للشركة الحالية — لاختيار واحدة عند النشر."""
+    from models.autoposter_media import AutoposterMedia
+    tenant_slug = session.get("tenant_slug")
+    q = AutoposterMedia.query.order_by(AutoposterMedia.created_at.desc()).limit(100)
+    if tenant_slug:
+        q = q.filter_by(tenant_slug=tenant_slug)
+    items = q.all()
+    return jsonify({"media": [m.to_dict() for m in items]})
 
 
 @autoposter_bp.route("/api/me", methods=["GET"])

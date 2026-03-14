@@ -636,3 +636,113 @@ def save_uploaded_file(file_storage, max_mb: int = 200) -> Dict[str, Any]:
         "duration_sec": duration,
     }
 
+
+def save_uploaded_bytes(
+    data: bytes,
+    filename: str,
+    content_type: str,
+    max_mb: int = 100,
+) -> Dict[str, Any]:
+    """
+    حفظ وسائط من بايتات (مثلاً من رفع JSON base64).
+    نفس منطق save_uploaded_file من حيث المسارات والتحقق والمعالجة.
+    """
+    ct = _normalize_content_type(content_type or "")
+    is_ok, code, msg = validate_mime_and_extension(ct, filename)
+    if not is_ok:
+        return {"ok": False, "error_code": code, "message": msg}
+    kind = detect_kind(ct)
+    if kind is None:
+        return {"ok": False, "error_code": "unsupported_type", "message": "نوع الملف غير مدعوم."}
+    size_bytes = len(data)
+    is_ok, size_code, size_msg, size_mb = validate_size_bytes(size_bytes, max_mb)
+    if not is_ok:
+        return {"ok": False, "error_code": size_code, "message": size_msg, "size_mb": size_mb}
+    ext = (Path(filename).suffix or "").lower()
+    if not ext or ext not in ALLOWED_EXTENSIONS:
+        ext = ".mp4" if kind == "video" else ".jpg"
+    safe_name = f"{uuid.uuid4().hex}{ext}"
+    try:
+        if kind == "video":
+            upload_dir = get_video_upload_root()
+        else:
+            upload_dir = get_autoposter_upload_dir()
+        upload_dir.mkdir(parents=True, exist_ok=True)
+    except Exception as e:
+        current_app.logger.exception("Media upload bytes: failed to create dir: %s", e)
+        return {
+            "ok": False,
+            "error_code": "save_failed",
+            "message": "تعذر إنشاء مجلد الرفع.",
+        }
+    dest_path = upload_dir / safe_name
+    try:
+        dest_path.write_bytes(data)
+    except Exception as e:
+        current_app.logger.exception("Media upload bytes: failed to write: %s", e)
+        return {"ok": False, "error_code": "save_failed", "message": "تعذر حفظ الملف."}
+    width, height, duration, thumb_url = None, None, None, None
+    try:
+        if kind == "image":
+            process_image(dest_path)
+            width, height, _ = inspect_media(dest_path, kind="image")
+            thumb_res = generate_image_thumbnail(dest_path)
+            if thumb_res:
+                _, thumb_url = thumb_res
+        else:
+            final_path = dest_path
+            if final_path.suffix.lower() == ".mov":
+                try:
+                    import subprocess
+                    mp4_name = final_path.with_suffix(".mp4")
+                    proc = subprocess.run(
+                        ["ffmpeg", "-y", "-i", str(final_path), "-vcodec", "libx264", "-acodec", "aac", str(mp4_name)],
+                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False, text=True,
+                    )
+                    if proc.returncode == 0 and mp4_name.exists():
+                        try:
+                            final_path.unlink(missing_ok=True)
+                        except Exception:
+                            pass
+                        final_path = mp4_name
+                except Exception:
+                    final_path = dest_path
+            width, height, duration = inspect_media(final_path, kind="video")
+            try:
+                import subprocess
+                thumb_dir = get_thumbnail_upload_root()
+                thumb_dir.mkdir(parents=True, exist_ok=True)
+                thumb_name = f"{uuid.uuid4().hex}.jpg"
+                thumb_path = thumb_dir / thumb_name
+                proc = subprocess.run(
+                    ["ffmpeg", "-y", "-i", str(final_path), "-ss", "00:00:03", "-vframes", "1", str(thumb_path)],
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False, text=True,
+                )
+                if proc.returncode == 0 and thumb_path.exists():
+                    thumb_url = f"/autoposter/serve/thumbnail/{thumb_name}"
+            except Exception:
+                pass
+            dest_path = final_path
+    except Exception:
+        pass
+    try:
+        if kind == "video":
+            public_url = f"/autoposter/serve/video/{dest_path.name}"
+        else:
+            rel = dest_path.relative_to(get_media_root())
+            public_url = f"{current_app.static_url_path}/{rel.as_posix()}"
+    except Exception:
+        public_url = f"/autoposter/serve/video/{dest_path.name}" if kind == "video" else (f"{current_app.static_url_path}/autoposter/uploads/{dest_path.name}")
+    return {
+        "ok": True,
+        "error_code": None,
+        "message": None,
+        "url": public_url,
+        "type": kind,
+        "thumbnail_url": thumb_url,
+        "size_mb": size_mb,
+        "width": width,
+        "height": height,
+        "duration_sec": duration,
+    }
+

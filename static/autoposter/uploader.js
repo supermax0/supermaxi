@@ -163,8 +163,13 @@
       } else if (xhr.status === 0) {
         showError('تم إلغاء الرفع.');
       } else {
-        const msg = resp.message || resp.error || 'فشل رفع الفيديو.';
-        showError(msg);
+        // محاولة بديلة: رفع عبر JSON (base64) إن كان الملف أصغر من 50 ميجا
+        if (file.size < 50 * 1024 * 1024 && (xhr.status === 413 || xhr.status === 502 || xhr.status === 0)) {
+          tryJsonUpload();
+        } else {
+          const msg = resp.message || resp.error || 'فشل رفع الملف.';
+          showError(msg);
+        }
       }
     };
 
@@ -172,8 +177,83 @@
       currentXhr = null;
       if (progressShell) progressShell.style.display = 'none';
       if (cancelBtn) cancelBtn.disabled = true;
-      showError('فشل الرفع بسبب مشكلة في الاتصال.');
+      if (file.size < 50 * 1024 * 1024) {
+        tryJsonUpload();
+      } else {
+        showError('فشل الرفع بسبب مشكلة في الاتصال.');
+      }
     };
+
+    function tryJsonUpload() {
+      if (progressShell) progressShell.style.display = 'block';
+      if (progressText) progressText.textContent = 'جاري الرفع (طريقة بديلة)...';
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result;
+        const base64 = dataUrl.indexOf(',') >= 0 ? dataUrl.split(',')[1] : dataUrl;
+        const apiBase = (window.AUTOPOSTER_API_BASE || '/autoposter').replace(/\/+$/, '');
+        fetch(apiBase + '/api/upload/json', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            filename: file.name || (file.type.startsWith('video/') ? 'video.mp4' : 'image.jpg'),
+            data: base64,
+            content_type: file.type || '',
+          }),
+        })
+          .then((r) => r.json())
+          .then((resp) => {
+            if (progressShell) progressShell.style.display = 'none';
+            if (resp.ok) {
+              showSuccess(resp.type === 'video' ? 'تم رفع الفيديو بنجاح (طريقة بديلة).' : 'تم رفع الصورة بنجاح (طريقة بديلة).');
+              if (previewShell && previewMediaBox && previewMeta) {
+                const url = resp.url || '';
+                const mediaType = resp.type || (file.type.startsWith('video/') ? 'video' : 'image');
+                const parts = [`الحجم: ${(resp.size_mb || file.size / (1024 * 1024)).toFixed(2)} ميجا`];
+                if (resp.width && resp.height) parts.push(`الأبعاد: ${resp.width}×${resp.height}`);
+                if (resp.duration_sec) parts.push(`المدة: ${Math.floor(resp.duration_sec / 60)}:${Math.round(resp.duration_sec % 60).toString().padStart(2, '0')} دقيقة`);
+                previewMeta.textContent = parts.join(' · ');
+                previewMediaBox.innerHTML = '';
+                if (mediaType === 'video') {
+                  const v = document.createElement('video');
+                  v.controls = true;
+                  v.playsInline = true;
+                  v.style.cssText = 'width:100%;max-height:320px';
+                  v.src = url;
+                  previewMediaBox.appendChild(v);
+                } else {
+                  const img = document.createElement('img');
+                  img.src = url;
+                  img.alt = '';
+                  img.style.cssText = 'max-width:100%;max-height:320px';
+                  previewMediaBox.appendChild(img);
+                }
+                previewShell.style.display = 'block';
+              }
+              if (useInPostBtn && resp.url) {
+                useInPostBtn.style.display = 'inline-flex';
+                useInPostBtn.disabled = false;
+                useInPostBtn.textContent = resp.type === 'video' ? 'استخدام هذا الفيديو في المنشور' : 'استخدام هذه الصورة في المنشور';
+                useInPostBtn.onclick = () => {
+                  try {
+                    sessionStorage.setItem('autoposter_last_media_url', resp.url);
+                    sessionStorage.setItem('autoposter_last_media_type', resp.type || 'video');
+                  } catch (e) {}
+                  window.location.href = ((window.AUTOPOSTER_API_BASE || '/autoposter').replace(/\/+$/, '')) + '/#create';
+                };
+              }
+            } else {
+              showError(resp.message || 'فشل الرفع بالطريقة البديلة.');
+            }
+          })
+          .catch(() => {
+            if (progressShell) progressShell.style.display = 'none';
+            showError('فشل الرفع بالطريقة البديلة.');
+          });
+      };
+      reader.readAsDataURL(file);
+    }
 
     xhr.send(formData);
   }

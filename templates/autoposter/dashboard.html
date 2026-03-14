@@ -212,7 +212,16 @@
                       <input type="file" id="mediaInput" accept="image/*,video/*" multiple style="display:none">
                       <span class="drop-text">اسحب ملفاً هنا أو</span>
                       <button type="button" class="link-btn" id="browseMedia">اختر ملف</button>
-                      <span class="field-help" style="display:block;margin-top:6px">صور: jpg, png, gif, webp — فيديو: mp4 / mov (حد 200 ميجا)</span>
+                      <button type="button" class="link-btn" id="pickFromLibrary" title="اختيار من الوسائط المخزنة">من المخزون</button>
+                      <span class="field-help" style="display:block;margin-top:6px">صور: jpg, png, webp — فيديو: mp4 / mov (حد 100 ميجا). أو اختر من المخزون بعد الرفع.</span>
+                    </div>
+                    <div id="mediaLibraryPanel" class="media-library-panel" style="display:none; margin-top:8px; padding:10px; background:var(--bg-elevated, #1e293b); border-radius:10px;">
+                      <div class="media-library-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                        <span>الوسائط المخزنة</span>
+                        <button type="button" class="link-btn small" id="closeMediaLibrary">إغلاق</button>
+                      </div>
+                      <ul id="mediaLibraryList" class="media-library-list" style="list-style:none;margin:0;padding:0;max-height:200px;overflow:auto;"></ul>
+                      <p id="mediaLibraryEmpty" class="text-muted" style="display:none;margin:0;font-size:0.85rem;">لا توجد وسائط مخزنة. ارفع من صفحة «رفع فيديو» أولاً.</p>
                     </div>
                     <div class="media-preview-wrap" id="mediaPreview"></div>
                     <div class="linear-progress" id="uploadProgress" hidden><div class="bar"></div></div>

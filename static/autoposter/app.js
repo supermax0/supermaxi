@@ -743,6 +743,61 @@
 
   if (browseMedia) browseMedia.addEventListener('click', () => mediaInput && mediaInput.click());
 
+  // اختيار من الوسائط المخزنة (بعد الرفع)
+  const pickFromLibrary = document.getElementById('pickFromLibrary');
+  const mediaLibraryPanel = document.getElementById('mediaLibraryPanel');
+  const mediaLibraryList = document.getElementById('mediaLibraryList');
+  const mediaLibraryEmpty = document.getElementById('mediaLibraryEmpty');
+  const closeMediaLibrary = document.getElementById('closeMediaLibrary');
+  async function openMediaLibrary() {
+    if (!mediaLibraryPanel || !mediaLibraryList) return;
+    mediaLibraryPanel.style.display = 'block';
+    mediaLibraryEmpty && (mediaLibraryEmpty.style.display = 'none');
+    mediaLibraryList.innerHTML = '';
+    const res = await apiFetch('/api/media');
+    if (!res || !res.ok) {
+      mediaLibraryEmpty && (mediaLibraryEmpty.style.display = 'block');
+      return;
+    }
+    const data = await res.json().catch(() => ({}));
+    const items = data.media || [];
+    if (!items.length) {
+      mediaLibraryEmpty && (mediaLibraryEmpty.style.display = 'block');
+      return;
+    }
+    items.forEach((m) => {
+      const li = document.createElement('li');
+      li.style.cssText = 'padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.06);';
+      const fullUrl = m.public_url && m.public_url.startsWith('/') ? (window.AUTOPOSTER_API_BASE || '').replace(/\/+$/, '') + m.public_url : m.public_url;
+      const label = (m.filename || m.media_type || 'وسائط') + (m.size_bytes ? ` (${(m.size_bytes / 1024 / 1024).toFixed(1)} ميجا)` : '');
+      li.innerHTML = `<button type="button" class="link-btn" data-url="${escapeAttr(fullUrl || m.public_url)}" data-type="${escapeAttr(m.media_type || 'video')}">${escapeHtml(label)}</button>`;
+      li.querySelector('button').addEventListener('click', () => {
+        uploadedMedia = { url: fullUrl || m.public_url, type: m.media_type || 'video', file: null, thumbnail_url: null, size_mb: m.size_bytes ? (m.size_bytes / 1024 / 1024) : null, width: null, height: null, duration_sec: null };
+        if (mediaPreview) {
+          mediaPreview.innerHTML = '';
+          const wrap = document.createElement('div');
+          wrap.className = 'media-preview-item';
+          const el = uploadedMedia.type === 'video'
+            ? Object.assign(document.createElement('video'), { src: uploadedMedia.url, controls: true, muted: true, style: 'max-width:100%;max-height:160px' })
+            : Object.assign(document.createElement('img'), { src: uploadedMedia.url, alt: '', style: 'max-width:100%;max-height:160px' });
+          const remove = document.createElement('button');
+          remove.type = 'button';
+          remove.className = 'remove-media';
+          remove.textContent = '×';
+          remove.addEventListener('click', () => { wrap.remove(); uploadedMedia = { url: null, type: null }; updatePreview(); });
+          wrap.appendChild(el);
+          wrap.appendChild(remove);
+          mediaPreview.appendChild(wrap);
+        }
+        updatePreview();
+        mediaLibraryPanel.style.display = 'none';
+      });
+      mediaLibraryList.appendChild(li);
+    });
+  }
+  if (pickFromLibrary) pickFromLibrary.addEventListener('click', openMediaLibrary);
+  if (closeMediaLibrary && mediaLibraryPanel) closeMediaLibrary.addEventListener('click', () => { mediaLibraryPanel.style.display = 'none'; });
+
   let uploadedMedia = { url: null, type: null, file: null };
 
   if (mediaInput) {
