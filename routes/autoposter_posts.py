@@ -66,6 +66,33 @@ def api_pages_list():
     })
 
 
+@autoposter_posts_bp.route("/scheduled")
+@_require_login
+def scheduled_page():
+    """صفحة المنشورات المجدولة."""
+    return render_template("autoposter/scheduled.html")
+
+
+@autoposter_posts_bp.route("/api/posts/scheduled", methods=["GET"])
+def api_posts_scheduled():
+    """قائمة المنشورات المجدولة (لم تُنشر بعد)."""
+    if not session.get("user_id"):
+        return jsonify({"error": "unauthorized"}), 401
+    tenant_slug = session.get("tenant_slug")
+    from datetime import datetime as dt
+    now = dt.utcnow()
+    q = (
+        AutoposterPost.query.filter(
+            AutoposterPost.scheduled_at.isnot(None),
+            AutoposterPost.scheduled_at > now,
+        )
+        .order_by(AutoposterPost.scheduled_at.asc())
+        .limit(100)
+    )
+    posts = q.all()
+    return jsonify({"posts": [p.to_dict() for p in posts], "count": len(posts)})
+
+
 @autoposter_posts_bp.route("/api/posts/create", methods=["POST"])
 def api_posts_create():
     """

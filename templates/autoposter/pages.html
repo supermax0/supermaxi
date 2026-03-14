@@ -1,0 +1,35 @@
+{% extends "autoposter/base_autoposter.html" %}
+{% block title %}صفحات فيسبوك{% endblock %}
+{% block page_title %}صفحات فيسبوك{% endblock %}
+{% block content %}
+  <p style="margin:0 0 20px;font-size:0.9rem;color:var(--text-muted,#94a3b8);">الصفحات المتصلة بالنشر التلقائي</p>
+  <div id="pagesList" class="pages-cards" style="display:grid;gap:12px;">
+    <div id="loadingMsg" style="text-align:center;padding:24px;color:#94a3b8;">جاري التحميل...</div>
+  </div>
+  <p style="margin-top:20px;font-size:0.85rem;color:#94a3b8;">
+    لربط صفحة جديدة، استخدم <a href="{{ (request.script_root or '') }}/autoposter/dashboard" style="color:#93c5fd;">لوحة التحكم</a> أو إعدادات فيسبوك.
+  </p>
+{% endblock %}
+{% block scripts %}
+  <script>
+(function() {
+  var API_BASE = (window.AUTOPOSTER_API_BASE || '/autoposter').replace(/\/+$/, '');
+  var el = document.getElementById('pagesList');
+  var loading = document.getElementById('loadingMsg');
+  fetch(API_BASE + '/api/pages', { credentials: 'include' })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      loading.style.display = 'none';
+      var pages = data.pages || [];
+      if (!pages.length) {
+        el.innerHTML = '<div style="padding:20px;background:rgba(30,41,59,0.6);border-radius:12px;border:1px solid rgba(71,85,105,0.5);color:#94a3b8;">لا توجد صفحات متصلة.</div>';
+        return;
+      }
+      el.innerHTML = pages.map(function(p) {
+        return '<div style="padding:16px;background:rgba(30,41,59,0.9);border-radius:12px;border:1px solid rgba(71,85,105,0.5);display:flex;align-items:center;gap:12px;"><span style="font-size:1.2rem;">📄</span><div><div style="font-weight:600;">' + (p.name || p.id) + '</div><div style="font-size:0.8rem;color:#94a3b8;">ID: ' + p.id + '</div></div></div>';
+      }).join('');
+    })
+    .catch(function() { loading.textContent = 'فشل تحميل الصفحات.'; });
+})();
+  </script>
+{% endblock %}

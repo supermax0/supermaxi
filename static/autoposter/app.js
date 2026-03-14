@@ -561,8 +561,8 @@
   if (goToCreateFromDashboard) {
     goToCreateFromDashboard.addEventListener('click', (e) => {
       e.preventDefault();
-      showPage('create');
-      window.location.hash = '#create';
+      const base = (window.AUTOPOSTER_API_BASE || '').replace(/\/+$/, '').replace(/\/api.*$/, '') || '/autoposter';
+      window.location.href = base + '/create';
     });
   }
 

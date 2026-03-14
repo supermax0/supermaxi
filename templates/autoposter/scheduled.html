@@ -1,0 +1,64 @@
+{% extends "autoposter/base_autoposter.html" %}
+{% block title %}المنشورات المجدولة{% endblock %}
+{% block page_title %}المنشورات المجدولة{% endblock %}
+{% block content %}
+  <p style="margin:0 0 20px;font-size:0.9rem;color:var(--text-muted,#94a3b8);">قائمة المنشورات المبرمجة التي لم تُنشر بعد</p>
+  <div id="scheduledList" class="scheduled-list">
+    <div id="loadingMsg" style="text-align:center;padding:32px;color:#94a3b8;">جاري التحميل...</div>
+  </div>
+  <div id="emptyMsg" style="display:none;text-align:center;padding:32px;color:#94a3b8;background:rgba(15,23,42,0.6);border-radius:12px;border:1px solid rgba(71,85,105,0.5);">
+    لا توجد منشورات مجدولة. <a href="{{ (request.script_root or '') }}/autoposter/create" style="color:#93c5fd;">إنشاء منشور مجدول</a>
+  </div>
+{% endblock %}
+{% block scripts %}
+  <script>
+(function() {
+  var API_BASE = (window.AUTOPOSTER_API_BASE || '/autoposter').replace(/\/+$/, '');
+  function fullUrl(p) { return p.startsWith('/') ? API_BASE + p : p; }
+  var listEl = document.getElementById('scheduledList');
+  var loadingMsg = document.getElementById('loadingMsg');
+  var emptyMsg = document.getElementById('emptyMsg');
+
+  function formatDate(s) {
+    if (!s) return '—';
+    try {
+      var d = new Date(s);
+      return d.toLocaleString('ar-SA', { dateStyle: 'short', timeStyle: 'short' });
+    } catch (e) { return s; }
+  }
+
+  function render(posts) {
+    loadingMsg.style.display = 'none';
+    if (!posts || !posts.length) {
+      emptyMsg.style.display = 'block';
+      return;
+    }
+    emptyMsg.style.display = 'none';
+    listEl.innerHTML = '<div class="scheduled-cards" style="display:grid;gap:16px;">' + posts.map(function(p) {
+      var content = (p.content || p.caption || '').substring(0, 120);
+      if ((p.content || p.caption || '').length > 120) content += '…';
+      var typeLabel = p.post_type === 'video' ? 'فيديو' : p.post_type === 'reel' ? 'ريلز' : p.post_type === 'story' ? 'ستوري' : 'منشور';
+      return '<div class="scheduled-card" style="background:rgba(30,41,59,0.9);border-radius:12px;padding:16px;border:1px solid rgba(71,85,105,0.5);">' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">' +
+        '<div style="flex:1;min-width:0;">' +
+        '<div style="font-size:0.75rem;color:#94a3b8;margin-bottom:4px;">' + (p.page_name || p.page_id) + ' · ' + typeLabel + '</div>' +
+        '<div style="font-size:0.9rem;color:#e2e8f0;">' + (content ? content.replace(/</g, '&lt;') : '—') + '</div>' +
+        '</div>' +
+        '<div style="font-size:0.85rem;color:#93c5fd;white-space:nowrap;">' + formatDate(p.scheduled_at) + '</div>' +
+        '</div></div>';
+    }).join('') + '</div>';
+  }
+
+  fetch(fullUrl('/api/posts/scheduled'), { credentials: 'include' })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      render(data.posts || []);
+      var badge = document.getElementById('scheduledCount');
+      if (badge && data.count != null) badge.textContent = data.count;
+    })
+    .catch(function() {
+      loadingMsg.textContent = 'فشل تحميل القائمة.';
+    });
+})();
+  </script>
+{% endblock %}

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}نشر تلقائي{% endblock %} | Finora</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='autoposter/styles.css') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>window.AUTOPOSTER_API_BASE = '{{ (request.script_root or "") }}/autoposter';</script>
+  <style>
+    .autoposter-sidebar .sidebar-section-label { display: block; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted, #94a3b8); padding: 12px 16px 6px; margin-top: 8px; }
+    .autoposter-sidebar .sidebar-section-label:first-of-type { margin-top: 0; padding-top: 4px; }
+    .autoposter-sidebar .nav-icon { font-size: 1.1rem; width: 24px; text-align: center; display: inline-block; }
+    .autoposter-sidebar .nav-item.active { background: rgba(59, 130, 246, 0.15); color: var(--accent, #3b82f6); border-inline-start: 3px solid var(--accent); }
+    .autoposter-page { padding: 24px; max-width: 1200px; margin: 0 auto; }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <div class="app">
+    {% include 'autoposter/_sidebar.html' %}
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="menu-btn" id="menuBtn" aria-label="القائمة">☰</button>
+          <h1 class="topbar-title">{% block page_title %}النشر التلقائي{% endblock %}</h1>
+        </div>
+        <div class="topbar-right">
+          <a href="{{ (request.script_root or '') }}/" class="btn btn-ghost btn-sm">العودة للمنصة</a>
+        </div>
+      </header>
+      <div class="content">
+        <div class="autoposter-page">
+          {% block content %}{% endblock %}
+        </div>
+      </div>
+    </main>
+  </div>
+  <script>
+(function() {
+  var sidebar = document.getElementById('sidebar');
+  var menuBtn = document.getElementById('menuBtn');
+  var expandTab = document.getElementById('sidebarExpandTab');
+  if (sidebar && menuBtn) {
+    menuBtn.addEventListener('click', function() {
+      sidebar.classList.toggle('collapsed');
+    });
+  }
+  if (sidebar && expandTab) {
+    expandTab.addEventListener('click', function() {
+      sidebar.classList.remove('collapsed');
+    });
+  }
+})();
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -44,11 +44,9 @@ def require_autoposter_login(f):
 
 @autoposter_bp.route("/")
 @autoposter_bp.route("/dashboard")
-def dashboard_redirect():
-    """إبقاء المسار القديم لكن توجيهه مباشرة لواجهة AI Agent Builder."""
-    from flask import redirect, url_for
-
-    return redirect(url_for("autoposter.ai_agent_view"))
+def dashboard_view():
+    """لوحة التحكم الرئيسية للأوتوبوستر — نفس السايدبار لجميع الصفحات."""
+    return render_template("autoposter/dashboard.html")
 
 
 @autoposter_bp.route("/upload")
@@ -62,6 +60,20 @@ def upload_page():
 def ai_agent_view():
     """واجهة AI Agent / Workflow Builder — بدون أي منطق نشر أو ربط صفحات."""
     return render_template("autoposter/ai_agent.html")
+
+
+@autoposter_bp.route("/pages")
+@require_autoposter_login
+def pages_view():
+    """صفحة إدارة صفحات فيسبوك المتصلة."""
+    return render_template("autoposter/pages.html")
+
+
+@autoposter_bp.route("/settings")
+@require_autoposter_login
+def settings_view():
+    """صفحة إعدادات فيسبوك (معرف التطبيق، إلخ)."""
+    return render_template("autoposter/settings.html")
 
 
 # ============== API: معلومات المستخدم الحالي ==============

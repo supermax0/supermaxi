@@ -1,82 +1,48 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>إنشاء منشور | Autoposter</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='autoposter/styles.css') }}">
-  <script>window.AUTOPOSTER_API_BASE = '{{ request.script_root or "" }}/autoposter';</script>
-  <style>
-    body { background: #0f172a; color: #e2e8f0; font-family: system-ui, sans-serif; margin: 0; padding: 16px; }
-    .create-header { margin-bottom: 20px; }
-    .create-title { font-size: 1.25rem; font-weight: 600; }
-    .form-group { margin-bottom: 16px; }
-    .form-group label { display: block; margin-bottom: 6px; font-size: 0.9rem; color: #94a3b8; }
-    .form-control { width: 100%; max-width: 480px; padding: 8px 12px; border-radius: 8px; border: 1px solid #334155; background: #1e293b; color: #e2e8f0; }
-    textarea.form-control { min-height: 100px; resize: vertical; }
-    .btn { padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; border: none; }
-    .btn-primary { background: #3b82f6; color: #fff; }
-    .btn-primary:hover { background: #2563eb; }
-    .btn-secondary { background: #475569; color: #fff; margin-right: 8px; }
-    .media-select-wrap { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-    .media-select { min-width: 200px; }
-    .page-list { list-style: none; padding: 0; margin: 0; }
-    .page-list li { padding: 6px 0; }
-    .page-list input { margin-left: 8px; }
-    .back-link { color: #93c5fd; text-decoration: none; font-size: 0.9rem; }
-    .back-link:hover { text-decoration: underline; }
-    .msg { margin-top: 12px; padding: 8px 12px; border-radius: 8px; display: none; }
-    .msg.success { background: rgba(34,197,94,0.2); color: #86efac; display: block; }
-    .msg.error { background: rgba(239,68,68,0.2); color: #fca5a5; display: block; }
-  </style>
-</head>
-<body>
-  <div class="create-header">
-    <a href="{{ request.script_root or '' }}/autoposter/media" class="back-link">← مكتبة الوسائط</a>
-    <h1 class="create-title">إنشاء منشور</h1>
-    <p style="margin:4px 0 0;font-size:0.85rem;color:#94a3b8;">اختر الوسائط من المكتبة، الصفحات، ووقت النشر أو الجدولة</p>
-  </div>
-
+{% extends "autoposter/base_autoposter.html" %}
+{% block title %}إنشاء منشور{% endblock %}
+{% block page_title %}إنشاء منشور{% endblock %}
+{% block content %}
+  <p style="margin:0 0 20px;font-size:0.9rem;color:var(--text-muted,#94a3b8);">اختر الوسائط من المكتبة، الصفحات، ووقت النشر أو الجدولة</p>
   <form id="createForm">
-    <div class="form-group">
-      <label>النص / التسمية (caption)</label>
-      <textarea id="caption" class="form-control" placeholder="اكتب نص المنشور..." name="caption"></textarea>
+    <div class="form-group" style="margin-bottom:16px;">
+      <label style="display:block;margin-bottom:6px;font-size:0.9rem;color:#94a3b8;">النص / التسمية (caption)</label>
+      <textarea id="caption" class="form-control" placeholder="اكتب نص المنشور..." name="caption" style="width:100%;max-width:480px;padding:8px 12px;border-radius:8px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;min-height:100px;resize:vertical;"></textarea>
     </div>
-    <div class="form-group">
-      <label>الوسائط (من المكتبة)</label>
-      <div class="media-select-wrap">
-        <select id="mediaSelect" class="form-control media-select" name="media_id">
+    <div class="form-group" style="margin-bottom:16px;">
+      <label style="display:block;margin-bottom:6px;font-size:0.9rem;color:#94a3b8;">الوسائط (من المكتبة)</label>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <select id="mediaSelect" class="form-control" name="media_id" style="min-width:200px;padding:8px 12px;border-radius:8px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;">
           <option value="">— بدون وسائط —</option>
         </select>
-        <a href="{{ request.script_root or '' }}/autoposter/media" class="back-link">رفع وسائط جديدة</a>
+        <a href="{{ (request.script_root or '') }}/autoposter/media" style="color:#93c5fd;font-size:0.9rem;">رفع وسائط جديدة</a>
       </div>
     </div>
-    <div class="form-group">
-      <label>الصفحات</label>
-      <ul class="page-list" id="pageList">
+    <div class="form-group" style="margin-bottom:16px;">
+      <label style="display:block;margin-bottom:6px;font-size:0.9rem;color:#94a3b8;">الصفحات</label>
+      <ul class="page-list" id="pageList" style="list-style:none;padding:0;margin:0;">
         <li>جاري تحميل الصفحات...</li>
       </ul>
     </div>
-    <div class="form-group">
-      <label>نوع المنشور</label>
-      <select id="postType" class="form-control" name="post_type" style="max-width:200px;">
+    <div class="form-group" style="margin-bottom:16px;">
+      <label style="display:block;margin-bottom:6px;font-size:0.9rem;color:#94a3b8;">نوع المنشور</label>
+      <select id="postType" class="form-control" name="post_type" style="max-width:200px;padding:8px 12px;border-radius:8px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;">
         <option value="post">منشور</option>
         <option value="video">فيديو</option>
         <option value="reel">ريلز</option>
         <option value="story">ستوري</option>
       </select>
     </div>
-    <div class="form-group">
-      <label>وقت الجدولة (اختياري — اتركه فارغاً للنشر فوراً)</label>
-      <input type="datetime-local" id="scheduledAt" class="form-control" name="scheduled_at" style="max-width:240px;">
+    <div class="form-group" style="margin-bottom:16px;">
+      <label style="display:block;margin-bottom:6px;font-size:0.9rem;color:#94a3b8;">وقت الجدولة (اختياري — اتركه فارغاً للنشر فوراً)</label>
+      <input type="datetime-local" id="scheduledAt" class="form-control" name="scheduled_at" style="max-width:240px;padding:8px 12px;border-radius:8px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;">
     </div>
-    <div class="form-group">
-      <button type="submit" class="btn btn-primary" id="submitBtn">نشر الآن أو جدولة</button>
-      <button type="button" class="btn btn-secondary" id="previewBtn">معاينة</button>
+    <div class="form-group" style="margin-bottom:16px;">
+      <button type="submit" class="btn btn-primary" id="submitBtn" style="padding:8px 16px;border-radius:8px;cursor:pointer;font-size:0.9rem;border:none;background:#3b82f6;color:#fff;">نشر الآن أو جدولة</button>
     </div>
-    <div id="msg" class="msg"></div>
+    <div id="msg" style="margin-top:12px;padding:8px 12px;border-radius:8px;display:none;"></div>
   </form>
-
+{% endblock %}
+{% block scripts %}
   <script>
 (function() {
   const API_BASE = (window.AUTOPOSTER_API_BASE || '/autoposter').replace(/\/+$/, '');
@@ -88,79 +54,56 @@
   const scheduledAt = document.getElementById('scheduledAt');
   const submitBtn = document.getElementById('submitBtn');
   const msgEl = document.getElementById('msg');
-
   function fullUrl(p) { return p.startsWith('/') ? API_BASE + p : p; }
-
   async function loadMedia() {
     const res = await fetch(fullUrl('/api/media'), { credentials: 'include' });
     const data = await res.json().catch(() => ({}));
     const media = data.media || [];
-    mediaSelect.innerHTML = '<option value="">— بدون وسائط —</option>' +
-      media.map(m => `<option value="${m.id}" data-type="${m.media_type}">${(m.file_name || m.filename || 'وسائط')} (${m.media_type})</option>`).join('');
+    mediaSelect.innerHTML = '<option value="">— بدون وسائط —</option>' + media.map(m => '<option value="' + m.id + '">' + (m.file_name || m.filename || 'وسائط') + ' (' + m.media_type + ')</option>').join('');
   }
-
   async function loadPages() {
     const res = await fetch(fullUrl('/api/pages'), { credentials: 'include' });
     const data = await res.json().catch(() => ({}));
     const pages = data.pages || [];
     if (!pages.length) {
-      pageList.innerHTML = '<li style="color:#94a3b8;">لا توجد صفحات متصلة. <a href="#" class="back-link">ربط صفحة</a></li>';
+      pageList.innerHTML = '<li style="color:#94a3b8;">لا توجد صفحات متصلة. <a href="' + fullUrl('/pages') + '" style="color:#93c5fd;">ربط صفحة</a></li>';
       return;
     }
-    pageList.innerHTML = pages.map(p => `<li><label><input type="checkbox" name="page_ids" value="${p.id}"> ${p.name}</label></li>`).join('');
+    pageList.innerHTML = pages.map(p => '<li style="padding:6px 0;"><label><input type="checkbox" name="page_ids" value="' + p.id + '" style="margin-left:8px;"> ' + (p.name || p.id) + '</label></li>').join('');
   }
-
   form.addEventListener('submit', async function(e) {
     e.preventDefault();
     const pageIds = Array.from(document.querySelectorAll('input[name="page_ids"]:checked')).map(c => c.value);
-    if (!pageIds.length) {
-      msgEl.textContent = 'اختر صفحة واحدة على الأقل.';
-      msgEl.className = 'msg error';
-      return;
-    }
+    if (!pageIds.length) { msgEl.textContent = 'اختر صفحة واحدة على الأقل.'; msgEl.style.display = 'block'; msgEl.style.background = 'rgba(239,68,68,0.2)'; msgEl.style.color = '#fca5a5'; return; }
     const text = (caption.value || '').trim();
-    const mid = mediaSelect.value ? mediaSelect.value : null;
-    if (!text && !mid) {
-      msgEl.textContent = 'أدخل نصاً أو اختر وسيطاً من المكتبة.';
-      msgEl.className = 'msg error';
-      return;
-    }
+    const mid = mediaSelect.value || null;
+    if (!text && !mid) { msgEl.textContent = 'أدخل نصاً أو اختر وسيطاً من المكتبة.'; msgEl.style.display = 'block'; msgEl.style.background = 'rgba(239,68,68,0.2)'; msgEl.style.color = '#fca5a5'; return; }
     submitBtn.disabled = true;
-    msgEl.className = 'msg';
-    msgEl.textContent = '';
-    const body = {
-      caption: text,
-      media_id: mid || undefined,
-      page_ids: pageIds,
-      post_type: postType.value || 'post',
-      scheduled_at: scheduledAt.value || undefined,
-    };
+    msgEl.style.display = 'none';
     try {
-      const res = await fetch(fullUrl('/api/posts/create'), {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
+      const res = await fetch(fullUrl('/api/posts/create'), { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ caption: text, media_id: mid || undefined, page_ids: pageIds, post_type: postType.value || 'post', scheduled_at: scheduledAt.value || undefined }) });
       const data = await res.json().catch(() => ({}));
+      msgEl.style.display = 'block';
       if (data.success) {
-        msgEl.textContent = data.scheduled ? `تم جدولة ${data.count} منشور.` : 'تم النشر بنجاح.';
-        msgEl.className = 'msg success';
+        msgEl.textContent = data.scheduled ? 'تم جدولة ' + (data.count || 0) + ' منشور.' : 'تم النشر بنجاح.';
+        msgEl.style.background = 'rgba(34,197,94,0.2)';
+        msgEl.style.color = '#86efac';
         if (!data.scheduled) caption.value = '';
       } else {
         msgEl.textContent = data.error || 'فشل النشر.';
-        msgEl.className = 'msg error';
+        msgEl.style.background = 'rgba(239,68,68,0.2)';
+        msgEl.style.color = '#fca5a5';
       }
     } catch (err) {
+      msgEl.style.display = 'block';
       msgEl.textContent = 'خطأ في الاتصال.';
-      msgEl.className = 'msg error';
+      msgEl.style.background = 'rgba(239,68,68,0.2)';
+      msgEl.style.color = '#fca5a5';
     }
     submitBtn.disabled = false;
   });
-
   loadMedia();
   loadPages();
 })();
   </script>
-</body>
-</html>
+{% endblock %}
