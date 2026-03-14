@@ -1,8 +1,29 @@
 /* ── publisher.js — Dashboard & Posts logic ── */
+async function apiFetchJson(url, options = {}) {
+    const opts = {
+        credentials: 'include',
+        ...options,
+        headers: {
+            Accept: 'application/json',
+            ...(options.headers || {}),
+        },
+    };
+    const res = await fetch(url, opts);
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+        return { success: false, message: 'استجابة غير صالحة من الخادم' };
+    }
+    const data = await res.json();
+    if (res.status === 401 && !data.message) {
+        data.message = 'Unauthorized';
+    }
+    return data;
+}
+
 const API = {
     base: '/publisher',
-    pages: () => fetch(`/publisher/api/pages`).then(r => r.json()),
-    posts: (status = '') => fetch(`/publisher/api/posts${status ? '?status=' + status : ''}`).then(r => r.json()),
+    pages: () => apiFetchJson('/publisher/api/pages'),
+    posts: (status = '') => apiFetchJson(`/publisher/api/posts${status ? '?status=' + status : ''}`),
 };
 
 /* ── Toast ─────────────────────────────────── */
@@ -155,11 +176,11 @@ function initAiTools() {
             generateBtn.disabled = true;
             generateBtn.innerHTML = '<span class="spinner"></span> جاري التوليد…';
             try {
-                const r = await fetch('/publisher/api/ai/generate_post', {
+                const r = await apiFetchJson('/publisher/api/ai/generate_post', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ topic, tone, length })
-                }).then(r => r.json());
+                });
                 if (r.success) {
                     document.getElementById('postText').value = r.text;
                     updatePreview();
@@ -178,11 +199,11 @@ function initAiTools() {
             rewriteBtn.innerHTML = '<span class="spinner"></span>';
             try {
                 const tone = document.getElementById('aiTone').value;
-                const r = await fetch('/publisher/api/ai/rewrite', {
+                const r = await apiFetchJson('/publisher/api/ai/rewrite', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ text, tone })
-                }).then(r => r.json());
+                });
                 if (r.success) {
                     document.getElementById('postText').value = r.text;
                     updatePreview();
@@ -200,11 +221,11 @@ function initAiTools() {
             if (!topic) { toast('أدخل موضوعاً أو نصاً أولاً', 'error'); return; }
             hashtagsBtn.disabled = true;
             try {
-                const r = await fetch('/publisher/api/ai/hashtags', {
+                const r = await apiFetchJson('/publisher/api/ai/hashtags', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ topic })
-                }).then(r => r.json());
+                });
                 if (r.success) {
                     const area = document.getElementById('postText');
                     area.value = (area.value + '\n\n' + r.hashtags.join(' ')).trim();
@@ -251,11 +272,11 @@ async function submitPost(e) {
             body.publish_time = dt;
         }
 
-        const r = await fetch(endpoint, {
+        const r = await apiFetchJson(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
-        }).then(r => r.json());
+        });
 
         if (r.success) {
             toast(r.message || 'تمت العملية بنجاح', 'success');

@@ -5,19 +5,40 @@ let activeTab = 'all';
 let searchQ = '';
 let selectedForPost = new Set();
 
+async function apiFetchJson(url, options = {}) {
+    const opts = {
+        credentials: 'include',
+        ...options,
+        headers: {
+            Accept: 'application/json',
+            ...(options.headers || {}),
+        },
+    };
+    const res = await fetch(url, opts);
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+        return { success: false, message: 'استجابة غير صالحة من الخادم' };
+    }
+    const data = await res.json();
+    if (res.status === 401 && !data.message) {
+        data.message = 'Unauthorized';
+    }
+    return data;
+}
+
 /* ── API helpers ─────────────── */
 async function loadMedia() {
     const params = new URLSearchParams();
     if (searchQ) params.set('q', searchQ);
     if (activeTab !== 'all') params.set('type', activeTab);
-    const r = await fetch('/publisher/api/media?' + params).then(r => r.json());
+    const r = await apiFetchJson('/publisher/api/media?' + params);
     allMedia = r.media || [];
     renderGrid();
 }
 
 async function deleteMedia(id) {
     if (!confirm('هل تريد حذف هذا الوسيط؟')) return;
-    const r = await fetch('/publisher/api/media/' + id, { method: 'DELETE' }).then(r => r.json());
+    const r = await apiFetchJson('/publisher/api/media/' + id, { method: 'DELETE' });
     if (r.success) {
         allMedia = allMedia.filter(m => m.id !== id);
         selectedForPost.delete(id);
@@ -122,6 +143,8 @@ function initDropZone() {
 
         const xhr = new XMLHttpRequest();
         xhr.open('POST', '/publisher/api/media/upload');
+        xhr.withCredentials = true;
+        xhr.setRequestHeader('Accept', 'application/json');
 
         xhr.upload.addEventListener('progress', e => {
             if (e.lengthComputable) {
@@ -133,7 +156,9 @@ function initDropZone() {
             progressWrap.style.display = 'none';
             try {
                 const r = JSON.parse(xhr.responseText);
-                if (r.success) {
+                if (xhr.status === 401) {
+                    toast('انتهت الجلسة. سجّل الدخول مرة أخرى.', 'error');
+                } else if (r.success) {
                     toast('تم رفع: ' + file.name, 'success');
                     loadMedia();
                 } else {

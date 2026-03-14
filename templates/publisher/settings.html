@@ -300,6 +300,27 @@
             setTimeout(() => t.remove(), 4500);
         }
 
+        async function apiFetchJson(url, options = {}) {
+            const opts = {
+                credentials: 'include',
+                ...options,
+                headers: {
+                    'Accept': 'application/json',
+                    ...(options.headers || {})
+                }
+            };
+            const res = await fetch(url, opts);
+            const contentType = res.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                return { success: false, message: 'استجابة غير صالحة من الخادم' };
+            }
+            const data = await res.json();
+            if (res.status === 401 && !data.message) {
+                data.message = 'Unauthorized';
+            }
+            return data;
+        }
+
         /* ── Toggle password visibility ────────────── */
         function togglePass(id, btn) {
             const el = document.getElementById(id);
@@ -317,9 +338,7 @@
         /* ── Load current settings ─────────────────── */
         async function loadSettings() {
             try {
-                const r = await fetch('/publisher/api/settings', {
-      headers: {'Accept': 'application/json'}
-    }).then(r => r.json());
+                const r = await apiFetchJson('/publisher/api/settings');
                 if (!r.success) return;
                 const s = r.settings;
                 document.getElementById('fbAppId').placeholder = s.fb_app_id || 'App ID…';
@@ -338,14 +357,14 @@
             if (!fb_app_id && !fb_app_secret) { toast('أدخل App ID أو App Secret', 'error'); return; }
 
             btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> جاري الحفظ…';
-            const r = await fetch('/publisher/api/settings', {
+            const r = await apiFetchJson('/publisher/api/settings', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 },
                 body: JSON.stringify({ fb_app_id, fb_app_secret })
-            }).then(r => r.json());
+            });
             btn.disabled = false; btn.innerHTML = '💾 حفظ بيانات التطبيق';
 
             if (r.success) {
@@ -363,14 +382,14 @@
             if (!fb_user_token) { toast('أدخل User Token أولاً', 'error'); return; }
 
             btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> جاري الحفظ…';
-            const r = await fetch('/publisher/api/settings', {
+            const r = await apiFetchJson('/publisher/api/settings', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 },
                 body: JSON.stringify({ fb_user_token })
-            }).then(r => r.json());
+            });
             btn.disabled = false; btn.innerHTML = '💾 حفظ الـ Token';
 
             if (r.success) {
@@ -389,14 +408,14 @@
             container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted)"><span class="spinner"></span> جاري جلب الصفحات…</div>';
             noMsg.style.display = 'none';
 
-            const r = await fetch('/publisher/api/settings/connect-pages', {
+            const r = await apiFetchJson('/publisher/api/settings/connect-pages', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 },
                 body: JSON.stringify(token ? { user_token: token } : {})
-            }).then(r => r.json());
+            });
 
             if (r.success) {
                 toast(r.message, 'success');
@@ -414,9 +433,7 @@
             const container = document.getElementById('pagesContainer');
             const noMsg = document.getElementById('noPagesMsg');
             try {
-                const r = await fetch('/publisher/api/pages', {
-      headers: {'Accept': 'application/json'}
-    }).then(r => r.json());
+                const r = await apiFetchJson('/publisher/api/pages');
                 const pages = r.pages || [];
 
                 if (!pages.length) {
@@ -448,10 +465,9 @@
         /* ── Delete page ────────────────────────────── */
         async function deletePage(id) {
             if (!confirm('هل تريد إلغاء ربط هذه الصفحة؟')) return;
-            const r = await fetch('/publisher/api/pages/' + id, {
-    method: 'DELETE',
-    headers: {'Accept': 'application/json'}
-  }).then(r => r.json());
+            const r = await apiFetchJson('/publisher/api/pages/' + id, {
+                method: 'DELETE'
+            });
             if (r.success) { toast('تم إلغاء الربط', 'success'); renderSavedPages(); }
             else toast(r.message || 'خطأ', 'error');
         }
