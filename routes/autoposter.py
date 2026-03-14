@@ -262,6 +262,187 @@ def api_me():
     )
 
 
+# ============== API: لوحة التحكم (stats, scheduled, drafts, templates, analytics, notifications, settings) ==============
+
+
+@autoposter_bp.route("/api/stats", methods=["GET"])
+@require_autoposter_login
+def api_stats():
+    """إحصائيات لوحة التحكم: صفحات متصلة، منشورات منشورة، مجدولة، تفاعل."""
+    from datetime import datetime as dt
+    from models.autoposter_facebook_page import AutoposterFacebookPage
+    from models.autoposter_post import AutoposterPost
+    tenant_slug = session.get("tenant_slug")
+    try:
+        pages_q = AutoposterFacebookPage.query.filter(AutoposterFacebookPage.access_token.isnot(None))
+        if tenant_slug and hasattr(AutoposterFacebookPage, "tenant_slug"):
+            pages_q = pages_q.filter_by(tenant_slug=tenant_slug)
+        pages_connected = pages_q.count()
+        posts_q = AutoposterPost.query.filter(AutoposterPost.status == "published")
+        if tenant_slug and hasattr(AutoposterPost, "tenant_slug"):
+            posts_q = posts_q.filter_by(tenant_slug=tenant_slug)
+        posts_published = posts_q.count()
+        now = dt.utcnow()
+        scheduled_q = AutoposterPost.query.filter(
+            AutoposterPost.scheduled_at.isnot(None),
+            AutoposterPost.scheduled_at > now,
+        )
+        if tenant_slug and hasattr(AutoposterPost, "tenant_slug"):
+            scheduled_q = scheduled_q.filter_by(tenant_slug=tenant_slug)
+        scheduled = scheduled_q.count()
+    except Exception as e:
+        current_app.logger.exception("autoposter api_stats: %s", e)
+        pages_connected = posts_published = scheduled = 0
+    return jsonify({
+        "pages_connected": pages_connected,
+        "posts_published": posts_published,
+        "scheduled": scheduled,
+        "avg_engagement": 0,
+    })
+
+
+@autoposter_bp.route("/api/scheduled", methods=["GET"])
+@require_autoposter_login
+def api_scheduled():
+    """قائمة المنشورات المجدولة (للعرض في لوحة التحكم)."""
+    from datetime import datetime as dt
+    from models.autoposter_post import AutoposterPost
+    tenant_slug = session.get("tenant_slug")
+    try:
+        now = dt.utcnow()
+        q = AutoposterPost.query.filter(
+            AutoposterPost.scheduled_at.isnot(None),
+            AutoposterPost.scheduled_at > now,
+        ).order_by(AutoposterPost.scheduled_at.asc()).limit(50)
+        if tenant_slug and hasattr(AutoposterPost, "tenant_slug"):
+            q = q.filter_by(tenant_slug=tenant_slug)
+        posts = q.all()
+        scheduled = [p.to_dict() for p in posts]
+    except Exception as e:
+        current_app.logger.exception("autoposter api_scheduled: %s", e)
+        scheduled = []
+    return jsonify({"scheduled": scheduled})
+
+
+@autoposter_bp.route("/api/drafts", methods=["GET"])
+@require_autoposter_login
+def api_drafts():
+    """قائمة المسودات."""
+    from models.autoposter_post import AutoposterPost
+    tenant_slug = session.get("tenant_slug")
+    try:
+        q = AutoposterPost.query.filter(AutoposterPost.status == "draft").order_by(AutoposterPost.created_at.desc()).limit(50)
+        if tenant_slug and hasattr(AutoposterPost, "tenant_slug"):
+            q = q.filter_by(tenant_slug=tenant_slug)
+        drafts = [p.to_dict() for p in q.all()]
+    except Exception as e:
+        current_app.logger.exception("autoposter api_drafts: %s", e)
+        drafts = []
+    return jsonify({"drafts": drafts})
+
+
+@autoposter_bp.route("/api/templates", methods=["GET"])
+@require_autoposter_login
+def api_templates():
+    """قوالب المنشورات (إن وُجدت — وإلا قائمة فارغة)."""
+    return jsonify({"templates": []})
+
+
+@autoposter_bp.route("/api/analytics", methods=["GET"])
+@require_autoposter_login
+def api_analytics():
+    """تحليلات النشر (هيكل افتراضي للواجهة)."""
+    return jsonify({
+        "summary": {
+            "by_type": {},
+            "by_page": [],
+        },
+        "top_posts": [],
+    })
+
+
+@autoposter_bp.route("/api/notifications", methods=["GET"])
+@require_autoposter_login
+def api_notifications():
+    """قائمة إشعارات الأوتوبوستر."""
+    from models.autoposter_notification import AutoposterNotification
+    try:
+        q = AutoposterNotification.query.order_by(AutoposterNotification.created_at.desc()).limit(50)
+        if session.get("tenant_slug") and hasattr(AutoposterNotification, "tenant_slug"):
+            q = q.filter_by(tenant_slug=session.get("tenant_slug"))
+        notifications = [n.to_dict() for n in q.all()]
+    except Exception as e:
+        current_app.logger.exception("autoposter api_notifications: %s", e)
+        notifications = []
+    return jsonify({"notifications": notifications})
+
+
+@autoposter_bp.route("/api/notifications/read", methods=["POST"])
+@require_autoposter_login
+def api_notifications_read_all():
+    """تعليم كل الإشعارات كمقروءة."""
+    from models.autoposter_notification import AutoposterNotification
+    try:
+        q = AutoposterNotification.query.filter_by(read=False)
+        if session.get("tenant_slug") and hasattr(AutoposterNotification, "tenant_slug"):
+            q = q.filter_by(tenant_slug=session.get("tenant_slug"))
+        for n in q:
+            n.read = True
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception("autoposter api_notifications_read_all: %s", e)
+    return jsonify({"ok": True})
+
+
+@autoposter_bp.route("/api/notifications/<int:notif_id>/read", methods=["POST"])
+@require_autoposter_login
+def api_notification_mark_read(notif_id):
+    """تعليم إشعار واحد كمقروء."""
+    from models.autoposter_notification import AutoposterNotification
+    try:
+        n = AutoposterNotification.query.get(notif_id)
+        if n:
+            n.read = True
+            db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception("autoposter api_notification_mark_read: %s", e)
+    return jsonify({"ok": True})
+
+
+@autoposter_bp.route("/api/settings", methods=["GET"])
+@require_autoposter_login
+def api_settings():
+    """إعدادات فيسبوك وواجهات أخرى (للوحة التحكم)."""
+    try:
+        from models.publish_config import PublishConfig
+        tenant_slug = session.get("tenant_slug")
+        q = PublishConfig.query
+        if tenant_slug:
+            q = q.filter_by(tenant_slug=tenant_slug)
+        cfg = q.first()
+        if cfg:
+            return jsonify({
+                "facebook_app_id": getattr(cfg, "facebook_app_id", None) or "",
+                "facebook_app_secret_set": bool(getattr(cfg, "facebook_app_secret", None)),
+                "openai_api_key_set": False,
+                "openai_model": "",
+                "gemini_api_key_set": False,
+                "gemini_model": "",
+            })
+    except Exception as e:
+        current_app.logger.exception("autoposter api_settings: %s", e)
+    return jsonify({
+        "facebook_app_id": "",
+        "facebook_app_secret_set": False,
+        "openai_api_key_set": False,
+        "openai_model": "",
+        "gemini_api_key_set": False,
+        "gemini_model": "",
+    })
+
+
 # ============== API: AI Agents ==============
 
 
