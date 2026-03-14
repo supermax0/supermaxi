@@ -1,8 +1,10 @@
 # مكتبة وسائط الأوتوبوستر — Media Library
-# Routes: /autoposter/media, /autoposter/api/media/upload, /autoposter/api/media (list)
+# Routes: /autoposter/media, /autoposter/api/media, /autoposter/api/media/upload
+# لا تغيير أسماء المسارات أو مخطط قاعدة البيانات — إصلاحات فقط.
 from pathlib import Path
 import uuid
-from flask import Blueprint, current_app, jsonify, render_template, request, session, send_from_directory
+import traceback
+from flask import Blueprint, current_app, jsonify, request, session, send_from_directory, redirect, url_for
 from werkzeug.utils import secure_filename
 from sqlalchemy.exc import OperationalError
 from extensions import db
@@ -10,17 +12,27 @@ from models.autoposter_media import AutoposterMedia
 
 autoposter_media_bp = Blueprint("autoposter_media", __name__, url_prefix="/autoposter")
 
-# صيغ مسموحة (المواصفة: jpg, png, webp, mp4, mov) — حد 500MB
+# صيغ مسموحة: jpg, png, webp, mp4, mov — حد 500MB
 ALLOWED_IMAGE_EXT = {".jpg", ".jpeg", ".png", ".webp"}
 ALLOWED_VIDEO_EXT = {".mp4", ".mov"}
 MAX_UPLOAD_BYTES = 500 * 1024 * 1024  # 500MB
 
 
 def _upload_dir():
-    """مجلد رفع مكتبة الوسائط: uploads/media/ تحت جذر التطبيق."""
-    root = Path(current_app.root_path)
-    base = root / "uploads" / "media"
-    base.mkdir(parents=True, exist_ok=True)
+    """
+    مجلد رفع الوسائط: إن وُجدت AUTOPOSTER_MEDIA_ROOT (مثلاً /var/www/finora/supermaxi/media)
+    تُستخدم، وإلا uploads/media تحت جذر التطبيق. يُنشأ المجلد تلقائياً إن لم يكن موجوداً.
+    """
+    custom = current_app.config.get("AUTOPOSTER_MEDIA_ROOT")
+    if custom:
+        base = Path(custom)
+    else:
+        base = Path(current_app.root_path) / "uploads" / "media"
+    try:
+        base.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        current_app.logger.exception("autoposter_media: failed to create upload dir %s: %s", base, e)
+        raise
     return base
 
 
@@ -33,11 +45,9 @@ def serve_media(filename):
 
 @autoposter_media_bp.route("/media")
 def media_library_page():
-    """إلغاء صفحة مكتبة الوسائط المستقلة — إعادة التوجيه إلى صفحة رفع الوسائط الموحدة."""
+    """إعادة التوجيه إلى صفحة رفع الوسائط."""
     if not session.get("user_id"):
-        from flask import redirect, url_for
         return redirect(url_for("index.login") + "?next=" + request.path)
-    from flask import redirect, url_for
     return redirect(url_for("autoposter.upload_page"))
 
 
@@ -84,16 +94,32 @@ def api_media_list():
 @autoposter_media_bp.route("/api/media/upload", methods=["POST"])
 def api_media_upload():
     """
-    رفع وسائط إلى مكتبة الوسائط.
-    multipart/form-data، المفتاح: file.
-    الحفظ في uploads/media/، اكتشاف النوع، حد 500MB، صيغ: jpg, png, webp, mp4, mov.
+    رفع وسائط (FormData، المفتاح: file).
+    صيغ: jpg, png, webp, mp4, mov — حد 500MB. الرد دائماً JSON (لا إعادة توجيه).
     """
-    from flask import current_app
+    try:
+        return _api_media_upload_impl()
+    except Exception as e:
+        current_app.logger.exception(
+            "autoposter_media upload unhandled error: %s\n%s",
+            e,
+            traceback.format_exc(),
+        )
+        return jsonify({
+            "success": False,
+            "ok": False,
+            "error": "server_error",
+            "message": "خطأ أثناء الرفع. راجع سجلات الخادم.",
+        }), 500
+
+
+def _api_media_upload_impl():
+    """تنفيذ رفع الوسائط — يُستدعى من api_media_upload مع معالجة الأخطاء."""
     if not session.get("user_id"):
-        return jsonify({"error": "unauthorized"}), 401
+        return jsonify({"success": False, "error": "unauthorized"}), 401
     file = request.files.get("file")
     if not file or not file.filename:
-        return jsonify({"ok": False, "error": "media missing", "message": "لم يُرفع ملف"}), 400
+        return jsonify({"success": False, "ok": False, "error": "media missing", "message": "لم يُرفع ملف"}), 400
     filename = secure_filename(file.filename) or "file"
     ext = (Path(filename).suffix or "").lower()
     if ext in ALLOWED_IMAGE_EXT:
@@ -102,6 +128,7 @@ def api_media_upload():
         media_type = "video"
     else:
         return jsonify({
+            "success": False,
             "ok": False,
             "error": "unsupported_type",
             "message": "الصيغ المسموحة: jpg, png, webp, mp4, mov.",
@@ -111,6 +138,7 @@ def api_media_upload():
     file.seek(0)
     if size > MAX_UPLOAD_BYTES:
         return jsonify({
+            "success": False,
             "ok": False,
             "error": "file_too_large",
             "message": "حد الحجم 500 ميجابايت.",
@@ -121,8 +149,8 @@ def api_media_upload():
     try:
         file.save(str(file_path))
     except Exception as e:
-        current_app.logger.exception("autoposter_media save failed: %s", e)
-        return jsonify({"ok": False, "error": "save_failed", "message": "تعذر حفظ الملف"}), 500
+        current_app.logger.exception("autoposter_media save failed (file %s): %s", file_path, e)
+        return jsonify({"success": False, "ok": False, "error": "save_failed", "message": "تعذر حفظ الملف"}), 500
     rel_path = f"uploads/media/{safe_name}"
     public_url = f"/autoposter/serve/media/{safe_name}"
     tenant_slug = session.get("tenant_slug")
@@ -140,7 +168,6 @@ def api_media_upload():
         db.session.add(rec)
         db.session.commit()
     except OperationalError as e:
-        # في حال كان جدول مكتبة الوسائط غير موجود على قاعدة البيانات في السيرفر
         current_app.logger.exception("autoposter_media db operational error, trying create_all: %s", e)
         db.session.rollback()
         try:
@@ -150,11 +177,11 @@ def api_media_upload():
         except Exception as e2:
             current_app.logger.exception("autoposter_media db failed after create_all: %s", e2)
             db.session.rollback()
-            return jsonify({"ok": False, "error": "db_failed", "message": "تعذر حفظ بيانات الوسائط"}), 500
+            return jsonify({"success": False, "ok": False, "error": "db_failed", "message": "تعذر حفظ بيانات الوسائط"}), 500
     except Exception as e:
         current_app.logger.exception("autoposter_media db failed: %s", e)
         db.session.rollback()
-        return jsonify({"ok": False, "error": "db_failed", "message": "تعذر حفظ بيانات الوسائط"}), 500
+        return jsonify({"success": False, "ok": False, "error": "db_failed", "message": "تعذر حفظ بيانات الوسائط"}), 500
     return jsonify({
         "success": True,
         "ok": True,

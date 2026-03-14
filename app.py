@@ -125,8 +125,10 @@ def to_locale_string(value):
         return value
 
 app.config["UPLOAD_FOLDER"] = "static/uploads/messages"
-# حد رفع الملفات (للرسائل، النشر التلقائي صورة/فيديو حتى 200 ميجا، إلخ)
-app.config["MAX_CONTENT_LENGTH"] = 500 * 1024 * 1024  # 500MB لرفع صور/فيديو الأوتوبوستر
+# حد رفع الملفات (للرسائل، النشر التلقائي صورة/فيديو حتى 500 ميجا)
+app.config["MAX_CONTENT_LENGTH"] = 500 * 1024 * 1024  # 500MB
+# مجلد وسائط الأوتوبوستر: إن لم يُعيَّن يُستخدم uploads/media تحت جذر المشروع (السيرفر: /var/www/finora/supermaxi/media)
+app.config["AUTOPOSTER_MEDIA_ROOT"] = os.environ.get("AUTOPOSTER_MEDIA_ROOT") or None
 
 # في التطوير فقط: إعادة تحميل القوالب وتقليل كاش الملفات
 if not app.config.get("DEBUG"):

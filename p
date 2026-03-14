@@ -1,62 +1,51 @@
-You are a senior Python backend engineer.
+You are a senior Python backend engineer and DevOps expert.
 
-Project context:
+The project is a production Flask application running behind:
 
-The project is a Flask application located at:
+* Nginx
+* Gunicorn
+* Linux Ubuntu
+
+Project path:
 
 /var/www/finora/supermaxi
 
-The system contains a module called Autoposter that manages media uploads and publishing.
+Domain:
 
-Important rules:
+https://finora.company
 
-* DO NOT rename existing routes
-* DO NOT change database schema
-* DO NOT break existing features like POS, orders_manage, base.html
-* Only repair the Autoposter media system
+Gunicorn runs on:
 
-Current problems:
+127.0.0.1:8000
 
-1. The endpoint
-   /autoposter/api/media
-   returns HTTP 500.
+The system includes an Autoposter module with routes such as:
 
-2. The endpoint
-   /autoposter/api/media/upload
-   also returns HTTP 500.
-
-3. The frontend page
-   /autoposter/media
-   fails to upload images and videos.
-
-4. The server is running behind nginx + gunicorn.
-
-5. Gunicorn runs on:
-   127.0.0.1:8000
-
-6. Nginx proxies requests to gunicorn.
-
-7. Media files should be stored in:
-
-/var/www/finora/supermaxi/media
-
-Tasks you must perform:
-
-1. Locate the Flask routes responsible for:
-
+/autoposter/media
+/autoposter/upload
 /autoposter/api/media
 /autoposter/api/media/upload
 
-2. Fix all possible causes of 500 errors including:
+Current problems:
 
-* missing folders
-* permission errors
-* missing imports
-* incorrect request.files usage
-* invalid JSON responses
-* login_required blocking API
+1. The page
 
-3. Ensure the upload route supports:
+/autoposter/upload
+
+sometimes returns:
+
+ERR_SSL_PROTOCOL_ERROR
+
+2. Upload requests fail.
+
+3. Some API endpoints return 500 errors.
+
+Your tasks:
+
+1. Scan the entire Flask project.
+2. Locate the routes responsible for Autoposter upload.
+3. Fix all causes of HTTP 500 errors.
+4. Fix any redirect loops or HTTPS mismatches.
+5. Ensure uploads work correctly for:
 
 jpg
 png
@@ -64,89 +53,37 @@ webp
 mp4
 mov
 
-4. Implement a safe upload system:
+6. Ensure uploads are saved in:
 
-* verify file exists
-* sanitize filename
-* save file in media folder
-* return JSON response
+/var/www/finora/supermaxi/media
 
-5. Create this API response format:
+7. Automatically create missing folders if needed.
 
-GET /autoposter/api/media
-
-{
-"success": true,
-"media": [
-{
-"name": "file.jpg",
-"url": "/media/file.jpg"
-}
-]
-}
-
-6. Fix upload endpoint:
-
-POST /autoposter/api/media/upload
-
-Return:
-
-{
-"success": true,
-"url": "/media/filename.ext"
-}
-
-7. Automatically create missing folders:
-
-media/
-uploads/
-
-8. Ensure Flask config contains:
+8. Ensure Flask config includes:
 
 MAX_CONTENT_LENGTH = 500MB
 
-9. Ensure the project works with nginx large uploads.
+9. Ensure upload routes return JSON responses instead of HTML errors.
 
-10. Ensure JavaScript upload requests work without login redirects.
+10. Ensure routes do not redirect to login when accessed by JavaScript API.
 
-11. Add full error handling and logging.
+11. Ensure compatibility with nginx proxy.
 
-12. Print exactly which file and line caused the original error.
+12. Print the corrected Python code for all media routes.
 
-Finally:
+13. Ensure the upload endpoint works with FormData in JavaScript.
 
-Output the corrected Python code for the media routes and any necessary fixes.
+14. Add proper exception handling and logging.
 
+Important rules:
 
+* DO NOT rename existing routes
+* DO NOT change database schema
+* DO NOT break existing modules
+* Only repair Autoposter upload and media API
 
-Act as a DevOps + Python expert.
+Finally output:
 
-Diagnose and repair a Flask production deployment.
-
-Server stack:
-
-Nginx
-Gunicorn
-Flask
-Linux Ubuntu
-
-Project path:
-
-/var/www/finora/supermaxi
-
-Tasks:
-
-1. Check folder permissions
-2. Verify media upload directory
-3. Verify gunicorn process
-4. Verify nginx upload limits
-5. Verify Flask MAX_CONTENT_LENGTH
-6. Detect any route causing HTTP 500
-7. Repair broken API endpoints
-8. Ensure media uploads work for images and videos
-9. Ensure JSON responses instead of HTML errors
-10. Provide exact code patches
-
-Do not redesign the project.
-
-Only repair errors safely.
+1. The corrected Flask route code.
+2. Any necessary configuration fixes.
+3. Any missing folder creation logic.
