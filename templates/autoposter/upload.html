@@ -83,7 +83,12 @@
           return;
         }
         grid.innerHTML = media.map(function(m) {
-          var url = (m.public_url || m.url || '').indexOf('/') === 0 ? apiBase + (m.public_url || m.url) : (m.public_url || m.url || '');
+          var raw = (m.public_url || m.url || '').trim();
+          var url = raw.indexOf(apiBase) === 0 ? raw : (raw.indexOf('/') === 0 ? apiBase + raw : raw);
+          if (url.indexOf('/') === 0 && url.indexOf('//') !== 0) {
+            var origin = window.location.origin || '';
+            url = origin ? origin + url : url;
+          }
           var name = (m.file_name || m.filename || m.name || 'وسائط').replace(/</g, '&lt;');
           var isVideo = (m.media_type || m.type) === 'video';
           var thumb = isVideo

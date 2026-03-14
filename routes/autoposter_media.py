@@ -34,11 +34,31 @@ def _upload_dir():
     return base
 
 
+def _media_dirs():
+    """المجلدان المحتملان للوسائط: الرئيسي ثم uploads/media (للتوافق مع الملفات القديمة)."""
+    root = Path(current_app.root_path)
+    primary = _upload_dir()
+    fallback = root / "uploads" / "media"
+    return primary, fallback
+
+
 @autoposter_media_bp.route("/serve/media/<path:filename>")
 def serve_media(filename):
-    """تقديم ملفات مكتبة الوسائط (للمعاينة والنشر)."""
-    dir_path = _upload_dir()
-    return send_from_directory(dir_path, filename, as_attachment=False)
+    """تقديم ملفات مكتبة الوسائط (للمعاينة والنشر). يبحث في media/ ثم uploads/media/."""
+    primary, fallback = _media_dirs()
+    # أمان: منع الخروج من المجلد (path traversal)
+    if ".." in filename or filename.startswith("/"):
+        return jsonify({"error": "invalid"}), 400
+    for dir_path in (primary, fallback):
+        if not dir_path.exists():
+            continue
+        file_path = dir_path / filename
+        try:
+            if file_path.is_file():
+                return send_from_directory(dir_path, filename, as_attachment=False)
+        except Exception:
+            continue
+    return jsonify({"error": "not_found", "message": "الملف غير موجود"}), 404
 
 
 @autoposter_media_bp.route("/media")
