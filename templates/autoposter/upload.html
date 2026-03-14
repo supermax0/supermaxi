@@ -54,7 +54,10 @@
     <div id="successBox" class="success-box"></div>
     <div id="errorBox" class="error-box"></div>
     <div class="uploaded-library" style="margin-top:28px;padding-top:20px;border-top:1px solid rgba(71,85,105,0.5);">
-      <h3 style="font-size:1rem;margin:0 0 12px;color:var(--text,#e2e8f0);">وسائطك المرفوعة (مخزّنة)</h3>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+        <h3 style="font-size:1rem;margin:0;color:var(--text,#e2e8f0);">وسائطك المرفوعة (مخزّنة)</h3>
+        <button type="button" id="refreshMediaListBtn" style="font-size:0.85rem;padding:4px 10px;border-radius:6px;background:rgba(59,130,246,0.2);color:#93c5fd;border:1px solid rgba(59,130,246,0.4);cursor:pointer;">تحديث القائمة</button>
+      </div>
       <p style="font-size:0.85rem;color:#94a3b8;margin:0 0 12px;">تظهر هنا كل ما رفعته؛ تبقى بعد تحديث الصفحة ويمكن اختيارها من «إنشاء منشور».</p>
       <div id="mediaLibraryGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;min-height:60px;">
         <span style="color:#94a3b8;font-size:0.9rem;">جاري التحميل...</span>
@@ -71,12 +74,12 @@
   function refreshUploadPageMediaList() {
     var grid = document.getElementById('mediaLibraryGrid');
     if (!grid) return;
-    fetch(fullUrl('/api/media'), { credentials: 'include' })
+    fetch(fullUrl('/api/media'), { credentials: 'include', cache: 'no-store' })
       .then(function(r) { return r.json(); })
       .then(function(data) {
         var media = data && data.media ? data.media : [];
         if (!media.length) {
-          grid.innerHTML = '<span style="color:#94a3b8;font-size:0.9rem;">لا توجد وسائط بعد. ارفع صورة أو فيديو أعلاه.</span>';
+          grid.innerHTML = '<span style="color:#94a3b8;font-size:0.9rem;">لا توجد وسائط بعد. ارفع صورة أو فيديو أعلاه. إن رفعْتَ للتو فانتظر ثانية أو حدّث الصفحة (F5).</span>';
           return;
         }
         grid.innerHTML = media.map(function(m) {
@@ -98,6 +101,8 @@
   }
   window.refreshUploadPageMediaList = refreshUploadPageMediaList;
   refreshUploadPageMediaList();
+  var refreshBtn = document.getElementById('refreshMediaListBtn');
+  if (refreshBtn) refreshBtn.addEventListener('click', function() { refreshUploadPageMediaList(); });
   var useBtn = document.getElementById('useInPostBtn');
   if (useBtn) {
     useBtn.addEventListener('click', function() {

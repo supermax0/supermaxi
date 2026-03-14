@@ -161,7 +161,8 @@
           };
         }
         if (typeof window.refreshUploadPageMediaList === 'function') {
-          window.refreshUploadPageMediaList();
+          setTimeout(() => window.refreshUploadPageMediaList(), 400);
+          setTimeout(() => window.refreshUploadPageMediaList(), 1200);
         }
       } else if (xhr.status === 0) {
         showError('تم إلغاء الرفع.');
