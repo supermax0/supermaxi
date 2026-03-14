@@ -400,6 +400,19 @@ def resolve_media_url_to_path(media_url: str) -> Optional[Tuple[Path, str]]:
             full = root / name
             if full.is_file():
                 return (full, name)
+    if "/autoposter/serve/media/" in path or path.startswith("autoposter/serve/media/"):
+        name = path.split("autoposter/serve/media/")[-1].split("/")[0].strip()
+        if name and ".." not in name:
+            root = Path(current_app.root_path)
+            for folder in ("media", "uploads/media"):
+                full = root / folder / name
+                if full.is_file():
+                    return (full, name)
+            custom = current_app.config.get("AUTOPOSTER_MEDIA_ROOT")
+            if custom:
+                full = Path(custom) / name
+                if full.is_file():
+                    return (full, name)
     if "autoposter/uploads/" in path or "static/autoposter/uploads/" in path:
         for prefix in ("autoposter/uploads/", "static/autoposter/uploads/"):
             if prefix in path:

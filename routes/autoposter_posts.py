@@ -1,7 +1,8 @@
 # إنشاء المنشورات والجدولة — Autoposter Create Post
 # Routes: /autoposter/create, /autoposter/api/posts (create/schedule)
+import traceback
 from datetime import datetime
-from flask import Blueprint, jsonify, render_template, request, session
+from flask import Blueprint, current_app, jsonify, render_template, request, session
 from extensions import db
 from models.autoposter_facebook_page import AutoposterFacebookPage
 from models.autoposter_media import AutoposterMedia
@@ -99,6 +100,18 @@ def api_posts_create():
     إنشاء منشور (فوري أو مجدول).
     JSON أو form: caption (نص)، media_id (اختياري)، page_ids[]، post_type، scheduled_at (اختياري).
     """
+    try:
+        return _api_posts_create_impl()
+    except Exception as e:
+        if current_app.logger:
+            current_app.logger.exception("autoposter api_posts_create failed: %s\n%s", e, traceback.format_exc())
+        return jsonify({
+            "success": False,
+            "error": "خطأ في الخادم. راجع السجلات.",
+        }), 500
+
+
+def _api_posts_create_impl():
     if not session.get("user_id"):
         return jsonify({"success": False, "error": "unauthorized"}), 401
     data = request.get_json(silent=True) or request.form
@@ -162,5 +175,9 @@ def api_posts_create():
         caption=caption or None,
     )
     if errors and not published:
-        return jsonify({"success": False, "error": errors[0].get("error", "فشل النشر")}), 500
-    return jsonify({"success": True, "published": published, "errors": errors})
+        return jsonify({
+            "success": False,
+            "error": errors[0].get("error", "فشل النشر"),
+            "errors": errors,
+        }), 200
+    return jsonify({"success": True, "published": published, "errors": errors or []})
