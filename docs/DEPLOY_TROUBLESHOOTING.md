@@ -29,14 +29,14 @@ sudo journalctl -u finora -n 50 --no-pager
 
 ## 2. خطأ ERR_SSL_PROTOCOL_ERROR في المتصفح
 
-**الأعراض:** عند فتح `https://finora.company/publish/dashboard` يظهر "This site can't provide a secure connection" و `ERR_SSL_PROTOCOL_ERROR`.
+**الأعراض:** عند فتح `https://finora.company/...` (مثل `/publish/dashboard` أو `/autoposter/upload`) يظهر "This site can't provide a secure connection" و `ERR_SSL_PROTOCOL_ERROR`. طلبات الرفع تفشل ولا يُنقل أي بيانات.
 
 **السبب:** النطاق يُفتح عبر **HTTPS** بينما السيرفر (أو Nginx) غير مهيأ لـ SSL لهذا النطاق.
 
 **حل مؤقت — استخدم HTTP:**  
 جرّب فتح الرابط بدون `s` في `https`:
 
-- **http://finora.company/publish/dashboard**
+- **http://finora.company/** (أو مثلاً **http://finora.company/autoposter/upload**)
 
 (يجب أن يكون Nginx أو الخادوم يخدم الموقع على المنفذ 80 دون إجبار HTTPS.)
 
@@ -48,4 +48,4 @@ sudo journalctl -u finora -n 50 --no-pager
    ```
 2. أو إعداد Nginx يدوياً لـ `finora.company` مع `ssl_certificate` و `ssl_certificate_key` ثم `sudo systemctl reload nginx`.
 
-بعد تفعيل SSL يمكن استخدام **https://finora.company/publish/dashboard** بدون خطأ.
+بعد تفعيل SSL يمكن استخدام **https://finora.company** بدون خطأ.
