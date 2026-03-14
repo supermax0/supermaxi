@@ -52,7 +52,17 @@ def api_media_list():
         if tenant_slug:
             q = q.filter_by(tenant_slug=tenant_slug)
         items = q.all()
-        return jsonify({"media": [m.to_dict() for m in items]})
+        return jsonify({
+            "success": True,
+            "media": [
+                {
+                    "name": (m.file_name or m.filename),
+                    "url": m.public_url or f"/autoposter/serve/media/{m.filename}",
+                    **m.to_dict(),
+                }
+                for m in items
+            ],
+        })
     except OperationalError as e:
         # في حال كان جدول مكتبة الوسائط غير موجود، نحاول إنشاءه ثم نرجع قائمة فارغة
         from flask import current_app
@@ -63,12 +73,12 @@ def api_media_list():
         except Exception:
             db.session.rollback()
         # حتى لو فشل create_all، نرجع JSON بدون إسقاط السيرفر
-        return jsonify({"media": []})
+        return jsonify({"success": False, "media": []})
     except Exception as e:
         from flask import current_app
         current_app.logger.exception("autoposter_media list failed: %s", e)
         db.session.rollback()
-        return jsonify({"media": []})
+        return jsonify({"success": False, "media": []})
 
 
 @autoposter_media_bp.route("/api/media/upload", methods=["POST"])
@@ -146,7 +156,9 @@ def api_media_upload():
         db.session.rollback()
         return jsonify({"ok": False, "error": "db_failed", "message": "تعذر حفظ بيانات الوسائط"}), 500
     return jsonify({
+        "success": True,
         "ok": True,
+        "url": public_url,
         "id": rec.id,
         "media_type": media_type,
         "file_name": filename,
