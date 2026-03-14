@@ -154,14 +154,26 @@
 
     jobs.forEach(j => {
       const tr = document.createElement('tr');
-
-      const statusClass = 'badge-status ' + (j.status || 'pending');
-
+      const status = j.status || 'pending';
+      const statusClass = 'badge-status ' + status;
+      let resultCell = '';
+      if (status === 'published') {
+        resultCell = '<span style="color:#22c55e;">تم النشر</span>';
+      } else if (status === 'pending' || status === 'processing') {
+        resultCell = '<span style="color:#94a3b8;">—</span>';
+      } else if (status === 'failed' && j.error_message) {
+        resultCell = '<span style="color:#ef4444;font-size:0.75rem;">' + (j.error_message || '').replace(/</g, '&lt;').substring(0, 80) + '</span>';
+      } else {
+        resultCell = '<span style="color:#94a3b8;">—</span>';
+      }
+      const contentHint = (j.text && j.text.trim()) ? (j.text.trim().substring(0, 40) + (j.text.length > 40 ? '…' : '')) : (j.media_type === 'video' ? 'فيديو' : j.media_type === 'image' ? 'صورة' : '—');
+      const titleText = (status === 'failed' && j.error_message) ? j.error_message : contentHint;
+      const titleEscaped = (titleText || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
       tr.innerHTML = [
         `<td style="padding:6px 8px;border-bottom:1px solid rgba(31,41,55,0.9);">${j.channel_id}</td>`,
-        `<td style="padding:6px 8px;border-bottom:1px solid rgba(31,41,55,0.9);"><span class="${statusClass}">${j.status}</span></td>`,
+        `<td style="padding:6px 8px;border-bottom:1px solid rgba(31,41,55,0.9);"><span class="${statusClass}">${status}</span></td>`,
         `<td style="padding:6px 8px;border-bottom:1px solid rgba(31,41,55,0.9);font-size:0.75rem;color:#9ca3af;">${j.scheduled_at || ''}</td>`,
-        `<td style="padding:6px 8px;border-bottom:1px solid rgba(31,41,55,0.9);font-size:0.75rem;color:#9ca3af;">${j.error_message || ''}</td>`
+        `<td style="padding:6px 8px;border-bottom:1px solid rgba(31,41,55,0.9);font-size:0.75rem;" title="${titleEscaped}">${resultCell}</td>`
       ].join('');
 
       tbody.appendChild(tr);
