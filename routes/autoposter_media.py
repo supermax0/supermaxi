@@ -125,7 +125,7 @@ def api_media_upload():
             "ok": False,
             "error": "server_error",
             "message": "خطأ أثناء الرفع. راجع سجلات الخادم.",
-        }), 500
+        }), 200
 
 
 def _api_media_upload_impl():
@@ -165,7 +165,7 @@ def _api_media_upload_impl():
         file.save(str(file_path))
     except Exception as e:
         current_app.logger.exception("autoposter_media save failed (file %s): %s", file_path, e)
-        return jsonify({"success": False, "ok": False, "error": "save_failed", "message": "تعذر حفظ الملف"}), 500
+        return jsonify({"success": False, "ok": False, "error": "save_failed", "message": "تعذر حفظ الملف"}), 200
     rel_path = f"uploads/media/{safe_name}"
     public_url = f"/autoposter/serve/media/{safe_name}"
     tenant_slug = session.get("tenant_slug")
@@ -192,11 +192,11 @@ def _api_media_upload_impl():
         except Exception as e2:
             current_app.logger.exception("autoposter_media db failed after create_all: %s", e2)
             db.session.rollback()
-            return jsonify({"success": False, "ok": False, "error": "db_failed", "message": "تعذر حفظ بيانات الوسائط"}), 500
+            return jsonify({"success": False, "ok": False, "error": "db_failed", "message": "تعذر حفظ بيانات الوسائط"}), 200
     except Exception as e:
         current_app.logger.exception("autoposter_media db failed: %s", e)
         db.session.rollback()
-        return jsonify({"success": False, "ok": False, "error": "db_failed", "message": "تعذر حفظ بيانات الوسائط"}), 500
+        return jsonify({"success": False, "ok": False, "error": "db_failed", "message": "تعذر حفظ بيانات الوسائط"}), 200
     return jsonify({
         "success": True,
         "ok": True,
