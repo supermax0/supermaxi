@@ -178,14 +178,6 @@ class FinoraDeployStudio(tk.Tk):
         )
         self.fix_nginx_btn.pack(side=tk.LEFT, padx=4, pady=4)
 
-        self.run_autoposter_btn = ttk.Button(
-            btns,
-            text="Run Publisher Jobs",
-            width=18,
-            command=self.on_run_autoposter_jobs_clicked,
-        )
-        self.run_autoposter_btn.pack(side=tk.LEFT, padx=4, pady=4)
-
         self.run_migrations_btn = ttk.Button(
             btns,
             text="Run DB create_all",
@@ -930,38 +922,6 @@ systemctl reload {nginx_service}
                 self.set_status("Nginx proxy check completed (see log).")
             else:
                 self.set_status("Fix Nginx finished with errors (see log).")
-        finally:
-            self.set_busy(False)
-
-    def on_run_autoposter_jobs_clicked(self) -> None:
-        """تشغيل مهام Auto-poster المجدولة يدوياً على السيرفر."""
-        self.save_config()
-        thread = threading.Thread(target=self._run_autoposter_jobs_thread, daemon=True)
-        self.set_busy(True)
-        thread.start()
-
-    def _run_autoposter_jobs_thread(self) -> None:
-        try:
-            self.set_status("Running publisher jobs on server…")
-            server_path = self.server_path_var.get().strip()
-            if not server_path:
-                self.append_log("[ERROR] Server project path is empty.\n")
-                self.set_status("Publisher jobs failed (server path empty).")
-                return
-
-            script = f"""
-cd {server_path} || {{ echo '[ERROR] Cannot cd to {server_path}'; exit 1; }}
-if [ -d "venv" ]; then
-  source venv/bin/activate
-fi
-python scripts/run_publish_jobs.py
-"""
-            rc = self.run_ssh_script(script)
-            if rc == 0:
-                self.append_log("[INFO] Publisher jobs executed successfully.\n")
-                self.set_status("Publisher jobs completed.")
-            else:
-                self.set_status("Publisher jobs finished with errors (see log).")
         finally:
             self.set_busy(False)
 

@@ -1868,9 +1868,6 @@
         {% if is_admin or (current_employee and can_see_pages) %}
         <a href="/pages"><i class="fa fa-file-alt"></i> {{ _('pages') }}</a>
         {% endif %}
-        {% if is_admin or (current_employee and can_see_pages) %}
-        <a href="/autoposter"><i class="fa fa-facebook"></i> النشر التلقائي (فيسبوك)</a>
-        {% endif %}
         {% if is_admin or (current_employee and can_see_reports) %}
         {% if plan_has("reports_adv") %}
         <a href="/reports"><i class="fa fa-chart-pie"></i> {{ _('reports') }}</a>

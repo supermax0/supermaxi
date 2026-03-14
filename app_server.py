@@ -27,10 +27,6 @@ from models.assistant_memory import AssistantMemory
 from models.delivery_agent import DeliveryAgent
 from models.page import Page
 from models.role import Role, Permission
-from models.autoposter_facebook_page import AutoposterFacebookPage
-from models.autoposter_post import AutoposterPost
-from models.autoposter_media import AutoposterMedia
-from models.autoposter_notification import AutoposterNotification
 from models.comment_log import CommentLog
 
 # Routes
@@ -59,9 +55,6 @@ from routes.agents import agents_bp
 from routes.delivery_agent import delivery_agent_bp
 from routes.pages import pages_bp
 from routes.invoice_store import invoice_store_bp
-from routes.autoposter import autoposter_bp
-from routes.autoposter_api import autoposter_api_bp
-from routes.publisher import publisher_bp
 from telegram_bot import telegram_bp
 from models.ai_agent import AgentWorkflow, AgentExecution
 from social_ai.workflow_engine import execute_workflow
@@ -749,10 +742,7 @@ _OPEN_ROUTES = [
     "/superadmin",
     "/messages/unread-count",  # واجهة للشارة — تُرجع JSON بدون إعادة توجيه
     "/api/landing-chat",  # مساعد الذكاء الاصطناعي لصفحة الهبوط
-    "/autoposter/api/facebook/callback",  # OAuth callback من فيسبوك (يُوجّه للتسجيل إن لزم)
-    "/autoposter/ai-agent",  # AI Agent Builder — بدون تسجيل دخول
     "/telegram",  # بوت تيليجرام: webhook و setup و test — بدون تسجيل (ليستقبل التحديثات من Telegram)
-    "/publisher",  # لوحة النشر الجديدة بدون إجبار تسجيل الدخول من هنا
 ]
 
 
@@ -932,10 +922,7 @@ from routes.admin import admin_bp
 app.register_blueprint(admin_bp)
 
 app.register_blueprint(invoice_store_bp)
-app.register_blueprint(autoposter_api_bp)
-app.register_blueprint(autoposter_bp)
 app.register_blueprint(telegram_bp)
-app.register_blueprint(publisher_bp)
 
 # =====================================
 # Telegram Webhook (Raw Endpoint)
@@ -1009,38 +996,6 @@ try:
         flask_compress.Compress(app)
 except (ImportError, AttributeError):
     pass
-
-# =====================================
-# Autoposter: جدولة المنشورات (اختياري — لا يعيق تشغيل التطبيق)
-# لا يُشغّل المجدول تحت Gunicorn (متعدد العمال) لتجنب فشل الـ worker
-# =====================================
-_scheduler = None
-def _start_autoposter_scheduler():
-    global _scheduler
-    import os
-    import sys
-    # لا نشغّل المجدول تحت Gunicorn (يتسبب أحياناً بفشل تحميل الـ worker)
-    if os.environ.get("SERVER_SOFTWARE", "").startswith("gunicorn/") or "gunicorn" in (sys.argv[0] or ""):
-        return
-    try:
-        from apscheduler.schedulers.background import BackgroundScheduler  # type: ignore[import-untyped]
-        from apscheduler.triggers.interval import IntervalTrigger  # type: ignore[import-untyped]
-
-        def _run_autoposter_scheduled():
-            try:
-                from routes.autoposter import run_scheduled_posts_for_all_tenants
-                run_scheduled_posts_for_all_tenants(app)
-            except Exception:
-                pass
-
-        _scheduler = BackgroundScheduler()
-        _scheduler.add_job(_run_autoposter_scheduled, IntervalTrigger(minutes=1), id="autoposter_scheduled")
-        _scheduler.start()
-    except Exception as e:
-        import sys
-        print("Autoposter scheduler skipped:", e, file=sys.stderr)
-
-_start_autoposter_scheduler()
 
 # =====================================
 # Social AI Scheduler

@@ -13,8 +13,6 @@ from models.ai_agent import AgentExecution, AgentExecutionLog, AgentWorkflow
 from models.comment_log import CommentLog, is_comment_already_replied
 from models.social_account import SocialAccount
 from models.social_post import SocialPost
-from models.autoposter_facebook_page import AutoposterFacebookPage
-from models.autoposter_post import AutoposterPost
 from social_ai.ai_engine import generate_caption, generate_comment_reply, get_client
 from social_ai.image_generator import generate_image
 from social_ai.messaging import send_telegram_message, send_whatsapp_message
@@ -431,52 +429,9 @@ def run_comment_listener_node(node: NodeDef, context: Dict[str, Any]) -> Dict[st
                 return True
         return False
 
-    # 1) فيسبوك: كل الصفحات وكل المنشورات المعروفة في النظام
+    # 1) فيسبوك: معطّل بعد إزالة نظام النشر (Autoposter)
     if "facebook" in platforms:
-        fb_pages_q = AutoposterFacebookPage.query
-        fb_posts_q = AutoposterPost.query
-        if tenant_slug:
-            # صفحات ومنشورات كل تينانت عادة في نفس قاعدة بيانات التينانت؛ لا نحتاج فلتر إضافي هنا.
-            pass
-
-        pages = fb_pages_q.all()
-        if pages:
-            # نبحث في منشورات النشر التلقائي التي تحتوي على facebook_post_id
-            posts = (
-                fb_posts_q.filter(AutoposterPost.facebook_post_id.isnot(None))
-                .order_by(AutoposterPost.created_at.desc())
-                .limit(50)
-                .all()
-            )
-            for post in posts:
-                post_id = post.facebook_post_id
-                if not post_id:
-                    continue
-                comments = fb_fetch_comments(post_id=str(post_id), limit=50)
-                for c in comments:
-                    comment_id = str(c.get("id") or "")
-                    text = c.get("message") or ""
-                    username = (c.get("from") or {}).get("name")
-                    timestamp = c.get("created_time")
-                    if not comment_id or not text:
-                        continue
-                    # حماية من التكرار
-                    if is_comment_already_replied(tenant_slug, "facebook", comment_id):
-                        continue
-                    # فلتر الكلمات المفتاحية إن لزم
-                    if not _matches_keywords(text):
-                        continue
-                    result: Dict[str, Any] = {
-                        "platform": "facebook",
-                        "comment_id": comment_id,
-                        "comment_text": text,
-                        "username": username,
-                        "timestamp": timestamp,
-                        "page_id": post.page_id,
-                        "page_name": post.page_name,
-                    }
-                    context.update(result)
-                    return result
+        pass  # كان يعتمد على AutoposterFacebookPage و AutoposterPost
 
     # 2) إنستغرام: يعتمد على media_id الممرّر
     if "instagram" in platforms:

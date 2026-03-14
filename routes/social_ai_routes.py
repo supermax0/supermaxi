@@ -29,7 +29,7 @@ def dashboard():
     """لوحة بسيطة لإدارة منشورات AI (مبدئية)."""
     if not session.get("user_id"):
         # يمكن لاحقاً إعادة التوجيه لواجهة تسجيل الدخول الخاصة بك
-        return render_template("401.html"), 401 if False else render_template("autoposter/dashboard.html")
+        return render_template("401.html"), 401
     return render_template("social_ai/dashboard.html")
 
 

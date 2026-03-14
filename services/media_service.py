@@ -97,20 +97,14 @@ def get_media_root() -> Path:
 
 
 def get_autoposter_upload_dir() -> Path:
-    """
-    مجلد رفع الوسائط الخاص بالـ Autoposter.
-    مثال: <app_root>/static/autoposter/uploads
-    """
-    base = get_media_root() / "autoposter" / "uploads"
+    """مجلد رفع وسائط عام (كان للـ Autoposter — الاحتفاظ بالاسم للتوافق)."""
+    base = get_media_root() / "uploads"
     base.mkdir(parents=True, exist_ok=True)
     return base
 
 
 def get_autoposter_thumb_dir() -> Path:
-    """
-    مجلد الثمبنايل للـ Autoposter.
-    مثال: <app_root>/static/autoposter/uploads/thumbs
-    """
+    """مجلد الثمبنايل عام (كان للـ Autoposter — الاحتفاظ بالاسم للتوافق)."""
     base = get_autoposter_upload_dir() / "thumbs"
     base.mkdir(parents=True, exist_ok=True)
     return base
@@ -393,36 +387,7 @@ def resolve_media_url_to_path(media_url: str) -> Optional[Tuple[Path, str]]:
         path = (parsed.path or "").strip().lstrip("/")
     except Exception:
         path = url.lstrip("/")
-    if "/autoposter/serve/video/" in path or path.startswith("autoposter/serve/video/"):
-        name = path.split("autoposter/serve/video/")[-1].split("/")[0].strip()
-        if name:
-            root = get_video_upload_root()
-            full = root / name
-            if full.is_file():
-                return (full, name)
-    if "/autoposter/serve/media/" in path or path.startswith("autoposter/serve/media/"):
-        name = path.split("autoposter/serve/media/")[-1].split("/")[0].strip()
-        if name and ".." not in name:
-            root = Path(current_app.root_path)
-            for folder in ("media", "uploads/media"):
-                full = root / folder / name
-                if full.is_file():
-                    return (full, name)
-            custom = current_app.config.get("AUTOPOSTER_MEDIA_ROOT")
-            if custom:
-                full = Path(custom) / name
-                if full.is_file():
-                    return (full, name)
-    if "autoposter/uploads/" in path or "static/autoposter/uploads/" in path:
-        for prefix in ("autoposter/uploads/", "static/autoposter/uploads/"):
-            if prefix in path:
-                name = path.split(prefix)[-1].split("/")[0].strip()
-                if name:
-                    root = get_autoposter_upload_dir()
-                    full = root / name
-                    if full.is_file():
-                        return (full, name)
-                break
+    # فروع autoposter/publish أُزيلت بعد حذف نظام النشر
     return None
 
 
