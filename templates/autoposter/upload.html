@@ -53,16 +53,55 @@
     </div>
     <div id="successBox" class="success-box"></div>
     <div id="errorBox" class="error-box"></div>
+    <div class="uploaded-library" style="margin-top:28px;padding-top:20px;border-top:1px solid rgba(71,85,105,0.5);">
+      <h3 style="font-size:1rem;margin:0 0 12px;color:var(--text,#e2e8f0);">وسائطك المرفوعة (مخزّنة)</h3>
+      <p style="font-size:0.85rem;color:#94a3b8;margin:0 0 12px;">تظهر هنا كل ما رفعته؛ تبقى بعد تحديث الصفحة ويمكن اختيارها من «إنشاء منشور».</p>
+      <div id="mediaLibraryGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;min-height:60px;">
+        <span style="color:#94a3b8;font-size:0.9rem;">جاري التحميل...</span>
+      </div>
+    </div>
   </div>
 {% endblock %}
 {% block scripts %}
   <script src="{{ url_for('static', filename='autoposter/uploader.js') }}"></script>
   <script>
 (function() {
+  var apiBase = (window.AUTOPOSTER_API_BASE || '/autoposter').replace(/\/+$/, '');
+  function fullUrl(p) { return p.startsWith('/') ? apiBase + p : p; }
+  function refreshUploadPageMediaList() {
+    var grid = document.getElementById('mediaLibraryGrid');
+    if (!grid) return;
+    fetch(fullUrl('/api/media'), { credentials: 'include' })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        var media = data && data.media ? data.media : [];
+        if (!media.length) {
+          grid.innerHTML = '<span style="color:#94a3b8;font-size:0.9rem;">لا توجد وسائط بعد. ارفع صورة أو فيديو أعلاه.</span>';
+          return;
+        }
+        grid.innerHTML = media.map(function(m) {
+          var url = (m.public_url || m.url || '').indexOf('/') === 0 ? apiBase + (m.public_url || m.url) : (m.public_url || m.url || '');
+          var name = (m.file_name || m.filename || m.name || 'وسائط').replace(/</g, '&lt;');
+          var isVideo = (m.media_type || m.type) === 'video';
+          var thumb = isVideo
+            ? '<video src="' + url + '" style="width:100%;height:100px;object-fit:cover;" preload="metadata" muted></video>'
+            : '<img src="' + url + '" alt="" style="width:100%;height:100px;object-fit:cover;" loading="lazy" onerror="this.style.background=\'#334155\'">';
+          return '<div style="background:rgba(30,41,59,0.9);border-radius:10px;overflow:hidden;border:1px solid rgba(71,85,105,0.5);">' +
+            '<div style="height:100px;background:#1e293b;">' + thumb + '</div>' +
+            '<div style="padding:6px 8px;font-size:0.75rem;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + name + '">' + name + '</div>' +
+            '</div>';
+        }).join('');
+      })
+      .catch(function() {
+        grid.innerHTML = '<span style="color:#94a3b8;font-size:0.9rem;">فشل تحميل القائمة.</span>';
+      });
+  }
+  window.refreshUploadPageMediaList = refreshUploadPageMediaList;
+  refreshUploadPageMediaList();
   var useBtn = document.getElementById('useInPostBtn');
   if (useBtn) {
     useBtn.addEventListener('click', function() {
-      window.location.href = (window.AUTOPOSTER_API_BASE || '').replace(/\/+$/, '').replace(/\/api.*$/, '') + '/create';
+      window.location.href = apiBase + '/create';
     });
   }
 })();

@@ -53,9 +53,9 @@
       showError('الرجاء اختيار ملف صورة (jpg, png, webp) أو فيديو (mp4, mov, webm).');
       return;
     }
-    const maxBytes = 100 * 1024 * 1024; // 100MB (متطابق مع الباكند)
+    const maxBytes = 500 * 1024 * 1024; // 500MB (متطابق مع /api/media/upload)
     if (file.size > maxBytes) {
-      showError('حجم الملف أكبر من 100 ميجا.');
+      showError('حجم الملف أكبر من 500 ميجا.');
       return;
     }
 
@@ -66,7 +66,7 @@
     formData.append('file', file);
 
     const apiBase = (window.AUTOPOSTER_API_BASE || '/autoposter').replace(/\/+$/, '');
-    const uploadUrl = apiBase + '/api/upload';
+    const uploadUrl = apiBase + '/api/media/upload';
 
     const xhr = new XMLHttpRequest();
     currentXhr = xhr;
@@ -106,12 +106,12 @@
       } catch {
         // ignore
       }
-      if (xhr.status >= 200 && xhr.status < 300 && resp.ok) {
-        showSuccess(resp.type === 'video' ? 'تم رفع الفيديو بنجاح.' : 'تم رفع الصورة بنجاح.');
+      if (xhr.status >= 200 && xhr.status < 300 && (resp.ok || resp.success)) {
+        showSuccess(resp.media_type === 'video' || resp.type === 'video' ? 'تم رفع الفيديو بنجاح وحفظه في المكتبة.' : 'تم رفع الصورة بنجاح وحفظها في المكتبة.');
         if (previewShell && previewMeta) {
-          const url = resp.url || '';
-          const mediaType = resp.type || (file.type.startsWith('video/') ? 'video' : 'image');
-          const sizeMb = resp.size_mb != null ? resp.size_mb : file.size / (1024 * 1024);
+          const url = resp.url || resp.public_url || '';
+          const mediaType = resp.media_type || resp.type || (file.type.startsWith('video/') ? 'video' : 'image');
+          const sizeMb = resp.size_mb != null ? resp.size_mb : (resp.file_size != null ? resp.file_size / (1024 * 1024) : file.size / (1024 * 1024));
           const width = resp.width || null;
           const height = resp.height || null;
           const duration = resp.duration_sec || null;
@@ -145,20 +145,23 @@
           }
           previewShell.style.display = 'block';
         }
-        if (useInPostBtn && resp.url) {
+        if (useInPostBtn && (resp.url || resp.public_url)) {
           useInPostBtn.style.display = 'inline-flex';
           useInPostBtn.disabled = false;
-          useInPostBtn.textContent = resp.type === 'video' ? 'استخدام هذا الفيديو في المنشور' : 'استخدام هذه الصورة في المنشور';
+          const isVideo = resp.media_type === 'video' || resp.type === 'video';
+          useInPostBtn.textContent = isVideo ? 'استخدام هذا الفيديو في المنشور' : 'استخدام هذه الصورة في المنشور';
+          const mediaUrl = resp.url || resp.public_url || '';
           useInPostBtn.onclick = () => {
             try {
-              sessionStorage.setItem('autoposter_last_media_url', resp.url);
-              sessionStorage.setItem('autoposter_last_media_type', resp.type || 'video');
-            } catch (e) {
-              // ignore
-            }
+              sessionStorage.setItem('autoposter_last_media_url', mediaUrl);
+              sessionStorage.setItem('autoposter_last_media_type', isVideo ? 'video' : 'image');
+            } catch (e) {}
             const base = (window.AUTOPOSTER_API_BASE || '/autoposter').replace(/\/+$/, '');
-            window.location.href = `${base}/#create`;
+            window.location.href = base + '/create';
           };
+        }
+        if (typeof window.refreshUploadPageMediaList === 'function') {
+          window.refreshUploadPageMediaList();
         }
       } else if (xhr.status === 0) {
         showError('تم إلغاء الرفع.');
