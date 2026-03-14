@@ -4,6 +4,7 @@ from pathlib import Path
 import uuid
 from flask import Blueprint, current_app, jsonify, render_template, request, session, send_from_directory
 from werkzeug.utils import secure_filename
+from sqlalchemy.exc import OperationalError
 from extensions import db
 from models.autoposter_media import AutoposterMedia
 
@@ -111,6 +112,18 @@ def api_media_upload():
     try:
         db.session.add(rec)
         db.session.commit()
+    except OperationalError as e:
+        # في حال كان جدول مكتبة الوسائط غير موجود على قاعدة البيانات في السيرفر
+        current_app.logger.exception("autoposter_media db operational error, trying create_all: %s", e)
+        db.session.rollback()
+        try:
+            db.create_all()
+            db.session.add(rec)
+            db.session.commit()
+        except Exception as e2:
+            current_app.logger.exception("autoposter_media db failed after create_all: %s", e2)
+            db.session.rollback()
+            return jsonify({"ok": False, "error": "db_failed", "message": "تعذر حفظ بيانات الوسائط"}), 500
     except Exception as e:
         current_app.logger.exception("autoposter_media db failed: %s", e)
         db.session.rollback()
