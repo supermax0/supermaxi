@@ -1,88 +1,152 @@
-Create a professional **Social Media Automation Dashboard** with a modern and powerful UI/UX.
+You are a senior Python backend engineer.
 
-Technology stack:
-HTML5, CSS3, JavaScript (Vanilla or minimal libraries), designed to integrate with a Python Flask backend.
+Project context:
 
-Design requirements:
+The project is a Flask application located at:
 
-* Ultra modern SaaS style dashboard
-* Glassmorphism + soft shadows
-* Smooth animations and transitions
-* Dark mode default
-* Fully responsive (desktop, tablet, mobile)
-* Clean and minimal interface
-* Professional typography
-* High usability and clear visual hierarchy
+/var/www/finora/supermaxi
 
-Layout:
+The system contains a module called Autoposter that manages media uploads and publishing.
 
-* Left sidebar navigation with icons
-* Top navigation bar with notifications and user profile
-* Main content area with widgets and cards
-* Animated charts and statistics
-* Status indicators
+Important rules:
 
-Main Features UI:
+* DO NOT rename existing routes
+* DO NOT change database schema
+* DO NOT break existing features like POS, orders_manage, base.html
+* Only repair the Autoposter media system
 
-1. Dashboard overview
+Current problems:
 
-   * Total pages connected
-   * Total posts published
-   * Scheduled posts
-   * Engagement metrics
+1. The endpoint
+   /autoposter/api/media
+   returns HTTP 500.
 
-2. Create Post panel
+2. The endpoint
+   /autoposter/api/media/upload
+   also returns HTTP 500.
 
-   * Text editor for post content
-   * Image upload
-   * Video upload
-   * Preview before posting
-   * Select multiple Facebook pages
-   * Publish button
+3. The frontend page
+   /autoposter/media
+   fails to upload images and videos.
 
-3. Pages Manager
+4. The server is running behind nginx + gunicorn.
 
-   * Display connected Facebook pages
-   * Page name
-   * Page ID
-   * Status
-   * Toggle selection
+5. Gunicorn runs on:
+   127.0.0.1:8000
 
-4. Scheduled Posts
+6. Nginx proxies requests to gunicorn.
 
-   * Calendar view
-   * Scheduled post list
-   * Edit / delete / reschedule
+7. Media files should be stored in:
 
-5. Analytics
+/var/www/finora/supermaxi/media
 
-   * Post performance charts
-   * Engagement metrics
-   * Page growth
+Tasks you must perform:
 
-UI Style:
+1. Locate the Flask routes responsible for:
 
-* Color palette: dark blue, neon accent, soft gradients
-* Modern cards with hover effects
-* Smooth button micro-interactions
-* Floating action buttons
-* Animated loading states
-* Beautiful empty states
+/autoposter/api/media
+/autoposter/api/media/upload
 
-Additional UX features:
+2. Fix all possible causes of 500 errors including:
 
-* Drag & drop media upload
-* Multi-page selection
-* Success / error toast notifications
-* Modal dialogs
-* Search and filter
+* missing folders
+* permission errors
+* missing imports
+* incorrect request.files usage
+* invalid JSON responses
+* login_required blocking API
 
-Output requirements:
+3. Ensure the upload route supports:
 
-* Clean, well structured HTML
-* Modular CSS
-* Reusable components
-* JavaScript interactions
-* Ready to connect with Flask API endpoints
+jpg
+png
+webp
+mp4
+mov
 
-The result should look like a **premium SaaS dashboard similar to Notion, Linear, or Vercel admin panels**.
+4. Implement a safe upload system:
+
+* verify file exists
+* sanitize filename
+* save file in media folder
+* return JSON response
+
+5. Create this API response format:
+
+GET /autoposter/api/media
+
+{
+"success": true,
+"media": [
+{
+"name": "file.jpg",
+"url": "/media/file.jpg"
+}
+]
+}
+
+6. Fix upload endpoint:
+
+POST /autoposter/api/media/upload
+
+Return:
+
+{
+"success": true,
+"url": "/media/filename.ext"
+}
+
+7. Automatically create missing folders:
+
+media/
+uploads/
+
+8. Ensure Flask config contains:
+
+MAX_CONTENT_LENGTH = 500MB
+
+9. Ensure the project works with nginx large uploads.
+
+10. Ensure JavaScript upload requests work without login redirects.
+
+11. Add full error handling and logging.
+
+12. Print exactly which file and line caused the original error.
+
+Finally:
+
+Output the corrected Python code for the media routes and any necessary fixes.
+
+
+
+Act as a DevOps + Python expert.
+
+Diagnose and repair a Flask production deployment.
+
+Server stack:
+
+Nginx
+Gunicorn
+Flask
+Linux Ubuntu
+
+Project path:
+
+/var/www/finora/supermaxi
+
+Tasks:
+
+1. Check folder permissions
+2. Verify media upload directory
+3. Verify gunicorn process
+4. Verify nginx upload limits
+5. Verify Flask MAX_CONTENT_LENGTH
+6. Detect any route causing HTTP 500
+7. Repair broken API endpoints
+8. Ensure media uploads work for images and videos
+9. Ensure JSON responses instead of HTML errors
+10. Provide exact code patches
+
+Do not redesign the project.
+
+Only repair errors safely.
