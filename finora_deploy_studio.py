@@ -782,9 +782,19 @@ echo "[6] Cleaning static build..."
 rm -rf static/build 2>/dev/null
 
 echo ""
-echo "[7] Killing old gunicorn processes..."
-pkill -9 gunicorn 2>/dev/null
-fuser -k "$PORT"/tcp 2>/dev/null
+echo "[7] Killing old gunicorn processes and freeing port..."
+sudo pkill -9 gunicorn 2>/dev/null || true
+sudo fuser -k "$PORT"/tcp 2>/dev/null || true
+sleep 2
+# تأكد أن المنفذ حر قبل إعادة التشغيل
+if command -v lsof >/dev/null 2>&1; then
+  PIDS=$(lsof -t -i :"$PORT" 2>/dev/null)
+  if [ -n "$PIDS" ]; then
+    echo "[7b] Force killing remaining process(es) on port $PORT: $PIDS"
+    echo "$PIDS" | xargs -r sudo kill -9 2>/dev/null || true
+    sleep 1
+  fi
+fi
 
 echo ""
 echo "[8] Restarting application service..."
@@ -803,6 +813,13 @@ echo "[11] Checking open ports..."
 lsof -i :"$PORT"
 
 echo ""
+# التحقق من أن الخدمة تستمع على المنفذ (تفادي رسالة نجاح كاذبة)
+LISTEN_CHECK=$(lsof -i :"$PORT" 2>/dev/null | grep -c LISTEN || true)
+if [ "$LISTEN_CHECK" -lt 1 ]; then
+  echo "[WARN] No process is listening on port $PORT. Gunicorn may have failed to start (e.g. Address already in use)."
+  exit 1
+fi
+
 echo "=============================="
 echo "DEPLOYMENT COMPLETE"
 echo "=============================="
@@ -813,6 +830,7 @@ echo "=============================="
                 self.append_log("[INFO] Deploy completed successfully.\n")
                 self.set_status("Deploy completed.")
             else:
+                self.append_log("[WARN] Deploy script exited with code %s. Check log: port may still be in use or gunicorn failed to start.\n" % rc)
                 self.set_status("Deploy finished with errors (see log).")
         finally:
             self.set_busy(False)

@@ -170,6 +170,16 @@
       return;
     }
 
+    // توحيد عرض رسائل التحقق القديمة في عمود النتيجة
+    function normalizeResultMessage(msg) {
+      if (!msg || typeof msg !== 'string') return msg;
+      const t = msg.trim();
+      if (/ادخل نصاً أو رابط وسائط|أدخل نصاً أو رابط|نص أو رابط وسائط|الرجاء إدخال نص أو اختيار ملف/.test(t)) {
+        return 'فشل التحقق: يُفضّل إدخال نص أو رفع صورة/فيديو.';
+      }
+      return msg;
+    }
+
     jobs.forEach(j => {
       const tr = document.createElement('tr');
       const status = j.status || 'pending';
@@ -180,12 +190,13 @@
       } else if (status === 'pending' || status === 'processing') {
         resultCell = '<span style="color:#94a3b8;">—</span>';
       } else if (status === 'failed' && j.error_message) {
-        resultCell = '<span style="color:#ef4444;font-size:0.75rem;">' + (j.error_message || '').replace(/</g, '&lt;').substring(0, 80) + '</span>';
+        const displayMsg = normalizeResultMessage(j.error_message);
+        resultCell = '<span style="color:#ef4444;font-size:0.75rem;">' + (displayMsg || '').replace(/</g, '&lt;').substring(0, 80) + '</span>';
       } else {
         resultCell = '<span style="color:#94a3b8;">—</span>';
       }
       const contentHint = (j.text && j.text.trim()) ? (j.text.trim().substring(0, 40) + (j.text.length > 40 ? '…' : '')) : (j.media_type === 'video' ? 'فيديو' : j.media_type === 'image' ? 'صورة' : '—');
-      const titleText = (status === 'failed' && j.error_message) ? j.error_message : contentHint;
+      const titleText = (status === 'failed' && j.error_message) ? normalizeResultMessage(j.error_message) : contentHint;
       const titleEscaped = (titleText || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
       tr.innerHTML = [
         `<td style="padding:6px 8px;border-bottom:1px solid rgba(31,41,55,0.9);">${j.channel_id}</td>`,
