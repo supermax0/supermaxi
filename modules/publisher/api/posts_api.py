@@ -15,6 +15,7 @@ from flask import Blueprint, jsonify, request, session, g, current_app
 from extensions import db
 from modules.publisher.models.publisher_post import PublisherPost
 from modules.publisher.services.schema_guard import ensure_publisher_schema
+from modules.publisher.services.scheduler_service import publish_single_post_now
 
 posts_api_bp = Blueprint("publisher_posts_api", __name__)
 
@@ -71,8 +72,26 @@ def create_post():
         db.session.add(post)
         db.session.commit()
 
+        # نشر فوري فعلياً (لا ننتظر المجدول عند اختيار "نشر الآن")
+        publish_result = publish_single_post_now(current_app._get_current_object(), post.id)
+        db.session.refresh(post)
+
+        if post.status == "published":
+            return jsonify({"success": True, "post": post.to_dict(),
+                            "message": "تم النشر الفوري بنجاح"})
+        if post.status == "partial":
+            return jsonify({"success": True, "post": post.to_dict(),
+                            "message": "تم النشر جزئياً على بعض الصفحات. راجع الحالة."})
+        if post.status == "failed":
+            return jsonify({"success": False, "post": post.to_dict(),
+                            "message": post.error_message or "فشل النشر الفوري. راجع إعدادات الصفحة/التوكن."}), 400
+
+        # fallback
+        if publish_result.get("success"):
+            return jsonify({"success": True, "post": post.to_dict(),
+                            "message": "تمت إضافة المنشور ومعالجته"})
         return jsonify({"success": True, "post": post.to_dict(),
-                        "message": "تم إضافة المنشور إلى قائمة الانتظار — سيُنشر خلال دقيقة"})
+                        "message": "تمت إضافة المنشور إلى قائمة الانتظار"})
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(traceback.format_exc())

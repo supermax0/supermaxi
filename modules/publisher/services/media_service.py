@@ -127,7 +127,8 @@ def save_upload(file_storage, tenant_slug: str) -> dict:
         os.remove(file_path)
         return {"success": False, "message": "حجم الملف يتجاوز الحد المسموح (500 MB)"}
 
-    url_path = f"/media/{tenant_dir}/{sub}/{filename}"
+    # Serve through publisher blueprint route to avoid external web-server mapping issues.
+    url_path = f"/publisher/media-file/{tenant_dir}/{sub}/{filename}"
 
     media = PublisherMedia(
         tenant_slug=tenant_slug,

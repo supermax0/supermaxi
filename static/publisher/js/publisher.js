@@ -20,6 +20,8 @@ async function apiFetchJson(url, options = {}) {
     return data;
 }
 
+const SELECTED_MEDIA_KEY = 'publisher_selected_media_ids';
+
 const API = {
     base: '/publisher',
     pages: () => apiFetchJson('/publisher/api/pages'),
@@ -123,9 +125,12 @@ let selectedMediaIds = [];
 let publishMode = 'now';  // 'now' | 'scheduled'
 
 async function initCreatePost() {
+    restoreSelectedMediaFromStorage();
     await loadPageSelector();
     initPublishToggle();
     initAiTools();
+    updateSelectedMediaChip();
+    updatePreview();
     document.getElementById('postForm').addEventListener('submit', submitPost);
     document.getElementById('postText').addEventListener('input', updatePreview);
     document.getElementById('openMediaPicker').addEventListener('click', openMediaPickerModal);
@@ -242,10 +247,47 @@ function updatePreview() {
     const text = document.getElementById('postText').value;
     const prev = document.getElementById('previewBody');
     if (prev) prev.textContent = text || 'نص المنشور يظهر هنا…';
+    const mediaPrev = document.getElementById('previewMedia');
+    if (mediaPrev) {
+        if (selectedMediaIds.length) {
+            mediaPrev.style.display = 'block';
+            mediaPrev.innerHTML = '<span>🖼️ وسائط مرفقة: ' + selectedMediaIds.length + '</span>';
+        } else {
+            mediaPrev.style.display = 'none';
+            mediaPrev.innerHTML = '<span>صورة / فيديو</span>';
+        }
+    }
 }
 
 function openMediaPickerModal() {
-    toast('ميزة اختيار الوسائط — يرجى الذهاب إلى مكتبة الوسائط وتحديد الملفات المطلوبة', 'info');
+    persistSelectedMediaToStorage();
+    window.location.href = '/publisher/media?returnTo=create';
+}
+
+function restoreSelectedMediaFromStorage() {
+    try {
+        const raw = sessionStorage.getItem(SELECTED_MEDIA_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return;
+        selectedMediaIds = parsed.map(v => Number(v)).filter(v => Number.isInteger(v));
+    } catch (e) {
+        selectedMediaIds = [];
+    }
+}
+
+function persistSelectedMediaToStorage() {
+    try {
+        sessionStorage.setItem(SELECTED_MEDIA_KEY, JSON.stringify(selectedMediaIds || []));
+    } catch (e) {
+        // ignore
+    }
+}
+
+function updateSelectedMediaChip() {
+    const chip = document.getElementById('selectedChip');
+    if (!chip) return;
+    chip.textContent = selectedMediaIds.length ? ('✔ ' + selectedMediaIds.length + ' وسيط مختار') : '';
 }
 
 async function submitPost(e) {
@@ -283,6 +325,8 @@ async function submitPost(e) {
             document.getElementById('postForm').reset();
             updatePreview();
             selectedMediaIds = [];
+            sessionStorage.removeItem(SELECTED_MEDIA_KEY);
+            updateSelectedMediaChip();
         } else {
             toast(r.message || 'خطأ', 'error');
         }

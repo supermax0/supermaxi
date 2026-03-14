@@ -4,6 +4,7 @@ let allMedia = [];
 let activeTab = 'all';
 let searchQ = '';
 let selectedForPost = new Set();
+const SELECTED_MEDIA_KEY = 'publisher_selected_media_ids';
 
 async function apiFetchJson(url, options = {}) {
     const opts = {
@@ -33,6 +34,7 @@ async function loadMedia() {
     if (activeTab !== 'all') params.set('type', activeTab);
     const r = await apiFetchJson('/publisher/api/media?' + params);
     allMedia = r.media || [];
+    syncSelectedFromStorage();
     renderGrid();
 }
 
@@ -78,14 +80,17 @@ function fmtSize(b) {
 function renderGrid() {
     const grid = document.getElementById('mediaGrid');
     if (!grid) return;
+    const chip = document.getElementById('selectedChip');
+    if (chip) chip.textContent = selectedForPost.size ? '✔ ' + selectedForPost.size + ' مختار' : '';
     if (!allMedia.length) {
         grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🖼️</div><p>لا توجد وسائط — ارفع أولاً</p></div>';
         return;
     }
     grid.innerHTML = allMedia.map(m => {
         const isSelected = selectedForPost.has(m.id);
+        const mediaUrl = normalizeMediaUrl(m.url_path);
         const thumb = m.media_type === 'image'
-            ? '<img src="' + m.url_path + '" alt="' + (m.original_name || '') + '" loading="lazy">'
+            ? '<img src="' + mediaUrl + '" alt="' + (m.original_name || '') + '" loading="lazy">'
             : '<div class="vid-icon">🎬</div>';
         return '<div class="media-card' + (isSelected ? ' selected' : '') + '" data-id="' + m.id + '" onclick="toggleSelect(' + m.id + ')">' +
             '<div class="media-sel-badge">✓</div>' +
@@ -107,9 +112,43 @@ function toggleSelect(id) {
     } else {
         selectedForPost.add(id);
     }
+    persistSelectedToStorage();
     renderGrid();
-    const chip = document.getElementById('selectedChip');
-    if (chip) chip.textContent = selectedForPost.size ? '✔ ' + selectedForPost.size + ' مختار' : '';
+}
+
+function normalizeMediaUrl(urlPath) {
+    if (!urlPath) return '';
+    if (urlPath.startsWith('/media/')) {
+        // Legacy rows in DB
+        return '/publisher/media-file/' + urlPath.replace(/^\/media\//, '');
+    }
+    return urlPath;
+}
+
+function persistSelectedToStorage() {
+    try {
+        const ids = Array.from(selectedForPost);
+        sessionStorage.setItem(SELECTED_MEDIA_KEY, JSON.stringify(ids));
+    } catch (e) {
+        // ignore
+    }
+}
+
+function syncSelectedFromStorage() {
+    try {
+        const raw = sessionStorage.getItem(SELECTED_MEDIA_KEY);
+        if (!raw) return;
+        const ids = JSON.parse(raw);
+        if (!Array.isArray(ids)) return;
+        selectedForPost = new Set(ids.map(v => Number(v)).filter(v => Number.isInteger(v)));
+    } catch (e) {
+        // ignore
+    }
+}
+
+function goToCreateWithSelectedMedia() {
+    persistSelectedToStorage();
+    window.location.href = '/publisher/create';
 }
 
 /* ── Drag & Drop Upload ──────── */
@@ -202,8 +241,19 @@ function initSearch() {
 
 /* ── Init ────────────────────── */
 document.addEventListener('DOMContentLoaded', () => {
+    syncSelectedFromStorage();
     initDropZone();
     initTabs();
     initSearch();
+    const useBtn = document.getElementById('useInPostBtn');
+    if (useBtn) {
+        useBtn.addEventListener('click', () => {
+            if (!selectedForPost.size) {
+                toast('اختر وسيطاً واحداً على الأقل أولاً', 'error');
+                return;
+            }
+            goToCreateWithSelectedMedia();
+        });
+    }
     loadMedia();
 });
