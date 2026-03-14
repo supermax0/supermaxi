@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>إنشاء منشور | Autoposter</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='autoposter/styles.css') }}">
+  <script>window.AUTOPOSTER_API_BASE = '{{ request.script_root or "" }}/autoposter';</script>
+  <style>
+    body { background: #0f172a; color: #e2e8f0; font-family: system-ui, sans-serif; margin: 0; padding: 16px; }
+    .create-header { margin-bottom: 20px; }
+    .create-title { font-size: 1.25rem; font-weight: 600; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; margin-bottom: 6px; font-size: 0.9rem; color: #94a3b8; }
+    .form-control { width: 100%; max-width: 480px; padding: 8px 12px; border-radius: 8px; border: 1px solid #334155; background: #1e293b; color: #e2e8f0; }
+    textarea.form-control { min-height: 100px; resize: vertical; }
+    .btn { padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; border: none; }
+    .btn-primary { background: #3b82f6; color: #fff; }
+    .btn-primary:hover { background: #2563eb; }
+    .btn-secondary { background: #475569; color: #fff; margin-right: 8px; }
+    .media-select-wrap { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .media-select { min-width: 200px; }
+    .page-list { list-style: none; padding: 0; margin: 0; }
+    .page-list li { padding: 6px 0; }
+    .page-list input { margin-left: 8px; }
+    .back-link { color: #93c5fd; text-decoration: none; font-size: 0.9rem; }
+    .back-link:hover { text-decoration: underline; }
+    .msg { margin-top: 12px; padding: 8px 12px; border-radius: 8px; display: none; }
+    .msg.success { background: rgba(34,197,94,0.2); color: #86efac; display: block; }
+    .msg.error { background: rgba(239,68,68,0.2); color: #fca5a5; display: block; }
+  </style>
+</head>
+<body>
+  <div class="create-header">
+    <a href="{{ request.script_root or '' }}/autoposter/media" class="back-link">← مكتبة الوسائط</a>
+    <h1 class="create-title">إنشاء منشور</h1>
+    <p style="margin:4px 0 0;font-size:0.85rem;color:#94a3b8;">اختر الوسائط من المكتبة، الصفحات، ووقت النشر أو الجدولة</p>
+  </div>
+
+  <form id="createForm">
+    <div class="form-group">
+      <label>النص / التسمية (caption)</label>
+      <textarea id="caption" class="form-control" placeholder="اكتب نص المنشور..." name="caption"></textarea>
+    </div>
+    <div class="form-group">
+      <label>الوسائط (من المكتبة)</label>
+      <div class="media-select-wrap">
+        <select id="mediaSelect" class="form-control media-select" name="media_id">
+          <option value="">— بدون وسائط —</option>
+        </select>
+        <a href="{{ request.script_root or '' }}/autoposter/media" class="back-link">رفع وسائط جديدة</a>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>الصفحات</label>
+      <ul class="page-list" id="pageList">
+        <li>جاري تحميل الصفحات...</li>
+      </ul>
+    </div>
+    <div class="form-group">
+      <label>نوع المنشور</label>
+      <select id="postType" class="form-control" name="post_type" style="max-width:200px;">
+        <option value="post">منشور</option>
+        <option value="video">فيديو</option>
+        <option value="reel">ريلز</option>
+        <option value="story">ستوري</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>وقت الجدولة (اختياري — اتركه فارغاً للنشر فوراً)</label>
+      <input type="datetime-local" id="scheduledAt" class="form-control" name="scheduled_at" style="max-width:240px;">
+    </div>
+    <div class="form-group">
+      <button type="submit" class="btn btn-primary" id="submitBtn">نشر الآن أو جدولة</button>
+      <button type="button" class="btn btn-secondary" id="previewBtn">معاينة</button>
+    </div>
+    <div id="msg" class="msg"></div>
+  </form>
+
+  <script>
+(function() {
+  const API_BASE = (window.AUTOPOSTER_API_BASE || '/autoposter').replace(/\/+$/, '');
+  const form = document.getElementById('createForm');
+  const caption = document.getElementById('caption');
+  const mediaSelect = document.getElementById('mediaSelect');
+  const pageList = document.getElementById('pageList');
+  const postType = document.getElementById('postType');
+  const scheduledAt = document.getElementById('scheduledAt');
+  const submitBtn = document.getElementById('submitBtn');
+  const msgEl = document.getElementById('msg');
+
+  function fullUrl(p) { return p.startsWith('/') ? API_BASE + p : p; }
+
+  async function loadMedia() {
+    const res = await fetch(fullUrl('/api/media'), { credentials: 'include' });
+    const data = await res.json().catch(() => ({}));
+    const media = data.media || [];
+    mediaSelect.innerHTML = '<option value="">— بدون وسائط —</option>' +
+      media.map(m => `<option value="${m.id}" data-type="${m.media_type}">${(m.file_name || m.filename || 'وسائط')} (${m.media_type})</option>`).join('');
+  }
+
+  async function loadPages() {
+    const res = await fetch(fullUrl('/api/pages'), { credentials: 'include' });
+    const data = await res.json().catch(() => ({}));
+    const pages = data.pages || [];
+    if (!pages.length) {
+      pageList.innerHTML = '<li style="color:#94a3b8;">لا توجد صفحات متصلة. <a href="#" class="back-link">ربط صفحة</a></li>';
+      return;
+    }
+    pageList.innerHTML = pages.map(p => `<li><label><input type="checkbox" name="page_ids" value="${p.id}"> ${p.name}</label></li>`).join('');
+  }
+
+  form.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const pageIds = Array.from(document.querySelectorAll('input[name="page_ids"]:checked')).map(c => c.value);
+    if (!pageIds.length) {
+      msgEl.textContent = 'اختر صفحة واحدة على الأقل.';
+      msgEl.className = 'msg error';
+      return;
+    }
+    const text = (caption.value || '').trim();
+    const mid = mediaSelect.value ? mediaSelect.value : null;
+    if (!text && !mid) {
+      msgEl.textContent = 'أدخل نصاً أو اختر وسيطاً من المكتبة.';
+      msgEl.className = 'msg error';
+      return;
+    }
+    submitBtn.disabled = true;
+    msgEl.className = 'msg';
+    msgEl.textContent = '';
+    const body = {
+      caption: text,
+      media_id: mid || undefined,
+      page_ids: pageIds,
+      post_type: postType.value || 'post',
+      scheduled_at: scheduledAt.value || undefined,
+    };
+    try {
+      const res = await fetch(fullUrl('/api/posts/create'), {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (data.success) {
+        msgEl.textContent = data.scheduled ? `تم جدولة ${data.count} منشور.` : 'تم النشر بنجاح.';
+        msgEl.className = 'msg success';
+        if (!data.scheduled) caption.value = '';
+      } else {
+        msgEl.textContent = data.error || 'فشل النشر.';
+        msgEl.className = 'msg error';
+      }
+    } catch (err) {
+      msgEl.textContent = 'خطأ في الاتصال.';
+      msgEl.className = 'msg error';
+    }
+    submitBtn.disabled = false;
+  });
+
+  loadMedia();
+  loadPages();
+})();
+  </script>
+</body>
+</html>

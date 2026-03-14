@@ -12,9 +12,9 @@ from routes.autoposter_facebook import publish_post
 
 def _normalize_post_type(post_type: str) -> str:
     post_type = (post_type or "post").strip().lower()
-    if post_type not in ("post", "story", "reels"):
+    if post_type not in ("post", "video", "reel", "reels", "story"):
         return "post"
-    return post_type
+    return "reels" if post_type == "reel" else post_type
 
 
 def schedule_posts_for_pages(
@@ -25,6 +25,8 @@ def schedule_posts_for_pages(
     video_url: str | None,
     post_type: str,
     scheduled_at: datetime,
+    media_id: int | None = None,
+    caption: str | None = None,
 ) -> int:
     """إنشاء سجلات منشورات مجدولة لعدة صفحات في شركة واحدة."""
     post_type = _normalize_post_type(post_type)
@@ -33,9 +35,11 @@ def schedule_posts_for_pages(
         post = AutoposterPost(
             page_id=page.page_id,
             page_name=page.name,
-            content=content or "",
+            content=content or (caption or ""),
+            caption=caption,
             image_url=image_url,
             video_url=video_url,
+            media_id=media_id,
             channel=ChannelType.FACEBOOK_PAGE,
             post_type=post_type,
             status="scheduled",
@@ -54,6 +58,8 @@ def publish_now_for_pages(
     image_url: str | None,
     video_url: str | None,
     post_type: str,
+    media_id: int | None = None,
+    caption: str | None = None,
 ) -> Tuple[List[dict], List[dict]]:
     """نشر منشور فوراً لعدة صفحات في شركة واحدة مع نتيجة تفصيلية لكل صفحة."""
     post_type = _normalize_post_type(post_type)
@@ -64,9 +70,11 @@ def publish_now_for_pages(
         post = AutoposterPost(
             page_id=page.page_id,
             page_name=page.name,
-            content=content or "",
+            content=content or (caption or ""),
+            caption=caption,
             image_url=image_url,
             video_url=video_url,
+            media_id=media_id,
             channel=ChannelType.FACEBOOK_PAGE,
             post_type=post_type,
             status="publishing",

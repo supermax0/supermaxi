@@ -1,4 +1,4 @@
-# وسائط الأوتوبوستر المخزنة — للرفع أولاً ثم النشر لاحقاً
+# وسائط الأوتوبوستر المخزنة — مكتبة الوسائط (Media Library)
 from datetime import datetime
 from extensions import db
 
@@ -8,19 +8,24 @@ class AutoposterMedia(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     tenant_slug = db.Column(db.String(64), nullable=True, index=True)
-    public_url = db.Column(db.String(512), nullable=False)
+    tenant_id = db.Column(db.Integer, nullable=True, index=True)  # optional, for compatibility
     media_type = db.Column(db.String(20), nullable=False)  # image | video
-    filename = db.Column(db.String(255), nullable=True)
-    size_bytes = db.Column(db.BigInteger, nullable=True)
+    file_name = db.Column(db.String(255), nullable=True)  # original filename
+    filename = db.Column(db.String(255), nullable=True)  # stored filename (legacy)
+    file_path = db.Column(db.String(512), nullable=True)  # path under uploads/media/
+    file_size = db.Column(db.BigInteger, nullable=True)  # bytes
+    size_bytes = db.Column(db.BigInteger, nullable=True)  # legacy alias
+    public_url = db.Column(db.String(512), nullable=True)  # URL for preview/publish
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def to_dict(self):
         return {
             "id": self.id,
             "tenant_slug": self.tenant_slug,
-            "public_url": self.public_url,
             "media_type": self.media_type,
-            "filename": self.filename,
-            "size_bytes": self.size_bytes,
+            "file_name": getattr(self, "file_name", None) or self.filename,
+            "file_path": getattr(self, "file_path", None),
+            "file_size": getattr(self, "file_size", None) or self.size_bytes,
+            "public_url": self.public_url,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }

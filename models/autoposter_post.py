@@ -10,11 +10,13 @@ class AutoposterPost(db.Model):
     page_id = db.Column(db.String(64), nullable=False)
     page_name = db.Column(db.String(200), nullable=True)
     content = db.Column(db.Text, nullable=False)
+    caption = db.Column(db.Text, nullable=True)  # caption for media post
     image_url = db.Column(db.String(512), nullable=True)
     video_url = db.Column(db.String(512), nullable=True)
+    media_id = db.Column(db.Integer, nullable=True)  # FK to autoposter_media (optional)
     media_type = db.Column(db.String(20), nullable=True)  # image | video | reel | story
     channel = db.Column(db.String(30), default="facebook_page")
-    post_type = db.Column(db.String(20), default="post")  # post | story | reels
+    post_type = db.Column(db.String(20), default="post")  # post | video | reel | story
     status = db.Column(db.String(20), default="draft")
     scheduled_at = db.Column(db.DateTime, nullable=True)
     published_at = db.Column(db.DateTime, nullable=True)
@@ -30,8 +32,10 @@ class AutoposterPost(db.Model):
             "page_id": self.page_id,
             "page_name": self.page_name,
             "content": self.content,
+            "caption": getattr(self, "caption", None),
             "image_url": self.image_url,
             "video_url": self.video_url,
+            "media_id": getattr(self, "media_id", None),
             "media_type": getattr(self, "media_type", None),
             "channel": getattr(self, "channel", None) or "facebook_page",
             "post_type": getattr(self, "post_type", None) or "post",

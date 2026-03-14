@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>مكتبة الوسائط | Autoposter</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='autoposter/styles.css') }}">
+  <script>
+    window.AUTOPOSTER_API_BASE = '{{ request.script_root or "" }}/autoposter';
+  </script>
+  <style>
+    body { background: #0f172a; color: #e2e8f0; font-family: system-ui, sans-serif; margin: 0; padding: 16px; }
+    .media-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+    .media-title { font-size: 1.25rem; font-weight: 600; }
+    .media-upload-wrap { margin-bottom: 24px; }
+    .drop-zone { border: 1px dashed rgba(148,163,184,0.5); border-radius: 12px; padding: 20px; text-align: center; background: rgba(15,23,42,0.8); cursor: pointer; }
+    .drop-zone:hover { border-color: #60a5fa; }
+    .drop-zone input[type=file] { display: none; }
+    .media-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+    .media-card { background: rgba(30,41,59,0.9); border-radius: 12px; overflow: hidden; border: 1px solid rgba(71,85,105,0.5); }
+    .media-preview { width: 100%; aspect-ratio: 16/10; background: #1e293b; display: flex; align-items: center; justify-content: center; }
+    .media-preview video, .media-preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
+    .media-preview img { width: 100%; height: 100%; object-fit: cover; }
+    .media-info { padding: 8px 10px; font-size: 0.8rem; color: #94a3b8; }
+    .media-name { color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .media-meta { margin-top: 4px; }
+    .back-link { color: #93c5fd; text-decoration: none; font-size: 0.9rem; }
+    .back-link:hover { text-decoration: underline; }
+    .progress-wrap { display: none; margin-top: 8px; }
+    .progress-wrap.active { display: block; }
+    .progress-bar { height: 6px; background: rgba(30,64,175,0.4); border-radius: 999px; overflow: hidden; }
+    .progress-fill { height: 100%; width: 0%; background: #3b82f6; transition: width 0.2s; }
+  </style>
+</head>
+<body>
+  <div class="media-header">
+    <div>
+      <h1 class="media-title">مكتبة الوسائط</h1>
+      <p style="margin:4px 0 0;font-size:0.85rem;color:#94a3b8;">رفع ومعاينة الصور والفيديو — اختر وسيطاً عند إنشاء المنشور</p>
+    </div>
+    <a href="{{ request.script_root or '' }}/autoposter/#create" class="back-link">← إنشاء منشور</a>
+  </div>
+
+  <div class="media-upload-wrap">
+    <div class="drop-zone" id="dropZone">
+      <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.webp,.mp4,.mov">
+      <div>⬆️ اسحب ملفاً هنا أو اضغط لاختياره</div>
+      <div style="font-size:0.8rem;color:#94a3b8;margin-top:6px;">صور: jpg, png, webp — فيديو: mp4, mov (حد 500 ميجا)</div>
+    </div>
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <div style="font-size:0.75rem;margin-top:4px;" id="progressText">0%</div>
+    </div>
+  </div>
+
+  <div class="media-grid" id="mediaGrid">
+    <div style="grid-column:1/-1;color:#94a3b8;text-align:center;padding:24px;" id="loadingMsg">جاري التحميل...</div>
+  </div>
+
+  <script>
+(function() {
+  const API_BASE = (window.AUTOPOSTER_API_BASE || '/autoposter').replace(/\/+$/, '');
+  const grid = document.getElementById('mediaGrid');
+  const loadingMsg = document.getElementById('loadingMsg');
+  const dropZone = document.getElementById('dropZone');
+  const fileInput = document.getElementById('fileInput');
+  const progressWrap = document.getElementById('progressWrap');
+  const progressFill = document.getElementById('progressFill');
+  const progressText = document.getElementById('progressText');
+
+  function fullUrl(path) {
+    return path.startsWith('/') ? API_BASE + path : path;
+  }
+
+  function renderMedia(items) {
+    loadingMsg.style.display = 'none';
+    if (!items.length) {
+      grid.innerHTML = '<div style="grid-column:1/-1;color:#94a3b8;text-align:center;padding:24px;">لا توجد وسائط. ارفع صورة أو فيديو أعلاه.</div>';
+      return;
+    }
+    grid.innerHTML = items.map(m => {
+      const url = m.public_url ? fullUrl(m.public_url) : '';
+      const name = (m.file_name || m.filename || 'وسائط').replace(/</g, '&lt;');
+      const size = m.file_size != null ? (m.file_size / 1024 / 1024).toFixed(2) + ' ميجا' : '';
+      const isVideo = m.media_type === 'video';
+      return `<div class="media-card">
+        <div class="media-preview">${isVideo
+          ? `<video controls width="200" src="${url}" preload="metadata"></video>`
+          : `<img src="${url}" alt="" loading="lazy" onerror="this.style.display='none'">`}</div>
+        <div class="media-info">
+          <div class="media-name" title="${name}">${name}</div>
+          <div class="media-meta">${m.media_type === 'video' ? 'فيديو' : 'صورة'} ${size ? ' · ' + size : ''}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  async function loadMedia() {
+    try {
+      const res = await fetch(fullUrl('/api/media'), { credentials: 'include' });
+      const data = await res.json().catch(() => ({}));
+      renderMedia(data.media || []);
+    } catch (e) {
+      loadingMsg.textContent = 'فشل تحميل الوسائط.';
+    }
+  }
+
+  dropZone.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', function() {
+    const file = this.files && this.files[0];
+    if (!file) return;
+    const fd = new FormData();
+    fd.append('file', file);
+    progressWrap.classList.add('active');
+    progressFill.style.width = '0%';
+    progressText.textContent = '0%';
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', fullUrl('/api/media/upload'));
+    xhr.withCredentials = true;
+    xhr.upload.onprogress = function(e) {
+      if (e.lengthComputable) {
+        const pct = Math.min(100, (e.loaded / e.total) * 100);
+        progressFill.style.width = pct + '%';
+        progressText.textContent = Math.round(pct) + '%';
+      }
+    };
+    xhr.onload = function() {
+      progressWrap.classList.remove('active');
+      const resp = JSON.parse(xhr.responseText || '{}');
+      if (resp.ok) loadMedia();
+      else alert(resp.message || 'فشل الرفع');
+    };
+    xhr.onerror = function() {
+      progressWrap.classList.remove('active');
+      alert('فشل الاتصال');
+    };
+    xhr.send(fd);
+    this.value = '';
+  });
+
+  loadMedia();
+})();
+  </script>
+</body>
+</html>

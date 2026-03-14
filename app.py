@@ -59,6 +59,8 @@ from routes.delivery_agent import delivery_agent_bp
 from routes.pages import pages_bp
 from routes.invoice_store import invoice_store_bp
 from routes.autoposter import autoposter_bp
+from routes.autoposter_media import autoposter_media_bp
+from routes.autoposter_posts import autoposter_posts_bp
 from routes.publish_api import publish_api_bp
 from routes.publish_ui import publish_ui_bp
 from telegram_bot import telegram_bp
@@ -918,6 +920,8 @@ app.register_blueprint(admin_bp)
 
 app.register_blueprint(invoice_store_bp)
 app.register_blueprint(autoposter_bp)
+app.register_blueprint(autoposter_media_bp)
+app.register_blueprint(autoposter_posts_bp)
 app.register_blueprint(telegram_bp)
 app.register_blueprint(publish_api_bp)
 app.register_blueprint(publish_ui_bp)

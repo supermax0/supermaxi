@@ -1,157 +1,199 @@
 You are working on a Flask SaaS project called Finora.
 
-The project has an autoposter module that publishes content to Facebook pages.
+The project already contains an autoposter module that publishes content to Facebook pages.
 
-There is a bug:
+Refactor the autoposter system into a professional Media Library based architecture.
 
-Video uploads are not working correctly.
-The preview shows an image instead of a video and the system sends the file as an image.
+DO NOT break existing routes or database structure unless necessary.
+Add new features cleanly using Flask Blueprints and SQLAlchemy.
 
-Fix the entire media upload pipeline.
+-------------------------------------------------------
 
----------------------------------------------
+MAIN GOAL
 
-GOALS
+Create a robust autoposter system with:
 
-Fix media handling for:
+1. Media Library
+2. Video uploads
+3. Image uploads
+4. Scheduled posts
+5. Facebook publishing
+6. Clean UI
 
-1) image
-2) video
-3) reel
-4) story
+-------------------------------------------------------
 
-Ensure that videos are uploaded correctly and published using Facebook Graph API.
+MEDIA LIBRARY SYSTEM
 
----------------------------------------------
+Create a media manager.
 
-FRONTEND FIX
+Route:
 
-Update the media preview logic.
+/autoposter/media
 
-Detect file type.
+Features:
 
-If image → show <img>
-If video → show <video>
+• upload video
+• upload images
+• preview media
+• select media when creating post
+
+-------------------------------------------------------
+
+DATABASE MODELS
+
+Create new model:
+
+AutoposterMedia
+
+fields:
+
+id
+tenant_id
+media_type (image | video)
+file_name
+file_path
+file_size
+created_at
+
+-------------------------------------------------------
+
+POST MODEL UPDATE
+
+Update AutoposterPost model.
+
+Add fields:
+
+media_id
+post_type
+caption
+
+post_type values:
+
+post
+video
+reel
+story
+
+-------------------------------------------------------
+
+UPLOAD API
+
+Route:
+
+POST /autoposter/api/media/upload
+
+Requirements:
+
+• accept multipart/form-data
+• store file in:
+
+uploads/media/
+
+• detect media type
 
 Example:
-
-const file = mediaInput.files[0]
-
-if (file.type.startsWith("video")) {
-
-preview.innerHTML = `
-<video controls style="max-width:100%">
-<source src="${URL.createObjectURL(file)}">
-</video>
-`
-
-} else {
-
-preview.innerHTML = `
-<img src="${URL.createObjectURL(file)}" style="max-width:100%">
-`
-
-}
-
----------------------------------------------
-
-FORM FIX
-
-Ensure the form uses multipart upload:
-
-<form enctype="multipart/form-data">
-
----------------------------------------------
-
-FLASK BACKEND FIX
-
-Use request.files instead of request.form.
-
-Example:
-
-file = request.files.get("media")
-
-if not file:
-    return {"error":"media missing"},400
-
-filename = secure_filename(file.filename)
-
-upload_path = os.path.join("uploads", filename)
-
-file.save(upload_path)
-
----------------------------------------------
-
-MEDIA TYPE DETECTION
-
-Detect media type:
 
 if file.content_type.startswith("video"):
     media_type = "video"
 else:
     media_type = "image"
 
-Save media_type in database.
+Save media record to database.
 
----------------------------------------------
+-------------------------------------------------------
 
-FACEBOOK PUBLISHING FIX
+FRONTEND MEDIA PAGE
 
-Images must be published using:
+Create page:
+
+templates/autoposter/media_library.html
+
+Display media grid:
+
+• video preview using <video>
+• image preview using <img>
+
+Example:
+
+<video controls width="200"></video>
+
+-------------------------------------------------------
+
+POST CREATION PAGE
+
+Route:
+
+/autoposter/create
+
+Features:
+
+• text caption
+• page selection
+• media selection from library
+• scheduling time
+
+Example UI:
+
+Media selector dropdown.
+
+-------------------------------------------------------
+
+FACEBOOK PUBLISHING
+
+Images must use:
 
 POST /{page-id}/photos
 
-Videos must be published using:
+Videos must use:
 
 POST /{page-id}/videos
 
-Example video upload:
+Example video publish:
 
 url = f"https://graph.facebook.com/v21.0/{page_id}/videos"
 
 files = {
-"source": open(video_path, "rb")
+    "source": open(video_path, "rb")
 }
 
 data = {
-"description": caption,
-"access_token": page_token
+    "description": caption,
+    "access_token": page_token
 }
 
 requests.post(url, data=data, files=files)
 
----------------------------------------------
+-------------------------------------------------------
 
-DATABASE
+SCHEDULER
 
-Ensure autoposter_posts table supports media:
+Use APScheduler.
 
-Add columns if missing:
+Run every minute.
 
-media_type
-image_url
-video_url
+Function:
 
----------------------------------------------
+run_scheduled_posts_for_all_tenants()
 
-UI UPDATE
+Steps:
 
-Add media type selector:
+1. find scheduled posts
+2. scheduled_at <= now
+3. publish post
+4. update status
 
-<select name="media_type">
-<option value="image">Image</option>
-<option value="video">Video</option>
-<option value="reel">Reel</option>
-<option value="story">Story</option>
-</select>
+status values:
 
----------------------------------------------
+draft
+scheduled
+published
+failed
 
-VALIDATION
+-------------------------------------------------------
 
-Limit file size to 100MB.
+FILE VALIDATION
 
-Allowed formats:
+Limit uploads:
 
 Images:
 jpg
@@ -162,14 +204,43 @@ Videos:
 mp4
 mov
 
----------------------------------------------
+Max size:
+
+500MB
+
+-------------------------------------------------------
+
+UI IMPROVEMENTS
+
+Add new sidebar section:
+
+Autoposter
+   ├── Dashboard
+   ├── Media Library
+   ├── Create Post
+   └── Scheduled Posts
+
+-------------------------------------------------------
+
+CODE STRUCTURE
+
+Routes:
+
+routes/autoposter_media.py
+routes/autoposter_posts.py
+
+Services:
+
+services/facebook_service.py
+
+Models:
+
+models/autoposter.py
+
+-------------------------------------------------------
 
 OUTPUT
 
-Modify:
+Generate production ready code.
 
-routes/autoposter.py
-templates/autoposter/create_post.html
-services/facebook_service.py
-
-Ensure videos upload correctly and publish to Facebook pages.
+Ensure media uploads are reliable and large video uploads do not break the system.
