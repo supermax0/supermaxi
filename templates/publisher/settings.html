@@ -317,7 +317,9 @@
         /* ── Load current settings ─────────────────── */
         async function loadSettings() {
             try {
-                const r = await fetch('/publisher/api/settings').then(r => r.json());
+                const r = await fetch('/publisher/api/settings', {
+      headers: {'Accept': 'application/json'}
+    }).then(r => r.json());
                 if (!r.success) return;
                 const s = r.settings;
                 document.getElementById('fbAppId').placeholder = s.fb_app_id || 'App ID…';
@@ -338,7 +340,10 @@
             btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> جاري الحفظ…';
             const r = await fetch('/publisher/api/settings', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
                 body: JSON.stringify({ fb_app_id, fb_app_secret })
             }).then(r => r.json());
             btn.disabled = false; btn.innerHTML = '💾 حفظ بيانات التطبيق';
@@ -360,7 +365,10 @@
             btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> جاري الحفظ…';
             const r = await fetch('/publisher/api/settings', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
                 body: JSON.stringify({ fb_user_token })
             }).then(r => r.json());
             btn.disabled = false; btn.innerHTML = '💾 حفظ الـ Token';
@@ -383,7 +391,10 @@
 
             const r = await fetch('/publisher/api/settings/connect-pages', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
                 body: JSON.stringify(token ? { user_token: token } : {})
             }).then(r => r.json());
 
@@ -403,7 +414,9 @@
             const container = document.getElementById('pagesContainer');
             const noMsg = document.getElementById('noPagesMsg');
             try {
-                const r = await fetch('/publisher/api/pages').then(r => r.json());
+                const r = await fetch('/publisher/api/pages', {
+      headers: {'Accept': 'application/json'}
+    }).then(r => r.json());
                 const pages = r.pages || [];
 
                 if (!pages.length) {
@@ -435,7 +448,10 @@
         /* ── Delete page ────────────────────────────── */
         async function deletePage(id) {
             if (!confirm('هل تريد إلغاء ربط هذه الصفحة؟')) return;
-            const r = await fetch('/publisher/api/pages/' + id, { method: 'DELETE' }).then(r => r.json());
+            const r = await fetch('/publisher/api/pages/' + id, {
+    method: 'DELETE',
+    headers: {'Accept': 'application/json'}
+  }).then(r => r.json());
             if (r.success) { toast('تم إلغاء الربط', 'success'); renderSavedPages(); }
             else toast(r.message || 'خطأ', 'error');
         }
