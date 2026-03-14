@@ -33,12 +33,12 @@ def serve_media(filename):
 
 @autoposter_media_bp.route("/media")
 def media_library_page():
-    """صفحة مكتبة الوسائط — عرض شبكة فيديو/صور مع معاينة."""
-    from functools import wraps
+    """إلغاء صفحة مكتبة الوسائط المستقلة — إعادة التوجيه إلى صفحة رفع الوسائط الموحدة."""
     if not session.get("user_id"):
         from flask import redirect, url_for
         return redirect(url_for("index.login") + "?next=" + request.path)
-    return render_template("autoposter/media_library.html")
+    from flask import redirect, url_for
+    return redirect(url_for("autoposter.upload_page"))
 
 
 @autoposter_media_bp.route("/api/media", methods=["GET"])

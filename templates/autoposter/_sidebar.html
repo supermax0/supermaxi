@@ -22,12 +22,8 @@
       <span class="nav-icon">✏️</span>
       <span class="nav-label">إنشاء منشور</span>
     </a>
-    <a href="{{ base }}/media" class="nav-item{% if path.endswith('media') %} active{% endif %}">
+    <a href="{{ base }}/upload" class="nav-item{% if path.endswith('upload') or path.endswith('media') %} active{% endif %}">
       <span class="nav-icon">🖼️</span>
-      <span class="nav-label">مكتبة الوسائط</span>
-    </a>
-    <a href="{{ base }}/upload" class="nav-item{% if path.endswith('upload') %} active{% endif %}">
-      <span class="nav-icon">⬆️</span>
       <span class="nav-label">رفع وسائط</span>
     </a>
     <a href="{{ base }}/scheduled" class="nav-item{% if path.endswith('scheduled') %} active{% endif %}">
