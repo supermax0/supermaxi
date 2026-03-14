@@ -273,7 +273,7 @@
       }
       showMediaPreviewFromUrl(data.url, data.media_type);
 
-      toast('تم رفع الملف وربط الرابط تلقائياً.', 'success');
+      toast('تم رفع الملف إلى السيرفر. اضغط «إنشاء مهمة» للنشر إلى فيسبوك.', 'success');
     };
 
     xhr.onerror = function () {
@@ -340,12 +340,12 @@
     const mType = (mediaType && mediaType.value) || '';
     const file = mediaFileInput && mediaFileInput.files && mediaFileInput.files[0];
 
-    if (!text && !file) {
+    if (!text && !file && !mUrl) {
       toast('أدخل نصاً أو اختر ملف صورة/فيديو.', 'error');
       return;
     }
 
-    if (file) {
+    if (file && !mUrl) {
       if (file.size > MAX_FILE_BYTES) {
         toast('حجم الملف يتجاوز ' + MAX_FILE_MB + ' ميجابايت.', 'error');
         return;
@@ -367,12 +367,26 @@
     let res;
     let data = {};
 
-    if (file) {
+    if (mUrl) {
+      // الملف مرفوع مسبقاً إلى السيرفر، نرسل الرابط فقط ثم النشر إلى فيسبوك
+      const payload = {
+        title: title || null,
+        text,
+        media_url: mUrl,
+        media_type: mType || null,
+        channel_ids: Array.from(selectedChannelIds),
+      };
+      if (scheduledAt && scheduledAt.value) {
+        const d = new Date(scheduledAt.value);
+        if (!isNaN(d.getTime())) payload.scheduled_at = d.toISOString();
+      }
+      res = await apiPost('/jobs', payload);
+      data = await res?.json().catch(() => ({}));
+    } else if (file) {
       const formData = new FormData();
       formData.append('text', text);
       formData.append('title', title || '');
       formData.append('channel_ids', JSON.stringify(Array.from(selectedChannelIds)));
-      if (mUrl) formData.append('media_url', mUrl);
       if (mType) formData.append('media_type', mType);
       if (scheduledAt && scheduledAt.value) {
         const d = new Date(scheduledAt.value);
@@ -386,8 +400,8 @@
       const payload = {
         title: title || null,
         text,
-        media_url: mUrl || null,
-        media_type: mType || null,
+        media_url: null,
+        media_type: null,
         channel_ids: Array.from(selectedChannelIds),
       };
       if (scheduledAt && scheduledAt.value) {
@@ -513,11 +527,12 @@
     });
   }
 
-  // عند اختيار ملف: معاينة فقط. الرفع يتم مرة واحدة عند الضغط على «إنشاء مهمة».
+  // عند اختيار ملف: معاينة + رفع فوري إلى السيرفر. عند «إنشاء مهمة» يُنشر الرابط إلى فيسبوك.
   window.__publishOnMediaChange = function (fileList) {
     const file = fileList && fileList[0];
     if (file) {
       showMediaPreviewFromFile(file);
+      uploadMediaFile(file);
     }
   };
 
