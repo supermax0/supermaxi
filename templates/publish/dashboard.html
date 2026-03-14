@@ -244,7 +244,7 @@
       <header class="card-header" style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">
         <div>
           <div class="card-title" style="font-size:1rem;font-weight:600;">إنشاء مهمة نشر</div>
-          <div class="card-subtitle" style="font-size:0.8rem;color:#9ca3af;">اختر القنوات، اكتب النص، وأضف رابط الوسائط.</div>
+          <div class="card-subtitle" style="font-size:0.8rem;color:#9ca3af;">اختر القنوات. النص اختياري إذا أضفت صورة أو فيديو.</div>
         </div>
       </header>
 
@@ -254,8 +254,8 @@
       </div>
 
       <div class="field" style="margin-bottom:8px;">
-        <label for="jobText" style="display:block;font-size:0.82rem;margin-bottom:4px;">النص</label>
-        <textarea id="jobText" class="textarea" style="width:100%;min-height:140px;border-radius:12px;border:1px solid rgba(55,65,81,0.9);background:#020617;color:#e5e7eb;font-size:0.9rem;padding:8px 10px;resize:vertical;" placeholder="اكتب النص الذي تريد نشره ..."></textarea>
+        <label for="jobText" style="display:block;font-size:0.82rem;margin-bottom:4px;">النص (اختياري مع وجود صورة أو فيديو)</label>
+        <textarea id="jobText" class="textarea" style="width:100%;min-height:140px;border-radius:12px;border:1px solid rgba(55,65,81,0.9);background:#020617;color:#e5e7eb;font-size:0.9rem;padding:8px 10px;resize:vertical;" placeholder="اكتب النص إن رغبت (لا يلزم إن أضفت صورة أو فيديو)"></textarea>
       </div>
 
       <div class="field" style="margin-bottom:8px;">
@@ -358,6 +358,8 @@
       var placeholder = document.getElementById('mediaPreviewPlaceholder');
       var img = document.getElementById('mediaPreviewImg');
       var video = document.getElementById('mediaPreviewVideo');
+      var mediaTypeSel = document.getElementById('mediaType');
+      if (mediaTypeSel) mediaTypeSel.value = isVideo ? 'video' : 'image';
       if (placeholder) placeholder.style.display = 'none';
       if (img && video) {
         img.style.display = 'none';
