@@ -1,108 +1,127 @@
-You are a senior Flask backend engineer.
+You are a senior Python/Flask engineer working on a production system.
 
 Project context:
+This is a large Flask application called Finora with multiple modules (POS, inventory, dashboard). 
+We recently added a new module called "publisher" for Facebook publishing.
 
-The project is a production Flask application located at:
+The module structure:
 
-/var/www/finora/supermaxi
+modules/
+  publisher/
+    api/
+      settings_api.py
+      pages_api.py
+      media_api.py
+      posts_api.py
+    models/
+      publisher_settings.py
+      publisher_page.py
+      publisher_media.py
+      publisher_post.py
+    services/
+      facebook_service.py
+      media_service.py
+      ai_service.py
+      scheduler_service.py
+    routes.py
 
-It runs behind:
+The module is registered in app.py with:
 
-Nginx
-Gunicorn
+app.register_blueprint(publisher_bp, url_prefix="/publisher")
 
-Domain:
+Problem symptoms:
 
-https://finora.company
+1) Frontend errors:
+Unexpected token '<'
+Failed to load resource: 500
 
-The system contains an Autoposter module.
+2) API endpoints returning HTML redirect instead of JSON:
+GET /publisher/api/settings
+GET /publisher/api/pages
+GET /publisher/api/media
 
-Current problem:
+Instead of JSON they return:
 
-Uploading images works successfully (HTTP 200),
-but uploaded images do NOT appear in the media table.
+<!doctype html>
+<title>Redirecting...</title>
 
-The frontend page calls this endpoint:
+Which means the request is redirected to /login.
 
-GET /autoposter/api/media
+3) The application has a global login guard implemented using:
 
-However the project currently has NO implementation for this endpoint.
+@app.before_request
 
-Your task is to safely repair the system.
+which redirects all unauthenticated users to /login.
 
-Important rules:
+The publisher APIs are being blocked by this guard.
 
-* Do NOT rename existing routes
-* Do NOT modify the database schema
-* Do NOT break existing modules (POS, orders, dashboard)
-* Only repair the Autoposter media system
+4) Frontend JavaScript expects JSON responses and crashes when HTML is returned.
 
-Tasks:
+Required task:
 
-1. Scan the Flask project structure.
-2. Check if a route exists for:
+Fix the authentication guard so that:
 
-/autoposter/api/media
+- Publisher API routes work correctly
+- They return JSON instead of redirect HTML
+- Without breaking the existing login system
 
-3. If it does NOT exist, create a new Blueprint file:
+Important constraints:
 
-routes/autoposter_api.py
+- DO NOT modify existing POS, inventory, accounting modules
+- Changes must be isolated
+- Maintain production safety
 
-4. Implement the endpoint:
+Implementation requirements:
 
-GET /autoposter/api/media
+1) Update the login middleware in app.py so that API routes under:
 
-This endpoint must:
+/publisher/api/
 
-• scan media directories
-• return all uploaded files
+are allowed to return JSON instead of redirecting to login.
 
-Folders to scan:
+2) If user is not authenticated, the API should return:
 
-media/
-uploads/images/
-uploads/videos/
+return jsonify({"success": False, "message": "Unauthorized"}), 401
 
-All folders are inside:
+instead of redirect.
 
-/var/www/finora/supermaxi
+3) Ensure all publisher API routes return JSON responses.
 
-5. The API must return JSON like:
+4) Verify the following endpoints:
+
+GET /publisher/api/settings
+POST /publisher/api/settings
+GET /publisher/api/pages
+GET /publisher/api/media
+POST /publisher/api/posts/create
+
+5) Ensure that errors are always returned as JSON:
 
 {
-"success": true,
-"media": [
-{
-"name": "image.png",
-"url": "/uploads/images/image.png"
-}
-]
+ "success": false,
+ "message": "error message"
 }
 
-6. Register the blueprint in app.py safely.
+6) Add proper logging for debugging:
 
-7. Ensure the API never crashes if folders are missing.
+current_app.logger.error(traceback.format_exc())
 
-8. Add automatic folder creation if needed.
+7) Ensure that the frontend will never receive HTML for API requests.
 
-9. Ensure Nginx can serve uploaded files correctly.
+8) Provide the corrected code for:
 
-Example nginx paths:
-
-location /uploads {
-alias /var/www/finora/supermaxi/uploads;
-}
-
-location /media {
-alias /var/www/finora/supermaxi/media;
-}
-
-10. Print the final corrected Python code and configuration changes.
+- app.py login middleware
+- example publisher API route
 
 Goal:
 
 After the fix:
 
-• Uploading an image works
-• The image appears in the media library table
-• The API returns all uploaded files correctly.
+/publisher/api/settings should return:
+
+{
+ "success": true,
+ "settings": {...}
+}
+
+instead of redirecting to /login.

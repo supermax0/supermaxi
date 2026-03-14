@@ -29,7 +29,7 @@ def get_settings():
         s = PublisherSettings.get(_tenant())
         return jsonify({"success": True, "settings": s.to_dict()})
     except Exception as e:
-        current_app.logger.error(f"Error in get_settings: {e}\n{traceback.format_exc()}")
+        current_app.logger.error(traceback.format_exc())
         return jsonify({"success": False, "message": str(e)}), 500
 
 
@@ -57,7 +57,8 @@ def save_settings():
         db.session.commit()
         return jsonify({"success": True, "message": "تم حفظ الإعدادات بنجاح"})
     except Exception as e:
-        current_app.logger.error(f"Error in save_settings: {e}\n{traceback.format_exc()}")
+        db.session.rollback()
+        current_app.logger.error(traceback.format_exc())
         return jsonify({"success": False, "message": str(e)}), 500
 
 
@@ -122,5 +123,6 @@ def connect_pages():
             "pages":   saved,
         })
     except Exception as e:
-        current_app.logger.error(f"Error in connect_pages: {e}\n{traceback.format_exc()}")
+        db.session.rollback()
+        current_app.logger.error(traceback.format_exc())
         return jsonify({"success": False, "message": str(e)}), 500

@@ -4,7 +4,9 @@ ai_api.py
 AI content generation endpoints for the Publisher.
 """
 
-from flask import Blueprint, jsonify, request
+import traceback
+
+from flask import Blueprint, jsonify, request, current_app
 
 from modules.publisher.services import ai_service
 
@@ -25,6 +27,7 @@ def generate_post():
         text = ai_service.generate_post(topic, tone, length)
         return jsonify({"success": True, "text": text})
     except Exception as exc:
+        current_app.logger.error(traceback.format_exc())
         return jsonify({"success": False, "message": str(exc)}), 500
 
 
@@ -41,6 +44,7 @@ def rewrite():
         text = ai_service.rewrite_post(original, tone)
         return jsonify({"success": True, "text": text})
     except Exception as exc:
+        current_app.logger.error(traceback.format_exc())
         return jsonify({"success": False, "message": str(exc)}), 500
 
 
@@ -56,4 +60,5 @@ def hashtags():
         tags = ai_service.generate_hashtags(topic)
         return jsonify({"success": True, "hashtags": tags})
     except Exception as exc:
+        current_app.logger.error(traceback.format_exc())
         return jsonify({"success": False, "message": str(exc)}), 500

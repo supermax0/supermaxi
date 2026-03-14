@@ -841,6 +841,8 @@ def require_login():
     if request.path == "/" or any(request.path.startswith(p) for p in open_routes if p != "/"):
         return
 
+    publisher_api_path = (request.path or "").startswith("/publisher/api/")
+
     # إذا ما مسجّل دخول
     if "user_id" not in session:
         # #region agent log
@@ -855,6 +857,9 @@ def require_login():
         except Exception:
             pass
         # #endregion
+        # API يجب أن يعيد JSON بدل redirect HTML
+        if publisher_api_path:
+            return jsonify({"success": False, "message": "Unauthorized"}), 401
         return redirect("/login")
 
     # التحقق من صلاحية الاشتراك (SaaS)
