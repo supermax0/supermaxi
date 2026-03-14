@@ -77,9 +77,21 @@
     };
     xhr.onload = function() {
       progressWrap.style.display = 'none';
-      const resp = JSON.parse(xhr.responseText || '{}');
-      if (resp.ok) loadMedia();
-      else alert(resp.message || 'فشل الرفع');
+      let resp = {};
+      try {
+        resp = JSON.parse(xhr.responseText || '{}');
+      } catch (err) {
+        resp = {};
+      }
+      if (xhr.status >= 400) {
+        alert(resp.message || 'فشل الرفع (خطأ من الخادم).');
+        return;
+      }
+      if (resp.ok) {
+        loadMedia();
+      } else {
+        alert(resp.message || 'فشل الرفع.');
+      }
     };
     xhr.onerror = function() { progressWrap.style.display = 'none'; alert('فشل الاتصال'); };
     xhr.send(fd);

@@ -96,7 +96,7 @@ def api_media_upload():
         current_app.logger.exception("autoposter_media save failed: %s", e)
         return jsonify({"ok": False, "error": "save_failed", "message": "تعذر حفظ الملف"}), 500
     rel_path = f"uploads/media/{safe_name}"
-    public_url = f"/uploads/media/{safe_name}"
+    public_url = f"/autoposter/serve/media/{safe_name}"
     tenant_slug = session.get("tenant_slug")
     rec = AutoposterMedia(
         tenant_slug=tenant_slug,
@@ -108,8 +108,13 @@ def api_media_upload():
         size_bytes=size,
         public_url=public_url,
     )
-    db.session.add(rec)
-    db.session.commit()
+    try:
+        db.session.add(rec)
+        db.session.commit()
+    except Exception as e:
+        current_app.logger.exception("autoposter_media db failed: %s", e)
+        db.session.rollback()
+        return jsonify({"ok": False, "error": "db_failed", "message": "تعذر حفظ بيانات الوسائط"}), 500
     return jsonify({
         "ok": True,
         "id": rec.id,
