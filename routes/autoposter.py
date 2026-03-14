@@ -223,14 +223,11 @@ def api_upload_json():
 @autoposter_bp.route("/api/media", methods=["GET"])
 @require_autoposter_login
 def api_media_list():
-    """قائمة الوسائط المخزنة (صور/فيديو) للشركة الحالية — لاختيار واحدة عند النشر."""
+    """قائمة الوسائط المخزنة (صور/فيديو) — لاختيار واحدة عند النشر. نعرض كل الوسائط دون تصفية بالشركة حتى تظهر للمستخدم ما رفعه."""
     from models.autoposter_media import AutoposterMedia
     from sqlalchemy.exc import OperationalError
-    tenant_slug = session.get("tenant_slug")
     try:
-        q = AutoposterMedia.query.order_by(AutoposterMedia.created_at.desc()).limit(100)
-        if tenant_slug:
-            q = q.filter_by(tenant_slug=tenant_slug)
+        q = AutoposterMedia.query.order_by(AutoposterMedia.created_at.desc()).limit(200)
         items = q.all()
         return jsonify({"success": True, "media": [m.to_dict() for m in items]})
     except OperationalError as e:

@@ -56,11 +56,8 @@ def api_media_list():
     """قائمة الوسائط للشركة الحالية (للاستخدام في إنشاء المنشور)."""
     if not session.get("user_id"):
         return jsonify({"error": "unauthorized"}), 401
-    tenant_slug = session.get("tenant_slug")
     try:
         q = AutoposterMedia.query.order_by(AutoposterMedia.created_at.desc()).limit(200)
-        if tenant_slug:
-            q = q.filter_by(tenant_slug=tenant_slug)
         items = q.all()
         return jsonify({
             "success": True,

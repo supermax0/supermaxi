@@ -14,8 +14,10 @@
         <select id="mediaSelect" class="form-control" name="media_id" style="min-width:200px;padding:8px 12px;border-radius:8px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;">
           <option value="">— بدون وسائط —</option>
         </select>
+        <button type="button" id="refreshMediaBtn" class="btn btn-ghost btn-sm" style="color:#93c5fd;font-size:0.85rem;">تحديث القائمة</button>
         <a href="{{ (request.script_root or '') }}/autoposter/upload" style="color:#93c5fd;font-size:0.9rem;">رفع وسائط جديدة</a>
       </div>
+      <p id="mediaHint" style="margin:6px 0 0;font-size:0.8rem;color:#94a3b8;display:none;">لا توجد وسائط. ارفع من «رفع وسائط جديدة» ثم اضغط «تحديث القائمة».</p>
     </div>
     <div class="form-group" style="margin-bottom:16px;">
       <label style="display:block;margin-bottom:6px;font-size:0.9rem;color:#94a3b8;">الصفحات</label>
@@ -58,9 +60,15 @@
   async function loadMedia() {
     const res = await fetch(fullUrl('/api/media'), { credentials: 'include' });
     const data = await res.json().catch(() => ({}));
-    const media = data.media || [];
-    mediaSelect.innerHTML = '<option value="">— بدون وسائط —</option>' + media.map(m => '<option value="' + m.id + '">' + (m.file_name || m.filename || 'وسائط') + ' (' + m.media_type + ')</option>').join('');
+    const media = Array.isArray(data.media) ? data.media : [];
+    const name = (m) => (m && (m.file_name || m.filename || m.name)) || 'وسائط';
+    const type = (m) => (m && m.media_type) || 'صورة';
+    mediaSelect.innerHTML = '<option value="">— بدون وسائط —</option>' + media.map(m => '<option value="' + (m.id || '') + '">' + name(m) + ' (' + type(m) + ')</option>').join('');
+    const hint = document.getElementById('mediaHint');
+    if (hint) hint.style.display = media.length ? 'none' : 'block';
   }
+  const refreshMediaBtn = document.getElementById('refreshMediaBtn');
+  if (refreshMediaBtn) refreshMediaBtn.addEventListener('click', loadMedia);
   async function loadPages() {
     const res = await fetch(fullUrl('/api/pages'), { credentials: 'include' });
     const data = await res.json().catch(() => ({}));
