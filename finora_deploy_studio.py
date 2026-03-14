@@ -816,7 +816,12 @@ echo ""
 # التحقق من أن الخدمة تستمع على المنفذ (تفادي رسالة نجاح كاذبة)
 LISTEN_CHECK=$(lsof -i :"$PORT" 2>/dev/null | grep -c LISTEN || true)
 if [ "$LISTEN_CHECK" -lt 1 ]; then
-  echo "[WARN] No process is listening on port $PORT. Gunicorn may have failed to start (e.g. Address already in use)."
+  echo "[WARN] No process is listening on port $PORT. Gunicorn may have failed to start (e.g. Address already in use or app crash)."
+  echo ""
+  echo "[12] Last 30 lines of service log (to see gunicorn error):"
+  journalctl -u "$SERVICE_NAME" -n 30 --no-pager 2>/dev/null || true
+  echo ""
+  echo "Tip: On server run: sudo journalctl -u $SERVICE_NAME -f   to watch logs. Use http:// (not https://) if SSL is not configured."
   exit 1
 fi
 
@@ -830,7 +835,7 @@ echo "=============================="
                 self.append_log("[INFO] Deploy completed successfully.\n")
                 self.set_status("Deploy completed.")
             else:
-                self.append_log("[WARN] Deploy script exited with code %s. Check log: port may still be in use or gunicorn failed to start.\n" % rc)
+                self.append_log("[WARN] Deploy script exited with code %s. Check log above: port in use or gunicorn crash. Try http:// (not https://) if you see ERR_SSL_PROTOCOL_ERROR.\n" % rc)
                 self.set_status("Deploy finished with errors (see log).")
         finally:
             self.set_busy(False)
