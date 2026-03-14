@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>مكتبة الوسائط — الناشر</title>
+    <link rel="stylesheet" href="/static/publisher/css/publisher.css">
+</head>
+
+<body class="publisher-body">
+    <div class="pub-shell">
+
+        <!-- Sidebar -->
+        <aside class="pub-sidebar" id="sidebar">
+            <div class="logo">
+                <div class="logo-icon">📢</div>
+                <span class="logo-text">الناشر</span>
+            </div>
+            <nav class="pub-nav">
+                <a href="/publisher/">
+                    <span class="nav-icon">📊</span> لوحة التحكم
+                </a>
+                <a href="/publisher/create">
+                    <span class="nav-icon">✏️</span> إنشاء منشور
+                </a>
+                <a href="/publisher/media" class="active">
+                    <span class="nav-icon">🖼️</span> مكتبة الوسائط
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <a href="/" style="color:var(--text-muted);text-decoration:none">← العودة للنظام</a>
+            </div>
+        </aside>
+
+        <!-- Main -->
+        <main class="pub-main">
+            <div class="pub-topbar">
+                <h1>🖼️ مكتبة الوسائط</h1>
+                <div class="topbar-actions">
+                    <span id="selectedChip" style="font-size:13px;color:#a5b4fc;padding:6px 12px"></span>
+                    <a href="/publisher/create" class="btn btn-outline btn-sm">← أرفق في منشور</a>
+                </div>
+            </div>
+
+            <!-- Upload Zone -->
+            <div class="pub-card" style="margin-bottom:24px">
+                <div class="drop-zone" id="dropZone">
+                    <input type="file" id="fileInput" multiple
+                        accept="image/*,video/mp4,video/mov,video/avi,video/webm">
+                    <div class="drop-zone-icon">☁️</div>
+                    <p><strong>اسحب وأفلت الملفات هنا</strong></p>
+                    <p style="margin-top:6px">أو انقر للتصفح · JPG · PNG · WEBP · MP4 · MOV</p>
+                    <p style="margin-top:4px;font-size:12px;color:var(--text-muted)">الحجم الأقصى: 500 MB</p>
+                </div>
+                <div class="progress-bar-wrap" id="progressWrap">
+                    <div class="progress-bar" id="progressBar"></div>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div
+                style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+                <div class="media-tabs">
+                    <button class="media-tab active" data-type="all">الكل</button>
+                    <button class="media-tab" data-type="image">صور 🖼️</button>
+                    <button class="media-tab" data-type="video">فيديوهات 🎬</button>
+                </div>
+                <div class="search-wrap" style="width:240px">
+                    <input type="text" id="mediaSearch" class="form-input" placeholder="بحث…">
+                    <span class="search-icon">🔍</span>
+                </div>
+            </div>
+
+            <!-- Media Grid -->
+            <div class="media-grid" id="mediaGrid">
+                <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted)">
+                    <span class="spinner"></span>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <div id="toastWrap" class="pub-toast-wrap"></div>
+
+    <script src="/static/publisher/js/media.js"></script>
+</body>
+
+</html>

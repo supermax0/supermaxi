@@ -1,51 +1,120 @@
-You are a senior Python backend engineer and DevOps expert.
+You are a senior full-stack engineer and system architect.
 
-The project is a production Flask application running behind:
+Your task is to design and implement a **professional Facebook publishing system** inside an existing Flask web application.
 
-* Nginx
-* Gunicorn
-* Linux Ubuntu
-
-Project path:
+The project is located at:
 
 /var/www/finora/supermaxi
 
-Domain:
+The current stack is:
 
-https://finora.company
+Python
+Flask
+Gunicorn
+Nginx
+SQLite (or PostgreSQL optional)
+HTML / CSS / JavaScript
 
-Gunicorn runs on:
+The system must be built from scratch because the old autoposter module has been completely removed.
 
-127.0.0.1:8000
+IMPORTANT RULES
 
-The system includes an Autoposter module with routes such as:
+• Do NOT modify existing modules such as POS, inventory, dashboard.
+• Build the publishing system as a **separate module**.
+• Use Flask Blueprints.
+• Ensure clean architecture and maintainability.
+• All APIs must return JSON.
+• The system must support **Facebook only for now**.
 
-/autoposter/media
-/autoposter/upload
-/autoposter/api/media
-/autoposter/api/media/upload
+---
 
-Current problems:
+SYSTEM GOALS
 
-1. The page
+Create a **Professional Facebook Publishing Platform** with:
 
-/autoposter/upload
+• Media library
+• Post creation
+• Multi-page publishing
+• Scheduled posts
+• AI content assistant
+• High quality media upload
+• Modern UI
 
-sometimes returns:
+---
 
-ERR_SSL_PROTOCOL_ERROR
+ARCHITECTURE
 
-2. Upload requests fail.
+Create a new module:
 
-3. Some API endpoints return 500 errors.
+modules/publisher/
 
-Your tasks:
+Structure:
 
-1. Scan the entire Flask project.
-2. Locate the routes responsible for Autoposter upload.
-3. Fix all causes of HTTP 500 errors.
-4. Fix any redirect loops or HTTPS mismatches.
-5. Ensure uploads work correctly for:
+modules/publisher/
+api/
+posts_api.py
+media_api.py
+pages_api.py
+ai_api.py
+services/
+facebook_service.py
+media_service.py
+ai_service.py
+scheduler_service.py
+models/
+post_model.py
+media_model.py
+page_model.py
+templates/
+publisher/
+dashboard.html
+create_post.html
+media_library.html
+static/
+publisher/
+css/
+js/
+components/
+routes.py
+
+---
+
+FEATURES
+
+1. FACEBOOK PAGE CONNECTION
+
+Users must be able to:
+
+• connect Facebook account
+• fetch available pages
+• store page access tokens securely
+• list pages in UI
+
+Use Facebook Graph API.
+
+Store:
+
+page_id
+page_name
+page_token
+
+---
+
+2. MEDIA LIBRARY
+
+Create a professional media library.
+
+Features:
+
+• upload images
+• upload videos
+• preview media
+• search media
+• grid view
+• delete media
+• drag and drop upload
+
+Supported formats:
 
 jpg
 png
@@ -53,37 +122,262 @@ webp
 mp4
 mov
 
-6. Ensure uploads are saved in:
+Max upload size:
+
+500MB
+
+Storage location:
 
 /var/www/finora/supermaxi/media
 
-7. Automatically create missing folders if needed.
+Structure:
 
-8. Ensure Flask config includes:
+media/
+images/
+videos/
 
-MAX_CONTENT_LENGTH = 500MB
+Database fields:
 
-9. Ensure upload routes return JSON responses instead of HTML errors.
+id
+filename
+type
+size
+created_at
 
-10. Ensure routes do not redirect to login when accessed by JavaScript API.
+---
 
-11. Ensure compatibility with nginx proxy.
+3. MEDIA UPLOAD SYSTEM
 
-12. Print the corrected Python code for all media routes.
+Implement robust upload handling.
 
-13. Ensure the upload endpoint works with FormData in JavaScript.
+Requirements:
 
-14. Add proper exception handling and logging.
+• progress bar
+• drag and drop
+• file validation
+• automatic folder creation
+• error handling
+• preview generation
 
-Important rules:
+Return JSON:
 
-* DO NOT rename existing routes
-* DO NOT change database schema
-* DO NOT break existing modules
-* Only repair Autoposter upload and media API
+{
+"success": true,
+"url": "/media/images/file.jpg"
+}
 
-Finally output:
+---
 
-1. The corrected Flask route code.
-2. Any necessary configuration fixes.
-3. Any missing folder creation logic.
+4. POST CREATION
+
+Create a page:
+
+/publisher/create
+
+Features:
+
+• write post text
+• select pages
+• attach media
+• preview post
+• schedule post
+
+UI must look modern and clean.
+
+---
+
+5. MULTI PAGE PUBLISHING
+
+Allow selecting multiple pages.
+
+Publishing modes:
+
+• publish now
+• schedule later
+
+---
+
+6. SCHEDULER
+
+Scheduled posts must be stored and executed by a background worker.
+
+Use:
+
+APScheduler
+
+Store:
+
+post_id
+publish_time
+status
+
+---
+
+7. FACEBOOK PUBLISHING SERVICE
+
+Create a service:
+
+services/facebook_service.py
+
+Responsibilities:
+
+• publish text posts
+• publish image posts
+• publish video posts
+• error handling
+• retry logic
+
+---
+
+8. AI CONTENT ASSISTANT
+
+Create AI integration.
+
+Features:
+
+• generate post text
+• rewrite text
+• generate hashtags
+• improve marketing tone
+
+Endpoint:
+
+POST /publisher/api/ai/generate
+
+Input:
+
+topic
+tone
+length
+
+Return:
+
+AI generated text.
+
+---
+
+9. PROFESSIONAL UI
+
+Create a modern design.
+
+Style:
+
+• dark modern dashboard
+• responsive layout
+• sidebar navigation
+• card components
+• media grid
+• upload area with drag & drop
+
+Use:
+
+Vanilla JS or lightweight framework.
+
+---
+
+10. API ENDPOINTS
+
+Required APIs:
+
+GET  /publisher/api/media
+POST /publisher/api/media/upload
+DELETE /publisher/api/media/<id>
+
+GET  /publisher/api/pages
+
+POST /publisher/api/posts/create
+POST /publisher/api/posts/schedule
+
+POST /publisher/api/ai/generate
+
+---
+
+11. ERROR HANDLING
+
+All APIs must return structured JSON:
+
+{
+"success": false,
+"message": "error description"
+}
+
+---
+
+12. LOGGING
+
+Create logging system.
+
+Logs stored in:
+
+logs/publisher.log
+
+Log:
+
+• publish attempts
+• errors
+• API calls
+
+---
+
+13. SECURITY
+
+Implement:
+
+• file validation
+• token protection
+• max upload limits
+• rate limiting for APIs
+
+---
+
+14. NGINX CONFIGURATION
+
+Ensure nginx supports uploads:
+
+client_max_body_size 500M;
+
+Serve media:
+
+location /media {
+alias /var/www/finora/supermaxi/media;
+}
+
+---
+
+15. PERFORMANCE
+
+Use:
+
+• async requests
+• caching for media lists
+• background publishing jobs
+
+---
+
+FINAL OUTPUT
+
+The AI must generate:
+
+• complete folder structure
+• Flask routes
+• services
+• models
+• media upload system
+• Facebook integration
+• AI assistant
+• frontend UI
+• scheduler
+• logging
+
+The result must be a **production-ready Facebook publishing platform**.
+
+
+ملاحظات مهمة لبناء النظام صح من البداية
+
+افصل النظام في module مستقل حتى لا يكسر مشروعك.
+
+اجعل النشر يتم عبر service layer وليس داخل routes.
+
+استخدم scheduler للنشر المجدول.
+
+اجعل media library مشتركة بين كل المنشورات.

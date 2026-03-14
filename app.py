@@ -621,6 +621,66 @@ with app.app_context():
     except Exception as e:
         print(f"Migration error (subscription_plans): {e}")
 
+    # Migration: Create Publisher tables if needed
+    try:
+        from sqlalchemy import inspect, text
+        inspector = inspect(db.engine)
+        tnames = inspector.get_table_names()
+
+        if 'publisher_pages' not in tnames:
+            with db.engine.connect() as conn:
+                conn.execute(text("""
+                    CREATE TABLE publisher_pages (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        tenant_slug VARCHAR(100),
+                        page_id VARCHAR(128) NOT NULL,
+                        page_name VARCHAR(255),
+                        page_token TEXT NOT NULL,
+                        created_at DATETIME
+                    )
+                """))
+                conn.commit()
+            print("Created publisher_pages table.")
+
+        if 'publisher_media' not in tnames:
+            with db.engine.connect() as conn:
+                conn.execute(text("""
+                    CREATE TABLE publisher_media (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        tenant_slug VARCHAR(100),
+                        filename VARCHAR(255) NOT NULL,
+                        original_name VARCHAR(255),
+                        media_type VARCHAR(20) NOT NULL,
+                        size_bytes INTEGER,
+                        url_path VARCHAR(512) NOT NULL,
+                        created_at DATETIME
+                    )
+                """))
+                conn.commit()
+            print("Created publisher_media table.")
+
+        if 'publisher_posts' not in tnames:
+            with db.engine.connect() as conn:
+                conn.execute(text("""
+                    CREATE TABLE publisher_posts (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        tenant_slug VARCHAR(100),
+                        text TEXT,
+                        media_ids TEXT,
+                        page_ids TEXT,
+                        facebook_post_ids TEXT,
+                        status VARCHAR(30) DEFAULT 'draft',
+                        publish_type VARCHAR(20) DEFAULT 'now',
+                        publish_time DATETIME,
+                        error_message TEXT,
+                        created_at DATETIME
+                    )
+                """))
+                conn.commit()
+            print("Created publisher_posts table.")
+    except Exception as e:
+        print(f"Migration note (publisher tables): {e}")
+
 # #region agent log (app-level)
 def _debug_log_app(run_id: str, hypothesis_id: str, location: str, message: str, data: dict | None = None) -> None:
     import os, json, time
@@ -911,6 +971,15 @@ app.register_blueprint(admin_bp)
 
 app.register_blueprint(invoice_store_bp)
 app.register_blueprint(telegram_bp)
+
+# ── Publisher (Facebook Publishing Platform) ──────────────────────────────
+try:
+    from modules.publisher import publisher_bp, init_publisher
+    app.register_blueprint(publisher_bp, url_prefix="/publisher")
+    init_publisher(app)
+    print("Publisher module loaded.")
+except Exception as _pub_ex:
+    print(f"Publisher module load warning: {_pub_ex}")
 
 # =====================================
 # Telegram Webhook (Raw Endpoint)

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>لوحة الناشر — فيسبوك</title>
+    <link rel="stylesheet" href="/static/publisher/css/publisher.css">
+</head>
+
+<body class="publisher-body">
+    <div class="pub-shell">
+
+        <!-- Sidebar -->
+        <aside class="pub-sidebar" id="sidebar">
+            <div class="logo">
+                <div class="logo-icon">📢</div>
+                <span class="logo-text">الناشر</span>
+            </div>
+            <nav class="pub-nav">
+                <a href="/publisher/" class="active">
+                    <span class="nav-icon">📊</span> لوحة التحكم
+                </a>
+                <a href="/publisher/create">
+                    <span class="nav-icon">✏️</span> إنشاء منشور
+                </a>
+                <a href="/publisher/media">
+                    <span class="nav-icon">🖼️</span> مكتبة الوسائط
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <a href="/" style="color:var(--text-muted);text-decoration:none">← العودة للنظام</a>
+            </div>
+        </aside>
+
+        <!-- Main -->
+        <main class="pub-main">
+            <div class="pub-topbar">
+                <h1>لوحة الناشر 📢</h1>
+                <div class="topbar-actions">
+                    <a href="/publisher/create" class="btn btn-primary">✏️ منشور جديد</a>
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">📝</div>
+                    <div class="stat-value" id="statTotal">—</div>
+                    <div class="stat-label">إجمالي المنشورات</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📅</div>
+                    <div class="stat-value" id="statScheduled">—</div>
+                    <div class="stat-label">مجدولة</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-value" id="statPublished">—</div>
+                    <div class="stat-label">منشورة</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">❌</div>
+                    <div class="stat-value" id="statFailed">—</div>
+                    <div class="stat-label">فشلت</div>
+                </div>
+            </div>
+
+            <!-- Recent Posts -->
+            <div class="pub-card">
+                <div class="pub-card-title">آخر المنشورات</div>
+                <table class="pub-table">
+                    <thead>
+                        <tr>
+                            <th>المحتوى</th>
+                            <th>الحالة</th>
+                            <th>الصفحات</th>
+                            <th>التاريخ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="postsBody">
+                        <tr>
+                            <td colspan="4" style="text-align:center;padding:40px;color:var(--text-muted)">
+                                <span class="spinner"></span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+        </main>
+    </div>
+
+    <div id="toastWrap" class="pub-toast-wrap"></div>
+
+    <script src="/static/publisher/js/publisher.js"></script>
+    <script>document.addEventListener('DOMContentLoaded', initDashboard);</script>
+</body>
+
+</html>

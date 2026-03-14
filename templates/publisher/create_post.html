@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>إنشاء منشور — الناشر</title>
+    <link rel="stylesheet" href="/static/publisher/css/publisher.css">
+</head>
+
+<body class="publisher-body">
+    <div class="pub-shell">
+
+        <!-- Sidebar -->
+        <aside class="pub-sidebar" id="sidebar">
+            <div class="logo">
+                <div class="logo-icon">📢</div>
+                <span class="logo-text">الناشر</span>
+            </div>
+            <nav class="pub-nav">
+                <a href="/publisher/">
+                    <span class="nav-icon">📊</span> لوحة التحكم
+                </a>
+                <a href="/publisher/create" class="active">
+                    <span class="nav-icon">✏️</span> إنشاء منشور
+                </a>
+                <a href="/publisher/media">
+                    <span class="nav-icon">🖼️</span> مكتبة الوسائط
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <a href="/" style="color:var(--text-muted);text-decoration:none">← العودة للنظام</a>
+            </div>
+        </aside>
+
+        <!-- Main -->
+        <main class="pub-main">
+            <div class="pub-topbar">
+                <h1>✏️ إنشاء منشور</h1>
+            </div>
+
+            <form id="postForm">
+                <div class="create-layout">
+
+                    <!-- LEFT: Editor Panel -->
+                    <div class="panel-editor">
+
+                        <!-- AI Assistant -->
+                        <div class="pub-card">
+                            <div class="pub-card-title">🤖 مساعد الذكاء الاصطناعي</div>
+                            <div class="ai-toolbar" style="margin-bottom:12px">
+                                <div class="ai-field">
+                                    <input type="text" id="aiTopic" class="form-input" placeholder="موضوع المنشور…">
+                                </div>
+                                <div class="ai-field">
+                                    <select id="aiTone" class="form-select">
+                                        <option value="احترافي">احترافي</option>
+                                        <option value="ودي">ودي</option>
+                                        <option value="تسويقي">تسويقي</option>
+                                        <option value="إبداعي">إبداعي</option>
+                                    </select>
+                                </div>
+                                <div class="ai-field">
+                                    <select id="aiLength" class="form-select">
+                                        <option value="قصير">قصير</option>
+                                        <option value="متوسط" selected>متوسط</option>
+                                        <option value="طويل">طويل</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap">
+                                <button type="button" id="aiGenerate" class="btn btn-primary btn-sm">✨ توليد</button>
+                                <button type="button" id="aiRewrite" class="btn btn-outline btn-sm">🔄 إعادة
+                                    صياغة</button>
+                                <button type="button" id="aiHashtags" class="btn btn-outline btn-sm">#️⃣
+                                    هاشتاقات</button>
+                            </div>
+                        </div>
+
+                        <!-- Post Text -->
+                        <div class="pub-card">
+                            <div class="pub-card-title">نص المنشور</div>
+                            <textarea id="postText" name="text" class="form-textarea"
+                                placeholder="اكتب منشورك هنا أو استخدم مساعد الذكاء الاصطناعي أعلاه…"
+                                style="min-height:180px"></textarea>
+                        </div>
+
+                        <!-- Media Attach -->
+                        <div class="pub-card">
+                            <div class="pub-card-title">الوسائط المرفقة</div>
+                            <div style="display:flex;align-items:center;gap:12px">
+                                <button type="button" id="openMediaPicker" class="btn btn-outline btn-sm">
+                                    🖼️ اختر من المكتبة
+                                </button>
+                                <span id="selectedChip" style="font-size:13px;color:#a5b4fc"></span>
+                                <a href="/publisher/media" target="_blank" class="btn btn-outline btn-sm">
+                                    + رفع وسائط جديدة
+                                </a>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- RIGHT: Preview Panel -->
+                    <div class="panel-preview">
+                        <div class="pub-card" style="position:sticky;top:20px">
+                            <div class="pub-card-title">معاينة المنشور</div>
+                            <div class="fb-preview">
+                                <div class="prev-header">
+                                    <div class="prev-avatar">🏪</div>
+                                    <div>
+                                        <div class="prev-page">اسم صفحتك</div>
+                                        <div class="prev-time">للتو · 🌐</div>
+                                    </div>
+                                </div>
+                                <div class="prev-body" id="previewBody">نص المنشور يظهر هنا…</div>
+                                <div class="prev-media" id="previewMedia" style="display:none">
+                                    <span>صورة / فيديو</span>
+                                </div>
+                                <div class="prev-footer">
+                                    <span>👍 إعجاب</span>
+                                    <span>💬 تعليق</span>
+                                    <span>↗️ مشاركة</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- BOTTOM: Publish Panel -->
+                    <div class="panel-publish">
+                        <div class="pub-card">
+                            <div class="pub-card-title">الصفحات والنشر</div>
+
+                            <!-- Pages Selector -->
+                            <div class="form-group">
+                                <label class="form-label">اختر الصفحات للنشر</label>
+                                <div class="pages-selector" id="pagesWrap">
+                                    <span class="spinner"></span>
+                                </div>
+                            </div>
+
+                            <!-- Publish Mode Toggle -->
+                            <div class="form-group">
+                                <label class="form-label">وقت النشر</label>
+                                <div class="publish-toggle">
+                                    <button type="button" class="toggle-btn active" data-mode="now">🚀 نشر الآن</button>
+                                    <button type="button" class="toggle-btn" data-mode="scheduled">📅 جدولة
+                                        لاحقاً</button>
+                                </div>
+                                <div id="scheduleField" style="display:none">
+                                    <input type="datetime-local" id="scheduleTime" class="form-input">
+                                </div>
+                            </div>
+
+                            <button type="submit" id="submitBtn" class="btn btn-primary"
+                                style="width:100%;justify-content:center;padding:13px">
+                                🚀 نشر الآن
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </form>
+        </main>
+    </div>
+
+    <div id="toastWrap" class="pub-toast-wrap"></div>
+
+    <script src="/static/publisher/js/publisher.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', initCreatePost);
+        // Update submit btn label when toggle changes
+        document.addEventListener('click', e => {
+            const btn = e.target.closest('.toggle-btn');
+            if (btn) {
+                const mode = btn.dataset.mode;
+                const submitBtn = document.getElementById('submitBtn');
+                if (submitBtn) submitBtn.innerHTML = mode === 'scheduled' ? '📅 جدولة المنشور' : '🚀 نشر الآن';
+            }
+        });
+    </script>
+</body>
+
+</html>
