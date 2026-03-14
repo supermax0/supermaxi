@@ -20,12 +20,14 @@ from modules.publisher.api.pages_api import pages_api_bp
 from modules.publisher.api.media_api import media_api_bp
 from modules.publisher.api.posts_api import posts_api_bp
 from modules.publisher.api.ai_api import ai_api_bp
+from modules.publisher.api.settings_api import settings_api_bp
 from modules.publisher.routes import publisher_html_bp
 
 publisher_bp.register_blueprint(pages_api_bp)
 publisher_bp.register_blueprint(media_api_bp)
 publisher_bp.register_blueprint(posts_api_bp)
 publisher_bp.register_blueprint(ai_api_bp)
+publisher_bp.register_blueprint(settings_api_bp)
 publisher_bp.register_blueprint(publisher_html_bp)
 
 

@@ -678,6 +678,20 @@ with app.app_context():
                 """))
                 conn.commit()
             print("Created publisher_posts table.")
+        if 'publisher_settings' not in tnames:
+            with db.engine.connect() as conn:
+                conn.execute(text("""
+                    CREATE TABLE publisher_settings (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        tenant_slug VARCHAR(100),
+                        fb_app_id VARCHAR(50),
+                        fb_app_secret TEXT,
+                        fb_user_token TEXT,
+                        updated_at DATETIME
+                    )
+                """))
+                conn.commit()
+            print("Created publisher_settings table.")
     except Exception as e:
         print(f"Migration note (publisher tables): {e}")
 

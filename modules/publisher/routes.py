@@ -40,3 +40,11 @@ def media_library():
     if guard:
         return guard
     return render_template("publisher/media_library.html")
+
+
+@publisher_html_bp.route("/settings")
+def settings():
+    guard = _require_login()
+    if guard:
+        return guard
+    return render_template("publisher/settings.html")
