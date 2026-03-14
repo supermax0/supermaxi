@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 import json
 import time
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from flask import current_app
 
@@ -13,6 +13,33 @@ from extensions import db
 from models.publish_channel import PublishChannel
 from models.publish_job import PublishJob
 from services.publish_service import PublishResult, PublisherChannel, log_publish_error
+from services.media_service import resolve_media_url_to_path
+
+
+def _get_media_bytes(media_url: str, media_type: str) -> Optional[Tuple[bytes, str]]:
+    """يرجع (محتوى الملف، اسم الملف) أو None."""
+    resolved = resolve_media_url_to_path(media_url)
+    if resolved:
+        path, name = resolved
+        try:
+            with open(path, "rb") as f:
+                return (f.read(), name)
+        except Exception:
+            pass
+    if not media_url.startswith("http"):
+        return None
+    try:
+        r = requests.get(media_url, timeout=60, stream=True)
+        r.raise_for_status()
+        content = r.content
+        name = "video.mp4" if media_type == "video" else "image.jpg"
+        for ext in (".mp4", ".webm", ".mov", ".avi", ".mkv", ".jpg", ".jpeg", ".png", ".gif", ".webp"):
+            if ext in media_url.lower():
+                name = "file" + ext
+                break
+        return (content, name)
+    except Exception:
+        return None
 
 
 class FacebookPageChannel:
@@ -54,7 +81,6 @@ class FacebookPageChannel:
             elif any(low.endswith(x) or x in low for x in (".jpg", ".jpeg", ".png", ".gif", ".webp", "image")):
                 media_type = "image"
 
-        # فيسبوك يحتاج رابط وسائط مطلقاً وقابلاً للوصول من الإنترنت
         if media_url and media_url.startswith("/"):
             try:
                 base_url = current_app.config.get("PUBLISH_BASE_URL") or current_app.config.get("SERVER_NAME")
@@ -71,28 +97,47 @@ class FacebookPageChannel:
         params = {"access_token": token}
         data = {}
         endpoint = base + "/feed"
+        files = None
 
         if media_url and media_type == "image":
             endpoint = base + "/photos"
-            data = {"url": media_url}
-            if message:
-                data["caption"] = message
+            out = _get_media_bytes(media_url, "image")
+            if out:
+                content, name = out
+                files = {"source": (name, content, "application/octet-stream")}
+                data = {}
+                if message:
+                    data["caption"] = message
+            else:
+                data = {"url": media_url}
+                if message:
+                    data["caption"] = message
         elif media_url and media_type == "video":
             endpoint = base + "/videos"
-            params["file_url"] = media_url
-            data = {"file_url": media_url}
-            if message:
-                data["description"] = message
+            out = _get_media_bytes(media_url, "video")
+            if out:
+                content, name = out
+                files = {"source": (name, content, "application/octet-stream")}
+                data = {}
+                if message:
+                    data["description"] = message
+            else:
+                params["file_url"] = media_url
+                data = {"file_url": media_url}
+                if message:
+                    data["description"] = message
         else:
-            endpoint = base + "/feed"
             if message:
                 data["message"] = message
             if media_url and media_type in (None, "", "link"):
                 data["link"] = media_url
 
-        timeout = 120 if media_type == "video" else 60
+        timeout = 300 if media_type == "video" and files else 120
         try:
-            resp = requests.post(endpoint, params=params, data=data, timeout=timeout)
+            if files:
+                resp = requests.post(endpoint, params=params, data=data, files=files, timeout=timeout)
+            else:
+                resp = requests.post(endpoint, params=params, data=data, timeout=timeout)
         except Exception as exc:
             return PublishResult(
                 success=False,

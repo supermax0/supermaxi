@@ -377,6 +377,42 @@ def generate_image_thumbnail(
         return None
 
 
+def resolve_media_url_to_path(media_url: str) -> Optional[Tuple[Path, str]]:
+    """
+    إن كان الرابط يشير إلى ملف وسائط محفوظ على هذا السيرفر، يُرجع (المسار، اسم الملف للعرض).
+    وإلا يُرجع None.
+    """
+    if not media_url or not isinstance(media_url, str):
+        return None
+    url = (media_url or "").strip()
+    if not url:
+        return None
+    try:
+        from urllib.parse import urlparse
+        parsed = urlparse(url)
+        path = (parsed.path or "").strip().lstrip("/")
+    except Exception:
+        path = url.lstrip("/")
+    if "/autoposter/serve/video/" in path or path.startswith("autoposter/serve/video/"):
+        name = path.split("autoposter/serve/video/")[-1].split("/")[0].strip()
+        if name:
+            root = get_video_upload_root()
+            full = root / name
+            if full.is_file():
+                return (full, name)
+    if "autoposter/uploads/" in path or "static/autoposter/uploads/" in path:
+        for prefix in ("autoposter/uploads/", "static/autoposter/uploads/"):
+            if prefix in path:
+                name = path.split(prefix)[-1].split("/")[0].strip()
+                if name:
+                    root = get_autoposter_upload_dir()
+                    full = root / name
+                    if full.is_file():
+                        return (full, name)
+                break
+    return None
+
+
 def save_uploaded_file(file_storage, max_mb: int = 200) -> Dict[str, Any]:
     """
     معالجة كاملة لرفع ملف واحد من نوع Werkzeug FileStorage:
