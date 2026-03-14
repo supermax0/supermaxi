@@ -14,6 +14,7 @@ from flask import Blueprint, jsonify, request, session, g, current_app
 
 from extensions import db
 from modules.publisher.models.publisher_post import PublisherPost
+from modules.publisher.services.schema_guard import ensure_publisher_schema
 
 posts_api_bp = Blueprint("publisher_posts_api", __name__)
 
@@ -25,6 +26,7 @@ def _tenant():
 @posts_api_bp.route("/api/posts", methods=["GET"])
 def list_posts():
     try:
+        ensure_publisher_schema()
         tenant = _tenant()
         status = request.args.get("status")
         q = PublisherPost.query.filter_by(tenant_slug=tenant)
@@ -47,6 +49,7 @@ def create_post():
       media_ids: [int, ...]   (optional)
     """
     try:
+        ensure_publisher_schema()
         data = request.get_json() or {}
         text = (data.get("text") or "").strip()
         page_ids = data.get("page_ids") or []
@@ -87,6 +90,7 @@ def schedule_post():
       publish_time: ISO-8601 string (e.g. "2024-06-01T15:30:00")
     """
     try:
+        ensure_publisher_schema()
         data = request.get_json() or {}
         text = (data.get("text") or "").strip()
         page_ids = data.get("page_ids") or []

@@ -9,6 +9,7 @@ import traceback
 from flask import Blueprint, jsonify, request, session, g, current_app
 
 from modules.publisher.services import media_service
+from modules.publisher.services.schema_guard import ensure_publisher_schema
 
 media_api_bp = Blueprint("publisher_media_api", __name__)
 
@@ -20,6 +21,7 @@ def _tenant():
 @media_api_bp.route("/api/media", methods=["GET"])
 def list_media():
     try:
+        ensure_publisher_schema()
         tenant = _tenant()
         q = request.args.get("q")
         media_type = request.args.get("type")
@@ -33,6 +35,7 @@ def list_media():
 @media_api_bp.route("/api/media/upload", methods=["POST"])
 def upload_media():
     try:
+        ensure_publisher_schema()
         tenant = _tenant()
         file = request.files.get("file")
         if not file:
@@ -51,6 +54,7 @@ def upload_media():
 @media_api_bp.route("/api/media/<int:media_id>", methods=["DELETE"])
 def delete_media(media_id):
     try:
+        ensure_publisher_schema()
         result = media_service.delete_media(media_id)
         if result.get("success"):
             return jsonify({"success": True})

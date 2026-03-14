@@ -11,6 +11,7 @@ from flask import Blueprint, jsonify, request, session, g, current_app
 from extensions import db
 from modules.publisher.models.publisher_page import PublisherPage
 from modules.publisher.services import facebook_service as fb
+from modules.publisher.services.schema_guard import ensure_publisher_schema
 from modules.publisher.services.token_utils import encrypt_token, decrypt_token
 
 pages_api_bp = Blueprint("publisher_pages_api", __name__)
@@ -23,6 +24,7 @@ def _tenant():
 @pages_api_bp.route("/api/pages", methods=["GET"])
 def list_pages():
     try:
+        ensure_publisher_schema()
         tenant = _tenant()
         pages = PublisherPage.query.filter_by(tenant_slug=tenant).order_by(
             PublisherPage.created_at.desc()
@@ -40,6 +42,7 @@ def connect_pages():
     Body: { "user_token": "EAA..." }
     """
     try:
+        ensure_publisher_schema()
         data = request.get_json() or {}
         user_token = (data.get("user_token") or "").strip()
         if not user_token:
@@ -85,6 +88,7 @@ def connect_pages():
 @pages_api_bp.route("/api/pages/<int:page_db_id>", methods=["DELETE"])
 def delete_page(page_db_id):
     try:
+        ensure_publisher_schema()
         tenant = _tenant()
         page = PublisherPage.query.filter_by(id=page_db_id, tenant_slug=tenant).first()
         if not page:

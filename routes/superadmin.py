@@ -226,35 +226,57 @@ def tenant_details(slug):
 @superadmin_bp.route("/tenants/reset-password/<slug>", methods=["POST"])
 def tenant_reset_password(slug):
     from flask import jsonify
-    import secrets
     from sqlalchemy.orm import sessionmaker
+    import traceback
     slug_clean = (slug or "").strip().lower()
     tenant = Tenant.query.filter(db.func.lower(Tenant.slug) == slug_clean).first()
     if not tenant:
         return jsonify({"ok": False, "error": "الشركة غير موجودة"}), 404
+    tenant_session = None
     try:
         data = request.get_json() or {}
         new_password = data.get("password")
         if not new_password:
             return jsonify({"ok": False, "error": "كلمة المرور مطلوبة"}), 400
 
+        # تأكد من تهيئة الـ engine بدون كاش قديم
+        clear_tenant_engine(tenant.slug)
         engine = get_tenant_engine(tenant.slug)
+        # محاولة إنشاء الجداول الناقصة (لا تحذف بيانات)
+        try:
+            init_tenant_db(tenant.slug)
+        except Exception:
+            current_app.logger.error(traceback.format_exc())
+
         SessionLocal = sessionmaker(bind=engine)
         tenant_session = SessionLocal()
         from models.employee import Employee
-        admin_emp = tenant_session.query(Employee).filter(Employee.role == "admin").first()
+
+        # استخدم username أولاً لتفادي فشل schema قديم لا يحتوي عمود role
+        admin_emp = tenant_session.query(Employee).filter_by(username="admin").first()
         if not admin_emp:
-            admin_emp = tenant_session.query(Employee).filter_by(username="admin").first()
+            try:
+                admin_emp = tenant_session.query(Employee).filter(Employee.role == "admin").first()
+            except Exception:
+                current_app.logger.error(traceback.format_exc())
+
         if not admin_emp:
-            tenant_session.close()
             return jsonify({"ok": False, "error": "لم يتم العثور على حساب المدير"}), 404
             
         admin_emp.password = generate_password_hash(new_password)
         tenant_session.commit()
-        tenant_session.close()
         return jsonify({"ok": True, "message": "تم تغيير كلمة المرور بنجاح"})
     except Exception as e:
+        if tenant_session:
+            tenant_session.rollback()
+        current_app.logger.error(traceback.format_exc())
         return jsonify({"ok": False, "error": str(e)}), 500
+    finally:
+        if tenant_session:
+            try:
+                tenant_session.close()
+            except Exception:
+                pass
 
 @superadmin_bp.route("/tenants/reset-db/<slug>", methods=["POST"])
 def tenant_reset_db(slug):

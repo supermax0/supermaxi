@@ -10,6 +10,7 @@ from extensions import db
 from modules.publisher.models.publisher_settings import PublisherSettings
 from modules.publisher.models.publisher_page import PublisherPage
 from modules.publisher.services import facebook_service as fb
+from modules.publisher.services.schema_guard import ensure_publisher_schema
 from modules.publisher.services.token_utils import encrypt_token
 import traceback
 from flask import current_app
@@ -26,6 +27,7 @@ def _tenant():
 @settings_api_bp.route("/api/settings", methods=["GET"])
 def get_settings():
     try:
+        ensure_publisher_schema()
         s = PublisherSettings.get(_tenant())
         return jsonify({"success": True, "settings": s.to_dict()})
     except Exception as e:
@@ -40,6 +42,7 @@ def save_settings():
     أي حقل فارغ = لا يُعدَّل (نبقّي القيمة القديمة).
     """
     try:
+        ensure_publisher_schema()
         data = request.get_json() or {}
         s = PublisherSettings.get(_tenant())
 
@@ -72,6 +75,7 @@ def connect_pages():
     from modules.publisher.services.token_utils import decrypt_token
 
     try:
+        ensure_publisher_schema()
         data = request.get_json() or {}
         tenant = _tenant()
         s = PublisherSettings.get(tenant)
