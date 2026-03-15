@@ -13,6 +13,7 @@ import logging
 import os
 import sys
 import tempfile
+import time
 from datetime import datetime, timezone
 from logging.handlers import RotatingFileHandler
 
@@ -28,6 +29,7 @@ _lock_fd = None
 
 LOCK_FILE = os.path.join(tempfile.gettempdir(), "publisher_scheduler.lock")
 LOG_FILE = "logs/publisher.log"
+INTER_PAGE_PUBLISH_DELAY_SECONDS = 5
 
 
 def _resolve_media_file_path(app, media_obj):
@@ -129,57 +131,68 @@ def _publish_single_post_record(*, app, db, post, PublisherPage, PublisherMedia,
             return fb.publish_photo_post(page_id, token, text, file_path)
         return fb.publish_video_post(page_id, token, text, file_path)
 
-    for page_id in (post.page_ids or []):
-        page = PublisherPage.query.filter_by(
-            tenant_slug=post.tenant_slug, page_id=page_id
-        ).first()
-        if not page:
-            errors.append(f"page {page_id} not found")
-            continue
-
+    page_ids = post.page_ids or []
+    total_pages = len(page_ids)
+    for index, page_id in enumerate(page_ids):
         try:
-            token = decrypt_token(page.page_token)
-        except Exception as exc:
-            errors.append(f"token decrypt error for {page_id}: {exc}")
-            continue
-
-        media_list = []
-        if post.media_ids:
-            media_list = PublisherMedia.query.filter(
-                PublisherMedia.id.in_(post.media_ids)
-            ).filter(
-                PublisherMedia.tenant_slug == post.tenant_slug
-            ).all()
-
-        text = post.text or ""
-        result = _publish_with_token(page_id, token, text, media_list)
-
-        # Auto-refresh page token once on token-expired errors, then retry publish.
-        if not result.get("success") and _is_token_expired_result(result):
-            new_token, refresh_err = _refresh_page_token_for_page(
-                tenant_slug=post.tenant_slug,
-                page_id=page_id,
-                page=page,
-                db=db,
-                fb=fb,
-                decrypt_token=decrypt_token,
-                encrypt_token=encrypt_token,
-                PublisherSettings=PublisherSettings,
-                logger=logger,
-            )
-            if new_token:
-                result = _publish_with_token(page_id, new_token, text, media_list)
-            else:
-                errors.append(f"{page_id}: انتهت صلاحية التوكن وتعذر تجديده تلقائياً. {refresh_err}")
-                logger.error("Token refresh failed for page %s: %s", page_id, refresh_err)
+            page = PublisherPage.query.filter_by(
+                tenant_slug=post.tenant_slug, page_id=page_id
+            ).first()
+            if not page:
+                errors.append(f"page {page_id} not found")
                 continue
 
-        if result.get("success"):
-            fb_post_ids[page_id] = (result.get("data") or {}).get("id", "")
-            logger.info("Published post %d → page %s", post.id, page_id)
-        else:
-            errors.append(f"{page_id}: {result.get('message')}")
-            logger.error("Failed post %d → page %s: %s", post.id, page_id, result.get("message"))
+            try:
+                token = decrypt_token(page.page_token)
+            except Exception as exc:
+                errors.append(f"token decrypt error for {page_id}: {exc}")
+                continue
+
+            media_list = []
+            if post.media_ids:
+                media_list = PublisherMedia.query.filter(
+                    PublisherMedia.id.in_(post.media_ids)
+                ).filter(
+                    PublisherMedia.tenant_slug == post.tenant_slug
+                ).all()
+
+            text = post.text or ""
+            result = _publish_with_token(page_id, token, text, media_list)
+
+            # Auto-refresh page token once on token-expired errors, then retry publish.
+            if not result.get("success") and _is_token_expired_result(result):
+                new_token, refresh_err = _refresh_page_token_for_page(
+                    tenant_slug=post.tenant_slug,
+                    page_id=page_id,
+                    page=page,
+                    db=db,
+                    fb=fb,
+                    decrypt_token=decrypt_token,
+                    encrypt_token=encrypt_token,
+                    PublisherSettings=PublisherSettings,
+                    logger=logger,
+                )
+                if new_token:
+                    result = _publish_with_token(page_id, new_token, text, media_list)
+                else:
+                    errors.append(f"{page_id}: انتهت صلاحية التوكن وتعذر تجديده تلقائياً. {refresh_err}")
+                    logger.error("Token refresh failed for page %s: %s", page_id, refresh_err)
+                    continue
+
+            if result.get("success"):
+                fb_post_ids[page_id] = (result.get("data") or {}).get("id", "")
+                logger.info("Published post %d → page %s", post.id, page_id)
+            else:
+                errors.append(f"{page_id}: {result.get('message')}")
+                logger.error("Failed post %d → page %s: %s", post.id, page_id, result.get("message"))
+        finally:
+            if index < total_pages - 1:
+                logger.info(
+                    "Waiting %ds before publishing next page for post %s",
+                    INTER_PAGE_PUBLISH_DELAY_SECONDS,
+                    post.id,
+                )
+                time.sleep(INTER_PAGE_PUBLISH_DELAY_SECONDS)
 
     post.facebook_post_ids = fb_post_ids
     if errors:

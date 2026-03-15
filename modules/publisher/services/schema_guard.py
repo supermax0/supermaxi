@@ -24,6 +24,7 @@ PUBLISHER_TABLES: Dict[str, Dict[str, str]] = {
         "fb_app_id": "VARCHAR(50)",
         "fb_app_secret": "TEXT",
         "fb_user_token": "TEXT",
+        "openai_api_key": "TEXT",
         "updated_at": "DATETIME",
     },
     "publisher_pages": {

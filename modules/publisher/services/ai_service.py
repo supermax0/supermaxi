@@ -17,9 +17,51 @@ from typing import List
 logger = logging.getLogger("publisher")
 
 
+def _resolve_api_key() -> str:
+    """
+    Resolve OpenAI API key with this priority:
+      1) Publisher settings (per-tenant, when request context exists)
+      2) Flask config OPENAI_API_KEY
+      3) Environment OPENAI_API_KEY
+    """
+    # 1) Per-tenant key from Publisher settings (if we're inside a request)
+    try:
+        from flask import current_app, g, has_app_context, has_request_context, session
+        if has_request_context():
+            from modules.publisher.models.publisher_settings import PublisherSettings
+            from modules.publisher.services.schema_guard import ensure_publisher_schema
+            from modules.publisher.services.token_utils import decrypt_token
+
+            # Ensure legacy DBs are upgraded before reading the new column.
+            ensure_publisher_schema()
+            tenant = getattr(g, "tenant", None) or session.get("tenant_slug") or "default"
+            settings_row = PublisherSettings.get(tenant)
+            if settings_row and settings_row.openai_api_key:
+                try:
+                    key = decrypt_token(settings_row.openai_api_key).strip()
+                except Exception:
+                    key = (settings_row.openai_api_key or "").strip()
+                if key:
+                    return key
+
+            cfg_key = (current_app.config.get("OPENAI_API_KEY") or "").strip()
+            if cfg_key:
+                return cfg_key
+        elif has_app_context():
+            cfg_key = (current_app.config.get("OPENAI_API_KEY") or "").strip()
+            if cfg_key:
+                return cfg_key
+    except Exception:
+        # Soft-fail: we can still continue with environment fallback.
+        pass
+
+    # 2/3) Process-level fallback
+    return (os.environ.get("OPENAI_API_KEY") or "").strip()
+
+
 def _get_client():
     """Return an OpenAI client or None if key not set."""
-    api_key = os.environ.get("OPENAI_API_KEY", "").strip()
+    api_key = _resolve_api_key()
     if not api_key:
         return None
     try:
@@ -33,7 +75,7 @@ def _get_client():
 def _chat(messages: list, max_tokens: int = 400) -> str:
     client = _get_client()
     if not client:
-        raise RuntimeError("OPENAI_API_KEY غير مضبوط — يرجى إضافته في ملف .env")
+        raise RuntimeError("OPENAI_API_KEY غير مضبوط — أضفه من إعدادات Publisher أو عبر .env")
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=messages,

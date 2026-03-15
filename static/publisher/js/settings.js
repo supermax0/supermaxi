@@ -58,9 +58,14 @@ async function settingsLoadSettings() {
             appId.placeholder = s.fb_app_id || "App ID...";
             if (s.fb_app_id) appId.value = s.fb_app_id;
         }
+        const openAiInput = document.getElementById("openAiApiKey");
+        if (openAiInput) {
+            openAiInput.placeholder = s.has_openai_key ? "●●●●●●●●" : "sk-...";
+        }
         settingsSetDot("appIdDot", !!s.fb_app_id);
         settingsSetDot("appSecretDot", !!s.has_secret);
         settingsSetDot("tokenDot", !!s.has_token);
+        settingsSetDot("openAiDot", !!s.has_openai_key);
     } catch (e) {
         console.error(e);
     }
@@ -70,9 +75,10 @@ async function settingsSaveCredentials() {
     const btn = document.getElementById("saveCredentialsBtn");
     const fb_app_id = (document.getElementById("fbAppId")?.value || "").trim();
     const fb_app_secret = (document.getElementById("fbAppSecret")?.value || "").trim();
+    const openai_api_key = (document.getElementById("openAiApiKey")?.value || "").trim();
 
-    if (!fb_app_id && !fb_app_secret) {
-        settingsToast("أدخل App ID أو App Secret", "error");
+    if (!fb_app_id && !fb_app_secret && !openai_api_key) {
+        settingsToast("أدخل App ID أو App Secret أو OpenAI API Key", "error");
         return;
     }
 
@@ -81,14 +87,18 @@ async function settingsSaveCredentials() {
         const r = await settingsFetchJson("/publisher/api/settings", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ fb_app_id, fb_app_secret }),
+            body: JSON.stringify({ fb_app_id, fb_app_secret, openai_api_key }),
         });
         if (r.success) {
             settingsToast(r.message || "تم حفظ الإعدادات", "success");
-            settingsSetDot("appIdDot", !!fb_app_id);
-            settingsSetDot("appSecretDot", !!fb_app_secret);
+            const saved = settingsGetPayloadData(r, "settings") || {};
+            settingsSetDot("appIdDot", !!saved.fb_app_id);
+            settingsSetDot("appSecretDot", !!saved.has_secret);
+            settingsSetDot("openAiDot", !!saved.has_openai_key);
             const secret = document.getElementById("fbAppSecret");
             if (secret) secret.value = "";
+            const openAiInput = document.getElementById("openAiApiKey");
+            if (openAiInput) openAiInput.value = "";
         } else {
             settingsToast(r.message || "حدث خطأ أثناء الحفظ", "error");
         }

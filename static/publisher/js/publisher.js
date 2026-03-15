@@ -474,7 +474,8 @@ async function waitForPostFinalStatus(postId, timeoutMs = 30000) {
 
 async function submitPost(e) {
     e.preventDefault();
-    const text = (document.getElementById("postText")?.value || "").trim();
+    const text = document.getElementById("postText")?.value || "";
+    const textForValidation = text.trim();
     const pageCheckboxes = document.querySelectorAll('input[name="page_ids"]:checked');
     const page_ids = Array.from(pageCheckboxes).map((c) => c.value);
 
@@ -482,7 +483,7 @@ async function submitPost(e) {
         toast("اختر صفحة واحدة على الأقل", "error");
         return;
     }
-    if (!text && !selectedMediaIds.length) {
+    if (!textForValidation && !selectedMediaIds.length) {
         toast("أدخل نصاً أو أرفق وسيطاً", "error");
         return;
     }

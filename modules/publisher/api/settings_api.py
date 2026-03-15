@@ -43,7 +43,7 @@ def get_settings():
 @settings_api_bp.route("/api/settings", methods=["POST"])
 def save_settings():
     """
-    حفظ App ID و App Secret و User Token (اختياري).
+    حفظ App ID و App Secret و User Token و OpenAI API Key (اختياري).
     أي حقل فارغ = لا يُعدَّل (نبقّي القيمة القديمة).
     """
     try:
@@ -54,6 +54,7 @@ def save_settings():
         fb_app_id     = (data.get("fb_app_id")     or "").strip()
         fb_app_secret = (data.get("fb_app_secret") or "").strip()
         fb_user_token = (data.get("fb_user_token") or "").strip()
+        openai_api_key = (data.get("openai_api_key") or "").strip()
 
         if fb_app_id:
             s.fb_app_id = fb_app_id
@@ -61,6 +62,8 @@ def save_settings():
             s.fb_app_secret = encrypt_token(fb_app_secret)
         if fb_user_token and fb_user_token != "●●●●●●●●":
             s.fb_user_token = encrypt_token(fb_user_token)
+        if openai_api_key and openai_api_key != "●●●●●●●●":
+            s.openai_api_key = encrypt_token(openai_api_key)
 
         db.session.commit()
         return ok_response(

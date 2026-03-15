@@ -58,11 +58,20 @@ def _normalize_media_ids(raw):
 def _validate_post_payload(payload, tenant, *, require_publish_time=False):
     fields = {}
 
-    text = (payload.get("text") or "").strip()
+    raw_text = payload.get("text")
+    if raw_text is None:
+        text = ""
+    elif isinstance(raw_text, str):
+        text = raw_text
+    else:
+        text = str(raw_text)
+    text_for_validation = text.strip()
+    if not text_for_validation:
+        text = ""
     page_ids = _normalize_page_ids(payload.get("page_ids"))
     media_ids = _normalize_media_ids(payload.get("media_ids"))
 
-    if not text and not media_ids:
+    if not text_for_validation and not media_ids:
         fields["text"] = "يجب كتابة نص أو اختيار وسيط"
     if not page_ids:
         fields["page_ids"] = "يجب اختيار صفحة واحدة على الأقل"

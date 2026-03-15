@@ -14,6 +14,8 @@ class PublisherSettings(db.Model):
     fb_app_secret = db.Column(db.Text,          nullable=True)   # مشفر
     # Long-lived user token (اختياري — يُستخدم لجلب الصفحات)
     fb_user_token = db.Column(db.Text,          nullable=True)
+    # OpenAI API Key (اختياري — يُستخدم لمساعد الذكاء الاصطناعي في Publisher)
+    openai_api_key = db.Column(db.Text,         nullable=True)
 
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -32,7 +34,9 @@ class PublisherSettings(db.Model):
             # نُرجع نجوم بدل السر الفعلي للعرض
             "fb_app_secret": "●●●●●●●●" if self.fb_app_secret else "",
             "fb_user_token": "●●●●●●●●" if self.fb_user_token else "",
+            "openai_api_key": "●●●●●●●●" if self.openai_api_key else "",
             "has_secret":    bool(self.fb_app_secret),
             "has_token":     bool(self.fb_user_token),
+            "has_openai_key": bool(self.openai_api_key),
             "updated_at":    self.updated_at.isoformat() if self.updated_at else None,
         }

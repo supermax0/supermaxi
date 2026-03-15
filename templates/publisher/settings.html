@@ -15,7 +15,7 @@
             <h2>Facebook App Credentials</h2>
             <a href="https://developers.facebook.com/apps" target="_blank" class="help-link">developers.facebook.com</a>
         </div>
-        <p class="section-note">أدخل بيانات التطبيق الأساسية من Facebook for Developers.</p>
+        <p class="section-note">أدخل بيانات التطبيق الأساسية من Facebook، ويمكنك حفظ مفتاح OpenAI لمساعد الكتابة.</p>
 
         <div class="form-group">
             <label class="form-label">App ID <span id="appIdDot" class="status-dot dot-gray"></span></label>
@@ -31,9 +31,19 @@
             </div>
         </div>
 
+        <div class="form-group">
+            <label class="form-label">OpenAI API Key <span id="openAiDot" class="status-dot dot-gray"></span></label>
+            <div class="input-group">
+                <input type="password" id="openAiApiKey" class="form-input" placeholder="sk-..." dir="ltr">
+                <button class="eye-btn" type="button" data-target="openAiApiKey" aria-label="إظهار أو إخفاء">
+                    <i data-lucide="eye"></i>
+                </button>
+            </div>
+        </div>
+
         <button class="btn btn-primary" id="saveCredentialsBtn" data-ripple>
             <i data-lucide="save"></i>
-            <span>حفظ بيانات التطبيق</span>
+            <span>حفظ بيانات التكامل</span>
         </button>
     </article>
 
@@ -103,5 +113,5 @@
 {% endblock %}
 
 {% block page_scripts %}
-<script src="/static/publisher/js/settings.js?v=20260316a"></script>
+<script src="/static/publisher/js/settings.js?v=20260316b"></script>
 {% endblock %}
