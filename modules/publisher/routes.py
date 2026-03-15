@@ -30,17 +30,9 @@ def _should_use_legacy_ui():
     """
     Transitional switch for migration cutover:
     - Query param legacy=1 forces old pages.
-    - Config PUBLISHER_UI_MODE=legacy keeps old pages by default.
+    - Default path serves SPA to ensure the new UI is visible.
     """
-    if request.args.get("legacy") == "1":
-        return True
-    mode = (current_app.config.get("PUBLISHER_UI_MODE") or "").strip().lower()
-    if mode == "legacy":
-        return True
-    assets_root = os.path.join(current_app.static_folder or "", "publisher_frontend", "dist", "assets")
-    js_entry = os.path.join(assets_root, "publisher-app.js")
-    css_entry = os.path.join(assets_root, "publisher-app.css")
-    return not (os.path.isfile(js_entry) and os.path.isfile(css_entry))
+    return request.args.get("legacy") == "1"
 
 
 def _render_spa(entry_path: str, page_title: str):
