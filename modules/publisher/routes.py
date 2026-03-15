@@ -28,20 +28,16 @@ def _require_login():
 
 def _should_use_legacy_ui():
     """
-    Transitional switch for migration cutover:
-    - Query param legacy=1 forces old pages.
-    - Query param spa=1 forces SPA (for manual verification).
-    - If SPA assets are missing on server, fall back to legacy to avoid blank page.
+    UI switch:
+    - Default: use the redesigned template pages (legacy templates).
+    - Query param spa=1 forces SPA for manual verification.
+    - Query param legacy=0 can also force SPA.
     """
-    if request.args.get("legacy") == "1":
-        return True
     if request.args.get("spa") == "1":
         return False
-
-    assets_root = os.path.join(current_app.static_folder or "", "publisher_frontend", "dist", "assets")
-    js_entry = os.path.join(assets_root, "publisher-app.js")
-    css_entry = os.path.join(assets_root, "publisher-app.css")
-    return not (os.path.isfile(js_entry) and os.path.isfile(css_entry))
+    if request.args.get("legacy") == "0":
+        return False
+    return True
 
 
 def _render_spa(entry_path: str, page_title: str):
