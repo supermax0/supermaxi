@@ -1,7 +1,9 @@
 /* publisher.js — Dashboard + Create Post logic */
 
 const SELECTED_MEDIA_KEY = "publisher_selected_media_ids";
+const SELECTED_MEDIA_META_KEY = "publisher_selected_media_meta";
 let selectedMediaIds = [];
+let selectedMediaMeta = [];
 let publishMode = "now";
 
 async function apiFetchJson(url, options = {}) {
@@ -157,6 +159,8 @@ async function initCreatePost() {
     document.getElementById("postForm")?.addEventListener("submit", submitPost);
     document.getElementById("postText")?.addEventListener("input", updatePreview);
     document.getElementById("openMediaPicker")?.addEventListener("click", openMediaPickerModal);
+    document.getElementById("pagesWrap")?.addEventListener("change", updatePreview);
+    document.getElementById("scheduleTime")?.addEventListener("input", updatePreview);
 }
 
 async function loadPageSelector() {
@@ -179,6 +183,7 @@ async function loadPageSelector() {
                     "</label>"
             )
             .join("");
+        updatePreview();
     } catch (e) {
         console.error("loadPageSelector", e);
     }
@@ -192,6 +197,7 @@ function initPublishToggle() {
             btn.classList.add("active");
             const schedField = document.getElementById("scheduleField");
             if (schedField) schedField.style.display = publishMode === "scheduled" ? "block" : "none";
+            updatePreview();
         });
     });
 }
@@ -311,15 +317,80 @@ function updatePreview() {
     const prev = document.getElementById("previewBody");
     if (prev) prev.textContent = text || "ابدأ الكتابة لعرض المعاينة...";
 
-    const mediaPrev = document.getElementById("previewMedia");
-    if (!mediaPrev) return;
-    if (selectedMediaIds.length) {
-        mediaPrev.style.display = "flex";
-        mediaPrev.textContent = "وسائط مرفقة: " + selectedMediaIds.length;
-    } else {
-        mediaPrev.style.display = "none";
-        mediaPrev.textContent = "وسائط مرفقة";
+    const selectedPageLabels = Array.from(document.querySelectorAll('input[name="page_ids"]:checked'))
+        .map((checkbox) => checkbox.closest("label")?.querySelector(".page-chip")?.textContent?.trim())
+        .filter(Boolean);
+
+    const previewPageName = document.getElementById("previewPageName");
+    if (previewPageName) {
+        previewPageName.textContent = selectedPageLabels[0] || "اسم صفحتك";
     }
+
+    const scheduleValue = document.getElementById("scheduleTime")?.value || "";
+    const previewMetaLine = document.getElementById("previewMetaLine");
+    if (previewMetaLine) {
+        if (publishMode === "scheduled" && scheduleValue) {
+            previewMetaLine.textContent = "مجدول · " + fmtDate(scheduleValue);
+        } else if (publishMode === "scheduled") {
+            previewMetaLine.textContent = "مجدول · بانتظار تحديد الوقت";
+        } else {
+            previewMetaLine.textContent = "الآن · Public";
+        }
+    }
+
+    const selectedPagesWrap = document.getElementById("previewSelectedPages");
+    if (selectedPagesWrap) {
+        selectedPagesWrap.innerHTML = selectedPageLabels
+            .map((label) => `<span class="prev-page-chip">${escapeHtml(label)}</span>`)
+            .join("");
+    }
+
+    const charCount = text.length;
+    const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
+    const hashCount = (text.match(/#[\w\u0600-\u06FF]+/g) || []).length;
+
+    const charCountEl = document.getElementById("previewCharCount");
+    const wordCountEl = document.getElementById("previewWordCount");
+    const hashCountEl = document.getElementById("previewHashCount");
+    if (charCountEl) charCountEl.textContent = `${charCount} حرف`;
+    if (wordCountEl) wordCountEl.textContent = `${wordCount} كلمة`;
+    if (hashCountEl) hashCountEl.textContent = `${hashCount} هاشتاق`;
+
+    const mediaPrev = document.getElementById("previewMedia");
+    const mediaGrid = document.getElementById("previewMediaGrid");
+    if (!mediaPrev || !mediaGrid) return;
+    if (selectedMediaIds.length === 0) {
+        mediaPrev.style.display = "none";
+        mediaGrid.innerHTML = "";
+        return;
+    }
+    mediaPrev.style.display = "block";
+    mediaGrid.innerHTML = buildPreviewMediaHtml();
+}
+
+function buildPreviewMediaHtml() {
+    const metaMap = new Map(
+        (selectedMediaMeta || []).map((item) => [Number(item.id), item])
+    );
+    const topThree = selectedMediaIds.slice(0, 3).map((id) => metaMap.get(Number(id)));
+    const rendered = topThree
+        .map((item) => {
+            if (!item) {
+                return '<div class="prev-media-item">IMG</div>';
+            }
+            if (item.media_type === "image" && item.url_path) {
+                return `<div class="prev-media-item"><img src="${escapeHtml(item.url_path)}" alt="${escapeHtml(item.original_name || item.filename || "media")}"></div>`;
+            }
+            if (item.media_type === "video") {
+                return '<div class="prev-media-item">VIDEO</div>';
+            }
+            return '<div class="prev-media-item">MEDIA</div>';
+        })
+        .join("");
+    const more = selectedMediaIds.length > 3
+        ? `<div class="prev-media-more">+${selectedMediaIds.length - 3}</div>`
+        : "";
+    return rendered + more;
 }
 
 function openMediaPickerModal() {
@@ -334,14 +405,29 @@ function restoreSelectedMediaFromStorage() {
         const parsed = JSON.parse(raw);
         if (!Array.isArray(parsed)) return;
         selectedMediaIds = parsed.map((v) => Number(v)).filter((v) => Number.isInteger(v));
+        const metaRaw = sessionStorage.getItem(SELECTED_MEDIA_META_KEY);
+        if (metaRaw) {
+            const metaParsed = JSON.parse(metaRaw);
+            if (Array.isArray(metaParsed)) {
+                selectedMediaMeta = metaParsed.map((item) => ({
+                    id: Number(item.id),
+                    media_type: item.media_type,
+                    url_path: item.url_path,
+                    original_name: item.original_name,
+                    filename: item.filename,
+                }));
+            }
+        }
     } catch {
         selectedMediaIds = [];
+        selectedMediaMeta = [];
     }
 }
 
 function persistSelectedMediaToStorage() {
     try {
         sessionStorage.setItem(SELECTED_MEDIA_KEY, JSON.stringify(selectedMediaIds || []));
+        sessionStorage.setItem(SELECTED_MEDIA_META_KEY, JSON.stringify(selectedMediaMeta || []));
     } catch {
         // ignore
     }
@@ -442,14 +528,18 @@ async function submitPost(e) {
                 setPublishStatus("success", r.message || "تمت الجدولة بنجاح");
                 document.getElementById("postForm")?.reset();
                 selectedMediaIds = [];
+                selectedMediaMeta = [];
                 sessionStorage.removeItem(SELECTED_MEDIA_KEY);
+                sessionStorage.removeItem(SELECTED_MEDIA_META_KEY);
                 updateSelectedMediaChip();
                 updatePreview();
             } else if (post.status === "published") {
                 setPublishStatus("success", "تم النشر الفوري بنجاح");
                 document.getElementById("postForm")?.reset();
                 selectedMediaIds = [];
+                selectedMediaMeta = [];
                 sessionStorage.removeItem(SELECTED_MEDIA_KEY);
+                sessionStorage.removeItem(SELECTED_MEDIA_META_KEY);
                 updateSelectedMediaChip();
                 updatePreview();
             } else if (post.status === "partial") {

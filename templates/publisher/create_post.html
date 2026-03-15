@@ -104,13 +104,19 @@
                             <i data-lucide="store"></i>
                         </div>
                         <div>
-                            <div class="prev-page">اسم صفحتك</div>
-                            <div class="prev-time">الآن · Public</div>
+                            <div class="prev-page" id="previewPageName">اسم صفحتك</div>
+                            <div class="prev-time" id="previewMetaLine">الآن · Public</div>
                         </div>
                     </div>
+                    <div class="prev-selected-pages" id="previewSelectedPages"></div>
                     <div class="prev-body" id="previewBody">ابدأ الكتابة لعرض المعاينة...</div>
                     <div class="prev-media" id="previewMedia" style="display:none">
-                        <span>وسائط مرفقة</span>
+                        <div class="prev-media-grid" id="previewMediaGrid"></div>
+                    </div>
+                    <div class="prev-insights">
+                        <span class="insight-chip" id="previewCharCount">0 حرف</span>
+                        <span class="insight-chip" id="previewWordCount">0 كلمة</span>
+                        <span class="insight-chip" id="previewHashCount">0 هاشتاق</span>
                     </div>
                     <div class="prev-footer">
                         <span><i data-lucide="thumbs-up"></i> إعجاب</span>
@@ -164,7 +170,7 @@
 {% endblock %}
 
 {% block page_scripts %}
-<script src="/static/publisher/js/publisher.js?v=20260316a"></script>
+<script src="/static/publisher/js/publisher.js?v=20260316b"></script>
 <script>
     document.addEventListener("DOMContentLoaded", () => {
         initCreatePost();

@@ -5,6 +5,7 @@ let activeTab = "all";
 let searchQ = "";
 let selectedForPost = new Set();
 const SELECTED_MEDIA_KEY = "publisher_selected_media_ids";
+const SELECTED_MEDIA_META_KEY = "publisher_selected_media_meta";
 
 async function mediaFetchJson(url, options = {}) {
     const opts = {
@@ -119,7 +120,18 @@ function toggleSelect(id) {
 
 function persistSelectedToStorage() {
     try {
-        sessionStorage.setItem(SELECTED_MEDIA_KEY, JSON.stringify(Array.from(selectedForPost)));
+        const selectedIds = Array.from(selectedForPost);
+        const selectedMeta = allMedia
+            .filter((m) => selectedForPost.has(m.id))
+            .map((m) => ({
+                id: m.id,
+                media_type: m.media_type,
+                url_path: normalizeMediaUrl(m.url_path),
+                original_name: m.original_name,
+                filename: m.filename,
+            }));
+        sessionStorage.setItem(SELECTED_MEDIA_KEY, JSON.stringify(selectedIds));
+        sessionStorage.setItem(SELECTED_MEDIA_META_KEY, JSON.stringify(selectedMeta));
     } catch {
         // ignore
     }
@@ -148,6 +160,7 @@ async function deleteMediaItem(id) {
     if (r.success) {
         allMedia = allMedia.filter((m) => Number(m.id) !== Number(id));
         selectedForPost.delete(id);
+        persistSelectedToStorage();
         renderGrid();
         mediaToast("تم حذف الوسيط", "success");
     } else {
