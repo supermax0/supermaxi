@@ -139,6 +139,7 @@
                     <div class="pages-selector" id="pagesWrap">
                         <span class="spinner"></span>
                     </div>
+                    <div id="pagePublishProgress" class="page-publish-progress" style="display:none"></div>
                 </div>
 
                 <div class="form-group">
@@ -170,7 +171,7 @@
 {% endblock %}
 
 {% block page_scripts %}
-<script src="/static/publisher/js/publisher.js?v=20260316c"></script>
+<script src="/static/publisher/js/publisher.js?v=20260316d"></script>
 <script>
     document.addEventListener("DOMContentLoaded", () => {
         initCreatePost();

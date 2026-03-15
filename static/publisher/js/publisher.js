@@ -5,6 +5,9 @@ const SELECTED_MEDIA_META_KEY = "publisher_selected_media_meta";
 let selectedMediaIds = [];
 let selectedMediaMeta = [];
 let publishMode = "now";
+let publisherPages = [];
+let pageProgressTicker = null;
+let pageProgressPoller = null;
 
 async function apiFetchJson(url, options = {}) {
     const opts = {
@@ -169,6 +172,7 @@ async function loadPageSelector() {
     try {
         const data = await API.pages();
         const pages = extractItems(data, "pages");
+        publisherPages = Array.isArray(pages) ? pages : [];
         if (!pages.length) {
             wrap.innerHTML =
                 '<p style="color:var(--text-secondary);font-size:13px">لا توجد صفحات مربوطة. <a href="/publisher/settings" style="color:#c7d2fe">اربط صفحة</a></p>';
@@ -460,6 +464,136 @@ function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function getSelectedPagesMeta(pageIds) {
+    const pagesById = new Map((publisherPages || []).map((p) => [String(p.page_id || ""), p]));
+    return (pageIds || []).map((pageId, index) => {
+        const page = pagesById.get(String(pageId)) || {};
+        const pageName = page.page_name || pageId;
+        const logoUrl = page.picture_url || page.logo_url || `https://graph.facebook.com/${encodeURIComponent(pageId)}/picture?type=square`;
+        return {
+            order: index + 1,
+            pageId: String(pageId),
+            pageName,
+            logoUrl,
+        };
+    });
+}
+
+function renderPagePublishProgress(pageMeta, stateMap = {}) {
+    const wrap = document.getElementById("pagePublishProgress");
+    if (!wrap) return;
+    if (!Array.isArray(pageMeta) || !pageMeta.length) {
+        wrap.style.display = "none";
+        wrap.innerHTML = "";
+        return;
+    }
+
+    wrap.style.display = "grid";
+    wrap.innerHTML = pageMeta
+        .map((item) => {
+            const state = stateMap[item.pageId] || "queued";
+            const stateLabel =
+                state === "loading"
+                    ? "جاري النشر..."
+                    : state === "success"
+                    ? "تم النشر"
+                    : state === "failed"
+                    ? "فشل"
+                    : "بانتظار الدور";
+            return (
+                `<div class="page-progress-item is-${state}">` +
+                '<div class="page-progress-head">' +
+                `<span class="page-progress-order">${item.order}</span>` +
+                `<img class="page-progress-logo" src="${escapeHtml(item.logoUrl)}" alt="${escapeHtml(item.pageName)}" loading="lazy">` +
+                `<span class="page-progress-name">${escapeHtml(item.pageName)}</span>` +
+                `<span class="page-progress-state">${stateLabel}</span>` +
+                "</div>" +
+                '<div class="page-progress-bar"><span></span></div>' +
+                "</div>"
+            );
+        })
+        .join("");
+}
+
+function stopPageProgressTrackers() {
+    if (pageProgressTicker) {
+        clearInterval(pageProgressTicker);
+        pageProgressTicker = null;
+    }
+    if (pageProgressPoller) {
+        clearInterval(pageProgressPoller);
+        pageProgressPoller = null;
+    }
+}
+
+function parseFailedPageIds(errorMessage = "", allPageIds = []) {
+    const text = String(errorMessage || "");
+    const failed = new Set();
+    allPageIds.forEach((pid) => {
+        const key = String(pid);
+        if (text.includes(`${key}:`) || text.includes(`page ${key}`)) {
+            failed.add(key);
+        }
+    });
+    return failed;
+}
+
+function finalizePageProgress(finalPost, pageIds) {
+    const pageMeta = getSelectedPagesMeta(pageIds);
+    const stateMap = {};
+    const successIds = new Set(Object.keys(finalPost?.facebook_post_ids || {}).map((v) => String(v)));
+    const failedIds = parseFailedPageIds(finalPost?.error_message || "", pageIds);
+    (pageIds || []).forEach((pageId) => {
+        const key = String(pageId);
+        if (successIds.has(key)) {
+            stateMap[key] = "success";
+        } else if (finalPost?.status === "failed" || failedIds.has(key) || finalPost?.status === "partial") {
+            stateMap[key] = "failed";
+        } else {
+            stateMap[key] = "queued";
+        }
+    });
+    renderPagePublishProgress(pageMeta, stateMap);
+}
+
+async function startSequentialProgressTracking(postId, pageIds) {
+    stopPageProgressTrackers();
+    const pageMeta = getSelectedPagesMeta(pageIds);
+    if (!pageMeta.length) return;
+
+    const stateMap = {};
+    pageMeta.forEach((item, idx) => {
+        stateMap[item.pageId] = idx === 0 ? "loading" : "queued";
+    });
+    renderPagePublishProgress(pageMeta, stateMap);
+
+    let activeIndex = 0;
+    pageProgressTicker = setInterval(() => {
+        if (activeIndex >= pageMeta.length - 1) return;
+        stateMap[pageMeta[activeIndex].pageId] = "success";
+        activeIndex += 1;
+        stateMap[pageMeta[activeIndex].pageId] = "loading";
+        renderPagePublishProgress(pageMeta, stateMap);
+    }, 5000);
+
+    pageProgressPoller = setInterval(async () => {
+        const list = await API.posts();
+        const posts = extractItems(list, "posts");
+        const post = posts.find((p) => Number(p.id) === Number(postId));
+        if (!post || !["published", "failed", "partial"].includes(post.status)) return;
+
+        stopPageProgressTrackers();
+        finalizePageProgress(post, pageIds);
+        if (post.status === "published") {
+            setPublishStatus("success", "اكتمل النشر على كل الصفحات");
+        } else if (post.status === "partial") {
+            setPublishStatus("info", "اكتمل النشر جزئياً. راجع حالة كل صفحة أدناه.");
+        } else {
+            setPublishStatus("error", "فشل النشر على الصفحات المختارة.");
+        }
+    }, 2000);
+}
+
 async function waitForPostFinalStatus(postId, timeoutMs = 30000) {
     const started = Date.now();
     while (Date.now() - started < timeoutMs) {
@@ -487,6 +621,8 @@ async function submitPost(e) {
         toast("أدخل نصاً أو أرفق وسيطاً", "error");
         return;
     }
+    stopPageProgressTrackers();
+    renderPagePublishProgress([], {});
 
     const btn = document.getElementById("submitBtn");
     if (btn) {
@@ -497,6 +633,14 @@ async function submitPost(e) {
         "info",
         publishMode === "scheduled" ? "جاري حفظ الجدولة..." : "جاري محاولة النشر الفوري..."
     );
+    if (publishMode === "now" && page_ids.length > 1) {
+        const initialMeta = getSelectedPagesMeta(page_ids);
+        const initialState = {};
+        initialMeta.forEach((item, idx) => {
+            initialState[item.pageId] = idx === 0 ? "loading" : "queued";
+        });
+        renderPagePublishProgress(initialMeta, initialState);
+    }
 
     try {
         let endpoint = "/publisher/api/posts/create";
@@ -545,17 +689,24 @@ async function submitPost(e) {
                 updatePreview();
             } else if (post.status === "partial") {
                 setPublishStatus("info", "تم النشر جزئياً على بعض الصفحات.");
+                if (page_ids.length > 1) {
+                    finalizePageProgress(post, page_ids);
+                }
             } else if (post.id) {
                 setPublishStatus("info", "تم إرسال الطلب، جاري تتبع الحالة...");
-                const finalPost = await waitForPostFinalStatus(post.id, 30000);
-                if (!finalPost) {
-                    setPublishStatus("info", "تم استلام الطلب، راجع لوحة التحكم خلال دقيقة.");
-                } else if (finalPost.status === "published") {
-                    setPublishStatus("success", "اكتمل النشر بنجاح");
-                } else if (finalPost.status === "partial") {
-                    setPublishStatus("info", "تم النشر جزئياً.");
+                if (publishMode === "now" && page_ids.length > 1) {
+                    await startSequentialProgressTracking(post.id, page_ids);
                 } else {
-                    setPublishStatus("error", "فشل النشر: " + (finalPost.error_message || "تحقق من الإعدادات."));
+                    const finalPost = await waitForPostFinalStatus(post.id, 30000);
+                    if (!finalPost) {
+                        setPublishStatus("info", "تم استلام الطلب، راجع لوحة التحكم خلال دقيقة.");
+                    } else if (finalPost.status === "published") {
+                        setPublishStatus("success", "اكتمل النشر بنجاح");
+                    } else if (finalPost.status === "partial") {
+                        setPublishStatus("info", "تم النشر جزئياً.");
+                    } else {
+                        setPublishStatus("error", "فشل النشر: " + (finalPost.error_message || "تحقق من الإعدادات."));
+                    }
                 }
             }
         } else {

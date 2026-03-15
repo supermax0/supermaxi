@@ -5,6 +5,8 @@ API endpoints for creating / scheduling / listing publisher posts.
 """
 
 from datetime import datetime
+import logging
+import threading
 import traceback
 
 from flask import Blueprint, request, session, g, current_app
@@ -24,6 +26,16 @@ posts_api_bp = Blueprint("publisher_posts_api", __name__)
 
 def _tenant():
     return getattr(g, "tenant", None) or session.get("tenant_slug")
+
+
+def _publish_post_in_background(app_obj, post_id, tenant_slug):
+    """
+    Non-blocking publish trigger to avoid gateway timeout on multi-page posts.
+    """
+    try:
+        publish_single_post_now(app_obj, post_id, tenant_slug=tenant_slug)
+    except Exception:
+        logging.getLogger("publisher").error(traceback.format_exc())
 
 
 def _normalize_list(value):
@@ -199,7 +211,24 @@ def create_post():
         db.session.add(post)
         db.session.commit()
 
-        # Immediate publish attempt (scheduler still handles fallback cases).
+        # For multi-page publish, return immediately and process in background to avoid 504 timeout.
+        if len(page_ids) > 1:
+            app_obj = current_app._get_current_object()
+            tenant_slug = post.tenant_slug or tenant
+            threading.Thread(
+                target=_publish_post_in_background,
+                args=(app_obj, post.id, tenant_slug),
+                daemon=True,
+            ).start()
+            post_data = post.to_dict()
+            return ok_response(
+                data=post_data,
+                message="تم استلام المنشور. جاري النشر بالتتابع على الصفحات المختارة...",
+                legacy={"post": post_data, "status": post.status},
+                status_code=202,
+            )
+
+        # Single-page publish can be attempted synchronously for faster feedback.
         publish_result = publish_single_post_now(
             current_app._get_current_object(),
             post.id,

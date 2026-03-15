@@ -781,6 +781,106 @@ body.publisher-body {
     cursor: pointer;
 }
 
+.page-publish-progress {
+    margin-top: 10px;
+    display: grid;
+    gap: 8px;
+}
+
+.page-progress-item {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.02);
+    padding: 8px 10px;
+}
+
+.page-progress-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.page-progress-order {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: #cbd5e1;
+    background: rgba(148, 163, 184, 0.2);
+}
+
+.page-progress-logo {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--border);
+    background: #0f172a;
+}
+
+.page-progress-name {
+    flex: 1;
+    font-size: 12px;
+    color: #e2e8f0;
+    font-weight: 600;
+}
+
+.page-progress-state {
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.page-progress-bar {
+    margin-top: 6px;
+    height: 3px;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.25);
+    overflow: hidden;
+}
+
+.page-progress-bar > span {
+    display: block;
+    height: 100%;
+    width: 0%;
+    border-radius: 999px;
+    transition: width 0.35s ease;
+}
+
+.page-progress-item.is-queued .page-progress-state {
+    color: #94a3b8;
+}
+
+.page-progress-item.is-loading .page-progress-state {
+    color: #7dd3fc;
+}
+
+.page-progress-item.is-loading .page-progress-bar > span {
+    width: 65%;
+    background: linear-gradient(90deg, #0ea5e9, #38bdf8);
+}
+
+.page-progress-item.is-success .page-progress-state {
+    color: #6ee7b7;
+}
+
+.page-progress-item.is-success .page-progress-bar > span {
+    width: 100%;
+    background: linear-gradient(90deg, #10b981, #34d399);
+}
+
+.page-progress-item.is-failed .page-progress-state {
+    color: #fda4af;
+}
+
+.page-progress-item.is-failed .page-progress-bar > span {
+    width: 100%;
+    background: linear-gradient(90deg, #ef4444, #fb7185);
+}
+
 .page-checkbox {
     display: none;
 }
