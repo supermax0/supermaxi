@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ page_title or "Publisher" }}</title>
-    <link rel="stylesheet" href="/static/publisher_frontend/dist/assets/publisher-app.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='publisher_frontend/dist/assets/publisher-app.css') }}">
 </head>
 
 <body>
@@ -14,7 +14,7 @@
         window.PUBLISHER_API_BASE = "/publisher/api";
         window.PUBLISHER_ENTRY_PATH = "{{ entry_path or '/publisher/' }}";
     </script>
-    <script type="module" src="/static/publisher_frontend/dist/assets/publisher-app.js"></script>
+    <script type="module" src="{{ url_for('static', filename='publisher_frontend/dist/assets/publisher-app.js') }}"></script>
 </body>
 
 </html>
