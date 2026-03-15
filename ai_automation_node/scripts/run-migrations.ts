@@ -24,7 +24,10 @@ async function run() {
 
 run()
   .catch((error) => {
-    console.error("Migration failed:", error);
+    console.error("Migration failed:", error?.message ?? error);
+    if (String(error?.code ?? "").startsWith("28") || String(error?.message ?? "").includes("password")) {
+      console.error("Tip: Check DATABASE_URL in .env (user/password/host must match your PostgreSQL server).");
+    }
     process.exit(1);
   })
   .finally(async () => {

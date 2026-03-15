@@ -73,6 +73,13 @@ cp .env.example .env
 docker compose up --build
 ```
 
+## Deployment on a server
+
+- **DATABASE_URL**: On the server, set `DATABASE_URL` in `.env` to match your real PostgreSQL (user, password, host, port, dbname). The error `password authentication failed for user "postgres"` means the URL does not match the DB server credentials.
+- **Start without failing on migration**: To let the app start even if migration fails (e.g. wrong DB URL or DB not ready), use:
+  - Docker: the Compose command runs `npm run migrate || true && npm run start`.
+  - Manual: `npm run start:with-migrate` (runs migrate then start; migration failure does not stop the server).
+
 ## Sample Endpoints
 
 - `GET /health`

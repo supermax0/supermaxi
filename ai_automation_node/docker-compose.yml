@@ -38,7 +38,7 @@ services:
       - .env
     ports:
       - "4000:4000"
-    command: sh -c "npm run migrate && npm run start"
+    command: sh -c "npm run migrate || true && npm run start"
 
 volumes:
   pgdata:
