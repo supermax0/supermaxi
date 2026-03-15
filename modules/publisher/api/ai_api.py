@@ -26,6 +26,8 @@ def generate_post():
     try:
         text = ai_service.generate_post(topic, tone, length)
         return jsonify({"success": True, "text": text})
+    except RuntimeError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 400
     except Exception as exc:
         current_app.logger.error(traceback.format_exc())
         return jsonify({"success": False, "message": str(exc)}), 500
@@ -43,6 +45,8 @@ def rewrite():
     try:
         text = ai_service.rewrite_post(original, tone)
         return jsonify({"success": True, "text": text})
+    except RuntimeError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 400
     except Exception as exc:
         current_app.logger.error(traceback.format_exc())
         return jsonify({"success": False, "message": str(exc)}), 500
@@ -59,6 +63,8 @@ def hashtags():
     try:
         tags = ai_service.generate_hashtags(topic)
         return jsonify({"success": True, "hashtags": tags})
+    except RuntimeError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 400
     except Exception as exc:
         current_app.logger.error(traceback.format_exc())
         return jsonify({"success": False, "message": str(exc)}), 500

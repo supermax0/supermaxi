@@ -65,24 +65,61 @@ def _get_client():
     if not api_key:
         return None
     try:
-        import openai
-        return openai.OpenAI(api_key=api_key)
-    except ImportError:
-        logger.warning("openai package not installed")
+        from openai import OpenAI  # type: ignore
+        return OpenAI(api_key=api_key)
+    except Exception:
+        # Older openai versions may not expose OpenAI client class.
+        # We fallback in _chat() to legacy ChatCompletion API.
         return None
 
 
 def _chat(messages: list, max_tokens: int = 400) -> str:
-    client = _get_client()
-    if not client:
+    api_key = _resolve_api_key()
+    if not api_key:
         raise RuntimeError("OPENAI_API_KEY غير مضبوط — أضفه من إعدادات Publisher أو عبر .env")
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=messages,
-        max_tokens=max_tokens,
-        temperature=0.8,
-    )
-    return response.choices[0].message.content.strip()
+
+    # Preferred path (openai>=1.x)
+    client = _get_client()
+    if client:
+        try:
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=messages,
+                max_tokens=max_tokens,
+                temperature=0.8,
+            )
+            return (response.choices[0].message.content or "").strip()
+        except Exception as exc:
+            err = str(exc).lower()
+            if "api key" in err or "incorrect" in err or "authentication" in err:
+                raise RuntimeError(
+                    "مفتاح OpenAI غير صالح أو غير مقبول. تأكد من المفتاح من منصة OpenAI ثم احفظه من جديد."
+                ) from exc
+            raise RuntimeError(f"تعذر توليد النص عبر OpenAI: {exc}") from exc
+
+    # Legacy fallback (openai<1.x)
+    try:
+        import openai  # type: ignore
+
+        openai.api_key = api_key
+        response = openai.ChatCompletion.create(
+            model="gpt-4o-mini",
+            messages=messages,
+            max_tokens=max_tokens,
+            temperature=0.8,
+        )
+        return (response["choices"][0]["message"]["content"] or "").strip()
+    except Exception as exc:
+        err = str(exc).lower()
+        if "api key" in err or "incorrect" in err or "authentication" in err:
+            raise RuntimeError(
+                "مفتاح OpenAI غير صالح أو غير مقبول. تأكد من المفتاح من منصة OpenAI ثم احفظه من جديد."
+            ) from exc
+        if "chatcompletion" in err and "attribute" in err:
+            raise RuntimeError(
+                "نسخة مكتبة openai على السيرفر غير متوافقة. حدّث الحزمة إلى نسخة حديثة."
+            ) from exc
+        raise RuntimeError(f"تعذر توليد النص عبر OpenAI: {exc}") from exc
 
 
 # ─────────────────────────────────────────────────────────────────────────────
