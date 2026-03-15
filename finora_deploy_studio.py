@@ -774,6 +774,14 @@ echo "[6] Cleaning static build..."
 rm -rf static/build 2>/dev/null
 
 echo ""
+echo "[6b] Building Social AI frontend (so /social-ai/ loads correctly)..."
+if [ -d "static/ai_agent_frontend" ]; then
+  (cd static/ai_agent_frontend && npm ci --no-audit --no-fund 2>/dev/null || npm install --no-audit --no-fund) && (cd static/ai_agent_frontend && npm run build) || echo "[WARN] Social AI frontend build failed; /social-ai/ may show white page until you run: cd static/ai_agent_frontend && npm run build"
+else
+  echo "[SKIP] static/ai_agent_frontend not found"
+fi
+
+echo ""
 echo "[7] Killing old gunicorn processes and freeing port..."
 sudo pkill -9 gunicorn 2>/dev/null || true
 sudo fuser -k "$PORT"/tcp 2>/dev/null || true

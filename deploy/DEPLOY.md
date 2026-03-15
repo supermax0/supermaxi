@@ -59,14 +59,25 @@ sudo systemctl status finora
 
 ## 7. Nginx
 
-عدّل النطاق في ملف الإعداد ثم انسخه وفعّله:
+عدّل النطاق و**مسار المشروع** في ملف الإعداد ثم انسخه وفعّله. إذا كان المشروع في مسار مختلف (مثل `/var/www/finora/supermaxi`) استبدل `/root/finora-saas` بذلك المسار في الملف في:
+- `location /static` (alias)
+- `location /social-ai/assets/` (alias — لتفادي خطأ MIME type وصفحة بيضاء في واجهة AI Agent Builder)
 
 ```bash
 sudo sed -i 's/YOUR_DOMAIN/yourdomain.com/g' /root/finora-saas/deploy/nginx-finora.conf
+# إذا المشروع تحت مسار آخر: عدّل يدوياً المسارات في الملف قبل النسخ
 sudo cp /root/finora-saas/deploy/nginx-finora.conf /etc/nginx/sites-available/finora
 sudo ln -sf /etc/nginx/sites-available/finora /etc/nginx/sites-enabled/
 sudo nginx -t
 sudo systemctl restart nginx
+```
+
+**صفحة /social-ai/** تحتاج أيضاً بناء الواجهة مرة واحدة (أو عند كل تحديث للكود الأمامي):
+
+```bash
+cd /root/finora-saas/static/ai_agent_frontend
+npm install
+npm run build
 ```
 
 ## 8. SSL (اختياري)
