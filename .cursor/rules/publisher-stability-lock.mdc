@@ -1,0 +1,17 @@
+---
+description: Lock stable Publisher and isolate new work
+alwaysApply: true
+---
+
+# Publisher Stability Lock
+
+Goal: keep the current Publisher production flow stable and unaffected.
+
+- Treat `modules/publisher/**`, `templates/publisher/**`, and `static/publisher/**` as the **stable** release.
+- Do not introduce experimental behavior directly in stable files unless it is a critical bug fix.
+- For new features or redesigns, implement in isolated files first:
+  - `templates/publisher_dev/**`
+  - optional future static assets under `static/publisher_dev/**`
+- Use the dev switch `?dev=1` on Publisher pages to load isolated templates for testing.
+- Merge from dev to stable only after explicit user approval.
+- If a request is ambiguous, prefer protecting stable behavior and ask before touching stable flow.

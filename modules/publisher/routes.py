@@ -16,6 +16,7 @@ from flask import (
     send_from_directory,
     request,
 )
+from jinja2 import TemplateNotFound
 
 publisher_html_bp = Blueprint("publisher_html", __name__)
 
@@ -40,8 +41,30 @@ def _should_use_legacy_ui():
     return True
 
 
+def _should_use_dev_ui():
+    """
+    Development UI switch (isolated from stable UI):
+    - Disabled by default.
+    - Enabled only when query param dev=1 is used.
+    """
+    return request.args.get("dev") == "1"
+
+
 def _render_spa(entry_path: str, page_title: str):
     return render_template("publisher/app.html", entry_path=entry_path, page_title=page_title)
+
+
+def _render_locked_or_dev_template(dev_template: str, stable_template: str):
+    """
+    Render stable template by default.
+    If dev=1 is requested, try isolated publisher_dev template first.
+    """
+    if _should_use_dev_ui():
+        try:
+            return render_template(dev_template)
+        except TemplateNotFound:
+            return render_template(stable_template)
+    return render_template(stable_template)
 
 
 @publisher_html_bp.route("/publisher")
@@ -76,7 +99,10 @@ def dashboard():
     if guard:
         return guard
     if _should_use_legacy_ui():
-        return render_template("publisher/dashboard.html")
+        return _render_locked_or_dev_template(
+            "publisher_dev/dashboard.html",
+            "publisher/dashboard.html",
+        )
     return _render_spa("/publisher/", "لوحة الناشر")
 
 
@@ -86,7 +112,10 @@ def create_post():
     if guard:
         return guard
     if _should_use_legacy_ui():
-        return render_template("publisher/create_post.html")
+        return _render_locked_or_dev_template(
+            "publisher_dev/create_post.html",
+            "publisher/create_post.html",
+        )
     return _render_spa("/publisher/create", "إنشاء منشور")
 
 
@@ -96,7 +125,10 @@ def media_library():
     if guard:
         return guard
     if _should_use_legacy_ui():
-        return render_template("publisher/media_library.html")
+        return _render_locked_or_dev_template(
+            "publisher_dev/media_library.html",
+            "publisher/media_library.html",
+        )
     return _render_spa("/publisher/media", "مكتبة الوسائط")
 
 
@@ -106,7 +138,10 @@ def settings():
     if guard:
         return guard
     if _should_use_legacy_ui():
-        return render_template("publisher/settings.html")
+        return _render_locked_or_dev_template(
+            "publisher_dev/settings.html",
+            "publisher/settings.html",
+        )
     return _render_spa("/publisher/settings", "إعدادات الناشر")
 
 
