@@ -48,6 +48,32 @@ def _render_spa(entry_path: str, page_title: str):
     return render_template("publisher/app.html", entry_path=entry_path, page_title=page_title)
 
 
+@publisher_html_bp.route("/publisher")
+def normalize_duplicate_prefix_root():
+    """Handle accidental /publisher/publisher URL and redirect to canonical /publisher/."""
+    guard = _require_login()
+    if guard:
+        return guard
+    qs = request.query_string.decode("utf-8")
+    target = "/publisher/"
+    if qs:
+        target = f"{target}?{qs}"
+    return redirect(target, code=302)
+
+
+@publisher_html_bp.route("/publisher/<path:subpath>")
+def normalize_duplicate_prefix_path(subpath):
+    """Handle accidental /publisher/publisher/<path> and redirect to /publisher/<path>."""
+    guard = _require_login()
+    if guard:
+        return guard
+    qs = request.query_string.decode("utf-8")
+    target = f"/publisher/{subpath}"
+    if qs:
+        target = f"{target}?{qs}"
+    return redirect(target, code=302)
+
+
 @publisher_html_bp.route("/")
 def dashboard():
     guard = _require_login()
