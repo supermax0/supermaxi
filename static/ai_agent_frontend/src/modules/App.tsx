@@ -35,8 +35,7 @@ const NODE_TYPES: Array<{ id: string; label: string; icon: string; description: 
 export const App: React.FC = () => {
   const meta = useEditorStore((s) => s.meta);
   const setMeta = useEditorStore((s) => s.setMeta);
-  const { selectedNodeId, selectedNode } = useEditorStore((s) => ({
-    selectedNodeId: s.selectedNodeId,
+  const { selectedNode } = useEditorStore((s) => ({
     selectedNode: s.nodes.find((n) => n.id === s.selectedNodeId),
   }));
   const nodes = useEditorStore((s) => s.nodes);
