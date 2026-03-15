@@ -33,6 +33,66 @@ def _resolve_media_file_path(app, media_obj):
     return os.path.join(media_root, tenant_dir, sub, media_obj.filename)
 
 
+def _is_token_expired_result(result: dict) -> bool:
+    if not isinstance(result, dict):
+        return False
+    code = result.get("error_code")
+    msg = str(result.get("message") or "").lower()
+    if code == 190:
+        return True
+    return ("error validating access token" in msg) or ("session has expired" in msg) or ("invalid oauth access token" in msg)
+
+
+def _refresh_page_token_for_page(
+    *,
+    tenant_slug,
+    page_id,
+    page,
+    db,
+    fb,
+    decrypt_token,
+    encrypt_token,
+    PublisherSettings,
+    logger,
+):
+    """
+    Try refreshing page token using stored user token in PublisherSettings.
+    Returns (new_page_token | None, error_message | None).
+    """
+    try:
+        tenant_key = tenant_slug or "default"
+        settings = PublisherSettings.get(tenant_key)
+        if not settings or not settings.fb_user_token:
+            return None, "لا يوجد User Token محفوظ للتجديد التلقائي."
+
+        try:
+            user_token = decrypt_token(settings.fb_user_token)
+        except Exception:
+            user_token = settings.fb_user_token
+
+        pages_result = fb.get_user_pages(user_token)
+        if not pages_result.get("success"):
+            return None, f"فشل تحديث Page Token: {pages_result.get('message')}"
+
+        pages = pages_result.get("pages") or []
+        matched = next((p for p in pages if str(p.get("id") or "") == str(page_id)), None)
+        if not matched:
+            return None, "لم يتم العثور على الصفحة ضمن الصفحات المرتبطة بعد تحديث التوكن."
+
+        new_token = (matched.get("access_token") or "").strip()
+        if not new_token:
+            return None, "لم يرجع فيسبوك Page Token صالح بعد التحديث."
+
+        page.page_token = encrypt_token(new_token)
+        page.page_name = matched.get("name") or page.page_name
+        db.session.commit()
+        return new_token, None
+    except Exception as exc:
+        db.session.rollback()
+        logger.exception("Auto token refresh failed for page %s: %s", page_id, exc)
+        return None, str(exc)
+
+
 def _publish_single_post_record(*, app, db, post, PublisherPage, PublisherMedia, fb, decrypt_token, logger):
     """Publish one PublisherPost now and persist final status."""
     try:
@@ -52,6 +112,18 @@ def _publish_single_post_record(*, app, db, post, PublisherPage, PublisherMedia,
     fb_post_ids = {}
     errors = []
 
+    from modules.publisher.models.publisher_settings import PublisherSettings
+    from modules.publisher.services.token_utils import encrypt_token
+
+    def _publish_with_token(page_id, token, text, media_list):
+        if not media_list:
+            return fb.publish_text_post(page_id, token, text)
+        m = media_list[0]
+        file_path = _resolve_media_file_path(app, m)
+        if m.media_type == "image":
+            return fb.publish_photo_post(page_id, token, text, file_path)
+        return fb.publish_video_post(page_id, token, text, file_path)
+
     for page_id in (post.page_ids or []):
         page = PublisherPage.query.filter_by(
             tenant_slug=post.tenant_slug, page_id=page_id
@@ -66,24 +138,34 @@ def _publish_single_post_record(*, app, db, post, PublisherPage, PublisherMedia,
             errors.append(f"token decrypt error for {page_id}: {exc}")
             continue
 
-        text = post.text or ""
-        result = {"success": False, "message": "no media"}
-
         media_list = []
         if post.media_ids:
             media_list = PublisherMedia.query.filter(
                 PublisherMedia.id.in_(post.media_ids)
             ).all()
 
-        if not media_list:
-            result = fb.publish_text_post(page_id, token, text)
-        else:
-            m = media_list[0]
-            file_path = _resolve_media_file_path(app, m)
-            if m.media_type == "image":
-                result = fb.publish_photo_post(page_id, token, text, file_path)
+        text = post.text or ""
+        result = _publish_with_token(page_id, token, text, media_list)
+
+        # Auto-refresh page token once on token-expired errors, then retry publish.
+        if not result.get("success") and _is_token_expired_result(result):
+            new_token, refresh_err = _refresh_page_token_for_page(
+                tenant_slug=post.tenant_slug,
+                page_id=page_id,
+                page=page,
+                db=db,
+                fb=fb,
+                decrypt_token=decrypt_token,
+                encrypt_token=encrypt_token,
+                PublisherSettings=PublisherSettings,
+                logger=logger,
+            )
+            if new_token:
+                result = _publish_with_token(page_id, new_token, text, media_list)
             else:
-                result = fb.publish_video_post(page_id, token, text, file_path)
+                errors.append(f"{page_id}: انتهت صلاحية التوكن وتعذر تجديده تلقائياً. {refresh_err}")
+                logger.error("Token refresh failed for page %s: %s", page_id, refresh_err)
+                continue
 
         if result.get("success"):
             fb_post_ids[page_id] = (result.get("data") or {}).get("id", "")

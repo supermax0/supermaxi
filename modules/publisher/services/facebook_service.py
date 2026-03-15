@@ -33,7 +33,7 @@ def _retry_post(url: str, **kwargs) -> dict:
             data = resp.json()
         except Exception as exc:
             logger.error("FB request error (attempt %d): %s", attempt + 1, exc)
-            last_err = {"success": False, "message": str(exc)}
+            last_err = {"success": False, "message": str(exc), "error_code": None, "error_subcode": None}
             time.sleep(2 ** attempt)
             continue
 
@@ -42,6 +42,7 @@ def _retry_post(url: str, **kwargs) -> dict:
 
         error = data.get("error", {})
         code = error.get("code", 0)
+        subcode = error.get("error_subcode")
         msg = error.get("message", "Unknown Facebook error")
         logger.warning("FB error code=%s message=%s (attempt %d)", code, msg, attempt + 1)
 
@@ -49,13 +50,18 @@ def _retry_post(url: str, **kwargs) -> dict:
             wait = 2 ** attempt * 5   # 5s, 10s, 20s
             logger.info("Rate-limited — waiting %ds before retry", wait)
             time.sleep(wait)
-            last_err = {"success": False, "message": f"Rate limited: {msg}"}
+            last_err = {
+                "success": False,
+                "message": f"Rate limited: {msg}",
+                "error_code": code,
+                "error_subcode": subcode,
+            }
             continue
 
         # Non-retryable error
-        return {"success": False, "message": msg}
+        return {"success": False, "message": msg, "error_code": code, "error_subcode": subcode}
 
-    return last_err or {"success": False, "message": "Max retries exceeded"}
+    return last_err or {"success": False, "message": "Max retries exceeded", "error_code": None, "error_subcode": None}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -70,11 +76,17 @@ def get_user_pages(user_token: str) -> dict:
         data = resp.json()
         if "data" in data:
             return {"success": True, "pages": data["data"]}
-        error = data.get("error", {}).get("message", "Could not fetch pages")
-        return {"success": False, "message": error}
+        err = data.get("error", {}) or {}
+        error = err.get("message", "Could not fetch pages")
+        return {
+            "success": False,
+            "message": error,
+            "error_code": err.get("code"),
+            "error_subcode": err.get("error_subcode"),
+        }
     except Exception as exc:
         logger.error("get_user_pages error: %s", exc)
-        return {"success": False, "message": str(exc)}
+        return {"success": False, "message": str(exc), "error_code": None, "error_subcode": None}
 
 
 def publish_text_post(page_id: str, page_token: str, text: str) -> dict:
