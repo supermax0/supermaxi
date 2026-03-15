@@ -1135,6 +1135,16 @@ def _start_ai_agent_scheduler():
 
 _start_ai_agent_scheduler()
 
+# Backward-compatible alias for typoed social-ai route
+@app.route("/social-i")
+@app.route("/social-i/")
+def social_i_alias():
+    return redirect("/social-ai/", code=302)
+
+@app.route("/social-i/<path:rest>")
+def social_i_alias_rest(rest):
+    return redirect(f"/social-ai/{rest}", code=302)
+
 # =====================================
 # Run
 # =====================================

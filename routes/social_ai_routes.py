@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 
-from flask import Blueprint, jsonify, render_template, request, session, g, send_from_directory, current_app
+from flask import Blueprint, jsonify, render_template, request, session, g, send_from_directory, current_app, redirect
 
 from extensions import db
 from models.social_account import SocialAccount
@@ -33,7 +33,7 @@ def _ai_agent_dist_dir() -> Path:
 def dashboard():
     """AI Agent Builder standalone page (served from Vite build output)."""
     if not session.get("user_id"):
-        return render_template("401.html"), 401
+        return redirect("/", code=302)
 
     dist_dir = _ai_agent_dist_dir()
     index_file = dist_dir / "index.html"
@@ -48,7 +48,7 @@ def dashboard():
 def ai_builder_assets(filename: str):
     """Serve built assets for /social-ai/ page."""
     if not session.get("user_id"):
-        return render_template("401.html"), 401
+        return ("", 401)
 
     assets_dir = _ai_agent_dist_dir() / "assets"
     return send_from_directory(str(assets_dir), filename)
