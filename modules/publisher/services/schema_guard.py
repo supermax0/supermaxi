@@ -62,7 +62,7 @@ _LAST_SCHEMA_CHECK_TS = 0.0
 _SCHEMA_CHECK_INTERVAL_SECONDS = 300
 
 
-def ensure_publisher_schema() -> None:
+def ensure_publisher_schema(*, force: bool = False) -> None:
     """
     Best-effort schema repair:
     - db.create_all() for missing tables
@@ -70,12 +70,12 @@ def ensure_publisher_schema() -> None:
     """
     global _LAST_SCHEMA_CHECK_TS
     now = time.time()
-    if now - _LAST_SCHEMA_CHECK_TS < _SCHEMA_CHECK_INTERVAL_SECONDS:
+    if (not force) and (now - _LAST_SCHEMA_CHECK_TS < _SCHEMA_CHECK_INTERVAL_SECONDS):
         return
 
     with _SCHEMA_LOCK:
         now = time.time()
-        if now - _LAST_SCHEMA_CHECK_TS < _SCHEMA_CHECK_INTERVAL_SECONDS:
+        if (not force) and (now - _LAST_SCHEMA_CHECK_TS < _SCHEMA_CHECK_INTERVAL_SECONDS):
             return
 
         try:

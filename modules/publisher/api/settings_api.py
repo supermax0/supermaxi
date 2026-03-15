@@ -27,7 +27,8 @@ def _tenant():
 @settings_api_bp.route("/api/settings", methods=["GET"])
 def get_settings():
     try:
-        ensure_publisher_schema()
+        # Force schema sync here to avoid transient 500 when new settings columns are deployed.
+        ensure_publisher_schema(force=True)
         s = PublisherSettings.get(_tenant())
         payload = s.to_dict()
         return ok_response(data=payload, legacy={"settings": payload})
@@ -47,7 +48,8 @@ def save_settings():
     أي حقل فارغ = لا يُعدَّل (نبقّي القيمة القديمة).
     """
     try:
-        ensure_publisher_schema()
+        # Force schema sync to ensure settings fields are available before query/commit.
+        ensure_publisher_schema(force=True)
         data = request.get_json() or {}
         s = PublisherSettings.get(_tenant())
 
@@ -91,7 +93,8 @@ def connect_pages():
     from modules.publisher.services.token_utils import decrypt_token
 
     try:
-        ensure_publisher_schema()
+        # Force schema sync because this endpoint reads PublisherSettings too.
+        ensure_publisher_schema(force=True)
         data = request.get_json() or {}
         tenant = _tenant()
         s = PublisherSettings.get(tenant)
