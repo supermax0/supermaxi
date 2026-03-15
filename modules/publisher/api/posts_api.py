@@ -90,11 +90,16 @@ def create_post():
         if publish_result.get("success"):
             return jsonify({"success": True, "post": post.to_dict(),
                             "message": "تمت إضافة المنشور ومعالجته"})
+        publish_errors = publish_result.get("errors") or []
+        details = " | ".join([str(e) for e in publish_errors if e])[:450]
         return jsonify({
             "success": False,
             "post": post.to_dict(),
             "status": post.status,
-            "message": "لم يكتمل النشر الفوري. تم وضع المنشور في الانتظار وسيُعاد نشره عبر المجدول."
+            "message": (
+                "لم يكتمل النشر الفوري. تم وضع المنشور في الانتظار وسيُعاد نشره عبر المجدول."
+                + (f" السبب: {details}" if details else "")
+            )
         }), 200
     except Exception as e:
         db.session.rollback()

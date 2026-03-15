@@ -16,6 +16,8 @@ import sys
 from datetime import datetime, timezone
 from logging.handlers import RotatingFileHandler
 
+from modules.publisher.services.schema_guard import ensure_publisher_schema
+
 _scheduler = None
 _lock_fd = None
 
@@ -33,8 +35,19 @@ def _resolve_media_file_path(app, media_obj):
 
 def _publish_single_post_record(*, app, db, post, PublisherPage, PublisherMedia, fb, decrypt_token, logger):
     """Publish one PublisherPost now and persist final status."""
-    post.status = "publishing"
-    db.session.commit()
+    try:
+        ensure_publisher_schema()
+        post.status = "publishing"
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        logger.exception("Failed to switch post %s to publishing: %s", getattr(post, "id", "?"), exc)
+        return {
+            "success": False,
+            "status": "queued",
+            "errors": [f"db_prepare_error: {exc}"],
+            "facebook_post_ids": {},
+        }
 
     fb_post_ids = {}
     errors = []
@@ -86,7 +99,26 @@ def _publish_single_post_record(*, app, db, post, PublisherPage, PublisherMedia,
     else:
         post.status = "published"
         post.error_message = None
-    db.session.commit()
+    try:
+        ensure_publisher_schema()
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        logger.exception("Failed final commit for post %s: %s", getattr(post, "id", "?"), exc)
+        # محاولة أخيرة لوضع الحالة failed حتى لا يبقى queued
+        try:
+            ensure_publisher_schema()
+            post.status = "failed"
+            post.error_message = f"db_finalize_error: {exc}"
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+        return {
+            "success": False,
+            "status": "failed",
+            "errors": [f"db_finalize_error: {exc}"],
+            "facebook_post_ids": fb_post_ids,
+        }
     return {
         "success": post.status in ("published", "partial"),
         "status": post.status,
@@ -139,6 +171,7 @@ def _publish_due_posts(app):
             from modules.publisher.services import facebook_service as fb
             from modules.publisher.services.token_utils import decrypt_token
 
+            ensure_publisher_schema()
             now = datetime.now(timezone.utc).replace(tzinfo=None)
 
             # Fetch queued (publish_type=now) + due scheduled posts
@@ -216,6 +249,7 @@ def publish_single_post_now(app, post_id: int):
             from modules.publisher.services import facebook_service as fb
             from modules.publisher.services.token_utils import decrypt_token
 
+            ensure_publisher_schema()
             post = PublisherPost.query.get(post_id)
             if not post:
                 return {"success": False, "status": "failed", "errors": [f"post {post_id} not found"]}
