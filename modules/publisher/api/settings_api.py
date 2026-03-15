@@ -22,13 +22,24 @@ def _tenant():
     return getattr(g, "tenant", None) or session.get("tenant_slug") or "default"
 
 
+def _ensure_schema_safe():
+    """
+    Backward-compatible schema sync:
+    - Prefer force=True when supported.
+    - Fallback to old signature for partially deployed environments.
+    """
+    try:
+        ensure_publisher_schema(force=True)
+    except TypeError:
+        ensure_publisher_schema()
+
+
 # ── GET / SAVE App Credentials ────────────────────────────────────────────────
 
 @settings_api_bp.route("/api/settings", methods=["GET"])
 def get_settings():
     try:
-        # Force schema sync here to avoid transient 500 when new settings columns are deployed.
-        ensure_publisher_schema(force=True)
+        _ensure_schema_safe()
         s = PublisherSettings.get(_tenant())
         payload = s.to_dict()
         return ok_response(data=payload, legacy={"settings": payload})
@@ -48,8 +59,7 @@ def save_settings():
     أي حقل فارغ = لا يُعدَّل (نبقّي القيمة القديمة).
     """
     try:
-        # Force schema sync to ensure settings fields are available before query/commit.
-        ensure_publisher_schema(force=True)
+        _ensure_schema_safe()
         data = request.get_json() or {}
         s = PublisherSettings.get(_tenant())
 
@@ -93,8 +103,7 @@ def connect_pages():
     from modules.publisher.services.token_utils import decrypt_token
 
     try:
-        # Force schema sync because this endpoint reads PublisherSettings too.
-        ensure_publisher_schema(force=True)
+        _ensure_schema_safe()
         data = request.get_json() or {}
         tenant = _tenant()
         s = PublisherSettings.get(tenant)
