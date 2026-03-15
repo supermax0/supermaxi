@@ -142,3 +142,43 @@ def generate_hashtags(topic: str) -> List[str]:
         if tag:
             result.append(tag)
     return result[:12]
+
+
+def create_page_caption_variant(
+    base_text: str,
+    *,
+    page_name: str = "",
+    variant_index: int = 1,
+    total_variants: int = 1,
+) -> str:
+    """
+    Create a slightly different caption per page while preserving meaning.
+    Falls back to the original text when AI output is empty.
+    """
+    original = (base_text or "").strip()
+    if not original:
+        return ""
+    if total_variants <= 1:
+        return original
+
+    page_label = (page_name or "بدون اسم").strip()
+    max_tokens = min(500, max(180, int(len(original.split()) * 3)))
+    system = (
+        "أنت محرر محتوى سوشيال ميديا. مهمتك إعادة صياغة النص بشكل خفيف فقط، "
+        "مع الحفاظ على نفس الفكرة والهدف."
+    )
+    user = (
+        f"النص الأساسي:\n{original}\n\n"
+        f"المطلوب: أنشئ نسخة بديلة رقم {variant_index} من {total_variants} "
+        f"مناسبة للنشر على صفحة: {page_label}.\n"
+        "الشروط:\n"
+        "- اختلاف خفيف فقط في الصياغة (لا تغير الرسالة الأساسية).\n"
+        "- حافظ على نفس اللغة والأسلوب العام.\n"
+        "- بدون شرح أو ملاحظات إضافية.\n"
+        "- أرجع النص النهائي فقط."
+    )
+    out = _chat(
+        [{"role": "system", "content": system}, {"role": "user", "content": user}],
+        max_tokens=max_tokens,
+    ).strip()
+    return out or original

@@ -133,6 +133,10 @@ def _publish_single_post_record(*, app, db, post, PublisherPage, PublisherMedia,
 
     page_ids = post.page_ids or []
     total_pages = len(page_ids)
+    base_text = post.text or ""
+    use_ai_variants = bool(base_text.strip()) and total_pages > 1
+    ai_variation_available = True
+
     for index, page_id in enumerate(page_ids):
         try:
             page = PublisherPage.query.filter_by(
@@ -156,7 +160,32 @@ def _publish_single_post_record(*, app, db, post, PublisherPage, PublisherMedia,
                     PublisherMedia.tenant_slug == post.tenant_slug
                 ).all()
 
-            text = post.text or ""
+            text = base_text
+            if use_ai_variants and index > 0 and ai_variation_available:
+                try:
+                    from modules.publisher.services import ai_service
+
+                    text = ai_service.create_page_caption_variant(
+                        base_text,
+                        page_name=page.page_name or page_id,
+                        variant_index=index + 1,
+                        total_variants=total_pages,
+                    )
+                    logger.info(
+                        "Generated AI caption variant for post %s page %s",
+                        post.id,
+                        page_id,
+                    )
+                except Exception as exc:
+                    # Fallback to original caption if AI key/package is unavailable.
+                    ai_variation_available = False
+                    text = base_text
+                    logger.warning(
+                        "AI caption variation unavailable for post %s: %s. "
+                        "Continuing with original caption.",
+                        post.id,
+                        exc,
+                    )
             result = _publish_with_token(page_id, token, text, media_list)
 
             # Auto-refresh page token once on token-expired errors, then retry publish.
