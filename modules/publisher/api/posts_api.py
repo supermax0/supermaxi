@@ -86,12 +86,16 @@ def create_post():
             return jsonify({"success": False, "post": post.to_dict(),
                             "message": post.error_message or "فشل النشر الفوري. راجع إعدادات الصفحة/التوكن."}), 400
 
-        # fallback
+        # إذا لم يكتمل النشر الفوري، نُرجع حالة واضحة بدل نجاح وهمي
         if publish_result.get("success"):
             return jsonify({"success": True, "post": post.to_dict(),
                             "message": "تمت إضافة المنشور ومعالجته"})
-        return jsonify({"success": True, "post": post.to_dict(),
-                        "message": "تمت إضافة المنشور إلى قائمة الانتظار"})
+        return jsonify({
+            "success": False,
+            "post": post.to_dict(),
+            "status": post.status,
+            "message": "لم يكتمل النشر الفوري. تم وضع المنشور في الانتظار وسيُعاد نشره عبر المجدول."
+        }), 200
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(traceback.format_exc())

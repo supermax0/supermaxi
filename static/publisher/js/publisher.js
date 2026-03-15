@@ -290,6 +290,41 @@ function updateSelectedMediaChip() {
     chip.textContent = selectedMediaIds.length ? ('✔ ' + selectedMediaIds.length + ' وسيط مختار') : '';
 }
 
+function setPublishStatus(type, msg) {
+    const box = document.getElementById('publishStatusBox');
+    if (!box) return;
+    box.style.display = 'block';
+    box.textContent = msg || '';
+    if (type === 'success') {
+        box.style.background = 'rgba(16,185,129,0.12)';
+        box.style.border = '1px solid rgba(16,185,129,0.35)';
+        box.style.color = '#10b981';
+    } else if (type === 'error') {
+        box.style.background = 'rgba(239,68,68,0.12)';
+        box.style.border = '1px solid rgba(239,68,68,0.35)';
+        box.style.color = '#ef4444';
+    } else {
+        box.style.background = 'rgba(59,130,246,0.12)';
+        box.style.border = '1px solid rgba(59,130,246,0.35)';
+        box.style.color = '#60a5fa';
+    }
+}
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function waitForPostFinalStatus(postId, timeoutMs = 30000) {
+    const started = Date.now();
+    while (Date.now() - started < timeoutMs) {
+        const list = await API.posts();
+        const post = (list.posts || []).find(p => Number(p.id) === Number(postId));
+        if (post && ['published', 'failed', 'partial'].includes(post.status)) return post;
+        await sleep(2000);
+    }
+    return null;
+}
+
 async function submitPost(e) {
     e.preventDefault();
     const text = document.getElementById('postText').value.trim();
@@ -302,6 +337,7 @@ async function submitPost(e) {
     const btn = document.getElementById('submitBtn');
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span> جاري الإرسال…';
+    setPublishStatus('info', publishMode === 'scheduled' ? 'جاري حفظ الجدولة…' : 'جاري محاولة النشر الفوري…');
 
     try {
         let endpoint = '/publisher/api/posts/create';
@@ -322,14 +358,60 @@ async function submitPost(e) {
 
         if (r.success) {
             toast(r.message || 'تمت العملية بنجاح', 'success');
-            document.getElementById('postForm').reset();
-            updatePreview();
-            selectedMediaIds = [];
-            sessionStorage.removeItem(SELECTED_MEDIA_KEY);
-            updateSelectedMediaChip();
+            if (publishMode === 'scheduled') {
+                setPublishStatus('success', r.message || 'تمت الجدولة بنجاح');
+                document.getElementById('postForm').reset();
+                updatePreview();
+                selectedMediaIds = [];
+                sessionStorage.removeItem(SELECTED_MEDIA_KEY);
+                updateSelectedMediaChip();
+            } else {
+                const post = r.post || {};
+                if (post.status === 'published') {
+                    setPublishStatus('success', 'تم النشر الفوري بنجاح ✅');
+                    document.getElementById('postForm').reset();
+                    updatePreview();
+                    selectedMediaIds = [];
+                    sessionStorage.removeItem(SELECTED_MEDIA_KEY);
+                    updateSelectedMediaChip();
+                } else if (post.status === 'partial') {
+                    setPublishStatus('info', 'تم النشر جزئياً على بعض الصفحات. راجع لوحة التحكم.');
+                } else {
+                    setPublishStatus('info', 'تم إرسال الطلب، جاري تتبع حالة النشر…');
+                    const finalPost = post.id ? await waitForPostFinalStatus(post.id, 30000) : null;
+                    if (!finalPost) {
+                        setPublishStatus('info', 'تم استلام الطلب لكن لم تكتمل النتيجة بعد. راجع لوحة التحكم خلال دقيقة.');
+                    } else if (finalPost.status === 'published') {
+                        setPublishStatus('success', 'اكتمل النشر بنجاح ✅');
+                    } else if (finalPost.status === 'partial') {
+                        setPublishStatus('info', 'تم النشر جزئياً على بعض الصفحات.');
+                    } else {
+                        setPublishStatus('error', 'فشل النشر: ' + (finalPost.error_message || 'تحقق من التوكن وصلاحيات الصفحة.'));
+                    }
+                }
+            }
         } else {
-            toast(r.message || 'خطأ', 'error');
+            const post = r.post || {};
+            if (publishMode === 'now' && post.id && ['queued', 'publishing'].includes(post.status)) {
+                setPublishStatus('info', r.message || 'تعذر إكمال النشر الفوري، جاري تتبع النشر عبر المجدول…');
+                const finalPost = await waitForPostFinalStatus(post.id, 60000);
+                if (!finalPost) {
+                    setPublishStatus('info', 'المنشور في الانتظار. راجع لوحة التحكم خلال دقيقة.');
+                } else if (finalPost.status === 'published') {
+                    setPublishStatus('success', 'اكتمل النشر عبر المجدول ✅');
+                } else if (finalPost.status === 'partial') {
+                    setPublishStatus('info', 'تم النشر جزئياً عبر المجدول.');
+                } else {
+                    setPublishStatus('error', 'فشل النشر: ' + (finalPost.error_message || 'تحقق من إعدادات الصفحة.'));
+                }
+            } else {
+                setPublishStatus('error', r.message || 'خطأ في النشر');
+                toast(r.message || 'خطأ', 'error');
+            }
         }
-    } catch (err) { toast('خطأ في الاتصال بالخادم', 'error'); }
+    } catch (err) {
+        setPublishStatus('error', 'خطأ في الاتصال بالخادم');
+        toast('خطأ في الاتصال بالخادم', 'error');
+    }
     finally { btn.disabled = false; btn.innerHTML = publishMode === 'scheduled' ? '📅 جدولة' : '🚀 نشر الآن'; }
 }
