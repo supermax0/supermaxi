@@ -75,10 +75,12 @@ sudo systemctl restart nginx
 **صفحة /social-ai/** تحتاج أيضاً بناء الواجهة مرة واحدة (أو عند كل تحديث للكود الأمامي):
 
 ```bash
-cd /root/finora-saas/static/ai_agent_frontend
+cd /root/finora-saas/static/ai_agent_frontend   # أو مسار مشروعك، مثلاً /var/www/finora/supermaxi/static/ai_agent_frontend
 npm install
 npm run build
 ```
+
+إذا ظهر `vite: Permission denied`، المشروع محدّث لاستخدام `npx vite build` لتفادي المشكلة. إن استمر الخطأ شغّل: `chmod -R +x node_modules/.bin` ثم `npm run build` مرة أخرى.
 
 ## 8. SSL (اختياري)
 

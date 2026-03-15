@@ -7,12 +7,12 @@
     "npm": ">=9"
   },
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "npx vite",
+    "build": "npx vite build",
     "typecheck": "tsc --noEmit",
     "lint": "eslint \"src/**/*.{ts,tsx}\" --max-warnings=0",
-    "build:ci": "npm run typecheck && npm run lint && vite build --mode production",
-    "preview": "vite preview"
+    "build:ci": "npm run typecheck && npm run lint && npx vite build --mode production",
+    "preview": "npx vite preview"
   },
   "dependencies": {
     "react": "^18.3.1",
