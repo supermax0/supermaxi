@@ -56,6 +56,7 @@ from routes.delivery_agent import delivery_agent_bp
 from routes.pages import pages_bp
 from routes.invoice_store import invoice_store_bp
 from telegram_bot import telegram_bp
+from api_workflows import workflow_api
 from models.ai_agent import AgentWorkflow, AgentExecution
 from social_ai.workflow_engine import execute_workflow
 
@@ -891,6 +892,7 @@ app.register_blueprint(index_bp)
 app.register_blueprint(payments_bp)
 app.register_blueprint(ai_bp, url_prefix="/ai")
 app.register_blueprint(social_ai_bp, url_prefix="/social-ai")
+app.register_blueprint(workflow_api)
 
 app.register_blueprint(pos_bp)
 app.register_blueprint(employees_bp, url_prefix="/employees")

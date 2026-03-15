@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
 export default defineConfig(({ mode }) => ({
+  base: "/social-ai/",
   plugins: [react()],
   root: ".",
   cacheDir: "node_modules/.vite-cache",

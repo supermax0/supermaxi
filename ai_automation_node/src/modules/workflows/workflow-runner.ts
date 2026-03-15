@@ -1,0 +1,262 @@
+import { query } from "../../lib/db.js";
+import { evaluateSimpleCondition } from "./expression.js";
+import { generateText } from "../ai/openai.service.js";
+import {
+  EXTRACTOR_AGENT_PROMPT,
+  FALLBACK_SAFETY_PROMPT,
+  KNOWLEDGE_RAG_PROMPT,
+  ROUTER_AGENT_PROMPT,
+  SALES_AGENT_PROMPT,
+} from "../../prompts/agent-templates.js";
+
+type NodeDef = {
+  id: string;
+  type: string;
+  data?: Record<string, unknown>;
+};
+
+type EdgeDef = {
+  source: string;
+  target: string;
+  on?: string;
+};
+
+type WorkflowGraph = {
+  nodes: NodeDef[];
+  edges: EdgeDef[];
+};
+
+export type WorkflowRunResult = {
+  executionId: number;
+  status: "success" | "failed";
+  context: Record<string, unknown>;
+};
+
+function renderTemplate(input: string, context: Record<string, unknown>): string {
+  return input.replace(/\{\{\s*([a-zA-Z0-9_.$-]+)\s*\}\}/g, (_, key: string) => {
+    const value = context[key];
+    return value === null || value === undefined ? "" : String(value);
+  });
+}
+
+function nextNodeId(currentNodeId: string, edges: EdgeDef[], conditionResult?: boolean): string | null {
+  const candidates = edges.filter((edge) => edge.source === currentNodeId);
+  if (!candidates.length) return null;
+
+  if (conditionResult === true) {
+    return candidates.find((c) => c.on === "true")?.target ?? candidates[0].target;
+  }
+  if (conditionResult === false) {
+    return candidates.find((c) => c.on === "false")?.target ?? candidates[0].target;
+  }
+  return candidates[0].target;
+}
+
+async function logNode(
+  executionId: number,
+  node: NodeDef,
+  status: "running" | "success" | "failed",
+  inputSnapshot?: Record<string, unknown>,
+  outputSnapshot?: Record<string, unknown>,
+  errorMessage?: string,
+) {
+  await query(
+    `
+      INSERT INTO ai_agent_execution_logs
+      (execution_id, node_id, node_type, status, input_snapshot, output_snapshot, error_message)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `,
+    [
+      executionId,
+      node.id,
+      node.type,
+      status,
+      inputSnapshot ? JSON.stringify(inputSnapshot) : null,
+      outputSnapshot ? JSON.stringify(outputSnapshot) : null,
+      errorMessage ?? null,
+    ],
+  );
+}
+
+async function runAiTemplateNode(
+  prompt: string,
+  context: Record<string, unknown>,
+  maxTokens = 600,
+): Promise<Record<string, unknown>> {
+  const userMessage = renderTemplate(prompt, context);
+  const output = await generateText(
+    [
+      { role: "system", content: "Return concise, production-safe output." },
+      { role: "user", content: userMessage },
+    ],
+    maxTokens,
+  );
+  return { ai_output: output };
+}
+
+async function runSqlSaveOrder(context: Record<string, unknown>) {
+  const name = String(context.name ?? "عميل");
+  const phone = String(context.phone ?? "").trim();
+  const address = String(context.address ?? "");
+  const productName = String(context.product_name ?? context.product ?? "منتج");
+  const quantity = Number(context.quantity ?? 1) || 1;
+  const price = Number(context.price ?? 0);
+
+  const customer = await query<{ id: number }>(
+    `
+      INSERT INTO customers (name, phone, address)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (phone) DO UPDATE SET
+        name = EXCLUDED.name,
+        address = EXCLUDED.address
+      RETURNING id
+    `,
+    [name, phone || `temp-${Date.now()}`, address],
+  );
+
+  const customerId = customer.rows[0].id;
+  const product = await query<{ id: number }>(
+    `
+      INSERT INTO products (name, sku, price, stock)
+      VALUES ($1, $2, $3, 0)
+      ON CONFLICT (sku) DO UPDATE SET name = EXCLUDED.name
+      RETURNING id
+    `,
+    [productName, `sku-${productName.toLowerCase().replace(/\s+/g, "-")}`, price],
+  );
+
+  const productId = product.rows[0].id;
+  const totalPrice = Number((price * quantity).toFixed(2));
+  const order = await query<{ id: number }>(
+    `
+      INSERT INTO orders (customer_id, product_id, quantity, total_price, status, channel)
+      VALUES ($1, $2, $3, $4, 'pending', $5)
+      RETURNING id
+    `,
+    [customerId, productId, quantity, totalPrice, String(context.channel ?? "unknown")],
+  );
+
+  return {
+    order_id: order.rows[0].id,
+    customer_id: customerId,
+    product_id: productId,
+    total_price: totalPrice,
+  };
+}
+
+export async function runWorkflowById(
+  workflowId: number,
+  tenantSlug: string,
+  userId: string,
+  initialContext: Record<string, unknown> = {},
+): Promise<WorkflowRunResult> {
+  const workflowResult = await query<{ graph_json: WorkflowGraph }>(
+    `
+      SELECT w.graph_json
+      FROM ai_agent_workflows w
+      INNER JOIN ai_agents a ON a.id = w.agent_id
+      WHERE w.id = $1 AND a.tenant_slug = $2 AND (a.user_id = $3 OR a.user_id IS NULL)
+      LIMIT 1
+    `,
+    [workflowId, tenantSlug, userId],
+  );
+
+  if (!workflowResult.rowCount) {
+    throw new Error("Workflow not found");
+  }
+
+  const graph = workflowResult.rows[0].graph_json;
+  const nodes: NodeDef[] = Array.isArray(graph?.nodes) ? (graph.nodes as NodeDef[]) : [];
+  const edges: EdgeDef[] = Array.isArray(graph?.edges) ? (graph.edges as EdgeDef[]) : [];
+  if (!nodes.length) throw new Error("Workflow has no nodes");
+
+  const execution = await query<{ id: number }>(
+    `
+      INSERT INTO ai_agent_executions (workflow_id, status)
+      VALUES ($1, 'running')
+      RETURNING id
+    `,
+    [workflowId],
+  );
+
+  const executionId = execution.rows[0].id;
+  const context: Record<string, unknown> = { ...initialContext };
+  const nodeMap: Map<string, NodeDef> = new Map(nodes.map((node: NodeDef) => [node.id, node]));
+  let currentNode: NodeDef | undefined = nodes.find((n) => n.type === "start") ?? nodes[0];
+
+  try {
+    while (currentNode) {
+      await logNode(executionId, currentNode, "running", context);
+      const data = currentNode.data ?? {};
+      let output: Record<string, unknown> = {};
+      let conditionResult: boolean | undefined;
+
+      switch (currentNode.type) {
+        case "start":
+          output = { started: true };
+          break;
+        case "router_agent":
+          output = await runAiTemplateNode(ROUTER_AGENT_PROMPT + "\n\nMessage: {{message_text}}", context, 350);
+          break;
+        case "ai_extractor":
+          output = await runAiTemplateNode(EXTRACTOR_AGENT_PROMPT + "\n\nMessage: {{message_text}}", context, 400);
+          break;
+        case "knowledge_agent":
+          output = await runAiTemplateNode(KNOWLEDGE_RAG_PROMPT + "\n\nMessage: {{message_text}}", context, 450);
+          break;
+        case "sales_agent":
+          output = await runAiTemplateNode(SALES_AGENT_PROMPT + "\n\nMessage: {{message_text}}", context, 450);
+          break;
+        case "fallback_safety":
+          output = await runAiTemplateNode(FALLBACK_SAFETY_PROMPT + "\n\nMessage: {{message_text}}", context, 200);
+          break;
+        case "condition":
+          conditionResult = evaluateSimpleCondition(String(data.expr ?? ""), context);
+          output = { condition_result: conditionResult };
+          context.condition_result = conditionResult;
+          break;
+        case "sql_save_order":
+          output = await runSqlSaveOrder(context);
+          break;
+        case "telegram_reply":
+          output = {
+            reply_text: renderTemplate(String(data.template ?? "{{ai_output}}"), context),
+          };
+          context.reply_text = output.reply_text;
+          break;
+        case "end":
+          output = { ended: true };
+          break;
+        default:
+          output = { skipped: true, reason: `Unknown node type: ${currentNode.type}` };
+      }
+
+      Object.assign(context, output);
+      await logNode(executionId, currentNode, "success", context, output);
+
+      const nextId = nextNodeId(currentNode.id, edges, conditionResult);
+      currentNode = nextId ? nodeMap.get(nextId) : undefined;
+    }
+
+    await query(
+      `
+        UPDATE ai_agent_executions
+        SET status = 'success', finished_at = NOW(), result_summary = $2
+        WHERE id = $1
+      `,
+      [executionId, JSON.stringify({ keys: Object.keys(context) })],
+    );
+    return { executionId, status: "success", context };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown workflow error";
+    await query(
+      `
+        UPDATE ai_agent_executions
+        SET status = 'failed', finished_at = NOW(), error_message = $2
+        WHERE id = $1
+      `,
+      [executionId, message],
+    );
+    return { executionId, status: "failed", context: { ...context, error: message } };
+  }
+}

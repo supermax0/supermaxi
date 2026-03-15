@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 
-from flask import Blueprint, jsonify, render_template, request, session, g
+from flask import Blueprint, jsonify, render_template, request, session, g, send_from_directory, current_app
 
 from extensions import db
 from models.social_account import SocialAccount
@@ -24,13 +25,33 @@ def _current_tenant_slug():
     return getattr(g, "tenant", None)
 
 
+def _ai_agent_dist_dir() -> Path:
+    return Path(current_app.root_path) / "static" / "ai_agent_frontend" / "dist"
+
+
 @social_ai_bp.route("/")
 def dashboard():
-    """لوحة بسيطة لإدارة منشورات AI (مبدئية)."""
+    """AI Agent Builder standalone page (served from Vite build output)."""
     if not session.get("user_id"):
-        # يمكن لاحقاً إعادة التوجيه لواجهة تسجيل الدخول الخاصة بك
         return render_template("401.html"), 401
+
+    dist_dir = _ai_agent_dist_dir()
+    index_file = dist_dir / "index.html"
+    if index_file.exists():
+        return send_from_directory(str(dist_dir), "index.html")
+
+    # Fallback when dist is missing locally
     return render_template("social_ai/dashboard.html")
+
+
+@social_ai_bp.route("/assets/<path:filename>")
+def ai_builder_assets(filename: str):
+    """Serve built assets for /social-ai/ page."""
+    if not session.get("user_id"):
+        return render_template("401.html"), 401
+
+    assets_dir = _ai_agent_dist_dir() / "assets"
+    return send_from_directory(str(assets_dir), filename)
 
 
 @social_ai_bp.route("/api/accounts", methods=["GET"])

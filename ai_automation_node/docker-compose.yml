@@ -1,0 +1,45 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ai-automation-postgres
+    environment:
+      POSTGRES_DB: ai_automation
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ai_automation"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  qdrant:
+    image: qdrant/qdrant:v1.13.4
+    container_name: ai-automation-qdrant
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  backend:
+    build: .
+    container_name: ai-automation-backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+    env_file:
+      - .env
+    ports:
+      - "4000:4000"
+    command: sh -c "npm run migrate && npm run start"
+
+volumes:
+  pgdata:
+  qdrant_data:

@@ -1,0 +1,116 @@
+openapi: 3.0.3
+info:
+  title: AI Automation Node API
+  version: 1.0.0
+  description: Mini-n8n style backend for workflows, webhooks, customers, and orders.
+servers:
+  - url: http://localhost:4000
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy service response
+  /api/agents:
+    get:
+      summary: List agents
+      parameters:
+        - in: header
+          name: x-tenant-slug
+          schema: { type: string }
+        - in: header
+          name: x-user-id
+          schema: { type: string }
+      responses:
+        "200": { description: Agents list }
+    post:
+      summary: Create agent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                description: { type: string }
+      responses:
+        "201": { description: Agent created }
+  /api/workflows:
+    get:
+      summary: List workflows or fetch one by query workflow_id
+      parameters:
+        - in: query
+          name: workflow_id
+          schema: { type: integer }
+      responses:
+        "200": { description: Workflows result }
+    post:
+      summary: Create workflow
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [agent_id, name, graph]
+      responses:
+        "201": { description: Workflow created }
+  /api/workflows/{workflowId}:
+    put:
+      summary: Update workflow
+      parameters:
+        - in: path
+          name: workflowId
+          required: true
+          schema: { type: integer }
+      responses:
+        "200": { description: Workflow updated }
+  /api/workflows/{workflowId}/run:
+    post:
+      summary: Execute workflow with optional initial context body
+      parameters:
+        - in: path
+          name: workflowId
+          required: true
+          schema: { type: integer }
+      responses:
+        "202": { description: Execution accepted }
+  /api/webhooks/telegram/{workflowId}:
+    post:
+      summary: Telegram webhook entrypoint bound to workflow
+      parameters:
+        - in: path
+          name: workflowId
+          required: true
+          schema: { type: integer }
+      responses:
+        "202": { description: Webhook accepted }
+  /api/orders:
+    get:
+      summary: List orders
+      responses:
+        "200": { description: Orders list }
+    post:
+      summary: Create order
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          schema: { type: string }
+      responses:
+        "201": { description: Order created }
+  /api/customers:
+    get:
+      summary: List customers
+      responses:
+        "200": { description: Customers list }
+    post:
+      summary: Create customer
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          schema: { type: string }
+      responses:
+        "201": { description: Customer created }

@@ -3,10 +3,465 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>مدير السوشيال بالذكاء الاصطناعي</title>
+  <title>AI Social Manager</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --card: #121a30;
+      --card-2: #151f3a;
+      --line: #27345b;
+      --text: #e7ecff;
+      --muted: #9aa9d6;
+      --primary: #5f8cff;
+      --success: #22c55e;
+      --radius: 14px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      background:
+        radial-gradient(1200px 500px at 90% -20%, rgba(95, 140, 255, 0.26), transparent 60%),
+        radial-gradient(1000px 420px at -10% -25%, rgba(38, 180, 255, 0.18), transparent 62%),
+        var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .shell { max-width: 1280px; margin: 0 auto; padding: 24px 16px 30px; }
+    .hero {
+      display: flex; justify-content: space-between; align-items: center; gap: 14px;
+      background: linear-gradient(145deg, rgba(95, 140, 255, 0.18), rgba(21, 31, 58, 0.9));
+      border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; margin-bottom: 16px;
+    }
+    .hero h1 { margin: 0 0 6px; font-size: 24px; }
+    .hero p { margin: 0; color: var(--muted); font-size: 14px; }
+    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; }
+    .stats { display: grid; grid-template-columns: repeat(4, minmax(140px, 1fr)); gap: 10px; margin-bottom: 16px; }
+    .stat { background: rgba(18, 26, 48, 0.95); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+    .stat .k { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+    .stat .v { font-size: 24px; font-weight: 700; line-height: 1; }
+    .grid { display: grid; grid-template-columns: 1.6fr 1fr; gap: 12px; }
+    .card { background: linear-gradient(160deg, var(--card), var(--card-2)); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; }
+    .card h2 { margin: 0 0 12px; font-size: 18px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    label { display: block; margin-bottom: 6px; color: var(--muted); font-size: 12px; }
+    input, select, textarea {
+      width: 100%; border: 1px solid var(--line); background: rgba(7, 13, 28, 0.95); color: var(--text);
+      border-radius: 10px; padding: 10px 11px; font-size: 14px; outline: none;
+    }
+    textarea { min-height: 160px; resize: vertical; line-height: 1.6; }
+    .btn {
+      border: 1px solid transparent; background: rgba(95, 140, 255, 0.18); color: #dbe7ff;
+      border-radius: 10px; padding: 9px 12px; cursor: pointer; font-size: 13px; transition: 0.2s ease;
+      text-decoration: none; display: inline-flex; align-items: center;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-ghost { background: transparent; border-color: var(--line); color: var(--muted); }
+    .btn-success { background: var(--success); color: #04120a; font-weight: 700; }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    .helper { margin-top: 8px; font-size: 12px; color: var(--muted); }
+    .post-preview { margin-top: 10px; border: 1px dashed var(--line); border-radius: 12px; padding: 10px; background: rgba(8, 13, 25, 0.6); }
+    .badge { display: inline-flex; align-items: center; border-radius: 999px; padding: 4px 9px; font-size: 11px; border: 1px solid var(--line); color: var(--muted); background: rgba(255, 255, 255, 0.03); }
+    .status-draft { color: #8ab4ff; border-color: #2b4f93; }
+    .status-scheduled { color: #facc15; border-color: #6d580f; }
+    .status-published { color: #4ade80; border-color: #1f6b3c; }
+    .status-publishing { color: #38bdf8; border-color: #13506a; }
+    .status-failed { color: #fb7185; border-color: #7d2231; }
+    .table-wrap { overflow: auto; border: 1px solid var(--line); border-radius: 12px; background: rgba(10, 16, 30, 0.9); margin-top: 10px; }
+    table { width: 100%; border-collapse: collapse; min-width: 700px; font-size: 13px; }
+    th, td { padding: 10px; border-bottom: 1px solid rgba(39, 52, 91, 0.55); text-align: right; vertical-align: top; }
+    th { color: #b8c7f3; background: rgba(12, 19, 34, 0.95); position: sticky; top: 0; }
+    .mono { font-family: Consolas, "Courier New", monospace; direction: ltr; unicode-bidi: plaintext; }
+    .list {
+      margin: 10px 0 0; padding: 0; list-style: none; max-height: 280px; overflow: auto;
+      border: 1px solid var(--line); border-radius: 12px; background: rgba(10, 16, 30, 0.8);
+    }
+    .list li { padding: 10px; border-bottom: 1px solid rgba(39, 52, 91, 0.5); }
+    .list li:last-child { border-bottom: 0; }
+    .muted { color: var(--muted); font-size: 12px; }
+    .toast {
+      position: fixed; left: 16px; bottom: 16px; min-width: 220px; max-width: 420px; padding: 10px 12px;
+      border-radius: 10px; border: 1px solid var(--line); background: #101a30; color: #dbe7ff; display: none; z-index: 99;
+    }
+    .toast.success { border-color: #1f6b3c; }
+    .toast.error { border-color: #7d2231; }
+    @media (max-width: 980px) {
+      .stats { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+      .grid { grid-template-columns: 1fr; }
+      .row { grid-template-columns: 1fr; }
+      .hero { flex-direction: column; align-items: stretch; }
+    }
+  </style>
 </head>
 <body>
-  <h1>مدير السوشيال بالذكاء الاصطناعي (نسخة أولية)</h1>
-  <p>هذه صفحة مبدئية، يمكن لاحقاً دمجها بنفس تصميم Autoposter.</p>
+  <div class="shell">
+    <section class="hero">
+      <div>
+        <h1>مدير السوشيال بالذكاء الاصطناعي</h1>
+        <p>صفحة مستقلة لإدارة المحتوى، توليد المنشورات، جدولة النشر، ومراقبة التفاعل من مكان واحد.</p>
+      </div>
+      <div class="toolbar">
+        <button class="btn btn-ghost" id="refreshAllBtn">تحديث الكل</button>
+        <a class="btn btn-ghost" href="/">الرجوع للرئيسية</a>
+      </div>
+    </section>
+
+    <section class="stats">
+      <article class="stat"><div class="k">الحسابات المرتبطة</div><div class="v" id="statsAccounts">0</div></article>
+      <article class="stat"><div class="k">إجمالي المنشورات</div><div class="v" id="statsPosts">0</div></article>
+      <article class="stat"><div class="k">مجدول</div><div class="v" id="statsScheduled">0</div></article>
+      <article class="stat"><div class="k">منشور</div><div class="v" id="statsPublished">0</div></article>
+    </section>
+
+    <section class="grid">
+      <div>
+        <article class="card">
+          <h2>مولد المحتوى AI</h2>
+          <div>
+            <label for="topicInput">الموضوع</label>
+            <input id="topicInput" type="text" placeholder="مثال: عرض نهاية الأسبوع للملابس الرياضية">
+          </div>
+          <div class="actions">
+            <button class="btn btn-primary" id="generateBtn">توليد منشور</button>
+            <button class="btn btn-ghost" id="clearBtn">تفريغ</button>
+          </div>
+          <div class="helper">بعد التوليد، يمكنك تعديل الكابشن يدويًا ثم جدولة النشر.</div>
+          <div class="post-preview">
+            <label for="captionInput">الكابشن</label>
+            <textarea id="captionInput" placeholder="سيظهر النص المولد هنا..."></textarea>
+            <div class="helper" id="generatedMeta">لا يوجد منشور مولد بعد.</div>
+          </div>
+        </article>
+
+        <article class="card" style="margin-top: 12px;">
+          <h2>جدولة المنشور</h2>
+          <div class="row">
+            <div>
+              <label for="postIdInput">رقم المنشور</label>
+              <input id="postIdInput" type="number" placeholder="يتم تعبئته تلقائيا بعد التوليد">
+            </div>
+            <div>
+              <label for="publishTimeInput">وقت النشر</label>
+              <input id="publishTimeInput" type="datetime-local">
+            </div>
+          </div>
+          <div class="actions"><button class="btn btn-success" id="scheduleBtn">جدولة الآن</button></div>
+          <div class="helper">صيغة الوقت يجب أن تكون صحيحة حسب توقيت الخادم.</div>
+        </article>
+
+        <article class="card" style="margin-top: 12px;">
+          <h2>آخر المنشورات</h2>
+          <div class="actions" style="margin-top: 0;">
+            <button class="btn btn-ghost" id="reloadPostsBtn">تحديث المنشورات</button>
+            <select id="statusFilter" style="max-width: 220px;">
+              <option value="">كل الحالات</option>
+              <option value="draft">draft</option>
+              <option value="scheduled">scheduled</option>
+              <option value="publishing">publishing</option>
+              <option value="published">published</option>
+              <option value="failed">failed</option>
+            </select>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>#</th><th>الموضوع</th><th>الحالة</th><th>وقت النشر</th><th>آخر خطأ</th></tr></thead>
+              <tbody id="postsTableBody"><tr><td colspan="5" class="muted">جاري التحميل...</td></tr></tbody>
+            </table>
+          </div>
+        </article>
+      </div>
+
+      <div>
+        <article class="card">
+          <h2>الحسابات المرتبطة</h2>
+          <div class="actions" style="margin-top: 0;"><button class="btn btn-ghost" id="reloadAccountsBtn">تحديث الحسابات</button></div>
+          <ul class="list" id="accountsList"><li class="muted">جاري التحميل...</li></ul>
+        </article>
+
+        <article class="card" style="margin-top: 12px;">
+          <h2>معاينة التعليقات</h2>
+          <div class="row">
+            <div>
+              <label for="platformSelect">المنصة</label>
+              <select id="platformSelect">
+                <option value="facebook">Facebook</option>
+                <option value="instagram">Instagram</option>
+                <option value="tiktok">TikTok</option>
+              </select>
+            </div>
+            <div>
+              <label for="limitInput">العدد</label>
+              <input id="limitInput" type="number" min="1" max="50" value="10">
+            </div>
+          </div>
+          <div style="margin-top:10px">
+            <label for="targetIdInput" id="targetIdLabel">post_id</label>
+            <input id="targetIdInput" class="mono" type="text" placeholder="أدخل معرف المنشور">
+          </div>
+          <div class="actions"><button class="btn btn-primary" id="previewCommentsBtn">جلب التعليقات</button></div>
+          <ul class="list" id="commentsList"><li class="muted">لا توجد بيانات بعد.</li></ul>
+        </article>
+      </div>
+    </section>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script>
+    (() => {
+      const el = {
+        refreshAllBtn: document.getElementById("refreshAllBtn"),
+        statsAccounts: document.getElementById("statsAccounts"),
+        statsPosts: document.getElementById("statsPosts"),
+        statsScheduled: document.getElementById("statsScheduled"),
+        statsPublished: document.getElementById("statsPublished"),
+        topicInput: document.getElementById("topicInput"),
+        generateBtn: document.getElementById("generateBtn"),
+        clearBtn: document.getElementById("clearBtn"),
+        captionInput: document.getElementById("captionInput"),
+        generatedMeta: document.getElementById("generatedMeta"),
+        postIdInput: document.getElementById("postIdInput"),
+        publishTimeInput: document.getElementById("publishTimeInput"),
+        scheduleBtn: document.getElementById("scheduleBtn"),
+        reloadPostsBtn: document.getElementById("reloadPostsBtn"),
+        statusFilter: document.getElementById("statusFilter"),
+        postsTableBody: document.getElementById("postsTableBody"),
+        reloadAccountsBtn: document.getElementById("reloadAccountsBtn"),
+        accountsList: document.getElementById("accountsList"),
+        platformSelect: document.getElementById("platformSelect"),
+        limitInput: document.getElementById("limitInput"),
+        targetIdLabel: document.getElementById("targetIdLabel"),
+        targetIdInput: document.getElementById("targetIdInput"),
+        previewCommentsBtn: document.getElementById("previewCommentsBtn"),
+        commentsList: document.getElementById("commentsList"),
+        toast: document.getElementById("toast"),
+      };
+
+      const state = { posts: [], accounts: [] };
+      const statusMap = {
+        draft: "مسودة",
+        scheduled: "مجدول",
+        publishing: "قيد النشر",
+        published: "منشور",
+        failed: "فشل",
+      };
+
+      function showToast(message, type = "") {
+        el.toast.textContent = message;
+        el.toast.className = "toast";
+        if (type) el.toast.classList.add(type);
+        el.toast.style.display = "block";
+        window.clearTimeout(showToast._timer);
+        showToast._timer = window.setTimeout(() => { el.toast.style.display = "none"; }, 3200);
+      }
+
+      async function api(path, options = {}) {
+        const response = await fetch(path, {
+          headers: { "Content-Type": "application/json" },
+          ...options,
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || data.message || "Request failed");
+        return data;
+      }
+
+      function formatDate(value) {
+        if (!value) return "-";
+        const d = new Date(value);
+        if (Number.isNaN(d.getTime())) return value;
+        return d.toLocaleString("ar-IQ");
+      }
+
+      function renderStats() {
+        el.statsAccounts.textContent = String(state.accounts.length);
+        el.statsPosts.textContent = String(state.posts.length);
+        el.statsScheduled.textContent = String(state.posts.filter((p) => p.status === "scheduled").length);
+        el.statsPublished.textContent = String(state.posts.filter((p) => p.status === "published").length);
+      }
+
+      function renderAccounts() {
+        if (!state.accounts.length) {
+          el.accountsList.innerHTML = "<li class='muted'>لا توجد حسابات مرتبطة.</li>";
+          return;
+        }
+        el.accountsList.innerHTML = state.accounts.map((a) => {
+          const username = a.username ? "@" + a.username : "(بدون اسم)";
+          return (
+            "<li>" +
+              "<div><strong>" + username + "</strong></div>" +
+              "<div class='muted'>المنصة: " + String((a.platform || "-")).toUpperCase() + "</div>" +
+              "<div class='muted mono'>account_id: " + (a.account_id || "-") + "</div>" +
+              "<div class='muted'>انتهاء التوكن: " + (a.token_expiry ? formatDate(a.token_expiry) : "-") + "</div>" +
+            "</li>"
+          );
+        }).join("");
+      }
+
+      function renderPosts() {
+        if (!state.posts.length) {
+          el.postsTableBody.innerHTML = "<tr><td colspan='5' class='muted'>لا توجد منشورات.</td></tr>";
+          return;
+        }
+        el.postsTableBody.innerHTML = state.posts.map((p) => {
+          const status = p.status || "draft";
+          return (
+            "<tr>" +
+              "<td>" + p.id + "</td>" +
+              "<td>" + (p.topic || "-") + "</td>" +
+              "<td><span class='badge status-" + status + "'>" + (statusMap[status] || status) + "</span></td>" +
+              "<td>" + formatDate(p.publish_time) + "</td>" +
+              "<td class='muted'>" + (p.error_message || "-") + "</td>" +
+            "</tr>"
+          );
+        }).join("");
+      }
+
+      async function loadAccounts() {
+        const data = await api("/social-ai/api/accounts");
+        state.accounts = Array.isArray(data.accounts) ? data.accounts : [];
+        renderAccounts();
+        renderStats();
+      }
+
+      async function loadPosts() {
+        const status = (el.statusFilter.value || "").trim();
+        const query = status ? ("?status=" + encodeURIComponent(status)) : "";
+        const data = await api("/social-ai/api/posts" + query);
+        state.posts = Array.isArray(data.posts) ? data.posts : [];
+        renderPosts();
+        renderStats();
+      }
+
+      async function generatePost() {
+        const topic = (el.topicInput.value || "").trim();
+        if (!topic) {
+          showToast("اكتب الموضوع أولا.", "error");
+          el.topicInput.focus();
+          return;
+        }
+        el.generateBtn.disabled = true;
+        el.generateBtn.textContent = "جاري التوليد...";
+        try {
+          const data = await api("/social-ai/api/generate", {
+            method: "POST",
+            body: JSON.stringify({ topic }),
+          });
+          const post = data.post || {};
+          el.captionInput.value = post.caption || "";
+          el.postIdInput.value = post.id || "";
+          el.generatedMeta.textContent = "تم توليد المنشور #" + (post.id || "-") + " - الحالة: " + (statusMap[post.status] || post.status || "-");
+          showToast("تم توليد المنشور بنجاح.", "success");
+          await loadPosts();
+        } catch (err) {
+          showToast("فشل التوليد: " + (err.message || "خطأ غير متوقع"), "error");
+        } finally {
+          el.generateBtn.disabled = false;
+          el.generateBtn.textContent = "توليد منشور";
+        }
+      }
+
+      async function schedulePost() {
+        const postId = Number(el.postIdInput.value);
+        const publishTime = (el.publishTimeInput.value || "").trim();
+        if (!postId || Number.isNaN(postId)) return showToast("رقم المنشور غير صالح.", "error");
+        if (!publishTime) return showToast("حدد وقت النشر أولا.", "error");
+
+        el.scheduleBtn.disabled = true;
+        el.scheduleBtn.textContent = "جاري الجدولة...";
+        try {
+          await api("/social-ai/api/schedule", {
+            method: "POST",
+            body: JSON.stringify({ post_id: postId, publish_time: publishTime }),
+          });
+          showToast("تمت جدولة المنشور بنجاح.", "success");
+          await loadPosts();
+        } catch (err) {
+          showToast("فشل الجدولة: " + (err.message || "خطأ غير متوقع"), "error");
+        } finally {
+          el.scheduleBtn.disabled = false;
+          el.scheduleBtn.textContent = "جدولة الآن";
+        }
+      }
+
+      function updateTargetIdUi() {
+        const platform = el.platformSelect.value;
+        if (platform === "facebook") {
+          el.targetIdLabel.textContent = "post_id";
+          el.targetIdInput.placeholder = "أدخل post_id";
+        } else if (platform === "instagram") {
+          el.targetIdLabel.textContent = "media_id";
+          el.targetIdInput.placeholder = "أدخل media_id";
+        } else {
+          el.targetIdLabel.textContent = "video_id";
+          el.targetIdInput.placeholder = "أدخل video_id";
+        }
+      }
+
+      async function previewComments() {
+        const platform = el.platformSelect.value;
+        const limit = Math.max(1, Math.min(50, Number(el.limitInput.value || 10)));
+        const targetId = (el.targetIdInput.value || "").trim();
+        if (!targetId) return showToast("أدخل معرف المنشور/الفيديو أولا.", "error");
+        const payload = { platform, limit };
+        if (platform === "facebook") payload.post_id = targetId;
+        else if (platform === "instagram") payload.media_id = targetId;
+        else payload.video_id = targetId;
+
+        el.previewCommentsBtn.disabled = true;
+        el.previewCommentsBtn.textContent = "جاري الجلب...";
+        try {
+          const data = await api("/social-ai/api/comments/preview", {
+            method: "POST",
+            body: JSON.stringify(payload),
+          });
+          const comments = Array.isArray(data.comments) ? data.comments : [];
+          el.commentsList.innerHTML = comments.length
+            ? comments.map((c) =>
+                "<li>" +
+                  "<div><strong>" + (c.username || "Unknown") + "</strong></div>" +
+                  "<div style='margin:4px 0'>" + (c.text || "") + "</div>" +
+                  "<div class='muted'>" + (c.timestamp ? formatDate(c.timestamp) : "-") + "</div>" +
+                "</li>"
+              ).join("")
+            : "<li class='muted'>لا توجد تعليقات حاليا.</li>";
+          showToast("تم جلب التعليقات.", "success");
+        } catch (err) {
+          el.commentsList.innerHTML = "<li class='muted'>تعذر جلب التعليقات.</li>";
+          showToast("خطأ: " + (err.message || "تعذر جلب التعليقات"), "error");
+        } finally {
+          el.previewCommentsBtn.disabled = false;
+          el.previewCommentsBtn.textContent = "جلب التعليقات";
+        }
+      }
+
+      async function refreshAll() {
+        try {
+          await Promise.all([loadAccounts(), loadPosts()]);
+        } catch (err) {
+          showToast("خطأ في تحديث البيانات: " + (err.message || "غير معروف"), "error");
+        }
+      }
+
+      function clearComposer() {
+        el.topicInput.value = "";
+        el.captionInput.value = "";
+        el.postIdInput.value = "";
+        el.generatedMeta.textContent = "لا يوجد منشور مولد بعد.";
+      }
+
+      el.generateBtn.addEventListener("click", generatePost);
+      el.scheduleBtn.addEventListener("click", schedulePost);
+      el.reloadAccountsBtn.addEventListener("click", loadAccounts);
+      el.reloadPostsBtn.addEventListener("click", loadPosts);
+      el.refreshAllBtn.addEventListener("click", refreshAll);
+      el.previewCommentsBtn.addEventListener("click", previewComments);
+      el.platformSelect.addEventListener("change", updateTargetIdUi);
+      el.statusFilter.addEventListener("change", loadPosts);
+      el.clearBtn.addEventListener("click", clearComposer);
+
+      updateTargetIdUi();
+      refreshAll();
+    })();
+  </script>
 </body>
 </html>

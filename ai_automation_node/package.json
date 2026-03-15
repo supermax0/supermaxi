@@ -1,0 +1,45 @@
+{
+  "name": "ai_automation_node",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsup",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "migrate": "tsx scripts/run-migrations.ts"
+  },
+  "keywords": [
+    "workflow",
+    "automation",
+    "fastify",
+    "openai",
+    "qdrant"
+  ],
+  "author": "",
+  "license": "MIT",
+  "description": "Production-minded AI automation backend (mini-n8n style).",
+  "dependencies": {
+    "@fastify/cors": "^11.2.0",
+    "@fastify/helmet": "^13.0.2",
+    "@fastify/multipart": "^9.4.0",
+    "@fastify/rate-limit": "^10.3.0",
+    "dotenv": "^17.3.1",
+    "fastify": "^5.8.2",
+    "openai": "^6.29.0",
+    "pg": "^8.20.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "@types/pg": "^8.18.0",
+    "tsup": "^8.5.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.0"
+  }
+}
