@@ -6,13 +6,14 @@ API endpoints for managing connected Facebook pages.
 
 import traceback
 
-from flask import Blueprint, jsonify, request, session, g, current_app
+from flask import Blueprint, session, g, current_app, request
 
 from extensions import db
+from modules.publisher.api.response_utils import error_response, ok_response
+from modules.publisher.api.validation_utils import parse_pagination
 from modules.publisher.models.publisher_page import PublisherPage
-from modules.publisher.services import facebook_service as fb
+from modules.publisher.services.page_connect_service import connect_and_store_pages
 from modules.publisher.services.schema_guard import ensure_publisher_schema
-from modules.publisher.services.token_utils import encrypt_token, decrypt_token
 
 pages_api_bp = Blueprint("publisher_pages_api", __name__)
 
@@ -26,13 +27,31 @@ def list_pages():
     try:
         ensure_publisher_schema()
         tenant = _tenant()
-        pages = PublisherPage.query.filter_by(tenant_slug=tenant).order_by(
+        page, per_page = parse_pagination(default_per_page=50, max_per_page=200)
+
+        query = PublisherPage.query.filter_by(tenant_slug=tenant).order_by(
             PublisherPage.created_at.desc()
-        ).all()
-        return jsonify({"success": True, "pages": [p.to_dict() for p in pages]})
-    except Exception as e:
+        )
+        total = query.count()
+        rows = query.offset((page - 1) * per_page).limit(per_page).all()
+        items = [row.to_dict() for row in rows]
+        return ok_response(
+            data={"items": items},
+            meta={
+                "page": page,
+                "per_page": per_page,
+                "total": total,
+                "total_pages": max(1, (total + per_page - 1) // per_page),
+            },
+            legacy={"pages": items},
+        )
+    except Exception as exc:
         current_app.logger.error(traceback.format_exc())
-        return jsonify({"success": False, "message": str(e)}), 500
+        return error_response(
+            code="pages_list_failed",
+            message=str(exc),
+            status_code=500,
+        )
 
 
 @pages_api_bp.route("/api/pages/connect", methods=["POST"])
@@ -45,44 +64,27 @@ def connect_pages():
         ensure_publisher_schema()
         data = request.get_json() or {}
         user_token = (data.get("user_token") or "").strip()
-        if not user_token:
-            return jsonify({"success": False, "message": "user_token مطلوب"}), 400
-
-        result = fb.get_user_pages(user_token)
+        result = connect_and_store_pages(tenant_slug=_tenant(), user_token=user_token)
         if not result.get("success"):
-            return jsonify(result), 400
-
-        tenant = _tenant()
-        saved = []
-        for page_data in result.get("pages", []):
-            page_id = page_data.get("id")
-            page_name = page_data.get("name", "")
-            access_token = page_data.get("access_token", "")
-            if not page_id or not access_token:
-                continue
-
-            existing = PublisherPage.query.filter_by(
-                tenant_slug=tenant, page_id=page_id
-            ).first()
-            if existing:
-                existing.page_name = page_name
-                existing.page_token = encrypt_token(access_token)
-            else:
-                new_page = PublisherPage(
-                    tenant_slug=tenant,
-                    page_id=page_id,
-                    page_name=page_name,
-                    page_token=encrypt_token(access_token),
-                )
-                db.session.add(new_page)
-            saved.append({"page_id": page_id, "page_name": page_name})
-
-        db.session.commit()
-        return jsonify({"success": True, "saved": saved, "count": len(saved)})
-    except Exception as e:
+            return error_response(
+                code=result.get("error_code") or "pages_connect_failed",
+                message=result.get("message") or "فشل ربط الصفحات",
+                details=result.get("details"),
+                status_code=400,
+            )
+        return ok_response(
+            data=result.get("pages") or [],
+            message=result.get("message"),
+            legacy={"saved": result.get("pages") or [], "count": result.get("count", 0)},
+        )
+    except Exception as exc:
         db.session.rollback()
         current_app.logger.error(traceback.format_exc())
-        return jsonify({"success": False, "message": str(e)}), 500
+        return error_response(
+            code="pages_connect_failed",
+            message=str(exc),
+            status_code=500,
+        )
 
 
 @pages_api_bp.route("/api/pages/<int:page_db_id>", methods=["DELETE"])
@@ -92,11 +94,19 @@ def delete_page(page_db_id):
         tenant = _tenant()
         page = PublisherPage.query.filter_by(id=page_db_id, tenant_slug=tenant).first()
         if not page:
-            return jsonify({"success": False, "message": "الصفحة غير موجودة"}), 404
+            return error_response(
+                code="page_not_found",
+                message="الصفحة غير موجودة",
+                status_code=404,
+            )
         db.session.delete(page)
         db.session.commit()
-        return jsonify({"success": True})
-    except Exception as e:
+        return ok_response(data={"deleted_id": page_db_id}, legacy={"deleted_id": page_db_id})
+    except Exception as exc:
         db.session.rollback()
         current_app.logger.error(traceback.format_exc())
-        return jsonify({"success": False, "message": str(e)}), 500
+        return error_response(
+            code="page_delete_failed",
+            message=str(exc),
+            status_code=500,
+        )

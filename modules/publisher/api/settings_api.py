@@ -4,12 +4,12 @@ settings_api.py
 API endpoints for Publisher settings (FB App credentials + page connection).
 """
 
-from flask import Blueprint, jsonify, request, session, g
+from flask import Blueprint, request, session, g
 
 from extensions import db
+from modules.publisher.api.response_utils import error_response, ok_response
 from modules.publisher.models.publisher_settings import PublisherSettings
-from modules.publisher.models.publisher_page import PublisherPage
-from modules.publisher.services import facebook_service as fb
+from modules.publisher.services.page_connect_service import connect_and_store_pages
 from modules.publisher.services.schema_guard import ensure_publisher_schema
 from modules.publisher.services.token_utils import encrypt_token
 import traceback
@@ -29,10 +29,15 @@ def get_settings():
     try:
         ensure_publisher_schema()
         s = PublisherSettings.get(_tenant())
-        return jsonify({"success": True, "settings": s.to_dict()})
-    except Exception as e:
+        payload = s.to_dict()
+        return ok_response(data=payload, legacy={"settings": payload})
+    except Exception as exc:
         current_app.logger.error(traceback.format_exc())
-        return jsonify({"success": False, "message": str(e)}), 500
+        return error_response(
+            code="settings_get_failed",
+            message=str(exc),
+            status_code=500,
+        )
 
 
 @settings_api_bp.route("/api/settings", methods=["POST"])
@@ -58,11 +63,19 @@ def save_settings():
             s.fb_user_token = encrypt_token(fb_user_token)
 
         db.session.commit()
-        return jsonify({"success": True, "message": "تم حفظ الإعدادات بنجاح"})
-    except Exception as e:
+        return ok_response(
+            data=s.to_dict(),
+            message="تم حفظ الإعدادات بنجاح",
+            legacy={"settings": s.to_dict()},
+        )
+    except Exception as exc:
         db.session.rollback()
         current_app.logger.error(traceback.format_exc())
-        return jsonify({"success": False, "message": str(e)}), 500
+        return error_response(
+            code="settings_save_failed",
+            message=str(exc),
+            status_code=500,
+        )
 
 
 # ── Connect Pages (جلب صفحات الفيسبوك) ───────────────────────────────────────
@@ -89,44 +102,32 @@ def connect_pages():
                 except Exception:
                     raw_token = s.fb_user_token
             else:
-                return jsonify({"success": False,
-                                "message": "أدخل User Token أولاً في الإعدادات"}), 400
+                return error_response(
+                    code="missing_user_token",
+                    message="أدخل User Token أولاً في الإعدادات",
+                    status_code=400,
+                )
 
-        result = fb.get_user_pages(raw_token)
+        result = connect_and_store_pages(tenant_slug=tenant, user_token=raw_token)
         if not result.get("success"):
-            return jsonify(result), 400
+            return error_response(
+                code=result.get("error_code") or "pages_connect_failed",
+                message=result.get("message") or "فشل ربط الصفحات",
+                details=result.get("details"),
+                status_code=400,
+            )
 
-        pages_data = result.get("pages", [])
-        saved = []
-        for page in pages_data:
-            page_id    = page.get("id")
-            page_name  = page.get("name", "")
-            page_token = page.get("access_token", "")
-            if not page_id or not page_token:
-                continue
-
-            existing = PublisherPage.query.filter_by(
-                tenant_slug=tenant, page_id=page_id
-            ).first()
-            if existing:
-                existing.page_name  = page_name
-                existing.page_token = encrypt_token(page_token)
-            else:
-                db.session.add(PublisherPage(
-                    tenant_slug=tenant,
-                    page_id=page_id,
-                    page_name=page_name,
-                    page_token=encrypt_token(page_token),
-                ))
-            saved.append({"page_id": page_id, "page_name": page_name})
-
-        db.session.commit()
-        return jsonify({
-            "success": True,
-            "message": f"تم ربط {len(saved)} صفحة بنجاح",
-            "pages":   saved,
-        })
-    except Exception as e:
+        pages_payload = result.get("pages") or []
+        return ok_response(
+            data=pages_payload,
+            message=result.get("message"),
+            legacy={"pages": pages_payload},
+        )
+    except Exception as exc:
         db.session.rollback()
         current_app.logger.error(traceback.format_exc())
-        return jsonify({"success": False, "message": str(e)}), 500
+        return error_response(
+            code="pages_connect_failed",
+            message=str(exc),
+            status_code=500,
+        )

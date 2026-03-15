@@ -172,13 +172,16 @@ def save_upload(file_storage, tenant_slug: str) -> dict:
     return {"success": True, "media": media}
 
 
-def delete_media(media_id: int) -> dict:
+def delete_media(media_id: int, tenant_slug: str | None = None) -> dict:
     """Delete media from DB + disk."""
     try:
         _ensure_publisher_media_schema()
     except Exception:
         current_app.logger.error(traceback.format_exc())
-    media = PublisherMedia.query.get(media_id)
+    query = PublisherMedia.query.filter_by(id=media_id)
+    if tenant_slug is not None:
+        query = query.filter_by(tenant_slug=tenant_slug)
+    media = query.first()
     if not media:
         return {"success": False, "message": "الوسيط غير موجود"}
 
@@ -203,8 +206,14 @@ def delete_media(media_id: int) -> dict:
     return {"success": True}
 
 
-def list_media(tenant_slug: str, q: str = None, media_type: str = None):
-    """Return PublisherMedia list for a tenant."""
+def list_media(
+    tenant_slug: str,
+    q: str = None,
+    media_type: str = None,
+    page: int = 1,
+    per_page: int = 24,
+):
+    """Return paginated PublisherMedia list for a tenant."""
     try:
         _ensure_publisher_media_schema()
     except Exception:
@@ -215,7 +224,21 @@ def list_media(tenant_slug: str, q: str = None, media_type: str = None):
     if q:
         query = query.filter(PublisherMedia.original_name.ilike(f"%{q}%"))
     try:
-        return query.order_by(PublisherMedia.created_at.desc()).all()
+        total = query.count()
+        items = (
+            query.order_by(PublisherMedia.created_at.desc())
+            .offset((max(1, page) - 1) * max(1, per_page))
+            .limit(max(1, per_page))
+            .all()
+        )
+        return items, total
     except Exception:
         current_app.logger.error(traceback.format_exc())
-        return query.order_by(PublisherMedia.id.desc()).all()
+        total = query.count()
+        items = (
+            query.order_by(PublisherMedia.id.desc())
+            .offset((max(1, page) - 1) * max(1, per_page))
+            .limit(max(1, per_page))
+            .all()
+        )
+        return items, total

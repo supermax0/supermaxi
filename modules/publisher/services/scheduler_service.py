@@ -9,19 +9,24 @@ even under multi-process gunicorn deployments.
 
 from __future__ import annotations
 
-import fcntl
 import logging
 import os
 import sys
+import tempfile
 from datetime import datetime, timezone
 from logging.handlers import RotatingFileHandler
 
 from modules.publisher.services.schema_guard import ensure_publisher_schema
 
+try:
+    import fcntl  # type: ignore
+except Exception:  # pragma: no cover - Windows fallback
+    fcntl = None
+
 _scheduler = None
 _lock_fd = None
 
-LOCK_FILE = "/tmp/publisher_scheduler.lock"
+LOCK_FILE = os.path.join(tempfile.gettempdir(), "publisher_scheduler.lock")
 LOG_FILE = "logs/publisher.log"
 
 
@@ -142,6 +147,8 @@ def _publish_single_post_record(*, app, db, post, PublisherPage, PublisherMedia,
         if post.media_ids:
             media_list = PublisherMedia.query.filter(
                 PublisherMedia.id.in_(post.media_ids)
+            ).filter(
+                PublisherMedia.tenant_slug == post.tenant_slug
             ).all()
 
         text = post.text or ""
@@ -231,7 +238,8 @@ def _acquire_lock() -> bool:
     global _lock_fd
     try:
         _lock_fd = open(LOCK_FILE, "w")
-        fcntl.flock(_lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        if fcntl is not None:
+            fcntl.flock(_lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         return True
     except OSError:
         # Another worker already holds the lock

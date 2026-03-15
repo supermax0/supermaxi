@@ -163,7 +163,7 @@ class FinoraDeployStudio(tk.Tk):
         self.logs_btn = ttk.Button(btns, text="View Server Logs", width=18, command=self.on_view_logs_clicked)
         self.logs_btn.pack(side=tk.LEFT, padx=4, pady=4)
 
-        self.build_btn = ttk.Button(btns, text="Build Frontend", width=18, command=self.on_build_frontend_clicked)
+        self.build_btn = ttk.Button(btns, text="Build Frontends", width=18, command=self.on_build_frontend_clicked)
         self.build_btn.pack(side=tk.LEFT, padx=4, pady=4)
 
         self.fix_all_btn = ttk.Button(btns, text="Fix All", width=18, command=self.on_fix_all_clicked)
@@ -1056,19 +1056,22 @@ echo "System repaired and deployment completed successfully."
 
     def _build_frontend_thread(self) -> None:
         try:
-            self.set_status("Building frontend on server…")
+            self.set_status("Building frontends on server…")
             server_path = self.server_path_var.get().strip()
             script = (
-                f"cd {server_path}/static/ai_agent_frontend && "
-                "npm install && "
-                "npm run build"
+                f"if [ -d {server_path}/static/ai_agent_frontend ]; then "
+                f"cd {server_path}/static/ai_agent_frontend && npm install && npm run build; "
+                "fi && "
+                f"if [ -d {server_path}/static/publisher_frontend ]; then "
+                f"cd {server_path}/static/publisher_frontend && npm install && npm run build; "
+                "fi"
             )
             rc = self.run_ssh_script(script)
             if rc == 0:
-                self.append_log("[INFO] Frontend build completed.\n")
-                self.set_status("Frontend build completed.")
+                self.append_log("[INFO] Frontends build completed.\n")
+                self.set_status("Frontends build completed.")
             else:
-                self.set_status("Frontend build failed (see log).")
+                self.set_status("Frontends build failed (see log).")
         finally:
             self.set_busy(False)
 
