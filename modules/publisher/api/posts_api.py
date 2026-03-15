@@ -73,7 +73,11 @@ def create_post():
         db.session.commit()
 
         # نشر فوري فعلياً (لا ننتظر المجدول عند اختيار "نشر الآن")
-        publish_result = publish_single_post_now(current_app._get_current_object(), post.id)
+        publish_result = publish_single_post_now(
+            current_app._get_current_object(),
+            post.id,
+            tenant_slug=post.tenant_slug or _tenant(),
+        )
         db.session.refresh(post)
 
         if post.status == "published":

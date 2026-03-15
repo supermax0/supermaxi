@@ -164,43 +164,63 @@ def _publish_due_posts(app):
     logger = logging.getLogger("publisher")
     try:
         with app.app_context():
+            from flask import g
             from extensions import db
             from modules.publisher.models.publisher_post import PublisherPost
             from modules.publisher.models.publisher_page import PublisherPage
             from modules.publisher.models.publisher_media import PublisherMedia
             from modules.publisher.services import facebook_service as fb
             from modules.publisher.services.token_utils import decrypt_token
+            from models.core.tenant import Tenant as CoreTenant
 
-            ensure_publisher_schema()
             now = datetime.now(timezone.utc).replace(tzinfo=None)
 
-            # Fetch queued (publish_type=now) + due scheduled posts
-            posts = PublisherPost.query.filter(
-                PublisherPost.status.in_(["queued", "scheduled"]),
-            ).all()
+            tenant_slugs = []
+            try:
+                tenant_slugs = [t.slug for t in CoreTenant.query.filter_by(is_active=True).all() if t.slug]
+            except Exception:
+                logger.exception("Could not load tenant list for scheduler")
 
-            due = [
-                p for p in posts
-                if p.publish_type == "now"
-                or (p.publish_time and p.publish_time <= now)
-            ]
+            # fallback for single-db/dev mode
+            if not tenant_slugs:
+                tenant_slugs = [None]
 
-            if not due:
-                return
+            total_due = 0
 
-            logger.info("Scheduler: %d post(s) to publish", len(due))
-
-            for post in due:
-                _publish_single_post_record(
-                    app=app,
-                    db=db,
-                    post=post,
-                    PublisherPage=PublisherPage,
-                    PublisherMedia=PublisherMedia,
-                    fb=fb,
-                    decrypt_token=decrypt_token,
-                    logger=logger,
+            for tenant_slug in tenant_slugs:
+                g.tenant = tenant_slug
+                ensure_publisher_schema()
+                query = PublisherPost.query.filter(
+                    PublisherPost.status.in_(["queued", "scheduled"]),
                 )
+                if tenant_slug:
+                    query = query.filter_by(tenant_slug=tenant_slug)
+                posts = query.all()
+
+                due = [
+                    p for p in posts
+                    if p.publish_type == "now"
+                    or (p.publish_time and p.publish_time <= now)
+                ]
+
+                if not due:
+                    continue
+
+                total_due += len(due)
+                for post in due:
+                    _publish_single_post_record(
+                        app=app,
+                        db=db,
+                        post=post,
+                        PublisherPage=PublisherPage,
+                        PublisherMedia=PublisherMedia,
+                        fb=fb,
+                        decrypt_token=decrypt_token,
+                        logger=logger,
+                    )
+
+            if total_due:
+                logger.info("Scheduler processed %d due post(s)", total_due)
 
     except Exception as exc:
         logging.getLogger("publisher").exception("Scheduler job error: %s", exc)
@@ -235,13 +255,14 @@ def start_scheduler(app):
         logger.error("Could not start scheduler: %s", exc)
 
 
-def publish_single_post_now(app, post_id: int):
+def publish_single_post_now(app, post_id: int, tenant_slug: str | None = None):
     """
     Publish one queued post immediately (used by POST /api/posts/create for direct publishing).
     """
     logger = logging.getLogger("publisher")
     try:
         with app.app_context():
+            from flask import g
             from extensions import db
             from modules.publisher.models.publisher_post import PublisherPost
             from modules.publisher.models.publisher_page import PublisherPage
@@ -249,6 +270,7 @@ def publish_single_post_now(app, post_id: int):
             from modules.publisher.services import facebook_service as fb
             from modules.publisher.services.token_utils import decrypt_token
 
+            g.tenant = tenant_slug
             ensure_publisher_schema()
             post = PublisherPost.query.get(post_id)
             if not post:
