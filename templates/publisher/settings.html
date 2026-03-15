@@ -1,483 +1,107 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
+{% extends "publisher/publisher_layout.html" %}
+{% set active_page = "settings" %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>إعدادات الناشر — فيسبوك</title>
-    <link rel="stylesheet" href="/static/publisher/css/publisher.css">
-    <style>
-        .settings-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
+{% block page_title %}الإعدادات | Finora Publisher{% endblock %}
+{% block page_heading %}إعدادات النشر{% endblock %}
+{% block page_subheading %}
+<p class="topbar-sub">ضبط بيانات فيسبوك وربط الصفحات لإدارة النشر من مكان واحد</p>
+{% endblock %}
 
-        .settings-grid .full {
-            grid-column: 1 / -1;
-        }
+{% block content %}
+<section class="settings-grid">
+    <article class="pub-card settings-card">
+        <div class="section-title">
+            <span class="step-badge">1</span>
+            <h2>Facebook App Credentials</h2>
+            <a href="https://developers.facebook.com/apps" target="_blank" class="help-link">developers.facebook.com</a>
+        </div>
+        <p class="section-note">أدخل بيانات التطبيق الأساسية من Facebook for Developers.</p>
 
-        .input-group {
-            position: relative;
-        }
-
-        .input-group .eye-btn {
-            position: absolute;
-            left: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 16px;
-            color: var(--text-muted);
-            transition: color 0.2s;
-        }
-
-        .input-group .eye-btn:hover {
-            color: var(--text-primary);
-        }
-
-        .input-group input {
-            padding-left: 38px;
-        }
-
-        .page-list {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            margin-top: 14px;
-        }
-
-        .page-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 12px 16px;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            transition: border-color 0.2s;
-        }
-
-        .page-item:hover {
-            border-color: var(--border-hover);
-        }
-
-        .page-item-info {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .page-avatar {
-            width: 38px;
-            height: 38px;
-            background: var(--accent-grad);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-        }
-
-        .page-name {
-            font-weight: 600;
-            font-size: 14px;
-        }
-
-        .page-id {
-            font-size: 12px;
-            color: var(--text-muted);
-        }
-
-        .step-badge {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 24px;
-            height: 24px;
-            background: var(--accent-grad);
-            border-radius: 50%;
-            font-size: 12px;
-            font-weight: 700;
-            color: white;
-            margin-left: 8px;
-        }
-
-        .section-title {
-            font-size: 15px;
-            font-weight: 700;
-            margin-bottom: 14px;
-            display: flex;
-            align-items: center;
-        }
-
-        .help-link {
-            font-size: 12px;
-            color: #a5b4fc;
-            text-decoration: none;
-            margin-right: auto;
-        }
-
-        .help-link:hover {
-            text-decoration: underline;
-        }
-
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            display: inline-block;
-            margin-left: 6px;
-        }
-
-        .dot-green {
-            background: var(--success);
-            box-shadow: 0 0 6px var(--success);
-        }
-
-        .dot-gray {
-            background: var(--text-muted);
-        }
-
-        .divider {
-            height: 1px;
-            background: var(--border);
-            margin: 24px 0;
-        }
-
-        @media(max-width:700px) {
-            .settings-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
-</head>
-
-<body class="publisher-body">
-    <div class="pub-shell">
-
-        <!-- Sidebar -->
-        <aside class="pub-sidebar">
-            <div class="logo">
-                <div class="logo-icon">📢</div>
-                <span class="logo-text">الناشر</span>
-            </div>
-            <nav class="pub-nav">
-                <a href="/publisher/"><span class="nav-icon">📊</span> لوحة التحكم</a>
-                <a href="/publisher/create"><span class="nav-icon">✏️</span> إنشاء منشور</a>
-                <a href="/publisher/media"><span class="nav-icon">🖼️</span> مكتبة الوسائط</a>
-                <a href="/publisher/settings" class="active"><span class="nav-icon">⚙️</span> الإعدادات</a>
-            </nav>
-            <div class="sidebar-footer">
-                <a href="/" style="color:var(--text-muted);text-decoration:none">← العودة للنظام</a>
-            </div>
-        </aside>
-
-        <!-- Main -->
-        <main class="pub-main">
-            <div class="pub-topbar">
-                <h1>⚙️ إعدادات الناشر</h1>
-            </div>
-
-            <!-- ══ القسم 1: بيانات تطبيق فيسبوك ══════════════════════════════════ -->
-            <div class="pub-card" style="margin-bottom:20px">
-                <div class="section-title">
-                    <span class="step-badge">1</span>
-                    بيانات تطبيق فيسبوك
-                    <a href="https://developers.facebook.com/apps" target="_blank" class="help-link">
-                        🔗 developers.facebook.com →
-                    </a>
-                </div>
-                <p style="color:var(--text-second);font-size:13px;margin-bottom:18px">
-                    اذهب إلى <strong>Facebook for Developers</strong> → My Apps → اختر تطبيقك → Settings → Basic
-                </p>
-
-                <div class="settings-grid">
-                    <div class="form-group">
-                        <label class="form-label">App ID <span id="appIdDot" class="status-dot dot-gray"></span></label>
-                        <input type="text" id="fbAppId" class="form-input" placeholder="123456789012345" dir="ltr">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">App Secret <span id="appSecretDot"
-                                class="status-dot dot-gray"></span></label>
-                        <div class="input-group">
-                            <input type="password" id="fbAppSecret" class="form-input" placeholder="أدخل App Secret"
-                                dir="ltr">
-                            <button class="eye-btn" type="button" onclick="togglePass('fbAppSecret', this)">👁</button>
-                        </div>
-                    </div>
-                </div>
-
-                <button class="btn btn-primary" onclick="saveCredentials()">
-                    💾 حفظ بيانات التطبيق
+        <div class="form-group">
+            <label class="form-label">App ID <span id="appIdDot" class="status-dot dot-gray"></span></label>
+            <input type="text" id="fbAppId" class="form-input" placeholder="123456789012345" dir="ltr">
+        </div>
+        <div class="form-group">
+            <label class="form-label">App Secret <span id="appSecretDot" class="status-dot dot-gray"></span></label>
+            <div class="input-group">
+                <input type="password" id="fbAppSecret" class="form-input" placeholder="أدخل App Secret" dir="ltr">
+                <button class="eye-btn" type="button" data-target="fbAppSecret" aria-label="إظهار أو إخفاء">
+                    <i data-lucide="eye"></i>
                 </button>
             </div>
+        </div>
 
-            <!-- ══ القسم 2: User Token ═════════════════════════════════════════ -->
-            <div class="pub-card" style="margin-bottom:20px">
-                <div class="section-title">
-                    <span class="step-badge">2</span>
-                    User Access Token
-                    <a href="https://developers.facebook.com/tools/explorer/" target="_blank" class="help-link">
-                        🔗 Graph API Explorer →
-                    </a>
-                </div>
-                <p style="color:var(--text-second);font-size:13px;margin-bottom:6px">
-                    من Graph API Explorer → اختر تطبيقك → اضغط <strong>"Generate Access Token"</strong> → وافق على
-                    الصلاحيات التالية:
-                </p>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px">
-                    <span class="badge badge-queued">pages_show_list</span>
-                    <span class="badge badge-queued">pages_read_engagement</span>
-                    <span class="badge badge-queued">pages_manage_posts</span>
-                    <span class="badge badge-queued">pages_read_user_content</span>
-                </div>
+        <button class="btn btn-primary" id="saveCredentialsBtn" data-ripple>
+            <i data-lucide="save"></i>
+            <span>حفظ بيانات التطبيق</span>
+        </button>
+    </article>
 
-                <div class="form-group">
-                    <label class="form-label">User Access Token <span id="tokenDot"
-                            class="status-dot dot-gray"></span></label>
-                    <div class="input-group">
-                        <input type="password" id="fbUserToken" class="form-input" placeholder="EAABsbCS..." dir="ltr">
-                        <button class="eye-btn" type="button" onclick="togglePass('fbUserToken', this)">👁</button>
-                    </div>
-                    <p style="font-size:11px;color:var(--text-muted);margin-top:5px">
-                        يُحفَظ مشفراً في قاعدة البيانات ولا يظهر مجدداً
-                    </p>
-                </div>
+    <article class="pub-card settings-card">
+        <div class="section-title">
+            <span class="step-badge">2</span>
+            <h2>User Access Token</h2>
+            <a href="https://developers.facebook.com/tools/explorer/" target="_blank" class="help-link">Graph API Explorer</a>
+        </div>
+        <p class="section-note">احفظ User Token ثم اربط الصفحات المتاحة للنشر.</p>
 
-                <div style="display:flex;gap:10px;flex-wrap:wrap">
-                    <button class="btn btn-primary" onclick="saveToken()">
-                        💾 حفظ الـ Token
-                    </button>
-                    <button class="btn btn-outline" onclick="connectPages()">
-                        🔗 جلب وربط الصفحات الآن
-                    </button>
-                </div>
+        <div class="token-scope-list">
+            <span class="badge badge-queued">pages_show_list</span>
+            <span class="badge badge-queued">pages_read_engagement</span>
+            <span class="badge badge-queued">pages_manage_posts</span>
+            <span class="badge badge-queued">pages_read_user_content</span>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">User Token <span id="tokenDot" class="status-dot dot-gray"></span></label>
+            <div class="input-group">
+                <input type="password" id="fbUserToken" class="form-input" placeholder="EAAB..." dir="ltr">
+                <button class="eye-btn" type="button" data-target="fbUserToken" aria-label="إظهار أو إخفاء">
+                    <i data-lucide="eye"></i>
+                </button>
             </div>
+        </div>
 
-            <!-- ══ القسم 3: الصفحات المربوطة ════════════════════════════════════ -->
-            <div class="pub-card">
-                <div class="section-title">
-                    <span class="step-badge">3</span>
-                    الصفحات المربوطة
-                    <button class="btn btn-outline btn-sm" style="margin-right:auto" onclick="connectPages()">
-                        🔄 تحديث
-                    </button>
-                </div>
+        <div class="settings-actions">
+            <button class="btn btn-primary" id="saveTokenBtn" data-ripple>
+                <i data-lucide="save"></i>
+                <span>حفظ التوكن</span>
+            </button>
+            <button class="btn btn-outline" id="connectPagesBtn" data-ripple>
+                <i data-lucide="link-2"></i>
+                <span>جلب وربط الصفحات</span>
+            </button>
+        </div>
+    </article>
+ </section>
 
-                <div id="pagesContainer">
-                    <div style="text-align:center;padding:30px;color:var(--text-muted)">
-                        <span class="spinner"></span> جاري التحميل…
-                    </div>
-                </div>
-
-                <!-- رسالة إرشادية إذا لا توجد صفحات -->
-                <div id="noPagesMsg" style="display:none">
-                    <div class="empty-state">
-                        <div class="empty-icon">📄</div>
-                        <p>لا توجد صفحات مربوطة بعد</p>
-                        <p style="margin-top:8px;font-size:12px">أدخل User Token واضغط "جلب وربط الصفحات"</p>
-                    </div>
-                </div>
-            </div>
-
-        </main>
+<section class="pub-card">
+    <div class="section-title section-title-inline">
+        <span class="step-badge">3</span>
+        <h2>الصفحات المربوطة</h2>
+        <button class="btn btn-outline btn-sm" id="refreshPagesBtn" data-ripple>
+            <i data-lucide="refresh-cw"></i>
+            <span>تحديث</span>
+        </button>
     </div>
 
-    <div id="toastWrap" class="pub-toast-wrap"></div>
+    <div id="pagesContainer">
+        <div class="empty-state">
+            <span class="spinner"></span>
+            <p>جاري تحميل الصفحات...</p>
+        </div>
+    </div>
 
-    <script>
-        /* ── Toast ────────────────────────────────── */
-        function toast(msg, type = 'info') {
-            const wrap = document.getElementById('toastWrap');
-            const icons = { success: '✅', error: '❌', info: 'ℹ️' };
-            const t = document.createElement('div');
-            t.className = 'pub-toast ' + type;
-            t.innerHTML = '<span>' + (icons[type] || 'ℹ️') + '</span><span>' + msg + '</span>';
-            wrap.appendChild(t);
-            setTimeout(() => t.remove(), 4500);
-        }
+    <div id="noPagesMsg" style="display:none">
+        <div class="empty-state">
+            <div class="empty-icon"><i data-lucide="folder-x"></i></div>
+            <p>لا توجد صفحات مربوطة بعد</p>
+            <p class="empty-note">احفظ User Token ثم اضغط على "جلب وربط الصفحات".</p>
+        </div>
+    </div>
+</section>
+{% endblock %}
 
-        async function apiFetchJson(url, options = {}) {
-            const opts = {
-                credentials: 'include',
-                ...options,
-                headers: {
-                    'Accept': 'application/json',
-                    ...(options.headers || {})
-                }
-            };
-            const res = await fetch(url, opts);
-            const contentType = res.headers.get('content-type') || '';
-            if (!contentType.includes('application/json')) {
-                return { success: false, message: 'استجابة غير صالحة من الخادم' };
-            }
-            const data = await res.json();
-            if (res.status === 401 && !data.message) {
-                data.message = 'Unauthorized';
-            }
-            return data;
-        }
-
-        /* ── Toggle password visibility ────────────── */
-        function togglePass(id, btn) {
-            const el = document.getElementById(id);
-            if (el.type === 'password') { el.type = 'text'; btn.textContent = '🙈'; }
-            else { el.type = 'password'; btn.textContent = '👁'; }
-        }
-
-        /* ── Set status dot ────────────────────────── */
-        function setDot(id, hasValue) {
-            const el = document.getElementById(id);
-            if (!el) return;
-            el.className = 'status-dot ' + (hasValue ? 'dot-green' : 'dot-gray');
-        }
-
-        /* ── Load current settings ─────────────────── */
-        async function loadSettings() {
-            try {
-                const r = await apiFetchJson('/publisher/api/settings');
-                if (!r.success) return;
-                const s = r.settings;
-                document.getElementById('fbAppId').placeholder = s.fb_app_id || 'App ID…';
-                if (s.fb_app_id) document.getElementById('fbAppId').value = s.fb_app_id;
-                setDot('appIdDot', !!s.fb_app_id);
-                setDot('appSecretDot', s.has_secret);
-                setDot('tokenDot', s.has_token);
-            } catch (e) { console.error(e); }
-        }
-
-        /* ── Save App ID + Secret ──────────────────── */
-        async function saveCredentials() {
-            const btn = event.currentTarget;
-            const fb_app_id = document.getElementById('fbAppId').value.trim();
-            const fb_app_secret = document.getElementById('fbAppSecret').value.trim();
-            if (!fb_app_id && !fb_app_secret) { toast('أدخل App ID أو App Secret', 'error'); return; }
-
-            btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> جاري الحفظ…';
-            const r = await apiFetchJson('/publisher/api/settings', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({ fb_app_id, fb_app_secret })
-            });
-            btn.disabled = false; btn.innerHTML = '💾 حفظ بيانات التطبيق';
-
-            if (r.success) {
-                toast(r.message, 'success');
-                setDot('appIdDot', !!fb_app_id);
-                setDot('appSecretDot', !!fb_app_secret);
-                document.getElementById('fbAppSecret').value = '';
-            } else { toast(r.message || 'خطأ', 'error'); }
-        }
-
-        /* ── Save User Token ───────────────────────── */
-        async function saveToken() {
-            const btn = event.currentTarget;
-            const fb_user_token = document.getElementById('fbUserToken').value.trim();
-            if (!fb_user_token) { toast('أدخل User Token أولاً', 'error'); return; }
-
-            btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> جاري الحفظ…';
-            const r = await apiFetchJson('/publisher/api/settings', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({ fb_user_token })
-            });
-            btn.disabled = false; btn.innerHTML = '💾 حفظ الـ Token';
-
-            if (r.success) {
-                toast('تم حفظ الـ Token بنجاح', 'success');
-                setDot('tokenDot', true);
-                document.getElementById('fbUserToken').value = '';
-            } else { toast(r.message || 'خطأ', 'error'); }
-        }
-
-        /* ── Connect / Refresh Pages ───────────────── */
-        async function connectPages() {
-            const container = document.getElementById('pagesContainer');
-            const noMsg = document.getElementById('noPagesMsg');
-            const token = document.getElementById('fbUserToken').value.trim();
-
-            container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted)"><span class="spinner"></span> جاري جلب الصفحات…</div>';
-            noMsg.style.display = 'none';
-
-            const r = await apiFetchJson('/publisher/api/settings/connect-pages', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify(token ? { user_token: token } : {})
-            });
-
-            if (r.success) {
-                toast(r.message, 'success');
-                if (token) { document.getElementById('fbUserToken').value = ''; setDot('tokenDot', true); }
-            } else {
-                toast(r.message || 'خطأ في جلب الصفحات', 'error');
-            }
-
-            // عرض الصفحات المحفوظة
-            await renderSavedPages();
-        }
-
-        /* ── Render saved pages ────────────────────── */
-        async function renderSavedPages() {
-            const container = document.getElementById('pagesContainer');
-            const noMsg = document.getElementById('noPagesMsg');
-            try {
-                const r = await apiFetchJson('/publisher/api/pages');
-                const pages = r.pages || [];
-
-                if (!pages.length) {
-                    container.innerHTML = '';
-                    noMsg.style.display = 'block';
-                    return;
-                }
-                noMsg.style.display = 'none';
-                container.innerHTML = '<div class="page-list">' + pages.map(p =>
-                    '<div class="page-item">' +
-                    '<div class="page-item-info">' +
-                    '<div class="page-avatar">📄</div>' +
-                    '<div>' +
-                    '<div class="page-name">' + p.page_name + '</div>' +
-                    '<div class="page-id">ID: ' + p.page_id + '</div>' +
-                    '</div>' +
-                    '</div>' +
-                    '<div style="display:flex;align-items:center;gap:8px">' +
-                    '<span class="badge badge-published">✓ مربوطة</span>' +
-                    '<button class="btn-icon btn-sm" title="حذف" onclick="deletePage(' + p.id + ')">🗑️</button>' +
-                    '</div>' +
-                    '</div>'
-                ).join('') + '</div>';
-            } catch (e) {
-                container.innerHTML = '<p style="color:var(--danger)">خطأ في تحميل الصفحات</p>';
-            }
-        }
-
-        /* ── Delete page ────────────────────────────── */
-        async function deletePage(id) {
-            if (!confirm('هل تريد إلغاء ربط هذه الصفحة؟')) return;
-            const r = await apiFetchJson('/publisher/api/pages/' + id, {
-                method: 'DELETE'
-            });
-            if (r.success) { toast('تم إلغاء الربط', 'success'); renderSavedPages(); }
-            else toast(r.message || 'خطأ', 'error');
-        }
-
-        /* ── Init ────────────────────────────────────── */
-        document.addEventListener('DOMContentLoaded', () => {
-            loadSettings();
-            renderSavedPages();
-        });
-    </script>
-</body>
-
-</html>
+{% block page_scripts %}
+<script src="/static/publisher/js/settings.js?v=20260316a"></script>
+{% endblock %}

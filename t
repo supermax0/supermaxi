@@ -1,383 +1,339 @@
-You are a senior full-stack engineer and system architect.
+You are a senior UI/UX designer and front-end architect.
 
-Your task is to design and implement a **professional Facebook publishing system** inside an existing Flask web application.
+Redesign the entire Publisher SPA interface of a Flask web application called "Finora Publisher".
 
-The project is located at:
+The goal is to create a modern, professional social media publishing dashboard similar to:
 
-/var/www/finora/supermaxi
+Meta Business Suite
+Buffer
+Hootsuite
+Notion style dashboards
 
-The current stack is:
+The system currently contains these pages:
 
-Python
-Flask
-Gunicorn
-Nginx
-SQLite (or PostgreSQL optional)
-HTML / CSS / JavaScript
+1) Dashboard
+2) Create Post
+3) Media Library
+4) Settings
 
-The system must be built from scratch because the old autoposter module has been completely removed.
+The redesign must keep all backend endpoints unchanged but completely upgrade the UI and UX.
 
-IMPORTANT RULES
+--------------------------------
 
-• Do NOT modify existing modules such as POS, inventory, dashboard.
-• Build the publishing system as a **separate module**.
-• Use Flask Blueprints.
-• Ensure clean architecture and maintainability.
-• All APIs must return JSON.
-• The system must support **Facebook only for now**.
+GENERAL DESIGN REQUIREMENTS
 
----
+Create a premium SaaS-level interface.
 
-SYSTEM GOALS
+Style inspiration:
 
-Create a **Professional Facebook Publishing Platform** with:
-
-• Media library
-• Post creation
-• Multi-page publishing
-• Scheduled posts
-• AI content assistant
-• High quality media upload
-• Modern UI
-
----
-
-ARCHITECTURE
-
-Create a new module:
-
-modules/publisher/
-
-Structure:
-
-modules/publisher/
-api/
-posts_api.py
-media_api.py
-pages_api.py
-ai_api.py
-services/
-facebook_service.py
-media_service.py
-ai_service.py
-scheduler_service.py
-models/
-post_model.py
-media_model.py
-page_model.py
-templates/
-publisher/
-dashboard.html
-create_post.html
-media_library.html
-static/
-publisher/
-css/
-js/
-components/
-routes.py
-
----
-
-FEATURES
-
-1. FACEBOOK PAGE CONNECTION
-
-Users must be able to:
-
-• connect Facebook account
-• fetch available pages
-• store page access tokens securely
-• list pages in UI
-
-Use Facebook Graph API.
-
-Store:
-
-page_id
-page_name
-page_token
-
----
-
-2. MEDIA LIBRARY
-
-Create a professional media library.
-
-Features:
-
-• upload images
-• upload videos
-• preview media
-• search media
-• grid view
-• delete media
-• drag and drop upload
-
-Supported formats:
-
-jpg
-png
-webp
-mp4
-mov
-
-Max upload size:
-
-500MB
-
-Storage location:
-
-/var/www/finora/supermaxi/media
-
-Structure:
-
-media/
-images/
-videos/
-
-Database fields:
-
-id
-filename
-type
-size
-created_at
-
----
-
-3. MEDIA UPLOAD SYSTEM
-
-Implement robust upload handling.
-
-Requirements:
-
-• progress bar
-• drag and drop
-• file validation
-• automatic folder creation
-• error handling
-• preview generation
-
-Return JSON:
-
-{
-"success": true,
-"url": "/media/images/file.jpg"
-}
-
----
-
-4. POST CREATION
-
-Create a page:
-
-/publisher/create
-
-Features:
-
-• write post text
-• select pages
-• attach media
-• preview post
-• schedule post
-
-UI must look modern and clean.
-
----
-
-5. MULTI PAGE PUBLISHING
-
-Allow selecting multiple pages.
-
-Publishing modes:
-
-• publish now
-• schedule later
-
----
-
-6. SCHEDULER
-
-Scheduled posts must be stored and executed by a background worker.
+• Linear.app
+• Vercel dashboard
+• Notion
+• Meta Business Suite
 
 Use:
 
-APScheduler
+Dark theme first design
+Soft glassmorphism cards
+Subtle gradients
+Smooth micro-animations
+Clean typography
 
-Store:
+Primary colors:
 
-post_id
-publish_time
-status
+Background:
+#0b1020
 
----
+Card:
+rgba(255,255,255,0.04)
 
-7. FACEBOOK PUBLISHING SERVICE
+Accent gradient:
+#6366f1 → #8b5cf6
 
-Create a service:
+Success:
+#10b981
 
-services/facebook_service.py
+Error:
+#ef4444
 
-Responsibilities:
+Border:
+rgba(255,255,255,0.08)
 
-• publish text posts
-• publish image posts
-• publish video posts
-• error handling
-• retry logic
+--------------------------------
 
----
+LAYOUT STRUCTURE
 
-8. AI CONTENT ASSISTANT
+Use a modern responsive layout:
 
-Create AI integration.
+Desktop:
+Sidebar (left)
+Main content
+Optional right preview panel
 
-Features:
+Mobile:
+Collapsible sidebar
+Single column layout
+Floating action buttons
 
-• generate post text
-• rewrite text
-• generate hashtags
-• improve marketing tone
+Use CSS grid + flexbox.
 
-Endpoint:
+Breakpoints:
 
-POST /publisher/api/ai/generate
+Mobile < 640px
+Tablet < 1024px
+Desktop ≥ 1024px
 
-Input:
+--------------------------------
 
-topic
-tone
-length
+SIDEBAR DESIGN
 
-Return:
+Create a premium vertical sidebar with:
 
-AI generated text.
+Publisher logo
+Navigation items
 
----
+• Dashboard
+• Create Post
+• Media Library
+• Settings
 
-9. PROFESSIONAL UI
+Icons:
 
-Create a modern design.
+Use Lucide icons.
 
-Style:
+Active item style:
 
-• dark modern dashboard
-• responsive layout
-• sidebar navigation
-• card components
-• media grid
-• upload area with drag & drop
+background gradient
+rounded corners
+soft glow effect
+
+Add subtle hover animations.
+
+--------------------------------
+
+DASHBOARD PAGE
+
+Design a professional analytics dashboard.
+
+Top section:
+4 stat cards
+
+Total posts
+Published
+Scheduled
+Failed
+
+Each card should include:
+
+Icon
+Number
+Label
+Gradient top border
+
+Below that:
+
+Recent Posts Table
+
+Columns:
+
+Content preview
+Status
+Pages count
+Date
+Actions
+
+Status badges:
+
+Published → green
+Scheduled → blue
+Failed → red
+Draft → gray
+
+--------------------------------
+
+CREATE POST PAGE
+
+Create a modern 3-panel layout.
+
+LEFT PANEL
+
+Post editor.
+
+Components:
+
+Large textarea
+AI assistant tools
+
+Buttons:
+
+Generate text
+Rewrite
+Generate hashtags
+
+Dropdowns:
+
+Tone
+Length
+Content style
+
+--------------------------------
+
+RIGHT PANEL
+
+Live Facebook preview.
+
+Show:
+
+Page avatar
+Page name
+Post content
+Attached media preview
+
+Preview must update live as the user types.
+
+--------------------------------
+
+BOTTOM SECTION
+
+Page selection area.
+
+Show connected pages as rounded tags.
+
+Allow multi-select.
+
+--------------------------------
+
+MEDIA ATTACHMENT
+
+Allow:
+
+Image preview cards
+Video preview cards
+Drag & drop upload
+Media library picker
+
+Media cards must include:
+
+Thumbnail
+File name
+Delete button
+
+--------------------------------
+
+MEDIA LIBRARY PAGE
+
+Create a clean media manager.
+
+Top toolbar:
+
+Search
+Filter:
+
+All
+Images
+Videos
+
+Upload button
+
+--------------------------------
+
+MEDIA GRID
+
+Responsive grid:
+
+Desktop: 5 columns
+Tablet: 3 columns
+Mobile: 2 columns
+
+Each media card:
+
+Thumbnail
+File name
+Size
+Delete icon
+
+Add hover overlay:
+
+Preview
+Use in post
+
+--------------------------------
+
+SETTINGS PAGE
+
+Divide into sections:
+
+Facebook App Credentials
+
+App ID
+App Secret
+
+User Token
+
+Pages list
+
+Each page card must show:
+
+Page name
+Page ID
+Remove button
+
+--------------------------------
+
+MICRO INTERACTIONS
+
+Add subtle animations:
+
+Hover lift on cards
+Sidebar hover glow
+Button ripple effect
+Smooth transitions (200ms)
+
+--------------------------------
+
+TECH STACK
+
+Write clean production ready code using:
+
+HTML
+CSS
+Vanilla JavaScript
+
+Do not use heavy frameworks.
 
 Use:
 
-Vanilla JS or lightweight framework.
+CSS variables
+Reusable components
+Responsive design
+Accessible UI
 
----
+--------------------------------
 
-10. API ENDPOINTS
+OUTPUT REQUIRED
 
-Required APIs:
+Generate:
 
-GET  /publisher/api/media
-POST /publisher/api/media/upload
-DELETE /publisher/api/media/<id>
+1) publisher.css (modern design system)
+2) publisher_layout.html
+3) dashboard.html redesign
+4) create_post.html redesign
+5) media_library.html redesign
+6) settings.html redesign
+7) minimal JS for UI interactions
 
-GET  /publisher/api/pages
+Ensure everything works inside Flask templates.
 
-POST /publisher/api/posts/create
-POST /publisher/api/posts/schedule
+--------------------------------
 
-POST /publisher/api/ai/generate
+IMPORTANT
 
----
+Do not modify Flask routes or backend logic.
 
-11. ERROR HANDLING
+Only upgrade the UI layer.
 
-All APIs must return structured JSON:
+Ensure the design works perfectly on:
 
-{
-"success": false,
-"message": "error description"
-}
-
----
-
-12. LOGGING
-
-Create logging system.
-
-Logs stored in:
-
-logs/publisher.log
-
-Log:
-
-• publish attempts
-• errors
-• API calls
-
----
-
-13. SECURITY
-
-Implement:
-
-• file validation
-• token protection
-• max upload limits
-• rate limiting for APIs
-
----
-
-14. NGINX CONFIGURATION
-
-Ensure nginx supports uploads:
-
-client_max_body_size 500M;
-
-Serve media:
-
-location /media {
-alias /var/www/finora/supermaxi/media;
-}
-
----
-
-15. PERFORMANCE
-
-Use:
-
-• async requests
-• caching for media lists
-• background publishing jobs
-
----
-
-FINAL OUTPUT
-
-The AI must generate:
-
-• complete folder structure
-• Flask routes
-• services
-• models
-• media upload system
-• Facebook integration
-• AI assistant
-• frontend UI
-• scheduler
-• logging
-
-The result must be a **production-ready Facebook publishing platform**.
-
-
-ملاحظات مهمة لبناء النظام صح من البداية
-
-افصل النظام في module مستقل حتى لا يكسر مشروعك.
-
-اجعل النشر يتم عبر service layer وليس داخل routes.
-
-استخدم scheduler للنشر المجدول.
-
-اجعل media library مشتركة بين كل المنشورات.
+Desktop
+Tablet
+Mobile

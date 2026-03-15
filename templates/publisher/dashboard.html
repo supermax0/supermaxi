@@ -1,103 +1,81 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
+{% extends "publisher/publisher_layout.html" %}
+{% set active_page = "dashboard" %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>لوحة الناشر — فيسبوك</title>
-    <link rel="stylesheet" href="/static/publisher/css/publisher.css">
-</head>
+{% block page_title %}لوحة التحكم | Finora Publisher{% endblock %}
+{% block page_heading %}لوحة التحكم{% endblock %}
+{% block page_subheading %}
+<p class="topbar-sub">تحليلات سريعة لحالة النشر والمنشورات الأخيرة</p>
+{% endblock %}
+{% block page_actions %}
+<a href="/publisher/create" class="btn btn-primary" data-ripple>
+    <i data-lucide="plus"></i>
+    <span>منشور جديد</span>
+</a>
+{% endblock %}
 
-<body class="publisher-body">
-    <div class="pub-shell">
+{% block content %}
+<section class="stats-grid">
+    <article class="stat-card">
+        <div class="stat-head">
+            <span class="stat-icon"><i data-lucide="files"></i></span>
+            <span class="stat-label">إجمالي المنشورات</span>
+        </div>
+        <div class="stat-value" id="statTotal">—</div>
+    </article>
+    <article class="stat-card">
+        <div class="stat-head">
+            <span class="stat-icon"><i data-lucide="check-circle-2"></i></span>
+            <span class="stat-label">منشورة</span>
+        </div>
+        <div class="stat-value" id="statPublished">—</div>
+    </article>
+    <article class="stat-card">
+        <div class="stat-head">
+            <span class="stat-icon"><i data-lucide="calendar-clock"></i></span>
+            <span class="stat-label">مجدولة</span>
+        </div>
+        <div class="stat-value" id="statScheduled">—</div>
+    </article>
+    <article class="stat-card">
+        <div class="stat-head">
+            <span class="stat-icon"><i data-lucide="x-circle"></i></span>
+            <span class="stat-label">فشلت</span>
+        </div>
+        <div class="stat-value" id="statFailed">—</div>
+    </article>
+</section>
 
-        <!-- Sidebar -->
-        <aside class="pub-sidebar" id="sidebar">
-            <div class="logo">
-                <div class="logo-icon">📢</div>
-                <span class="logo-text">الناشر</span>
-            </div>
-            <nav class="pub-nav">
-                <a href="/publisher/" class="active">
-                    <span class="nav-icon">📊</span> لوحة التحكم
-                </a>
-                <a href="/publisher/create">
-                    <span class="nav-icon">✏️</span> إنشاء منشور
-                </a>
-                <a href="/publisher/media">
-                    <span class="nav-icon">🖼️</span> مكتبة الوسائط
-                </a>
-                <a href="/publisher/settings">
-                    <span class="nav-icon">⚙️</span> الإعدادات
-                </a>
-            </nav>
-            <div class="sidebar-footer">
-                <a href="/" style="color:var(--text-muted);text-decoration:none">← العودة للنظام</a>
-            </div>
-        </aside>
-
-        <!-- Main -->
-        <main class="pub-main">
-            <div class="pub-topbar">
-                <h1>لوحة الناشر 📢</h1>
-                <div class="topbar-actions">
-                    <a href="/publisher/create" class="btn btn-primary">✏️ منشور جديد</a>
-                </div>
-            </div>
-
-            <!-- Stats -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-icon">📝</div>
-                    <div class="stat-value" id="statTotal">—</div>
-                    <div class="stat-label">إجمالي المنشورات</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">📅</div>
-                    <div class="stat-value" id="statScheduled">—</div>
-                    <div class="stat-label">مجدولة</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">✅</div>
-                    <div class="stat-value" id="statPublished">—</div>
-                    <div class="stat-label">منشورة</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">❌</div>
-                    <div class="stat-value" id="statFailed">—</div>
-                    <div class="stat-label">فشلت</div>
-                </div>
-            </div>
-
-            <!-- Recent Posts -->
-            <div class="pub-card">
-                <div class="pub-card-title">آخر المنشورات</div>
-                <table class="pub-table">
-                    <thead>
-                        <tr>
-                            <th>المحتوى</th>
-                            <th>الحالة</th>
-                            <th>الصفحات</th>
-                            <th>التاريخ</th>
-                        </tr>
-                    </thead>
-                    <tbody id="postsBody">
-                        <tr>
-                            <td colspan="4" style="text-align:center;padding:40px;color:var(--text-muted)">
-                                <span class="spinner"></span>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-        </main>
+<section class="pub-card table-card">
+    <div class="table-head">
+        <h2>آخر المنشورات</h2>
     </div>
+    <div class="table-wrap">
+        <table class="pub-table">
+            <thead>
+                <tr>
+                    <th>المحتوى</th>
+                    <th>الحالة</th>
+                    <th>الصفحات</th>
+                    <th>التاريخ</th>
+                    <th>الإجراء</th>
+                </tr>
+            </thead>
+            <tbody id="postsBody">
+                <tr>
+                    <td colspan="5" class="table-loading">
+                        <span class="spinner"></span>
+                        <span>جاري تحميل البيانات...</span>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
 
-    <div id="toastWrap" class="pub-toast-wrap"></div>
-
-    <script src="/static/publisher/js/publisher.js?v=20260314c"></script>
-    <script>document.addEventListener('DOMContentLoaded', initDashboard);</script>
-</body>
-
-</html>
+{% block page_scripts %}
+<script src="/static/publisher/js/publisher.js?v=20260316a"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", initDashboard);
+</script>
+{% endblock %}
