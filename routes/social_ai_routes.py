@@ -4,6 +4,7 @@ from datetime import datetime
 from pathlib import Path
 
 from flask import Blueprint, jsonify, render_template, request, session, g, send_from_directory, current_app, redirect
+from werkzeug.exceptions import NotFound
 
 from extensions import db
 from models.social_account import SocialAccount
@@ -46,12 +47,14 @@ def dashboard():
 
 @social_ai_bp.route("/assets/<path:filename>")
 def ai_builder_assets(filename: str):
-    """Serve built assets for /social-ai/ page."""
-    if not session.get("user_id"):
-        return ("", 401)
-
+    """Serve built assets for /social-ai/ page. No auth so CSS/JS load correctly (page itself requires login)."""
     assets_dir = _ai_agent_dist_dir() / "assets"
-    return send_from_directory(str(assets_dir), filename)
+    if not assets_dir.is_dir():
+        return ("assets dir missing", 404, {"Content-Type": "text/plain"})
+    try:
+        return send_from_directory(str(assets_dir), filename)
+    except NotFound:
+        return ("not found", 404, {"Content-Type": "text/plain"})
 
 
 @social_ai_bp.route("/api/accounts", methods=["GET"])
