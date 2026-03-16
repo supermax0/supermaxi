@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from pathlib import Path
 
+import requests
 from flask import Blueprint, jsonify, render_template, request, session, g, send_from_directory, current_app, redirect
 from werkzeug.exceptions import NotFound
 
@@ -231,6 +233,58 @@ def api_knowledge_extract():
     except Exception as e:
         current_app.logger.exception("knowledge extract")
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+def _telegram_webhook_base():
+    """Base URL لاستقبال webhook تيليجرام (نفس أصل التطبيق)."""
+    base = current_app.config.get("BASE_URL") or ""
+    if not base:
+        base = request.url_root.rstrip("/") if request else ""
+    return base
+
+
+@social_ai_bp.route("/api/telegram/set-webhook", methods=["POST"])
+def api_telegram_set_webhook():
+    """تفعيل Webhook تيليجرام من الصفحة: تسجيل عنوان الاستقبال عند Telegram باستخدام التوكن المرسل."""
+    if not session.get("user_id"):
+        return jsonify({"ok": False, "error": "يجب تسجيل الدخول"}), 401
+    data = request.get_json() or {}
+    bot_token = (data.get("bot_token") or "").strip()
+    if not bot_token:
+        return jsonify({"ok": False, "error": "Bot Token مطلوب"}), 400
+    base = _telegram_webhook_base()
+    webhook_url = f"{base}/telegram/webhook"
+    url = f"https://api.telegram.org/bot{bot_token}/setWebhook"
+    try:
+        resp = requests.post(url, json={"url": webhook_url}, timeout=10)
+        body = resp.json() if resp.text else {}
+        if not resp.ok:
+            return jsonify({"ok": False, "error": body.get("description", "فشل تفعيل Webhook"), "telegram_response": body}), 400
+        return jsonify({"ok": True, "webhook_url": webhook_url, "telegram_response": body}), 200
+    except Exception as e:
+        logging.getLogger(__name__).exception("telegram set-webhook")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@social_ai_bp.route("/api/telegram/delete-webhook", methods=["POST"])
+def api_telegram_delete_webhook():
+    """إلغاء تفعيل Webhook تيليجرام من الصفحة."""
+    if not session.get("user_id"):
+        return jsonify({"ok": False, "error": "يجب تسجيل الدخول"}), 401
+    data = request.get_json() or {}
+    bot_token = (data.get("bot_token") or "").strip()
+    if not bot_token:
+        return jsonify({"ok": False, "error": "Bot Token مطلوب"}), 400
+    url = f"https://api.telegram.org/bot{bot_token}/deleteWebhook"
+    try:
+        resp = requests.post(url, timeout=10)
+        body = resp.json() if resp.text else {}
+        if not resp.ok:
+            return jsonify({"ok": False, "error": body.get("description", "فشل إلغاء Webhook"), "telegram_response": body}), 400
+        return jsonify({"ok": True, "telegram_response": body}), 200
+    except Exception as e:
+        logging.getLogger(__name__).exception("telegram delete-webhook")
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 
 @social_ai_bp.route("/api/schedule", methods=["POST"])

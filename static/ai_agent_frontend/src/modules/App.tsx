@@ -1989,14 +1989,58 @@ export const App: React.FC = () => {
                         <select
                           className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none"
                           value={(selectedNode.data as any)?.enabled ?? true ? "on" : "off"}
-                          onChange={(e) => handleMessagingFieldChange("enabled")({
-                            ...e,
-                            target: { ...e.target, value: e.target.value === "on" },
-                          } as any)}
+                          onChange={async (e) => {
+                            if (!selectedNode || (selectedNode.type !== "telegram_listener" && selectedNode.type !== "whatsapp_listener")) return;
+                            const newOn = e.target.value === "on";
+                            if (selectedNode.type === "telegram_listener") {
+                              const botToken = ((selectedNode.data as any)?.bot_token as string)?.trim();
+                              if (newOn) {
+                                if (!botToken) {
+                                  alert("أدخل Bot Token أولاً ثم اختر مفعل.");
+                                  return;
+                                }
+                                try {
+                                  const res = await fetch("/social-ai/api/telegram/set-webhook", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ bot_token: botToken }),
+                                  });
+                                  const data = await res.json();
+                                  if (data.ok) {
+                                    updateNodeData(selectedNode.id, { enabled: true });
+                                  } else {
+                                    alert(data.error || "فشل تفعيل Webhook");
+                                  }
+                                } catch (err) {
+                                  alert("خطأ في الاتصال. تأكد من حفظ الوورك فلو ثم جرّب مرة أخرى.");
+                                }
+                              } else {
+                                if (botToken) {
+                                  try {
+                                    await fetch("/social-ai/api/telegram/delete-webhook", {
+                                      method: "POST",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ bot_token: botToken }),
+                                    });
+                                  } catch {
+                                    // ignore network errors when disabling webhook
+                                  }
+                                }
+                                updateNodeData(selectedNode.id, { enabled: false });
+                              }
+                            } else {
+                              updateNodeData(selectedNode.id, { enabled: newOn });
+                            }
+                          }}
                         >
                           <option value="on">مفعل</option>
                           <option value="off">معطّل</option>
                         </select>
+                        {selectedNode.type === "telegram_listener" && (
+                          <p className="mt-1 text-[10px] text-slate-500">
+                            عند اختيار &quot;مفعل&quot; يُسجَّل عنوان الاستقبال عند تيليجرام مباشرة.
+                          </p>
+                        )}
                       </div>
                     </div>
                   </>
