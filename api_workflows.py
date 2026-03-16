@@ -45,6 +45,14 @@ def _node_proxy_enabled() -> bool:
     return raw not in {"0", "false", "off", "no"}
 
 
+def _node_run_fallback_enabled() -> bool:
+    """When False (default), run path does not fall back to Flask executor on Node failure (avoids double execution)."""
+    configured = str(current_app.config.get("AI_AUTOMATION_NODE_RUN_FALLBACK") or "").strip().lower()
+    env_value = (os.getenv("AI_AUTOMATION_NODE_RUN_FALLBACK") or "").strip().lower()
+    raw = configured or env_value or "0"
+    return raw in {"1", "true", "on", "yes"}
+
+
 def _proxy_to_node(node_path: str, *, timeout_s: float = 8.0):
     """
     Transparent proxy to Node backend API.
@@ -309,6 +317,16 @@ def run_workflow(workflow_id: int):
     proxied = _proxy_to_node(f"/api/workflows/{workflow_id}/run", timeout_s=15.0)
     if proxied is not None:
         return proxied
+
+    if not _node_run_fallback_enabled():
+        return (
+            jsonify({
+                "success": False,
+                "error": "node_backend_unavailable",
+                "message": "Workflow execution is handled by the Node backend; the backend is unavailable or timed out. Set AI_AUTOMATION_NODE_RUN_FALLBACK=1 to allow local fallback.",
+            }),
+            502,
+        )
 
     workflow = _base_workflow_query().filter(AgentWorkflow.id == workflow_id).first()
     if not workflow:

@@ -45,7 +45,7 @@ export async function storeIdempotency(
       VALUES ($1, $2, $3, $4, $5)
       ON CONFLICT (tenant_slug, user_id, scope, idem_key) DO NOTHING
     `,
-    [tenantSlug, userId, scope, JSON.stringify(payload)],
+    [tenantSlug, userId, scope, key, JSON.stringify(payload)],
   );
 }
 
