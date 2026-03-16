@@ -360,9 +360,11 @@ def run_telegram_send_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, 
 
     chat_id = _render_template(chat_tmpl, context).strip()
     message = _render_template(msg_tmpl, context).strip()
+    # استخدام توكن البوت من عقدة Listener (السياق) أو من هذه العقدة أو الإعدادات
+    bot_token = (data.get("bot_token") or context.get("telegram_bot_token") or "").strip() or None
 
     if chat_id and message:
-        send_telegram_message(chat_id, message)
+        send_telegram_message(chat_id, message, bot_token=bot_token)
 
     result: Dict[str, Any] = {
         "telegram_chat_id": chat_id,
@@ -683,7 +685,9 @@ def execute_workflow(execution: AgentExecution, initial_context: Dict[str, Any] 
                     tg_output = run_telegram_send_node(node, context)
                     log(node, "success", node_input, tg_output)
                 elif node.type in ("telegram_listener", "whatsapp_listener"):
-                    # عقدة استقبال: البيانات (message_text, chat_id) موجودة في السياق من الـ webhook
+                    # عقدة استقبال: البيانات (message_text, chat_id) من الـ webhook أو السياق الأولي؛ توكن البوت من بيانات العقدة لاستخدامه في الإرسال
+                    if node.type == "telegram_listener" and (node.data or {}).get("bot_token"):
+                        context["telegram_bot_token"] = (node.data or {}).get("bot_token", "").strip()
                     log(node, "success", node_input, {"message_text": context.get("message_text"), "chat_id": context.get("chat_id")})
                 elif node.type == "memory_store":
                     mem_output = run_memory_node(node, context)
