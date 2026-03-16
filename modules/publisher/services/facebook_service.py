@@ -30,14 +30,29 @@ def _retry_post(url: str, **kwargs) -> dict:
     for attempt in range(_MAX_RETRIES):
         try:
             resp = requests.post(url, timeout=60, **kwargs)
-            data = resp.json()
         except Exception as exc:
             logger.error("FB request error (attempt %d): %s", attempt + 1, exc)
             last_err = {"success": False, "message": str(exc), "error_code": None, "error_subcode": None}
             time.sleep(2 ** attempt)
             continue
 
-        if resp.status_code == 200 and "id" in data:
+        try:
+            data = resp.json()
+        except Exception as exc:
+            logger.warning("FB response not JSON (attempt %d): %s", attempt + 1, exc)
+            last_err = {
+                "success": False,
+                "message": f"Invalid response from Facebook: {resp.status_code}",
+                "error_code": None,
+                "error_subcode": None,
+            }
+            if resp.status_code != 200:
+                return last_err
+            time.sleep(2 ** attempt)
+            continue
+
+        # Success: 200 and response contains id (feed/photo/video) or post_id (photo)
+        if resp.status_code == 200 and ("id" in data or "post_id" in data):
             return {"success": True, "data": data}
 
         error = data.get("error", {})
