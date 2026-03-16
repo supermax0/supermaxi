@@ -39,10 +39,14 @@ def publish_facebook_post(
     video_url: str | None = None,
     page_id: str | None = None,
 ) -> Dict[str, Any]:
-    """نشر منشور على صفحة فيسبوك (نص فقط، صورة، أو فيديو). يرجع استجابة الـ API (يحتوي id أو post_id)."""
+    """نشر منشور على صفحة فيسبوك (نص فقط، صورة، أو فيديو). يرجع استجابة الـ API (يحتوي id أو post_id).
+    يجب تمرير page_id لصفحة فيسبوك (Page) وليس الحساب الشخصي؛ وإلا النشر قد يظهر على غير الصفحة أو يفشل.
+    ظهور المنشور للعامة يعتمد على إعدادات الجمهور الافتراضي للصفحة في فيسبوك."""
     version = "v21.0"
     base = f"https://graph.facebook.com/{version}"
-    me_or_page = page_id if page_id else "me"
+    if not (page_id and str(page_id).strip()):
+        raise ValueError("نشر فيسبوك يتطلب page_id (معرف الصفحة). تأكد أن الحساب المرتبط هو صفحة وليس حساب شخصي.")
+    me_or_page = str(page_id).strip()
 
     if video_url:
         url = f"{base}/{me_or_page}/videos"

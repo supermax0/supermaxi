@@ -210,7 +210,7 @@ def run_publisher_node(node: NodeDef, context: Dict[str, Any], execution: AgentE
 
     publish_mode = data.get("publish_mode") or "publish_now"
 
-    # 5) اختيار حسابات السوشيال حسب المنصات
+    # 5) اختيار حسابات السوشيال حسب المنصات (واختيارياً قائمة صفحات محددة)
     tenant_slug = getattr(execution.workflow.agent, "tenant_slug", None)
     acc_q = SocialAccount.query
     if tenant_slug:
@@ -218,8 +218,14 @@ def run_publisher_node(node: NodeDef, context: Dict[str, Any], execution: AgentE
     if platforms:
         acc_q = acc_q.filter(SocialAccount.platform.in_(platforms))
     accounts = acc_q.all()
+    # إذا وُجدت قائمة account_ids أو page_ids في العقدة، ننشر فقط على هذه الصفحات (تجنب النشر على صفحات غير مرغوبة)
+    allowed_ids = data.get("account_ids") or data.get("page_ids")
+    if allowed_ids and isinstance(allowed_ids, (list, tuple)):
+        allowed_set = {str(x).strip() for x in allowed_ids if x}
+        if allowed_set:
+            accounts = [a for a in accounts if str(a.account_id).strip() in allowed_set]
     if not accounts:
-        raise RuntimeError("لا توجد حسابات سوشيال مطابقة للمنصات المحددة.")
+        raise RuntimeError("لا توجد حسابات سوشيال مطابقة للمنصات المحددة (أو القائمة المختارة). راجع إعدادات العقدة أو ربط الصفحات.")
 
     # 6) إنشاء SocialPost
     post_status = "draft"

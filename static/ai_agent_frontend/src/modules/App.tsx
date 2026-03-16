@@ -1305,6 +1305,26 @@ export const App: React.FC = () => {
 
                       <div>
                         <label className="mb-1 block text-[11px] text-slate-400">
+                          صفحات محددة (اختياري)
+                        </label>
+                        <input
+                          className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none"
+                          placeholder="معرف الصفحة أو أكثر مفصولة بفاصلة، مثال: 123456,789012"
+                          value={((selectedNode.data as any)?.account_ids as string[] | undefined)?.join(", ") ?? ""}
+                          onChange={(e) => {
+                            if (!selectedNode || selectedNode.type !== "publisher") return;
+                            const raw = (e.target.value || "").trim();
+                            const account_ids = raw ? raw.split(/[\s,]+/).map((s) => s.trim()).filter(Boolean) : [];
+                            updateNodeData(selectedNode.id, { account_ids: account_ids.length ? account_ids : undefined });
+                          }}
+                        />
+                        <p className="mt-1 text-[10px] text-slate-500">
+                          اتركه فارغاً لينشر على كل الحسابات المربوطة للمنصة. حدّد معرفات الصفحات لتجنب النشر على صفحات غير مرغوبة.
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="mb-1 block text-[11px] text-slate-400">
                           نوع المنشور
                         </label>
                         <select
@@ -1394,6 +1414,9 @@ export const App: React.FC = () => {
                           <option value="schedule">جدولة</option>
                         </select>
                       </div>
+                      <p className="text-[10px] text-slate-500 border-t border-slate-800 pt-2">
+                        لظهور المنشور للعامة: ربط صفحة فيسبوك (وليس الحساب الشخصي)، وتحقّق من إعدادات الصفحة في فيسبوك أن الجمهور الافتراضي = عام.
+                      </p>
                     </div>
                   </>
                 )}
