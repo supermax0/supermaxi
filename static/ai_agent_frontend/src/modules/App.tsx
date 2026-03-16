@@ -946,11 +946,22 @@ export const App: React.FC = () => {
                       </div>
                       <label className="mb-1 block text-[11px] text-slate-400">قناة افتراضية (channel)</label>
                       <input
-                        className="w-full rounded-lg border border-[#334155] bg-[#1e293b] px-2 py-1.5 text-xs text-[#e5e7eb] focus:border-[#0d9488] focus:outline-none"
+                        className="w-full rounded-lg border border-[#334155] bg-[#1e293b] px-2 py-1.5 text-xs text-[#e5e7eb] focus:border-[#0d9488] focus:outline-none mb-3"
                         placeholder="مثال: telegram, whatsapp"
                         value={(selectedNode.data as any)?.channel_default ?? ""}
                         onChange={(e) => updateNodeData(selectedNode.id, { channel_default: e.target.value })}
                       />
+                      <a
+                        href="/orders"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-[#0d9488] px-3 py-2 text-xs font-medium text-white hover:bg-[#0f766e] transition-colors"
+                      >
+                        📋 عرض جدول البيانات (الطلبات)
+                      </a>
+                      <p className="mt-1.5 text-[10px] text-slate-500">
+                        صفحة الطلبات تعرض كل البيانات التي يدخلها الذكاء الاصطناعي عبر هذه العقدة.
+                      </p>
                     </div>
                   </>
                 )}
@@ -1840,16 +1851,50 @@ export const App: React.FC = () => {
                       </div>
                       <div>
                         <label className="mb-1 block text-[11px] text-slate-400">
+                          رفع ملف (PDF، Excel، أو ملف نصي)
+                        </label>
+                        <input
+                          type="file"
+                          accept=".pdf,.xlsx,.xls,.txt,.csv"
+                          className="w-full text-[10px] file:mr-2 file:rounded file:border-0 file:bg-indigo-600 file:px-2 file:py-1 file:text-white file:text-xs"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file || !selectedNode) return;
+                            const form = new FormData();
+                            form.append("file", file);
+                            try {
+                              const res = await fetch("/social-ai/api/knowledge/extract", { method: "POST", body: form });
+                              const data = await res.json();
+                              if (data.success && typeof data.catalog === "string") {
+                                const mode = (selectedNode.data as any)?.mode || "replace";
+                                const prev = (selectedNode.data as any)?.catalog || "";
+                                const catalog = mode === "append" ? (prev ? prev + "\n" + data.catalog : data.catalog) : data.catalog;
+                                updateNodeData(selectedNode.id, { catalog });
+                              } else {
+                                alert(data.error || "فشل استخراج النص");
+                              }
+                            } catch (err) {
+                              alert("خطأ في رفع الملف");
+                            }
+                            e.target.value = "";
+                          }}
+                        />
+                        <p className="mt-1 text-[10px] text-slate-500">
+                          PDF، xlsx، xls، txt أو csv. سيُستخرج النص ويُملأ في الحقل أدناه.
+                        </p>
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-[11px] text-slate-400">
                           نص الكتالوج / المنتجات
                         </label>
                         <textarea
                           className="h-[140px] w-full resize-none overflow-y-auto rounded-lg border border-[#334155] bg-[#1e293b] px-2 py-1.5 text-xs text-[#e5e7eb] focus:border-[#22c55e] focus:outline-none"
-                          placeholder="يمكنك لصق قائمة المنتجات، المواصفات، الأسعار، الأسئلة الشائعة... سيستخدمها الذكاء الاصطناعي عند الرد."
+                          placeholder="يمكنك لصق قائمة المنتجات، المواصفات، الأسعار، الأسئلة الشائعة... أو رفع ملف أعلاه."
                           value={(selectedNode.data as any)?.catalog || ""}
                           onChange={handleKnowledgeFieldChange("catalog")}
                         />
                         <p className="mt-1 text-[10px] text-slate-500">
-                          هذه البيانات لن تظهر للمستخدم النهائي، لكنها تُمرَّر كمعرفة إضافية لعقد الـ AI داخل نفس الوكيل.
+                          هذه البيانات تُمرَّر كمعرفة إضافية لعقد الـ AI داخل نفس الوكيل.
                         </p>
                       </div>
                     </div>

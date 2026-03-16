@@ -175,6 +175,64 @@ def api_generate_post():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+def _extract_text_from_upload(file_storage):
+    """استخراج نص من ملف مرفوع (PDF، Excel، نص، CSV). يُرجع النص أو يرفع استثناء."""
+    if not file_storage or not file_storage.filename:
+        raise ValueError("لم يُرفع أي ملف")
+    fn = (file_storage.filename or "").lower()
+    ext = "." in fn and fn.rsplit(".", 1)[-1] or ""
+
+    if ext == "pdf":
+        try:
+            from pypdf import PdfReader
+        except ImportError:
+            raise ValueError("تثبيت pypdf مطلوب لقراءة PDF: pip install pypdf")
+        reader = PdfReader(file_storage)
+        parts = []
+        for page in reader.pages:
+            t = page.extract_text()
+            if t:
+                parts.append(t)
+        return "\n".join(parts) if parts else ""
+
+    if ext == "xlsx":
+        import pandas as pd
+        df = pd.read_excel(file_storage, engine="openpyxl")
+        return df.to_string(index=False)
+    if ext == "xls":
+        import pandas as pd
+        try:
+            df = pd.read_excel(file_storage, engine="xlrd")
+        except ImportError:
+            raise ValueError("لقراءة ملفات .xls ثبّت: pip install xlrd")
+        return df.to_string(index=False)
+
+    if ext in ("txt", "csv"):
+        data = file_storage.read()
+        try:
+            return data.decode("utf-8")
+        except UnicodeDecodeError:
+            return data.decode("cp1256", errors="replace")
+
+    raise ValueError("نوع الملف غير مدعوم. استخدم: PDF، xlsx، xls، txt، csv.")
+
+
+@social_ai_bp.route("/api/knowledge/extract", methods=["POST"])
+def api_knowledge_extract():
+    """استخراج نص من ملف (PDF / Excel / txt / csv) لاستخدامه كقاعدة معرفة في عقدة المعرفة."""
+    if not session.get("user_id"):
+        return jsonify({"success": False, "error": "يجب تسجيل الدخول"}), 401
+    file = request.files.get("file")
+    try:
+        text = _extract_text_from_upload(file)
+        return jsonify({"success": True, "catalog": text or ""})
+    except ValueError as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+    except Exception as e:
+        current_app.logger.exception("knowledge extract")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @social_ai_bp.route("/api/schedule", methods=["POST"])
 def api_schedule_post():
     data = request.get_json() or {}

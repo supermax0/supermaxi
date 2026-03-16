@@ -6,6 +6,8 @@ python-dotenv
 werkzeug
 reportlab
 pandas
+openpyxl
+pypdf
 gunicorn
 Flask-Compress
 psycopg2-binary

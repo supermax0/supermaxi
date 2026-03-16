@@ -49,7 +49,9 @@ const AINode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
   return (
     <div className={`${baseNodeClasses} border-[#8b5cf6]`} style={baseNodeShadow}>
       <Handle type="target" position={Position.Top} id="in" className={handleClass} />
+      <Handle type="target" position={Position.Left} id="in_left" className={handleClass} />
       <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
+      <Handle type="source" position={Position.Right} id="out_right" className={handleClass} />
       <div className={titleClasses}>🤖 {data.label || "AI Agent"}</div>
       {subtitle && <div className={subtitleClasses}>{subtitle}</div>}
     </div>
