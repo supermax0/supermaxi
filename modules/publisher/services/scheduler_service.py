@@ -209,7 +209,8 @@ def _publish_single_post_record(*, app, db, post, PublisherPage, PublisherMedia,
                     continue
 
             if result.get("success"):
-                fb_post_ids[page_id] = (result.get("data") or {}).get("id", "")
+                data = result.get("data") or {}
+                fb_post_ids[page_id] = data.get("id") or data.get("post_id") or ""
                 logger.info("Published post %d → page %s", post.id, page_id)
             else:
                 errors.append(f"{page_id}: {result.get('message')}")
