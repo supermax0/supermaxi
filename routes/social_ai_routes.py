@@ -235,12 +235,20 @@ def api_knowledge_extract():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-def _telegram_webhook_base():
-    """Base URL لاستقبال webhook تيليجرام (نفس أصل التطبيق)."""
-    base = current_app.config.get("BASE_URL") or ""
+def _telegram_webhook_base(data=None):
+    """
+    عنوان أصل التطبيق (بدون مسار) لاستقبال webhook تيليجرام.
+    الأولوية: base_url من الطلب → BASE_URL من الإعدادات → request.host_url.
+    تيليجرام يقبل فقط HTTPS (ما عدا localhost للتطوير).
+    """
+    data = data or {}
+    base = (data.get("base_url") or "").strip()
     if not base:
-        base = request.url_root.rstrip("/") if request else ""
-    return base
+        base = (current_app.config.get("BASE_URL") or "").strip()
+    if not base and request:
+        # استخدم أصل المضيف فقط (بدون مسار مثل /social-ai/) حتى يكون الرابط صحيحاً
+        base = (request.host_url or "").rstrip("/")
+    return base.rstrip("/") if base else ""
 
 
 @social_ai_bp.route("/api/telegram/set-webhook", methods=["POST"])
@@ -252,17 +260,30 @@ def api_telegram_set_webhook():
     bot_token = (data.get("bot_token") or "").strip()
     if not bot_token:
         return jsonify({"ok": False, "error": "Bot Token مطلوب"}), 400
-    base = _telegram_webhook_base()
+    base = _telegram_webhook_base(data)
+    if not base:
+        return jsonify({
+            "ok": False,
+            "error": "تعذّر تحديد عنوان السيرفر. ضع BASE_URL في الإعدادات أو أدخل «عنوان السيرفر» في العقدة (مثال: https://finora.company)",
+        }), 400
     webhook_url = f"{base}/telegram/webhook"
+    if not webhook_url.startswith("https://") and not webhook_url.startswith("http://127.0.0.1") and "localhost" not in webhook_url:
+        return jsonify({
+            "ok": False,
+            "error": "تيليجرام يقبل فقط عنوان HTTPS. استخدم عنواناً يبدأ بـ https:// أو شغّل على localhost للتطوير.",
+        }), 400
+    log = logging.getLogger(__name__)
+    log.info("Telegram setWebhook: url=%s", webhook_url)
     url = f"https://api.telegram.org/bot{bot_token}/setWebhook"
     try:
         resp = requests.post(url, json={"url": webhook_url}, timeout=10)
         body = resp.json() if resp.text else {}
         if not resp.ok:
+            log.warning("Telegram setWebhook failed: %s", body)
             return jsonify({"ok": False, "error": body.get("description", "فشل تفعيل Webhook"), "telegram_response": body}), 400
         return jsonify({"ok": True, "webhook_url": webhook_url, "telegram_response": body}), 200
     except Exception as e:
-        logging.getLogger(__name__).exception("telegram set-webhook")
+        log.exception("telegram set-webhook")
         return jsonify({"ok": False, "error": str(e)}), 500
 
 

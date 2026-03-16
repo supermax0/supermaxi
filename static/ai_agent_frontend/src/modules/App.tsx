@@ -1970,17 +1970,33 @@ export const App: React.FC = () => {
                         </div>
                       )}
                       {selectedNode.type === "telegram_listener" && (
-                        <div>
-                          <label className="mb-1 block text-[11px] text-slate-400">
-                            Bot Token
-                          </label>
-                          <input
-                            className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none"
-                            placeholder="مثال: 123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
-                            value={(selectedNode.data as any)?.bot_token || ""}
-                            onChange={handleMessagingFieldChange("bot_token")}
-                          />
-                        </div>
+                        <>
+                          <div>
+                            <label className="mb-1 block text-[11px] text-slate-400">
+                              Bot Token
+                            </label>
+                            <input
+                              className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none"
+                              placeholder="مثال: 123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
+                              value={(selectedNode.data as any)?.bot_token || ""}
+                              onChange={handleMessagingFieldChange("bot_token")}
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-[11px] text-slate-400">
+                              عنوان السيرفر (اختياري)
+                            </label>
+                            <input
+                              className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none"
+                              placeholder="مثال: https://finora.company"
+                              value={(selectedNode.data as any)?.base_url || ""}
+                              onChange={handleMessagingFieldChange("base_url")}
+                            />
+                            <p className="mt-1 text-[10px] text-slate-500">
+                              إذا لم يُفعّل الـ Webhook، أدخل عنوان موقعك بـ https://
+                            </p>
+                          </div>
+                        </>
                       )}
                       <div>
                         <label className="mb-1 block text-[11px] text-slate-400">
@@ -1994,6 +2010,7 @@ export const App: React.FC = () => {
                             const newOn = e.target.value === "on";
                             if (selectedNode.type === "telegram_listener") {
                               const botToken = ((selectedNode.data as any)?.bot_token as string)?.trim();
+                              const baseUrl = ((selectedNode.data as any)?.base_url as string)?.trim();
                               if (newOn) {
                                 if (!botToken) {
                                   alert("أدخل Bot Token أولاً ثم اختر مفعل.");
@@ -2003,7 +2020,7 @@ export const App: React.FC = () => {
                                   const res = await fetch("/social-ai/api/telegram/set-webhook", {
                                     method: "POST",
                                     headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({ bot_token: botToken }),
+                                    body: JSON.stringify({ bot_token: botToken, ...(baseUrl ? { base_url: baseUrl } : {}) }),
                                   });
                                   const data = await res.json();
                                   if (data.ok) {
