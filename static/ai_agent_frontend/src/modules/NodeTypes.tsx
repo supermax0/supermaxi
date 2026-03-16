@@ -353,6 +353,18 @@ const DuplicateProtectionNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) =
   );
 };
 
+const SqlSaveOrderNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
+  const subtitle = data.subtitle || "حفظ الطلب/البيانات في الجدول (orders أو مخصص)";
+  return (
+    <div className={`${baseNodeClasses} border-[#0d9488]`} style={baseNodeShadow}>
+      <Handle type="target" position={Position.Top} id="in" className={handleClass} />
+      <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
+      <div className={titleClasses}>🗄 {data.label || "SQL حفظ الطلب"}</div>
+      {subtitle && <div className={subtitleClasses}>{subtitle}</div>}
+    </div>
+  );
+};
+
 export const nodeTypes = {
   start: StartNode,
   ai: AINode,
@@ -367,6 +379,7 @@ export const nodeTypes = {
   "rate-limiter": RateLimiterNode,
   logging: LoggingNode,
   "duplicate-protection": DuplicateProtectionNode,
+  sql_save_order: SqlSaveOrderNode,
   end: EndNode,
   whatsapp_listener: WhatsAppListenerNode,
   whatsapp_send: WhatsAppSendNode,

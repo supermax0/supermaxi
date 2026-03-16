@@ -694,6 +694,9 @@ def execute_workflow(execution: AgentExecution, initial_context: Dict[str, Any] 
                 elif node.type == "end":
                     # حفظ لقطة السياق النهائية في اللوج
                     log(node, "success", node_input, dict(context))
+                elif node.type == "sql_save_order":
+                    # حفظ الطلب في DB يُنفَّذ بالكامل في Node backend؛ هنا نمرر السياق فقط
+                    log(node, "success", node_input, {"note": "SQL حفظ الطلب يُنفَّذ عند التشغيل عبر Node backend"})
                 else:
                     # عقد غير معروفة – نتجاوزها لكن نسجّل في اللوج
                     log(node, "failed", node_input, None, f"نوع عقدة غير معروف: {node.type}")

@@ -93,6 +93,7 @@ export const NodeEditor: React.FC = () => {
         scheduler: "Scheduler",
         "comment-listener": "Comment Listener",
         "auto-reply": "Auto Reply",
+        sql_save_order: "SQL حفظ الطلب",
         end: "End",
       };
 

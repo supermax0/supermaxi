@@ -29,6 +29,7 @@ const NODE_TYPES: Array<{ id: string; label: string; icon: string; description: 
   { id: "whatsapp_send", label: "WhatsApp Send", icon: "📱", description: "إرسال رسالة أو اتصال واتساب", color: "#16a34a" },
   { id: "telegram_listener", label: "Telegram Listener", icon: "📨", description: "استقبال رسائل تيليجرام (Webhook)", color: "#0ea5e9" },
   { id: "telegram_send", label: "Telegram Send", icon: "✈️", description: "إرسال رسالة تيليجرام", color: "#0284c7" },
+  { id: "sql_save_order", label: "SQL حفظ الطلب", icon: "🗄", description: "حفظ الطلب/البيانات في قاعدة البيانات (SQL)", color: "#0d9488" },
   { id: "end", label: "End", icon: "■", description: "إنهاء التدفق وحفظ السياق", color: "#64748b" },
 ];
 
@@ -43,12 +44,15 @@ export const App: React.FC = () => {
   const updateNodeData = useEditorStore((s) => s.updateNodeData);
   const getGraphPayload = useEditorStore((s) => s.getGraphPayload);
   const loadFromGraph = useEditorStore((s) => s.loadFromGraph);
+  const reset = useEditorStore((s) => s.reset);
 
   const [isSaving, setIsSaving] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [nodeLibraryOpen, setNodeLibraryOpen] = useState(false);
   const [workflowSearch, setWorkflowSearch] = useState("");
+  const [workflowListOpen, setWorkflowListOpen] = useState(false);
+  const [workflowsList, setWorkflowsList] = useState<Array<{ id: number; agent_id: number; name: string; description?: string; is_active?: boolean; graph?: { nodes?: Node[]; edges?: Edge[] } }>>([]);
   const [testMode, setTestMode] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [leftPanelWidth, setLeftPanelWidth] = useState(DEFAULT_LEFT);
@@ -622,24 +626,89 @@ export const App: React.FC = () => {
           <div className="text-[11px] text-slate-400 truncate max-w-xs">
             الوكيل الحالي:{" "}
             <span className="text-slate-200">
-              {meta.name && meta.name.trim() ? meta.name.trim() : "بدون اسم"}
+              {meta.name && meta.name.trim() ? meta.name.trim() : "وورك فلو جديد"}
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-2 flex-1 justify-center max-w-xl">
+        <div className="flex items-center gap-2 flex-1 justify-center max-w-xl flex-wrap">
+          <button
+            type="button"
+            className="rounded-lg border border-[#22c55e] bg-[#22c55e]/10 px-3 py-2 text-xs font-medium text-[#22c55e] hover:bg-[#22c55e]/20"
+            onClick={() => { reset(); setWorkflowListOpen(false); }}
+            aria-label="وورك فلو جديد"
+          >
+            + وورك فلو جديد
+          </button>
+          <div className="relative">
+            <button
+              type="button"
+              className="rounded-lg border border-[#1e293b] bg-[#0f172a] px-3 py-2 text-sm text-[#e5e7eb] hover:bg-[#1e293b] min-w-[140px] text-right"
+              onClick={async () => {
+                if (!workflowListOpen) {
+                  try {
+                    const res = await fetch(`${workflowsApiBase}/workflows`);
+                    if (res.ok) {
+                      const data = await res.json();
+                      setWorkflowsList((data.workflows || []) as typeof workflowsList);
+                    }
+                  } catch {
+                    setWorkflowsList([]);
+                  }
+                }
+                setWorkflowListOpen((v) => !v);
+              }}
+              aria-label="اختر وورك فلو"
+              aria-expanded={workflowListOpen}
+            >
+              اختر وورك فلو ▼
+            </button>
+            {workflowListOpen && (
+              <>
+                <div className="fixed inset-0 z-10" aria-hidden onClick={() => setWorkflowListOpen(false)} />
+                <div className="absolute left-0 rtl:right-0 rtl:left-auto top-full mt-1 z-20 w-64 max-h-60 overflow-y-auto rounded-lg border border-[#1e293b] bg-[#111827] py-1 shadow-lg">
+                  <input
+                    className="w-full px-3 py-2 text-xs border-b border-[#1e293b] bg-transparent text-[#e5e7eb] placeholder:text-slate-500 focus:outline-none"
+                    placeholder="بحث..."
+                    value={workflowSearch}
+                    onChange={(e) => setWorkflowSearch(e.target.value)}
+                  />
+                  {workflowsList
+                    .filter((wf) => !workflowSearch.trim() || (wf.name || "").toLowerCase().includes(workflowSearch.toLowerCase()))
+                    .map((wf) => (
+                      <button
+                        key={wf.id}
+                        type="button"
+                        className="w-full text-right px-3 py-2 text-sm text-slate-200 hover:bg-[#1e293b] border-b border-[#1e293b]/50 last:border-0"
+                        onClick={() => {
+                          const graph = wf.graph || {};
+                          const nodes = (graph.nodes || []) as Node[];
+                          const edges = (graph.edges || []) as Edge[];
+                          loadFromGraph({
+                            nodes: nodes.length ? nodes : [{ id: "start-1", type: "start", position: { x: 0, y: 0 }, data: { label: "Start" } }],
+                            edges: edges || [],
+                            id: wf.id,
+                            agentId: wf.agent_id,
+                            meta: { name: wf.name, description: wf.description || "", isActive: wf.is_active !== false },
+                          });
+                          setWorkflowListOpen(false);
+                        }}
+                      >
+                        {wf.name || `وورك فلو #${wf.id}`}
+                      </button>
+                    ))}
+                  {workflowsList.length === 0 && (
+                    <div className="px-3 py-4 text-xs text-slate-500">لا يوجد وورك فلو. أنشئ واحداً من «+ وورك فلو جديد» ثم احفظه.</div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
           <input
-            className="w-full max-w-[200px] rounded-lg border border-[#1e293b] bg-[#0f172a] px-3 py-2 text-sm text-[#e5e7eb] placeholder:text-slate-500 focus:border-[#22c55e] focus:outline-none"
+            className="w-full max-w-[180px] rounded-lg border border-[#1e293b] bg-[#0f172a] px-3 py-2 text-sm text-[#e5e7eb] placeholder:text-slate-500 focus:border-[#22c55e] focus:outline-none"
             placeholder="اسم الوورك فلو"
             value={meta.name}
             onChange={handleMetaChange("name")}
             aria-label="اسم الوورك فلو"
-          />
-          <input
-            className="w-full max-w-[200px] rounded-lg border border-[#1e293b] bg-[#0f172a] px-3 py-2 text-sm text-[#e5e7eb] placeholder:text-slate-500 focus:border-[#22c55e] focus:outline-none"
-            placeholder="بحث الوورك فلو..."
-            value={workflowSearch}
-            onChange={(e) => setWorkflowSearch(e.target.value)}
-            aria-label="بحث الوورك فلو"
           />
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -784,6 +853,17 @@ export const App: React.FC = () => {
                   اختر عقدة من الكانفس لعرض إعداداتها هنا (الاسم، التعليمات، الموديل، المدخلات،
                   المخرجات...).
                 </p>
+                <p className="rounded bg-amber-900/30 border border-amber-700/40 p-2 text-[11px] text-amber-200/90">
+                  <strong className="text-amber-200">حفظ الوكيل:</strong> استخدم زر «حفظ» في الشريط العلوي لحفظ الوورك فلو. بعد الحفظ يمكنك تشغيله بزر «تشغيل الآن».
+                </p>
+                <button
+                  type="button"
+                  className="w-full rounded-lg border border-[#22c55e] bg-[#22c55e]/20 px-3 py-2 text-xs font-medium text-[#22c55e] hover:bg-[#22c55e]/30"
+                  onClick={handleSave}
+                  disabled={isSaving}
+                >
+                  {isSaving ? "جارٍ الحفظ..." : "حفظ الوورك فلو"}
+                </button>
                 <p className="rounded bg-slate-800/60 p-2 text-[11px] text-slate-400">
                   <strong className="text-slate-300">ربط العقد:</strong> اسحب من النقطة الدائرية
                   أسفل عقدة إلى النقطة فوق العقدة التالية لإنشاء تسلسل الوورك فلو.
