@@ -10,7 +10,6 @@ Handles all Facebook Graph API interactions.
 from __future__ import annotations
 
 import logging
-import os
 import time
 from typing import Optional
 
@@ -24,10 +23,19 @@ _RATE_LIMIT_CODES = {4, 17, 32, 613}
 _MAX_RETRIES = 3
 
 
-def _retry_post(url: str, **kwargs) -> dict:
+def _safe_json(resp: requests.Response) -> tuple[dict, str | None]:
+    try:
+        return resp.json(), None
+    except Exception as exc:
+        return {}, str(exc)
+
+
+def _retry_post(url: str, *, page_id: str | None = None, **kwargs) -> dict:
     """POST with exponential back-off for rate-limit errors."""
     last_err = {}
+    endpoint = url.split("graph.facebook.com/")[-1]
     for attempt in range(_MAX_RETRIES):
+        logger.info("FB publish request: page_id=%s endpoint=%s attempt=%d", page_id or "-", endpoint, attempt + 1)
         try:
             resp = requests.post(url, timeout=60, **kwargs)
         except Exception as exc:
@@ -36,20 +44,34 @@ def _retry_post(url: str, **kwargs) -> dict:
             time.sleep(2 ** attempt)
             continue
 
-        try:
-            data = resp.json()
-        except Exception as exc:
-            logger.warning("FB response not JSON (attempt %d): %s", attempt + 1, exc)
+        data, parse_err = _safe_json(resp)
+        if parse_err:
+            logger.warning("FB response not JSON (attempt %d): %s", attempt + 1, parse_err)
             last_err = {
                 "success": False,
                 "message": f"Invalid response from Facebook: {resp.status_code}",
                 "error_code": None,
                 "error_subcode": None,
             }
+            logger.warning(
+                "FB publish response (non-JSON): page_id=%s endpoint=%s status=%s body=%s",
+                page_id or "-",
+                endpoint,
+                resp.status_code,
+                (resp.text or "")[:500],
+            )
             if resp.status_code != 200:
                 return last_err
             time.sleep(2 ** attempt)
             continue
+
+        logger.info(
+            "FB publish response: page_id=%s endpoint=%s status=%s body=%s",
+            page_id or "-",
+            endpoint,
+            resp.status_code,
+            data,
+        )
 
         # Success: 200 and response contains id (feed/photo/video) or post_id (photo)
         if resp.status_code == 200 and ("id" in data or "post_id" in data):
@@ -106,8 +128,19 @@ def get_user_pages(user_token: str) -> dict:
 
 def publish_text_post(page_id: str, page_token: str, text: str) -> dict:
     """Publish a plain-text post to a Facebook page."""
+    page_id = (page_id or "").strip()
+    page_token = (page_token or "").strip()
+    if not page_id:
+        return {"success": False, "message": "Missing page_id", "error_code": None, "error_subcode": None}
+    if not page_token:
+        return {"success": False, "message": "Missing page access token", "error_code": None, "error_subcode": None}
+
     url = f"{GRAPH_BASE}/{page_id}/feed"
-    result = _retry_post(url, data={"message": text, "access_token": page_token})
+    result = _retry_post(
+        url,
+        page_id=page_id,
+        data={"message": text, "access_token": page_token, "published": "true"},
+    )
     if result.get("success"):
         logger.info("Text post published to page %s: %s", page_id, result["data"].get("id"))
     return result
@@ -115,12 +148,20 @@ def publish_text_post(page_id: str, page_token: str, text: str) -> dict:
 
 def publish_photo_post(page_id: str, page_token: str, text: str, image_path: str) -> dict:
     """Publish an image post to a Facebook page."""
+    page_id = (page_id or "").strip()
+    page_token = (page_token or "").strip()
+    if not page_id:
+        return {"success": False, "message": "Missing page_id", "error_code": None, "error_subcode": None}
+    if not page_token:
+        return {"success": False, "message": "Missing page access token", "error_code": None, "error_subcode": None}
+
     url = f"{GRAPH_BASE}/{page_id}/photos"
     try:
         with open(image_path, "rb") as f:
             result = _retry_post(
                 url,
-                data={"caption": text, "access_token": page_token},
+                page_id=page_id,
+                data={"caption": text, "access_token": page_token, "published": "true"},
                 files={"source": f},
             )
     except FileNotFoundError:
@@ -132,12 +173,20 @@ def publish_photo_post(page_id: str, page_token: str, text: str, image_path: str
 
 def publish_video_post(page_id: str, page_token: str, text: str, video_path: str) -> dict:
     """Publish a video post to a Facebook page (simple upload)."""
+    page_id = (page_id or "").strip()
+    page_token = (page_token or "").strip()
+    if not page_id:
+        return {"success": False, "message": "Missing page_id", "error_code": None, "error_subcode": None}
+    if not page_token:
+        return {"success": False, "message": "Missing page access token", "error_code": None, "error_subcode": None}
+
     url = f"{GRAPH_BASE}/{page_id}/videos"
     try:
         with open(video_path, "rb") as f:
             result = _retry_post(
                 url,
-                data={"description": text, "access_token": page_token},
+                page_id=page_id,
+                data={"description": text, "access_token": page_token, "published": "true"},
                 files={"source": f},
             )
     except FileNotFoundError:
