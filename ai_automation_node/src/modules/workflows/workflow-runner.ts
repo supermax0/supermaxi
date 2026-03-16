@@ -94,13 +94,18 @@ async function runAiTemplateNode(
   return { ai_output: output };
 }
 
-async function runSqlSaveOrder(context: Record<string, unknown>) {
+async function runSqlSaveOrder(
+  context: Record<string, unknown>,
+  nodeData?: Record<string, unknown>,
+) {
   const name = String(context.name ?? "عميل");
   const phone = String(context.phone ?? "").trim();
   const address = String(context.address ?? "");
   const productName = String(context.product_name ?? context.product ?? "منتج");
   const quantity = Number(context.quantity ?? 1) || 1;
   const price = Number(context.price ?? 0);
+  const channelDefault = nodeData && typeof nodeData.channel_default === "string" ? nodeData.channel_default.trim() : "";
+  const channel = String(context.channel ?? channelDefault || "unknown");
 
   const customer = await query<{ id: number }>(
     `
@@ -133,7 +138,7 @@ async function runSqlSaveOrder(context: Record<string, unknown>) {
       VALUES ($1, $2, $3, $4, 'pending', $5)
       RETURNING id
     `,
-    [customerId, productId, quantity, totalPrice, String(context.channel ?? "unknown")],
+    [customerId, productId, quantity, totalPrice, channel],
   );
 
   return {
@@ -216,7 +221,7 @@ export async function runWorkflowById(
           context.condition_result = conditionResult;
           break;
         case "sql_save_order":
-          output = await runSqlSaveOrder(context);
+          output = await runSqlSaveOrder(context, data);
           break;
         case "telegram_reply":
           output = {

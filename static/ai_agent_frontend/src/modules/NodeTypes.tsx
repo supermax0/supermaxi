@@ -354,7 +354,12 @@ const DuplicateProtectionNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) =
 };
 
 const SqlSaveOrderNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
-  const subtitle = data.subtitle || "حفظ الطلب/البيانات في الجدول (orders أو مخصص)";
+  const channelDefault = (data as any)?.channel_default as string | undefined;
+  const subtitle =
+    data.subtitle ||
+    (channelDefault && channelDefault.trim()
+      ? `قناة: ${channelDefault.trim()}`
+      : "حفظ الطلب/البيانات في الجدول (orders)");
   return (
     <div className={`${baseNodeClasses} border-[#0d9488]`} style={baseNodeShadow}>
       <Handle type="target" position={Position.Top} id="in" className={handleClass} />

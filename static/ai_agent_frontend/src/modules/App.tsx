@@ -925,6 +925,36 @@ export const App: React.FC = () => {
                   </>
                 )}
 
+                {selectedNode.type === "sql_save_order" && (
+                  <>
+                    <div className="rounded-lg border border-[#0d9488]/50 bg-[#0d9488]/5 p-3">
+                      <div className="mb-2 text-[11px] font-medium text-[#0d9488]">إعدادات SQL حفظ الطلب</div>
+                      <p className="text-[10px] text-slate-400 mb-2">
+                        يكتب في جداول: customers، products، orders (عبر Node backend). المدخلات من سياق الوورك فلو.
+                      </p>
+                      <div className="space-y-1.5 mb-2">
+                        <div className="text-[10px] text-slate-500 font-medium">مدخلات السياق المتوقعة:</div>
+                        <ul className="text-[10px] text-slate-400 list-disc list-inside space-y-0.5">
+                          <li><code className="bg-[#1e293b] px-1 rounded">name</code> — اسم العميل (افتراضي: عميل)</li>
+                          <li><code className="bg-[#1e293b] px-1 rounded">phone</code> — رقم الهاتف</li>
+                          <li><code className="bg-[#1e293b] px-1 rounded">address</code> — العنوان</li>
+                          <li><code className="bg-[#1e293b] px-1 rounded">product_name</code> أو <code className="bg-[#1e293b] px-1 rounded">product</code> — اسم المنتج</li>
+                          <li><code className="bg-[#1e293b] px-1 rounded">quantity</code> — الكمية (افتراضي: 1)</li>
+                          <li><code className="bg-[#1e293b] px-1 rounded">price</code> — السعر</li>
+                          <li><code className="bg-[#1e293b] px-1 rounded">channel</code> — قناة الطلب (مثل telegram)</li>
+                        </ul>
+                      </div>
+                      <label className="mb-1 block text-[11px] text-slate-400">قناة افتراضية (channel)</label>
+                      <input
+                        className="w-full rounded-lg border border-[#334155] bg-[#1e293b] px-2 py-1.5 text-xs text-[#e5e7eb] focus:border-[#0d9488] focus:outline-none"
+                        placeholder="مثال: telegram, whatsapp"
+                        value={(selectedNode.data as any)?.channel_default ?? ""}
+                        onChange={(e) => updateNodeData(selectedNode.id, { channel_default: e.target.value })}
+                      />
+                    </div>
+                  </>
+                )}
+
                 {selectedNode.type === "end" && (
                   <>
                     <div className="mt-2 border-t border-slate-800 pt-2 text-[11px] font-semibold text-slate-400">

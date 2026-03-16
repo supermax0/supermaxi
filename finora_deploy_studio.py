@@ -166,6 +166,14 @@ class FinoraDeployStudio(tk.Tk):
         self.build_btn = ttk.Button(btns, text="Build Frontends", width=18, command=self.on_build_frontend_clicked)
         self.build_btn.pack(side=tk.LEFT, padx=4, pady=4)
 
+        self.build_social_ai_btn = ttk.Button(
+            btns,
+            text="Build Social AI",
+            width=18,
+            command=self.on_build_social_ai_clicked,
+        )
+        self.build_social_ai_btn.pack(side=tk.LEFT, padx=4, pady=4)
+
         self.fix_all_btn = ttk.Button(btns, text="Fix All", width=18, command=self.on_fix_all_clicked)
         self.fix_all_btn.pack(side=tk.LEFT, padx=4, pady=4)
 
@@ -1080,6 +1088,36 @@ echo "System repaired and deployment completed successfully."
                 self.set_status("Frontends build completed.")
             else:
                 self.set_status("Frontends build failed (see log).")
+        finally:
+            self.set_busy(False)
+
+    def on_build_social_ai_clicked(self) -> None:
+        """زر: cd ai_agent_frontend → git pull → chmod .bin → npm run build"""
+        self.save_config()
+        thread = threading.Thread(target=self._build_social_ai_thread, daemon=True)
+        self.set_busy(True)
+        thread.start()
+
+    def _build_social_ai_thread(self) -> None:
+        try:
+            self.set_status("Building Social AI frontend on server…")
+            server_path = self.server_path_var.get().strip()
+            if not server_path:
+                self.append_log("[ERROR] Server project path is empty.\n")
+                self.set_status("Build Social AI failed (server path empty).")
+                return
+            script = (
+                f"cd '{server_path}/static/ai_agent_frontend' || {{ echo '[ERROR] Directory not found'; exit 1; }} && "
+                "git pull && "
+                "chmod -R u+x node_modules/.bin 2>/dev/null || true && "
+                "npm run build"
+            )
+            rc = self.run_ssh_script(script)
+            if rc == 0:
+                self.append_log("[INFO] Social AI frontend build completed.\n")
+                self.set_status("Social AI build completed.")
+            else:
+                self.set_status("Social AI build failed (see log).")
         finally:
             self.set_busy(False)
 
