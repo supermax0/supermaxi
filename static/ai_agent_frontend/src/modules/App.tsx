@@ -1993,7 +1993,7 @@ export const App: React.FC = () => {
                               onChange={handleMessagingFieldChange("base_url")}
                             />
                             <p className="mt-1 text-[10px] text-slate-500">
-                              إذا لم يُفعّل الـ Webhook، أدخل عنوان موقعك بـ https://
+                              نفس عنوان الموقع في المتصفح (مثلاً https://www.finora.company). يجب أن يكون النطاق عاماً وقابلاً للوصول من الإنترنت.
                             </p>
                           </div>
                         </>

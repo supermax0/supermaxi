@@ -280,7 +280,14 @@ def api_telegram_set_webhook():
         body = resp.json() if resp.text else {}
         if not resp.ok:
             log.warning("Telegram setWebhook failed: %s", body)
-            return jsonify({"ok": False, "error": body.get("description", "فشل تفعيل Webhook"), "telegram_response": body}), 400
+            desc = (body.get("description") or "").strip()
+            if "resolve host" in desc.lower() or "name resolution" in desc.lower():
+                return jsonify({
+                    "ok": False,
+                    "error": "تيليجرام لا يستطيع الوصول إلى هذا النطاق (فشل في حل الاسم). استخدم نفس عنوان الموقع الذي يفتح في المتصفح (مثلاً مع www: https://www.finora.company أو بدونه)، وتأكد أن النطاق عام ومتاح من الإنترنت.",
+                    "telegram_response": body,
+                }), 400
+            return jsonify({"ok": False, "error": desc or "فشل تفعيل Webhook", "telegram_response": body}), 400
         return jsonify({"ok": True, "webhook_url": webhook_url, "telegram_response": body}), 200
     except Exception as e:
         log.exception("telegram set-webhook")
