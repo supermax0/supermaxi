@@ -1932,6 +1932,12 @@
 
         {% if not is_payment_flow %}
         <div class="topbar-actions">
+          {% if session.get("user_id") %}
+          <a class="assistant-quick-btn" href="/social-ai/" aria-label="بناء الوكلاء"
+            title="بناء الوكلاء (AI Agent Builder)">
+            <i class="fa fa-project-diagram"></i>
+          </a>
+          {% endif %}
           {% if session.get("user_id") and plan_has("ai_assistant") %}
           <a class="assistant-quick-btn" href="/assistant/chat" aria-label="{{ _('financial_assistant') }}"
             title="{{ _('financial_assistant') }}">
