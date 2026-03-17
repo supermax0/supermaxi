@@ -106,6 +106,10 @@ def _validate_post_payload(payload, tenant, *, require_publish_time=False):
         if missing_media:
             fields["media_ids"] = f"وسائط غير موجودة أو لا تخص هذا الحساب: {', '.join(missing_media)}"
 
+    visibility = str(payload.get("visibility") or "public").strip().lower()
+    if visibility not in {"public", "hidden"}:
+        fields["visibility"] = "قيمة visibility غير صالحة (public أو hidden)"
+
     publish_time_utc = None
     if require_publish_time:
         publish_time_utc, parse_error = parse_publish_time_utc(payload)
@@ -115,8 +119,8 @@ def _validate_post_payload(payload, tenant, *, require_publish_time=False):
             fields["publish_time"] = "يجب أن يكون وقت النشر في المستقبل"
 
     if fields:
-        return None, None, None, None, fields
-    return text, page_ids, media_ids, publish_time_utc, None
+        return None, None, None, None, None, fields
+    return text, page_ids, media_ids, publish_time_utc, visibility, None
 
 
 @posts_api_bp.route("/api/posts", methods=["GET"])
@@ -191,7 +195,7 @@ def create_post():
         data = request.get_json() or {}
         tenant = _tenant()
 
-        text, page_ids, media_ids, _, fields = _validate_post_payload(data, tenant)
+        text, page_ids, media_ids, _, visibility, fields = _validate_post_payload(data, tenant)
         if fields:
             return error_response(
                 code="validation_error",
@@ -205,6 +209,7 @@ def create_post():
             text=text,
             status="queued",
             publish_type="now",
+            visibility=visibility or "public",
         )
         post.page_ids = page_ids
         post.media_ids = media_ids
@@ -295,7 +300,7 @@ def schedule_post():
         data = request.get_json() or {}
         tenant = _tenant()
 
-        text, page_ids, media_ids, publish_time_utc, fields = _validate_post_payload(
+        text, page_ids, media_ids, publish_time_utc, visibility, fields = _validate_post_payload(
             data, tenant, require_publish_time=True
         )
         if fields:
@@ -312,6 +317,7 @@ def schedule_post():
             status="scheduled",
             publish_type="scheduled",
             publish_time=publish_time_utc,
+            visibility=visibility or "public",
         )
         post.page_ids = page_ids
         post.media_ids = media_ids

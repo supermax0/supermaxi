@@ -11,6 +11,17 @@ logger = logging.getLogger("facebook_publish")
 GRAPH_BASE = "https://graph.facebook.com/v19.0"
 
 
+def _published_flag(visibility: str | None) -> str:
+    return "false" if (visibility or "public").strip().lower() == "hidden" else "true"
+
+
+def _sanitize_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
+    out = dict(payload or {})
+    if "access_token" in out:
+        out["access_token"] = "***"
+    return out
+
+
 def _safe_json(resp: requests.Response) -> tuple[Dict[str, Any], str | None]:
     try:
         data = resp.json()
@@ -79,6 +90,7 @@ def publish_facebook_post(
     photo_url: str | None = None,
     video_url: str | None = None,
     page_id: str | None = None,
+    visibility: str = "public",
 ) -> Dict[str, Any]:
     """نشر منشور على صفحة فيسبوك (نص فقط، صورة، أو فيديو). يرجع استجابة الـ API (يحتوي id أو post_id).
     يجب تمرير page_id لصفحة فيسبوك (Page) وليس الحساب الشخصي؛ وإلا النشر قد يظهر على غير الصفحة أو يفشل.
@@ -94,6 +106,7 @@ def publish_facebook_post(
     if video_url:
         endpoint = f"/{me_or_page}/videos"
         url = f"{GRAPH_BASE}{endpoint}"
+        published = _published_flag(visibility)
         media_bytes = _get_media_bytes(video_url)
         if media_bytes:
             content, name, mime = media_bytes
@@ -101,24 +114,35 @@ def publish_facebook_post(
             data = {
                 "access_token": page_access_token,
                 "description": message or "",
-                "published": "true",
+                "published": published,
             }
-            logger.info("FB publish request: page_id=%s endpoint=%s mode=video_file", me_or_page, endpoint)
+            logger.info(
+                "FB publish request: page_id=%s endpoint=%s mode=video_file payload=%s",
+                me_or_page,
+                endpoint,
+                _sanitize_payload(data),
+            )
             r = requests.post(url, data=data, files=files, timeout=300)
         else:
             payload: Dict[str, Any] = {
                 "access_token": page_access_token,
                 "file_url": video_url,
                 "description": message or "",
-                "published": "true",
+                "published": published,
             }
-            logger.info("FB publish request: page_id=%s endpoint=%s mode=video_url", me_or_page, endpoint)
+            logger.info(
+                "FB publish request: page_id=%s endpoint=%s mode=video_url payload=%s",
+                me_or_page,
+                endpoint,
+                _sanitize_payload(payload),
+            )
             r = requests.post(url, data=payload, timeout=120)
         return _handle_graph_response(r, page_id=me_or_page, endpoint=endpoint)
 
     if photo_url:
         endpoint = f"/{me_or_page}/photos"
         url = f"{GRAPH_BASE}{endpoint}"
+        published = _published_flag(visibility)
         media_bytes = _get_media_bytes(photo_url)
         if media_bytes:
             content, name, mime = media_bytes
@@ -126,28 +150,44 @@ def publish_facebook_post(
             data = {
                 "access_token": page_access_token,
                 "caption": message or "",
-                "published": "true",
+                "published": published,
             }
-            logger.info("FB publish request: page_id=%s endpoint=%s mode=photo_file", me_or_page, endpoint)
+            logger.info(
+                "FB publish request: page_id=%s endpoint=%s mode=photo_file payload=%s",
+                me_or_page,
+                endpoint,
+                _sanitize_payload(data),
+            )
             r = requests.post(url, data=data, files=files, timeout=60)
         else:
             payload = {
                 "access_token": page_access_token,
                 "url": photo_url,
                 "caption": message or "",
-                "published": "true",
+                "published": published,
             }
-            logger.info("FB publish request: page_id=%s endpoint=%s mode=photo_url", me_or_page, endpoint)
+            logger.info(
+                "FB publish request: page_id=%s endpoint=%s mode=photo_url payload=%s",
+                me_or_page,
+                endpoint,
+                _sanitize_payload(payload),
+            )
             r = requests.post(url, data=payload, timeout=30)
         return _handle_graph_response(r, page_id=me_or_page, endpoint=endpoint)
 
     endpoint = f"/{me_or_page}/feed"
     url = f"{GRAPH_BASE}{endpoint}"
+    published = _published_flag(visibility)
     payload = {
         "access_token": page_access_token,
         "message": message or "",
-        "published": "true",
+        "published": published,
     }
-    logger.info("FB publish request: page_id=%s endpoint=%s mode=text", me_or_page, endpoint)
+    logger.info(
+        "FB publish request: page_id=%s endpoint=%s mode=text payload=%s",
+        me_or_page,
+        endpoint,
+        _sanitize_payload(payload),
+    )
     r = requests.post(url, data=payload, timeout=30)
     return _handle_graph_response(r, page_id=me_or_page, endpoint=endpoint)

@@ -2,69 +2,81 @@
 
 You are a senior backend engineer specializing in Meta (Facebook) Graph API.
 
-Audit the entire repository and locate all Facebook publishing logic.
+Modify the Facebook publishing system in this repository to support two visibility modes:
 
-Focus especially on:
-
-- platforms/facebook.py
-- modules/publisher/services/facebook_service.py
-- modules/publisher/services/scheduler_service.py
-- workflow_engine.py
-- routes/publish_api.py
-- any file sending requests to graph.facebook.com
-
-Problem:
-Posts created by this system appear in the Page Activity Log as:
-
-"Hidden from Page" or "Only me"
-
-This means the system is creating hidden page posts instead of normal timeline posts.
+1) Public (visible on Page Timeline)
+2) Hidden (Only me / hidden from page)
 
 Tasks:
 
-1. Find any place where Facebook posts are created with:
-   - published=false
-   - unpublished_content_type
-   - or any flag that creates hidden posts.
+1. Locate all Facebook publishing logic in the repository, especially:
 
-2. Ensure all publishing requests explicitly send:
+- modules/publisher/services/facebook_service.py
+- platforms/facebook.py
+- modules/publisher/services/scheduler_service.py
+- modules/publisher/api/posts_api.py
+- static/publisher/js/publisher.js
 
-published=true
+2. Add a new field called:
 
-3. Ensure correct Graph API endpoints are used:
+visibility
+
+Possible values:
+- "public"
+- "hidden"
+
+3. Modify all Facebook publishing payloads so that:
+
+If visibility == "public"
+    published = True
+
+If visibility == "hidden"
+    published = False
+
+4. Apply this logic to all publishing endpoints:
 
 TEXT POST
-POST https://graph.facebook.com/v19.0/{page_id}/feed
+POST /{page_id}/feed
 
 PHOTO POST
-POST https://graph.facebook.com/v19.0/{page_id}/photos
+POST /{page_id}/photos
 
 VIDEO POST
-POST https://graph.facebook.com/v19.0/{page_id}/videos
+POST /{page_id}/videos
 
-4. Ensure the system NEVER publishes using:
-   - /me/feed
-   - user access tokens
-   - ad or dark post endpoints
+5. Ensure the payload always includes:
 
-5. Ensure posts appear publicly in the Page Timeline.
+published: True or False
 
-6. Improve success detection:
-A post should be considered successful if:
+6. Ensure the system NEVER publishes using:
+- /me/feed
+- user access tokens
 
-HTTP status = 200
-AND response contains either:
-"id" OR "post_id"
+Only Page publishing with:
+page_id + page access token.
 
-7. Add debug logging showing:
-- page_id
-- endpoint used
-- payload sent
-- response from Facebook API
+7. Update backend functions so they accept the visibility parameter.
 
-8. Show the exact lines in the repository that cause hidden posts.
+Example Python logic:
 
-9. Provide corrected code snippets that guarantee the post appears publicly on the Page Timeline.
+published = True if visibility == "public" else False
 
-Do not explain theory.
-Only show exact bugs and corrected code.
+payload = {
+    "message": text,
+    "access_token": page_token,
+    "published": published
+}
+
+8. Update the frontend UI (publisher.js) to include a visibility selector:
+
+Radio buttons:
+
+○ Show on Page (Public)
+○ Hidden / Only me
+
+9. Ensure the selected visibility value is sent in the API request.
+
+10. Show the exact code modifications needed in this repository.
+
+Do not give theoretical explanations.
+Only show the code changes.

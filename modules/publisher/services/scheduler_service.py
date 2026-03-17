@@ -122,14 +122,18 @@ def _publish_single_post_record(*, app, db, post, PublisherPage, PublisherMedia,
     from modules.publisher.models.publisher_settings import PublisherSettings
     from modules.publisher.services.token_utils import encrypt_token
 
+    visibility = (getattr(post, "visibility", None) or "public").strip().lower()
+    if visibility not in {"public", "hidden"}:
+        visibility = "public"
+
     def _publish_with_token(page_id, token, text, media_list):
         if not media_list:
-            return fb.publish_text_post(page_id, token, text)
+            return fb.publish_text_post(page_id, token, text, visibility=visibility)
         m = media_list[0]
         file_path = _resolve_media_file_path(app, m)
         if m.media_type == "image":
-            return fb.publish_photo_post(page_id, token, text, file_path)
-        return fb.publish_video_post(page_id, token, text, file_path)
+            return fb.publish_photo_post(page_id, token, text, file_path, visibility=visibility)
+        return fb.publish_video_post(page_id, token, text, file_path, visibility=visibility)
 
     page_ids = post.page_ids or []
     total_pages = len(page_ids)

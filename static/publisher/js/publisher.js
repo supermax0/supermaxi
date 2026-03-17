@@ -5,6 +5,7 @@ const SELECTED_MEDIA_META_KEY = "publisher_selected_media_meta";
 let selectedMediaIds = [];
 let selectedMediaMeta = [];
 let publishMode = "now";
+let visibilityMode = "public";
 let publisherPages = [];
 let pageProgressTicker = null;
 let pageProgressPoller = null;
@@ -155,6 +156,7 @@ async function initCreatePost() {
     restoreSelectedMediaFromStorage();
     await loadPageSelector();
     initPublishToggle();
+    initVisibilitySelector();
     initAiTools();
     updateSelectedMediaChip();
     updatePreview();
@@ -201,6 +203,22 @@ function initPublishToggle() {
             btn.classList.add("active");
             const schedField = document.getElementById("scheduleField");
             if (schedField) schedField.style.display = publishMode === "scheduled" ? "block" : "none";
+            updatePreview();
+        });
+    });
+}
+
+function initVisibilitySelector() {
+    const radios = document.querySelectorAll('input[name="visibility"]');
+    if (!radios.length) {
+        visibilityMode = "public";
+        return;
+    }
+    const checked = document.querySelector('input[name="visibility"]:checked');
+    visibilityMode = checked?.value === "hidden" ? "hidden" : "public";
+    radios.forEach((radio) => {
+        radio.addEventListener("change", () => {
+            visibilityMode = radio.value === "hidden" ? "hidden" : "public";
             updatePreview();
         });
     });
@@ -333,12 +351,13 @@ function updatePreview() {
     const scheduleValue = document.getElementById("scheduleTime")?.value || "";
     const previewMetaLine = document.getElementById("previewMetaLine");
     if (previewMetaLine) {
+        const visibilityLabel = visibilityMode === "hidden" ? "Hidden" : "Public";
         if (publishMode === "scheduled" && scheduleValue) {
-            previewMetaLine.textContent = "مجدول · " + fmtDate(scheduleValue);
+            previewMetaLine.textContent = "مجدول · " + fmtDate(scheduleValue) + " · " + visibilityLabel;
         } else if (publishMode === "scheduled") {
-            previewMetaLine.textContent = "مجدول · بانتظار تحديد الوقت";
+            previewMetaLine.textContent = "مجدول · بانتظار تحديد الوقت · " + visibilityLabel;
         } else {
-            previewMetaLine.textContent = "الآن · Public";
+            previewMetaLine.textContent = "الآن · " + visibilityLabel;
         }
     }
 
@@ -644,7 +663,7 @@ async function submitPost(e) {
 
     try {
         let endpoint = "/publisher/api/posts/create";
-        const body = { text, page_ids, media_ids: selectedMediaIds };
+        const body = { text, page_ids, media_ids: selectedMediaIds, visibility: visibilityMode };
         if (publishMode === "scheduled") {
             const dt = document.getElementById("scheduleTime")?.value || "";
             if (!dt) {
@@ -672,6 +691,9 @@ async function submitPost(e) {
             if (publishMode === "scheduled") {
                 setPublishStatus("success", r.message || "تمت الجدولة بنجاح");
                 document.getElementById("postForm")?.reset();
+                const visibilityPublic = document.querySelector('input[name="visibility"][value="public"]');
+                if (visibilityPublic) visibilityPublic.checked = true;
+                visibilityMode = "public";
                 selectedMediaIds = [];
                 selectedMediaMeta = [];
                 sessionStorage.removeItem(SELECTED_MEDIA_KEY);
@@ -681,6 +703,9 @@ async function submitPost(e) {
             } else if (post.status === "published") {
                 setPublishStatus("success", "تم النشر الفوري بنجاح");
                 document.getElementById("postForm")?.reset();
+                const visibilityPublic = document.querySelector('input[name="visibility"][value="public"]');
+                if (visibilityPublic) visibilityPublic.checked = true;
+                visibilityMode = "public";
                 selectedMediaIds = [];
                 selectedMediaMeta = [];
                 sessionStorage.removeItem(SELECTED_MEDIA_KEY);

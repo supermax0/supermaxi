@@ -23,6 +23,7 @@ class PublisherPost(db.Model):
 
     publish_type = db.Column(db.String(20), default="now", nullable=False)  # now | scheduled
     publish_time = db.Column(db.DateTime, nullable=True, index=True)
+    visibility = db.Column(db.String(20), default="public", nullable=False)  # public | hidden
 
     error_message = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -72,6 +73,7 @@ class PublisherPost(db.Model):
             "status": self.status,
             "publish_type": self.publish_type,
             "publish_time": self.publish_time.isoformat() if self.publish_time else None,
+            "visibility": self.visibility or "public",
             "error_message": self.error_message,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }

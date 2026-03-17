@@ -23,6 +23,17 @@ _RATE_LIMIT_CODES = {4, 17, 32, 613}
 _MAX_RETRIES = 3
 
 
+def _published_flag(visibility: str | None) -> str:
+    return "false" if (visibility or "public").strip().lower() == "hidden" else "true"
+
+
+def _log_payload(page_id: str, endpoint: str, payload: dict) -> None:
+    sanitized = dict(payload or {})
+    if "access_token" in sanitized:
+        sanitized["access_token"] = "***"
+    logger.info("FB publish payload: page_id=%s endpoint=%s payload=%s", page_id, endpoint, sanitized)
+
+
 def _safe_json(resp: requests.Response) -> tuple[dict, str | None]:
     try:
         return resp.json(), None
@@ -126,7 +137,7 @@ def get_user_pages(user_token: str) -> dict:
         return {"success": False, "message": str(exc), "error_code": None, "error_subcode": None}
 
 
-def publish_text_post(page_id: str, page_token: str, text: str) -> dict:
+def publish_text_post(page_id: str, page_token: str, text: str, visibility: str = "public") -> dict:
     """Publish a plain-text post to a Facebook page."""
     page_id = (page_id or "").strip()
     page_token = (page_token or "").strip()
@@ -136,17 +147,19 @@ def publish_text_post(page_id: str, page_token: str, text: str) -> dict:
         return {"success": False, "message": "Missing page access token", "error_code": None, "error_subcode": None}
 
     url = f"{GRAPH_BASE}/{page_id}/feed"
+    payload = {"message": text, "access_token": page_token, "published": _published_flag(visibility)}
+    _log_payload(page_id, f"/{page_id}/feed", payload)
     result = _retry_post(
         url,
         page_id=page_id,
-        data={"message": text, "access_token": page_token, "published": "true"},
+        data=payload,
     )
     if result.get("success"):
         logger.info("Text post published to page %s: %s", page_id, result["data"].get("id"))
     return result
 
 
-def publish_photo_post(page_id: str, page_token: str, text: str, image_path: str) -> dict:
+def publish_photo_post(page_id: str, page_token: str, text: str, image_path: str, visibility: str = "public") -> dict:
     """Publish an image post to a Facebook page."""
     page_id = (page_id or "").strip()
     page_token = (page_token or "").strip()
@@ -156,12 +169,14 @@ def publish_photo_post(page_id: str, page_token: str, text: str, image_path: str
         return {"success": False, "message": "Missing page access token", "error_code": None, "error_subcode": None}
 
     url = f"{GRAPH_BASE}/{page_id}/photos"
+    payload = {"caption": text, "access_token": page_token, "published": _published_flag(visibility)}
+    _log_payload(page_id, f"/{page_id}/photos", payload)
     try:
         with open(image_path, "rb") as f:
             result = _retry_post(
                 url,
                 page_id=page_id,
-                data={"caption": text, "access_token": page_token, "published": "true"},
+                data=payload,
                 files={"source": f},
             )
     except FileNotFoundError:
@@ -171,7 +186,7 @@ def publish_photo_post(page_id: str, page_token: str, text: str, image_path: str
     return result
 
 
-def publish_video_post(page_id: str, page_token: str, text: str, video_path: str) -> dict:
+def publish_video_post(page_id: str, page_token: str, text: str, video_path: str, visibility: str = "public") -> dict:
     """Publish a video post to a Facebook page (simple upload)."""
     page_id = (page_id or "").strip()
     page_token = (page_token or "").strip()
@@ -181,12 +196,14 @@ def publish_video_post(page_id: str, page_token: str, text: str, video_path: str
         return {"success": False, "message": "Missing page access token", "error_code": None, "error_subcode": None}
 
     url = f"{GRAPH_BASE}/{page_id}/videos"
+    payload = {"description": text, "access_token": page_token, "published": _published_flag(visibility)}
+    _log_payload(page_id, f"/{page_id}/videos", payload)
     try:
         with open(video_path, "rb") as f:
             result = _retry_post(
                 url,
                 page_id=page_id,
-                data={"description": text, "access_token": page_token, "published": "true"},
+                data=payload,
                 files={"source": f},
             )
     except FileNotFoundError:

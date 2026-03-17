@@ -52,6 +52,7 @@ PUBLISHER_TABLES: Dict[str, Dict[str, str]] = {
         "status": "VARCHAR(30)",
         "publish_type": "VARCHAR(20)",
         "publish_time": "DATETIME",
+        "visibility": "VARCHAR(20) DEFAULT 'public'",
         "error_message": "TEXT",
         "created_at": "DATETIME",
     },
