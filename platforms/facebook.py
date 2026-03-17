@@ -11,8 +11,9 @@ logger = logging.getLogger("facebook_publish")
 GRAPH_BASE = "https://graph.facebook.com/v19.0"
 
 
-def _published_flag(visibility: str | None) -> str:
-    return "false" if (visibility or "public").strip().lower() == "hidden" else "true"
+def _published_flag(visibility: str | None) -> bool:
+    """Map visibility to Facebook published flag: public -> True, hidden -> False."""
+    return (visibility or "public").strip().lower() != "hidden"
 
 
 def _sanitize_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -106,7 +107,8 @@ def publish_facebook_post(
     if video_url:
         endpoint = f"/{me_or_page}/videos"
         url = f"{GRAPH_BASE}{endpoint}"
-        published = _published_flag(visibility)
+        published = _published_flag(visibility)  # True = public, False = hidden
+        published_str = "true" if published else "false"
         media_bytes = _get_media_bytes(video_url)
         if media_bytes:
             content, name, mime = media_bytes
@@ -114,7 +116,7 @@ def publish_facebook_post(
             data = {
                 "access_token": page_access_token,
                 "description": message or "",
-                "published": published,
+                "published": published_str,
             }
             logger.info(
                 "FB publish request: page_id=%s endpoint=%s mode=video_file payload=%s",
@@ -128,7 +130,7 @@ def publish_facebook_post(
                 "access_token": page_access_token,
                 "file_url": video_url,
                 "description": message or "",
-                "published": published,
+                "published": published_str,
             }
             logger.info(
                 "FB publish request: page_id=%s endpoint=%s mode=video_url payload=%s",
@@ -142,7 +144,8 @@ def publish_facebook_post(
     if photo_url:
         endpoint = f"/{me_or_page}/photos"
         url = f"{GRAPH_BASE}{endpoint}"
-        published = _published_flag(visibility)
+        published = _published_flag(visibility)  # True = public, False = hidden
+        published_str = "true" if published else "false"
         media_bytes = _get_media_bytes(photo_url)
         if media_bytes:
             content, name, mime = media_bytes
@@ -150,7 +153,7 @@ def publish_facebook_post(
             data = {
                 "access_token": page_access_token,
                 "caption": message or "",
-                "published": published,
+                "published": published_str,
             }
             logger.info(
                 "FB publish request: page_id=%s endpoint=%s mode=photo_file payload=%s",
@@ -177,11 +180,11 @@ def publish_facebook_post(
 
     endpoint = f"/{me_or_page}/feed"
     url = f"{GRAPH_BASE}{endpoint}"
-    published = _published_flag(visibility)
+    published = _published_flag(visibility)  # True = public, False = hidden
     payload = {
         "access_token": page_access_token,
         "message": message or "",
-        "published": published,
+        "published": "true" if published else "false",
     }
     logger.info(
         "FB publish request: page_id=%s endpoint=%s mode=text payload=%s",

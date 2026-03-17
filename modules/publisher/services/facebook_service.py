@@ -23,8 +23,9 @@ _RATE_LIMIT_CODES = {4, 17, 32, 613}
 _MAX_RETRIES = 3
 
 
-def _published_flag(visibility: str | None) -> str:
-    return "false" if (visibility or "public").strip().lower() == "hidden" else "true"
+def _published_flag(visibility: str | None) -> bool:
+    """Map visibility to Facebook published flag: public -> True, hidden -> False."""
+    return (visibility or "public").strip().lower() != "hidden"
 
 
 def _log_payload(page_id: str, endpoint: str, payload: dict) -> None:
@@ -147,7 +148,8 @@ def publish_text_post(page_id: str, page_token: str, text: str, visibility: str 
         return {"success": False, "message": "Missing page access token", "error_code": None, "error_subcode": None}
 
     url = f"{GRAPH_BASE}/{page_id}/feed"
-    payload = {"message": text, "access_token": page_token, "published": _published_flag(visibility)}
+    published = _published_flag(visibility)  # True = public, False = hidden
+    payload = {"message": text, "access_token": page_token, "published": "true" if published else "false"}
     _log_payload(page_id, f"/{page_id}/feed", payload)
     result = _retry_post(
         url,
@@ -169,7 +171,8 @@ def publish_photo_post(page_id: str, page_token: str, text: str, image_path: str
         return {"success": False, "message": "Missing page access token", "error_code": None, "error_subcode": None}
 
     url = f"{GRAPH_BASE}/{page_id}/photos"
-    payload = {"caption": text, "access_token": page_token, "published": _published_flag(visibility)}
+    published = _published_flag(visibility)  # True = public, False = hidden
+    payload = {"caption": text, "access_token": page_token, "published": "true" if published else "false"}
     _log_payload(page_id, f"/{page_id}/photos", payload)
     try:
         with open(image_path, "rb") as f:
@@ -196,7 +199,8 @@ def publish_video_post(page_id: str, page_token: str, text: str, video_path: str
         return {"success": False, "message": "Missing page access token", "error_code": None, "error_subcode": None}
 
     url = f"{GRAPH_BASE}/{page_id}/videos"
-    payload = {"description": text, "access_token": page_token, "published": _published_flag(visibility)}
+    published = _published_flag(visibility)  # True = public, False = hidden
+    payload = {"description": text, "access_token": page_token, "published": "true" if published else "false"}
     _log_payload(page_id, f"/{page_id}/videos", payload)
     try:
         with open(video_path, "rb") as f:
