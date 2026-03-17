@@ -162,6 +162,11 @@ def terms():
     return render_template("terms.html")
 
 
+@index_bp.route("/data-deletion")
+def data_deletion():
+    return render_template("data_deletion.html")
+
+
 # =================================================
 # Contact Form (نموذج الاتصال)
 # =================================================

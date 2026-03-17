@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>حذف البيانات — Finora</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=Inter:wght@700;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        :root {
+            --b: #3b82f6;
+            --i: #6366f1;
+            --p: #8b5cf6;
+            --dark: #020617;
+            --card: rgba(15, 23, 42, .8);
+            --bord: rgba(99, 102, 241, .22);
+            --text: #f1f5f9;
+            --muted: #94a3b8;
+        }
+
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background: var(--dark);
+            color: var(--text);
+            line-height: 1.8;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 80px auto;
+            padding: 50px;
+            background: var(--card);
+            border: 1px solid var(--bord);
+            border-radius: 30px;
+            backdrop-filter: blur(24px);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        h1 {
+            font-size: clamp(28px, 4vw, 40px);
+            font-weight: 900;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        h2 {
+            font-size: 22px;
+            font-weight: 800;
+            margin-top: 35px;
+            margin-bottom: 15px;
+            color: var(--b);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        h2::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--b);
+        }
+
+        p,
+        li {
+            color: var(--muted);
+            margin-bottom: 14px;
+            font-size: 16px;
+        }
+
+        ul {
+            padding-right: 25px;
+            margin-bottom: 18px;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--i);
+            text-decoration: none;
+            font-weight: 700;
+            margin-bottom: 28px;
+            transition: .3s;
+            font-size: 15px;
+        }
+
+        .back-link:hover {
+            transform: translateX(8px);
+            color: var(--text);
+        }
+
+        code {
+            background: rgba(99, 102, 241, .15);
+            border: 1px solid rgba(99, 102, 241, .25);
+            padding: 2px 8px;
+            border-radius: 10px;
+            color: var(--text);
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 14px;
+        }
+
+        footer {
+            text-align: center;
+            padding: 60px 40px;
+            color: var(--muted);
+            font-size: 14px;
+            border-top: 1px solid var(--bord);
+        }
+
+        @media(max-width:768px) {
+            .container {
+                margin: 40px 20px;
+                padding: 30px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <a href="/#index" class="back-link"><i class="fas fa-arrow-right"></i> العودة للرئيسية</a>
+        <h1>تعليمات حذف البيانات (Data Deletion)</h1>
+        <p>هذه الصفحة تشرح كيفية طلب حذف بياناتك من منصة Finora، بما في ذلك بيانات استخدام <strong>تطبيق النشر</strong>.</p>
+        <p><strong>آخر تحديث:</strong> 2026-03-15</p>
+
+        <h2>1. كيف أطلب حذف بياناتي؟</h2>
+        <p>لطلب حذف بياناتك، أرسل رسالة إلى البريد التالي مع معلومات الحساب:</p>
+        <ul>
+            <li><strong>البريد:</strong> <strong>supermax@supermax.space</strong></li>
+            <li><strong>العنوان:</strong> طلب حذف البيانات</li>
+            <li><strong>المحتوى:</strong> اسم الشركة/المتجر، رقم الهاتف المسجل، واسم المستخدم (إن وُجد).</li>
+        </ul>
+
+        <h2>2. ما البيانات التي يتم حذفها؟</h2>
+        <p>بناءً على طلبك، نقوم بحذف أو إخفاء الوصول إلى البيانات التالية حسبما ينطبق:</p>
+        <ul>
+            <li>بيانات الحساب (اسم المستخدم ومعلومات التواصل).</li>
+            <li>بيانات العمل المرتبطة بالحساب داخل النظام.</li>
+            <li>بيانات تطبيق النشر: إعدادات الربط بالصفحات، سجلات النشر، ومعرّفات المنشورات.</li>
+        </ul>
+
+        <h2>3. ماذا عن رموز الوصول (Facebook Access Tokens)؟</h2>
+        <p>عند حذف بياناتك، نزيل الرموز المخزنة لدينا. كما يمكنك دائماً إلغاء صلاحية التطبيق من حساب فيسبوك عبر:</p>
+        <ul>
+            <li>Facebook Settings → Apps and Websites → إزالة تطبيق Finora (إن كان مضافاً).</li>
+        </ul>
+
+        <h2>4. مدة معالجة الطلب</h2>
+        <p>عادةً تتم معالجة طلبات حذف البيانات خلال <strong>7 أيام عمل</strong>، وقد نطلب منك معلومات إضافية للتحقق من الملكية قبل الحذف.</p>
+
+        <h2>5. معرّف الطلب (اختياري)</h2>
+        <p>إذا زوّدتنا برقم/معرّف عملية (مثل رقم اشتراك أو معرف شركة)، سيُسرّع ذلك تنفيذ الطلب.</p>
+
+    </div>
+
+    <footer>
+        &copy; 2026 Finora — منصة إدارة الأعمال العراقية. جميع الحقوق محفوظة.
+    </footer>
+</body>
+
+</html>
+
