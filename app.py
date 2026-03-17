@@ -673,12 +673,24 @@ with app.app_context():
                         status VARCHAR(30) DEFAULT 'draft',
                         publish_type VARCHAR(20) DEFAULT 'now',
                         publish_time DATETIME,
+                        visibility VARCHAR(20) DEFAULT 'public',
                         error_message TEXT,
                         created_at DATETIME
                     )
                 """))
                 conn.commit()
             print("Created publisher_posts table.")
+        else:
+            # Migration: add visibility column if missing (existing installs)
+            with db.engine.connect() as conn:
+                r = conn.execute(text("PRAGMA table_info(publisher_posts)"))
+                cols = [row[1] for row in r.fetchall()]
+                if 'visibility' not in cols:
+                    conn.execute(text(
+                        "ALTER TABLE publisher_posts ADD COLUMN visibility VARCHAR(20) DEFAULT 'public'"
+                    ))
+                    conn.commit()
+                    print("Added visibility column to publisher_posts.")
         if 'publisher_settings' not in tnames:
             with db.engine.connect() as conn:
                 conn.execute(text("""
