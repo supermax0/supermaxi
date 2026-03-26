@@ -634,6 +634,37 @@ with app.app_context():
     except Exception as e:
         print(f"Migration error (subscription_plans): {e}")
 
+    # Seed: خطة مجانية (plan_key=free) في Core — للتسجيل بدون دفع
+    try:
+        from flask import g
+        from sqlalchemy import inspect as sa_inspect
+        from models.core.subscription_plan import SubscriptionPlan
+
+        inspector = sa_inspect(db.engine)
+        if "subscription_plans" in inspector.get_table_names():
+            old_tenant = getattr(g, "tenant", None)
+            g.tenant = None
+            try:
+                if SubscriptionPlan.query.filter_by(plan_key="free").first() is None:
+                    fp = SubscriptionPlan(
+                        plan_key="free",
+                        name="الخطة المجانية",
+                        price_monthly=0,
+                        price_yearly=0,
+                        original_price_monthly=25000,
+                        original_price_yearly=250000,
+                        max_users=3,
+                        max_orders_monthly=500,
+                    )
+                    fp.set_features({"inventory": True, "ai_assistant": False})
+                    db.session.add(fp)
+                    db.session.commit()
+                    print("Seeded subscription_plans: free (0 IQD)")
+            finally:
+                g.tenant = old_tenant
+    except Exception as e:
+        print(f"Seed note (subscription_plans free): {e}")
+
     # Migration: Create Publisher tables if needed
     try:
         from sqlalchemy import inspect, text

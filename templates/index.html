@@ -1890,7 +1890,7 @@
                 <p class="sub">Finora يجمع الطلبات، المخزون، الحسابات، الموظفين، وتقارير الأرباح في منصة سحابية واحدة
                     سريعة وآمنة.</p>
                 <div class="acts">
-                    <a href="#pricing" class="btn bp"><i class="fas fa-rocket"></i> ابدأ مجاناً</a>
+                    <a href="/signup?plan=free&amp;billing=monthly" class="btn bp"><i class="fas fa-rocket"></i> ابدأ مجاناً</a>
                     <a href="#features" class="btn bo"><i class="fas fa-layer-group"></i> استكشف الميزات</a>
                 </div>
                 <div class="stats">
@@ -2108,6 +2108,26 @@
 
             {% set lp = landing_plans or {} %}
             <div class="pg ai">
+                <div class="pc">
+                    <div class="pn">✨ المجانية</div>
+                    <div class="pd">ابدأ بدون بطاقة — جرّب النظام</div>
+                    <div class="pr" style="color:#34d399" id="price_free">{% set fr = lp.get('free', {}) %}{% if
+                        fr.get('original_price_monthly') and fr.get('original_price_monthly') > fr.get('price_monthly', 0)
+                        %}<span style="text-decoration:line-through;opacity:0.6;margin-left:6px;font-size:0.85em;">{{
+                            "{:,.0f}".format(fr.get('original_price_monthly')) }}</span> {% endif %}{{
+                        "{:,.0f}".format(fr.get('price_monthly', 0)) }} <small>د.ع / شهر</small></div>
+                    <div id="saving_free"></div>
+                    <div class="div"></div>
+                    <ul class="pf">
+                        <li><i class="fas fa-check-circle ck"></i> 0 د.ع — تفعيل فوري</li>
+                        <li><i class="fas fa-check-circle ck"></i> حتى 3 مستخدمين</li>
+                        <li><i class="fas fa-check-circle ck"></i> حتى 500 طلب شهرياً</li>
+                        <li><i class="fas fa-check-circle ck"></i> POS + مخزون + زبائن</li>
+                        <li style="opacity:.4"><i class="fas fa-times" style="color:#475569"></i> تقارير متقدمة</li>
+                    </ul>
+                    <a id="link_free" href="/signup?plan=free&billing=monthly" class="bpl bpo">سجّل مجاناً</a>
+                </div>
+
                 <div class="pc">
                     <div class="pn">🟢 الأساسية</div>
                     <div class="pd">للمشاريع الصغيرة والناشئة</div>
@@ -2456,6 +2476,7 @@
         PRICES["{{ k }}"].original_yearly = {{ v.get('original_price_yearly') if v.get('original_price_yearly') is not none else 'null' }};
         {% endfor %}
         if (Object.keys(PRICES).length === 0) {
+            PRICES.free = { monthly: 0, yearly: 0, name: 'الخطة المجانية', original_monthly: 25000, original_yearly: 250000 };
             PRICES.basic = { monthly: 25000, yearly: 250000, name: 'الأساسية', original_monthly: null, original_yearly: null };
             PRICES.pro = { monthly: 45000, yearly: 450000, name: 'المتقدمة', original_monthly: null, original_yearly: null };
             PRICES.enterprise = { monthly: 90000, yearly: 900000, name: 'الشركات', original_monthly: null, original_yearly: null };

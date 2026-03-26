@@ -1,6 +1,15 @@
 from __future__ import annotations
 
+import os
+import sys
+
 from sqlalchemy import inspect, text
+
+# If this file is executed directly (e.g. `python utils/product_schema_guard.py`),
+# Python's import path points at `utils/` and won't find project-root modules.
+_PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
 
 from extensions import db
 
@@ -48,4 +57,13 @@ def ensure_product_schema() -> None:
         # Avoid breaking the UI if schema check fails for any reason.
         # The API/UI will show the real DB error if columns still don't exist.
         return
+
+
+if __name__ == "__main__":
+    # This helper needs the app + SQLAlchemy to be initialized (app context).
+    # It is intended to be imported and executed from routes / app startup.
+    print(
+        "This script is not meant to be run standalone.\n"
+        "Start the app (app.py) and visit /inventory or /inventory/add to auto-apply the schema guard."
+    )
 

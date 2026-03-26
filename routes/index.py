@@ -53,6 +53,7 @@ def _debug_log(session_id: str, hypothesis_id: str, location: str, message: str,
 
 # خطط الاشتراك من قاعدة البيانات (للصفحة الرئيسية والتسجيل) — fallback إذا كانت الجداول فارغة
 FALLBACK_PLANS = {
+    "free": {"key": "free", "name": "الخطة المجانية", "price_monthly": 0, "price_yearly": 0, "original_price_monthly": 25000, "original_price_yearly": 250000},
     "basic": {"key": "basic", "name": "الخطة الأساسية", "price_monthly": 25000, "price_yearly": 250000},
     "pro": {"key": "pro", "name": "الخطة المتقدمة", "price_monthly": 45000, "price_yearly": 450000},
     "enterprise": {"key": "enterprise", "name": "خطة الشركات", "price_monthly": 90000, "price_yearly": 900000},
@@ -81,6 +82,9 @@ def get_public_plans():
                 "original_price_monthly": int(om) if om is not None else None,
                 "original_price_yearly": int(oy) if oy is not None else None,
             }
+        # ضمان وجود خطة free حتى لو لم تُزرع بعد في DB
+        if by_key and "free" not in by_key:
+            by_key["free"] = dict(FALLBACK_PLANS["free"])
         return by_key if by_key else None
     except Exception:
         return None
@@ -544,13 +548,15 @@ def payment_success():
 @index_bp.route("/signup", methods=["GET", "POST"])
 def signup():
     from werkzeug.security import generate_password_hash
+    from flask import g
+    import re
 
     PLANS = get_public_plans() or FALLBACK_PLANS
 
     if request.method == "GET":
-        plan_key    = request.args.get("plan", "basic")
+        plan_key    = request.args.get("plan", "free")
         billing     = request.args.get("billing", "monthly")  # monthly | yearly
-        plan        = PLANS.get(plan_key, PLANS.get("basic", FALLBACK_PLANS["basic"]))
+        plan        = PLANS.get(plan_key, PLANS.get("free", PLANS.get("basic", FALLBACK_PLANS["basic"])))
         return render_template("signup.html",
             selected_plan=plan,
             plans=list(PLANS.values()),
@@ -565,10 +571,10 @@ def signup():
     username     = request.form.get("username", "").strip()
     password     = request.form.get("password", "").strip()
     password2    = request.form.get("password2", "").strip()
-    plan_key     = request.form.get("plan_key", "basic")
+    plan_key     = request.form.get("plan_key", "free")
     billing      = request.form.get("billing", "monthly")
 
-    plan = PLANS.get(plan_key, PLANS.get("basic", FALLBACK_PLANS["basic"]))
+    plan = PLANS.get(plan_key, PLANS.get("free", PLANS.get("basic", FALLBACK_PLANS["basic"])))
 
     def render_err(msg):
         return render_template("signup.html",
@@ -591,51 +597,99 @@ def signup():
     if password != password2:
         return render_err("كلمة المرور وتأكيدها غير متطابقتين")
 
-    if Employee.query.filter_by(username=username).first():
-        return render_err("اسم المستخدم مستخدم مسبقاً — الرجاء اختيار اسم آخر")
+    def _slugify(s: str) -> str:
+        s = (s or "").strip().lower()
+        s = re.sub(r"[^\w\s\-]", "", s, flags=re.UNICODE)
+        s = re.sub(r"[\s_]+", "-", s)
+        s = re.sub(r"[^a-z0-9\-]", "", s)
+        s = re.sub(r"-{2,}", "-", s).strip("-")
+        return s
 
     try:
-        # إنشاء Tenant
-        monthly_price = plan["price_monthly"]
-        tenant = Tenant(
+        # 1) إنشاء الشركة في قاعدة Core (tenants)
+        from models.core.tenant import Tenant as CoreTenant
+        from extensions_tenant import init_tenant_db
+
+        months = 12 if billing == "yearly" else 1
+        monthly_price = int(plan.get("price_monthly", 0) or 0)
+        yearly_price = int(plan.get("price_yearly", 0) or 0)
+
+        base_slug = _slugify(username) or _slugify(company_name) or "tenant"
+        slug = base_slug
+        # ضمان عدم تكرار slug في Core
+        i = 2
+        while CoreTenant.query.filter_by(slug=slug).first() is not None:
+            slug = f"{base_slug}-{i}"
+            i += 1
+
+        core_db_path = f"tenants/{slug}.db"
+        core_tenant = CoreTenant(
             name=company_name,
-            contact_name=contact_name,
-            contact_email=email or None,
-            contact_phone=phone or None,
-            plan_key=plan["key"],
-            plan_name=plan["name"],
-            monthly_price=monthly_price,
+            slug=slug,
+            db_path=core_db_path,
             is_active=True,
         )
-        months = 12 if billing == "yearly" else 1
-        tenant.extend_subscription_months(months)
-        db.session.add(tenant)
-        db.session.flush()
-
-        # إنشاء Admin
-        hashed_pw = generate_password_hash(password)
-        admin = Employee(
-            name=contact_name,
-            username=username,
-            password=hashed_pw,
-            role="admin",
-            tenant_id=tenant.id,
-        )
-        db.session.add(admin)
+        # تقريب: سنة = 12 شهر، شهر = 1
+        core_tenant.subscription_end_date = datetime.utcnow() + timedelta(days=30 * months)
+        db.session.add(core_tenant)
         db.session.commit()
+
+        # 2) تهيئة قاعدة بيانات الشركة (SQLite) + إنشاء صف Tenant داخلي + إنشاء Admin داخل قاعدة الشركة
+        init_tenant_db(slug)
+
+        old_tenant = getattr(g, "tenant", None)
+        g.tenant = slug
+        try:
+            tenant_row = Tenant(
+                name=company_name,
+                contact_name=contact_name,
+                contact_email=email or None,
+                contact_phone=phone or None,
+                plan_key=plan.get("key") or plan_key,
+                plan_name=plan.get("name") or "الخطة الأساسية",
+                monthly_price=(yearly_price if billing == "yearly" else monthly_price),
+                is_active=True,
+            )
+            tenant_row.extend_subscription_months(months)
+            db.session.add(tenant_row)
+            db.session.flush()
+
+            hashed_pw = generate_password_hash(password)
+            admin = Employee(
+                name=contact_name,
+                username=username,
+                password=hashed_pw,
+                role="admin",
+                tenant_id=tenant_row.id,
+                is_active=True,
+            )
+            db.session.add(admin)
+            db.session.commit()
+        finally:
+            g.tenant = old_tenant
 
     except Exception as e:
         db.session.rollback()
         return render_err(f"حدث خطأ أثناء إنشاء الحساب، يرجى المحاولة مجدداً. ({str(e)})")
 
-    # تسجيل الجلسة
+    # تسجيل الجلسة (Auto-login) + توجيه
+    session.clear()
     session.permanent = True
-    session["user_id"]  = admin.id
-    session["name"]     = admin.name
-    session["role"]     = admin.role
-    session["tenant_id"] = tenant.id
+    session["tenant_slug"] = slug
+    session["user_id"] = admin.id
+    session["name"] = admin.name
+    session["role"] = admin.role
+    session["tenant_id"] = admin.tenant_id
+    session["plan_key"] = plan.get("key") or plan_key
 
-    # توجيه لصفحة الدفع لإتمام الاشتراك
+    # خطة بسعر 0 للفترة المختارة: دخول مباشر بدون بوابة دفع
+    pm = int(plan.get("price_monthly", 0) or 0)
+    py = int(plan.get("price_yearly", 0) or 0)
+    price_for_period = py if billing == "yearly" else pm
+    if price_for_period == 0:
+        return redirect("/")
+
+    # غير ذلك: توجيه لصفحة الدفع لإتمام الاشتراك
     return redirect(f"/payment?plan={plan_key}&billing={billing}")
 
 # =================================================
