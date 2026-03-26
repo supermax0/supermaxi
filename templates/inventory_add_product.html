@@ -1,0 +1,465 @@
+{% extends "base.html" %}
+{% block title %}{{ _('inventory_add_page_title') }}{% endblock %}
+{% block page_title %}{{ _('inventory_add_page_title') }}{% endblock %}
+
+{% block content %}
+<div class="inventory-page inv-add-page">
+  <style>
+    .inv-add-page { max-width: 1100px; margin: 0 auto; padding: 0 0 32px; }
+    .inv-add-page .footer { display: none !important; }
+
+    .inv-add-page .inv-summary {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .inv-add-page .inv-box {
+      background: linear-gradient(145deg, var(--card), var(--card-alt));
+      border: 1px solid var(--border-light);
+      border-radius: 18px;
+      padding: 18px 16px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .inv-add-page .inv-box::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      border-radius: 18px 18px 0 0;
+    }
+    .inv-add-page .inv-box:nth-child(1)::before { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+    .inv-add-page .inv-box:nth-child(2)::before { background: linear-gradient(90deg, #10b981, #34d399); }
+    .inv-add-page .inv-box:nth-child(3)::before { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
+    .inv-add-page .inv-box h4 { color: var(--text-muted); font-size: 12px; margin-bottom: 6px; font-weight: 500; }
+    .inv-add-page .inv-box b { font-size: 22px; font-weight: 700; color: var(--text); }
+
+    .inv-add-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 16px 20px !important;
+      margin-bottom: 18px;
+    }
+    .inv-add-toolbar .left, .inv-add-toolbar .right { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+
+    .inv-btn {
+      padding: 10px 18px;
+      border-radius: 12px;
+      border: none;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+      transition: transform .2s, box-shadow .2s;
+    }
+    .inv-btn:hover { transform: translateY(-1px); }
+    .inv-btn.primary { background: linear-gradient(135deg, #3b82f6, #2563eb); color: #fff;
+      box-shadow: 0 6px 16px rgba(59, 130, 246, 0.3); }
+    .inv-btn.purple { background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: #fff;
+      box-shadow: 0 6px 16px rgba(139, 92, 246, 0.3); }
+    .inv-btn.orange { background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff;
+      box-shadow: 0 6px 16px rgba(245, 158, 11, 0.3); }
+    .inv-btn.ghost {
+      background: rgba(15, 23, 42, 0.5);
+      color: var(--text);
+      border: 1px solid var(--border-light);
+    }
+
+    .inv-add-card {
+      background: linear-gradient(145deg, var(--card), var(--card-alt));
+      border: 1px solid var(--border-light);
+      border-radius: 20px;
+      padding: 24px 22px;
+      margin-bottom: 18px;
+    }
+    .inv-add-card h3 {
+      margin: 0 0 18px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-light);
+      font-size: 17px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .inv-form-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px 16px;
+    }
+    @media (max-width: 1000px) {
+      .inv-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 560px) {
+      .inv-form-grid { grid-template-columns: 1fr; }
+      .inv-add-page .inv-summary { grid-template-columns: 1fr; }
+    }
+
+    .inv-field label {
+      display: block;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+    .inv-field input, .inv-field select, .inv-field textarea {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(15, 23, 42, 0.6);
+      color: #f1f5f9;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+    .inv-field textarea { min-height: 120px; resize: vertical; }
+    .inv-field input:focus, .inv-field select:focus, .inv-field textarea:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+    }
+    :root[data-theme="light"] .inv-field input,
+    :root[data-theme="light"] .inv-field select,
+    :root[data-theme="light"] .inv-field textarea {
+      background: rgba(255, 255, 255, 0.92);
+      color: #0f172a;
+      border-color: rgba(15, 23, 42, 0.12);
+    }
+
+    .inv-span-2 { grid-column: span 2; }
+    .inv-span-4 { grid-column: span 4; }
+    @media (max-width: 1000px) {
+      .inv-span-2, .inv-span-4 { grid-column: span 2; }
+    }
+    @media (max-width: 560px) {
+      .inv-span-2, .inv-span-4 { grid-column: span 1; }
+    }
+
+    .inv-check-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px 24px;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+    .inv-check {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+    .inv-check input { width: auto; margin-top: 4px; }
+
+    .inv-pricing-head {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 8px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.15));
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      font-size: 12px;
+      font-weight: 700;
+      color: #ecfdf5;
+      text-align: center;
+    }
+    @media (max-width: 900px) {
+      .inv-pricing-head { grid-template-columns: 1fr 1fr; }
+    }
+
+    .inv-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 8px;
+    }
+    .inv-actions .inv-btn.save { background: linear-gradient(135deg, #3b82f6, #2563eb); color: #fff; }
+    .inv-actions .inv-btn.pink { background: linear-gradient(135deg, #ec4899, #db2777); color: #fff; }
+    .inv-actions .inv-btn.purple { background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: #fff; }
+    .inv-actions .inv-btn.orange { background: linear-gradient(135deg, #f97316, #ea580c); color: #fff; }
+
+    .inv-alert {
+      padding: 12px 16px;
+      border-radius: 12px;
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      color: #fecaca;
+      margin-bottom: 16px;
+      font-size: 14px;
+    }
+
+    .inv-hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+  </style>
+
+  {% if error %}
+  <div class="inv-alert">{{ error }}</div>
+  {% endif %}
+
+  <div class="inv-summary">
+    <div class="inv-box">
+      <h4>{{ _('inventory_summary_products_title') }}</h4>
+      <b>{{ products_count }}</b>
+    </div>
+    <div class="inv-box">
+      <h4>{{ _('inventory_summary_value_title') }}</h4>
+      <b>{{ "{:,.0f}".format(current_inventory_value) }} <span style="font-size:12px;opacity:.65">د.ع</span></b>
+    </div>
+    <div class="inv-box">
+      <h4>{{ _('inventory_summary_profit_title') }}</h4>
+      <b>{{ "{:,.0f}".format(expected_profit_from_stock) }} <span style="font-size:12px;opacity:.65">د.ع</span></b>
+    </div>
+  </div>
+
+  <div class="inv-add-card inv-add-toolbar">
+    <div class="left">
+      <a class="inv-btn ghost" href="{{ url_for('inventory.inventory') }}"><i class="fas fa-arrow-right"></i> {{ _('inventory_back_to_list') }}</a>
+      <a class="inv-btn primary" href="{{ url_for('inventory.add_product_page') }}"><i class="fas fa-plus"></i> {{ _('inventory_add_product') }}</a>
+      <a class="inv-btn purple" href="/inventory/ledger"><i class="fas fa-list"></i> {{ _('inventory_movements_log') }}</a>
+      <a class="inv-btn orange" href="/inventory/audit"><i class="fas fa-barcode"></i> {{ _('inventory_audit') }}</a>
+    </div>
+    <div class="right">
+      <span style="color:var(--text-muted);font-size:13px;"><i class="fas fa-info-circle"></i> {{ _('inventory_add_page_hint') }}</span>
+    </div>
+  </div>
+
+  <form method="post" action="{{ url_for('inventory.add_product_page') }}" enctype="multipart/form-data" class="inv-add-form">
+    <!-- قسم 1: بيانات أساسية -->
+    <div class="inv-add-card">
+      <h3><span>📋</span> {{ _('inventory_section_basic') }}</h3>
+      <div class="inv-form-grid">
+        <div class="inv-field inv-span-2">
+          <label>{{ _('inventory_field_name') }} <span style="color:#f87171">*</span></label>
+          <input name="name" required placeholder="{{ _('inventory_field_name') }}" autocomplete="off">
+        </div>
+        <div class="inv-field">
+          <label>{{ _('inventory_field_sku') }}</label>
+          <input name="sku" placeholder="SKU" autocomplete="off">
+        </div>
+        <div class="inv-field">
+          <label>{{ _('inventory_field_barcode_type') }}</label>
+          <select name="barcode_type">
+            <option value="C128">Code 128 (C128)</option>
+            <option value="EAN13">EAN-13</option>
+            <option value="CODE39">Code 39</option>
+          </select>
+        </div>
+        <div class="inv-field">
+          <label>{{ _('inventory_field_barcode_optional') }}</label>
+          <input name="barcode" placeholder="{{ _('inventory_field_barcode_optional') }}">
+        </div>
+        <div class="inv-field">
+          <label>{{ _('inventory_field_unit') }}</label>
+          <select name="unit">
+            <option value="piece">{{ _('inventory_unit_piece') }}</option>
+            <option value="box">صندوق</option>
+            <option value="kg">كيلوغرام</option>
+          </select>
+        </div>
+        <div class="inv-field">
+          <label>{{ _('inventory_field_brand') }}</label>
+          <input name="brand" placeholder="{{ _('inventory_field_brand') }}">
+        </div>
+        <div class="inv-field">
+          <label>{{ _('inventory_field_category') }}</label>
+          <input name="category" placeholder="{{ _('inventory_field_category') }}">
+        </div>
+        <div class="inv-field">
+          <label>{{ _('inventory_field_subcategory') }}</label>
+          <input name="subcategory" placeholder="{{ _('inventory_field_subcategory') }}">
+        </div>
+        <div class="inv-field inv-span-2">
+          <label>{{ _('inventory_field_branch_note') }}</label>
+          <input name="branch_note" placeholder="{{ _('inventory_field_branch_note') }}">
+        </div>
+      </div>
+    </div>
+
+    <!-- قسم 2: خيارات ومخزون -->
+    <div class="inv-add-card">
+      <h3><span>📦</span> {{ _('inventory_section_stock') }}</h3>
+      <div class="inv-check-row">
+        <label class="inv-check">
+          <input type="checkbox" name="enable_imei" value="1">
+          <span>{{ _('inventory_enable_imei') }}</span>
+        </label>
+        <label class="inv-check">
+          <input type="checkbox" name="not_for_sale" value="1">
+          <span>{{ _('inventory_not_for_sale') }}</span>
+        </label>
+      </div>
+      <div class="inv-form-grid" style="margin-top:12px;">
+        <div class="inv-field">
+          <label>{{ _('inventory_field_opening_stock_label') }}</label>
+          <input name="opening_stock" type="number" min="0" value="0" id="opening_stock">
+        </div>
+        <div class="inv-field">
+          <label>{{ _('inventory_field_low_stock_alert') }}</label>
+          <input name="low_stock_threshold" type="number" min="0" value="5">
+        </div>
+        <div class="inv-field">
+          <label>{{ _('inventory_field_warranty') }}</label>
+          <select name="warranty">
+            <option value="">{{ _('inventory_select_placeholder') }}</option>
+            <option value="none">بدون ضمان</option>
+            <option value="6m">6 أشهر</option>
+            <option value="1y">سنة</option>
+            <option value="2y">سنتان</option>
+          </select>
+        </div>
+        <div class="inv-field">
+          <label>{{ _('inventory_field_weight') }}</label>
+          <input name="weight" placeholder="0">
+        </div>
+      </div>
+      <p class="inv-hint">{{ _('inventory_section_shelf_hint') }}</p>
+      <div class="inv-form-grid" style="margin-top:10px;">
+        <div class="inv-field">
+          <label>رف</label>
+          <input name="shelf" placeholder="رف">
+        </div>
+        <div class="inv-field">
+          <label>صف</label>
+          <input name="shelf_row" placeholder="صف">
+        </div>
+        <div class="inv-field">
+          <label>مكان</label>
+          <input name="shelf_loc" placeholder="مكان">
+        </div>
+        <div class="inv-field"></div>
+      </div>
+      <div class="inv-form-grid" style="margin-top:10px;">
+        <div class="inv-field"><label>حقل مخصص 1</label><input name="custom_field_1" placeholder="حقل مخصص 1"></div>
+        <div class="inv-field"><label>حقل مخصص 2</label><input name="custom_field_2" placeholder="حقل مخصص 2"></div>
+        <div class="inv-field"><label>حقل مخصص 3</label><input name="custom_field_3" placeholder="حقل مخصص 3"></div>
+        <div class="inv-field"><label>حقل مخصص 4</label><input name="custom_field_4" placeholder="حقل مخصص 4"></div>
+      </div>
+    </div>
+
+    <!-- قسم 3: ضريبة ونوع -->
+    <div class="inv-add-card">
+      <h3><span>⚙️</span> {{ _('inventory_section_tax') }}</h3>
+      <div class="inv-form-grid">
+        <div class="inv-field">
+          <label>{{ _('inventory_field_tax_applied') }}</label>
+          <select name="tax_applied">
+            <option value="none">{{ _('inventory_tax_none') }}</option>
+            <option value="vat">ضريبة مبيعات</option>
+          </select>
+        </div>
+        <div class="inv-field">
+          <label>{{ _('inventory_field_sales_tax_type') }}</label>
+          <select name="sales_tax_type">
+            <option value="exclusive">{{ _('inventory_tax_exclusive') }}</option>
+            <option value="inclusive">{{ _('inventory_tax_inclusive') }}</option>
+          </select>
+        </div>
+        <div class="inv-field">
+          <label>{{ _('inventory_field_product_type') }}</label>
+          <select name="product_type">
+            <option value="single">{{ _('inventory_product_type_single') }}</option>
+            <option value="variable">متعدد الأصناف</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- قسم 4: وصف -->
+    <div class="inv-add-card">
+      <h3><span>📝</span> {{ _('inventory_section_description') }}</h3>
+      <div class="inv-field">
+        <label>{{ _('inventory_field_description') }}</label>
+        <textarea name="description" placeholder="{{ _('inventory_field_description') }}"></textarea>
+      </div>
+    </div>
+
+    <!-- قسم 5: أسعار وصورة -->
+    <div class="inv-add-card">
+      <h3><span>💰</span> {{ _('inventory_section_pricing') }}</h3>
+      <div class="inv-pricing-head">
+        <span>{{ _('inventory_purchase_price') }}</span>
+        <span>{{ _('inventory_margin_percent') }}</span>
+        <span>{{ _('inventory_sale_price') }}</span>
+        <span>{{ _('inventory_product_image') }}</span>
+      </div>
+      <div class="inv-form-grid">
+        <div class="inv-field">
+          <label>{{ _('inventory_field_buy_price') }} <span style="color:#f87171">*</span></label>
+          <input name="buy_price" id="buy_price" type="number" min="0" required placeholder="0">
+        </div>
+        <div class="inv-field">
+          <label>{{ _('inventory_margin_percent') }}</label>
+          <input type="number" id="margin_percent" value="25" step="0.01" min="0" placeholder="25">
+          <p class="inv-hint">{{ _('inventory_margin_hint') }}</p>
+        </div>
+        <div class="inv-field">
+          <label>{{ _('inventory_field_sale_price') }} <span style="color:#f87171">*</span></label>
+          <input name="sale_price" id="sale_price" type="number" min="0" required placeholder="0">
+        </div>
+        <div class="inv-field">
+          <label>{{ _('inventory_product_image') }}</label>
+          <input type="file" name="product_image" accept="image/jpeg,image/png,image/webp,image/gif">
+          <p class="inv-hint">{{ _('inventory_image_hint') }}</p>
+        </div>
+        <div class="inv-field">
+          <label>{{ _('inventory_purchase_ex_tax') }}</label>
+          <input name="purchase_ex_tax" placeholder="—">
+        </div>
+        <div class="inv-field">
+          <label>{{ _('inventory_purchase_inc_tax') }}</label>
+          <input name="purchase_inc_tax" placeholder="—">
+        </div>
+        <div class="inv-field">
+          <label>{{ _('inventory_sale_ex_tax') }}</label>
+          <input name="sale_ex_tax" placeholder="—">
+        </div>
+        <div class="inv-field">
+          <label>{{ _('inventory_sale_inc_tax') }}</label>
+          <input name="sale_inc_tax" placeholder="—">
+        </div>
+      </div>
+    </div>
+
+    <div class="inv-add-card">
+      <div class="inv-actions">
+        <button type="submit" class="inv-btn save" name="submit_action" value="save"><i class="fas fa-save"></i> {{ _('inventory_save') }}</button>
+        <button type="submit" class="inv-btn pink" name="submit_action" value="add_another"><i class="fas fa-plus"></i> {{ _('inventory_save_and_add_another') }}</button>
+        <button type="submit" class="inv-btn purple" name="submit_action" value="opening"><i class="fas fa-warehouse"></i> {{ _('inventory_save_opening') }}</button>
+        <button type="submit" class="inv-btn orange" name="submit_action" value="group_prices"><i class="fas fa-tags"></i> {{ _('inventory_save_group_prices') }}</button>
+      </div>
+      <p class="inv-hint" style="margin-top:12px;">{{ _('inventory_save_actions_hint') }}</p>
+    </div>
+  </form>
+</div>
+
+<script>
+(function () {
+  var buy = document.getElementById('buy_price');
+  var sale = document.getElementById('sale_price');
+  var margin = document.getElementById('margin_percent');
+  function syncFromMargin() {
+    var b = parseFloat(buy.value) || 0;
+    var m = parseFloat(margin.value) || 0;
+    sale.value = Math.max(0, Math.round(b * (1 + m / 100)));
+  }
+  function syncMarginFromSale() {
+    var b = parseFloat(buy.value) || 0;
+    var s = parseFloat(sale.value) || 0;
+    if (b <= 0) return;
+    margin.value = (((s - b) / b) * 100).toFixed(2);
+  }
+  if (margin) margin.addEventListener('input', syncFromMargin);
+  if (buy) buy.addEventListener('input', syncFromMargin);
+  if (sale) sale.addEventListener('change', syncMarginFromSale);
+})();
+</script>
+{% endblock %}

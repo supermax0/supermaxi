@@ -41,10 +41,28 @@ def _get_bot_token() -> str:
 
 def _get_openai_key() -> str:
     """قراءة مفتاح OpenAI من الإعدادات أو من متغير البيئة OPENAI_API_KEY."""
-    return (
+    api_key = (
         (current_app.config.get("OPENAI_API_KEY") or "")
         or (os.getenv("OPENAI_API_KEY") or "")
     ).strip()
+
+    if api_key:
+        return api_key
+
+    # fallback: GlobalSetting (whole system)
+    try:
+        from models.core.global_setting import GlobalSetting
+        old_tenant = getattr(g, "tenant", None)
+        g.tenant = None  # force core DB
+        api_key = (GlobalSetting.get_setting("OPENAI_API_KEY", "") or "").strip()
+    except Exception:
+        api_key = ""
+    finally:
+        try:
+            g.tenant = old_tenant  # type: ignore[name-defined]
+        except Exception:
+            pass
+    return api_key
 
 
 def _get_openai_model() -> str:

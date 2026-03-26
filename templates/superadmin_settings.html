@@ -287,6 +287,15 @@
                             value="{{ settings.trial_days }}" required>
                         <small class="form-text">عدد الأيام الممنوحة تلقائياً لكل حساب شركة جديد.</small>
                     </div>
+
+                    <div class="form-group">
+                        <label for="openaiKey">مفتاح OpenAI (Global) — لكل النظام</label>
+                        <input type="password" id="openaiKey" name="OPENAI_API_KEY" class="form-control"
+                            value="{{ settings.openai_api_key_masked or '' }}" placeholder="••••••••••••••••">
+                        <small class="form-text">
+                            يستخدم لتشغيل كل ميزات الذكاء الاصطناعي في النظام (Social AI / AI Agent / Landing Chat / Telegram AI).
+                        </small>
+                    </div>
                 </div>
             </div>
 

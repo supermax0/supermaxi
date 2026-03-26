@@ -8,6 +8,7 @@ from models.invoice import Invoice
 from models.order_item import OrderItem
 from models.employee import Employee
 from models.page import Page
+from utils.product_schema_guard import ensure_product_schema
 
 pos_bp = Blueprint("pos", __name__, url_prefix="/pos")
 
@@ -20,6 +21,7 @@ def pos_use_tenant_db():
     tenant_slug = session.get("tenant_slug")
     if tenant_slug:
         g.tenant = tenant_slug  # جعل الاستعلامات تستهدف قاعدة بيانات الشركة
+        ensure_product_schema()
 
 
 # =================================================
@@ -35,17 +37,18 @@ def pos():
     tenant_id = session.get("tenant_id")
     if getattr(g, "tenant", None):
         # نحن على قاعدة الـ tenant (tenants/xxx.db) — جدول product = المخزون
-        products = Product.query.order_by(Product.name).all()
+        products = Product.query.filter(Product.active == True).order_by(Product.name).all()
         customers = Customer.query.order_by(Customer.name).all()
     elif tenant_id:
         products = Product.query.filter(
-            db.or_(Product.tenant_id.is_(None), Product.tenant_id == tenant_id)
+            db.or_(Product.tenant_id.is_(None), Product.tenant_id == tenant_id),
+            Product.active == True,
         ).order_by(Product.name).all()
         customers = Customer.query.filter(
             db.or_(Customer.tenant_id.is_(None), Customer.tenant_id == tenant_id)
         ).all()
     else:
-        products = Product.query.all()
+        products = Product.query.filter(Product.active == True).all()
         customers = Customer.query.all()
 
     # جلب معلومات المندوب للأرشيف

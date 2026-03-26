@@ -9,10 +9,11 @@ from __future__ import annotations
 
 from typing import Optional
 
-from flask import current_app
+from flask import current_app, g
 
 
 _client: Optional[object] = None
+_client_api_key: Optional[str] = None
 
 
 def get_client():
@@ -20,9 +21,7 @@ def get_client():
 
     يتم الاستيراد بشكل كسول لتجنّب فشل التطبيق إذا لم تُثبّت مكتبة openai.
     """
-    global _client
-    if _client is not None:
-        return _client
+    global _client, _client_api_key
 
     try:
         from openai import OpenAI  # type: ignore[import-untyped]
@@ -33,6 +32,21 @@ def get_client():
         ) from exc
 
     api_key = (current_app.config.get("OPENAI_API_KEY") or "").strip()
+    if not api_key:
+        # محاولة القراءة من GlobalSetting (مفتاح OpenAI لكل النظام)
+        old_tenant = getattr(g, "tenant", None)
+        try:
+            g.tenant = None  # force core DB
+            from models.core.global_setting import GlobalSetting
+            api_key = (GlobalSetting.get_setting("OPENAI_API_KEY", "") or "").strip()
+        except Exception:
+            api_key = ""
+        finally:
+            try:
+                g.tenant = old_tenant
+            except Exception:
+                pass
+
     if not api_key:
         # محاولة القراءة من SystemSettings.ui_flags (إعدادات واجهة النشر)
         try:
@@ -49,7 +63,11 @@ def get_client():
             "OPENAI_API_KEY غير مضبوط. أضف المفتاح في ملف .env أو من إعدادات النشر التلقائي (AI Agent)."
         )
 
+    if _client is not None and _client_api_key == api_key:
+        return _client
+
     _client = OpenAI(api_key=api_key)
+    _client_api_key = api_key
     return _client
 
 

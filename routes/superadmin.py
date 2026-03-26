@@ -450,12 +450,18 @@ def settings():
         # Save settings
         app_name = request.form.get("APP_NAME", "Finora System")
         trial_days = request.form.get("TRIAL_DAYS", "14")
+        openai_api_key_in = (request.form.get("OPENAI_API_KEY", "") or "").strip()
         zaincash_secret = request.form.get("ZAINCASH_SECRET", "")
         zaincash_merchant = request.form.get("ZAINCASH_MERCHANT", "")
         zaincash_transfer_phone = request.form.get("ZAINCASH_TRANSFER_PHONE", "07734049148").strip()
         
         GlobalSetting.set_setting("APP_NAME", app_name, "اسم النظام العام للمنصة")
         GlobalSetting.set_setting("TRIAL_DAYS", trial_days, "عدد أيام التجربة المجانية للشركات")
+        
+        # Global OpenAI key (used by all AI features)
+        # If user leaves the masked value (starts with ●) do not overwrite.
+        if openai_api_key_in and not openai_api_key_in.startswith("●"):
+            GlobalSetting.set_setting("OPENAI_API_KEY", openai_api_key_in, "مفتاح OpenAI (ذكاء اصطناعي) لكل النظام")
         GlobalSetting.set_setting("ZAINCASH_SECRET", zaincash_secret, "كلمة سر حساب مركز زين كاش")
         GlobalSetting.set_setting("ZAINCASH_MERCHANT", zaincash_merchant, "رقم تعريف تاجر زين كاش")
         GlobalSetting.set_setting("ZAINCASH_TRANSFER_PHONE", zaincash_transfer_phone, "رقم تحويل زين كاش (محفظة استلام الدفع)")
@@ -475,9 +481,12 @@ def settings():
         return redirect(url_for("superadmin.settings"))
         
     # GET Request - Load Settings
+    openai_key = (GlobalSetting.get_setting("OPENAI_API_KEY", "") or "").strip()
     settings_data = {
         "app_name": GlobalSetting.get_setting("APP_NAME", "Finora System"),
         "trial_days": GlobalSetting.get_setting("TRIAL_DAYS", "14"),
+        "openai_api_key_present": bool(openai_key),
+        "openai_api_key_masked": "●●●●●●●●●●" if openai_key else "",
         "zaincash_secret": GlobalSetting.get_setting("ZAINCASH_SECRET", ""),
         "zaincash_merchant": GlobalSetting.get_setting("ZAINCASH_MERCHANT", ""),
         "zaincash_transfer_phone": GlobalSetting.get_setting("ZAINCASH_TRANSFER_PHONE", "07734049148"),
@@ -551,6 +560,7 @@ PAGES_GUIDE = [
         "icon": "fa-boxes",
         "links": [
             ("/inventory", "المخزون", "inventory.html"),
+            ("/inventory/add", "إضافة منتج (نموذج كامل)", "inventory_add_product.html"),
             ("/inventory/audit", "جرد المخزون", "inventory_audit.html"),
             ("/inventory/ledger", "دفتر المخزون", "inventory_ledger.html"),
             ("/inventory/report/<id>", "تقرير صنف", "inventory_report.html"),

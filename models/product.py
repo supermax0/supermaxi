@@ -14,6 +14,7 @@ class Product(db.Model):
     )
 
     name = db.Column(db.String(150), nullable=False)
+    sku = db.Column(db.String(100), nullable=True)
     barcode = db.Column(db.String(100), nullable=True)
     buy_price = db.Column(db.Integer, nullable=False)
 
@@ -31,6 +32,11 @@ class Product(db.Model):
     
     # حد التنبيه لانخفاض المخزون (الرقم الذي إذا وصل إليه المخزون أو قل عنه يظهر التنبيه)
     low_stock_threshold = db.Column(db.Integer, default=5)
+
+    description = db.Column(db.Text, nullable=True)
+    image_url = db.Column(db.String(512), nullable=True)
+    # حقول إضافية من نموذج الإدخال المتقدم (وحدة، ضريبة، رف، …) JSON
+    meta_json = db.Column(db.Text, nullable=True)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 

@@ -322,6 +322,18 @@ with app.app_context():
                 db.session.execute(text("ALTER TABLE product ADD COLUMN low_stock_threshold INTEGER DEFAULT 5"))
                 db.session.commit()
                 print("Added low_stock_threshold column to product table.")
+            for col_sql in (
+                ("sku", "ALTER TABLE product ADD COLUMN sku VARCHAR(100)"),
+                ("description", "ALTER TABLE product ADD COLUMN description TEXT"),
+                ("image_url", "ALTER TABLE product ADD COLUMN image_url VARCHAR(512)"),
+                ("meta_json", "ALTER TABLE product ADD COLUMN meta_json TEXT"),
+            ):
+                col_name, stmt = col_sql
+                if col_name not in product_columns:
+                    db.session.execute(text(stmt))
+                    db.session.commit()
+                    print(f"Added {col_name} column to product table.")
+                    product_columns.append(col_name)
     except Exception as e:
         print(f"Migration note (barcode/threshold): {e}")
 
@@ -682,15 +694,16 @@ with app.app_context():
             print("Created publisher_posts table.")
         else:
             # Migration: add visibility column if missing (existing installs)
-            with db.engine.connect() as conn:
-                r = conn.execute(text("PRAGMA table_info(publisher_posts)"))
-                cols = [row[1] for row in r.fetchall()]
-                if 'visibility' not in cols:
-                    conn.execute(text(
-                        "ALTER TABLE publisher_posts ADD COLUMN visibility VARCHAR(20) DEFAULT 'public'"
-                    ))
+            post_columns = [col["name"] for col in inspector.get_columns("publisher_posts")]
+            if "visibility" not in post_columns:
+                with db.engine.connect() as conn:
+                    conn.execute(
+                        text(
+                            "ALTER TABLE publisher_posts ADD COLUMN visibility VARCHAR(20) DEFAULT 'public'"
+                        )
+                    )
                     conn.commit()
-                    print("Added visibility column to publisher_posts.")
+                print("Added visibility column to publisher_posts.")
         if 'publisher_settings' not in tnames:
             with db.engine.connect() as conn:
                 conn.execute(text("""

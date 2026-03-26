@@ -1339,9 +1339,13 @@
   <!-- ================= TOOLBAR ================= -->
   <div class="card inv-toolbar" style="margin-bottom: 24px;">
     <div class="inv-toolbar-left">
-      <button class="inv-btn primary" onclick="toggleAdd()">
+      <a href="{{ url_for('inventory.add_product_page') }}" class="inv-btn primary">
         <i class="fas fa-plus"></i>
         <span>{{ _('inventory_add_product') }}</span>
+      </a>
+      <button type="button" class="inv-btn ghost" onclick="toggleAdd()" style="border:1px solid var(--border-light);background:rgba(15,23,42,.45);color:var(--text);">
+        <i class="fas fa-bolt"></i>
+        <span>{{ _('inventory_quick_add') }}</span>
       </button>
       <a href="/inventory/ledger" class="inv-btn"
         style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; box-shadow: 0 6px 16px rgba(139,92,246,0.3);">
@@ -1409,11 +1413,15 @@
     {
       "id": {{ p.id }},
       "name": {{ p.name|tojson }},
+      "sku": {{ (p.sku or '---')|tojson }},
       "barcode": {{ (p.barcode or '---')|tojson }},
       "opening_stock": {{ p.opening_stock or 0 }},
       "quantity": {{ p.quantity }},
       "low_stock_threshold": {{ p.low_stock_threshold or 5 }},
       "active": {{ 'true' if p.active else 'false' }},
+      "description": {{ (p.description or '')|tojson }},
+      "image_url": {{ (p.image_url or '')|tojson }},
+      "meta_json": {{ (p.meta_json or '{}')|tojson }},
       "buy_price": {{ p.buy_price or 0 }},
       "sale_price": {{ p.sale_price or 0 }},
       "inventory_value": {{ (p.buy_price or 0) * (p.quantity or 0) }},
@@ -1534,6 +1542,25 @@
       return;
     }
 
+    function safeParseMeta(metaJson) {
+      try {
+        if (!metaJson) return {};
+        const parsed = JSON.parse(metaJson);
+        return (parsed && typeof parsed === 'object') ? parsed : {};
+      } catch (err) {
+        return {};
+      }
+    }
+
+    function escapeHtml(str) {
+      return String(str || '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+
     const columnDefs = [
       {
         headerName: "{{ _('inventory_col_actions') }}",
@@ -1574,10 +1601,87 @@
       },
       { headerName: "{{ _('inventory_col_barcode') }}", field: "barcode", width: 130 },
       {
+        headerName: "SKU",
+        field: "sku",
+        width: 110,
+        valueFormatter: params => params.value || '--'
+      },
+      {
+        headerName: "الوحدة",
+        width: 110,
+        valueGetter: params => {
+          const m = safeParseMeta(params.data.meta_json);
+          return m.unit || '--';
+        }
+      },
+      {
+        headerName: "العلامة",
+        width: 140,
+        valueGetter: params => {
+          const m = safeParseMeta(params.data.meta_json);
+          return m.brand || '--';
+        }
+      },
+      {
+        headerName: "الصنف",
+        width: 140,
+        valueGetter: params => {
+          const m = safeParseMeta(params.data.meta_json);
+          return m.category || '--';
+        }
+      },
+      {
+        headerName: "الضمان",
+        width: 110,
+        valueGetter: params => {
+          const m = safeParseMeta(params.data.meta_json);
+          return m.warranty || '--';
+        }
+      },
+      {
+        headerName: "تفاصيل",
+        width: 190,
+        cellRenderer: params => {
+          const raw = params.data.meta_json || '';
+          if (!raw) return '--';
+          const short = raw.length > 50 ? raw.slice(0, 50) + '...' : raw;
+          return `<span title="${escapeHtml(raw)}">${escapeHtml(short)}</span>`;
+        }
+      },
+      {
+        headerName: "IMEI",
+        width: 90,
+        valueGetter: params => {
+          const m = safeParseMeta(params.data.meta_json);
+          return m.enable_imei ? 'نعم' : 'لا';
+        }
+      },
+      {
+        headerName: "الصورة",
+        width: 90,
+        cellRenderer: params => {
+          const url = params.data.image_url;
+          if (!url) return '--';
+          return `<img src="${escapeHtml(url)}" style="width:42px;height:42px;object-fit:cover;border-radius:10px;border:1px solid var(--border-light);" />`;
+        }
+      },
+      {
         headerName: "{{ _('inventory_col_opening') }}",
         field: "opening_stock",
         width: 100,
         valueFormatter: params => (params.value || 0).toLocaleString()
+      },
+      {
+        headerName: "الوصف",
+        field: "description",
+        flex: 1,
+        minWidth: 220,
+        cellRenderer: params => {
+          const v = params.value || '';
+          if (!v) return '--';
+          const short = v.length > 60 ? v.slice(0, 60) + '...' : v;
+          return `<span title="${escapeHtml(v)}">${escapeHtml(short)}</span>`;
+        }
       },
       {
         headerName: "{{ _('inventory_col_current_stock') }}",

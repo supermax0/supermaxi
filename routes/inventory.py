@@ -1,4 +1,8 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify
+import json
+import os
+
+from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify, current_app
+from werkzeug.utils import secure_filename
 from extensions import db
 from models.product import Product
 from models.order_item import OrderItem
@@ -19,7 +23,28 @@ from utils.inventory_movements import (
     validate_sale_quantity
 )
 
+from utils.product_schema_guard import ensure_product_schema
+
 inventory_bp = Blueprint("inventory", __name__)
+
+
+def _inventory_add_summary():
+    """إحصائيات مختصرة لشريط الملخص في صفحة إضافة المنتج."""
+    products = Product.query.all()
+
+    def _val(v, default=0):
+        return default if v is None else v
+
+    current_inventory_value = sum(_val(p.buy_price) * _val(p.quantity) for p in products)
+    expected_profit_from_stock = sum(
+        (_val(p.sale_price) - _val(p.buy_price)) * _val(p.quantity) for p in products
+    )
+    return {
+        "products_count": len(products),
+        "current_inventory_value": current_inventory_value,
+        "expected_profit_from_stock": expected_profit_from_stock,
+    }
+
 
 def check_permission(permission_name):
     """فحص الصلاحية - helper function"""
@@ -54,6 +79,8 @@ def inventory():
     # فحص الصلاحية
     if not check_permission("can_manage_inventory"):
         return redirect("/pos"), 403
+
+    ensure_product_schema()
 
     # ==========================
     # ADD PRODUCT (NO SUPPLIER)
@@ -152,12 +179,117 @@ def inventory():
 
 
 # ======================================
+# Add Product — صفحة مخصصة (نموذج متقدم)
+# ======================================
+@inventory_bp.route("/add", methods=["GET", "POST"])
+@inventory_bp.route("/add/", methods=["GET", "POST"])
+def add_product_page():
+    if not check_permission("can_manage_inventory"):
+        return redirect("/pos"), 403
+
+    ensure_product_schema()
+
+    if request.method == "POST":
+        name = (request.form.get("name") or "").strip()
+        if not name:
+            ctx = _inventory_add_summary()
+            ctx["error"] = "يرجى إدخال اسم المنتج."
+            return render_template("inventory_add_product.html", **ctx), 400
+
+        opening_stock = int(request.form.get("opening_stock", 0) or 0)
+        buy_price = int(request.form.get("buy_price", 0) or 0)
+        sale_price = int(request.form.get("sale_price", 0) or 0)
+        barcode = (request.form.get("barcode") or "").strip() or None
+        sku = (request.form.get("sku") or "").strip() or None
+        not_for_sale_flag = bool(request.form.get("not_for_sale"))
+        low_stock_threshold = int(request.form.get("low_stock_threshold", 5) or 5)
+        description = (request.form.get("description") or "").strip() or None
+
+        meta_keys = (
+            "barcode_type",
+            "unit",
+            "brand",
+            "category",
+            "subcategory",
+            "branch_note",
+            "warranty",
+            "tax_applied",
+            "sales_tax_type",
+            "product_type",
+            "shelf",
+            "shelf_row",
+            "shelf_loc",
+            "weight",
+            "custom_field_1",
+            "custom_field_2",
+            "custom_field_3",
+            "custom_field_4",
+            "purchase_ex_tax",
+            "purchase_inc_tax",
+            "sale_ex_tax",
+            "sale_inc_tax",
+        )
+        meta = {}
+        for k in meta_keys:
+            v = (request.form.get(k) or "").strip()
+            if v:
+                meta[k] = v
+        if request.form.get("enable_imei"):
+            meta["enable_imei"] = True
+        if not_for_sale_flag:
+            meta["not_for_sale"] = True
+
+        image_url = None
+        file = request.files.get("product_image")
+        if file and file.filename:
+            ext = os.path.splitext(file.filename)[1].lower()
+            if ext in (".jpg", ".jpeg", ".png", ".webp", ".gif"):
+                upload_folder = os.path.join(current_app.root_path, "static", "uploads", "products")
+                os.makedirs(upload_folder, exist_ok=True)
+                raw = secure_filename(file.filename)
+                safe = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{raw}"
+                path = os.path.join(upload_folder, safe)
+                file.save(path)
+                image_url = f"/static/uploads/products/{safe}"
+
+        p = Product(
+            name=name,
+            sku=sku,
+            barcode=barcode,
+            buy_price=buy_price,
+            sale_price=sale_price,
+            shipping_cost=0,
+            marketing_cost=0,
+            opening_stock=opening_stock,
+            quantity=opening_stock,
+            active=not not_for_sale_flag,
+            low_stock_threshold=max(0, low_stock_threshold),
+            description=description,
+            image_url=image_url,
+            meta_json=json.dumps(meta, ensure_ascii=False) if meta else None,
+        )
+        db.session.add(p)
+        db.session.commit()
+
+        action = (request.form.get("submit_action") or "save").strip()
+        if action == "add_another":
+            return redirect(url_for("inventory.add_product_page"))
+        # save | opening | group_prices → العودة لقائمة المخزون
+        return redirect(url_for("inventory.inventory"))
+
+    ctx = _inventory_add_summary()
+    return render_template("inventory_add_product.html", **ctx)
+
+
+# ======================================
 # Add Supplier
 # ======================================
 @inventory_bp.route("/audit", methods=["GET"])
 def audit():
     if not check_permission("can_manage_inventory"):
         return redirect("/pos"), 403
+
+    ensure_product_schema()
     products = Product.query.filter_by(active=True).all()
     return render_template("inventory_audit.html", products=products)
 @inventory_bp.route("/save-audit", methods=["POST"])

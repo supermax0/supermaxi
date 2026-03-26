@@ -25,8 +25,24 @@ def call_openai(messages: list, timeout_sec: int = OPENAI_TIMEOUT_SEC) -> tuple[
     """
     api_key = os.environ.get("OPENAI_API_KEY") or os.environ.get("OPENAI_API_KEY".lower())
     if not api_key or not api_key.strip():
+        # fallback: GlobalSetting (for whole system)
+        try:
+            from flask import g
+            old_tenant = getattr(g, "tenant", None)
+            g.tenant = None  # force core DB
+            from models.core.global_setting import GlobalSetting
+            api_key = (GlobalSetting.get_setting("OPENAI_API_KEY", "") or "").strip()
+        except Exception:
+            api_key = ""
+        finally:
+            try:
+                g.tenant = old_tenant  # type: ignore[name-defined]
+            except Exception:
+                pass
+
+    if not api_key or not api_key.strip():
         logger.warning("OPENAI_API_KEY not set")
-        return False, "لم يتم تكوين مفتاح OpenAI. أضف OPENAI_API_KEY في متغيرات البيئة."
+        return False, "لم يتم تكوين مفتاح OpenAI. أضف OPENAI_API_KEY في متغيرات البيئة أو من إعدادات النظام."
 
     try:
         import openai
