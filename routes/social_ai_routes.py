@@ -260,13 +260,37 @@ def api_telegram_set_webhook():
     bot_token = (data.get("bot_token") or "").strip()
     if not bot_token:
         return jsonify({"ok": False, "error": "Bot Token مطلوب"}), 400
+
+    tenant_slug = _current_tenant_slug()
+    if not tenant_slug:
+        return jsonify({
+            "ok": False,
+            "error": "تعذّر تحديد شركة المستخدم (tenant). سجّل الدخول من رابط الشركة ثم افتح بناء الوكلاء.",
+        }), 400
+
+    workflow_id_raw = data.get("workflow_id")
+    try:
+        workflow_id = int(workflow_id_raw)
+    except (TypeError, ValueError):
+        return jsonify({
+            "ok": False,
+            "error": "احفظ الوورك فلو أولاً (يُنشأ رقم workflow_id) ثم فعّل Webhook من جديد.",
+        }), 400
+
+    from models.ai_agent import AgentWorkflow
+
+    wf = AgentWorkflow.query.get(workflow_id)
+    if not wf or (wf.agent and (wf.agent.tenant_slug or "") != tenant_slug):
+        return jsonify({"ok": False, "error": "الوورك فلو غير موجود أو لا يخص شركتك."}), 404
+
     base = _telegram_webhook_base(data)
     if not base:
         return jsonify({
             "ok": False,
             "error": "تعذّر تحديد عنوان السيرفر. ضع BASE_URL في الإعدادات أو أدخل «عنوان السيرفر» في العقدة (مثال: https://finora.company)",
         }), 400
-    webhook_url = f"{base}/telegram/webhook"
+    # مسار يتضمن الشركة + الوورك فلو حتى يُحمَّل التوكن من العقدة عند استقبال التحديث
+    webhook_url = f"{base}/telegram/webhook/{tenant_slug}/{workflow_id}"
     if not webhook_url.startswith("https://") and not webhook_url.startswith("http://127.0.0.1") and "localhost" not in webhook_url:
         return jsonify({
             "ok": False,

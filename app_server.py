@@ -927,15 +927,6 @@ app.register_blueprint(invoice_store_bp)
 app.register_blueprint(telegram_bp)
 
 # =====================================
-# Telegram Webhook (Raw Endpoint)
-# =====================================
-@app.route("/telegram/webhook", methods=["POST"])
-def telegram_webhook():
-    data = request.json
-    print("Telegram update:", data)
-    return jsonify({"ok": True})
-
-# =====================================
 # Logging
 # =====================================
 import logging

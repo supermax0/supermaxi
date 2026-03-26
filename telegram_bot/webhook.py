@@ -113,6 +113,73 @@ def webhook():
     return jsonify({"status": "ok"}), 200
 
 
+@telegram_bp.route("/webhook/<tenant_slug>/<int:workflow_id>", methods=["POST"])
+def webhook_for_workflow(tenant_slug: str, workflow_id: int):
+    """
+    Webhook مرتبط بوورك فلو محدد: يحمّل التوكن من عقدة telegram_listener في الرسم
+    وينفّذ الـ workflow (بدون الاعتماد على BOT_TOKEN في البيئة).
+    """
+    from extensions import db
+    from models.ai_agent import AgentExecution, AgentWorkflow
+    from social_ai.workflow_engine import execute_workflow
+
+    tenant_slug = (tenant_slug or "").strip()
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+    except Exception as e:
+        logger.warning("Telegram workflow webhook: invalid JSON: %s", e)
+        return jsonify({"ok": True}), 200
+
+    chat_id, message_text = parse_telegram_update(data)
+    if not chat_id:
+        return jsonify({"ok": True}), 200
+
+    old_tenant = getattr(g, "tenant", None)
+    g.tenant = tenant_slug
+    try:
+        wf = AgentWorkflow.query.get(workflow_id)
+        if not wf or (wf.agent and (wf.agent.tenant_slug or "") != tenant_slug):
+            logger.warning(
+                "Telegram workflow webhook: workflow %s not found or tenant mismatch",
+                workflow_id,
+            )
+            return jsonify({"ok": True}), 200
+
+        bot_token = ""
+        for n in (wf.graph_json or {}).get("nodes") or []:
+            if (n.get("type") or "") == "telegram_listener":
+                bot_token = ((n.get("data") or {}).get("bot_token") or "").strip()
+                if bot_token:
+                    break
+        if not bot_token:
+            logger.error(
+                "Telegram workflow webhook: no bot_token on telegram_listener for workflow %s",
+                workflow_id,
+            )
+            return jsonify({"ok": True}), 200
+
+        initial_context: dict[str, Any] = {
+            "message_text": message_text or "",
+            "chat_id": str(chat_id),
+            "telegram_bot_token": bot_token,
+        }
+
+        exe = AgentExecution(workflow_id=wf.id, status="running")
+        db.session.add(exe)
+        db.session.commit()
+
+        try:
+            execute_workflow(exe, initial_context=initial_context)
+        except Exception:
+            logger.exception("Telegram workflow webhook: execute_workflow failed")
+            exe.status = "failed"
+            db.session.commit()
+    finally:
+        g.tenant = old_tenant
+
+    return jsonify({"ok": True}), 200
+
+
 @telegram_bp.route("/setup-webhook", methods=["GET"])
 def setup_webhook():
     """

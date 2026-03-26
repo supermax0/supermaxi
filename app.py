@@ -1059,15 +1059,6 @@ except Exception as _pub_ex:
     print(f"Publisher module load warning: {_pub_ex}")
 
 # =====================================
-# Telegram Webhook (Raw Endpoint)
-# =====================================
-@app.route("/telegram/webhook", methods=["POST"])
-def telegram_webhook():
-    data = request.json
-    print("Telegram update:", data)
-    return jsonify({"ok": True})
-
-# =====================================
 # Logging
 # =====================================
 import logging

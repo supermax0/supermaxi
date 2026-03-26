@@ -2039,11 +2039,20 @@ export const App: React.FC = () => {
                                   alert("أدخل Bot Token أولاً ثم اختر مفعل.");
                                   return;
                                 }
+                                const wfId = meta?.id;
+                                if (!wfId) {
+                                  alert("احفظ الوورك فلو أولاً (زر حفظ) حتى يُربط Webhook بالوورك فلو.");
+                                  return;
+                                }
                                 try {
                                   const res = await fetch("/social-ai/api/telegram/set-webhook", {
                                     method: "POST",
                                     headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({ bot_token: botToken, ...(baseUrl ? { base_url: baseUrl } : {}) }),
+                                    body: JSON.stringify({
+                                      bot_token: botToken,
+                                      workflow_id: wfId,
+                                      ...(baseUrl ? { base_url: baseUrl } : {}),
+                                    }),
                                   });
                                   const data = await res.json();
                                   if (data.ok) {
