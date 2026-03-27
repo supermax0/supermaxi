@@ -2099,11 +2099,31 @@ export const App: React.FC = () => {
                           placeholder={
                             selectedNode.type === "whatsapp_send"
                               ? "مثال: +9647XXXXXXXXX"
-                              : "مثال: @username أو chat_id"
+                              : "اتركه فارغاً أو {{chat_id}} للرد على نفس الزبون"
                           }
                           value={(selectedNode.data as any)?.to || ""}
                           onChange={handleMessagingFieldChange("to")}
                         />
+                        {selectedNode.type === "telegram_send" && (
+                          <>
+                            <p className="mt-1 text-[10px] text-slate-500">
+                              الرد على محادثة الويبهوك يذهب تلقائياً لمرسل الرسالة. رقم ثابت هنا يرسل لذلك الحساب
+                              فقط وليس لمن يكتب للبوت.
+                            </p>
+                            <label className="mt-2 flex items-center gap-2 text-[11px] text-slate-300">
+                              <input
+                                type="checkbox"
+                                checked={Boolean((selectedNode.data as any)?.send_to_fixed_recipient)}
+                                onChange={(e) =>
+                                  updateNodeData(selectedNode.id, {
+                                    send_to_fixed_recipient: e.target.checked,
+                                  })
+                                }
+                              />
+                              إجبار الإرسال لرقم «المستلم» أعلاه (تجربة / إعلان لحساب محدد)
+                            </label>
+                          </>
+                        )}
                       </div>
                       <div>
                         <label className="mb-1 block text-[11px] text-slate-400">

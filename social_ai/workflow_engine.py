@@ -814,7 +814,14 @@ def run_whatsapp_send_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, 
 def run_telegram_send_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
     """إرسال رسالة تيليجرام باستخدام بيانات العقدة والسياق."""
     data = node.data or {}
-    chat_tmpl = str(data.get("chat_id") or data.get("to") or context.get("chat_id") or "")
+    # عند استقبال رسالة عبر Webhook يكون chat_id في السياق = من كتب للبوت.
+    # إذا وُضع رقم ثابت في العقدة (to / chat_id) كان يُرسل لذلك الرقم فقط فيبدو أن البوت «لا يرد» للزبون.
+    incoming_chat = str(context.get("chat_id") or "").strip()
+    use_fixed_recipient = bool(data.get("send_to_fixed_recipient", False))
+    if incoming_chat and not use_fixed_recipient:
+        chat_tmpl = incoming_chat
+    else:
+        chat_tmpl = str(data.get("chat_id") or data.get("to") or incoming_chat or context.get("chat_id") or "")
 
     # في تدفق المحادثة (وجود message_text) نعطي الأولوية لرد الـ AI
     # حتى لا يبقى نص تجريبي ثابت مثل "test/hello test".
