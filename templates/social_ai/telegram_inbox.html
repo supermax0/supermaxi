@@ -210,9 +210,28 @@
       errBox.textContent = msg;
     }
 
+    async function readInboxJson(r) {
+      const raw = await r.text();
+      try {
+        return JSON.parse(raw);
+      } catch (e) {
+        throw new Error(
+          "خطأ خادم " +
+            r.status +
+            " (لم يُرجع JSON). حدّث السيرفر وأنشئ الجداول إن لزم، أو راجع سجل اللوج."
+        );
+      }
+    }
+
     async function loadWorkflows() {
-      const r = await fetch("/social-ai/api/telegram/inbox/workflows");
-      const j = await r.json();
+      let j;
+      try {
+        const r = await fetch("/social-ai/api/telegram/inbox/workflows");
+        j = await readInboxJson(r);
+      } catch (e) {
+        showErr(String(e));
+        return;
+      }
       if (!j.success) {
         showErr(j.error || "فشل تحميل الوورك فلوهات");
         return;
@@ -234,8 +253,14 @@
       threadTitle.textContent = wfId ? "اختر محادثة" : "اختر Workflow أولاً";
       sendBtn.disabled = true;
       if (!wfId) return;
-      const r = await fetch("/social-ai/api/telegram/inbox/chats?workflow_id=" + encodeURIComponent(wfId));
-      const j = await r.json();
+      let j;
+      try {
+        const r = await fetch("/social-ai/api/telegram/inbox/chats?workflow_id=" + encodeURIComponent(wfId));
+        j = await readInboxJson(r);
+      } catch (e) {
+        showErr(String(e));
+        return;
+      }
       if (!j.success) {
         showErr(j.error || "فشل تحميل المحادثات");
         return;
@@ -278,13 +303,20 @@
       sendBtn.disabled = false;
       messagesEl.innerHTML = '<div class="empty">جاري التحميل...</div>';
       const wfId = wfSelect.value;
-      const r = await fetch(
-        "/social-ai/api/telegram/inbox/messages?workflow_id=" +
-          encodeURIComponent(wfId) +
-          "&chat_id=" +
-          encodeURIComponent(chatId)
-      );
-      const j = await r.json();
+      let j;
+      try {
+        const r = await fetch(
+          "/social-ai/api/telegram/inbox/messages?workflow_id=" +
+            encodeURIComponent(wfId) +
+            "&chat_id=" +
+            encodeURIComponent(chatId)
+        );
+        j = await readInboxJson(r);
+      } catch (e) {
+        messagesEl.innerHTML = "";
+        showErr(String(e));
+        return;
+      }
       if (!j.success) {
         messagesEl.innerHTML = "";
         showErr(j.error || "فشل تحميل الرسائل");
@@ -327,7 +359,7 @@
             text: text,
           }),
         });
-        const j = await r.json();
+        const j = await readInboxJson(r);
         if (!j.success) {
           showErr(j.error || "فشل الإرسال");
           sendBtn.disabled = false;

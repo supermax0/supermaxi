@@ -21,10 +21,11 @@ from services.tiktok_service import fetch_comments as tiktok_fetch_comments
 from social_ai.content_generator import create_ai_post
 
 
+# url_prefix يُمرَّر عند التسجيل في app (register_blueprint(..., url_prefix="/social-ai")).
+# لا تضع url_prefix هنا أيضاً — يتكرر المسار فيصبح /social-ai/social-ai/... ويُرجع 404 للصفحات الفرعية.
 social_ai_bp = Blueprint(
     "social_ai",
     __name__,
-    url_prefix="/social-ai",
 )
 
 
@@ -415,6 +416,29 @@ def _get_workflow_for_inbox(workflow_id: int) -> AgentWorkflow | None:
     return _inbox_workflow_query().filter(AgentWorkflow.id == workflow_id).first()
 
 
+def _ensure_telegram_inbox_table() -> None:
+    """ينشئ جدول المحادثات إن لم يكن موجوداً (بعد نشر كود جديد دون إعادة create_all يدوياً)."""
+    try:
+        from models.telegram_inbox_message import TelegramInboxMessage
+
+        TelegramInboxMessage.__table__.create(db.engine, checkfirst=True)
+    except Exception as exc:
+        current_app.logger.warning("telegram_inbox ensure table: %s", exc)
+
+
+def _inbox_fail_json(exc: Exception, status: int = 200) -> tuple:
+    """يرجع JSON بدل صفحة HTML عند الخطأ حتى لا يكسر الواجهة (Unexpected token '<')."""
+    current_app.logger.exception("telegram inbox api")
+    err = str(exc)
+    low = err.lower()
+    if "no such table" in low or "does not exist" in low or "undefinedtable" in low:
+        err = (
+            "جدول محادثات تيليجرام غير موجود على السيرفر. "
+            "أعد تشغيل التطبيق بعد التحديث أو نفّذ إنشاء الجداول (db.create_all)."
+        )
+    return jsonify({"success": False, "error": err}), status
+
+
 @social_ai_bp.route("/telegram/inbox")
 def telegram_inbox_page():
     """لوحة محادثات تيليجرام والرد اليدوي."""
@@ -427,20 +451,23 @@ def telegram_inbox_page():
 def api_telegram_inbox_workflows():
     if not session.get("user_id"):
         return jsonify({"success": False, "error": "يجب تسجيل الدخول"}), 401
-    rows = _inbox_workflow_query().order_by(AgentWorkflow.updated_at.desc()).all()
-    workflows = []
-    for wf in rows:
-        if not _graph_has_telegram_listener(wf.graph_json):
-            continue
-        ag = wf.agent
-        workflows.append(
-            {
-                "id": wf.id,
-                "name": wf.name or f"Workflow {wf.id}",
-                "agent_name": (ag.name if ag else "") or "",
-            }
-        )
-    return jsonify({"success": True, "workflows": workflows})
+    try:
+        rows = _inbox_workflow_query().order_by(AgentWorkflow.updated_at.desc()).all()
+        workflows = []
+        for wf in rows:
+            if not _graph_has_telegram_listener(wf.graph_json):
+                continue
+            ag = wf.agent
+            workflows.append(
+                {
+                    "id": wf.id,
+                    "name": wf.name or f"Workflow {wf.id}",
+                    "agent_name": (ag.name if ag else "") or "",
+                }
+            )
+        return jsonify({"success": True, "workflows": workflows})
+    except Exception as exc:
+        return _inbox_fail_json(exc)
 
 
 @social_ai_bp.route("/api/telegram/inbox/chats", methods=["GET"])
@@ -454,24 +481,28 @@ def api_telegram_inbox_chats():
     if not wf_id or not _get_workflow_for_inbox(wf_id):
         return jsonify({"success": False, "error": "وورك فلو غير موجود أو غير مسموح"}), 404
 
-    # آخر رسالة لكل محادثة (نزولاً حسب التاريخ)
-    recent = (
-        TelegramInboxMessage.query.filter_by(workflow_id=wf_id)
-        .order_by(TelegramInboxMessage.created_at.desc())
-        .limit(600)
-        .all()
-    )
-    seen: dict[str, dict] = {}
-    for r in recent:
-        if r.chat_id in seen:
-            continue
-        seen[r.chat_id] = {
-            "chat_id": r.chat_id,
-            "last_at": r.created_at.isoformat() if r.created_at else None,
-            "preview": (r.body or "")[:180],
-        }
-    chats = sorted(seen.values(), key=lambda x: x.get("last_at") or "", reverse=True)
-    return jsonify({"success": True, "chats": chats})
+    _ensure_telegram_inbox_table()
+    try:
+        # آخر رسالة لكل محادثة (نزولاً حسب التاريخ)
+        recent = (
+            TelegramInboxMessage.query.filter_by(workflow_id=wf_id)
+            .order_by(TelegramInboxMessage.created_at.desc())
+            .limit(600)
+            .all()
+        )
+        seen: dict[str, dict] = {}
+        for r in recent:
+            if r.chat_id in seen:
+                continue
+            seen[r.chat_id] = {
+                "chat_id": r.chat_id,
+                "last_at": r.created_at.isoformat() if r.created_at else None,
+                "preview": (r.body or "")[:180],
+            }
+        chats = sorted(seen.values(), key=lambda x: x.get("last_at") or "", reverse=True)
+        return jsonify({"success": True, "chats": chats})
+    except Exception as exc:
+        return _inbox_fail_json(exc)
 
 
 @social_ai_bp.route("/api/telegram/inbox/messages", methods=["GET"])
@@ -488,12 +519,16 @@ def api_telegram_inbox_messages():
     if not _get_workflow_for_inbox(wf_id):
         return jsonify({"success": False, "error": "وورك فلو غير موجود أو غير مسموح"}), 404
 
-    q = (
-        TelegramInboxMessage.query.filter_by(workflow_id=wf_id, chat_id=chat_id)
-        .order_by(TelegramInboxMessage.created_at.asc())
-        .limit(500)
-    )
-    return jsonify({"success": True, "messages": [m.to_dict() for m in q]})
+    _ensure_telegram_inbox_table()
+    try:
+        q = (
+            TelegramInboxMessage.query.filter_by(workflow_id=wf_id, chat_id=chat_id)
+            .order_by(TelegramInboxMessage.created_at.asc())
+            .limit(500)
+        )
+        return jsonify({"success": True, "messages": [m.to_dict() for m in q]})
+    except Exception as exc:
+        return _inbox_fail_json(exc)
 
 
 @social_ai_bp.route("/api/telegram/inbox/send", methods=["POST"])
@@ -534,11 +569,15 @@ def api_telegram_inbox_send():
             return jsonify({"success": False, "error": err or "فشل إرسال تيليجرام"}), 400
     except Exception as e:
         current_app.logger.exception("telegram inbox send")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({"success": False, "error": str(e)}), 200
 
-    tenant_slug = _current_tenant_slug()
-    if wf.agent and wf.agent.tenant_slug:
-        tenant_slug = wf.agent.tenant_slug
-    record_telegram_inbox_message(tenant_slug, wf_id, chat_id, "operator", text[:4096])
+    _ensure_telegram_inbox_table()
+    try:
+        tenant_slug = _current_tenant_slug()
+        if wf.agent and wf.agent.tenant_slug:
+            tenant_slug = wf.agent.tenant_slug
+        record_telegram_inbox_message(tenant_slug, wf_id, chat_id, "operator", text[:4096])
+    except Exception as exc:
+        return _inbox_fail_json(exc)
     return jsonify({"success": True})
 
