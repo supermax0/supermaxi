@@ -30,6 +30,49 @@ logger = logging.getLogger(__name__)
 telegram_bp = Blueprint("telegram", __name__, url_prefix="/telegram")
 
 
+def _load_workflow_for_telegram_webhook(workflow_id: int, tenant_slug: str):
+    """
+    يحمّل AgentWorkflow حسب tenant_slug.
+
+    أحياناً تُحفظ بيانات الوكيل/الوورك فلو في قاعدة المستأجر، وأحياناً في القاعدة الرئيسية
+    (ترحيل قديم). نجرّب قاعدة المستأجر أولاً ثم الرئيسية مع التحقق من tenant_slug على الوكيل.
+    """
+    from models.ai_agent import AgentWorkflow
+
+    tenant_slug = (tenant_slug or "").strip()
+    g.tenant = tenant_slug
+    wf = AgentWorkflow.query.get(workflow_id)
+    if wf:
+        ag = wf.agent
+        if ag and (ag.tenant_slug or "") != tenant_slug:
+            logger.warning(
+                "Telegram webhook: workflow %s tenant mismatch (agent=%s, url=%s)",
+                workflow_id,
+                (ag.tenant_slug if ag else None),
+                tenant_slug,
+            )
+            return None
+        return wf
+
+    g.tenant = None
+    wf = AgentWorkflow.query.get(workflow_id)
+    if wf and wf.agent and (wf.agent.tenant_slug or "") == tenant_slug:
+        logger.info(
+            "Telegram webhook: workflow %s loaded from main DB (legacy); tenant=%s",
+            workflow_id,
+            tenant_slug,
+        )
+        return wf
+    if wf:
+        logger.warning(
+            "Telegram webhook: workflow %s on main DB but agent tenant %s != url %s",
+            workflow_id,
+            (wf.agent.tenant_slug if wf.agent else None),
+            tenant_slug,
+        )
+    return None
+
+
 def _get_bot_token() -> str:
     """قراءة توكن البوت من الإعدادات أو من متغيرات البيئة (BOT_TOKEN / TELEGRAM_BOT_TOKEN)."""
     return (
@@ -122,7 +165,7 @@ def webhook_for_workflow(tenant_slug: str, workflow_id: int):
     """
     from api_workflows import _run_workflow_in_background
     from extensions import db
-    from models.ai_agent import AgentExecution, AgentWorkflow
+    from models.ai_agent import AgentExecution
 
     tenant_slug = (tenant_slug or "").strip()
     try:
@@ -131,20 +174,32 @@ def webhook_for_workflow(tenant_slug: str, workflow_id: int):
         logger.warning("Telegram workflow webhook: invalid JSON: %s", e)
         return jsonify({"ok": True}), 200
 
+    logger.info(
+        "Telegram workflow webhook hit: tenant=%s workflow_id=%s update_id=%s keys=%s",
+        tenant_slug,
+        workflow_id,
+        data.get("update_id"),
+        list(data.keys())[:12],
+    )
+
     chat_id, message_text = parse_telegram_update(data)
     if not chat_id:
+        logger.info("Telegram workflow webhook: no chat_id in update (ignored)")
         return jsonify({"ok": True}), 200
 
     old_tenant = getattr(g, "tenant", None)
-    g.tenant = tenant_slug
     try:
-        wf = AgentWorkflow.query.get(workflow_id)
-        if not wf or (wf.agent and (wf.agent.tenant_slug or "") != tenant_slug):
-            logger.warning(
-                "Telegram workflow webhook: workflow %s not found or tenant mismatch",
+        wf = _load_workflow_for_telegram_webhook(workflow_id, tenant_slug)
+        if not wf:
+            logger.error(
+                "Telegram workflow webhook: workflow %s not found for tenant %s. "
+                "تحقق: حفظ الوورك فلو على نفس الشركة، وWebhook من واجهة بناء الوكلاء بعد الحفظ.",
                 workflow_id,
+                tenant_slug,
             )
             return jsonify({"ok": True}), 200
+
+        g.tenant = tenant_slug
 
         bot_token = ""
         for n in (wf.graph_json or {}).get("nodes") or []:
