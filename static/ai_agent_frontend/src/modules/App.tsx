@@ -29,6 +29,13 @@ const NODE_TYPES: Array<{ id: string; label: string; icon: string; description: 
   { id: "whatsapp_send", label: "WhatsApp Send", icon: "📱", description: "إرسال رسالة أو اتصال واتساب", color: "#16a34a" },
   { id: "telegram_listener", label: "Telegram Listener", icon: "📨", description: "استقبال رسائل تيليجرام (Webhook)", color: "#0ea5e9" },
   { id: "telegram_send", label: "Telegram Send", icon: "✈️", description: "إرسال رسالة تيليجرام", color: "#0284c7" },
+  {
+    id: "conversation_context",
+    label: "محادثة (سياق)",
+    icon: "💬",
+    description: "تحديث سجل المحادثة في السياق بعد الإرسال (للحجز وعقدة AI التالية)",
+    color: "#38bdf8",
+  },
   { id: "sql_save_order", label: "SQL حفظ الطلب", icon: "🗄", description: "حفظ الطلب/البيانات في قاعدة البيانات (SQL)", color: "#0d9488" },
   { id: "end", label: "End", icon: "■", description: "إنهاء التدفق وحفظ السياق", color: "#64748b" },
 ];
@@ -984,6 +991,51 @@ export const App: React.FC = () => {
                       <p className="mt-1.5 text-[10px] text-slate-500">
                         صفحة الطلبات تعرض كل البيانات التي يدخلها الذكاء الاصطناعي عبر هذه العقدة.
                       </p>
+                    </div>
+                  </>
+                )}
+
+                {selectedNode.type === "conversation_context" && (
+                  <>
+                    <div className="rounded-lg border border-[#38bdf8]/40 bg-[#0c4a6e]/20 p-3">
+                      <div className="mb-2 text-[11px] font-medium text-[#38bdf8]">سياق المحادثة للعقد التالية</div>
+                      <p className="text-[10px] text-slate-400 mb-2">
+                        ضع هذه العقدة بعد <strong className="text-slate-300">Telegram Send</strong> لتحديث{" "}
+                        <code className="bg-[#1e293b] px-1 rounded">conversation_history</code> في السياق (يشمل آخر رد
+                        أُرسل). ثم عقدة <strong className="text-slate-300">AI</strong> بمهمة «حجز» ثم{" "}
+                        <strong className="text-slate-300">SQL حفظ الطلب</strong>.
+                      </p>
+                      <label className="mb-1 block text-[11px] text-slate-400">أقصى طول للنص (حرف)</label>
+                      <input
+                        type="number"
+                        min={500}
+                        max={50000}
+                        className="w-full rounded-lg border border-[#334155] bg-[#1e293b] px-2 py-1.5 text-xs text-[#e5e7eb] focus:border-[#38bdf8] focus:outline-none mb-2"
+                        value={(selectedNode.data as any)?.max_chars ?? 6000}
+                        onChange={(e) =>
+                          updateNodeData(selectedNode.id, { max_chars: e.target.valueAsNumber || 6000 })
+                        }
+                      />
+                      <label className="flex items-center gap-2 text-[11px] text-slate-300 mb-2">
+                        <input
+                          type="checkbox"
+                          checked={(selectedNode.data as any)?.include_current_message !== false}
+                          onChange={(e) =>
+                            updateNodeData(selectedNode.id, { include_current_message: e.target.checked })
+                          }
+                        />
+                        إدراج رسالة الزبون الحالية في السياق
+                      </label>
+                      <label className="flex items-center gap-2 text-[11px] text-slate-300">
+                        <input
+                          type="checkbox"
+                          checked={(selectedNode.data as any)?.include_last_reply !== false}
+                          onChange={(e) =>
+                            updateNodeData(selectedNode.id, { include_last_reply: e.target.checked })
+                          }
+                        />
+                        إدراج آخر رد أُرسل (telegram_message / reply_text)
+                      </label>
                     </div>
                   </>
                 )}

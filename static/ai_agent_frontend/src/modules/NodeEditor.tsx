@@ -94,6 +94,7 @@ export const NodeEditor: React.FC = () => {
         "comment-listener": "Comment Listener",
         "auto-reply": "Auto Reply",
         sql_save_order: "SQL حفظ الطلب",
+        conversation_context: "محادثة (سياق)",
         end: "End",
       };
 
@@ -103,6 +104,9 @@ export const NodeEditor: React.FC = () => {
         position,
         data: {
           label: labelMap[nodeType] || nodeType,
+          ...(nodeType === "conversation_context"
+            ? { max_chars: 6000, include_current_message: true, include_last_reply: true }
+            : {}),
         },
       };
 

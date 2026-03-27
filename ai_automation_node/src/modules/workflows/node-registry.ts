@@ -48,6 +48,13 @@ export const NODE_REGISTRY: NodeTypeSpec[] = [
   { id: "whatsapp_send", label: "WhatsApp Send", category: "io", runnerImplemented: false },
   { id: "telegram_listener", label: "Telegram Listener", category: "trigger", runnerImplemented: false },
   { id: "telegram_send", label: "Telegram Send", category: "io", runnerImplemented: false },
+  {
+    id: "conversation_context",
+    label: "Conversation Context",
+    category: "logic",
+    runnerImplemented: false,
+    defaultData: { label: "محادثة (سياق)", max_chars: 6000, include_current_message: true, include_last_reply: true },
+  },
 ];
 
 const ALLOWED_NODE_IDS = new Set(NODE_REGISTRY.map((s) => s.id));

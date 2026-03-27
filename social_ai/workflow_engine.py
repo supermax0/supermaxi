@@ -434,6 +434,38 @@ def _append_conversation_turn(context: Dict[str, Any], assistant_reply: str) -> 
         history.append({"user": user_text, "assistant": bot_text})
 
 
+def run_conversation_context_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    يعيد تحميل سجل المحادثة من الذاكرة (بعد telegram_send يتضمن آخر دورة مستخدم/بوت)
+    ويحدّث conversation_history للعقد التالية (مثل AI مهمة حجز ثم sql_save_order).
+    """
+    data = node.data or {}
+    max_chars = max(500, min(int(data.get("max_chars") or 6000), 50000))
+    full = _load_conversation_history(context)
+    extra: list[str] = []
+    if bool(data.get("include_current_message", True)):
+        u = str(context.get("message_text") or "").strip()
+        if u:
+            extra.append(f"رسالة الزبون الحالية: {u}")
+    if bool(data.get("include_last_reply", True)):
+        r = str(
+            context.get("telegram_message")
+            or context.get("reply_text")
+            or context.get("text")
+            or ""
+        ).strip()
+        if r:
+            extra.append(f"آخر رد أُرسل للزبون: {r}")
+    if extra:
+        full = (full + "\n\n" + "\n".join(extra)).strip() if full else "\n".join(extra)
+    if len(full) > max_chars:
+        full = full[-max_chars:]
+    context["conversation_history"] = full
+    context["conversation_for_booking"] = full
+    preview = full[:500] + ("…" if len(full) > 500 else "")
+    return {"conversation_snapshot": preview, "conversation_chars": len(full)}
+
+
 def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
     """تشغيل عقدة AI مرنة باستخدام إعدادات العقدة."""
     data = node.data or {}
@@ -1378,6 +1410,10 @@ def execute_workflow(execution: AgentExecution, initial_context: Dict[str, Any] 
                     tg_output = run_telegram_send_node(node, context)
                     _append_conversation_turn(context, str(tg_output.get("telegram_message") or ""))
                     log(node, "success", node_input, tg_output)
+                elif node.type == "conversation_context":
+                    conv_out = run_conversation_context_node(node, context)
+                    context.update(conv_out)
+                    log(node, "success", node_input, conv_out)
                 elif node.type in ("telegram_listener", "whatsapp_listener"):
                     # عقدة استقبال: البيانات (message_text, chat_id) من الـ webhook أو السياق الأولي؛ توكن البوت من بيانات العقدة لاستخدامه في الإرسال
                     if node.type == "telegram_listener" and (node.data or {}).get("bot_token"):

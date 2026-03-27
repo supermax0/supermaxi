@@ -292,6 +292,19 @@ const TelegramSendNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
   );
 };
 
+const ConversationContextNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
+  const maxChars = (data as any).max_chars ?? 6000;
+  const subtitle = data.subtitle || `سياق للـ AI · حتى ~${maxChars} حرف`;
+  return (
+    <div className={`${baseNodeClasses} border-[#38bdf8]`} style={baseNodeShadow}>
+      <Handle type="target" position={Position.Top} id="in" className={handleClass} />
+      <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
+      <div className={titleClasses}>💬 {data.label || "محادثة (سياق)"}</div>
+      {subtitle && <div className={subtitleClasses}>{subtitle}</div>}
+    </div>
+  );
+};
+
 const KeywordFilterNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
   const keywords = ((data as any).keywords as string[]) || [];
   const subtitle = data.subtitle || (keywords.length ? `${keywords.length} كلمة` : "أضف كلمات مفتاحية");
@@ -392,6 +405,7 @@ export const nodeTypes = {
   whatsapp_send: WhatsAppSendNode,
   telegram_listener: TelegramListenerNode,
   telegram_send: TelegramSendNode,
+  conversation_context: ConversationContextNode,
   memory_store: MemoryNode,
   knowledge_base: KnowledgeNode,
 };
