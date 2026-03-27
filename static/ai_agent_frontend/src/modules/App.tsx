@@ -269,7 +269,7 @@ export const App: React.FC = () => {
     });
   };
 
-  /** قالب تيليجرام المتقدّم: فلتر + منع تكرار update + معدّل لكل محادثة + ذاكرة + AI + إرسال + سجل */
+  /** قالب تيليجرام: نية → حجز/SQL أو FAQ (مطابق لمواصفة intent + booking + fallback) */
   const createTelegramCommentReplyAgent = () => {
     const nodes: Node[] = [
       {
@@ -320,7 +320,7 @@ export const App: React.FC = () => {
         type: "conversation_context",
         position: { x: 300, y: 460 },
         data: {
-          label: "سياق المحادثة",
+          label: "سياق المحادثة (ذاكرة)",
           max_chars: 8000,
           include_current_message: true,
           include_last_reply: true,
@@ -328,24 +328,78 @@ export const App: React.FC = () => {
         },
       },
       {
-        id: "ai",
+        id: "ai-intent",
         type: "ai",
         position: { x: 300, y: 590 },
         data: {
-          label: "AI — رد للزبون",
+          label: "AI — كشف النية (JSON)",
+          task: "intent",
+          language: "ar",
+          temperature: 0.15,
+          max_tokens: 160,
+          prompt: "صنّف رسالة المستخدم. أجب JSON فقط.\n\n{{message_text}}",
+          subtitle: "user_intent: order | question | unknown",
+        },
+      },
+      {
+        id: "ai-booking",
+        type: "ai",
+        position: { x: 300, y: 715 },
+        data: {
+          label: "AI — حجز (خطوة بخطوة)",
+          task: "booking",
+          run_if: "user_intent:order",
+          language: "ar",
+          tone: "مهني وودود",
+          temperature: 0.35,
+          max_tokens: 900,
+          prompt:
+            "أنت مساعد حجز. راجع سجل المحادثة في تعليمات النظام وآخر رسالة للزبون.\n" +
+            "اجمع الحقول: الاسم، الهاتف، الخدمة أو المنتج، الكمية، التاريخ، العنوان، ملاحظات.\n" +
+            "اسأل سؤالاً واحداً فقط في كل رد إذا نقص شيء.\n" +
+            'عند الاكتمال أضف JSON: {"type":"order","name":"","phone":"","service":"","quantity":"","date":"","address":"","notes":""}\n' +
+            "إذا نقصت معلومات، لا تضف JSON.\n\nآخر رسالة من الزبون:\n{{message_text}}",
+          subtitle: "فقط إذا user_intent = order",
+        },
+      },
+      {
+        id: "sql-order",
+        type: "sql_save_order",
+        position: { x: 300, y: 840 },
+        data: {
+          label: "SQL — حفظ الطلب",
+          run_if: "user_intent:order",
+          channel_default: "telegram",
+          invoice_status: "حجز",
+          deduct_stock: true,
+          skip_if_incomplete: true,
+          require_phone: false,
+          subtitle: "service → مطابقة منتج في الكتالوج",
+        },
+      },
+      {
+        id: "ai-faq",
+        type: "ai",
+        position: { x: 300, y: 965 },
+        data: {
+          label: "AI — أسئلة عامة (fallback)",
           task: "reply_comment",
+          run_if: "user_intent:!order",
           language: "ar",
           tone: "مهني ودود وواضح",
           temperature: 0.38,
           max_tokens: 1000,
           prompt:
-            "أنت ممثل خدمة عملاء عبر تيليجرام. ردّ بلهجة مهنية ولطيفة وموجزة.\nاعتمد على سجل المحادثة في تعليمات النظام للتماسك؛ لا تتناقض مع ما سبق.\nلا تكرّر ترحيباً طويلاً في كل رسالة.\n\nآخر رسالة من الزبون:\n{{message_text}}",
+            "أنت ممثل خدمة عملاء عبر تيليجرام. ردّ بلهجة مهنية ولطيفة وموجزة.\n" +
+            "اعتمد على سجل المحادثة في تعليمات النظام للتماسق؛ لا تتناقض مع ما سبق.\n" +
+            "لا تكرّر ترحيباً طويلاً في كل رسالة.\n\nآخر رسالة من الزبون:\n{{message_text}}",
+          subtitle: "question أو unknown",
         },
       },
       {
         id: "tg-send",
         type: "telegram_send",
-        position: { x: 300, y: 720 },
+        position: { x: 300, y: 1090 },
         data: {
           label: "Telegram Send",
           chat_id: "{{chat_id}}",
@@ -357,7 +411,7 @@ export const App: React.FC = () => {
       {
         id: "log",
         type: "logging",
-        position: { x: 300, y: 835 },
+        position: { x: 300, y: 1205 },
         data: {
           label: "تسجيل في السجلات",
           subtitle: "comment_logs",
@@ -366,7 +420,7 @@ export const App: React.FC = () => {
       {
         id: "end-1",
         type: "end",
-        position: { x: 300, y: 950 },
+        position: { x: 300, y: 1320 },
         data: { label: "End", subtitle: "انتهاء" },
       },
     ];
@@ -376,19 +430,22 @@ export const App: React.FC = () => {
       { id: "e2", source: "filter", target: "dup", sourceHandle: "out", targetHandle: "in" },
       { id: "e3", source: "dup", target: "rate", sourceHandle: "out", targetHandle: "in" },
       { id: "e4", source: "rate", target: "conv", sourceHandle: "out", targetHandle: "in" },
-      { id: "e5", source: "conv", target: "ai", sourceHandle: "out", targetHandle: "in" },
-      { id: "e6", source: "ai", target: "tg-send", sourceHandle: "out", targetHandle: "in" },
-      { id: "e7", source: "tg-send", target: "log", sourceHandle: "out", targetHandle: "in" },
-      { id: "e8", source: "log", target: "end-1", sourceHandle: "out", targetHandle: "in" },
+      { id: "e5", source: "conv", target: "ai-intent", sourceHandle: "out", targetHandle: "in" },
+      { id: "e6", source: "ai-intent", target: "ai-booking", sourceHandle: "out", targetHandle: "in" },
+      { id: "e7", source: "ai-booking", target: "sql-order", sourceHandle: "out", targetHandle: "in" },
+      { id: "e8", source: "sql-order", target: "ai-faq", sourceHandle: "out", targetHandle: "in" },
+      { id: "e9", source: "ai-faq", target: "tg-send", sourceHandle: "out", targetHandle: "in" },
+      { id: "e10", source: "tg-send", target: "log", sourceHandle: "out", targetHandle: "in" },
+      { id: "e11", source: "log", target: "end-1", sourceHandle: "out", targetHandle: "in" },
     ];
 
     loadFromGraph({
       nodes,
       edges,
       meta: {
-        name: "تيليجرام: رد احترافي",
+        name: "تيليجرام: حجز وفق النية",
         description:
-          "فلتر كلمات، منع معالجة نفس التحديث مرتين، معدّد لكل محادثة، ذاكرة، AI، إرسال، تسجيل.",
+          "نية JSON → حجز خطوة بخطوة + SQL أو رد FAQ؛ فلتر، منع تكرار، معدّل، ذاكرة، إرسال، سجل.",
       },
     });
   };

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import deque
 import json
+import random
 import re
 import time
 from dataclasses import dataclass
@@ -33,6 +34,140 @@ _CHAT_MEMORY_LOCK = Lock()
 _CHAT_MEMORY: dict[str, deque[dict[str, str]]] = {}
 # أدوار مستخدم/مساعد (كل دور = رسالتان). زيادة عمق الذاكرة للمحادثات الطويلة.
 _CHAT_MEMORY_MAX_TURNS = 14
+
+# كلمات مساعدة لتصنيف النية عند فشل JSON (عربي/إنجليزي خفيف)
+_INTENT_ORDER_HINTS = frozenset(
+    (
+        "احجز",
+        "حجز",
+        "طلب",
+        "طلبية",
+        "شراء",
+        "أريد",
+        "اريد",
+        "ابغى",
+        "ابغي",
+        "موعد",
+        "order",
+        "book",
+        "booking",
+        "reserve",
+    )
+)
+_INTENT_QUESTION_HINTS = frozenset(
+    ("؟", "?", "كيف", "وش", "شنو", "شلون", "هل ", "هل\n", "ماذا", "لماذا", "when", "what", "how ", "why ")
+)
+
+
+def _is_retriable_openai_error(exc: BaseException) -> bool:
+    """أخطاء مؤقتة تستحق إعادة المحاولة (معدل، مهلة، خادم)."""
+    name = type(exc).__name__
+    if any(x in name for x in ("Timeout", "ConnectTimeout", "ReadTimeout", "ConnectionError", "RateLimit")):
+        return True
+    code = getattr(exc, "status_code", None)
+    if code is None and hasattr(exc, "response"):
+        try:
+            code = getattr(exc.response, "status_code", None)
+        except Exception:
+            code = None
+    if code is not None:
+        try:
+            c = int(code)
+        except (TypeError, ValueError):
+            c = 0
+        return c in (408, 409, 429, 500, 502, 503, 529)
+    return False
+
+
+def _openai_chat_with_retry(client: Any, *, max_attempts: int, **kwargs: Any) -> Any:
+    """استدعاء chat.completions.create مع تراجع أسي + عشوائي خفيف."""
+    last: BaseException | None = None
+    attempts = max(1, min(int(max_attempts), 8))
+    for attempt in range(attempts):
+        try:
+            return client.chat.completions.create(**kwargs)
+        except BaseException as e:
+            last = e
+            if not _is_retriable_openai_error(e) or attempt >= attempts - 1:
+                raise
+            delay = (0.45 * (2**attempt)) + random.uniform(0, 0.25)
+            current_app.logger.warning(
+                "OpenAI chat retry %s/%s after %s: %s",
+                attempt + 1,
+                attempts,
+                round(delay, 2),
+                type(e).__name__,
+            )
+            time.sleep(delay)
+    assert last is not None
+    raise last
+
+
+def _heuristic_user_intent(message: str) -> str | None:
+    """تخمين نوايا من النص عند غياب JSON صالح."""
+    if not message or not str(message).strip():
+        return None
+    t = _normalize_ar_digits(str(message).lower())
+    tokens = set(re.findall(r"[\u0600-\u06FFa-z]+", t))
+    if tokens & _INTENT_ORDER_HINTS:
+        return "order"
+    if any(h in t for h in _INTENT_QUESTION_HINTS):
+        return "question"
+    return None
+
+
+def _parse_intent_value(text: str) -> str:
+    """يستخرج intent من JSON؛ يعيد unknown إن تعذّر."""
+    parsed = _try_parse_booking_dict_from_text(text)
+    if isinstance(parsed, dict):
+        v = str(parsed.get("intent") or "").strip().lower()
+        if v in ("order", "question", "unknown"):
+            return v
+    return "unknown"
+
+
+def _strip_booking_json_for_user_display(text: str) -> str:
+    """يزيل كتل JSON/``` من رد الحجز حتى لا يظهر للزبون في تيليجرام."""
+    if not text or not str(text).strip():
+        return ""
+    t = str(text).strip()
+    t = re.sub(r"```(?:json)?\s*[\s\S]*?```", "", t, flags=re.IGNORECASE)
+    t = t.strip()
+    for _ in range(4):
+        m = re.search(r"\{[\s\S]*\}\s*$", t)
+        if not m:
+            break
+        candidate = m.group(0).strip()
+        try:
+            j = json.loads(candidate)
+        except Exception:
+            break
+        if not isinstance(j, dict):
+            break
+        if isinstance(j.get("booking"), dict) or j.get("type") == "order" or any(
+            k in j for k in ("product_name", "service", "phone", "name", "quantity")
+        ):
+            t = t[: m.start()].rstrip()
+        else:
+            break
+    return t.strip()
+
+
+def _sanitize_quantity_value(val: Any) -> int | None:
+    """كمية صحيحة موجبة ومحدودة للحجز."""
+    if val is None:
+        return None
+    s = _normalize_ar_digits(str(val).strip())
+    s = re.sub(r"[^\d.]", "", s)
+    if not s:
+        return None
+    try:
+        q = int(float(s))
+    except (TypeError, ValueError):
+        return None
+    if q < 1:
+        return None
+    return min(q, 99_999)
 
 
 @dataclass
@@ -124,6 +259,29 @@ def _render_prompt(template: str, context: Dict[str, Any]) -> str:
 def _render_template(template: str, context: Dict[str, Any]) -> str:
     """مساعد بسيط لاستدعاء _render_prompt من اسم أوضح لعقد الإرسال."""
     return _render_prompt(template, context)
+
+
+def _should_run_node(node: NodeDef, context: Dict[str, Any]) -> bool:
+    """تقييم node.data.run_if: 'key:value' أو 'key:!value'. فارغ = تشغيل دائماً."""
+    data = node.data or {}
+    rf = data.get("run_if")
+    if rf is None or str(rf).strip() == "":
+        return True
+    s = str(rf).strip()
+    if s in ("*",):
+        return True
+    if ":" not in s:
+        return True
+    key, _, val = s.partition(":")
+    key = key.strip()
+    val = val.strip()
+    if not key:
+        return True
+    cur = context.get(key)
+    cur_s = "" if cur is None else str(cur).strip()
+    if val.startswith("!"):
+        return cur_s != val[1:].strip()
+    return cur_s == val
 
 
 def _memory_key(context: Dict[str, Any]) -> str | None:
@@ -447,7 +605,10 @@ def run_conversation_context_node(node: NodeDef, context: Dict[str, Any]) -> Dic
     if bool(data.get("include_current_message", True)):
         u = str(context.get("message_text") or "").strip()
         if u:
-            extra.append(f"رسالة الزبون الحالية: {u}")
+            tail = full or ""
+            win = tail[-min(2000, len(tail)) :] if tail else ""
+            if u not in win:
+                extra.append(f"رسالة الزبون الحالية: {u}")
     if bool(data.get("include_last_reply", True)):
         r = str(
             context.get("telegram_message")
@@ -496,8 +657,21 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
             "skipped_duplicate": True,
         }
 
-    # إعدادات المهمة
     task = data.get("task") or "generate_post"
+    msg_in = str(context.get("message_text") or "").strip()
+    if task in ("intent", "booking", "reply_comment") and context.get("chat_id") and not msg_in:
+        topic = (data.get("topic") or context.get("topic") or "").strip()
+        out: Dict[str, Any] = {
+            "text": "",
+            "reply_text": "",
+            "topic": topic,
+            "skipped_empty_message": True,
+        }
+        if task == "intent":
+            out["user_intent"] = "unknown"
+        return out
+
+    # إعدادات المهمة
     topic = (data.get("topic") or context.get("topic") or "").strip()
     if not topic and context.get("message_text"):
         topic = (str(context.get("message_text") or ""))[:500]
@@ -525,6 +699,11 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
                 "أكمل الرد بجملة تأكيد ثم أضف في آخر الرسالة كتلة JSON فقط بهذا الشكل:\n"
                 '{"booking":{"name":"...","phone":"...","product_name":"...","product_id":null,"quantity":1,"price":null}}\n'
                 "استخدم product_id إذا عرفته من السياق، وإلا product_name. إذا نقصت معلومات، اسأل عنها ولا تضف JSON."
+            )
+        elif task == "intent":
+            template = (
+                "صنّف رسالة المستخدم التالية. أجب JSON فقط بدون أي نص إضافي.\n\n"
+                "{{message_text}}"
             )
         elif context.get("message_text"):
             template = "رد باختصار ومهنية على رسالة المستخدم التالية:\n\n{{message_text}}"
@@ -590,8 +769,20 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
             "لمهمة الحجز: راجع سجل المحادثة أعلاه؛ الاسم أو الهاتف أو المنتج قد يكون قد ورد في رسالة سابقة وليس في آخر رسالة فقط."
         )
 
+    if task == "intent":
+        system_parts = [
+            "أنت مصنّف نوايا. أجب بكائن JSON فقط دون أي نص قبله أو بعده (لا تستخدم markdown).",
+            'القيم: {"intent":"order"} أو {"intent":"question"} أو {"intent":"unknown"}.',
+            "order = حجز أو شراء أو طلب خدمة أو موعد. question = استفسار عام. unknown = غير واضح.",
+            f"اللغة: {'العربية' if language == 'ar' else 'English'}.",
+        ]
+        if conversation_history:
+            if len(conversation_history) > 4200:
+                conversation_history = conversation_history[-4200:]
+            system_parts.append("سجل المحادثة (للتماسك):\n" + conversation_history)
+
     knowledge = context.get("knowledge")
-    if isinstance(knowledge, str) and knowledge.strip():
+    if task != "intent" and isinstance(knowledge, str) and knowledge.strip():
         # نضيف جزء مختصر من الكتالوج إلى الـ system prompt حتى لا يطول كثيراً
         trimmed = knowledge.strip()
         if len(trimmed) > 4000:
@@ -604,7 +795,10 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
 
     node_api_key = (data.get("api_key") or "").strip()
     client = get_client(node_api_key or None)
-    resp = client.chat.completions.create(
+    max_retries = int(data.get("max_retries") or current_app.config.get("OPENAI_CHAT_MAX_RETRIES", 3) or 3)
+    resp = _openai_chat_with_retry(
+        client,
+        max_attempts=max_retries,
         model=model,
         temperature=temperature,
         max_tokens=max_tokens,
@@ -614,6 +808,31 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
         ],
     )
     text = (resp.choices[0].message.content or "").strip()
+
+    # إن فشل النموذج بإخراج JSON للنية: إعادة واحدة بدرجة حرارة أقل (بدون حلقة لا نهائية)
+    if task == "intent" and text and _parse_intent_value(text) == "unknown":
+        low = max(0.0, min(float(temperature), 0.35))
+        try:
+            resp2 = _openai_chat_with_retry(
+                client,
+                max_attempts=max_retries,
+                model=model,
+                temperature=low,
+                max_tokens=min(max_tokens, 120),
+                messages=[
+                    {
+                        "role": "system",
+                        "content": system_prompt
+                        + " أجب بسطر واحد فقط: JSON صالح مثل {\"intent\":\"question\"} دون أي حرف زائد.",
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+            )
+            text2 = (resp2.choices[0].message.content or "").strip()
+            if text2 and _parse_intent_value(text2) != "unknown":
+                text = text2
+        except Exception:
+            current_app.logger.debug("intent retry parse skipped", exc_info=True)
 
     result: Dict[str, Any] = {
         "text": text,
@@ -625,10 +844,25 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
         result["caption"] = text
     if task == "generate_topic" and text:
         result["generated_topics"] = text
-    if task == "reply_comment":
+    if task == "intent":
+        intent = _parse_intent_value(text)
+        if intent == "unknown":
+            hint = _heuristic_user_intent(str(context.get("message_text") or ""))
+            if hint:
+                intent = hint
+        result["user_intent"] = intent
+        result["reply_text"] = ""
+    elif task == "reply_comment":
         result["reply_text"] = text
     elif context.get("message_text") or task == "booking":
-        result["reply_text"] = text
+        if task == "booking":
+            result["booking_parse_source"] = text
+            display = _strip_booking_json_for_user_display(text)
+            if not display.strip():
+                display = text.strip()[:500] or "…"
+            result["reply_text"] = display
+        else:
+            result["reply_text"] = text
 
     return result
 
@@ -802,7 +1036,10 @@ def run_caption_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
 
     user_prompt = f"النص/الفكرة الأساسية للكابشن:\n{base_text}\n"
 
-    resp = client.chat.completions.create(
+    cap_retries = int(current_app.config.get("OPENAI_CHAT_MAX_RETRIES", 3) or 3)
+    resp = _openai_chat_with_retry(
+        client,
+        max_attempts=cap_retries,
         model=current_app.config.get("OPENAI_MODEL", "gpt-4o-mini"),
         temperature=0.7,
         max_tokens=max_length * 3 // 2,
@@ -989,9 +1226,13 @@ def _merge_booking_from_ai_into_context(context: Dict[str, Any]) -> None:
     if context.get("booking") and isinstance(context.get("booking"), dict):
         raw = context["booking"]
     else:
-        raw = _try_parse_booking_dict_from_text(
-            str(context.get("reply_text") or context.get("text") or "")
-        )
+        blob = str(
+            context.get("booking_parse_source")
+            or context.get("reply_text")
+            or context.get("text")
+            or ""
+        ).strip()
+        raw = _try_parse_booking_dict_from_text(blob)
         if not raw:
             return
     inner = raw.get("booking") if isinstance(raw.get("booking"), dict) else raw
@@ -1005,6 +1246,7 @@ def _merge_booking_from_ai_into_context(context: Dict[str, Any]) -> None:
         "product_id": ("product_id",),
         "product_name": ("product_name", "product"),
         "product": ("product_name", "product"),
+        "service": ("product_name", "product"),
         "sku": ("sku", "product_sku"),
         "barcode": ("barcode",),
         "quantity": ("quantity",),
@@ -1021,10 +1263,10 @@ def _merge_booking_from_ai_into_context(context: Dict[str, Any]) -> None:
             except (TypeError, ValueError):
                 continue
         if src == "quantity":
-            try:
-                val = int(val)
-            except (TypeError, ValueError):
+            sq = _sanitize_quantity_value(val)
+            if sq is None:
                 continue
+            val = sq
         for d in dests:
             if context.get(d) in (None, ""):
                 context[d] = val
@@ -1099,9 +1341,13 @@ def run_sql_save_order_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str,
 
     address = str(context.get("address") or "").strip()
 
-    qty = int(context.get("quantity") or 1)
+    try:
+        qty = int(context.get("quantity") or 1)
+    except (TypeError, ValueError):
+        qty = 1
     if qty < 1:
         qty = 1
+    qty = min(qty, 99_999)
 
     product = _resolve_product_for_order(context)
     if not product:
@@ -1546,6 +1792,14 @@ def execute_workflow(execution: AgentExecution, initial_context: Dict[str, Any] 
         for node in nodes:
             node_input = dict(context)
             try:
+                if not _should_run_node(node, context):
+                    log(
+                        node,
+                        "skipped",
+                        node_input,
+                        {"reason": "run_if", "run_if": (node.data or {}).get("run_if")},
+                    )
+                    continue
                 if node.type == "start":
                     context["started_at"] = datetime.now(timezone.utc).isoformat()
                     if (node.data or {}).get("topic"):

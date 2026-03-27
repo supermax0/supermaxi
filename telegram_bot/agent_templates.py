@@ -104,13 +104,13 @@ AGENT_TEMPLATES: Dict[str, Dict[str, Any]] = {
             "edges": [],
         },
     },
-    # تدفق متقدّم: مستمع → فلتر → منع تكرار التحديث → معدّل لكل محادثة → سياق/ذاكرة → AI → إرسال → سجل → نهاية
+    # بنية حجز تيليجرام (مطابقة لمواصفة intent → حجز/SQL أو رد عام): فلتر + تكرار + معدّل + ذاكرة → كشف نية → حجز خطوة بخطوة أو FAQ → إرسال → سجل
     "telegram_comment_reply": {
         "id": "telegram_comment_reply",
-        "agent_name": "ردّاد تيليجرام — احترافي",
-        "agent_description": "رد ذكي مع فلتر كلمات، منع معالجة نفس التحديث مرتين، تحديد معدّد لكل محادثة، ذاكرة محادثة، وتسجيل في السجلات",
-        "workflow_name": "تيليجرام: رد احترافي",
-        "workflow_description": "Listener → فلتر → duplicate → rate → سياق → AI → إرسال → logging → End",
+        "agent_name": "ردّاد تيليجرام — حجز + أسئلة",
+        "agent_description": "كشف نية (order/question/unknown)، مسار حجز خطوة بخطوة مع حفظ SQL عند اكتمال JSON، أو رد عام للاستفسارات؛ مع فلتر كلمات وذاكرة محادثة",
+        "workflow_name": "تيليجرام: حجز وفق النية",
+        "workflow_description": "Listener → فلتر → duplicate → rate → سياق → AI intent → (حجز + SQL إن order) أو AI FAQ → إرسال → logging → End",
         "graph": {
             "nodes": [
                 {
@@ -161,7 +161,7 @@ AGENT_TEMPLATES: Dict[str, Dict[str, Any]] = {
                     "type": "conversation_context",
                     "position": {"x": 300, "y": 460},
                     "data": {
-                        "label": "سياق المحادثة",
+                        "label": "سياق المحادثة (ذاكرة)",
                         "max_chars": 8000,
                         "include_current_message": True,
                         "include_last_reply": True,
@@ -169,12 +169,68 @@ AGENT_TEMPLATES: Dict[str, Dict[str, Any]] = {
                     },
                 },
                 {
-                    "id": "ai",
+                    "id": "ai-intent",
                     "type": "ai",
                     "position": {"x": 300, "y": 590},
                     "data": {
-                        "label": "AI — رد للزبون",
+                        "label": "AI — كشف النية (JSON)",
+                        "task": "intent",
+                        "language": "ar",
+                        "temperature": 0.15,
+                        "max_tokens": 160,
+                        "prompt": "صنّف رسالة المستخدم. أجب JSON فقط.\n\n{{message_text}}",
+                        "subtitle": "يضبط user_intent: order | question | unknown",
+                    },
+                },
+                {
+                    "id": "ai-booking",
+                    "type": "ai",
+                    "position": {"x": 300, "y": 715},
+                    "data": {
+                        "label": "AI — حجز (خطوة بخطوة)",
+                        "task": "booking",
+                        "run_if": "user_intent:order",
+                        "language": "ar",
+                        "tone": "مهني وودود",
+                        "temperature": 0.35,
+                        "max_tokens": 900,
+                        "prompt": (
+                            "أنت مساعد حجز. راجع سجل المحادثة في تعليمات النظام وآخر رسالة للزبون.\n"
+                            "اجمع الحقول التالية: الاسم، الهاتف، الخدمة أو المنتج، الكمية، التاريخ، العنوان، ملاحظات.\n"
+                            "اسأل سؤالاً واحداً فقط في كل رد إذا نقص شيء؛ لا تطرح كل الأسئلة دفعة واحدة.\n"
+                            "كن ودوداً ومختصراً.\n"
+                            "عند اكتمال كل الحقول أضف في نهاية ردك JSON فقط (بدون ```) بهذا الشكل:\n"
+                            '{"type":"order","name":"","phone":"","service":"","quantity":"","date":"","address":"","notes":""}\n'
+                            "حقل service يطابق اسم خدمة أو منتج من كتالوجك إن وُجد في تعليمات النظام.\n"
+                            "إذا نقصت معلومات، اسأل سؤالاً واحداً ولا تضف JSON.\n\n"
+                            "آخر رسالة من الزبون:\n{{message_text}}"
+                        ),
+                        "subtitle": "فقط إذا user_intent = order",
+                    },
+                },
+                {
+                    "id": "sql-order",
+                    "type": "sql_save_order",
+                    "position": {"x": 300, "y": 840},
+                    "data": {
+                        "label": "SQL — حفظ الطلب",
+                        "run_if": "user_intent:order",
+                        "channel_default": "telegram",
+                        "invoice_status": "حجز",
+                        "deduct_stock": True,
+                        "skip_if_incomplete": True,
+                        "require_phone": False,
+                        "subtitle": "يحوّل service إلى منتج في الكتالوج؛ يتخطى إن نقص الحجز",
+                    },
+                },
+                {
+                    "id": "ai-faq",
+                    "type": "ai",
+                    "position": {"x": 300, "y": 965},
+                    "data": {
+                        "label": "AI — أسئلة عامة (fallback)",
                         "task": "reply_comment",
+                        "run_if": "user_intent:!order",
                         "language": "ar",
                         "tone": "مهني ودود وواضح",
                         "temperature": 0.38,
@@ -185,24 +241,25 @@ AGENT_TEMPLATES: Dict[str, Dict[str, Any]] = {
                             "لا تكرّر ترحيباً طويلاً في كل رسالة.\n\n"
                             "آخر رسالة من الزبون:\n{{message_text}}"
                         ),
+                        "subtitle": "question أو unknown — ليس طلب حجز",
                     },
                 },
                 {
                     "id": "tg-send",
                     "type": "telegram_send",
-                    "position": {"x": 300, "y": 720},
+                    "position": {"x": 300, "y": 1090},
                     "data": {
                         "label": "Telegram Send",
                         "chat_id": "{{chat_id}}",
                         "template": "{{reply_text}}",
                         "send_product_images": False,
-                        "subtitle": "إرسال الرد",
+                        "subtitle": "إرسال الرد (من الحجز أو FAQ)",
                     },
                 },
                 {
                     "id": "log",
                     "type": "logging",
-                    "position": {"x": 300, "y": 835},
+                    "position": {"x": 300, "y": 1205},
                     "data": {
                         "label": "تسجيل في السجلات",
                         "subtitle": "comment_logs + منع تكرار لاحق",
@@ -211,7 +268,7 @@ AGENT_TEMPLATES: Dict[str, Dict[str, Any]] = {
                 {
                     "id": "end-1",
                     "type": "end",
-                    "position": {"x": 300, "y": 950},
+                    "position": {"x": 300, "y": 1320},
                     "data": {"label": "End", "subtitle": "انتهاء"},
                 },
             ],
@@ -220,10 +277,13 @@ AGENT_TEMPLATES: Dict[str, Dict[str, Any]] = {
                 {"id": "e2", "source": "filter", "target": "dup", "sourceHandle": "out", "targetHandle": "in"},
                 {"id": "e3", "source": "dup", "target": "rate", "sourceHandle": "out", "targetHandle": "in"},
                 {"id": "e4", "source": "rate", "target": "conv", "sourceHandle": "out", "targetHandle": "in"},
-                {"id": "e5", "source": "conv", "target": "ai", "sourceHandle": "out", "targetHandle": "in"},
-                {"id": "e6", "source": "ai", "target": "tg-send", "sourceHandle": "out", "targetHandle": "in"},
-                {"id": "e7", "source": "tg-send", "target": "log", "sourceHandle": "out", "targetHandle": "in"},
-                {"id": "e8", "source": "log", "target": "end-1", "sourceHandle": "out", "targetHandle": "in"},
+                {"id": "e5", "source": "conv", "target": "ai-intent", "sourceHandle": "out", "targetHandle": "in"},
+                {"id": "e6", "source": "ai-intent", "target": "ai-booking", "sourceHandle": "out", "targetHandle": "in"},
+                {"id": "e7", "source": "ai-booking", "target": "sql-order", "sourceHandle": "out", "targetHandle": "in"},
+                {"id": "e8", "source": "sql-order", "target": "ai-faq", "sourceHandle": "out", "targetHandle": "in"},
+                {"id": "e9", "source": "ai-faq", "target": "tg-send", "sourceHandle": "out", "targetHandle": "in"},
+                {"id": "e10", "source": "tg-send", "target": "log", "sourceHandle": "out", "targetHandle": "in"},
+                {"id": "e11", "source": "log", "target": "end-1", "sourceHandle": "out", "targetHandle": "in"},
             ],
         },
     },
