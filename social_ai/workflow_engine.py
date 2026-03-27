@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from collections import deque
 import re
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Dict, List
+from threading import Lock
 
 from flask import current_app
 
@@ -20,6 +22,10 @@ from social_ai.publish_manager import publish_post_to_accounts
 from services.facebook_service import fetch_comments as fb_fetch_comments, reply_comment as fb_reply_comment
 from services.instagram_service import fetch_comments as ig_fetch_comments, reply_comment as ig_reply_comment
 from services.tiktok_service import fetch_comments as tiktok_fetch_comments, reply_comment as tiktok_reply_comment
+
+_CHAT_MEMORY_LOCK = Lock()
+_CHAT_MEMORY: dict[str, deque[dict[str, str]]] = {}
+_CHAT_MEMORY_MAX_TURNS = 8
 
 
 @dataclass
@@ -113,6 +119,86 @@ def _render_template(template: str, context: Dict[str, Any]) -> str:
     return _render_prompt(template, context)
 
 
+def _memory_key(context: Dict[str, Any]) -> str | None:
+    workflow_id = context.get("workflow_id")
+    chat_id = context.get("chat_id")
+    if workflow_id is None or chat_id is None:
+        return None
+    return f"{workflow_id}:{chat_id}"
+
+
+def _tokenize_text(text: str) -> set[str]:
+    tokens = re.findall(r"[\u0600-\u06FFa-zA-Z0-9_]+", text.lower())
+    return {t for t in tokens if len(t) >= 3}
+
+
+def _select_relevant_knowledge(catalog_text: str, query_text: str, max_chars: int = 4000, max_chunks: int = 6) -> str:
+    """Pick most relevant catalog chunks for current user message."""
+    full = (catalog_text or "").strip()
+    if not full:
+        return ""
+    query = (query_text or "").strip()
+    if not query:
+        return full[:max_chars]
+
+    query_terms = _tokenize_text(query)
+    chunks = [c.strip() for c in re.split(r"\n{2,}", full) if c and c.strip()]
+    if not chunks:
+        chunks = [line.strip() for line in full.splitlines() if line.strip()]
+    if not chunks:
+        return full[:max_chars]
+
+    scored: list[tuple[int, str]] = []
+    for chunk in chunks:
+        terms = _tokenize_text(chunk)
+        score = len(query_terms.intersection(terms))
+        if score > 0:
+            scored.append((score, chunk))
+
+    # fallback: if no lexical match, keep beginning of catalog
+    if not scored:
+        return full[:max_chars]
+
+    scored.sort(key=lambda x: x[0], reverse=True)
+    selected = [chunk for _, chunk in scored[:max_chunks]]
+    result = "\n\n".join(selected)
+    if len(result) > max_chars:
+        result = result[:max_chars]
+    return result
+
+
+def _load_conversation_history(context: Dict[str, Any]) -> str:
+    key = _memory_key(context)
+    if not key:
+        return ""
+    with _CHAT_MEMORY_LOCK:
+        history = list(_CHAT_MEMORY.get(key, deque()))
+    if not history:
+        return ""
+    lines: list[str] = []
+    for turn in history:
+        user_text = (turn.get("user") or "").strip()
+        bot_text = (turn.get("assistant") or "").strip()
+        if user_text:
+            lines.append(f"المستخدم: {user_text}")
+        if bot_text:
+            lines.append(f"المساعد: {bot_text}")
+    return "\n".join(lines).strip()
+
+
+def _append_conversation_turn(context: Dict[str, Any], assistant_reply: str) -> None:
+    key = _memory_key(context)
+    if not key:
+        return
+    user_text = str(context.get("message_text") or "").strip()
+    bot_text = (assistant_reply or "").strip()
+    if not user_text or not bot_text:
+        return
+    with _CHAT_MEMORY_LOCK:
+        history = _CHAT_MEMORY.setdefault(key, deque(maxlen=_CHAT_MEMORY_MAX_TURNS))
+        history.append({"user": user_text, "assistant": bot_text})
+
+
 def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
     """تشغيل عقدة AI مرنة باستخدام إعدادات العقدة."""
     data = node.data or {}
@@ -163,6 +249,15 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
         system_parts.append(f"الأسلوب: {tone}.")
     if target_audience:
         system_parts.append(f"الجمهور المستهدف: {target_audience}.")
+
+    conversation_history = str(context.get("conversation_history") or "").strip()
+    if conversation_history:
+        if len(conversation_history) > 2500:
+            conversation_history = conversation_history[-2500:]
+        system_parts.append(
+            "هذا ملخص آخر الرسائل في نفس المحادثة. استخدمه لفهم المنتج المقصود ولا تتناقض معه:\n"
+            + conversation_history
+        )
 
     knowledge = context.get("knowledge")
     if isinstance(knowledge, str) and knowledge.strip():
@@ -486,8 +581,14 @@ def run_knowledge_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]
     else:
         new_value = rendered
 
-    context["knowledge"] = new_value
-    return {"knowledge": new_value}
+    query_text = str(context.get("message_text") or context.get("comment_text") or "").strip()
+    relevant = _select_relevant_knowledge(new_value, query_text, max_chars=4000, max_chunks=6)
+    context["knowledge_full"] = new_value
+    context["knowledge"] = relevant or new_value[:4000]
+    return {
+        "knowledge": context["knowledge"],
+        "knowledge_full": new_value,
+    }
 
 def run_comment_listener_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -702,6 +803,8 @@ def execute_workflow(execution: AgentExecution, initial_context: Dict[str, Any] 
     context: Dict[str, Any] = dict(initial_context or {})
     context.setdefault("workflow_id", workflow.id)
     context.setdefault("tenant_slug", getattr(workflow.agent, "tenant_slug", None))
+    if context.get("chat_id") and context.get("message_text"):
+        context["conversation_history"] = _load_conversation_history(context)
 
     def log(node: NodeDef, status: str, input_obj: Any = None, output_obj: Any = None, error: str | None = None):
         log_row = AgentExecutionLog(
@@ -768,6 +871,7 @@ def execute_workflow(execution: AgentExecution, initial_context: Dict[str, Any] 
                     log(node, "success", node_input, wa_output)
                 elif node.type == "telegram_send":
                     tg_output = run_telegram_send_node(node, context)
+                    _append_conversation_turn(context, str(tg_output.get("telegram_message") or ""))
                     log(node, "success", node_input, tg_output)
                 elif node.type in ("telegram_listener", "whatsapp_listener"):
                     # عقدة استقبال: البيانات (message_text, chat_id) من الـ webhook أو السياق الأولي؛ توكن البوت من بيانات العقدة لاستخدامه في الإرسال
