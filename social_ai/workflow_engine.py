@@ -140,6 +140,42 @@ def _normalize_ar_digits(text: str) -> str:
     return text.translate(trans)
 
 
+def _extract_local_mobile_phone(text: str) -> str | None:
+    """استخراج رقم جوال محلي (مثال عراقي 07xxxxxxxx) من نص حر."""
+    if not text or not str(text).strip():
+        return None
+    t = _normalize_ar_digits(text)
+    d = re.sub(r"\D", "", t)
+    if not d:
+        return None
+    m = re.search(r"(07\d{9})", d)
+    if m:
+        return m.group(1)
+    m2 = re.search(r"(7\d{9})", d)
+    if m2 and len(m2.group(1)) == 10:
+        return "0" + m2.group(1)
+    return None
+
+
+def _infer_phone_into_context(context: Dict[str, Any]) -> None:
+    """يملأ context['phone'] من رسالة المستخدم أو سجل المحادثة إن وُجد رقم."""
+    if str(context.get("phone") or "").strip():
+        return
+    parts = [
+        str(context.get("message_text") or ""),
+        str(context.get("conversation_history") or ""),
+    ]
+    blob = "\n".join(parts)
+    found = _extract_local_mobile_phone(blob)
+    if found:
+        context["phone"] = found
+
+
+def _is_placeholder_telegram_phone(phone: str) -> bool:
+    p = (phone or "").strip()
+    return p.startswith("tg-") or len(re.sub(r"\D", "", p)) < 10
+
+
 def _tokenize_text(text: str) -> set[str]:
     text = _normalize_ar_digits(text or "")
     tokens = re.findall(r"[\u0600-\u06FFa-zA-Z0-9_]+", text.lower())
@@ -898,17 +934,21 @@ def run_sql_save_order_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str,
     """
     data = node.data or {}
     _merge_booking_from_ai_into_context(context)
+    _infer_phone_into_context(context)
 
     default_name = str(data.get("default_customer_name") or "عميل").strip() or "عميل"
     name = str(context.get("customer_name") or context.get("name") or default_name).strip()
-    phone = str(context.get("phone") or "").strip()
     chat_id = str(context.get("chat_id") or "").strip()
+    phone = str(context.get("phone") or "").strip()
     if not phone and chat_id:
         phone = f"tg-{chat_id}"[:20]
+        context["phone"] = phone
 
     require_phone = bool(data.get("require_phone", False))
-    if require_phone and not str(context.get("phone") or "").strip():
-        raise RuntimeError("لا يمكن تأكيد الحجز: رقم الهاتف غير موجود في السياق. اطلب رقم الهاتف من الزبون أولاً.")
+    if require_phone and _is_placeholder_telegram_phone(phone):
+        raise RuntimeError(
+            "يرجى إرسال رقم الهاتف بصيغة واضحة (مثال 07xxxxxxxx) لتأكيد الحجز."
+        )
 
     address = str(context.get("address") or "").strip()
 

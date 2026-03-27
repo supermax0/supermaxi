@@ -163,10 +163,10 @@ def _notify_telegram_if_workflow_failed(execution_id: int, initial_context: Dict
     tok = (initial_context.get("telegram_bot_token") or "").strip()
     if not cid or not tok:
         return
-    err = (ex.error_message or "")[:200]
     msg = "عذراً، تعذّر إكمال طلبك الآن. يمكنك المحاولة لاحقاً أو التواصل مع الدعم."
+    err = (ex.error_message or "")[:500]
     if err:
-        msg = f"{msg}\n({err})"
+        current_app.logger.warning("workflow_failed user_notify execution=%s: %s", execution_id, err)
     try:
         from social_ai.messaging import send_telegram_message
 
