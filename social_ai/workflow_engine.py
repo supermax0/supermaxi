@@ -116,6 +116,55 @@ def _heuristic_user_intent(message: str) -> str | None:
     return None
 
 
+def _refine_intent_with_context(message: str, history: str, current: str) -> str:
+    """يرفع التصنيف إلى order عند إرسال بيانات تواصل أو إتمام طلب مع سياق منتج/سعر في السجل."""
+    if current == "order":
+        return current
+    msg = (message or "").strip()
+    hist = (history or "").strip()
+    if _extract_local_mobile_phone(msg):
+        return "order"
+    digits_only = re.sub(r"\D", "", _normalize_ar_digits(msg))
+    if len(digits_only) >= 10 and len(msg) >= 6:
+        return "order"
+    commerce = (
+        "شاشة",
+        "بوصة",
+        "دينار",
+        "مخزون",
+        "السعر",
+        "سعر",
+        "المنتج",
+        "عرض",
+        "موديل",
+        "product",
+        "price",
+    )
+    if any(c in hist for c in commerce):
+        if any(
+            w in msg
+            for w in (
+                "تمم",
+                "تم ",
+                "أكمل",
+                "اكمل",
+                "الاسم",
+                "العنوان",
+                "الهاتف",
+                "رقم",
+                "معلومات",
+                "أرسل",
+                "ارسل",
+            )
+        ):
+            return "order"
+        if len(digits_only) >= 10:
+            return "order"
+        if len(msg) > 30 and re.search(r"\d{5,}", _normalize_ar_digits(msg)):
+            return "order"
+    return current
+
+
 def _parse_intent_value(text: str) -> str:
     """يستخرج intent من JSON؛ يعيد unknown إن تعذّر."""
     parsed = _try_parse_booking_dict_from_text(text)
@@ -561,7 +610,63 @@ def _build_matched_inventory_catalog(
     return "\n".join(lines), list(dict.fromkeys(image_urls))[:5]
 
 
+def _truncate_history_tail(text: str, max_chars: int = 48000) -> str:
+    s = (text or "").strip()
+    if len(s) <= max_chars:
+        return s
+    return "…" + s[-max_chars:]
+
+
+def _load_conversation_history_from_inbox(context: Dict[str, Any]) -> str:
+    """
+    يبني سجل المحادثة من جدول telegram_inbox_messages (نفس البيانات المعروضة في الصندوق).
+    يعمل عبر عدة عمال خادم ولا يضيع عند إعادة تشغيل العملية — على عكس deque في الذاكرة.
+    """
+    wf_id = context.get("workflow_id")
+    chat_id = context.get("chat_id")
+    if wf_id is None or not chat_id:
+        return ""
+    try:
+        from models.telegram_inbox_message import TelegramInboxMessage
+
+        try:
+            cap = int(current_app.config.get("TELEGRAM_INBOX_HISTORY_MAX_ROWS", 250))
+        except Exception:
+            cap = 250
+        cap = max(50, min(cap, 2000))
+
+        rows = (
+            TelegramInboxMessage.query.filter_by(
+                workflow_id=int(wf_id),
+                chat_id=str(chat_id)[:64],
+            )
+            .order_by(TelegramInboxMessage.id.desc())
+            .limit(cap)
+            .all()
+        )
+        rows.reverse()
+        lines: list[str] = []
+        for r in rows:
+            role = (r.role or "").strip().lower()
+            body = (r.body or "").strip()
+            if not body:
+                continue
+            if role == "user":
+                lines.append(f"المستخدم: {body}")
+            elif role in ("bot", "operator"):
+                lines.append(f"المساعد: {body}")
+        return "\n".join(lines).strip()
+    except Exception:
+        current_app.logger.debug("telegram inbox history load failed", exc_info=True)
+        return ""
+
+
 def _load_conversation_history(context: Dict[str, Any]) -> str:
+    """سجل المحادثة: أولاً من قاعدة البيانات (صندوق تيليجرام)، ثم من الذاكرة المحلية."""
+    inbox_text = _load_conversation_history_from_inbox(context)
+    if inbox_text.strip():
+        return _truncate_history_tail(inbox_text, 48000)
+
     key = _memory_key(context)
     if not key:
         return ""
@@ -577,7 +682,7 @@ def _load_conversation_history(context: Dict[str, Any]) -> str:
             lines.append(f"المستخدم: {user_text}")
         if bot_text:
             lines.append(f"المساعد: {bot_text}")
-    return "\n".join(lines).strip()
+    return _truncate_history_tail("\n".join(lines).strip(), 48000)
 
 
 def _append_conversation_turn(context: Dict[str, Any], assistant_reply: str) -> None:
@@ -681,6 +786,7 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
         "comment_text",
         context.get("comment_text") or context.get("message_text") or "",
     )
+    base_context.setdefault("conversation_history", str(context.get("conversation_history") or ""))
 
     # قالب الـ prompt
     template = data.get("prompt") or ""
@@ -701,10 +807,17 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
                 "استخدم product_id إذا عرفته من السياق، وإلا product_name. إذا نقصت معلومات، اسأل عنها ولا تضف JSON."
             )
         elif task == "intent":
-            template = (
-                "صنّف رسالة المستخدم التالية. أجب JSON فقط بدون أي نص إضافي.\n\n"
-                "{{message_text}}"
-            )
+            if str(context.get("conversation_history") or "").strip():
+                template = (
+                    "سياق المحادثة (مهم للتصنيف — لا تتجاهل السياق):\n{{conversation_history}}\n\n"
+                    "آخر رسالة من الزبون:\n{{message_text}}\n\n"
+                    "صنّف النية: هل يتابع طلباً/حجزاً أم سؤالاً عاماً؟ أجب JSON فقط."
+                )
+            else:
+                template = (
+                    "صنّف رسالة المستخدم التالية. أجب JSON فقط بدون أي نص إضافي.\n\n"
+                    "{{message_text}}"
+                )
         elif context.get("message_text"):
             template = "رد باختصار ومهنية على رسالة المستخدم التالية:\n\n{{message_text}}"
         else:
@@ -764,9 +877,19 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
             + conversation_history
         )
 
+    if task == "reply_comment" and conversation_history and context.get("chat_id"):
+        system_parts.append(
+            "إذا سبق في السياق ذكر منتج أو سعر أو مقاس، والزبون أرسل الآن اسماً أو هاتفاً أو عنواناً فاعتبره إتماماً لطلب سبق، "
+            "ولا تسأل من جديد «ما المنتج الذي تريد»؛ أكد الحجز أو اطلب نقصاً واحداً فقط إن وُجد."
+        )
+
     if task == "booking" and conversation_history:
         system_parts.append(
             "لمهمة الحجز: راجع سجل المحادثة أعلاه؛ الاسم أو الهاتف أو المنتج قد يكون قد ورد في رسالة سابقة وليس في آخر رسالة فقط."
+        )
+        system_parts.append(
+            "لا تسأل «ما المنتج الذي تريد» إذا كان المنتج أو الخدمة أو السعر قد وُضح في سجل المحادثة؛ "
+            "اطلب فقط ما ينقص (اسم، هاتف، عنوان، كمية) أو أكد الحجز باختصار."
         )
 
     if task == "intent":
@@ -780,6 +903,9 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
             if len(conversation_history) > 4200:
                 conversation_history = conversation_history[-4200:]
             system_parts.append("سجل المحادثة (للتماسك):\n" + conversation_history)
+            system_parts.append(
+                "إذا سبق ذكر منتج أو سعر أو مقاس في السياق، والرسالة الحالية تحتوي اسمًا أو هاتفًا أو عنوانًا أو عبارة إتمام الطلب، فالنية order."
+            )
 
     knowledge = context.get("knowledge")
     if task != "intent" and isinstance(knowledge, str) and knowledge.strip():
@@ -850,6 +976,11 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
             hint = _heuristic_user_intent(str(context.get("message_text") or ""))
             if hint:
                 intent = hint
+        intent = _refine_intent_with_context(
+            str(context.get("message_text") or ""),
+            str(context.get("conversation_history") or ""),
+            intent,
+        )
         result["user_intent"] = intent
         result["reply_text"] = ""
     elif task == "reply_comment":
