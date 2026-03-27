@@ -14,9 +14,13 @@ from flask import current_app
 from extensions import db
 from models.ai_agent import AgentExecution, AgentExecutionLog, AgentWorkflow
 from models.comment_log import CommentLog, is_comment_already_replied
+from models.customer import Customer
+from models.invoice import Invoice
+from models.order_item import OrderItem
 from models.product import Product
 from models.social_account import SocialAccount
 from models.social_post import SocialPost
+from utils.inventory_movements import validate_sale_quantity
 from social_ai.ai_engine import generate_caption, generate_comment_reply, get_client
 from social_ai.image_generator import generate_image
 from social_ai.messaging import send_telegram_message, send_telegram_photo, send_whatsapp_message
@@ -419,6 +423,15 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
             template = "اكتب كابشن تسويقي لمنشور عن {{topic}}"
         elif task == "generate_topic":
             template = "اقترح 5 أفكار لموضوعات منشورات حول {{topic}}"
+        elif task == "booking":
+            template = (
+                "ساعد الزبون على إتمام حجز المنتج اعتماداً على معرفة الكتالوج إن وُجدت.\n"
+                "رسالة الزبون:\n{{message_text}}\n\n"
+                "إذا توفّر (الاسم، رقم الهاتف، المنتج أو معرفه، الكمية) بشكل واضح، "
+                "أكمل الرد بجملة تأكيد ثم أضف في آخر الرسالة كتلة JSON فقط بهذا الشكل:\n"
+                '{"booking":{"name":"...","phone":"...","product_name":"...","product_id":null,"quantity":1,"price":null}}\n'
+                "استخدم product_id إذا عرفته من السياق، وإلا product_name. إذا نقصت معلومات، اسأل عنها ولا تضف JSON."
+            )
         elif context.get("message_text"):
             template = "رد باختصار ومهنية على رسالة المستخدم التالية:\n\n{{message_text}}"
         else:
@@ -498,7 +511,7 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
         result["generated_topics"] = text
     if task == "reply_comment":
         result["reply_text"] = text
-    elif context.get("message_text"):
+    elif context.get("message_text") or task == "booking":
         result["reply_text"] = text
 
     return result
@@ -769,6 +782,224 @@ def run_telegram_send_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, 
         "telegram_chat_id": chat_id,
         "telegram_message": message,
         "telegram_photos_sent": photos_sent,
+    }
+    context.update(result)
+    return result
+
+
+def _try_parse_booking_dict_from_text(text: str) -> Dict[str, Any] | None:
+    """يستخرج كائناً JSON من رد الـ AI (كتلة ```json أو أول {...})."""
+    if not text or not str(text).strip():
+        return None
+    t = str(text).strip()
+    for block in re.findall(r"```(?:json)?\s*([\s\S]*?)```", t):
+        try:
+            j = json.loads(block.strip())
+            if isinstance(j, dict):
+                return j
+        except Exception:
+            continue
+    m = re.search(r"\{[\s\S]*\}", t)
+    if m:
+        try:
+            j = json.loads(m.group(0))
+            if isinstance(j, dict):
+                return j
+        except Exception:
+            return None
+    return None
+
+
+def _merge_booking_from_ai_into_context(context: Dict[str, Any]) -> None:
+    """يملأ مفاتيح الحجز من JSON داخل reply_text/text إن وُجد."""
+    if context.get("booking") and isinstance(context.get("booking"), dict):
+        raw = context["booking"]
+    else:
+        raw = _try_parse_booking_dict_from_text(
+            str(context.get("reply_text") or context.get("text") or "")
+        )
+        if not raw:
+            return
+    inner = raw.get("booking") if isinstance(raw.get("booking"), dict) else raw
+    if not isinstance(inner, dict):
+        return
+    keymap = {
+        "customer_name": ("customer_name", "name"),
+        "name": ("customer_name", "name"),
+        "phone": ("phone",),
+        "address": ("address",),
+        "product_id": ("product_id",),
+        "product_name": ("product_name", "product"),
+        "product": ("product_name", "product"),
+        "sku": ("sku", "product_sku"),
+        "barcode": ("barcode",),
+        "quantity": ("quantity",),
+        "price": ("price",),
+        "channel": ("channel",),
+    }
+    for src, dests in keymap.items():
+        if src not in inner or inner[src] in (None, ""):
+            continue
+        val = inner[src]
+        if src == "product_id":
+            try:
+                val = int(val)
+            except (TypeError, ValueError):
+                continue
+        if src == "quantity":
+            try:
+                val = int(val)
+            except (TypeError, ValueError):
+                continue
+        for d in dests:
+            if context.get(d) in (None, ""):
+                context[d] = val
+
+
+def _resolve_product_for_order(context: Dict[str, Any]) -> Product | None:
+    pid = context.get("product_id")
+    if pid is not None and str(pid).strip() != "":
+        try:
+            p = Product.query.get(int(pid))
+            if p and p.active:
+                return p
+        except (TypeError, ValueError):
+            pass
+    sku = str(context.get("sku") or context.get("product_sku") or "").strip()
+    if sku:
+        p = Product.query.filter(Product.active == True, Product.sku == sku).first()  # noqa: E712
+        if p:
+            return p
+    bc = str(context.get("barcode") or "").strip()
+    if bc:
+        p = Product.query.filter(Product.active == True, Product.barcode == bc).first()  # noqa: E712
+        if p:
+            return p
+    pname = str(context.get("product_name") or context.get("product") or "").strip()
+    if pname:
+        p = Product.query.filter(Product.active == True, Product.name == pname).first()  # noqa: E712
+        if p:
+            return p
+        return (
+            Product.query.filter(Product.active == True, Product.name.contains(pname))  # noqa: E712
+            .order_by(Product.id.asc())
+            .first()
+        )
+    return None
+
+
+def run_sql_save_order_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    حفظ حجز / طلب في قاعدة شركة المستخدم: زبون + فاتورة (Invoice) + سطر (OrderItem).
+
+    المدخلات من السياق أو من JSON في رد الـ AI (انظر عقدة AI — يُفضّل إخراج JSON في آخر الرسالة).
+    """
+    data = node.data or {}
+    _merge_booking_from_ai_into_context(context)
+
+    default_name = str(data.get("default_customer_name") or "عميل").strip() or "عميل"
+    name = str(context.get("customer_name") or context.get("name") or default_name).strip()
+    phone = str(context.get("phone") or "").strip()
+    chat_id = str(context.get("chat_id") or "").strip()
+    if not phone and chat_id:
+        phone = f"tg-{chat_id}"[:20]
+
+    require_phone = bool(data.get("require_phone", False))
+    if require_phone and not str(context.get("phone") or "").strip():
+        raise RuntimeError("لا يمكن تأكيد الحجز: رقم الهاتف غير موجود في السياق. اطلب رقم الهاتف من الزبون أولاً.")
+
+    address = str(context.get("address") or "").strip()
+
+    qty = int(context.get("quantity") or 1)
+    if qty < 1:
+        qty = 1
+
+    product = _resolve_product_for_order(context)
+    if not product:
+        raise RuntimeError(
+            "لم يُحدد منتج للحجز: مرّر product_id أو product_name في السياق، أو أضف JSON في رد الـ AI يحتوي product_id / product_name."
+        )
+
+    channel = str(context.get("channel") or data.get("channel_default") or "telegram").strip() or "telegram"
+    invoice_status = str(data.get("invoice_status") or "حجز").strip() or "حجز"
+    deduct_stock = bool(data.get("deduct_stock", True))
+
+    price = context.get("price")
+    try:
+        unit_price = int(price) if price is not None and str(price).strip() != "" else int(product.sale_price or 0)
+    except (TypeError, ValueError):
+        unit_price = int(product.sale_price or 0)
+
+    if deduct_stock:
+        check = validate_sale_quantity(product.id, qty)
+        if not check.get("valid"):
+            raise RuntimeError(check.get("message") or "الكمية غير متوفرة في المخزون")
+
+    cust = Customer.query.filter_by(phone=phone).first()
+    if cust:
+        if name and name != default_name:
+            cust.name = name
+        if address:
+            cust.address = address
+    else:
+        cust = Customer(
+            name=name or default_name,
+            phone=phone,
+            address=address or None,
+            tenant_id=getattr(product, "tenant_id", None),
+        )
+        db.session.add(cust)
+        db.session.flush()
+
+    note_parts = [
+        f"حجز تلقائي — {channel}",
+        f"chat_id={chat_id}" if chat_id else "",
+        f"المنتج: {product.name}",
+        f"الكمية: {qty}",
+    ]
+    if not deduct_stock:
+        note_parts.append("بدون خصم من المخزون (حجز معلّق)")
+    note = " | ".join(p for p in note_parts if p)
+
+    inv = Invoice(
+        customer_id=cust.id,
+        customer_name=cust.name,
+        employee_id=None,
+        employee_name=None,
+        total=0,
+        status=invoice_status,
+        payment_status="غير مسدد",
+        note=note,
+        created_at=datetime.utcnow(),
+    )
+    db.session.add(inv)
+    db.session.flush()
+
+    line_total = int(unit_price * qty)
+    oi = OrderItem(
+        invoice_id=inv.id,
+        product_id=product.id,
+        product_name=product.name,
+        quantity=qty,
+        price=unit_price,
+        cost=int(product.buy_price or 0),
+        total=line_total,
+    )
+    db.session.add(oi)
+
+    if deduct_stock:
+        product.quantity = int(product.quantity or 0) - qty
+
+    inv.total = line_total
+    db.session.commit()
+
+    result = {
+        "booking_invoice_id": inv.id,
+        "booking_customer_id": cust.id,
+        "booking_product_id": product.id,
+        "booking_total": line_total,
+        "booking_quantity": qty,
+        "booking_status": invoice_status,
     }
     context.update(result)
     return result
@@ -1120,8 +1351,9 @@ def execute_workflow(execution: AgentExecution, initial_context: Dict[str, Any] 
                     # حفظ لقطة السياق النهائية في اللوج
                     log(node, "success", node_input, dict(context))
                 elif node.type == "sql_save_order":
-                    # حفظ الطلب في DB يُنفَّذ بالكامل في Node backend؛ هنا نمرر السياق فقط
-                    log(node, "success", node_input, {"note": "SQL حفظ الطلب يُنفَّذ عند التشغيل عبر Node backend"})
+                    sql_out = run_sql_save_order_node(node, context)
+                    context.update(sql_out)
+                    log(node, "success", node_input, sql_out)
                 else:
                     # عقد غير معروفة – نتجاوزها لكن نسجّل في اللوج
                     log(node, "failed", node_input, None, f"نوع عقدة غير معروف: {node.type}")

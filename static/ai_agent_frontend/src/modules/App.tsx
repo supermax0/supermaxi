@@ -928,29 +928,51 @@ export const App: React.FC = () => {
                 {selectedNode.type === "sql_save_order" && (
                   <>
                     <div className="rounded-lg border border-[#0d9488]/50 bg-[#0d9488]/5 p-3">
-                      <div className="mb-2 text-[11px] font-medium text-[#0d9488]">إعدادات SQL حفظ الطلب</div>
+                      <div className="mb-2 text-[11px] font-medium text-[#0d9488]">حفظ الحجز / الطلب (قاعدة الشركة)</div>
                       <p className="text-[10px] text-slate-400 mb-2">
-                        يكتب في جداول: customers، products، orders (عبر Node backend). المدخلات من سياق الوورك فلو.
+                        يُنشئ زبوناً إن لزم، ثم فاتورة (<code className="bg-[#1e293b] px-1 rounded">invoice</code>) بحالة قابلة للتعديل، مع سطر بيع (
+                        <code className="bg-[#1e293b] px-1 rounded">order_item</code>
+                        ). يعمل على خادم Flask عند تشغيل الوورك فلو. استخدم عقدة AI بنوع مهمة «حجز» أو مرّر الحقول في السياق، أو JSON في رد الـ AI.
                       </p>
                       <div className="space-y-1.5 mb-2">
-                        <div className="text-[10px] text-slate-500 font-medium">مدخلات السياق المتوقعة:</div>
+                        <div className="text-[10px] text-slate-500 font-medium">مدخلات السياق أو JSON في رد الـ AI:</div>
                         <ul className="text-[10px] text-slate-400 list-disc list-inside space-y-0.5">
-                          <li><code className="bg-[#1e293b] px-1 rounded">name</code> — اسم العميل (افتراضي: عميل)</li>
-                          <li><code className="bg-[#1e293b] px-1 rounded">phone</code> — رقم الهاتف</li>
-                          <li><code className="bg-[#1e293b] px-1 rounded">address</code> — العنوان</li>
-                          <li><code className="bg-[#1e293b] px-1 rounded">product_name</code> أو <code className="bg-[#1e293b] px-1 rounded">product</code> — اسم المنتج</li>
-                          <li><code className="bg-[#1e293b] px-1 rounded">quantity</code> — الكمية (افتراضي: 1)</li>
-                          <li><code className="bg-[#1e293b] px-1 rounded">price</code> — السعر</li>
-                          <li><code className="bg-[#1e293b] px-1 rounded">channel</code> — قناة الطلب (مثل telegram)</li>
+                          <li><code className="bg-[#1e293b] px-1 rounded">name</code> / <code className="bg-[#1e293b] px-1 rounded">customer_name</code></li>
+                          <li><code className="bg-[#1e293b] px-1 rounded">phone</code> — إن غاب يُستخدم <code className="bg-[#1e293b] px-1 rounded">tg-{"{chat_id}"}</code></li>
+                          <li><code className="bg-[#1e293b] px-1 rounded">product_id</code> أو <code className="bg-[#1e293b] px-1 rounded">product_name</code></li>
+                          <li><code className="bg-[#1e293b] px-1 rounded">quantity</code>، <code className="bg-[#1e293b] px-1 rounded">price</code> (اختياري)</li>
                         </ul>
                       </div>
                       <label className="mb-1 block text-[11px] text-slate-400">قناة افتراضية (channel)</label>
                       <input
-                        className="w-full rounded-lg border border-[#334155] bg-[#1e293b] px-2 py-1.5 text-xs text-[#e5e7eb] focus:border-[#0d9488] focus:outline-none mb-3"
+                        className="w-full rounded-lg border border-[#334155] bg-[#1e293b] px-2 py-1.5 text-xs text-[#e5e7eb] focus:border-[#0d9488] focus:outline-none mb-2"
                         placeholder="مثال: telegram, whatsapp"
                         value={(selectedNode.data as any)?.channel_default ?? ""}
                         onChange={(e) => updateNodeData(selectedNode.id, { channel_default: e.target.value })}
                       />
+                      <label className="mb-1 block text-[11px] text-slate-400">حالة الفاتورة (invoice_status)</label>
+                      <input
+                        className="w-full rounded-lg border border-[#334155] bg-[#1e293b] px-2 py-1.5 text-xs text-[#e5e7eb] focus:border-[#0d9488] focus:outline-none mb-2"
+                        placeholder="مثال: حجز"
+                        value={(selectedNode.data as any)?.invoice_status ?? "حجز"}
+                        onChange={(e) => updateNodeData(selectedNode.id, { invoice_status: e.target.value })}
+                      />
+                      <label className="flex items-center gap-2 text-[11px] text-slate-300 mb-2">
+                        <input
+                          type="checkbox"
+                          checked={(selectedNode.data as any)?.deduct_stock !== false}
+                          onChange={(e) => updateNodeData(selectedNode.id, { deduct_stock: e.target.checked })}
+                        />
+                        خصم الكمية من المخزون عند الحجز
+                      </label>
+                      <label className="flex items-center gap-2 text-[11px] text-slate-300 mb-3">
+                        <input
+                          type="checkbox"
+                          checked={Boolean((selectedNode.data as any)?.require_phone)}
+                          onChange={(e) => updateNodeData(selectedNode.id, { require_phone: e.target.checked })}
+                        />
+                        إلزامي: رقم هاتف حقيقي (لا يكفي معرف تيليجرام)
+                      </label>
                       <a
                         href="/orders"
                         target="_blank"
@@ -1007,6 +1029,7 @@ export const App: React.FC = () => {
                           <option value="write_caption">كتابة كابشن</option>
                           <option value="reply_comment">رد على تعليق</option>
                           <option value="generate_topic">توليد أفكار موضوع</option>
+                          <option value="booking">حجز للزبائن (يُخرج JSON للطلب)</option>
                           <option value="custom">مخصص</option>
                         </select>
                       </div>
