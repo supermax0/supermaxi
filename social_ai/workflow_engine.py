@@ -60,9 +60,15 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
 
     # إعدادات المهمة
     task = data.get("task") or "generate_post"
-    topic = data.get("topic") or context.get("topic") or ""
+    topic = (data.get("topic") or context.get("topic") or "").strip()
+    if not topic and context.get("message_text"):
+        topic = (str(context.get("message_text") or ""))[:500]
     base_context = dict(context)
     base_context.setdefault("topic", topic)
+    base_context.setdefault(
+        "comment_text",
+        context.get("comment_text") or context.get("message_text") or "",
+    )
 
     # قالب الـ prompt
     template = data.get("prompt") or ""
@@ -73,6 +79,8 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
             template = "اكتب كابشن تسويقي لمنشور عن {{topic}}"
         elif task == "generate_topic":
             template = "اقترح 5 أفكار لموضوعات منشورات حول {{topic}}"
+        elif context.get("message_text"):
+            template = "رد باختصار ومهنية على رسالة المستخدم التالية:\n\n{{message_text}}"
         else:
             template = "أنشئ منشوراً تسويقياً جذاباً عن {{topic}}"
 
@@ -130,6 +138,8 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
     if task == "generate_topic" and text:
         result["generated_topics"] = text
     if task == "reply_comment":
+        result["reply_text"] = text
+    elif context.get("message_text"):
         result["reply_text"] = text
 
     return result

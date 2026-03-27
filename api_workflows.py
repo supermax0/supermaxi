@@ -152,7 +152,12 @@ def _normalize_graph(graph: Any) -> Dict[str, Any]:
     }
 
 
-def _run_workflow_in_background(app_obj, execution_id: int, tenant_slug: str | None) -> None:
+def _run_workflow_in_background(
+    app_obj,
+    execution_id: int,
+    tenant_slug: str | None,
+    initial_context: Dict[str, Any] | None = None,
+) -> None:
     """Run workflow in separate thread to avoid request timeouts."""
     from flask import g as flask_g
 
@@ -165,7 +170,7 @@ def _run_workflow_in_background(app_obj, execution_id: int, tenant_slug: str | N
             if not execution:
                 return
             try:
-                execute_workflow(execution)
+                execute_workflow(execution, initial_context=initial_context)
             except Exception as exc:  # pragma: no cover
                 current_app.logger.exception("Workflow background run failed: %s", exc)
                 execution.status = "failed"

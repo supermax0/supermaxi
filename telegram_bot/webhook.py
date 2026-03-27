@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 from typing import Any
 
 import requests
@@ -119,9 +120,9 @@ def webhook_for_workflow(tenant_slug: str, workflow_id: int):
     Webhook مرتبط بوورك فلو محدد: يحمّل التوكن من عقدة telegram_listener في الرسم
     وينفّذ الـ workflow (بدون الاعتماد على BOT_TOKEN في البيئة).
     """
+    from api_workflows import _run_workflow_in_background
     from extensions import db
     from models.ai_agent import AgentExecution, AgentWorkflow
-    from social_ai.workflow_engine import execute_workflow
 
     tenant_slug = (tenant_slug or "").strip()
     try:
@@ -168,12 +169,12 @@ def webhook_for_workflow(tenant_slug: str, workflow_id: int):
         db.session.add(exe)
         db.session.commit()
 
-        try:
-            execute_workflow(exe, initial_context=initial_context)
-        except Exception:
-            logger.exception("Telegram workflow webhook: execute_workflow failed")
-            exe.status = "failed"
-            db.session.commit()
+        app_obj = current_app._get_current_object()
+        threading.Thread(
+            target=_run_workflow_in_background,
+            args=(app_obj, exe.id, tenant_slug, initial_context),
+            daemon=True,
+        ).start()
     finally:
         g.tenant = old_tenant
 
