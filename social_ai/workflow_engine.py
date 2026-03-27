@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import deque
+import json
 import re
 import time
 from dataclasses import dataclass
@@ -13,6 +14,7 @@ from flask import current_app
 from extensions import db
 from models.ai_agent import AgentExecution, AgentExecutionLog, AgentWorkflow
 from models.comment_log import CommentLog, is_comment_already_replied
+from models.product import Product
 from models.social_account import SocialAccount
 from models.social_post import SocialPost
 from social_ai.ai_engine import generate_caption, generate_comment_reply, get_client
@@ -165,6 +167,57 @@ def _select_relevant_knowledge(catalog_text: str, query_text: str, max_chars: in
     if len(result) > max_chars:
         result = result[:max_chars]
     return result
+
+
+def _build_inventory_catalog(limit: int = 300, include_inactive: bool = False) -> str:
+    """
+    Build catalog text from company inventory (Product table in tenant DB).
+    """
+    q = Product.query.order_by(Product.name.asc(), Product.id.asc())
+    if not include_inactive:
+        q = q.filter(Product.active == True)  # noqa: E712
+    products = q.limit(max(1, min(int(limit or 300), 2000))).all()
+    if not products:
+        return ""
+
+    lines: list[str] = ["كتالوج المنتجات من المخزون:"]
+    for p in products:
+        extra = ""
+        try:
+            meta = json.loads((p.meta_json or "").strip()) if (p.meta_json or "").strip() else {}
+            if isinstance(meta, dict) and meta:
+                # Keep only short, useful metadata keys to avoid prompt bloat
+                allowed = ["brand", "unit", "category", "shelf", "color", "size"]
+                parts = []
+                for k in allowed:
+                    v = meta.get(k)
+                    if v is not None and str(v).strip():
+                        parts.append(f"{k}: {v}")
+                if parts:
+                    extra = " | " + " | ".join(parts)
+        except Exception:
+            extra = ""
+
+        lines.append(
+            (
+                f"- المنتج: {p.name}"
+                f" | SKU: {p.sku or '-'}"
+                f" | Barcode: {p.barcode or '-'}"
+                f" | سعر البيع: {p.sale_price}"
+                f" | سعر الشراء: {p.buy_price}"
+                f" | المخزون الحالي: {p.quantity}"
+                f" | حد التنبيه: {p.low_stock_threshold}"
+                f"{extra}"
+            )
+        )
+        if p.description:
+            desc = str(p.description).strip()
+            if desc:
+                if len(desc) > 220:
+                    desc = desc[:220] + "..."
+                lines.append(f"  الوصف: {desc}")
+
+    return "\n".join(lines)
 
 
 def _load_conversation_history(context: Dict[str, Any]) -> str:
@@ -569,7 +622,14 @@ def run_memory_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
 def run_knowledge_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
     """تحديث كتالوج / قاعدة المعرفة الخاصة بالوكيل داخل الـ context."""
     data = node.data or {}
-    catalog = str(data.get("catalog") or "").strip()
+    source = str(data.get("source") or "manual").strip().lower()
+    if source == "inventory":
+        catalog = _build_inventory_catalog(
+            limit=int(data.get("inventory_limit") or 300),
+            include_inactive=bool(data.get("include_inactive") or False),
+        )
+    else:
+        catalog = str(data.get("catalog") or "").strip()
     mode = data.get("mode") or "replace"
     rendered = _render_template(catalog, context).strip()
 

@@ -1861,6 +1861,19 @@ export const App: React.FC = () => {
                     <div className="space-y-3">
                       <div>
                         <label className="mb-1 block text-[11px] text-slate-400">
+                          مصدر المعرفة
+                        </label>
+                        <select
+                          className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none"
+                          value={(selectedNode.data as any)?.source || "manual"}
+                          onChange={handleKnowledgeFieldChange("source")}
+                        >
+                          <option value="manual">إدخال يدوي / ملف</option>
+                          <option value="inventory">جلب تلقائي من المخزون</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-[11px] text-slate-400">
                           وضع التحديث
                         </label>
                         <select
@@ -1872,6 +1885,36 @@ export const App: React.FC = () => {
                           <option value="append">إضافة على المعرفة الحالية</option>
                         </select>
                       </div>
+                      {(selectedNode.data as any)?.source === "inventory" && (
+                        <>
+                          <div>
+                            <label className="mb-1 block text-[11px] text-slate-400">
+                              عدد المنتجات (حد أقصى)
+                            </label>
+                            <input
+                              type="number"
+                              min={1}
+                              max={2000}
+                              className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none"
+                              value={(selectedNode.data as any)?.inventory_limit || 300}
+                              onChange={handleKnowledgeFieldChange("inventory_limit")}
+                            />
+                          </div>
+                          <label className="flex items-center gap-2 text-[11px] text-slate-300">
+                            <input
+                              type="checkbox"
+                              checked={Boolean((selectedNode.data as any)?.include_inactive || false)}
+                              onChange={(e) => updateNodeData(selectedNode.id, { include_inactive: e.target.checked })}
+                            />
+                            تضمين المنتجات غير الفعالة
+                          </label>
+                          <p className="text-[10px] text-slate-500">
+                            عند التنفيذ سيتم تحميل بيانات المنتجات من مخزون الشركة تلقائيًا وتمريرها للذكاء الاصطناعي.
+                          </p>
+                        </>
+                      )}
+                      {(selectedNode.data as any)?.source !== "inventory" && (
+                        <>
                       <div>
                         <label className="mb-1 block text-[11px] text-slate-400">
                           رفع ملف (PDF، Excel، أو ملف نصي)
@@ -1920,6 +1963,8 @@ export const App: React.FC = () => {
                           هذه البيانات تُمرَّر كمعرفة إضافية لعقد الـ AI داخل نفس الوكيل.
                         </p>
                       </div>
+                        </>
+                      )}
                     </div>
                   </>
                 )}
