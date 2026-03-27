@@ -854,6 +854,19 @@ def run_telegram_send_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, 
         "telegram_photos_sent": photos_sent,
     }
     context.update(result)
+    if chat_id and message and context.get("workflow_id") is not None:
+        try:
+            from social_ai.telegram_inbox import record_telegram_inbox_message
+
+            record_telegram_inbox_message(
+                context.get("tenant_slug"),
+                int(context["workflow_id"]),
+                str(chat_id),
+                "bot",
+                message,
+            )
+        except Exception:
+            current_app.logger.debug("telegram inbox bot record skipped", exc_info=True)
     return result
 
 
@@ -1474,6 +1487,19 @@ def execute_workflow(execution: AgentExecution, initial_context: Dict[str, Any] 
                 context["_telegram_auto_reply"] = True
                 context["telegram_message"] = reply
                 _append_conversation_turn(context, reply)
+                try:
+                    from social_ai.telegram_inbox import record_telegram_inbox_message
+
+                    if context.get("workflow_id") is not None:
+                        record_telegram_inbox_message(
+                            context.get("tenant_slug"),
+                            int(context["workflow_id"]),
+                            str(cid),
+                            "bot",
+                            reply[:4096],
+                        )
+                except Exception:
+                    current_app.logger.debug("telegram inbox fallback record skipped", exc_info=True)
     except Exception as e:  # pragma: no cover
         execution.status = "failed"
         execution.error_message = str(e)

@@ -150,6 +150,7 @@ with app.app_context():
     from models.core.global_setting import GlobalSetting
     from models.core.landing_visit import LandingVisit
     from models.user import User  # جدول users مطلوب لـ tenant_template_purchases / tenant_template_settings
+    from models.telegram_inbox_message import TelegramInboxMessage  # noqa: F401
 
     db.create_all()
 

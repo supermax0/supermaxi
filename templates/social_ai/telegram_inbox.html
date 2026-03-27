@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>محادثات تيليجرام</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --card: #121a30;
+      --line: #27345b;
+      --text: #e7ecff;
+      --muted: #9aa9d6;
+      --primary: #5f8cff;
+      --user: #1e3a5f;
+      --bot: #1a3d35;
+      --op: #4a3d1e;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(18, 26, 48, 0.95);
+    }
+    header h1 { margin: 0; font-size: 1.15rem; }
+    header .links { display: flex; gap: 8px; flex-wrap: wrap; }
+    a.btn {
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 13px;
+    }
+    a.btn:hover { color: var(--text); border-color: var(--primary); }
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(240px, 300px) 1fr;
+      height: calc(100vh - 64px);
+    }
+    @media (max-width: 800px) {
+      .layout { grid-template-columns: 1fr; height: auto; min-height: calc(100vh - 64px); }
+    }
+    .panel {
+      border-left: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .panel-head {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .wf-select {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+    .wf-select label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .wf-select select {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: #0a1020;
+      color: var(--text);
+      font-size: 13px;
+    }
+    .chat-list {
+      flex: 1;
+      overflow-y: auto;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .chat-list li {
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(39, 52, 91, 0.4);
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .chat-list li:hover { background: rgba(95, 140, 255, 0.08); }
+    .chat-list li.active { background: rgba(95, 140, 255, 0.15); border-right: 3px solid var(--primary); }
+    .chat-list .cid { font-family: Consolas, monospace; font-size: 11px; color: #7dd3fc; direction: ltr; text-align: left; }
+    .chat-list .pv { color: var(--muted); font-size: 12px; margin-top: 4px; line-height: 1.35; }
+    .chat-list .tm { font-size: 10px; color: #64748b; margin-top: 4px; }
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .bubble {
+      max-width: 85%;
+      padding: 10px 14px;
+      border-radius: 14px;
+      font-size: 14px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .bubble.user { align-self: flex-end; background: var(--user); border: 1px solid #2d5a8a; }
+    .bubble.bot { align-self: flex-start; background: var(--bot); border: 1px solid #2d6b5a; }
+    .bubble.operator { align-self: flex-start; background: var(--op); border: 1px solid #8a7a2d; }
+    .bubble .meta { font-size: 10px; color: #94a3b8; margin-bottom: 6px; }
+    .composer {
+      padding: 12px 16px;
+      border-top: 1px solid var(--line);
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      background: rgba(12, 18, 34, 0.95);
+    }
+    .composer textarea {
+      flex: 1;
+      min-height: 72px;
+      max-height: 200px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: #0a1020;
+      color: var(--text);
+      font-size: 14px;
+      resize: vertical;
+    }
+    .composer button {
+      padding: 10px 18px;
+      border-radius: 10px;
+      border: none;
+      background: var(--primary);
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .composer button:disabled { opacity: 0.45; cursor: not-allowed; }
+    .empty { padding: 24px; text-align: center; color: var(--muted); font-size: 14px; }
+    .err { color: #f87171; font-size: 13px; padding: 8px 16px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>محادثات تيليجرام</h1>
+    <div class="links">
+      <a class="btn" href="/social-ai/">بناء الوكلاء</a>
+      <a class="btn" href="/social-ai/">مدير السوشيال</a>
+      <a class="btn" href="/">الرئيسية</a>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="panel">
+      <div class="wf-select">
+        <label for="wfSelect">Workflow (يحتوي Telegram Listener)</label>
+        <select id="wfSelect">
+          <option value="">— اختر —</option>
+        </select>
+      </div>
+      <div class="panel-head">المحادثات</div>
+      <ul class="chat-list" id="chatList"></ul>
+    </aside>
+
+    <section class="panel">
+      <div class="panel-head" id="threadTitle">اختر محادثة</div>
+      <div class="err" id="errBox" style="display:none;"></div>
+      <div class="messages" id="messages"></div>
+      <div class="composer">
+        <textarea id="replyText" placeholder="اكتب ردك للزبون..."></textarea>
+        <button type="button" id="sendBtn" disabled>إرسال</button>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const wfSelect = document.getElementById("wfSelect");
+    const chatList = document.getElementById("chatList");
+    const messagesEl = document.getElementById("messages");
+    const threadTitle = document.getElementById("threadTitle");
+    const replyText = document.getElementById("replyText");
+    const sendBtn = document.getElementById("sendBtn");
+    const errBox = document.getElementById("errBox");
+
+    let selectedChatId = null;
+
+    function showErr(msg) {
+      if (!msg) {
+        errBox.style.display = "none";
+        errBox.textContent = "";
+        return;
+      }
+      errBox.style.display = "block";
+      errBox.textContent = msg;
+    }
+
+    async function loadWorkflows() {
+      const r = await fetch("/social-ai/api/telegram/inbox/workflows");
+      const j = await r.json();
+      if (!j.success) {
+        showErr(j.error || "فشل تحميل الوورك فلوهات");
+        return;
+      }
+      wfSelect.innerHTML = '<option value="">— اختر —</option>';
+      (j.workflows || []).forEach((w) => {
+        const o = document.createElement("option");
+        o.value = String(w.id);
+        o.textContent = (w.name || "") + (w.agent_name ? " — " + w.agent_name : "");
+        wfSelect.appendChild(o);
+      });
+    }
+
+    async function loadChats() {
+      const wfId = wfSelect.value;
+      chatList.innerHTML = "";
+      selectedChatId = null;
+      messagesEl.innerHTML = "";
+      threadTitle.textContent = wfId ? "اختر محادثة" : "اختر Workflow أولاً";
+      sendBtn.disabled = true;
+      if (!wfId) return;
+      const r = await fetch("/social-ai/api/telegram/inbox/chats?workflow_id=" + encodeURIComponent(wfId));
+      const j = await r.json();
+      if (!j.success) {
+        showErr(j.error || "فشل تحميل المحادثات");
+        return;
+      }
+      showErr("");
+      const chats = j.chats || [];
+      if (!chats.length) {
+        chatList.innerHTML = '<li class="empty">لا توجد رسائل مسجّلة بعد. بعد وصول رسائل للبوت ستظهر هنا.</li>';
+        return;
+      }
+      chats.forEach((c) => {
+        const li = document.createElement("li");
+        li.dataset.chatId = c.chat_id;
+        li.innerHTML =
+          '<div class="cid">' + escapeHtml(c.chat_id) + '</div>' +
+          '<div class="pv">' + escapeHtml(c.preview || "") + '</div>' +
+          '<div class="tm">' + escapeHtml(c.last_at || "") + '</div>';
+        li.addEventListener("click", () => selectChat(c.chat_id, li));
+        chatList.appendChild(li);
+      });
+    }
+
+    function escapeHtml(s) {
+      const d = document.createElement("div");
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
+    function roleLabel(role) {
+      if (role === "user") return "زبون";
+      if (role === "operator") return "أنت (يدوي)";
+      return "بوت";
+    }
+
+    async function selectChat(chatId, liEl) {
+      selectedChatId = chatId;
+      document.querySelectorAll(".chat-list li").forEach((el) => el.classList.remove("active"));
+      if (liEl) liEl.classList.add("active");
+      threadTitle.textContent = "محادثة: " + chatId;
+      sendBtn.disabled = false;
+      messagesEl.innerHTML = '<div class="empty">جاري التحميل...</div>';
+      const wfId = wfSelect.value;
+      const r = await fetch(
+        "/social-ai/api/telegram/inbox/messages?workflow_id=" +
+          encodeURIComponent(wfId) +
+          "&chat_id=" +
+          encodeURIComponent(chatId)
+      );
+      const j = await r.json();
+      if (!j.success) {
+        messagesEl.innerHTML = "";
+        showErr(j.error || "فشل تحميل الرسائل");
+        return;
+      }
+      showErr("");
+      messagesEl.innerHTML = "";
+      (j.messages || []).forEach((m) => {
+        const div = document.createElement("div");
+        const cls =
+          m.role === "user" ? "user" : m.role === "operator" ? "operator" : "bot";
+        div.className = "bubble " + cls;
+        div.innerHTML =
+          '<div class="meta">' +
+          escapeHtml(roleLabel(m.role)) +
+          " · " +
+          escapeHtml(m.created_at || "") +
+          "</div>" +
+          escapeHtml(m.body || "");
+        messagesEl.appendChild(div);
+      });
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    wfSelect.addEventListener("change", loadChats);
+
+    sendBtn.addEventListener("click", async () => {
+      const wfId = wfSelect.value;
+      const text = (replyText.value || "").trim();
+      if (!wfId || !selectedChatId || !text) return;
+      sendBtn.disabled = true;
+      showErr("");
+      try {
+        const r = await fetch("/social-ai/api/telegram/inbox/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            workflow_id: parseInt(wfId, 10),
+            chat_id: selectedChatId,
+            text: text,
+          }),
+        });
+        const j = await r.json();
+        if (!j.success) {
+          showErr(j.error || "فشل الإرسال");
+          sendBtn.disabled = false;
+          return;
+        }
+        replyText.value = "";
+        await selectChat(selectedChatId, document.querySelector(".chat-list li.active"));
+      } catch (e) {
+        showErr(String(e));
+      }
+      sendBtn.disabled = false;
+    });
+
+    loadWorkflows().then(loadChats);
+  </script>
+</body>
+</html>

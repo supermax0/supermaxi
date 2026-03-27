@@ -719,6 +719,12 @@ export const App: React.FC = () => {
           />
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <a
+            href="/social-ai/telegram/inbox"
+            className="hidden md:inline-flex rounded-lg border border-[#0ea5e9] bg-[#0ea5e9]/10 px-3 py-2 text-xs font-medium text-[#38bdf8] hover:bg-[#0ea5e9]/20"
+          >
+            محادثات تيليجرام
+          </a>
           <button
             type="button"
             className="hidden md:inline-flex rounded-lg border border-[#1e293b] bg-[#1e293b] px-3 py-2 text-xs font-medium text-slate-300 hover:bg-[#334155]"

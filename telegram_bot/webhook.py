@@ -163,7 +163,23 @@ def webhook_for_workflow(tenant_slug: str, workflow_id: int):
             "message_text": message_text or "",
             "chat_id": str(chat_id),
             "telegram_bot_token": bot_token,
+            "workflow_id": wf.id,
+            "tenant_slug": (wf.agent.tenant_slug if wf.agent else None),
         }
+
+        try:
+            from social_ai.telegram_inbox import record_telegram_inbox_message
+
+            if (message_text or "").strip():
+                record_telegram_inbox_message(
+                    (wf.agent.tenant_slug if wf.agent else None),
+                    wf.id,
+                    str(chat_id),
+                    "user",
+                    message_text or "",
+                )
+        except Exception:
+            logger.debug("telegram inbox user record skipped", exc_info=True)
 
         exe = AgentExecution(workflow_id=wf.id, status="running")
         db.session.add(exe)
