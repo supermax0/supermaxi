@@ -27,7 +27,13 @@ export const NODE_REGISTRY: NodeTypeSpec[] = [
   { id: "knowledge_agent", label: "Knowledge Agent", category: "action", runnerImplemented: true },
   { id: "sales_agent", label: "Sales Agent", category: "action", runnerImplemented: true },
   { id: "fallback_safety", label: "Fallback Safety", category: "action", runnerImplemented: true },
-  { id: "sql_save_order", label: "SQL Save Order", category: "io", runnerImplemented: true },
+  {
+    id: "sql_save_order",
+    label: "SQL Save Order",
+    category: "io",
+    runnerImplemented: true,
+    defaultData: { skip_if_incomplete: true },
+  },
   { id: "telegram_reply", label: "Telegram Reply", category: "io", runnerImplemented: true },
   // Frontend-only / Flask-runner types (runner does not implement; will fail at run if executed by Node)
   { id: "ai", label: "AI Agent", category: "action", runnerImplemented: false },

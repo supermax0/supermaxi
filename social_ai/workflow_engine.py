@@ -963,8 +963,18 @@ def run_sql_save_order_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str,
     حفظ حجز / طلب في قاعدة شركة المستخدم: زبون + فاتورة (Invoice) + سطر (OrderItem).
 
     المدخلات من السياق أو من JSON في رد الـ AI (انظر عقدة AI — يُفضّل إخراج JSON في آخر الرسالة).
+
+    عند تفعيل skip_if_incomplete (افتراضي True): إن نقص المنتج أو الهاتف المطلوب لا يُفشل الوورك فلو
+    (لا تُرسل رسالة «تعذّر إكمال الطلب» للمستخدم) — يُسجّل تخطي الحجز فقط.
     """
     data = node.data or {}
+    skip_incomplete = bool(data.get("skip_if_incomplete", True))
+
+    def _skip(reason: str) -> Dict[str, Any]:
+        out = {"booking_skipped": True, "booking_skip_reason": reason}
+        context.update(out)
+        return out
+
     _merge_booking_from_ai_into_context(context)
     _infer_phone_into_context(context)
 
@@ -978,9 +988,10 @@ def run_sql_save_order_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str,
 
     require_phone = bool(data.get("require_phone", False))
     if require_phone and _is_placeholder_telegram_phone(phone):
-        raise RuntimeError(
-            "يرجى إرسال رقم الهاتف بصيغة واضحة (مثال 07xxxxxxxx) لتأكيد الحجز."
-        )
+        msg = "يرجى إرسال رقم الهاتف بصيغة واضحة (مثال 07xxxxxxxx) لتأكيد الحجز."
+        if skip_incomplete:
+            return _skip(msg)
+        raise RuntimeError(msg)
 
     address = str(context.get("address") or "").strip()
 
@@ -990,9 +1001,13 @@ def run_sql_save_order_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str,
 
     product = _resolve_product_for_order(context)
     if not product:
-        raise RuntimeError(
-            "لم يُحدد منتج للحجز: مرّر product_id أو product_name في السياق، أو أضف JSON في رد الـ AI يحتوي product_id / product_name."
+        msg = (
+            "لم يُحدد منتج للحجز: مرّر product_id أو product_name في السياق، "
+            "أو أضف JSON في رد الـ AI يحتوي product_id / product_name."
         )
+        if skip_incomplete:
+            return _skip(msg)
+        raise RuntimeError(msg)
 
     channel = str(context.get("channel") or data.get("channel_default") or "telegram").strip() or "telegram"
     invoice_status = str(data.get("invoice_status") or "حجز").strip() or "حجز"
@@ -1007,7 +1022,10 @@ def run_sql_save_order_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str,
     if deduct_stock:
         check = validate_sale_quantity(product.id, qty)
         if not check.get("valid"):
-            raise RuntimeError(check.get("message") or "الكمية غير متوفرة في المخزون")
+            msg = check.get("message") or "الكمية غير متوفرة في المخزون"
+            if skip_incomplete:
+                return _skip(msg)
+            raise RuntimeError(msg)
 
     cust = Customer.query.filter_by(phone=phone).first()
     if cust:

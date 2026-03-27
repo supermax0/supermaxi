@@ -941,6 +941,14 @@ export const App: React.FC = () => {
                         <code className="bg-[#1e293b] px-1 rounded">order_item</code>
                         ). يعمل على خادم Flask عند تشغيل الوورك فلو. استخدم عقدة AI بنوع مهمة «حجز» أو مرّر الحقول في السياق، أو JSON في رد الـ AI.
                       </p>
+                      <label className="flex items-center gap-2 text-[11px] text-slate-300 mb-2">
+                        <input
+                          type="checkbox"
+                          checked={(selectedNode.data as any)?.skip_if_incomplete !== false}
+                          onChange={(e) => updateNodeData(selectedNode.id, { skip_if_incomplete: e.target.checked })}
+                        />
+                        عدم إفشال الوورك فلو إن لم يكتمل الحجز (مُوصى به لتيليجرام — يمنع رسالة «تعذّر إكمال الطلب» بعد كل رد)
+                      </label>
                       <div className="space-y-1.5 mb-2">
                         <div className="text-[10px] text-slate-500 font-medium">مدخلات السياق أو JSON في رد الـ AI:</div>
                         <ul className="text-[10px] text-slate-400 list-disc list-inside space-y-0.5">
