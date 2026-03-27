@@ -194,6 +194,14 @@ class FinoraDeployStudio(tk.Tk):
         )
         self.run_migrations_btn.pack(side=tk.LEFT, padx=4, pady=4)
 
+        self.telegram_inbox_db_btn = ttk.Button(
+            btns,
+            text="Telegram inbox DB",
+            width=18,
+            command=self.on_ensure_telegram_inbox_table_clicked,
+        )
+        self.telegram_inbox_db_btn.pack(side=tk.LEFT, padx=4, pady=4)
+
         # Self Healing Monitor control
         self.start_monitor_btn = ttk.Button(
             btns, text="Start Monitor", width=18, command=self.on_start_monitor_clicked
@@ -965,8 +973,18 @@ fi
 python - << 'PY'
 from app import app, db
 with app.app_context():
+    # يجب استيراد النماذج قبل create_all() وإلا لا يُنشأ الجدول في Metadata
+    from models.telegram_inbox_message import TelegramInboxMessage  # noqa: F401
     db.create_all()
     print("db.create_all() completed successfully.")
+    try:
+        from sqlalchemy import inspect
+        if inspect(db.engine).has_table("telegram_inbox_messages"):
+            print("telegram_inbox_messages: OK")
+        else:
+            print("WARNING: telegram_inbox_messages table not listed after create_all")
+    except Exception as _e:
+        print("inspect:", _e)
 PY
 """
             rc = self.run_ssh_script(script)
@@ -975,6 +993,44 @@ PY
                 self.set_status("DB create_all completed.")
             else:
                 self.set_status("DB create_all finished with errors (see log).")
+        finally:
+            self.set_busy(False)
+
+    def on_ensure_telegram_inbox_table_clicked(self) -> None:
+        """إنشاء جدول محادثات تيليجرام فقط (سريع) على السيرفر."""
+        self.save_config()
+        thread = threading.Thread(target=self._ensure_telegram_inbox_table_thread, daemon=True)
+        self.set_busy(True)
+        thread.start()
+
+    def _ensure_telegram_inbox_table_thread(self) -> None:
+        try:
+            self.set_status("Creating telegram_inbox_messages on server…")
+            server_path = self.server_path_var.get().strip()
+            if not server_path:
+                self.append_log("[ERROR] Server project path is empty.\n")
+                self.set_status("Telegram inbox DB failed (server path empty).")
+                return
+
+            script = f"""
+cd {server_path} || {{ echo '[ERROR] Cannot cd to {server_path}'; exit 1; }}
+if [ -d "venv" ]; then
+  source venv/bin/activate
+fi
+python - << 'PY'
+from app import app, db
+from models.telegram_inbox_message import TelegramInboxMessage
+with app.app_context():
+    TelegramInboxMessage.__table__.create(db.engine, checkfirst=True)
+    print("telegram_inbox_messages: created or already exists (checkfirst=True).")
+PY
+"""
+            rc = self.run_ssh_script(script)
+            if rc == 0:
+                self.append_log("[INFO] Telegram inbox table ensured on server.\n")
+                self.set_status("Telegram inbox DB OK.")
+            else:
+                self.set_status("Telegram inbox DB finished with errors (see log).")
         finally:
             self.set_busy(False)
 
