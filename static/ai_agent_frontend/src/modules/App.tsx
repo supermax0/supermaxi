@@ -2234,7 +2234,7 @@ export const App: React.FC = () => {
                         </label>
                         <select
                           className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none"
-                          value={(selectedNode.data as any)?.enabled ?? true ? "on" : "off"}
+                          value={(selectedNode.data as any)?.enabled === true ? "on" : "off"}
                           onChange={async (e) => {
                             if (!selectedNode || (selectedNode.type !== "telegram_listener" && selectedNode.type !== "whatsapp_listener")) return;
                             const newOn = e.target.value === "on";
@@ -2263,7 +2263,15 @@ export const App: React.FC = () => {
                                   });
                                   const data = await res.json();
                                   if (data.ok) {
-                                    updateNodeData(selectedNode.id, { enabled: true });
+                                    updateNodeData(selectedNode.id, {
+                                      enabled: true,
+                                      webhook_registered_url: data.webhook_url || "",
+                                      webhook_last_verify: {
+                                        url_matches: true,
+                                        expected_url: data.webhook_url || "",
+                                        checked_at: new Date().toISOString(),
+                                      },
+                                    });
                                   } else {
                                     alert(data.error || "فشل تفعيل Webhook");
                                   }
@@ -2293,9 +2301,76 @@ export const App: React.FC = () => {
                           <option value="off">معطّل</option>
                         </select>
                         {selectedNode.type === "telegram_listener" && (
-                          <p className="mt-1 text-[10px] text-slate-500">
-                            عند اختيار &quot;مفعل&quot; يُسجَّل عنوان الاستقبال عند تيليجرام مباشرة.
-                          </p>
+                          <>
+                            <p className="mt-1 text-[10px] text-slate-500">
+                              عند اختيار &quot;مفعل&quot; يُسجَّل عنوان الاستقبال عند تيليجرام مباشرة. عرض العقدة «مفعل»
+                              سابقاً كان افتراضياً دون تحقق — استخدم الزر أدناه للتأكد من تيليجرام.
+                            </p>
+                            <button
+                              type="button"
+                              className="mt-2 w-full rounded border border-sky-600/60 bg-slate-900 px-2 py-1.5 text-[11px] text-sky-300 hover:bg-slate-800"
+                              onClick={async () => {
+                                if (!selectedNode || selectedNode.type !== "telegram_listener") return;
+                                const botToken = ((selectedNode.data as any)?.bot_token as string)?.trim();
+                                const baseUrl = ((selectedNode.data as any)?.base_url as string)?.trim();
+                                const wfId = meta?.id;
+                                if (!botToken) {
+                                  alert("أدخل Bot Token أولاً.");
+                                  return;
+                                }
+                                if (!wfId) {
+                                  alert("احفظ الوورك فلو أولاً.");
+                                  return;
+                                }
+                                try {
+                                  const res = await fetch("/social-ai/api/telegram/webhook-info", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({
+                                      bot_token: botToken,
+                                      workflow_id: wfId,
+                                      ...(baseUrl ? { base_url: baseUrl } : {}),
+                                    }),
+                                  });
+                                  const j = await res.json();
+                                  if (!j.ok) {
+                                    alert(j.error || "فشل التحقق");
+                                    return;
+                                  }
+                                  const matches = j.url_matches;
+                                  const exp = j.expected_webhook_url || "";
+                                  const cur = j.current_url || "";
+                                  const pend = j.pending_update_count ?? 0;
+                                  const err = j.last_error_message || "";
+                                  updateNodeData(selectedNode.id, {
+                                    webhook_last_verify: {
+                                      url_matches: matches === true ? true : matches === false ? false : undefined,
+                                      expected_url: exp,
+                                      telegram_url: cur,
+                                      pending_update_count: pend,
+                                      last_error_message: err,
+                                      checked_at: new Date().toISOString(),
+                                    },
+                                  });
+                                  if (matches === null || matches === undefined) {
+                                    alert(
+                                      `تعذّر مقارنة الرابط (أضف «عنوان السيرفر» أو BASE_URL).\n\nعند تيليجرام الآن: ${cur || "(فارغ)"}\nتحديثات معلقة: ${pend}`,
+                                    );
+                                    return;
+                                  }
+                                  alert(
+                                    matches
+                                      ? `تيليجرام يستقبل على نفس رابط هذا الوورك فلو.\n${cur}\n(تحديثات معلقة: ${pend})`
+                                      : `الرابط عند تيليجرام لا يطابق المطلوب لهذا الوورك فلو.\n\nعند تيليجرام: ${cur || "(فارغ)"}\n\nالمتوقع: ${exp || "(أضف عنوان السيرفر في العقدة)"}\n\n${err ? `آخر خطأ: ${err}` : ""}`,
+                                  );
+                                } catch {
+                                  alert("خطأ اتصال بالخادم.");
+                                }
+                              }}
+                            >
+                              تحقق من تيليجرام (getWebhookInfo)
+                            </button>
+                          </>
                         )}
                       </div>
                     </div>

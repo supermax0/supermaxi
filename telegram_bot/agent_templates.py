@@ -24,7 +24,7 @@ AGENT_TEMPLATES: Dict[str, Dict[str, Any]] = {
         "workflow_description": "استقبال رسائل تيليجرام والرد تلقائياً بالذكاء الاصطناعي",
         "graph": {
             "nodes": [
-                {"id": "tg-listener", "type": "telegram_listener", "data": {}},
+                {"id": "tg-listener", "type": "telegram_listener", "data": {"enabled": False}},
                 {
                     "id": "ai-reply",
                     "type": "ai",
@@ -113,7 +113,8 @@ AGENT_TEMPLATES: Dict[str, Dict[str, Any]] = {
                     "data": {
                         "label": "Telegram Listener",
                         "bot_token": "",
-                        "subtitle": "ضع Bot Token ثم اربط الـ Webhook",
+                        "enabled": False,
+                        "subtitle": "ضع Bot Token ثم احفظ وفعّل Webhook أو استخدم «تحقق من تيليجرام»",
                     },
                 },
                 {

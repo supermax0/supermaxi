@@ -253,14 +253,32 @@ const WhatsAppSendNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
 
 const TelegramListenerNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
   const botToken = (data as any).bot_token as string | undefined;
-  const enabled = (data as any).enabled ?? true;
+  /** لا نفترض true — كان يظهر «مفعل» دون استدعاء setWebhook عند تيليجرام */
+  const enabled = (data as any).enabled as boolean | undefined;
+  const v = (data as any).webhook_last_verify as
+    | { url_matches?: boolean; checked_at?: string }
+    | undefined;
+  let hookLine = "";
+  if (v?.url_matches === true) {
+    hookLine = "تيليجرام: مرتبط بهذا الوورك فلو ✓";
+  } else if (v?.url_matches === false) {
+    hookLine = "تيليجرام: الرابط لا يطابق هذا الوورك فلو — اضغط تحقق";
+  } else if (v && v.url_matches !== true && v.url_matches !== false) {
+    hookLine = "تحقق من تيليجرام: أضف عنوان السيرفر للمقارنة";
+  } else if (enabled === true) {
+    hookLine = "مفعّل محلياً (لم يُتحقق من API)";
+  } else if (enabled === false) {
+    hookLine = "Webhook معطّل";
+  } else {
+    hookLine = "غير مؤكد — احفظ الوورك فلو ثم فعّل أو «تحقق من تيليجرام»";
+  }
   const subtitle =
     data.subtitle ||
     (botToken && botToken.trim()
-      ? `Webhook ${enabled ? "مفعل" : "معطّل"}`
-      : enabled
-      ? "استقبال رسائل تيليجرام"
-      : "Webhook معطّل");
+      ? hookLine
+      : enabled === false
+      ? "Webhook معطّل"
+      : "أدخل Bot Token ثم فعّل الـ Webhook");
 
   return (
     <div className={`${baseNodeClasses} border-[#0ea5e9]`} style={baseNodeShadow}>

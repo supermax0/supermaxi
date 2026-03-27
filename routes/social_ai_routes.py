@@ -344,9 +344,17 @@ def api_telegram_delete_webhook():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+def _normalize_webhook_url(u: str) -> str:
+    """مقارنة آمنة بين عنوانين (شرطات، مسافات)."""
+    return (u or "").strip().rstrip("/")
+
+
 @social_ai_bp.route("/api/telegram/webhook-info", methods=["POST"])
 def api_telegram_webhook_info():
-    """جلب معلومات Webhook الحالية من Telegram (debug)."""
+    """
+    جلب WebhookInfo من Telegram.
+    إذا وُجد workflow_id + مستأجر في الجلسة: يُحسب الرابط المتوقع ويُرجع url_matches.
+    """
     if not session.get("user_id"):
         return jsonify({"ok": False, "error": "يجب تسجيل الدخول"}), 401
     data = request.get_json() or {}
@@ -359,7 +367,45 @@ def api_telegram_webhook_info():
         body = resp.json() if resp.text else {}
         if not resp.ok:
             return jsonify({"ok": False, "error": body.get("description", "فشل جلب WebhookInfo"), "telegram_response": body}), 400
-        return jsonify({"ok": True, "telegram_response": body}), 200
+        result = body.get("result") if isinstance(body, dict) else None
+        tg_url = ""
+        last_err = ""
+        pending = 0
+        if isinstance(result, dict):
+            tg_url = str(result.get("url") or "").strip()
+            last_err = str(result.get("last_error_message") or "").strip()
+            try:
+                pending = int(result.get("pending_update_count") or 0)
+            except (TypeError, ValueError):
+                pending = 0
+
+        expected_webhook_url = ""
+        url_matches = None
+        tenant_slug = _current_tenant_slug()
+        wf_raw = data.get("workflow_id")
+        if tenant_slug and wf_raw is not None and str(wf_raw).strip() != "":
+            try:
+                wf_id = int(wf_raw)
+                base = _telegram_webhook_base(data)
+                if base:
+                    expected_webhook_url = f"{base.rstrip('/')}/telegram/webhook/{tenant_slug}/{wf_id}"
+                    url_matches = bool(
+                        tg_url
+                        and _normalize_webhook_url(tg_url) == _normalize_webhook_url(expected_webhook_url)
+                    )
+            except (TypeError, ValueError):
+                pass
+
+        out = {
+            "ok": True,
+            "telegram_response": body,
+            "current_url": tg_url,
+            "last_error_message": last_err,
+            "pending_update_count": pending,
+            "expected_webhook_url": expected_webhook_url or None,
+            "url_matches": url_matches,
+        }
+        return jsonify(out), 200
     except Exception as e:
         logging.getLogger(__name__).exception("telegram webhook-info")
         return jsonify({"ok": False, "error": str(e)}), 500
