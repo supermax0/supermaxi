@@ -94,6 +94,129 @@ AGENT_TEMPLATES: Dict[str, Dict[str, Any]] = {
             "edges": [],
         },
     },
+    # تدفق كامل: استفسار من الكتالوج → رد واحد للزبون → تحديث السياق → استخراج حجز → SQL (بدون رد ثانٍ)
+    "telegram_shop": {
+        "id": "telegram_shop",
+        "agent_name": "متجر تيليجرام — مبيعات وحجز",
+        "agent_description": "رد على الاستفسارات من كتالوج المخزون، حجز تلقائي في قاعدة البيانات، رسالة واحدة للزبون لكل تحديث",
+        "workflow_name": "تيليجرام: مبيعات + حجز SQL",
+        "workflow_description": "Listener → مخزون → AI مبيعات → إرسال → سياق محادثة → AI حجز → حفظ الطلب → نهاية",
+        "graph": {
+            "nodes": [
+                {
+                    "id": "tg-listener",
+                    "type": "telegram_listener",
+                    "position": {"x": 320, "y": 0},
+                    "data": {
+                        "label": "Telegram Listener",
+                        "bot_token": "",
+                        "subtitle": "ضع Bot Token ثم اربط الـ Webhook",
+                    },
+                },
+                {
+                    "id": "kb-inventory",
+                    "type": "knowledge_base",
+                    "position": {"x": 320, "y": 110},
+                    "data": {
+                        "label": "المخزون / الكتالوج",
+                        "source": "inventory",
+                        "inventory_mode": "match",
+                        "match_limit": 12,
+                        "subtitle": "من جدول المنتجات حسب رسالة الزبون",
+                    },
+                },
+                {
+                    "id": "ai-sales",
+                    "type": "ai",
+                    "position": {"x": 320, "y": 240},
+                    "data": {
+                        "label": "AI — رد للزبون",
+                        "task": "reply_comment",
+                        "language": "ar",
+                        "tone": "ودود ومهني",
+                        "temperature": 0.45,
+                        "max_tokens": 900,
+                        "prompt": (
+                            "أنت مساعد مبيعات بالعربية. اعتمد فقط على الكتالوج في تعليمات النظام للأسعار والمخزون والمواصفات.\n"
+                            "- أجب عن استفسار الزبون بوضوح وباختصار.\n"
+                            "- لا تخترع منتجات أو أسعاراً غير موجودة في الكتالوج.\n"
+                            "- إذا سأل عن التوفر أو السعر، استخدم بيانات الكتالوج فقط.\n"
+                            "- إذا أراد الحجز، اطلب الاسم ورقم الهاتف والعنوان إن لزم، واسم المنتج أو وصفه كما في الكتالوج.\n"
+                            "- ردّ بجملة واحدة أو فقرتين كحد أقصى إن أمكن.\n\n"
+                            "رسالة الزبون:\n{{message_text}}"
+                        ),
+                    },
+                },
+                {
+                    "id": "tg-send",
+                    "type": "telegram_send",
+                    "position": {"x": 320, "y": 400},
+                    "data": {
+                        "label": "Telegram Send",
+                        "chat_id": "{{chat_id}}",
+                        "template": "{{reply_text}}",
+                        "send_product_images": True,
+                        "max_product_photos": 5,
+                        "subtitle": "رد واحد للزبون",
+                    },
+                },
+                {
+                    "id": "conv-ctx",
+                    "type": "conversation_context",
+                    "position": {"x": 320, "y": 530},
+                    "data": {
+                        "label": "محادثة (سياق)",
+                        "max_chars": 6000,
+                        "include_current_message": True,
+                        "include_last_reply": True,
+                    },
+                },
+                {
+                    "id": "ai-booking",
+                    "type": "ai",
+                    "position": {"x": 320, "y": 660},
+                    "data": {
+                        "label": "AI — استخراج الحجز",
+                        "task": "booking",
+                        "language": "ar",
+                        "temperature": 0.25,
+                        "max_tokens": 700,
+                        "prompt": (
+                            "من سياق المحادثة في تعليمات النظام ومن رسالة الزبون أدناه، حدّد هل يوجد طلب حجز واضح "
+                            "(اسم، هاتف، منتج أو معرف، كمية إن وُجدت).\n"
+                            "إذا اكتملت البيانات: اكتب جملة تأكيد قصيرة ثم في آخر الرسالة كتلة JSON فقط بهذا الشكل:\n"
+                            '{"booking":{"name":"...","phone":"...","address":"...","product_name":"...","product_id":null,"quantity":1,"price":null}}\n'
+                            "phone يجب أن يكون أرقاماً حقيقية (مثل 07xxxxxxxx) إن وُجدت في النص.\n"
+                            "product_name يطابق اسم المنتج من الكتالوج قدر الإمكان.\n"
+                            "إذا نقصت معلومات أساسية للحجز، اسأل سؤالاً واحداً قصيراً ولا تضف JSON.\n\n"
+                            "آخر رسالة من الزبون:\n{{message_text}}"
+                        ),
+                    },
+                },
+                {
+                    "id": "sql-order",
+                    "type": "sql_save_order",
+                    "position": {"x": 320, "y": 820},
+                    "data": {
+                        "label": "SQL حفظ الطلب",
+                        "channel_default": "telegram",
+                        "invoice_status": "حجز",
+                        "deduct_stock": True,
+                        "skip_if_incomplete": True,
+                        "require_phone": False,
+                        "subtitle": "يتخطى إن لم يكتمل الحجز — لا يفشل الوورك فلو",
+                    },
+                },
+                {
+                    "id": "end",
+                    "type": "end",
+                    "position": {"x": 320, "y": 940},
+                    "data": {"label": "End", "subtitle": "انتهاء التشغيل"},
+                },
+            ],
+            "edges": [],
+        },
+    },
 }
 
 
