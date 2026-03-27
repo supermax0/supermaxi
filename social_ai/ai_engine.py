@@ -14,10 +14,14 @@ from flask import current_app, g
 
 _client: Optional[object] = None
 _client_api_key: Optional[str] = None
+_clients_by_key: dict[str, object] = {}
 
 
-def get_client():
+def get_client(api_key_override: Optional[str] = None):
     """إرجاع عميل OpenAI باستخدام الإعدادات من Flask config.
+
+    إذا وُجد ``api_key_override`` (مثلاً من عقدة AI في الوورك فلو) يُستخدم هذا المفتاح
+    بدلاً من مفتاح النظام.
 
     يتم الاستيراد بشكل كسول لتجنّب فشل التطبيق إذا لم تُثبّت مكتبة openai.
     """
@@ -30,6 +34,12 @@ def get_client():
             "مكتبة openai غير مثبتة على الخادم أو لا تدعم OpenAI()، "
             "ثبّت الحزمة openai الأحدث أو عطّل مميزات Social AI."
         ) from exc
+
+    override = (api_key_override or "").strip()
+    if override:
+        if override not in _clients_by_key:
+            _clients_by_key[override] = OpenAI(api_key=override)
+        return _clients_by_key[override]
 
     api_key = (current_app.config.get("OPENAI_API_KEY") or "").strip()
     if not api_key:

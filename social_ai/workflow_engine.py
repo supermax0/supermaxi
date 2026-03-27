@@ -115,7 +115,8 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
 
     system_prompt = " ".join(system_parts)
 
-    client = get_client()
+    node_api_key = (data.get("api_key") or "").strip()
+    client = get_client(node_api_key or None)
     resp = client.chat.completions.create(
         model=model,
         temperature=temperature,
