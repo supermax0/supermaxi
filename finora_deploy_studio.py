@@ -1018,11 +1018,20 @@ if [ -d "venv" ]; then
   source venv/bin/activate
 fi
 python - << 'PY'
+from pathlib import Path
+from sqlalchemy import create_engine
 from app import app, db
 from models.telegram_inbox_message import TelegramInboxMessage
+
 with app.app_context():
     TelegramInboxMessage.__table__.create(db.engine, checkfirst=True)
-    print("telegram_inbox_messages: created or already exists (checkfirst=True).")
+    print("main DB: telegram_inbox_messages OK (checkfirst)")
+    tenants_dir = Path(app.root_path) / "tenants"
+    if tenants_dir.is_dir():
+        for dbf in sorted(tenants_dir.glob("*.db")):
+            eng = create_engine("sqlite:///" + str(dbf.resolve()))
+            TelegramInboxMessage.__table__.create(bind=eng, checkfirst=True)
+            print("tenant", dbf.stem + ": telegram_inbox_messages OK")
 PY
 """
             rc = self.run_ssh_script(script)

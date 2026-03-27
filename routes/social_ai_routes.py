@@ -417,13 +417,10 @@ def _get_workflow_for_inbox(workflow_id: int) -> AgentWorkflow | None:
 
 
 def _ensure_telegram_inbox_table() -> None:
-    """ينشئ جدول المحادثات إن لم يكن موجوداً (بعد نشر كود جديد دون إعادة create_all يدوياً)."""
-    try:
-        from models.telegram_inbox_message import TelegramInboxMessage
+    """ينشئ الجدول على bind الجلسة الحالية (مستأجر أو رئيسية)."""
+    from social_ai.telegram_inbox import ensure_telegram_inbox_table_for_current_bind
 
-        TelegramInboxMessage.__table__.create(db.engine, checkfirst=True)
-    except Exception as exc:
-        current_app.logger.warning("telegram_inbox ensure table: %s", exc)
+    ensure_telegram_inbox_table_for_current_bind()
 
 
 def _inbox_fail_json(exc: Exception, status: int = 200) -> tuple:

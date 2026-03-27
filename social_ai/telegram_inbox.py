@@ -8,6 +8,21 @@ from flask import current_app
 from extensions import db
 
 
+def ensure_telegram_inbox_table_for_current_bind() -> None:
+    """
+    ينشئ جدول telegram_inbox_messages على **نفس قاعدة البيانات** التي تستخدمها الجلسة الحالية.
+    مهم عند تعدد المستأجرين (كل شركة ملف SQLite منفصل): لا تستخدم db.engine وحده
+    لأنه يشير غالباً للقاعدة الرئيسية بينما الاستعلامات تذهب لقاعدة المستأجر.
+    """
+    try:
+        from models.telegram_inbox_message import TelegramInboxMessage
+
+        bind = db.session.get_bind(mapper=TelegramInboxMessage.__mapper__)
+        TelegramInboxMessage.__table__.create(bind=bind, checkfirst=True)
+    except Exception as exc:
+        current_app.logger.warning("telegram_inbox ensure table: %s", exc)
+
+
 def record_telegram_inbox_message(
     tenant_slug: str | None,
     workflow_id: int,
@@ -22,6 +37,7 @@ def record_telegram_inbox_message(
     if role not in ("user", "bot", "operator"):
         role = "user"
     try:
+        ensure_telegram_inbox_table_for_current_bind()
         from models.telegram_inbox_message import TelegramInboxMessage
 
         row = TelegramInboxMessage(
