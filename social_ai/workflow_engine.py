@@ -471,6 +471,15 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
     """تشغيل عقدة AI مرنة باستخدام إعدادات العقدة."""
     data = node.data or {}
 
+    if context.get("keyword_matched") is False:
+        topic = (data.get("topic") or context.get("topic") or "").strip()
+        return {
+            "text": "",
+            "reply_text": "",
+            "topic": topic,
+            "skipped_keyword_filter": True,
+        }
+
     # إعدادات المهمة
     task = data.get("task") or "generate_post"
     topic = (data.get("topic") or context.get("topic") or "").strip()
@@ -1324,7 +1333,13 @@ def run_keyword_filter_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str,
     data = node.data or {}
     keywords_raw = data.get("keywords") or []
     keywords = [k.strip().lower() for k in (keywords_raw if isinstance(keywords_raw, list) else []) if k]
-    comment_text = (context.get("comment_text") or context.get("text") or "").lower()
+    text_blob = (
+        context.get("comment_text")
+        or context.get("message_text")
+        or context.get("text")
+        or ""
+    )
+    comment_text = str(text_blob).lower()
     matched = any(kw in comment_text for kw in keywords) if keywords else True
     result: Dict[str, Any] = {"keyword_matched": matched}
     context["keyword_matched"] = matched

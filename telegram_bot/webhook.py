@@ -324,7 +324,7 @@ def agent_templates_list():
 def create_from_template():
     """
     إنشاء وكيل جديد + workflow من قالب.
-    Body: { "template_id": "telegram" | "whatsapp" | "comment_reply", "agent_name": "اختياري", "workflow_name": "اختياري" }
+    Body: { "template_id": "telegram" | "whatsapp" | "comment_reply" | "telegram_comment_reply" | ..., "agent_name": "اختياري", "workflow_name": "اختياري" }
     """
     try:
         data = request.get_json() or {}

@@ -165,6 +165,10 @@ export const App: React.FC = () => {
           createCommentReplyAgent();
           return;
         }
+        if (mode === "telegram-comment-reply") {
+          createTelegramCommentReplyAgent();
+          return;
+        }
         // mode === "new" أو بدون mode: نترك الـ initialNodes كما هي
 
         const res = await fetch(`${workflowsApiBase}/workflows`);
@@ -261,6 +265,73 @@ export const App: React.FC = () => {
       meta: {
         name: "وكيل الرد على التعليقات",
         description: "وكيل مخصص لقراءة تعليقات فيسبوك والرد عليها تلقائياً.",
+      },
+    });
+  };
+
+  /** مطابق لقالب «رد التعليقات» (فلتر + AI + نشر) لكن لتيليجرام: فلتر + AI + إرسال */
+  const createTelegramCommentReplyAgent = () => {
+    const nodes: Node[] = [
+      {
+        id: "tg-listener",
+        type: "telegram_listener",
+        position: { x: 280, y: 0 },
+        data: {
+          label: "Telegram Listener",
+          bot_token: "",
+          enabled: false,
+          subtitle: "ضع Bot Token ثم احفظ وفعّل Webhook",
+        },
+      },
+      {
+        id: "filter",
+        type: "keyword-filter",
+        position: { x: 280, y: 130 },
+        data: {
+          label: "فلتر كلمات",
+          keywords: [] as string[],
+          subtitle: "فارغ = الرد على كل الرسائل؛ أو أضف كلمات (مثال: سعر، طلب)",
+        },
+      },
+      {
+        id: "ai",
+        type: "ai",
+        position: { x: 280, y: 270 },
+        data: {
+          label: "AI — رد للزبون",
+          task: "reply_comment",
+          language: "ar",
+          tone: "مهني وودود",
+          temperature: 0.45,
+          max_tokens: 800,
+          prompt: "اكتب رداً لبقاً ومهنياً على هذه الرسالة:\n\n{{message_text}}",
+        },
+      },
+      {
+        id: "tg-send",
+        type: "telegram_send",
+        position: { x: 280, y: 410 },
+        data: {
+          label: "Telegram Send",
+          chat_id: "{{chat_id}}",
+          template: "{{reply_text}}",
+          subtitle: "إرسال الرد للزبون",
+        },
+      },
+    ];
+
+    const edges: Edge[] = [
+      { id: "e-lf", source: "tg-listener", target: "filter", sourceHandle: "out", targetHandle: "in" },
+      { id: "e-fa", source: "filter", target: "ai", sourceHandle: "out", targetHandle: "in" },
+      { id: "e-as", source: "ai", target: "tg-send", sourceHandle: "out", targetHandle: "in" },
+    ];
+
+    loadFromGraph({
+      nodes,
+      edges,
+      meta: {
+        name: "تيليجرام: رد على الرسائل",
+        description: "نفس فكرة قالب رد التعليقات: فلتر كلمات ثم رد ذكي ثم إرسال عبر تيليجرام.",
       },
     });
   };
@@ -731,6 +802,14 @@ export const App: React.FC = () => {
             onClick={createCommentReplyAgent}
           >
             قالب وكيل رد التعليقات
+          </button>
+          <button
+            type="button"
+            className="hidden lg:inline-flex rounded-lg border border-[#0ea5e9]/50 bg-[#0c4a6e]/30 px-3 py-2 text-xs font-medium text-sky-200 hover:bg-[#0c4a6e]/50"
+            onClick={createTelegramCommentReplyAgent}
+            title="Listener → فلتر كلمات → AI → إرسال (مثل قالب التعليقات)"
+          >
+            قالب وكيل رد تيليجرام
           </button>
           <button
             type="button"

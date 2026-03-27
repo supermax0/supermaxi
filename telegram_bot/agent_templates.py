@@ -104,6 +104,71 @@ AGENT_TEMPLATES: Dict[str, Dict[str, Any]] = {
             "edges": [],
         },
     },
+    # مطابق لبنية «رد التعليقات»: مستمع → فلتر كلمات → AI → إرسال (بدل نشر التعليق)
+    "telegram_comment_reply": {
+        "id": "telegram_comment_reply",
+        "agent_name": "ردّاد تيليجرام",
+        "agent_description": "وكيل تيليجرام للرد التلقائي على الرسائل مع فلتر كلمات مفتاحية ثم رد ذكي (نفس فكرة قالب رد التعليقات)",
+        "workflow_name": "تيليجرام: رد على الرسائل",
+        "workflow_description": "Telegram Listener → فلتر كلمات → AI → إرسال تيليجرام",
+        "graph": {
+            "nodes": [
+                {
+                    "id": "tg-listener",
+                    "type": "telegram_listener",
+                    "position": {"x": 280, "y": 0},
+                    "data": {
+                        "label": "Telegram Listener",
+                        "bot_token": "",
+                        "enabled": False,
+                        "subtitle": "ضع Bot Token ثم احفظ وفعّل Webhook",
+                    },
+                },
+                {
+                    "id": "filter",
+                    "type": "keyword-filter",
+                    "position": {"x": 280, "y": 130},
+                    "data": {
+                        "label": "فلتر كلمات",
+                        "keywords": [],
+                        "subtitle": "فارغ = الرد على كل الرسائل؛ أو أضف كلمات (مثال: سعر، طلب، استفسار)",
+                    },
+                },
+                {
+                    "id": "ai",
+                    "type": "ai",
+                    "position": {"x": 280, "y": 270},
+                    "data": {
+                        "label": "AI — رد للزبون",
+                        "task": "reply_comment",
+                        "language": "ar",
+                        "tone": "مهني وودود",
+                        "temperature": 0.45,
+                        "max_tokens": 800,
+                        "prompt": (
+                            "اكتب رداً لبقاً ومهنياً على هذه الرسالة:\n\n{{message_text}}"
+                        ),
+                    },
+                },
+                {
+                    "id": "tg-send",
+                    "type": "telegram_send",
+                    "position": {"x": 280, "y": 410},
+                    "data": {
+                        "label": "Telegram Send",
+                        "chat_id": "{{chat_id}}",
+                        "template": "{{reply_text}}",
+                        "subtitle": "إرسال الرد للزبون",
+                    },
+                },
+            ],
+            "edges": [
+                {"id": "e-lf", "source": "tg-listener", "target": "filter", "sourceHandle": "out", "targetHandle": "in"},
+                {"id": "e-fa", "source": "filter", "target": "ai", "sourceHandle": "out", "targetHandle": "in"},
+                {"id": "e-as", "source": "ai", "target": "tg-send", "sourceHandle": "out", "targetHandle": "in"},
+            ],
+        },
+    },
     # تدفق كامل: استفسار من الكتالوج → رد واحد للزبون → تحديث السياق → استخراج حجز → SQL (بدون رد ثانٍ)
     "telegram_shop": {
         "id": "telegram_shop",
