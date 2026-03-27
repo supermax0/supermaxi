@@ -54,7 +54,15 @@ def record_telegram_inbox_message(
             db.session.rollback()
         except Exception:
             pass
-        current_app.logger.warning("telegram inbox record skipped: %s", exc)
+        current_app.logger.warning(
+            "telegram inbox record skipped (tenant=%s workflow_id=%s chat_id=%s role=%s): %s",
+            tenant_slug,
+            workflow_id,
+            (chat_id or "")[:24],
+            role,
+            exc,
+            exc_info=True,
+        )
 
 
 def extract_telegram_bot_token_from_workflow_graph(graph: dict[str, Any] | None) -> str:

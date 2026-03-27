@@ -877,19 +877,21 @@ def run_telegram_send_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, 
         "telegram_photos_sent": photos_sent,
     }
     context.update(result)
-    if chat_id and message and context.get("workflow_id") is not None:
-        try:
-            from social_ai.telegram_inbox import record_telegram_inbox_message
+    # صندوق المحادثات: سجّل أي إخراج للبوت (نص و/أو صور). سابقاً كان التسجيل يُتخطى إذا كان النص فارغاً مع وجود صور فقط.
+    inbox_body = (message or "").strip()
+    if not inbox_body and photos_sent > 0:
+        inbox_body = f"[أُرسلت {photos_sent} صورة/صور من الكتالوج]"
+    wf_id = context.get("workflow_id")
+    if chat_id and inbox_body and wf_id is not None:
+        from social_ai.telegram_inbox import record_telegram_inbox_message
 
-            record_telegram_inbox_message(
-                context.get("tenant_slug"),
-                int(context["workflow_id"]),
-                str(chat_id),
-                "bot",
-                message,
-            )
-        except Exception:
-            current_app.logger.debug("telegram inbox bot record skipped", exc_info=True)
+        record_telegram_inbox_message(
+            context.get("tenant_slug"),
+            int(wf_id),
+            str(chat_id),
+            "bot",
+            inbox_body[:12000],
+        )
     return result
 
 
@@ -1510,19 +1512,16 @@ def execute_workflow(execution: AgentExecution, initial_context: Dict[str, Any] 
                 context["_telegram_auto_reply"] = True
                 context["telegram_message"] = reply
                 _append_conversation_turn(context, reply)
-                try:
+                if context.get("workflow_id") is not None:
                     from social_ai.telegram_inbox import record_telegram_inbox_message
 
-                    if context.get("workflow_id") is not None:
-                        record_telegram_inbox_message(
-                            context.get("tenant_slug"),
-                            int(context["workflow_id"]),
-                            str(cid),
-                            "bot",
-                            reply[:4096],
-                        )
-                except Exception:
-                    current_app.logger.debug("telegram inbox fallback record skipped", exc_info=True)
+                    record_telegram_inbox_message(
+                        context.get("tenant_slug"),
+                        int(context["workflow_id"]),
+                        str(cid),
+                        "bot",
+                        reply[:4096],
+                    )
     except Exception as e:  # pragma: no cover
         execution.status = "failed"
         execution.error_message = str(e)

@@ -295,6 +295,18 @@
       return "بوت";
     }
 
+    /** عرض وقت آمن (ISO من السيرفر) — يتجنب سلاسل غير صالحة تظهر كأرقام طويلة */
+    function fmtTime(iso) {
+      if (!iso) return "";
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return String(iso);
+      try {
+        return d.toLocaleString("ar-IQ", { dateStyle: "short", timeStyle: "short" });
+      } catch (e) {
+        return String(iso);
+      }
+    }
+
     async function selectChat(chatId, liEl) {
       selectedChatId = chatId;
       document.querySelectorAll(".chat-list li").forEach((el) => el.classList.remove("active"));
@@ -333,7 +345,7 @@
           '<div class="meta">' +
           escapeHtml(roleLabel(m.role)) +
           " · " +
-          escapeHtml(m.created_at || "") +
+          escapeHtml(fmtTime(m.created_at)) +
           "</div>" +
           escapeHtml(m.body || "");
         messagesEl.appendChild(div);
