@@ -31,7 +31,8 @@ from services.tiktok_service import fetch_comments as tiktok_fetch_comments, rep
 
 _CHAT_MEMORY_LOCK = Lock()
 _CHAT_MEMORY: dict[str, deque[dict[str, str]]] = {}
-_CHAT_MEMORY_MAX_TURNS = 8
+# أدوار مستخدم/مساعد (كل دور = رسالتان). زيادة عمق الذاكرة للمحادثات الطويلة.
+_CHAT_MEMORY_MAX_TURNS = 14
 
 
 @dataclass
@@ -526,6 +527,20 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
     if target_audience:
         system_parts.append(f"الجمهور المستهدف: {target_audience}.")
 
+    # ردود تيليجرام / واتساب: احترافية، تماسك مع الذاكرة، بدون حشو
+    if (
+        task == "reply_comment"
+        and context.get("message_text")
+        and context.get("chat_id")
+    ):
+        system_parts.append(
+            "أنت ممثل خدمة عملاء ومبيعات محترف في قناة رسائل فورية. "
+            "استخدم عربية واضحة ولطيفة (فصحى مبسّطة أو عامية مهنية حسب سياق الزبون). "
+            "إذا وُجد سجل محادثة أدناه فاعتمد عليه للتماسك: لا تتناقض مع ما سبق، ولا تكرّر ترحيباً طويلاً أو نفس المقدمة في كل رد. "
+            "إذا عاد الزبون لمنتج أو طلب سبق ذكره، التزم بالاسم والسياق دون إعادة نسخ فقرات طويلة. "
+            "كن موجزاً عند الاستفسار البسيط، وأكثر وضوحاً عند الشرح أو الطلب. تجنّب العبارات الآلية المكررة مثل الترحيب المبالغ فيه في كل رسالة."
+        )
+
     if context.get("message_text") and str(context.get("knowledge") or "").strip():
         system_parts.append(
             "أنت مندوب مبيعات ودود: قدّم إجابة مقنعة تعتمد فقط على معلومات الكتالوج أدناه؛ "
@@ -538,11 +553,16 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
 
     conversation_history = str(context.get("conversation_history") or "").strip()
     if conversation_history:
-        if len(conversation_history) > 2500:
-            conversation_history = conversation_history[-2500:]
+        if len(conversation_history) > 4200:
+            conversation_history = conversation_history[-4200:]
         system_parts.append(
-            "هذا ملخص آخر الرسائل في نفس المحادثة. استخدمه لفهم المنتج المقصود ولا تتناقض معه:\n"
+            "سجل المحادثة السابقة (نفس الزبون ونفس المحادثة؛ للتماسك والمرجعية فقط، والأولوية لرسالة الزبون الحالية في طلب المستخدم):\n"
             + conversation_history
+        )
+
+    if task == "booking" and conversation_history:
+        system_parts.append(
+            "لمهمة الحجز: راجع سجل المحادثة أعلاه؛ الاسم أو الهاتف أو المنتج قد يكون قد ورد في رسالة سابقة وليس في آخر رسالة فقط."
         )
 
     knowledge = context.get("knowledge")
@@ -1398,6 +1418,8 @@ def execute_workflow(execution: AgentExecution, initial_context: Dict[str, Any] 
     context.setdefault("tenant_slug", getattr(workflow.agent, "tenant_slug", None))
     if context.get("chat_id"):
         context["conversation_history"] = _load_conversation_history(context)
+        if str(context.get("conversation_history") or "").strip():
+            context["has_conversation_memory"] = True
 
     def log(node: NodeDef, status: str, input_obj: Any = None, output_obj: Any = None, error: str | None = None):
         log_row = AgentExecutionLog(
