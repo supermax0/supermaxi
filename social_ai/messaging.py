@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import mimetypes
+from pathlib import Path
 from typing import Any
+from urllib.parse import unquote, urlparse
 
 import requests
 from flask import current_app
@@ -95,13 +98,14 @@ def send_telegram_photo(
     caption: str | None = None,
 ) -> bool:
     """
-    إرسال صورة إلى تيليجرام عبر sendPhoto (يقبل رابط https مباشر).
+    إرسال صورة إلى تيليجرام عبر sendPhoto.
+
+    يدعم:
+    - رابط http/https مباشر
+    - مسار ملف محلي (absolute/relative) مثل /static/uploads/products/x.jpg
     """
-    photo_url = (photo_url or "").strip()
-    if not chat_id or not photo_url:
-        return False
-    if not photo_url.startswith(("http://", "https://")):
-        current_app.logger.warning("Telegram photo skipped: invalid URL %s", photo_url[:80])
+    photo_ref = (photo_url or "").strip()
+    if not chat_id or not photo_ref:
         return False
 
     token = (bot_token or "").strip()
@@ -115,15 +119,35 @@ def send_telegram_photo(
         return False
 
     url = f"https://api.telegram.org/bot{token}/sendPhoto"
-    payload: dict[str, Any] = {
-        "chat_id": chat_id,
-        "photo": photo_url,
-    }
-    if caption and caption.strip():
-        payload["caption"] = caption[:1024]
 
     try:
-        resp = requests.post(url, json=payload, timeout=20)
+        # 1) URL مباشر
+        if photo_ref.startswith(("http://", "https://")):
+            payload: dict[str, Any] = {
+                "chat_id": chat_id,
+                "photo": photo_ref,
+            }
+            if caption and caption.strip():
+                payload["caption"] = caption[:1024]
+            resp = requests.post(url, json=payload, timeout=20)
+        else:
+            # 2) ملف محلي
+            local_file = _resolve_local_photo_file(photo_ref)
+            if not local_file:
+                current_app.logger.warning(
+                    "Telegram photo skipped: invalid local file source=%s",
+                    photo_ref[:180],
+                )
+                return False
+
+            data: dict[str, Any] = {"chat_id": chat_id}
+            if caption and caption.strip():
+                data["caption"] = caption[:1024]
+            mime = mimetypes.guess_type(local_file.name)[0] or "application/octet-stream"
+            with local_file.open("rb") as fh:
+                files = {"photo": (local_file.name, fh, mime)}
+                resp = requests.post(url, data=data, files=files, timeout=30)
+
         if resp.status_code >= 400:
             current_app.logger.error(
                 "Telegram sendPhoto failed: status=%s body=%s", resp.status_code, resp.text
@@ -134,4 +158,67 @@ def send_telegram_photo(
     except Exception as exc:  # pragma: no cover
         current_app.logger.exception("Telegram sendPhoto error: %s", exc)
         return False
+
+
+def _resolve_local_photo_file(photo_ref: str) -> Path | None:
+    """
+    يحوّل قيمة صورة من المخزون إلى ملف محلي إن أمكن.
+    أمثلة مدعومة:
+    - C:\\...\\img.jpg
+    - /var/www/.../img.jpg
+    - /static/uploads/products/img.jpg
+    - static/uploads/products/img.jpg
+    - /uploads/products/img.jpg
+    - file:///C:/path/img.jpg
+    """
+    raw = (photo_ref or "").strip()
+    if not raw:
+        return None
+    if raw.lower().startswith(("http://", "https://", "data:", "tg://")):
+        return None
+
+    parsed = urlparse(raw)
+    value = raw
+    if parsed.scheme == "file":
+        value = unquote(parsed.path or "").strip()
+        # file:///C:/x.jpg على ويندوز
+        if len(value) >= 3 and value[0] == "/" and value[2] == ":" and value[1].isalpha():
+            value = value[1:]
+        value = value.replace("/", "\\") if "\\" in raw else value
+
+    candidates: list[Path] = []
+    p = Path(value)
+    if p.is_absolute():
+        candidates.append(p)
+
+    root = Path(current_app.root_path)
+    stripped = value.lstrip("/\\")
+    if stripped:
+        # تحت جذر التطبيق مباشرة
+        candidates.append(root / stripped)
+        # صيغ شائعة لمسارات مخزون الصور
+        if stripped.startswith("uploads/"):
+            candidates.append(root / "static" / stripped)
+        if stripped.startswith("static/"):
+            candidates.append(root / stripped)
+        if stripped.startswith("autoposter/uploads/"):
+            candidates.append(root / "static" / stripped.replace("autoposter/", "", 1))
+
+    # /uploads/... في بيئات تستخدم مجلد uploads خارج static
+    if value.startswith("/uploads/"):
+        candidates.append(root / value.lstrip("/"))
+        candidates.append(root / "static" / value.lstrip("/"))
+
+    seen: set[str] = set()
+    for cand in candidates:
+        key = str(cand)
+        if key in seen:
+            continue
+        seen.add(key)
+        try:
+            if cand.exists() and cand.is_file():
+                return cand
+        except Exception:
+            continue
+    return None
 

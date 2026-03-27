@@ -356,7 +356,10 @@ export const App: React.FC = () => {
           prompt:
             "أنت مساعد حجز. راجع سجل المحادثة في تعليمات النظام وآخر رسالة للزبون.\n" +
             "اجمع الحقول: الاسم، الهاتف، الخدمة أو المنتج، الكمية، التاريخ، العنوان، ملاحظات.\n" +
+            "اجمع ما تستطيع من سجل المحادثة أولاً قبل أي سؤال جديد.\n" +
             "اسأل سؤالاً واحداً فقط في كل رد إذا نقص شيء.\n" +
+            "لا تكرر سؤال المنتج إذا كان معروفاً من السياق.\n" +
+            "إذا قال الزبون (احجز/أكمل/نفّذ) وكانت البيانات الأساسية موجودة من المحادثة، أكمل فوراً بدون أسئلة إضافية.\n" +
             'عند الاكتمال أضف JSON: {"type":"order","name":"","phone":"","service":"","quantity":"","date":"","address":"","notes":""}\n' +
             "إذا نقصت معلومات، لا تضف JSON.\n\nآخر رسالة من الزبون:\n{{message_text}}",
           subtitle: "فقط إذا user_intent = order",
@@ -373,7 +376,11 @@ export const App: React.FC = () => {
           invoice_status: "حجز",
           deduct_stock: true,
           skip_if_incomplete: true,
-          require_phone: false,
+          smart_require_contact: true,
+          require_phone: true,
+          require_address: true,
+          require_name: true,
+          allow_placeholder_phone: false,
           subtitle: "service → مطابقة منتج في الكتالوج",
         },
       },

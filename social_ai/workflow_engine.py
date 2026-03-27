@@ -57,6 +57,25 @@ _INTENT_ORDER_HINTS = frozenset(
 _INTENT_QUESTION_HINTS = frozenset(
     ("؟", "?", "كيف", "وش", "شنو", "شلون", "هل ", "هل\n", "ماذا", "لماذا", "when", "what", "how ", "why ")
 )
+_BOOKING_COMMIT_HINTS = frozenset(
+    (
+        "احجز",
+        "احجزل",
+        "حجز",
+        "تمم",
+        "اتمم",
+        "أتمم",
+        "اكمل",
+        "أكمل",
+        "نفذ",
+        "نفّذ",
+        "ثبت الطلب",
+        "ثبّت الطلب",
+        "finalize",
+        "confirm order",
+        "book now",
+    )
+)
 
 
 def _is_retriable_openai_error(exc: BaseException) -> bool:
@@ -122,6 +141,8 @@ def _refine_intent_with_context(message: str, history: str, current: str) -> str
         return current
     msg = (message or "").strip()
     hist = (history or "").strip()
+    if _is_booking_commit_message(msg):
+        return "order"
     if _extract_local_mobile_phone(msg):
         return "order"
     digits_only = re.sub(r"\D", "", _normalize_ar_digits(msg))
@@ -217,6 +238,215 @@ def _sanitize_quantity_value(val: Any) -> int | None:
     if q < 1:
         return None
     return min(q, 99_999)
+
+
+def _clean_extracted_field(text: str, max_len: int = 180) -> str:
+    s = re.sub(r"\s+", " ", str(text or "")).strip(" \t\r\n:;,.،-")
+    if len(s) > max_len:
+        s = s[:max_len].strip()
+    return s
+
+
+def _extract_name_from_text(text: str) -> str | None:
+    if not text or not str(text).strip():
+        return None
+    src = str(text)
+    patterns = [
+        r"(?:^|\n|،|,)\s*(?:الاسم(?:\s+الكامل)?|اسمي|اني|أنا)\s*(?:هو|:|-)?\s*([^\n\r,،]{2,100})",
+        r"(?:^|\n)\s*name\s*(?:is|:|-)?\s*([A-Za-z\u0600-\u06FF\s]{2,100})",
+    ]
+    for pat in patterns:
+        m = re.search(pat, src, flags=re.IGNORECASE)
+        if not m:
+            continue
+        raw = m.group(1)
+        raw = re.split(
+            r"(?:\bالعنوان\b|\bعنوان\b|\bالهاتف\b|\bرقم\b|\bphone\b|\baddress\b|\bservice\b|\bproduct\b)",
+            raw,
+            maxsplit=1,
+            flags=re.IGNORECASE,
+        )[0]
+        cand = _clean_extracted_field(raw, max_len=80)
+        if not cand:
+            continue
+        if re.search(r"\d", cand):
+            continue
+        if cand in {"احجز", "حجز", "نعم", "لا", "تم"}:
+            continue
+        if len(cand) < 2:
+            continue
+        return cand
+    return None
+
+
+def _extract_address_from_text(text: str) -> str | None:
+    if not text or not str(text).strip():
+        return None
+    src = str(text)
+    patterns = [
+        r"(?:^|\n|،|,)\s*(?:العنوان|عنواني|address)\s*(?:هو|:|-)?\s*([^\n\r]{4,220})",
+    ]
+    for pat in patterns:
+        m = re.search(pat, src, flags=re.IGNORECASE)
+        if not m:
+            continue
+        raw = m.group(1)
+        raw = re.split(r"(?:\bالرقم\b|\bالهاتف\b|\bphone\b|\bname\b)", raw, maxsplit=1, flags=re.IGNORECASE)[0]
+        cand = _clean_extracted_field(raw, max_len=160)
+        if len(cand) >= 4:
+            return cand
+    return None
+
+
+def _extract_quantity_from_text(text: str) -> int | None:
+    if not text or not str(text).strip():
+        return None
+    t = _normalize_ar_digits(str(text).lower())
+    for pat in (
+        r"(?:الكمية|كمية|العدد|عدد)\s*(?:هو|:|-)?\s*(\d{1,5})",
+        r"(\d{1,5})\s*(?:قطعة|قطع|حبة|حبات|وحدة|وحدات|pcs|pc)\b",
+    ):
+        m = re.search(pat, t, flags=re.IGNORECASE)
+        if not m:
+            continue
+        q = _sanitize_quantity_value(m.group(1))
+        if q is not None:
+            return q
+    return None
+
+
+def _is_booking_commit_message(message: str) -> bool:
+    if not message or not str(message).strip():
+        return False
+    t = _normalize_ar_digits(str(message).lower())
+    return any(h in t for h in _BOOKING_COMMIT_HINTS)
+
+
+def _infer_product_from_context(context: Dict[str, Any]) -> None:
+    if context.get("product_id") is not None and str(context.get("product_id")).strip() != "":
+        return
+    if str(context.get("product_name") or context.get("product") or "").strip():
+        return
+    query_blob = _query_blob_for_match(context)
+    if not query_blob.strip():
+        return
+    try:
+        products = Product.query.filter(Product.active == True).limit(1500).all()  # noqa: E712
+    except Exception:
+        return
+    if not products:
+        return
+    scored: list[tuple[int, Product]] = []
+    for p in products:
+        s = _score_product_match(p, query_blob)
+        if s > 0:
+            scored.append((s, p))
+    if not scored:
+        return
+    scored.sort(key=lambda x: (-x[0], x[1].id))
+    top_score, top = scored[0]
+    second_score = scored[1][0] if len(scored) > 1 else 0
+    # لا نفترض منتجاً إذا التطابق ضعيف/ملتبس.
+    if top_score < 6:
+        return
+    if second_score and (top_score - second_score) < 2:
+        return
+    context["product_id"] = int(top.id)
+    if top.name and not str(context.get("product_name") or context.get("product") or "").strip():
+        context["product_name"] = str(top.name)
+        context["product"] = str(top.name)
+
+
+def _infer_booking_fields_from_conversation(context: Dict[str, Any]) -> None:
+    blob = "\n".join(
+        [
+            str(context.get("message_text") or ""),
+            str(context.get("conversation_history") or ""),
+            str(context.get("conversation_for_booking") or ""),
+            str(context.get("booking_parse_source") or ""),
+        ]
+    ).strip()
+    if not blob:
+        return
+
+    if not str(context.get("customer_name") or context.get("name") or "").strip():
+        nm = _extract_name_from_text(blob)
+        if nm:
+            context["customer_name"] = nm
+            context["name"] = nm
+
+    if not str(context.get("address") or "").strip():
+        addr = _extract_address_from_text(blob)
+        if addr:
+            context["address"] = addr
+
+    if not str(context.get("phone") or "").strip():
+        _infer_phone_into_context(context)
+
+    if context.get("quantity") in (None, "", 0):
+        q = _extract_quantity_from_text(str(context.get("message_text") or ""))
+        if q is None:
+            q = _extract_quantity_from_text(blob)
+        if q is not None:
+            context["quantity"] = q
+
+    msg_now = str(context.get("message_text") or "")
+    intent_now = str(context.get("user_intent") or "").strip().lower()
+    if (
+        intent_now == "order"
+        or _is_booking_commit_message(msg_now)
+        or _heuristic_user_intent(msg_now) == "order"
+    ):
+        _infer_product_from_context(context)
+
+
+def _booking_fields_ready(
+    context: Dict[str, Any],
+    *,
+    require_name: bool,
+    require_phone: bool,
+    require_address: bool,
+) -> bool:
+    name_ok = bool(str(context.get("customer_name") or context.get("name") or "").strip())
+    phone = str(context.get("phone") or "").strip()
+    phone_ok = bool(_extract_local_mobile_phone(phone)) and not _is_placeholder_telegram_phone(phone)
+    addr_ok = len(str(context.get("address") or "").strip()) >= 4
+    product_ok = bool(
+        (context.get("product_id") is not None and str(context.get("product_id")).strip() != "")
+        or str(context.get("product_name") or context.get("product") or "").strip()
+    )
+    if not product_ok:
+        return False
+    if require_name and not name_ok:
+        return False
+    if require_phone and not phone_ok:
+        return False
+    if require_address and not addr_ok:
+        return False
+    return True
+
+
+def _missing_booking_fields(
+    context: Dict[str, Any],
+    *,
+    require_name: bool,
+    require_phone: bool,
+    require_address: bool,
+) -> list[str]:
+    missing: list[str] = []
+    if not (
+        (context.get("product_id") is not None and str(context.get("product_id")).strip() != "")
+        or str(context.get("product_name") or context.get("product") or "").strip()
+    ):
+        missing.append("المنتج")
+    if require_name and not str(context.get("customer_name") or context.get("name") or "").strip():
+        missing.append("الاسم الكامل")
+    phone = str(context.get("phone") or "").strip()
+    if require_phone and (not _extract_local_mobile_phone(phone) or _is_placeholder_telegram_phone(phone)):
+        missing.append("رقم الهاتف")
+    if require_address and len(str(context.get("address") or "").strip()) < 4:
+        missing.append("العنوان")
+    return missing
 
 
 @dataclass
@@ -538,6 +768,45 @@ def _product_catalog_lines(p: Product) -> list[str]:
     return lines
 
 
+def _product_image_candidates(p: Product) -> list[str]:
+    """جمع مسارات/روابط صور المنتج (URL أو path محلي)."""
+    items: list[str] = []
+
+    main = str(p.image_url or "").strip()
+    if main and not main.lower().startswith("data:"):
+        items.append(main)
+
+    try:
+        meta = json.loads((p.meta_json or "").strip()) if (p.meta_json or "").strip() else {}
+    except Exception:
+        meta = {}
+
+    if isinstance(meta, dict):
+        for k in ("image", "image_url", "image_path", "photo", "photo_path", "thumbnail", "thumbnail_path"):
+            v = meta.get(k)
+            if v is None:
+                continue
+            s = str(v).strip()
+            if s and not s.lower().startswith("data:"):
+                items.append(s)
+        for lk in ("images", "photos", "gallery"):
+            arr = meta.get(lk)
+            if isinstance(arr, list):
+                for v in arr:
+                    s = str(v or "").strip()
+                    if s and not s.lower().startswith("data:"):
+                        items.append(s)
+
+    dedup: list[str] = []
+    seen: set[str] = set()
+    for s in items:
+        if s in seen:
+            continue
+        seen.add(s)
+        dedup.append(s)
+    return dedup
+
+
 def _build_inventory_catalog(limit: int = 300, include_inactive: bool = False) -> str:
     """
     Build catalog text from company inventory (Product table in tenant DB).
@@ -577,9 +846,7 @@ def _build_matched_inventory_catalog(
         text = _build_inventory_catalog(limit=min(pool_limit, 2000), include_inactive=include_inactive)
         imgs: list[str] = []
         for p in products[:5]:
-            u = (p.image_url or "").strip()
-            if u.startswith(("http://", "https://")):
-                imgs.append(u)
+            imgs.extend(_product_image_candidates(p)[:2])
         return text, list(dict.fromkeys(imgs))
 
     query_blob = _query_blob_for_match(context)
@@ -603,9 +870,7 @@ def _build_matched_inventory_catalog(
     image_urls: list[str] = []
     for p in matched:
         lines.extend(_product_catalog_lines(p))
-        u = (p.image_url or "").strip()
-        if u.startswith(("http://", "https://")):
-            image_urls.append(u)
+        image_urls.extend(_product_image_candidates(p)[:2])
 
     return "\n".join(lines), list(dict.fromkeys(image_urls))[:5]
 
@@ -776,6 +1041,43 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
             out["user_intent"] = "unknown"
         return out
 
+    if task in ("intent", "booking"):
+        _infer_booking_fields_from_conversation(context)
+
+    if task == "booking":
+        smart_require_contact = bool(data.get("smart_require_contact", True))
+        require_name = bool(data.get("require_name", smart_require_contact))
+        require_phone = bool(data.get("require_phone", smart_require_contact))
+        require_address = bool(data.get("require_address", smart_require_contact))
+
+        if _is_booking_commit_message(msg_in):
+            missing = _missing_booking_fields(
+                context,
+                require_name=require_name,
+                require_phone=require_phone,
+                require_address=require_address,
+            )
+            if not missing:
+                product_label = str(context.get("product_name") or context.get("product") or "المنتج").strip()
+                quick_reply = (
+                    f"تم ✅ استلام بيانات الحجز لـ {product_label}. "
+                    "جاري تثبيت الحجز الآن."
+                )
+                return {
+                    "text": quick_reply,
+                    "reply_text": quick_reply,
+                    "topic": (data.get("topic") or context.get("topic") or "").strip(),
+                    "booking_quick_path": True,
+                }
+            ask_one = missing[0]
+            ask_reply = f"حتى أثبّت الحجز الآن، أحتاج {ask_one} فقط."
+            return {
+                "text": ask_reply,
+                "reply_text": ask_reply,
+                "topic": (data.get("topic") or context.get("topic") or "").strip(),
+                "booking_pending_fields": missing,
+            }
+
     # إعدادات المهمة
     topic = (data.get("topic") or context.get("topic") or "").strip()
     if not topic and context.get("message_text"):
@@ -799,12 +1101,12 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
             template = "اقترح 5 أفكار لموضوعات منشورات حول {{topic}}"
         elif task == "booking":
             template = (
-                "ساعد الزبون على إتمام حجز المنتج اعتماداً على معرفة الكتالوج إن وُجدت.\n"
-                "رسالة الزبون:\n{{message_text}}\n\n"
-                "إذا توفّر (الاسم، رقم الهاتف، المنتج أو معرفه، الكمية) بشكل واضح، "
-                "أكمل الرد بجملة تأكيد ثم أضف في آخر الرسالة كتلة JSON فقط بهذا الشكل:\n"
-                '{"booking":{"name":"...","phone":"...","product_name":"...","product_id":null,"quantity":1,"price":null}}\n'
-                "استخدم product_id إذا عرفته من السياق، وإلا product_name. إذا نقصت معلومات، اسأل عنها ولا تضف JSON."
+                "ساعد الزبون على إتمام الحجز اعتماداً على سجل المحادثة والكتالوج.\n"
+                "رسالة الزبون الحالية:\n{{message_text}}\n\n"
+                "اجمع البيانات من السياق قبل السؤال (الاسم، الهاتف، العنوان، المنتج/الخدمة، الكمية).\n"
+                "إذا كانت البيانات مكتملة: اكتب تأكيداً قصيراً ثم أضف JSON فقط في آخر الرد بهذا الشكل:\n"
+                '{"booking":{"name":"...","phone":"...","address":"...","product_name":"...","product_id":null,"quantity":1,"price":null}}\n'
+                "إذا نقصت معلومة واحدة، اسأل عنها فقط بسؤال واحد موجز ولا تضف JSON."
             )
         elif task == "intent":
             if str(context.get("conversation_history") or "").strip():
@@ -882,6 +1184,10 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
             "إذا سبق في السياق ذكر منتج أو سعر أو مقاس، والزبون أرسل الآن اسماً أو هاتفاً أو عنواناً فاعتبره إتماماً لطلب سبق، "
             "ولا تسأل من جديد «ما المنتج الذي تريد»؛ أكد الحجز أو اطلب نقصاً واحداً فقط إن وُجد."
         )
+        system_parts.append(
+            "إذا كانت رسالة الزبون قصيرة جداً (مثل رقم مقاس/كمية: 42 أو 2) فاعتبرها متابعة لأقرب منتج ذُكر في السياق، "
+            "وقدّم جواباً مباشراً بدل إعادة فتح الحوار من البداية."
+        )
 
     if task == "booking" and conversation_history:
         system_parts.append(
@@ -890,6 +1196,10 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
         system_parts.append(
             "لا تسأل «ما المنتج الذي تريد» إذا كان المنتج أو الخدمة أو السعر قد وُضح في سجل المحادثة؛ "
             "اطلب فقط ما ينقص (اسم، هاتف، عنوان، كمية) أو أكد الحجز باختصار."
+        )
+        system_parts.append(
+            "إذا كتب الزبون عبارة إتمام مثل (احجز/أكمل/نفّذ) وكانت البيانات الأساسية متوفرة من السياق، "
+            "اعطِ تأكيداً مختصراً وأرفق JSON الحجز مباشرة."
         )
 
     if task == "intent":
@@ -1453,24 +1763,45 @@ def run_sql_save_order_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str,
         return out
 
     _merge_booking_from_ai_into_context(context)
+    _infer_booking_fields_from_conversation(context)
     _infer_phone_into_context(context)
 
     default_name = str(data.get("default_customer_name") or "عميل").strip() or "عميل"
     name = str(context.get("customer_name") or context.get("name") or default_name).strip()
     chat_id = str(context.get("chat_id") or "").strip()
+    address = str(context.get("address") or "").strip()
+
+    channel = str(context.get("channel") or data.get("channel_default") or "telegram").strip() or "telegram"
+    run_if_rule = str(data.get("run_if") or "").strip()
+    is_telegram_intent_flow = channel.lower() == "telegram" and run_if_rule == "user_intent:order"
+    smart_require_contact = bool(data.get("smart_require_contact", is_telegram_intent_flow))
+    require_name = bool(data.get("require_name", smart_require_contact))
+    require_phone = bool(data.get("require_phone", smart_require_contact))
+    require_address = bool(data.get("require_address", smart_require_contact))
+    allow_placeholder_phone = bool(data.get("allow_placeholder_phone", False))
+
     phone = str(context.get("phone") or "").strip()
-    if not phone and chat_id:
+    if not phone and chat_id and allow_placeholder_phone:
         phone = f"tg-{chat_id}"[:20]
         context["phone"] = phone
 
-    require_phone = bool(data.get("require_phone", False))
-    if require_phone and _is_placeholder_telegram_phone(phone):
+    if require_name and (not name or name == default_name):
+        msg = "يرجى إرسال الاسم الكامل لتأكيد الحجز."
+        if skip_incomplete:
+            return _skip(msg)
+        raise RuntimeError(msg)
+
+    if require_phone and (not phone or _is_placeholder_telegram_phone(phone)):
         msg = "يرجى إرسال رقم الهاتف بصيغة واضحة (مثال 07xxxxxxxx) لتأكيد الحجز."
         if skip_incomplete:
             return _skip(msg)
         raise RuntimeError(msg)
 
-    address = str(context.get("address") or "").strip()
+    if require_address and not address:
+        msg = "يرجى إرسال العنوان لتأكيد الحجز."
+        if skip_incomplete:
+            return _skip(msg)
+        raise RuntimeError(msg)
 
     try:
         qty = int(context.get("quantity") or 1)
@@ -1490,7 +1821,6 @@ def run_sql_save_order_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str,
             return _skip(msg)
         raise RuntimeError(msg)
 
-    channel = str(context.get("channel") or data.get("channel_default") or "telegram").strip() or "telegram"
     invoice_status = str(data.get("invoice_status") or "حجز").strip() or "حجز"
     deduct_stock = bool(data.get("deduct_stock", True))
 
