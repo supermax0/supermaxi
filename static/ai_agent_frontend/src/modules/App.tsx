@@ -1889,15 +1889,41 @@ export const App: React.FC = () => {
                         <>
                           <div>
                             <label className="mb-1 block text-[11px] text-slate-400">
-                              عدد المنتجات (حد أقصى)
+                              وضع المخزون للـ AI
+                            </label>
+                            <select
+                              className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none"
+                              value={(selectedNode.data as any)?.inventory_mode || "match"}
+                              onChange={handleKnowledgeFieldChange("inventory_mode")}
+                            >
+                              <option value="match">فقط المنتجات المطابقة لسؤال العميل (مُستحسن)</option>
+                              <option value="full">عرض كامل المخزون (ثقيل على السياق)</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-[11px] text-slate-400">
+                              حجم البحث في المخزون (عدد المنتجات الممسوحة للمطابقة)
+                            </label>
+                            <input
+                              type="number"
+                              min={50}
+                              max={5000}
+                              className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none"
+                              value={(selectedNode.data as any)?.inventory_pool ?? (selectedNode.data as any)?.inventory_limit ?? 800}
+                              onChange={handleKnowledgeFieldChange("inventory_pool")}
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-[11px] text-slate-400">
+                              أقصى عدد منتجات مطابقة تُمرَّر للـ AI
                             </label>
                             <input
                               type="number"
                               min={1}
-                              max={2000}
+                              max={30}
                               className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none"
-                              value={(selectedNode.data as any)?.inventory_limit || 300}
-                              onChange={handleKnowledgeFieldChange("inventory_limit")}
+                              value={(selectedNode.data as any)?.match_limit || 8}
+                              onChange={handleKnowledgeFieldChange("match_limit")}
                             />
                           </div>
                           <label className="flex items-center gap-2 text-[11px] text-slate-300">
@@ -1909,7 +1935,7 @@ export const App: React.FC = () => {
                             تضمين المنتجات غير الفعالة
                           </label>
                           <p className="text-[10px] text-slate-500">
-                            عند التنفيذ سيتم تحميل بيانات المنتجات من مخزون الشركة تلقائيًا وتمريرها للذكاء الاصطناعي.
+                            يُطابق المنتجات حسب كلمات رسالة العميل وسياق المحادثة، ثم يمرّر التفاصيل للذكاء. إذا وُجدت صورة للمنتج في المخزون يمكن إرسالها من عقدة Telegram Send.
                           </p>
                         </>
                       )}
@@ -2014,6 +2040,33 @@ export const App: React.FC = () => {
                           onChange={handleMessagingFieldChange("template")}
                         />
                       </div>
+                      {selectedNode.type === "telegram_send" && (
+                        <>
+                          <label className="flex items-center gap-2 text-[11px] text-slate-300">
+                            <input
+                              type="checkbox"
+                              checked={(selectedNode.data as any)?.send_product_images !== false}
+                              onChange={(e) =>
+                                updateNodeData(selectedNode.id, { send_product_images: e.target.checked })
+                              }
+                            />
+                            إرسال صور المنتجات المطابقة (إن وُجد رابط صورة في المخزون)
+                          </label>
+                          <div>
+                            <label className="mb-1 block text-[11px] text-slate-400">
+                              أقصى عدد صور بعد الرسالة
+                            </label>
+                            <input
+                              type="number"
+                              min={0}
+                              max={10}
+                              className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none"
+                              value={(selectedNode.data as any)?.max_product_photos ?? 5}
+                              onChange={handleMessagingFieldChange("max_product_photos")}
+                            />
+                          </div>
+                        </>
+                      )}
                     </div>
                   </>
                 )}

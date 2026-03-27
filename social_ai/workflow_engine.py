@@ -19,7 +19,7 @@ from models.social_account import SocialAccount
 from models.social_post import SocialPost
 from social_ai.ai_engine import generate_caption, generate_comment_reply, get_client
 from social_ai.image_generator import generate_image
-from social_ai.messaging import send_telegram_message, send_whatsapp_message
+from social_ai.messaging import send_telegram_message, send_telegram_photo, send_whatsapp_message
 from social_ai.publish_manager import publish_post_to_accounts
 from services.facebook_service import fetch_comments as fb_fetch_comments, reply_comment as fb_reply_comment
 from services.instagram_service import fetch_comments as ig_fetch_comments, reply_comment as ig_reply_comment
@@ -129,7 +129,15 @@ def _memory_key(context: Dict[str, Any]) -> str | None:
     return f"{workflow_id}:{chat_id}"
 
 
+def _normalize_ar_digits(text: str) -> str:
+    if not text:
+        return ""
+    trans = str.maketrans("٠١٢٣٤٥٦٧٨٩", "0123456789")
+    return text.translate(trans)
+
+
 def _tokenize_text(text: str) -> set[str]:
+    text = _normalize_ar_digits(text or "")
     tokens = re.findall(r"[\u0600-\u06FFa-zA-Z0-9_]+", text.lower())
     return {t for t in tokens if len(t) >= 3}
 
@@ -169,6 +177,119 @@ def _select_relevant_knowledge(catalog_text: str, query_text: str, max_chars: in
     return result
 
 
+_AR_STOP = frozenset(
+    {
+        "هل",
+        "ما",
+        "في",
+        "من",
+        "على",
+        "عن",
+        "هذا",
+        "هذه",
+        "ذلك",
+        "الي",
+        "الى",
+        "إلى",
+        "مع",
+        "قد",
+        "تم",
+        "كل",
+        "أي",
+        "اي",
+        "كم",
+        "هل",
+    }
+)
+
+
+def _query_blob_for_match(context: Dict[str, Any]) -> str:
+    """نص البحث: رسالة المستخدم + ملخص المحادثة."""
+    parts = [
+        str(context.get("message_text") or ""),
+        str(context.get("comment_text") or ""),
+        str(context.get("conversation_history") or ""),
+    ]
+    return _normalize_ar_digits("\n".join(parts)).lower()
+
+
+def _product_match_blob(p: Product) -> str:
+    parts: list[str] = [
+        p.name or "",
+        p.sku or "",
+        p.barcode or "",
+        str(p.sale_price or ""),
+        str(p.quantity or ""),
+        str(p.description or ""),
+    ]
+    try:
+        if (p.meta_json or "").strip():
+            meta = json.loads((p.meta_json or "").strip())
+            if isinstance(meta, dict):
+                for k in ("brand", "category", "size", "color", "unit", "model"):
+                    v = meta.get(k)
+                    if v is not None and str(v).strip():
+                        parts.append(str(v))
+    except Exception:
+        pass
+    return _normalize_ar_digits(" ".join(parts)).lower()
+
+
+def _score_product_match(p: Product, query_blob: str) -> int:
+    if not query_blob.strip():
+        return 0
+    hay = _product_match_blob(p)
+    score = 0
+    # كلمات عربية/إنجليزية (2 أحرف فأكثر)
+    for w in re.findall(r"[\u0600-\u06ffa-z0-9]{2,}", query_blob):
+        if w in _AR_STOP and len(w) <= 3:
+            continue
+        if len(w) >= 2 and w in hay:
+            score += 2
+    # أرقام (مقاسات، أسعار)
+    for n in re.findall(r"\d+", query_blob):
+        if len(n) >= 1 and n in hay:
+            score += 4
+    return score
+
+
+def _product_catalog_lines(p: Product) -> list[str]:
+    extra = ""
+    try:
+        meta = json.loads((p.meta_json or "").strip()) if (p.meta_json or "").strip() else {}
+        if isinstance(meta, dict) and meta:
+            allowed = ["brand", "unit", "category", "shelf", "color", "size"]
+            parts = []
+            for k in allowed:
+                v = meta.get(k)
+                if v is not None and str(v).strip():
+                    parts.append(f"{k}: {v}")
+            if parts:
+                extra = " | " + " | ".join(parts)
+    except Exception:
+        extra = ""
+
+    lines = [
+        (
+            f"- المنتج: {p.name}"
+            f" | SKU: {p.sku or '-'}"
+            f" | Barcode: {p.barcode or '-'}"
+            f" | سعر البيع: {p.sale_price}"
+            f" | سعر الشراء: {p.buy_price}"
+            f" | المخزون الحالي: {p.quantity}"
+            f" | حد التنبيه: {p.low_stock_threshold}"
+            f"{extra}"
+        )
+    ]
+    if p.description:
+        desc = str(p.description).strip()
+        if desc:
+            if len(desc) > 220:
+                desc = desc[:220] + "..."
+            lines.append(f"  الوصف: {desc}")
+    return lines
+
+
 def _build_inventory_catalog(limit: int = 300, include_inactive: bool = False) -> str:
     """
     Build catalog text from company inventory (Product table in tenant DB).
@@ -182,42 +303,63 @@ def _build_inventory_catalog(limit: int = 300, include_inactive: bool = False) -
 
     lines: list[str] = ["كتالوج المنتجات من المخزون:"]
     for p in products:
-        extra = ""
-        try:
-            meta = json.loads((p.meta_json or "").strip()) if (p.meta_json or "").strip() else {}
-            if isinstance(meta, dict) and meta:
-                # Keep only short, useful metadata keys to avoid prompt bloat
-                allowed = ["brand", "unit", "category", "shelf", "color", "size"]
-                parts = []
-                for k in allowed:
-                    v = meta.get(k)
-                    if v is not None and str(v).strip():
-                        parts.append(f"{k}: {v}")
-                if parts:
-                    extra = " | " + " | ".join(parts)
-        except Exception:
-            extra = ""
-
-        lines.append(
-            (
-                f"- المنتج: {p.name}"
-                f" | SKU: {p.sku or '-'}"
-                f" | Barcode: {p.barcode or '-'}"
-                f" | سعر البيع: {p.sale_price}"
-                f" | سعر الشراء: {p.buy_price}"
-                f" | المخزون الحالي: {p.quantity}"
-                f" | حد التنبيه: {p.low_stock_threshold}"
-                f"{extra}"
-            )
-        )
-        if p.description:
-            desc = str(p.description).strip()
-            if desc:
-                if len(desc) > 220:
-                    desc = desc[:220] + "..."
-                lines.append(f"  الوصف: {desc}")
+        lines.extend(_product_catalog_lines(p))
 
     return "\n".join(lines)
+
+
+def _build_matched_inventory_catalog(
+    context: Dict[str, Any],
+    data: Dict[str, Any],
+) -> tuple[str, list[str]]:
+    """
+    يرجع (نص للـ AI، روابط صور للمنتجات المطابقة فقط).
+    """
+    pool_limit = max(50, min(int(data.get("inventory_pool") or data.get("inventory_limit") or 800), 5000))
+    include_inactive = bool(data.get("include_inactive") or False)
+    match_limit = max(1, min(int(data.get("match_limit") or 8), 30))
+    mode = str(data.get("inventory_mode") or "match").strip().lower()
+
+    q = Product.query.order_by(Product.name.asc(), Product.id.asc())
+    if not include_inactive:
+        q = q.filter(Product.active == True)  # noqa: E712
+    products = q.limit(pool_limit).all()
+
+    if mode == "full":
+        text = _build_inventory_catalog(limit=min(pool_limit, 2000), include_inactive=include_inactive)
+        imgs: list[str] = []
+        for p in products[:5]:
+            u = (p.image_url or "").strip()
+            if u.startswith(("http://", "https://")):
+                imgs.append(u)
+        return text, list(dict.fromkeys(imgs))
+
+    query_blob = _query_blob_for_match(context)
+    scored: list[tuple[int, Product]] = []
+    for p in products:
+        s = _score_product_match(p, query_blob)
+        scored.append((s, p))
+    scored.sort(key=lambda x: (-x[0], x[1].name or ""))
+
+    matched = [p for s, p in scored if s > 0][:match_limit]
+    if not matched:
+        hint = (
+            "(لا يوجد في المخزون المعروض منتج يطابق كلمات البحث بوضوح. "
+            "اسأل العميل عن النوع/المقاس/الميزانية أو اعرض الفئات المتوفرة باختصار دون اختراع أرقام.)"
+        )
+        return hint, []
+
+    lines: list[str] = [
+        "المنتجات المطابقة لسؤال العميل (استخدم فقط هذه البيانات للأسعار والمواصفات):",
+    ]
+    image_urls: list[str] = []
+    for p in matched:
+        lines.extend(_product_catalog_lines(p))
+        u = (p.image_url or "").strip()
+        if u.startswith(("http://", "https://")):
+            image_urls.append(u)
+
+    return "\n".join(lines), list(dict.fromkeys(image_urls))[:5]
 
 
 def _load_conversation_history(context: Dict[str, Any]) -> str:
@@ -303,6 +445,13 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
     if target_audience:
         system_parts.append(f"الجمهور المستهدف: {target_audience}.")
 
+    if context.get("message_text") and str(context.get("knowledge") or "").strip():
+        system_parts.append(
+            "أنت مندوب مبيعات ودود: قدّم إجابة مقنعة تعتمد فقط على معلومات الكتالوج أدناه؛ "
+            "اذكر السعر والمخزون إن وُجدت بالكتالوج، واشرح الفائدة باختصار، وادعُ بلطف لإتمام الطلب أو طلب التفاصيل. "
+            "لا تخترع منتجات أو أسعار أو مواصفات غير مذكورة في الكتالوج. إذا لم تتوفر معلومة، قل ذلك صراحة."
+        )
+
     conversation_history = str(context.get("conversation_history") or "").strip()
     if conversation_history:
         if len(conversation_history) > 2500:
@@ -318,7 +467,9 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
         trimmed = knowledge.strip()
         if len(trimmed) > 4000:
             trimmed = trimmed[:4000]
-        system_parts.append("استخدم معلومات الكتالوج التالية عند الإجابة عن الأسئلة أو كتابة المحتوى:\n" + trimmed)
+        system_parts.append(
+            "الكتالوج / المعرفة المعتمدة (لا تستخدم معلومات خارجها للأسعار والمواصفات):\n" + trimmed
+        )
 
     system_prompt = " ".join(system_parts)
 
@@ -596,12 +747,28 @@ def run_telegram_send_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, 
     # استخدام توكن البوت من عقدة Listener (السياق) أو من هذه العقدة أو الإعدادات
     bot_token = (data.get("bot_token") or context.get("telegram_bot_token") or "").strip() or None
 
+    photos_sent = 0
     if chat_id and message:
         send_telegram_message(chat_id, message, bot_token=bot_token)
+
+    send_imgs = bool(data.get("send_product_images", True))
+    max_photos = max(0, min(int(data.get("max_product_photos") or 5), 10))
+    urls = context.get("telegram_product_image_urls") or []
+    if (
+        send_imgs
+        and chat_id
+        and isinstance(urls, list)
+        and urls
+        and max_photos > 0
+    ):
+        for photo_url in urls[:max_photos]:
+            if send_telegram_photo(str(chat_id), str(photo_url), bot_token=bot_token):
+                photos_sent += 1
 
     result: Dict[str, Any] = {
         "telegram_chat_id": chat_id,
         "telegram_message": message,
+        "telegram_photos_sent": photos_sent,
     }
     context.update(result)
     return result
@@ -624,30 +791,35 @@ def run_knowledge_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]
     data = node.data or {}
     source = str(data.get("source") or "manual").strip().lower()
     if source == "inventory":
-        catalog = _build_inventory_catalog(
-            limit=int(data.get("inventory_limit") or 300),
-            include_inactive=bool(data.get("include_inactive") or False),
-        )
+        new_value, img_urls = _build_matched_inventory_catalog(context, data)
+        context["telegram_product_image_urls"] = img_urls
     else:
         catalog = str(data.get("catalog") or "").strip()
+        context["telegram_product_image_urls"] = []
+        new_value = catalog
     mode = data.get("mode") or "replace"
-    rendered = _render_template(catalog, context).strip()
+    rendered = _render_template(new_value, context).strip()
 
     if not rendered:
         return {}
 
     if mode == "append" and isinstance(context.get("knowledge"), str):
-        new_value = (context.get("knowledge") or "") + "\n" + rendered
+        merged = (context.get("knowledge") or "") + "\n" + rendered
     else:
-        new_value = rendered
+        merged = rendered
 
     query_text = str(context.get("message_text") or context.get("comment_text") or "").strip()
-    relevant = _select_relevant_knowledge(new_value, query_text, max_chars=4000, max_chunks=6)
-    context["knowledge_full"] = new_value
-    context["knowledge"] = relevant or new_value[:4000]
+    if source == "inventory" and str(data.get("inventory_mode") or "match").strip().lower() != "full":
+        context["knowledge_full"] = merged
+        context["knowledge"] = merged[:4000]
+    else:
+        relevant = _select_relevant_knowledge(merged, query_text, max_chars=4000, max_chunks=6)
+        context["knowledge_full"] = merged
+        context["knowledge"] = relevant or merged[:4000]
     return {
         "knowledge": context["knowledge"],
-        "knowledge_full": new_value,
+        "knowledge_full": context["knowledge_full"],
+        "telegram_product_image_urls": context.get("telegram_product_image_urls") or [],
     }
 
 def run_comment_listener_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
