@@ -30,12 +30,72 @@ class NodeDef:
 
 
 def _build_graph(workflow: AgentWorkflow) -> List[NodeDef]:
+    """
+    Build an execution order for Flask runner.
+
+    - Prefer following `edges` deterministically (start -> next -> ...).
+    - Fall back to original nodes list order if edges are missing/invalid.
+
+    Note: Node backend has its own runner; this is only for the Flask fallback.
+    """
     graph = workflow.graph_json or {}
     nodes_data = graph.get("nodes") or []
-    nodes: List[NodeDef] = []
-    for n in nodes_data:
-        nodes.append(NodeDef(id=str(n.get("id")), type=n.get("type") or "", data=n.get("data") or {}))
-    return nodes
+    edges_data = graph.get("edges") or []
+
+    # Build node map first
+    nodes_by_id: dict[str, NodeDef] = {}
+    linear_nodes: List[NodeDef] = []
+    for n in nodes_data if isinstance(nodes_data, list) else []:
+        nd = NodeDef(id=str(n.get("id")), type=n.get("type") or "", data=n.get("data") or {})
+        nodes_by_id[nd.id] = nd
+        linear_nodes.append(nd)
+
+    # If no edges, keep previous behavior
+    if not isinstance(edges_data, list) or not edges_data:
+        return linear_nodes
+
+    # Deterministic adjacency in the order edges appear
+    next_map: dict[str, List[str]] = {}
+    for e in edges_data:
+        if not isinstance(e, dict):
+            continue
+        src = str(e.get("source") or "")
+        tgt = str(e.get("target") or "")
+        if not src or not tgt:
+            continue
+        if src not in nodes_by_id or tgt not in nodes_by_id:
+            continue
+        next_map.setdefault(src, []).append(tgt)
+
+    # Pick entry: start node if exists, else first node in list
+    entry_id = ""
+    for nd in linear_nodes:
+        if nd.type == "start":
+            entry_id = nd.id
+            break
+    if not entry_id and linear_nodes:
+        entry_id = linear_nodes[0].id
+
+    if not entry_id or entry_id not in nodes_by_id:
+        return linear_nodes
+
+    # Walk edges, avoiding loops; collect reachable nodes
+    ordered: List[NodeDef] = []
+    visited: set[str] = set()
+
+    current_id: str | None = entry_id
+    while current_id and current_id in nodes_by_id and current_id not in visited:
+        visited.add(current_id)
+        ordered.append(nodes_by_id[current_id])
+        nxts = next_map.get(current_id) or []
+        current_id = nxts[0] if nxts else None
+
+    # Append any remaining nodes (disconnected or branches) in their original order
+    for nd in linear_nodes:
+        if nd.id not in visited:
+            ordered.append(nd)
+
+    return ordered
 
 
 def _render_prompt(template: str, context: Dict[str, Any]) -> str:
