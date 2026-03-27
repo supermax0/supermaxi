@@ -433,14 +433,16 @@ def run_telegram_send_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, 
     """إرسال رسالة تيليجرام باستخدام بيانات العقدة والسياق."""
     data = node.data or {}
     chat_tmpl = str(data.get("chat_id") or data.get("to") or context.get("chat_id") or "")
-    msg_tmpl = str(
-        data.get("message")
-        or data.get("template")
-        or context.get("reply_text")
-        or context.get("text")
-        or context.get("message_text")
-        or ""
-    )
+
+    # في تدفق المحادثة (وجود message_text) نعطي الأولوية لرد الـ AI
+    # حتى لا يبقى نص تجريبي ثابت مثل "test/hello test".
+    ai_reply = str(context.get("reply_text") or context.get("text") or "").strip()
+    configured_msg = str(data.get("message") or data.get("template") or "").strip()
+    has_vars = ("{{" in configured_msg and "}}" in configured_msg)
+    if context.get("message_text") and ai_reply:
+        msg_tmpl = configured_msg if has_vars else ai_reply
+    else:
+        msg_tmpl = str(configured_msg or ai_reply or context.get("message_text") or "")
 
     chat_id = _render_template(chat_tmpl, context).strip()
     message = _render_template(msg_tmpl, context).strip()
