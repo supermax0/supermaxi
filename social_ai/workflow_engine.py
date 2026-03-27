@@ -763,6 +763,7 @@ def run_telegram_send_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, 
     photos_sent = 0
     if chat_id and message:
         send_telegram_message(chat_id, message, bot_token=bot_token)
+        context["_telegram_sent"] = True
 
     send_imgs = bool(data.get("send_product_images", True))
     max_photos = max(0, min(int(data.get("max_product_photos") or 5), 10))
@@ -777,6 +778,7 @@ def run_telegram_send_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, 
         for photo_url in urls[:max_photos]:
             if send_telegram_photo(str(chat_id), str(photo_url), bot_token=bot_token):
                 photos_sent += 1
+                context["_telegram_sent"] = True
 
     result: Dict[str, Any] = {
         "telegram_chat_id": chat_id,
@@ -1266,7 +1268,7 @@ def execute_workflow(execution: AgentExecution, initial_context: Dict[str, Any] 
     context: Dict[str, Any] = dict(initial_context or {})
     context.setdefault("workflow_id", workflow.id)
     context.setdefault("tenant_slug", getattr(workflow.agent, "tenant_slug", None))
-    if context.get("chat_id") and context.get("message_text"):
+    if context.get("chat_id"):
         context["conversation_history"] = _load_conversation_history(context)
 
     def log(node: NodeDef, status: str, input_obj: Any = None, output_obj: Any = None, error: str | None = None):
@@ -1367,6 +1369,17 @@ def execute_workflow(execution: AgentExecution, initial_context: Dict[str, Any] 
 
         execution.status = "success"
         db.session.commit()
+
+        # رد احتياطي لتيليجرام: إذا وُجد رد من الـ AI ولم يُرسل عبر telegram_send
+        if not context.get("_telegram_sent"):
+            cid = context.get("chat_id")
+            tok = (context.get("telegram_bot_token") or "").strip() or None
+            reply = (context.get("reply_text") or context.get("text") or "").strip()
+            if cid and tok and reply:
+                send_telegram_message(str(cid), reply[:4096], bot_token=tok)
+                context["_telegram_auto_reply"] = True
+                context["telegram_message"] = reply
+                _append_conversation_turn(context, reply)
     except Exception as e:  # pragma: no cover
         execution.status = "failed"
         execution.error_message = str(e)

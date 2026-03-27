@@ -152,6 +152,29 @@ def _normalize_graph(graph: Any) -> Dict[str, Any]:
     }
 
 
+def _notify_telegram_if_workflow_failed(execution_id: int, initial_context: Dict[str, Any] | None) -> None:
+    """يرسل للمستخدم رسالة قصيرة إذا فشل الوورك فلو (مثلاً حجز أو خطأ في عقدة)."""
+    if not initial_context:
+        return
+    ex = AgentExecution.query.get(execution_id)
+    if not ex or (ex.status or "") != "failed":
+        return
+    cid = initial_context.get("chat_id")
+    tok = (initial_context.get("telegram_bot_token") or "").strip()
+    if not cid or not tok:
+        return
+    err = (ex.error_message or "")[:200]
+    msg = "عذراً، تعذّر إكمال طلبك الآن. يمكنك المحاولة لاحقاً أو التواصل مع الدعم."
+    if err:
+        msg = f"{msg}\n({err})"
+    try:
+        from social_ai.messaging import send_telegram_message
+
+        send_telegram_message(str(cid), msg[:900], bot_token=tok)
+    except Exception:  # pragma: no cover
+        current_app.logger.exception("Telegram failure notification skipped")
+
+
 def _run_workflow_in_background(
     app_obj,
     execution_id: int,
@@ -176,6 +199,7 @@ def _run_workflow_in_background(
                 execution.status = "failed"
                 execution.error_message = str(exc)
                 db.session.commit()
+            _notify_telegram_if_workflow_failed(execution_id, initial_context)
         finally:
             try:
                 flask_g.tenant = old_tenant
