@@ -40,7 +40,10 @@ AGENT_TEMPLATES: Dict[str, Dict[str, Any]] = {
                     "data": {"chat_id": "{{chat_id}}", "message": "{{reply_text}}"},
                 },
             ],
-            "edges": [],
+            "edges": [
+                {"id": "e-tg-ai", "source": "tg-listener", "target": "ai-reply", "sourceHandle": "out", "targetHandle": "in"},
+                {"id": "e-ai-send", "source": "ai-reply", "target": "tg-send", "sourceHandle": "out", "targetHandle": "in"},
+            ],
         },
     },
     "whatsapp": {
@@ -217,7 +220,16 @@ AGENT_TEMPLATES: Dict[str, Dict[str, Any]] = {
                     "data": {"label": "End", "subtitle": "انتهاء التشغيل"},
                 },
             ],
-            "edges": [],
+            # أسلاك كاملة حتى لا يختلط ترتيب التنفيذ عند إضافة المستخدم أسهمًا جزئية فقط
+            "edges": [
+                {"id": "e-tg-kb", "source": "tg-listener", "target": "kb-inventory", "sourceHandle": "out", "targetHandle": "in"},
+                {"id": "e-kb-ai", "source": "kb-inventory", "target": "ai-sales", "sourceHandle": "out", "targetHandle": "in"},
+                {"id": "e-ai-send", "source": "ai-sales", "target": "tg-send", "sourceHandle": "out", "targetHandle": "in"},
+                {"id": "e-send-ctx", "source": "tg-send", "target": "conv-ctx", "sourceHandle": "out", "targetHandle": "in"},
+                {"id": "e-ctx-book", "source": "conv-ctx", "target": "ai-booking", "sourceHandle": "out", "targetHandle": "in"},
+                {"id": "e-book-sql", "source": "ai-booking", "target": "sql-order", "sourceHandle": "out", "targetHandle": "in"},
+                {"id": "e-sql-end", "source": "sql-order", "target": "end", "sourceHandle": "out", "targetHandle": "in"},
+            ],
         },
     },
 }

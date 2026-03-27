@@ -838,6 +838,19 @@ def run_telegram_send_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, 
     # استخدام توكن البوت من عقدة Listener (السياق) أو من هذه العقدة أو الإعدادات
     bot_token = (data.get("bot_token") or context.get("telegram_bot_token") or "").strip() or None
 
+    if not chat_id:
+        current_app.logger.warning(
+            "telegram_send: لا يوجد chat_id بعد العرض (incoming=%s send_to_fixed=%s)",
+            incoming_chat[:32] if incoming_chat else "",
+            use_fixed_recipient,
+        )
+    elif not message:
+        current_app.logger.warning(
+            "telegram_send: نص الرسالة فارغ — reply_text=%s text=%s",
+            bool(str(context.get("reply_text") or "").strip()),
+            bool(str(context.get("text") or "").strip()),
+        )
+
     photos_sent = 0
     if chat_id and message:
         send_telegram_message(chat_id, message, bot_token=bot_token)
