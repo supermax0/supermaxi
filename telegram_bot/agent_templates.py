@@ -104,68 +104,126 @@ AGENT_TEMPLATES: Dict[str, Dict[str, Any]] = {
             "edges": [],
         },
     },
-    # مطابق لبنية «رد التعليقات»: مستمع → فلتر كلمات → AI → إرسال (بدل نشر التعليق)
+    # تدفق متقدّم: مستمع → فلتر → منع تكرار التحديث → معدّل لكل محادثة → سياق/ذاكرة → AI → إرسال → سجل → نهاية
     "telegram_comment_reply": {
         "id": "telegram_comment_reply",
-        "agent_name": "ردّاد تيليجرام",
-        "agent_description": "وكيل تيليجرام للرد التلقائي على الرسائل مع فلتر كلمات مفتاحية ثم رد ذكي (نفس فكرة قالب رد التعليقات)",
-        "workflow_name": "تيليجرام: رد على الرسائل",
-        "workflow_description": "Telegram Listener → فلتر كلمات → AI → إرسال تيليجرام",
+        "agent_name": "ردّاد تيليجرام — احترافي",
+        "agent_description": "رد ذكي مع فلتر كلمات، منع معالجة نفس التحديث مرتين، تحديد معدّد لكل محادثة، ذاكرة محادثة، وتسجيل في السجلات",
+        "workflow_name": "تيليجرام: رد احترافي",
+        "workflow_description": "Listener → فلتر → duplicate → rate → سياق → AI → إرسال → logging → End",
         "graph": {
             "nodes": [
                 {
                     "id": "tg-listener",
                     "type": "telegram_listener",
-                    "position": {"x": 280, "y": 0},
+                    "position": {"x": 300, "y": 0},
                     "data": {
                         "label": "Telegram Listener",
                         "bot_token": "",
                         "enabled": False,
-                        "subtitle": "ضع Bot Token ثم احفظ وفعّل Webhook",
+                        "subtitle": "Bot Token + تفعيل Webhook",
                     },
                 },
                 {
                     "id": "filter",
                     "type": "keyword-filter",
-                    "position": {"x": 280, "y": 130},
+                    "position": {"x": 300, "y": 115},
                     "data": {
                         "label": "فلتر كلمات",
                         "keywords": [],
-                        "subtitle": "فارغ = الرد على كل الرسائل؛ أو أضف كلمات (مثال: سعر، طلب، استفسار)",
+                        "subtitle": "فارغ = كل الرسائل؛ أو كلمات مفصولة (سعر، طلب، استفسار)",
+                    },
+                },
+                {
+                    "id": "dup",
+                    "type": "duplicate-protection",
+                    "position": {"x": 300, "y": 230},
+                    "data": {
+                        "label": "منع تكرار التحديث",
+                        "use_telegram_update_id": True,
+                        "subtitle": "يتخطى إن عُولج نفس update_id من تيليجرام",
+                    },
+                },
+                {
+                    "id": "rate",
+                    "type": "rate-limiter",
+                    "position": {"x": 300, "y": 345},
+                    "data": {
+                        "label": "محدد المعدّل",
+                        "delay_between_replies": 1.5,
+                        "max_replies_per_minute": 25,
+                        "per_chat": True,
+                        "subtitle": "لكل محادثة (chat) على حدة",
+                    },
+                },
+                {
+                    "id": "conv",
+                    "type": "conversation_context",
+                    "position": {"x": 300, "y": 460},
+                    "data": {
+                        "label": "سياق المحادثة",
+                        "max_chars": 8000,
+                        "include_current_message": True,
+                        "include_last_reply": True,
+                        "subtitle": "ذاكرة الجلسة + آخر رد",
                     },
                 },
                 {
                     "id": "ai",
                     "type": "ai",
-                    "position": {"x": 280, "y": 270},
+                    "position": {"x": 300, "y": 590},
                     "data": {
                         "label": "AI — رد للزبون",
                         "task": "reply_comment",
                         "language": "ar",
-                        "tone": "مهني وودود",
-                        "temperature": 0.45,
-                        "max_tokens": 800,
+                        "tone": "مهني ودود وواضح",
+                        "temperature": 0.38,
+                        "max_tokens": 1000,
                         "prompt": (
-                            "اكتب رداً لبقاً ومهنياً على هذه الرسالة:\n\n{{message_text}}"
+                            "أنت ممثل خدمة عملاء عبر تيليجرام. ردّ بلهجة مهنية ولطيفة وموجزة.\n"
+                            "اعتمد على سجل المحادثة في تعليمات النظام للتماسك؛ لا تتناقض مع ما سبق.\n"
+                            "لا تكرّر ترحيباً طويلاً في كل رسالة.\n\n"
+                            "آخر رسالة من الزبون:\n{{message_text}}"
                         ),
                     },
                 },
                 {
                     "id": "tg-send",
                     "type": "telegram_send",
-                    "position": {"x": 280, "y": 410},
+                    "position": {"x": 300, "y": 720},
                     "data": {
                         "label": "Telegram Send",
                         "chat_id": "{{chat_id}}",
                         "template": "{{reply_text}}",
-                        "subtitle": "إرسال الرد للزبون",
+                        "send_product_images": False,
+                        "subtitle": "إرسال الرد",
                     },
+                },
+                {
+                    "id": "log",
+                    "type": "logging",
+                    "position": {"x": 300, "y": 835},
+                    "data": {
+                        "label": "تسجيل في السجلات",
+                        "subtitle": "comment_logs + منع تكرار لاحق",
+                    },
+                },
+                {
+                    "id": "end-1",
+                    "type": "end",
+                    "position": {"x": 300, "y": 950},
+                    "data": {"label": "End", "subtitle": "انتهاء"},
                 },
             ],
             "edges": [
-                {"id": "e-lf", "source": "tg-listener", "target": "filter", "sourceHandle": "out", "targetHandle": "in"},
-                {"id": "e-fa", "source": "filter", "target": "ai", "sourceHandle": "out", "targetHandle": "in"},
-                {"id": "e-as", "source": "ai", "target": "tg-send", "sourceHandle": "out", "targetHandle": "in"},
+                {"id": "e1", "source": "tg-listener", "target": "filter", "sourceHandle": "out", "targetHandle": "in"},
+                {"id": "e2", "source": "filter", "target": "dup", "sourceHandle": "out", "targetHandle": "in"},
+                {"id": "e3", "source": "dup", "target": "rate", "sourceHandle": "out", "targetHandle": "in"},
+                {"id": "e4", "source": "rate", "target": "conv", "sourceHandle": "out", "targetHandle": "in"},
+                {"id": "e5", "source": "conv", "target": "ai", "sourceHandle": "out", "targetHandle": "in"},
+                {"id": "e6", "source": "ai", "target": "tg-send", "sourceHandle": "out", "targetHandle": "in"},
+                {"id": "e7", "source": "tg-send", "target": "log", "sourceHandle": "out", "targetHandle": "in"},
+                {"id": "e8", "source": "log", "target": "end-1", "sourceHandle": "out", "targetHandle": "in"},
             ],
         },
     },

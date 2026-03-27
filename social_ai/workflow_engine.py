@@ -479,6 +479,22 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
             "topic": topic,
             "skipped_keyword_filter": True,
         }
+    if context.get("rate_limited"):
+        topic = (data.get("topic") or context.get("topic") or "").strip()
+        return {
+            "text": "",
+            "reply_text": "",
+            "topic": topic,
+            "skipped_rate_limit": True,
+        }
+    if context.get("already_replied"):
+        topic = (data.get("topic") or context.get("topic") or "").strip()
+        return {
+            "text": "",
+            "reply_text": "",
+            "topic": topic,
+            "skipped_duplicate": True,
+        }
 
     # إعدادات المهمة
     task = data.get("task") or "generate_post"
@@ -843,6 +859,27 @@ def run_whatsapp_send_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, 
 def run_telegram_send_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
     """إرسال رسالة تيليجرام باستخدام بيانات العقدة والسياق."""
     data = node.data or {}
+    if context.get("keyword_matched") is False:
+        return {
+            "telegram_chat_id": "",
+            "telegram_message": "",
+            "telegram_photos_sent": 0,
+            "skipped": "keyword_not_matched",
+        }
+    if context.get("rate_limited"):
+        return {
+            "telegram_chat_id": str(context.get("chat_id") or ""),
+            "telegram_message": "",
+            "telegram_photos_sent": 0,
+            "skipped": "rate_limited",
+        }
+    if context.get("already_replied"):
+        return {
+            "telegram_chat_id": str(context.get("chat_id") or ""),
+            "telegram_message": "",
+            "telegram_photos_sent": 0,
+            "skipped": "duplicate_update",
+        }
     # عند استقبال رسالة عبر Webhook يكون chat_id في السياق = من كتب للبوت.
     # إذا وُضع رقم ثابت في العقدة (to / chat_id) كان يُرسل لذلك الرقم فقط فيبدو أن البوت «لا يرد» للزبون.
     incoming_chat = str(context.get("chat_id") or "").strip()
@@ -1347,9 +1384,16 @@ def run_keyword_filter_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str,
 
 
 def run_duplicate_protection_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
-    """التحقق من أن التعليق لم يُرد عليه مسبقاً (حماية من التكرار)."""
-    platform = (context.get("platform") or "facebook").lower()
-    comment_id = str(context.get("comment_id") or "")
+    """التحقق من أن التعليق لم يُرد عليه مسبقاً (حماية من التكرار). لتيليجرام: يعتمد telegram_update_id."""
+    data = node.data or {}
+    tg_uid = str(context.get("telegram_update_id") or "").strip()
+    use_tg = bool(data.get("use_telegram_update_id", True)) and tg_uid
+    if use_tg:
+        platform = "telegram"
+        comment_id = tg_uid
+    else:
+        platform = (context.get("platform") or "facebook").lower()
+        comment_id = str(context.get("comment_id") or "")
     tenant_slug = context.get("tenant_slug")
     already = is_comment_already_replied(tenant_slug, platform, comment_id) if comment_id else False
     result: Dict[str, Any] = {"already_replied": already}
@@ -1363,11 +1407,19 @@ _rate_limit_count: Dict[str, List[float]] = {}
 
 
 def run_rate_limiter_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
-    """تأخير بين الردود وحد أقصى للردود في الدقيقة."""
+    """تأخير بين الردود وحد أقصى للردود في الدقيقة. يمكن تقييد كل محادثة (chat_id) على حدة."""
     data = node.data or {}
     delay_sec = float(data.get("delay_between_replies") or 5)
     max_per_minute = int(data.get("max_replies_per_minute") or 20)
-    key = str(context.get("workflow_id") or "default")
+    wf = str(context.get("workflow_id") or "default")
+    chat = str(context.get("chat_id") or "").strip()
+    per_chat = data.get("per_chat")
+    if per_chat is None:
+        per_chat = True
+    if chat and bool(per_chat):
+        key = f"{wf}:{chat}"
+    else:
+        key = wf
     now = time.time()
     if key in _rate_limit_last_ts and (now - _rate_limit_last_ts[key]) < delay_sec:
         context["rate_limited"] = True
@@ -1410,18 +1462,59 @@ def run_publish_reply_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, 
 
 def run_logging_node(node: NodeDef, context: Dict[str, Any], execution: AgentExecution) -> Dict[str, Any]:
     """تسجيل الحدث في جدول comment_logs."""
+    tg_uid = str(context.get("telegram_update_id") or "").strip()
+    platform = (context.get("platform") or ("telegram" if tg_uid else "facebook")).lower()
+    ext_id = str(context.get("comment_id") or tg_uid or "")
+    if platform == "telegram" and ext_id.strip():
+        existing = CommentLog.query.filter_by(platform="telegram", comment_id=ext_id[:128]).first()
+        if existing:
+            return {"logged": True, "log_id": existing.id, "dedup": True}
     log_row = CommentLog(
         tenant_slug=context.get("tenant_slug"),
-        platform=context.get("platform") or "facebook",
-        comment_id=str(context.get("comment_id") or ""),
-        username=context.get("username"),
-        comment_text=context.get("comment_text") or context.get("text") or "",
-        ai_reply=context.get("reply_text") or context.get("ai_reply"),
+        platform=platform,
+        comment_id=ext_id[:128],
+        username=context.get("username") or (str(context.get("chat_id") or "")[:150] if tg_uid else None),
+        comment_text=context.get("comment_text") or context.get("message_text") or context.get("text") or "",
+        ai_reply=context.get("reply_text") or context.get("telegram_message") or context.get("ai_reply"),
         execution_id=execution.id,
     )
     db.session.add(log_row)
     db.session.commit()
     return {"logged": True, "log_id": log_row.id}
+
+
+def _record_telegram_update_processed(
+    context: Dict[str, Any],
+    execution_id: int | None,
+) -> None:
+    """
+    يمنع معالجة نفس تحديث تيليجرام مرتين (إعادة إرسال Webhook من Telegram).
+    يُسجّل صفاً في comment_logs عند نجاح إرسال رد للبوت.
+    """
+    uid = str(context.get("telegram_update_id") or "").strip()
+    if not uid or not context.get("_telegram_sent"):
+        return
+    try:
+        exists = CommentLog.query.filter_by(platform="telegram", comment_id=uid[:128]).first()
+        if exists:
+            return
+        row = CommentLog(
+            tenant_slug=context.get("tenant_slug"),
+            platform="telegram",
+            comment_id=uid[:128],
+            username=(str(context.get("chat_id") or "")[:150] or None),
+            comment_text=(context.get("message_text") or "")[:2000] or "-",
+            ai_reply=(context.get("telegram_message") or context.get("reply_text") or "")[:2000],
+            execution_id=execution_id,
+        )
+        db.session.add(row)
+        db.session.commit()
+    except Exception:
+        current_app.logger.debug("telegram update_id log skipped", exc_info=True)
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
 
 
 def execute_workflow(execution: AgentExecution, initial_context: Dict[str, Any] | None = None) -> None:
@@ -1539,8 +1632,12 @@ def execute_workflow(execution: AgentExecution, initial_context: Dict[str, Any] 
         execution.status = "success"
         db.session.commit()
 
+        _record_telegram_update_processed(context, execution.id)
+
         # رد احتياطي لتيليجرام: إذا وُجد رد من الـ AI ولم يُرسل عبر telegram_send
         if not context.get("_telegram_sent"):
+            if context.get("rate_limited") or context.get("already_replied"):
+                return
             cid = context.get("chat_id")
             tok = (context.get("telegram_bot_token") or "").strip() or None
             reply = (context.get("reply_text") or context.get("text") or "").strip()

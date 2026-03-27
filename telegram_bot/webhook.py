@@ -204,12 +204,14 @@ def _telegram_workflow_webhook_worker(
                 )
                 return
 
+            update_id = data.get("update_id")
             initial_context: dict[str, Any] = {
                 "message_text": message_text or "",
                 "chat_id": str(chat_id),
                 "telegram_bot_token": bot_token,
                 "workflow_id": wf.id,
                 "tenant_slug": (wf.agent.tenant_slug if wf.agent else None),
+                "telegram_update_id": str(update_id) if update_id is not None else "",
             }
 
             try:

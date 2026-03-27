@@ -269,69 +269,126 @@ export const App: React.FC = () => {
     });
   };
 
-  /** مطابق لقالب «رد التعليقات» (فلتر + AI + نشر) لكن لتيليجرام: فلتر + AI + إرسال */
+  /** قالب تيليجرام المتقدّم: فلتر + منع تكرار update + معدّل لكل محادثة + ذاكرة + AI + إرسال + سجل */
   const createTelegramCommentReplyAgent = () => {
     const nodes: Node[] = [
       {
         id: "tg-listener",
         type: "telegram_listener",
-        position: { x: 280, y: 0 },
+        position: { x: 300, y: 0 },
         data: {
           label: "Telegram Listener",
           bot_token: "",
           enabled: false,
-          subtitle: "ضع Bot Token ثم احفظ وفعّل Webhook",
+          subtitle: "Bot Token + تفعيل Webhook",
         },
       },
       {
         id: "filter",
         type: "keyword-filter",
-        position: { x: 280, y: 130 },
+        position: { x: 300, y: 115 },
         data: {
           label: "فلتر كلمات",
           keywords: [] as string[],
-          subtitle: "فارغ = الرد على كل الرسائل؛ أو أضف كلمات (مثال: سعر، طلب)",
+          subtitle: "فارغ = كل الرسائل؛ أو كلمات (سعر، طلب، استفسار)",
+        },
+      },
+      {
+        id: "dup",
+        type: "duplicate-protection",
+        position: { x: 300, y: 230 },
+        data: {
+          label: "منع تكرار التحديث",
+          use_telegram_update_id: true,
+          subtitle: "نفس update_id من تيليجرام لا يُعالج مرتين",
+        },
+      },
+      {
+        id: "rate",
+        type: "rate-limiter",
+        position: { x: 300, y: 345 },
+        data: {
+          label: "محدد المعدّل",
+          delay_between_replies: 1.5,
+          max_replies_per_minute: 25,
+          per_chat: true,
+          subtitle: "لكل محادثة على حدة",
+        },
+      },
+      {
+        id: "conv",
+        type: "conversation_context",
+        position: { x: 300, y: 460 },
+        data: {
+          label: "سياق المحادثة",
+          max_chars: 8000,
+          include_current_message: true,
+          include_last_reply: true,
+          subtitle: "ذاكرة الجلسة + آخر رد",
         },
       },
       {
         id: "ai",
         type: "ai",
-        position: { x: 280, y: 270 },
+        position: { x: 300, y: 590 },
         data: {
           label: "AI — رد للزبون",
           task: "reply_comment",
           language: "ar",
-          tone: "مهني وودود",
-          temperature: 0.45,
-          max_tokens: 800,
-          prompt: "اكتب رداً لبقاً ومهنياً على هذه الرسالة:\n\n{{message_text}}",
+          tone: "مهني ودود وواضح",
+          temperature: 0.38,
+          max_tokens: 1000,
+          prompt:
+            "أنت ممثل خدمة عملاء عبر تيليجرام. ردّ بلهجة مهنية ولطيفة وموجزة.\nاعتمد على سجل المحادثة في تعليمات النظام للتماسك؛ لا تتناقض مع ما سبق.\nلا تكرّر ترحيباً طويلاً في كل رسالة.\n\nآخر رسالة من الزبون:\n{{message_text}}",
         },
       },
       {
         id: "tg-send",
         type: "telegram_send",
-        position: { x: 280, y: 410 },
+        position: { x: 300, y: 720 },
         data: {
           label: "Telegram Send",
           chat_id: "{{chat_id}}",
           template: "{{reply_text}}",
-          subtitle: "إرسال الرد للزبون",
+          send_product_images: false,
+          subtitle: "إرسال الرد",
         },
+      },
+      {
+        id: "log",
+        type: "logging",
+        position: { x: 300, y: 835 },
+        data: {
+          label: "تسجيل في السجلات",
+          subtitle: "comment_logs",
+        },
+      },
+      {
+        id: "end-1",
+        type: "end",
+        position: { x: 300, y: 950 },
+        data: { label: "End", subtitle: "انتهاء" },
       },
     ];
 
     const edges: Edge[] = [
-      { id: "e-lf", source: "tg-listener", target: "filter", sourceHandle: "out", targetHandle: "in" },
-      { id: "e-fa", source: "filter", target: "ai", sourceHandle: "out", targetHandle: "in" },
-      { id: "e-as", source: "ai", target: "tg-send", sourceHandle: "out", targetHandle: "in" },
+      { id: "e1", source: "tg-listener", target: "filter", sourceHandle: "out", targetHandle: "in" },
+      { id: "e2", source: "filter", target: "dup", sourceHandle: "out", targetHandle: "in" },
+      { id: "e3", source: "dup", target: "rate", sourceHandle: "out", targetHandle: "in" },
+      { id: "e4", source: "rate", target: "conv", sourceHandle: "out", targetHandle: "in" },
+      { id: "e5", source: "conv", target: "ai", sourceHandle: "out", targetHandle: "in" },
+      { id: "e6", source: "ai", target: "tg-send", sourceHandle: "out", targetHandle: "in" },
+      { id: "e7", source: "tg-send", target: "log", sourceHandle: "out", targetHandle: "in" },
+      { id: "e8", source: "log", target: "end-1", sourceHandle: "out", targetHandle: "in" },
     ];
 
     loadFromGraph({
       nodes,
       edges,
       meta: {
-        name: "تيليجرام: رد على الرسائل",
-        description: "نفس فكرة قالب رد التعليقات: فلتر كلمات ثم رد ذكي ثم إرسال عبر تيليجرام.",
+        name: "تيليجرام: رد احترافي",
+        description:
+          "فلتر كلمات، منع معالجة نفس التحديث مرتين، معدّد لكل محادثة، ذاكرة، AI، إرسال، تسجيل.",
       },
     });
   };
