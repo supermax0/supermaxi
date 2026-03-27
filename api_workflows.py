@@ -46,10 +46,10 @@ def _node_proxy_enabled() -> bool:
 
 
 def _node_run_fallback_enabled() -> bool:
-    """When False (default), run path does not fall back to Flask executor on Node failure (avoids double execution)."""
+    """When True (default), /workflows/.../run uses Flask if Node is down or returns 5xx."""
     configured = str(current_app.config.get("AI_AUTOMATION_NODE_RUN_FALLBACK") or "").strip().lower()
     env_value = (os.getenv("AI_AUTOMATION_NODE_RUN_FALLBACK") or "").strip().lower()
-    raw = configured or env_value or "0"
+    raw = configured or env_value or "1"
     return raw in {"1", "true", "on", "yes"}
 
 
@@ -94,6 +94,15 @@ def _proxy_to_node(node_path: str, *, timeout_s: float = 8.0):
         )
     except Exception as exc:
         current_app.logger.warning("Node proxy unavailable for %s: %s", node_path, exc)
+        return None
+
+    if resp.status_code >= 500:
+        current_app.logger.warning(
+            "Node proxy %s %s returned HTTP %s; will use Flask fallback for workflow run if enabled",
+            request.method,
+            node_path,
+            resp.status_code,
+        )
         return None
 
     try:
@@ -143,19 +152,30 @@ def _normalize_graph(graph: Any) -> Dict[str, Any]:
     }
 
 
-def _run_workflow_in_background(app_obj, execution_id: int) -> None:
+def _run_workflow_in_background(app_obj, execution_id: int, tenant_slug: str | None) -> None:
     """Run workflow in separate thread to avoid request timeouts."""
+    from flask import g as flask_g
+
     with app_obj.app_context():
-        execution = AgentExecution.query.get(execution_id)
-        if not execution:
-            return
+        old_tenant = getattr(flask_g, "tenant", None)
+        if tenant_slug:
+            flask_g.tenant = tenant_slug
         try:
-            execute_workflow(execution)
-        except Exception as exc:  # pragma: no cover
-            current_app.logger.exception("Workflow background run failed: %s", exc)
-            execution.status = "failed"
-            execution.error_message = str(exc)
-            db.session.commit()
+            execution = AgentExecution.query.get(execution_id)
+            if not execution:
+                return
+            try:
+                execute_workflow(execution)
+            except Exception as exc:  # pragma: no cover
+                current_app.logger.exception("Workflow background run failed: %s", exc)
+                execution.status = "failed"
+                execution.error_message = str(exc)
+                db.session.commit()
+        finally:
+            try:
+                flask_g.tenant = old_tenant
+            except Exception:
+                pass
 
 
 @workflow_api.route("/agents", methods=["GET"])
@@ -323,7 +343,7 @@ def run_workflow(workflow_id: int):
             jsonify({
                 "success": False,
                 "error": "node_backend_unavailable",
-                "message": "Workflow execution is handled by the Node backend; the backend is unavailable or timed out. Set AI_AUTOMATION_NODE_RUN_FALLBACK=1 to allow local fallback.",
+                "message": "Workflow execution is handled by the Node backend; the backend is unavailable or timed out. Set AI_AUTOMATION_NODE_RUN_FALLBACK=1 (default) to allow local Flask execution, or start the Node service on AI_AUTOMATION_NODE_URL.",
             }),
             502,
         )
@@ -342,7 +362,7 @@ def run_workflow(workflow_id: int):
     app_obj = current_app._get_current_object()
     threading.Thread(
         target=_run_workflow_in_background,
-        args=(app_obj, execution.id),
+        args=(app_obj, execution.id, _tenant_slug()),
         daemon=True,
     ).start()
 
