@@ -157,16 +157,102 @@ def webhook():
     return jsonify({"status": "ok"}), 200
 
 
+def _telegram_workflow_webhook_worker(
+    app_obj,
+    tenant_slug: str,
+    workflow_id: int,
+    data: dict[str, Any],
+) -> None:
+    """
+    يُنفَّذ في خيط خلفي: تحميل الوورك فلو، صندوق الوارد، إنشاء التشغيل، وتنفيذ الـ workflow.
+    يجب أن يبقى مسار HTTP قصيراً جداً (رد 200 فوري) وإلا تتراكم pending_update_count عند تيليجرام.
+    """
+    from extensions import db
+    from models.ai_agent import AgentExecution
+    from social_ai.workflow_engine import execute_workflow
+
+    tenant_slug = (tenant_slug or "").strip()
+    with app_obj.app_context():
+        from flask import g as flask_g
+
+        old_tenant = getattr(flask_g, "tenant", None)
+        try:
+            flask_g.tenant = tenant_slug
+            chat_id, message_text = parse_telegram_update(data)
+            if not chat_id:
+                return
+
+            wf = _load_workflow_for_telegram_webhook(workflow_id, tenant_slug)
+            if not wf:
+                logger.error(
+                    "Telegram workflow webhook: workflow %s not found for tenant %s (background)",
+                    workflow_id,
+                    tenant_slug,
+                )
+                return
+
+            bot_token = ""
+            for n in (wf.graph_json or {}).get("nodes") or []:
+                if (n.get("type") or "") == "telegram_listener":
+                    bot_token = ((n.get("data") or {}).get("bot_token") or "").strip()
+                    if bot_token:
+                        break
+            if not bot_token:
+                logger.error(
+                    "Telegram workflow webhook: no bot_token on telegram_listener for workflow %s (background)",
+                    workflow_id,
+                )
+                return
+
+            initial_context: dict[str, Any] = {
+                "message_text": message_text or "",
+                "chat_id": str(chat_id),
+                "telegram_bot_token": bot_token,
+                "workflow_id": wf.id,
+                "tenant_slug": (wf.agent.tenant_slug if wf.agent else None),
+            }
+
+            try:
+                from social_ai.telegram_inbox import record_telegram_inbox_message
+
+                if (message_text or "").strip():
+                    record_telegram_inbox_message(
+                        (wf.agent.tenant_slug if wf.agent else None),
+                        wf.id,
+                        str(chat_id),
+                        "user",
+                        message_text or "",
+                    )
+            except Exception:
+                logger.debug("telegram inbox user record skipped", exc_info=True)
+
+            exe = AgentExecution(workflow_id=wf.id, status="running")
+            db.session.add(exe)
+            db.session.commit()
+
+            execute_workflow(exe, initial_context=initial_context)
+        except Exception:
+            logger.exception(
+                "Telegram workflow webhook background failed tenant=%s workflow_id=%s",
+                tenant_slug,
+                workflow_id,
+            )
+        finally:
+            try:
+                flask_g.tenant = old_tenant
+            except Exception:
+                pass
+
+
 @telegram_bp.route("/webhook/<tenant_slug>/<int:workflow_id>", methods=["POST"])
 def webhook_for_workflow(tenant_slug: str, workflow_id: int):
     """
     Webhook مرتبط بوورك فلو محدد: يحمّل التوكن من عقدة telegram_listener في الرسم
     وينفّذ الـ workflow (بدون الاعتماد على BOT_TOKEN في البيئة).
-    """
-    from api_workflows import _run_workflow_in_background
-    from extensions import db
-    from models.ai_agent import AgentExecution
 
+    **يجب** إرجاع 200 بسرعة؛ المعالجة الثقيلة في `_telegram_workflow_webhook_worker`
+    حتى لا تتراكم التحديثات المعلقة (pending_update_count) عند تيليجرام.
+    """
     tenant_slug = (tenant_slug or "").strip()
     try:
         data = request.get_json(force=True, silent=True) or {}
@@ -182,72 +268,19 @@ def webhook_for_workflow(tenant_slug: str, workflow_id: int):
         list(data.keys())[:12],
     )
 
-    chat_id, message_text = parse_telegram_update(data)
+    chat_id, _message_text = parse_telegram_update(data)
     if not chat_id:
         logger.info("Telegram workflow webhook: no chat_id in update (ignored)")
         return jsonify({"ok": True}), 200
 
-    old_tenant = getattr(g, "tenant", None)
-    try:
-        wf = _load_workflow_for_telegram_webhook(workflow_id, tenant_slug)
-        if not wf:
-            logger.error(
-                "Telegram workflow webhook: workflow %s not found for tenant %s. "
-                "تحقق: حفظ الوورك فلو على نفس الشركة، وWebhook من واجهة بناء الوكلاء بعد الحفظ.",
-                workflow_id,
-                tenant_slug,
-            )
-            return jsonify({"ok": True}), 200
-
-        g.tenant = tenant_slug
-
-        bot_token = ""
-        for n in (wf.graph_json or {}).get("nodes") or []:
-            if (n.get("type") or "") == "telegram_listener":
-                bot_token = ((n.get("data") or {}).get("bot_token") or "").strip()
-                if bot_token:
-                    break
-        if not bot_token:
-            logger.error(
-                "Telegram workflow webhook: no bot_token on telegram_listener for workflow %s",
-                workflow_id,
-            )
-            return jsonify({"ok": True}), 200
-
-        initial_context: dict[str, Any] = {
-            "message_text": message_text or "",
-            "chat_id": str(chat_id),
-            "telegram_bot_token": bot_token,
-            "workflow_id": wf.id,
-            "tenant_slug": (wf.agent.tenant_slug if wf.agent else None),
-        }
-
-        try:
-            from social_ai.telegram_inbox import record_telegram_inbox_message
-
-            if (message_text or "").strip():
-                record_telegram_inbox_message(
-                    (wf.agent.tenant_slug if wf.agent else None),
-                    wf.id,
-                    str(chat_id),
-                    "user",
-                    message_text or "",
-                )
-        except Exception:
-            logger.debug("telegram inbox user record skipped", exc_info=True)
-
-        exe = AgentExecution(workflow_id=wf.id, status="running")
-        db.session.add(exe)
-        db.session.commit()
-
-        app_obj = current_app._get_current_object()
-        threading.Thread(
-            target=_run_workflow_in_background,
-            args=(app_obj, exe.id, tenant_slug, initial_context),
-            daemon=True,
-        ).start()
-    finally:
-        g.tenant = old_tenant
+    # نسخة من التحديث للخيط — لا نمرّر كائن الطلب
+    data_copy = dict(data) if isinstance(data, dict) else {}
+    app_obj = current_app._get_current_object()
+    threading.Thread(
+        target=_telegram_workflow_webhook_worker,
+        args=(app_obj, tenant_slug, workflow_id, data_copy),
+        daemon=True,
+    ).start()
 
     return jsonify({"ok": True}), 200
 
