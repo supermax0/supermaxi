@@ -54,8 +54,9 @@ def _build_graph(workflow: AgentWorkflow) -> List[NodeDef]:
     if not isinstance(edges_data, list) or not edges_data:
         return linear_nodes
 
-    # Deterministic adjacency in the order edges appear
+    # Build deterministic adjacency and indegree from edges
     next_map: dict[str, List[str]] = {}
+    indegree: dict[str, int] = {nid: 0 for nid in nodes_by_id}
     for e in edges_data:
         if not isinstance(e, dict):
             continue
@@ -66,36 +67,34 @@ def _build_graph(workflow: AgentWorkflow) -> List[NodeDef]:
         if src not in nodes_by_id or tgt not in nodes_by_id:
             continue
         next_map.setdefault(src, []).append(tgt)
+        indegree[tgt] = indegree.get(tgt, 0) + 1
 
-    # Pick entry: start node if exists, else first node in list
-    entry_id = ""
-    for nd in linear_nodes:
-        if nd.type == "start":
-            entry_id = nd.id
-            break
-    if not entry_id and linear_nodes:
-        entry_id = linear_nodes[0].id
+    # Topological sort (Kahn) to ensure upstream nodes run first, especially knowledge_base -> ai
+    order_index = {nd.id: idx for idx, nd in enumerate(linear_nodes)}
+    queue: List[str] = [
+        nd.id
+        for nd in linear_nodes
+        if indegree.get(nd.id, 0) == 0
+    ]
+    queue.sort(key=lambda nid: order_index.get(nid, 10**9))
 
-    if not entry_id or entry_id not in nodes_by_id:
-        return linear_nodes
+    ordered_ids: List[str] = []
+    while queue:
+        nid = queue.pop(0)
+        ordered_ids.append(nid)
+        for nxt in next_map.get(nid, []):
+            indegree[nxt] = max(0, indegree.get(nxt, 0) - 1)
+            if indegree[nxt] == 0:
+                queue.append(nxt)
+        queue.sort(key=lambda x: order_index.get(x, 10**9))
 
-    # Walk edges, avoiding loops; collect reachable nodes
-    ordered: List[NodeDef] = []
-    visited: set[str] = set()
+    # If graph contains a cycle or invalid wiring, keep remaining nodes in original order.
+    if len(ordered_ids) < len(linear_nodes):
+        for nd in linear_nodes:
+            if nd.id not in ordered_ids:
+                ordered_ids.append(nd.id)
 
-    current_id: str | None = entry_id
-    while current_id and current_id in nodes_by_id and current_id not in visited:
-        visited.add(current_id)
-        ordered.append(nodes_by_id[current_id])
-        nxts = next_map.get(current_id) or []
-        current_id = nxts[0] if nxts else None
-
-    # Append any remaining nodes (disconnected or branches) in their original order
-    for nd in linear_nodes:
-        if nd.id not in visited:
-            ordered.append(nd)
-
-    return ordered
+    return [nodes_by_id[nid] for nid in ordered_ids if nid in nodes_by_id]
 
 
 def _render_prompt(template: str, context: Dict[str, Any]) -> str:
