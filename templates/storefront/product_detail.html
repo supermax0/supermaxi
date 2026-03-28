@@ -132,8 +132,9 @@
     .hero-image img {
       width: 100%;
       height: 100%;
-      object-fit: cover;
+      object-fit: contain;
       display: block;
+      padding: 12px;
       transition: transform .35s ease;
     }
     .hero-image:hover img {
@@ -142,6 +143,8 @@
     .hero-placeholder {
       color: var(--muted);
       font-size: 14px;
+      text-align: center;
+      padding: 24px;
     }
     .media-chip {
       position: absolute;
@@ -182,11 +185,15 @@
       border-color: rgba(96, 165, 250, 0.6);
       box-shadow: 0 12px 24px rgba(15, 23, 42, 0.28);
     }
+    .thumb.is-hidden {
+      display: none;
+    }
     .thumb img {
       width: 100%;
       height: 100%;
-      object-fit: cover;
+      object-fit: contain;
       display: block;
+      padding: 6px;
     }
     .info-card {
       padding: 28px;
@@ -573,8 +580,9 @@
         <div class="hero-image">
           {% if product.image_url %}
           <img id="mainProductImage" src="{{ product.image_url }}" alt="{{ product.name }}">
+          <span id="mainProductPlaceholder" class="hero-placeholder" hidden>لا توجد صورة صالحة لهذا المنتج</span>
           {% else %}
-          <span class="hero-placeholder">لا توجد صورة لهذا المنتج</span>
+          <span id="mainProductPlaceholder" class="hero-placeholder">لا توجد صورة لهذا المنتج</span>
           {% endif %}
         </div>
         {% if product.gallery %}
@@ -776,18 +784,86 @@
   <script>
     (function () {
       const mainImage = document.getElementById("mainProductImage");
+      const placeholder = document.getElementById("mainProductPlaceholder");
       const thumbs = Array.from(document.querySelectorAll(".thumb[data-full]"));
-      if (!mainImage || !thumbs.length) return;
+      if (!mainImage) return;
+
+      const uniqueSources = [];
+      const pushSource = (src) => {
+        const value = String(src || "").trim();
+        if (!value || uniqueSources.includes(value)) return;
+        uniqueSources.push(value);
+      };
+
+      pushSource(mainImage.getAttribute("src"));
+      thumbs.forEach((thumb) => pushSource(thumb.getAttribute("data-full")));
+
+      const markActiveThumb = (src) => {
+        thumbs.forEach((thumb) => {
+          thumb.classList.toggle("is-active", thumb.getAttribute("data-full") === src);
+        });
+      };
+
+      const setMainImage = (src) => {
+        mainImage.hidden = false;
+        if (placeholder) placeholder.hidden = true;
+        mainImage.src = src;
+        markActiveThumb(src);
+      };
+
+      const showPlaceholder = () => {
+        mainImage.hidden = true;
+        if (placeholder) placeholder.hidden = false;
+        thumbs.forEach((thumb) => thumb.classList.remove("is-active"));
+      };
+
+      const probeImage = (src) =>
+        new Promise((resolve) => {
+          const probe = new Image();
+          probe.onload = () => resolve(true);
+          probe.onerror = () => resolve(false);
+          probe.src = src;
+        });
+
+      const ensureFirstWorkingImage = async () => {
+        for (const src of uniqueSources) {
+          const ok = await probeImage(src);
+          const thumb = thumbs.find((item) => item.getAttribute("data-full") === src);
+          if (ok) {
+            setMainImage(src);
+            if (thumb) thumb.classList.remove("is-hidden");
+            return;
+          }
+          if (thumb) thumb.classList.add("is-hidden");
+        }
+        showPlaceholder();
+      };
 
       thumbs.forEach((thumb) => {
-        thumb.addEventListener("click", () => {
-          const src = thumb.getAttribute("data-full");
-          if (!src) return;
-          mainImage.src = src;
-          thumbs.forEach((item) => item.classList.remove("is-active"));
-          thumb.classList.add("is-active");
+        const src = thumb.getAttribute("data-full");
+        if (!src) return;
+        const thumbImage = thumb.querySelector("img");
+        if (thumbImage) {
+          thumbImage.addEventListener("error", () => {
+            thumb.classList.add("is-hidden");
+          });
+        }
+        thumb.addEventListener("click", async () => {
+          const ok = await probeImage(src);
+          if (!ok) {
+            thumb.classList.add("is-hidden");
+            await ensureFirstWorkingImage();
+            return;
+          }
+          setMainImage(src);
         });
       });
+
+      mainImage.addEventListener("error", async () => {
+        await ensureFirstWorkingImage();
+      });
+
+      ensureFirstWorkingImage();
     })();
   </script>
 </body>
