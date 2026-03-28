@@ -361,8 +361,9 @@ AGENT_TEMPLATES: Dict[str, Dict[str, Any]] = {
                         "chat_id": "{{chat_id}}",
                         "template": "{{reply_text}}",
                         "send_product_images": True,
+                        "image_send_mode": "on_request",
                         "max_product_photos": 5,
-                        "subtitle": "رد واحد للزبون",
+                        "subtitle": "رد واحد للزبون + صور فقط عند طلبها",
                     },
                 },
                 {

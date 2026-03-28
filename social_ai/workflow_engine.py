@@ -76,6 +76,31 @@ _BOOKING_COMMIT_HINTS = frozenset(
         "book now",
     )
 )
+_IMAGE_REQUEST_HINTS = frozenset(
+    (
+        "صورة",
+        "صور",
+        "الصورة",
+        "صورته",
+        "صورتها",
+        "شكل",
+        "شكله",
+        "شكلها",
+        "ورني",
+        "وريني",
+        "ورّيني",
+        "ارسل صورة",
+        "أرسل صورة",
+        "دز صورة",
+        "ابعث صورة",
+        "photo",
+        "photos",
+        "image",
+        "picture",
+        "pic",
+        "show me",
+    )
+)
 
 
 def _is_retriable_openai_error(exc: BaseException) -> bool:
@@ -349,6 +374,14 @@ def _is_booking_commit_message(message: str) -> bool:
         return False
     t = _normalize_ar_digits(str(message).lower())
     return any(h in t for h in _BOOKING_COMMIT_HINTS)
+
+
+def _is_image_request_message(message: str) -> bool:
+    """هل طلب المستخدم صورة/شكل المنتج صراحة؟"""
+    if not message or not str(message).strip():
+        return False
+    t = _normalize_ar_digits(str(message).lower())
+    return any(h in t for h in _IMAGE_REQUEST_HINTS)
 
 
 def _infer_product_from_context(context: Dict[str, Any]) -> None:
@@ -1641,6 +1674,17 @@ def run_telegram_send_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, 
         context["_telegram_sent"] = True
 
     send_imgs = bool(data.get("send_product_images", True))
+    image_send_mode = str(data.get("image_send_mode") or "on_request").strip().lower()
+    image_requested = _is_image_request_message(
+        str(context.get("message_text") or context.get("comment_text") or "")
+    )
+    if image_send_mode == "never":
+        send_imgs = False
+    elif image_send_mode == "always":
+        send_imgs = bool(data.get("send_product_images", True))
+    else:
+        # الوضع الافتراضي: يرسل فقط إذا طلب المستخدم صورة صراحة
+        send_imgs = send_imgs and image_requested
     max_photos = max(0, min(int(data.get("max_product_photos") or 5), 10))
     urls = context.get("telegram_product_image_urls") or []
     if (

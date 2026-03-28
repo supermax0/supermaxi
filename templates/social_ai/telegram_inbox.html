@@ -45,6 +45,7 @@
 
     body {
       min-height: 100vh;
+      height: 100vh;
       overflow: hidden;
     }
 
@@ -52,6 +53,8 @@
       display: flex;
       flex-direction: column;
       min-height: 100vh;
+      height: 100vh;
+      min-width: 0;
     }
 
     .topbar {
@@ -146,11 +149,13 @@
       grid-template-columns: 340px minmax(0, 1fr);
       gap: 18px;
       padding: 18px;
+      overflow: hidden;
     }
 
     .sidebar,
     .thread-panel {
       min-height: 0;
+      height: 100%;
       display: flex;
       flex-direction: column;
       background: var(--panel);
@@ -470,11 +475,13 @@
       flex: 1;
       min-height: 0;
       overflow-y: auto;
+      overflow-x: hidden;
       padding: 18px;
       display: flex;
       flex-direction: column;
       gap: 14px;
       scroll-behavior: smooth;
+      overscroll-behavior: contain;
       background:
         linear-gradient(180deg, rgba(255,255,255,0.01), transparent),
         radial-gradient(circle at top, rgba(111, 147, 255, 0.05), transparent 24%);
@@ -676,10 +683,15 @@
     @media (max-width: 920px) {
       body {
         overflow: auto;
+        height: auto;
+      }
+      .page-shell {
+        height: auto;
       }
       .layout {
         grid-template-columns: 1fr;
         height: auto;
+        overflow: visible;
       }
       .sidebar {
         min-height: 360px;

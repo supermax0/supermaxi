@@ -412,6 +412,7 @@ export const App: React.FC = () => {
           chat_id: "{{chat_id}}",
           template: "{{reply_text}}",
           send_product_images: false,
+          image_send_mode: "on_request",
           subtitle: "إرسال الرد",
         },
       },
@@ -2359,8 +2360,22 @@ export const App: React.FC = () => {
                                 updateNodeData(selectedNode.id, { send_product_images: e.target.checked })
                               }
                             />
-                            إرسال صور المنتجات المطابقة (إن وُجد رابط صورة في المخزون)
+                            إرسال صور المنتجات المطابقة
                           </label>
+                          <div>
+                            <label className="mb-1 block text-[11px] text-slate-400">
+                              متى تُرسل الصور؟
+                            </label>
+                            <select
+                              className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none"
+                              value={(selectedNode.data as any)?.image_send_mode || "on_request"}
+                              onChange={handleMessagingFieldChange("image_send_mode")}
+                            >
+                              <option value="on_request">فقط إذا طلب الزبون صورة</option>
+                              <option value="always">دائماً مع الرد</option>
+                              <option value="never">لا ترسل صور</option>
+                            </select>
+                          </div>
                           <div>
                             <label className="mb-1 block text-[11px] text-slate-400">
                               أقصى عدد صور بعد الرسالة
