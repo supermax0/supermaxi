@@ -62,6 +62,18 @@ _BOOKING_COMMIT_HINTS = frozenset(
         "احجز",
         "احجزل",
         "حجز",
+        "ثبت",
+        "ثبته",
+        "ثبّت",
+        "ثبتلي",
+        "ثبّتلي",
+        "نعم ثبت",
+        "اي ثبت",
+        "إي ثبت",
+        "تمام",
+        "اوكي",
+        "أوكي",
+        "موافق",
         "تمم",
         "اتمم",
         "أتمم",
@@ -1178,7 +1190,9 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
             template = (
                 "ساعد الزبون على إتمام الحجز اعتماداً على سجل المحادثة والكتالوج.\n"
                 "رسالة الزبون الحالية:\n{{message_text}}\n\n"
-                "اجمع البيانات من السياق قبل السؤال (الاسم، الهاتف، العنوان، المنتج/الخدمة، الكمية).\n"
+                "اجمع البيانات من السياق قبل السؤال (الاسم، الهاتف، العنوان، المنتج/الخدمة، الكمية إن ذُكرت).\n"
+                "هذا تدفق بيع منتج وليس حجز موعد خدمة: لا تطلب التاريخ أو الموعد.\n"
+                "إذا لم يذكر الزبون الكمية فاعتبرها 1 بشكل افتراضي.\n"
                 "إذا كانت البيانات مكتملة: اكتب تأكيداً قصيراً ثم أضف JSON فقط في آخر الرد بهذا الشكل:\n"
                 '{"booking":{"name":"...","phone":"...","address":"...","product_name":"...","product_id":null,"quantity":1,"price":null}}\n'
                 "إذا نقصت معلومة واحدة، اسأل عنها فقط بسؤال واحد موجز ولا تضف JSON."
@@ -1284,6 +1298,10 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
         )
         system_parts.append(
             "أسلوبك هنا بشري وخفيف: لا تستخدم صياغة رسمية ثقيلة، ولا تعيد وصف المنتج بالكامل أثناء تثبيت الطلب."
+        )
+        system_parts.append(
+            "هذا بيع منتج: لا تطلب التاريخ أو الموعد. "
+            "الكمية ليست عائقاً؛ إذا لم يذكرها الزبون فاعتبرها 1 بشكل افتراضي."
         )
 
     if task == "intent":
@@ -2003,6 +2021,21 @@ def run_sql_save_order_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str,
     inv.total = line_total
     db.session.commit()
 
+    reference_label = "رقم الحجز" if "حجز" in invoice_status else "رقم الفاتورة"
+    reference_value = str(inv.id)
+    confirmation_message = (
+        f"تم تثبيت طلبك بنجاح ✅\n"
+        f"{reference_label}: {reference_value}"
+    )
+    existing_reply = str(context.get("reply_text") or context.get("text") or "").strip()
+    if existing_reply:
+        if reference_value in existing_reply or reference_label in existing_reply:
+            final_reply = existing_reply
+        else:
+            final_reply = f"{existing_reply}\n\n{confirmation_message}"
+    else:
+        final_reply = confirmation_message
+
     result = {
         "booking_invoice_id": inv.id,
         "booking_customer_id": cust.id,
@@ -2010,6 +2043,11 @@ def run_sql_save_order_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str,
         "booking_total": line_total,
         "booking_quantity": qty,
         "booking_status": invoice_status,
+        "booking_reference_label": reference_label,
+        "booking_reference_number": reference_value,
+        "booking_confirmation_message": confirmation_message,
+        "reply_text": final_reply,
+        "text": final_reply,
     }
     context.update(result)
     return result
