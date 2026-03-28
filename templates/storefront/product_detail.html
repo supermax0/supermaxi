@@ -8,76 +8,179 @@
     :root {
       color-scheme: dark;
       --bg: #08111f;
-      --card: #101b2d;
+      --bg-2: #0b1627;
+      --card: rgba(16, 27, 45, 0.82);
+      --card-2: rgba(15, 23, 42, 0.72);
       --line: rgba(148, 163, 184, 0.18);
+      --line-strong: rgba(148, 163, 184, 0.28);
       --text: #e7eefc;
       --muted: #9eb1cc;
       --brand: #4f8cff;
       --brand-2: #60a5fa;
       --ok: #10b981;
+      --warn: #f59e0b;
       --soft: #13233a;
+      --shadow: 0 28px 60px rgba(2, 6, 23, 0.42);
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
-      background: radial-gradient(circle at top, #11233d 0%, var(--bg) 52%);
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top right, rgba(79, 140, 255, 0.18), transparent 26%),
+        radial-gradient(circle at top left, rgba(16, 185, 129, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg-2), var(--bg));
       color: var(--text);
       font-family: Tahoma, Arial, sans-serif;
+      position: relative;
+    }
+    body::before,
+    body::after {
+      content: "";
+      position: fixed;
+      inset: auto;
+      width: 320px;
+      height: 320px;
+      border-radius: 50%;
+      filter: blur(80px);
+      pointer-events: none;
+      opacity: 0.22;
+      z-index: 0;
+    }
+    body::before {
+      top: -120px;
+      left: -80px;
+      background: rgba(79, 140, 255, 0.55);
+    }
+    body::after {
+      bottom: -140px;
+      right: -90px;
+      background: rgba(16, 185, 129, 0.35);
     }
     a { color: inherit; text-decoration: none; }
     .page {
       max-width: 1240px;
       margin: 0 auto;
-      padding: 24px 18px 40px;
+      padding: 28px 18px 48px;
+      position: relative;
+      z-index: 1;
+    }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 22px;
+      flex-wrap: wrap;
     }
     .back {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      margin-bottom: 18px;
       color: var(--muted);
       font-size: 14px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--line);
+      backdrop-filter: blur(10px);
+    }
+    .crumbs {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      flex-wrap: wrap;
     }
     .layout {
       display: grid;
-      grid-template-columns: 1.1fr .9fr;
-      gap: 22px;
-      margin-bottom: 22px;
+      grid-template-columns: minmax(0, 1.06fr) minmax(360px, 0.94fr);
+      gap: 24px;
+      align-items: start;
+      margin-bottom: 26px;
     }
     .card {
-      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      background: linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.02));
       border: 1px solid var(--line);
-      border-radius: 26px;
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(16px);
     }
     .media-card {
-      padding: 18px;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    .media-card::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), transparent 26%);
+      pointer-events: none;
     }
     .hero-image {
-      border-radius: 22px;
+      border-radius: 24px;
       overflow: hidden;
       background: #091524;
       aspect-ratio: 1 / 1;
       display: grid;
       place-items: center;
+      border: 1px solid rgba(255,255,255,0.05);
+      position: relative;
     }
     .hero-image img {
       width: 100%;
       height: 100%;
       object-fit: cover;
       display: block;
+      transition: transform .35s ease;
+    }
+    .hero-image:hover img {
+      transform: scale(1.02);
+    }
+    .hero-placeholder {
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .media-chip {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      z-index: 1;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(8, 17, 31, 0.68);
+      border: 1px solid rgba(255,255,255,0.1);
+      backdrop-filter: blur(12px);
+      font-size: 12px;
+      color: #dbeafe;
     }
     .thumbs {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
       gap: 10px;
-      margin-top: 12px;
+      margin-top: 14px;
     }
     .thumb {
+      appearance: none;
+      padding: 0;
+      cursor: pointer;
       aspect-ratio: 1 / 1;
       border-radius: 16px;
       overflow: hidden;
       background: #0b1728;
       border: 1px solid var(--line);
+      transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+    }
+    .thumb:hover,
+    .thumb.is-active {
+      transform: translateY(-2px);
+      border-color: rgba(96, 165, 250, 0.6);
+      box-shadow: 0 12px 24px rgba(15, 23, 42, 0.28);
     }
     .thumb img {
       width: 100%;
@@ -86,10 +189,19 @@
       display: block;
     }
     .info-card {
-      padding: 24px;
+      padding: 28px;
       display: flex;
       flex-direction: column;
-      gap: 18px;
+      gap: 20px;
+      position: sticky;
+      top: 20px;
+    }
+    .eyebrow {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
     }
     .badge {
       display: inline-flex;
@@ -101,14 +213,56 @@
       color: #dbeafe;
       width: fit-content;
     }
+    .stock-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      background: rgba(16, 185, 129, 0.12);
+      color: #d1fae5;
+      border: 1px solid rgba(16, 185, 129, 0.25);
+    }
+    .stock-pill.is-off {
+      background: rgba(245, 158, 11, 0.12);
+      color: #fde68a;
+      border-color: rgba(245, 158, 11, 0.22);
+    }
     h1 {
       margin: 0;
-      font-size: 34px;
-      line-height: 1.45;
+      font-size: 36px;
+      line-height: 1.35;
+      letter-spacing: -0.02em;
+    }
+    .intro {
+      display: grid;
+      gap: 12px;
+    }
+    .price-block {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .metric {
+      padding: 16px 18px;
+      border-radius: 22px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+      border: 1px solid var(--line);
+      min-height: 92px;
+      display: grid;
+      align-content: center;
+      gap: 7px;
+    }
+    .metric label {
+      color: var(--muted);
+      font-size: 12px;
     }
     .price {
       font-size: 31px;
       font-weight: 800;
+      line-height: 1.2;
     }
     .price small {
       color: var(--muted);
@@ -117,12 +271,20 @@
     }
     .availability {
       color: var(--ok);
-      font-size: 14px;
+      font-size: 15px;
       font-weight: 700;
+    }
+    .availability.is-off {
+      color: #fbbf24;
+    }
+    .metric-value {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--text);
     }
     .desc {
       color: var(--muted);
-      line-height: 1.9;
+      line-height: 2;
       font-size: 15px;
     }
     .actions {
@@ -134,11 +296,18 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      padding: 13px 18px;
+      gap: 8px;
+      padding: 14px 20px;
       border-radius: 16px;
       font-weight: 700;
       font-size: 14px;
       border: 1px solid var(--line);
+      cursor: pointer;
+      transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease, background .2s ease;
+      box-shadow: 0 10px 24px rgba(2, 6, 23, 0.18);
+    }
+    .btn:hover {
+      transform: translateY(-1px);
     }
     .btn.primary {
       background: linear-gradient(135deg, var(--brand), #305ce2);
@@ -148,6 +317,12 @@
     .btn.ghost {
       background: rgba(255,255,255,0.03);
       color: var(--text);
+    }
+    .btn.subtle {
+      background: rgba(16, 185, 129, 0.09);
+      color: #d1fae5;
+      border-color: rgba(16, 185, 129, 0.22);
+      box-shadow: none;
     }
     .btn.success {
       background: linear-gradient(135deg, #10b981, #059669);
@@ -159,11 +334,35 @@
       gap: 22px;
     }
     .section {
-      padding: 24px;
+      padding: 26px;
+      position: relative;
+      overflow: hidden;
+    }
+    .section::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      right: 0;
+      left: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(96, 165, 250, 0.4), transparent);
+    }
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
     }
     .section h2 {
-      margin: 0 0 16px;
+      margin: 0;
       font-size: 22px;
+    }
+    .section-subtitle {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.7;
     }
     .spec-grid {
       display: grid;
@@ -185,11 +384,18 @@
       width: 100%;
       border-radius: 16px;
       border: 1px solid var(--line);
-      background: rgba(255,255,255,0.03);
+      background: rgba(255,255,255,0.035);
       color: var(--text);
       padding: 14px 15px;
       font-family: inherit;
       font-size: 14px;
+      outline: none;
+      transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
+    }
+    .field input:focus, .field textarea:focus {
+      border-color: rgba(96, 165, 250, 0.55);
+      box-shadow: 0 0 0 4px rgba(79, 140, 255, 0.12);
+      background: rgba(255,255,255,0.05);
     }
     .field textarea {
       min-height: 110px;
@@ -216,9 +422,9 @@
       color: #fecaca;
     }
     .spec {
-      padding: 14px 16px;
-      border-radius: 18px;
-      background: rgba(255,255,255,0.03);
+      padding: 16px 17px;
+      border-radius: 20px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.025));
       border: 1px solid var(--line);
     }
     .spec label {
@@ -236,6 +442,7 @@
       border-radius: 22px;
       background: #091524;
       border: 1px solid var(--line);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
     }
     .video-wrap video, .video-wrap iframe {
       width: 100%;
@@ -282,9 +489,15 @@
     }
     .related-item {
       border: 1px solid var(--line);
-      border-radius: 18px;
+      border-radius: 22px;
       overflow: hidden;
-      background: rgba(255,255,255,0.03);
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      transition: transform .22s ease, border-color .22s ease, box-shadow .22s ease;
+    }
+    .related-item:hover {
+      transform: translateY(-4px);
+      border-color: rgba(96, 165, 250, 0.34);
+      box-shadow: 0 20px 34px rgba(2, 6, 23, 0.26);
     }
     .related-item img, .related-item .fallback {
       width: 100%;
@@ -313,8 +526,20 @@
       font-size: 18px;
       font-weight: 800;
     }
+    .booking-note {
+      margin: 0 0 18px;
+      padding: 14px 16px;
+      border-radius: 18px;
+      background: rgba(79, 140, 255, 0.08);
+      border: 1px solid rgba(96, 165, 250, 0.16);
+      color: var(--muted);
+      line-height: 1.8;
+      font-size: 14px;
+    }
     @media (max-width: 920px) {
       .layout { grid-template-columns: 1fr; }
+      .info-card { position: static; }
+      .price-block { grid-template-columns: 1fr; }
       .video-wrap video, .video-wrap iframe { min-height: 280px; }
       .booking-grid { grid-template-columns: 1fr; }
       .span-2 { grid-column: span 1; }
@@ -322,54 +547,96 @@
     @media (max-width: 540px) {
       h1 { font-size: 28px; }
       .page { padding-inline: 14px; }
+      .topbar { margin-bottom: 18px; }
+      .crumbs { font-size: 12px; }
       .info-card, .section, .media-card { padding: 18px; }
+      .actions .btn {
+        width: 100%;
+      }
     }
   </style>
 </head>
 <body>
   <div class="page">
-    <a class="back" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">رجوع إلى المتجر</a>
+    <div class="topbar">
+      <a class="back" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">رجوع إلى المتجر</a>
+      <div class="crumbs">
+        <span>المتجر</span>
+        <span>/</span>
+        <span>{{ product.name }}</span>
+      </div>
+    </div>
 
     <section class="layout">
       <div class="card media-card">
+        <div class="media-chip">معرض المنتج</div>
         <div class="hero-image">
           {% if product.image_url %}
-          <img src="{{ product.image_url }}" alt="{{ product.name }}">
+          <img id="mainProductImage" src="{{ product.image_url }}" alt="{{ product.name }}">
           {% else %}
-          <span>لا توجد صورة لهذا المنتج</span>
+          <span class="hero-placeholder">لا توجد صورة لهذا المنتج</span>
           {% endif %}
         </div>
-        {% if product.gallery|length > 1 %}
+        {% if product.gallery %}
         <div class="thumbs">
-          {% for image in product.gallery[1:] %}
-          <div class="thumb"><img src="{{ image }}" alt="{{ product.name }}"></div>
+          {% for image in product.gallery %}
+          <button
+            class="thumb{% if loop.first %} is-active{% endif %}"
+            type="button"
+            data-full="{{ image }}"
+            aria-label="صورة {{ loop.index }} للمنتج">
+            <img src="{{ image }}" alt="{{ product.name }}">
+          </button>
           {% endfor %}
         </div>
         {% endif %}
       </div>
 
       <div class="card info-card">
-        {% if product.badge %}
-        <span class="badge">{{ product.badge }}</span>
-        {% endif %}
-        <h1>{{ product.name }}</h1>
-        <div class="price">{{ "{:,.0f}".format(product.price) }} <small>د.ع</small></div>
-        <div class="availability">{{ "متوفر في المخزون" if product.is_available else "غير متوفر حالياً" }}</div>
-        <div class="desc">{{ product.description or "عرض مرتب لهذا المنتج مع الصور والسعر والمواصفات المتوفرة." }}</div>
+        <div class="eyebrow">
+          {% if product.badge %}
+          <span class="badge">{{ product.badge }}</span>
+          {% endif %}
+          <span class="stock-pill{% if not product.is_available %} is-off{% endif %}">
+            {{ "جاهز للطلب" if product.is_available else "غير متوفر الآن" }}
+          </span>
+        </div>
+        <div class="intro">
+          <h1>{{ product.name }}</h1>
+          <div class="desc">{{ product.description or "عرض مرتب لهذا المنتج مع الصور والسعر والمواصفات المتوفرة." }}</div>
+        </div>
+        <div class="price-block">
+          <div class="metric">
+            <label>السعر الحالي</label>
+            <div class="price">{{ "{:,.0f}".format(product.price) }} <small>د.ع</small></div>
+          </div>
+          <div class="metric">
+            <label>الحالة</label>
+            <div class="availability{% if not product.is_available %} is-off{% endif %}">{{ "متوفر في المخزون" if product.is_available else "غير متوفر حالياً" }}</div>
+          </div>
+          <div class="metric">
+            <label>خدمة الصفحة</label>
+            <div class="metric-value">حجز مباشر وسريع</div>
+          </div>
+        </div>
         <div class="actions">
           <a class="btn success" href="#booking-form">احجز الآن</a>
           <a class="btn primary" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">عرض بقية المنتجات</a>
           {% if product.video_url %}
           <a class="btn ghost" href="{{ product.video_url }}" target="_blank" rel="noopener">فتح الفيديو</a>
           {% endif %}
+          <a class="btn subtle" href="#specs">المواصفات</a>
         </div>
       </div>
     </section>
 
     <div class="sections">
       {% if product.specs %}
-      <section class="card section">
-        <h2>المواصفات</h2>
+      <section class="card section" id="specs">
+        <div class="section-head">
+          <h2>المواصفات</h2>
+          <div class="section-subtitle">تفاصيل سريعة تساعد العميل على اتخاذ القرار بثقة.</div>
+        </div>
         <div class="spec-grid">
           {% for item in product.specs %}
           <div class="spec">
@@ -391,7 +658,10 @@
       {% set is_yt_watch = 'youtube.com' in vu_l and 'v=' in vu %}
       {% set is_yt_short = 'youtu.be/' in vu_l %}
       <section class="card section">
-        <h2>فيديو المنتج</h2>
+        <div class="section-head">
+          <h2>فيديو المنتج</h2>
+          <div class="section-subtitle">معاينة مرئية للمنتج قبل إرسال الطلب.</div>
+        </div>
         <div class="video-wrap">
           {% if is_direct %}
           <video controls preload="metadata">
@@ -432,7 +702,10 @@
       {% endif %}
 
       <section class="card section" id="booking-form">
-        <h2>حجز الطلب من صفحة المنتج</h2>
+        <div class="section-head">
+          <h2>حجز الطلب من صفحة المنتج</h2>
+          <div class="section-subtitle">املأ البيانات وسنحفظ الطلب مباشرة في النظام.</div>
+        </div>
         {% if booking_success %}
         <div class="alert success">
           {{ booking_success.message }}<br>
@@ -442,6 +715,7 @@
         {% if booking_error %}
         <div class="alert error">{{ booking_error }}</div>
         {% endif %}
+        <p class="booking-note">يفضّل إدخال رقم هاتف صحيح وعنوان واضح لتسريع التواصل ومعالجة الطلب.</p>
         <form method="post" class="booking-grid">
           <div class="field">
             <label>الاسم الكامل</label>
@@ -476,7 +750,10 @@
 
       {% if related_products %}
       <section class="card section">
-        <h2>منتجات أخرى</h2>
+        <div class="section-head">
+          <h2>منتجات أخرى</h2>
+          <div class="section-subtitle">اقتراحات مشابهة قد تهم العميل من نفس المتجر.</div>
+        </div>
         <div class="related-grid">
           {% for item in related_products %}
           <a class="related-item" href="{{ item.url }}">
@@ -496,5 +773,22 @@
       {% endif %}
     </div>
   </div>
+  <script>
+    (function () {
+      const mainImage = document.getElementById("mainProductImage");
+      const thumbs = Array.from(document.querySelectorAll(".thumb[data-full]"));
+      if (!mainImage || !thumbs.length) return;
+
+      thumbs.forEach((thumb) => {
+        thumb.addEventListener("click", () => {
+          const src = thumb.getAttribute("data-full");
+          if (!src) return;
+          mainImage.src = src;
+          thumbs.forEach((item) => item.classList.remove("is-active"));
+          thumb.classList.add("is-active");
+        });
+      });
+    })();
+  </script>
 </body>
 </html>
