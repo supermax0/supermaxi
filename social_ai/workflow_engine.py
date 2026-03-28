@@ -1021,7 +1021,7 @@ def _product_book_url(p: Product, context: Dict[str, Any] | None = None) -> str:
     return f"{base}{sep}book=1#booking-form"
 
 
-def _product_specs_preview(p: Product, limit: int = 3) -> str:
+def _product_specs_list(p: Product, limit: int = 3) -> list[str]:
     meta = _product_meta_dict(p)
     specs_text = str(meta.get("specs_text") or "").strip()
     if specs_text:
@@ -1032,7 +1032,7 @@ def _product_specs_preview(p: Product, limit: int = 3) -> str:
                 rows.append(row)
             if len(rows) >= limit:
                 break
-        return " | ".join(rows)
+        return rows
     parts: list[str] = []
     for key in ("brand", "category", "subcategory", "unit", "warranty", "weight"):
         value = meta.get(key)
@@ -1041,7 +1041,11 @@ def _product_specs_preview(p: Product, limit: int = 3) -> str:
         parts.append(f"{key}: {value}")
         if len(parts) >= limit:
             break
-    return " | ".join(parts)
+    return parts
+
+
+def _product_specs_preview(p: Product, limit: int = 3) -> str:
+    return " | ".join(_product_specs_list(p, limit=limit))
 
 
 def _product_share_payload(p: Product, context: Dict[str, Any] | None = None) -> dict[str, str]:
@@ -1050,7 +1054,9 @@ def _product_share_payload(p: Product, context: Dict[str, Any] | None = None) ->
         "url": _product_public_url(p, context),
         "book_url": _product_book_url(p, context),
         "video_url": _product_video_url(p),
+        "price": str(int(p.sale_price or 0)),
         "specs": _product_specs_preview(p, limit=3),
+        "specs_lines": "\n".join(_product_specs_list(p, limit=5)),
     }
 
 
@@ -1834,6 +1840,9 @@ def _append_product_share_links_if_needed(message: str, context: Dict[str, Any])
     name = str(primary.get("name") or "المنتج").strip()
     url = str(primary.get("url") or "").strip()
     specs = str(primary.get("specs") or "").strip()
+    specs_lines_raw = str(primary.get("specs_lines") or "").strip()
+    specs_lines = [line.strip() for line in specs_lines_raw.splitlines() if line.strip()]
+    price = str(primary.get("price") or "").strip()
     video_url = str(primary.get("video_url") or "").strip()
 
     extra_lines: list[str] = []
@@ -1843,10 +1852,21 @@ def _append_product_share_links_if_needed(message: str, context: Dict[str, Any])
         extra_lines.append(f"صفحة {name}: {url}")
 
     if _is_more_details_request_message(user_message) and url:
-        line = f"تفاصيل {name}: {url}"
-        if specs:
-            line += f"\n{specs}"
-        extra_lines.append(line)
+        detail_block: list[str] = [f"تفاصيل {name}:"]
+        if specs_lines:
+            detail_block.append("المواصفات:")
+            for item in specs_lines:
+                detail_block.append(f"• {item}")
+        elif specs:
+            detail_block.append(f"• {specs}")
+        if price:
+            try:
+                price_text = "{:,.0f}".format(float(price))
+            except Exception:
+                price_text = price
+            detail_block.append(f"السعر: {price_text} د.ع")
+        detail_block.append(f"الرابط: {url}")
+        extra_lines.append("\n".join(detail_block))
 
     note = "تقدر تفتح الأزرار أدناه للمشاهدة أو الحجز مباشرة."
     if not extra_lines and note in text:
@@ -1942,6 +1962,7 @@ def run_telegram_send_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, 
     message = _render_template(msg_tmpl, context).strip()
     message = _append_product_share_links_if_needed(message, context)
     reply_markup = _build_product_share_reply_markup(context)
+    disable_preview = bool(reply_markup)
     # استخدام توكن البوت من عقدة Listener (السياق) أو من هذه العقدة أو الإعدادات
     bot_token = (data.get("bot_token") or context.get("telegram_bot_token") or "").strip() or None
 
@@ -1965,7 +1986,7 @@ def run_telegram_send_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, 
             message,
             bot_token=bot_token,
             reply_markup=reply_markup,
-            disable_web_page_preview=False,
+            disable_web_page_preview=disable_preview,
         )
         context["_telegram_sent"] = True
 
@@ -2000,6 +2021,7 @@ def run_telegram_send_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, 
         "telegram_message": message,
         "telegram_photos_sent": photos_sent,
         "telegram_reply_markup": reply_markup or {},
+        "telegram_disable_web_page_preview": disable_preview,
     }
     context.update(result)
     # صندوق المحادثات: سجّل أي إخراج للبوت (نص و/أو صور). سابقاً كان التسجيل يُتخطى إذا كان النص فارغاً مع وجود صور فقط.
@@ -2768,13 +2790,14 @@ def execute_workflow(execution: AgentExecution, initial_context: Dict[str, Any] 
             reply = (context.get("reply_text") or context.get("text") or "").strip()
             reply = _append_product_share_links_if_needed(reply, context)
             reply_markup = _build_product_share_reply_markup(context)
+            disable_preview = bool(reply_markup)
             if cid and tok and reply:
                 send_telegram_message(
                     str(cid),
                     reply[:4096],
                     bot_token=tok,
                     reply_markup=reply_markup,
-                    disable_web_page_preview=False,
+                    disable_web_page_preview=disable_preview,
                 )
                 context["_telegram_auto_reply"] = True
                 context["telegram_message"] = reply

@@ -746,6 +746,7 @@ _OPEN_ROUTES = [
     "/messages/unread-count",  # واجهة للشارة — تُرجع JSON بدون إعادة توجيه
     "/api/landing-chat",  # مساعد الذكاء الاصطناعي لصفحة الهبوط
     "/telegram",  # بوت تيليجرام: webhook و setup و test — بدون تسجيل (ليستقبل التحديثات من Telegram)
+    "/shop",  # المتجر العام للزبائن — بدون تسجيل دخول
 ]
 
 
