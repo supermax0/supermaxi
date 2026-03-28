@@ -1836,56 +1836,21 @@ def run_whatsapp_send_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, 
     return result
 
 
-def _format_telegram_product_detail_addon(
-    name: str,
-    specs_lines: list[str],
-    specs_fallback: str,
-    price: str,
-) -> str:
-    """كتلة «تفاصيل» قصيرة بأسلوب عرض تسويقي (نص عادي — بدون parse_mode لتفادي كسر رد الـ AI)."""
+def _format_telegram_product_detail_addon(name: str, price: str, url: str) -> str:
+    """كتلة تفاصيل قصيرة: الاسم + السعر + الرابط + جملة توجيه."""
     title = (name or "").strip() or "المنتج"
-    lines: list[str] = [
-        f"🔥 {title}",
-        "",
-        "إذا يهمّك المواصفات والسعر، هاي أهم النقاط 👇",
-        "",
-    ]
-    added_spec = False
-    for item in (specs_lines or [])[:10]:
-        row = str(item or "").strip()
-        if not row:
-            continue
-        lines.append(f"✔️ {row}")
-        added_spec = True
-    if not added_spec:
-        fb = str(specs_fallback or "").strip()
-        if fb:
-            for chunk in fb.split("|"):
-                row = chunk.strip()
-                if row:
-                    lines.append(f"✔️ {row}")
-                    added_spec = True
-                    if sum(1 for x in lines if x.startswith("✔️")) >= 6:
-                        break
-    if added_spec:
-        lines.append("")
+    lines: list[str] = [title]
     price_raw = str(price or "").strip()
     if price_raw:
         try:
             price_text = "{:,.0f}".format(float(price_raw))
         except Exception:
             price_text = price_raw
-        lines.append(f"💰 السعر: {price_text} د.ع فقط")
-    else:
-        lines.append("💰 السعر: تواصل واحنا نثبت لك السعر فوراً.")
-    lines.extend(
-        [
-            "",
-            "⏳ الكمية محدودة — احجز بسرعة.",
-            "",
-            "👇 احجز أو شوف التفاصيل الكاملة من الأزرار تحت الرسالة.",
-        ]
-    )
+        lines.append(f"السعر: {price_text} د.ع")
+    u = str(url or "").strip()
+    if u:
+        lines.append(u)
+    lines.append("لتفاصيل أكثر، اضغط الرابط أو زر «عرض التفاصيل».")
     return "\n".join(lines)
 
 
@@ -1904,9 +1869,6 @@ def _append_product_share_links_if_needed(message: str, context: Dict[str, Any])
     primary = share_items[0] if isinstance(share_items[0], dict) else {}
     name = str(primary.get("name") or "المنتج").strip()
     url = str(primary.get("url") or "").strip()
-    specs = str(primary.get("specs") or "").strip()
-    specs_lines_raw = str(primary.get("specs_lines") or "").strip()
-    specs_lines = [line.strip() for line in specs_lines_raw.splitlines() if line.strip()]
     price = str(primary.get("price") or "").strip()
     video_url = str(primary.get("video_url") or "").strip()
 
@@ -1918,9 +1880,7 @@ def _append_product_share_links_if_needed(message: str, context: Dict[str, Any])
         extra_lines.append(f"📄 صفحة {name}:\n{url}")
 
     if _is_more_details_request_message(user_message) and url:
-        extra_lines.append(
-            _format_telegram_product_detail_addon(name, specs_lines, specs, price)
-        )
+        extra_lines.append(_format_telegram_product_detail_addon(name, price, url))
         detail_addon_added = True
 
     note = "تقدر تفتح الأزرار أدناه للمشاهدة أو الحجز مباشرة."
