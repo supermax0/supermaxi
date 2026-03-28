@@ -376,9 +376,35 @@
     <!-- قسم 4: وصف -->
     <div class="inv-add-card">
       <h3><span>📝</span> {{ _('inventory_section_description') }}</h3>
-      <div class="inv-field">
-        <label>{{ _('inventory_field_description') }}</label>
-        <textarea name="description" placeholder="{{ _('inventory_field_description') }}"></textarea>
+      <div class="inv-form-grid">
+        <div class="inv-field inv-span-4">
+          <label>{{ _('inventory_field_description') }}</label>
+          <textarea name="description" placeholder="{{ _('inventory_field_description') }}"></textarea>
+        </div>
+        <div class="inv-field inv-span-2">
+          <label>رابط فيديو المنتج</label>
+          <input name="video_url" placeholder="https://... أو /autoposter/serve/video/...">
+          <p class="inv-hint">يظهر في صفحة المنتج ويمكن للبوت إرساله عند طلب فيديو.</p>
+        </div>
+        <div class="inv-field inv-span-2">
+          <label>شارة المتجر</label>
+          <input name="store_badge" placeholder="جديد / الأكثر طلباً / عرض خاص">
+        </div>
+        <div class="inv-field inv-span-2">
+          <label>رابط صورة رئيسية بديل</label>
+          <input name="external_image_url" placeholder="https://...">
+          <p class="inv-hint">يُستخدم إذا لم ترفع صورة من الجهاز.</p>
+        </div>
+        <div class="inv-field inv-span-2">
+          <label>صور إضافية</label>
+          <textarea name="gallery_urls" placeholder="كل رابط أو مسار في سطر مستقل"></textarea>
+          <p class="inv-hint">مثال: `/static/uploads/products/x.jpg` أو رابط خارجي مباشر.</p>
+        </div>
+        <div class="inv-field inv-span-4">
+          <label>المواصفات المرتبة</label>
+          <textarea name="specs_text" placeholder="القياس: 42 بوصة&#10;النوع: سمارت&#10;الدقة: 4K"></textarea>
+          <p class="inv-hint">سطر لكل مواصفة، وستظهر بشكل مرتب في صفحة المنتج.</p>
+        </div>
       </div>
     </div>
 

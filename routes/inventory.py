@@ -28,6 +28,26 @@ from utils.product_schema_guard import ensure_product_schema
 inventory_bp = Blueprint("inventory", __name__)
 
 
+def _load_product_meta(product) -> dict:
+    raw = ((product.meta_json if product else None) or "").strip()
+    if not raw:
+        return {}
+    try:
+        parsed = json.loads(raw)
+    except Exception:
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _split_multiline_values(raw) -> list[str]:
+    items: list[str] = []
+    for line in str(raw or "").splitlines():
+        value = line.strip()
+        if value:
+            items.append(value)
+    return items
+
+
 def _inventory_add_summary():
     """إحصائيات مختصرة لشريط الملخص في صفحة إضافة المنتج."""
     products = Product.query.all()
@@ -204,6 +224,11 @@ def add_product_page():
         not_for_sale_flag = bool(request.form.get("not_for_sale"))
         low_stock_threshold = int(request.form.get("low_stock_threshold", 5) or 5)
         description = (request.form.get("description") or "").strip() or None
+        external_image_url = (request.form.get("external_image_url") or "").strip() or None
+        video_url = (request.form.get("video_url") or "").strip()
+        gallery_urls = _split_multiline_values(request.form.get("gallery_urls"))
+        specs_text = (request.form.get("specs_text") or "").strip()
+        store_badge = (request.form.get("store_badge") or "").strip()
 
         meta_keys = (
             "barcode_type",
@@ -238,6 +263,14 @@ def add_product_page():
             meta["enable_imei"] = True
         if not_for_sale_flag:
             meta["not_for_sale"] = True
+        if video_url:
+            meta["video_url"] = video_url
+        if gallery_urls:
+            meta["gallery"] = gallery_urls
+        if specs_text:
+            meta["specs_text"] = specs_text
+        if store_badge:
+            meta["store_badge"] = store_badge
 
         image_url = None
         file = request.files.get("product_image")
@@ -251,6 +284,8 @@ def add_product_page():
                 path = os.path.join(upload_folder, safe)
                 file.save(path)
                 image_url = f"/static/uploads/products/{safe}"
+        if not image_url and external_image_url:
+            image_url = external_image_url
 
         p = Product(
             name=name,
@@ -376,18 +411,42 @@ def delete_product(id):
 @inventory_bp.route("/edit/<int:id>", methods=["POST"])
 def edit_product(id):
     p = Product.query.get_or_404(id)
+    meta = _load_product_meta(p)
 
     # حفظ القيم القديمة قبل التحديث (لحساب الفرق في رأس المال)
     old_buy_price = p.buy_price
     old_opening_stock = p.opening_stock or 0
 
     p.name = request.form["name"]
+    p.sku = request.form.get("sku", "").strip() or None
     p.barcode = request.form.get("barcode", "").strip() or None
     p.buy_price = int(request.form["buy_price"])
     p.sale_price = int(request.form["sale_price"])
     p.low_stock_threshold = int(request.form.get("low_stock_threshold", 5) or 5)
     p.shipping_cost = 0  # إلغاء الحقل
     p.marketing_cost = 0  # إلغاء الحقل
+    p.description = request.form.get("description", "").strip() or None
+    p.image_url = request.form.get("image_url", "").strip() or None
+
+    video_url = request.form.get("video_url", "").strip()
+    gallery_urls = _split_multiline_values(request.form.get("gallery_urls"))
+    specs_text = request.form.get("specs_text", "").strip()
+    store_badge = request.form.get("store_badge", "").strip()
+
+    for key, value in (
+        ("video_url", video_url),
+        ("specs_text", specs_text),
+        ("store_badge", store_badge),
+    ):
+        if value:
+            meta[key] = value
+        else:
+            meta.pop(key, None)
+    if gallery_urls:
+        meta["gallery"] = gallery_urls
+    else:
+        meta.pop("gallery", None)
+    p.meta_json = json.dumps(meta, ensure_ascii=False) if meta else None
     
     # تحديث المخزون الافتتاحي إذا تم توفيره
     if "opening_stock" in request.form:

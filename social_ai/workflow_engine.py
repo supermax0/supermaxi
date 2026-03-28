@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List
 from threading import Lock
 
-from flask import current_app
+from flask import current_app, has_request_context, request
 
 from extensions import db
 from models.ai_agent import AgentExecution, AgentExecutionLog, AgentWorkflow
@@ -111,6 +111,38 @@ _IMAGE_REQUEST_HINTS = frozenset(
         "picture",
         "pic",
         "show me",
+    )
+)
+_VIDEO_REQUEST_HINTS = frozenset(
+    (
+        "فيديو",
+        "فيد",
+        "مقطع",
+        "فديو",
+        "فيديوه",
+        "video",
+        "clip",
+        "ريل",
+        "reel",
+    )
+)
+_DETAILS_REQUEST_HINTS = frozenset(
+    (
+        "تفاصيل",
+        "تفاصيل اكثر",
+        "تفاصيل أكثر",
+        "مواصفات",
+        "المواصفات",
+        "مزيد",
+        "شرح اكثر",
+        "شرح أكثر",
+        "رابط",
+        "لينك",
+        "link",
+        "details",
+        "specs",
+        "specifications",
+        "more info",
     )
 )
 
@@ -364,6 +396,36 @@ def _extract_address_from_text(text: str) -> str | None:
     return None
 
 
+def _extract_city_from_text(text: str) -> str | None:
+    if not text or not str(text).strip():
+        return None
+    src = str(text)
+    cities = (
+        "بغداد",
+        "البصرة",
+        "الموصل",
+        "أربيل",
+        "السليمانية",
+        "كربلاء",
+        "النجف",
+        "بابل",
+        "ديالى",
+        "واسط",
+        "ميسان",
+        "ذي قار",
+        "المثنى",
+        "صلاح الدين",
+        "دهوك",
+        "كركوك",
+        "الأنبار",
+    )
+    compact = re.sub(r"\s+", "", src)
+    for city in cities:
+        if city in src or city in compact:
+            return city
+    return None
+
+
 def _extract_quantity_from_text(text: str) -> int | None:
     if not text or not str(text).strip():
         return None
@@ -394,6 +456,20 @@ def _is_image_request_message(message: str) -> bool:
         return False
     t = _normalize_ar_digits(str(message).lower())
     return any(h in t for h in _IMAGE_REQUEST_HINTS)
+
+
+def _is_video_request_message(message: str) -> bool:
+    if not message or not str(message).strip():
+        return False
+    t = _normalize_ar_digits(str(message).lower())
+    return any(h in t for h in _VIDEO_REQUEST_HINTS)
+
+
+def _is_more_details_request_message(message: str) -> bool:
+    if not message or not str(message).strip():
+        return False
+    t = _normalize_ar_digits(str(message).lower())
+    return any(h in t for h in _DETAILS_REQUEST_HINTS)
 
 
 def _infer_product_from_context(context: Dict[str, Any]) -> None:
@@ -453,6 +529,13 @@ def _infer_booking_fields_from_conversation(context: Dict[str, Any]) -> None:
         addr = _extract_address_from_text(blob)
         if addr:
             context["address"] = addr
+
+    if not str(context.get("city") or "").strip():
+        city = _extract_city_from_text(str(context.get("address") or ""))
+        if not city:
+            city = _extract_city_from_text(blob)
+        if city:
+            context["city"] = city
 
     if not str(context.get("phone") or "").strip():
         _infer_phone_into_context(context)
@@ -820,6 +903,9 @@ def _score_product_match(p: Product, query_blob: str) -> int:
 
 def _product_catalog_lines(p: Product) -> list[str]:
     extra = ""
+    product_url = _product_public_url(p)
+    video_url = _product_video_url(p)
+    specs_preview = _product_specs_preview(p, limit=4)
     try:
         meta = json.loads((p.meta_json or "").strip()) if (p.meta_json or "").strip() else {}
         if isinstance(meta, dict) and meta:
@@ -852,6 +938,11 @@ def _product_catalog_lines(p: Product) -> list[str]:
             if len(desc) > 220:
                 desc = desc[:220] + "..."
             lines.append(f"  الوصف: {desc}")
+    if specs_preview:
+        lines.append(f"  المواصفات المختصرة: {specs_preview}")
+    lines.append(f"  رابط التفاصيل: {product_url}")
+    if video_url:
+        lines.append(f"  رابط الفيديو: {video_url}")
     return lines
 
 
@@ -894,6 +985,62 @@ def _product_image_candidates(p: Product) -> list[str]:
     return dedup
 
 
+def _product_meta_dict(p: Product) -> dict[str, Any]:
+    try:
+        raw = (p.meta_json or "").strip()
+        if not raw:
+            return {}
+        parsed = json.loads(raw)
+        return parsed if isinstance(parsed, dict) else {}
+    except Exception:
+        return {}
+
+
+def _product_public_url(p: Product) -> str:
+    base = str(current_app.config.get("BASE_URL") or "").strip().rstrip("/")
+    if not base and has_request_context():
+        base = str(request.host_url or "").strip().rstrip("/")
+    path = f"/shop/product/{int(p.id)}"
+    return f"{base}{path}" if base else path
+
+
+def _product_video_url(p: Product) -> str:
+    meta = _product_meta_dict(p)
+    return str(meta.get("video_url") or "").strip()
+
+
+def _product_specs_preview(p: Product, limit: int = 3) -> str:
+    meta = _product_meta_dict(p)
+    specs_text = str(meta.get("specs_text") or "").strip()
+    if specs_text:
+        rows: list[str] = []
+        for line in specs_text.splitlines():
+            row = _clean_extracted_field(line, max_len=80)
+            if row:
+                rows.append(row)
+            if len(rows) >= limit:
+                break
+        return " | ".join(rows)
+    parts: list[str] = []
+    for key in ("brand", "category", "subcategory", "unit", "warranty", "weight"):
+        value = meta.get(key)
+        if value is None or not str(value).strip():
+            continue
+        parts.append(f"{key}: {value}")
+        if len(parts) >= limit:
+            break
+    return " | ".join(parts)
+
+
+def _product_share_payload(p: Product) -> dict[str, str]:
+    return {
+        "name": str(p.name or "").strip() or f"منتج #{p.id}",
+        "url": _product_public_url(p),
+        "video_url": _product_video_url(p),
+        "specs": _product_specs_preview(p, limit=3),
+    }
+
+
 def _build_inventory_catalog(limit: int = 300, include_inactive: bool = False) -> str:
     """
     Build catalog text from company inventory (Product table in tenant DB).
@@ -915,7 +1062,7 @@ def _build_inventory_catalog(limit: int = 300, include_inactive: bool = False) -
 def _build_matched_inventory_catalog(
     context: Dict[str, Any],
     data: Dict[str, Any],
-) -> tuple[str, list[str]]:
+) -> tuple[str, list[str], list[dict[str, str]]]:
     """
     يرجع (نص للـ AI، روابط صور للمنتجات المطابقة فقط).
     """
@@ -932,9 +1079,11 @@ def _build_matched_inventory_catalog(
     if mode == "full":
         text = _build_inventory_catalog(limit=min(pool_limit, 2000), include_inactive=include_inactive)
         imgs: list[str] = []
+        shares: list[dict[str, str]] = []
         for p in products[:5]:
             imgs.extend(_product_image_candidates(p)[:2])
-        return text, list(dict.fromkeys(imgs))
+            shares.append(_product_share_payload(p))
+        return text, list(dict.fromkeys(imgs)), shares
 
     query_blob = _query_blob_for_match(context)
     scored: list[tuple[int, Product]] = []
@@ -949,17 +1098,19 @@ def _build_matched_inventory_catalog(
             "(لا يوجد في المخزون المعروض منتج يطابق كلمات البحث بوضوح. "
             "اسأل العميل عن النوع/المقاس/الميزانية أو اعرض الفئات المتوفرة باختصار دون اختراع أرقام.)"
         )
-        return hint, []
+        return hint, [], []
 
     lines: list[str] = [
         "المنتجات المطابقة لسؤال العميل (استخدم فقط هذه البيانات للأسعار والمواصفات):",
     ]
     image_urls: list[str] = []
+    shares: list[dict[str, str]] = []
     for p in matched:
         lines.extend(_product_catalog_lines(p))
         image_urls.extend(_product_image_candidates(p)[:2])
+        shares.append(_product_share_payload(p))
 
-    return "\n".join(lines), list(dict.fromkeys(image_urls))[:5]
+    return "\n".join(lines), list(dict.fromkeys(image_urls))[:5], shares[:5]
 
 
 def _truncate_history_tail(text: str, max_chars: int = 48000) -> str:
@@ -1259,6 +1410,9 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
             "إذا عبّر الزبون عن نية الشراء أو الحجز أو إتمام الطلب (مثل: أريد أطلب، أكمل الطلب، احجز لي، اريد اطلب)، "
             "**لا تعِد نسخ وصف المنتج أو السعر كاملاً كما في الرسائل السابقة**. اكتب ردّاً قصيراً (جملة أو جملتان): "
             "أكد استلام رغبته، واطلب فقط البيانات الناقصة فعلاً (الاسم أو الهاتف أو العنوان)، أو أكد الحجز باختصار إن وُجدت كل البيانات."
+        )
+        system_parts.append(
+            "إذا طلب الزبون تفاصيل أكثر أو فيديو، ووجدت في الكتالوج رابط تفاصيل أو رابط فيديو، فاذكره له مباشرة بشكل طبيعي."
         )
 
     conversation_history = str(context.get("conversation_history") or "").strip()
@@ -1647,6 +1801,58 @@ def run_whatsapp_send_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, 
     return result
 
 
+def _append_product_share_links_if_needed(message: str, context: Dict[str, Any]) -> str:
+    text = str(message or "").strip()
+    share_items = context.get("telegram_product_share_items") or []
+    if not isinstance(share_items, list) or not share_items:
+        return text
+
+    user_message = str(context.get("message_text") or context.get("comment_text") or "").strip()
+    wants_video = _is_video_request_message(user_message)
+    wants_details = wants_video or _is_more_details_request_message(user_message)
+    if not wants_details:
+        return text
+
+    extra_lines: list[str] = []
+    if wants_video:
+        video_rows = []
+        for item in share_items[:3]:
+            if not isinstance(item, dict):
+                continue
+            name = str(item.get("name") or "المنتج").strip()
+            video_url = str(item.get("video_url") or "").strip()
+            url = str(item.get("url") or "").strip()
+            target = video_url or url
+            if not target or target in text:
+                continue
+            video_rows.append(f"{name}: {target}")
+        if video_rows:
+            extra_lines.append("الفيديو أو الرابط المباشر:")
+            extra_lines.extend(video_rows)
+
+    if _is_more_details_request_message(user_message):
+        detail_rows = []
+        for item in share_items[:3]:
+            if not isinstance(item, dict):
+                continue
+            name = str(item.get("name") or "المنتج").strip()
+            url = str(item.get("url") or "").strip()
+            specs = str(item.get("specs") or "").strip()
+            if not url or url in text:
+                continue
+            row = f"{name}: {url}"
+            if specs:
+                row += f" | {specs}"
+            detail_rows.append(row)
+        if detail_rows:
+            extra_lines.append("تفاصيل أكثر:")
+            extra_lines.extend(detail_rows)
+
+    if not extra_lines:
+        return text
+    return (text + "\n\n" + "\n".join(extra_lines)).strip() if text else "\n".join(extra_lines)
+
+
 def run_telegram_send_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
     """إرسال رسالة تيليجرام باستخدام بيانات العقدة والسياق."""
     data = node.data or {}
@@ -1692,6 +1898,7 @@ def run_telegram_send_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, 
 
     chat_id = _render_template(chat_tmpl, context).strip()
     message = _render_template(msg_tmpl, context).strip()
+    message = _append_product_share_links_if_needed(message, context)
     # استخدام توكن البوت من عقدة Listener (السياق) أو من هذه العقدة أو الإعدادات
     bot_token = (data.get("bot_token") or context.get("telegram_bot_token") or "").strip() or None
 
@@ -1894,6 +2101,7 @@ def run_sql_save_order_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str,
     default_name = str(data.get("default_customer_name") or "عميل").strip() or "عميل"
     name = str(context.get("customer_name") or context.get("name") or default_name).strip()
     chat_id = str(context.get("chat_id") or "").strip()
+    city = str(context.get("city") or "").strip()
     address = str(context.get("address") or "").strip()
 
     channel = str(context.get("channel") or data.get("channel_default") or "telegram").strip() or "telegram"
@@ -1967,12 +2175,15 @@ def run_sql_save_order_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str,
     if cust:
         if name and name != default_name:
             cust.name = name
+        if city:
+            cust.city = city
         if address:
             cust.address = address
     else:
         cust = Customer(
             name=name or default_name,
             phone=phone,
+            city=city or None,
             address=address or None,
             tenant_id=getattr(product, "tenant_id", None),
         )
@@ -2043,6 +2254,7 @@ def run_sql_save_order_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str,
         "booking_total": line_total,
         "booking_quantity": qty,
         "booking_status": invoice_status,
+        "booking_city": city,
         "booking_reference_label": reference_label,
         "booking_reference_number": reference_value,
         "booking_confirmation_message": confirmation_message,
@@ -2070,11 +2282,13 @@ def run_knowledge_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]
     data = node.data or {}
     source = str(data.get("source") or "manual").strip().lower()
     if source == "inventory":
-        new_value, img_urls = _build_matched_inventory_catalog(context, data)
+        new_value, img_urls, share_items = _build_matched_inventory_catalog(context, data)
         context["telegram_product_image_urls"] = img_urls
+        context["telegram_product_share_items"] = share_items
     else:
         catalog = str(data.get("catalog") or "").strip()
         context["telegram_product_image_urls"] = []
+        context["telegram_product_share_items"] = []
         new_value = catalog
     mode = data.get("mode") or "replace"
     rendered = _render_template(new_value, context).strip()
@@ -2099,6 +2313,7 @@ def run_knowledge_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]
         "knowledge": context["knowledge"],
         "knowledge_full": context["knowledge_full"],
         "telegram_product_image_urls": context.get("telegram_product_image_urls") or [],
+        "telegram_product_share_items": context.get("telegram_product_share_items") or [],
     }
 
 def run_comment_listener_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:

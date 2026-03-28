@@ -55,6 +55,7 @@ from routes.agents import agents_bp
 from routes.delivery_agent import delivery_agent_bp
 from routes.pages import pages_bp
 from routes.invoice_store import invoice_store_bp
+from routes.storefront import storefront_bp
 from telegram_bot import telegram_bp
 from api_workflows import workflow_api
 from models.ai_agent import AgentWorkflow, AgentExecution
@@ -925,6 +926,7 @@ from routes.admin import admin_bp
 app.register_blueprint(admin_bp)
 
 app.register_blueprint(invoice_store_bp)
+app.register_blueprint(storefront_bp)
 app.register_blueprint(telegram_bp)
 
 # =====================================

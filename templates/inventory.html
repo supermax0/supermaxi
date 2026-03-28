@@ -1357,6 +1357,11 @@
         <i class="fas fa-barcode"></i>
         <span>{{ _('inventory_audit') }}</span>
       </a>
+      <a href="{{ url_for('storefront.store_index') }}" target="_blank" rel="noopener" class="inv-btn"
+        style="background: linear-gradient(135deg, #06b6d4, #0284c7); color: white; box-shadow: 0 6px 16px rgba(6,182,212,0.28);">
+        <i class="fas fa-store"></i>
+        <span>فتح المتجر</span>
+      </a>
     </div>
     <div class="inv-toolbar-right">
       <div class="inv-search-box">
@@ -1419,6 +1424,7 @@
       "quantity": {{ p.quantity }},
       "low_stock_threshold": {{ p.low_stock_threshold or 5 }},
       "active": {{ 'true' if p.active else 'false' }},
+      "product_url": {{ url_for('storefront.product_detail', product_id=p.id)|tojson }},
       "description": {{ (p.description or '')|tojson }},
       "image_url": {{ (p.image_url or '')|tojson }},
       "meta_json": {{ (p.meta_json or '{}')|tojson }},
@@ -1499,6 +1505,11 @@
       </div>
 
       <div>
+        <label class="inv-modal-label">SKU</label>
+        <input type="text" id="editSku" name="sku" placeholder="SKU" class="inv-modal-input">
+      </div>
+
+      <div>
         <label class="inv-modal-label">{{ _('inventory_field_buy_price') }}</label>
         <input type="number" id="editBuyPrice" name="buy_price" placeholder="{{ _('inventory_field_buy_price') }}" required min="0"
           class="inv-modal-input">
@@ -1517,6 +1528,36 @@
         <small class="inv-modal-help">⚠️ {{ _('inventory_opening_stock_help') }}</small>
       </div>
 
+      <div>
+        <label class="inv-modal-label">الوصف</label>
+        <textarea id="editDescription" name="description" rows="3" class="inv-modal-textarea" placeholder="وصف مختصر ومرتب"></textarea>
+      </div>
+
+      <div>
+        <label class="inv-modal-label">رابط الصورة الرئيسية</label>
+        <input type="text" id="editImageUrl" name="image_url" placeholder="https://... أو /static/uploads/products/..." class="inv-modal-input">
+      </div>
+
+      <div>
+        <label class="inv-modal-label">رابط فيديو المنتج</label>
+        <input type="text" id="editVideoUrl" name="video_url" placeholder="https://... أو /autoposter/serve/video/..." class="inv-modal-input">
+      </div>
+
+      <div>
+        <label class="inv-modal-label">شارة المتجر</label>
+        <input type="text" id="editStoreBadge" name="store_badge" placeholder="جديد / عرض خاص" class="inv-modal-input">
+      </div>
+
+      <div>
+        <label class="inv-modal-label">صور إضافية</label>
+        <textarea id="editGalleryUrls" name="gallery_urls" rows="3" class="inv-modal-textarea" placeholder="كل رابط أو مسار في سطر"></textarea>
+      </div>
+
+      <div>
+        <label class="inv-modal-label">المواصفات المرتبة</label>
+        <textarea id="editSpecsText" name="specs_text" rows="4" class="inv-modal-textarea" placeholder="القياس: 42 بوصة&#10;النوع: سمارت"></textarea>
+      </div>
+
       <div class="inv-modal-actions">
         <button type="button" onclick="closeEditModal()" class="inv-btn cancel grow">❌ {{ _('dashboard_cancel') }}</button>
         <button type="submit" class="inv-btn success grow">💾 {{ _('dashboard_save') }}</button>
@@ -1531,6 +1572,25 @@
   let gridApi;
   let allProducts = [];
 
+  function safeParseMeta(metaJson) {
+    try {
+      if (!metaJson) return {};
+      const parsed = JSON.parse(metaJson);
+      return (parsed && typeof parsed === 'object') ? parsed : {};
+    } catch (err) {
+      return {};
+    }
+  }
+
+  function escapeHtml(str) {
+    return String(str || '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+  }
+
   function initAgGrid() {
     const productsDataElement = document.getElementById("productsData");
     if (!productsDataElement) return;
@@ -1542,25 +1602,6 @@
       return;
     }
 
-    function safeParseMeta(metaJson) {
-      try {
-        if (!metaJson) return {};
-        const parsed = JSON.parse(metaJson);
-        return (parsed && typeof parsed === 'object') ? parsed : {};
-      } catch (err) {
-        return {};
-      }
-    }
-
-    function escapeHtml(str) {
-      return String(str || '')
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#39;');
-    }
-
     const columnDefs = [
       {
         headerName: "{{ _('inventory_col_actions') }}",
@@ -1570,15 +1611,14 @@
         filter: false,
         cellRenderer: params => {
           const p = params.data;
-          const nameEscaped = p.name.replace(/'/g, "\\'");
-          const barcodeEscaped = (p.barcode || '').replace(/'/g, "\\'");
+          const nameEscaped = String(p.name || '').replace(/'/g, "\\'");
 
           return `
               <div class="inv-actions-grid" style="display: flex; gap: 4px; justify-content: center; align-items: center; height: 100%;">
                 <a class="action-btn" href="/inventory/report/${p.id}" title="{{ _('inventory_action_report') }}"><i class="fas fa-file-invoice"></i></a>
                 <a class="action-btn" href="#" onclick="viewMovements(${p.id}); return false;" title="{{ _('inventory_action_movements') }}"><i class="fas fa-list"></i></a>
                 <a class="action-btn" href="#" onclick="openAdjustModal(${p.id}, '${nameEscaped}', ${p.quantity}); return false;" title="{{ _('inventory_action_adjust_stock') }}"><i class="fas fa-wrench"></i></a>
-                <a class="action-btn" href="#" onclick="openEditModal(${p.id}, '${nameEscaped}', '${barcodeEscaped}', ${p.buy_price}, ${p.sale_price}, ${p.low_stock_threshold}, ${p.opening_stock}); return false;" title="{{ _('inventory_action_edit') }}"><i class="fas fa-edit"></i></a>
+                <a class="action-btn" href="#" onclick="openEditModal(${p.id}); return false;" title="{{ _('inventory_action_edit') }}"><i class="fas fa-edit"></i></a>
                 <a class="action-btn" href="/inventory/toggle/${p.id}" title="{{ _('inventory_action_toggle') }}"><i class="fas fa-power-off"></i></a>
                 <a class="action-btn delete" href="/inventory/delete/${p.id}" onclick="return confirm('{{ _('inventory_confirm_delete') }}')" title="{{ _('inventory_action_delete') }}"><i class="fas fa-trash"></i></a>
               </div>
@@ -1663,6 +1703,18 @@
           const url = params.data.image_url;
           if (!url) return '--';
           return `<img src="${escapeHtml(url)}" style="width:42px;height:42px;object-fit:cover;border-radius:10px;border:1px solid var(--border-light);" />`;
+        }
+      },
+      {
+        headerName: "رابط المتجر",
+        field: "product_url",
+        width: 140,
+        sortable: false,
+        filter: false,
+        cellRenderer: params => {
+          const url = params.value;
+          if (!url) return '--';
+          return `<a class="action-btn" href="${escapeHtml(url)}" target="_blank" rel="noopener" title="فتح صفحة المنتج"><i class="fas fa-external-link-alt"></i></a>`;
         }
       },
       {
@@ -1800,14 +1852,24 @@
     }
   }
 
-  function openEditModal(id, name, barcode, buyPrice, salePrice, lowStockThreshold, openingStock) {
+  function openEditModal(id) {
+    const product = allProducts.find(item => Number(item.id) === Number(id));
+    if (!product) return;
+    const meta = safeParseMeta(product.meta_json);
     document.getElementById('editProductId').value = id;
     document.getElementById('editForm').action = '/inventory/edit/' + id;
-    document.getElementById('editName').value = name;
-    document.getElementById('editBarcode').value = barcode;
-    document.getElementById('editBuyPrice').value = buyPrice;
-    document.getElementById('editSalePrice').value = salePrice;
-    document.getElementById('editOpeningStock').value = openingStock || 0;
+    document.getElementById('editName').value = product.name || '';
+    document.getElementById('editBarcode').value = product.barcode === '---' ? '' : (product.barcode || '');
+    document.getElementById('editSku').value = product.sku === '---' ? '' : (product.sku || '');
+    document.getElementById('editBuyPrice').value = product.buy_price || 0;
+    document.getElementById('editSalePrice').value = product.sale_price || 0;
+    document.getElementById('editOpeningStock').value = product.opening_stock || 0;
+    document.getElementById('editDescription').value = product.description || '';
+    document.getElementById('editImageUrl').value = product.image_url || '';
+    document.getElementById('editVideoUrl').value = meta.video_url || '';
+    document.getElementById('editStoreBadge').value = meta.store_badge || '';
+    document.getElementById('editGalleryUrls').value = Array.isArray(meta.gallery) ? meta.gallery.join('\n') : '';
+    document.getElementById('editSpecsText').value = meta.specs_text || '';
     document.getElementById('editModal').style.display = 'flex';
   }
 

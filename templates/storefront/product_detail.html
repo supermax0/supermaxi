@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ product.name }}</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #08111f;
+      --card: #101b2d;
+      --line: rgba(148, 163, 184, 0.18);
+      --text: #e7eefc;
+      --muted: #9eb1cc;
+      --brand: #4f8cff;
+      --brand-2: #60a5fa;
+      --ok: #10b981;
+      --soft: #13233a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: radial-gradient(circle at top, #11233d 0%, var(--bg) 52%);
+      color: var(--text);
+      font-family: Tahoma, Arial, sans-serif;
+    }
+    a { color: inherit; text-decoration: none; }
+    .page {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 24px 18px 40px;
+    }
+    .back {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 18px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap: 22px;
+      margin-bottom: 22px;
+    }
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      border: 1px solid var(--line);
+      border-radius: 26px;
+    }
+    .media-card {
+      padding: 18px;
+    }
+    .hero-image {
+      border-radius: 22px;
+      overflow: hidden;
+      background: #091524;
+      aspect-ratio: 1 / 1;
+      display: grid;
+      place-items: center;
+    }
+    .hero-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .thumbs {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .thumb {
+      aspect-ratio: 1 / 1;
+      border-radius: 16px;
+      overflow: hidden;
+      background: #0b1728;
+      border: 1px solid var(--line);
+    }
+    .thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .info-card {
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .badge {
+      display: inline-flex;
+      padding: 7px 12px;
+      border-radius: 999px;
+      background: rgba(79, 140, 255, 0.16);
+      border: 1px solid rgba(96, 165, 250, 0.2);
+      font-size: 12px;
+      color: #dbeafe;
+      width: fit-content;
+    }
+    h1 {
+      margin: 0;
+      font-size: 34px;
+      line-height: 1.45;
+    }
+    .price {
+      font-size: 31px;
+      font-weight: 800;
+    }
+    .price small {
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .availability {
+      color: var(--ok);
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .desc {
+      color: var(--muted);
+      line-height: 1.9;
+      font-size: 15px;
+    }
+    .actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 13px 18px;
+      border-radius: 16px;
+      font-weight: 700;
+      font-size: 14px;
+      border: 1px solid var(--line);
+    }
+    .btn.primary {
+      background: linear-gradient(135deg, var(--brand), #305ce2);
+      color: #fff;
+      border-color: transparent;
+    }
+    .btn.ghost {
+      background: rgba(255,255,255,0.03);
+      color: var(--text);
+    }
+    .sections {
+      display: grid;
+      gap: 22px;
+    }
+    .section {
+      padding: 24px;
+    }
+    .section h2 {
+      margin: 0 0 16px;
+      font-size: 22px;
+    }
+    .spec-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
+    }
+    .spec {
+      padding: 14px 16px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--line);
+    }
+    .spec label {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 7px;
+    }
+    .spec b {
+      font-size: 15px;
+      line-height: 1.7;
+    }
+    .video-wrap {
+      overflow: hidden;
+      border-radius: 22px;
+      background: #091524;
+      border: 1px solid var(--line);
+    }
+    .video-wrap video, .video-wrap iframe {
+      width: 100%;
+      min-height: 420px;
+      border: 0;
+      display: block;
+      background: #000;
+    }
+    .related-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 14px;
+    }
+    .related-item {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      overflow: hidden;
+      background: rgba(255,255,255,0.03);
+    }
+    .related-item img, .related-item .fallback {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      object-fit: cover;
+      display: block;
+      background: #091524;
+    }
+    .related-item .fallback {
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .related-item .body {
+      padding: 14px;
+      display: grid;
+      gap: 8px;
+    }
+    .related-item .name {
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1.6;
+    }
+    .related-item .p {
+      font-size: 18px;
+      font-weight: 800;
+    }
+    @media (max-width: 920px) {
+      .layout { grid-template-columns: 1fr; }
+      .video-wrap video, .video-wrap iframe { min-height: 280px; }
+    }
+    @media (max-width: 540px) {
+      h1 { font-size: 28px; }
+      .page { padding-inline: 14px; }
+      .info-card, .section, .media-card { padding: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <a class="back" href="{{ url_for('storefront.store_index') }}">رجوع إلى المتجر</a>
+
+    <section class="layout">
+      <div class="card media-card">
+        <div class="hero-image">
+          {% if product.image_url %}
+          <img src="{{ product.image_url }}" alt="{{ product.name }}">
+          {% else %}
+          <span>لا توجد صورة لهذا المنتج</span>
+          {% endif %}
+        </div>
+        {% if product.gallery|length > 1 %}
+        <div class="thumbs">
+          {% for image in product.gallery[1:] %}
+          <div class="thumb"><img src="{{ image }}" alt="{{ product.name }}"></div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="card info-card">
+        {% if product.badge %}
+        <span class="badge">{{ product.badge }}</span>
+        {% endif %}
+        <h1>{{ product.name }}</h1>
+        <div class="price">{{ "{:,.0f}".format(product.price) }} <small>د.ع</small></div>
+        <div class="availability">{{ "متوفر في المخزون" if product.is_available else "غير متوفر حالياً" }}</div>
+        <div class="desc">{{ product.description or "عرض مرتب لهذا المنتج مع الصور والسعر والمواصفات المتوفرة." }}</div>
+        <div class="actions">
+          <a class="btn primary" href="{{ url_for('storefront.store_index') }}">عرض بقية المنتجات</a>
+          {% if product.video_url %}
+          <a class="btn ghost" href="{{ product.video_url }}" target="_blank" rel="noopener">فتح الفيديو</a>
+          {% endif %}
+        </div>
+      </div>
+    </section>
+
+    <div class="sections">
+      {% if product.specs %}
+      <section class="card section">
+        <h2>المواصفات</h2>
+        <div class="spec-grid">
+          {% for item in product.specs %}
+          <div class="spec">
+            <label>{{ item.label }}</label>
+            <b>{{ item.value }}</b>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+
+      {% if product.video_url %}
+      <section class="card section">
+        <h2>فيديو المنتج</h2>
+        <div class="video-wrap">
+          {% if product.video_url.endswith('.mp4') or product.video_url.endswith('.webm') or product.video_url.endswith('.mov') %}
+          <video controls preload="metadata">
+            <source src="{{ product.video_url }}">
+          </video>
+          {% else %}
+          <iframe src="{{ product.video_url }}" allowfullscreen loading="lazy"></iframe>
+          {% endif %}
+        </div>
+      </section>
+      {% endif %}
+
+      {% if related_products %}
+      <section class="card section">
+        <h2>منتجات أخرى</h2>
+        <div class="related-grid">
+          {% for item in related_products %}
+          <a class="related-item" href="{{ item.url }}">
+            {% if item.image_url %}
+            <img src="{{ item.image_url }}" alt="{{ item.name }}">
+            {% else %}
+            <div class="fallback">لا توجد صورة</div>
+            {% endif %}
+            <div class="body">
+              <div class="name">{{ item.name }}</div>
+              <div class="p">{{ "{:,.0f}".format(item.price) }} د.ع</div>
+            </div>
+          </a>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+    </div>
+  </div>
+</body>
+</html>
