@@ -1390,6 +1390,11 @@
         <i class="fas fa-barcode"></i>
         <span>{{ _('inventory_audit') }}</span>
       </a>
+      <a href="/inventory/videos" class="inv-btn"
+        style="background: linear-gradient(135deg, #06b6d4, #2563eb); color: white; box-shadow: 0 6px 16px rgba(37,99,235,0.28);">
+        <i class="fas fa-photo-film"></i>
+        <span>مخزن الفيديوهات</span>
+      </a>
       {% if _store_tslug %}
       <a href="{{ url_for('storefront.store_index', tenant_slug=_store_tslug) }}" target="_blank" rel="noopener" class="inv-btn"
         style="background: linear-gradient(135deg, #06b6d4, #0284c7); color: white; box-shadow: 0 6px 16px rgba(6,182,212,0.28);">

@@ -1,0 +1,370 @@
+{% extends "base.html" %}
+{% block title %}مخزن الفيديوهات{% endblock %}
+{% block page_title %}مخزن الفيديوهات{% endblock %}
+
+{% block content %}
+<div class="video-library-page">
+  <style>
+    .video-library-page {
+      max-width: 1280px;
+      margin: 0 auto;
+      display: grid;
+      gap: 20px;
+    }
+    .vl-card {
+      background: linear-gradient(145deg, var(--card), var(--card-alt));
+      border: 1px solid var(--border-light);
+      border-radius: 22px;
+      padding: 22px;
+      box-shadow: 0 18px 38px rgba(0,0,0,.18);
+    }
+    .vl-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .vl-head h2 {
+      margin: 0;
+      font-size: 24px;
+    }
+    .vl-sub {
+      margin: 6px 0 0;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+    .vl-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .vl-btn {
+      border: 0;
+      border-radius: 14px;
+      padding: 11px 16px;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .vl-btn.primary {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      color: #fff;
+    }
+    .vl-btn.ghost {
+      background: rgba(15, 23, 42, 0.45);
+      color: var(--text);
+      border: 1px solid var(--border-light);
+    }
+    .vl-drop {
+      border: 2px dashed rgba(59, 130, 246, 0.35);
+      border-radius: 22px;
+      background: linear-gradient(145deg, rgba(59,130,246,.10), rgba(16,185,129,.06));
+      padding: 32px 20px;
+      text-align: center;
+      display: grid;
+      gap: 10px;
+    }
+    .vl-drop i {
+      font-size: 34px;
+      color: #60a5fa;
+    }
+    .vl-drop p {
+      margin: 0;
+      color: var(--text-muted);
+    }
+    .vl-file {
+      display: none;
+    }
+    .vl-progress {
+      width: 100%;
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.06);
+      overflow: hidden;
+      display: none;
+    }
+    .vl-progress > span {
+      display: block;
+      height: 100%;
+      width: 0;
+      background: linear-gradient(90deg, #10b981, #3b82f6);
+      transition: width .2s ease;
+    }
+    .vl-msg {
+      display: none;
+      padding: 12px 14px;
+      border-radius: 14px;
+      font-size: 14px;
+    }
+    .vl-msg.ok {
+      display: block;
+      background: rgba(16, 185, 129, 0.12);
+      color: #d1fae5;
+      border: 1px solid rgba(16, 185, 129, 0.28);
+    }
+    .vl-msg.err {
+      display: block;
+      background: rgba(239, 68, 68, 0.12);
+      color: #fecaca;
+      border: 1px solid rgba(239, 68, 68, 0.28);
+    }
+    .vl-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+    .vl-item {
+      background: rgba(15, 23, 42, 0.42);
+      border: 1px solid var(--border-light);
+      border-radius: 20px;
+      overflow: hidden;
+      display: grid;
+    }
+    .vl-preview {
+      background: #020617;
+      aspect-ratio: 16 / 10;
+    }
+    .vl-preview video {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+      background: #000;
+    }
+    .vl-body {
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+    }
+    .vl-name {
+      font-weight: 700;
+      word-break: break-word;
+      line-height: 1.7;
+    }
+    .vl-meta {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+    .vl-url {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid var(--border-light);
+      background: rgba(255,255,255,.03);
+      color: var(--text);
+      padding: 10px 12px;
+      font-size: 12px;
+      direction: ltr;
+    }
+    .vl-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .vl-empty {
+      text-align: center;
+      color: var(--text-muted);
+      padding: 24px;
+      border: 1px dashed var(--border);
+      border-radius: 18px;
+    }
+    @media (max-width: 640px) {
+      .vl-card { padding: 18px; }
+      .vl-btn { width: 100%; justify-content: center; }
+    }
+  </style>
+
+  <div class="vl-card">
+    <div class="vl-head">
+      <div>
+        <h2>مخزن الفيديوهات</h2>
+        <p class="vl-sub">ارفع فيديو جديد، وخذ الرابط المباشر الجاهز لاستخدامه في `video_url` أو مشاركته مباشرة.</p>
+      </div>
+      <div class="vl-actions">
+        <a class="vl-btn ghost" href="{{ url_for('inventory.inventory') }}"><i class="fas fa-arrow-right"></i> رجوع للمخزون</a>
+        <button class="vl-btn primary" type="button" id="pickVideoBtn"><i class="fas fa-upload"></i> رفع فيديو</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="vl-card">
+    <div class="vl-drop" id="dropZone">
+      <i class="fas fa-photo-film"></i>
+      <strong>اسحب الفيديو هنا أو اختره من الجهاز</strong>
+      <p>الأنواع المدعومة: MP4 / MOV / WEBM / AVI / MKV</p>
+      <p>بعد الرفع سيتولد رابط مباشر تلقائياً.</p>
+      <input class="vl-file" id="videoInput" type="file" accept="video/*">
+    </div>
+    <div class="vl-progress" id="progressWrap" style="margin-top:14px;"><span id="progressBar"></span></div>
+    <div id="uploadMessage" class="vl-msg" style="margin-top:14px;"></div>
+  </div>
+
+  <div class="vl-card">
+    <div class="vl-head" style="margin-bottom: 16px;">
+      <div>
+        <h2 style="font-size:20px;">الفيديوهات المرفوعة</h2>
+        <p class="vl-sub">يمكنك معاينة الفيديو ونسخ رابطه مباشرة.</p>
+      </div>
+    </div>
+
+    {% if videos %}
+    <div class="vl-grid" id="videosGrid">
+      {% for item in videos %}
+      <article class="vl-item">
+        <div class="vl-preview">
+          <video controls preload="metadata" src="{{ item.url }}"></video>
+        </div>
+        <div class="vl-body">
+          <div class="vl-name">{{ item.name }}</div>
+          <div class="vl-meta">
+            <span>{{ item.size_mb }} MB</span>
+            <span>{{ item.modified_at }}</span>
+          </div>
+          <input class="vl-url" type="text" readonly value="{{ item.absolute_url }}">
+          <div class="vl-row">
+            <button class="vl-btn primary copy-btn" type="button" data-url="{{ item.absolute_url }}"><i class="fas fa-copy"></i> نسخ الرابط</button>
+            <a class="vl-btn ghost" href="{{ item.url }}" target="_blank" rel="noopener"><i class="fas fa-up-right-from-square"></i> فتح</a>
+          </div>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="vl-empty" id="videosGrid">لا توجد فيديوهات مرفوعة بعد.</div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+  (function () {
+    const input = document.getElementById("videoInput");
+    const pickBtn = document.getElementById("pickVideoBtn");
+    const dropZone = document.getElementById("dropZone");
+    const message = document.getElementById("uploadMessage");
+    const progressWrap = document.getElementById("progressWrap");
+    const progressBar = document.getElementById("progressBar");
+    const videosGrid = document.getElementById("videosGrid");
+
+    function showMessage(text, kind) {
+      message.textContent = text;
+      message.className = "vl-msg " + kind;
+    }
+
+    function resetProgress() {
+      progressWrap.style.display = "none";
+      progressBar.style.width = "0%";
+    }
+
+    function renderCard(item) {
+      return `
+        <article class="vl-item">
+          <div class="vl-preview">
+            <video controls preload="metadata" src="${item.url}"></video>
+          </div>
+          <div class="vl-body">
+            <div class="vl-name">${escapeHtml(item.name)}</div>
+            <div class="vl-meta">
+              <span>${escapeHtml(String(item.size_mb || 0))} MB</span>
+              <span>${escapeHtml(item.modified_at || "")}</span>
+            </div>
+            <input class="vl-url" type="text" readonly value="${escapeAttr(item.absolute_url)}">
+            <div class="vl-row">
+              <button class="vl-btn primary copy-btn" type="button" data-url="${escapeAttr(item.absolute_url)}"><i class="fas fa-copy"></i> نسخ الرابط</button>
+              <a class="vl-btn ghost" href="${escapeAttr(item.url)}" target="_blank" rel="noopener"><i class="fas fa-up-right-from-square"></i> فتح</a>
+            </div>
+          </div>
+        </article>
+      `;
+    }
+
+    function escapeHtml(value) {
+      return String(value || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function escapeAttr(value) {
+      return escapeHtml(value);
+    }
+
+    async function copyText(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+        showMessage("تم نسخ الرابط.", "ok");
+      } catch (_) {
+        showMessage("تعذر نسخ الرابط تلقائياً.", "err");
+      }
+    }
+
+    async function uploadFile(file) {
+      if (!file) return;
+      showMessage("", "");
+      progressWrap.style.display = "block";
+      progressBar.style.width = "15%";
+
+      const formData = new FormData();
+      formData.append("video", file);
+
+      try {
+        const response = await fetch("/inventory/videos/upload", {
+          method: "POST",
+          body: formData,
+        });
+        progressBar.style.width = "75%";
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          throw new Error(data.error || "فشل رفع الفيديو.");
+        }
+
+        progressBar.style.width = "100%";
+        showMessage(data.message || "تم رفع الفيديو بنجاح.", "ok");
+
+        const markup = renderCard(data.item);
+        if (videosGrid.classList.contains("vl-empty")) {
+          videosGrid.className = "vl-grid";
+          videosGrid.innerHTML = markup;
+        } else {
+          videosGrid.insertAdjacentHTML("afterbegin", markup);
+        }
+      } catch (error) {
+        showMessage(error.message || "حدث خطأ أثناء الرفع.", "err");
+      } finally {
+        setTimeout(resetProgress, 500);
+        input.value = "";
+      }
+    }
+
+    pickBtn.addEventListener("click", () => input.click());
+    input.addEventListener("change", () => uploadFile(input.files[0]));
+
+    dropZone.addEventListener("dragover", (event) => {
+      event.preventDefault();
+      dropZone.style.borderColor = "rgba(16, 185, 129, 0.55)";
+    });
+    dropZone.addEventListener("dragleave", () => {
+      dropZone.style.borderColor = "rgba(59, 130, 246, 0.35)";
+    });
+    dropZone.addEventListener("drop", (event) => {
+      event.preventDefault();
+      dropZone.style.borderColor = "rgba(59, 130, 246, 0.35)";
+      const file = event.dataTransfer && event.dataTransfer.files ? event.dataTransfer.files[0] : null;
+      uploadFile(file);
+    });
+
+    document.addEventListener("click", (event) => {
+      const btn = event.target.closest(".copy-btn");
+      if (!btn) return;
+      copyText(btn.getAttribute("data-url") || "");
+    });
+  })();
+</script>
+{% endblock %}

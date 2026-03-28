@@ -36,6 +36,7 @@ from routes.employees import employees_bp
 from routes.inventory import inventory_bp
 from routes.purchases import purchases_bp
 from routes.inventory_ledger import inventory_ledger_bp
+from routes.media_library import media_library_bp
 from routes.cash import cash_bp
 from routes.customers import customers_bp
 from routes.orders import orders_bp
@@ -1032,6 +1033,7 @@ app.register_blueprint(employees_bp, url_prefix="/employees")
 app.register_blueprint(inventory_bp, url_prefix="/inventory")
 app.register_blueprint(purchases_bp, url_prefix="/purchases")
 app.register_blueprint(inventory_ledger_bp, url_prefix="/inventory/ledger")
+app.register_blueprint(media_library_bp)
 app.register_blueprint(cash_bp, url_prefix="/cash")
 app.register_blueprint(customers_bp)
 app.register_blueprint(orders_bp, url_prefix="/orders")
