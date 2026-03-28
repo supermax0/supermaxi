@@ -461,6 +461,19 @@ def _infer_booking_fields_from_conversation(context: Dict[str, Any]) -> None:
     ):
         _infer_product_from_context(context)
 
+    # إذا كانت بيانات العميل موجودة من المحادثة (اسم/هاتف/عنوان) فهذا غالباً إتمام طلب،
+    # لذا نحاول استنتاج المنتج حتى لو كانت آخر رسالة مجرد بيانات وليست رسالة "احجز".
+    has_customer_payload = bool(
+        str(context.get("customer_name") or context.get("name") or "").strip()
+        or str(context.get("address") or "").strip()
+        or str(context.get("phone") or "").strip()
+        or _extract_local_mobile_phone(blob)
+        or _extract_name_from_text(blob)
+        or _extract_address_from_text(blob)
+    )
+    if has_customer_payload:
+        _infer_product_from_context(context)
+
 
 def _booking_fields_ready(
     context: Dict[str, Any],
@@ -1858,6 +1871,7 @@ def run_sql_save_order_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str,
     _merge_booking_from_ai_into_context(context)
     _infer_booking_fields_from_conversation(context)
     _infer_phone_into_context(context)
+    _infer_product_from_context(context)
 
     default_name = str(data.get("default_customer_name") or "عميل").strip() or "عميل"
     name = str(context.get("customer_name") or context.get("name") or default_name).strip()

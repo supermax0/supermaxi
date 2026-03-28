@@ -391,6 +391,8 @@ AGENT_TEMPLATES: Dict[str, Dict[str, Any]] = {
                         "prompt": (
                             "استخرج من **سجل المحادثة** في تعليمات النظام (إن وُجد) ومن آخر رسالة للزبون أدناه ما إذا كان هناك طلب حجز واضح "
                             "(اسم، هاتف، عنوان إن لزم، منتج أو معرف، كمية).\n"
+                            "اجمع البيانات من كامل المحادثة، وليس من آخر رسالة فقط.\n"
+                            "إذا كانت آخر رسالة تحتوي الاسم أو الهاتف أو العنوان فقط، لكن المنتج معروف من السياق، فاعتبر الطلب مكتمل السياق.\n"
                             "إذا اكتملت البيانات من المحادثة أو من الرسالة الحالية: جملة تأكيد بشرية قصيرة، ثم في آخر الرسالة كتلة JSON فقط:\n"
                             '{"booking":{"name":"...","phone":"...","address":"...","product_name":"...","product_id":null,"quantity":1,"price":null}}\n'
                             "phone: أرقام حقيقية (مثل 07xxxxxxxx) كما وردت في النص.\n"
@@ -410,8 +412,12 @@ AGENT_TEMPLATES: Dict[str, Dict[str, Any]] = {
                         "invoice_status": "حجز",
                         "deduct_stock": True,
                         "skip_if_incomplete": True,
-                        "require_phone": False,
-                        "subtitle": "يتخطى إن لم يكتمل الحجز — لا يفشل الوورك فلو",
+                        "smart_require_contact": True,
+                        "require_phone": True,
+                        "require_address": True,
+                        "require_name": True,
+                        "allow_placeholder_phone": False,
+                        "subtitle": "يحفظ الحجز عند اكتمال الاسم والهاتف والعنوان والمنتج",
                     },
                 },
                 {
