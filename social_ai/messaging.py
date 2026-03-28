@@ -54,7 +54,15 @@ def send_whatsapp_message(phone: str, message: str) -> None:
         current_app.logger.exception("WhatsApp send error: %s", exc)
 
 
-def send_telegram_message(chat_id: str, message: str, bot_token: str | None = None) -> None:
+def send_telegram_message(
+    chat_id: str,
+    message: str,
+    bot_token: str | None = None,
+    *,
+    reply_markup: dict[str, Any] | None = None,
+    parse_mode: str | None = None,
+    disable_web_page_preview: bool | None = None,
+) -> None:
     """
     إرسال رسالة تيليجرام عبر Bot API.
 
@@ -78,6 +86,12 @@ def send_telegram_message(chat_id: str, message: str, bot_token: str | None = No
         "chat_id": chat_id,
         "text": message,
     }
+    if reply_markup:
+        payload["reply_markup"] = reply_markup
+    if parse_mode:
+        payload["parse_mode"] = parse_mode
+    if disable_web_page_preview is not None:
+        payload["disable_web_page_preview"] = disable_web_page_preview
 
     try:
         resp = requests.post(url, json=payload, timeout=10)

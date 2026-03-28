@@ -149,6 +149,11 @@
       background: rgba(255,255,255,0.03);
       color: var(--text);
     }
+    .btn.success {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #fff;
+      border-color: transparent;
+    }
     .sections {
       display: grid;
       gap: 22px;
@@ -164,6 +169,51 @@
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
       gap: 12px;
+    }
+    .booking-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .field label {
+      display: block;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 7px;
+    }
+    .field input, .field textarea {
+      width: 100%;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.03);
+      color: var(--text);
+      padding: 14px 15px;
+      font-family: inherit;
+      font-size: 14px;
+    }
+    .field textarea {
+      min-height: 110px;
+      resize: vertical;
+    }
+    .span-2 {
+      grid-column: span 2;
+    }
+    .alert {
+      padding: 14px 16px;
+      border-radius: 16px;
+      margin-bottom: 14px;
+      font-size: 14px;
+      line-height: 1.8;
+    }
+    .alert.success {
+      background: rgba(16, 185, 129, 0.14);
+      border: 1px solid rgba(16, 185, 129, 0.32);
+      color: #d1fae5;
+    }
+    .alert.error {
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.28);
+      color: #fecaca;
     }
     .spec {
       padding: 14px 16px;
@@ -235,6 +285,8 @@
     @media (max-width: 920px) {
       .layout { grid-template-columns: 1fr; }
       .video-wrap video, .video-wrap iframe { min-height: 280px; }
+      .booking-grid { grid-template-columns: 1fr; }
+      .span-2 { grid-column: span 1; }
     }
     @media (max-width: 540px) {
       h1 { font-size: 28px; }
@@ -274,6 +326,7 @@
         <div class="availability">{{ "متوفر في المخزون" if product.is_available else "غير متوفر حالياً" }}</div>
         <div class="desc">{{ product.description or "عرض مرتب لهذا المنتج مع الصور والسعر والمواصفات المتوفرة." }}</div>
         <div class="actions">
+          <a class="btn success" href="#booking-form">احجز الآن</a>
           <a class="btn primary" href="{{ url_for('storefront.store_index') }}">عرض بقية المنتجات</a>
           {% if product.video_url %}
           <a class="btn ghost" href="{{ product.video_url }}" target="_blank" rel="noopener">فتح الفيديو</a>
@@ -311,6 +364,49 @@
         </div>
       </section>
       {% endif %}
+
+      <section class="card section" id="booking-form">
+        <h2>حجز الطلب من صفحة المنتج</h2>
+        {% if booking_success %}
+        <div class="alert success">
+          {{ booking_success.message }}<br>
+          رقم الحجز: <strong>#{{ booking_success.invoice_id }}</strong>
+        </div>
+        {% endif %}
+        {% if booking_error %}
+        <div class="alert error">{{ booking_error }}</div>
+        {% endif %}
+        <form method="post" class="booking-grid">
+          <div class="field">
+            <label>الاسم الكامل</label>
+            <input type="text" name="customer_name" value="{{ booking_form.customer_name }}" required>
+          </div>
+          <div class="field">
+            <label>رقم الهاتف</label>
+            <input type="text" name="phone" value="{{ booking_form.phone }}" required>
+          </div>
+          <div class="field">
+            <label>المحافظة</label>
+            <input type="text" name="city" value="{{ booking_form.city }}" placeholder="بغداد">
+          </div>
+          <div class="field">
+            <label>الكمية</label>
+            <input type="number" name="quantity" min="1" value="{{ booking_form.quantity or '1' }}" required>
+          </div>
+          <div class="field span-2">
+            <label>العنوان</label>
+            <textarea name="address" required>{{ booking_form.address }}</textarea>
+          </div>
+          <div class="field span-2">
+            <label>ملاحظات إضافية</label>
+            <textarea name="notes">{{ booking_form.notes }}</textarea>
+          </div>
+          <div class="span-2 actions">
+            <button class="btn success" type="submit">تأكيد الحجز</button>
+            <a class="btn ghost" href="{{ product.url }}">تحديث الصفحة</a>
+          </div>
+        </form>
+      </section>
 
       {% if related_products %}
       <section class="card section">

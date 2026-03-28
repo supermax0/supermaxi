@@ -1,10 +1,16 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 
-from flask import Blueprint, abort, render_template, url_for
+from flask import Blueprint, abort, render_template, request, url_for
 
+from extensions import db
+from models.customer import Customer
+from models.invoice import Invoice
+from models.order_item import OrderItem
 from models.product import Product
+from utils.inventory_movements import validate_sale_quantity
 
 
 storefront_bp = Blueprint("storefront", __name__, url_prefix="/shop")
@@ -101,7 +107,89 @@ def _product_card(product: Product) -> dict:
         "badge": str(meta.get("store_badge") or meta.get("category") or "").strip(),
         "stock": int(product.quantity or 0),
         "is_available": bool(product.active and int(product.quantity or 0) > 0),
+        "book_url": url_for("storefront.product_detail", product_id=product.id) + "?book=1#booking-form",
         "url": url_for("storefront.product_detail", product_id=product.id),
+    }
+
+
+def _save_storefront_booking(product: Product, form_data: dict) -> tuple[bool, str, dict]:
+    name = str(form_data.get("customer_name") or "").strip()
+    phone = str(form_data.get("phone") or "").strip()
+    city = str(form_data.get("city") or "").strip()
+    address = str(form_data.get("address") or "").strip()
+    notes = str(form_data.get("notes") or "").strip()
+
+    try:
+        quantity = int(form_data.get("quantity") or 1)
+    except (TypeError, ValueError):
+        quantity = 1
+    quantity = max(1, min(quantity, 99999))
+
+    if not name:
+        return False, "يرجى إدخال الاسم الكامل.", {}
+    if not phone:
+        return False, "يرجى إدخال رقم الهاتف.", {}
+    if not address:
+        return False, "يرجى إدخال العنوان.", {}
+
+    stock_check = validate_sale_quantity(product.id, quantity)
+    if not stock_check.get("valid"):
+        return False, str(stock_check.get("message") or "الكمية المطلوبة غير متوفرة حالياً."), {}
+
+    customer = Customer.query.filter_by(phone=phone).first()
+    if customer:
+        customer.name = name
+        if city:
+            customer.city = city
+        if address:
+            customer.address = address
+        if notes:
+            customer.notes = notes
+    else:
+        customer = Customer(
+            name=name,
+            phone=phone,
+            city=city or None,
+            address=address,
+            notes=notes or None,
+            tenant_id=getattr(product, "tenant_id", None),
+        )
+        db.session.add(customer)
+        db.session.flush()
+
+    invoice = Invoice(
+        customer_id=customer.id,
+        customer_name=customer.name,
+        employee_id=None,
+        employee_name=None,
+        total=0,
+        status="حجز",
+        payment_status="غير مسدد",
+        note=f"طلب من متجر المنتجات | product_id={product.id}",
+        created_at=datetime.utcnow(),
+    )
+    db.session.add(invoice)
+    db.session.flush()
+
+    total = int(product.sale_price or 0) * quantity
+    item = OrderItem(
+        invoice_id=invoice.id,
+        product_id=product.id,
+        product_name=product.name,
+        quantity=quantity,
+        price=int(product.sale_price or 0),
+        cost=int(product.buy_price or 0),
+        total=total,
+    )
+    db.session.add(item)
+    product.quantity = int(product.quantity or 0) - quantity
+    invoice.total = total
+    db.session.commit()
+
+    return True, "تم استلام طلبك بنجاح.", {
+        "invoice_id": invoice.id,
+        "quantity": quantity,
+        "customer_name": customer.name,
     }
 
 
@@ -116,11 +204,43 @@ def store_index():
     return render_template("storefront/index.html", products=cards)
 
 
-@storefront_bp.route("/product/<int:product_id>")
+@storefront_bp.route("/product/<int:product_id>", methods=["GET", "POST"])
 def product_detail(product_id: int):
     product = Product.query.get_or_404(product_id)
     if not product.active:
         abort(404)
+
+    booking_error = ""
+    booking_success = None
+    booking_form = {
+        "customer_name": "",
+        "phone": "",
+        "city": "",
+        "address": "",
+        "quantity": "1",
+        "notes": "",
+    }
+
+    if request.method == "POST":
+        booking_form = {
+            "customer_name": str(request.form.get("customer_name") or "").strip(),
+            "phone": str(request.form.get("phone") or "").strip(),
+            "city": str(request.form.get("city") or "").strip(),
+            "address": str(request.form.get("address") or "").strip(),
+            "quantity": str(request.form.get("quantity") or "1").strip(),
+            "notes": str(request.form.get("notes") or "").strip(),
+        }
+        ok, msg, payload = _save_storefront_booking(product, booking_form)
+        if ok:
+            booking_success = {
+                "message": msg,
+                "invoice_id": payload.get("invoice_id"),
+            }
+            booking_form["quantity"] = "1"
+            booking_form["notes"] = ""
+        else:
+            booking_error = msg
+
     card = _product_card(product)
     related = (
         Product.query.filter(Product.active == True, Product.id != product.id)  # noqa: E712
@@ -133,4 +253,7 @@ def product_detail(product_id: int):
         "storefront/product_detail.html",
         product=card,
         related_products=related_cards,
+        booking_form=booking_form,
+        booking_error=booking_error,
+        booking_success=booking_success,
     )

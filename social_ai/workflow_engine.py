@@ -1009,6 +1009,12 @@ def _product_video_url(p: Product) -> str:
     return str(meta.get("video_url") or "").strip()
 
 
+def _product_book_url(p: Product) -> str:
+    base = _product_public_url(p)
+    sep = "&" if "?" in base else "?"
+    return f"{base}{sep}book=1#booking-form"
+
+
 def _product_specs_preview(p: Product, limit: int = 3) -> str:
     meta = _product_meta_dict(p)
     specs_text = str(meta.get("specs_text") or "").strip()
@@ -1036,6 +1042,7 @@ def _product_share_payload(p: Product) -> dict[str, str]:
     return {
         "name": str(p.name or "").strip() or f"منتج #{p.id}",
         "url": _product_public_url(p),
+        "book_url": _product_book_url(p),
         "video_url": _product_video_url(p),
         "specs": _product_specs_preview(p, limit=3),
     }
@@ -1813,44 +1820,64 @@ def _append_product_share_links_if_needed(message: str, context: Dict[str, Any])
     if not wants_details:
         return text
 
+    primary = share_items[0] if isinstance(share_items[0], dict) else {}
+    name = str(primary.get("name") or "المنتج").strip()
+    url = str(primary.get("url") or "").strip()
+    specs = str(primary.get("specs") or "").strip()
+    video_url = str(primary.get("video_url") or "").strip()
+
     extra_lines: list[str] = []
-    if wants_video:
-        video_rows = []
-        for item in share_items[:3]:
-            if not isinstance(item, dict):
-                continue
-            name = str(item.get("name") or "المنتج").strip()
-            video_url = str(item.get("video_url") or "").strip()
-            url = str(item.get("url") or "").strip()
-            target = video_url or url
-            if not target or target in text:
-                continue
-            video_rows.append(f"{name}: {target}")
-        if video_rows:
-            extra_lines.append("الفيديو أو الرابط المباشر:")
-            extra_lines.extend(video_rows)
+    if wants_video and video_url:
+        extra_lines.append(f"فيديو {name}: {video_url}")
+    elif wants_video and url:
+        extra_lines.append(f"صفحة {name}: {url}")
 
-    if _is_more_details_request_message(user_message):
-        detail_rows = []
-        for item in share_items[:3]:
-            if not isinstance(item, dict):
-                continue
-            name = str(item.get("name") or "المنتج").strip()
-            url = str(item.get("url") or "").strip()
-            specs = str(item.get("specs") or "").strip()
-            if not url or url in text:
-                continue
-            row = f"{name}: {url}"
-            if specs:
-                row += f" | {specs}"
-            detail_rows.append(row)
-        if detail_rows:
-            extra_lines.append("تفاصيل أكثر:")
-            extra_lines.extend(detail_rows)
+    if _is_more_details_request_message(user_message) and url:
+        line = f"تفاصيل {name}: {url}"
+        if specs:
+            line += f"\n{specs}"
+        extra_lines.append(line)
 
-    if not extra_lines:
+    note = "تقدر تفتح الأزرار أدناه للمشاهدة أو الحجز مباشرة."
+    if not extra_lines and note in text:
         return text
+    if not extra_lines:
+        extra_lines.append(note)
+    else:
+        extra_lines.append(note)
     return (text + "\n\n" + "\n".join(extra_lines)).strip() if text else "\n".join(extra_lines)
+
+
+def _build_product_share_reply_markup(context: Dict[str, Any]) -> dict[str, Any] | None:
+    share_items = context.get("telegram_product_share_items") or []
+    if not isinstance(share_items, list) or not share_items:
+        return None
+
+    user_message = str(context.get("message_text") or context.get("comment_text") or "").strip()
+    wants_video = _is_video_request_message(user_message)
+    wants_details = wants_video or _is_more_details_request_message(user_message)
+    if not wants_details:
+        return None
+
+    primary = share_items[0] if isinstance(share_items[0], dict) else {}
+    details_url = str(primary.get("url") or "").strip()
+    book_url = str(primary.get("book_url") or "").strip()
+    video_url = str(primary.get("video_url") or "").strip()
+
+    rows: list[list[dict[str, str]]] = []
+    first_row: list[dict[str, str]] = []
+    if details_url:
+        first_row.append({"text": "عرض التفاصيل", "url": details_url})
+    if book_url:
+        first_row.append({"text": "احجز الآن", "url": book_url})
+    if first_row:
+        rows.append(first_row[:2])
+    if wants_video and video_url:
+        rows.append([{"text": "مشاهدة الفيديو", "url": video_url}])
+
+    if not rows:
+        return None
+    return {"inline_keyboard": rows}
 
 
 def run_telegram_send_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
@@ -1899,6 +1926,7 @@ def run_telegram_send_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, 
     chat_id = _render_template(chat_tmpl, context).strip()
     message = _render_template(msg_tmpl, context).strip()
     message = _append_product_share_links_if_needed(message, context)
+    reply_markup = _build_product_share_reply_markup(context)
     # استخدام توكن البوت من عقدة Listener (السياق) أو من هذه العقدة أو الإعدادات
     bot_token = (data.get("bot_token") or context.get("telegram_bot_token") or "").strip() or None
 
@@ -1917,7 +1945,13 @@ def run_telegram_send_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, 
 
     photos_sent = 0
     if chat_id and message:
-        send_telegram_message(chat_id, message, bot_token=bot_token)
+        send_telegram_message(
+            chat_id,
+            message,
+            bot_token=bot_token,
+            reply_markup=reply_markup,
+            disable_web_page_preview=False,
+        )
         context["_telegram_sent"] = True
 
     send_imgs = bool(data.get("send_product_images", True))
@@ -1950,6 +1984,7 @@ def run_telegram_send_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, 
         "telegram_chat_id": chat_id,
         "telegram_message": message,
         "telegram_photos_sent": photos_sent,
+        "telegram_reply_markup": reply_markup or {},
     }
     context.update(result)
     # صندوق المحادثات: سجّل أي إخراج للبوت (نص و/أو صور). سابقاً كان التسجيل يُتخطى إذا كان النص فارغاً مع وجود صور فقط.
@@ -2716,8 +2751,16 @@ def execute_workflow(execution: AgentExecution, initial_context: Dict[str, Any] 
             cid = context.get("chat_id")
             tok = (context.get("telegram_bot_token") or "").strip() or None
             reply = (context.get("reply_text") or context.get("text") or "").strip()
+            reply = _append_product_share_links_if_needed(reply, context)
+            reply_markup = _build_product_share_reply_markup(context)
             if cid and tok and reply:
-                send_telegram_message(str(cid), reply[:4096], bot_token=tok)
+                send_telegram_message(
+                    str(cid),
+                    reply[:4096],
+                    bot_token=tok,
+                    reply_markup=reply_markup,
+                    disable_web_page_preview=False,
+                )
                 context["_telegram_auto_reply"] = True
                 context["telegram_message"] = reply
                 _append_conversation_turn(context, reply)
