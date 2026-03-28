@@ -6,187 +6,835 @@
   <title>محادثات تيليجرام</title>
   <style>
     :root {
-      --bg: #0b1020;
-      --card: #121a30;
-      --line: #27345b;
-      --text: #e7ecff;
-      --muted: #9aa9d6;
-      --primary: #5f8cff;
-      --user: #1e3a5f;
-      --bot: #1a3d35;
-      --op: #4a3d1e;
-      --radius: 12px;
+      --bg: #07111f;
+      --bg-2: #0c1730;
+      --panel: rgba(12, 20, 38, 0.92);
+      --panel-2: rgba(16, 28, 52, 0.92);
+      --line: rgba(137, 164, 255, 0.16);
+      --line-strong: rgba(137, 164, 255, 0.26);
+      --text: #ecf2ff;
+      --muted: #95a8d9;
+      --muted-2: #7083b7;
+      --primary: #6f93ff;
+      --primary-2: #7c5cff;
+      --success: #2ecc9f;
+      --warning: #ffbf69;
+      --danger: #ff7d7d;
+      --user: linear-gradient(135deg, rgba(29, 74, 138, 0.95), rgba(25, 56, 104, 0.95));
+      --bot: linear-gradient(135deg, rgba(17, 90, 69, 0.95), rgba(16, 62, 51, 0.95));
+      --op: linear-gradient(135deg, rgba(112, 80, 22, 0.95), rgba(73, 50, 11, 0.95));
+      --shadow: 0 20px 48px rgba(0, 0, 0, 0.35);
+      --radius-xl: 22px;
+      --radius-lg: 16px;
+      --radius-md: 12px;
+      --radius-sm: 10px;
     }
+
     * { box-sizing: border-box; }
-    body {
+
+    html, body {
       margin: 0;
+      min-height: 100%;
       font-family: "Segoe UI", Tahoma, sans-serif;
-      background: var(--bg);
+      background:
+        radial-gradient(circle at top right, rgba(111, 147, 255, 0.18), transparent 25%),
+        radial-gradient(circle at top left, rgba(124, 92, 255, 0.12), transparent 22%),
+        linear-gradient(180deg, var(--bg), #040914 70%);
       color: var(--text);
+    }
+
+    body {
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    .page-shell {
+      display: flex;
+      flex-direction: column;
       min-height: 100vh;
     }
-    header {
+
+    .topbar {
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(7, 13, 26, 0.82);
+      backdrop-filter: blur(16px);
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+
+    .topbar-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 16px;
       flex-wrap: wrap;
-      gap: 12px;
-      padding: 16px 20px;
-      border-bottom: 1px solid var(--line);
-      background: rgba(18, 26, 48, 0.95);
     }
-    header h1 { margin: 0; font-size: 1.15rem; }
-    header .links { display: flex; gap: 8px; flex-wrap: wrap; }
-    a.btn {
+
+    .hero h1 {
+      margin: 0;
+      font-size: 1.28rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .hero p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .btn,
+    .icon-btn {
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--text);
+      text-decoration: none;
+      cursor: pointer;
+      transition: 0.18s ease;
+    }
+
+    .btn {
       display: inline-flex;
       align-items: center;
-      padding: 8px 14px;
-      border-radius: 10px;
-      border: 1px solid var(--line);
-      color: var(--muted);
-      text-decoration: none;
+      justify-content: center;
+      gap: 8px;
+      min-height: 40px;
+      padding: 0 14px;
+      border-radius: 999px;
       font-size: 13px;
+      color: var(--muted);
     }
-    a.btn:hover { color: var(--text); border-color: var(--primary); }
+
+    .btn:hover,
+    .icon-btn:hover {
+      border-color: var(--line-strong);
+      background: rgba(111, 147, 255, 0.1);
+      color: var(--text);
+      transform: translateY(-1px);
+    }
+
+    .btn.primary {
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
+      border-color: transparent;
+      color: #fff;
+      box-shadow: 0 10px 24px rgba(111, 147, 255, 0.25);
+    }
+
+    .icon-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+    }
+
     .layout {
+      flex: 1;
+      min-height: 0;
       display: grid;
-      grid-template-columns: minmax(240px, 300px) 1fr;
-      height: calc(100vh - 64px);
+      grid-template-columns: 340px minmax(0, 1fr);
+      gap: 18px;
+      padding: 18px;
     }
-    @media (max-width: 800px) {
-      .layout { grid-template-columns: 1fr; height: auto; min-height: calc(100vh - 64px); }
-    }
-    .panel {
-      border-left: 1px solid var(--line);
+
+    .sidebar,
+    .thread-panel {
+      min-height: 0;
       display: flex;
       flex-direction: column;
-      min-height: 0;
-    }
-    .panel-head {
-      padding: 12px 14px;
-      border-bottom: 1px solid var(--line);
-      font-size: 13px;
-      color: var(--muted);
-    }
-    .wf-select {
-      padding: 12px 14px;
-      border-bottom: 1px solid var(--line);
-    }
-    .wf-select label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
-    .wf-select select {
-      width: 100%;
-      padding: 10px 12px;
-      border-radius: 10px;
+      background: var(--panel);
       border: 1px solid var(--line);
-      background: #0a1020;
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      backdrop-filter: blur(14px);
+    }
+
+    .sidebar-head,
+    .thread-head {
+      padding: 18px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent);
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .section-title h2,
+    .section-title h3 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .section-title small {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .workflow-card,
+    .thread-stats,
+    .toolbar {
+      display: grid;
+      gap: 12px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .field select,
+    .field input,
+    .composer textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: rgba(4, 9, 20, 0.72);
       color: var(--text);
+      border-radius: 14px;
+      outline: none;
+      transition: 0.18s ease;
+    }
+
+    .field select,
+    .field input {
+      min-height: 46px;
+      padding: 0 14px;
       font-size: 13px;
     }
+
+    .field select:focus,
+    .field input:focus,
+    .composer textarea:focus {
+      border-color: rgba(111, 147, 255, 0.55);
+      box-shadow: 0 0 0 4px rgba(111, 147, 255, 0.12);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .stat-card {
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.025);
+    }
+
+    .stat-card .label {
+      color: var(--muted);
+      font-size: 11px;
+      margin-bottom: 6px;
+    }
+
+    .stat-card .value {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+
+    .chat-list-wrap {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
     .chat-list {
       flex: 1;
+      min-height: 0;
       overflow-y: auto;
       margin: 0;
-      padding: 0;
+      padding: 10px;
       list-style: none;
-    }
-    .chat-list li {
-      padding: 12px 14px;
-      border-bottom: 1px solid rgba(39, 52, 91, 0.4);
-      cursor: pointer;
-      font-size: 13px;
-    }
-    .chat-list li:hover { background: rgba(95, 140, 255, 0.08); }
-    .chat-list li.active { background: rgba(95, 140, 255, 0.15); border-right: 3px solid var(--primary); }
-    .chat-list .cid { font-family: Consolas, monospace; font-size: 11px; color: #7dd3fc; direction: ltr; text-align: left; }
-    .chat-list .pv { color: var(--muted); font-size: 12px; margin-top: 4px; line-height: 1.35; }
-    .chat-list .tm { font-size: 10px; color: #64748b; margin-top: 4px; }
-    .messages {
-      flex: 1;
-      overflow-y: auto;
-      padding: 16px;
       display: flex;
       flex-direction: column;
       gap: 10px;
     }
-    .bubble {
-      max-width: 85%;
-      padding: 10px 14px;
-      border-radius: 14px;
-      font-size: 14px;
-      line-height: 1.55;
-      white-space: pre-wrap;
-      word-break: break-word;
+
+    .chat-item {
+      border: 1px solid rgba(255, 255, 255, 0.03);
+      border-radius: 18px;
+      padding: 14px;
+      background: rgba(255, 255, 255, 0.018);
+      cursor: pointer;
+      transition: 0.2s ease;
     }
-    .bubble.user { align-self: flex-end; background: var(--user); border: 1px solid #2d5a8a; }
-    .bubble.bot { align-self: flex-start; background: var(--bot); border: 1px solid #2d6b5a; }
-    .bubble.operator { align-self: flex-start; background: var(--op); border: 1px solid #8a7a2d; }
-    .bubble .meta { font-size: 10px; color: #94a3b8; margin-bottom: 6px; }
-    .composer {
-      padding: 12px 16px;
-      border-top: 1px solid var(--line);
+
+    .chat-item:hover {
+      transform: translateY(-1px);
+      border-color: rgba(111, 147, 255, 0.22);
+      background: rgba(111, 147, 255, 0.08);
+    }
+
+    .chat-item.active {
+      background: linear-gradient(135deg, rgba(111, 147, 255, 0.18), rgba(124, 92, 255, 0.12));
+      border-color: rgba(111, 147, 255, 0.4);
+      box-shadow: 0 12px 24px rgba(44, 61, 114, 0.22);
+    }
+
+    .chat-item-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .chat-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .chat-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, rgba(111, 147, 255, 0.18), rgba(124, 92, 255, 0.16));
+      border: 1px solid rgba(111, 147, 255, 0.25);
+      color: #dce7ff;
+      font-weight: 700;
+      flex: 0 0 auto;
+    }
+
+    .chat-main {
+      min-width: 0;
+    }
+
+    .chat-main .cid {
+      font-family: Consolas, monospace;
+      color: #8cd3ff;
+      font-size: 11px;
+      direction: ltr;
+      text-align: left;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .chat-main .title {
+      font-size: 13px;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+
+    .chat-main .pv {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+      margin-top: 8px;
+      display: -webkit-box;
+      line-clamp: 2;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .chat-time {
+      color: var(--muted-2);
+      font-size: 11px;
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
+
+    .thread-head-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .thread-ident {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .thread-ident .avatar {
+      width: 46px;
+      height: 46px;
+      border-radius: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, rgba(111, 147, 255, 0.2), rgba(124, 92, 255, 0.2));
+      border: 1px solid rgba(111, 147, 255, 0.26);
+      font-size: 20px;
+    }
+
+    .thread-ident h3 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 800;
+    }
+
+    .thread-ident .sub {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 5px;
+      font-family: Consolas, monospace;
+      direction: ltr;
+      text-align: left;
+    }
+
+    .thread-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 32px;
+      padding: 0 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .pill.live::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 0 6px rgba(46, 204, 159, 0.12);
+    }
+
+    .thread-stats {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      margin-top: 14px;
+    }
+
+    .thread-stat {
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .thread-stat .k {
+      color: var(--muted);
+      font-size: 11px;
+      margin-bottom: 5px;
+    }
+
+    .thread-stat .v {
+      font-size: 17px;
+      font-weight: 800;
+    }
+
+    .err {
+      display: none;
+      margin: 14px 16px 0;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(248, 113, 113, 0.24);
+      background: rgba(127, 29, 29, 0.26);
+      color: #ffd3d3;
+      font-size: 13px;
+    }
+
+    .messages {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      scroll-behavior: smooth;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.01), transparent),
+        radial-gradient(circle at top, rgba(111, 147, 255, 0.05), transparent 24%);
+    }
+
+    .message-row {
       display: flex;
       gap: 10px;
       align-items: flex-end;
-      background: rgba(12, 18, 34, 0.95);
     }
-    .composer textarea {
-      flex: 1;
-      min-height: 72px;
-      max-height: 200px;
-      padding: 10px 12px;
-      border-radius: 10px;
-      border: 1px solid var(--line);
-      background: #0a1020;
-      color: var(--text);
+
+    .message-row.user {
+      justify-content: flex-end;
+      flex-direction: row-reverse;
+    }
+
+    .message-row.bot,
+    .message-row.operator {
+      justify-content: flex-start;
+    }
+
+    .mini-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      flex: 0 0 auto;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .bubble-wrap {
+      max-width: min(82%, 760px);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .bubble-meta {
+      color: var(--muted-2);
+      font-size: 11px;
+      padding: 0 6px;
+    }
+
+    .bubble {
+      position: relative;
+      padding: 14px 16px;
+      border-radius: 20px;
       font-size: 14px;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      word-break: break-word;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      box-shadow: 0 12px 22px rgba(0, 0, 0, 0.12);
+    }
+
+    .bubble.user {
+      background: var(--user);
+      border-color: rgba(80, 154, 255, 0.2);
+      border-bottom-left-radius: 6px;
+    }
+
+    .bubble.bot {
+      background: var(--bot);
+      border-color: rgba(74, 193, 157, 0.22);
+      border-bottom-right-radius: 6px;
+    }
+
+    .bubble.operator {
+      background: var(--op);
+      border-color: rgba(255, 191, 105, 0.2);
+      border-bottom-right-radius: 6px;
+    }
+
+    .bubble.empty-bubble {
+      background: rgba(255, 255, 255, 0.03);
+      border-style: dashed;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .composer {
+      border-top: 1px solid var(--line);
+      padding: 16px 18px 18px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.015), rgba(5, 11, 21, 0.8));
+    }
+
+    .composer-card {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: end;
+    }
+
+    .composer textarea {
+      min-height: 88px;
+      max-height: 220px;
+      padding: 14px 15px;
       resize: vertical;
+      font-size: 14px;
+      line-height: 1.65;
     }
-    .composer button {
-      padding: 10px 18px;
-      border-radius: 10px;
-      border: none;
-      background: var(--primary);
+
+    .composer-side {
+      display: grid;
+      gap: 10px;
+      min-width: 128px;
+    }
+
+    .send-btn {
+      min-height: 46px;
+      border: 0;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
       color: #fff;
-      font-weight: 600;
-      cursor: pointer;
+      font-weight: 800;
       font-size: 13px;
+      cursor: pointer;
+      box-shadow: 0 12px 22px rgba(111, 147, 255, 0.24);
+      transition: 0.18s ease;
     }
-    .composer button:disabled { opacity: 0.45; cursor: not-allowed; }
-    .empty { padding: 24px; text-align: center; color: var(--muted); font-size: 14px; }
-    .err { color: #f87171; font-size: 13px; padding: 8px 16px; }
+
+    .send-btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+      filter: brightness(1.05);
+    }
+
+    .send-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .helper-row {
+      margin-top: 10px;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      color: var(--muted-2);
+      font-size: 11px;
+    }
+
+    .empty {
+      padding: 26px 18px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .empty.big {
+      margin: auto;
+      max-width: 440px;
+    }
+
+    .empty.big .icon {
+      width: 68px;
+      height: 68px;
+      border-radius: 20px;
+      margin: 0 auto 16px;
+      display: grid;
+      place-items: center;
+      background: rgba(111, 147, 255, 0.08);
+      border: 1px solid rgba(111, 147, 255, 0.12);
+      font-size: 28px;
+    }
+
+    .skeleton {
+      overflow: hidden;
+      position: relative;
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .skeleton::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      transform: translateX(-100%);
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+      animation: shine 1.15s infinite;
+    }
+
+    @keyframes shine {
+      100% { transform: translateX(100%); }
+    }
+
+    @media (max-width: 1100px) {
+      .layout {
+        grid-template-columns: 320px minmax(0, 1fr);
+      }
+      .thread-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 920px) {
+      body {
+        overflow: auto;
+      }
+      .layout {
+        grid-template-columns: 1fr;
+        height: auto;
+      }
+      .sidebar {
+        min-height: 360px;
+      }
+      .thread-panel {
+        min-height: 72vh;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .topbar,
+      .layout {
+        padding: 12px;
+      }
+      .thread-stats,
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+      .composer-card {
+        grid-template-columns: 1fr;
+      }
+      .composer-side {
+        min-width: 0;
+      }
+      .bubble-wrap {
+        max-width: 92%;
+      }
+      .chat-item {
+        padding: 12px;
+      }
+    }
   </style>
 </head>
 <body>
-  <header>
-    <h1>محادثات تيليجرام</h1>
-    <div class="links">
-      <a class="btn" href="/social-ai/">بناء الوكلاء</a>
-      <a class="btn" href="/social-ai/">مدير السوشيال</a>
-      <a class="btn" href="/">الرئيسية</a>
-    </div>
-  </header>
-
-  <div class="layout">
-    <aside class="panel">
-      <div class="wf-select">
-        <label for="wfSelect">Workflow (يحتوي Telegram Listener)</label>
-        <select id="wfSelect">
-          <option value="">— اختر —</option>
-        </select>
+  <div class="page-shell">
+    <header class="topbar">
+      <div class="topbar-row">
+        <div class="hero">
+          <h1>محادثات تيليجرام</h1>
+          <p>لوحة حديثة لإدارة محادثات العملاء، متابعة الردود، والإرسال اليدوي بسرعة ووضوح.</p>
+        </div>
+        <div class="header-actions">
+          <button class="icon-btn" type="button" id="refreshAllBtn" title="تحديث الكل">↻</button>
+          <a class="btn" href="/social-ai/">بناء الوكلاء</a>
+          <a class="btn" href="/social-ai/">مدير السوشيال</a>
+          <a class="btn" href="/">الرئيسية</a>
+        </div>
       </div>
-      <div class="panel-head">المحادثات</div>
-      <ul class="chat-list" id="chatList"></ul>
-    </aside>
+    </header>
 
-    <section class="panel">
-      <div class="panel-head" id="threadTitle">اختر محادثة</div>
-      <div class="err" id="errBox" style="display:none;"></div>
-      <div class="messages" id="messages"></div>
-      <div class="composer">
-        <textarea id="replyText" placeholder="اكتب ردك للزبون..."></textarea>
-        <button type="button" id="sendBtn" disabled>إرسال</button>
-      </div>
-    </section>
+    <main class="layout">
+      <aside class="sidebar">
+        <div class="sidebar-head">
+          <div class="section-title">
+            <div>
+              <h2>لوحة المحادثات</h2>
+              <small>اختر الوورك فلو ثم صفِّ المحادثات واستعرض أحدث الرسائل</small>
+            </div>
+            <span class="pill live" id="liveStatus">تحديث حي</span>
+          </div>
+
+          <div class="workflow-card">
+            <div class="field">
+              <label for="wfSelect">Workflow (يحتوي Telegram Listener)</label>
+              <select id="wfSelect">
+                <option value="">— اختر —</option>
+              </select>
+            </div>
+
+            <div class="stats-grid">
+              <div class="stat-card">
+                <div class="label">المحادثات</div>
+                <div class="value" id="chatCount">0</div>
+              </div>
+              <div class="stat-card">
+                <div class="label">الوورك فلو الحالي</div>
+                <div class="value" id="workflowShort" style="font-size:14px;">—</div>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="chatSearch">بحث بالمحادثات</label>
+              <input id="chatSearch" type="search" placeholder="ابحث بـ chat id أو جزء من آخر رسالة..." />
+            </div>
+          </div>
+        </div>
+
+        <div class="chat-list-wrap">
+          <div class="sidebar-head" style="padding-top:14px; padding-bottom:12px;">
+            <div class="section-title" style="margin-bottom:0;">
+              <h3>قائمة المحادثات</h3>
+              <small id="chatListInfo">0 عنصر</small>
+            </div>
+          </div>
+          <ul class="chat-list" id="chatList"></ul>
+        </div>
+      </aside>
+
+      <section class="thread-panel">
+        <div class="thread-head">
+          <div class="thread-head-top">
+            <div class="thread-ident">
+              <div class="avatar">✈</div>
+              <div>
+                <h3 id="threadTitle">اختر محادثة</h3>
+                <div class="sub" id="threadSub">سيظهر هنا chat id ومعلومات المحادثة</div>
+              </div>
+            </div>
+            <div class="thread-actions">
+              <span class="pill" id="selectedWorkflowPill">بدون Workflow</span>
+              <button class="btn" type="button" id="refreshThreadBtn">تحديث المحادثة</button>
+            </div>
+          </div>
+
+          <div class="thread-stats">
+            <div class="thread-stat">
+              <div class="k">إجمالي الرسائل</div>
+              <div class="v" id="msgCount">0</div>
+            </div>
+            <div class="thread-stat">
+              <div class="k">آخر نشاط</div>
+              <div class="v" id="lastActivity" style="font-size:13px;">—</div>
+            </div>
+            <div class="thread-stat">
+              <div class="k">حالة الإرسال</div>
+              <div class="v" id="sendState" style="font-size:13px;">جاهز</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="err" id="errBox"></div>
+        <div class="messages" id="messages">
+          <div class="empty big">
+            <div class="icon">💬</div>
+            <div>اختر Workflow أولاً، ثم اختر محادثة لعرض الرسائل والرد اليدوي بشكل مباشر.</div>
+          </div>
+        </div>
+
+        <div class="composer">
+          <div class="composer-card">
+            <div>
+              <textarea id="replyText" placeholder="اكتب ردك للزبون..."></textarea>
+              <div class="helper-row">
+                <span>اختصار الإرسال: <strong>Ctrl + Enter</strong></span>
+                <span id="charCount">0 / 4096</span>
+              </div>
+            </div>
+            <div class="composer-side">
+              <button type="button" class="send-btn" id="sendBtn" disabled>إرسال الرد</button>
+              <button type="button" class="btn" id="clearBtn">مسح النص</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
   </div>
 
   <script>
@@ -194,11 +842,35 @@
     const chatList = document.getElementById("chatList");
     const messagesEl = document.getElementById("messages");
     const threadTitle = document.getElementById("threadTitle");
+    const threadSub = document.getElementById("threadSub");
     const replyText = document.getElementById("replyText");
     const sendBtn = document.getElementById("sendBtn");
     const errBox = document.getElementById("errBox");
+    const chatSearch = document.getElementById("chatSearch");
+    const chatCount = document.getElementById("chatCount");
+    const chatListInfo = document.getElementById("chatListInfo");
+    const workflowShort = document.getElementById("workflowShort");
+    const selectedWorkflowPill = document.getElementById("selectedWorkflowPill");
+    const msgCount = document.getElementById("msgCount");
+    const lastActivity = document.getElementById("lastActivity");
+    const sendState = document.getElementById("sendState");
+    const charCount = document.getElementById("charCount");
+    const refreshAllBtn = document.getElementById("refreshAllBtn");
+    const refreshThreadBtn = document.getElementById("refreshThreadBtn");
+    const clearBtn = document.getElementById("clearBtn");
 
-    let selectedChatId = null;
+    const state = {
+      workflows: [],
+      chats: [],
+      filteredChats: [],
+      messages: [],
+      selectedChatId: null,
+      selectedWorkflowId: "",
+      pollingTimer: null,
+      sending: false,
+      loadingChats: false,
+      loadingMessages: false,
+    };
 
     function showErr(msg) {
       if (!msg) {
@@ -223,6 +895,170 @@
       }
     }
 
+    function escapeHtml(s) {
+      const d = document.createElement("div");
+      d.textContent = s == null ? "" : String(s);
+      return d.innerHTML;
+    }
+
+    function roleLabel(role) {
+      if (role === "user") return "زبون";
+      if (role === "operator") return "أنت (يدوي)";
+      return "بوت";
+    }
+
+    function roleEmoji(role) {
+      if (role === "user") return "👤";
+      if (role === "operator") return "🧑‍💼";
+      return "🤖";
+    }
+
+    function fmtTime(iso) {
+      if (!iso) return "";
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return String(iso);
+      try {
+        return d.toLocaleString("ar-IQ", { dateStyle: "short", timeStyle: "short" });
+      } catch (e) {
+        return String(iso);
+      }
+    }
+
+    function shortWorkflowName() {
+      const id = String(wfSelect.value || "");
+      const item = state.workflows.find((w) => String(w.id) === id);
+      if (!item) return "—";
+      return item.name || ("Workflow " + id);
+    }
+
+    function updateHeaderState() {
+      const wfName = shortWorkflowName();
+      workflowShort.textContent = wfName.length > 18 ? wfName.slice(0, 18) + "…" : wfName;
+      selectedWorkflowPill.textContent = state.selectedWorkflowId ? wfName : "بدون Workflow";
+      charCount.textContent = (replyText.value || "").length + " / 4096";
+      sendBtn.disabled = !state.selectedWorkflowId || !state.selectedChatId || !(replyText.value || "").trim() || state.sending;
+      chatCount.textContent = String(state.chats.length || 0);
+      chatListInfo.textContent = String(state.filteredChats.length || 0) + " عنصر";
+      msgCount.textContent = String(state.messages.length || 0);
+      const lastMsg = state.messages[state.messages.length - 1];
+      lastActivity.textContent = lastMsg ? fmtTime(lastMsg.created_at) : "—";
+      sendState.textContent = state.sending ? "جارٍ الإرسال..." : "جاهز";
+    }
+
+    function renderChatSkeletons() {
+      chatList.innerHTML = "";
+      for (let i = 0; i < 5; i += 1) {
+        const li = document.createElement("li");
+        li.className = "chat-item skeleton";
+        li.style.height = "94px";
+        chatList.appendChild(li);
+      }
+    }
+
+    function renderMessageSkeletons() {
+      messagesEl.innerHTML = "";
+      for (let i = 0; i < 4; i += 1) {
+        const row = document.createElement("div");
+        row.className = "message-row " + (i % 2 ? "user" : "bot");
+        row.innerHTML =
+          '<div class="mini-avatar skeleton" style="width:34px;height:34px;"></div>' +
+          '<div class="bubble-wrap"><div class="bubble skeleton" style="height:' + (i % 2 ? 78 : 64) + 'px;"></div></div>';
+        messagesEl.appendChild(row);
+      }
+    }
+
+    function filteredChatItems() {
+      const q = (chatSearch.value || "").trim().toLowerCase();
+      if (!q) return state.chats.slice();
+      return state.chats.filter((c) => {
+        return (
+          String(c.chat_id || "").toLowerCase().includes(q) ||
+          String(c.preview || "").toLowerCase().includes(q) ||
+          String(c.last_at || "").toLowerCase().includes(q)
+        );
+      });
+    }
+
+    function renderChats() {
+      state.filteredChats = filteredChatItems();
+      chatList.innerHTML = "";
+      updateHeaderState();
+
+      if (!state.selectedWorkflowId) {
+        chatList.innerHTML = '<li class="empty">اختر Workflow أولاً لعرض المحادثات.</li>';
+        return;
+      }
+
+      if (!state.filteredChats.length) {
+        const hasSearch = (chatSearch.value || "").trim();
+        chatList.innerHTML =
+          '<li class="empty">' +
+          (hasSearch
+            ? "لا توجد نتائج تطابق البحث الحالي."
+            : "لا توجد رسائل مسجّلة بعد. بعد وصول رسائل للبوت ستظهر هنا.") +
+          "</li>";
+        return;
+      }
+
+      state.filteredChats.forEach((c) => {
+        const li = document.createElement("li");
+        li.className = "chat-item" + (state.selectedChatId === c.chat_id ? " active" : "");
+        li.dataset.chatId = c.chat_id;
+        li.innerHTML =
+          '<div class="chat-item-top">' +
+            '<div class="chat-badge">' +
+              '<div class="chat-avatar">✈</div>' +
+              '<div class="chat-main">' +
+                '<div class="cid">' + escapeHtml(c.chat_id) + '</div>' +
+                '<div class="title">محادثة تيليجرام</div>' +
+              '</div>' +
+            '</div>' +
+            '<div class="chat-time">' + escapeHtml(fmtTime(c.last_at)) + '</div>' +
+          '</div>' +
+          '<div class="chat-main"><div class="pv">' + escapeHtml(c.preview || "بدون معاينة") + '</div></div>';
+        li.addEventListener("click", () => selectChat(c.chat_id));
+        chatList.appendChild(li);
+      });
+    }
+
+    function renderMessages() {
+      messagesEl.innerHTML = "";
+      updateHeaderState();
+
+      if (!state.selectedWorkflowId) {
+        messagesEl.innerHTML =
+          '<div class="empty big"><div class="icon">💬</div><div>اختر Workflow أولاً لعرض الرسائل.</div></div>';
+        return;
+      }
+
+      if (!state.selectedChatId) {
+        messagesEl.innerHTML =
+          '<div class="empty big"><div class="icon">✈</div><div>اختر محادثة من القائمة لعرض كامل الحوار والرد اليدوي.</div></div>';
+        return;
+      }
+
+      if (!state.messages.length) {
+        messagesEl.innerHTML =
+          '<div class="empty big"><div class="icon">🕘</div><div>لا توجد رسائل حالياً داخل هذه المحادثة.</div></div>';
+        return;
+      }
+
+      state.messages.forEach((m) => {
+        const cls = m.role === "user" ? "user" : m.role === "operator" ? "operator" : "bot";
+        const row = document.createElement("div");
+        row.className = "message-row " + cls;
+        row.innerHTML =
+          '<div class="mini-avatar">' + escapeHtml(roleEmoji(m.role)) + '</div>' +
+          '<div class="bubble-wrap">' +
+            '<div class="bubble-meta">' + escapeHtml(roleLabel(m.role)) + " · " + escapeHtml(fmtTime(m.created_at)) + "</div>" +
+            '<div class="bubble ' + cls + '">' + escapeHtml(m.body || "") + "</div>" +
+          "</div>";
+        messagesEl.appendChild(row);
+      });
+
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
     async function loadWorkflows() {
       let j;
       try {
@@ -236,156 +1072,232 @@
         showErr(j.error || "فشل تحميل الوورك فلوهات");
         return;
       }
+
+      state.workflows = j.workflows || [];
       wfSelect.innerHTML = '<option value="">— اختر —</option>';
-      (j.workflows || []).forEach((w) => {
+      state.workflows.forEach((w) => {
         const o = document.createElement("option");
         o.value = String(w.id);
         o.textContent = (w.name || "") + (w.agent_name ? " — " + w.agent_name : "");
         wfSelect.appendChild(o);
       });
+      updateHeaderState();
     }
 
-    async function loadChats() {
-      const wfId = wfSelect.value;
-      chatList.innerHTML = "";
-      selectedChatId = null;
-      messagesEl.innerHTML = "";
-      threadTitle.textContent = wfId ? "اختر محادثة" : "اختر Workflow أولاً";
-      sendBtn.disabled = true;
-      if (!wfId) return;
+    async function loadChats({ preserveSelection = false } = {}) {
+      const wfId = String(wfSelect.value || "");
+      state.selectedWorkflowId = wfId;
+      showErr("");
+      state.chats = [];
+      state.filteredChats = [];
+      if (!preserveSelection) {
+        state.selectedChatId = null;
+        state.messages = [];
+      }
+      updateHeaderState();
+      renderChatSkeletons();
+      renderMessages();
+
+      if (!wfId) {
+        chatList.innerHTML = '<li class="empty">اختر Workflow أولاً لعرض المحادثات.</li>';
+        renderMessages();
+        return;
+      }
+
       let j;
       try {
         const r = await fetch("/social-ai/api/telegram/inbox/chats?workflow_id=" + encodeURIComponent(wfId));
         j = await readInboxJson(r);
       } catch (e) {
         showErr(String(e));
+        chatList.innerHTML = '<li class="empty">تعذر تحميل المحادثات.</li>';
         return;
       }
+
       if (!j.success) {
         showErr(j.error || "فشل تحميل المحادثات");
+        chatList.innerHTML = '<li class="empty">تعذر تحميل المحادثات.</li>';
         return;
       }
-      showErr("");
-      const chats = j.chats || [];
-      if (!chats.length) {
-        chatList.innerHTML = '<li class="empty">لا توجد رسائل مسجّلة بعد. بعد وصول رسائل للبوت ستظهر هنا.</li>';
-        return;
+
+      state.chats = j.chats || [];
+
+      if (
+        preserveSelection &&
+        state.selectedChatId &&
+        !state.chats.some((c) => c.chat_id === state.selectedChatId)
+      ) {
+        state.selectedChatId = null;
+        state.messages = [];
       }
-      chats.forEach((c) => {
-        const li = document.createElement("li");
-        li.dataset.chatId = c.chat_id;
-        li.innerHTML =
-          '<div class="cid">' + escapeHtml(c.chat_id) + '</div>' +
-          '<div class="pv">' + escapeHtml(c.preview || "") + '</div>' +
-          '<div class="tm">' + escapeHtml(c.last_at || "") + '</div>';
-        li.addEventListener("click", () => selectChat(c.chat_id, li));
-        chatList.appendChild(li);
-      });
+
+      renderChats();
     }
 
-    function escapeHtml(s) {
-      const d = document.createElement("div");
-      d.textContent = s;
-      return d.innerHTML;
-    }
-
-    function roleLabel(role) {
-      if (role === "user") return "زبون";
-      if (role === "operator") return "أنت (يدوي)";
-      return "بوت";
-    }
-
-    /** عرض وقت آمن (ISO من السيرفر) — يتجنب سلاسل غير صالحة تظهر كأرقام طويلة */
-    function fmtTime(iso) {
-      if (!iso) return "";
-      const d = new Date(iso);
-      if (isNaN(d.getTime())) return String(iso);
-      try {
-        return d.toLocaleString("ar-IQ", { dateStyle: "short", timeStyle: "short" });
-      } catch (e) {
-        return String(iso);
+    async function loadMessages(chatId, { keepScroll = false } = {}) {
+      if (!chatId || !state.selectedWorkflowId) return;
+      let prevBottomOffset = 0;
+      if (keepScroll) {
+        prevBottomOffset = messagesEl.scrollHeight - messagesEl.scrollTop;
+      } else {
+        renderMessageSkeletons();
       }
-    }
 
-    async function selectChat(chatId, liEl) {
-      selectedChatId = chatId;
-      document.querySelectorAll(".chat-list li").forEach((el) => el.classList.remove("active"));
-      if (liEl) liEl.classList.add("active");
-      threadTitle.textContent = "محادثة: " + chatId;
-      sendBtn.disabled = false;
-      messagesEl.innerHTML = '<div class="empty">جاري التحميل...</div>';
-      const wfId = wfSelect.value;
       let j;
       try {
         const r = await fetch(
           "/social-ai/api/telegram/inbox/messages?workflow_id=" +
-            encodeURIComponent(wfId) +
+            encodeURIComponent(state.selectedWorkflowId) +
             "&chat_id=" +
             encodeURIComponent(chatId)
         );
         j = await readInboxJson(r);
       } catch (e) {
-        messagesEl.innerHTML = "";
         showErr(String(e));
+        messagesEl.innerHTML = '<div class="empty">تعذر تحميل الرسائل.</div>';
         return;
       }
+
       if (!j.success) {
-        messagesEl.innerHTML = "";
         showErr(j.error || "فشل تحميل الرسائل");
+        messagesEl.innerHTML = '<div class="empty">تعذر تحميل الرسائل.</div>';
         return;
       }
-      showErr("");
-      messagesEl.innerHTML = "";
-      (j.messages || []).forEach((m) => {
-        const div = document.createElement("div");
-        const cls =
-          m.role === "user" ? "user" : m.role === "operator" ? "operator" : "bot";
-        div.className = "bubble " + cls;
-        div.innerHTML =
-          '<div class="meta">' +
-          escapeHtml(roleLabel(m.role)) +
-          " · " +
-          escapeHtml(fmtTime(m.created_at)) +
-          "</div>" +
-          escapeHtml(m.body || "");
-        messagesEl.appendChild(div);
-      });
-      messagesEl.scrollTop = messagesEl.scrollHeight;
+
+      state.messages = j.messages || [];
+      renderMessages();
+
+      if (keepScroll) {
+        const nextTop = messagesEl.scrollHeight - prevBottomOffset;
+        messagesEl.scrollTop = nextTop > 0 ? nextTop : messagesEl.scrollHeight;
+      }
     }
 
-    wfSelect.addEventListener("change", loadChats);
+    async function selectChat(chatId) {
+      state.selectedChatId = chatId;
+      const active = state.chats.find((c) => c.chat_id === chatId);
+      threadTitle.textContent = "محادثة تيليجرام";
+      threadSub.textContent = chatId || "—";
+      if (active && active.last_at) {
+        threadTitle.textContent = "محادثة نشطة";
+        threadSub.textContent = chatId + " · آخر نشاط: " + fmtTime(active.last_at);
+      }
+      renderChats();
+      await loadMessages(chatId);
+      updateHeaderState();
+    }
 
-    sendBtn.addEventListener("click", async () => {
-      const wfId = wfSelect.value;
+    async function sendReply() {
+      const wfId = state.selectedWorkflowId;
       const text = (replyText.value || "").trim();
-      if (!wfId || !selectedChatId || !text) return;
-      sendBtn.disabled = true;
+      if (!wfId || !state.selectedChatId || !text || state.sending) return;
+
+      state.sending = true;
+      updateHeaderState();
       showErr("");
+
       try {
         const r = await fetch("/social-ai/api/telegram/inbox/send", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             workflow_id: parseInt(wfId, 10),
-            chat_id: selectedChatId,
+            chat_id: state.selectedChatId,
             text: text,
           }),
         });
         const j = await readInboxJson(r);
         if (!j.success) {
           showErr(j.error || "فشل الإرسال");
-          sendBtn.disabled = false;
+          state.sending = false;
+          updateHeaderState();
           return;
         }
         replyText.value = "";
-        await selectChat(selectedChatId, document.querySelector(".chat-list li.active"));
+        autoResizeTextarea();
+        await loadChats({ preserveSelection: true });
+        await loadMessages(state.selectedChatId);
       } catch (e) {
         showErr(String(e));
       }
-      sendBtn.disabled = false;
+
+      state.sending = false;
+      updateHeaderState();
+    }
+
+    function autoResizeTextarea() {
+      replyText.style.height = "auto";
+      replyText.style.height = Math.min(Math.max(replyText.scrollHeight, 88), 220) + "px";
+    }
+
+    function startPolling() {
+      stopPolling();
+      state.pollingTimer = setInterval(async () => {
+        if (!state.selectedWorkflowId) return;
+        await loadChats({ preserveSelection: true });
+        if (state.selectedChatId) {
+          await loadMessages(state.selectedChatId, { keepScroll: false });
+        }
+      }, 15000);
+    }
+
+    function stopPolling() {
+      if (state.pollingTimer) {
+        clearInterval(state.pollingTimer);
+        state.pollingTimer = null;
+      }
+    }
+
+    wfSelect.addEventListener("change", async () => {
+      await loadChats();
+      renderMessages();
+      updateHeaderState();
     });
 
-    loadWorkflows().then(loadChats);
+    chatSearch.addEventListener("input", () => {
+      renderChats();
+    });
+
+    replyText.addEventListener("input", () => {
+      autoResizeTextarea();
+      updateHeaderState();
+    });
+
+    replyText.addEventListener("keydown", (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+        e.preventDefault();
+        sendReply();
+      }
+    });
+
+    sendBtn.addEventListener("click", sendReply);
+
+    clearBtn.addEventListener("click", () => {
+      replyText.value = "";
+      autoResizeTextarea();
+      updateHeaderState();
+    });
+
+    refreshAllBtn.addEventListener("click", async () => {
+      await loadChats({ preserveSelection: true });
+      if (state.selectedChatId) {
+        await loadMessages(state.selectedChatId);
+      }
+    });
+
+    refreshThreadBtn.addEventListener("click", async () => {
+      if (!state.selectedChatId) return;
+      await loadMessages(state.selectedChatId);
+    });
+
+    window.addEventListener("beforeunload", stopPolling);
+
+    autoResizeTextarea();
+    loadWorkflows().then(async () => {
+      await loadChats();
+      renderMessages();
+      startPolling();
+    });
   </script>
 </body>
 </html>
