@@ -17,6 +17,7 @@ class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY", "super-secret-key-change-in-production")
     SQLALCHEMY_DATABASE_URI = _database_uri()
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    BASE_URL = os.environ.get("BASE_URL", "https://finora.company").strip().rstrip("/")
     # مدة بقاء الجلسة (السوبر أدمن والعادي): 7 أيام بدل انتهائها عند إغلاق المتصفح أو بعد وقت قصير
     PERMANENT_SESSION_LIFETIME = timedelta(days=7)
 

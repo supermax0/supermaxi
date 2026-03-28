@@ -162,6 +162,7 @@ def _telegram_workflow_webhook_worker(
     tenant_slug: str,
     workflow_id: int,
     data: dict[str, Any],
+    base_url: str = "",
 ) -> None:
     """
     يُنفَّذ في خيط خلفي: تحميل الوورك فلو، صندوق الوارد، إنشاء التشغيل، وتنفيذ الـ workflow.
@@ -212,6 +213,7 @@ def _telegram_workflow_webhook_worker(
                 "workflow_id": wf.id,
                 "tenant_slug": (wf.agent.tenant_slug if wf.agent else None),
                 "telegram_update_id": str(update_id) if update_id is not None else "",
+                "base_url": str(base_url or "").strip().rstrip("/"),
             }
 
             try:
@@ -278,9 +280,10 @@ def webhook_for_workflow(tenant_slug: str, workflow_id: int):
     # نسخة من التحديث للخيط — لا نمرّر كائن الطلب
     data_copy = dict(data) if isinstance(data, dict) else {}
     app_obj = current_app._get_current_object()
+    base_url = (current_app.config.get("BASE_URL") or request.url_root or "").strip().rstrip("/")
     threading.Thread(
         target=_telegram_workflow_webhook_worker,
-        args=(app_obj, tenant_slug, workflow_id, data_copy),
+        args=(app_obj, tenant_slug, workflow_id, data_copy, base_url),
         daemon=True,
     ).start()
 

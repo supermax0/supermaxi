@@ -901,9 +901,9 @@ def _score_product_match(p: Product, query_blob: str) -> int:
     return score
 
 
-def _product_catalog_lines(p: Product) -> list[str]:
+def _product_catalog_lines(p: Product, context: Dict[str, Any] | None = None) -> list[str]:
     extra = ""
-    product_url = _product_public_url(p)
+    product_url = _product_public_url(p, context)
     video_url = _product_video_url(p)
     specs_preview = _product_specs_preview(p, limit=4)
     try:
@@ -996,10 +996,16 @@ def _product_meta_dict(p: Product) -> dict[str, Any]:
         return {}
 
 
-def _product_public_url(p: Product) -> str:
-    base = str(current_app.config.get("BASE_URL") or "").strip().rstrip("/")
+def _absolute_base_url(context: Dict[str, Any] | None = None) -> str:
+    ctx = context or {}
+    base = str(ctx.get("base_url") or current_app.config.get("BASE_URL") or "").strip().rstrip("/")
     if not base and has_request_context():
         base = str(request.host_url or "").strip().rstrip("/")
+    return base
+
+
+def _product_public_url(p: Product, context: Dict[str, Any] | None = None) -> str:
+    base = _absolute_base_url(context)
     path = f"/shop/product/{int(p.id)}"
     return f"{base}{path}" if base else path
 
@@ -1009,8 +1015,8 @@ def _product_video_url(p: Product) -> str:
     return str(meta.get("video_url") or "").strip()
 
 
-def _product_book_url(p: Product) -> str:
-    base = _product_public_url(p)
+def _product_book_url(p: Product, context: Dict[str, Any] | None = None) -> str:
+    base = _product_public_url(p, context)
     sep = "&" if "?" in base else "?"
     return f"{base}{sep}book=1#booking-form"
 
@@ -1038,17 +1044,21 @@ def _product_specs_preview(p: Product, limit: int = 3) -> str:
     return " | ".join(parts)
 
 
-def _product_share_payload(p: Product) -> dict[str, str]:
+def _product_share_payload(p: Product, context: Dict[str, Any] | None = None) -> dict[str, str]:
     return {
         "name": str(p.name or "").strip() or f"منتج #{p.id}",
-        "url": _product_public_url(p),
-        "book_url": _product_book_url(p),
+        "url": _product_public_url(p, context),
+        "book_url": _product_book_url(p, context),
         "video_url": _product_video_url(p),
         "specs": _product_specs_preview(p, limit=3),
     }
 
 
-def _build_inventory_catalog(limit: int = 300, include_inactive: bool = False) -> str:
+def _build_inventory_catalog(
+    limit: int = 300,
+    include_inactive: bool = False,
+    context: Dict[str, Any] | None = None,
+) -> str:
     """
     Build catalog text from company inventory (Product table in tenant DB).
     """
@@ -1061,7 +1071,7 @@ def _build_inventory_catalog(limit: int = 300, include_inactive: bool = False) -
 
     lines: list[str] = ["كتالوج المنتجات من المخزون:"]
     for p in products:
-        lines.extend(_product_catalog_lines(p))
+        lines.extend(_product_catalog_lines(p, context))
 
     return "\n".join(lines)
 
@@ -1084,12 +1094,12 @@ def _build_matched_inventory_catalog(
     products = q.limit(pool_limit).all()
 
     if mode == "full":
-        text = _build_inventory_catalog(limit=min(pool_limit, 2000), include_inactive=include_inactive)
+        text = _build_inventory_catalog(limit=min(pool_limit, 2000), include_inactive=include_inactive, context=context)
         imgs: list[str] = []
         shares: list[dict[str, str]] = []
         for p in products[:5]:
             imgs.extend(_product_image_candidates(p)[:2])
-            shares.append(_product_share_payload(p))
+            shares.append(_product_share_payload(p, context))
         return text, list(dict.fromkeys(imgs)), shares
 
     query_blob = _query_blob_for_match(context)
@@ -1113,9 +1123,9 @@ def _build_matched_inventory_catalog(
     image_urls: list[str] = []
     shares: list[dict[str, str]] = []
     for p in matched:
-        lines.extend(_product_catalog_lines(p))
+        lines.extend(_product_catalog_lines(p, context))
         image_urls.extend(_product_image_candidates(p)[:2])
-        shares.append(_product_share_payload(p))
+        shares.append(_product_share_payload(p, context))
 
     return "\n".join(lines), list(dict.fromkeys(image_urls))[:5], shares[:5]
 
@@ -1848,6 +1858,11 @@ def _append_product_share_links_if_needed(message: str, context: Dict[str, Any])
     return (text + "\n\n" + "\n".join(extra_lines)).strip() if text else "\n".join(extra_lines)
 
 
+def _is_public_button_url(url: str) -> bool:
+    s = str(url or "").strip().lower()
+    return s.startswith("https://") or s.startswith("http://")
+
+
 def _build_product_share_reply_markup(context: Dict[str, Any]) -> dict[str, Any] | None:
     share_items = context.get("telegram_product_share_items") or []
     if not isinstance(share_items, list) or not share_items:
@@ -1866,13 +1881,13 @@ def _build_product_share_reply_markup(context: Dict[str, Any]) -> dict[str, Any]
 
     rows: list[list[dict[str, str]]] = []
     first_row: list[dict[str, str]] = []
-    if details_url:
+    if _is_public_button_url(details_url):
         first_row.append({"text": "عرض التفاصيل", "url": details_url})
-    if book_url:
+    if _is_public_button_url(book_url):
         first_row.append({"text": "احجز الآن", "url": book_url})
     if first_row:
         rows.append(first_row[:2])
-    if wants_video and video_url:
+    if wants_video and _is_public_button_url(video_url):
         rows.append([{"text": "مشاهدة الفيديو", "url": video_url}])
 
     if not rows:
