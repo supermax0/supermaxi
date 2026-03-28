@@ -21,6 +21,10 @@ class Config:
     # متجر عام بدون جلسة: عند تركها فارغة يجب استخدام روابط /shop/<slug>/...
     # عند تعبئتها، تبقى /shop و /shop/product/<id> تعمل للشركة الافتراضية فقط.
     STOREFRONT_DEFAULT_TENANT_SLUG = os.environ.get("STOREFRONT_DEFAULT_TENANT_SLUG", "").strip()
+    # زر «واتساب» في رد تيليجرام عند عرض تفاصيل منتج من المخزون (رقم دولي بصيغة +964...)
+    TELEGRAM_PRODUCT_WHATSAPP_PHONE = os.environ.get(
+        "TELEGRAM_PRODUCT_WHATSAPP_PHONE", "+96407711272744"
+    ).strip()
     # مدة بقاء الجلسة (السوبر أدمن والعادي): 7 أيام بدل انتهائها عند إغلاق المتصفح أو بعد وقت قصير
     PERMANENT_SESSION_LIFETIME = timedelta(days=7)
 

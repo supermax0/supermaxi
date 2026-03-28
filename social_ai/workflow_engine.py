@@ -1837,7 +1837,7 @@ def run_whatsapp_send_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, 
 
 
 def _format_telegram_product_detail_addon(name: str, price: str, url: str) -> str:
-    """كتلة تفاصيل قصيرة: الاسم + السعر + الرابط + جملة توجيه."""
+    """كتلة تفاصيل قصيرة: الاسم + السعر + الرابط (بدون نص إضافي — الأزرار تكمّل)."""
     title = (name or "").strip() or "المنتج"
     lines: list[str] = [title]
     price_raw = str(price or "").strip()
@@ -1850,7 +1850,6 @@ def _format_telegram_product_detail_addon(name: str, price: str, url: str) -> st
     u = str(url or "").strip()
     if u:
         lines.append(u)
-    lines.append("لتفاصيل أكثر، اضغط الرابط أو زر «عرض التفاصيل».")
     return "\n".join(lines)
 
 
@@ -1890,12 +1889,36 @@ def _append_product_share_links_if_needed(message: str, context: Dict[str, Any])
         extra_lines.append(note)
     elif not detail_addon_added:
         extra_lines.append(note)
+    # عند طلب «تفاصيل» المنتج: لا نكرر فقرة الـ AI — الاسم والسعر والرابط فقط (+ أي سطر فيديو إن وُجد).
+    if detail_addon_added:
+        return "\n\n".join(extra_lines).strip()
     return (text + "\n\n" + "\n".join(extra_lines)).strip() if text else "\n".join(extra_lines)
 
 
 def _is_public_button_url(url: str) -> bool:
     s = str(url or "").strip().lower()
     return s.startswith("https://") or s.startswith("http://")
+
+
+def _whatsapp_wa_me_url(phone_raw: str) -> str | None:
+    """رابط wa.me من رقم يحتوي أرقاماً فقط أو بصيغة +9640..."""
+    d = re.sub(r"\D", "", str(phone_raw or ""))
+    if len(d) < 8:
+        return None
+    if d.startswith("9640"):
+        rest = d[4:].lstrip("0")
+        d = "964" + rest if rest else d
+    return f"https://wa.me/{d}"
+
+
+def _product_whatsapp_contact_url() -> str | None:
+    try:
+        raw = str(current_app.config.get("TELEGRAM_PRODUCT_WHATSAPP_PHONE") or "").strip()
+    except RuntimeError:
+        raw = ""
+    if not raw:
+        raw = "+96407711272744"
+    return _whatsapp_wa_me_url(raw)
 
 
 def _build_product_share_reply_markup(context: Dict[str, Any]) -> dict[str, Any] | None:
@@ -1924,6 +1947,9 @@ def _build_product_share_reply_markup(context: Dict[str, Any]) -> dict[str, Any]
         rows.append(first_row[:2])
     if wants_video and _is_public_button_url(video_url):
         rows.append([{"text": "مشاهدة الفيديو", "url": video_url}])
+    wa = _product_whatsapp_contact_url()
+    if wa and _is_public_button_url(wa):
+        rows.append([{"text": "تواصل واتساب", "url": wa}])
 
     if not rows:
         return None
