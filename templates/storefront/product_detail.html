@@ -244,6 +244,37 @@
       display: block;
       background: #000;
     }
+    .video-fallback {
+      margin: 0;
+      padding: 12px 16px;
+      text-align: center;
+      font-size: 14px;
+      border-top: 1px solid var(--line);
+      background: rgba(0, 0, 0, 0.25);
+    }
+    .video-fallback a { color: var(--brand-2); font-weight: 600; }
+    .video-external-card {
+      min-height: 280px;
+      display: grid;
+      place-items: center;
+      gap: 16px;
+      padding: 32px 20px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.7;
+    }
+    .video-external-card .btn-open {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 22px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--brand), var(--brand-2));
+      color: #fff;
+      font-weight: 700;
+      text-decoration: none;
+    }
     .related-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -351,15 +382,50 @@
       {% endif %}
 
       {% if product.video_url %}
+      {% set vu = product.video_url %}
+      {% set vu_l = vu|lower %}
+      {% set is_direct = vu_l.endswith('.mp4') or vu_l.endswith('.webm') or vu_l.endswith('.mov') %}
+      {% set is_fb = 'facebook.com' in vu_l or 'fb.watch' in vu_l or 'fb.com/' in vu_l %}
+      {% set is_ig = 'instagram.com' in vu_l %}
+      {% set is_yt_embed = 'youtube.com/embed/' in vu_l %}
+      {% set is_yt_watch = 'youtube.com' in vu_l and 'v=' in vu %}
+      {% set is_yt_short = 'youtu.be/' in vu_l %}
       <section class="card section">
         <h2>فيديو المنتج</h2>
         <div class="video-wrap">
-          {% if product.video_url.endswith('.mp4') or product.video_url.endswith('.webm') or product.video_url.endswith('.mov') %}
+          {% if is_direct %}
           <video controls preload="metadata">
-            <source src="{{ product.video_url }}">
+            <source src="{{ vu }}">
           </video>
+          {% elif is_fb %}
+          {# فيسبوك يرفض تحميل الصفحة العادية داخل iframe — نستخدم مشغّل التضمين الرسمي #}
+          <iframe
+            src="https://www.facebook.com/plugins/video.php?href={{ vu|urlencode }}&show_text=false&width=560&height=315"
+            width="560"
+            height="315"
+            style="border:none;overflow:hidden;width:100%;min-height:315px;"
+            scrolling="no"
+            frameborder="0"
+            allowfullscreen="true"
+            allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+            loading="lazy"
+            title="فيديو المنتج"></iframe>
+          <p class="video-fallback">لا يظهر الفيديو؟ <a href="{{ vu }}" target="_blank" rel="noopener">افتحه على فيسبوك</a></p>
+          {% elif is_ig %}
+          <div class="video-external-card">
+            <span>معاينة فيديو إنستغرام داخل الصفحة غير مدعومة. افتح الرابط في تبويب جديد.</span>
+            <a class="btn-open" href="{{ vu }}" target="_blank" rel="noopener">مشاهدة على إنستغرام</a>
+          </div>
+          {% elif is_yt_embed %}
+          <iframe src="{{ vu }}" allowfullscreen loading="lazy" title="فيديو المنتج"></iframe>
+          {% elif is_yt_watch %}
+          {% set yid = vu.split('v=')[1].split('&')[0].split('#')[0] %}
+          <iframe src="https://www.youtube.com/embed/{{ yid }}" allowfullscreen loading="lazy" title="فيديو المنتج"></iframe>
+          {% elif is_yt_short %}
+          {% set yid = vu.split('youtu.be/')[1].split('?')[0].split('/')[0] %}
+          <iframe src="https://www.youtube.com/embed/{{ yid }}" allowfullscreen loading="lazy" title="فيديو المنتج"></iframe>
           {% else %}
-          <iframe src="{{ product.video_url }}" allowfullscreen loading="lazy"></iframe>
+          <iframe src="{{ vu }}" allowfullscreen loading="lazy" title="فيديو المنتج"></iframe>
           {% endif %}
         </div>
       </section>
