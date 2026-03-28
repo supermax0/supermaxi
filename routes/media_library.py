@@ -91,6 +91,26 @@ def upload_inventory_video():
     return jsonify({"success": True, "message": "تم رفع الفيديو بنجاح.", "item": item})
 
 
+@media_library_bp.route("/inventory/videos/<path:filename>", methods=["DELETE"])
+def delete_inventory_video(filename: str):
+    guard = _ensure_inventory_access()
+    if guard:
+        return jsonify({"success": False, "error": "Unauthorized"}), 403
+
+    safe_name = Path(filename).name
+    root = get_video_upload_root()
+    path = root / safe_name
+    if not path.exists() or not path.is_file():
+        return jsonify({"success": False, "error": "الفيديو غير موجود."}), 404
+
+    try:
+        path.unlink()
+    except Exception:
+        return jsonify({"success": False, "error": "تعذر حذف الفيديو من الخادم."}), 500
+
+    return jsonify({"success": True, "message": "تم حذف الفيديو.", "filename": safe_name})
+
+
 @media_library_bp.route("/autoposter/serve/video/<path:filename>", methods=["GET"])
 def serve_video(filename: str):
     safe_name = Path(filename).name

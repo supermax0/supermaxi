@@ -59,6 +59,10 @@
       color: var(--text);
       border: 1px solid var(--border-light);
     }
+    .vl-btn.danger {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      color: #fff;
+    }
     .vl-drop {
       border: 2px dashed rgba(59, 130, 246, 0.35);
       border-radius: 22px;
@@ -216,7 +220,7 @@
     {% if videos %}
     <div class="vl-grid" id="videosGrid">
       {% for item in videos %}
-      <article class="vl-item">
+      <article class="vl-item" data-filename="{{ item.name }}">
         <div class="vl-preview">
           <video controls preload="metadata" src="{{ item.url }}"></video>
         </div>
@@ -230,6 +234,7 @@
           <div class="vl-row">
             <button class="vl-btn primary copy-btn" type="button" data-url="{{ item.absolute_url }}"><i class="fas fa-copy"></i> نسخ الرابط</button>
             <a class="vl-btn ghost" href="{{ item.url }}" target="_blank" rel="noopener"><i class="fas fa-up-right-from-square"></i> فتح</a>
+            <button class="vl-btn danger delete-btn" type="button" data-filename="{{ item.name }}"><i class="fas fa-trash"></i> حذف</button>
           </div>
         </div>
       </article>
@@ -263,7 +268,7 @@
 
     function renderCard(item) {
       return `
-        <article class="vl-item">
+        <article class="vl-item" data-filename="${escapeAttr(item.name)}">
           <div class="vl-preview">
             <video controls preload="metadata" src="${item.url}"></video>
           </div>
@@ -277,6 +282,7 @@
             <div class="vl-row">
               <button class="vl-btn primary copy-btn" type="button" data-url="${escapeAttr(item.absolute_url)}"><i class="fas fa-copy"></i> نسخ الرابط</button>
               <a class="vl-btn ghost" href="${escapeAttr(item.url)}" target="_blank" rel="noopener"><i class="fas fa-up-right-from-square"></i> فتح</a>
+              <button class="vl-btn danger delete-btn" type="button" data-filename="${escapeAttr(item.name)}"><i class="fas fa-trash"></i> حذف</button>
             </div>
           </div>
         </article>
@@ -302,6 +308,32 @@
         showMessage("تم نسخ الرابط.", "ok");
       } catch (_) {
         showMessage("تعذر نسخ الرابط تلقائياً.", "err");
+      }
+    }
+
+    function ensureEmptyState() {
+      if (!videosGrid.querySelector(".vl-item")) {
+        videosGrid.className = "vl-empty";
+        videosGrid.textContent = "لا توجد فيديوهات مرفوعة بعد.";
+      }
+    }
+
+    async function deleteVideo(filename, card) {
+      if (!filename || !card) return;
+      if (!window.confirm("هل تريد حذف هذا الفيديو نهائياً؟")) return;
+      try {
+        const response = await fetch("/inventory/videos/" + encodeURIComponent(filename), {
+          method: "DELETE",
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          throw new Error(data.error || "فشل حذف الفيديو.");
+        }
+        card.remove();
+        ensureEmptyState();
+        showMessage(data.message || "تم حذف الفيديو.", "ok");
+      } catch (error) {
+        showMessage(error.message || "حدث خطأ أثناء حذف الفيديو.", "err");
       }
     }
 
@@ -362,8 +394,17 @@
 
     document.addEventListener("click", (event) => {
       const btn = event.target.closest(".copy-btn");
-      if (!btn) return;
-      copyText(btn.getAttribute("data-url") || "");
+      if (btn) {
+        copyText(btn.getAttribute("data-url") || "");
+        return;
+      }
+
+      const deleteBtn = event.target.closest(".delete-btn");
+      if (!deleteBtn) return;
+      deleteVideo(
+        deleteBtn.getAttribute("data-filename") || "",
+        deleteBtn.closest(".vl-item")
+      );
     });
   })();
 </script>
