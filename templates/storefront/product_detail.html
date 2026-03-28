@@ -297,7 +297,7 @@
 </head>
 <body>
   <div class="page">
-    <a class="back" href="{{ url_for('storefront.store_index') }}">رجوع إلى المتجر</a>
+    <a class="back" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">رجوع إلى المتجر</a>
 
     <section class="layout">
       <div class="card media-card">
@@ -327,7 +327,7 @@
         <div class="desc">{{ product.description or "عرض مرتب لهذا المنتج مع الصور والسعر والمواصفات المتوفرة." }}</div>
         <div class="actions">
           <a class="btn success" href="#booking-form">احجز الآن</a>
-          <a class="btn primary" href="{{ url_for('storefront.store_index') }}">عرض بقية المنتجات</a>
+          <a class="btn primary" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">عرض بقية المنتجات</a>
           {% if product.video_url %}
           <a class="btn ghost" href="{{ product.video_url }}" target="_blank" rel="noopener">فتح الفيديو</a>
           {% endif %}

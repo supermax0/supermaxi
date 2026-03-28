@@ -1004,9 +1004,21 @@ def _absolute_base_url(context: Dict[str, Any] | None = None) -> str:
     return base
 
 
+def _storefront_default_slug_cfg() -> str:
+    try:
+        return str(current_app.config.get("STOREFRONT_DEFAULT_TENANT_SLUG") or "").strip()
+    except RuntimeError:
+        return ""
+
+
 def _product_public_url(p: Product, context: Dict[str, Any] | None = None) -> str:
     base = _absolute_base_url(context)
-    path = f"/shop/product/{int(p.id)}"
+    ctx = context or {}
+    slug = str(ctx.get("tenant_slug") or "").strip() or _storefront_default_slug_cfg()
+    if slug:
+        path = f"/shop/{slug}/product/{int(p.id)}"
+    else:
+        path = f"/shop/product/{int(p.id)}"
     return f"{base}{path}" if base else path
 
 

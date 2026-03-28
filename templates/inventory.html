@@ -3,6 +3,7 @@
 {% block page_title %}{{ _('inventory_page_title') }}{% endblock %}
 
 {% block content %}
+{% set _store_tslug = session.get('tenant_slug') or config.get('STOREFRONT_DEFAULT_TENANT_SLUG', '') %}
 <div class="inventory-page">
   <script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.js"></script>
 
@@ -1357,7 +1358,7 @@
         <i class="fas fa-barcode"></i>
         <span>{{ _('inventory_audit') }}</span>
       </a>
-      <a href="{{ url_for('storefront.store_index') }}" target="_blank" rel="noopener" class="inv-btn"
+      <a href="{{ url_for('storefront.store_index', tenant_slug=_store_tslug) }}" target="_blank" rel="noopener" class="inv-btn"
         style="background: linear-gradient(135deg, #06b6d4, #0284c7); color: white; box-shadow: 0 6px 16px rgba(6,182,212,0.28);">
         <i class="fas fa-store"></i>
         <span>فتح المتجر</span>
@@ -1424,7 +1425,7 @@
       "quantity": {{ p.quantity }},
       "low_stock_threshold": {{ p.low_stock_threshold or 5 }},
       "active": {{ 'true' if p.active else 'false' }},
-      "product_url": {{ url_for('storefront.product_detail', product_id=p.id)|tojson }},
+      "product_url": {{ url_for('storefront.product_detail', tenant_slug=_store_tslug, product_id=p.id)|tojson }},
       "description": {{ (p.description or '')|tojson }},
       "image_url": {{ (p.image_url or '')|tojson }},
       "meta_json": {{ (p.meta_json or '{}')|tojson }},

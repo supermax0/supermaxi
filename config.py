@@ -18,6 +18,9 @@ class Config:
     SQLALCHEMY_DATABASE_URI = _database_uri()
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     BASE_URL = os.environ.get("BASE_URL", "https://finora.company").strip().rstrip("/")
+    # متجر عام بدون جلسة: عند تركها فارغة يجب استخدام روابط /shop/<slug>/...
+    # عند تعبئتها، تبقى /shop و /shop/product/<id> تعمل للشركة الافتراضية فقط.
+    STOREFRONT_DEFAULT_TENANT_SLUG = os.environ.get("STOREFRONT_DEFAULT_TENANT_SLUG", "").strip()
     # مدة بقاء الجلسة (السوبر أدمن والعادي): 7 أيام بدل انتهائها عند إغلاق المتصفح أو بعد وقت قصير
     PERMANENT_SESSION_LIFETIME = timedelta(days=7)
 
