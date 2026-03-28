@@ -1202,6 +1202,38 @@
       resize: vertical;
     }
 
+    .inv-modal-specs {
+      display: grid;
+      gap: 10px;
+    }
+
+    .inv-modal-spec-row {
+      display: grid;
+      grid-template-columns: minmax(140px, .75fr) minmax(0, 1.25fr) auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .inv-modal-spec-remove {
+      width: 40px;
+      height: 40px;
+      border: 1px solid rgba(248, 113, 113, 0.22);
+      border-radius: 12px;
+      background: rgba(239, 68, 68, 0.12);
+      color: #fca5a5;
+      cursor: pointer;
+    }
+
+    .inv-modal-spec-add {
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1px dashed rgba(59, 130, 246, 0.35);
+      background: rgba(59, 130, 246, 0.1);
+      color: #bfdbfe;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
     .inv-modal-opening-box {
       padding: 16px;
       border-radius: 12px;
@@ -1558,7 +1590,8 @@
 
       <div>
         <label class="inv-modal-label">المواصفات المرتبة</label>
-        <textarea id="editSpecsText" name="specs_text" rows="4" class="inv-modal-textarea" placeholder="القياس: 42 بوصة&#10;النوع: سمارت"></textarea>
+        <div class="inv-modal-specs" id="editSpecsRows"></div>
+        <button type="button" class="inv-modal-spec-add" onclick="addEditSpecRow()">+ إضافة مواصفة</button>
       </div>
 
       <div class="inv-modal-actions">
@@ -1872,12 +1905,94 @@
     document.getElementById('editVideoUrl').value = meta.video_url || '';
     document.getElementById('editStoreBadge').value = meta.store_badge || '';
     document.getElementById('editGalleryUrls').value = Array.isArray(meta.gallery) ? meta.gallery.join('\n') : '';
-    document.getElementById('editSpecsText').value = meta.specs_text || '';
+    fillEditSpecRows(meta);
     document.getElementById('editModal').style.display = 'flex';
   }
 
   function closeEditModal() {
     document.getElementById('editModal').style.display = 'none';
+  }
+
+  function parseSpecItems(meta) {
+    if (Array.isArray(meta.specs_items) && meta.specs_items.length) {
+      return meta.specs_items
+        .filter(item => item && typeof item === 'object')
+        .map(item => ({
+          label: String(item.label || '').trim(),
+          value: String(item.value || '').trim(),
+        }))
+        .filter(item => item.value);
+    }
+
+    const raw = String(meta.specs_text || '').trim();
+    if (!raw) return [];
+    return raw
+      .split('\n')
+      .map(line => String(line || '').trim())
+      .filter(Boolean)
+      .map(line => {
+        if (line.includes(':')) {
+          const parts = line.split(':');
+          return {
+            label: String(parts.shift() || '').trim() || 'تفصيل',
+            value: parts.join(':').trim(),
+          };
+        }
+        if (line.includes(' - ')) {
+          const parts = line.split(' - ');
+          return {
+            label: String(parts.shift() || '').trim() || 'تفصيل',
+            value: parts.join(' - ').trim(),
+          };
+        }
+        return { label: 'تفصيل', value: line };
+      })
+      .filter(item => item.value);
+  }
+
+  function escapeAttr(str) {
+    return String(str || '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('"', '&quot;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;');
+  }
+
+  function addEditSpecRow(label = '', value = '') {
+    const container = document.getElementById('editSpecsRows');
+    if (!container) return;
+    const row = document.createElement('div');
+    row.className = 'inv-modal-spec-row';
+    row.innerHTML = `
+      <input type="text" name="spec_label[]" class="inv-modal-input" placeholder="اسم المواصفة" value="${escapeAttr(label)}">
+      <input type="text" name="spec_value[]" class="inv-modal-input" placeholder="القيمة" value="${escapeAttr(value)}">
+      <button type="button" class="inv-modal-spec-remove" onclick="removeEditSpecRow(this)">✕</button>
+    `;
+    container.appendChild(row);
+  }
+
+  function removeEditSpecRow(btn) {
+    const container = document.getElementById('editSpecsRows');
+    if (!container || !btn) return;
+    const rows = container.querySelectorAll('.inv-modal-spec-row');
+    if (rows.length <= 1) {
+      rows[0].querySelectorAll('input').forEach(input => input.value = '');
+      return;
+    }
+    const row = btn.closest('.inv-modal-spec-row');
+    if (row) row.remove();
+  }
+
+  function fillEditSpecRows(meta) {
+    const container = document.getElementById('editSpecsRows');
+    if (!container) return;
+    container.innerHTML = '';
+    const items = parseSpecItems(meta);
+    if (!items.length) {
+      addEditSpecRow();
+      return;
+    }
+    items.forEach(item => addEditSpecRow(item.label, item.value));
   }
 
   function viewMovements(productId) {

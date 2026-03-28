@@ -48,6 +48,57 @@ def _split_multiline_values(raw) -> list[str]:
     return items
 
 
+def _parse_specs_text(raw) -> list[dict]:
+    items: list[dict] = []
+    for line in str(raw or "").splitlines():
+        row = line.strip(" -\t\r\n")
+        if not row:
+            continue
+        if ":" in row:
+            label, value = row.split(":", 1)
+        elif " - " in row:
+            label, value = row.split(" - ", 1)
+        else:
+            label, value = "تفصيل", row
+        value = value.strip()
+        label = label.strip() or "تفصيل"
+        if value:
+            items.append({"label": label, "value": value})
+    return items
+
+
+def _extract_specs_items(meta: dict | None) -> list[dict]:
+    meta = meta or {}
+    raw_items = meta.get("specs_items")
+    items: list[dict] = []
+    if isinstance(raw_items, list):
+        for row in raw_items:
+            if not isinstance(row, dict):
+                continue
+            label = str(row.get("label") or "").strip() or "تفصيل"
+            value = str(row.get("value") or "").strip()
+            if value:
+                items.append({"label": label, "value": value})
+    if items:
+        return items
+    return _parse_specs_text(meta.get("specs_text"))
+
+
+def _specs_items_from_form(form) -> list[dict]:
+    labels = form.getlist("spec_label[]")
+    values = form.getlist("spec_value[]")
+    items: list[dict] = []
+    count = max(len(labels), len(values))
+    for idx in range(count):
+        label = str(labels[idx] if idx < len(labels) else "").strip() or "تفصيل"
+        value = str(values[idx] if idx < len(values) else "").strip()
+        if value:
+            items.append({"label": label, "value": value})
+    if items:
+        return items
+    return _parse_specs_text(form.get("specs_text"))
+
+
 def _meta_from_inventory_add_form(form) -> dict:
     """بناء meta_json من نموذج صفحة إضافة/تعديل المنتج."""
     meta_keys = (
@@ -89,9 +140,9 @@ def _meta_from_inventory_add_form(form) -> dict:
     gallery_urls = _split_multiline_values(form.get("gallery_urls"))
     if gallery_urls:
         meta["gallery"] = gallery_urls
-    specs_text = (form.get("specs_text") or "").strip()
-    if specs_text:
-        meta["specs_text"] = specs_text
+    specs_items = _specs_items_from_form(form)
+    if specs_items:
+        meta["specs_items"] = specs_items
     store_badge = (form.get("store_badge") or "").strip()
     if store_badge:
         meta["store_badge"] = store_badge
@@ -266,12 +317,14 @@ def add_product_page():
             ctx["error"] = "يرجى إدخال اسم المنتج."
             ctx["edit_product"] = None
             ctx["product_meta"] = {}
+            ctx["product_specs_items"] = []
             eid = (request.form.get("edit_product_id") or "").strip()
             if eid.isdigit():
                 ep = Product.query.get(int(eid))
                 if ep:
                     ctx["edit_product"] = ep
                     ctx["product_meta"] = _load_product_meta(ep)
+                    ctx["product_specs_items"] = _extract_specs_items(ctx["product_meta"])
             return render_template("inventory_add_product.html", **ctx), 400
 
         opening_stock = int(request.form.get("opening_stock", 0) or 0)
@@ -311,6 +364,7 @@ def add_product_page():
                 ctx["error"] = "المنتج غير موجود للتعديل."
                 ctx["edit_product"] = None
                 ctx["product_meta"] = {}
+                ctx["product_specs_items"] = []
                 return render_template("inventory_add_product.html", **ctx), 404
 
             old_buy_price = p.buy_price
@@ -393,12 +447,14 @@ def add_product_page():
     ctx = _inventory_add_summary()
     ctx["edit_product"] = None
     ctx["product_meta"] = {}
+    ctx["product_specs_items"] = []
     edit_arg = request.args.get("edit", type=int)
     if edit_arg:
         ep = Product.query.get(edit_arg)
         if ep:
             ctx["edit_product"] = ep
             ctx["product_meta"] = _load_product_meta(ep)
+            ctx["product_specs_items"] = _extract_specs_items(ctx["product_meta"])
         else:
             ctx["error"] = "المنتج غير موجود."
     return render_template("inventory_add_product.html", **ctx)
@@ -518,18 +574,22 @@ def edit_product(id):
 
     video_url = request.form.get("video_url", "").strip()
     gallery_urls = _split_multiline_values(request.form.get("gallery_urls"))
-    specs_text = request.form.get("specs_text", "").strip()
+    specs_items = _specs_items_from_form(request.form)
     store_badge = request.form.get("store_badge", "").strip()
 
     for key, value in (
         ("video_url", video_url),
-        ("specs_text", specs_text),
         ("store_badge", store_badge),
     ):
         if value:
             meta[key] = value
         else:
             meta.pop(key, None)
+    if specs_items:
+        meta["specs_items"] = specs_items
+    else:
+        meta.pop("specs_items", None)
+        meta.pop("specs_text", None)
     if gallery_urls:
         meta["gallery"] = gallery_urls
     else:

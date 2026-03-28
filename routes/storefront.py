@@ -67,6 +67,18 @@ def _product_gallery(product: Product, meta: dict) -> list[str]:
 
 def _product_specs(meta: dict) -> list[dict[str, str]]:
     specs: list[dict[str, str]] = []
+    raw_items = meta.get("specs_items")
+    if isinstance(raw_items, list):
+        for row in raw_items:
+            if not isinstance(row, dict):
+                continue
+            key = str(row.get("label") or "").strip() or "تفصيل"
+            value = str(row.get("value") or "").strip()
+            if value:
+                specs.append({"label": key, "value": value})
+    if specs:
+        return specs
+
     specs_text = str(meta.get("specs_text") or "").strip()
     if specs_text:
         for line in specs_text.splitlines():
@@ -83,24 +95,6 @@ def _product_specs(meta: dict) -> list[dict[str, str]]:
             value = value.strip()
             if value:
                 specs.append({"label": key or "تفصيل", "value": value})
-
-    if specs:
-        return specs
-
-    for key, label in (
-        ("brand", "العلامة"),
-        ("category", "الصنف"),
-        ("subcategory", "التصنيف الفرعي"),
-        ("unit", "الوحدة"),
-        ("warranty", "الضمان"),
-        ("weight", "الوزن"),
-        ("color", "اللون"),
-        ("size", "القياس"),
-        ("model", "الموديل"),
-    ):
-        value = str(meta.get(key) or "").strip()
-        if value:
-            specs.append({"label": label, "value": value})
     return specs
 
 

@@ -1035,6 +1035,22 @@ def _product_book_url(p: Product, context: Dict[str, Any] | None = None) -> str:
 
 def _product_specs_list(p: Product, limit: int = 3) -> list[str]:
     meta = _product_meta_dict(p)
+    specs_items = meta.get("specs_items")
+    if isinstance(specs_items, list):
+        rows: list[str] = []
+        for item in specs_items:
+            if not isinstance(item, dict):
+                continue
+            label = _clean_extracted_field(item.get("label") or "تفصيل", max_len=40)
+            value = _clean_extracted_field(item.get("value") or "", max_len=80)
+            if not value:
+                continue
+            rows.append(f"{label}: {value}" if label else value)
+            if len(rows) >= limit:
+                break
+        if rows:
+            return rows
+
     specs_text = str(meta.get("specs_text") or "").strip()
     if specs_text:
         rows: list[str] = []
@@ -1045,15 +1061,7 @@ def _product_specs_list(p: Product, limit: int = 3) -> list[str]:
             if len(rows) >= limit:
                 break
         return rows
-    parts: list[str] = []
-    for key in ("brand", "category", "subcategory", "unit", "warranty", "weight"):
-        value = meta.get(key)
-        if value is None or not str(value).strip():
-            continue
-        parts.append(f"{key}: {value}")
-        if len(parts) >= limit:
-            break
-    return parts
+    return []
 
 
 def _product_specs_preview(p: Product, limit: int = 3) -> str:

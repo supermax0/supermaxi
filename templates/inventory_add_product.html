@@ -199,6 +199,51 @@
     }
 
     .inv-hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+    .inv-specs-box {
+      display: grid;
+      gap: 12px;
+    }
+    .inv-specs-list {
+      display: grid;
+      gap: 10px;
+    }
+    .inv-spec-row {
+      display: grid;
+      grid-template-columns: minmax(180px, .8fr) minmax(0, 1.2fr) auto;
+      gap: 10px;
+      align-items: center;
+    }
+    .inv-spec-remove {
+      width: 42px;
+      height: 42px;
+      border: 1px solid rgba(248, 113, 113, 0.25);
+      border-radius: 12px;
+      background: rgba(239, 68, 68, 0.12);
+      color: #fda4af;
+      cursor: pointer;
+    }
+    .inv-spec-remove:hover {
+      background: rgba(239, 68, 68, 0.18);
+    }
+    .inv-spec-add {
+      width: fit-content;
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1px dashed rgba(59, 130, 246, 0.35);
+      background: rgba(59, 130, 246, 0.08);
+      color: #bfdbfe;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    @media (max-width: 760px) {
+      .inv-spec-row {
+        grid-template-columns: 1fr;
+      }
+      .inv-spec-remove,
+      .inv-spec-add {
+        width: 100%;
+      }
+    }
   </style>
 
   {% if error %}
@@ -240,6 +285,7 @@
 
   <form method="post" action="{{ url_for('inventory.add_product_page') }}" enctype="multipart/form-data" class="inv-add-form">
     {% set m = product_meta or {} %}
+    {% set spec_items = product_specs_items or [] %}
     {% if edit_product %}<input type="hidden" name="edit_product_id" value="{{ edit_product.id }}">{% endif %}
     <!-- قسم 1: بيانات أساسية -->
     <div class="inv-add-card">
@@ -409,9 +455,28 @@
           <p class="inv-hint">مثال: `/static/uploads/products/x.jpg` أو رابط خارجي مباشر.</p>
         </div>
         <div class="inv-field inv-span-4">
-          <label>المواصفات المرتبة</label>
-          <textarea name="specs_text" placeholder="القياس: 42 بوصة&#10;النوع: سمارت&#10;الدقة: 4K">{{ m.get('specs_text', '') }}</textarea>
-          <p class="inv-hint">سطر لكل مواصفة، وستظهر بشكل مرتب في صفحة المنتج.</p>
+          <label>مواصفات صفحة المنتج</label>
+          <div class="inv-specs-box">
+            <div id="specRows" class="inv-specs-list">
+              {% if spec_items %}
+                {% for item in spec_items %}
+                <div class="inv-spec-row">
+                  <input name="spec_label[]" placeholder="اسم المواصفة" value="{{ item.label }}">
+                  <input name="spec_value[]" placeholder="القيمة التي تظهر للعميل" value="{{ item.value }}">
+                  <button type="button" class="inv-spec-remove" onclick="removeSpecRow(this)">✕</button>
+                </div>
+                {% endfor %}
+              {% else %}
+              <div class="inv-spec-row">
+                <input name="spec_label[]" placeholder="اسم المواصفة" value="">
+                <input name="spec_value[]" placeholder="القيمة التي تظهر للعميل" value="">
+                <button type="button" class="inv-spec-remove" onclick="removeSpecRow(this)">✕</button>
+              </div>
+              {% endif %}
+            </div>
+            <button type="button" class="inv-spec-add" onclick="addSpecRow()">+ إضافة مواصفة</button>
+          </div>
+          <p class="inv-hint">كل سطر هنا يمثل مواصفة مستقلة في صفحة المنتج، ولن يتم جمع المواصفات من حقول المنتج الأخرى.</p>
         </div>
       </div>
     </div>
@@ -480,6 +545,37 @@
   var buy = document.getElementById('buy_price');
   var sale = document.getElementById('sale_price');
   var margin = document.getElementById('margin_percent');
+  var specRows = document.getElementById('specRows');
+
+  window.addSpecRow = function (label, value) {
+    if (!specRows) return;
+    var row = document.createElement('div');
+    row.className = 'inv-spec-row';
+    row.innerHTML =
+      '<input name="spec_label[]" placeholder="اسم المواصفة" value="' + escapeAttr(label || '') + '">' +
+      '<input name="spec_value[]" placeholder="القيمة التي تظهر للعميل" value="' + escapeAttr(value || '') + '">' +
+      '<button type="button" class="inv-spec-remove" onclick="removeSpecRow(this)">✕</button>';
+    specRows.appendChild(row);
+  };
+
+  window.removeSpecRow = function (btn) {
+    if (!specRows || !btn) return;
+    var rows = specRows.querySelectorAll('.inv-spec-row');
+    if (rows.length <= 1) {
+      rows[0].querySelectorAll('input').forEach(function (input) { input.value = ''; });
+      return;
+    }
+    btn.closest('.inv-spec-row').remove();
+  };
+
+  function escapeAttr(value) {
+    return String(value || '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('"', '&quot;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;');
+  }
+
   function syncFromMargin() {
     var b = parseFloat(buy.value) || 0;
     var m = parseFloat(margin.value) || 0;
