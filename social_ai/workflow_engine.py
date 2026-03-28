@@ -223,6 +223,35 @@ def _strip_booking_json_for_user_display(text: str) -> str:
     return t.strip()
 
 
+def _sanitize_image_delivery_claim(text: str, has_product_images: bool) -> str:
+    """
+    يمنع الردود المتناقضة مثل: "لا أستطيع إرسال صورة" عندما توجد صور جاهزة للإرسال.
+    """
+    raw = (text or "").strip()
+    if not raw or not has_product_images:
+        return raw
+
+    deny_patterns = [
+        r"(?:عذر[اأً]?|للأسف|اعتذر)?\s*لا\s*أستطيع[^\n\r.!؟]{0,80}(?:صورة|صور)",
+        r"لا\s*يمكنني[^\n\r.!؟]{0,80}(?:إرسال|تزويدك|عرض)[^\n\r.!؟]{0,30}(?:صورة|صور)",
+        r"ما\s*أگ?در[^\n\r.!؟]{0,60}(?:أرسل|ابعث|اوفر)[^\n\r.!؟]{0,20}(?:صورة|صور)",
+        r"لا\s*أملك[^\n\r.!؟]{0,40}(?:صورة|صور)",
+    ]
+
+    cleaned = raw
+    for pat in deny_patterns:
+        cleaned = re.sub(pat + r"[^\n\r.!؟]*[.!؟]?", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"[ \t]{2,}", " ", cleaned).strip(" \t\r\n")
+
+    if not cleaned:
+        return "تفضل، أرسلت لك صورة المنتج المتوفر."
+
+    # إن حذفنا جملة النفي ولم يذكر الرد الصورة، نضيف توضيحاً قصيراً.
+    if ("صورة" not in cleaned and "صور" not in cleaned) and cleaned != raw:
+        cleaned = cleaned + "\n\nتفضل، أرسلت لك صورة المنتج المتوفر."
+    return cleaned
+
+
 def _sanitize_quantity_value(val: Any) -> int | None:
     """كمية صحيحة موجبة ومحدودة للحجز."""
     if val is None:
@@ -1227,6 +1256,16 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
             "الكتالوج / المعرفة المعتمدة (لا تستخدم معلومات خارجها للأسعار والمواصفات):\n" + trimmed
         )
 
+    has_product_images = bool(
+        isinstance(context.get("telegram_product_image_urls"), list)
+        and (context.get("telegram_product_image_urls") or [])
+    )
+    if task in ("reply_comment", "booking") and has_product_images and context.get("chat_id"):
+        system_parts.append(
+            "مهم: صور المنتج مرفقة وتُرسل تلقائياً مع الرد. "
+            "لا تقل أبداً أنك لا تستطيع إرسال صور أو أنك لا تملك صورة."
+        )
+
     system_prompt = " ".join(system_parts)
 
     node_api_key = (data.get("api_key") or "").strip()
@@ -1244,6 +1283,7 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
         ],
     )
     text = (resp.choices[0].message.content or "").strip()
+    text = _sanitize_image_delivery_claim(text, has_product_images=has_product_images)
 
     # إن فشل النموذج بإخراج JSON للنية: إعادة واحدة بدرجة حرارة أقل (بدون حلقة لا نهائية)
     if task == "intent" and text and _parse_intent_value(text) == "unknown":
