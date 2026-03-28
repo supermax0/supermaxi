@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 
-from flask import Blueprint, abort, jsonify, redirect, render_template, request, send_from_directory, url_for
+from flask import Blueprint, abort, current_app, jsonify, redirect, render_template, request, send_from_directory, url_for
 
 from routes.inventory import check_permission
 from services.media_service import (
@@ -24,9 +24,13 @@ def _ensure_inventory_access():
     return None
 
 
+def _public_base_url() -> str:
+    return str(current_app.config.get("BASE_URL") or "https://finora.company").strip().rstrip("/")
+
+
 def _format_video_item(path: Path) -> dict:
     public_url = url_for("media_library.serve_video", filename=path.name)
-    absolute_url = request.url_root.rstrip("/") + public_url
+    absolute_url = _public_base_url() + public_url
     stat = path.stat()
     return {
         "name": path.name,
@@ -80,7 +84,7 @@ def upload_inventory_video():
     item = {
         "name": filename,
         "url": public_url,
-        "absolute_url": request.url_root.rstrip("/") + public_url,
+        "absolute_url": _public_base_url() + public_url,
         "size_mb": result.get("size_mb"),
         "modified_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "thumbnail_url": result.get("thumbnail_url"),
