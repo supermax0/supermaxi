@@ -858,15 +858,21 @@ def inject_plan_context():
         from utils.plan_limits import get_plan, has_feature as _hf
 
         plan_key = session.get("plan_key") or "basic"
-        # عند وجود جلسة شركة، جلب الخطة الحالية من قاعدة بيانات الشركة لتعكس أي تغيير من الإدارة العليا
+        # عند وجود جلسة شركة، جلب الخطة من قاعدة بيانات المستأجر.
+        # مسار "/" يُعفى في require_login قبل ضبط g.tenant — نربط g.tenant مؤقتاً هنا.
         try:
             tenant_slug = session.get("tenant_slug")
-            if tenant_slug and getattr(g, "tenant", None) == tenant_slug:
-                from models.tenant import Tenant as TenantModel
-                t = TenantModel.query.first()
-                if t and getattr(t, "plan_key", None):
-                    plan_key = t.plan_key
-                    session["plan_key"] = plan_key
+            if tenant_slug:
+                prev_tenant = getattr(g, "tenant", None)
+                g.tenant = tenant_slug
+                try:
+                    from models.tenant import Tenant as TenantModel
+                    t = TenantModel.query.first()
+                    if t and getattr(t, "plan_key", None):
+                        plan_key = t.plan_key
+                        session["plan_key"] = plan_key
+                finally:
+                    g.tenant = prev_tenant
         except Exception:
             pass
 

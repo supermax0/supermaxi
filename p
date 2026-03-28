@@ -1,127 +1,150 @@
-You are a senior Python/Flask engineer working on a production system.
+You are a senior full-stack engineer and QA automation expert.
 
-Project context:
-This is a large Flask application called Finora with multiple modules (POS, inventory, dashboard). 
-We recently added a new module called "publisher" for Facebook publishing.
+Your task is to design and implement a complete end-to-end testing system for my existing Flask web application using Playwright.
 
-The module structure:
+⚠️ Constraints:
 
-modules/
-  publisher/
-    api/
-      settings_api.py
-      pages_api.py
-      media_api.py
-      posts_api.py
-    models/
-      publisher_settings.py
-      publisher_page.py
-      publisher_media.py
-      publisher_post.py
-    services/
-      facebook_service.py
-      media_service.py
-      ai_service.py
-      scheduler_service.py
-    routes.py
+* DO NOT modify existing routes, database structure, or core business logic.
+* Only ADD new files and minimal safe hooks if needed.
+* The project already uses Flask, SQLite, and HTML templates.
 
-The module is registered in app.py with:
+---
 
-app.register_blueprint(publisher_bp, url_prefix="/publisher")
+## 🎯 Goals:
 
-Problem symptoms:
+1. Install and configure Playwright properly
+2. Create a clean scalable test structure
+3. Automatically test key workflows in the system
+4. Ensure tests are stable and readable
+5. Generate HTML reports
 
-1) Frontend errors:
-Unexpected token '<'
-Failed to load resource: 500
+---
 
-2) API endpoints returning HTML redirect instead of JSON:
-GET /publisher/api/settings
-GET /publisher/api/pages
-GET /publisher/api/media
+## 📁 Project context:
 
-Instead of JSON they return:
+* Backend: Flask
+* Frontend: HTML, CSS, JS
+* App runs on: http://localhost:5000
+* Pages include:
 
-<!doctype html>
-<title>Redirecting...</title>
+  * Login page
+  * Dashboard
+  * Inventory
+  * Orders
+  * Customers
 
-Which means the request is redirected to /login.
+---
 
-3) The application has a global login guard implemented using:
+## 🧱 Tasks:
 
-@app.before_request
+### 1. Setup Playwright
 
-which redirects all unauthenticated users to /login.
+* Install @playwright/test
+* Initialize config file
+* Install browsers
 
-The publisher APIs are being blocked by this guard.
+---
 
-4) Frontend JavaScript expects JSON responses and crashes when HTML is returned.
+### 2. Create folder structure:
 
-Required task:
+Create:
 
-Fix the authentication guard so that:
+tests/
+auth/
+dashboard/
+inventory/
+orders/
 
-- Publisher API routes work correctly
-- They return JSON instead of redirect HTML
-- Without breaking the existing login system
+playwright.config.js
 
-Important constraints:
+---
 
-- DO NOT modify existing POS, inventory, accounting modules
-- Changes must be isolated
-- Maintain production safety
+### 3. Write real tests:
 
-Implementation requirements:
+#### ✅ Auth Test
 
-1) Update the login middleware in app.py so that API routes under:
+* Open login page
+* Fill username/password
+* Submit
+* Verify redirect to dashboard
 
-/publisher/api/
+#### ✅ Dashboard Test
 
-are allowed to return JSON instead of redirecting to login.
+* Ensure stats are visible
+* Check charts loaded
 
-2) If user is not authenticated, the API should return:
+#### ✅ Inventory Test
 
-return jsonify({"success": False, "message": "Unauthorized"}), 401
+* Add new product
+* Verify it appears in table
 
-instead of redirect.
+#### ✅ Orders Test
 
-3) Ensure all publisher API routes return JSON responses.
+* Create order
+* Verify it is saved
 
-4) Verify the following endpoints:
+---
 
-GET /publisher/api/settings
-POST /publisher/api/settings
-GET /publisher/api/pages
-GET /publisher/api/media
-POST /publisher/api/posts/create
+### 4. Use best practices:
 
-5) Ensure that errors are always returned as JSON:
+* Use page.locator with IDs when possible
+* Avoid timeouts/sleeps
+* Use expect() assertions
+* Group tests with test.describe
 
-{
- "success": false,
- "message": "error message"
+---
+
+### 5. Add reusable helpers:
+
+Create:
+tests/utils/helpers.js
+
+Include:
+
+* login(page)
+* createProduct(page)
+
+---
+
+### 6. Add config file:
+
+playwright.config.js should include:
+
+* baseURL: http://localhost:5000
+* headless: false
+* reporter: html
+
+---
+
+### 7. Add scripts to package.json:
+
+"scripts": {
+"test": "playwright test",
+"test:ui": "playwright test --headed",
+"report": "playwright show-report"
 }
 
-6) Add proper logging for debugging:
+---
 
-current_app.logger.error(traceback.format_exc())
+### 8. Generate example code for each test file
 
-7) Ensure that the frontend will never receive HTML for API requests.
+---
 
-8) Provide the corrected code for:
+## 🧠 Important:
 
-- app.py login middleware
-- example publisher API route
+* Code must be clean and production-level
+* Use async/await properly
+* No pseudo code
+* Everything must be runnable directly
 
-Goal:
+---
 
-After the fix:
+## 🎁 Output format:
 
-/publisher/api/settings should return:
+Return:
 
-{
- "success": true,
- "settings": {...}
-}
+1. Folder structure
+2. All files code (FULL)
+3. Commands to run
 
-instead of redirecting to /login.
+Do NOT explain — just build the system.
