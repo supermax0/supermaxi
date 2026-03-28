@@ -1619,7 +1619,7 @@
                 <a class="action-btn" href="/inventory/report/${p.id}" title="{{ _('inventory_action_report') }}"><i class="fas fa-file-invoice"></i></a>
                 <a class="action-btn" href="#" onclick="viewMovements(${p.id}); return false;" title="{{ _('inventory_action_movements') }}"><i class="fas fa-list"></i></a>
                 <a class="action-btn" href="#" onclick="openAdjustModal(${p.id}, '${nameEscaped}', ${p.quantity}); return false;" title="{{ _('inventory_action_adjust_stock') }}"><i class="fas fa-wrench"></i></a>
-                <a class="action-btn" href="#" onclick="openEditModal(${p.id}); return false;" title="{{ _('inventory_action_edit') }}"><i class="fas fa-edit"></i></a>
+                <a class="action-btn inv-action--edit" href="/inventory/add?edit=${p.id}" title="{{ _('inventory_action_edit') }}"><i class="fas fa-edit"></i></a>
                 <a class="action-btn" href="/inventory/toggle/${p.id}" title="{{ _('inventory_action_toggle') }}"><i class="fas fa-power-off"></i></a>
                 <a class="action-btn delete" href="/inventory/delete/${p.id}" onclick="return confirm('{{ _('inventory_confirm_delete') }}')" title="{{ _('inventory_action_delete') }}"><i class="fas fa-trash"></i></a>
               </div>

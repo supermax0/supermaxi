@@ -48,6 +48,56 @@ def _split_multiline_values(raw) -> list[str]:
     return items
 
 
+def _meta_from_inventory_add_form(form) -> dict:
+    """بناء meta_json من نموذج صفحة إضافة/تعديل المنتج."""
+    meta_keys = (
+        "barcode_type",
+        "unit",
+        "brand",
+        "category",
+        "subcategory",
+        "branch_note",
+        "warranty",
+        "tax_applied",
+        "sales_tax_type",
+        "product_type",
+        "shelf",
+        "shelf_row",
+        "shelf_loc",
+        "weight",
+        "custom_field_1",
+        "custom_field_2",
+        "custom_field_3",
+        "custom_field_4",
+        "purchase_ex_tax",
+        "purchase_inc_tax",
+        "sale_ex_tax",
+        "sale_inc_tax",
+    )
+    meta: dict = {}
+    for k in meta_keys:
+        v = (form.get(k) or "").strip()
+        if v:
+            meta[k] = v
+    if form.get("enable_imei"):
+        meta["enable_imei"] = True
+    if bool(form.get("not_for_sale")):
+        meta["not_for_sale"] = True
+    video_url = (form.get("video_url") or "").strip()
+    if video_url:
+        meta["video_url"] = video_url
+    gallery_urls = _split_multiline_values(form.get("gallery_urls"))
+    if gallery_urls:
+        meta["gallery"] = gallery_urls
+    specs_text = (form.get("specs_text") or "").strip()
+    if specs_text:
+        meta["specs_text"] = specs_text
+    store_badge = (form.get("store_badge") or "").strip()
+    if store_badge:
+        meta["store_badge"] = store_badge
+    return meta
+
+
 def _inventory_add_summary():
     """إحصائيات مختصرة لشريط الملخص في صفحة إضافة المنتج."""
     products = Product.query.all()
@@ -214,6 +264,14 @@ def add_product_page():
         if not name:
             ctx = _inventory_add_summary()
             ctx["error"] = "يرجى إدخال اسم المنتج."
+            ctx["edit_product"] = None
+            ctx["product_meta"] = {}
+            eid = (request.form.get("edit_product_id") or "").strip()
+            if eid.isdigit():
+                ep = Product.query.get(int(eid))
+                if ep:
+                    ctx["edit_product"] = ep
+                    ctx["product_meta"] = _load_product_meta(ep)
             return render_template("inventory_add_product.html", **ctx), 400
 
         opening_stock = int(request.form.get("opening_stock", 0) or 0)
@@ -225,52 +283,11 @@ def add_product_page():
         low_stock_threshold = int(request.form.get("low_stock_threshold", 5) or 5)
         description = (request.form.get("description") or "").strip() or None
         external_image_url = (request.form.get("external_image_url") or "").strip() or None
-        video_url = (request.form.get("video_url") or "").strip()
-        gallery_urls = _split_multiline_values(request.form.get("gallery_urls"))
-        specs_text = (request.form.get("specs_text") or "").strip()
-        store_badge = (request.form.get("store_badge") or "").strip()
 
-        meta_keys = (
-            "barcode_type",
-            "unit",
-            "brand",
-            "category",
-            "subcategory",
-            "branch_note",
-            "warranty",
-            "tax_applied",
-            "sales_tax_type",
-            "product_type",
-            "shelf",
-            "shelf_row",
-            "shelf_loc",
-            "weight",
-            "custom_field_1",
-            "custom_field_2",
-            "custom_field_3",
-            "custom_field_4",
-            "purchase_ex_tax",
-            "purchase_inc_tax",
-            "sale_ex_tax",
-            "sale_inc_tax",
-        )
-        meta = {}
-        for k in meta_keys:
-            v = (request.form.get(k) or "").strip()
-            if v:
-                meta[k] = v
-        if request.form.get("enable_imei"):
-            meta["enable_imei"] = True
-        if not_for_sale_flag:
-            meta["not_for_sale"] = True
-        if video_url:
-            meta["video_url"] = video_url
-        if gallery_urls:
-            meta["gallery"] = gallery_urls
-        if specs_text:
-            meta["specs_text"] = specs_text
-        if store_badge:
-            meta["store_badge"] = store_badge
+        meta = _meta_from_inventory_add_form(request.form)
+
+        edit_raw = (request.form.get("edit_product_id") or "").strip()
+        edit_id = int(edit_raw) if edit_raw.isdigit() else None
 
         image_url = None
         file = request.files.get("product_image")
@@ -286,6 +303,67 @@ def add_product_page():
                 image_url = f"/static/uploads/products/{safe}"
         if not image_url and external_image_url:
             image_url = external_image_url
+
+        if edit_id:
+            p = Product.query.get(edit_id)
+            if not p:
+                ctx = _inventory_add_summary()
+                ctx["error"] = "المنتج غير موجود للتعديل."
+                ctx["edit_product"] = None
+                ctx["product_meta"] = {}
+                return render_template("inventory_add_product.html", **ctx), 404
+
+            old_buy_price = p.buy_price
+            old_opening_stock = p.opening_stock or 0
+
+            p.name = name
+            p.sku = sku
+            p.barcode = barcode
+            p.buy_price = buy_price
+            p.sale_price = sale_price
+            p.low_stock_threshold = max(0, low_stock_threshold)
+            p.description = description
+            p.shipping_cost = 0
+            p.marketing_cost = 0
+            p.active = not not_for_sale_flag
+
+            if image_url:
+                p.image_url = image_url
+            elif external_image_url:
+                p.image_url = external_image_url
+
+            if "opening_stock" in request.form:
+                new_opening_stock = int(request.form.get("opening_stock") or 0)
+                old_value = old_opening_stock * old_buy_price
+                new_value = new_opening_stock * p.buy_price
+                difference = new_value - old_value
+                p.opening_stock = new_opening_stock
+                stock_difference = new_opening_stock - old_opening_stock
+                p.quantity = (p.quantity or 0) + stock_difference
+                if p.quantity < 0:
+                    p.quantity = 0
+                if difference != 0:
+                    if difference > 0:
+                        capital_transaction = AccountTransaction(
+                            type="deposit",
+                            amount=difference,
+                            note=f"تحديث مخزون افتتاحي - {p.name} ({stock_difference:+d} قطعة)",
+                        )
+                    else:
+                        capital_transaction = AccountTransaction(
+                            type="withdraw",
+                            amount=abs(difference),
+                            note=f"تحديث مخزون افتتاحي - {p.name} ({stock_difference:+d} قطعة)",
+                        )
+                    db.session.add(capital_transaction)
+
+            p.meta_json = json.dumps(meta, ensure_ascii=False) if meta else None
+            db.session.commit()
+
+            action = (request.form.get("submit_action") or "save").strip()
+            if action == "add_another":
+                return redirect(url_for("inventory.add_product_page"))
+            return redirect(url_for("inventory.inventory"))
 
         p = Product(
             name=name,
@@ -313,6 +391,16 @@ def add_product_page():
         return redirect(url_for("inventory.inventory"))
 
     ctx = _inventory_add_summary()
+    ctx["edit_product"] = None
+    ctx["product_meta"] = {}
+    edit_arg = request.args.get("edit", type=int)
+    if edit_arg:
+        ep = Product.query.get(edit_arg)
+        if ep:
+            ctx["edit_product"] = ep
+            ctx["product_meta"] = _load_product_meta(ep)
+        else:
+            ctx["error"] = "المنتج غير موجود."
     return render_template("inventory_add_product.html", **ctx)
 
 

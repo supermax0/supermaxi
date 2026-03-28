@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-{% block title %}{{ _('inventory_add_page_title') }}{% endblock %}
-{% block page_title %}{{ _('inventory_add_page_title') }}{% endblock %}
+{% block title %}{% if edit_product %}تعديل منتج{% else %}{{ _('inventory_add_page_title') }}{% endif %}{% endblock %}
+{% block page_title %}{% if edit_product %}تعديل منتج — {{ edit_product.name }}{% else %}{{ _('inventory_add_page_title') }}{% endif %}{% endblock %}
 
 {% block content %}
 <div class="inventory-page inv-add-page">
@@ -204,6 +204,12 @@
   {% if error %}
   <div class="inv-alert">{{ error }}</div>
   {% endif %}
+  {% if edit_product %}
+  <div class="inv-add-card" style="padding:14px 18px;margin-bottom:14px;border-color:rgba(59,130,246,0.35);background:rgba(59,130,246,0.08);">
+    <strong style="color:#93c5fd;">تعديل منتج موجود</strong>
+    <span style="color:var(--text-muted);font-size:13px;margin-inline-start:10px;">رقم #{{ edit_product.id }} — يمكنك تغيير أي حقل ثم حفظ.</span>
+  </div>
+  {% endif %}
 
   <div class="inv-summary">
     <div class="inv-box">
@@ -233,53 +239,55 @@
   </div>
 
   <form method="post" action="{{ url_for('inventory.add_product_page') }}" enctype="multipart/form-data" class="inv-add-form">
+    {% set m = product_meta or {} %}
+    {% if edit_product %}<input type="hidden" name="edit_product_id" value="{{ edit_product.id }}">{% endif %}
     <!-- قسم 1: بيانات أساسية -->
     <div class="inv-add-card">
       <h3><span>📋</span> {{ _('inventory_section_basic') }}</h3>
       <div class="inv-form-grid">
         <div class="inv-field inv-span-2">
           <label>{{ _('inventory_field_name') }} <span style="color:#f87171">*</span></label>
-          <input name="name" required placeholder="{{ _('inventory_field_name') }}" autocomplete="off">
+          <input name="name" required placeholder="{{ _('inventory_field_name') }}" autocomplete="off" value="{{ edit_product.name if edit_product else '' }}">
         </div>
         <div class="inv-field">
           <label>{{ _('inventory_field_sku') }}</label>
-          <input name="sku" placeholder="SKU" autocomplete="off">
+          <input name="sku" placeholder="SKU" autocomplete="off" value="{{ edit_product.sku if edit_product and edit_product.sku else '' }}">
         </div>
         <div class="inv-field">
           <label>{{ _('inventory_field_barcode_type') }}</label>
           <select name="barcode_type">
-            <option value="C128">Code 128 (C128)</option>
-            <option value="EAN13">EAN-13</option>
-            <option value="CODE39">Code 39</option>
+            <option value="C128" {% if m.get('barcode_type', 'C128') == 'C128' %}selected{% endif %}>Code 128 (C128)</option>
+            <option value="EAN13" {% if m.get('barcode_type') == 'EAN13' %}selected{% endif %}>EAN-13</option>
+            <option value="CODE39" {% if m.get('barcode_type') == 'CODE39' %}selected{% endif %}>Code 39</option>
           </select>
         </div>
         <div class="inv-field">
           <label>{{ _('inventory_field_barcode_optional') }}</label>
-          <input name="barcode" placeholder="{{ _('inventory_field_barcode_optional') }}">
+          <input name="barcode" placeholder="{{ _('inventory_field_barcode_optional') }}" value="{{ edit_product.barcode if edit_product and edit_product.barcode else '' }}">
         </div>
         <div class="inv-field">
           <label>{{ _('inventory_field_unit') }}</label>
           <select name="unit">
-            <option value="piece">{{ _('inventory_unit_piece') }}</option>
-            <option value="box">صندوق</option>
-            <option value="kg">كيلوغرام</option>
+            <option value="piece" {% if m.get('unit', 'piece') == 'piece' %}selected{% endif %}>{{ _('inventory_unit_piece') }}</option>
+            <option value="box" {% if m.get('unit') == 'box' %}selected{% endif %}>صندوق</option>
+            <option value="kg" {% if m.get('unit') == 'kg' %}selected{% endif %}>كيلوغرام</option>
           </select>
         </div>
         <div class="inv-field">
           <label>{{ _('inventory_field_brand') }}</label>
-          <input name="brand" placeholder="{{ _('inventory_field_brand') }}">
+          <input name="brand" placeholder="{{ _('inventory_field_brand') }}" value="{{ m.get('brand', '') }}">
         </div>
         <div class="inv-field">
           <label>{{ _('inventory_field_category') }}</label>
-          <input name="category" placeholder="{{ _('inventory_field_category') }}">
+          <input name="category" placeholder="{{ _('inventory_field_category') }}" value="{{ m.get('category', '') }}">
         </div>
         <div class="inv-field">
           <label>{{ _('inventory_field_subcategory') }}</label>
-          <input name="subcategory" placeholder="{{ _('inventory_field_subcategory') }}">
+          <input name="subcategory" placeholder="{{ _('inventory_field_subcategory') }}" value="{{ m.get('subcategory', '') }}">
         </div>
         <div class="inv-field inv-span-2">
           <label>{{ _('inventory_field_branch_note') }}</label>
-          <input name="branch_note" placeholder="{{ _('inventory_field_branch_note') }}">
+          <input name="branch_note" placeholder="{{ _('inventory_field_branch_note') }}" value="{{ m.get('branch_note', '') }}">
         </div>
       </div>
     </div>
@@ -289,59 +297,59 @@
       <h3><span>📦</span> {{ _('inventory_section_stock') }}</h3>
       <div class="inv-check-row">
         <label class="inv-check">
-          <input type="checkbox" name="enable_imei" value="1">
+          <input type="checkbox" name="enable_imei" value="1" {% if m.get('enable_imei') %}checked{% endif %}>
           <span>{{ _('inventory_enable_imei') }}</span>
         </label>
         <label class="inv-check">
-          <input type="checkbox" name="not_for_sale" value="1">
+          <input type="checkbox" name="not_for_sale" value="1" {% if edit_product and not edit_product.active %}checked{% elif m.get('not_for_sale') %}checked{% endif %}>
           <span>{{ _('inventory_not_for_sale') }}</span>
         </label>
       </div>
       <div class="inv-form-grid" style="margin-top:12px;">
         <div class="inv-field">
           <label>{{ _('inventory_field_opening_stock_label') }}</label>
-          <input name="opening_stock" type="number" min="0" value="0" id="opening_stock">
+          <input name="opening_stock" type="number" min="0" value="{{ edit_product.opening_stock if edit_product else 0 }}" id="opening_stock">
         </div>
         <div class="inv-field">
           <label>{{ _('inventory_field_low_stock_alert') }}</label>
-          <input name="low_stock_threshold" type="number" min="0" value="5">
+          <input name="low_stock_threshold" type="number" min="0" value="{{ edit_product.low_stock_threshold if edit_product else 5 }}">
         </div>
         <div class="inv-field">
           <label>{{ _('inventory_field_warranty') }}</label>
           <select name="warranty">
             <option value="">{{ _('inventory_select_placeholder') }}</option>
-            <option value="none">بدون ضمان</option>
-            <option value="6m">6 أشهر</option>
-            <option value="1y">سنة</option>
-            <option value="2y">سنتان</option>
+            <option value="none" {% if m.get('warranty') == 'none' %}selected{% endif %}>بدون ضمان</option>
+            <option value="6m" {% if m.get('warranty') == '6m' %}selected{% endif %}>6 أشهر</option>
+            <option value="1y" {% if m.get('warranty') == '1y' %}selected{% endif %}>سنة</option>
+            <option value="2y" {% if m.get('warranty') == '2y' %}selected{% endif %}>سنتان</option>
           </select>
         </div>
         <div class="inv-field">
           <label>{{ _('inventory_field_weight') }}</label>
-          <input name="weight" placeholder="0">
+          <input name="weight" placeholder="0" value="{{ m.get('weight', '') }}">
         </div>
       </div>
       <p class="inv-hint">{{ _('inventory_section_shelf_hint') }}</p>
       <div class="inv-form-grid" style="margin-top:10px;">
         <div class="inv-field">
           <label>رف</label>
-          <input name="shelf" placeholder="رف">
+          <input name="shelf" placeholder="رف" value="{{ m.get('shelf', '') }}">
         </div>
         <div class="inv-field">
           <label>صف</label>
-          <input name="shelf_row" placeholder="صف">
+          <input name="shelf_row" placeholder="صف" value="{{ m.get('shelf_row', '') }}">
         </div>
         <div class="inv-field">
           <label>مكان</label>
-          <input name="shelf_loc" placeholder="مكان">
+          <input name="shelf_loc" placeholder="مكان" value="{{ m.get('shelf_loc', '') }}">
         </div>
         <div class="inv-field"></div>
       </div>
       <div class="inv-form-grid" style="margin-top:10px;">
-        <div class="inv-field"><label>حقل مخصص 1</label><input name="custom_field_1" placeholder="حقل مخصص 1"></div>
-        <div class="inv-field"><label>حقل مخصص 2</label><input name="custom_field_2" placeholder="حقل مخصص 2"></div>
-        <div class="inv-field"><label>حقل مخصص 3</label><input name="custom_field_3" placeholder="حقل مخصص 3"></div>
-        <div class="inv-field"><label>حقل مخصص 4</label><input name="custom_field_4" placeholder="حقل مخصص 4"></div>
+        <div class="inv-field"><label>حقل مخصص 1</label><input name="custom_field_1" placeholder="حقل مخصص 1" value="{{ m.get('custom_field_1', '') }}"></div>
+        <div class="inv-field"><label>حقل مخصص 2</label><input name="custom_field_2" placeholder="حقل مخصص 2" value="{{ m.get('custom_field_2', '') }}"></div>
+        <div class="inv-field"><label>حقل مخصص 3</label><input name="custom_field_3" placeholder="حقل مخصص 3" value="{{ m.get('custom_field_3', '') }}"></div>
+        <div class="inv-field"><label>حقل مخصص 4</label><input name="custom_field_4" placeholder="حقل مخصص 4" value="{{ m.get('custom_field_4', '') }}"></div>
       </div>
     </div>
 
@@ -352,22 +360,22 @@
         <div class="inv-field">
           <label>{{ _('inventory_field_tax_applied') }}</label>
           <select name="tax_applied">
-            <option value="none">{{ _('inventory_tax_none') }}</option>
-            <option value="vat">ضريبة مبيعات</option>
+            <option value="none" {% if m.get('tax_applied', 'none') == 'none' %}selected{% endif %}>{{ _('inventory_tax_none') }}</option>
+            <option value="vat" {% if m.get('tax_applied') == 'vat' %}selected{% endif %}>ضريبة مبيعات</option>
           </select>
         </div>
         <div class="inv-field">
           <label>{{ _('inventory_field_sales_tax_type') }}</label>
           <select name="sales_tax_type">
-            <option value="exclusive">{{ _('inventory_tax_exclusive') }}</option>
-            <option value="inclusive">{{ _('inventory_tax_inclusive') }}</option>
+            <option value="exclusive" {% if m.get('sales_tax_type', 'exclusive') == 'exclusive' %}selected{% endif %}>{{ _('inventory_tax_exclusive') }}</option>
+            <option value="inclusive" {% if m.get('sales_tax_type') == 'inclusive' %}selected{% endif %}>{{ _('inventory_tax_inclusive') }}</option>
           </select>
         </div>
         <div class="inv-field">
           <label>{{ _('inventory_field_product_type') }}</label>
           <select name="product_type">
-            <option value="single">{{ _('inventory_product_type_single') }}</option>
-            <option value="variable">متعدد الأصناف</option>
+            <option value="single" {% if m.get('product_type', 'single') == 'single' %}selected{% endif %}>{{ _('inventory_product_type_single') }}</option>
+            <option value="variable" {% if m.get('product_type') == 'variable' %}selected{% endif %}>متعدد الأصناف</option>
           </select>
         </div>
       </div>
@@ -379,30 +387,30 @@
       <div class="inv-form-grid">
         <div class="inv-field inv-span-4">
           <label>{{ _('inventory_field_description') }}</label>
-          <textarea name="description" placeholder="{{ _('inventory_field_description') }}"></textarea>
+          <textarea name="description" placeholder="{{ _('inventory_field_description') }}">{{ edit_product.description if edit_product and edit_product.description else '' }}</textarea>
         </div>
         <div class="inv-field inv-span-2">
           <label>رابط فيديو المنتج</label>
-          <input name="video_url" placeholder="https://... أو /autoposter/serve/video/...">
+          <input name="video_url" placeholder="https://... أو /autoposter/serve/video/..." value="{{ m.get('video_url', '') }}">
           <p class="inv-hint">يظهر في صفحة المنتج ويمكن للبوت إرساله عند طلب فيديو.</p>
         </div>
         <div class="inv-field inv-span-2">
           <label>شارة المتجر</label>
-          <input name="store_badge" placeholder="جديد / الأكثر طلباً / عرض خاص">
+          <input name="store_badge" placeholder="جديد / الأكثر طلباً / عرض خاص" value="{{ m.get('store_badge', '') }}">
         </div>
         <div class="inv-field inv-span-2">
           <label>رابط صورة رئيسية بديل</label>
-          <input name="external_image_url" placeholder="https://...">
+          <input name="external_image_url" placeholder="https://..." value="{{ edit_product.image_url if edit_product and edit_product.image_url else '' }}">
           <p class="inv-hint">يُستخدم إذا لم ترفع صورة من الجهاز.</p>
         </div>
         <div class="inv-field inv-span-2">
           <label>صور إضافية</label>
-          <textarea name="gallery_urls" placeholder="كل رابط أو مسار في سطر مستقل"></textarea>
+          <textarea name="gallery_urls" placeholder="كل رابط أو مسار في سطر مستقل">{% if m.get('gallery') %}{% if m.gallery is string %}{{ m.gallery }}{% else %}{{ m.gallery | join('\n') }}{% endif %}{% endif %}</textarea>
           <p class="inv-hint">مثال: `/static/uploads/products/x.jpg` أو رابط خارجي مباشر.</p>
         </div>
         <div class="inv-field inv-span-4">
           <label>المواصفات المرتبة</label>
-          <textarea name="specs_text" placeholder="القياس: 42 بوصة&#10;النوع: سمارت&#10;الدقة: 4K"></textarea>
+          <textarea name="specs_text" placeholder="القياس: 42 بوصة&#10;النوع: سمارت&#10;الدقة: 4K">{{ m.get('specs_text', '') }}</textarea>
           <p class="inv-hint">سطر لكل مواصفة، وستظهر بشكل مرتب في صفحة المنتج.</p>
         </div>
       </div>
@@ -420,7 +428,7 @@
       <div class="inv-form-grid">
         <div class="inv-field">
           <label>{{ _('inventory_field_buy_price') }} <span style="color:#f87171">*</span></label>
-          <input name="buy_price" id="buy_price" type="number" min="0" required placeholder="0">
+          <input name="buy_price" id="buy_price" type="number" min="0" required placeholder="0" value="{{ edit_product.buy_price if edit_product else '' }}">
         </div>
         <div class="inv-field">
           <label>{{ _('inventory_margin_percent') }}</label>
@@ -429,7 +437,7 @@
         </div>
         <div class="inv-field">
           <label>{{ _('inventory_field_sale_price') }} <span style="color:#f87171">*</span></label>
-          <input name="sale_price" id="sale_price" type="number" min="0" required placeholder="0">
+          <input name="sale_price" id="sale_price" type="number" min="0" required placeholder="0" value="{{ edit_product.sale_price if edit_product else '' }}">
         </div>
         <div class="inv-field">
           <label>{{ _('inventory_product_image') }}</label>
@@ -438,19 +446,19 @@
         </div>
         <div class="inv-field">
           <label>{{ _('inventory_purchase_ex_tax') }}</label>
-          <input name="purchase_ex_tax" placeholder="—">
+          <input name="purchase_ex_tax" placeholder="—" value="{{ m.get('purchase_ex_tax', '') }}">
         </div>
         <div class="inv-field">
           <label>{{ _('inventory_purchase_inc_tax') }}</label>
-          <input name="purchase_inc_tax" placeholder="—">
+          <input name="purchase_inc_tax" placeholder="—" value="{{ m.get('purchase_inc_tax', '') }}">
         </div>
         <div class="inv-field">
           <label>{{ _('inventory_sale_ex_tax') }}</label>
-          <input name="sale_ex_tax" placeholder="—">
+          <input name="sale_ex_tax" placeholder="—" value="{{ m.get('sale_ex_tax', '') }}">
         </div>
         <div class="inv-field">
           <label>{{ _('inventory_sale_inc_tax') }}</label>
-          <input name="sale_inc_tax" placeholder="—">
+          <input name="sale_inc_tax" placeholder="—" value="{{ m.get('sale_inc_tax', '') }}">
         </div>
       </div>
     </div>
@@ -486,6 +494,9 @@
   if (margin) margin.addEventListener('input', syncFromMargin);
   if (buy) buy.addEventListener('input', syncFromMargin);
   if (sale) sale.addEventListener('change', syncMarginFromSale);
+  {% if edit_product %}
+  syncMarginFromSale();
+  {% endif %}
 })();
 </script>
 {% endblock %}
