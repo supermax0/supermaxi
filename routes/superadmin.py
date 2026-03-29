@@ -10,6 +10,8 @@ from models.core.super_admin import SuperAdmin
 from models.core.payment_request import PaymentRequest
 from models.core.tenant import Tenant
 from models.core.subscription_plan import SubscriptionPlan
+from models.invoice_template import InvoiceTemplate, TenantTemplateSettings
+from models.user import User
 
 superadmin_bp = Blueprint("superadmin", __name__, url_prefix="/superadmin")
 
@@ -31,6 +33,31 @@ def inject_superadmin_data():
         pending_count = PaymentRequest.query.filter_by(status="pending").count()
         return dict(pending_count=pending_count)
     return dict(pending_count=0)
+
+
+def _ensure_invoice_owner_user(owner_id):
+    """
+    جداول قوالب الفواتير مرتبطة بـ users.id.
+    ننشئ مستخدم توافقياً للشركة عند الحاجة حتى لا يفشل FK.
+    """
+    if not owner_id:
+        return None
+    existing = db.session.get(User, owner_id)
+    if existing:
+        return owner_id
+
+    placeholder = User(
+        id=owner_id,
+        username=f"invoice_owner_{owner_id}",
+        email=f"invoice_owner_{owner_id}@local.invalid",
+        password_hash=generate_password_hash(f"invoice-owner-{owner_id}"),
+        full_name=f"Tenant Owner {owner_id}",
+        is_active=True,
+        is_admin=False,
+    )
+    db.session.add(placeholder)
+    db.session.flush()
+    return owner_id
 
 @superadmin_bp.route("/login", methods=["GET", "POST"])
 def login():
@@ -504,6 +531,70 @@ def settings():
     return render_template("superadmin_settings.html", settings=settings_data)
 
 
+@superadmin_bp.route("/invoice-templates")
+def invoice_templates_manager():
+    tenants = Tenant.query.order_by(Tenant.created_at.desc()).all()
+    templates = InvoiceTemplate.query.order_by(InvoiceTemplate.price.asc(), InvoiceTemplate.id.asc()).all()
+
+    tenant_ids = [t.id for t in tenants]
+    settings_rows = TenantTemplateSettings.query.filter(
+        TenantTemplateSettings.tenant_id.in_(tenant_ids)
+    ).all() if tenant_ids else []
+
+    active_template_by_tenant = {row.tenant_id: row.active_template_id for row in settings_rows}
+    template_by_id = {tmpl.id: tmpl for tmpl in templates}
+    return render_template(
+        "superadmin_invoice_templates.html",
+        tenants=tenants,
+        templates=templates,
+        active_template_by_tenant=active_template_by_tenant,
+        template_by_id=template_by_id,
+    )
+
+
+@superadmin_bp.route("/invoice-templates/activate", methods=["POST"])
+def activate_invoice_template_for_tenant():
+    tenant_slug = (request.form.get("tenant_slug") or "").strip().lower()
+    template_id_raw = (request.form.get("template_id") or "").strip()
+
+    if not tenant_slug:
+        flash("يرجى تحديد الشركة", "error")
+        return redirect(url_for("superadmin.invoice_templates_manager"))
+
+    if not template_id_raw.isdigit():
+        flash("يرجى اختيار قالب صالح", "error")
+        return redirect(url_for("superadmin.invoice_templates_manager"))
+
+    template_id = int(template_id_raw)
+    tenant = Tenant.query.filter(db.func.lower(Tenant.slug) == tenant_slug).first()
+    if not tenant:
+        flash("الشركة غير موجودة", "error")
+        return redirect(url_for("superadmin.invoice_templates_manager"))
+
+    template = InvoiceTemplate.query.get(template_id)
+    if not template:
+        flash("القالب غير موجود", "error")
+        return redirect(url_for("superadmin.invoice_templates_manager"))
+
+    try:
+        owner_uid = tenant.id
+        _ensure_invoice_owner_user(owner_uid)
+
+        tset = TenantTemplateSettings.query.filter_by(tenant_id=owner_uid).first()
+        if not tset:
+            tset = TenantTemplateSettings(tenant_id=owner_uid)
+            db.session.add(tset)
+
+        tset.active_template_id = template.id
+        db.session.commit()
+        flash(f"تم تفعيل قالب «{template.name}» لشركة «{tenant.name}» بنجاح", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"فشل تفعيل القالب: {str(e)}", "error")
+
+    return redirect(url_for("superadmin.invoice_templates_manager"))
+
+
 # دليل الصفحات — روابط لكل القوالب والصفحات في النظام
 PAGES_GUIDE = [
     {
@@ -514,6 +605,7 @@ PAGES_GUIDE = [
             ("/superadmin/requests", "طلبات ZainCash", "payment_requests.html"),
             ("/superadmin/tenants", "الشركات المسجلة", "tenant_list.html"),
             ("/superadmin/tenants/create", "إنشاء شركة جديدة", "superadmin_create_tenant.html"),
+            ("/superadmin/invoice-templates", "تفعيل قوالب الفواتير للشركات", "superadmin_invoice_templates.html"),
             ("/superadmin/settings", "إعدادات النظام", "superadmin_settings.html"),
             ("/superadmin/links", "دليل الصفحات — كل الروابط", "superadmin_links.html"),
             ("/superadmin/login", "تسجيل دخول المدير", "superadmin_login.html"),

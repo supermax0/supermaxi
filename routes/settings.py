@@ -27,7 +27,29 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
 def _template_owner_uid():
+    slug = (session.get("tenant_slug") or "").strip().lower()
+    if slug:
+        prev = getattr(g, "tenant", None)
+        g.tenant = None
+        try:
+            from models.core.tenant import Tenant as CoreTenant
+            tenant = CoreTenant.query.filter(db.func.lower(CoreTenant.slug) == slug).first()
+            if tenant:
+                return tenant.id
+        except Exception:
+            pass
+        finally:
+            g.tenant = prev
     return session.get("tenant_id") or session.get("user_id")
+
+
+def _template_owner_lookup_ids(primary_uid):
+    ids = []
+    legacy_uid = session.get("tenant_id") or session.get("user_id")
+    for uid in (primary_uid, legacy_uid):
+        if uid and uid not in ids:
+            ids.append(uid)
+    return ids
 
 
 @contextmanager
@@ -227,11 +249,19 @@ def invoice_settings():
     """صفحة إعدادات الفاتورة"""
     db.session.rollback()
     owner_uid = _template_owner_uid()
+    owner_lookup_ids = _template_owner_lookup_ids(owner_uid)
     with _core_db():
         templates = InvoiceTemplate.query.order_by(InvoiceTemplate.price.asc(), InvoiceTemplate.id.asc()).all()
         tset = TenantTemplateSettings.query.filter_by(tenant_id=owner_uid).first() if owner_uid else None
-        purchases = TenantTemplatePurchase.query.filter_by(tenant_id=owner_uid).all() if owner_uid else []
-        purchased_ids = {p.template_id: p.status for p in purchases}
+        if not tset and len(owner_lookup_ids) > 1:
+            tset = TenantTemplateSettings.query.filter(TenantTemplateSettings.tenant_id.in_(owner_lookup_ids)).first()
+        purchases = TenantTemplatePurchase.query.filter(TenantTemplatePurchase.tenant_id.in_(owner_lookup_ids)).all() if owner_lookup_ids else []
+        purchased_ids = {}
+        status_rank = {"approved": 3, "pending": 2, "rejected": 1}
+        for p in purchases:
+            old = purchased_ids.get(p.template_id)
+            if not old or status_rank.get(p.status, 0) > status_rank.get(old, 0):
+                purchased_ids[p.template_id] = p.status
         template_style = {
             "primary_color": (tset.primary_color if tset else "#2563eb") or "#2563eb",
             "secondary_color": (tset.secondary_color if tset else "#4a5568") or "#4a5568",
@@ -342,6 +372,7 @@ def update_invoice_settings():
         settings.set_visibility_settings(visibility_settings)
 
         owner_uid = _template_owner_uid()
+        owner_lookup_ids = _template_owner_lookup_ids(owner_uid)
         has_template_related_update = any([
             bool(data.get('selected_template_id')),
             'primary_color' in data,
@@ -361,11 +392,11 @@ def update_invoice_settings():
                     template = InvoiceTemplate.query.get(selected_template_id)
                     if template:
                         if template.is_premium:
-                            approved_purchase = TenantTemplatePurchase.query.filter_by(
-                                tenant_id=owner_uid,
-                                template_id=selected_template_id,
-                                status='approved'
-                            ).first()
+                            approved_purchase = TenantTemplatePurchase.query.filter(
+                                TenantTemplatePurchase.tenant_id.in_(owner_lookup_ids),
+                                TenantTemplatePurchase.template_id == selected_template_id,
+                                TenantTemplatePurchase.status == 'approved'
+                            ).first() if owner_lookup_ids else None
                             if not approved_purchase:
                                 return jsonify({"success": False, "error": "هذا القالب مدفوع ولم تتم الموافقة على شرائه بعد"}), 403
                         tset.active_template_id = selected_template_id
@@ -469,8 +500,11 @@ def preview_invoice():
         
         settings = InvoiceSettings.get_settings()
         owner_uid = _template_owner_uid()
+        owner_lookup_ids = _template_owner_lookup_ids(owner_uid)
         with _core_db():
             tset = TenantTemplateSettings.query.filter_by(tenant_id=owner_uid).first() if owner_uid else None
+            if not tset and len(owner_lookup_ids) > 1:
+                tset = TenantTemplateSettings.query.filter(TenantTemplateSettings.tenant_id.in_(owner_lookup_ids)).first()
         
         # Calculate totals
         total = sum(getattr(item, "total", 0) for item in items) if items else getattr(sample_order, "total", 0)

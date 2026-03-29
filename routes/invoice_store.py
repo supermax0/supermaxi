@@ -14,9 +14,33 @@ invoice_store_bp = Blueprint('invoice_store', __name__)
 
 def _template_tenant_uid():
     """
-    يطابق routes/orders.py (طباعة الفاتورة): معرف سجل tenant المحلي أو موظف الجلسة.
+    معرّف مالك القالب على مستوى الشركة (يفضَّل tenant.id من Core عبر tenant_slug).
+    fallback للجلسات القديمة: tenant_id أو user_id.
     """
+    slug = (session.get("tenant_slug") or "").strip().lower()
+    if slug:
+        prev = getattr(g, "tenant", None)
+        g.tenant = None
+        try:
+            from models.core.tenant import Tenant as CoreTenant
+            tenant = CoreTenant.query.filter(db.func.lower(CoreTenant.slug) == slug).first()
+            if tenant:
+                return tenant.id
+        except Exception:
+            pass
+        finally:
+            g.tenant = prev
     return session.get("tenant_id") or session.get("user_id")
+
+
+def _template_lookup_owner_ids(primary_uid):
+    """يدعم قراءة الإعدادات القديمة (قبل التحويل لمعرف الشركة المركزي)."""
+    ids = []
+    legacy_uid = session.get("tenant_id") or session.get("user_id")
+    for uid in (primary_uid, legacy_uid):
+        if uid and uid not in ids:
+            ids.append(uid)
+    return ids
 
 
 def _ensure_invoice_owner_user(owner_id):
@@ -78,13 +102,21 @@ def store_home():
             seed_templates()
 
         uid = _template_tenant_uid()
+        lookup_ids = _template_lookup_owner_ids(uid)
         settings = TenantTemplateSettings.query.filter_by(tenant_id=uid).first()
+        if not settings and len(lookup_ids) > 1:
+            settings = TenantTemplateSettings.query.filter(TenantTemplateSettings.tenant_id.in_(lookup_ids)).first()
         active_id = settings.active_template_id if settings else None
 
         templates = InvoiceTemplate.query.order_by(InvoiceTemplate.price.asc(), InvoiceTemplate.id.asc()).all()
 
-        purchases = TenantTemplatePurchase.query.filter_by(tenant_id=uid).all()
-        purchased_ids = {p.template_id: p.status for p in purchases}
+        purchases = TenantTemplatePurchase.query.filter(TenantTemplatePurchase.tenant_id.in_(lookup_ids)).all() if lookup_ids else []
+        purchased_ids = {}
+        status_rank = {"approved": 3, "pending": 2, "rejected": 1}
+        for p in purchases:
+            old = purchased_ids.get(p.template_id)
+            if not old or status_rank.get(p.status, 0) > status_rank.get(old, 0):
+                purchased_ids[p.template_id] = p.status
 
         return render_template(
             'invoice_templates_store.html',
@@ -179,8 +211,11 @@ def preview_invoice_template(template_id):
 
     template_styles = {"primary": "#2563eb", "secondary": "#4a5568", "custom_css": None}
     uid = _template_tenant_uid()
+    lookup_ids = _template_lookup_owner_ids(uid)
     with _core_db():
         tset = TenantTemplateSettings.query.filter_by(tenant_id=uid).first()
+        if not tset and len(lookup_ids) > 1:
+            tset = TenantTemplateSettings.query.filter(TenantTemplateSettings.tenant_id.in_(lookup_ids)).first()
         if tset:
             template_styles = {
                 "primary": tset.primary_color or template_styles["primary"],
@@ -248,11 +283,15 @@ def buy_template(template_id):
     if redir:
         return jsonify({'success': False, 'message': 'غير مصرّح'}), 401
     uid = _template_tenant_uid()
+    lookup_ids = _template_lookup_owner_ids(uid)
     with _core_db():
         _ensure_invoice_owner_user(uid)
         template = InvoiceTemplate.query.get_or_404(template_id)
 
-        existing = TenantTemplatePurchase.query.filter_by(tenant_id=uid, template_id=template_id).first()
+        existing = TenantTemplatePurchase.query.filter(
+            TenantTemplatePurchase.tenant_id.in_(lookup_ids),
+            TenantTemplatePurchase.template_id == template_id
+        ).first() if lookup_ids else None
         if existing:
             return jsonify({'success': False, 'message': 'لقد قمت بطلب هذا القالب مسبقاً.'}), 400
 
@@ -288,12 +327,17 @@ def activate_template(template_id):
     if redir:
         return jsonify({'success': False, 'message': 'غير مصرّح'}), 401
     uid = _template_tenant_uid()
+    lookup_ids = _template_lookup_owner_ids(uid)
     with _core_db():
         _ensure_invoice_owner_user(uid)
         template = InvoiceTemplate.query.get_or_404(template_id)
 
         if template.is_premium:
-            purchase = TenantTemplatePurchase.query.filter_by(tenant_id=uid, template_id=template_id, status='approved').first()
+            purchase = TenantTemplatePurchase.query.filter(
+                TenantTemplatePurchase.tenant_id.in_(lookup_ids),
+                TenantTemplatePurchase.template_id == template_id,
+                TenantTemplatePurchase.status == 'approved'
+            ).first() if lookup_ids else None
             if not purchase:
                 return jsonify({'success': False, 'message': 'يجب شراء القالب أو انتظار موافقة الإدارة أولاً.'}), 403
 

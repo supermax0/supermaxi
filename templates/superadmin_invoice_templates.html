@@ -1,0 +1,204 @@
+{% extends "superadmin_base.html" %}
+{% block title %}تفعيل قوالب الفواتير للشركات{% endblock %}
+{% block page_title %}تفعيل قالب الفاتورة لكل شركة{% endblock %}
+
+{% block extra_style %}
+<style>
+    .page-card {
+        padding: 24px;
+    }
+
+    .section-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .section-title {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 800;
+        color: #fff;
+    }
+
+    .section-subtitle {
+        margin: 0;
+        color: var(--text-muted);
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .table-wrap {
+        overflow-x: auto;
+        border-radius: 14px;
+        border: 1px solid var(--border-color);
+    }
+
+    .custom-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 900px;
+    }
+
+    .custom-table th,
+    .custom-table td {
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--border-color);
+        text-align: right;
+        vertical-align: middle;
+    }
+
+    .custom-table th {
+        font-size: 12px;
+        color: var(--text-muted);
+        font-weight: 800;
+        background: rgba(255, 255, 255, 0.02);
+        text-transform: uppercase;
+        letter-spacing: .6px;
+    }
+
+    .tenant-name {
+        font-weight: 800;
+        color: #fff;
+    }
+
+    .tenant-slug {
+        display: block;
+        margin-top: 4px;
+        color: var(--text-muted);
+        font-size: 12px;
+        font-family: monospace;
+    }
+
+    .template-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border-radius: 999px;
+        padding: 6px 12px;
+        font-size: 12px;
+        font-weight: 800;
+        border: 1px solid transparent;
+    }
+
+    .template-badge.free {
+        color: #22c55e;
+        background: rgba(34, 197, 94, 0.12);
+        border-color: rgba(34, 197, 94, 0.35);
+    }
+
+    .template-badge.premium {
+        color: #f59e0b;
+        background: rgba(245, 158, 11, 0.12);
+        border-color: rgba(245, 158, 11, 0.35);
+    }
+
+    .template-badge.none {
+        color: #9ca3af;
+        background: rgba(156, 163, 175, 0.12);
+        border-color: rgba(156, 163, 175, 0.28);
+    }
+
+    .activate-form {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .template-select {
+        min-width: 280px;
+        border: 1px solid var(--border-color);
+        background: rgba(255, 255, 255, 0.04);
+        color: #fff;
+        border-radius: 10px;
+        padding: 10px 12px;
+        font-weight: 700;
+        outline: none;
+    }
+
+    .btn-activate {
+        border: 0;
+        border-radius: 10px;
+        padding: 10px 14px;
+        font-weight: 800;
+        color: #fff;
+        background: linear-gradient(135deg, #2563eb, #4f46e5);
+        cursor: pointer;
+    }
+
+    .empty-state {
+        padding: 18px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.03);
+        color: var(--text-muted);
+        font-weight: 700;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="glass-card page-card">
+    <div class="section-head">
+        <div>
+            <h3 class="section-title">إدارة قالب الفاتورة لكل شركة</h3>
+            <p class="section-subtitle">اختر الشركة والقالب، ثم اضغط تفعيل لحفظ القالب مباشرة في إعدادات الشركة.</p>
+        </div>
+    </div>
+
+    {% if tenants and templates %}
+    <div class="table-wrap">
+        <table class="custom-table">
+            <thead>
+                <tr>
+                    <th>الشركة</th>
+                    <th>القالب المفعّل حالياً</th>
+                    <th>تفعيل قالب جديد</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tenant in tenants %}
+                {% set active_id = active_template_by_tenant.get(tenant.id) %}
+                {% set active_tmpl = template_by_id.get(active_id) if active_id else None %}
+                <tr>
+                    <td>
+                        <span class="tenant-name">{{ tenant.name }}</span>
+                        <span class="tenant-slug">{{ tenant.slug }}</span>
+                    </td>
+                    <td>
+                        {% if active_tmpl %}
+                        <span class="template-badge {{ 'premium' if active_tmpl.is_premium else 'free' }}">
+                            {{ active_tmpl.name }}
+                        </span>
+                        {% else %}
+                        <span class="template-badge none">غير محدد</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <form method="POST" action="{{ url_for('superadmin.activate_invoice_template_for_tenant') }}" class="activate-form">
+                            <input type="hidden" name="tenant_slug" value="{{ tenant.slug }}">
+                            <select class="template-select" name="template_id" required>
+                                {% for tmpl in templates %}
+                                <option value="{{ tmpl.id }}" {% if active_id == tmpl.id %}selected{% endif %}>
+                                    {{ tmpl.name }} — {{ 'مدفوع' if tmpl.is_premium else 'مجاني' }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" class="btn-activate">
+                                <i class="fas fa-check"></i>
+                                تفعيل
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">لا توجد شركات أو قوالب متاحة حالياً.</div>
+    {% endif %}
+</div>
+{% endblock %}
