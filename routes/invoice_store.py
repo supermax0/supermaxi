@@ -7,6 +7,7 @@ from flask import Blueprint, render_template, request, jsonify, redirect, url_fo
 
 from extensions import db
 from models.invoice_template import InvoiceTemplate, TenantTemplateSettings, TenantTemplatePurchase
+from models.user import User
 
 invoice_store_bp = Blueprint('invoice_store', __name__)
 
@@ -16,6 +17,34 @@ def _template_tenant_uid():
     يطابق routes/orders.py (طباعة الفاتورة): معرف سجل tenant المحلي أو موظف الجلسة.
     """
     return session.get("tenant_id") or session.get("user_id")
+
+
+def _ensure_invoice_owner_user(owner_id):
+    """
+    جداول القوالب مرتبطة حالياً بـ users.id بينما التطبيق يعتمد فعلياً على employee/session.
+    ننشئ صفاً توافقياً في users عند أول استخدام حتى لا يفشل FK أثناء التفعيل/الشراء.
+    """
+    if not owner_id:
+        return None
+
+    existing = db.session.get(User, owner_id)
+    if existing:
+        return owner_id
+
+    from werkzeug.security import generate_password_hash
+
+    placeholder = User(
+        id=owner_id,
+        username=f"invoice_owner_{owner_id}",
+        email=f"invoice_owner_{owner_id}@local.invalid",
+        password_hash=generate_password_hash(f"invoice-owner-{owner_id}"),
+        full_name=session.get("name") or f"Invoice Owner {owner_id}",
+        is_active=True,
+        is_admin=(session.get("role") == "admin"),
+    )
+    db.session.add(placeholder)
+    db.session.flush()
+    return owner_id
 
 
 @contextmanager
@@ -208,6 +237,7 @@ def buy_template(template_id):
         return jsonify({'success': False, 'message': 'غير مصرّح'}), 401
     uid = _template_tenant_uid()
     with _core_db():
+        _ensure_invoice_owner_user(uid)
         template = InvoiceTemplate.query.get_or_404(template_id)
 
         existing = TenantTemplatePurchase.query.filter_by(tenant_id=uid, template_id=template_id).first()
@@ -247,6 +277,7 @@ def activate_template(template_id):
         return jsonify({'success': False, 'message': 'غير مصرّح'}), 401
     uid = _template_tenant_uid()
     with _core_db():
+        _ensure_invoice_owner_user(uid)
         template = InvoiceTemplate.query.get_or_404(template_id)
 
         if template.is_premium:
