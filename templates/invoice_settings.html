@@ -7,6 +7,9 @@
   <div class="page-header">
     <h1 class="page-title">⚙️ إعدادات الفاتورة</h1>
     <div class="header-actions">
+      <button class="btn btn-secondary" onclick="openTemplatePicker()">
+        <i class="fas fa-layer-group"></i> اختيار القالب
+      </button>
       <button class="btn btn-primary" onclick="saveSettings()">
         <i class="fas fa-save"></i> حفظ الإعدادات
       </button>
@@ -16,6 +19,48 @@
       <button class="btn btn-secondary" onclick="resetLayout()">
         <i class="fas fa-redo"></i> إعادة تعيين التخطيط
       </button>
+    </div>
+  </div>
+
+  <input type="hidden" id="selected_template_id" value="{{ active_template_id or '' }}">
+
+  <div class="template-selection-card">
+    <div class="template-selection-content">
+      <div>
+        <div class="template-selection-title">القالب النشط للفواتير</div>
+        <div class="template-selection-subtitle">اختر من القوالب المتاحة ثم احفظ الإعدادات لتطبيقه على الفواتير</div>
+      </div>
+      <div class="template-selection-actions">
+        <button class="btn btn-secondary" onclick="openTemplatePicker()">
+          <i class="fas fa-pen-nib"></i> تغيير القالب
+        </button>
+        <button class="btn btn-primary" onclick="openSelectedTemplatePreview()">
+          <i class="fas fa-eye"></i> معاينة القالب
+        </button>
+      </div>
+    </div>
+    <div class="selected-template-box" id="selected_template_box">
+      {% set active_template = none %}
+      {% for tmpl in templates %}
+        {% if tmpl.id == active_template_id %}
+          {% set active_template = tmpl %}
+        {% endif %}
+      {% endfor %}
+      {% if active_template %}
+      <div class="selected-template-name">{{ active_template.name }}</div>
+      <div class="selected-template-meta">{{ active_template.description }}</div>
+      <div class="selected-template-badges">
+        <span class="template-badge active">مفعل حالياً</span>
+        {% if active_template.price == 0 %}
+        <span class="template-badge free">مجاني</span>
+        {% else %}
+        <span class="template-badge premium">{{ "{:,.0f}".format(active_template.price) }} د.ع</span>
+        {% endif %}
+      </div>
+      {% else %}
+      <div class="selected-template-name">لم يتم اختيار قالب بعد</div>
+      <div class="selected-template-meta">اختر قالباً من النافذة لتطبيقه على الفواتير.</div>
+      {% endif %}
     </div>
   </div>
 
@@ -75,6 +120,39 @@
         <div class="form-group">
           <label>رقم الهاتف</label>
           <input type="text" id="company_phone" value="{{ settings.company_phone }}" class="form-input" onchange="updatePreview()">
+        </div>
+      </div>
+
+      <!-- Theme & Style -->
+      <div class="settings-card">
+        <h3 class="card-title">تخصيص شكل القالب</h3>
+        <div class="form-group">
+          <label>اللون الأساسي</label>
+          <div class="color-row">
+            <input type="color" id="primary_color" class="color-input" value="{{ template_style.primary_color }}" onchange="syncColorInputs(); updatePreview()">
+            <input type="text" id="primary_color_text" class="form-input color-text" value="{{ template_style.primary_color }}" onchange="syncColorFromText('primary_color')">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>اللون الثانوي</label>
+          <div class="color-row">
+            <input type="color" id="secondary_color" class="color-input" value="{{ template_style.secondary_color }}" onchange="syncColorInputs(); updatePreview()">
+            <input type="text" id="secondary_color_text" class="form-input color-text" value="{{ template_style.secondary_color }}" onchange="syncColorFromText('secondary_color')">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>أنماط جاهزة</label>
+          <div class="preset-row">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="applyColorPreset('#2563eb','#4a5568')">أزرق احترافي</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="applyColorPreset('#059669','#065f46')">أخضر متجر</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="applyColorPreset('#7c3aed','#312e81')">بنفسجي عصري</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="applyColorPreset('#b45309','#1f2937')">ذهبي فاخر</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>CSS مخصص (اختياري)</label>
+          <textarea id="custom_css" class="form-textarea" rows="5" onchange="updatePreview()" placeholder=".company-name-header { letter-spacing: 1px; }">{{ template_style.custom_css }}</textarea>
+          <small>يُطبق على القالب النشط بعد الحفظ.</small>
         </div>
       </div>
 
@@ -181,6 +259,55 @@
   </div>
 </div>
 
+<div class="template-modal-overlay" id="templatePickerOverlay">
+  <div class="template-modal">
+    <div class="template-modal-header">
+      <div>
+        <h3>اختيار قالب الفاتورة</h3>
+        <p>اختر القالب الذي تريد استخدامه في الفواتير والمعاينة.</p>
+      </div>
+      <button type="button" class="template-modal-close" onclick="closeTemplatePicker()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="template-modal-grid">
+      {% for tmpl in templates %}
+      {% set pstatus = purchased_ids.get(tmpl.id) %}
+      {% set can_select = tmpl.price == 0 or pstatus == 'approved' or tmpl.id == active_template_id %}
+      <button
+        type="button"
+        class="template-option-card {% if tmpl.id == active_template_id %}is-active{% endif %}"
+        data-template-id="{{ tmpl.id }}"
+        data-template-name="{{ tmpl.name }}"
+        data-template-description="{{ tmpl.description }}"
+        data-template-price="{{ tmpl.price }}"
+        data-can-select="{{ '1' if can_select else '0' }}"
+        onclick="selectTemplateOption(this)">
+        <div class="template-option-preview">
+          <i class="fas fa-file-invoice"></i>
+          <span>{{ tmpl.html_file_name|replace('.html', '') }}</span>
+        </div>
+        <div class="template-option-name">{{ tmpl.name }}</div>
+        <div class="template-option-desc">{{ tmpl.description }}</div>
+        <div class="template-option-footer">
+          {% if tmpl.id == active_template_id %}
+          <span class="template-badge active">مفعل</span>
+          {% elif tmpl.price == 0 %}
+          <span class="template-badge free">مجاني</span>
+          {% elif pstatus == 'approved' %}
+          <span class="template-badge purchased">تم شراؤه</span>
+          {% elif pstatus == 'pending' %}
+          <span class="template-badge pending">قيد المراجعة</span>
+          {% else %}
+          <span class="template-badge premium">{{ "{:,.0f}".format(tmpl.price) }} د.ع</span>
+          {% endif %}
+        </div>
+      </button>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
 <style>
 .settings-page {
   padding: 20px;
@@ -207,6 +334,228 @@
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+.template-selection-card {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
+  border: 1px solid #dbeafe;
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow: 0 10px 30px rgba(59, 130, 246, 0.08);
+  margin-bottom: 24px;
+}
+
+.template-selection-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.template-selection-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.template-selection-subtitle {
+  font-size: 13px;
+  color: #64748b;
+  margin-top: 6px;
+}
+
+.template-selection-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.selected-template-box {
+  border: 1px dashed #bfdbfe;
+  border-radius: 14px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.selected-template-name {
+  font-size: 16px;
+  font-weight: 800;
+  color: #1e293b;
+}
+
+.selected-template-meta {
+  font-size: 13px;
+  color: #64748b;
+  margin-top: 6px;
+  line-height: 1.7;
+}
+
+.selected-template-badges {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.template-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.template-badge.active {
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563eb;
+}
+
+.template-badge.free {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+
+.template-badge.premium {
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+}
+
+.template-badge.purchased {
+  background: rgba(99, 102, 241, 0.12);
+  color: #4f46e5;
+}
+
+.template-badge.pending {
+  background: rgba(148, 163, 184, 0.18);
+  color: #475569;
+}
+
+.template-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(4px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 20px;
+}
+
+.template-modal-overlay.active {
+  display: flex;
+}
+
+.template-modal {
+  width: min(1100px, 100%);
+  max-height: 90vh;
+  overflow: auto;
+  background: #fff;
+  border-radius: 20px;
+  padding: 22px;
+  box-shadow: 0 30px 80px rgba(15, 23, 42, 0.25);
+}
+
+.template-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.template-modal-header h3 {
+  margin: 0;
+  font-size: 20px;
+  color: #0f172a;
+}
+
+.template-modal-header p {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.template-modal-close {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  cursor: pointer;
+}
+
+.template-modal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.template-option-card {
+  text-align: right;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #fff;
+  padding: 14px;
+  cursor: pointer;
+  transition: 0.25s ease;
+}
+
+.template-option-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+  border-color: #93c5fd;
+}
+
+.template-option-card.is-active {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.template-option-preview {
+  height: 130px;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #334155 0%, #0f172a 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #fff;
+  margin-bottom: 12px;
+}
+
+.template-option-preview i {
+  font-size: 40px;
+  opacity: 0.95;
+}
+
+.template-option-preview span {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  opacity: 0.75;
+}
+
+.template-option-name {
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.template-option-desc {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.7;
+  min-height: 42px;
+}
+
+.template-option-footer {
+  margin-top: 12px;
 }
 
 .settings-layout {
@@ -289,6 +638,33 @@
 .form-textarea {
   resize: vertical;
   min-height: 80px;
+}
+
+.color-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.color-input {
+  width: 48px;
+  height: 44px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.color-text {
+  direction: ltr;
+  text-transform: uppercase;
+  font-family: monospace;
+}
+
+.preset-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .form-group small {
@@ -502,6 +878,12 @@
   .settings-panel {
     grid-template-columns: 1fr;
   }
+
+  .template-selection-content,
+  .template-modal-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
   
   .preview-container {
     transform: scale(0.6);
@@ -515,11 +897,23 @@
 // تعريف المتغيرات العامة
 let previewData = null;
 let sortable = null;
+let selectedTemplate = {
+  id: Number(document.getElementById('selected_template_id')?.value || 0) || null
+};
 
 // تهيئة الصفحة عند التحميل
 document.addEventListener('DOMContentLoaded', function() {
+  syncColorInputs();
   loadPreview();
   initSortable();
+  syncSelectedTemplateCard();
+
+  const modal = document.getElementById('templatePickerOverlay');
+  if (modal) {
+    modal.addEventListener('click', function(e) {
+      if (e.target === modal) closeTemplatePicker();
+    });
+  }
 });
 
 // تهيئة نظام السحب والإفلات
@@ -693,7 +1087,11 @@ function saveSettings() {
     show_qrcode: document.getElementById('show_qrcode').checked,
     show_discount_column: document.getElementById('show_discount_column').checked,
     show_tax_column: document.getElementById('show_tax_column').checked,
-    show_unit_price_with_tax: document.getElementById('show_unit_price_with_tax').checked
+    show_unit_price_with_tax: document.getElementById('show_unit_price_with_tax').checked,
+    selected_template_id: document.getElementById('selected_template_id').value,
+    primary_color: document.getElementById('primary_color').value,
+    secondary_color: document.getElementById('secondary_color').value,
+    custom_css: document.getElementById('custom_css').value
   };
   
   // إضافة ترتيب التخطيط إذا وجد
@@ -740,6 +1138,102 @@ function saveSettings() {
   });
 }
 
+function openTemplatePicker() {
+  const modal = document.getElementById('templatePickerOverlay');
+  if (modal) modal.classList.add('active');
+}
+
+function closeTemplatePicker() {
+  const modal = document.getElementById('templatePickerOverlay');
+  if (modal) modal.classList.remove('active');
+}
+
+function selectTemplateOption(button) {
+  const canSelect = button.dataset.canSelect === '1';
+  if (!canSelect) {
+    showToast('هذا القالب غير متاح حالياً. يجب شراؤه أو انتظار الموافقة أولاً.', 'warning');
+    return;
+  }
+
+  document.querySelectorAll('.template-option-card').forEach(card => card.classList.remove('is-active'));
+  button.classList.add('is-active');
+
+  selectedTemplate = {
+    id: Number(button.dataset.templateId),
+    name: button.dataset.templateName,
+    description: button.dataset.templateDescription,
+    price: Number(button.dataset.templatePrice || 0)
+  };
+
+  document.getElementById('selected_template_id').value = selectedTemplate.id;
+  syncSelectedTemplateCard();
+  closeTemplatePicker();
+  showToast('تم اختيار القالب. اضغط حفظ الإعدادات لتطبيقه.', 'success');
+}
+
+function syncSelectedTemplateCard() {
+  const selectedId = Number(document.getElementById('selected_template_id')?.value || 0);
+  const selectedCard = document.querySelector(`.template-option-card[data-template-id="${selectedId}"]`);
+  const box = document.getElementById('selected_template_box');
+  if (!box || !selectedCard) return;
+
+  const name = selectedCard.dataset.templateName || 'بدون اسم';
+  const desc = selectedCard.dataset.templateDescription || '';
+  const price = Number(selectedCard.dataset.templatePrice || 0);
+
+  box.innerHTML = `
+    <div class="selected-template-name">${name}</div>
+    <div class="selected-template-meta">${desc}</div>
+    <div class="selected-template-badges">
+      <span class="template-badge active">المحدد حالياً</span>
+      ${price === 0
+        ? '<span class="template-badge free">مجاني</span>'
+        : `<span class="template-badge premium">${new Intl.NumberFormat().format(price)} د.ع</span>`}
+    </div>
+  `;
+}
+
+function openSelectedTemplatePreview() {
+  const selectedId = document.getElementById('selected_template_id')?.value;
+  if (!selectedId) {
+    showToast('اختر قالباً أولاً', 'warning');
+    return;
+  }
+  window.open(`/admin/invoice-templates/preview/${selectedId}`, '_blank');
+}
+
+function syncColorInputs() {
+  const p = document.getElementById('primary_color');
+  const pText = document.getElementById('primary_color_text');
+  const s = document.getElementById('secondary_color');
+  const sText = document.getElementById('secondary_color_text');
+  if (p && pText) pText.value = p.value;
+  if (s && sText) sText.value = s.value;
+}
+
+function syncColorFromText(type) {
+  const picker = document.getElementById(type);
+  const text = document.getElementById(`${type}_text`);
+  if (!picker || !text) return;
+  const v = (text.value || '').trim();
+  if (/^#([0-9a-fA-F]{6})$/.test(v)) {
+    picker.value = v;
+    updatePreview();
+  } else {
+    showToast('صيغة اللون يجب أن تكون مثل #2563eb', 'warning');
+    text.value = picker.value;
+  }
+}
+
+function applyColorPreset(primary, secondary) {
+  const p = document.getElementById('primary_color');
+  const s = document.getElementById('secondary_color');
+  if (p) p.value = primary;
+  if (s) s.value = secondary;
+  syncColorInputs();
+  updatePreview();
+}
+
 // تحميل معاينة الفاتورة
 function loadPreview() {
   fetch('/settings/invoice/preview', {
@@ -756,6 +1250,21 @@ function loadPreview() {
       // دمج visibility_settings مع settings
       if (data.settings && data.settings.visibility_settings) {
         Object.assign(data.settings, data.settings.visibility_settings);
+      }
+      if (data.settings) {
+        if (data.settings.primary_color) {
+          const p = document.getElementById('primary_color');
+          if (p) p.value = data.settings.primary_color;
+        }
+        if (data.settings.secondary_color) {
+          const s = document.getElementById('secondary_color');
+          if (s) s.value = data.settings.secondary_color;
+        }
+        if (typeof data.settings.custom_css === 'string') {
+          const c = document.getElementById('custom_css');
+          if (c) c.value = data.settings.custom_css;
+        }
+        syncColorInputs();
       }
       previewData = data;
       renderPreview(data);
@@ -796,6 +1305,10 @@ function updatePreview() {
   s.show_discount_column = document.getElementById('show_discount_column').checked;
   s.show_tax_column = document.getElementById('show_tax_column').checked;
   s.show_unit_price_with_tax = document.getElementById('show_unit_price_with_tax').checked;
+  s.primary_color = document.getElementById('primary_color').value;
+  s.secondary_color = document.getElementById('secondary_color').value;
+  s.custom_css = document.getElementById('custom_css').value;
+  syncColorInputs();
   
   renderPreview(previewData);
 }
@@ -935,6 +1448,9 @@ function generateInvoiceHTML(data) {
   
   const total = data.total || 50000;
   const due = data.due || 50000;
+  const primaryColor = s.primary_color || '#2563eb';
+  const secondaryColor = s.secondary_color || '#4a5568';
+  const customCss = String(s.custom_css || '').replace(/`/g, '\\`');
   
   const useLogo = s.use_logo_image && s.logo_path;
   const logoCircleText = s.logo_circle_text || 'الشركة\nالتجارية';
@@ -978,15 +1494,16 @@ function generateInvoiceHTML(data) {
       <title>معاينة الفاتورة</title>
       <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
       <style>
+        :root { --primary-color: ${primaryColor}; --secondary-color: ${secondaryColor}; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Tajawal', sans-serif; padding: 20px; background: #f5f5f5; }
         .invoice-container { max-width: 1000px; margin: 0 auto; background: #fff; padding: 30px; }
         .invoice-top-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #000; }
         .invoice-number-top { font-size: 16px; font-weight: bold; }
-        .company-name-header { flex: 1; text-align: center; font-size: 28px; font-weight: bold; }
+        .company-name-header { flex: 1; text-align: center; font-size: 28px; font-weight: bold; color: var(--primary-color); }
         .company-logo-circle { width: 100px; height: 100px; border-radius: 50%; border: 2px solid #000; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 12px; text-align: center; padding: 8px; line-height: 1.3; background-size: contain; background-position: center; background-repeat: no-repeat; }
         .summary-customer-section { display: flex; gap: 20px; margin-bottom: 20px; }
-        .summary-box { flex: 0 0 280px; background: #4a5568; color: #fff; padding: 20px; border: 2px solid #000; }
+        .summary-box { flex: 0 0 280px; background: var(--secondary-color); color: #fff; padding: 20px; border: 2px solid #000; }
         .summary-item { margin-bottom: 15px; }
         .summary-label { font-weight: bold; margin-bottom: 5px; display: block; }
         .summary-value { font-size: 18px; font-weight: bold; }
@@ -996,10 +1513,10 @@ function generateInvoiceHTML(data) {
         .customer-detail { margin-bottom: 10px; font-size: 14px; }
         .returned-warning { background: #fff3cd; border: 2px solid #ffc107; padding: 10px; border-radius: 5px; margin-bottom: 10px; text-align: center; font-weight: bold; color: #856404; }
         .products-table { width: 100%; border-collapse: collapse; border: 2px solid #000; }
-        .products-table thead { background: #4a5568; color: #fff; }
+        .products-table thead { background: var(--secondary-color); color: #fff; }
         .products-table th, .products-table td { padding: 10px 8px; text-align: center; font-size: 12px; border: 1px solid #000; }
         .bottom-summary { display: flex; justify-content: space-between; margin-bottom: 20px; }
-        .total-box { background: #4a5568; color: #fff; padding: 15px 25px; border: 2px solid #000; font-size: 18px; font-weight: bold; }
+        .total-box { background: var(--primary-color); color: #fff; padding: 15px 25px; border: 2px solid #000; font-size: 18px; font-weight: bold; }
         .signature-box { border: 2px solid #000; padding: 15px 30px; min-width: 200px; }
         .signature-label { font-size: 14px; font-weight: bold; margin-bottom: 40px; }
         .signature-line { border-bottom: 2px solid #000; margin-top: 5px; }
@@ -1008,13 +1525,17 @@ function generateInvoiceHTML(data) {
         .footer-contact { display: flex; justify-content: space-between; align-items: flex-end; }
         .footer-address-phone { font-size: 14px; font-weight: bold; }
         .footer-codes { display: flex; gap: 15px; }
+        ${customCss}
       </style>
     </head>
     <body>
       <div class="invoice-container">
         <div class="invoice-top-header" data-section="header">
           <div class="invoice-number-top">رقم الفاتوره ${order.id}</div>
-          <div class="company-name-header">${s.company_name}</div>
+          <div class="company-name-header">
+            <div>${s.company_name}</div>
+            <div style="font-size:13px; font-weight:600; color:#64748b; margin-top:6px;">${s.company_subtitle || ''}</div>
+          </div>
           ` + logoCircleHTML + `
         </div>
         

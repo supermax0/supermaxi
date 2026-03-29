@@ -1,11 +1,17 @@
-from flask import Blueprint, render_template, request, jsonify, send_from_directory
+from contextlib import contextmanager
+
+from flask import Blueprint, render_template, request, jsonify, send_from_directory, session, g
 from extensions import db
 from models.invoice_settings import InvoiceSettings
 from models.system_settings import SystemSettings
+from models.invoice_template import InvoiceTemplate, TenantTemplateSettings, TenantTemplatePurchase
+from models.user import User
 from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash
 import os
 import json
 from datetime import datetime
+from types import SimpleNamespace
 
 settings_bp = Blueprint("settings", __name__, url_prefix="/settings")
 
@@ -18,6 +24,41 @@ def allowed_file(filename):
 
 # Ensure upload directory exists
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+
+def _template_owner_uid():
+    return session.get("tenant_id") or session.get("user_id")
+
+
+@contextmanager
+def _core_db():
+    prev = getattr(g, "tenant", None)
+    g.tenant = None
+    try:
+        yield
+    finally:
+        g.tenant = prev
+
+
+def _ensure_invoice_owner_user(owner_id):
+    if not owner_id:
+        return None
+    existing = db.session.get(User, owner_id)
+    if existing:
+        return owner_id
+
+    placeholder = User(
+        id=owner_id,
+        username=f"invoice_owner_{owner_id}",
+        email=f"invoice_owner_{owner_id}@local.invalid",
+        password_hash=generate_password_hash(f"invoice-owner-{owner_id}"),
+        full_name=session.get("name") or f"Invoice Owner {owner_id}",
+        is_active=True,
+        is_admin=(session.get("role") == "admin"),
+    )
+    db.session.add(placeholder)
+    db.session.flush()
+    return owner_id
 
 @settings_bp.route("/")
 def settings():
@@ -184,8 +225,27 @@ def get_employee_permissions(employee_id):
 @settings_bp.route("/invoice")
 def invoice_settings():
     """صفحة إعدادات الفاتورة"""
+    db.session.rollback()
+    owner_uid = _template_owner_uid()
+    with _core_db():
+        templates = InvoiceTemplate.query.order_by(InvoiceTemplate.price.asc(), InvoiceTemplate.id.asc()).all()
+        tset = TenantTemplateSettings.query.filter_by(tenant_id=owner_uid).first() if owner_uid else None
+        purchases = TenantTemplatePurchase.query.filter_by(tenant_id=owner_uid).all() if owner_uid else []
+        purchased_ids = {p.template_id: p.status for p in purchases}
+        template_style = {
+            "primary_color": (tset.primary_color if tset else "#2563eb") or "#2563eb",
+            "secondary_color": (tset.secondary_color if tset else "#4a5568") or "#4a5568",
+            "custom_css": (tset.custom_css if tset else "") or "",
+        }
     settings = InvoiceSettings.get_settings()
-    return render_template("invoice_settings.html", settings=settings)
+    return render_template(
+        "invoice_settings.html",
+        settings=settings,
+        templates=templates,
+        active_template_id=(tset.active_template_id if tset else None),
+        purchased_ids=purchased_ids,
+        template_style=template_style,
+    )
 
 
 @settings_bp.route("/appearance")
@@ -236,6 +296,7 @@ def update_appearance_settings():
 def update_invoice_settings():
     """تحديث إعدادات الفاتورة"""
     try:
+        db.session.rollback()
         settings = InvoiceSettings.get_settings()
         data = request.form
         
@@ -279,12 +340,49 @@ def update_invoice_settings():
         if 'show_qrcode' in data:
             visibility_settings['show_qrcode'] = data.get('show_qrcode') == 'true'
         settings.set_visibility_settings(visibility_settings)
+
+        owner_uid = _template_owner_uid()
+        has_template_related_update = any([
+            bool(data.get('selected_template_id')),
+            'primary_color' in data,
+            'secondary_color' in data,
+            'custom_css' in data,
+        ])
+        if owner_uid and has_template_related_update:
+            with _core_db():
+                _ensure_invoice_owner_user(owner_uid)
+                tset = TenantTemplateSettings.query.filter_by(tenant_id=owner_uid).first()
+                if not tset:
+                    tset = TenantTemplateSettings(tenant_id=owner_uid)
+                    db.session.add(tset)
+
+                if data.get('selected_template_id'):
+                    selected_template_id = int(data.get('selected_template_id'))
+                    template = InvoiceTemplate.query.get(selected_template_id)
+                    if template:
+                        if template.is_premium:
+                            approved_purchase = TenantTemplatePurchase.query.filter_by(
+                                tenant_id=owner_uid,
+                                template_id=selected_template_id,
+                                status='approved'
+                            ).first()
+                            if not approved_purchase:
+                                return jsonify({"success": False, "error": "هذا القالب مدفوع ولم تتم الموافقة على شرائه بعد"}), 403
+                        tset.active_template_id = selected_template_id
+
+                if 'primary_color' in data and data.get('primary_color'):
+                    tset.primary_color = data.get('primary_color')
+                if 'secondary_color' in data and data.get('secondary_color'):
+                    tset.secondary_color = data.get('secondary_color')
+                if 'custom_css' in data:
+                    tset.custom_css = data.get('custom_css', '')
         
         settings.updated_at = datetime.utcnow()
         db.session.commit()
         
         return jsonify({"success": True, "message": "تم حفظ الإعدادات بنجاح"})
     except Exception as e:
+        db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 400
 
 @settings_bp.route("/invoice/upload-logo", methods=["POST"])
@@ -330,28 +428,52 @@ def preview_invoice():
         from models.invoice import Invoice
         from models.order_item import OrderItem
         
-        # Get a sample order or create mock data
+        # Get a sample order, otherwise build a mock preview payload
         sample_order = Invoice.query.first()
-        if not sample_order:
-            return jsonify({"error": "لا توجد فواتير للعرض"}), 404
-        
-        items = OrderItem.query.filter_by(invoice_id=sample_order.id).limit(3).all()
-        if not items:
-            # Create mock items
-            from models.product import Product
-            product = Product.query.first()
-            if product:
-                items = [OrderItem(
-                    product_name=product.name,
-                    quantity=1,
-                    price=product.selling_price,
-                    total=product.selling_price
-                )]
+        if sample_order:
+            items = OrderItem.query.filter_by(invoice_id=sample_order.id).limit(3).all()
+            if not items:
+                from models.product import Product
+                product = Product.query.first()
+                if product:
+                    items = [OrderItem(
+                        product_name=product.name,
+                        quantity=1,
+                        price=product.selling_price,
+                        total=product.selling_price
+                    )]
+                else:
+                    items = [
+                        SimpleNamespace(product_name="منتج تجريبي 1", quantity=2, price=12000, total=24000),
+                        SimpleNamespace(product_name="منتج تجريبي 2", quantity=1, price=18000, total=18000),
+                    ]
+        else:
+            sample_order = SimpleNamespace(
+                id="TEST-001",
+                customer=SimpleNamespace(
+                    name="زبون تجريبي",
+                    phone="07700000000",
+                    address="عنوان تجريبي",
+                    city="بغداد",
+                ),
+                employee_name="موظف تجريبي",
+                created_at=datetime.utcnow(),
+                total=42000,
+                status="تم الطلب",
+                payment_status="غير مسدد",
+            )
+            items = [
+                SimpleNamespace(product_name="منتج تجريبي 1", quantity=2, price=12000, total=24000),
+                SimpleNamespace(product_name="منتج تجريبي 2", quantity=1, price=18000, total=18000),
+            ]
         
         settings = InvoiceSettings.get_settings()
+        owner_uid = _template_owner_uid()
+        with _core_db():
+            tset = TenantTemplateSettings.query.filter_by(tenant_id=owner_uid).first() if owner_uid else None
         
         # Calculate totals
-        total = sum(item.total for item in items) if items else sample_order.total
+        total = sum(getattr(item, "total", 0) for item in items) if items else getattr(sample_order, "total", 0)
         due = total
         
         # Calculate returned and cancelled counts for preview
@@ -425,7 +547,10 @@ def preview_invoice():
                 "layout_settings": settings.get_layout_settings(),
                 "visibility_settings": settings.get_visibility_settings(),
                 "show_barcode": settings.get_visibility_settings().get('show_barcode', True),
-                "show_qrcode": settings.get_visibility_settings().get('show_qrcode', True)
+                "show_qrcode": settings.get_visibility_settings().get('show_qrcode', True),
+                "primary_color": (tset.primary_color if tset else "#2563eb") or "#2563eb",
+                "secondary_color": (tset.secondary_color if tset else "#4a5568") or "#4a5568",
+                "custom_css": (tset.custom_css if tset else "") or "",
             }
         })
     except Exception as e:
