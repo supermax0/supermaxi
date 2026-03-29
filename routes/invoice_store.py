@@ -1,40 +1,67 @@
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash
-from flask_login import login_required, current_user
-import os
-from datetime import datetime
+from contextlib import contextmanager
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash, session, g
 
 from extensions import db
 from models.invoice_template import InvoiceTemplate, TenantTemplateSettings, TenantTemplatePurchase
 
 invoice_store_bp = Blueprint('invoice_store', __name__)
 
+
+def _template_tenant_uid():
+    """
+    يطابق routes/orders.py (طباعة الفاتورة): معرف سجل tenant المحلي أو موظف الجلسة.
+    """
+    return session.get("tenant_id") or session.get("user_id")
+
+
+@contextmanager
+def _core_db():
+    """
+    كتالوج القوالب وإعدادات/مشتريات القوالب مخزّنة في قاعدة Core.
+    عند ضبط g.tenant يوجّه DynamicTenantSession الاستعلامات إلى SQLite المستأجر
+    حيث لا توجد جداول invoice_templates → 500.
+    """
+    prev = getattr(g, "tenant", None)
+    g.tenant = None
+    try:
+        yield
+    finally:
+        g.tenant = prev
+
+
+def _require_session_login():
+    if "user_id" not in session:
+        return redirect("/login")
+    return None
+
+
 @invoice_store_bp.route('/admin/invoice-templates', methods=['GET'])
-@login_required
 def store_home():
-    # Only tenant admins or owners can access but let's assume current_user is valid
-    # Check if templates need to be seeded
-    if InvoiceTemplate.query.count() == 0:
-        seed_templates()
+    redir = _require_session_login()
+    if redir:
+        return redir
+    with _core_db():
+        if InvoiceTemplate.query.count() == 0:
+            seed_templates()
 
-    # In a multi-tenant system, we check their active template
-    settings = TenantTemplateSettings.query.filter_by(tenant_id=current_user.id).first()
-    active_id = settings.active_template_id if settings else None
+        uid = _template_tenant_uid()
+        settings = TenantTemplateSettings.query.filter_by(tenant_id=uid).first()
+        active_id = settings.active_template_id if settings else None
 
-    templates = InvoiceTemplate.query.order_by(InvoiceTemplate.price.asc(), InvoiceTemplate.id.asc()).all()
+        templates = InvoiceTemplate.query.order_by(InvoiceTemplate.price.asc(), InvoiceTemplate.id.asc()).all()
 
-    purchases = TenantTemplatePurchase.query.filter_by(tenant_id=current_user.id).all()
-    purchased_ids = {p.template_id: p.status for p in purchases}  # status: 'pending', 'approved'
+        purchases = TenantTemplatePurchase.query.filter_by(tenant_id=uid).all()
+        purchased_ids = {p.template_id: p.status for p in purchases}
 
-    return render_template(
-        'invoice_templates_store.html',
-        templates=templates,
-        active_id=active_id,
-        purchased_ids=purchased_ids,
-    )
+        return render_template(
+            'invoice_templates_store.html',
+            templates=templates,
+            active_id=active_id,
+            purchased_ids=purchased_ids,
+        )
 
 
 @invoice_store_bp.route('/admin/invoice_templates', methods=['GET'])
-@login_required
 def store_home_underscore_alias():
     """Backward-compatible URL (underscore) → canonical hyphenated route."""
     return redirect(url_for('invoice_store.store_home'), code=302)
@@ -65,103 +92,104 @@ def seed_templates():
     db.session.commit()
 
 @invoice_store_bp.route('/admin/invoice-templates/buy/<int:template_id>', methods=['POST'])
-@login_required
 def buy_template(template_id):
-    template = InvoiceTemplate.query.get_or_404(template_id)
-    
-    # Check if already purchased
-    existing = TenantTemplatePurchase.query.filter_by(tenant_id=current_user.id, template_id=template_id).first()
-    if existing:
-        return jsonify({'success': False, 'message': 'لقد قمت بطلب هذا القالب مسبقاً.'}), 400
-        
-    # If free, activate directly
-    if not template.is_premium or template.price == 0:
-        settings = TenantTemplateSettings.query.filter_by(tenant_id=current_user.id).first()
-        if not settings:
-            settings = TenantTemplateSettings(tenant_id=current_user.id)
-            db.session.add(settings)
-        settings.active_template_id = template_id
+    redir = _require_session_login()
+    if redir:
+        return jsonify({'success': False, 'message': 'غير مصرّح'}), 401
+    uid = _template_tenant_uid()
+    with _core_db():
+        template = InvoiceTemplate.query.get_or_404(template_id)
+
+        existing = TenantTemplatePurchase.query.filter_by(tenant_id=uid, template_id=template_id).first()
+        if existing:
+            return jsonify({'success': False, 'message': 'لقد قمت بطلب هذا القالب مسبقاً.'}), 400
+
+        if not template.is_premium or template.price == 0:
+            settings = TenantTemplateSettings.query.filter_by(tenant_id=uid).first()
+            if not settings:
+                settings = TenantTemplateSettings(tenant_id=uid)
+                db.session.add(settings)
+            settings.active_template_id = template_id
+            db.session.commit()
+            return jsonify({'success': True, 'message': 'تم تفعيل القالب بنجاح!', 'free': True})
+
+        ref_number = request.form.get('reference_number')
+        if not ref_number:
+            return jsonify({'success': False, 'message': 'يرجى إدخال رقم الحوالة.'}), 400
+
+        purchase = TenantTemplatePurchase(
+            tenant_id=uid,
+            template_id=template_id,
+            amount_paid=template.price,
+            status='pending',
+            reference_number=ref_number
+        )
+
+        db.session.add(purchase)
         db.session.commit()
-        return jsonify({'success': True, 'message': 'تم تفعيل القالب بنجاح!', 'free': True})
-        
-    # If paid, process manual Zain Cash transfer
-    ref_number = request.form.get('reference_number')
-    if not ref_number:
-        return jsonify({'success': False, 'message': 'يرجى إدخال رقم الحوالة.'}), 400
-        
-    # In a real app we'd handle file uploads for 'receipt_image' here
-    # receipt = request.files.get('receipt_image')
-    
-    purchase = TenantTemplatePurchase(
-        tenant_id=current_user.id,
-        template_id=template_id,
-        amount_paid=template.price,
-        status='pending',
-        reference_number=ref_number
-    )
-    
-    db.session.add(purchase)
-    db.session.commit()
-    
-    return jsonify({'success': True, 'message': 'تم إرسال طلب الشراء. سيتم تفعيل القالب بعد مراجعة الحوالة من قبل الإدارة.', 'free': False})
+
+        return jsonify({'success': True, 'message': 'تم إرسال طلب الشراء. سيتم تفعيل القالب بعد مراجعة الحوالة من قبل الإدارة.', 'free': False})
 
 @invoice_store_bp.route('/admin/invoice-templates/activate/<int:template_id>', methods=['POST'])
-@login_required
 def activate_template(template_id):
-    template = InvoiceTemplate.query.get_or_404(template_id)
-    
-    if template.is_premium:
-        # Verify purchase
-        purchase = TenantTemplatePurchase.query.filter_by(tenant_id=current_user.id, template_id=template_id, status='approved').first()
-        if not purchase:
-            return jsonify({'success': False, 'message': 'يجب شراء القالب أو انتظار موافقة الإدارة أولاً.'}), 403
-            
-    # Activate
-    settings = TenantTemplateSettings.query.filter_by(tenant_id=current_user.id).first()
-    if not settings:
-        settings = TenantTemplateSettings(tenant_id=current_user.id)
-        db.session.add(settings)
-        
-    settings.active_template_id = template_id
-    db.session.commit()
-    
-    return jsonify({'success': True, 'message': 'تم تفعيل القالب بنجاح!'})
+    redir = _require_session_login()
+    if redir:
+        return jsonify({'success': False, 'message': 'غير مصرّح'}), 401
+    uid = _template_tenant_uid()
+    with _core_db():
+        template = InvoiceTemplate.query.get_or_404(template_id)
+
+        if template.is_premium:
+            purchase = TenantTemplatePurchase.query.filter_by(tenant_id=uid, template_id=template_id, status='approved').first()
+            if not purchase:
+                return jsonify({'success': False, 'message': 'يجب شراء القالب أو انتظار موافقة الإدارة أولاً.'}), 403
+
+        settings = TenantTemplateSettings.query.filter_by(tenant_id=uid).first()
+        if not settings:
+            settings = TenantTemplateSettings(tenant_id=uid)
+            db.session.add(settings)
+
+        settings.active_template_id = template_id
+        db.session.commit()
+
+        return jsonify({'success': True, 'message': 'تم تفعيل القالب بنجاح!'})
 
 @invoice_store_bp.route('/superadmin/invoice-purchases', methods=['GET'])
-@login_required
 def manage_purchases():
-    # In a real system, verify if current_user is Super Admin
-    if current_user.role != 'admin':
+    if "user_id" not in session:
+        return redirect("/login")
+    if session.get("role") != 'admin':
         flash('ليس لديك صلاحية لدخول هذه الصفحة', 'danger')
-        return redirect(url_for('index.home'))
-        
-    purchases = TenantTemplatePurchase.query.order_by(TenantTemplatePurchase.purchase_date.desc()).all()
-    # Assuming we need to fetch user names
-    from models.employee import Employee
-    for p in purchases:
-        p.user = Employee.query.get(p.tenant_id)
-        p.template = InvoiceTemplate.query.get(p.template_id)
-        
-    return render_template('manage_template_purchases.html', purchases=purchases)
+        return redirect(url_for('index.index'))
+
+    with _core_db():
+        purchases = TenantTemplatePurchase.query.order_by(TenantTemplatePurchase.purchase_date.desc()).all()
+        from models.employee import Employee
+        for p in purchases:
+            # tenant_id في السجل يُطابق جلسة الطلبات (معرّف tenant محلي أو موظف); جدول employee في Core
+            p.user = Employee.query.get(p.tenant_id)
+            p.template = InvoiceTemplate.query.get(p.template_id)
+
+        return render_template('manage_template_purchases.html', purchases=purchases)
 
 @invoice_store_bp.route('/superadmin/invoice-purchases/approve/<int:purchase_id>', methods=['POST'])
-@login_required
 def approve_purchase(purchase_id):
-    if current_user.role != 'admin':
+    if session.get("role") != 'admin':
         return jsonify({'success': False, 'message': 'Unauthorized'}), 403
-        
-    purchase = TenantTemplatePurchase.query.get_or_404(purchase_id)
-    purchase.status = 'approved'
-    db.session.commit()
-    return jsonify({'success': True, 'message': 'تمت الموافقة على الشراء وتفعيل القالب للتاجر.'})
+
+    with _core_db():
+        purchase = TenantTemplatePurchase.query.get_or_404(purchase_id)
+        purchase.status = 'approved'
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'تمت الموافقة على الشراء وتفعيل القالب للتاجر.'})
 
 @invoice_store_bp.route('/superadmin/invoice-purchases/reject/<int:purchase_id>', methods=['POST'])
-@login_required
 def reject_purchase(purchase_id):
-    if current_user.role != 'admin':
+    if session.get("role") != 'admin':
         return jsonify({'success': False, 'message': 'Unauthorized'}), 403
-        
-    purchase = TenantTemplatePurchase.query.get_or_404(purchase_id)
-    purchase.status = 'rejected'
-    db.session.commit()
-    return jsonify({'success': True, 'message': 'تم رفض طلب الشراء.'})
+
+    with _core_db():
+        purchase = TenantTemplatePurchase.query.get_or_404(purchase_id)
+        purchase.status = 'rejected'
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'تم رفض طلب الشراء.'})
