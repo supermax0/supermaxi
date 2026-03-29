@@ -22,7 +22,7 @@
     </div>
   </div>
 
-  <input type="hidden" id="selected_template_id" value="{{ active_template_id or '' }}">
+  <input type="hidden" id="selected_template_id" value="{{ active_template_id or (templates[0].id if templates else '') }}">
 
   <div class="template-selection-card">
     <div class="template-selection-content">
@@ -252,9 +252,8 @@
       </button>
     </div>
     <div class="preview-container" id="preview_container">
-      <div class="preview-loading">
-        <i class="fas fa-spinner fa-spin"></i> جاري التحميل...
-      </div>
+      <div id="preview_error" class="preview-loading" style="display:none;"></div>
+      <iframe id="invoice_preview_iframe" class="invoice-preview-iframe" title="معاينة الفاتورة"></iframe>
     </div>
   </div>
 </div>
@@ -809,17 +808,23 @@
 .preview-container {
   background: white;
   border-radius: 8px;
-  padding: 20px;
+  padding: 12px;
   min-height: 400px;
   max-height: 800px;
-  overflow: auto;
+  overflow: hidden;
   border: 1px solid #e5e7eb;
+  position: relative;
 }
 
-.preview-container .invoice-container {
-  transform: scale(0.75);
-  transform-origin: top center;
-  margin-bottom: -25%;
+.invoice-preview-iframe {
+  width: 100%;
+  min-height: 480px;
+  height: 70vh;
+  border: 0;
+  border-radius: 6px;
+  background: #f9fafb;
+  display: block;
+  transition: opacity 0.2s ease;
 }
 
 .preview-loading {
@@ -885,9 +890,9 @@
     align-items: stretch;
   }
   
-  .preview-container {
-    transform: scale(0.6);
-    margin-bottom: -40%;
+  .invoice-preview-iframe {
+    min-height: 360px;
+    height: 55vh;
   }
 }
 </style>
@@ -900,6 +905,39 @@ let sortable = null;
 let selectedTemplate = {
   id: Number(document.getElementById('selected_template_id')?.value || 0) || null
 };
+
+function buildInvoicePreviewUrl() {
+  const raw = document.getElementById('selected_template_id')?.value;
+  const id = parseInt(raw, 10);
+  if (!id || Number.isNaN(id)) return null;
+  const p = document.getElementById('primary_color')?.value || '';
+  const s = document.getElementById('secondary_color')?.value || '';
+  const qs = new URLSearchParams();
+  if (/^#[0-9a-fA-F]{6}$/.test(p)) qs.set('primary_color', p);
+  if (/^#[0-9a-fA-F]{6}$/.test(s)) qs.set('secondary_color', s);
+  qs.set('t', String(Date.now()));
+  return `/admin/invoice-templates/preview/${id}?${qs.toString()}`;
+}
+
+function syncInvoicePreviewIframe() {
+  const iframe = document.getElementById('invoice_preview_iframe');
+  const errEl = document.getElementById('preview_error');
+  if (errEl) {
+    errEl.style.display = 'none';
+    errEl.textContent = '';
+  }
+  if (!iframe) return;
+  const url = buildInvoicePreviewUrl();
+  if (!url) {
+    iframe.removeAttribute('src');
+    iframe.srcdoc = '<body style="margin:0;font-family:Tajawal,sans-serif;padding:24px;text-align:center;color:#64748b;direction:rtl">اختر قالباً من «اختيار القالب» لعرض المعاينة</body>';
+    iframe.style.opacity = '1';
+    return;
+  }
+  iframe.removeAttribute('srcdoc');
+  iframe.style.opacity = '1';
+  iframe.src = url;
+}
 
 // تهيئة الصفحة عند التحميل
 document.addEventListener('DOMContentLoaded', function() {
@@ -1168,6 +1206,7 @@ function selectTemplateOption(button) {
   document.getElementById('selected_template_id').value = selectedTemplate.id;
   syncSelectedTemplateCard();
   closeTemplatePicker();
+  syncInvoicePreviewIframe();
   showToast('تم اختيار القالب. اضغط حفظ الإعدادات لتطبيقه.', 'success');
 }
 
@@ -1269,21 +1308,31 @@ function loadPreview() {
       previewData = data;
       renderPreview(data);
     } else {
-      document.getElementById('preview_container').innerHTML = 
-        '<div class="preview-loading">' + (data.error || 'حدث خطأ في تحميل المعاينة') + '</div>';
+      const errEl = document.getElementById('preview_error');
+      if (errEl) {
+        errEl.style.display = 'block';
+        errEl.textContent = data.error || 'حدث خطأ في تحميل المعاينة';
+      }
+      const iframe = document.getElementById('invoice_preview_iframe');
+      if (iframe) iframe.style.opacity = '1';
     }
   })
   .catch(error => {
     console.error('Error loading preview:', error);
-    document.getElementById('preview_container').innerHTML = 
-      '<div class="preview-loading">حدث خطأ أثناء تحميل المعاينة. تأكد من اتصالك بالإنترنت.</div>';
+    const errEl = document.getElementById('preview_error');
+    if (errEl) {
+      errEl.style.display = 'block';
+      errEl.textContent = 'حدث خطأ أثناء تحميل المعاينة. تأكد من اتصالك بالإنترنت.';
+    }
+    const iframe = document.getElementById('invoice_preview_iframe');
+    if (iframe) iframe.style.opacity = '1';
   });
 }
 
 // تحديث المعاينة
 function refreshPreview() {
-  document.getElementById('preview_container').innerHTML = 
-    '<div class="preview-loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
+  const iframe = document.getElementById('invoice_preview_iframe');
+  if (iframe) iframe.style.opacity = '0.45';
   loadPreview();
 }
 
@@ -1315,14 +1364,12 @@ function updatePreview() {
 
 // معاينة الفاتورة في نافذة جديدة
 function previewInvoice() {
-  if (previewData) {
-    const previewWindow = window.open('', '_blank');
-    const invoiceHTML = generateInvoiceHTML(previewData);
-    previewWindow.document.write(invoiceHTML);
-    previewWindow.document.close();
-  } else {
-    showToast('يرجى تحميل المعاينة أولاً', 'warning');
+  const url = buildInvoicePreviewUrl();
+  if (!url) {
+    showToast('اختر قالباً لعرض المعاينة', 'warning');
+    return;
   }
+  window.open(url, '_blank');
 }
 
 // عرض رسالة للمستخدم
@@ -1628,61 +1675,13 @@ function generateInvoiceHTML(data) {
   `;
 }
 
-// عرض المعاينة
+// عرض المعاينة (القالب الحقيقي عبر iframe — يتبع اختيار القالب والألوان)
 function renderPreview(data) {
-  const container = document.getElementById('preview_container');
-  if (!container) return;
-  
-  // دمج visibility_settings مع settings
-  if (data.settings.visibility_settings) {
+  if (!data) return;
+  if (data.settings && data.settings.visibility_settings) {
     Object.assign(data.settings, data.settings.visibility_settings);
   }
-  
-  container.innerHTML = generateInvoiceHTML(data);
-  
-  // إعادة ترتيب العناصر بناءً على الترتيب المحفوظ
-  setTimeout(() => {
-    const layoutOrder = getLayoutOrder();
-    const previewContainer = container.querySelector('.invoice-container');
-    
-    if (previewContainer && layoutOrder && layoutOrder.length > 0) {
-      const sections = {};
-      const sectionElements = ['header', 'summary-customer', 'products', 'total', 'footer'];
-      
-      sectionElements.forEach(section => {
-        const element = previewContainer.querySelector(`[data-section="${section}"]`);
-        if (element) {
-          sections[section] = element;
-        }
-      });
-      
-      const orderedSections = [];
-      layoutOrder.forEach(section => {
-        if (sections[section]) {
-          orderedSections.push(sections[section]);
-        }
-      });
-      
-      // إضافة الأقسام المفقودة في النهاية
-      sectionElements.forEach(section => {
-        if (sections[section] && !orderedSections.includes(sections[section])) {
-          orderedSections.push(sections[section]);
-        }
-      });
-      
-      // إعادة ترتيب العناصر في DOM
-      orderedSections.forEach(sectionElement => {
-        if (sectionElement && sectionElement.parentNode === previewContainer) {
-          previewContainer.appendChild(sectionElement);
-        }
-      });
-    }
-  }, 50);
-  
-  // تحميل مكتبات الباركود وQR Code بعد عرض HTML
-  setTimeout(() => {
-    loadBarcodeLibs();
-  }, 100);
+  syncInvoicePreviewIframe();
 }
 
 // تحميل مكتبات الباركود وQR Code

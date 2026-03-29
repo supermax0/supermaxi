@@ -1,4 +1,6 @@
-from flask import Blueprint, render_template, request, jsonify, send_file, session, redirect, url_for
+import os
+
+from flask import Blueprint, render_template, request, jsonify, send_file, session, redirect, url_for, current_app
 from extensions import db
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload, selectinload
@@ -23,6 +25,37 @@ from sqlalchemy import or_, and_
 from utils.order_status import is_canceled, is_returned, is_completed
 
 orders_bp = Blueprint("orders", __name__, url_prefix="/orders")
+
+
+def _tenant_invoice_template_bundle():
+    """
+    جداول TenantTemplateSettings في Core DB؛ مع g.tenant يجب تعطيله مؤقتاً عند الاستعلام.
+    معرّف المالك يطابق invoice_store/settings (tenant_slug -> Core Tenant.id + fallback قديم).
+    """
+    from routes.invoice_store import _core_db, _template_tenant_uid, _template_lookup_owner_ids
+
+    template_file = "invoice.html"
+    template_styles = {}
+    uid = _template_tenant_uid()
+    lookup_ids = _template_lookup_owner_ids(uid)
+    with _core_db():
+        q = TenantTemplateSettings.query.options(joinedload(TenantTemplateSettings.active_template))
+        t_settings = q.filter_by(tenant_id=uid).first() if uid else None
+        if not t_settings and lookup_ids:
+            t_settings = q.filter(TenantTemplateSettings.tenant_id.in_(lookup_ids)).first()
+        if t_settings and t_settings.active_template:
+            template_file = f"invoices/{t_settings.active_template.html_file_name}"
+            template_styles = {
+                "primary": t_settings.primary_color,
+                "secondary": t_settings.secondary_color,
+                "custom_css": t_settings.custom_css,
+            }
+    if template_file != "invoice.html":
+        full_path = os.path.join(current_app.template_folder, template_file.replace("/", os.sep))
+        if not os.path.exists(full_path):
+            template_file = "invoice.html"
+    return template_file, template_styles
+
 
 def check_permission(permission_name):
     """فحص الصلاحية - helper function"""
@@ -788,35 +821,7 @@ def invoice_page(order_id):
     # Get invoice settings
     settings = InvoiceSettings.get_settings()
     
-    # Get active invoice template
-    template_file = "invoice.html"
-    template_styles = {}
-    
-    if "tenant_id" in session or "user_id" in session:
-        # User ID is used since TenantTemplateSettings is tied to users.id
-        from flask import session
-        # If tenant system is used
-        from models.tenant import Tenant
-        
-        # We need the tenant_id, if SaaS it might be in session
-        uid = session.get("tenant_id") or session.get("user_id")
-        t_settings = TenantTemplateSettings.query.filter_by(tenant_id=uid).first()
-        if t_settings and t_settings.active_template:
-            # We assume templates are in templates/invoices/
-            template_file = f"invoices/{t_settings.active_template.html_file_name}"
-            template_styles = {
-                "primary": t_settings.primary_color,
-                "secondary": t_settings.secondary_color,
-                "custom_css": t_settings.custom_css
-            }
-            
-    # Fallback to basic invoice.html if the specific template file doesn't exist yet
-    import os
-    from flask import current_app
-    if template_file != "invoice.html":
-        full_path = os.path.join(current_app.template_folder, template_file.replace('/', os.sep))
-        if not os.path.exists(full_path):
-            template_file = "invoice.html"
+    template_file, template_styles = _tenant_invoice_template_bundle()
     
     return render_template(template_file,
         order=order,
@@ -887,22 +892,8 @@ def print_batch():
             "cancelled_count": cancelled_count,
         })
 
-    # Get active invoice template
+    _, template_styles = _tenant_invoice_template_bundle()
     template_file = "print_batch.html"
-    template_styles = {}
-    
-    if "tenant_id" in session or "user_id" in session:
-        uid = session.get("tenant_id") or session.get("user_id")
-        t_settings = TenantTemplateSettings.query.filter_by(tenant_id=uid).first()
-        if t_settings and t_settings.active_template:
-            # Note: For batch printing, we'll need specific batch templates, 
-            # or we loop through the single invoice template. For now, we'll pass the styles 
-            # and use the default batch template unless a specific batch one exists.
-            template_styles = {
-                "primary": t_settings.primary_color,
-                "secondary": t_settings.secondary_color,
-                "custom_css": t_settings.custom_css
-            }
 
     return render_template(template_file, batch=batch, settings=settings, template_styles=template_styles)
 

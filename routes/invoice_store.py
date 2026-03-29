@@ -223,6 +223,13 @@ def preview_invoice_template(template_id):
                 "custom_css": tset.custom_css,
             }
 
+    qp = (request.args.get("primary_color") or "").strip()
+    qs = (request.args.get("secondary_color") or "").strip()
+    if len(qp) == 7 and qp.startswith("#"):
+        template_styles["primary"] = qp
+    if len(qs) == 7 and qs.startswith("#"):
+        template_styles["secondary"] = qs
+
     template_file = f"invoices/{html_name}"
     full_path = os.path.join(current_app.template_folder, template_file.replace("/", os.sep))
     if not os.path.isfile(full_path):
