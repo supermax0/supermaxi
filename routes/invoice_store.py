@@ -206,6 +206,18 @@ def preview_invoice_template(template_id):
     )
 
 
+@invoice_store_bp.route('/admin/invoice-templates/customize', methods=['GET'])
+def customize_invoice_templates():
+    """
+    صفحة التخصيص المطلوبة من متجر القوالب.
+    نعيد التوجيه إلى واجهة إعدادات الفاتورة الموجودة فعلاً.
+    """
+    redir = _require_session_login()
+    if redir:
+        return redir
+    return redirect(url_for('settings.invoice_settings'))
+
+
 def seed_templates():
     default_templates = [
         {'name': 'الأساسي (Basic)', 'description': 'قالب بسيط ونظيف ومجاني.', 'html_file_name': 'basic.html', 'is_premium': False, 'price': 0},
