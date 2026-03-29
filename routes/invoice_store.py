@@ -19,43 +19,50 @@ def store_home():
     # In a multi-tenant system, we check their active template
     settings = TenantTemplateSettings.query.filter_by(tenant_id=current_user.id).first()
     active_id = settings.active_template_id if settings else None
-    
-    # Get all templates
+
     templates = InvoiceTemplate.query.order_by(InvoiceTemplate.price.asc(), InvoiceTemplate.id.asc()).all()
-    
-    # Get purchased templates for this user
+
     purchases = TenantTemplatePurchase.query.filter_by(tenant_id=current_user.id).all()
-    purchased_ids = {p.template_id: p.status for p in purchases} # status: 'pending', 'approved'
+    purchased_ids = {p.template_id: p.status for p in purchases}  # status: 'pending', 'approved'
+
+    return render_template(
+        'invoice_templates_store.html',
+        templates=templates,
+        active_id=active_id,
+        purchased_ids=purchased_ids,
+    )
+
+
+@invoice_store_bp.route('/admin/invoice_templates', methods=['GET'])
+@login_required
+def store_home_underscore_alias():
+    """Backward-compatible URL (underscore) → canonical hyphenated route."""
+    return redirect(url_for('invoice_store.store_home'), code=302)
+
 
 def seed_templates():
     default_templates = [
-        {'name': 'الأساسي (Basic)', 'description': 'قالب بسيط ونظيف ومجاني.', 'file_path': 'basic', 'is_premium': False, 'price': 0, 'preview_image': 'basic_preview.png'},
-        {'name': 'الكلاسيكي (Classic)', 'description': 'أبيض وأسود، مناسب للطباعة السريعة.', 'file_path': 'classic', 'is_premium': False, 'price': 0, 'preview_image': 'classic_preview.png'},
-        {'name': 'الحديث المظلم (Dark)', 'description': 'قالب احترافي داكن للعلامات العصرية.', 'file_path': 'modern_dark', 'is_premium': True, 'price': 5000, 'preview_image': 'dark_preview.png'},
-        {'name': 'الأنيق (Elegant)', 'description': 'خطوط Serif وحواف رقيقة، مناسب للأزياء.', 'file_path': 'elegant', 'is_premium': True, 'price': 7000, 'preview_image': 'elegant_preview.png'},
-        {'name': 'الحراري (Thermal 80mm)', 'description': 'مخصص لطابعات الريسيت الحرارية.', 'file_path': 'thermal', 'is_premium': True, 'price': 3000, 'preview_image': 'thermal_preview.png'},
-        {'name': 'الشركات (Corporate)', 'description': 'شكل رسمي أزرق، مثالي للتعامل B2B.', 'file_path': 'corporate', 'is_premium': True, 'price': 8000, 'preview_image': 'corporate_preview.png'},
-        {'name': 'إبداعي (Creative)', 'description': 'ألوان نابضة بالحياة وتصميم غير متناظر.', 'file_path': 'creative', 'is_premium': True, 'price': 6000, 'preview_image': 'creative_preview.png'},
-        {'name': 'المتجر الإلكتروني', 'description': 'يعرض شروط الاسترجاع بشكل واضح وبارز.', 'file_path': 'ecommerce', 'is_premium': True, 'price': 5000, 'preview_image': 'ecommerce_preview.png'},
-        {'name': 'الخط العربي الأصيل', 'description': 'زخرفة إسلامية وخط عربي أصيل.', 'file_path': 'arabic', 'is_premium': True, 'price': 10000, 'preview_image': 'arabic_preview.png'},
-        {'name': 'الفاخر (Luxury Gold)', 'description': 'ذهبي وأسود، فخامة مطلقة للعطور والمجوهرات.', 'file_path': 'luxury', 'is_premium': True, 'price': 15000, 'preview_image': 'luxury_preview.png'},
+        {'name': 'الأساسي (Basic)', 'description': 'قالب بسيط ونظيف ومجاني.', 'html_file_name': 'basic.html', 'is_premium': False, 'price': 0},
+        {'name': 'الكلاسيكي (Classic)', 'description': 'أبيض وأسود، مناسب للطباعة السريعة.', 'html_file_name': 'classic.html', 'is_premium': False, 'price': 0},
+        {'name': 'الحديث المظلم (Dark)', 'description': 'قالب احترافي داكن للعلامات العصرية.', 'html_file_name': 'modern_dark.html', 'is_premium': True, 'price': 5000},
+        {'name': 'الأنيق (Elegant)', 'description': 'خطوط Serif وحواف رقيقة، مناسب للأزياء.', 'html_file_name': 'elegant.html', 'is_premium': True, 'price': 7000},
+        {'name': 'الحراري (Thermal 80mm)', 'description': 'مخصص لطابعات الريسيت الحرارية.', 'html_file_name': 'thermal.html', 'is_premium': True, 'price': 3000},
+        {'name': 'الشركات (Corporate)', 'description': 'شكل رسمي أزرق، مثالي للتعامل B2B.', 'html_file_name': 'corporate.html', 'is_premium': True, 'price': 8000},
+        {'name': 'إبداعي (Creative)', 'description': 'ألوان نابضة بالحياة وتصميم غير متناظر.', 'html_file_name': 'creative.html', 'is_premium': True, 'price': 6000},
+        {'name': 'المتجر الإلكتروني', 'description': 'يعرض شروط الاسترجاع بشكل واضح وبارز.', 'html_file_name': 'ecommerce.html', 'is_premium': True, 'price': 5000},
+        {'name': 'الخط العربي الأصيل', 'description': 'زخرفة إسلامية وخط عربي أصيل.', 'html_file_name': 'arabic.html', 'is_premium': True, 'price': 10000},
+        {'name': 'الفاخر (Luxury Gold)', 'description': 'ذهبي وأسود، فخامة مطلقة للعطور والمجوهرات.', 'html_file_name': 'luxury.html', 'is_premium': True, 'price': 15000},
     ]
     for t in default_templates:
         tmpl = InvoiceTemplate(
             name=t['name'],
             description=t['description'],
-            file_path=t['file_path'],
+            html_file_name=t['html_file_name'],
             is_premium=t['is_premium'],
             price=t['price'],
-            preview_image=t['preview_image']
         )
         db.session.add(tmpl)
     db.session.commit()
-    
-    return render_template('invoice_templates_store.html', 
-                          templates=templates, 
-                          active_id=active_id, 
-                          purchased_ids=purchased_ids)
 
 @invoice_store_bp.route('/admin/invoice-templates/buy/<int:template_id>', methods=['POST'])
 @login_required
@@ -128,7 +135,7 @@ def manage_purchases():
         flash('ليس لديك صلاحية لدخول هذه الصفحة', 'danger')
         return redirect(url_for('index.home'))
         
-    purchases = TenantTemplatePurchase.query.order_by(TenantTemplatePurchase.created_at.desc()).all()
+    purchases = TenantTemplatePurchase.query.order_by(TenantTemplatePurchase.purchase_date.desc()).all()
     # Assuming we need to fetch user names
     from models.employee import Employee
     for p in purchases:
