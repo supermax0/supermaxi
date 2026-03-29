@@ -4,6 +4,7 @@ from flask import Blueprint, render_template, request, jsonify, send_from_direct
 from extensions import db
 from models.invoice_settings import InvoiceSettings
 from models.system_settings import SystemSettings
+from routes.invoice_store import _session_tenant_slug
 from models.invoice_template import InvoiceTemplate, TenantTemplateSettings, TenantTemplatePurchase
 from models.user import User
 from werkzeug.utils import secure_filename
@@ -27,7 +28,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
 def _template_owner_uid():
-    slug = (session.get("tenant_slug") or "").strip().lower()
+    slug = _session_tenant_slug()
     if slug:
         prev = getattr(g, "tenant", None)
         g.tenant = None

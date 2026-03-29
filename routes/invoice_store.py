@@ -12,12 +12,23 @@ from models.user import User
 invoice_store_bp = Blueprint('invoice_store', __name__)
 
 
+def _session_tenant_slug():
+    """معرّف الشركة في الرابط: من الجلسة أو من g.tenant (بعد تسجيل الدخول)."""
+    slug = (session.get("tenant_slug") or "").strip().lower()
+    if slug:
+        return slug
+    ctx = getattr(g, "tenant", None)
+    if isinstance(ctx, str) and ctx.strip():
+        return ctx.strip().lower()
+    return ""
+
+
 def _template_tenant_uid():
     """
     معرّف مالك القالب على مستوى الشركة (يفضَّل tenant.id من Core عبر tenant_slug).
     fallback للجلسات القديمة: tenant_id أو user_id.
     """
-    slug = (session.get("tenant_slug") or "").strip().lower()
+    slug = _session_tenant_slug()
     if slug:
         prev = getattr(g, "tenant", None)
         g.tenant = None

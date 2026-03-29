@@ -1863,9 +1863,8 @@
         toast("✅ تم تنفيذ الطلب")
         closeOrderNotesModal()
 
-        // Print Receipt Logic
-        const selectedCustomerName = document.getElementById("selectedCustomer").innerText.split('-')[0].trim();
-        printReceipt(d.invoice_id, selectedCustomerName, items, d.total);
+        // طباعة نفس صفحة الفاتورة في النظام (القالب المختار من الإعدادات)
+        printServerInvoice(d.invoice_id);
 
         items = []
         renderItems()
@@ -1877,81 +1876,25 @@
       })
     }
 
-    /* ===== طباعة وصل حراري (Thermal Receipt) ===== */
-    function printReceipt(invoiceId, customerName, itemsList, totalAmount) {
-      // بناء محتوى الوصل (80mm Thermal Receipt format)
-      let dateStr = new Date().toLocaleString('ar-SA');
-      let receiptHTML = `
-            <html>
-            <head>
-              <meta charset="UTF-8">
-              <title>Receipt #${invoiceId}</title>
-              <style>
-                @page { margin: 0; size: 80mm; }
-                body { 
-                  font-family: 'Courier New', Courier, monospace; 
-                  width: 75mm; /* ترك هامش صغير للطابعة */
-                  margin: 0 auto; 
-                  padding: 10px 5px; 
-                  font-size: 13px; 
-                  color: #000; 
-                  direction: rtl; 
-                  text-align: center; 
-                }
-                .header { border-bottom: 2px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
-                .header h2 { margin: 0 0 5px 0; font-size: 18px; }
-                .details { text-align: right; margin-bottom: 10px; font-size: 12px; }
-                table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 12px; }
-                th { border-bottom: 1px dashed #000; padding: 5px 0; text-align: center; }
-                td { padding: 5px 0; text-align: center; }
-                .total { border-top: 2px dashed #000; padding-top: 10px; font-weight: bold; font-size: 16px; margin-bottom: 15px; }
-                .footer { text-align: center; font-size: 11px; margin-top: 10px; }
-              </style>
-            </head>
-            <body>
-              <div class="header">
-                <h2>Finora POS</h2>
-                <div>فاتورة مبيعات</div>
-              </div>
-              <div class="details">
-                <div>رقم الفاتورة: #${invoiceId}</div>
-                <div>التاريخ: ${dateStr}</div>
-                <div>الزبون: ${customerName || 'مبيعات نقدية'}</div>
-              </div>
-              <table>
-                <tr>
-                  <th style="width: 40%">الصنف</th>
-                  <th style="width: 20%">الكمية</th>
-                  <th style="width: 40%">السعر</th>
-                </tr>
-                ${itemsList.map(i => `
-                  <tr>
-                    <td>${i.name}</td>
-                    <td>${i.qty}</td>
-                    <td>${(i.price * i.qty).toLocaleString()}</td>
-                  </tr>
-                `).join('')}
-              </table>
-              <div class="total">الإجمالي: ${totalAmount.toLocaleString()} د.ع</div>
-              <div class="footer">
-                <div>شكراً لتعاملكم معنا!</div>
-                <div>لا يمكن استرجاع البضاعة بعد طباعة الفاتورة.</div>
-              </div>
-              <script>
-                window.onload = function() {
-                  window.print();
-                  setTimeout(function() { window.close(); }, 500);
-                }
-              </scr` + `ipt>
-            </body>
-            </html>
-        `;
-      let printWin = window.open('', '_blank', 'width=400,height=600');
-      if (printWin) {
-        printWin.document.open();
-        printWin.document.write(receiptHTML);
-        printWin.document.close();
+    /* ===== طباعة الفاتورة (قالب السيرفر — /orders/invoice) ===== */
+    function printServerInvoice(invoiceId) {
+      const url = '/orders/invoice/' + encodeURIComponent(invoiceId);
+      const printWin = window.open(url, '_blank');
+      if (!printWin) {
+        toast('⚠️ اسمح بالنوافذ المنبثقة لطباعة الفاتورة');
+        return;
       }
+      const tryPrint = function () {
+        try {
+          printWin.focus();
+          printWin.print();
+        } catch (e) { /* ignore */ }
+      };
+      printWin.addEventListener('load', function onLoad() {
+        printWin.removeEventListener('load', onLoad);
+        setTimeout(tryPrint, 500);
+      });
+      setTimeout(tryPrint, 2500);
     }
 
     /* ===== تأجيل الطلب ===== */

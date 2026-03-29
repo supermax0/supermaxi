@@ -13,7 +13,7 @@ from models.shipping import ShippingCompany
 from models.report import Report
 from models.shipping_report import ShippingReport
 from models.invoice_settings import InvoiceSettings
-from models.invoice_template import TenantTemplateSettings
+from models.invoice_template import InvoiceTemplate, TenantTemplateSettings
 from models.delivery_agent import DeliveryAgent
 from datetime import datetime, date
 from sqlalchemy import func
@@ -39,17 +39,21 @@ def _tenant_invoice_template_bundle():
     uid = _template_tenant_uid()
     lookup_ids = _template_lookup_owner_ids(uid)
     with _core_db():
-        q = TenantTemplateSettings.query.options(joinedload(TenantTemplateSettings.active_template))
+        q = TenantTemplateSettings.query
         t_settings = q.filter_by(tenant_id=uid).first() if uid else None
         if not t_settings and lookup_ids:
             t_settings = q.filter(TenantTemplateSettings.tenant_id.in_(lookup_ids)).first()
-        if t_settings and t_settings.active_template:
-            template_file = f"invoices/{t_settings.active_template.html_file_name}"
+        if t_settings:
             template_styles = {
                 "primary": t_settings.primary_color,
                 "secondary": t_settings.secondary_color,
                 "custom_css": t_settings.custom_css,
             }
+            aid = t_settings.active_template_id
+            if aid:
+                inv_tpl = db.session.get(InvoiceTemplate, aid)
+                if inv_tpl and getattr(inv_tpl, "html_file_name", None):
+                    template_file = f"invoices/{inv_tpl.html_file_name}"
     if template_file != "invoice.html":
         full_path = os.path.join(current_app.template_folder, template_file.replace("/", os.sep))
         if not os.path.exists(full_path):
