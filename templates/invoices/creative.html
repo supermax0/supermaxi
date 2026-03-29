@@ -9,22 +9,10 @@
     <style>
         /* ================= DYNAMIC STYLES ================= */
         :root {
-            --primary-color: {
-                    {
-                    template_styles.primary if template_styles and template_styles.primary else '#ec4899'
-                }
-            }
-
-            ;
+            --primary-color: {{ template_styles.primary if template_styles and template_styles.primary else '#ec4899' }};
 
             /* Pink */
-            --secondary-color: {
-                    {
-                    template_styles.secondary if template_styles and template_styles.secondary else '#8b5cf6'
-                }
-            }
-
-            ;
+            --secondary-color: {{ template_styles.secondary if template_styles and template_styles.secondary else '#8b5cf6' }};
             /* Purple */
             --text-dark: #111827;
             --text-light: #6b7280;
@@ -256,19 +244,9 @@
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
         }
 
-            {
-            % if template_styles and template_styles.custom_css %
-        }
-
-            {
-                {
-                template_styles.custom_css | safe
-            }
-        }
-
-            {
-            % endif %
-        }
+{% if template_styles and template_styles.custom_css %}
+{{ template_styles.custom_css | safe }}
+{% endif %}
 
         @media print {
             body {
@@ -393,17 +371,18 @@
                         <span>Subtotal</span>
                         <span>{{ "{:,.0f}".format(total) }}</span>
                     </div>
-                    {% if due < total %} <div class="t-row" style="color:var(--primary-color);">
+                    {% if due < total %}
+                    <div class="t-row" style="color:var(--primary-color);">
                         <span>Discount</span>
                         <span>- {{ "{:,.0f}".format(total - due) }}</span>
+                    </div>
+                    {% endif %}
+                    <div class="t-row grand">
+                        <span>Total</span>
+                        <span>{{ "{:,.0f}".format(due) }}<span
+                                style="font-size:14px; margin-right:5px; color:var(--text-light);">IQD</span></span>
+                    </div>
                 </div>
-                {% endif %}
-                <div class="t-row grand">
-                    <span>Total</span>
-                    <span>{{ "{:,.0f}".format(due) }}<span
-                            style="font-size:14px; margin-right:5px; color:var(--text-light);">IQD</span></span>
-                </div>
-            </div>
 
             {% if order.note %}
             <div style="margin-top:30px; padding:15px; background:#f9fafb; border-radius:12px; font-size:14px;">

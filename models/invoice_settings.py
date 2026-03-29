@@ -70,7 +70,29 @@ AL ATWANI""")
     
     def __repr__(self):
         return f"<InvoiceSettings {self.id}>"
-    
+
+    # أسماء موحّدة مع قوالب الفواتير (store_name / phone1 / invoice_note)
+    @property
+    def store_name(self):
+        return (self.company_name or "").strip() or "المتجر"
+
+    @property
+    def phone1(self):
+        return (self.company_phone or "").strip()
+
+    @property
+    def phone2(self):
+        return ""
+
+    @property
+    def invoice_note(self):
+        """نص تذييل الفاتورة: أول سطر من ملاحظات الضمان أو عبارة افتراضية."""
+        w = (self.warranty_notes or "").strip()
+        if not w:
+            return "شكراً لتسوقكم معنا!"
+        first = w.split("\n")[0].strip()
+        return first[:800] if len(first) > 800 else first
+
     @staticmethod
     def get_settings():
         """Get or create default settings"""

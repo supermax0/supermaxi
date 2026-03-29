@@ -9,22 +9,10 @@
     <style>
         /* ================= DYNAMIC STYLES (Fallback for Modern Dark) ================= */
         :root {
-            --primary-color: {
-                    {
-                    template_styles.primary if template_styles and template_styles.primary else '#6366f1'
-                }
-            }
-
-            ;
+            --primary-color: {{ template_styles.primary if template_styles and template_styles.primary else '#6366f1' }};
 
             /* Indigo */
-            --secondary-color: {
-                    {
-                    template_styles.secondary if template_styles and template_styles.secondary else '#1e293b'
-                }
-            }
-
-            ;
+            --secondary-color: {{ template_styles.secondary if template_styles and template_styles.secondary else '#1e293b' }};
             --bg-color: #0f172a;
             --card-bg: #1e293b;
             --text-main: #f8fafc;
@@ -321,19 +309,9 @@
             letter-spacing: 1px;
         }
 
-            {
-            % if template_styles and template_styles.custom_css %
-        }
-
-            {
-                {
-                template_styles.custom_css | safe
-            }
-        }
-
-            {
-            % endif %
-        }
+{% if template_styles and template_styles.custom_css %}
+{{ template_styles.custom_css | safe }}
+{% endif %}
 
         @media print {
             body {
@@ -380,7 +358,7 @@
             <div class="header">
                 <div class="company-info">
                     <h1>{{ settings.store_name if settings and settings.store_name else 'اسم المتجر' }}</h1>
-                    <p>Your Trusted Partner</p>
+                    <p style="color:var(--text-muted);font-size:14px;">{{ settings.company_subtitle if settings and settings.company_subtitle else 'شريكك الموثوق في التجارة' }}</p>
                 </div>
                 <div class="invoice-title">
                     <h2>INVOICE</h2>
@@ -426,7 +404,7 @@
                     </div>
                     <div class="info-row">
                         <span class="info-label">بواسطة</span>
-                        <span class="info-value">{{ order.employee_name }}</span>
+                        <span class="info-value">{{ order.employee_name or '—' }}</span>
                     </div>
                     <div class="info-row">
                         <span class="info-label">الحالة</span>
@@ -454,8 +432,7 @@
                         {% for item in items %}
                         <tr>
                             <td style="text-align:center; color: var(--text-muted);">{{ loop.index }}</td>
-                            <td class="item-name">{{ item.product_name or (item.product.name if item.product else 'منتج
-                                غير معروف') }}</td>
+                            <td class="item-name">{{ item.product_name or (item.product.name if item.product else 'منتج غير معروف') }}</td>
                             <td style="text-align:center; color: var(--text-muted);">{{ "{:,.0f}".format(item.price) }}
                             </td>
                             <td style="text-align:center;">{{ item.quantity }}</td>
@@ -472,18 +449,18 @@
                         <span class="summary-label">المجموع الفرعي</span>
                         <span class="summary-value">{{ "{:,.0f}".format(total) }} د.ع</span>
                     </div>
-                    {% if due < total %} <div class="summary-row">
+                    {% if due < total %}
+                    <div class="summary-row">
                         <span class="summary-label">تخفيض / واصل</span>
-                        <span class="summary-value" style="color: #10b981;">{{ "{:,.0f}".format(total - due) }}
-                            د.ع</span>
-                </div>
-                {% endif %}
-                <div class="grand-total">
-                    <span>الإجمالي المطلوب</span>
-                    <span>{{ "{:,.0f}".format(due) }} <span style="font-size:14px;">د.ع</span></span>
+                        <span class="summary-value" style="color: #10b981;">{{ "{:,.0f}".format(total - due) }} د.ع</span>
+                    </div>
+                    {% endif %}
+                    <div class="grand-total">
+                        <span>الإجمالي المطلوب</span>
+                        <span>{{ "{:,.0f}".format(due) }} <span style="font-size:14px;">د.ع</span></span>
+                    </div>
                 </div>
             </div>
-        </div>
 
         {% if order.note %}
         <div style="margin-bottom: 30px; font-size:14px; color:var(--text-muted);">

@@ -476,10 +476,10 @@
             </div>
 
             <div class="card-actions">
-                <!-- Preview Button (Fake link for now) -->
-                <button type="button" class="btn-base btn-outline" onclick="alert('صفحة المعاينة تحت التطوير')">
+                <a href="/admin/invoice-templates/preview/{{ tmpl.id }}" target="_blank" rel="noopener"
+                    class="btn-base btn-outline" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">
                     <i class="fas fa-eye"></i> معاينة
-                </button>
+                </a>
 
                 {% if tmpl.id == active_id %}
                 <button type="button" class="btn-base btn-success"

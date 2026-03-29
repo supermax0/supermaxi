@@ -12,21 +12,9 @@
     <style>
         /* ================= DYNAMIC STYLES ================= */
         :root {
-            --primary-color: {
-                    {
-                    template_styles.primary if template_styles and template_styles.primary else '#2563eb'
-                }
-            }
+            --primary-color: {{ template_styles.primary if template_styles and template_styles.primary else '#2563eb' }};
 
-            ;
-
-            --secondary-color: {
-                    {
-                    template_styles.secondary if template_styles and template_styles.secondary else '#1e40af'
-                }
-            }
-
-            ;
+            --secondary-color: {{ template_styles.secondary if template_styles and template_styles.secondary else '#1e40af' }};
         }
 
         * {
@@ -283,19 +271,9 @@
         }
 
         /* ==================== Custom CSS ==================== */
-            {
-            % if template_styles and template_styles.custom_css %
-        }
-
-            {
-                {
-                template_styles.custom_css | safe
-            }
-        }
-
-            {
-            % endif %
-        }
+{% if template_styles and template_styles.custom_css %}
+{{ template_styles.custom_css | safe }}
+{% endif %}
 
         /* ==================== Print ==================== */
         @media print {
@@ -439,8 +417,7 @@
                     {% for item in items %}
                     <tr>
                         <td>{{ loop.index }}</td>
-                        <td style="text-align: right;">{{ item.product_name or (item.product.name if item.product else
-                            'منتج محذوف') }}</td>
+                        <td style="text-align: right;">{{ item.product_name or (item.product.name if item.product else 'منتج محذوف') }}</td>
                         <td>{{ "{:,.0f}".format(item.price) }} د.ع</td>
                         <td>{{ item.quantity }}</td>
                         <td>{{ "{:,.0f}".format(item.total) }} د.ع</td>
@@ -449,10 +426,19 @@
                 </tbody>
                 <tfoot>
                     <tr>
-                        <td colspan="4" style="text-align: left;">المجموع الكلي:</td>
-                        <td class="grand-total">{{ "{:,.0f}".format(total) }} د.ع</td>
+                        <td colspan="4" style="text-align: left;">مجموع المنتجات</td>
+                        <td>{{ "{:,.0f}".format(total) }} د.ع</td>
                     </tr>
-                    <!-- Discount could go here if implemented -->
+                    {% if due < total %}
+                    <tr>
+                        <td colspan="4" style="text-align: left;">خصم / واصل</td>
+                        <td style="color:#059669;font-weight:bold;">- {{ "{:,.0f}".format(total - due) }} د.ع</td>
+                    </tr>
+                    {% endif %}
+                    <tr>
+                        <td colspan="4" style="text-align: left;">المبلغ المطلوب</td>
+                        <td class="grand-total">{{ "{:,.0f}".format(due) }} د.ع</td>
+                    </tr>
                 </tfoot>
             </table>
         </div>

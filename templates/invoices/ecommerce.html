@@ -9,22 +9,10 @@
     <style>
         /* ================= DYNAMIC STYLES ================= */
         :root {
-            --primary-color: {
-                    {
-                    template_styles.primary if template_styles and template_styles.primary else '#10b981'
-                }
-            }
-
-            ;
+            --primary-color: {{ template_styles.primary if template_styles and template_styles.primary else '#10b981' }};
 
             /* Emerald */
-            --secondary-color: {
-                    {
-                    template_styles.secondary if template_styles and template_styles.secondary else '#d1fae5'
-                }
-            }
-
-            ;
+            --secondary-color: {{ template_styles.secondary if template_styles and template_styles.secondary else '#d1fae5' }};
             --text-main: #374151;
             --border-color: #e5e7eb;
         }
@@ -277,19 +265,9 @@
             border-top: 1px solid var(--border-color);
         }
 
-            {
-            % if template_styles and template_styles.custom_css %
-        }
-
-            {
-                {
-                template_styles.custom_css | safe
-            }
-        }
-
-            {
-            % endif %
-        }
+{% if template_styles and template_styles.custom_css %}
+{{ template_styles.custom_css | safe }}
+{% endif %}
 
         @media print {
             body {
@@ -369,8 +347,7 @@
                         }}</span></div>
                 <div class="b-row"><span class="b-label">شركة الشحن:</span><span class="b-value">{{
                         order.shipping_company.name if order.shipping_company else 'لا يوجد' }}</span></div>
-                <div class="b-row"><span class="b-label">بواسطة:</span><span class="b-value">{{ order.employee_name
-                        }}</span></div>
+                <div class="b-row"><span class="b-label">بواسطة:</span><span class="b-value">{{ order.employee_name or '—' }}</span></div>
             </div>
         </div>
 
@@ -419,14 +396,16 @@
                     <span style="color:#6b7280;">قيمة المشتريات</span>
                     <span>{{ "{:,.0f}".format(total) }} د.ع</span>
                 </div>
-                {% if due < total %} <div class="t-row" style="color:var(--primary-color);">
+                {% if due < total %}
+                <div class="t-row" style="color:var(--primary-color);">
                     <span>تخفيض / كوبون</span>
                     <span>- {{ "{:,.0f}".format(total - due) }} د.ع</span>
-            </div>
-            {% endif %}
-            <div class="t-row grand">
-                <span>المبلغ الإجمالي</span>
-                <span>{{ "{:,.0f}".format(due) }} د.ع</span>
+                </div>
+                {% endif %}
+                <div class="t-row grand">
+                    <span>المبلغ الإجمالي</span>
+                    <span>{{ "{:,.0f}".format(due) }} د.ع</span>
+                </div>
             </div>
         </div>
     </div>

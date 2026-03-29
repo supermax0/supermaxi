@@ -11,22 +11,10 @@
     <style>
         /* ================= DYNAMIC STYLES ================= */
         :root {
-            --primary-color: {
-                    {
-                    template_styles.primary if template_styles and template_styles.primary else '#d4af37'
-                }
-            }
-
-            ;
+            --primary-color: {{ template_styles.primary if template_styles and template_styles.primary else '#d4af37' }};
 
             /* Metallic Gold */
-            --secondary-color: {
-                    {
-                    template_styles.secondary if template_styles and template_styles.secondary else '#111111'
-                }
-            }
-
-            ;
+            --secondary-color: {{ template_styles.secondary if template_styles and template_styles.secondary else '#111111' }};
             /* Deep Black */
             --text-main: #222;
             --border-color: #eee;
@@ -326,19 +314,9 @@
             opacity: 0.5;
         }
 
-            {
-            % if template_styles and template_styles.custom_css %
-        }
-
-            {
-                {
-                template_styles.custom_css | safe
-            }
-        }
-
-            {
-            % endif %
-        }
+{% if template_styles and template_styles.custom_css %}
+{{ template_styles.custom_css | safe }}
+{% endif %}
 
         @media print {
             body {
@@ -437,7 +415,7 @@
                 </div>
                 <div class="data-row">
                     <span class="data-label">Agent</span>
-                    <span class="data-value">{{ order.employee_name }}</span>
+                    <span class="data-value">{{ order.employee_name or '—' }}</span>
                 </div>
             </div>
         </div>
@@ -456,8 +434,7 @@
                 {% for item in items %}
                 <tr>
                     <td style="text-align: center; color: #aaa;">{{ loop.index }}</td>
-                    <td class="product-name">{{ item.product_name or (item.product.name if item.product else 'Unknown
-                        Item') }}</td>
+                    <td class="product-name">{{ item.product_name or (item.product.name if item.product else 'Unknown Item') }}</td>
                     <td class="price-value" style="text-align: center;">{{ "{:,.0f}".format(item.price) }}</td>
                     <td style="text-align: center;">{{ item.quantity }}</td>
                     <td class="price-value" style="text-align: left;">{{ "{:,.0f}".format(item.total) }} IQD</td>
@@ -472,12 +449,12 @@
                     <span>Subtotal</span>
                     <span class="s-val">{{ "{:,.0f}".format(total) }}</span>
                 </div>
-                {% if due < total %} <div class="s-row">
+                {% if due < total %}
+                <div class="s-row">
                     <span>Discount</span>
-                    <span class="s-val" style="color: var(--primary-color);">- {{ "{:,.0f}".format(total - due)
-                        }}</span>
-            </div>
-            {% endif %}
+                    <span class="s-val" style="color: var(--primary-color);">- {{ "{:,.0f}".format(total - due) }}</span>
+                </div>
+                {% endif %}
             <div class="s-grand">
                 <span class="s-grand-label">Total Amount</span>
                 <span class="s-grand-val">{{ "{:,.0f}".format(due) }}</span>

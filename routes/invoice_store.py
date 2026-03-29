@@ -1,5 +1,9 @@
+import os
 from contextlib import contextmanager
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash, session, g
+from datetime import datetime
+from types import SimpleNamespace
+
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash, session, g, current_app
 
 from extensions import db
 from models.invoice_template import InvoiceTemplate, TenantTemplateSettings, TenantTemplatePurchase
@@ -65,6 +69,110 @@ def store_home():
 def store_home_underscore_alias():
     """Backward-compatible URL (underscore) → canonical hyphenated route."""
     return redirect(url_for('invoice_store.store_home'), code=302)
+
+
+@invoice_store_bp.route('/admin/invoice-templates/preview/<int:template_id>', methods=['GET'])
+def preview_invoice_template(template_id):
+    """معاينة قالب فاتورة ببيانات تجريبية (اسم المتجر من إعدادات الفاتورة للشركة)."""
+    redir = _require_session_login()
+    if redir:
+        return redir
+
+    with _core_db():
+        catalog = InvoiceTemplate.query.get_or_404(template_id)
+        html_name = catalog.html_file_name
+
+    inv_settings = SimpleNamespace(
+        store_name="متجر تجريبي",
+        company_subtitle="معاينة قالب الفاتورة",
+        phone1="07700000000",
+        phone2=None,
+        invoice_note="شكراً لتسوقكم معنا! — هذه معاينة فقط.",
+    )
+    slug = session.get("tenant_slug")
+    if slug:
+        prev = getattr(g, "tenant", None)
+        g.tenant = slug
+        try:
+            from models.invoice_settings import InvoiceSettings
+
+            s = InvoiceSettings.get_settings()
+            inv_settings = SimpleNamespace(
+                store_name=(s.company_name or "متجر تجريبي"),
+                company_subtitle=(s.company_subtitle or "").strip() or "معاينة قالب الفاتورة",
+                phone1=s.company_phone or "",
+                phone2=None,
+                invoice_note=(s.warranty_notes or "شكراً لتسوقكم معنا!")[:800],
+            )
+        except Exception:
+            pass
+        finally:
+            g.tenant = prev
+
+    order = SimpleNamespace(
+        id=1001,
+        created_at=datetime.now(),
+        payment_status="مدفوع",
+        status="تم الطلب",
+        employee_name="موظف تجريبي",
+        shipping_company=None,
+        note="معاينة قالب — ليست فاتورة حقيقية.",
+        customer=SimpleNamespace(
+            name="عميل تجريبي",
+            phone="07801234567",
+            phone2=None,
+            city="بغداد",
+            address="عنوان تجريبي",
+        ),
+    )
+    items = [
+        SimpleNamespace(
+            product_name="منتج تجريبي أ",
+            price=15000,
+            quantity=2,
+            total=30000,
+            product=None,
+        ),
+        SimpleNamespace(
+            product_name="منتج تجريبي ب",
+            price=25000,
+            quantity=1,
+            total=25000,
+            product=None,
+        ),
+    ]
+    total = 55000
+    due = 55000
+    returned_count = 0
+    cancelled_count = 0
+
+    template_styles = {"primary": "#2563eb", "secondary": "#4a5568", "custom_css": None}
+    uid = _template_tenant_uid()
+    with _core_db():
+        tset = TenantTemplateSettings.query.filter_by(tenant_id=uid).first()
+        if tset:
+            template_styles = {
+                "primary": tset.primary_color or template_styles["primary"],
+                "secondary": tset.secondary_color or template_styles["secondary"],
+                "custom_css": tset.custom_css,
+            }
+
+    template_file = f"invoices/{html_name}"
+    full_path = os.path.join(current_app.template_folder, template_file.replace("/", os.sep))
+    if not os.path.isfile(full_path):
+        template_file = "invoice.html"
+
+    return render_template(
+        template_file,
+        order=order,
+        items=items,
+        total=total,
+        due=due,
+        returned_count=returned_count,
+        cancelled_count=cancelled_count,
+        settings=inv_settings,
+        template_styles=template_styles,
+    )
 
 
 def seed_templates():

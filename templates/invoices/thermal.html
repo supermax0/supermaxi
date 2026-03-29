@@ -11,13 +11,7 @@
         :root {
 
             /* For thermal, colors are usually black and white only, but we allow primary for screen preview */
-            --primary-color: {
-                    {
-                    template_styles.primary if template_styles and template_styles.primary else '#000000'
-                }
-            }
-
-            ;
+            --primary-color: {{ template_styles.primary if template_styles and template_styles.primary else '#000000' }};
         }
 
         * {
@@ -195,19 +189,9 @@
         }
 
         /* Custom CSS */
-            {
-            % if template_styles and template_styles.custom_css %
-        }
-
-            {
-                {
-                template_styles.custom_css | safe
-            }
-        }
-
-            {
-            % endif %
-        }
+{% if template_styles and template_styles.custom_css %}
+{{ template_styles.custom_css | safe }}
+{% endif %}
 
         @media print {
             body {
@@ -307,11 +291,12 @@
                 <span>مجموع المنتجات</span>
                 <span>{{ "{:,.0f}".format(total) }}</span>
             </div>
-            {% if due < total %} <div class="total-row">
-                <span>خصم</span>
+            {% if due < total %}
+            <div class="total-row">
+                <span>خصم / واصل</span>
                 <span>- {{ "{:,.0f}".format(total - due) }}</span>
-        </div>
-        {% endif %}
+            </div>
+            {% endif %}
         <div class="total-row grand-total">
             <span>المطلوب دفعه</span>
             <span>{{ "{:,.0f}".format(due) }} د.ع</span>
@@ -330,7 +315,7 @@
     <div class="footer">
         <div style="margin-bottom: 10px;">{{ settings.invoice_note if settings and settings.invoice_note else 'شكراً
             لتسوقكم!' }}</div>
-        <div style="font-size:9px;">بواسطة: {{ order.employee_name }}</div>
+        <div style="font-size:9px;">بواسطة: {{ order.employee_name or '—' }}</div>
 
         <svg id="barcode-thermal" class="barcode-svg"></svg>
     </div>

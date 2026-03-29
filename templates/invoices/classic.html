@@ -9,21 +9,9 @@
     <style>
         /* ================= DYNAMIC STYLES (Fallback for Classic) ================= */
         :root {
-            --primary-color: {
-                    {
-                    template_styles.primary if template_styles and template_styles.primary else '#111'
-                }
-            }
+            --primary-color: {{ template_styles.primary if template_styles and template_styles.primary else '#111' }};
 
-            ;
-
-            --secondary-color: {
-                    {
-                    template_styles.secondary if template_styles and template_styles.secondary else '#666'
-                }
-            }
-
-            ;
+            --secondary-color: {{ template_styles.secondary if template_styles and template_styles.secondary else '#666' }};
         }
 
         * {
@@ -248,19 +236,9 @@
         }
 
         /* Custom CSS */
-            {
-            % if template_styles and template_styles.custom_css %
-        }
-
-            {
-                {
-                template_styles.custom_css | safe
-            }
-        }
-
-            {
-            % endif %
-        }
+{% if template_styles and template_styles.custom_css %}
+{{ template_styles.custom_css | safe }}
+{% endif %}
 
         @media print {
             body {
@@ -333,7 +311,7 @@
             </div>
             <div class="box">
                 <div class="box-title">معلومات إضافية</div>
-                <p><strong>اسم الموظف:</strong> {{ order.employee_name }}</p>
+                <p><strong>اسم الموظف:</strong> {{ order.employee_name or '—' }}</p>
                 <p><strong>حالة الطلب:</strong> {{ order.status }}</p>
                 {% if order.shipping_company %}
                 <p><strong>شركة التوصيل:</strong> {{ order.shipping_company.name }}</p>

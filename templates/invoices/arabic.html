@@ -11,22 +11,10 @@
     <style>
         /* ================= DYNAMIC STYLES ================= */
         :root {
-            --primary-color: {
-                    {
-                    template_styles.primary if template_styles and template_styles.primary else '#0f4c3a'
-                }
-            }
-
-            ;
+            --primary-color: {{ template_styles.primary if template_styles and template_styles.primary else '#0f4c3a' }};
 
             /* Dark Emerald/Islamic Green */
-            --secondary-color: {
-                    {
-                    template_styles.secondary if template_styles and template_styles.secondary else '#d4af37'
-                }
-            }
-
-            ;
+            --secondary-color: {{ template_styles.secondary if template_styles and template_styles.secondary else '#d4af37' }};
             /* Gold */
             --text-main: #222;
         }
@@ -259,19 +247,9 @@
             opacity: 0.8;
         }
 
-            {
-            % if template_styles and template_styles.custom_css %
-        }
-
-            {
-                {
-                template_styles.custom_css | safe
-            }
-        }
-
-            {
-            % endif %
-        }
+{% if template_styles and template_styles.custom_css %}
+{{ template_styles.custom_css | safe }}
+{% endif %}
 
         @media print {
             body {
@@ -344,7 +322,7 @@
                         order.created_at else '' }}</span></div>
                 <div class="i-row"><span>حالة الدفع</span><span>{{ order.payment_status or "غير مسدد" }}</span></div>
                 <div class="i-row"><span>موقف الطلب</span><span>{{ order.status }}</span></div>
-                <div class="i-row"><span>المُحرر</span><span>{{ order.employee_name }}</span></div>
+                <div class="i-row"><span>المُحرر</span><span>{{ order.employee_name or '—' }}</span></div>
             </div>
         </div>
 
@@ -376,11 +354,12 @@
                 <span>مجموع البضاعة</span>
                 <span>{{ "{:,.0f}".format(total) }} د.ع</span>
             </div>
-            {% if due < total %} <div class="s-row" style="color:#16a34a;">
+            {% if due < total %}
+            <div class="s-row" style="color:#16a34a;">
                 <span>الحسميات</span>
                 <span>- {{ "{:,.0f}".format(total - due) }} د.ع</span>
-        </div>
-        {% endif %}
+            </div>
+            {% endif %}
         <div class="s-row s-grand">
             <span>المبلغ المطلوب</span>
             <span>{{ "{:,.0f}".format(due) }} د.ع</span>
