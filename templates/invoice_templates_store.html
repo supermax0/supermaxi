@@ -84,9 +84,10 @@
         overflow: hidden;
     }
 
-    .template-img-container i {
-        font-size: 64px;
-        color: rgba(255, 255, 255, 0.1);
+    .template-img-container>i.fas {
+        font-size: 56px;
+        color: rgba(255, 255, 255, 0.45);
+        text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
     }
 
     /* If thumbnail_url exists */
@@ -94,6 +95,36 @@
         width: 100%;
         height: 100%;
         object-fit: cover;
+    }
+
+    .template-img.is-hidden {
+        display: none !important;
+    }
+
+    .template-thumb-fallback {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 16px;
+        text-align: center;
+    }
+
+    .template-thumb-fallback i {
+        font-size: 48px;
+        color: rgba(255, 255, 255, 0.85);
+        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+    }
+
+    .template-thumb-fallback .thumb-label {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.75);
     }
 
     .template-content {
@@ -433,6 +464,18 @@
 </style>
 
 <!-- ================= TEMPLATES GRID ================= -->
+{% set thumb_gradients = {
+    'basic.html': 'linear-gradient(145deg,#2563eb 0%,#1e40af 55%,#172554 100%)',
+    'classic.html': 'linear-gradient(145deg,#18181b 0%,#3f3f46 50%,#52525b 100%)',
+    'modern_dark.html': 'linear-gradient(145deg,#312e81 0%,#1e1b4b 45%,#0f172a 100%)',
+    'elegant.html': 'linear-gradient(145deg,#78350f 0%,#b45309 40%,#fef3c7 100%)',
+    'thermal.html': 'linear-gradient(145deg,#0f172a 0%,#334155 50%,#f1f5f9 100%)',
+    'corporate.html': 'linear-gradient(145deg,#1e3a8a 0%,#2563eb 50%,#dbeafe 100%)',
+    'creative.html': 'linear-gradient(145deg,#ec4899 0%,#a855f7 50%,#6366f1 100%)',
+    'ecommerce.html': 'linear-gradient(145deg,#059669 0%,#10b981 45%,#d1fae5 100%)',
+    'arabic.html': 'linear-gradient(145deg,#0f4c3a 0%,#166534 40%,#d4af37 100%)',
+    'luxury.html': 'linear-gradient(145deg,#0a0a0a 0%,#292524 50%,#d4af37 100%)',
+} %}
 <div class="templates-grid">
     {% for tmpl in templates %}
     <div class="template-card">
@@ -444,10 +487,19 @@
         {% endif %}
 
         <div class="template-img-container">
+            {% set _bg = thumb_gradients[tmpl.html_file_name] if tmpl.html_file_name in thumb_gradients else 'linear-gradient(145deg,#475569 0%,#334155 100%)' %}
             {% if tmpl.thumbnail_url %}
-            <img src="{{ tmpl.thumbnail_url }}" class="template-img" alt="{{ tmpl.name }}">
+            <img src="{{ tmpl.thumbnail_url }}" class="template-img" alt="{{ tmpl.name }}"
+                onerror="this.classList.add('is-hidden'); var fb=this.nextElementSibling; if(fb){ fb.style.display='flex'; }">
+            <div class="template-thumb-fallback" style="display:none;background:{{ _bg }};">
+                <i class="fas fa-file-invoice"></i>
+                <span class="thumb-label">{{ tmpl.html_file_name|replace('.html','') }}</span>
+            </div>
             {% else %}
-            <i class="fas fa-file-invoice"></i>
+            <div class="template-thumb-fallback" style="background:{{ _bg }};">
+                <i class="fas fa-file-invoice"></i>
+                <span class="thumb-label">{{ tmpl.html_file_name|replace('.html','') }}</span>
+            </div>
             {% endif %}
         </div>
 

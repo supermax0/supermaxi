@@ -360,7 +360,8 @@
             </div>
             <div class="logo-line"></div>
             <div class="company-details">
-                Authentic & Exclusive
+                {{ settings.company_subtitle if settings and settings.company_subtitle else 'Authentic & Exclusive' }}
+                {% if settings and settings.company_address %}<br>{{ settings.company_address }}{% endif %}
                 {% if settings and settings.phone1 %}<br>{{ settings.phone1 }}{% endif %}
             </div>
         </div>
@@ -455,12 +456,12 @@
                     <span class="s-val" style="color: var(--primary-color);">- {{ "{:,.0f}".format(total - due) }}</span>
                 </div>
                 {% endif %}
-            <div class="s-grand">
-                <span class="s-grand-label">Total Amount</span>
-                <span class="s-grand-val">{{ "{:,.0f}".format(due) }}</span>
+                <div class="s-grand">
+                    <span class="s-grand-label">Total Amount</span>
+                    <span class="s-grand-val">{{ "{:,.0f}".format(due) }}</span>
+                </div>
             </div>
         </div>
-    </div>
 
     {% if order.note %}
     <div class="invoice-note">

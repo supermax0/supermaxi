@@ -85,6 +85,7 @@ def preview_invoice_template(template_id):
     inv_settings = SimpleNamespace(
         store_name="متجر تجريبي",
         company_subtitle="معاينة قالب الفاتورة",
+        company_address="بغداد - عنوان تجريبي",
         phone1="07700000000",
         phone2=None,
         invoice_note="شكراً لتسوقكم معنا! — هذه معاينة فقط.",
@@ -100,6 +101,7 @@ def preview_invoice_template(template_id):
             inv_settings = SimpleNamespace(
                 store_name=(s.company_name or "متجر تجريبي"),
                 company_subtitle=(s.company_subtitle or "").strip() or "معاينة قالب الفاتورة",
+                company_address=(s.company_address or "").strip(),
                 phone1=s.company_phone or "",
                 phone2=None,
                 invoice_note=(s.warranty_notes or "شكراً لتسوقكم معنا!")[:800],

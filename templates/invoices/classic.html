@@ -281,7 +281,10 @@
         <div class="header">
             <div>
                 <h1>{{ settings.store_name if settings and settings.store_name else 'اسم المتجر' }}</h1>
-                <div class="subtitle">فواتير رسمية للتميز والأصالة</div>
+                <div class="subtitle">{{ settings.company_subtitle if settings and settings.company_subtitle else 'فواتير رسمية للتميز والأصالة' }}</div>
+                {% if settings and settings.company_address %}
+                <div style="font-size:12px; margin-top:6px; color:#666;">{{ settings.company_address }}</div>
+                {% endif %}
                 {% if settings and settings.phone1 %}
                 <div style="font-size:12px; margin-top:5px; font-family: monospace;">Tel: {{ settings.phone1 }} {% if
                     settings.phone2 %}| {{ settings.phone2 }}{% endif %}</div>

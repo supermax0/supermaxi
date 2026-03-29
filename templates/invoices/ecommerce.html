@@ -309,7 +309,10 @@
         <div class="header">
             <div class="logo-area">
                 <h1>{{ settings.store_name if settings and settings.store_name else 'E-Store' }}</h1>
-                <p>www.yourstore.com</p>
+                <p>{{ settings.company_subtitle if settings and settings.company_subtitle else 'واجهة طلبات احترافية وسريعة' }}</p>
+                {% if settings and settings.company_address %}
+                <div style="font-size:12px; color:#94a3b8; margin-top:6px;">{{ settings.company_address }}</div>
+                {% endif %}
             </div>
             <div style="text-align: left;">
                 <div class="invoice-label">فاتورة طلب</div>

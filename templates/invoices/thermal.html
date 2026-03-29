@@ -238,6 +238,12 @@
         <div class="text-center">
             <div class="store-name">{{ settings.store_name if settings and settings.store_name else 'اسم المتجر' }}
             </div>
+            {% if settings and settings.company_subtitle %}
+            <div class="store-contact" style="font-size:10px; color:#475569; margin-bottom:6px;">{{ settings.company_subtitle }}</div>
+            {% endif %}
+            {% if settings and settings.company_address %}
+            <div class="store-contact" style="font-size:10px; color:#64748b;">{{ settings.company_address }}</div>
+            {% endif %}
             {% if settings and settings.phone1 %}
             <div class="store-contact">هاتف: {{ settings.phone1 }}</div>
             {% endif %}
@@ -297,11 +303,11 @@
                 <span>- {{ "{:,.0f}".format(total - due) }}</span>
             </div>
             {% endif %}
-        <div class="total-row grand-total">
-            <span>المطلوب دفعه</span>
-            <span>{{ "{:,.0f}".format(due) }} د.ع</span>
+            <div class="total-row grand-total">
+                <span>المطلوب دفعه</span>
+                <span>{{ "{:,.0f}".format(due) }} د.ع</span>
+            </div>
         </div>
-    </div>
 
     <div class="divider"></div>
 

@@ -296,7 +296,13 @@
             <!-- Asymmetrical Left Sidebar -->
             <div class="sidebar">
                 <h1>{{ settings.store_name if settings and settings.store_name else 'Creator Studio' }}</h1>
-                <p>{{ settings.phone1 if settings and settings.phone1 else 'Innovation & Design' }}</p>
+                <p>{{ settings.company_subtitle if settings and settings.company_subtitle else 'Innovation & Design' }}</p>
+                {% if settings and settings.company_address %}
+                <div style="font-size:12px; opacity:0.9; line-height:1.6; margin-top:6px;">{{ settings.company_address }}</div>
+                {% endif %}
+                {% if settings and settings.phone1 %}
+                <div style="font-size:12px; margin-top:8px; font-family:monospace;">{{ settings.phone1 }}</div>
+                {% endif %}
 
                 <div class="inv-details">
                     <h3>Invoice No.</h3>
@@ -390,18 +396,18 @@
             </div>
             {% endif %}
 
-            <div class="footer">
-                <div style="line-height:1.6; max-width:60%;">
-                    <strong>Thank you!</strong><br>
-                    {{ settings.invoice_note if settings and settings.invoice_note else 'We appreciate your business.'
-                    }}
-                </div>
-                <div class="barcode-area">
-                    <svg id="barcode-creative"></svg>
+                <div class="footer">
+                    <div style="line-height:1.6; max-width:60%;">
+                        <strong>Thank you!</strong><br>
+                        {{ settings.invoice_note if settings and settings.invoice_note else 'We appreciate your business.'
+                        }}
+                    </div>
+                    <div class="barcode-area">
+                        <svg id="barcode-creative"></svg>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
     </div>
 
     <script>

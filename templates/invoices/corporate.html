@@ -295,6 +295,12 @@
                 <div class="company-details">
                     <div class="company-logo">{{ settings.store_name if settings and settings.store_name else 'اسم
                         المؤسسة' }}</div>
+                    {% if settings and settings.company_subtitle %}
+                    <div style="font-size:13px; color:var(--text-light); margin-bottom:4px;">{{ settings.company_subtitle }}</div>
+                    {% endif %}
+                    {% if settings and settings.company_address %}
+                    <div style="font-size:12px; color:var(--text-light); margin-bottom:4px;">{{ settings.company_address }}</div>
+                    {% endif %}
                     <div>{{ settings.phone1 if settings and settings.phone1 else '' }}</div>
                     <div>{{ settings.phone2 if settings and settings.phone2 else '' }}</div>
                 </div>
@@ -361,16 +367,16 @@
                         <span style="color:#ef4444; font-weight:bold;">- {{ "{:,.0f}".format(total - due) }} د.ع</span>
                     </div>
                     {% endif %}
-                <div class="totals-row grand-title">
-                    <span>المبلغ المستحق</span>
-                    <span>{{ "{:,.0f}".format(due) }} د.ع</span>
-                </div>
-                <div
-                    style="text-align:center; font-size:13px; font-weight:bold; margin-top:10px; color:var(--text-light);">
-                    حالة الدفع: {{ order.payment_status or "غير مدفوع" }}
+                    <div class="totals-row grand-title">
+                        <span>المبلغ المستحق</span>
+                        <span>{{ "{:,.0f}".format(due) }} د.ع</span>
+                    </div>
+                    <div
+                        style="text-align:center; font-size:13px; font-weight:bold; margin-top:10px; color:var(--text-light);">
+                        حالة الدفع: {{ order.payment_status or "غير مدفوع" }}
+                    </div>
                 </div>
             </div>
-        </div>
 
         {% if order.note %}
         <div style="margin-top:20px; font-size:14px;">

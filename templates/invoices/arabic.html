@@ -293,7 +293,10 @@
 
         <div class="header">
             <h1>{{ settings.store_name if settings and settings.store_name else 'الديوان' }}</h1>
-            <p>{{ settings.phone1 if settings and settings.phone1 else '' }}</p>
+            <p>{{ settings.company_subtitle if settings and settings.company_subtitle else (settings.phone1 if settings and settings.phone1 else '') }}</p>
+            {% if settings and settings.company_address %}
+            <div style="font-size:12px; color:#8b7355; margin-top:8px;">{{ settings.company_address }}</div>
+            {% endif %}
         </div>
 
         <div class="invoice-title">
@@ -360,11 +363,11 @@
                 <span>- {{ "{:,.0f}".format(total - due) }} د.ع</span>
             </div>
             {% endif %}
-        <div class="s-row s-grand">
-            <span>المبلغ المطلوب</span>
-            <span>{{ "{:,.0f}".format(due) }} د.ع</span>
+            <div class="s-row s-grand">
+                <span>المبلغ المطلوب</span>
+                <span>{{ "{:,.0f}".format(due) }} د.ع</span>
+            </div>
         </div>
-    </div>
 
     {% if order.note %}
     <div style="margin-top:30px; font-weight:600; color:#555;">

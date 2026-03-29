@@ -359,6 +359,9 @@
                 <div class="company-info">
                     <h1>{{ settings.store_name if settings and settings.store_name else 'اسم المتجر' }}</h1>
                     <p style="color:var(--text-muted);font-size:14px;">{{ settings.company_subtitle if settings and settings.company_subtitle else 'شريكك الموثوق في التجارة' }}</p>
+                    {% if settings and settings.company_address %}
+                    <div style="color:var(--text-muted); font-size:12px; margin-top:8px;">{{ settings.company_address }}</div>
+                    {% endif %}
                 </div>
                 <div class="invoice-title">
                     <h2>INVOICE</h2>
