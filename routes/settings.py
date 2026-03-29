@@ -327,49 +327,7 @@ def update_invoice_settings():
     """تحديث إعدادات الفاتورة"""
     try:
         db.session.rollback()
-        settings = InvoiceSettings.get_settings()
         data = request.form
-        
-        # Company Info
-        if 'company_name' in data:
-            settings.company_name = data.get('company_name', '')
-        if 'company_subtitle' in data:
-            settings.company_subtitle = data.get('company_subtitle', '')
-        if 'company_address' in data:
-            settings.company_address = data.get('company_address', '')
-        if 'company_phone' in data:
-            settings.company_phone = data.get('company_phone', '')
-        if 'warranty_notes' in data:
-            settings.warranty_notes = data.get('warranty_notes', '')
-        if 'logo_circle_text' in data:
-            settings.logo_circle_text = data.get('logo_circle_text', '')
-        
-        # Column Settings
-        settings.show_discount_column = data.get('show_discount_column') == 'true'
-        settings.show_tax_column = data.get('show_tax_column') == 'true'
-        settings.show_unit_price_with_tax = data.get('show_unit_price_with_tax') == 'true'
-        
-        # Logo Settings
-        settings.use_logo_image = data.get('use_logo_image') == 'true'
-        
-        # Returned Count Settings
-        settings.show_returned_count = data.get('show_returned_count') == 'true'
-        
-        # Layout Settings (JSON)
-        if 'layout_settings' in data:
-            try:
-                layout_data = json.loads(data.get('layout_settings', '{}'))
-                settings.set_layout_settings(layout_data)
-            except:
-                pass
-        
-        # Visibility Settings (JSON) - Save additional settings
-        visibility_settings = settings.get_visibility_settings()
-        if 'show_barcode' in data:
-            visibility_settings['show_barcode'] = data.get('show_barcode') == 'true'
-        if 'show_qrcode' in data:
-            visibility_settings['show_qrcode'] = data.get('show_qrcode') == 'true'
-        settings.set_visibility_settings(visibility_settings)
 
         owner_uid = _template_owner_uid()
         owner_lookup_ids = _template_owner_lookup_ids(owner_uid)
@@ -388,6 +346,7 @@ def update_invoice_settings():
             except ValueError:
                 return jsonify({"success": False, "error": "معرّف القالب غير صالح"}), 400
 
+        # تحقق مدفوع على Core أولاً (قراءة فقط)
         if owner_uid and selected_template_id:
             with _core_db():
                 template = InvoiceTemplate.query.get(selected_template_id)
@@ -400,8 +359,44 @@ def update_invoice_settings():
                     if not approved_purchase:
                         return jsonify({"success": False, "error": "هذا القالب مدفوع ولم تتم الموافقة على شرائه بعد"}), 403
 
-        # invoice_settings في قاعدة المستأجر؛ TenantTemplateSettings/User في Core.
-        # commit واحد مع g.tenant مفعّل يوجّه كل الـ flush للمستأجر فيفشل حفظ القوالب → نفصل commit.
+        # إزالة أي كائنات Core من الجلسة قبل لمس invoice_settings (تجنّب flush مختلط / StaleDataError)
+        db.session.rollback()
+
+        settings = InvoiceSettings.get_settings()
+
+        if 'company_name' in data:
+            settings.company_name = data.get('company_name', '')
+        if 'company_subtitle' in data:
+            settings.company_subtitle = data.get('company_subtitle', '')
+        if 'company_address' in data:
+            settings.company_address = data.get('company_address', '')
+        if 'company_phone' in data:
+            settings.company_phone = data.get('company_phone', '')
+        if 'warranty_notes' in data:
+            settings.warranty_notes = data.get('warranty_notes', '')
+        if 'logo_circle_text' in data:
+            settings.logo_circle_text = data.get('logo_circle_text', '')
+
+        settings.show_discount_column = data.get('show_discount_column') == 'true'
+        settings.show_tax_column = data.get('show_tax_column') == 'true'
+        settings.show_unit_price_with_tax = data.get('show_unit_price_with_tax') == 'true'
+        settings.use_logo_image = data.get('use_logo_image') == 'true'
+        settings.show_returned_count = data.get('show_returned_count') == 'true'
+
+        if 'layout_settings' in data:
+            try:
+                layout_data = json.loads(data.get('layout_settings', '{}'))
+                settings.set_layout_settings(layout_data)
+            except Exception:
+                pass
+
+        visibility_settings = settings.get_visibility_settings()
+        if 'show_barcode' in data:
+            visibility_settings['show_barcode'] = data.get('show_barcode') == 'true'
+        if 'show_qrcode' in data:
+            visibility_settings['show_qrcode'] = data.get('show_qrcode') == 'true'
+        settings.set_visibility_settings(visibility_settings)
+
         settings.updated_at = datetime.utcnow()
         db.session.commit()
 
