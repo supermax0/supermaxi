@@ -1156,13 +1156,16 @@ function saveSettings() {
     method: 'POST',
     body: formData
   })
-  .then(response => {
+  .then(async response => {
+    const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      throw new Error('Network response was not ok');
+      showToast(data.error || ('فشل الحفظ (' + response.status + ')'), 'error');
+      return null;
     }
-    return response.json();
+    return data;
   })
   .then(data => {
+    if (!data) return;
     if (data.success) {
       showToast('تم حفظ الإعدادات بنجاح', 'success');
       refreshPreview();

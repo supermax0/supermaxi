@@ -374,11 +374,37 @@ def update_invoice_settings():
         owner_uid = _template_owner_uid()
         owner_lookup_ids = _template_owner_lookup_ids(owner_uid)
         has_template_related_update = any([
-            bool(data.get('selected_template_id')),
+            bool((data.get('selected_template_id') or '').strip()),
             'primary_color' in data,
             'secondary_color' in data,
             'custom_css' in data,
         ])
+
+        raw_tid = (data.get('selected_template_id') or '').strip()
+        selected_template_id = None
+        if raw_tid:
+            try:
+                selected_template_id = int(raw_tid)
+            except ValueError:
+                return jsonify({"success": False, "error": "معرّف القالب غير صالح"}), 400
+
+        if owner_uid and selected_template_id:
+            with _core_db():
+                template = InvoiceTemplate.query.get(selected_template_id)
+                if template and template.is_premium:
+                    approved_purchase = TenantTemplatePurchase.query.filter(
+                        TenantTemplatePurchase.tenant_id.in_(owner_lookup_ids),
+                        TenantTemplatePurchase.template_id == selected_template_id,
+                        TenantTemplatePurchase.status == 'approved'
+                    ).first() if owner_lookup_ids else None
+                    if not approved_purchase:
+                        return jsonify({"success": False, "error": "هذا القالب مدفوع ولم تتم الموافقة على شرائه بعد"}), 403
+
+        # invoice_settings في قاعدة المستأجر؛ TenantTemplateSettings/User في Core.
+        # commit واحد مع g.tenant مفعّل يوجّه كل الـ flush للمستأجر فيفشل حفظ القوالب → نفصل commit.
+        settings.updated_at = datetime.utcnow()
+        db.session.commit()
+
         if owner_uid and has_template_related_update:
             with _core_db():
                 _ensure_invoice_owner_user(owner_uid)
@@ -387,18 +413,9 @@ def update_invoice_settings():
                     tset = TenantTemplateSettings(tenant_id=owner_uid)
                     db.session.add(tset)
 
-                if data.get('selected_template_id'):
-                    selected_template_id = int(data.get('selected_template_id'))
+                if selected_template_id is not None:
                     template = InvoiceTemplate.query.get(selected_template_id)
                     if template:
-                        if template.is_premium:
-                            approved_purchase = TenantTemplatePurchase.query.filter(
-                                TenantTemplatePurchase.tenant_id.in_(owner_lookup_ids),
-                                TenantTemplatePurchase.template_id == selected_template_id,
-                                TenantTemplatePurchase.status == 'approved'
-                            ).first() if owner_lookup_ids else None
-                            if not approved_purchase:
-                                return jsonify({"success": False, "error": "هذا القالب مدفوع ولم تتم الموافقة على شرائه بعد"}), 403
                         tset.active_template_id = selected_template_id
 
                 if 'primary_color' in data and data.get('primary_color'):
@@ -407,10 +424,9 @@ def update_invoice_settings():
                     tset.secondary_color = data.get('secondary_color')
                 if 'custom_css' in data:
                     tset.custom_css = data.get('custom_css', '')
-        
-        settings.updated_at = datetime.utcnow()
-        db.session.commit()
-        
+
+                db.session.commit()
+
         return jsonify({"success": True, "message": "تم حفظ الإعدادات بنجاح"})
     except Exception as e:
         db.session.rollback()
