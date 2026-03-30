@@ -587,7 +587,18 @@ def activate_invoice_template_for_tenant():
 
         tset.active_template_id = template.id
         db.session.commit()
-        flash(f"تم تفعيل قالب «{template.name}» لشركة «{tenant.name}» بنجاح", "success")
+        # تحقق سريع بعد الحفظ لتوضيح أي مشكلة صامتة
+        verify = TenantTemplateSettings.query.filter_by(tenant_id=owner_uid).first()
+        if not verify or verify.active_template_id != template.id:
+            flash(
+                f"تمت العملية لكن لم يتم تثبيت القالب. (tenant_id={owner_uid}, expected={template.id}, got={getattr(verify,'active_template_id',None)})",
+                "error",
+            )
+        else:
+            flash(
+                f"تم تفعيل قالب «{template.name}» لشركة «{tenant.name}» بنجاح (slug={tenant.slug}, tenant_id={owner_uid})",
+                "success",
+            )
     except Exception as e:
         db.session.rollback()
         flash(f"فشل تفعيل القالب: {str(e)}", "error")
