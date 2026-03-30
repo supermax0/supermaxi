@@ -350,15 +350,20 @@ def update_invoice_settings():
         # تحقق مدفوع على Core أولاً (قراءة فقط)
         if owner_uid and selected_template_id:
             with _core_db():
+                existing_tset = TenantTemplateSettings.query.filter_by(tenant_id=owner_uid).first()
                 template = InvoiceTemplate.query.get(selected_template_id)
                 if template and template.is_premium:
-                    approved_purchase = TenantTemplatePurchase.query.filter(
-                        TenantTemplatePurchase.tenant_id.in_(owner_lookup_ids),
-                        TenantTemplatePurchase.template_id == selected_template_id,
-                        TenantTemplatePurchase.status == 'approved'
-                    ).first() if owner_lookup_ids else None
-                    if not approved_purchase:
-                        return jsonify({"success": False, "error": "هذا القالب مدفوع ولم تتم الموافقة على شرائه بعد"}), 403
+                    # إذا السوبر أدمن فعّل هذا القالب مسبقاً للشركة، لا نمنع الحفظ.
+                    if existing_tset and existing_tset.active_template_id == selected_template_id:
+                        pass
+                    else:
+                        approved_purchase = TenantTemplatePurchase.query.filter(
+                            TenantTemplatePurchase.tenant_id.in_(owner_lookup_ids),
+                            TenantTemplatePurchase.template_id == selected_template_id,
+                            TenantTemplatePurchase.status == 'approved'
+                        ).first() if owner_lookup_ids else None
+                        if not approved_purchase:
+                            return jsonify({"success": False, "error": "هذا القالب مدفوع ولم تتم الموافقة على شرائه بعد"}), 403
 
         # إزالة أي كائنات Core من الجلسة قبل لمس invoice_settings (تجنّب flush مختلط / StaleDataError)
         db.session.rollback()
