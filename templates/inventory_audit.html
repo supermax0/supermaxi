@@ -38,10 +38,16 @@
     }
 
     .scanner-input {
-        width: 0;
-        height: 0;
-        opacity: 0;
-        position: absolute;
+        width: 100%;
+        max-width: 420px;
+        height: 44px;
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        padding: 0 12px;
+        margin-top: 14px;
+        font-size: 15px;
+        text-align: center;
+        background: #fff;
     }
 
     .barcode-icon {
@@ -200,7 +206,8 @@
             <div class="barcode-icon">📱</div>
             <h3>جهاز ضوئي لجرد المخزون</h3>
             <p style="color: #64748b; margin-top: 8px;">اضغط هنا وابدأ بمسح الباركود الخاص بالمنتجات</p>
-            <input type="text" id="barcodeInput" class="scanner-input" autofocus autocomplete="off">
+            <input type="text" id="barcodeInput" class="scanner-input" autofocus autocomplete="off"
+                placeholder="امسح الباركود أو اكتبه هنا ثم Enter">
         </div>
     </div>
 
@@ -229,9 +236,17 @@
     // سجل العناصر التي تم جردها
     let auditedItems = {};
 
+    function normalizeBarcode(value) {
+        return String(value || '').trim().replace(/\s+/g, '');
+    }
+
     // التركيز التلقائي على حقل الباركود
     document.addEventListener('keydown', () => {
-        barcodeInput.focus();
+        if (document.activeElement !== barcodeInput) barcodeInput.focus();
+    });
+
+    window.addEventListener('load', () => {
+        setTimeout(() => barcodeInput.focus(), 120);
     });
 
     barcodeInput.addEventListener('focus', () => {
@@ -244,10 +259,10 @@
         setTimeout(() => barcodeInput.focus(), 100);
     });
 
-    // معالجة إدخال الباركود
-    barcodeInput.addEventListener('keypress', function (e) {
+    // معالجة إدخال الباركود (أوثق من keypress على بعض الأجهزة)
+    barcodeInput.addEventListener('keydown', function (e) {
         if (e.key === 'Enter') {
-            const barcode = this.value.trim();
+            const barcode = normalizeBarcode(this.value);
             if (barcode) {
                 processBarcode(barcode);
             }
@@ -256,7 +271,8 @@
     });
 
     function processBarcode(barcode) {
-        const product = productsData.find(p => p.barcode === barcode);
+        const scan = normalizeBarcode(barcode);
+        const product = productsData.find(p => normalizeBarcode(p.barcode) === scan);
 
         if (product) {
             if (auditedItems[product.id]) {
@@ -275,7 +291,7 @@
             // تشغيل تأثير صوتي (اختياري)
             // new Audio('/static/beep.mp3').play();
         } else {
-            alert("الباركود غير موجود في النظام: " + barcode);
+            alert("الباركود غير موجود في النظام: " + scan);
         }
     }
 
