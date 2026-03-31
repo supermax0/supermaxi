@@ -196,6 +196,18 @@ const KnowledgeNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
   );
 };
 
+const CustomersPhonesNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
+  const subtitle = data.subtitle || "يجلب كل أرقام الزبائن من صفحة الزبائن";
+  return (
+    <div className={`${baseNodeClasses} border-[#22d3ee]`} style={baseNodeShadow}>
+      <Handle type="target" position={Position.Top} id="in" className={handleClass} />
+      <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
+      <div className={titleClasses}>📞 {data.label || "أرقام الزبائن"}</div>
+      {subtitle && <div className={subtitleClasses}>{subtitle}</div>}
+    </div>
+  );
+};
+
 const EndNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
   const note = (data as any).note as string | undefined;
   const subtitle =
@@ -426,5 +438,6 @@ export const nodeTypes = {
   conversation_context: ConversationContextNode,
   memory_store: MemoryNode,
   knowledge_base: KnowledgeNode,
+  customers_phones: CustomersPhonesNode,
 };
 

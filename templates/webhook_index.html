@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WhatsApp Webhook</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; }
+    .wrap { max-width: 680px; margin: 64px auto; padding: 24px; background: #111827; border: 1px solid #334155; border-radius: 12px; }
+    .status { color: #22c55e; font-weight: 700; margin-bottom: 16px; }
+    button { background: #2563eb; color: #fff; border: 0; border-radius: 8px; padding: 10px 16px; cursor: pointer; font-size: 14px; }
+    button:hover { background: #1d4ed8; }
+    pre { margin-top: 16px; background: #020617; border: 1px solid #1e293b; color: #cbd5e1; padding: 12px; border-radius: 8px; white-space: pre-wrap; word-break: break-word; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h2>WhatsApp Webhook Dashboard</h2>
+    <div class="status">Status: Webhook Running</div>
+    <button id="testBtn">Test Webhook</button>
+    <pre id="resultBox">جاهز للاختبار...</pre>
+  </div>
+
+  <script>
+    document.getElementById("testBtn").addEventListener("click", async () => {
+      const resultBox = document.getElementById("resultBox");
+      resultBox.textContent = "جاري الاختبار...";
+      try {
+        const resp = await fetch("/webhook?test=1");
+        const data = await resp.json();
+        resultBox.textContent = JSON.stringify(data, null, 2);
+      } catch (e) {
+        resultBox.textContent = "فشل الاختبار: " + (e && e.message ? e.message : e);
+      }
+    });
+  </script>
+</body>
+</html>

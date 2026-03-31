@@ -2398,6 +2398,44 @@ def run_memory_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
     return {key: value}
 
 
+def run_customers_phones_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    تحميل كل أرقام الزبائن من جدول customers ووضعها في الـ context
+    لاستخدامها في العقد اللاحقة (مثل AI / Telegram Send).
+    """
+    data = node.data or {}
+    include_phone2 = bool(data.get("include_phone2", True))
+    deduplicate = bool(data.get("deduplicate", True))
+
+    rows = Customer.query.order_by(Customer.created_at.desc()).all()
+    numbers: list[str] = []
+    for c in rows:
+        p1 = str(c.phone or "").strip()
+        p2 = str(c.phone2 or "").strip() if include_phone2 else ""
+        if p1:
+            numbers.append(p1)
+        if p2:
+            numbers.append(p2)
+
+    if deduplicate:
+        seen = set()
+        unique_numbers: list[str] = []
+        for n in numbers:
+            if n in seen:
+                continue
+            seen.add(n)
+            unique_numbers.append(n)
+        numbers = unique_numbers
+
+    result = {
+        "customer_numbers": numbers,
+        "customer_numbers_text": "\n".join(numbers),
+        "customer_numbers_count": len(numbers),
+    }
+    context.update(result)
+    return result
+
+
 def run_knowledge_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
     """تحديث كتالوج / قاعدة المعرفة الخاصة بالوكيل داخل الـ context."""
     data = node.data or {}
@@ -2804,6 +2842,9 @@ def execute_workflow(execution: AgentExecution, initial_context: Dict[str, Any] 
                 elif node.type == "memory_store":
                     mem_output = run_memory_node(node, context)
                     log(node, "success", node_input, mem_output)
+                elif node.type == "customers_phones":
+                    phones_output = run_customers_phones_node(node, context)
+                    log(node, "success", node_input, phones_output)
                 elif node.type == "knowledge_base":
                     kb_output = run_knowledge_node(node, context)
                     log(node, "success", node_input, kb_output)

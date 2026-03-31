@@ -49,6 +49,7 @@ export const NODE_REGISTRY: NodeTypeSpec[] = [
   { id: "logging", label: "Logging", category: "action", runnerImplemented: false },
   { id: "duplicate-protection", label: "Duplicate Protection", category: "logic", runnerImplemented: false },
   { id: "memory_store", label: "Store Data", category: "action", runnerImplemented: false },
+  { id: "customers_phones", label: "Customer Phones", category: "action", runnerImplemented: false },
   { id: "knowledge_base", label: "Knowledge Base", category: "action", runnerImplemented: false },
   { id: "whatsapp_listener", label: "WhatsApp Listener", category: "trigger", runnerImplemented: false },
   { id: "whatsapp_send", label: "WhatsApp Send", category: "io", runnerImplemented: false },

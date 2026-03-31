@@ -24,6 +24,7 @@ const NODE_TYPES: Array<{ id: string; label: string; icon: string; description: 
   { id: "logging", label: "Logging", icon: "📋", description: "تسجيل الأحداث في comment_logs", color: "#78716c" },
   { id: "duplicate-protection", label: "Duplicate Protection", icon: "🛡", description: "عدم الرد مرتين على نفس التعليق", color: "#64748b" },
   { id: "memory_store", label: "Store Data", icon: "🧺", description: "تخزين حقل من البيانات في سياق الوكيل", color: "#10b981" },
+  { id: "customers_phones", label: "أرقام الزبائن", icon: "📞", description: "جلب كل أرقام الزبائن من صفحة الزبائن", color: "#22d3ee" },
   { id: "knowledge_base", label: "Knowledge / Catalog", icon: "📚", description: "رفع كتالوج المنتجات أو قاعدة معرفة للـ AI", color: "#6366f1" },
   { id: "whatsapp_listener", label: "WhatsApp Listener", icon: "📲", description: "استقبال رسائل واتساب (Webhook)", color: "#22c55e" },
   { id: "whatsapp_send", label: "WhatsApp Send", icon: "📱", description: "إرسال رسالة أو اتصال واتساب", color: "#16a34a" },

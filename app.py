@@ -56,6 +56,7 @@ from routes.delivery_agent import delivery_agent_bp
 from routes.pages import pages_bp
 from routes.invoice_store import invoice_store_bp
 from routes.storefront import storefront_bp
+from routes.whatsapp_webhook import whatsapp_webhook_bp
 from telegram_bot import telegram_bp
 from api_workflows import workflow_api
 from models.ai_agent import AgentWorkflow, AgentExecution
@@ -896,6 +897,8 @@ def require_login():
         "/api/landing-chat",  # مساعد الذكاء الاصطناعي لصفحة الهبوط
         "/telegram",  # بوت تيليجرام: webhook و setup و test — بدون تسجيل (ليستقبل التحديثات من Telegram)
         "/shop",  # المتجر العام للزبائن — بدون تسجيل دخول
+        "/webhook",  # WhatsApp Cloud API webhook verification/receive
+        "/webhook-ui",  # صفحة اختبار webhook
     ]
 
     # السماح للمسارات المفتوحة: "/" تطابق تامة، الباقي يبدأ بـ المسار
@@ -1060,6 +1063,7 @@ app.register_blueprint(admin_bp)
 
 app.register_blueprint(invoice_store_bp)
 app.register_blueprint(storefront_bp)
+app.register_blueprint(whatsapp_webhook_bp)
 app.register_blueprint(telegram_bp)
 
 # ── Publisher (Facebook Publishing Platform) ──────────────────────────────

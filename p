@@ -1,150 +1,53 @@
-You are a senior full-stack engineer and QA automation expert.
+Build a full Flask-based backend and simple frontend page for a WhatsApp Webhook system.
 
-Your task is to design and implement a complete end-to-end testing system for my existing Flask web application using Playwright.
+Requirements:
 
-⚠️ Constraints:
+1. Backend (Flask):
+- Create a Flask app with a route "/webhook"
+- Support both GET and POST methods
 
-* DO NOT modify existing routes, database structure, or core business logic.
-* Only ADD new files and minimal safe hooks if needed.
-* The project already uses Flask, SQLite, and HTML templates.
+GET:
+- Read "hub.verify_token" and "hub.challenge"
+- If token matches VERIFY_TOKEN, return challenge
+- Else return error
 
----
+POST:
+- Receive incoming WhatsApp messages (JSON)
+- Print incoming data in console
+- Extract sender phone number and message text
+- Automatically reply with a simple message using WhatsApp Cloud API
 
-## 🎯 Goals:
+2. Environment variables:
+- VERIFY_TOKEN = "12345"
+- WHATSAPP_TOKEN = "YOUR_ACCESS_TOKEN"
+- PHONE_NUMBER_ID = "YOUR_PHONE_ID"
 
-1. Install and configure Playwright properly
-2. Create a clean scalable test structure
-3. Automatically test key workflows in the system
-4. Ensure tests are stable and readable
-5. Generate HTML reports
+3. Send reply function:
+- Use requests to send POST to:
+  https://graph.facebook.com/v18.0/{PHONE_NUMBER_ID}/messages
+- Send simple text reply:
+  "هلا 👋 تم استلام رسالتك"
 
----
+4. Frontend:
+- Create a simple HTML page (index.html)
+- Show:
+  - Status: Webhook Running
+  - Button: "Test Webhook"
+- Button sends GET request to /webhook test endpoint
 
-## 📁 Project context:
+5. Project structure:
 
-* Backend: Flask
-* Frontend: HTML, CSS, JS
-* App runs on: http://localhost:5000
-* Pages include:
+/project
+  app.py
+  templates/
+    index.html
 
-  * Login page
-  * Dashboard
-  * Inventory
-  * Orders
-  * Customers
+6. Use Flask render_template
 
----
+7. Add logging for debugging
 
-## 🧱 Tasks:
+8. Run on port 5000
 
-### 1. Setup Playwright
+9. Make code clean and production-ready
 
-* Install @playwright/test
-* Initialize config file
-* Install browsers
-
----
-
-### 2. Create folder structure:
-
-Create:
-
-tests/
-auth/
-dashboard/
-inventory/
-orders/
-
-playwright.config.js
-
----
-
-### 3. Write real tests:
-
-#### ✅ Auth Test
-
-* Open login page
-* Fill username/password
-* Submit
-* Verify redirect to dashboard
-
-#### ✅ Dashboard Test
-
-* Ensure stats are visible
-* Check charts loaded
-
-#### ✅ Inventory Test
-
-* Add new product
-* Verify it appears in table
-
-#### ✅ Orders Test
-
-* Create order
-* Verify it is saved
-
----
-
-### 4. Use best practices:
-
-* Use page.locator with IDs when possible
-* Avoid timeouts/sleeps
-* Use expect() assertions
-* Group tests with test.describe
-
----
-
-### 5. Add reusable helpers:
-
-Create:
-tests/utils/helpers.js
-
-Include:
-
-* login(page)
-* createProduct(page)
-
----
-
-### 6. Add config file:
-
-playwright.config.js should include:
-
-* baseURL: http://localhost:5000
-* headless: false
-* reporter: html
-
----
-
-### 7. Add scripts to package.json:
-
-"scripts": {
-"test": "playwright test",
-"test:ui": "playwright test --headed",
-"report": "playwright show-report"
-}
-
----
-
-### 8. Generate example code for each test file
-
----
-
-## 🧠 Important:
-
-* Code must be clean and production-level
-* Use async/await properly
-* No pseudo code
-* Everything must be runnable directly
-
----
-
-## 🎁 Output format:
-
-Return:
-
-1. Folder structure
-2. All files code (FULL)
-3. Commands to run
-
-Do NOT explain — just build the system.
+10. Include instructions to run the app

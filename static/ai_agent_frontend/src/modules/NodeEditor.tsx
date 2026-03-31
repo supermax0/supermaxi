@@ -94,6 +94,7 @@ export const NodeEditor: React.FC = () => {
         "comment-listener": "Comment Listener",
         "auto-reply": "Auto Reply",
         sql_save_order: "SQL حفظ الطلب",
+        customers_phones: "أرقام الزبائن",
         conversation_context: "محادثة (سياق)",
         end: "End",
       };
