@@ -170,6 +170,10 @@ export const App: React.FC = () => {
           createTelegramCommentReplyAgent();
           return;
         }
+        if (mode === "whatsapp-broadcast") {
+          createWhatsappBroadcastTemplate();
+          return;
+        }
         // mode === "new" أو بدون mode: نترك الـ initialNodes كما هي
 
         const res = await fetch(`${workflowsApiBase}/workflows`);
@@ -457,6 +461,114 @@ export const App: React.FC = () => {
         name: "تيليجرام: حجز وفق النية",
         description:
           "نية JSON → حجز خطوة بخطوة + SQL أو رد FAQ؛ فلتر، منع تكرار، معدّل، ذاكرة، إرسال، سجل.",
+      },
+    });
+  };
+
+  /** قالب واتساب برودكاست: جدولة + أرقام الزبائن + رسالة دعائية + إرسال */
+  const createWhatsappBroadcastTemplate = () => {
+    const nodes: Node[] = [
+      {
+        id: "start-1",
+        type: "start",
+        position: { x: 280, y: 0 },
+        data: { label: "Start", subtitle: "بدء حملة واتساب" },
+      },
+      {
+        id: "scheduler-1",
+        type: "scheduler",
+        position: { x: 280, y: 120 },
+        data: {
+          label: "Scheduler",
+          schedule_type: "hourly",
+          time: "00:00",
+          subtitle: "تشغيل كل ساعة",
+        },
+      },
+      {
+        id: "customers-phones-1",
+        type: "customers_phones",
+        position: { x: 280, y: 240 },
+        data: {
+          label: "أرقام الزبائن",
+          include_phone2: true,
+          deduplicate: true,
+          subtitle: "تحميل أرقام صفحة الزبائن",
+        },
+      },
+      {
+        id: "ai-message-1",
+        type: "ai",
+        position: { x: 280, y: 370 },
+        data: {
+          label: "AI — صياغة الرسالة",
+          task: "write_caption",
+          language: "ar",
+          temperature: 0.35,
+          max_tokens: 220,
+          prompt:
+            "اكتب رسالة دعائية قصيرة باللهجة العراقية لمنتج {{product}} بسعر {{price}}.\n" +
+            "استخدم اسم الزبون إذا توفر: {{name}}.\n" +
+            "الرسالة تكون واضحة ومباشرة وبحد أقصى سطرين.",
+          subtitle: "رسالة مخصصة للحملة",
+        },
+      },
+      {
+        id: "whatsapp-send-1",
+        type: "whatsapp_send",
+        position: { x: 280, y: 510 },
+        data: {
+          label: "WhatsApp Send",
+          to: "{{phone}}",
+          template: "مرحبا {{name}} 👋 لدينا عرض خاص على {{product}} بسعر {{price}}",
+          subtitle: "إرسال رسالة واتساب",
+        },
+      },
+      {
+        id: "rate-limit-1",
+        type: "rate-limiter",
+        position: { x: 280, y: 630 },
+        data: {
+          label: "Rate Limiter",
+          delay_between_replies: 0.1,
+          max_replies_per_minute: 600,
+          subtitle: "تأخير 0.1 ثانية",
+        },
+      },
+      {
+        id: "logging-1",
+        type: "logging",
+        position: { x: 280, y: 750 },
+        data: {
+          label: "Logging",
+          subtitle: "تسجيل نجاح/فشل الإرسال",
+        },
+      },
+      {
+        id: "end-1",
+        type: "end",
+        position: { x: 280, y: 870 },
+        data: { label: "End", subtitle: "نهاية الحملة" },
+      },
+    ];
+
+    const edges: Edge[] = [
+      { id: "wb-e1", source: "start-1", target: "scheduler-1", sourceHandle: "out", targetHandle: "in" },
+      { id: "wb-e2", source: "scheduler-1", target: "customers-phones-1", sourceHandle: "out", targetHandle: "in" },
+      { id: "wb-e3", source: "customers-phones-1", target: "ai-message-1", sourceHandle: "out", targetHandle: "in" },
+      { id: "wb-e4", source: "ai-message-1", target: "whatsapp-send-1", sourceHandle: "out", targetHandle: "in" },
+      { id: "wb-e5", source: "whatsapp-send-1", target: "rate-limit-1", sourceHandle: "out", targetHandle: "in" },
+      { id: "wb-e6", source: "rate-limit-1", target: "logging-1", sourceHandle: "out", targetHandle: "in" },
+      { id: "wb-e7", source: "logging-1", target: "end-1", sourceHandle: "out", targetHandle: "in" },
+    ];
+
+    loadFromGraph({
+      nodes,
+      edges,
+      meta: {
+        name: "واتساب برودكاست — قالب جاهز",
+        description:
+          "قالب حملة واتساب: جدولة كل ساعة + جلب أرقام الزبائن + رسالة دعائية + إرسال + تسجيل.",
       },
     });
   };
@@ -935,6 +1047,14 @@ export const App: React.FC = () => {
             title="Listener → فلتر كلمات → AI → إرسال (مثل قالب التعليقات)"
           >
             قالب وكيل رد تيليجرام
+          </button>
+          <button
+            type="button"
+            className="hidden xl:inline-flex rounded-lg border border-[#16a34a]/50 bg-[#14532d]/30 px-3 py-2 text-xs font-medium text-emerald-200 hover:bg-[#14532d]/50"
+            onClick={createWhatsappBroadcastTemplate}
+            title="Scheduler → Customers Phones → WhatsApp Send"
+          >
+            قالب واتساب برودكاست
           </button>
           <button
             type="button"

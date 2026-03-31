@@ -1,53 +1,83 @@
-Build a full Flask-based backend and simple frontend page for a WhatsApp Webhook system.
+Build a production-ready WhatsApp Broadcast System using Flask.
 
-Requirements:
+FEATURES:
 
-1. Backend (Flask):
-- Create a Flask app with a route "/webhook"
-- Support both GET and POST methods
+1. Database (SQLite):
+Create table "customers":
+- id (int)
+- name (text)
+- phone (text)
+- tag (text)
+- last_sent (datetime)
 
-GET:
-- Read "hub.verify_token" and "hub.challenge"
-- If token matches VERIFY_TOKEN, return challenge
-- Else return error
+2. Message Template:
+Use WhatsApp approved template system:
+Example:
+"مرحبا {{1}} 👋 لدينا عرض خاص على {{2}} بسعر {{3}}"
 
-POST:
-- Receive incoming WhatsApp messages (JSON)
-- Print incoming data in console
-- Extract sender phone number and message text
-- Automatically reply with a simple message using WhatsApp Cloud API
+3. Scheduler:
+- Run every 1 hour
+- Send messages to max 1000 users per batch
+- Respect rate limits (sleep between messages)
 
-2. Environment variables:
-- VERIFY_TOKEN = "12345"
-- WHATSAPP_TOKEN = "YOUR_ACCESS_TOKEN"
-- PHONE_NUMBER_ID = "YOUR_PHONE_ID"
+4. Personalization:
+Replace:
+{{1}} → name
+{{2}} → product
+{{3}} → price
 
-3. Send reply function:
-- Use requests to send POST to:
-  https://graph.facebook.com/v18.0/{PHONE_NUMBER_ID}/messages
-- Send simple text reply:
-  "هلا 👋 تم استلام رسالتك"
+5. Sending Function:
+POST to:
+https://graph.facebook.com/v18.0/{PHONE_NUMBER_ID}/messages
 
-4. Frontend:
-- Create a simple HTML page (index.html)
-- Show:
-  - Status: Webhook Running
-  - Button: "Test Webhook"
-- Button sends GET request to /webhook test endpoint
+Headers:
+Authorization: Bearer WHATSAPP_TOKEN
 
-5. Project structure:
+Body:
+{
+  "messaging_product": "whatsapp",
+  "to": phone,
+  "type": "template",
+  "template": {
+    "name": "promo_template",
+    "language": { "code": "ar" },
+    "components": [
+      {
+        "type": "body",
+        "parameters": [
+          {"type": "text", "text": name},
+          {"type": "text", "text": product},
+          {"type": "text", "text": price}
+        ]
+      }
+    ]
+  }
+}
+
+6. Rate Limiting:
+- sleep 0.1 sec between messages
+- handle errors gracefully
+
+7. Logging:
+- Print success/fail
+- Save last_sent timestamp
+
+8. Scheduler Implementation:
+Use APScheduler:
+- run every 1 hour
+
+9. API Endpoint:
+Create route:
+POST /send_ads_manual
+to trigger sending manually
+
+10. Project structure:
 
 /project
   app.py
-  templates/
-    index.html
+  scheduler.py
+  db.py
 
-6. Use Flask render_template
+11. Make code clean and modular
 
-7. Add logging for debugging
-
-8. Run on port 5000
-
-9. Make code clean and production-ready
-
-10. Include instructions to run the app
+12. Add instructions to run the app
