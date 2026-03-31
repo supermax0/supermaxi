@@ -1024,13 +1024,17 @@ from app import app, db
 from models.telegram_inbox_message import TelegramInboxMessage
 
 def ensure_channel_column(engine):
-    with engine.connect() as conn:
-        cols = [r[1] for r in conn.exec_driver_sql("PRAGMA table_info(telegram_inbox_messages)").fetchall()]
-        if "channel" not in cols:
-            conn.exec_driver_sql("ALTER TABLE telegram_inbox_messages ADD COLUMN channel VARCHAR(20) DEFAULT 'telegram'")
-            print("channel column added")
-        else:
-            print("channel column already exists")
+    from sqlalchemy import inspect
+    insp = inspect(engine)
+    cols = set([c.get("name") for c in insp.get_columns("telegram_inbox_messages")])
+    if "channel" not in cols:
+        with engine.begin() as conn:
+            conn.exec_driver_sql(
+                "ALTER TABLE telegram_inbox_messages ADD COLUMN channel VARCHAR(20) DEFAULT 'telegram'"
+            )
+        print("channel column added")
+    else:
+        print("channel column already exists")
 
 with app.app_context():
     TelegramInboxMessage.__table__.create(db.engine, checkfirst=True)
