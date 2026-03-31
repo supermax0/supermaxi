@@ -1,52 +1,34 @@
-Build a production-ready WhatsApp Broadcast System using Flask.
+Fix my WhatsApp Cloud API sending code to stop using the default "hello_world" template and instead use my approved template "promo_offer".
 
-FEATURES:
+Requirements:
 
-1. Database (SQLite):
-Create table "customers":
-- id (int)
-- name (text)
-- phone (text)
-- tag (text)
-- last_sent (datetime)
+1. Replace any usage of:
+   "name": "hello_world"
+with:
+   "name": "promo_offer"
 
-2. Message Template:
-Use WhatsApp approved template system:
-Example:
-"مرحبا {{1}} 👋 لدينا عرض خاص على {{2}} بسعر {{3}}"
+2. Ensure the message uses template format (not text).
 
-3. Scheduler:
-- Run every 1 hour
-- Send messages to max 1000 users per batch
-- Respect rate limits (sleep between messages)
+3. Add required parameters for the template:
+   {{1}} -> customer name
+   {{2}} -> product name
+   {{3}} -> price
 
-4. Personalization:
-Replace:
-{{1}} → name
-{{2}} → product
-{{3}} → price
+4. Final request body must be:
 
-5. Sending Function:
-POST to:
-https://graph.facebook.com/v18.0/{PHONE_NUMBER_ID}/messages
-
-Headers:
-Authorization: Bearer WHATSAPP_TOKEN
-
-Body:
 {
   "messaging_product": "whatsapp",
-  "to": phone,
+  "to": customer_phone,
   "type": "template",
   "template": {
-    "name": "promo_template",
+    "name": "promo_offer",
     "language": { "code": "ar" },
     "components": [
       {
         "type": "body",
         "parameters": [
-          {"type": "text", "text": name},
-          {"type": "text", "text": product},
+          {"type": "text", "text": customer_name},
+          {"type": "text", "text": product_name},
           {"type": "text", "text": price}
         ]
       }
@@ -54,30 +36,23 @@ Body:
   }
 }
 
-6. Rate Limiting:
-- sleep 0.1 sec between messages
-- handle errors gracefully
+5. Ensure:
+- Access token is passed correctly
+- Phone Number ID is used correctly in URL
+- Handle API errors and print response
 
-7. Logging:
-- Print success/fail
-- Save last_sent timestamp
+6. Add function:
 
-8. Scheduler Implementation:
-Use APScheduler:
-- run every 1 hour
+send_whatsapp_template(phone, name, product, price)
 
-9. API Endpoint:
-Create route:
-POST /send_ads_manual
-to trigger sending manually
+7. Replace any old sending logic with this function
 
-10. Project structure:
+8. Make code clean and production-ready
 
-/project
-  app.py
-  scheduler.py
-  db.py
+9. Add console logs:
+- success send
+- error response
 
-11. Make code clean and modular
-
-12. Add instructions to run the app
+10. If code is using Flask or workflow system:
+- update WhatsApp Send node to use template instead of text
+- map variables correctly

@@ -2479,6 +2479,40 @@ export const App: React.FC = () => {
                           onChange={handleMessagingFieldChange("template")}
                         />
                       </div>
+                      {selectedNode.type === "whatsapp_send" && (
+                        <>
+                          <div>
+                            <label className="mb-1 block text-[11px] text-slate-400">اسم الزبون (متغير name)</label>
+                            <input
+                              className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none"
+                              placeholder="{{name}}"
+                              value={(selectedNode.data as any)?.customer_name || ""}
+                              onChange={handleMessagingFieldChange("customer_name")}
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-[11px] text-slate-400">اسم المنتج (متغير product)</label>
+                            <input
+                              className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none"
+                              placeholder="{{product}}"
+                              value={(selectedNode.data as any)?.product_name || ""}
+                              onChange={handleMessagingFieldChange("product_name")}
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-[11px] text-slate-400">السعر (متغير price)</label>
+                            <input
+                              className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none"
+                              placeholder="{{price}}"
+                              value={(selectedNode.data as any)?.price || ""}
+                              onChange={handleMessagingFieldChange("price")}
+                            />
+                          </div>
+                          <p className="text-[10px] text-slate-500">
+                            هذه العقدة تستخدم قالب واتساب المعتمد <strong>promo_offer</strong> (template) بدل النص العادي.
+                          </p>
+                        </>
+                      )}
                       {selectedNode.type === "telegram_send" && (
                         <>
                           <label className="flex items-center gap-2 text-[11px] text-slate-300">

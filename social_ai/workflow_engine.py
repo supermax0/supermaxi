@@ -24,7 +24,12 @@ from models.social_post import SocialPost
 from utils.inventory_movements import validate_sale_quantity
 from social_ai.ai_engine import generate_caption, generate_comment_reply, get_client
 from social_ai.image_generator import generate_image
-from social_ai.messaging import send_telegram_message, send_telegram_photo, send_whatsapp_message
+from social_ai.messaging import (
+    send_telegram_message,
+    send_telegram_photo,
+    send_whatsapp_message,
+    send_whatsapp_template,
+)
 from social_ai.publish_manager import publish_post_to_accounts
 from services.facebook_service import fetch_comments as fb_fetch_comments, reply_comment as fb_reply_comment
 from services.instagram_service import fetch_comments as ig_fetch_comments, reply_comment as ig_reply_comment
@@ -1825,7 +1830,7 @@ def run_scheduler_node(node: NodeDef, context: Dict[str, Any], execution: AgentE
 
 
 def run_whatsapp_send_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
-    """إرسال رسالة واتساب باستخدام بيانات العقدة والسياق."""
+    """إرسال واتساب عبر قالب promo_offer (افتراضي) أو نص عند التعطيل."""
     data = node.data or {}
     phone_tmpl = str(data.get("phone") or data.get("to") or context.get("from_phone") or "")
     msg_tmpl = str(data.get("message") or data.get("template") or context.get("reply_text") or context.get("message_text") or "")
@@ -1833,12 +1838,35 @@ def run_whatsapp_send_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, 
     phone = _render_template(phone_tmpl, context).strip()
     message = _render_template(msg_tmpl, context).strip()
 
-    if phone and message:
+    customer_name = _render_template(str(data.get("customer_name") or context.get("customer_name") or context.get("name") or ""), context).strip() or "عميلنا"
+    product_name = _render_template(str(data.get("product_name") or context.get("product_name") or context.get("product") or "منتجنا"), context).strip()
+    price = _render_template(str(data.get("price") or context.get("price") or "-"), context).strip()
+    access_token = _render_template(str(data.get("access_token") or context.get("whatsapp_access_token") or ""), context).strip() or None
+    phone_number_id = _render_template(str(data.get("phone_id") or context.get("whatsapp_phone_id") or ""), context).strip() or None
+    use_template = bool(data.get("use_template", True))
+
+    template_sent = False
+    if phone and use_template:
+        template_sent = send_whatsapp_template(
+            phone=phone,
+            name=customer_name,
+            product=product_name,
+            price=price,
+            access_token=access_token,
+            phone_number_id=phone_number_id,
+        )
+    elif phone and message:
+        # Fallback to plain text if template mode is disabled.
         send_whatsapp_message(phone, message)
 
     result: Dict[str, Any] = {
         "whatsapp_phone": phone,
         "whatsapp_message": message,
+        "whatsapp_template_name": "promo_offer" if use_template else "",
+        "whatsapp_template_sent": template_sent if use_template else False,
+        "whatsapp_customer_name": customer_name,
+        "whatsapp_product_name": product_name,
+        "whatsapp_price": price,
     }
     context.update(result)
     return result

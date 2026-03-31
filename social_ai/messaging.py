@@ -54,6 +54,77 @@ def send_whatsapp_message(phone: str, message: str) -> None:
         current_app.logger.exception("WhatsApp send error: %s", exc)
 
 
+def send_whatsapp_template(
+    phone: str,
+    name: str,
+    product: str,
+    price: str,
+    *,
+    access_token: str | None = None,
+    phone_number_id: str | None = None,
+) -> bool:
+    """
+    Send approved WhatsApp template promo_offer with required body params:
+    {{1}} name, {{2}} product, {{3}} price.
+    """
+    customer_phone = (phone or "").strip()
+    customer_name = (name or "").strip() or "عميلنا"
+    product_name = (product or "").strip() or "منتجنا"
+    price_text = (price or "").strip() or "-"
+    if not customer_phone:
+        current_app.logger.error("WhatsApp template send skipped: missing customer phone")
+        return False
+
+    token = (access_token or "").strip() or (current_app.config.get("WHATSAPP_ACCESS_TOKEN") or "").strip()
+    pid = (phone_number_id or "").strip() or (current_app.config.get("WHATSAPP_PHONE_NUMBER_ID") or "").strip()
+    if not token or not pid:
+        current_app.logger.error(
+            "WhatsApp template send skipped: missing access token or phone number id"
+        )
+        return False
+
+    url = f"https://graph.facebook.com/v18.0/{pid}/messages"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+    }
+    payload: dict[str, Any] = {
+        "messaging_product": "whatsapp",
+        "to": customer_phone,
+        "type": "template",
+        "template": {
+            "name": "promo_offer",
+            "language": {"code": "ar"},
+            "components": [
+                {
+                    "type": "body",
+                    "parameters": [
+                        {"type": "text", "text": customer_name},
+                        {"type": "text", "text": product_name},
+                        {"type": "text", "text": price_text},
+                    ],
+                }
+            ],
+        },
+    }
+
+    try:
+        resp = requests.post(url, headers=headers, json=payload, timeout=12)
+        body = resp.text[:500] if resp.text else ""
+        if resp.status_code >= 400:
+            current_app.logger.error(
+                "WhatsApp template send failed: status=%s body=%s", resp.status_code, body
+            )
+            return False
+        current_app.logger.info(
+            "WhatsApp template send OK: to=%s template=promo_offer", customer_phone
+        )
+        return True
+    except Exception as exc:  # pragma: no cover
+        current_app.logger.exception("WhatsApp template send error: %s", exc)
+        return False
+
+
 def send_telegram_message(
     chat_id: str,
     message: str,
