@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 from pathlib import Path
+from contextlib import contextmanager
 
 import requests
 from flask import Blueprint, jsonify, render_template, request, session, g, send_from_directory, current_app, redirect
@@ -27,6 +28,17 @@ social_ai_bp = Blueprint(
     "social_ai",
     __name__,
 )
+
+
+@contextmanager
+def _core_db():
+    """Force queries to Core DB in multi-tenant mode."""
+    old_tenant = getattr(g, "tenant", None)
+    g.tenant = None
+    try:
+        yield
+    finally:
+        g.tenant = old_tenant
 
 
 def _current_tenant_slug():
@@ -470,7 +482,8 @@ def _graph_has_whatsapp_listener(graph_json) -> bool:
 
 
 def _get_workflow_for_inbox(workflow_id: int) -> AgentWorkflow | None:
-    return _inbox_workflow_query().filter(AgentWorkflow.id == workflow_id).first()
+    with _core_db():
+        return _inbox_workflow_query().filter(AgentWorkflow.id == workflow_id).first()
 
 
 def _ensure_telegram_inbox_table() -> None:
@@ -514,7 +527,8 @@ def api_telegram_inbox_workflows():
     if not session.get("user_id"):
         return jsonify({"success": False, "error": "يجب تسجيل الدخول"}), 401
     try:
-        rows = _inbox_workflow_query().order_by(AgentWorkflow.updated_at.desc()).all()
+        with _core_db():
+            rows = _inbox_workflow_query().order_by(AgentWorkflow.updated_at.desc()).all()
         workflows = []
         for wf in rows:
             if not _graph_has_telegram_listener(wf.graph_json):
@@ -537,7 +551,8 @@ def api_whatsapp_inbox_workflows():
     if not session.get("user_id"):
         return jsonify({"success": False, "error": "يجب تسجيل الدخول"}), 401
     try:
-        rows = _inbox_workflow_query().order_by(AgentWorkflow.updated_at.desc()).all()
+        with _core_db():
+            rows = _inbox_workflow_query().order_by(AgentWorkflow.updated_at.desc()).all()
         workflows = []
         for wf in rows:
             if not _graph_has_whatsapp_listener(wf.graph_json):
