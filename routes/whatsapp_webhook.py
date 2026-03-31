@@ -4,6 +4,8 @@ from typing import Any
 import requests
 from flask import Blueprint, current_app, jsonify, render_template, request
 
+from models.ai_agent import AgentWorkflow
+
 
 whatsapp_webhook_bp = Blueprint("whatsapp_webhook", __name__)
 
@@ -58,6 +60,43 @@ def _extract_incoming_message(payload: dict[str, Any]) -> tuple[str | None, str 
     return None, None
 
 
+def _extract_phone_number_id(payload: dict[str, Any]) -> str:
+    try:
+        entries = payload.get("entry") or []
+        for entry in entries:
+            for change in entry.get("changes") or []:
+                value = change.get("value") or {}
+                metadata = value.get("metadata") or {}
+                pid = str(metadata.get("phone_number_id") or "").strip()
+                if pid:
+                    return pid
+    except Exception:
+        return ""
+    return ""
+
+
+def _guess_workflow_id_for_whatsapp(phone_number_id: str) -> int | None:
+    """Try matching workflow that has whatsapp_listener with same phone_id."""
+    if not phone_number_id:
+        return None
+    try:
+        rows = AgentWorkflow.query.order_by(AgentWorkflow.updated_at.desc()).limit(500).all()
+        for wf in rows:
+            graph = wf.graph_json or {}
+            for n in graph.get("nodes") or []:
+                if not isinstance(n, dict):
+                    continue
+                if (n.get("type") or "") != "whatsapp_listener":
+                    continue
+                data = n.get("data") or {}
+                pid = str(data.get("phone_id") or "").strip()
+                if pid and pid == phone_number_id:
+                    return int(wf.id)
+    except Exception:
+        return None
+    return None
+
+
 @whatsapp_webhook_bp.route("/webhook", methods=["GET", "POST"])
 def whatsapp_webhook():
     verify_token = (os.getenv("VERIFY_TOKEN") or "75428468").strip()
@@ -91,6 +130,17 @@ def whatsapp_webhook():
         return jsonify({"status": "ignored", "reason": "no_message"}), 200
 
     current_app.logger.info("Incoming message from %s: %s", sender, message_text)
+
+    # Store incoming WhatsApp message in unified inbox (if matching workflow is found).
+    try:
+        from social_ai.telegram_inbox import record_inbox_message
+
+        phone_number_id = _extract_phone_number_id(payload)
+        wf_id = _guess_workflow_id_for_whatsapp(phone_number_id)
+        if wf_id:
+            record_inbox_message(None, wf_id, "whatsapp", sender, "user", message_text[:4096])
+    except Exception:
+        current_app.logger.exception("whatsapp inbox store failed")
 
     ok, result = _send_whatsapp_reply(sender, "هلا 👋 تم استلام رسالتك")
     if not ok:

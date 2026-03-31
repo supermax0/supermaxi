@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>محادثات تيليجرام</title>
+  <title>محادثات {{ 'واتساب' if inbox_channel == 'whatsapp' else 'تيليجرام' }}</title>
   <style>
     :root {
       --bg: #07111f;
@@ -730,7 +730,7 @@
     <header class="topbar">
       <div class="topbar-row">
         <div class="hero">
-          <h1>محادثات تيليجرام</h1>
+          <h1>محادثات {{ 'واتساب' if inbox_channel == 'whatsapp' else 'تيليجرام' }}</h1>
           <p>لوحة حديثة لإدارة محادثات العملاء، متابعة الردود، والإرسال اليدوي بسرعة ووضوح.</p>
         </div>
         <div class="header-actions">
@@ -755,7 +755,7 @@
 
           <div class="workflow-card">
             <div class="field">
-              <label for="wfSelect">Workflow (يحتوي Telegram Listener)</label>
+              <label for="wfSelect">Workflow (يحتوي {{ 'WhatsApp Listener' if inbox_channel == 'whatsapp' else 'Telegram Listener' }})</label>
               <select id="wfSelect">
                 <option value="">— اختر —</option>
               </select>
@@ -794,7 +794,7 @@
         <div class="thread-head">
           <div class="thread-head-top">
             <div class="thread-ident">
-              <div class="avatar">✈</div>
+              <div class="avatar">{{ '📲' if inbox_channel == 'whatsapp' else '✈' }}</div>
               <div>
                 <h3 id="threadTitle">اختر محادثة</h3>
                 <div class="sub" id="threadSub">سيظهر هنا chat id ومعلومات المحادثة</div>
@@ -850,6 +850,11 @@
   </div>
 
   <script>
+    const INBOX_CHANNEL = "{{ inbox_channel or 'telegram' }}";
+    const CHANNEL_TITLE = INBOX_CHANNEL === "whatsapp" ? "واتساب" : "تيليجرام";
+    const CHANNEL_ICON = INBOX_CHANNEL === "whatsapp" ? "📲" : "✈";
+    const API_BASE = "/social-ai/api/" + INBOX_CHANNEL + "/inbox";
+
     const wfSelect = document.getElementById("wfSelect");
     const chatList = document.getElementById("chatList");
     const messagesEl = document.getElementById("messages");
@@ -1019,10 +1024,10 @@
         li.innerHTML =
           '<div class="chat-item-top">' +
             '<div class="chat-badge">' +
-              '<div class="chat-avatar">✈</div>' +
+              '<div class="chat-avatar">' + CHANNEL_ICON + '</div>' +
               '<div class="chat-main">' +
                 '<div class="cid">' + escapeHtml(c.chat_id) + '</div>' +
-                '<div class="title">محادثة تيليجرام</div>' +
+                '<div class="title">محادثة ' + CHANNEL_TITLE + '</div>' +
               '</div>' +
             '</div>' +
             '<div class="chat-time">' + escapeHtml(fmtTime(c.last_at)) + '</div>' +
@@ -1045,7 +1050,7 @@
 
       if (!state.selectedChatId) {
         messagesEl.innerHTML =
-          '<div class="empty big"><div class="icon">✈</div><div>اختر محادثة من القائمة لعرض كامل الحوار والرد اليدوي.</div></div>';
+          '<div class="empty big"><div class="icon">' + CHANNEL_ICON + '</div><div>اختر محادثة من القائمة لعرض كامل الحوار والرد اليدوي.</div></div>';
         return;
       }
 
@@ -1074,7 +1079,7 @@
     async function loadWorkflows() {
       let j;
       try {
-        const r = await fetch("/social-ai/api/telegram/inbox/workflows");
+        const r = await fetch(API_BASE + "/workflows");
         j = await readInboxJson(r);
       } catch (e) {
         showErr(String(e));
@@ -1118,7 +1123,7 @@
 
       let j;
       try {
-        const r = await fetch("/social-ai/api/telegram/inbox/chats?workflow_id=" + encodeURIComponent(wfId));
+        const r = await fetch(API_BASE + "/chats?workflow_id=" + encodeURIComponent(wfId));
         j = await readInboxJson(r);
       } catch (e) {
         showErr(String(e));
@@ -1158,7 +1163,7 @@
       let j;
       try {
         const r = await fetch(
-          "/social-ai/api/telegram/inbox/messages?workflow_id=" +
+          API_BASE + "/messages?workflow_id=" +
             encodeURIComponent(state.selectedWorkflowId) +
             "&chat_id=" +
             encodeURIComponent(chatId)
@@ -1188,7 +1193,7 @@
     async function selectChat(chatId) {
       state.selectedChatId = chatId;
       const active = state.chats.find((c) => c.chat_id === chatId);
-      threadTitle.textContent = "محادثة تيليجرام";
+      threadTitle.textContent = "محادثة " + CHANNEL_TITLE;
       threadSub.textContent = chatId || "—";
       if (active && active.last_at) {
         threadTitle.textContent = "محادثة نشطة";
@@ -1209,7 +1214,7 @@
       showErr("");
 
       try {
-        const r = await fetch("/social-ai/api/telegram/inbox/send", {
+        const r = await fetch(API_BASE + "/send", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

@@ -14,6 +14,8 @@ class TelegramInboxMessage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     tenant_slug = db.Column(db.String(100), index=True, nullable=True)
     workflow_id = db.Column(db.Integer, db.ForeignKey("ai_agent_workflows.id"), nullable=False, index=True)
+    # telegram | whatsapp
+    channel = db.Column(db.String(20), nullable=False, default="telegram", index=True)
     chat_id = db.Column(db.String(64), nullable=False, index=True)
     # user: رسالة من الزبون | bot: رد من البوت/الوورك فلو | operator: رد يدوي من لوحة التحكم
     role = db.Column(db.String(20), nullable=False)
@@ -25,6 +27,7 @@ class TelegramInboxMessage(db.Model):
             "id": self.id,
             "tenant_slug": self.tenant_slug,
             "workflow_id": self.workflow_id,
+            "channel": self.channel,
             "chat_id": self.chat_id,
             "role": self.role,
             "body": self.body,

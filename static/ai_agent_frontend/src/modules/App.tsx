@@ -1033,6 +1033,12 @@ export const App: React.FC = () => {
           >
             محادثات تيليجرام
           </a>
+          <a
+            href="/social-ai/whatsapp/inbox"
+            className="hidden md:inline-flex rounded-lg border border-[#16a34a] bg-[#16a34a]/10 px-3 py-2 text-xs font-medium text-emerald-300 hover:bg-[#16a34a]/20"
+          >
+            محادثات واتساب
+          </a>
           <button
             type="button"
             className="hidden md:inline-flex rounded-lg border border-[#1e293b] bg-[#1e293b] px-3 py-2 text-xs font-medium text-slate-300 hover:bg-[#334155]"
@@ -2525,17 +2531,52 @@ export const App: React.FC = () => {
                     </div>
                     <div className="space-y-3">
                       {selectedNode.type === "whatsapp_listener" && (
-                        <div>
-                          <label className="mb-1 block text-[11px] text-slate-400">
-                            Phone Number ID (واتساب كلاود)
-                          </label>
-                          <input
-                            className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none"
-                            placeholder="مثال: 123456789012345"
-                            value={(selectedNode.data as any)?.phone_id || ""}
-                            onChange={handleMessagingFieldChange("phone_id")}
-                          />
-                        </div>
+                        <>
+                          <div>
+                            <label className="mb-1 block text-[11px] text-slate-400">
+                              Phone Number ID (واتساب كلاود)
+                            </label>
+                            <input
+                              className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none"
+                              placeholder="مثال: 123456789012345"
+                              value={(selectedNode.data as any)?.phone_id || ""}
+                              onChange={handleMessagingFieldChange("phone_id")}
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-[11px] text-slate-400">
+                              Access Token (WhatsApp Cloud)
+                            </label>
+                            <input
+                              className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none"
+                              placeholder="EAA..."
+                              value={(selectedNode.data as any)?.access_token || ""}
+                              onChange={handleMessagingFieldChange("access_token")}
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-[11px] text-slate-400">
+                              Verify Token
+                            </label>
+                            <input
+                              className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none"
+                              placeholder="75428468"
+                              value={(selectedNode.data as any)?.verify_token || ""}
+                              onChange={handleMessagingFieldChange("verify_token")}
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-[11px] text-slate-400">
+                              Webhook URL
+                            </label>
+                            <input
+                              readOnly
+                              className="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-300 focus:outline-none"
+                              value={`${window.location.origin}/webhook`}
+                            />
+                            <p className="mt-1 text-[10px] text-slate-500">ضع هذا الرابط في Meta Webhooks.</p>
+                          </div>
+                        </>
                       )}
                       {selectedNode.type === "telegram_listener" && (
                         <>

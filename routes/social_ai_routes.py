@@ -458,6 +458,17 @@ def _graph_has_telegram_listener(graph_json) -> bool:
     return False
 
 
+def _graph_has_whatsapp_listener(graph_json) -> bool:
+    if not isinstance(graph_json, dict):
+        return False
+    for n in graph_json.get("nodes") or []:
+        if not isinstance(n, dict):
+            continue
+        if (n.get("type") or "") == "whatsapp_listener":
+            return True
+    return False
+
+
 def _get_workflow_for_inbox(workflow_id: int) -> AgentWorkflow | None:
     return _inbox_workflow_query().filter(AgentWorkflow.id == workflow_id).first()
 
@@ -487,7 +498,15 @@ def telegram_inbox_page():
     """لوحة محادثات تيليجرام والرد اليدوي."""
     if not session.get("user_id"):
         return redirect("/", code=302)
-    return render_template("social_ai/telegram_inbox.html")
+    return render_template("social_ai/telegram_inbox.html", inbox_channel="telegram")
+
+
+@social_ai_bp.route("/whatsapp/inbox")
+def whatsapp_inbox_page():
+    """لوحة محادثات واتساب والرد اليدوي."""
+    if not session.get("user_id"):
+        return redirect("/", code=302)
+    return render_template("social_ai/telegram_inbox.html", inbox_channel="whatsapp")
 
 
 @social_ai_bp.route("/api/telegram/inbox/workflows", methods=["GET"])
@@ -499,6 +518,29 @@ def api_telegram_inbox_workflows():
         workflows = []
         for wf in rows:
             if not _graph_has_telegram_listener(wf.graph_json):
+                continue
+            ag = wf.agent
+            workflows.append(
+                {
+                    "id": wf.id,
+                    "name": wf.name or f"Workflow {wf.id}",
+                    "agent_name": (ag.name if ag else "") or "",
+                }
+            )
+        return jsonify({"success": True, "workflows": workflows})
+    except Exception as exc:
+        return _inbox_fail_json(exc)
+
+
+@social_ai_bp.route("/api/whatsapp/inbox/workflows", methods=["GET"])
+def api_whatsapp_inbox_workflows():
+    if not session.get("user_id"):
+        return jsonify({"success": False, "error": "يجب تسجيل الدخول"}), 401
+    try:
+        rows = _inbox_workflow_query().order_by(AgentWorkflow.updated_at.desc()).all()
+        workflows = []
+        for wf in rows:
+            if not _graph_has_whatsapp_listener(wf.graph_json):
                 continue
             ag = wf.agent
             workflows.append(
@@ -528,7 +570,44 @@ def api_telegram_inbox_chats():
     try:
         # آخر رسالة لكل محادثة (نزولاً حسب التاريخ)
         recent = (
-            TelegramInboxMessage.query.filter_by(workflow_id=wf_id)
+            TelegramInboxMessage.query.filter(
+                TelegramInboxMessage.workflow_id == wf_id,
+                or_(TelegramInboxMessage.channel == "telegram", TelegramInboxMessage.channel.is_(None)),
+            )
+            .order_by(TelegramInboxMessage.created_at.desc())
+            .limit(600)
+            .all()
+        )
+        seen: dict[str, dict] = {}
+        for r in recent:
+            if r.chat_id in seen:
+                continue
+            seen[r.chat_id] = {
+                "chat_id": r.chat_id,
+                "last_at": r.created_at.isoformat() if r.created_at else None,
+                "preview": (r.body or "")[:180],
+            }
+        chats = sorted(seen.values(), key=lambda x: x.get("last_at") or "", reverse=True)
+        return jsonify({"success": True, "chats": chats})
+    except Exception as exc:
+        return _inbox_fail_json(exc)
+
+
+@social_ai_bp.route("/api/whatsapp/inbox/chats", methods=["GET"])
+def api_whatsapp_inbox_chats():
+    if not session.get("user_id"):
+        return jsonify({"success": False, "error": "يجب تسجيل الدخول"}), 401
+    try:
+        wf_id = int(request.args.get("workflow_id") or 0)
+    except (TypeError, ValueError):
+        wf_id = 0
+    if not wf_id or not _get_workflow_for_inbox(wf_id):
+        return jsonify({"success": False, "error": "وورك فلو غير موجود أو غير مسموح"}), 404
+
+    _ensure_telegram_inbox_table()
+    try:
+        recent = (
+            TelegramInboxMessage.query.filter_by(workflow_id=wf_id, channel="whatsapp")
             .order_by(TelegramInboxMessage.created_at.desc())
             .limit(600)
             .all()
@@ -565,7 +644,37 @@ def api_telegram_inbox_messages():
     _ensure_telegram_inbox_table()
     try:
         q = (
-            TelegramInboxMessage.query.filter_by(workflow_id=wf_id, chat_id=chat_id)
+            TelegramInboxMessage.query.filter(
+                TelegramInboxMessage.workflow_id == wf_id,
+                TelegramInboxMessage.chat_id == chat_id,
+                or_(TelegramInboxMessage.channel == "telegram", TelegramInboxMessage.channel.is_(None)),
+            )
+            .order_by(TelegramInboxMessage.created_at.asc())
+            .limit(500)
+        )
+        return jsonify({"success": True, "messages": [m.to_dict() for m in q]})
+    except Exception as exc:
+        return _inbox_fail_json(exc)
+
+
+@social_ai_bp.route("/api/whatsapp/inbox/messages", methods=["GET"])
+def api_whatsapp_inbox_messages():
+    if not session.get("user_id"):
+        return jsonify({"success": False, "error": "يجب تسجيل الدخول"}), 401
+    try:
+        wf_id = int(request.args.get("workflow_id") or 0)
+    except (TypeError, ValueError):
+        wf_id = 0
+    chat_id = (request.args.get("chat_id") or "").strip()
+    if not wf_id or not chat_id:
+        return jsonify({"success": False, "error": "workflow_id و chat_id مطلوبان"}), 400
+    if not _get_workflow_for_inbox(wf_id):
+        return jsonify({"success": False, "error": "وورك فلو غير موجود أو غير مسموح"}), 404
+
+    _ensure_telegram_inbox_table()
+    try:
+        q = (
+            TelegramInboxMessage.query.filter_by(workflow_id=wf_id, channel="whatsapp", chat_id=chat_id)
             .order_by(TelegramInboxMessage.created_at.asc())
             .limit(500)
         )
@@ -620,6 +729,63 @@ def api_telegram_inbox_send():
         if wf.agent and wf.agent.tenant_slug:
             tenant_slug = wf.agent.tenant_slug
         record_telegram_inbox_message(tenant_slug, wf_id, chat_id, "operator", text[:4096])
+    except Exception as exc:
+        return _inbox_fail_json(exc)
+    return jsonify({"success": True})
+
+
+@social_ai_bp.route("/api/whatsapp/inbox/send", methods=["POST"])
+def api_whatsapp_inbox_send():
+    """إرسال رد يدوي إلى واتساب كلاود وتسجيله كـ operator."""
+    if not session.get("user_id"):
+        return jsonify({"success": False, "error": "يجب تسجيل الدخول"}), 401
+    data = request.get_json() or {}
+    try:
+        wf_id = int(data.get("workflow_id") or 0)
+    except (TypeError, ValueError):
+        wf_id = 0
+    chat_id = (data.get("chat_id") or "").strip()
+    text = (data.get("text") or "").strip()
+    if not wf_id or not chat_id or not text:
+        return jsonify({"success": False, "error": "workflow_id و chat_id والنص مطلوبة"}), 400
+
+    wf = _get_workflow_for_inbox(wf_id)
+    if not wf:
+        return jsonify({"success": False, "error": "وورك فلو غير موجود أو غير مسموح"}), 404
+
+    from social_ai.telegram_inbox import extract_whatsapp_credentials_from_workflow_graph, record_inbox_message
+
+    access_token, phone_id = extract_whatsapp_credentials_from_workflow_graph(wf.graph_json)
+    if not access_token or not phone_id:
+        return jsonify({"success": False, "error": "لا يوجد access_token/phone_id في عقدة WhatsApp Listener"}), 400
+
+    url = f"https://graph.facebook.com/v18.0/{phone_id}/messages"
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": chat_id,
+        "type": "text",
+        "text": {"body": text[:4096]},
+    }
+    try:
+        resp = requests.post(url, json=payload, headers=headers, timeout=15)
+        body = resp.json() if resp.text else {}
+        if resp.status_code >= 400:
+            err = (body.get("error", {}) if isinstance(body, dict) else {}).get("message") or (resp.text or "")[:300]
+            return jsonify({"success": False, "error": err or "فشل إرسال واتساب"}), 400
+    except Exception as e:
+        current_app.logger.exception("whatsapp inbox send")
+        return jsonify({"success": False, "error": str(e)}), 200
+
+    _ensure_telegram_inbox_table()
+    try:
+        tenant_slug = _current_tenant_slug()
+        if wf.agent and wf.agent.tenant_slug:
+            tenant_slug = wf.agent.tenant_slug
+        record_inbox_message(tenant_slug, wf_id, "whatsapp", chat_id, "operator", text[:4096])
     except Exception as exc:
         return _inbox_fail_json(exc)
     return jsonify({"success": True})
