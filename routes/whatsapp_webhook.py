@@ -67,6 +67,10 @@ def whatsapp_webhook():
         token = request.args.get("hub.verify_token")
         challenge = request.args.get("hub.challenge")
 
+        # فتح /webhook مباشرة من المتصفح بدون باراميترات
+        if not mode and not token and not challenge:
+            return jsonify({"status": "ok", "message": "Webhook Running"})
+
         # وضع اختبار بسيط من الواجهة
         if request.args.get("test") == "1":
             return jsonify({"status": "ok", "message": "Webhook Running"})
