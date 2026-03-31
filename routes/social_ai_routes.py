@@ -492,12 +492,19 @@ def _graph_has_whatsapp_listener(graph_json) -> bool:
 
 def _get_workflow_for_inbox(workflow_id: int) -> AgentWorkflow | None:
     # Prefer current tenant/session DB where workflows are commonly stored.
-    wf = _inbox_workflow_query().filter(AgentWorkflow.id == workflow_id).first()
-    if wf:
-        return wf
+    # If tenant DB does not have AI tables, fallback safely to Core DB.
+    try:
+        wf = _inbox_workflow_query().filter(AgentWorkflow.id == workflow_id).first()
+        if wf:
+            return wf
+    except Exception:
+        pass
     # Fallback to Core DB for setups storing agents centrally.
-    with _core_db():
-        return _inbox_workflow_query().filter(AgentWorkflow.id == workflow_id).first()
+    try:
+        with _core_db():
+            return _inbox_workflow_query().filter(AgentWorkflow.id == workflow_id).first()
+    except Exception:
+        return None
 
 
 def _ensure_telegram_inbox_table() -> None:
