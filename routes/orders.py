@@ -442,6 +442,83 @@ def orders_delivered():
     )
 
 # =====================================================
+# Orders by Status - راجع / ملغي / مرتجع
+# =====================================================
+@orders_bp.route("/returned")
+def orders_returned():
+    if not check_permission("can_see_orders") or not check_permission("can_see_orders_returned"):
+        return redirect("/pos"), 403
+    page = request.args.get("page", 1, type=int)
+    per_page = 10
+
+    q = Invoice.query.options(
+        joinedload(Invoice.customer),
+        joinedload(Invoice.shipping_company),
+        joinedload(Invoice.delivery_agent)
+    ).join(Customer).filter(
+        or_(
+            Invoice.status == "راجع",
+            Invoice.status == "ملغي",
+            Invoice.payment_status == "مرتجع"
+        )
+    )
+
+    city = request.args.get("city")
+    payment = request.args.get("payment")
+    employee = request.args.get("employee")
+    shipping = request.args.get("shipping")
+    search = request.args.get("search")
+    scheduled_date = request.args.get("scheduled_date")
+
+    today = date.today()
+    if not scheduled_date:
+        q = q.filter(
+            or_(
+                Invoice.scheduled_date.is_(None),
+                func.date(Invoice.scheduled_date) <= today
+            )
+        )
+    else:
+        try:
+            target_date = datetime.strptime(scheduled_date, "%Y-%m-%d").date()
+            q = q.filter(func.date(Invoice.scheduled_date) == target_date)
+        except Exception:
+            pass
+
+    if city:
+        q = q.filter(Customer.city == city)
+    if payment:
+        q = q.filter(Invoice.payment_status == payment)
+    if employee:
+        q = q.filter(Invoice.employee_name == employee)
+    if shipping:
+        q = q.filter(Invoice.shipping_company_id == shipping)
+    if search:
+        like = f"%{search}%"
+        q = q.filter(
+            or_(
+                Customer.name.ilike(like),
+                Customer.phone.ilike(like),
+                Invoice.id.ilike(like)
+            )
+        )
+
+    q = q.order_by(Invoice.created_at.desc())
+    pagination = q.paginate(page=page, per_page=per_page, error_out=False)
+    orders = pagination.items
+    cities = [c[0] for c in db.session.query(Customer.city).distinct().all() if c[0]]
+
+    return render_template(
+        "orders.html",
+        orders=orders,
+        pagination=pagination,
+        employees=Employee.query.all(),
+        shippings=ShippingCompany.query.all(),
+        cities=cities,
+        page_type="returned"
+    )
+
+# =====================================================
 # Orders by Status - ملغي
 # =====================================================
 @orders_bp.route("/cancelled")

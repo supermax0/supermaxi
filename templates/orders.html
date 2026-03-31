@@ -4,6 +4,7 @@
 {% if page_type == "ordered" %}{{ _('orders_title_ordered') }}
 {% elif page_type == "shipping" %}{{ _('orders_title_shipping') }}
 {% elif page_type == "cancelled" %}{{ _('orders_title_cancelled') }}
+{% elif page_type == "returned" %}{{ _('orders_status_returned') }}
 {% elif page_type == "delivered" %}{{ _('orders_title_delivered') }}
 {% else %}{{ _('orders') }}{% endif %}
 {% endblock %}
@@ -12,6 +13,7 @@
 {% if page_type == "ordered" %}{{ _('orders_title_ordered') }}
 {% elif page_type == "shipping" %}{{ _('orders_title_shipping') }}
 {% elif page_type == "cancelled" %}{{ _('orders_title_cancelled') }}
+{% elif page_type == "returned" %}{{ _('orders_status_returned') }}
 {% elif page_type == "delivered" %}{{ _('orders_title_delivered') }}
 {% else %}{{ _('orders_page_title') }}{% endif %}
 {% endblock %}

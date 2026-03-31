@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% block page_title %}{{ _('dashboard') }}{% endblock %}
 {% block content %}
 {% if show_data is defined and show_data == False %}
 <div class="dashboard-welcome">
@@ -989,141 +990,685 @@
     border-color: rgba(59, 130, 246, 0.35);
   }
 </style>
+<style>
+  .dashboard-shell {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
 
-<!-- =======================
-     TOP BAR
-======================= -->
-<div class="dashboard-topbar">
-  <div class="dashboard-user">
-    <div class="dashboard-user-avatar">
-      {% if current_employee and current_employee.profile_pic %}
-      <img src="/{{ current_employee.profile_pic }}" alt="{{ employee_name }}">
-      {% else %}
-      {{ employee_name[0] if employee_name else "?" }}
-      {% endif %}
+  .dashboard-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.9fr);
+    gap: 20px;
+    padding: clamp(20px, 3vw, 30px);
+    border-radius: 24px;
+    background:
+      radial-gradient(140% 140% at 100% 0%, rgba(59, 130, 246, 0.18), transparent 45%),
+      radial-gradient(120% 120% at 0% 0%, rgba(139, 92, 246, 0.16), transparent 40%),
+      linear-gradient(160deg, rgba(15, 23, 42, 0.92), rgba(15, 23, 42, 0.78));
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    box-shadow: 0 22px 60px rgba(2, 6, 23, 0.32);
+  }
+
+  :root[data-theme="light"] .dashboard-hero {
+    background:
+      radial-gradient(140% 140% at 100% 0%, rgba(59, 130, 246, 0.12), transparent 45%),
+      radial-gradient(120% 120% at 0% 0%, rgba(139, 92, 246, 0.10), transparent 40%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
+    border-color: rgba(148, 163, 184, 0.22);
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+  }
+
+  .dashboard-hero-main {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .dashboard-hero-intro {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .dashboard-user-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 18px;
+    background: rgba(15, 23, 42, 0.34);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    width: fit-content;
+  }
+
+  :root[data-theme="light"] .dashboard-user-chip {
+    background: rgba(255, 255, 255, 0.86);
+    border-color: rgba(148, 163, 184, 0.2);
+  }
+
+  .dashboard-user-chip .dashboard-user-avatar {
+    width: 48px;
+    height: 48px;
+    font-size: 18px;
+    box-shadow: 0 10px 24px rgba(37, 99, 235, 0.26);
+  }
+
+  .dashboard-user-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .dashboard-user-label {
+    font-size: 12px;
+    color: var(--dashboard-muted);
+  }
+
+  .dashboard-hero-title {
+    margin: 0;
+    font-size: clamp(24px, 4vw, 34px);
+    font-weight: 800;
+    color: var(--dashboard-text);
+    line-height: 1.2;
+  }
+
+  .dashboard-hero-subtitle {
+    margin: 0;
+    max-width: 760px;
+    color: var(--dashboard-muted);
+    font-size: 15px;
+    line-height: 1.9;
+  }
+
+  .dashboard-hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .dashboard-hero-actions .btn,
+  .dashboard-hero-actions button {
+    min-height: 46px;
+    border-radius: 16px;
+    padding-inline: 16px;
+  }
+
+  .dashboard-hero-side {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .dashboard-side-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 18px;
+    border-radius: 20px;
+    background: rgba(2, 6, 23, 0.34);
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    min-height: 100%;
+  }
+
+  :root[data-theme="light"] .dashboard-side-panel {
+    background: rgba(255, 255, 255, 0.84);
+    border-color: rgba(148, 163, 184, 0.2);
+  }
+
+  .dashboard-side-kicker {
+    font-size: 12px;
+    color: var(--dashboard-muted);
+    letter-spacing: .2px;
+  }
+
+  .dashboard-side-value {
+    font-size: clamp(26px, 4vw, 38px);
+    font-weight: 800;
+    color: var(--dashboard-text);
+    line-height: 1.1;
+  }
+
+  .dashboard-side-note {
+    font-size: 13px;
+    color: var(--dashboard-muted);
+    line-height: 1.8;
+  }
+
+  .dashboard-side-meta {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .dashboard-mini-stat {
+    padding: 12px 14px;
+    border-radius: 16px;
+    background: rgba(15, 23, 42, 0.42);
+    border: 1px solid rgba(148, 163, 184, 0.12);
+  }
+
+  :root[data-theme="light"] .dashboard-mini-stat {
+    background: rgba(248, 250, 252, 0.92);
+    border-color: rgba(148, 163, 184, 0.16);
+  }
+
+  .dashboard-mini-stat-label {
+    display: block;
+    font-size: 11px;
+    color: var(--dashboard-muted);
+    margin-bottom: 6px;
+  }
+
+  .dashboard-mini-stat-value {
+    display: block;
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--dashboard-text);
+  }
+
+  .dashboard-section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .dashboard-section-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .dashboard-section-title {
+    margin: 0;
+    color: var(--dashboard-text);
+    font-size: 20px;
+    font-weight: 800;
+  }
+
+  .dashboard-section-subtitle {
+    margin: 0;
+    color: var(--dashboard-muted);
+    font-size: 13px;
+  }
+
+  .dashboard-primary-grid,
+  .dashboard-metrics-grid,
+  .dashboard-order-grid,
+  .dashboard-insights-grid {
+    display: grid;
+    gap: 18px;
+  }
+
+  .dashboard-primary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboard-metrics-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .dashboard-order-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .dashboard-insights-grid {
+    grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+    align-items: start;
+  }
+
+  .dashboard-primary-grid .card,
+  .dashboard-metrics-grid .card,
+  .dashboard-order-grid .card,
+  .dashboard-insights-grid .card,
+  .ai-assistant-card {
+    background: var(--dashboard-card);
+    border: 1px solid var(--dashboard-border);
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.12);
+  }
+
+  .dashboard-card-highlight {
+    padding: 24px;
+    min-height: 180px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    background:
+      radial-gradient(120% 120% at 100% 0%, rgba(59, 130, 246, 0.16), transparent 42%),
+      linear-gradient(180deg, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.72));
+  }
+
+  :root[data-theme="light"] .dashboard-card-highlight {
+    background:
+      radial-gradient(120% 120% at 100% 0%, rgba(59, 130, 246, 0.12), transparent 42%),
+      linear-gradient(180deg, #ffffff, #f8fafc);
+  }
+
+  .metric-card {
+    min-height: 170px;
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .metric-title,
+  .metric-card-icon-title,
+  .order-stat-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--dashboard-text);
+    margin: 0;
+  }
+
+  .metric-title i,
+  .metric-card-icon-title i,
+  .order-stat-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(59, 130, 246, 0.12);
+    color: var(--dashboard-primary);
+    flex-shrink: 0;
+  }
+
+  .metric-count {
+    font-size: clamp(28px, 4vw, 40px);
+    font-weight: 800;
+    color: var(--dashboard-text);
+    background: none;
+    -webkit-text-fill-color: currentColor;
+    margin-top: 14px;
+  }
+
+  .metric-note {
+    color: var(--dashboard-muted);
+    font-size: 13px;
+    line-height: 1.8;
+    margin-top: 10px;
+  }
+
+  .order-stat-card {
+    padding: 20px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-height: 140px;
+    justify-content: space-between;
+  }
+
+  .order-stat-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+  }
+
+  .order-stat-link:hover .order-stat-card {
+    transform: translateY(-4px);
+    border-color: rgba(59, 130, 246, 0.28);
+    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.16);
+  }
+
+  .order-stat-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .order-stat-value {
+    font-size: 34px;
+    font-weight: 800;
+    color: var(--dashboard-text);
+    line-height: 1;
+  }
+
+  .order-stat-note {
+    color: var(--dashboard-muted);
+    font-size: 12px;
+    line-height: 1.7;
+  }
+
+  .dashboard-alerts-card {
+    min-height: 100%;
+    padding: 22px;
+  }
+
+  .dashboard-alerts-card h4 {
+    margin: 0 0 14px;
+    font-size: 18px;
+    color: var(--dashboard-text);
+  }
+
+  .dashboard-quick-card {
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .dashboard-quick-card-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .dashboard-quick-item {
+    padding: 14px;
+    border-radius: 16px;
+    background: rgba(59, 130, 246, 0.08);
+    border: 1px solid rgba(59, 130, 246, 0.1);
+  }
+
+  .dashboard-quick-item-label {
+    display: block;
+    font-size: 11px;
+    color: var(--dashboard-muted);
+    margin-bottom: 6px;
+  }
+
+  .dashboard-quick-item-value {
+    display: block;
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--dashboard-text);
+  }
+
+  .dashboard-chart-section .charts-container {
+    margin-bottom: 0;
+  }
+
+  #additionalInfoRow {
+    display: grid !important;
+    margin: 0;
+  }
+
+  .ai-assistant-card {
+    margin-top: 0 !important;
+    max-width: none;
+  }
+
+  @media (max-width: 1200px) {
+    .dashboard-hero,
+    .dashboard-insights-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .dashboard-order-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .dashboard-metrics-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 768px) {
+    .dashboard-shell {
+      gap: 18px;
+    }
+
+    .dashboard-hero {
+      padding: 18px;
+      border-radius: 20px;
+    }
+
+    .dashboard-hero-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .dashboard-hero-actions .dashboard-period-btn {
+      grid-column: 1 / -1;
+    }
+
+    .dashboard-primary-grid,
+    .dashboard-metrics-grid,
+    .dashboard-order-grid,
+    .dashboard-quick-card-grid,
+    .dashboard-side-meta {
+      grid-template-columns: 1fr;
+    }
+
+    .metric-card,
+    .dashboard-card-highlight,
+    .order-stat-card {
+      min-height: auto;
+    }
+  }
+</style>
+
+<div class="dashboard-shell">
+  <section class="dashboard-hero">
+    <div class="dashboard-hero-main">
+      <div class="dashboard-user-chip">
+        <div class="dashboard-user-avatar">
+          {% if current_employee and current_employee.profile_pic %}
+          <img src="/{{ current_employee.profile_pic }}" alt="{{ employee_name }}">
+          {% else %}
+          {{ employee_name[0] if employee_name else "?" }}
+          {% endif %}
+        </div>
+        <div class="dashboard-user-meta">
+          <span class="dashboard-user-label">{{ _('dashboard') }}</span>
+          <span class="dashboard-user-name">{{ employee_name }}</span>
+        </div>
+      </div>
+
+      <div>
+        <h1 class="dashboard-hero-title">{{ _('dashboard_welcome_title') }}</h1>
+        <p class="dashboard-hero-subtitle">
+          {{ _('dashboard_welcome_subtitle') }}
+        </p>
+      </div>
+
+      <div class="dashboard-hero-actions">
+        <a href="/pos" class="btn btn-pos">
+          <span class="btn-icon"><i class="fas fa-cash-register"></i></span>
+          <span class="btn-label">{{ _('dashboard_pos') }}</span>
+        </a>
+        <button class="btn btn-search" onclick="openSearch()">
+          <span class="btn-icon"><i class="fas fa-search"></i></span>
+          <span class="btn-label">{{ _('dashboard_search') }}</span>
+        </button>
+        <button class="btn btn-profit" onclick="openProfit()">
+          <span class="btn-icon"><i class="fas fa-chart-line"></i></span>
+          <span class="btn-label">{{ _('dashboard_profit_today') }}</span>
+        </button>
+        <button class="btn dashboard-add-expense-btn" onclick="openAddExpense()">
+          <span class="btn-icon"><i class="fas fa-plus"></i></span>
+          <span class="btn-label">{{ _('dashboard_add_expense') }}</span>
+        </button>
+        <button class="btn dashboard-period-btn" id="periodBtn" onclick="openPeriodModal()">
+          <span class="btn-icon"><i class="fas fa-calendar-alt"></i></span>
+          <span class="btn-label" id="periodLabel">{{ _('dashboard_today') }}</span>
+          <span class="dashboard-period-caret">▼</span>
+        </button>
+      </div>
     </div>
-    <div class="dashboard-user-name">{{ employee_name }}</div>
-  </div>
-  <div class="dashboard-topbar-actions">
-    <a href="/pos" class="btn btn-pos">
-      <span class="btn-icon">🛒</span>
-      <span class="btn-label">{{ _('dashboard_pos') }}</span>
-    </a>
-    <button class="btn btn-search" onclick="openSearch()">
-      <span class="btn-icon">🔍</span>
-      <span class="btn-label">{{ _('dashboard_search') }}</span>
-    </button>
-    <button class="btn btn-profit" onclick="openProfit()">
-      <span class="btn-icon">💰</span>
-      <span class="btn-label">{{ _('dashboard_profit_today') }}</span>
-    </button>
-    <button class="btn dashboard-add-expense-btn" onclick="openAddExpense()">
-      <span class="btn-icon">➕</span>
-      <span class="btn-label">{{ _('dashboard_add_expense') }}</span>
-    </button>
-    <button class="btn dashboard-period-btn" id="periodBtn" onclick="openPeriodModal()">
-      <span class="btn-icon">📅</span>
-      <span class="btn-label" id="periodLabel">{{ _('dashboard_today') }}</span>
-      <span class="dashboard-period-caret">▼</span>
-    </button>
-  </div>
-</div>
 
-<!-- =======================
-     REPORT CARDS - Row 1: Cash Balance
-======================= -->
-<div class="grid dashboard-grid-single">
-  <div class="card dashboard-card-highlight is-cash">
-    <div class="metric-title">💰 {{ _('dashboard_cash_balance_title') }}</div>
-    <div id="cashBalance" class="count metric-count">0 د.ع</div>
-    <div class="metric-note">{{ _('dashboard_cash_balance_note') }}</div>
-  </div>
-</div>
+    <aside class="dashboard-hero-side">
+      <div class="dashboard-side-panel">
+        <span class="dashboard-side-kicker">{{ _('dashboard_cash_balance_title') }}</span>
+        <div id="cashBalance" class="dashboard-side-value">0 د.ع</div>
+        <p class="dashboard-side-note">{{ _('dashboard_cash_balance_note') }}</p>
+        <div class="dashboard-side-meta">
+          <div class="dashboard-mini-stat">
+            <span class="dashboard-mini-stat-label">{{ _('dashboard_total_sales_title') }}</span>
+            <span id="sales" class="dashboard-mini-stat-value">0 د.ع</span>
+          </div>
+          <div class="dashboard-mini-stat">
+            <span class="dashboard-mini-stat-label">{{ _('dashboard_profit_title') }}</span>
+            <span id="periodProfit" class="dashboard-mini-stat-value">0 د.ع</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </section>
 
-<!-- =======================
-     REPORT CARDS - Row 2: Sales
-======================= -->
-<div class="grid dashboard-grid-metrics">
-  <div class="card metric-card is-sales">
-    <div class="metric-title">📊 {{ _('dashboard_total_sales_title') }}</div>
-    <div id="sales" class="count metric-count">0</div>
-    <div class="metric-note" id="salesPeriodLabel">{{ _('dashboard_for_selected_period') }}</div>
-  </div>
-  <div class="card metric-card is-cash-sales">
-    <div class="metric-title">💵 {{ _('dashboard_cash_sales_title') }}</div>
-    <div id="cashSales" class="count metric-count">0</div>
-    <div class="metric-note">{{ _('dashboard_cash_sales_note') }}</div>
-  </div>
-  <div class="card metric-card is-credit-sales">
-    <div class="metric-title">📋 {{ _('dashboard_credit_sales_title') }}</div>
-    <div id="creditSales" class="count metric-count">0</div>
-    <div class="metric-note">{{ _('dashboard_credit_sales_note') }}</div>
-  </div>
-</div>
-
-<!-- =======================
-     REPORT CARDS - Row 3: Profit
-======================= -->
-<div class="grid dashboard-grid-single">
-  <div class="card dashboard-card-highlight is-profit">
-    <div class="metric-title">💎 {{ _('dashboard_profit_title') }}</div>
-    <div id="periodProfit" class="count metric-count">0 د.ع</div>
-    <div class="metric-note">{{ _('dashboard_profit_note') }}</div>
-  </div>
-</div>
-
-<!-- =======================
-     REPORT CARDS - Row 4: Inventory & Liabilities
-======================= -->
-<div class="grid dashboard-grid-metrics">
-  <div class="card metric-card is-inventory">
-    <div class="metric-title">📦 {{ _('dashboard_inventory_value_title') }}</div>
-    <div id="inventory" class="count metric-count">0</div>
-    <div class="metric-note">{{ _('dashboard_inventory_value_note') }}</div>
-  </div>
-  <div class="card metric-card is-liabilities">
-    <div class="metric-title">⚖️ {{ _('dashboard_liabilities_title') }}</div>
-    <div id="liabilities" class="count metric-count">0</div>
-    <div class="metric-note">{{ _('dashboard_liabilities_note') }}</div>
-  </div>
-</div>
-
-<!-- =======================
-     REPORT CARDS - Row 5: Additional Info (Hidden by default, can be shown if needed)
-======================= -->
-<div class="grid" style="display:none;" id="additionalInfoRow">
-  <div class="card">
-    <div>{{ _('dashboard_expenses_total_title') }}</div>
-    <div id="expenses" class="count">0</div>
-  </div>
-  <div class="card metric-card is-agent-dues" onclick="showAgentDuesDetails()" title="اضغط لعرض التفاصيل">
-    <div class="metric-card-icon-title">
-      <span class="emoji">🚚</span>
-      <span>{{ _('dashboard_agent_dues_title') }}</span>
+  <section class="dashboard-section">
+    <div class="dashboard-section-head">
+      <div>
+        <h2 class="dashboard-section-title">{{ _('dashboard_orders_all') }}</h2>
+        <p class="dashboard-section-subtitle">{{ _('dashboard_for_selected_period') }}</p>
+      </div>
     </div>
-    <div id="agentCommissions" class="count metric-count">0</div>
-    <div class="metric-note">{{ _('dashboard_agent_dues_note') }}</div>
-  </div>
-</div>
+    <div class="dashboard-order-grid">
+      <a href="/orders/" class="order-stat-link">
+        <div class="card order-stat-card">
+          <div class="order-stat-top">
+            <div class="order-stat-label"><i class="fas fa-layer-group order-stat-icon"></i> {{ _('dashboard_orders_all') }}</div>
+            <div id="c_all" class="order-stat-value">0</div>
+          </div>
+          <div class="order-stat-note">{{ _('dashboard_orders_all') }}</div>
+        </div>
+      </a>
+      <a href="/orders/ordered" class="order-stat-link">
+        <div class="card order-stat-card">
+          <div class="order-stat-top">
+            <div class="order-stat-label"><i class="fas fa-clipboard-list order-stat-icon"></i> {{ _('dashboard_orders_ordered') }}</div>
+            <div id="c_ordered" class="order-stat-value">0</div>
+          </div>
+          <div class="order-stat-note">{{ _('dashboard_orders_ordered') }}</div>
+        </div>
+      </a>
+      <a href="/orders/shipping" class="order-stat-link">
+        <div class="card order-stat-card">
+          <div class="order-stat-top">
+            <div class="order-stat-label"><i class="fas fa-shipping-fast order-stat-icon"></i> {{ _('dashboard_orders_shipping') }}</div>
+            <div id="c_shipping" class="order-stat-value">0</div>
+          </div>
+          <div class="order-stat-note">{{ _('dashboard_orders_shipping') }}</div>
+        </div>
+      </a>
+      <a href="/orders/delivered" class="order-stat-link">
+        <div class="card order-stat-card">
+          <div class="order-stat-top">
+            <div class="order-stat-label"><i class="fas fa-check-circle order-stat-icon"></i> {{ _('dashboard_orders_delivered') }}</div>
+            <div id="c_delivered" class="order-stat-value">0</div>
+          </div>
+          <div class="order-stat-note">{{ _('dashboard_orders_delivered') }}</div>
+        </div>
+      </a>
+      <a href="/orders/returned" class="order-stat-link">
+        <div class="card order-stat-card">
+          <div class="order-stat-top">
+            <div class="order-stat-label"><i class="fas fa-undo-alt order-stat-icon"></i> {{ _('dashboard_orders_returned') }}</div>
+            <div id="c_returned" class="order-stat-value">0</div>
+          </div>
+          <div class="order-stat-note">{{ _('dashboard_orders_returned') }}</div>
+        </div>
+      </a>
+    </div>
+  </section>
 
-<!-- =======================
-     ORDER CARDS
-======================= -->
-<div class="grid">
-  <div class="card">{{ _('dashboard_orders_all') }} <span id="c_all" class="count">0</span></div>
-  <div class="card">{{ _('dashboard_orders_ordered') }} <span id="c_ordered" class="count">0</span></div>
-  <div class="card">{{ _('dashboard_orders_shipping') }} <span id="c_shipping" class="count">0</span></div>
-  <div class="card">{{ _('dashboard_orders_delivered') }} <span id="c_delivered" class="count">0</span></div>
-  <div class="card">{{ _('dashboard_orders_returned') }} <span id="c_returned" class="count">0</span></div>
-</div>
+  <section class="dashboard-section">
+    <div class="dashboard-section-head">
+      <div>
+        <h2 class="dashboard-section-title">{{ _('dashboard_total_sales_title') }}</h2>
+        <p class="dashboard-section-subtitle">{{ _('dashboard_for_selected_period') }}</p>
+      </div>
+    </div>
 
-<!-- =======================
-     ALERTS
-======================= -->
-<div class="card">
-  <h4>⚠️ {{ _('dashboard_alerts_title') }}</h4>
-  <ul id="alerts"></ul>
-</div>
+    <div class="dashboard-primary-grid">
+      <div class="card dashboard-card-highlight is-cash">
+        <div class="metric-title"><i class="fas fa-wallet"></i> {{ _('dashboard_cash_balance_title') }}</div>
+        <div class="metric-count"> <span id="cashBalanceHero">0 د.ع</span> </div>
+        <div class="metric-note">{{ _('dashboard_cash_balance_note') }}</div>
+      </div>
+      <div class="card dashboard-card-highlight is-profit">
+        <div class="metric-title"><i class="fas fa-gem"></i> {{ _('dashboard_profit_title') }}</div>
+        <div class="metric-count" id="periodProfitHero">0 د.ع</div>
+        <div class="metric-note">{{ _('dashboard_profit_note') }}</div>
+      </div>
+    </div>
+
+    <div class="dashboard-metrics-grid">
+      <div class="card metric-card is-sales">
+        <div class="metric-title"><i class="fas fa-chart-bar"></i> {{ _('dashboard_total_sales_title') }}</div>
+        <div id="salesMain" class="count metric-count">0</div>
+        <div class="metric-note" id="salesPeriodLabel">{{ _('dashboard_for_selected_period') }}</div>
+      </div>
+      <div class="card metric-card is-cash-sales">
+        <div class="metric-title"><i class="fas fa-money-bill-wave"></i> {{ _('dashboard_cash_sales_title') }}</div>
+        <div id="cashSales" class="count metric-count">0</div>
+        <div class="metric-note">{{ _('dashboard_cash_sales_note') }}</div>
+      </div>
+      <div class="card metric-card is-credit-sales">
+        <div class="metric-title"><i class="fas fa-file-invoice-dollar"></i> {{ _('dashboard_credit_sales_title') }}</div>
+        <div id="creditSales" class="count metric-count">0</div>
+        <div class="metric-note">{{ _('dashboard_credit_sales_note') }}</div>
+      </div>
+      <div class="card metric-card is-inventory">
+        <div class="metric-title"><i class="fas fa-boxes"></i> {{ _('dashboard_inventory_value_title') }}</div>
+        <div id="inventory" class="count metric-count">0</div>
+        <div class="metric-note">{{ _('dashboard_inventory_value_note') }}</div>
+      </div>
+      <div class="card metric-card is-liabilities">
+        <div class="metric-title"><i class="fas fa-scale-balanced"></i> {{ _('dashboard_liabilities_title') }}</div>
+        <div id="liabilities" class="count metric-count">0</div>
+        <div class="metric-note">{{ _('dashboard_liabilities_note') }}</div>
+      </div>
+      <div class="card metric-card is-agent-dues" onclick="showAgentDuesDetails()" title="اضغط لعرض التفاصيل">
+        <div class="metric-card-icon-title">
+          <i class="fas fa-truck"></i>
+          <span>{{ _('dashboard_agent_dues_title') }}</span>
+        </div>
+        <div id="agentCommissions" class="count metric-count">0</div>
+        <div class="metric-note">{{ _('dashboard_agent_dues_note') }}</div>
+      </div>
+    </div>
+
+    <div class="dashboard-metrics-grid" id="additionalInfoRow" style="display:none;">
+      <div class="card metric-card">
+        <div class="metric-title"><i class="fas fa-receipt"></i> {{ _('dashboard_expenses_total_title') }}</div>
+        <div id="expenses" class="count metric-count">0</div>
+        <div class="metric-note">{{ _('dashboard_for_selected_period') }}</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="dashboard-insights-grid">
+    <div class="card dashboard-alerts-card">
+      <h4><i class="fas fa-bell"></i> {{ _('dashboard_alerts_title') }}</h4>
+      <ul id="alerts"></ul>
+    </div>
+    <div class="card dashboard-quick-card">
+      <div>
+        <h3 class="dashboard-section-title" style="font-size:18px;">{{ _('dashboard_profit_today') }}</h3>
+        <p class="dashboard-section-subtitle">{{ _('dashboard_profit_note') }}</p>
+      </div>
+      <div class="dashboard-quick-card-grid">
+        <div class="dashboard-quick-item">
+          <span class="dashboard-quick-item-label">{{ _('dashboard_cash_balance_title') }}</span>
+          <span id="quickCashBalance" class="dashboard-quick-item-value">0 د.ع</span>
+        </div>
+        <div class="dashboard-quick-item">
+          <span class="dashboard-quick-item-label">{{ _('dashboard_total_sales_title') }}</span>
+          <span id="quickSales" class="dashboard-quick-item-value">0 د.ع</span>
+        </div>
+        <div class="dashboard-quick-item">
+          <span class="dashboard-quick-item-label">{{ _('dashboard_profit_title') }}</span>
+          <span id="quickProfit" class="dashboard-quick-item-value">0 د.ع</span>
+        </div>
+        <div class="dashboard-quick-item">
+          <span class="dashboard-quick-item-label">{{ _('dashboard_inventory_value_title') }}</span>
+          <span id="quickInventory" class="dashboard-quick-item-value">0 د.ع</span>
+        </div>
+      </div>
+    </div>
+  </section>
 
 <!-- =======================
      SEARCH MODAL
@@ -1173,6 +1718,13 @@
 <!-- =======================
      CHARTS SECTION
 ======================= -->
+<section class="dashboard-section dashboard-chart-section">
+  <div class="dashboard-section-head">
+    <div>
+      <h2 class="dashboard-section-title">{{ _('dashboard_status_chart_title') }}</h2>
+      <p class="dashboard-section-subtitle">{{ _('dashboard_for_selected_period') }}</p>
+    </div>
+  </div>
 <div class="charts-container">
   <div class="chart-card">
     <h4>📈 {{ _('dashboard_sales_chart_title') }}</h4>
@@ -1213,6 +1765,7 @@
     </div>
   </div>
 </div>
+</section>
 
 <!-- =======================
      ADD EXPENSE MODAL
@@ -1416,7 +1969,8 @@
 <!-- =======================
      AI ASSISTANT (محلل مالي / مساعد قرار)
 ======================= -->
-<div class="card ai-assistant-card" style="margin-top:24px;">
+<section class="dashboard-section">
+<div class="card ai-assistant-card">
   <h3 class="ai-assistant-title">
     <span>🧠</span>
     <span>{{ _('dashboard_ai_title') }}</span>
@@ -1453,9 +2007,11 @@
   <div id="aiAnalyzeResult" class="ai-assistant-result" style="display:none;"></div>
   <div id="aiAnalyzeError" class="ai-assistant-error" style="display:none;"></div>
 </div>
+</section>
+</div>
 <style>
   .ai-assistant-card {
-    max-width: 720px;
+    max-width: none;
   }
 
   .ai-assistant-title {
@@ -1531,6 +2087,13 @@
   // ========================
   let currentPeriod = { type: "last_30_days", date_from: null, date_to: null };
 
+  function setTextForIds(ids, value) {
+    ids.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerText = value;
+    });
+  }
+
   function load(periodType = "last_30_days", dateFrom = null, dateTo = null) {
     // ==========================
     // تحديث الفترة الحالية (بدون إعادة تحميل الصفحة - AJAX فقط)
@@ -1554,18 +2117,24 @@
         document.getElementById("salesPeriodLabel").innerText = "للفترة: " + (d.period_label || "اليوم");
 
         // الصف الأول: الرصيد النقدي
-        document.getElementById("cashBalance").innerText = formatNumber(d.cash_balance || 0) + " د.ع";
+        const cashBalanceText = formatNumber(d.cash_balance || 0) + " د.ع";
+        setTextForIds(["cashBalance", "cashBalanceHero", "quickCashBalance"], cashBalanceText);
 
         // الصف الثاني: المبيعات
-        document.getElementById("sales").innerText = formatNumber(d.sales || 0) + " د.ع";
-        document.getElementById("cashSales").innerText = formatNumber(d.cash_sales || 0) + " د.ع";
-        document.getElementById("creditSales").innerText = formatNumber(d.credit_sales || 0) + " د.ع";
+        const salesText = formatNumber(d.sales || 0) + " د.ع";
+        const cashSalesText = formatNumber(d.cash_sales || 0) + " د.ع";
+        const creditSalesText = formatNumber(d.credit_sales || 0) + " د.ع";
+        setTextForIds(["sales", "salesMain", "quickSales"], salesText);
+        setTextForIds(["cashSales"], cashSalesText);
+        setTextForIds(["creditSales"], creditSalesText);
 
         // الصف الثالث: الأرباح
-        document.getElementById("periodProfit").innerText = formatNumber(d.period_profit || 0) + " د.ع";
+        const profitText = formatNumber(d.period_profit || 0) + " د.ع";
+        setTextForIds(["periodProfit", "periodProfitHero", "quickProfit"], profitText);
 
         // الصف الرابع: المخزون والالتزامات
-        document.getElementById("inventory").innerText = formatNumber(d.inventory || 0) + " د.ع";
+        const inventoryText = formatNumber(d.inventory || 0) + " د.ع";
+        setTextForIds(["inventory", "quickInventory"], inventoryText);
         const liabilities = (d.debts || 0) + (d.shipping || 0);
         document.getElementById("liabilities").innerText = formatNumber(liabilities) + " د.ع";
 
