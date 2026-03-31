@@ -459,6 +459,15 @@ def _inbox_workflow_query():
     return q
 
 
+def _inbox_workflow_query_tenant_only():
+    """Fallback query: all workflows for current tenant (ignore user ownership)."""
+    tenant_slug = _current_tenant_slug()
+    q = AgentWorkflow.query.join(Agent, Agent.id == AgentWorkflow.agent_id)
+    if tenant_slug:
+        q = q.filter(Agent.tenant_slug == tenant_slug)
+    return q
+
+
 def _graph_has_telegram_listener(graph_json) -> bool:
     if not isinstance(graph_json, dict):
         return False
@@ -529,6 +538,9 @@ def api_telegram_inbox_workflows():
     try:
         with _core_db():
             rows = _inbox_workflow_query().order_by(AgentWorkflow.updated_at.desc()).all()
+            # If no rows due to user ownership filter, fallback to tenant-wide workflows.
+            if not rows:
+                rows = _inbox_workflow_query_tenant_only().order_by(AgentWorkflow.updated_at.desc()).all()
         workflows = []
         for wf in rows:
             if not _graph_has_telegram_listener(wf.graph_json):
@@ -553,6 +565,9 @@ def api_whatsapp_inbox_workflows():
     try:
         with _core_db():
             rows = _inbox_workflow_query().order_by(AgentWorkflow.updated_at.desc()).all()
+            # If no rows due to user ownership filter, fallback to tenant-wide workflows.
+            if not rows:
+                rows = _inbox_workflow_query_tenant_only().order_by(AgentWorkflow.updated_at.desc()).all()
         workflows = []
         for wf in rows:
             if not _graph_has_whatsapp_listener(wf.graph_json):
