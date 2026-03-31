@@ -196,7 +196,7 @@ class FinoraDeployStudio(tk.Tk):
 
         self.telegram_inbox_db_btn = ttk.Button(
             btns,
-            text="Telegram inbox DB",
+            text="Inbox DB (TG+WA)",
             width=18,
             command=self.on_ensure_telegram_inbox_table_clicked,
         )
@@ -997,7 +997,7 @@ PY
             self.set_busy(False)
 
     def on_ensure_telegram_inbox_table_clicked(self) -> None:
-        """إنشاء جدول محادثات تيليجرام فقط (سريع) على السيرفر."""
+        """إنشاء/ترقية جدول inbox (Telegram + WhatsApp) على السيرفر."""
         self.save_config()
         thread = threading.Thread(target=self._ensure_telegram_inbox_table_thread, daemon=True)
         self.set_busy(True)
@@ -1005,11 +1005,11 @@ PY
 
     def _ensure_telegram_inbox_table_thread(self) -> None:
         try:
-            self.set_status("Creating telegram_inbox_messages on server…")
+            self.set_status("Creating/upgrading inbox table (TG+WA) on server…")
             server_path = self.server_path_var.get().strip()
             if not server_path:
                 self.append_log("[ERROR] Server project path is empty.\n")
-                self.set_status("Telegram inbox DB failed (server path empty).")
+                self.set_status("Inbox DB failed (server path empty).")
                 return
 
             script = f"""
@@ -1023,23 +1023,34 @@ from sqlalchemy import create_engine
 from app import app, db
 from models.telegram_inbox_message import TelegramInboxMessage
 
+def ensure_channel_column(engine):
+    with engine.connect() as conn:
+        cols = [r[1] for r in conn.exec_driver_sql("PRAGMA table_info(telegram_inbox_messages)").fetchall()]
+        if "channel" not in cols:
+            conn.exec_driver_sql("ALTER TABLE telegram_inbox_messages ADD COLUMN channel VARCHAR(20) DEFAULT 'telegram'")
+            print("channel column added")
+        else:
+            print("channel column already exists")
+
 with app.app_context():
     TelegramInboxMessage.__table__.create(db.engine, checkfirst=True)
-    print("main DB: telegram_inbox_messages OK (checkfirst)")
+    ensure_channel_column(db.engine)
+    print("main DB: telegram_inbox_messages OK (checkfirst + channel)")
     tenants_dir = Path(app.root_path) / "tenants"
     if tenants_dir.is_dir():
         for dbf in sorted(tenants_dir.glob("*.db")):
             eng = create_engine("sqlite:///" + str(dbf.resolve()))
             TelegramInboxMessage.__table__.create(bind=eng, checkfirst=True)
-            print("tenant", dbf.stem + ": telegram_inbox_messages OK")
+            ensure_channel_column(eng)
+            print("tenant", dbf.stem + ": telegram_inbox_messages OK (checkfirst + channel)")
 PY
 """
             rc = self.run_ssh_script(script)
             if rc == 0:
-                self.append_log("[INFO] Telegram inbox table ensured on server.\n")
-                self.set_status("Telegram inbox DB OK.")
+                self.append_log("[INFO] Inbox table (Telegram + WhatsApp) ensured on server.\n")
+                self.set_status("Inbox DB (TG+WA) OK.")
             else:
-                self.set_status("Telegram inbox DB finished with errors (see log).")
+                self.set_status("Inbox DB (TG+WA) finished with errors (see log).")
         finally:
             self.set_busy(False)
 
