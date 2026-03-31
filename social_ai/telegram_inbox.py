@@ -25,7 +25,8 @@ def ensure_telegram_inbox_table_for_current_bind() -> None:
         insp = inspect(bind)
         cols = {c.get("name") for c in insp.get_columns(TelegramInboxMessage.__tablename__)}
         if "channel" not in cols:
-            bind.execute(text("ALTER TABLE telegram_inbox_messages ADD COLUMN channel VARCHAR(20) DEFAULT 'telegram'"))
+            with bind.begin() as conn:
+                conn.execute(text("ALTER TABLE telegram_inbox_messages ADD COLUMN channel VARCHAR(20) DEFAULT 'telegram'"))
     except Exception as exc:
         current_app.logger.warning("telegram_inbox ensure table: %s", exc)
 
@@ -38,23 +39,14 @@ def record_telegram_inbox_message(
     body: str,
 ) -> None:
     """يحفظ رسالة في جدول صندوق المحادثات؛ لا يرفع استثناءً إذا فشل الحفظ."""
-    if not workflow_id or not chat_id or not (body or "").strip():
-        return
-    role = (role or "user").strip().lower()
-    if role not in ("user", "bot", "operator"):
-        role = "user"
-    try:
-        ensure_telegram_inbox_table_for_current_bind()
-        from models.telegram_inbox_message import TelegramInboxMessage
-
-        row = TelegramInboxMessage(
-            tenant_slug=(tenant_slug or None),
-            workflow_id=int(workflow_id),
-            channel="telegram",
-            chat_id=str(chat_id)[:64],
-            role=role[:20],
-            body=(body or "")[:12000],
-        )
+    record_inbox_message(
+        tenant_slug=tenant_slug,
+        workflow_id=workflow_id,
+        channel="telegram",
+        chat_id=chat_id,
+        role=role,
+        body=body,
+    )
 
 
 def record_inbox_message(
@@ -98,22 +90,6 @@ def record_inbox_message(
             tenant_slug,
             workflow_id,
             channel,
-            (chat_id or "")[:24],
-            role,
-            exc,
-            exc_info=True,
-        )
-        db.session.add(row)
-        db.session.commit()
-    except Exception as exc:
-        try:
-            db.session.rollback()
-        except Exception:
-            pass
-        current_app.logger.warning(
-            "telegram inbox record skipped (tenant=%s workflow_id=%s chat_id=%s role=%s): %s",
-            tenant_slug,
-            workflow_id,
             (chat_id or "")[:24],
             role,
             exc,
