@@ -106,6 +106,10 @@
     filter: brightness(1.2);
   }
 
+  .cust-actions-grid .action-label {
+    display: inline;
+  }
+
   .ag-theme-finora .ag-header-cell.actions-col .ag-header-cell-label {
     justify-content: center;
   }
@@ -996,6 +1000,21 @@
       margin: var(--spacing-md);
     }
 
+    .cust-actions-grid {
+      gap: 6px;
+    }
+
+    .cust-actions-grid .cust-action {
+      min-width: 34px;
+      height: 32px;
+      padding: 0 8px;
+      border-radius: 8px;
+    }
+
+    .cust-actions-grid .action-label {
+      display: none;
+    }
+
     .toast-container {
       top: var(--spacing-md);
       left: var(--spacing-md);
@@ -1481,13 +1500,13 @@
           return `
           <div class="cust-actions-grid" style="display: flex; gap: 8px; justify-content: center; align-items: center; height: 100%;">
             <button class="cust-action btn-orders" onclick="viewOrders(${c.id})" title="{{ _('customers_action_view_orders') }}">
-              <span>🛒</span> {{ _('customers_action_orders') }}
+              <span>🛒</span><span class="action-label"> {{ _('customers_action_orders') }}</span>
             </button>
             <button class="cust-action btn-edit" onclick="editCustomer(${c.id}, '${nameEscaped}', '${phoneEscaped}', '${phone2Escaped}', '${cityEscaped}', '${addressEscaped}', '${notesEscaped}')" title="{{ _('customers_action_edit') }}">
-              <span>✏️</span> {{ _('customers_action_edit') }}
+              <span>✏️</span><span class="action-label"> {{ _('customers_action_edit') }}</span>
             </button>
             <button class="cust-action btn-delete" onclick="deleteCustomer(${c.id}, '${nameEscaped}')" title="{{ _('customers_action_delete') }}">
-              <span>🗑️</span> {{ _('customers_action_delete') }}
+              <span>🗑️</span><span class="action-label"> {{ _('customers_action_delete') }}</span>
             </button>
           </div>
         `;
