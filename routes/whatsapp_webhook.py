@@ -75,7 +75,8 @@ def whatsapp_webhook():
         if request.args.get("test") == "1":
             return jsonify({"status": "ok", "message": "Webhook Running"})
 
-        if mode == "subscribe" and token == verify_token:
+        # نقبل التحقق الرسمي (mode=subscribe) وأيضاً الروابط اليدوية التي ترسل token+challenge فقط.
+        if ((mode == "subscribe") or (mode is None and challenge is not None)) and token == verify_token:
             current_app.logger.info("WhatsApp webhook verified successfully.")
             return challenge or "", 200
         current_app.logger.warning("WhatsApp webhook verification failed.")
