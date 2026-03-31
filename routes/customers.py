@@ -1,4 +1,7 @@
-from flask import Blueprint, render_template, request, jsonify
+from io import BytesIO
+
+import pandas as pd
+from flask import Blueprint, render_template, request, jsonify, send_file
 from extensions import db
 from models.customer import Customer
 from models.invoice import Invoice
@@ -166,3 +169,118 @@ def customer_orders(id):
             "date": o.created_at.strftime("%Y-%m-%d")
         } for o in orders
     ])
+
+
+# ==================================================
+# Export Customers
+# ==================================================
+@customers_bp.route("/export")
+def export_customers():
+    customers = Customer.query.order_by(Customer.created_at.desc()).all()
+    rows = []
+    for c in customers:
+        rows.append({
+            "المعرف": c.id,
+            "الاسم": c.name or "",
+            "الرقم": c.phone or "",
+            "الرقم الآخر": c.phone2 or "",
+            "المحافظة": c.city or "",
+            "العنوان": c.address or "",
+            "ملاحظات": c.notes or "",
+            "تاريخ الإضافة": c.created_at.strftime("%Y-%m-%d %H:%M") if c.created_at else "",
+        })
+
+    df = pd.DataFrame(rows)
+    output = BytesIO()
+    df.to_excel(output, index=False)
+    output.seek(0)
+    return send_file(
+        output,
+        as_attachment=True,
+        download_name="customers.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+
+# ==================================================
+# Import Customers
+# ==================================================
+@customers_bp.route("/import", methods=["POST"])
+def import_customers():
+    if "file" not in request.files:
+        return jsonify({"success": False, "error": "لم يتم اختيار ملف"}), 400
+
+    file = request.files["file"]
+    if not file or not file.filename:
+        return jsonify({"success": False, "error": "لم يتم اختيار ملف"}), 400
+
+    filename = (file.filename or "").lower()
+    try:
+        if filename.endswith(".xlsx") or filename.endswith(".xls"):
+            df = pd.read_excel(file, engine="openpyxl" if filename.endswith(".xlsx") else None)
+        elif filename.endswith(".csv"):
+            df = pd.read_csv(file)
+        else:
+            return jsonify({"success": False, "error": "نوع الملف غير مدعوم. استخدم CSV أو XLSX"}), 400
+    except Exception as e:
+        return jsonify({"success": False, "error": f"تعذر قراءة الملف: {str(e)}"}), 400
+
+    columns_map = {
+        "الاسم": "name",
+        "name": "name",
+        "الرقم": "phone",
+        "phone": "phone",
+        "رقم": "phone",
+        "الرقم الآخر": "phone2",
+        "phone2": "phone2",
+        "المحافظة": "city",
+        "city": "city",
+        "العنوان": "address",
+        "address": "address",
+        "ملاحظات": "notes",
+        "notes": "notes",
+    }
+
+    normalized_rows = []
+    for _, row in df.iterrows():
+        item = {}
+        for original_col, target_key in columns_map.items():
+            if original_col in df.columns:
+                value = row.get(original_col)
+                item[target_key] = "" if pd.isna(value) else str(value).strip()
+        normalized_rows.append(item)
+
+    imported = 0
+    skipped = 0
+    for item in normalized_rows:
+        name = (item.get("name") or "").strip()
+        phone = (item.get("phone") or "").strip()
+        if not name or not phone:
+            skipped += 1
+            continue
+
+        existing = Customer.query.filter_by(phone=phone).first()
+        if existing:
+            existing.name = name
+            existing.phone2 = (item.get("phone2") or "").strip() or None
+            existing.city = (item.get("city") or "").strip() or None
+            existing.address = (item.get("address") or "").strip() or None
+            existing.notes = (item.get("notes") or "").strip() or None
+        else:
+            db.session.add(Customer(
+                name=name,
+                phone=phone,
+                phone2=(item.get("phone2") or "").strip() or None,
+                city=(item.get("city") or "").strip() or None,
+                address=(item.get("address") or "").strip() or None,
+                notes=(item.get("notes") or "").strip() or None,
+            ))
+        imported += 1
+
+    db.session.commit()
+    return jsonify({
+        "success": True,
+        "message": f"تم استيراد/تحديث {imported} زبون",
+        "imported": imported,
+        "skipped": skipped,
+    })

@@ -1046,6 +1046,14 @@
       <option value="{{ city }}">{{ city }}</option>
       {% endfor %}
     </select>
+    <button class="btn btn-muted" type="button" onclick="exportCustomers()">
+      <span>📤</span>
+      <span>تصدير</span>
+    </button>
+    <button class="btn btn-muted" type="button" onclick="triggerImportCustomers()">
+      <span>📥</span>
+      <span>استيراد</span>
+    </button>
     <button class="btn-premium" onclick="openAdd()">
       <span>➕</span>
       <span>{{ _('customers_add_button') }}</span>
@@ -1072,11 +1080,14 @@
     "phone2": {{ (c.phone2 or '')|tojson }},
     "city": {{ (c.city or '—')|tojson }},
     "address": {{ (c.address or '—')|tojson }},
-    "notes": {{ (c.notes or '')|tojson }}
+    "notes": {{ (c.notes or '')|tojson }},
+    "created_at": {{ ((c.created_at.strftime("%Y-%m-%d %H:%M")) if c.created_at else '—')|tojson }}
   }{% if not loop.last %},{% endif %}
   {% endfor %}
 ]
 </script>
+
+<input type="file" id="customersImportInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleImportCustomers(event)">
 
 <!-- ============ MODAL ============ -->
 <div class="modal" id="modal">
@@ -1147,6 +1158,45 @@
     if (modal) {
       modal.classList.remove('show');
       document.body.style.overflow = '';
+    }
+  }
+
+  function exportCustomers() {
+    window.location.href = '/customers/export';
+  }
+
+  function triggerImportCustomers() {
+    const input = document.getElementById('customersImportInput');
+    if (input) {
+      input.value = '';
+      input.click();
+    }
+  }
+
+  async function handleImportCustomers(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    showLoading();
+    try {
+      const resp = await fetch('/customers/import', {
+        method: 'POST',
+        body: formData
+      });
+      const res = await resp.json();
+      if (resp.ok && res.success) {
+        showToast(res.message || 'تم الاستيراد بنجاح', 'success');
+        setTimeout(() => location.reload(), 1200);
+      } else {
+        showToast(res.error || 'تعذر استيراد الملف', 'error');
+      }
+    } catch (err) {
+      showToast('حدث خطأ أثناء الاستيراد', 'error');
+    } finally {
+      hideLoading();
     }
   }
 
@@ -1403,8 +1453,10 @@
         cellRenderer: params => `<strong>${params.value}</strong>`
       },
       { headerName: "{{ _('customers_col_phone') }}", field: "phone", width: 130 },
+      { headerName: "الرقم الآخر", field: "phone2", width: 140 },
       { headerName: "{{ _('customers_col_city') }}", field: "city", width: 120 },
       { headerName: "{{ _('customers_col_address') }}", field: "address", flex: 1, minWidth: 200 },
+      { headerName: "تاريخ الإضافة", field: "created_at", width: 170 },
       {
         headerName: "{{ _('customers_col_actions') }}",
         field: "actions",
