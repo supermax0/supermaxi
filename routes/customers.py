@@ -208,22 +208,37 @@ def export_customers():
 @customers_bp.route("/import", methods=["POST"])
 def import_customers():
     if "file" not in request.files:
-        return jsonify({"success": False, "error": "لم يتم اختيار ملف"}), 400
+        return jsonify({"success": False, "error": "لم يتم اختيار ملف"})
 
     file = request.files["file"]
     if not file or not file.filename:
-        return jsonify({"success": False, "error": "لم يتم اختيار ملف"}), 400
+        return jsonify({"success": False, "error": "لم يتم اختيار ملف"})
 
-    filename = (file.filename or "").lower()
-    try:
-        if filename.endswith(".xlsx") or filename.endswith(".xls"):
-            df = pd.read_excel(file, engine="openpyxl" if filename.endswith(".xlsx") else None)
-        elif filename.endswith(".csv"):
-            df = pd.read_csv(file)
-        else:
-            return jsonify({"success": False, "error": "نوع الملف غير مدعوم. استخدم CSV أو XLSX"}), 400
-    except Exception as e:
-        return jsonify({"success": False, "error": f"تعذر قراءة الملف: {str(e)}"}), 400
+    raw_bytes = file.read()
+    if not raw_bytes:
+        return jsonify({"success": False, "error": "الملف فارغ"})
+
+    df = None
+    read_errors = []
+    for reader in (
+        lambda: pd.read_excel(BytesIO(raw_bytes), engine="openpyxl"),
+        lambda: pd.read_excel(BytesIO(raw_bytes)),
+        lambda: pd.read_csv(BytesIO(raw_bytes), encoding="utf-8-sig"),
+        lambda: pd.read_csv(BytesIO(raw_bytes), encoding="cp1256"),
+    ):
+        try:
+            df = reader()
+            if df is not None:
+                break
+        except Exception as e:
+            read_errors.append(str(e))
+
+    if df is None:
+        msg = read_errors[0] if read_errors else "تعذر قراءة الملف"
+        return jsonify({"success": False, "error": f"تعذر قراءة الملف: {msg}"})
+
+    # تنظيف أسماء الأعمدة لتجاوز اختلافات الفراغات/BOM
+    df.columns = [str(c).strip().replace("\ufeff", "") for c in df.columns]
 
     columns_map = {
         "الاسم": "name",
@@ -277,7 +292,11 @@ def import_customers():
             ))
         imported += 1
 
-    db.session.commit()
+    if imported > 0:
+        db.session.commit()
+    else:
+        db.session.rollback()
+
     return jsonify({
         "success": True,
         "message": f"تم استيراد/تحديث {imported} زبون",

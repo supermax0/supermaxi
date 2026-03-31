@@ -1186,8 +1186,14 @@
         method: 'POST',
         body: formData
       });
-      const res = await resp.json();
-      if (resp.ok && res.success) {
+      let res = null;
+      try {
+        res = await resp.json();
+      } catch (e) {
+        res = { success: false, error: 'استجابة غير متوقعة من الخادم' };
+      }
+
+      if (res.success) {
         showToast(res.message || 'تم الاستيراد بنجاح', 'success');
         setTimeout(() => location.reload(), 1200);
       } else {
