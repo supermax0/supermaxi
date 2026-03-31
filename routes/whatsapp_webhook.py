@@ -60,7 +60,7 @@ def _extract_incoming_message(payload: dict[str, Any]) -> tuple[str | None, str 
 
 @whatsapp_webhook_bp.route("/webhook", methods=["GET", "POST"])
 def whatsapp_webhook():
-    verify_token = (os.getenv("VERIFY_TOKEN") or "12345").strip()
+    verify_token = (os.getenv("VERIFY_TOKEN") or "75428468").strip()
 
     if request.method == "GET":
         mode = request.args.get("hub.mode")
