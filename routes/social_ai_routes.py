@@ -491,6 +491,11 @@ def _graph_has_whatsapp_listener(graph_json) -> bool:
 
 
 def _get_workflow_for_inbox(workflow_id: int) -> AgentWorkflow | None:
+    # Prefer current tenant/session DB where workflows are commonly stored.
+    wf = _inbox_workflow_query().filter(AgentWorkflow.id == workflow_id).first()
+    if wf:
+        return wf
+    # Fallback to Core DB for setups storing agents centrally.
     with _core_db():
         return _inbox_workflow_query().filter(AgentWorkflow.id == workflow_id).first()
 
@@ -536,11 +541,16 @@ def api_telegram_inbox_workflows():
     if not session.get("user_id"):
         return jsonify({"success": False, "error": "يجب تسجيل الدخول"}), 401
     try:
-        with _core_db():
-            rows = _inbox_workflow_query().order_by(AgentWorkflow.updated_at.desc()).all()
-            # If no rows due to user ownership filter, fallback to tenant-wide workflows.
-            if not rows:
-                rows = _inbox_workflow_query_tenant_only().order_by(AgentWorkflow.updated_at.desc()).all()
+        rows = _inbox_workflow_query().order_by(AgentWorkflow.updated_at.desc()).all()
+        # If no rows due to user ownership filter, fallback to tenant-wide workflows.
+        if not rows:
+            rows = _inbox_workflow_query_tenant_only().order_by(AgentWorkflow.updated_at.desc()).all()
+        # Final fallback: Core DB storage mode.
+        if not rows:
+            with _core_db():
+                rows = _inbox_workflow_query().order_by(AgentWorkflow.updated_at.desc()).all()
+                if not rows:
+                    rows = _inbox_workflow_query_tenant_only().order_by(AgentWorkflow.updated_at.desc()).all()
         workflows = []
         for wf in rows:
             if not _graph_has_telegram_listener(wf.graph_json):
@@ -563,11 +573,16 @@ def api_whatsapp_inbox_workflows():
     if not session.get("user_id"):
         return jsonify({"success": False, "error": "يجب تسجيل الدخول"}), 401
     try:
-        with _core_db():
-            rows = _inbox_workflow_query().order_by(AgentWorkflow.updated_at.desc()).all()
-            # If no rows due to user ownership filter, fallback to tenant-wide workflows.
-            if not rows:
-                rows = _inbox_workflow_query_tenant_only().order_by(AgentWorkflow.updated_at.desc()).all()
+        rows = _inbox_workflow_query().order_by(AgentWorkflow.updated_at.desc()).all()
+        # If no rows due to user ownership filter, fallback to tenant-wide workflows.
+        if not rows:
+            rows = _inbox_workflow_query_tenant_only().order_by(AgentWorkflow.updated_at.desc()).all()
+        # Final fallback: Core DB storage mode.
+        if not rows:
+            with _core_db():
+                rows = _inbox_workflow_query().order_by(AgentWorkflow.updated_at.desc()).all()
+                if not rows:
+                    rows = _inbox_workflow_query_tenant_only().order_by(AgentWorkflow.updated_at.desc()).all()
         workflows = []
         for wf in rows:
             if not _graph_has_whatsapp_listener(wf.graph_json):
