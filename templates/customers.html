@@ -106,6 +106,16 @@
     filter: brightness(1.2);
   }
 
+  .ag-theme-finora .ag-header-cell.actions-col .ag-header-cell-label {
+    justify-content: center;
+  }
+
+  .ag-theme-finora .ag-cell.actions-col {
+    background: rgba(99, 102, 241, 0.07);
+    border-inline-start: 1px solid rgba(99, 102, 241, 0.18);
+    border-inline-end: 1px solid rgba(99, 102, 241, 0.18);
+  }
+
   /* ================= STATS GRID ================= */
   .stats-grid {
     display: grid;
@@ -1450,26 +1460,15 @@
     }
 
     const columnDefs = [
-      { headerName: "#", field: "id", width: 70, sortable: true },
-      {
-        headerName: "{{ _('customers_col_name') }}",
-        field: "name",
-        flex: 1,
-        minWidth: 150,
-        cellRenderer: params => `<strong>${params.value}</strong>`
-      },
-      { headerName: "{{ _('customers_col_phone') }}", field: "phone", width: 130 },
-      { headerName: "الرقم الآخر", field: "phone2", width: 140 },
-      { headerName: "{{ _('customers_col_city') }}", field: "city", width: 120 },
-      { headerName: "{{ _('customers_col_address') }}", field: "address", flex: 1, minWidth: 200 },
-      { headerName: "تاريخ الإضافة", field: "created_at", width: 170 },
       {
         headerName: "{{ _('customers_col_actions') }}",
         field: "actions",
-        width: 250,
-        pinned: 'left',
+        width: 260,
         sortable: false,
         filter: false,
+        suppressMovable: true,
+        cellClass: 'actions-col',
+        headerClass: 'actions-col',
         cellRenderer: params => {
           const c = params.data;
           const nameEscaped = (c.name || '').replace(/'/g, "\\'");
@@ -1493,7 +1492,20 @@
           </div>
         `;
         }
-      }
+      },
+      { headerName: "#", field: "id", width: 70, sortable: true },
+      {
+        headerName: "{{ _('customers_col_name') }}",
+        field: "name",
+        flex: 1,
+        minWidth: 150,
+        cellRenderer: params => `<strong>${params.value}</strong>`
+      },
+      { headerName: "{{ _('customers_col_phone') }}", field: "phone", width: 130 },
+      { headerName: "الرقم الآخر", field: "phone2", width: 140 },
+      { headerName: "{{ _('customers_col_city') }}", field: "city", width: 120 },
+      { headerName: "{{ _('customers_col_address') }}", field: "address", flex: 1, minWidth: 200 },
+      { headerName: "تاريخ الإضافة", field: "created_at", width: 170 }
     ];
 
     const gridOptions = {
@@ -1501,6 +1513,7 @@
       rowData: rowData,
       rowHeight: 52,
       headerHeight: 48,
+      suppressColumnMoveAnimation: false,
       pagination: true,
       paginationPageSize: 20,
       paginationPageSizeSelector: [10, 20, 50, 100],
