@@ -647,17 +647,14 @@ def api_telegram_inbox_chats():
 
 @social_ai_bp.route("/api/whatsapp/inbox/chats", methods=["GET"])
 def api_whatsapp_inbox_chats():
-    if not session.get("user_id"):
-        return jsonify({"success": False, "error": "يجب تسجيل الدخول"}), 401
     try:
+        if not session.get("user_id"):
+            return jsonify({"success": False, "error": "يجب تسجيل الدخول"}), 401
         wf_id = int(request.args.get("workflow_id") or 0)
-    except (TypeError, ValueError):
-        wf_id = 0
-    if not wf_id or not _get_workflow_for_inbox(wf_id):
-        return jsonify({"success": False, "error": "وورك فلو غير موجود أو غير مسموح"}), 404
+        if not wf_id or not _get_workflow_for_inbox(wf_id):
+            return jsonify({"success": False, "error": "وورك فلو غير موجود أو غير مسموح"}), 404
 
-    _ensure_telegram_inbox_table()
-    try:
+        _ensure_telegram_inbox_table()
         recent = (
             TelegramInboxMessage.query.filter_by(workflow_id=wf_id, channel="whatsapp")
             .order_by(TelegramInboxMessage.created_at.desc())
@@ -711,20 +708,17 @@ def api_telegram_inbox_messages():
 
 @social_ai_bp.route("/api/whatsapp/inbox/messages", methods=["GET"])
 def api_whatsapp_inbox_messages():
-    if not session.get("user_id"):
-        return jsonify({"success": False, "error": "يجب تسجيل الدخول"}), 401
     try:
+        if not session.get("user_id"):
+            return jsonify({"success": False, "error": "يجب تسجيل الدخول"}), 401
         wf_id = int(request.args.get("workflow_id") or 0)
-    except (TypeError, ValueError):
-        wf_id = 0
-    chat_id = (request.args.get("chat_id") or "").strip()
-    if not wf_id or not chat_id:
-        return jsonify({"success": False, "error": "workflow_id و chat_id مطلوبان"}), 400
-    if not _get_workflow_for_inbox(wf_id):
-        return jsonify({"success": False, "error": "وورك فلو غير موجود أو غير مسموح"}), 404
+        chat_id = (request.args.get("chat_id") or "").strip()
+        if not wf_id or not chat_id:
+            return jsonify({"success": False, "error": "workflow_id و chat_id مطلوبان"}), 400
+        if not _get_workflow_for_inbox(wf_id):
+            return jsonify({"success": False, "error": "وورك فلو غير موجود أو غير مسموح"}), 404
 
-    _ensure_telegram_inbox_table()
-    try:
+        _ensure_telegram_inbox_table()
         q = (
             TelegramInboxMessage.query.filter_by(workflow_id=wf_id, channel="whatsapp", chat_id=chat_id)
             .order_by(TelegramInboxMessage.created_at.asc())
