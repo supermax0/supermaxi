@@ -197,7 +197,14 @@ const KnowledgeNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
 };
 
 const CustomersPhonesNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
-  const subtitle = data.subtitle || "يجلب كل أرقام الزبائن من صفحة الزبائن";
+  const includePhone2 = (data as any).include_phone2 !== false;
+  const deduplicate = (data as any).deduplicate !== false;
+  const count = (data as any).customer_numbers_count;
+  const subtitle =
+    data.subtitle ||
+    `تحميل الأرقام${includePhone2 ? " + الرقم الآخر" : ""}${deduplicate ? " • بدون تكرار" : ""}${
+      typeof count === "number" ? ` • ${count} رقم` : ""
+    }`;
   return (
     <div className={`${baseNodeClasses} border-[#22d3ee]`} style={baseNodeShadow}>
       <Handle type="target" position={Position.Top} id="in" className={handleClass} />

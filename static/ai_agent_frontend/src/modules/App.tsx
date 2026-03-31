@@ -520,8 +520,13 @@ export const App: React.FC = () => {
         data: {
           label: "WhatsApp Send",
           to: "{{phone}}",
-          template: "مرحبا {{name}} 👋 لدينا عرض خاص على {{product}} بسعر {{price}}",
-          subtitle: "إرسال رسالة واتساب",
+          use_template: true,
+          template_name: "promo_offer",
+          customer_name: "{{name}}",
+          product_name: "{{product}}",
+          price: "{{price}}",
+          template: "",
+          subtitle: "إرسال قالب واتساب promo_offer",
         },
       },
       {
@@ -909,6 +914,13 @@ export const App: React.FC = () => {
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       if (!selectedNode || selectedNode.type !== "memory_store") return;
       updateNodeData(selectedNode.id, { [field]: e.target.value });
+    };
+
+  const handleCustomersPhonesFieldChange =
+    (field: string) =>
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!selectedNode || selectedNode.type !== "customers_phones") return;
+      updateNodeData(selectedNode.id, { [field]: e.target.checked });
     };
 
   const handleKnowledgeFieldChange =
@@ -2268,6 +2280,37 @@ export const App: React.FC = () => {
                           عند التنفيذ سيتم تقييم المتغيرات ثم تخزين النتيجة في السياق بنفس اسم الحقل حتى تستخدمها العقد التالية.
                         </p>
                       </div>
+                    </div>
+                  </>
+                )}
+
+                {selectedNode.type === "customers_phones" && (
+                  <>
+                    <div className="mt-2 border-t border-slate-800 pt-2 text-[11px] font-semibold text-slate-400">
+                      إعدادات عقدة أرقام الزبائن
+                    </div>
+                    <div className="space-y-3">
+                      <label className="flex items-center gap-2 text-[11px] text-slate-300">
+                        <input
+                          type="checkbox"
+                          checked={(selectedNode.data as any)?.include_phone2 !== false}
+                          onChange={handleCustomersPhonesFieldChange("include_phone2")}
+                        />
+                        تضمين الرقم الآخر (phone2)
+                      </label>
+                      <label className="flex items-center gap-2 text-[11px] text-slate-300">
+                        <input
+                          type="checkbox"
+                          checked={(selectedNode.data as any)?.deduplicate !== false}
+                          onChange={handleCustomersPhonesFieldChange("deduplicate")}
+                        />
+                        حذف الأرقام المكررة
+                      </label>
+                      <p className="text-[10px] text-slate-500">
+                        المخرجات المتاحة: <code className="bg-[#1e293b] px-1 rounded">customer_numbers</code>,
+                        <code className="bg-[#1e293b] px-1 rounded ms-1">customer_numbers_text</code>,
+                        <code className="bg-[#1e293b] px-1 rounded ms-1">customer_numbers_count</code>
+                      </p>
                     </div>
                   </>
                 )}
