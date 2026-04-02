@@ -15,6 +15,7 @@ class Customer(db.Model):
 
     name = db.Column(db.String(150), nullable=False)
     phone = db.Column(db.String(20), nullable=False)
+    tg_chat_id = db.Column(db.String(64), index=True)
     phone2 = db.Column(db.String(20))
     city = db.Column(db.String(100))   # بغداد / محافظات
     address = db.Column(db.String(255))

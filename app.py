@@ -27,6 +27,7 @@ from models.delivery_agent import DeliveryAgent
 from models.page import Page
 from models.role import Role, Permission
 from models.comment_log import CommentLog
+from models.telegram_chat_profile import TelegramChatProfile
 
 # Routes
 from routes.index import index_bp
@@ -154,6 +155,7 @@ with app.app_context():
     from models.core.landing_visit import LandingVisit
     from models.user import User  # جدول users مطلوب لـ tenant_template_purchases / tenant_template_settings
     from models.telegram_inbox_message import TelegramInboxMessage  # noqa: F401
+    from models.telegram_chat_profile import TelegramChatProfile  # noqa: F401
 
     db.create_all()
 

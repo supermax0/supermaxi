@@ -26,6 +26,7 @@ from .ai_agent import (
     AgentComment,
 )
 from .telegram_inbox_message import TelegramInboxMessage
+from .telegram_chat_profile import TelegramChatProfile
 
 # ======================================================
 # Accounting Models (النماذج المحاسبية)

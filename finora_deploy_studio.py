@@ -975,6 +975,7 @@ from app import app, db
 with app.app_context():
     # يجب استيراد النماذج قبل create_all() وإلا لا يُنشأ الجدول في Metadata
     from models.telegram_inbox_message import TelegramInboxMessage  # noqa: F401
+    from models.telegram_chat_profile import TelegramChatProfile  # noqa: F401
     db.create_all()
     print("db.create_all() completed successfully.")
     try:

@@ -21,6 +21,7 @@ from models.order_item import OrderItem
 from models.product import Product
 from models.social_account import SocialAccount
 from models.social_post import SocialPost
+from models.telegram_chat_profile import TelegramChatProfile
 from utils.inventory_movements import validate_sale_quantity
 from social_ai.ai_engine import generate_caption, generate_comment_reply, get_client
 from social_ai.image_generator import generate_image
@@ -609,9 +610,12 @@ def _missing_booking_fields(
     require_address: bool,
 ) -> list[str]:
     missing: list[str] = []
+    items = _normalize_booking_items(context.get("booking_items"))
+    has_item_payload = bool(items)
     if not (
-        (context.get("product_id") is not None and str(context.get("product_id")).strip() != "")
-        or str(context.get("product_name") or context.get("product") or "").strip()
+        has_item_payload
+        or bool(str(context.get("product_name") or context.get("product") or "").strip())
+        or (context.get("product_id") is not None and str(context.get("product_id")).strip() != "")
     ):
         missing.append("المنتج")
     if require_name and not str(context.get("customer_name") or context.get("name") or "").strip():
@@ -621,6 +625,11 @@ def _missing_booking_fields(
         missing.append("رقم الهاتف")
     if require_address and len(str(context.get("address") or "").strip()) < 4:
         missing.append("العنوان")
+    has_qty = context.get("quantity") not in (None, "", 0)
+    if not has_qty and items:
+        has_qty = any(_sanitize_quantity_value(it.get("quantity")) is not None for it in items)
+    if not has_qty:
+        missing.append("الكمية")
     return missing
 
 
@@ -1249,6 +1258,110 @@ def _append_conversation_turn(context: Dict[str, Any], assistant_reply: str) -> 
         history.append({"user": user_text, "assistant": bot_text})
 
 
+def _normalize_booking_items(raw_items: Any) -> list[dict[str, Any]]:
+    if not isinstance(raw_items, list):
+        return []
+    out: list[dict[str, Any]] = []
+    for row in raw_items:
+        if not isinstance(row, dict):
+            continue
+        item: dict[str, Any] = {}
+        for src, dst in (
+            ("product_id", "product_id"),
+            ("product_name", "product_name"),
+            ("product", "product_name"),
+            ("service", "product_name"),
+            ("sku", "sku"),
+            ("barcode", "barcode"),
+            ("price", "price"),
+        ):
+            val = row.get(src)
+            if val in (None, ""):
+                continue
+            item[dst] = val
+        sq = _sanitize_quantity_value(row.get("quantity"))
+        if sq is not None:
+            item["quantity"] = sq
+        if item:
+            out.append(item)
+    return out
+
+
+def _load_chat_profile_into_context(context: Dict[str, Any]) -> None:
+    wf_id = context.get("workflow_id")
+    chat_id = str(context.get("chat_id") or "").strip()
+    if wf_id is None or not chat_id:
+        return
+    try:
+        profile = TelegramChatProfile.query.filter_by(
+            workflow_id=int(wf_id),
+            chat_id=chat_id[:64],
+        ).first()
+        if not profile:
+            return
+        if not str(context.get("customer_name") or context.get("name") or "").strip():
+            nm = str(profile.customer_name or "").strip()
+            if nm:
+                context["customer_name"] = nm
+                context["name"] = nm
+        if not str(context.get("phone") or "").strip() and str(profile.phone or "").strip():
+            context["phone"] = str(profile.phone).strip()
+        if not str(context.get("address") or "").strip() and str(profile.address or "").strip():
+            context["address"] = str(profile.address).strip()
+        if not str(context.get("city") or "").strip() and str(profile.city or "").strip():
+            context["city"] = str(profile.city).strip()
+        if context.get("booking_items") in (None, "", []):
+            try:
+                cached = json.loads(profile.booking_items_json or "[]")
+            except Exception:
+                cached = []
+            normalized = _normalize_booking_items(cached)
+            if normalized:
+                context["booking_items"] = normalized
+    except Exception:
+        current_app.logger.debug("telegram chat profile load failed", exc_info=True)
+
+
+def _save_chat_profile_from_context(context: Dict[str, Any]) -> None:
+    wf_id = context.get("workflow_id")
+    chat_id = str(context.get("chat_id") or "").strip()
+    if wf_id is None or not chat_id:
+        return
+    try:
+        profile = TelegramChatProfile.query.filter_by(
+            workflow_id=int(wf_id),
+            chat_id=chat_id[:64],
+        ).first()
+        if not profile:
+            profile = TelegramChatProfile(
+                tenant_slug=str(context.get("tenant_slug") or "").strip() or None,
+                workflow_id=int(wf_id),
+                chat_id=chat_id[:64],
+            )
+            db.session.add(profile)
+
+        name = str(context.get("customer_name") or context.get("name") or "").strip()
+        phone = str(context.get("phone") or "").strip()
+        address = str(context.get("address") or "").strip()
+        city = str(context.get("city") or "").strip()
+        items = _normalize_booking_items(context.get("booking_items"))
+
+        if name:
+            profile.customer_name = name[:150]
+        if phone:
+            profile.phone = phone[:30]
+        if address:
+            profile.address = address[:255]
+        if city:
+            profile.city = city[:100]
+        if items:
+            profile.booking_items_json = json.dumps(items, ensure_ascii=False)
+
+        db.session.flush()
+    except Exception:
+        current_app.logger.debug("telegram chat profile save failed", exc_info=True)
+
+
 def run_conversation_context_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
     """
     يعيد تحميل سجل المحادثة من الذاكرة (بعد telegram_send يتضمن آخر دورة مستخدم/بوت)
@@ -1328,7 +1441,9 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
         return out
 
     if task in ("intent", "booking"):
+        _load_chat_profile_into_context(context)
         _infer_booking_fields_from_conversation(context)
+        _save_chat_profile_from_context(context)
 
     if task == "booking":
         smart_require_contact = bool(data.get("smart_require_contact", True))
@@ -1355,8 +1470,10 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
                     "topic": (data.get("topic") or context.get("topic") or "").strip(),
                     "booking_quick_path": True,
                 }
-            ask_one = missing[0]
-            ask_reply = f"حتى أثبّت الحجز الآن، أحتاج {ask_one} فقط."
+            if len(missing) == 1:
+                ask_reply = f"حتى أثبّت الحجز الآن، أحتاج {missing[0]}."
+            else:
+                ask_reply = "حتى أثبّت الحجز الآن، أحتاج منك إرسال هذه البيانات برسالة واحدة:\n- " + "\n- ".join(missing)
             return {
                 "text": ask_reply,
                 "reply_text": ask_reply,
@@ -1394,7 +1511,7 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
                 "إذا لم يذكر الزبون الكمية فاعتبرها 1 بشكل افتراضي.\n"
                 "إذا كانت البيانات مكتملة: اكتب تأكيداً قصيراً ثم أضف JSON فقط في آخر الرد بهذا الشكل:\n"
                 '{"booking":{"name":"...","phone":"...","address":"...","product_name":"...","product_id":null,"quantity":1,"price":null}}\n'
-                "إذا نقصت معلومة واحدة، اسأل عنها فقط بسؤال واحد موجز ولا تضف JSON."
+                "إذا نقصت معلومات، اطلب كل الحقول الناقصة برسالة واحدة مختصرة ولا تضف JSON."
             )
         elif task == "intent":
             if str(context.get("conversation_history") or "").strip():
@@ -1617,6 +1734,12 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
             if not display.strip():
                 display = text.strip()[:500] or "…"
             result["reply_text"] = display
+            # خزّن أي حقول مُستخرجة من رد الحجز حتى لا نعيد سؤالها لاحقاً لنفس Chat ID.
+            profile_ctx = dict(context)
+            profile_ctx.update(result)
+            _merge_booking_from_ai_into_context(profile_ctx)
+            _infer_booking_fields_from_conversation(profile_ctx)
+            _save_chat_profile_from_context(profile_ctx)
         else:
             result["reply_text"] = text
 
@@ -2159,6 +2282,12 @@ def _merge_booking_from_ai_into_context(context: Dict[str, Any]) -> None:
     inner = raw.get("booking") if isinstance(raw.get("booking"), dict) else raw
     if not isinstance(inner, dict):
         return
+    parsed_items = _normalize_booking_items(inner.get("items"))
+    if parsed_items:
+        existing_items = _normalize_booking_items(context.get("booking_items"))
+        merged_items = existing_items + parsed_items
+        if merged_items:
+            context["booking_items"] = merged_items
     keymap = {
         "customer_name": ("customer_name", "name"),
         "name": ("customer_name", "name"),
@@ -2191,10 +2320,30 @@ def _merge_booking_from_ai_into_context(context: Dict[str, Any]) -> None:
         for d in dests:
             if context.get(d) in (None, ""):
                 context[d] = val
+    if context.get("quantity") in (None, "", 0):
+        if parsed_items:
+            first_qty = _sanitize_quantity_value(parsed_items[0].get("quantity"))
+            if first_qty is not None:
+                context["quantity"] = first_qty
 
 
 def _resolve_product_for_order(context: Dict[str, Any]) -> Product | None:
-    pid = context.get("product_id")
+    return _resolve_product_from_fields(
+        product_id=context.get("product_id"),
+        sku=context.get("sku") or context.get("product_sku"),
+        barcode=context.get("barcode"),
+        product_name=context.get("product_name") or context.get("product"),
+    )
+
+
+def _resolve_product_from_fields(
+    *,
+    product_id: Any = None,
+    sku: Any = None,
+    barcode: Any = None,
+    product_name: Any = None,
+) -> Product | None:
+    pid = product_id
     if pid is not None and str(pid).strip() != "":
         try:
             p = Product.query.get(int(pid))
@@ -2202,17 +2351,17 @@ def _resolve_product_for_order(context: Dict[str, Any]) -> Product | None:
                 return p
         except (TypeError, ValueError):
             pass
-    sku = str(context.get("sku") or context.get("product_sku") or "").strip()
+    sku = str(sku or "").strip()
     if sku:
         p = Product.query.filter(Product.active == True, Product.sku == sku).first()  # noqa: E712
         if p:
             return p
-    bc = str(context.get("barcode") or "").strip()
+    bc = str(barcode or "").strip()
     if bc:
         p = Product.query.filter(Product.active == True, Product.barcode == bc).first()  # noqa: E712
         if p:
             return p
-    pname = str(context.get("product_name") or context.get("product") or "").strip()
+    pname = str(product_name or "").strip()
     if pname:
         p = Product.query.filter(Product.active == True, Product.name == pname).first()  # noqa: E712
         if p:
@@ -2223,6 +2372,19 @@ def _resolve_product_for_order(context: Dict[str, Any]) -> Product | None:
             .first()
         )
     return None
+
+
+def _build_order_items_payload(context: Dict[str, Any], default_qty: int) -> list[dict[str, Any]]:
+    items = _normalize_booking_items(context.get("booking_items"))
+    if not items:
+        return [{}]
+    out: list[dict[str, Any]] = []
+    for row in items:
+        payload = dict(row)
+        sq = _sanitize_quantity_value(payload.get("quantity"))
+        payload["quantity"] = sq if sq is not None else default_qty
+        out.append(payload)
+    return out
 
 
 def run_sql_save_order_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
@@ -2242,6 +2404,7 @@ def run_sql_save_order_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str,
         context.update(out)
         return out
 
+    _load_chat_profile_into_context(context)
     _merge_booking_from_ai_into_context(context)
     _infer_booking_fields_from_conversation(context)
     _infer_phone_into_context(context)
@@ -2292,33 +2455,51 @@ def run_sql_save_order_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str,
     if qty < 1:
         qty = 1
     qty = min(qty, 99_999)
+    context.setdefault("quantity", qty)
+    _save_chat_profile_from_context(context)
 
-    product = _resolve_product_for_order(context)
-    if not product:
+    order_items_payload = _build_order_items_payload(context, qty)
+    resolved_items: list[tuple[Product, int, int]] = []
+    for item in order_items_payload:
+        product = _resolve_product_from_fields(
+            product_id=item.get("product_id", context.get("product_id")),
+            sku=item.get("sku", context.get("sku") or context.get("product_sku")),
+            barcode=item.get("barcode", context.get("barcode")),
+            product_name=item.get("product_name", context.get("product_name") or context.get("product")),
+        )
+        if not product:
+            continue
+        raw_price = item.get("price", context.get("price"))
+        try:
+            unit_price = int(raw_price) if raw_price is not None and str(raw_price).strip() != "" else int(product.sale_price or 0)
+        except (TypeError, ValueError):
+            unit_price = int(product.sale_price or 0)
+        item_qty = _sanitize_quantity_value(item.get("quantity"))
+        if item_qty is None:
+            item_qty = qty
+        resolved_items.append((product, item_qty, unit_price))
+
+    if not resolved_items:
         msg = (
-            "لم يُحدد منتج للحجز: مرّر product_id أو product_name في السياق، "
-            "أو أضف JSON في رد الـ AI يحتوي product_id / product_name."
+            "لم يُحدد منتج صالح للحجز: مرّر product_id أو product_name في السياق، "
+            "أو أضف JSON في رد الـ AI يحتوي booking.items."
         )
         if skip_incomplete:
             return _skip(msg)
         raise RuntimeError(msg)
+    primary_product = resolved_items[0][0]
 
     invoice_status = str(data.get("invoice_status") or "حجز").strip() or "حجز"
     deduct_stock = bool(data.get("deduct_stock", True))
 
-    price = context.get("price")
-    try:
-        unit_price = int(price) if price is not None and str(price).strip() != "" else int(product.sale_price or 0)
-    except (TypeError, ValueError):
-        unit_price = int(product.sale_price or 0)
-
     if deduct_stock:
-        check = validate_sale_quantity(product.id, qty)
-        if not check.get("valid"):
-            msg = check.get("message") or "الكمية غير متوفرة في المخزون"
-            if skip_incomplete:
-                return _skip(msg)
-            raise RuntimeError(msg)
+        for product, item_qty, _ in resolved_items:
+            check = validate_sale_quantity(product.id, item_qty)
+            if not check.get("valid"):
+                msg = check.get("message") or "الكمية غير متوفرة في المخزون"
+                if skip_incomplete:
+                    return _skip(msg)
+                raise RuntimeError(msg)
 
     cust = Customer.query.filter_by(phone=phone).first()
     if cust:
@@ -2328,13 +2509,16 @@ def run_sql_save_order_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str,
             cust.city = city
         if address:
             cust.address = address
+        if chat_id:
+            cust.tg_chat_id = chat_id[:64]
     else:
         cust = Customer(
             name=name or default_name,
             phone=phone,
             city=city or None,
             address=address or None,
-            tenant_id=getattr(product, "tenant_id", None),
+            tg_chat_id=chat_id[:64] if chat_id else None,
+            tenant_id=getattr(primary_product, "tenant_id", None),
         )
         db.session.add(cust)
         db.session.flush()
@@ -2342,8 +2526,7 @@ def run_sql_save_order_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str,
     note_parts = [
         f"حجز تلقائي — {channel}",
         f"chat_id={chat_id}" if chat_id else "",
-        f"المنتج: {product.name}",
-        f"الكمية: {qty}",
+        f"عدد الأصناف: {len(resolved_items)}",
     ]
     if not deduct_stock:
         note_parts.append("بدون خصم من المخزون (حجز معلّق)")
@@ -2363,22 +2546,33 @@ def run_sql_save_order_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str,
     db.session.add(inv)
     db.session.flush()
 
-    line_total = int(unit_price * qty)
-    oi = OrderItem(
-        invoice_id=inv.id,
-        product_id=product.id,
-        product_name=product.name,
-        quantity=qty,
-        price=unit_price,
-        cost=int(product.buy_price or 0),
-        total=line_total,
-    )
-    db.session.add(oi)
+    invoice_total = 0
+    saved_items: list[dict[str, Any]] = []
+    for product, item_qty, unit_price in resolved_items:
+        line_total = int(unit_price * item_qty)
+        invoice_total += line_total
+        oi = OrderItem(
+            invoice_id=inv.id,
+            product_id=product.id,
+            product_name=product.name,
+            quantity=item_qty,
+            price=unit_price,
+            cost=int(product.buy_price or 0),
+            total=line_total,
+        )
+        db.session.add(oi)
+        saved_items.append(
+            {
+                "product_id": product.id,
+                "product_name": product.name,
+                "quantity": item_qty,
+                "price": unit_price,
+            }
+        )
+        if deduct_stock:
+            product.quantity = int(product.quantity or 0) - item_qty
 
-    if deduct_stock:
-        product.quantity = int(product.quantity or 0) - qty
-
-    inv.total = line_total
+    inv.total = invoice_total
     db.session.commit()
 
     reference_label = "رقم الحجز" if "حجز" in invoice_status else "رقم الفاتورة"
@@ -2399,9 +2593,10 @@ def run_sql_save_order_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str,
     result = {
         "booking_invoice_id": inv.id,
         "booking_customer_id": cust.id,
-        "booking_product_id": product.id,
-        "booking_total": line_total,
-        "booking_quantity": qty,
+        "booking_product_id": resolved_items[0][0].id,
+        "booking_total": invoice_total,
+        "booking_quantity": sum(q for _, q, _ in resolved_items),
+        "booking_items_saved": saved_items,
         "booking_status": invoice_status,
         "booking_city": city,
         "booking_reference_label": reference_label,
@@ -2411,6 +2606,7 @@ def run_sql_save_order_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str,
         "text": final_reply,
     }
     context.update(result)
+    _save_chat_profile_from_context(context)
     return result
 
 
