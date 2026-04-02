@@ -225,6 +225,51 @@ with app.app_context():
         print("Ensured telegram_chat_profiles table exists.")
     except Exception as e:
         print(f"Migration note (telegram booking memory): {e}")
+    try:
+        # Apply same booking-memory migration on tenant SQLite DBs.
+        import os
+        import sqlite3
+
+        tenants_dir = os.path.join(app.root_path, "tenants")
+        if os.path.isdir(tenants_dir):
+            for db_name in sorted(os.listdir(tenants_dir)):
+                if not db_name.endswith(".db"):
+                    continue
+                db_path = os.path.join(tenants_dir, db_name)
+                try:
+                    conn = sqlite3.connect(db_path)
+                    cur = conn.cursor()
+                    cur.execute("PRAGMA table_info(customer)")
+                    cols = [r[1] for r in cur.fetchall()]
+                    if "tg_chat_id" not in cols:
+                        cur.execute("ALTER TABLE customer ADD COLUMN tg_chat_id TEXT")
+                    cur.execute(
+                        """
+                        CREATE TABLE IF NOT EXISTS telegram_chat_profiles (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            tenant_slug VARCHAR(100),
+                            workflow_id INTEGER NOT NULL,
+                            chat_id VARCHAR(64) NOT NULL,
+                            customer_name VARCHAR(150),
+                            phone VARCHAR(30),
+                            address VARCHAR(255),
+                            city VARCHAR(100),
+                            booking_items_json TEXT,
+                            created_at DATETIME,
+                            updated_at DATETIME
+                        )
+                        """
+                    )
+                    cur.execute(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS uq_tg_chat_profile_workflow_chat "
+                        "ON telegram_chat_profiles (workflow_id, chat_id)"
+                    )
+                    conn.commit()
+                    conn.close()
+                except Exception as _tenant_err:
+                    print(f"Tenant migration note ({db_name}): {_tenant_err}")
+    except Exception as e:
+        print(f"Migration note (tenant telegram booking memory): {e}")
 
     # Migration: Add shipping_company_id to employee if needed
     try:

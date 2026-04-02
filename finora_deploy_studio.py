@@ -989,6 +989,42 @@ with app.app_context():
             print("customer.tg_chat_id: exists")
     TelegramChatProfile.__table__.create(bind=db.engine, checkfirst=True)
     print("telegram_chat_profiles: ensured")
+    # tenant db files
+    from pathlib import Path
+    import sqlite3
+    tenants_dir = Path(app.root_path) / "tenants"
+    if tenants_dir.is_dir():
+        for dbf in sorted(tenants_dir.glob("*.db")):
+            conn = sqlite3.connect(str(dbf.resolve()))
+            cur = conn.cursor()
+            cur.execute("PRAGMA table_info(customer)")
+            cols = [r[1] for r in cur.fetchall()]
+            if "tg_chat_id" not in cols:
+                cur.execute("ALTER TABLE customer ADD COLUMN tg_chat_id TEXT")
+            cur.execute(
+                \"\"\"
+                CREATE TABLE IF NOT EXISTS telegram_chat_profiles (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    tenant_slug VARCHAR(100),
+                    workflow_id INTEGER NOT NULL,
+                    chat_id VARCHAR(64) NOT NULL,
+                    customer_name VARCHAR(150),
+                    phone VARCHAR(30),
+                    address VARCHAR(255),
+                    city VARCHAR(100),
+                    booking_items_json TEXT,
+                    created_at DATETIME,
+                    updated_at DATETIME
+                )
+                \"\"\"
+            )
+            cur.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_tg_chat_profile_workflow_chat "
+                "ON telegram_chat_profiles (workflow_id, chat_id)"
+            )
+            conn.commit()
+            conn.close()
+            print("tenant", dbf.stem + ": tg_chat_id + telegram_chat_profiles OK")
     print("db.create_all() completed successfully.")
     try:
         from sqlalchemy import inspect
