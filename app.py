@@ -207,6 +207,26 @@ with app.app_context():
             db.session.commit()
     except Exception as e:
         print(f"Migration note: {e}")
+
+    # Migration: Telegram booking memory columns/tables
+    try:
+        from sqlalchemy import inspect, text
+
+        inspector = inspect(db.engine)
+        if "customer" in inspector.get_table_names():
+            customer_columns = [col["name"] for col in inspector.get_columns("customer")]
+            if "tg_chat_id" not in customer_columns:
+                db.session.execute(text("ALTER TABLE customer ADD COLUMN tg_chat_id VARCHAR(64)"))
+                db.session.commit()
+                print("Added tg_chat_id column to customer table.")
+
+        from models.telegram_chat_profile import TelegramChatProfile
+
+        TelegramChatProfile.__table__.create(bind=db.engine, checkfirst=True)
+        db.session.commit()
+        print("Ensured telegram_chat_profiles table exists.")
+    except Exception as e:
+        print(f"Migration note (telegram booking memory): {e}")
     
     # Migration: Add shipping_company_id to employee if needed
     try:
