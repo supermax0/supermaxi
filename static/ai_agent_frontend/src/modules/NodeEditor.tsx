@@ -172,10 +172,22 @@ export const NodeEditor: React.FC = () => {
   return (
     <div
       ref={reactFlowWrapper}
-      className="relative h-full w-full"
+      className="relative h-full w-full overflow-hidden rounded-[20px]"
       onContextMenu={(e) => e.preventDefault()}
     >
+      <div className="wf-canvas-hud pointer-events-none absolute left-4 top-4 z-[5] hidden rounded-2xl border border-slate-700/70 bg-slate-950/55 px-3 py-2 text-[11px] text-slate-300 md:block">
+        <div className="font-medium text-slate-100">مساحة التصميم</div>
+        <div className="mt-0.5 text-slate-400">
+          اسحب العقد من المكتبة، واربطها من الدوائر، وراقب التنفيذ الحي باللون الأخضر.
+        </div>
+      </div>
+      {activeExecutionNodeId && (
+        <div className="wf-canvas-hud pointer-events-none absolute bottom-4 left-4 z-[5] rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-medium text-emerald-200">
+          يجري الآن: {activeExecutionNodeId}
+        </div>
+      )}
       <ReactFlow
+        className="wf-reactflow"
         nodes={nodesForFlow}
         edges={edges}
         onInit={(state) => {
@@ -195,12 +207,21 @@ export const NodeEditor: React.FC = () => {
         nodeTypes={nodeTypes}
         defaultEdgeOptions={{ type: "smoothstep", style: { stroke: "#38bdf8" }, animated: true }}
       >
-        <Background color="#1e293b" gap={16} />
-        <MiniMap />
+        <Background color="#1e293b" gap={18} size={1.2} />
+        <MiniMap
+          pannable
+          zoomable
+          nodeColor="#334155"
+          maskColor="rgba(2, 6, 23, 0.65)"
+          style={{ backgroundColor: "rgba(15, 23, 42, 0.82)" }}
+        />
         <Controls position="top-left" />
         {nodes.length === 0 && (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-slate-500">
-            اسحب عقدة Start من القائمة لبدء إنشاء الوورك فلو.
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-6">
+            <div className="wf-canvas-hud rounded-[24px] border border-slate-700/70 bg-slate-950/60 px-6 py-5 text-center text-sm text-slate-400">
+              <div className="mb-1 text-base font-semibold text-slate-200">ابدأ ببناء الوورك فلو</div>
+              اسحب عقدة `Start` من القائمة ثم أضف العقد التالية واربطها معاً.
+            </div>
           </div>
         )}
       </ReactFlow>

@@ -9,19 +9,21 @@ type BasicNodeData = {
 };
 
 const baseNodeClasses =
-  "rounded-[12px] border-2 p-3 text-xs bg-[#0f172a] relative min-w-[160px] transition-all duration-150";
-const baseNodeShadow = { boxShadow: "0 4px 20px rgba(0,0,0,0.25)" };
+  "rounded-[16px] border-2 px-3.5 py-3 text-xs relative min-w-[176px] bg-[linear-gradient(180deg,rgba(15,23,42,0.98),rgba(15,23,42,0.82))] backdrop-blur-sm transition-all duration-200 hover:-translate-y-0.5";
+const baseNodeShadow = {
+  boxShadow: "0 16px 34px rgba(2,6,23,0.34), inset 0 1px 0 rgba(255,255,255,0.04)",
+};
 
-const titleClasses = "font-semibold text-[#e5e7eb]";
-const subtitleClasses = "mt-1.5 text-[10px] text-slate-400";
+const titleClasses = "font-semibold text-[13px] tracking-[0.01em] text-slate-100";
+const subtitleClasses = "mt-2 text-[10px] leading-5 text-slate-400";
 
 const handleClass =
-  "!w-3 !h-3 !border-2 !border-[#334155] !bg-[#111827] hover:!border-[#38bdf8] hover:!bg-[#1e293b]";
+  "!w-3 !h-3 !border-2 !border-slate-600 !bg-[#0f172a] hover:!border-[#38bdf8] hover:!bg-[#1e293b] transition-colors";
 
 /** حلقة خضراء حول العقدة أثناء تنفيذها (استطلاع execution-live). */
 function executionHighlightClass(data: BasicNodeData): string {
   if (!(data as { executionActive?: boolean }).executionActive) return "";
-  return " z-[2] shadow-[0_0_0_3px_#22c55e,0_0_22px_rgba(34,197,94,0.45)] ";
+  return " z-[2] shadow-[0_0_0_3px_rgba(34,197,94,0.95),0_0_26px_rgba(34,197,94,0.38)] ";
 }
 
 const StartNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {

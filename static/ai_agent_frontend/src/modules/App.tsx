@@ -975,7 +975,7 @@ export const App: React.FC = () => {
       dir="rtl"
     >
       <header
-        className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-[#1e293b] bg-[#0b1220] px-4"
+        className="wf-topbar flex h-16 shrink-0 items-center justify-between gap-4 border-b border-[#1e293b]/80 px-4"
         style={{ height: "64px" }}
         role="banner"
       >
@@ -988,6 +988,11 @@ export const App: React.FC = () => {
             <span className="text-slate-200">
               {meta.name && meta.name.trim() ? meta.name.trim() : "وورك فلو جديد"}
             </span>
+          </div>
+          <div className="mt-1 flex items-center gap-2 text-[10px]">
+            <span className="wf-topbar-pill">{meta.id ? `Workflow #${meta.id}` : "Workflow جديد"}</span>
+            <span className="wf-topbar-pill">{nodes.length} عقدة</span>
+            {testMode && <span className="wf-topbar-pill border-emerald-500/40 text-emerald-300">وضع اختبار</span>}
           </div>
         </div>
         <div className="flex items-center gap-2 flex-1 justify-center max-w-xl flex-wrap">
@@ -1204,12 +1209,12 @@ export const App: React.FC = () => {
         }}
       >
         <aside
-          className="wf-panel-settings flex min-h-0 flex-col overflow-hidden border-e border-[#1f2937] bg-[#111827]"
+          className="wf-panel-shell wf-panel-settings flex min-h-0 flex-col overflow-hidden border-e border-[#1f2937]"
           style={{ padding: leftCollapsed ? 0 : 16 }}
           aria-label="إعدادات العقدة"
         >
           {leftCollapsed ? (
-            <div className="flex h-full w-full flex-col items-center justify-center gap-1 border-e border-[#1f2937] bg-[#111827] py-2">
+            <div className="flex h-full w-full flex-col items-center justify-center gap-1 border-e border-[#1f2937] py-2">
               <button
                 type="button"
                 onClick={() => setLeftCollapsed(false)}
@@ -2881,7 +2886,7 @@ export const App: React.FC = () => {
         >
           <div className="h-8 w-0.5 rounded-full bg-[#334155] group-hover:bg-[#38bdf8]" />
         </div>
-        <section className="wf-panel-canvas flex h-full min-h-0 flex-col overflow-hidden bg-[#0b1220]" aria-label="منطقة الوورك فلو">
+        <section className="wf-panel-canvas flex h-full min-h-0 flex-col overflow-hidden" aria-label="منطقة الوورك فلو">
           <div className="reactflow-wrapper h-full w-full min-h-0">
             <ReactFlowProvider>
               <NodeEditor />
@@ -2898,9 +2903,9 @@ export const App: React.FC = () => {
         >
           <div className="h-8 w-0.5 rounded-full bg-[#334155]" />
         </div>
-        <aside className="wf-panel-node-library wf-node-library-in-grid flex flex-col border-s border-[#1e293b] bg-[#111827] overflow-hidden" aria-label="مكتبة العقد">
+        <aside className="wf-panel-node-library wf-node-library-in-grid flex flex-col border-s border-[#1e293b] overflow-hidden" aria-label="مكتبة العقد">
           {rightCollapsed ? (
-            <div className="flex h-full w-full flex-col items-center justify-center gap-1 border-s border-[#1e293b] bg-[#111827] py-2">
+            <div className="flex h-full w-full flex-col items-center justify-center gap-1 border-s border-[#1e293b] py-2">
               <button
                 type="button"
                 onClick={() => setRightCollapsed(false)}
@@ -2947,7 +2952,7 @@ export const App: React.FC = () => {
         </aside>
       </div>
       <div
-        className={`wf-node-library-overlay fixed top-16 bottom-0 z-40 w-[280px] border-[#334155] bg-[#111827] shadow-xl transition-transform ${nodeLibraryOpen ? "translate-x-0" : "-translate-x-full rtl:translate-x-full"} left-0 border-l rtl:left-auto rtl:right-0 rtl:border-r`}
+        className={`wf-node-library-overlay fixed top-16 bottom-0 z-40 w-[280px] border-[#334155] shadow-xl transition-transform ${nodeLibraryOpen ? "translate-x-0" : "-translate-x-full rtl:translate-x-full"} left-0 border-l rtl:left-auto rtl:right-0 rtl:border-r`}
       >
         <div className="flex items-center justify-between border-b border-[#334155] p-3">
           <h2 className="text-xs font-semibold uppercase text-slate-400">مكتبة العقد</h2>
