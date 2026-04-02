@@ -871,6 +871,9 @@ def _query_blob_for_match(context: Dict[str, Any]) -> str:
         str(context.get("message_text") or ""),
         str(context.get("comment_text") or ""),
         str(context.get("conversation_history") or ""),
+        str(context.get("conversation_for_booking") or ""),
+        str(context.get("booking_parse_source") or ""),
+        (str(context.get("knowledge") or "")[:12000]),
     ]
     return _normalize_ar_digits("\n".join(parts)).lower()
 
@@ -1507,7 +1510,7 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
                 "ساعد الزبون على إتمام الحجز اعتماداً على سجل المحادثة والكتالوج.\n"
                 "رسالة الزبون الحالية:\n{{message_text}}\n\n"
                 "اجمع البيانات من السياق قبل السؤال (الاسم، الهاتف، العنوان، المنتج/الخدمة، الكمية إن ذُكرت).\n"
-                "هذا تدفق بيع منتج وليس حجز موعد خدمة: لا تطلب التاريخ أو الموعد.\n"
+                "هذا تدفق بيع منتج وليس حجز موعد خدمة: ممنوع طلب أو ذكر التاريخ أو الموعد أو يوم التسليم أو وقت التوصيل بأي صيغة.\n"
                 "إذا لم يذكر الزبون الكمية فاعتبرها 1 بشكل افتراضي.\n"
                 "إذا كانت البيانات مكتملة: اكتب تأكيداً قصيراً ثم أضف JSON فقط في آخر الرد بهذا الشكل:\n"
                 '{"booking":{"name":"...","phone":"...","address":"...","product_name":"...","product_id":null,"quantity":1,"price":null}}\n'
@@ -1566,6 +1569,10 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
             "لا تجعل كل رد ينتهي بسؤال مبيعات مثل (هل ترغب بإتمام الطلب؟) إلا إذا كان هذا مناسباً فعلاً للسياق. "
             "تجنّب الأسلوب الروبوتي والرسمي الزائد مثل: نود إعلامك، نرجو التكرم، يسعدنا خدمتك في كل رسالة."
         )
+        system_parts.append(
+            "ممنوع تماماً أن تسأل الزبون عن أي تاريخ أو موعد أو يوم تسليم أو وقت توصيل أو «متى تريد الاستلام» أو «أي يوم»؛ "
+            "هذا متجر/طلب منتجات وليس جدولة مواعيد. إذا ذكر الزبون غداً أو تاريخاً عاطفياً فتجاهله ولا تبنِ عليه أسئلة."
+        )
 
     if context.get("message_text") and str(context.get("knowledge") or "").strip():
         system_parts.append(
@@ -1575,6 +1582,11 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
             "إذا عبّر الزبون عن نية الشراء أو الحجز أو إتمام الطلب (مثل: أريد أطلب، أكمل الطلب، احجز لي، اريد اطلب)، "
             "**لا تعِد نسخ وصف المنتج أو السعر كاملاً كما في الرسائل السابقة**. اكتب ردّاً قصيراً (جملة أو جملتان): "
             "أكد استلام رغبته، واطلب فقط البيانات الناقصة فعلاً (الاسم أو الهاتف أو العنوان)، أو أكد الحجز باختصار إن وُجدت كل البيانات."
+        )
+        system_parts.append(
+            "هذا بيع منتج من المخزون وليس حجز موعد خدمة: ممنوع طلب تاريخ أو موعد تسليم كشرط لإتمام الطلب. "
+            "ممنوع إعادة سؤال تأكيد العنوان إذا أكد الزبون مسبقاً (نعم، صحيح، نفس العنوان، هو نفسه، تمام). "
+            "إذا ظهر في السياق اسم + هاتف + عنوان واضح + منتج من الكتالوج، اكتب جملة إغلاق قصيرة فقط دون أسئلة جديدة."
         )
         system_parts.append(
             "إذا طلب الزبون تفاصيل أكثر أو فيديو، ووجدت في الكتالوج رابط تفاصيل أو رابط فيديو، فاذكره له مباشرة بشكل طبيعي."
@@ -1619,15 +1631,19 @@ def run_ai_node(node: NodeDef, context: Dict[str, Any]) -> Dict[str, Any]:
             "أسلوبك هنا بشري وخفيف: لا تستخدم صياغة رسمية ثقيلة، ولا تعيد وصف المنتج بالكامل أثناء تثبيت الطلب."
         )
         system_parts.append(
-            "هذا بيع منتج: لا تطلب التاريخ أو الموعد. "
+            "هذا بيع منتج: ممنوع طلب أو ذكر التاريخ أو الموعد أو يوم الاستلام أو وقت التوصيل بأي شكل. "
             "الكمية ليست عائقاً؛ إذا لم يذكرها الزبون فاعتبرها 1 بشكل افتراضي."
+        )
+        system_parts.append(
+            "إذا كانت رسالة الزبون الحالية قصيرة جداً (مثل: نعم، تمام، غداً، اوكي) وكانت باقي بيانات الطلب واضحة في السجل، "
+            "فلا تسأل من جديد عن العنوان أو المنتج ولا تفسر «غداً» كطلب موعد؛ أخرج JSON الحجز مباشرةً عند اكتمال الحقول."
         )
 
     if task == "intent":
         system_parts = [
             "أنت مصنّف نوايا. أجب بكائن JSON فقط دون أي نص قبله أو بعده (لا تستخدم markdown).",
             'القيم: {"intent":"order"} أو {"intent":"question"} أو {"intent":"unknown"}.',
-            "order = حجز أو شراء أو طلب خدمة أو موعد. question = استفسار عام. unknown = غير واضح.",
+            "order = شراء أو طلب منتج أو إتمام/متابعة طلب شراء. question = استفسار عام. unknown = غير واضح.",
             f"اللغة: {'العربية' if language == 'ar' else 'English'}.",
         ]
         if conversation_history:
@@ -3092,6 +3108,31 @@ def execute_workflow(execution: AgentExecution, initial_context: Dict[str, Any] 
 
         execution.status = "success"
         db.session.commit()
+
+        # تدفقات مثل «مبيعات → إرسال → سياق → حجز → SQL»: الرسالة الأولى تُرسل قبل الحفظ،
+        # فيُفقد تأكيد رقم الحجز ما لم نرسل رسالة ثانية بعد نجاح sql_save_order.
+        if (
+            context.get("_telegram_sent")
+            and context.get("booking_invoice_id")
+            and not context.get("booking_skipped")
+        ):
+            confirm = str(context.get("booking_confirmation_message") or "").strip()
+            cid = context.get("chat_id")
+            tok = (context.get("telegram_bot_token") or "").strip() or None
+            prev = str(context.get("telegram_message") or "")
+            if cid and tok and confirm and confirm not in prev:
+                send_telegram_message(str(cid), confirm[:4096], bot_token=tok)
+                context["_telegram_booking_confirm_sent"] = True
+                if context.get("workflow_id") is not None:
+                    from social_ai.telegram_inbox import record_telegram_inbox_message
+
+                    record_telegram_inbox_message(
+                        context.get("tenant_slug"),
+                        int(context["workflow_id"]),
+                        str(cid),
+                        "bot",
+                        confirm[:12000],
+                    )
 
         _record_telegram_update_processed(context, execution.id)
 
