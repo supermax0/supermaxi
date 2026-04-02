@@ -175,12 +175,6 @@ export const NodeEditor: React.FC = () => {
       className="relative h-full w-full overflow-hidden rounded-[20px]"
       onContextMenu={(e) => e.preventDefault()}
     >
-      <div className="wf-canvas-hud pointer-events-none absolute left-4 top-4 z-[5] hidden rounded-2xl border border-slate-700/70 bg-slate-950/55 px-3 py-2 text-[11px] text-slate-300 md:block">
-        <div className="font-medium text-slate-100">مساحة التصميم</div>
-        <div className="mt-0.5 text-slate-400">
-          اسحب العقد من المكتبة، واربطها من الدوائر، وراقب التنفيذ الحي باللون الأخضر.
-        </div>
-      </div>
       {activeExecutionNodeId && (
         <div className="wf-canvas-hud pointer-events-none absolute bottom-4 left-4 z-[5] rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-medium text-emerald-200">
           يجري الآن: {activeExecutionNodeId}

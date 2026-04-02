@@ -61,6 +61,7 @@ export const App: React.FC = () => {
   const [nodeLibraryOpen, setNodeLibraryOpen] = useState(false);
   const [workflowSearch, setWorkflowSearch] = useState("");
   const [workflowListOpen, setWorkflowListOpen] = useState(false);
+  const [templatesMenuOpen, setTemplatesMenuOpen] = useState(false);
   const [workflowsList, setWorkflowsList] = useState<Array<{ id: number; agent_id: number; name: string; description?: string; is_active?: boolean; graph?: { nodes?: Node[]; edges?: Edge[] } }>>([]);
   const [testMode, setTestMode] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -104,6 +105,7 @@ export const App: React.FC = () => {
       if (e.key === "Escape") {
         setUserMenuOpen(false);
         setNodeLibraryOpen(false);
+        setTemplatesMenuOpen(false);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -974,230 +976,263 @@ export const App: React.FC = () => {
       }`}
       dir="rtl"
     >
-      <header
-        className="wf-topbar flex h-16 shrink-0 items-center justify-between gap-4 border-b border-[#1e293b]/80 px-4"
-        style={{ height: "64px" }}
-        role="banner"
-      >
-        <div className="flex flex-col gap-0.5 min-w-0">
-          <h1 className="text-base font-semibold text-slate-200 shrink-0" id="main-title">
-            AI Agent Builder
-          </h1>
-          <div className="text-[11px] text-slate-400 truncate max-w-xs">
-            الوكيل الحالي:{" "}
-            <span className="text-slate-200">
-              {meta.name && meta.name.trim() ? meta.name.trim() : "وورك فلو جديد"}
-            </span>
+      <header className="wf-topbar shrink-0 border-b border-[#1e293b]/80 px-4 py-3" role="banner">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-base font-semibold text-slate-200 shrink-0" id="main-title">
+                AI Agent Builder
+              </h1>
+              <span className="wf-topbar-pill">{meta.id ? `Workflow #${meta.id}` : "Workflow جديد"}</span>
+              <span className="wf-topbar-pill">{nodes.length} عقدة</span>
+              {testMode && <span className="wf-topbar-pill border-emerald-500/40 text-emerald-300">وضع اختبار</span>}
+            </div>
+            <div className="mt-1 text-[11px] text-slate-400 truncate max-w-[420px]">
+              الوكيل الحالي:{" "}
+              <span className="text-slate-200">
+                {meta.name && meta.name.trim() ? meta.name.trim() : "وورك فلو جديد"}
+              </span>
+            </div>
           </div>
-          <div className="mt-1 flex items-center gap-2 text-[10px]">
-            <span className="wf-topbar-pill">{meta.id ? `Workflow #${meta.id}` : "Workflow جديد"}</span>
-            <span className="wf-topbar-pill">{nodes.length} عقدة</span>
-            {testMode && <span className="wf-topbar-pill border-emerald-500/40 text-emerald-300">وضع اختبار</span>}
-          </div>
-        </div>
-        <div className="flex items-center gap-2 flex-1 justify-center max-w-xl flex-wrap">
-          <button
-            type="button"
-            className="rounded-lg border border-[#22c55e] bg-[#22c55e]/10 px-3 py-2 text-xs font-medium text-[#22c55e] hover:bg-[#22c55e]/20"
-            onClick={() => { reset(); setWorkflowListOpen(false); }}
-            aria-label="وورك فلو جديد"
-          >
-            + وورك فلو جديد
-          </button>
-          <div className="relative">
+          <div className="flex flex-wrap items-center justify-end gap-2 shrink-0">
             <button
               type="button"
-              className="rounded-lg border border-[#1e293b] bg-[#0f172a] px-3 py-2 text-sm text-[#e5e7eb] hover:bg-[#1e293b] min-w-[140px] text-right"
-              onClick={async () => {
-                if (!workflowListOpen) {
-                  try {
-                    const res = await fetch(`${workflowsApiBase}/workflows`);
-                    if (res.ok) {
-                      const data = await res.json();
-                      setWorkflowsList((data.workflows || []) as typeof workflowsList);
-                    }
-                  } catch {
-                    setWorkflowsList([]);
-                  }
-                }
-                setWorkflowListOpen((v) => !v);
+              className="rounded-lg border border-[#1e293b] bg-[#1e293b] px-3 py-2 text-sm font-medium text-[#e5e7eb] hover:bg-[#334155] disabled:cursor-not-allowed disabled:opacity-60 transition-colors"
+              onClick={handleSave}
+              disabled={isSaving}
+              aria-label={isSaving ? "جارٍ الحفظ" : "حفظ"}
+            >
+              {isSaving ? "جارٍ الحفظ..." : "حفظ"}
+            </button>
+            <button
+              type="button"
+              className="rounded-lg px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
+              style={{ background: "linear-gradient(135deg, #22c55e, #4ade80)", borderRadius: "8px", padding: "8px 14px" }}
+              onClick={handleRun}
+              disabled={isRunning}
+              aria-label={isRunning ? "جارٍ التشغيل" : "تشغيل الآن"}
+            >
+              {isRunning ? "جارٍ التشغيل..." : "تشغيل الآن"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setTestMode((v) => !v)}
+              className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${testMode ? "bg-[#22c55e]/20 text-[#22c55e] border border-[#22c55e]" : "border border-[#1e293b] bg-[#1e293b] text-slate-300 hover:bg-[#334155]"}`}
+              title="وضع الاختبار"
+              aria-pressed={testMode}
+              aria-label="وضع الاختبار"
+            >
+              وضع اختبار
+            </button>
+            <button
+              type="button"
+              onClick={() => setNodeLibraryOpen((v) => !v)}
+              className="xl:hidden rounded-lg border border-[#1e293b] bg-[#1e293b] px-3 py-2 text-sm font-medium text-slate-300 hover:bg-[#334155]"
+              title="مكتبة العقد"
+              aria-label="مكتبة العقد"
+            >
+              مكتبة العقد
+            </button>
+            <div className={userMenuOpen ? "relative z-[140]" : "relative z-[1]"}>
+              <button
+                type="button"
+                onClick={() => setUserMenuOpen((v) => !v)}
+                className="flex items-center gap-2 rounded-lg border border-[#1e293b] bg-[#1e293b] px-3 py-2 text-sm text-slate-300 hover:bg-[#334155]"
+                aria-label="قائمة المستخدم"
+                aria-expanded={userMenuOpen}
+                aria-haspopup="true"
+              >
+                <span className="w-6 h-6 rounded-full bg-slate-600 flex items-center justify-center text-xs">م</span>
+                <span className="hidden sm:inline">المستخدم</span>
+              </button>
+              {userMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-[120]" aria-hidden onClick={() => setUserMenuOpen(false)} />
+                  <div className="absolute left-0 rtl:right-0 rtl:left-auto top-full mt-1 z-[130] min-w-[140px] rounded-lg border border-[#1e293b] bg-[#111827] py-1 shadow-2xl" role="menu">
+                    <div className="px-3 py-2 text-xs text-slate-400 border-b border-[#1e293b]">الحساب</div>
+                    <button
+                      type="button"
+                      className="w-full text-right px-3 py-2 text-sm text-slate-200 hover:bg-[#1e293b]"
+                      role="menuitem"
+                      onClick={() => {
+                        setUserMenuOpen(false);
+                        window.location.href = settingsUrl;
+                      }}
+                    >
+                      الإعدادات
+                    </button>
+                    <button
+                      type="button"
+                      className="w-full text-right px-3 py-2 text-sm text-slate-200 hover:bg-[#1e293b]"
+                      role="menuitem"
+                      onClick={async () => {
+                        setUserMenuOpen(false);
+                        try {
+                          await fetch(`${apiBase}/logout`, { method: "POST" });
+                        } catch {
+                          // تجاهل الأخطاء البسيطة، سيتم إعادة التوجيه على أي حال
+                        }
+                        window.location.href = loginUrl;
+                      }}
+                    >
+                      تسجيل الخروج
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="mt-3 flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+            <button
+              type="button"
+              className="rounded-lg border border-[#22c55e] bg-[#22c55e]/10 px-3 py-2 text-xs font-medium text-[#22c55e] hover:bg-[#22c55e]/20"
+              onClick={() => {
+                reset();
+                setWorkflowListOpen(false);
               }}
-              aria-label="اختر وورك فلو"
-              aria-expanded={workflowListOpen}
+              aria-label="وورك فلو جديد"
             >
-              اختر وورك فلو ▼
+              + وورك فلو جديد
             </button>
-            {workflowListOpen && (
-              <>
-                <div className="fixed inset-0 z-10" aria-hidden onClick={() => setWorkflowListOpen(false)} />
-                <div className="absolute left-0 rtl:right-0 rtl:left-auto top-full mt-1 z-20 w-64 max-h-60 overflow-y-auto rounded-lg border border-[#1e293b] bg-[#111827] py-1 shadow-lg">
-                  <input
-                    className="w-full px-3 py-2 text-xs border-b border-[#1e293b] bg-transparent text-[#e5e7eb] placeholder:text-slate-500 focus:outline-none"
-                    placeholder="بحث..."
-                    value={workflowSearch}
-                    onChange={(e) => setWorkflowSearch(e.target.value)}
-                  />
-                  {workflowsList
-                    .filter((wf) => !workflowSearch.trim() || (wf.name || "").toLowerCase().includes(workflowSearch.toLowerCase()))
-                    .map((wf) => (
-                      <button
-                        key={wf.id}
-                        type="button"
-                        className="w-full text-right px-3 py-2 text-sm text-slate-200 hover:bg-[#1e293b] border-b border-[#1e293b]/50 last:border-0"
-                        onClick={() => {
-                          const graph = wf.graph || {};
-                          const nodes = (graph.nodes || []) as Node[];
-                          const edges = (graph.edges || []) as Edge[];
-                          loadFromGraph({
-                            nodes: nodes.length ? nodes : [{ id: "start-1", type: "start", position: { x: 0, y: 0 }, data: { label: "Start" } }],
-                            edges: edges || [],
-                            id: wf.id,
-                            agentId: wf.agent_id,
-                            meta: { name: wf.name, description: wf.description || "", isActive: wf.is_active !== false },
-                          });
-                          setWorkflowListOpen(false);
-                        }}
-                      >
-                        {wf.name || `وورك فلو #${wf.id}`}
-                      </button>
-                    ))}
-                  {workflowsList.length === 0 && (
-                    <div className="px-3 py-4 text-xs text-slate-500">لا يوجد وورك فلو. أنشئ واحداً من «+ وورك فلو جديد» ثم احفظه.</div>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-          <input
-            className="w-full max-w-[180px] rounded-lg border border-[#1e293b] bg-[#0f172a] px-3 py-2 text-sm text-[#e5e7eb] placeholder:text-slate-500 focus:border-[#22c55e] focus:outline-none"
-            placeholder="اسم الوورك فلو"
-            value={meta.name}
-            onChange={handleMetaChange("name")}
-            aria-label="اسم الوورك فلو"
-          />
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <a
-            href="/social-ai/telegram/inbox"
-            className="hidden md:inline-flex rounded-lg border border-[#0ea5e9] bg-[#0ea5e9]/10 px-3 py-2 text-xs font-medium text-[#38bdf8] hover:bg-[#0ea5e9]/20"
-          >
-            محادثات تيليجرام
-          </a>
-          <a
-            href="/social-ai/whatsapp/inbox"
-            className="hidden md:inline-flex rounded-lg border border-[#16a34a] bg-[#16a34a]/10 px-3 py-2 text-xs font-medium text-emerald-300 hover:bg-[#16a34a]/20"
-          >
-            محادثات واتساب
-          </a>
-          <button
-            type="button"
-            className="hidden md:inline-flex rounded-lg border border-[#1e293b] bg-[#1e293b] px-3 py-2 text-xs font-medium text-slate-300 hover:bg-[#334155]"
-            onClick={createCommentReplyAgent}
-          >
-            قالب وكيل رد التعليقات
-          </button>
-          <button
-            type="button"
-            className="hidden lg:inline-flex rounded-lg border border-[#0ea5e9]/50 bg-[#0c4a6e]/30 px-3 py-2 text-xs font-medium text-sky-200 hover:bg-[#0c4a6e]/50"
-            onClick={createTelegramCommentReplyAgent}
-            title="Listener → فلتر كلمات → AI → إرسال (مثل قالب التعليقات)"
-          >
-            قالب وكيل رد تيليجرام
-          </button>
-          <button
-            type="button"
-            className="hidden xl:inline-flex rounded-lg border border-[#16a34a]/50 bg-[#14532d]/30 px-3 py-2 text-xs font-medium text-emerald-200 hover:bg-[#14532d]/50"
-            onClick={createWhatsappBroadcastTemplate}
-            title="Scheduler → Customers Phones → WhatsApp Send"
-          >
-            قالب واتساب برودكاست
-          </button>
-          <button
-            type="button"
-            className="rounded-lg border border-[#1e293b] bg-[#1e293b] px-3 py-2 text-sm font-medium text-[#e5e7eb] hover:bg-[#334155] disabled:cursor-not-allowed disabled:opacity-60 transition-colors"
-            onClick={handleSave}
-            disabled={isSaving}
-            aria-label={isSaving ? "جارٍ الحفظ" : "حفظ"}
-          >
-            {isSaving ? "جارٍ الحفظ..." : "حفظ"}
-          </button>
-          <button
-            type="button"
-            className="rounded-lg px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
-            style={{ background: "linear-gradient(135deg, #22c55e, #4ade80)", borderRadius: "8px", padding: "8px 14px" }}
-            onClick={handleRun}
-            disabled={isRunning}
-            aria-label={isRunning ? "جارٍ التشغيل" : "تشغيل الآن"}
-          >
-            {isRunning ? "جارٍ التشغيل..." : "تشغيل الآن"}
-          </button>
-          <button
-            type="button"
-            onClick={() => setTestMode((v) => !v)}
-            className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${testMode ? "bg-[#22c55e]/20 text-[#22c55e] border border-[#22c55e]" : "border border-[#1e293b] bg-[#1e293b] text-slate-300 hover:bg-[#334155]"}`}
-            title="وضع الاختبار"
-            aria-pressed={testMode}
-            aria-label="وضع الاختبار"
-          >
-            وضع اختبار
-          </button>
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setUserMenuOpen((v) => !v)}
-              className="flex items-center gap-2 rounded-lg border border-[#1e293b] bg-[#1e293b] px-3 py-2 text-sm text-slate-300 hover:bg-[#334155]"
-              aria-label="قائمة المستخدم"
-              aria-expanded={userMenuOpen}
-              aria-haspopup="true"
-            >
-              <span className="w-6 h-6 rounded-full bg-slate-600 flex items-center justify-center text-xs">م</span>
-              <span className="hidden sm:inline">المستخدم</span>
-            </button>
-            {userMenuOpen && (
-              <>
-                <div className="fixed inset-0 z-10" aria-hidden onClick={() => setUserMenuOpen(false)} />
-                <div className="absolute left-0 rtl:right-0 rtl:left-auto top-full mt-1 z-20 min-w-[140px] rounded-lg border border-[#1e293b] bg-[#111827] py-1 shadow-lg" role="menu">
-                  <div className="px-3 py-2 text-xs text-slate-400 border-b border-[#1e293b]">الحساب</div>
-                  <button
-                    type="button"
-                    className="w-full text-right px-3 py-2 text-sm text-slate-200 hover:bg-[#1e293b]"
-                    role="menuitem"
-                    onClick={() => {
-                      setUserMenuOpen(false);
-                      window.location.href = settingsUrl;
-                    }}
-                  >
-                    الإعدادات
-                  </button>
-                  <button
-                    type="button"
-                    className="w-full text-right px-3 py-2 text-sm text-slate-200 hover:bg-[#1e293b]"
-                    role="menuitem"
-                    onClick={async () => {
-                      setUserMenuOpen(false);
-                      try {
-                        await fetch(`${apiBase}/logout`, { method: "POST" });
-                      } catch {
-                        // تجاهل الأخطاء البسيطة، سيتم إعادة التوجيه على أي حال
+            <div className={workflowListOpen ? "relative z-[140]" : "relative z-[1]"}>
+              <button
+                type="button"
+                className="rounded-lg border border-[#1e293b] bg-[#0f172a] px-3 py-2 text-sm text-[#e5e7eb] hover:bg-[#1e293b] min-w-[150px] text-right"
+                onClick={async () => {
+                  if (!workflowListOpen) {
+                    try {
+                      const res = await fetch(`${workflowsApiBase}/workflows`);
+                      if (res.ok) {
+                        const data = await res.json();
+                        setWorkflowsList((data.workflows || []) as typeof workflowsList);
                       }
-                      window.location.href = loginUrl;
-                    }}
-                  >
-                    تسجيل الخروج
-                  </button>
-                </div>
-              </>
-            )}
+                    } catch {
+                      setWorkflowsList([]);
+                    }
+                  }
+                  setWorkflowListOpen((v) => !v);
+                }}
+                aria-label="اختر وورك فلو"
+                aria-expanded={workflowListOpen}
+              >
+                اختر وورك فلو ▼
+              </button>
+              {workflowListOpen && (
+                <>
+                  <div className="fixed inset-0 z-[120]" aria-hidden onClick={() => setWorkflowListOpen(false)} />
+                  <div className="absolute left-0 rtl:right-0 rtl:left-auto top-full mt-1 z-[130] w-64 max-h-60 overflow-y-auto rounded-lg border border-[#1e293b] bg-[#111827] py-1 shadow-2xl">
+                    <input
+                      className="w-full px-3 py-2 text-xs border-b border-[#1e293b] bg-transparent text-[#e5e7eb] placeholder:text-slate-500 focus:outline-none"
+                      placeholder="بحث..."
+                      value={workflowSearch}
+                      onChange={(e) => setWorkflowSearch(e.target.value)}
+                    />
+                    {workflowsList
+                      .filter((wf) => !workflowSearch.trim() || (wf.name || "").toLowerCase().includes(workflowSearch.toLowerCase()))
+                      .map((wf) => (
+                        <button
+                          key={wf.id}
+                          type="button"
+                          className="w-full text-right px-3 py-2 text-sm text-slate-200 hover:bg-[#1e293b] border-b border-[#1e293b]/50 last:border-0"
+                          onClick={() => {
+                            const graph = wf.graph || {};
+                            const nodes = (graph.nodes || []) as Node[];
+                            const edges = (graph.edges || []) as Edge[];
+                            loadFromGraph({
+                              nodes: nodes.length ? nodes : [{ id: "start-1", type: "start", position: { x: 0, y: 0 }, data: { label: "Start" } }],
+                              edges: edges || [],
+                              id: wf.id,
+                              agentId: wf.agent_id,
+                              meta: { name: wf.name, description: wf.description || "", isActive: wf.is_active !== false },
+                            });
+                            setWorkflowListOpen(false);
+                          }}
+                        >
+                          {wf.name || `وورك فلو #${wf.id}`}
+                        </button>
+                      ))}
+                    {workflowsList.length === 0 && (
+                      <div className="px-3 py-4 text-xs text-slate-500">لا يوجد وورك فلو. أنشئ واحداً من «+ وورك فلو جديد» ثم احفظه.</div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+            <input
+              className="w-full max-w-[220px] rounded-lg border border-[#1e293b] bg-[#0f172a] px-3 py-2 text-sm text-[#e5e7eb] placeholder:text-slate-500 focus:border-[#22c55e] focus:outline-none"
+              placeholder="اسم الوورك فلو"
+              value={meta.name}
+              onChange={handleMetaChange("name")}
+              aria-label="اسم الوورك فلو"
+            />
           </div>
-          <button
-            type="button"
-            onClick={() => setNodeLibraryOpen((v) => !v)}
-            className="xl:hidden rounded-lg border border-[#1e293b] bg-[#1e293b] px-3 py-2 text-sm font-medium text-slate-300 hover:bg-[#334155]"
-            title="مكتبة العقد"
-            aria-label="مكتبة العقد"
-          >
-            مكتبة العقد
-          </button>
+          <div className="wf-toolbar-scroll flex flex-wrap items-center gap-2 pb-1 xl:justify-end">
+            <a
+              href="/social-ai/telegram/inbox"
+              className="shrink-0 rounded-lg border border-[#0ea5e9] bg-[#0ea5e9]/10 px-3 py-2 text-xs font-medium text-[#38bdf8] hover:bg-[#0ea5e9]/20"
+            >
+              محادثات تيليجرام
+            </a>
+            <a
+              href="/social-ai/whatsapp/inbox"
+              className="shrink-0 rounded-lg border border-[#16a34a] bg-[#16a34a]/10 px-3 py-2 text-xs font-medium text-emerald-300 hover:bg-[#16a34a]/20"
+            >
+              محادثات واتساب
+            </a>
+            <div className={templatesMenuOpen ? "relative z-[140] shrink-0" : "relative z-[1] shrink-0"}>
+              <button
+                type="button"
+                className="rounded-lg border border-[#1e293b] bg-[#1e293b] px-3 py-2 text-xs font-medium text-slate-300 hover:bg-[#334155]"
+                onClick={() => setTemplatesMenuOpen((v) => !v)}
+                aria-expanded={templatesMenuOpen}
+                aria-haspopup="true"
+                aria-label="القوالب"
+              >
+                القوالب ▼
+              </button>
+              {templatesMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-[120]" aria-hidden onClick={() => setTemplatesMenuOpen(false)} />
+                  <div className="absolute left-0 right-auto top-full mt-1 z-[130] min-w-[260px] max-w-[300px] rounded-xl border border-[#1e293b] bg-[#111827] p-1.5 shadow-2xl">
+                    <button
+                      type="button"
+                      className="w-full rounded-lg px-3 py-2 text-right text-xs font-medium text-slate-200 hover:bg-[#1e293b]"
+                      onClick={() => {
+                        setTemplatesMenuOpen(false);
+                        createCommentReplyAgent();
+                      }}
+                    >
+                      قالب رد التعليقات
+                    </button>
+                    <button
+                      type="button"
+                      className="w-full rounded-lg px-3 py-2 text-right text-xs font-medium text-sky-200 hover:bg-[#0c4a6e]/40"
+                      onClick={() => {
+                        setTemplatesMenuOpen(false);
+                        createTelegramCommentReplyAgent();
+                      }}
+                      title="Listener → فلتر كلمات → AI → إرسال"
+                    >
+                      قالب رد تيليجرام
+                    </button>
+                    <button
+                      type="button"
+                      className="w-full rounded-lg px-3 py-2 text-right text-xs font-medium text-emerald-200 hover:bg-[#14532d]/40"
+                      onClick={() => {
+                        setTemplatesMenuOpen(false);
+                        createWhatsappBroadcastTemplate();
+                      }}
+                      title="Scheduler → Customers Phones → WhatsApp Send"
+                    >
+                      قالب واتساب برودكاست
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         </div>
       </header>
       <div

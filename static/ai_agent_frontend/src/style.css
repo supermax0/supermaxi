@@ -62,6 +62,9 @@ body {
 }
 
 .wf-topbar {
+  position: relative;
+  z-index: 80;
+  overflow: visible;
   backdrop-filter: blur(16px);
   background: linear-gradient(180deg, rgba(11, 18, 32, 0.9), rgba(11, 18, 32, 0.72));
   box-shadow: 0 10px 30px rgba(2, 6, 23, 0.24);
@@ -76,6 +79,14 @@ body {
   background: rgba(15, 23, 42, 0.7);
   padding: 0.22rem 0.55rem;
   color: #cbd5e1;
+}
+
+.wf-toolbar-scroll {
+  scrollbar-width: none;
+}
+
+.wf-toolbar-scroll::-webkit-scrollbar {
+  display: none;
 }
 
 .wf-panel-shell,
@@ -184,6 +195,10 @@ body {
   .wf-resizer,
   .wf-node-library-in-grid {
     display: none !important;
+  }
+
+  .wf-topbar {
+    padding-inline: 0.85rem;
   }
 }
 @media (min-width: 1200px) {
