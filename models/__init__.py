@@ -27,6 +27,7 @@ from .ai_agent import (
 )
 from .telegram_inbox_message import TelegramInboxMessage
 from .telegram_chat_profile import TelegramChatProfile
+from .telegram_booking_session import TelegramBookingSession
 
 # ======================================================
 # Accounting Models (النماذج المحاسبية)

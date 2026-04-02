@@ -56,6 +56,10 @@ class Config:
 
     # بوت تيليجرام (AI bot)
     TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN") or os.environ.get("BOT_TOKEN") or ""
+    # مسار حجز محادثة حتمي (FSM) بدل الاعتماد على الـ AI فقط — يُفعّل بـ TELEGRAM_BOOKING_FSM_ENABLED=1
+    TELEGRAM_BOOKING_FSM_ENABLED = (
+        os.environ.get("TELEGRAM_BOOKING_FSM_ENABLED", "").strip().lower() in ("1", "true", "yes", "on")
+    )
 
     # مسارات رفع الفيديو والثمبنايل (للنشر التلقائي). إن تُركت فارغة يُستخدم المسار تحت مجلد التطبيق محلياً.
     UPLOAD_VIDEO_ROOT = os.environ.get("UPLOAD_VIDEO_ROOT", "").strip()

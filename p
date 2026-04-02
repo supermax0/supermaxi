@@ -1,58 +1,125 @@
-Fix my WhatsApp Cloud API sending code to stop using the default "hello_world" template and instead use my approved template "promo_offer".
+You are a senior Python engineer. Fix my Telegram bot conversation logic.
 
-Requirements:
+## PROBLEM
 
-1. Replace any usage of:
-   "name": "hello_world"
-with:
-   "name": "promo_offer"
+The bot is stateless and keeps asking repeated questions (address, quantity, date). It does not remember user answers and breaks the flow.
 
-2. Ensure the message uses template format (not text).
+## GOAL
 
-3. Add required parameters for the template:
-   {{1}} -> customer name
-   {{2}} -> product name
-   {{3}} -> price
+Implement a proper conversation workflow using:
 
-4. Final request body must be:
+* Finite State Machine (FSM)
+* Persistent storage (SQLite via SQLAlchemy)
+* Clear step-based flow per user
+* Basic intent handling (cancel / confirm)
 
-{
-  "messaging_product": "whatsapp",
-  "to": customer_phone,
-  "type": "template",
-  "template": {
-    "name": "promo_offer",
-    "language": { "code": "ar" },
-    "components": [
-      {
-        "type": "body",
-        "parameters": [
-          {"type": "text", "text": customer_name},
-          {"type": "text", "text": product_name},
-          {"type": "text", "text": price}
-        ]
-      }
-    ]
-  }
-}
+## TECH STACK
 
-5. Ensure:
-- Access token is passed correctly
-- Phone Number ID is used correctly in URL
-- Handle API errors and print response
+* Python
+* Flask (already used)
+* Telegram Bot (assume pyTelegramBotAPI or aiogram – detect from project)
+* SQLite (SQLAlchemy ORM)
 
-6. Add function:
+## REQUIREMENTS
 
-send_whatsapp_template(phone, name, product, price)
+### 1. Create user session model
 
-7. Replace any old sending logic with this function
+Add a table:
 
-8. Make code clean and production-ready
+* id
+* user_id (telegram chat id)
+* step (string)
+* address (string)
+* quantity (integer)
+* date (string)
+* updated_at
 
-9. Add console logs:
-- success send
-- error response
+### 2. Define steps
 
-10. If code is using Flask or workflow system:
-- update WhatsApp Send node to use template instead of text
-- map variables correctly
+Use constants:
+
+* ASK_ADDRESS
+* ASK_QUANTITY
+* ASK_DATE
+* CONFIRM
+
+### 3. Build FSM logic
+
+Implement a handler:
+
+function handle_message(user_id, text):
+
+Flow:
+
+* If no session → create with step = ASK_ADDRESS
+
+* If step == ASK_ADDRESS:
+  save address
+  move to ASK_QUANTITY
+  reply: "كم الكمية؟"
+
+* If step == ASK_QUANTITY:
+  parse integer
+  save quantity
+  move to ASK_DATE
+  
+
+* If step == ASK_DATE:
+  save date
+  move to CONFIRM
+  reply with summary:
+  العنوان
+  الكمية
+  
+
+* If step == CONFIRM:
+  if user confirms → finalize order
+  if user cancels → reset session
+
+### 4. Add intent detection (simple)
+
+Before FSM:
+
+if text contains:
+
+* "الغاء" → reset session
+* "نعم" or "تأكيد" → confirm
+
+### 5. Reset logic
+
+Function reset_session(user_id):
+
+* delete or reset step
+
+### 6. Persist everything in DB
+
+NO in-memory dicts.
+
+### 7. Clean architecture
+
+* models.py → DB models
+* services/session_manager.py → FSM logic
+* bot/handlers.py → telegram handlers
+
+### 8. Fix Arabic responses
+
+Make responses clear and not repetitive.
+
+### 9. Prevent loops
+
+Do NOT re-ask previous answered questions.
+
+### 10. Edge cases
+
+* If user sends random text → respond based on current step
+* If quantity invalid → ask again
+
+## OUTPUT
+
+* Full working code
+* SQLAlchemy model
+* FSM handler
+* Telegram integration
+* Clean structured files
+
+Do NOT explain. Only write clean production-ready code.

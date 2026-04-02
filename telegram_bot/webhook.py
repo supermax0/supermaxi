@@ -230,6 +230,39 @@ def _telegram_workflow_webhook_worker(
             except Exception:
                 logger.debug("telegram inbox user record skipped", exc_info=True)
 
+            # FSM حجز حتمي (قاعدة بيانات) — يتجاوز مسار الـ AI عند التفعيل
+            if (message_text or "").strip():
+                try:
+                    from flask import current_app
+
+                    if current_app.config.get("TELEGRAM_BOOKING_FSM_ENABLED"):
+                        from telegram_bot.fsm_handlers import process_booking_fsm_reply
+                        from telegram_bot.sender import send_telegram_reply
+
+                        fsm_reply = process_booking_fsm_reply(
+                            message_text=message_text or "",
+                            chat_id=str(chat_id),
+                            workflow_id=wf.id,
+                            tenant_slug=(wf.agent.tenant_slug if wf.agent else None),
+                        )
+                        if fsm_reply is not None:
+                            send_telegram_reply(bot_token, str(chat_id), fsm_reply)
+                            try:
+                                from social_ai.telegram_inbox import record_telegram_inbox_message
+
+                                record_telegram_inbox_message(
+                                    (wf.agent.tenant_slug if wf.agent else None),
+                                    wf.id,
+                                    str(chat_id),
+                                    "bot",
+                                    fsm_reply[:12000],
+                                )
+                            except Exception:
+                                logger.debug("telegram inbox fsm bot record skipped", exc_info=True)
+                            return
+                except Exception:
+                    logger.exception("Telegram booking FSM branch failed")
+
             exe = AgentExecution(workflow_id=wf.id, status="running")
             db.session.add(exe)
             db.session.commit()

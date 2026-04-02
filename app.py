@@ -28,6 +28,7 @@ from models.page import Page
 from models.role import Role, Permission
 from models.comment_log import CommentLog
 from models.telegram_chat_profile import TelegramChatProfile
+from models.telegram_booking_session import TelegramBookingSession
 
 # Routes
 from routes.index import index_bp
@@ -156,6 +157,7 @@ with app.app_context():
     from models.user import User  # جدول users مطلوب لـ tenant_template_purchases / tenant_template_settings
     from models.telegram_inbox_message import TelegramInboxMessage  # noqa: F401
     from models.telegram_chat_profile import TelegramChatProfile  # noqa: F401
+    from models.telegram_booking_session import TelegramBookingSession  # noqa: F401
 
     db.create_all()
 
@@ -223,8 +225,9 @@ with app.app_context():
         from models.telegram_chat_profile import TelegramChatProfile
 
         TelegramChatProfile.__table__.create(bind=db.engine, checkfirst=True)
+        TelegramBookingSession.__table__.create(bind=db.engine, checkfirst=True)
         db.session.commit()
-        print("Ensured telegram_chat_profiles table exists.")
+        print("Ensured telegram_chat_profiles + telegram_booking_sessions tables exist.")
     except Exception as e:
         print(f"Migration note (telegram booking memory): {e}")
     try:
@@ -265,6 +268,25 @@ with app.app_context():
                     cur.execute(
                         "CREATE UNIQUE INDEX IF NOT EXISTS uq_tg_chat_profile_workflow_chat "
                         "ON telegram_chat_profiles (workflow_id, chat_id)"
+                    )
+                    cur.execute(
+                        """
+                        CREATE TABLE IF NOT EXISTS telegram_booking_sessions (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            user_id VARCHAR(64) NOT NULL,
+                            workflow_id INTEGER NOT NULL,
+                            tenant_slug VARCHAR(100),
+                            step VARCHAR(32) NOT NULL DEFAULT 'ASK_ADDRESS',
+                            address VARCHAR(500),
+                            quantity INTEGER,
+                            date VARCHAR(100),
+                            updated_at DATETIME
+                        )
+                        """
+                    )
+                    cur.execute(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS uq_tg_booking_session_wf_user "
+                        "ON telegram_booking_sessions (workflow_id, user_id)"
                     )
                     conn.commit()
                     conn.close()
