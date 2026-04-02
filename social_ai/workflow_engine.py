@@ -2983,6 +2983,35 @@ def _record_telegram_update_processed(
             pass
 
 
+class _LiveNodeLog:
+    """سجل تنفيذ حي: صف running يُلتزم قبل العقدة ثم يُحدَّث إلى success/failed (للواجهة)."""
+
+    __slots__ = ("row",)
+
+    def __init__(self, execution_id: int, node: NodeDef, input_obj: Any):
+        self.row = AgentExecutionLog(
+            execution_id=execution_id,
+            node_id=node.id,
+            node_type=node.type,
+            status="running",
+            input_snapshot=input_obj,
+        )
+        db.session.add(self.row)
+        db.session.commit()
+
+    def success(self, output_obj: Any = None) -> None:
+        self.row.status = "success"
+        self.row.output_snapshot = output_obj
+        self.row.error_message = None
+        db.session.commit()
+
+    def failed(self, error: str, output_obj: Any = None) -> None:
+        self.row.status = "failed"
+        self.row.error_message = error
+        self.row.output_snapshot = output_obj
+        db.session.commit()
+
+
 def execute_workflow(execution: AgentExecution, initial_context: Dict[str, Any] | None = None) -> None:
     """تنفيذ بسيط للـWorkflow بدعم العقد الأساسية."""
     workflow = execution.workflow
@@ -3011,6 +3040,7 @@ def execute_workflow(execution: AgentExecution, initial_context: Dict[str, Any] 
     try:
         for node in nodes:
             node_input = dict(context)
+            nlive: _LiveNodeLog | None = None
             try:
                 if not _should_run_node(node, context):
                     log(
@@ -3020,87 +3050,87 @@ def execute_workflow(execution: AgentExecution, initial_context: Dict[str, Any] 
                         {"reason": "run_if", "run_if": (node.data or {}).get("run_if")},
                     )
                     continue
+                nlive = _LiveNodeLog(execution.id, node, node_input)
                 if node.type == "start":
                     context["started_at"] = datetime.now(timezone.utc).isoformat()
                     if (node.data or {}).get("topic"):
                         context["topic"] = (node.data or {}).get("topic", "").strip()
-                    log(node, "success", node_input, {"started_at": context.get("started_at"), "topic": context.get("topic")})
+                    nlive.success({"started_at": context.get("started_at"), "topic": context.get("topic")})
                 elif node.type == "ai":
                     ai_output = run_ai_node(node, context)
-                    # دمج المخرجات مع الـ context
                     context.update(ai_output)
-                    log(node, "success", node_input, ai_output)
+                    nlive.success(ai_output)
                 elif node.type == "image":
                     img_output = run_image_node(node, context)
-                    log(node, "success", node_input, img_output)
+                    nlive.success(img_output)
                 elif node.type == "caption":
                     cap_output = run_caption_node(node, context)
-                    log(node, "success", node_input, cap_output)
+                    nlive.success(cap_output)
                 elif node.type == "publisher":
                     pub_output = run_publisher_node(node, context, execution)
-                    log(node, "success", node_input, pub_output)
+                    nlive.success(pub_output)
                 elif node.type == "scheduler":
                     sched_output = run_scheduler_node(node, context, execution)
-                    log(node, "success", node_input, sched_output)
+                    nlive.success(sched_output)
                 elif node.type == "comment-listener":
                     listener_output = run_comment_listener_node(node, context)
-                    log(node, "success", node_input, listener_output)
+                    nlive.success(listener_output)
                 elif node.type == "auto-reply":
                     reply_output = run_auto_reply_node(node, context)
-                    log(node, "success", node_input, reply_output)
+                    nlive.success(reply_output)
                 elif node.type == "keyword-filter":
                     kw_output = run_keyword_filter_node(node, context)
-                    log(node, "success", node_input, kw_output)
+                    nlive.success(kw_output)
                 elif node.type == "duplicate-protection":
                     dup_output = run_duplicate_protection_node(node, context)
-                    log(node, "success", node_input, dup_output)
+                    nlive.success(dup_output)
                 elif node.type == "rate-limiter":
                     rl_output = run_rate_limiter_node(node, context)
-                    log(node, "success", node_input, rl_output)
+                    nlive.success(rl_output)
                 elif node.type == "publish-reply":
                     pub_reply_output = run_publish_reply_node(node, context)
-                    log(node, "success", node_input, pub_reply_output)
+                    nlive.success(pub_reply_output)
                 elif node.type == "logging":
                     log_output = run_logging_node(node, context, execution)
-                    log(node, "success", node_input, log_output)
+                    nlive.success(log_output)
                 elif node.type == "whatsapp_send":
                     wa_output = run_whatsapp_send_node(node, context)
-                    log(node, "success", node_input, wa_output)
+                    nlive.success(wa_output)
                 elif node.type == "telegram_send":
                     tg_output = run_telegram_send_node(node, context)
                     _append_conversation_turn(context, str(tg_output.get("telegram_message") or ""))
-                    log(node, "success", node_input, tg_output)
+                    nlive.success(tg_output)
                 elif node.type == "conversation_context":
                     conv_out = run_conversation_context_node(node, context)
                     context.update(conv_out)
-                    log(node, "success", node_input, conv_out)
+                    nlive.success(conv_out)
                 elif node.type in ("telegram_listener", "whatsapp_listener"):
-                    # عقدة استقبال: البيانات (message_text, chat_id) من الـ webhook أو السياق الأولي؛ توكن البوت من بيانات العقدة لاستخدامه في الإرسال
                     if node.type == "telegram_listener" and (node.data or {}).get("bot_token"):
                         context["telegram_bot_token"] = (node.data or {}).get("bot_token", "").strip()
-                    log(node, "success", node_input, {"message_text": context.get("message_text"), "chat_id": context.get("chat_id")})
+                    nlive.success({"message_text": context.get("message_text"), "chat_id": context.get("chat_id")})
                 elif node.type == "memory_store":
                     mem_output = run_memory_node(node, context)
-                    log(node, "success", node_input, mem_output)
+                    nlive.success(mem_output)
                 elif node.type == "customers_phones":
                     phones_output = run_customers_phones_node(node, context)
-                    log(node, "success", node_input, phones_output)
+                    nlive.success(phones_output)
                 elif node.type == "knowledge_base":
                     kb_output = run_knowledge_node(node, context)
-                    log(node, "success", node_input, kb_output)
+                    nlive.success(kb_output)
                 elif node.type == "end":
-                    # حفظ لقطة السياق النهائية في اللوج
-                    log(node, "success", node_input, dict(context))
+                    nlive.success(dict(context))
                 elif node.type == "sql_save_order":
                     sql_out = run_sql_save_order_node(node, context)
                     context.update(sql_out)
-                    log(node, "success", node_input, sql_out)
+                    nlive.success(sql_out)
                 else:
-                    # عقد غير معروفة – نتجاوزها لكن نسجّل في اللوج
-                    log(node, "failed", node_input, None, f"نوع عقدة غير معروف: {node.type}")
+                    nlive.failed(f"نوع عقدة غير معروف: {node.type}", None)
             except Exception as e:  # pragma: no cover
                 current_app.logger.exception("AI workflow node failed")
-                log(node, "failed", node_input, None, str(e))
+                if nlive is not None:
+                    nlive.failed(str(e))
+                else:
+                    log(node, "failed", node_input, None, str(e))
                 execution.status = "failed"
                 execution.error_message = str(e)
                 db.session.commit()

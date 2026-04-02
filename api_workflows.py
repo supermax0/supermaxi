@@ -8,7 +8,7 @@ from flask import Blueprint, current_app, g, jsonify, request, session
 from sqlalchemy import or_
 
 from extensions import db
-from models.ai_agent import Agent, AgentExecution, AgentWorkflow
+from models.ai_agent import Agent, AgentExecution, AgentExecutionLog, AgentWorkflow
 from social_ai.workflow_engine import execute_workflow
 
 
@@ -396,6 +396,56 @@ def run_workflow(workflow_id: int):
     ).start()
 
     return jsonify({"success": True, "execution": execution.to_dict()}), 202
+
+
+@workflow_api.route("/workflows/<int:workflow_id>/execution-live", methods=["GET"])
+def workflow_execution_live(workflow_id: int):
+    """
+    آخر تنفيذ للوورك فلو + معرف العقدة الجارية (صف log بحالة running) للواجهة (تمييز أخضر أثناء التشغيل).
+    """
+    auth = _require_auth()
+    if auth:
+        return auth
+
+    proxied = _proxy_to_node(f"/api/workflows/{workflow_id}/execution-live", timeout_s=8.0)
+    if proxied is not None:
+        _resp, code = proxied
+        if code != 404:
+            return proxied
+
+    wf = _base_workflow_query().filter(AgentWorkflow.id == workflow_id).first()
+    if not wf:
+        return jsonify({"success": False, "error": "workflow_not_found"}), 404
+
+    ex = (
+        AgentExecution.query.filter_by(workflow_id=workflow_id)
+        .order_by(AgentExecution.id.desc())
+        .first()
+    )
+    if not ex:
+        return jsonify(
+            {
+                "success": True,
+                "execution_id": None,
+                "execution_status": None,
+                "active_node_id": None,
+            }
+        )
+
+    running_log = (
+        AgentExecutionLog.query.filter_by(execution_id=ex.id, status="running")
+        .order_by(AgentExecutionLog.id.desc())
+        .first()
+    )
+    active_node_id = running_log.node_id if running_log else None
+    return jsonify(
+        {
+            "success": True,
+            "execution_id": ex.id,
+            "execution_status": ex.status,
+            "active_node_id": active_node_id,
+        }
+    )
 
 
 @workflow_api.route("/logout", methods=["POST"])

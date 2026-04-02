@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState, useEffect } from "react";
+import React, { useCallback, useMemo, useRef, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import ReactFlow, {
   Background,
@@ -15,6 +15,7 @@ type ContextMenuTarget = { type: "node"; id: string } | { type: "edge"; id: stri
 
 export const NodeEditor: React.FC = () => {
   const nodes = useEditorStore((s) => s.nodes);
+  const activeExecutionNodeId = useEditorStore((s) => s.activeExecutionNodeId);
   const edges = useEditorStore((s) => s.edges);
   const onNodesChange = useEditorStore((s) => s.onNodesChange);
   const onEdgesChange = useEditorStore((s) => s.onEdgesChange);
@@ -58,6 +59,15 @@ export const NodeEditor: React.FC = () => {
     const t = setTimeout(runFitView, 100);
     return () => clearTimeout(t);
   }, [runFitView]);
+
+  const nodesForFlow = useMemo(
+    () =>
+      nodes.map((n) => ({
+        ...n,
+        data: { ...(n.data || {}), executionActive: n.id === activeExecutionNodeId },
+      })),
+    [nodes, activeExecutionNodeId],
+  );
 
   const onConnect = useCallback(
     (connection: Connection) => {
@@ -166,7 +176,7 @@ export const NodeEditor: React.FC = () => {
       onContextMenu={(e) => e.preventDefault()}
     >
       <ReactFlow
-        nodes={nodes}
+        nodes={nodesForFlow}
         edges={edges}
         onInit={(state) => {
           fitViewRef.current = () => state.fitView({ padding: 0.15, duration: 200 });

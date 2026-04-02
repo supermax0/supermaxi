@@ -53,6 +53,7 @@ export const App: React.FC = () => {
   const getGraphPayload = useEditorStore((s) => s.getGraphPayload);
   const loadFromGraph = useEditorStore((s) => s.loadFromGraph);
   const reset = useEditorStore((s) => s.reset);
+  const setActiveExecutionNodeId = useEditorStore((s) => s.setActiveExecutionNodeId);
 
   const [isSaving, setIsSaving] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
@@ -115,6 +116,38 @@ export const App: React.FC = () => {
   );
   /** Fixed base for workflow API to avoid duplicated /api in path (e.g. /autoposter/api/api/workflows). */
   const workflowsApiBase = "/autoposter/api";
+
+  /** تمييز العقدة الجارية أثناء التنفيذ (تشغيل يدوي أو ويبهوك تيليجرام). */
+  useEffect(() => {
+    if (!meta.id) {
+      setActiveExecutionNodeId(undefined);
+      return;
+    }
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const r = await fetch(`${workflowsApiBase}/workflows/${meta.id}/execution-live`, {
+          credentials: "same-origin",
+        });
+        if (!r.ok || cancelled) return;
+        const j = (await r.json()) as {
+          success?: boolean;
+          active_node_id?: string | null;
+        };
+        if (cancelled || !j.success) return;
+        if (j.active_node_id) setActiveExecutionNodeId(String(j.active_node_id));
+        else setActiveExecutionNodeId(undefined);
+      } catch {
+        /* ignore */
+      }
+    };
+    void poll();
+    const timer = window.setInterval(poll, 320);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [meta.id, workflowsApiBase, setActiveExecutionNodeId]);
 
   const loginUrl = useMemo(
     () => ((window as any).AUTOPOSTER_LOGIN_URL as string) || "/login",

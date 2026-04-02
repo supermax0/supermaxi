@@ -18,13 +18,19 @@ const subtitleClasses = "mt-1.5 text-[10px] text-slate-400";
 const handleClass =
   "!w-3 !h-3 !border-2 !border-[#334155] !bg-[#111827] hover:!border-[#38bdf8] hover:!bg-[#1e293b]";
 
+/** حلقة خضراء حول العقدة أثناء تنفيذها (استطلاع execution-live). */
+function executionHighlightClass(data: BasicNodeData): string {
+  if (!(data as { executionActive?: boolean }).executionActive) return "";
+  return " z-[2] shadow-[0_0_0_3px_#22c55e,0_0_22px_rgba(34,197,94,0.45)] ";
+}
+
 const StartNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
   const topic = (data as any).topic as string | undefined;
   const subtitle =
     data.subtitle || (topic && topic.trim() ? `الموضوع: ${topic.trim().length > 20 ? `${topic.trim().slice(0, 20)}…` : topic.trim()}` : "بداية الوورك فلو");
 
   return (
-    <div className={`${baseNodeClasses} border-[#22c55e]`} style={baseNodeShadow}>
+    <div className={`${baseNodeClasses}${executionHighlightClass(data)} border-[#22c55e]`} style={baseNodeShadow}>
       <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
       <div className={titleClasses}>⏵ {data.label || "Start"}</div>
       {subtitle && <div className={subtitleClasses}>{subtitle}</div>}
@@ -47,7 +53,7 @@ const AINode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
       : "Generate AI content");
 
   return (
-    <div className={`${baseNodeClasses} border-[#8b5cf6]`} style={baseNodeShadow}>
+    <div className={`${baseNodeClasses}${executionHighlightClass(data)} border-[#8b5cf6]`} style={baseNodeShadow}>
       <Handle type="target" position={Position.Top} id="in" className={handleClass} />
       <Handle type="target" position={Position.Left} id="in_left" className={handleClass} />
       <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
@@ -64,7 +70,7 @@ const ImageNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
   const subtitle = promptPreview || data.subtitle || "Generate marketing image";
 
   return (
-    <div className={`${baseNodeClasses} border-[#ec4899]`} style={baseNodeShadow}>
+    <div className={`${baseNodeClasses}${executionHighlightClass(data)} border-[#ec4899]`} style={baseNodeShadow}>
       <Handle type="target" position={Position.Top} id="in" className={handleClass} />
       <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
       <div className={titleClasses}>🖼 {data.label || "Image Generator"}</div>
@@ -84,7 +90,7 @@ const CaptionNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
       : undefined);
 
   return (
-    <div className={`${baseNodeClasses} border-[#3b82f6]`} style={baseNodeShadow}>
+    <div className={`${baseNodeClasses}${executionHighlightClass(data)} border-[#3b82f6]`} style={baseNodeShadow}>
       <Handle type="target" position={Position.Top} id="in" className={handleClass} />
       <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
       <div className={titleClasses}>✏️ {data.label || "Caption Generator"}</div>
@@ -99,7 +105,7 @@ const PublisherNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
   const subtitle = platformsLabel || data.subtitle || "Select platforms & mode";
 
   return (
-    <div className={`${baseNodeClasses} border-[#f97316]`} style={baseNodeShadow}>
+    <div className={`${baseNodeClasses}${executionHighlightClass(data)} border-[#f97316]`} style={baseNodeShadow}>
       <Handle type="target" position={Position.Top} id="in" className={handleClass} />
       <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
       <div className={titleClasses}>📤 {data.label || "Publisher"}</div>
@@ -114,7 +120,7 @@ const SchedulerNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
   const subtitle = data.subtitle || `${scheduleType} @ ${time}`;
 
   return (
-    <div className={`${baseNodeClasses} border-[#06b6d4]`} style={baseNodeShadow}>
+    <div className={`${baseNodeClasses}${executionHighlightClass(data)} border-[#06b6d4]`} style={baseNodeShadow}>
       <Handle type="target" position={Position.Top} id="in" className={handleClass} />
       <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
       <div className={titleClasses}>⏰ {data.label || "Scheduler"}</div>
@@ -131,7 +137,7 @@ const CommentListenerNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
     (platforms.length ? `${platforms.join(", ")} • ${mode}` : "Select platforms & mode");
 
   return (
-    <div className={`${baseNodeClasses} border-[#eab308]`} style={baseNodeShadow}>
+    <div className={`${baseNodeClasses}${executionHighlightClass(data)} border-[#eab308]`} style={baseNodeShadow}>
       <Handle type="target" position={Position.Top} id="in" className={handleClass} />
       <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
       <div className={titleClasses}>💬 {data.label || "Comment Listener"}</div>
@@ -153,7 +159,7 @@ const AutoReplyNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
   }
 
   return (
-    <div className={`${baseNodeClasses} border-[#ef4444]`} style={baseNodeShadow}>
+    <div className={`${baseNodeClasses}${executionHighlightClass(data)} border-[#ef4444]`} style={baseNodeShadow}>
       <Handle type="target" position={Position.Top} id="in" className={handleClass} />
       <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
       <div className={titleClasses}>✨ {data.label || "Auto Reply"}</div>
@@ -171,7 +177,7 @@ const MemoryNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
       : "تخزين قيمة في الـ context");
 
   return (
-    <div className={`${baseNodeClasses} border-[#10b981]`} style={baseNodeShadow}>
+    <div className={`${baseNodeClasses}${executionHighlightClass(data)} border-[#10b981]`} style={baseNodeShadow}>
       <Handle type="target" position={Position.Top} id="in" className={handleClass} />
       <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
       <div className={titleClasses}>🧺 {data.label || "Store Data"}</div>
@@ -187,7 +193,7 @@ const KnowledgeNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
     (mode === "append" ? "إضافة للمعرفة الحالية" : "استبدال قاعدة المعرفة لهذا الوكيل");
 
   return (
-    <div className={`${baseNodeClasses} border-[#6366f1]`} style={baseNodeShadow}>
+    <div className={`${baseNodeClasses}${executionHighlightClass(data)} border-[#6366f1]`} style={baseNodeShadow}>
       <Handle type="target" position={Position.Top} id="in" className={handleClass} />
       <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
       <div className={titleClasses}>📚 {data.label || "Knowledge / Catalog"}</div>
@@ -206,7 +212,7 @@ const CustomersPhonesNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
       typeof count === "number" ? ` • ${count} رقم` : ""
     }`;
   return (
-    <div className={`${baseNodeClasses} border-[#22d3ee]`} style={baseNodeShadow}>
+    <div className={`${baseNodeClasses}${executionHighlightClass(data)} border-[#22d3ee]`} style={baseNodeShadow}>
       <Handle type="target" position={Position.Top} id="in" className={handleClass} />
       <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
       <div className={titleClasses}>📞 {data.label || "أرقام الزبائن"}</div>
@@ -221,7 +227,7 @@ const EndNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
     data.subtitle || (note && note.trim() ? (note.trim().length > 24 ? `${note.trim().slice(0, 24)}…` : note.trim()) : "حفظ السياق وإنهاء");
 
   return (
-    <div className={`${baseNodeClasses} border-[#64748b]`} style={baseNodeShadow}>
+    <div className={`${baseNodeClasses}${executionHighlightClass(data)} border-[#64748b]`} style={baseNodeShadow}>
       <Handle type="target" position={Position.Top} id="in" className={handleClass} />
       <div className={titleClasses}>■ {data.label || "End"}</div>
       {subtitle && <div className={subtitleClasses}>{subtitle}</div>}
@@ -241,7 +247,7 @@ const WhatsAppListenerNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
       : "Webhook معطّل");
 
   return (
-    <div className={`${baseNodeClasses} border-[#22c55e]`} style={baseNodeShadow}>
+    <div className={`${baseNodeClasses}${executionHighlightClass(data)} border-[#22c55e]`} style={baseNodeShadow}>
       <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
       <div className={titleClasses}>📲 {data.label || "WhatsApp Listener"}</div>
       {subtitle && <div className={subtitleClasses}>{subtitle}</div>}
@@ -261,7 +267,7 @@ const WhatsAppSendNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
       : "رسالة واتساب");
 
   return (
-    <div className={`${baseNodeClasses} border-[#16a34a]`} style={baseNodeShadow}>
+    <div className={`${baseNodeClasses}${executionHighlightClass(data)} border-[#16a34a]`} style={baseNodeShadow}>
       <Handle type="target" position={Position.Top} id="in" className={handleClass} />
       <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
       <div className={titleClasses}>📱 {data.label || "WhatsApp Send"}</div>
@@ -300,7 +306,7 @@ const TelegramListenerNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
       : "أدخل Bot Token ثم فعّل الـ Webhook");
 
   return (
-    <div className={`${baseNodeClasses} border-[#0ea5e9]`} style={baseNodeShadow}>
+    <div className={`${baseNodeClasses}${executionHighlightClass(data)} border-[#0ea5e9]`} style={baseNodeShadow}>
       <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
       <div className={titleClasses}>✈️ {data.label || "Telegram Listener"}</div>
       {subtitle && <div className={subtitleClasses}>{subtitle}</div>}
@@ -320,7 +326,7 @@ const TelegramSendNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
       : "رسالة تيليجرام");
 
   return (
-    <div className={`${baseNodeClasses} border-[#0284c7]`} style={baseNodeShadow}>
+    <div className={`${baseNodeClasses}${executionHighlightClass(data)} border-[#0284c7]`} style={baseNodeShadow}>
       <Handle type="target" position={Position.Top} id="in" className={handleClass} />
       <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
       <div className={titleClasses}>✈️ {data.label || "Telegram Send"}</div>
@@ -333,7 +339,7 @@ const ConversationContextNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) =
   const maxChars = (data as any).max_chars ?? 6000;
   const subtitle = data.subtitle || `سياق للـ AI · حتى ~${maxChars} حرف`;
   return (
-    <div className={`${baseNodeClasses} border-[#38bdf8]`} style={baseNodeShadow}>
+    <div className={`${baseNodeClasses}${executionHighlightClass(data)} border-[#38bdf8]`} style={baseNodeShadow}>
       <Handle type="target" position={Position.Top} id="in" className={handleClass} />
       <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
       <div className={titleClasses}>💬 {data.label || "محادثة (سياق)"}</div>
@@ -346,7 +352,7 @@ const KeywordFilterNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
   const keywords = ((data as any).keywords as string[]) || [];
   const subtitle = data.subtitle || (keywords.length ? `${keywords.length} كلمة` : "أضف كلمات مفتاحية");
   return (
-    <div className={`${baseNodeClasses} border-[#a855f7]`} style={baseNodeShadow}>
+    <div className={`${baseNodeClasses}${executionHighlightClass(data)} border-[#a855f7]`} style={baseNodeShadow}>
       <Handle type="target" position={Position.Top} id="in" className={handleClass} />
       <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
       <div className={titleClasses}>🔍 {data.label || "Keyword Filter"}</div>
@@ -358,7 +364,7 @@ const KeywordFilterNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
 const PublishReplyNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
   const subtitle = data.subtitle || "نشر الرد على FB/IG/TikTok";
   return (
-    <div className={`${baseNodeClasses} border-[#f59e0b]`} style={baseNodeShadow}>
+    <div className={`${baseNodeClasses}${executionHighlightClass(data)} border-[#f59e0b]`} style={baseNodeShadow}>
       <Handle type="target" position={Position.Top} id="in" className={handleClass} />
       <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
       <div className={titleClasses}>📣 {data.label || "Publish Reply"}</div>
@@ -372,7 +378,7 @@ const RateLimiterNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
   const max = (data as any).max_replies_per_minute ?? 20;
   const subtitle = data.subtitle || `${delay}s تأخير، ${max}/دقيقة`;
   return (
-    <div className={`${baseNodeClasses} border-[#14b8a6]`} style={baseNodeShadow}>
+    <div className={`${baseNodeClasses}${executionHighlightClass(data)} border-[#14b8a6]`} style={baseNodeShadow}>
       <Handle type="target" position={Position.Top} id="in" className={handleClass} />
       <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
       <div className={titleClasses}>⏱ {data.label || "Rate Limiter"}</div>
@@ -384,7 +390,7 @@ const RateLimiterNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
 const LoggingNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
   const subtitle = data.subtitle || "تسجيل في comment_logs";
   return (
-    <div className={`${baseNodeClasses} border-[#78716c]`} style={baseNodeShadow}>
+    <div className={`${baseNodeClasses}${executionHighlightClass(data)} border-[#78716c]`} style={baseNodeShadow}>
       <Handle type="target" position={Position.Top} id="in" className={handleClass} />
       <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
       <div className={titleClasses}>📋 {data.label || "Logging"}</div>
@@ -396,7 +402,7 @@ const LoggingNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
 const DuplicateProtectionNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
   const subtitle = data.subtitle || "عدم الرد مرتين على نفس التعليق";
   return (
-    <div className={`${baseNodeClasses} border-[#64748b]`} style={baseNodeShadow}>
+    <div className={`${baseNodeClasses}${executionHighlightClass(data)} border-[#64748b]`} style={baseNodeShadow}>
       <Handle type="target" position={Position.Top} id="in" className={handleClass} />
       <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
       <div className={titleClasses}>🛡 {data.label || "Duplicate Protection"}</div>
@@ -413,7 +419,7 @@ const SqlSaveOrderNode: React.FC<NodeProps<BasicNodeData>> = ({ data }) => {
       ? `قناة: ${channelDefault.trim()}`
       : "حفظ الطلب/البيانات في الجدول (orders)");
   return (
-    <div className={`${baseNodeClasses} border-[#0d9488]`} style={baseNodeShadow}>
+    <div className={`${baseNodeClasses}${executionHighlightClass(data)} border-[#0d9488]`} style={baseNodeShadow}>
       <Handle type="target" position={Position.Top} id="in" className={handleClass} />
       <Handle type="source" position={Position.Bottom} id="out" className={handleClass} />
       <div className={titleClasses}>🗄 {data.label || "SQL حفظ الطلب"}</div>

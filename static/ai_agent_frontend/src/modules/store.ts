@@ -23,7 +23,10 @@ type EditorStore = {
   nodes: Node[];
   edges: Edge[];
   selectedNodeId?: string;
+  /** عقدة التنفيذ الحالي (للتمييز الأخضر في المحرر أثناء تشغيل الوورك فلو). */
+  activeExecutionNodeId?: string;
   setMeta: (partial: Partial<WorkflowMeta>) => void;
+  setActiveExecutionNodeId: (id?: string) => void;
   onNodesChange: (changes: NodeChange[]) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
   addConnection: (connection: Connection) => void;
@@ -63,8 +66,10 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   nodes: initialNodes,
   edges: [],
   selectedNodeId: undefined,
+  activeExecutionNodeId: undefined,
 
   setMeta: (partial) => set((state) => ({ meta: { ...state.meta, ...partial } })),
+  setActiveExecutionNodeId: (id) => set({ activeExecutionNodeId: id }),
 
   onNodesChange: (changes) =>
     set((state) => ({
@@ -91,6 +96,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       nodes: state.nodes.filter((n) => n.id !== id),
       edges: state.edges.filter((e) => e.source !== id && e.target !== id),
       selectedNodeId: state.selectedNodeId === id ? undefined : state.selectedNodeId,
+      activeExecutionNodeId: state.activeExecutionNodeId === id ? undefined : state.activeExecutionNodeId,
     })),
 
   removeEdge: (id) =>
@@ -113,6 +119,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       nodes: nodes.length ? nodes : initialNodes,
       edges,
       selectedNodeId: undefined,
+      activeExecutionNodeId: undefined,
     })),
 
   getGraphPayload: () => {
@@ -126,6 +133,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       nodes: initialNodes,
       edges: [],
       selectedNodeId: undefined,
+      activeExecutionNodeId: undefined,
     })),
 }));
 
