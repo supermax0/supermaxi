@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from flask import Blueprint, render_template, request, jsonify, send_file, send_from_directory, session, redirect, url_for, current_app, abort
+from flask import Blueprint, render_template, request, jsonify, send_file, send_from_directory, session, redirect, url_for, current_app, abort, g
 from extensions import db
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload, selectinload
@@ -27,7 +27,18 @@ from utils.order_status import is_canceled, is_returned, is_completed
 from services.media_service import get_thumbnail_upload_root, get_video_upload_root, save_uploaded_file
 
 orders_bp = Blueprint("orders", __name__, url_prefix="/orders")
-_ORDER_VIDEO_COLUMNS_ENSURED = False
+# Per-tenant (or core) bind: video-column ensure must inspect the same engine Invoice rows use.
+_ORDER_VIDEO_COLUMNS_ENSURED_BINDS: set[str] = set()
+
+
+def _orders_schema_engine():
+    """قاعدة الفواتير/الطلبات للطلب الحالي: SQLite المستأجر أو محرك النواة."""
+    tenant_slug = getattr(g, "tenant", None)
+    if tenant_slug:
+        from extensions_tenant import get_tenant_engine
+
+        return get_tenant_engine(tenant_slug)
+    return db.engine
 
 
 def _tenant_invoice_template_bundle():
@@ -177,42 +188,40 @@ def _apply_order_video_result(order: Invoice, result: dict, original_name: str |
 
 
 def _ensure_order_video_columns() -> None:
-    global _ORDER_VIDEO_COLUMNS_ENSURED
-    if _ORDER_VIDEO_COLUMNS_ENSURED:
+    bind_key = getattr(g, "tenant", None) or "__core__"
+    if bind_key in _ORDER_VIDEO_COLUMNS_ENSURED_BINDS:
         return
     try:
         from sqlalchemy import inspect, text
 
-        inspector = inspect(db.engine)
+        engine = _orders_schema_engine()
+        inspector = inspect(engine)
         if "invoice" not in inspector.get_table_names():
-            _ORDER_VIDEO_COLUMNS_ENSURED = True
+            _ORDER_VIDEO_COLUMNS_ENSURED_BINDS.add(bind_key)
             return
 
-        invoice_columns = [col["name"] for col in inspector.get_columns("invoice")]
-        changed = False
+        invoice_columns = {col["name"] for col in inspector.get_columns("invoice")}
+        dialect = engine.dialect.name
+        recorded_type = "TIMESTAMP" if dialect == "postgresql" else "DATETIME"
+        stmts: list[str] = []
         if "order_video_path" not in invoice_columns:
-            db.session.execute(text("ALTER TABLE invoice ADD COLUMN order_video_path VARCHAR(255)"))
-            changed = True
+            stmts.append("ALTER TABLE invoice ADD COLUMN order_video_path VARCHAR(255)")
         if "order_video_original_name" not in invoice_columns:
-            db.session.execute(text("ALTER TABLE invoice ADD COLUMN order_video_original_name VARCHAR(255)"))
-            changed = True
+            stmts.append("ALTER TABLE invoice ADD COLUMN order_video_original_name VARCHAR(255)")
         if "order_video_thumbnail_path" not in invoice_columns:
-            db.session.execute(text("ALTER TABLE invoice ADD COLUMN order_video_thumbnail_path VARCHAR(255)"))
-            changed = True
+            stmts.append("ALTER TABLE invoice ADD COLUMN order_video_thumbnail_path VARCHAR(255)")
         if "order_video_size_mb" not in invoice_columns:
-            db.session.execute(text("ALTER TABLE invoice ADD COLUMN order_video_size_mb FLOAT"))
-            changed = True
+            stmts.append("ALTER TABLE invoice ADD COLUMN order_video_size_mb FLOAT")
         if "order_video_duration_sec" not in invoice_columns:
-            db.session.execute(text("ALTER TABLE invoice ADD COLUMN order_video_duration_sec FLOAT"))
-            changed = True
+            stmts.append("ALTER TABLE invoice ADD COLUMN order_video_duration_sec FLOAT")
         if "order_video_recorded_at" not in invoice_columns:
-            db.session.execute(text("ALTER TABLE invoice ADD COLUMN order_video_recorded_at DATETIME"))
-            changed = True
-        if changed:
-            db.session.commit()
-        _ORDER_VIDEO_COLUMNS_ENSURED = True
+            stmts.append(f"ALTER TABLE invoice ADD COLUMN order_video_recorded_at {recorded_type}")
+        if stmts:
+            with engine.begin() as conn:
+                for stmt in stmts:
+                    conn.execute(text(stmt))
+        _ORDER_VIDEO_COLUMNS_ENSURED_BINDS.add(bind_key)
     except Exception:
-        db.session.rollback()
         current_app.logger.exception("Failed ensuring order video columns on invoice table")
         raise
 
