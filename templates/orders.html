@@ -2300,36 +2300,52 @@
     window.open(`/orders/${orderId}/video/download`, '_blank');
   }
 
+  window.__orderVideoShareQueue = window.__orderVideoShareQueue || Promise.resolve();
+
   async function shareOrderVideo(orderId) {
     const shareUrl = `${window.location.origin}/orders/${orderId}/video`;
-    try {
-      if (navigator.canShare && navigator.share) {
-        const response = await fetch(shareUrl);
-        if (response.ok) {
-          const blob = await response.blob();
-          const ext = blob.type && blob.type.includes('mp4') ? '.mp4' : '.webm';
-          const file = new File([blob], `order-${orderId}${ext}`, { type: blob.type || 'video/webm' });
-          if (navigator.canShare({ files: [file] })) {
-            await navigator.share({ title: `فيديو الطلب #${orderId}`, files: [file] });
-            return;
+    window.__orderVideoShareQueue = window.__orderVideoShareQueue.then(async function () {
+      try {
+        if (navigator.canShare && navigator.share) {
+          const response = await fetch(shareUrl);
+          if (response.ok) {
+            const blob = await response.blob();
+            const ext = blob.type && blob.type.includes('mp4') ? '.mp4' : '.webm';
+            const file = new File([blob], `order-${orderId}${ext}`, { type: blob.type || 'video/webm' });
+            if (navigator.canShare({ files: [file] })) {
+              await navigator.share({ title: `فيديو الطلب #${orderId}`, files: [file] });
+              return;
+            }
           }
         }
+        if (navigator.share) {
+          await navigator.share({ title: `فيديو الطلب #${orderId}`, url: shareUrl });
+          return;
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(shareUrl);
+          showToast('تم نسخ رابط الفيديو', 'success');
+          return;
+        }
+        window.open(shareUrl, '_blank');
+      } catch (err) {
+        if (err && (err.name === 'AbortError' || err.name === 'NotAllowedError')) return;
+        if (err && err.name === 'InvalidStateError') {
+          try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              await navigator.clipboard.writeText(shareUrl);
+              showToast('تم نسخ رابط الفيديو', 'success');
+              return;
+            }
+          } catch (_) {}
+          window.open(shareUrl, '_blank');
+          return;
+        }
+        console.error('Share order video error:', err);
+        showToast('تعذر مشاركة الفيديو على هذا الجهاز', 'warning');
       }
-      if (navigator.share) {
-        await navigator.share({ title: `فيديو الطلب #${orderId}`, url: shareUrl });
-        return;
-      }
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(shareUrl);
-        showToast('تم نسخ رابط الفيديو', 'success');
-        return;
-      }
-      window.open(shareUrl, '_blank');
-    } catch (err) {
-      if (err && (err.name === 'AbortError' || err.name === 'NotAllowedError')) return;
-      console.error('Share order video error:', err);
-      showToast('تعذر مشاركة الفيديو على هذا الجهاز', 'warning');
-    }
+    });
+    return window.__orderVideoShareQueue;
   }
 
   async function openOrderVideoRecorder(orderId) {

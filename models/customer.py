@@ -21,6 +21,11 @@ class Customer(db.Model):
     address = db.Column(db.String(255))
     notes = db.Column(db.Text)
 
+    # القائمة السوداء (يدوي أو تلقائي بعد تعدد المرتجعات)
+    is_blacklisted = db.Column(db.Boolean, default=False, nullable=False)
+    blacklist_reason = db.Column(db.Text, nullable=True)
+    blacklisted_at = db.Column(db.DateTime, nullable=True)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # علاقات

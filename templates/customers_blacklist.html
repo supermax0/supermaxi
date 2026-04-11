@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}{{ _('customers_blacklist_page_title') }}{% endblock %}
+{% block page_title %}🚫 {{ _('customers_blacklist_page_title') }}{% endblock %}
+
+{% block content %}
+<style>
+  .bl-wrap { max-width: 1100px; margin: 0 auto; padding: 20px; }
+  .bl-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .bl-head a { color: var(--primary); text-decoration: none; }
+  .bl-table-wrap { overflow: auto; border: 1px solid var(--border); border-radius: 12px; }
+  .bl-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .bl-table th, .bl-table td { padding: 12px 14px; text-align: right; border-bottom: 1px solid var(--border); }
+  .bl-table th { background: var(--card-alt); font-weight: 600; }
+  .bl-table tr:hover { background: rgba(59, 130, 246, 0.06); }
+  .bl-note { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px; line-height: 1.6; }
+  .bl-btn { border: none; border-radius: 10px; padding: 8px 14px; cursor: pointer; font-weight: 600; }
+  .bl-btn-danger { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.35); }
+</style>
+
+<div class="bl-wrap">
+  <div class="bl-head">
+    <a href="/customers">← {{ _('customers_blacklist_back') }}</a>
+  </div>
+  <p class="bl-note">{{ _('customers_blacklist_intro') }}</p>
+
+  <div class="bl-table-wrap">
+    <table class="bl-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>{{ _('customers_col_name') }}</th>
+          <th>{{ _('customers_col_phone') }}</th>
+          <th>{{ _('customers_blacklist_col_reason') }}</th>
+          <th>{{ _('customers_blacklist_col_date') }}</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in customers %}
+        <tr>
+          <td>{{ c.id }}</td>
+          <td><strong>{{ c.name }}</strong></td>
+          <td>{{ c.phone }}{% if c.phone2 %} / {{ c.phone2 }}{% endif %}</td>
+          <td style="max-width:280px;word-break:break-word;">{{ c.blacklist_reason or '—' }}</td>
+          <td>{% if c.blacklisted_at %}{{ c.blacklisted_at.strftime('%Y-%m-%d %H:%M') }}{% else %}—{% endif %}</td>
+          <td>
+            <button type="button" class="bl-btn bl-btn-danger" data-id="{{ c.id }}" onclick="removeBlacklist({{ c.id }})">
+              {{ _('customers_blacklist_remove') }}
+            </button>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" style="text-align:center;padding:32px;color:var(--text-muted);">{{ _('customers_blacklist_empty') }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+async function removeBlacklist(id) {
+  if (!confirm({{ _('customers_blacklist_confirm_remove')|tojson }})) return;
+  try {
+    const r = await fetch('/customers/blacklist/remove', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ customer_ids: [id] })
+    });
+    const d = await r.json();
+    if (!d.success) {
+      alert(d.error || 'Error');
+      return;
+    }
+    location.reload();
+  } catch (e) {
+    alert(String(e));
+  }
+}
+</script>
+{% endblock %}

@@ -8,7 +8,8 @@ from models.invoice import Invoice
 from models.order_item import OrderItem
 from models.employee import Employee
 from models.page import Page
-from utils.product_schema_guard import ensure_product_schema
+from utils.product_schema_guard import ensure_customer_blacklist_columns, ensure_product_schema
+from utils.customer_blacklist import is_phone_blacklisted_for_new_customer
 
 pos_bp = Blueprint("pos", __name__, url_prefix="/pos")
 
@@ -22,6 +23,7 @@ def pos_use_tenant_db():
     if tenant_slug:
         g.tenant = tenant_slug  # جعل الاستعلامات تستهدف قاعدة بيانات الشركة
         ensure_product_schema()
+        ensure_customer_blacklist_columns()
 
 
 # =================================================
@@ -147,12 +149,14 @@ def search_customer():
     if not q:
         return jsonify([])
 
+    ensure_customer_blacklist_columns()
     customers = Customer.query.filter(
         Customer.name.contains(q) |
         Customer.phone.contains(q) |
         Customer.phone2.contains(q)
-    ).limit(1).all()
+    ).limit(15).all()
 
+    msg = "هذا الزبون في القائمة السوداء — لا يُسمح بالتعامل معه."
     return jsonify([
         {
             "id": c.id,
@@ -160,7 +164,9 @@ def search_customer():
             "phone": c.phone,
             "phone2": c.phone2 or "",
             "city": c.city or "بغداد",
-            "address": c.address or ""
+            "address": c.address or "",
+            "blacklisted": bool(getattr(c, "is_blacklisted", False)),
+            "blacklist_message": msg if getattr(c, "is_blacklisted", False) else "",
         } for c in customers
     ])
 
@@ -172,6 +178,7 @@ def search_customer():
 @pos_bp.route("/add-customer", methods=["POST"])
 def add_customer():
     try:
+        ensure_customer_blacklist_columns()
         data = request.get_json() or {}
 
         name = data.get("name", "").strip() if data.get("name") else ""
@@ -193,9 +200,22 @@ def add_customer():
                 "msg": "رقم الهاتف مطلوب"
             }), 400
 
+        if is_phone_blacklisted_for_new_customer(phone, phone2):
+            return jsonify({
+                "status": "fail",
+                "msg": "رقم الهاتف في القائمة السوداء — لا يُسمح بإضافة زبون بهذا الرقم.",
+                "blacklisted": True,
+            }), 400
+
         # منع تكرار الزبون حسب الرقم
         existing = Customer.query.filter_by(phone=phone).first()
         if existing:
+            if getattr(existing, "is_blacklisted", False):
+                return jsonify({
+                    "status": "fail",
+                    "msg": "هذا الزبون في القائمة السوداء — لا يُسمح بالتعامل معه.",
+                    "blacklisted": True,
+                }), 400
             return jsonify({
                 "status": "success",
                 "id": existing.id,
@@ -333,6 +353,7 @@ def create_order():
     if "user_id" not in session:
         return jsonify({"error": "غير مصرح"}), 403
 
+    ensure_customer_blacklist_columns()
     data = request.json or {}
 
     # ===============================
@@ -346,6 +367,12 @@ def create_order():
     customer = Customer.query.get(customer_id)
     if not customer:
         return jsonify({"error": "الزبون غير موجود"}), 400
+
+    if getattr(customer, "is_blacklisted", False):
+        return jsonify({
+            "error": "هذا الزبون في القائمة السوداء — لا يُسمح بإنشاء طلب له.",
+            "blacklisted": True,
+        }), 400
 
     customer_name = customer.name
 

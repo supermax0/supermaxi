@@ -101,6 +101,20 @@ def check_permission(permission_name):
     return employee.has_permission(rbac_name)
 
 
+def _db_user_facing_error(exc: BaseException) -> str:
+    """رسالة للمستخدم عند أخطاء SQLite الشائعة في الإنتاج (مثل قاعدة للقراءة فقط)."""
+    raw = str(exc)
+    low = raw.lower()
+    if "readonly" in low or "attempt to write a readonly" in low:
+        current_app.logger.error("SQLite write failed (check tenants/ permissions): %s", raw, exc_info=True)
+        return (
+            "تعذر حفظ التغييرات: قاعدة بيانات الشركة أو مجلد «tenants» للقراءة فقط على الخادم. "
+            "تأكد أن حساب تشغيل التطبيق يملك الكتابة على المجلد وملفات ‎.db (مثلاً chown لـ www-data وchmod)، "
+            "وأن القرص غير ممتلئ."
+        )
+    return raw
+
+
 def _order_video_payload(order: Invoice) -> dict:
     has_video = bool(getattr(order, "order_video_path", None))
     if not has_video:
@@ -797,6 +811,12 @@ def payment():
                 _clear_order_video_fields(order)
                 db.session.commit()
                 _delete_order_video_cleanup_targets(video_cleanup_targets)
+                try:
+                    from utils.customer_blacklist import maybe_auto_blacklist_after_return
+
+                    maybe_auto_blacklist_after_return(order_id)
+                except Exception:
+                    current_app.logger.exception("auto blacklist after return failed")
                 return jsonify({"success": True})
 
             order.payment_status = payment_status
@@ -834,7 +854,7 @@ def payment():
         return jsonify({"success": True})
     except Exception as e:
         db.session.rollback()
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({"success": False, "error": _db_user_facing_error(e)}), 500
 
 
 # =====================================================
@@ -860,7 +880,7 @@ def delete_order(order_id):
         return jsonify({"success": True})
     except Exception as e:
         db.session.rollback()
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({"success": False, "error": _db_user_facing_error(e)}), 500
 
 # ======================================
 # Update Shipping Company
@@ -1006,7 +1026,7 @@ def upload_order_video(order_id):
     except Exception as e:
         db.session.rollback()
         _delete_saved_upload_result(result)
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({"success": False, "error": _db_user_facing_error(e)}), 500
 
     _delete_order_video_cleanup_targets(previous_targets)
     return jsonify({
@@ -1671,7 +1691,7 @@ def migrate_barcode():
         return jsonify({"success": True, "added": added})
     except Exception as e:
         db.session.rollback()
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({"success": False, "error": _db_user_facing_error(e)}), 500
 
 # =====================================================
 # Create Shipping Report

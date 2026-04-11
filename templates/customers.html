@@ -1083,6 +1083,14 @@
       <span>📥</span>
       <span>استيراد</span>
     </button>
+    <a href="/customers/blacklist" class="btn btn-muted" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+      <span>🚫</span>
+      <span>{{ _('customers_nav_blacklist') }}</span>
+    </a>
+    <button type="button" class="btn btn-muted" onclick="addSelectedToBlacklist()">
+      <span>⛔</span>
+      <span>{{ _('customers_blacklist_add_selected') }}</span>
+    </button>
     <button class="btn-premium" onclick="openAdd()">
       <span>➕</span>
       <span>{{ _('customers_add_button') }}</span>
@@ -1110,7 +1118,8 @@
     "city": {{ (c.city or '—')|tojson }},
     "address": {{ (c.address or '—')|tojson }},
     "notes": {{ (c.notes or '')|tojson }},
-    "created_at": {{ ((c.created_at.strftime("%Y-%m-%d %H:%M")) if c.created_at else '—')|tojson }}
+    "created_at": {{ ((c.created_at.strftime("%Y-%m-%d %H:%M")) if c.created_at else '—')|tojson }},
+    "is_blacklisted": {{ 'true' if c.is_blacklisted else 'false' }}
   }{% if not loop.last %},{% endif %}
   {% endfor %}
 ]
@@ -1463,6 +1472,38 @@
     }
   }
 
+  async function addSelectedToBlacklist() {
+    if (!gridApi) return;
+    const rows = gridApi.getSelectedRows ? gridApi.getSelectedRows() : [];
+    if (!rows.length) {
+      showToast("{{ _('customers_blacklist_select_first') }}", "warning");
+      return;
+    }
+    const ids = rows.map(r => r.id).filter(Boolean);
+    if (!ids.length) return;
+    const reason = window.prompt("{{ _('customers_blacklist_reason_prompt') }}", "");
+    if (reason === null) return;
+    showLoading();
+    try {
+      const resp = await fetch("/customers/blacklist/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customer_ids: ids, reason: reason || "" })
+      });
+      const res = await resp.json();
+      if (res.success) {
+        showToast("{{ _('customers_blacklist_toast_added') }}", "success");
+        setTimeout(() => location.reload(), 800);
+      } else {
+        showToast(res.error || "{{ _('customers_toast_server_error') }}", "error");
+      }
+    } catch (e) {
+      showToast("{{ _('customers_toast_server_error') }}", "error");
+    } finally {
+      hideLoading();
+    }
+  }
+
   // ==================== AG Grid Initialization ====================
   let gridApi;
 
@@ -1479,6 +1520,17 @@
     }
 
     const columnDefs = [
+      {
+        headerName: "",
+        field: "_sel",
+        width: 52,
+        checkboxSelection: true,
+        headerCheckboxSelection: true,
+        pinned: "right",
+        sortable: false,
+        filter: false,
+        suppressMovable: true,
+      },
       {
         headerName: "{{ _('customers_col_actions') }}",
         field: "actions",
@@ -1518,7 +1570,10 @@
         field: "name",
         flex: 1,
         minWidth: 150,
-        cellRenderer: params => `<strong>${params.value}</strong>`
+        cellRenderer: params => {
+          const bl = params.data && params.data.is_blacklisted ? ' <span style="color:#f87171;font-size:11px;">🚫</span>' : '';
+          return `<strong>${params.value || ''}</strong>${bl}`;
+        }
       },
       { headerName: "{{ _('customers_col_phone') }}", field: "phone", width: 130 },
       { headerName: "الرقم الآخر", field: "phone2", width: 140 },
@@ -1530,6 +1585,8 @@
     const gridOptions = {
       columnDefs: columnDefs,
       rowData: rowData,
+      rowSelection: "multiple",
+      suppressRowClickSelection: true,
       rowHeight: 52,
       headerHeight: 48,
       suppressColumnMoveAnimation: false,

@@ -101,6 +101,16 @@
       overflow: hidden;
     }
 
+    .pos-cust-bl {
+      opacity: 0.92;
+      border-inline-start: 3px solid var(--danger);
+      padding: 6px 8px 6px 10px;
+      background: rgba(239, 68, 68, 0.1);
+      border-radius: 8px;
+      margin: 4px 0;
+      cursor: not-allowed;
+    }
+
     .card:hover {
       transform: translateY(-6px);
       box-shadow: 0 25px 35px -5px rgba(0, 0, 0, 0.4);
@@ -1467,20 +1477,34 @@
         if (searchCustomer.value.length < 2) {
           customerResults.style.display = "none"; return
         }
-        fetch(`/pos/search-customer?q=${searchCustomer.value}`)
+        fetch(`/pos/search-customer?q=${encodeURIComponent(searchCustomer.value)}`)
           .then(r => r.json())
           .then(d => {
-            customerResults.innerHTML = d.map(c => `
-        <div onclick='selectCustomer(${JSON.stringify(c)})'>
-          ${c.name} - ${c.phone}
-        </div>
-      `).join("")
+            customerResults.innerHTML = d.map(c => {
+              const enc = encodeURIComponent(JSON.stringify(c));
+              const bl = c.blacklisted ? ' class="pos-cust-bl"' : '';
+              return `<div${bl} onclick="pickCustomerFromSearch(decodeURIComponent('${enc}'))">${c.name} - ${c.phone}${c.blacklisted ? ' <strong>(قائمة سوداء)</strong>' : ''}</div>`;
+            }).join("")
             customerResults.style.display = "block"
           })
       }
     }
 
+    function pickCustomerFromSearch(enc) {
+      let c;
+      try {
+        c = JSON.parse(decodeURIComponent(enc));
+      } catch (e) {
+        return;
+      }
+      selectCustomer(c);
+    }
+
     function selectCustomer(c) {
+      if (c && c.blacklisted) {
+        toast(c.blacklist_message || "هذا الزبون في القائمة السوداء — لا يُسمح بالتعامل معه.");
+        return;
+      }
       selectedCustomerId = c.id
       isSelectingCustomer = true
       if (selectedCustomer) {
@@ -1527,6 +1551,10 @@
       })
         .then(r => r.json())
         .then(d => {
+          if (d.blacklisted || (d.status === "fail" && d.msg)) {
+            toast("❌ " + (d.msg || "لا يُسمح بهذا الرقم"))
+            return
+          }
           if (d.status === "success" && d.id && d.name && d.phone) {
             selectedCustomerId = d.id
             if (selectedCustomer) {

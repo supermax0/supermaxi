@@ -7,6 +7,7 @@ from flask import Blueprint, render_template, request, jsonify, send_file
 from extensions import db
 from models.customer import Customer
 from models.invoice import Invoice
+from utils.product_schema_guard import ensure_customer_blacklist_columns
 
 customers_bp = Blueprint("customers", __name__, url_prefix="/customers")
 
@@ -120,6 +121,7 @@ def _xlsx_xml_to_dataframe(raw_bytes):
 # ==================================================
 @customers_bp.route("/")
 def customers():
+    ensure_customer_blacklist_columns()
     customers = Customer.query.order_by(Customer.created_at.desc()).all()
     cities = [
         c[0] for c in
@@ -440,3 +442,66 @@ def import_customers():
         "imported": imported,
         "skipped": skipped,
     })
+
+
+# ==================================================
+# القائمة السوداء
+# ==================================================
+@customers_bp.route("/blacklist")
+def customers_blacklist_page():
+    ensure_customer_blacklist_columns()
+    rows = (
+        Customer.query.filter(Customer.is_blacklisted.is_(True))
+        .order_by(Customer.id.desc())
+        .all()
+    )
+    return render_template("customers_blacklist.html", customers=rows)
+
+
+@customers_bp.route("/blacklist/add", methods=["POST"])
+def customers_blacklist_add():
+    ensure_customer_blacklist_columns()
+    data = request.get_json() or {}
+    raw_ids = data.get("customer_ids") or []
+    if isinstance(raw_ids, str):
+        raw_ids = [int(x) for x in raw_ids.split(",") if str(x).strip().isdigit()]
+    ids = []
+    for x in raw_ids:
+        try:
+            ids.append(int(x))
+        except (TypeError, ValueError):
+            continue
+    if not ids:
+        return jsonify({"success": False, "error": "لم يُحدد أي زبون"}), 400
+    reason = (data.get("reason") or "").strip() or "يدوي: إضافة من واجهة الزبائن"
+    from utils.customer_blacklist import blacklist_customers_by_ids
+
+    try:
+        n = blacklist_customers_by_ids(ids, reason[:2000], commit=True)
+        return jsonify({"success": True, "updated": n})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@customers_bp.route("/blacklist/remove", methods=["POST"])
+def customers_blacklist_remove():
+    ensure_customer_blacklist_columns()
+    data = request.get_json() or {}
+    raw_ids = data.get("customer_ids") or []
+    ids = []
+    for x in raw_ids:
+        try:
+            ids.append(int(x))
+        except (TypeError, ValueError):
+            continue
+    if not ids:
+        return jsonify({"success": False, "error": "لم يُحدد أي زبون"}), 400
+    from utils.customer_blacklist import clear_blacklist_for_customer_ids
+
+    try:
+        n = clear_blacklist_for_customer_ids(ids, commit=True)
+        return jsonify({"success": True, "updated": n})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500

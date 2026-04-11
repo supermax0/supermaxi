@@ -1798,6 +1798,8 @@
         current_employee.role == "cashier") %}
         {% if show_customers %}
         <a href="/customers"><i class="fa fa-users"></i> {{ _('customers') }}</a>
+        <a href="/customers/blacklist" title="{{ _('customers_nav_blacklist') }}"><i class="fa fa-ban"></i> {{
+          _('customers_nav_blacklist') }}</a>
         {% endif %}
         {% set show_orders = is_admin or not current_employee or can_see_orders or (current_employee and
         current_employee.role == "cashier") %}

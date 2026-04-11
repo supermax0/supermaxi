@@ -75,6 +75,32 @@ def ensure_product_schema() -> None:
         return
 
 
+def ensure_customer_blacklist_columns() -> None:
+    """Adds customer blacklist columns on tenant/core engine bound to current request."""
+    try:
+        engine = _product_schema_engine()
+        inspector = inspect(engine)
+        if "customer" not in inspector.get_table_names():
+            return
+        existing = {c["name"] for c in inspector.get_columns("customer")}
+        dialect = engine.dialect.name
+        dt_type = "TIMESTAMP" if dialect == "postgresql" else "DATETIME"
+        stmts: list[str] = []
+        if "is_blacklisted" not in existing:
+            stmts.append("ALTER TABLE customer ADD COLUMN is_blacklisted BOOLEAN DEFAULT 0")
+        if "blacklist_reason" not in existing:
+            stmts.append("ALTER TABLE customer ADD COLUMN blacklist_reason TEXT")
+        if "blacklisted_at" not in existing:
+            stmts.append(f"ALTER TABLE customer ADD COLUMN blacklisted_at {dt_type}")
+        if stmts:
+            with engine.begin() as conn:
+                for stmt in stmts:
+                    conn.execute(text(stmt))
+    except Exception:
+        _log.exception("ensure_customer_blacklist_columns failed")
+        return
+
+
 if __name__ == "__main__":
     # This helper needs the app + SQLAlchemy to be initialized (app context).
     # It is intended to be imported and executed from routes / app startup.
