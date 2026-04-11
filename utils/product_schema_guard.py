@@ -3,6 +3,9 @@ from __future__ import annotations
 import os
 import sys
 
+import logging
+
+from flask import g
 from sqlalchemy import inspect, text
 
 # If this file is executed directly (e.g. `python utils/product_schema_guard.py`),
@@ -13,6 +16,19 @@ if _PROJECT_ROOT not in sys.path:
 
 from extensions import db
 
+_log = logging.getLogger(__name__)
+
+
+def _product_schema_engine():
+    """Same DB as Product queries: tenant SQLite when g.tenant is set."""
+    tenant_slug = getattr(g, "tenant", None)
+    if tenant_slug:
+        from extensions_tenant import get_tenant_engine
+
+        return get_tenant_engine(tenant_slug)
+    bind = db.session.get_bind()
+    return bind if bind is not None else db.engine
+
 
 def ensure_product_schema() -> None:
     """
@@ -21,7 +37,7 @@ def ensure_product_schema() -> None:
     works in multi-tenant mode where each tenant has its own DB.
     """
     try:
-        engine = db.session.get_bind()
+        engine = _product_schema_engine()
         inspector = inspect(engine)
 
         if "product" not in inspector.get_table_names():
@@ -39,23 +55,23 @@ def ensure_product_schema() -> None:
 
         # Also keep prior additions that some installs might miss.
         # (These are safe to run only if the column is absent.)
+        # SQLite: ADD COLUMN must NOT use UNIQUE/PRIMARY KEY — use plain type only.
         additions.setdefault(
             "barcode",
-            "ALTER TABLE product ADD COLUMN barcode VARCHAR(100) UNIQUE",
+            "ALTER TABLE product ADD COLUMN barcode VARCHAR(100)",
         )
         additions.setdefault(
             "low_stock_threshold",
             "ALTER TABLE product ADD COLUMN low_stock_threshold INTEGER DEFAULT 5",
         )
 
-        for col_name, stmt in additions.items():
-            if col_name not in existing_cols:
-                db.session.execute(text(stmt))
-                db.session.commit()
-                existing_cols.add(col_name)
+        to_run = [stmt for col_name, stmt in additions.items() if col_name not in existing_cols]
+        if to_run:
+            with engine.begin() as conn:
+                for stmt in to_run:
+                    conn.execute(text(stmt))
     except Exception:
-        # Avoid breaking the UI if schema check fails for any reason.
-        # The API/UI will show the real DB error if columns still don't exist.
+        _log.exception("ensure_product_schema failed (product table migrations)")
         return
 
 

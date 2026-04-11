@@ -408,7 +408,8 @@ with app.app_context():
         if 'product' in inspector.get_table_names():
             product_columns = [col['name'] for col in inspector.get_columns('product')]
             if 'barcode' not in product_columns:
-                db.session.execute(text("ALTER TABLE product ADD COLUMN barcode VARCHAR(100) UNIQUE"))
+                # SQLite لا يدعم UNIQUE في ADD COLUMN؛ استخدم عموداً عادياً ثم فهرساً لاحقاً إن لزم
+                db.session.execute(text("ALTER TABLE product ADD COLUMN barcode VARCHAR(100)"))
                 db.session.commit()
                 print("Added barcode column to product table.")
             if 'low_stock_threshold' not in product_columns:
