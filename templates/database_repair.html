@@ -20,8 +20,20 @@
   .db-repair-out {
     background: rgba(15, 23, 42, 0.75); border: 1px solid var(--border); border-radius: 14px;
     padding: 16px; font-family: ui-monospace, monospace; font-size: 12px; white-space: pre-wrap;
-    word-break: break-word; color: #e2e8f0; min-height: 120px; max-height: 60vh; overflow: auto;
+    word-break: break-word; color: #e2e8f0; min-height: 80px; max-height: 50vh; overflow: auto;
+    text-align: left; direction: ltr;
   }
+  .db-repair-summary {
+    font-family: inherit; font-size: 0.95rem; line-height: 1.6; color: var(--text);
+    margin-bottom: 14px; padding: 14px 16px; border-radius: 12px;
+    background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2);
+  }
+  .db-repair-summary.ok { border-color: rgba(34, 197, 94, 0.35); background: rgba(34, 197, 94, 0.08); }
+  .db-repair-summary.warn { border-color: rgba(234, 179, 8, 0.4); background: rgba(234, 179, 8, 0.08); }
+  .db-repair-summary.err { border-color: rgba(248, 113, 113, 0.4); background: rgba(248, 113, 113, 0.08); }
+  .db-repair-nav { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 18px; align-items: center; }
+  .db-repair-nav a { color: #93c5fd; text-decoration: none; font-size: 0.95rem; }
+  .db-repair-nav a:hover { text-decoration: underline; }
   .db-repair-note { font-size: 0.85rem; color: var(--text-muted); margin-top: 16px; line-height: 1.5; }
 </style>
 
@@ -29,12 +41,16 @@
   <div class="db-repair-head">
     <h1><i class="fas fa-database"></i> {{ _('db_repair_page_title') }}</h1>
     <p>{{ _('db_repair_page_intro') }}</p>
+    <p style="color:var(--text-muted);font-size:0.95rem;">{{ _('db_repair_not_order_details') }}</p>
     {% if tenant_slug %}
     <p style="font-size:0.9rem;color:var(--text-muted);"><strong>{{ _('db_repair_tenant_label') }}</strong> {{ tenant_slug }}</p>
     {% endif %}
   </div>
 
-  <a href="/settings" class="db-repair-back"><i class="fas fa-arrow-right"></i> {{ _('db_repair_back_settings') }}</a>
+  <div class="db-repair-nav">
+    <a href="/settings"><i class="fas fa-arrow-right"></i> {{ _('db_repair_back_settings') }}</a>
+    <a href="/orders"><i class="fas fa-shopping-cart"></i> {{ _('db_repair_link_orders') }}</a>
+  </div>
 
   <div class="db-repair-actions" style="margin-top:20px;">
     <button type="button" class="db-repair-btn db-repair-btn-scan" id="btnScan">
@@ -45,7 +61,9 @@
     </button>
   </div>
 
-  <div class="db-repair-out" id="out">{{ _('db_repair_output_placeholder') }}</div>
+  <div id="out">
+    <div class="db-repair-summary ok" dir="auto">{{ _('db_repair_output_placeholder') }}</div>
+  </div>
   <p class="db-repair-note">{{ _('db_repair_note_admin') }}</p>
 </div>
 
@@ -55,14 +73,56 @@
   const btnScan = document.getElementById('btnScan');
   const btnApply = document.getElementById('btnApply');
 
+  const MSG = {
+    runningScan: {{ _('db_repair_running_scan')|tojson }},
+    runningApply: {{ _('db_repair_running_apply')|tojson }},
+    synced: {{ _('db_repair_summary_synced')|tojson }},
+    scanFound: {{ _('db_repair_summary_scan_found')|tojson }},
+    applyDone: {{ _('db_repair_summary_apply_done')|tojson }},
+    hasErrors: {{ _('db_repair_summary_has_errors')|tojson }},
+  };
+
   function setBusy(b) {
     btnScan.disabled = b;
     btnApply.disabled = b;
   }
 
+  function renderReport(rep, dryRun) {
+    const tc = (rep.tables_created || []).length;
+    const ca = (rep.columns_added || []).length;
+    const errN = (rep.errors || []).length;
+    const warnN = (rep.warnings || []).length;
+    let cls = 'db-repair-summary ok';
+    let text = '';
+    if (errN) {
+      cls = 'db-repair-summary err';
+      text = MSG.hasErrors.replace('{n}', String(errN));
+    } else if (!tc && !ca && !warnN) {
+      text = MSG.synced;
+    } else if (dryRun) {
+      cls = warnN ? 'db-repair-summary warn' : 'db-repair-summary ok';
+      text = MSG.scanFound.replace('{tables}', String(tc)).replace('{columns}', String(ca));
+    } else {
+      cls = warnN ? 'db-repair-summary warn' : 'db-repair-summary ok';
+      text = MSG.applyDone.replace('{tables}', String(tc)).replace('{columns}', String(ca));
+    }
+    out.innerHTML = '';
+    const sum = document.createElement('div');
+    sum.className = cls;
+    sum.setAttribute('dir', 'auto');
+    sum.textContent = text;
+    out.appendChild(sum);
+    const pre = document.createElement('pre');
+    pre.className = 'db-repair-out';
+    pre.dir = 'ltr';
+    pre.textContent = JSON.stringify(rep, null, 2);
+    out.appendChild(pre);
+  }
+
   async function run(dryRun) {
     setBusy(true);
-    out.textContent = dryRun ? {{ _('db_repair_running_scan')|tojson }} : {{ _('db_repair_running_apply')|tojson }};
+    out.innerHTML = '<div class="db-repair-summary" dir="auto">' +
+      (dryRun ? MSG.runningScan : MSG.runningApply) + '</div>';
     try {
       const r = await fetch('/settings/database-repair/api', {
         method: 'POST',
@@ -71,12 +131,22 @@
       });
       const data = await r.json().catch(() => ({}));
       if (!r.ok || !data.success) {
-        out.textContent = (data && data.error) ? data.error : ('HTTP ' + r.status);
+        out.innerHTML = '';
+        const err = document.createElement('div');
+        err.className = 'db-repair-summary err';
+        err.setAttribute('dir', 'auto');
+        err.textContent = (data && data.error) ? data.error : ('HTTP ' + r.status);
+        out.appendChild(err);
         return;
       }
-      out.textContent = JSON.stringify(data.report, null, 2);
+      renderReport(data.report || {}, dryRun);
     } catch (e) {
-      out.textContent = String(e);
+      out.innerHTML = '';
+      const err = document.createElement('div');
+      err.className = 'db-repair-summary err';
+      err.setAttribute('dir', 'auto');
+      err.textContent = String(e);
+      out.appendChild(err);
     } finally {
       setBusy(false);
     }

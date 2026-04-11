@@ -889,6 +889,12 @@
     "db_repair_running_scan": "پشکنین…",
     "db_repair_running_apply": "جێبەجێکردن…",
     "db_repair_confirm_apply": "داتابەیس دەگۆڕدرێت (خشتە / ستوون). بەردەوام بیت؟",
+    "db_repair_link_orders": "هەموو داواکارییەکان",
+    "db_repair_not_order_details": "ئەم پەڕەیە تەنها چاککردنی داتابەیسە — وردەکاری داواکاری نییە. دوای پاشەکەوتکردنی ڤیدیۆ بچۆ «هەموو داواکارییەکان» و داواکاریەکە لە خشتەکەوە بکەرەوە.",
+    "db_repair_summary_synced": "داتابەیسەکەت لەگەڵ وەشانی ئێستای ئەپەکەدا هاوتا دەردەکەوێت: خشتە یان ستوونی ون نییە.",
+    "db_repair_summary_scan_found": "ئەنجامی پشکنین (بێ گۆڕانکاری): خشتەی نوێ: {tables}، ستوونی ون: {columns}. JSON ببینە.",
+    "db_repair_summary_apply_done": "جێبەجێکرا: خشتە دروستکرا: {tables}، ستوون زیادکرا: {columns}. JSON ببینە.",
+    "db_repair_summary_has_errors": "هەڵە ڕوویدا ({n}). خانەی errors لە JSON ببینە.",
 
     "messages_page_title": "نامەگوزاری",
     "messages_title_conversations": "گفتوگۆکان",

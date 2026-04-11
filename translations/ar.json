@@ -890,6 +890,12 @@
     "db_repair_running_scan": "جاري الفحص…",
     "db_repair_running_apply": "جاري تطبيق الإصلاح…",
     "db_repair_confirm_apply": "سيتم تعديل قاعدة بيانات الشركة (إنشاء جداول / إضافة أعمدة). هل تريد المتابعة؟",
+    "db_repair_link_orders": "جميع الطلبات",
+    "db_repair_not_order_details": "هذه الصفحة لصيانة قاعدة البيانات فقط وليست تفاصيل الطلب. لعرض الطلب بعد الفيديو ارجع إلى «جميع الطلبات» وافتح الطلب من الجدول.",
+    "db_repair_summary_synced": "قاعدة بيانات الشركة متوافقة مع النسخة الحالية: لا توجد جداول أو أعمدة ناقصة بحسب الفحص.",
+    "db_repair_summary_scan_found": "نتيجة الفحص (بدون تغيير): جداول جديدة مقترحة: {tables}، أعمدة ناقصة: {columns}. راجع JSON بالأسفل.",
+    "db_repair_summary_apply_done": "تم التطبيق: جداول أُنشئت: {tables}، أعمدة أُضيفت: {columns}. راجع JSON بالأسفل.",
+    "db_repair_summary_has_errors": "ظهرت أخطاء أثناء التنفيذ ({n}). راجع حقل errors في JSON بالأسفل.",
 
     "messages_page_title": "المراسلة",
     "messages_title_conversations": "المحادثات",

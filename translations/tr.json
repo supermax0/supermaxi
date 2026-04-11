@@ -889,6 +889,12 @@
     "db_repair_running_scan": "Taranıyor…",
     "db_repair_running_apply": "Uygulanıyor…",
     "db_repair_confirm_apply": "Şirket veritabanı değiştirilecek (tablo/sütun). Devam edilsin mi?",
+    "db_repair_link_orders": "Tüm siparişler",
+    "db_repair_not_order_details": "Bu sayfa yalnızca veritabanı bakımı içindir — sipariş detayı değildir. Video kaydettikten sonra “Tüm siparişler”e gidip siparişi listeden açın.",
+    "db_repair_summary_synced": "Şirket veritabanınız güncel uygulama sürümüyle uyumlu: eksik tablo veya sütun bulunmadı.",
+    "db_repair_summary_scan_found": "Tarama (değişiklik yok): önerilen yeni tablolar: {tables}, eksik sütunlar: {columns}. Ayrıntı için aşağıdaki JSON’a bakın.",
+    "db_repair_summary_apply_done": "Uygulandı: oluşturulan tablolar: {tables}, eklenen sütunlar: {columns}. Ayrıntı için aşağıdaki JSON’a bakın.",
+    "db_repair_summary_has_errors": "Çalıştırma sırasında hata oluştu ({n}). Aşağıdaki JSON’daki errors alanına bakın.",
 
     "messages_page_title": "Mesajlaşma",
     "messages_title_conversations": "Sohbetler",

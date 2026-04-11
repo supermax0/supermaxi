@@ -889,6 +889,12 @@
     "db_repair_running_scan": "Scanning…",
     "db_repair_running_apply": "Applying fixes…",
     "db_repair_confirm_apply": "This will modify your company database (create tables / add columns). Continue?",
+    "db_repair_link_orders": "All orders",
+    "db_repair_not_order_details": "This page is database maintenance only — not order details. After saving a video, go to “All orders” and open the order from the grid.",
+    "db_repair_summary_synced": "Your company database matches the current app version: no missing tables or columns detected.",
+    "db_repair_summary_scan_found": "Scan (no changes): proposed new tables: {tables}, missing columns: {columns}. See JSON below.",
+    "db_repair_summary_apply_done": "Applied: tables created: {tables}, columns added: {columns}. See JSON below.",
+    "db_repair_summary_has_errors": "Errors occurred during the run ({n}). See the errors field in the JSON below.",
 
     "messages_page_title": "Messaging",
     "messages_title_conversations": "Conversations",
