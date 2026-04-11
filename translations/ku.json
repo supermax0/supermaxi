@@ -473,6 +473,7 @@
     "orders_toast_whatsapp_opened": "✅ {count} چاتی واتساپ کراوە کرا",
 
     "orders_err_not_found": "❌ داواکاری نەدۆزرایەوە",
+    "orders_err_load_details": "❌ نەتوانرا وردەکاریی داواکاری بەرز بکرێتەوە. تکایە دووبارە هەوڵ بدەرەوە.",
     "orders_err_phone_missing": "⚠️ ژمارەی تەلەفۆن بوونی نییە",
     "orders_whatsapp_message_template": "سڵاو، ئەمانە وردەکاریی داواکاری #{id} ـەکەتن",
 

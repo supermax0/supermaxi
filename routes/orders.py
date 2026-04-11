@@ -964,6 +964,17 @@ def details(order_id):
     })
 
 
+@orders_bp.route("/<int:order_id>")
+def order_page_shortcut(order_id):
+    """Compatibility: some UI paths used `/orders/<id>` which is not a real page.
+
+    Redirect to the main orders list and let the client auto-open the details modal.
+    """
+    if not check_permission("can_see_orders"):
+        return redirect("/pos"), 403
+    return redirect(url_for("orders.orders", open_details=order_id))
+
+
 @orders_bp.route("/<int:order_id>/video", methods=["POST"])
 def upload_order_video(order_id):
     _ensure_order_video_columns()

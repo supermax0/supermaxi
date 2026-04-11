@@ -474,6 +474,7 @@
     "orders_toast_whatsapp_opened": "✅ تم فتح {count} محادثة واتساب",
 
     "orders_err_not_found": "❌ لم يتم العثور على الطلب",
+    "orders_err_load_details": "❌ تعذر تحميل تفاصيل الطلب. حاول مرة أخرى.",
     "orders_err_phone_missing": "⚠️ رقم الهاتف غير متوفر",
     "orders_whatsapp_message_template": "مرحباً، هذا تفاصيل طلبك رقم {id}",
 

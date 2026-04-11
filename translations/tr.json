@@ -473,6 +473,7 @@
     "orders_toast_whatsapp_opened": "✅ {count} WhatsApp sohbeti açıldı",
 
     "orders_err_not_found": "❌ Sipariş bulunamadı",
+    "orders_err_load_details": "❌ Sipariş ayrıntıları yüklenemedi. Lütfen tekrar deneyin.",
     "orders_err_phone_missing": "⚠️ Telefon numarası mevcut değil",
     "orders_whatsapp_message_template": "Merhaba, bu siparişinizin #{id} detaylarıdır",
 

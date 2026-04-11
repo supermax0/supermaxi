@@ -2185,7 +2185,20 @@
     // عرض نافذة تفاصيل الطلب
     showLoading();
     fetch(`/orders/details/${orderId}`)
-      .then(r => r.json())
+      .then(async (r) => {
+        const ct = (r.headers.get("content-type") || "").toLowerCase();
+        if (!r.ok) {
+          const bodyText = ct.includes("application/json")
+            ? JSON.stringify(await r.json().catch(() => ({})))
+            : await r.text().catch(() => "");
+          throw new Error(bodyText || `HTTP ${r.status}`);
+        }
+        if (!ct.includes("application/json")) {
+          const bodyText = await r.text().catch(() => "");
+          throw new Error(bodyText || "Non-JSON response");
+        }
+        return r.json();
+      })
       .then(data => {
         hideLoading();
         if (data.order) {
@@ -2197,8 +2210,7 @@
       .catch(error => {
         hideLoading();
         console.error(error);
-        // في حالة الخطأ، افتح صفحة التفاصيل
-        window.location.href = `/orders/${orderId}`;
+        showToast({{ _('orders_err_load_details')|tojson }}, "error");
       });
   }
 
@@ -3229,6 +3241,26 @@
   document.addEventListener("DOMContentLoaded", function () {
     restoreSectionStates();
     initAgGrid();
+
+    try {
+      const params = new URLSearchParams(window.location.search || "");
+      const rawOpen =
+        params.get("open_details") ||
+        params.get("open_order") ||
+        params.get("order_id");
+      const openId = rawOpen ? parseInt(String(rawOpen).trim(), 10) : NaN;
+      if (Number.isFinite(openId) && openId > 0) {
+        // Avoid re-triggering on refresh/back-forward
+        params.delete("open_details");
+        params.delete("open_order");
+        params.delete("order_id");
+        const next = `${window.location.pathname}?${params.toString()}`.replace(/\?$/, "");
+        window.history.replaceState({}, "", next || window.location.pathname);
+        setTimeout(() => showDetails(openId), 0);
+      }
+    } catch (e) {
+      console.warn("open_details handling failed:", e);
+    }
 
 
     // تحديث الإحصائيات بعد تهيئة الجدول

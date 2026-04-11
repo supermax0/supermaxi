@@ -473,6 +473,7 @@
     "orders_toast_whatsapp_opened": "✅ {count} WhatsApp chats opened",
 
     "orders_err_not_found": "❌ Order not found",
+    "orders_err_load_details": "❌ Could not load order details. Please try again.",
     "orders_err_phone_missing": "⚠️ Phone number is not available",
     "orders_whatsapp_message_template": "Hello, here are the details of your order #{id}",
 
