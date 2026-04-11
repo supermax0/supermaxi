@@ -2027,19 +2027,6 @@
       return;
     }
 
-    const escapeHtml = function (s) {
-      if (s === null || s === undefined) s = "";
-      return String(s).replace(/[&<>"']/g, function (c) {
-        return {
-          "&": "&amp;",
-          "<": "&lt;",
-          ">": "&gt;",
-          "\"": "&quot;",
-          "'": "&#39;"
-        }[c];
-      });
-    };
-
     var agents = [];
     try {
       var dataEl = document.getElementById("deliveryAgentsData");
@@ -2262,6 +2249,13 @@
       } catch (_) {}
     }
     return '';
+  }
+
+  function escapeHtml(s) {
+    if (s === null || s === undefined) s = '';
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
   }
 
   function orderVideoSectionHtml(order) {
