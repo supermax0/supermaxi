@@ -874,6 +874,22 @@
     "settings_preview_invoice": "Faturayı Önizle",
     "settings_view_orders": "Siparişleri Görüntüle",
 
+    "settings_card_db_repair_title": "Veritabanı bakımı",
+    "settings_card_db_repair_desc": "Şirket veritabanınızda eksik tabloları/sütunları tarayıp otomatik düzeltir; güncelleme sonrası 500 hatalarını azaltır.",
+    "settings_card_db_repair_action": "Aracı aç",
+
+    "db_repair_page_title": "Veritabanı bakımı",
+    "db_repair_page_intro": "Bu araç kiracı veritabanı şemanızı uygulama modelleriyle karşılaştırır. Eksik tabloları oluşturabilir ve eksik sütunları ekleyebilir. Önce “Yalnızca tara”, gerekirse “Uygula”.",
+    "db_repair_tenant_label": "Şirket:",
+    "db_repair_back_settings": "Ayarlar’a dön",
+    "db_repair_btn_scan": "Yalnızca tara (değişiklik yok)",
+    "db_repair_btn_apply": "Düzeltmeleri uygula",
+    "db_repair_output_placeholder": "Ne düzeleceğini görmek için “Yalnızca tara”ya tıklayın.",
+    "db_repair_note_admin": "Yalnızca yönetici. Mümkünse uygulamadan önce yedek alın.",
+    "db_repair_running_scan": "Taranıyor…",
+    "db_repair_running_apply": "Uygulanıyor…",
+    "db_repair_confirm_apply": "Şirket veritabanı değiştirilecek (tablo/sütun). Devam edilsin mi?",
+
     "messages_page_title": "Mesajlaşma",
     "messages_title_conversations": "Sohbetler",
     "messages_main_menu": "Ana menü",

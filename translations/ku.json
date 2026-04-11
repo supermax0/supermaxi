@@ -874,6 +874,22 @@
     "settings_preview_invoice": "پێشبینینی فاتوورە",
     "settings_view_orders": "بینینی داواکارییەکان",
 
+    "settings_card_db_repair_title": "چاککردنی داتابەیس",
+    "settings_card_db_repair_desc": "پشکنین و چاککردنی خۆکار بۆ خشتە و ستوونە ونبووەکان لە داتابەیسەکەت بۆ کەمکردنەوەی هەڵەی 500 دوای نوێکردنەوە.",
+    "settings_card_db_repair_action": "کردنەوەی ئامراز",
+
+    "db_repair_page_title": "چاککردنی داتابەیس",
+    "db_repair_page_intro": "ئەم ئامرازە بەراورد دەکات لە نێوان شێوەی داتابەیس و مۆدێلەکانی سیستەم. دەتوانێت خشتەی ون دروست بکات و ستوون زیاد بکات. سەرەتا «تەنها پشکنین»، پاشان جێبەجێکردن ئەگەر پێویست بوو.",
+    "db_repair_tenant_label": "کۆمپانیا:",
+    "db_repair_back_settings": "گەڕانەوە بۆ ڕێکخستنەکان",
+    "db_repair_btn_scan": "تەنها پشکنین (بێ گۆڕانکاری)",
+    "db_repair_btn_apply": "جێبەجێکردنی چاککردن",
+    "db_repair_output_placeholder": "«تەنها پشکنین» دابگرە بۆ بینینی پێویستی چاککردن.",
+    "db_repair_note_admin": "تەنها بۆ بەڕێوەبەر. پێش جێبەجێکردن پاشەکەوتی داتابەیس بگرە ئەگەر بکرێت.",
+    "db_repair_running_scan": "پشکنین…",
+    "db_repair_running_apply": "جێبەجێکردن…",
+    "db_repair_confirm_apply": "داتابەیس دەگۆڕدرێت (خشتە / ستوون). بەردەوام بیت؟",
+
     "messages_page_title": "نامەگوزاری",
     "messages_title_conversations": "گفتوگۆکان",
     "messages_main_menu": "لیستی سەرەکی",

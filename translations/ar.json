@@ -875,6 +875,22 @@
     "settings_preview_invoice": "معاينة الفاتورة",
     "settings_view_orders": "عرض الطلبات",
 
+    "settings_card_db_repair_title": "صيانة قاعدة البيانات",
+    "settings_card_db_repair_desc": "فحص وإصلاح الجداول والأعمدة الناقصة تلقائياً (ملف قاعدة بيانات الشركة) لتفادي أخطاء 500 بعد التحديثات.",
+    "settings_card_db_repair_action": "فتح الأداة",
+
+    "db_repair_page_title": "صيانة قاعدة البيانات",
+    "db_repair_page_intro": "تقارن هذه الأداة مخطط قاعدة بيانات شركتك مع نماذج النظام، وتعرض أو تنشئ الجداول الناقصة وتضيف الأعمدة الناقصة. ابدأ بـ «فحص فقط» ثم طبّق الإصلاح عند الحاجة.",
+    "db_repair_tenant_label": "الشركة:",
+    "db_repair_back_settings": "العودة إلى الإعدادات",
+    "db_repair_btn_scan": "فحص فقط (بدون تغيير)",
+    "db_repair_btn_apply": "تطبيق الإصلاح",
+    "db_repair_output_placeholder": "اضغط «فحص فقط» لعرض ما يحتاج إصلاحاً.",
+    "db_repair_note_admin": "متاحة لمدير النظام فقط. خذ نسخة احتياطية من ملف قاعدة البيانات قبل التطبيق إن أمكن.",
+    "db_repair_running_scan": "جاري الفحص…",
+    "db_repair_running_apply": "جاري تطبيق الإصلاح…",
+    "db_repair_confirm_apply": "سيتم تعديل قاعدة بيانات الشركة (إنشاء جداول / إضافة أعمدة). هل تريد المتابعة؟",
+
     "messages_page_title": "المراسلة",
     "messages_title_conversations": "المحادثات",
     "messages_main_menu": "القائمة الرئيسية",

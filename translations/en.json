@@ -874,6 +874,22 @@
     "settings_preview_invoice": "Preview Invoice",
     "settings_view_orders": "View Orders",
 
+    "settings_card_db_repair_title": "Database maintenance",
+    "settings_card_db_repair_desc": "Scan and auto-fix missing tables/columns in your company database to prevent 500 errors after updates.",
+    "settings_card_db_repair_action": "Open tool",
+
+    "db_repair_page_title": "Database maintenance",
+    "db_repair_page_intro": "This tool compares your tenant database schema to the application models. It can report or create missing tables and add missing columns. Start with “Scan only”, then apply if needed.",
+    "db_repair_tenant_label": "Company:",
+    "db_repair_back_settings": "Back to settings",
+    "db_repair_btn_scan": "Scan only (no changes)",
+    "db_repair_btn_apply": "Apply fixes",
+    "db_repair_output_placeholder": "Click “Scan only” to see what would be repaired.",
+    "db_repair_note_admin": "Admin only. Back up your database file before applying fixes when possible.",
+    "db_repair_running_scan": "Scanning…",
+    "db_repair_running_apply": "Applying fixes…",
+    "db_repair_confirm_apply": "This will modify your company database (create tables / add columns). Continue?",
+
     "messages_page_title": "Messaging",
     "messages_title_conversations": "Conversations",
     "messages_main_menu": "Main menu",

@@ -1,6 +1,6 @@
 from contextlib import contextmanager
 
-from flask import Blueprint, render_template, request, jsonify, send_from_directory, session, g
+from flask import Blueprint, render_template, request, jsonify, send_from_directory, session, g, redirect
 from extensions import db
 from models.invoice_settings import InvoiceSettings
 from models.system_settings import SystemSettings
@@ -87,10 +87,21 @@ def _ensure_invoice_owner_user(owner_id):
 def settings():
     """صفحة الإعدادات الرئيسية"""
     from models.invoice import Invoice
+    from models.employee import Employee
+
     invoice_settings = InvoiceSettings.get_settings()
     # Get first order for preview link
     first_order = Invoice.query.order_by(Invoice.id.desc()).first()
-    return render_template("settings.html", invoice_settings=invoice_settings, first_order=first_order)
+    is_admin = False
+    if "user_id" in session:
+        emp = Employee.query.get(session["user_id"])
+        is_admin = bool(emp and emp.is_active and emp.role == "admin")
+    return render_template(
+        "settings.html",
+        invoice_settings=invoice_settings,
+        first_order=first_order,
+        is_admin=is_admin,
+    )
 
 @settings_bp.route("/system")
 def system_settings():
@@ -606,4 +617,51 @@ def preview_invoice():
         })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 400
+
+
+def _require_active_admin():
+    from models.employee import Employee
+
+    if "user_id" not in session:
+        return None
+    emp = Employee.query.get(session["user_id"])
+    if not emp or not emp.is_active or emp.role != "admin":
+        return None
+    return emp
+
+
+@settings_bp.route("/database-repair")
+def database_repair_page():
+    """أداة صيانة مخطط قاعدة بيانات الشركة (جداول/أعمدة ناقصة) — للمدير فقط."""
+    if not _require_active_admin():
+        return redirect("/settings")
+    slug = session.get("tenant_slug") or ""
+    return render_template("database_repair.html", tenant_slug=slug)
+
+
+@settings_bp.route("/database-repair/api", methods=["POST"])
+def database_repair_api():
+    """فحص أو تطبيق إصلاحات المخطط على ملف SQLite الخاص بالشركة."""
+    from extensions_tenant import clear_tenant_engine, get_tenant_engine
+    from services.schema_repair import repair_tenant_schema
+
+    if not _require_active_admin():
+        return jsonify({"success": False, "error": "غير مصرح"}), 403
+    slug = session.get("tenant_slug")
+    if not slug:
+        return jsonify({"success": False, "error": "لا يوجد سياق شركة."}), 400
+
+    data = request.get_json(silent=True) or {}
+    dry_run = bool(data.get("dry_run", True))
+
+    engine = get_tenant_engine(slug)
+    try:
+        report = repair_tenant_schema(engine, dry_run=dry_run)
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+    if not dry_run:
+        clear_tenant_engine(slug)
+
+    return jsonify({"success": True, "report": report})
 

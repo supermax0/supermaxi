@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}{{ _('db_repair_page_title') }}{% endblock %}
+
+{% block content %}
+<style>
+  .db-repair-wrap { max-width: 960px; margin: 0 auto; padding: 24px; }
+  .db-repair-head h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 8px; color: var(--text); }
+  .db-repair-head p { color: var(--text-muted); margin-bottom: 24px; line-height: 1.6; }
+  .db-repair-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+  .db-repair-btn {
+    border: none; border-radius: 12px; padding: 12px 20px; font-weight: 600; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 8px; transition: opacity 0.15s;
+  }
+  .db-repair-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+  .db-repair-btn-scan { background: rgba(59, 130, 246, 0.2); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.35); }
+  .db-repair-btn-apply { background: rgba(34, 197, 94, 0.2); color: #86efac; border: 1px solid rgba(34, 197, 94, 0.35); }
+  .db-repair-back { color: var(--text-muted); text-decoration: none; font-size: 0.9rem; }
+  .db-repair-back:hover { color: var(--text); }
+  .db-repair-out {
+    background: rgba(15, 23, 42, 0.75); border: 1px solid var(--border); border-radius: 14px;
+    padding: 16px; font-family: ui-monospace, monospace; font-size: 12px; white-space: pre-wrap;
+    word-break: break-word; color: #e2e8f0; min-height: 120px; max-height: 60vh; overflow: auto;
+  }
+  .db-repair-note { font-size: 0.85rem; color: var(--text-muted); margin-top: 16px; line-height: 1.5; }
+</style>
+
+<div class="db-repair-wrap">
+  <div class="db-repair-head">
+    <h1><i class="fas fa-database"></i> {{ _('db_repair_page_title') }}</h1>
+    <p>{{ _('db_repair_page_intro') }}</p>
+    {% if tenant_slug %}
+    <p style="font-size:0.9rem;color:var(--text-muted);"><strong>{{ _('db_repair_tenant_label') }}</strong> {{ tenant_slug }}</p>
+    {% endif %}
+  </div>
+
+  <a href="/settings" class="db-repair-back"><i class="fas fa-arrow-right"></i> {{ _('db_repair_back_settings') }}</a>
+
+  <div class="db-repair-actions" style="margin-top:20px;">
+    <button type="button" class="db-repair-btn db-repair-btn-scan" id="btnScan">
+      <i class="fas fa-search"></i> {{ _('db_repair_btn_scan') }}
+    </button>
+    <button type="button" class="db-repair-btn db-repair-btn-apply" id="btnApply">
+      <i class="fas fa-wrench"></i> {{ _('db_repair_btn_apply') }}
+    </button>
+  </div>
+
+  <div class="db-repair-out" id="out">{{ _('db_repair_output_placeholder') }}</div>
+  <p class="db-repair-note">{{ _('db_repair_note_admin') }}</p>
+</div>
+
+<script>
+(function () {
+  const out = document.getElementById('out');
+  const btnScan = document.getElementById('btnScan');
+  const btnApply = document.getElementById('btnApply');
+
+  function setBusy(b) {
+    btnScan.disabled = b;
+    btnApply.disabled = b;
+  }
+
+  async function run(dryRun) {
+    setBusy(true);
+    out.textContent = dryRun ? {{ _('db_repair_running_scan')|tojson }} : {{ _('db_repair_running_apply')|tojson }};
+    try {
+      const r = await fetch('/settings/database-repair/api', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dry_run: dryRun })
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok || !data.success) {
+        out.textContent = (data && data.error) ? data.error : ('HTTP ' + r.status);
+        return;
+      }
+      out.textContent = JSON.stringify(data.report, null, 2);
+    } catch (e) {
+      out.textContent = String(e);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  btnScan.addEventListener('click', function () { run(true); });
+  btnApply.addEventListener('click', function () {
+    if (!confirm({{ _('db_repair_confirm_apply')|tojson }})) return;
+    run(false);
+  });
+})();
+</script>
+{% endblock %}
