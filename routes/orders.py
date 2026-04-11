@@ -1,6 +1,7 @@
 import os
+from pathlib import Path
 
-from flask import Blueprint, render_template, request, jsonify, send_file, session, redirect, url_for, current_app
+from flask import Blueprint, render_template, request, jsonify, send_file, send_from_directory, session, redirect, url_for, current_app, abort
 from extensions import db
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload, selectinload
@@ -23,6 +24,7 @@ import json
 from sqlalchemy import or_, and_
 
 from utils.order_status import is_canceled, is_returned, is_completed
+from services.media_service import get_thumbnail_upload_root, get_video_upload_root, save_uploaded_file
 
 orders_bp = Blueprint("orders", __name__, url_prefix="/orders")
 
@@ -85,6 +87,92 @@ def check_permission(permission_name):
     }
     rbac_name = perm_map.get(permission_name, permission_name)
     return employee.has_permission(rbac_name)
+
+
+def _order_video_payload(order: Invoice) -> dict:
+    has_video = bool(getattr(order, "order_video_path", None))
+    if not has_video:
+        return {
+            "has_video": False,
+            "preview_url": None,
+            "download_url": None,
+            "share_url": None,
+            "filename": None,
+            "size_mb": None,
+            "duration_sec": None,
+            "recorded_at": None,
+        }
+    preview_url = url_for("orders.stream_order_video", order_id=order.id)
+    return {
+        "has_video": True,
+        "preview_url": preview_url,
+        "download_url": url_for("orders.download_order_video", order_id=order.id),
+        "share_url": preview_url,
+        "filename": order.order_video_original_name or Path(order.order_video_path).name,
+        "size_mb": order.order_video_size_mb,
+        "duration_sec": order.order_video_duration_sec,
+        "recorded_at": order.order_video_recorded_at.strftime("%Y-%m-%d %H:%M:%S") if order.order_video_recorded_at else None,
+    }
+
+
+def _collect_order_video_cleanup_targets(order: Invoice) -> dict | None:
+    video_name = Path(order.order_video_path).name if getattr(order, "order_video_path", None) else None
+    thumb_name = Path(order.order_video_thumbnail_path).name if getattr(order, "order_video_thumbnail_path", None) else None
+    if not video_name and not thumb_name:
+        return None
+    return {"video_name": video_name, "thumb_name": thumb_name}
+
+
+def _delete_order_video_cleanup_targets(targets: dict | None) -> None:
+    if not targets:
+        return
+    try:
+        video_name = targets.get("video_name")
+        if video_name:
+            (get_video_upload_root() / Path(video_name).name).unlink(missing_ok=True)
+    except Exception:
+        current_app.logger.warning("Failed removing order video file", exc_info=True)
+    try:
+        thumb_name = targets.get("thumb_name")
+        if thumb_name:
+            (get_thumbnail_upload_root() / Path(thumb_name).name).unlink(missing_ok=True)
+    except Exception:
+        current_app.logger.warning("Failed removing order video thumbnail", exc_info=True)
+
+
+def _clear_order_video_fields(order: Invoice) -> None:
+    order.order_video_path = None
+    order.order_video_original_name = None
+    order.order_video_thumbnail_path = None
+    order.order_video_size_mb = None
+    order.order_video_duration_sec = None
+    order.order_video_recorded_at = None
+
+
+def _delete_saved_upload_result(result: dict | None) -> None:
+    if not result:
+        return
+    try:
+        filename = Path(str(result.get("url") or "")).name
+        if filename:
+            (get_video_upload_root() / filename).unlink(missing_ok=True)
+    except Exception:
+        current_app.logger.warning("Failed removing newly uploaded order video", exc_info=True)
+    try:
+        thumb_name = Path(str(result.get("thumbnail_url") or "")).name
+        if thumb_name:
+            (get_thumbnail_upload_root() / thumb_name).unlink(missing_ok=True)
+    except Exception:
+        current_app.logger.warning("Failed removing newly uploaded order video thumbnail", exc_info=True)
+
+
+def _apply_order_video_result(order: Invoice, result: dict, original_name: str | None = None) -> None:
+    order.order_video_path = Path(str(result.get("url") or "")).name or None
+    order.order_video_original_name = (Path(original_name).name if original_name else order.order_video_path)[:255] if (original_name or order.order_video_path) else None
+    order.order_video_thumbnail_path = Path(str(result.get("thumbnail_url") or "")).name or None
+    order.order_video_size_mb = result.get("size_mb")
+    order.order_video_duration_sec = result.get("duration_sec")
+    order.order_video_recorded_at = datetime.utcnow()
 
 # =====================================================
 # Orders Page (Optimized for many orders)
@@ -628,6 +716,7 @@ def payment():
 
         payment_status = data.get("payment")
         paid_amount = data.get("paid_amount", 0)
+        video_cleanup_targets = None
         
         if payment_status in ["غير مسدد", "جزئي", "مسدد", "مرتجع"]:
             # إذا تم اختيار "مرتجع" من شاشة الدفع: نفّذ منطق ترجيع آمن (مرة واحدة)
@@ -646,7 +735,10 @@ def payment():
                 order.status = "مرتجع"
                 order.payment_status = "مرتجع"
                 order.paid_amount = 0
+                video_cleanup_targets = _collect_order_video_cleanup_targets(order)
+                _clear_order_video_fields(order)
                 db.session.commit()
+                _delete_order_video_cleanup_targets(video_cleanup_targets)
                 return jsonify({"success": True})
 
             order.payment_status = payment_status
@@ -676,7 +768,11 @@ def payment():
         else:
             return jsonify({"success": False, "error": "حالة الدفع غير صحيحة"}), 400
 
+        if payment_status == "مسدد":
+            video_cleanup_targets = _collect_order_video_cleanup_targets(order)
+            _clear_order_video_fields(order)
         db.session.commit()
+        _delete_order_video_cleanup_targets(video_cleanup_targets)
         return jsonify({"success": True})
     except Exception as e:
         db.session.rollback()
@@ -691,6 +787,7 @@ def delete_order(order_id):
     order = Invoice.query.get_or_404(order_id)
 
     try:
+        video_cleanup_targets = _collect_order_video_cleanup_targets(order)
         # إعادة المخزون قبل الحذف
         items = OrderItem.query.filter_by(invoice_id=order.id).all()
         for item in items:
@@ -700,6 +797,7 @@ def delete_order(order_id):
 
         db.session.delete(order)
         db.session.commit()
+        _delete_order_video_cleanup_targets(video_cleanup_targets)
         return jsonify({"success": True})
     except Exception as e:
         db.session.rollback()
@@ -801,7 +899,8 @@ def details(order_id):
             "created_at": order.created_at.strftime("%Y-%m-%d %H:%M:%S") if order.created_at else "",
             "shipping_company": order.shipping_company.name if order.shipping_company else None,
             "shipping_status": order.shipping_status,
-            "note": order.note
+            "note": order.note,
+            "video": _order_video_payload(order),
         },
         "items": [
             {
@@ -812,6 +911,77 @@ def details(order_id):
             } for i in items
         ]
     })
+
+
+@orders_bp.route("/<int:order_id>/video", methods=["POST"])
+def upload_order_video(order_id):
+    if not check_permission("can_see_orders"):
+        return jsonify({"success": False, "error": "غير مصرح"}), 403
+
+    order = Invoice.query.get_or_404(order_id)
+    file = request.files.get("video")
+    if not file or not file.filename:
+        return jsonify({"success": False, "error": "يرجى اختيار ملف فيديو."}), 400
+
+    result = save_uploaded_file(file, max_mb=250)
+    if not result.get("ok"):
+        return jsonify({"success": False, "error": result.get("message") or "فشل رفع الفيديو."}), 400
+
+    previous_targets = _collect_order_video_cleanup_targets(order)
+    try:
+        _apply_order_video_result(order, result, file.filename)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        _delete_saved_upload_result(result)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+    _delete_order_video_cleanup_targets(previous_targets)
+    return jsonify({
+        "success": True,
+        "message": "تم حفظ فيديو الطلب بنجاح.",
+        "video": _order_video_payload(order),
+    })
+
+
+@orders_bp.route("/<int:order_id>/video", methods=["GET"])
+def stream_order_video(order_id):
+    if not check_permission("can_see_orders"):
+        abort(403)
+
+    order = Invoice.query.get_or_404(order_id)
+    safe_name = Path(order.order_video_path).name if order.order_video_path else None
+    if not safe_name:
+        abort(404)
+    root = get_video_upload_root()
+    path = root / safe_name
+    if not path.exists() or not path.is_file():
+        abort(404)
+    return send_from_directory(str(root), safe_name, conditional=True)
+
+
+@orders_bp.route("/<int:order_id>/video/download", methods=["GET"])
+def download_order_video(order_id):
+    if not check_permission("can_see_orders"):
+        abort(403)
+
+    order = Invoice.query.get_or_404(order_id)
+    safe_name = Path(order.order_video_path).name if order.order_video_path else None
+    if not safe_name:
+        abort(404)
+    root = get_video_upload_root()
+    path = root / safe_name
+    if not path.exists() or not path.is_file():
+        abort(404)
+
+    original_name = order.order_video_original_name or safe_name
+    return send_from_directory(
+        str(root),
+        safe_name,
+        as_attachment=True,
+        download_name=original_name,
+        conditional=True,
+    )
 
 
 # =====================================================

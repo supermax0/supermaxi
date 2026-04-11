@@ -2236,12 +2236,287 @@
     window.open(whatsappUrl, '_blank');
   }
 
+  function getOrderVideoMimeType() {
+    if (typeof MediaRecorder === 'undefined') return '';
+    const candidates = [
+      'video/webm;codecs=vp9,opus',
+      'video/webm;codecs=vp8,opus',
+      'video/webm',
+      'video/mp4'
+    ];
+    for (const mime of candidates) {
+      try {
+        if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(mime)) return mime;
+      } catch (_) {}
+    }
+    return '';
+  }
+
+  function orderVideoSectionHtml(order) {
+    const video = order.video || {};
+    const canRecordVideo = !['تم التوصيل', 'مرتجع', 'ملغي'].includes(order.status || '') && !['مسدد', 'مرتجع'].includes(order.payment || '');
+    const videoActionButton = canRecordVideo
+      ? '<button class="btn btn-primary" onclick="openOrderVideoRecorder(' + order.id + ')" style="min-width:160px;">' +
+          '<span>' + (video.has_video ? '🔁' : '🎥') + '</span>' +
+          '<span>' + (video.has_video ? 'استبدال الفيديو' : 'تسجيل فيديو') + '</span>' +
+        '</button>'
+      : '';
+
+    if (!video.has_video) {
+      return '<div class="od-card" style="background:rgba(15, 23, 42, 0.6);border-radius:16px;padding:20px;margin-bottom:20px;border:1px solid rgba(59, 130, 246, 0.2);">' +
+        '<h3 style="color:var(--orders-primary);margin:0 0 12px;font-size:18px;font-weight:700;">🎥 فيديو الطلب</h3>' +
+        '<p style="color:var(--orders-muted);margin:0 0 16px;line-height:1.6;">لا يوجد فيديو محفوظ لهذا الطلب حالياً.</p>' +
+        (videoActionButton ? '<div style="display:flex;gap:12px;flex-wrap:wrap;">' + videoActionButton + '</div>' : '') +
+        '</div>';
+    }
+
+    const durationLabel = video.duration_sec ? Math.round(video.duration_sec) + ' ثانية' : '—';
+    return '<div class="od-card" style="background:rgba(15, 23, 42, 0.6);border-radius:16px;padding:20px;margin-bottom:20px;border:1px solid rgba(59, 130, 246, 0.2);">' +
+      '<h3 style="color:var(--orders-primary);margin:0 0 16px;font-size:18px;font-weight:700;">🎥 فيديو الطلب</h3>' +
+      '<video controls preload="metadata" style="width:100%;max-height:360px;border-radius:14px;background:#020617;border:1px solid rgba(59,130,246,0.18);" src="' + escapeHtml(video.preview_url || '') + '"></video>' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));gap:10px;margin-top:14px;color:var(--orders-text);font-size:13px;">' +
+      '<div><strong style="color:var(--orders-muted);">اسم الملف</strong><div>' + escapeHtml(video.filename || 'video') + '</div></div>' +
+      '<div><strong style="color:var(--orders-muted);">الحجم</strong><div>' + (video.size_mb ? String(video.size_mb) + ' MB' : '—') + '</div></div>' +
+      '<div><strong style="color:var(--orders-muted);">المدة</strong><div>' + durationLabel + '</div></div>' +
+      '<div><strong style="color:var(--orders-muted);">تاريخ التسجيل</strong><div>' + escapeHtml(video.recorded_at || '—') + '</div></div>' +
+      '</div>' +
+      '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:16px;">' +
+      videoActionButton +
+      '<button class="btn btn-success" onclick="downloadOrderVideo(' + order.id + ')" style="min-width:150px;">' +
+      '<span>⬇️</span><span>تنزيل</span></button>' +
+      '<button class="btn btn-secondary" onclick="shareOrderVideo(' + order.id + ')" style="min-width:150px;">' +
+      '<span>📤</span><span>مشاركة</span></button>' +
+      '</div>' +
+      '</div>';
+  }
+
+  function downloadOrderVideo(orderId) {
+    window.open(`/orders/${orderId}/video/download`, '_blank');
+  }
+
+  async function shareOrderVideo(orderId) {
+    const shareUrl = `${window.location.origin}/orders/${orderId}/video`;
+    try {
+      if (navigator.canShare && navigator.share) {
+        const response = await fetch(shareUrl);
+        if (response.ok) {
+          const blob = await response.blob();
+          const ext = blob.type && blob.type.includes('mp4') ? '.mp4' : '.webm';
+          const file = new File([blob], `order-${orderId}${ext}`, { type: blob.type || 'video/webm' });
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({ title: `فيديو الطلب #${orderId}`, files: [file] });
+            return;
+          }
+        }
+      }
+      if (navigator.share) {
+        await navigator.share({ title: `فيديو الطلب #${orderId}`, url: shareUrl });
+        return;
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+        showToast('تم نسخ رابط الفيديو', 'success');
+        return;
+      }
+      window.open(shareUrl, '_blank');
+    } catch (err) {
+      if (err && (err.name === 'AbortError' || err.name === 'NotAllowedError')) return;
+      console.error('Share order video error:', err);
+      showToast('تعذر مشاركة الفيديو على هذا الجهاز', 'warning');
+    }
+  }
+
+  async function openOrderVideoRecorder(orderId) {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof MediaRecorder === 'undefined') {
+      showToast('المتصفح لا يدعم تسجيل الفيديو من الكاميرا', 'warning');
+      return;
+    }
+
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.dataset.orderVideoRecorder = '1';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:10000;overflow-y:auto;padding:20px;';
+    modal.innerHTML =
+      '<div class="modal-box" style="max-width:760px;width:100%;background:linear-gradient(145deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.98));padding:24px;border-radius:24px;border:2px solid rgba(59, 130, 246, 0.3);">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:18px;">' +
+      '<div><h3 style="color:var(--orders-text);margin:0;font-size:22px;font-weight:700;">🎥 تسجيل فيديو الطلب #' + orderId + '</h3>' +
+      '<p id="orderVideoStatus" style="margin:8px 0 0;color:var(--orders-muted);font-size:13px;">جاري فتح الكاميرا...</p></div>' +
+      '<button type="button" id="closeOrderVideoRecorder" style="width:40px;height:40px;border-radius:50%;border:none;background:linear-gradient(135deg, var(--orders-danger), #dc2626);color:#fff;font-size:22px;cursor:pointer;">✕</button>' +
+      '</div>' +
+      '<video id="orderVideoPreview" playsinline muted autoplay style="width:100%;max-height:420px;border-radius:18px;background:#020617;border:1px solid rgba(59,130,246,0.2);"></video>' +
+      '<div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:18px;">' +
+      '<button type="button" id="startOrderVideoRecordBtn" class="btn btn-success" style="min-width:140px;"><span>⏺</span><span>بدء التسجيل</span></button>' +
+      '<button type="button" id="stopOrderVideoRecordBtn" class="btn btn-warning" style="min-width:140px;display:none;"><span>⏹</span><span>إيقاف</span></button>' +
+      '<button type="button" id="saveOrderVideoBtn" class="btn btn-primary" style="min-width:140px;display:none;"><span>💾</span><span>حفظ الفيديو</span></button>' +
+      '<button type="button" id="retakeOrderVideoBtn" class="btn btn-secondary" style="min-width:140px;display:none;"><span>🔁</span><span>إعادة المحاولة</span></button>' +
+      '</div>' +
+      '</div>';
+
+    document.body.appendChild(modal);
+
+    const previewEl = modal.querySelector('#orderVideoPreview');
+    const statusEl = modal.querySelector('#orderVideoStatus');
+    const startBtn = modal.querySelector('#startOrderVideoRecordBtn');
+    const stopBtn = modal.querySelector('#stopOrderVideoRecordBtn');
+    const saveBtn = modal.querySelector('#saveOrderVideoBtn');
+    const retakeBtn = modal.querySelector('#retakeOrderVideoBtn');
+    const closeBtn = modal.querySelector('#closeOrderVideoRecorder');
+
+    let stream = null;
+    let mediaRecorder = null;
+    let chunks = [];
+    let recordedBlob = null;
+    let previewUrl = '';
+
+    const updateStatus = function (message, color) {
+      statusEl.textContent = message;
+      statusEl.style.color = color || 'var(--orders-muted)';
+    };
+
+    const releasePreviewUrl = function () {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+        previewUrl = '';
+      }
+    };
+
+    const stopStream = function () {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+      }
+    };
+
+    const closeModal = function () {
+      releasePreviewUrl();
+      stopStream();
+      modal.remove();
+    };
+
+    const openCamera = async function () {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' } },
+          audio: true
+        });
+        previewEl.srcObject = stream;
+        previewEl.muted = true;
+        await previewEl.play().catch(() => {});
+        updateStatus('الكاميرا جاهزة. اضغط بدء التسجيل.', 'var(--orders-success)');
+      } catch (err) {
+        console.error('Camera open error:', err);
+        updateStatus('تعذر فتح الكاميرا. تأكد من منح الصلاحية.', 'var(--orders-danger)');
+        startBtn.disabled = true;
+      }
+    };
+
+    startBtn.addEventListener('click', function () {
+      if (!stream) {
+        showToast('الكاميرا غير جاهزة بعد', 'warning');
+        return;
+      }
+      chunks = [];
+      recordedBlob = null;
+      releasePreviewUrl();
+      const mimeType = getOrderVideoMimeType();
+      mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      mediaRecorder.ondataavailable = function (event) {
+        if (event.data && event.data.size > 0) chunks.push(event.data);
+      };
+      mediaRecorder.onstop = function () {
+        recordedBlob = new Blob(chunks, { type: mediaRecorder.mimeType || 'video/webm' });
+        releasePreviewUrl();
+        previewUrl = URL.createObjectURL(recordedBlob);
+        previewEl.srcObject = null;
+        previewEl.src = previewUrl;
+        previewEl.muted = false;
+        previewEl.controls = true;
+        previewEl.play().catch(() => {});
+        saveBtn.style.display = '';
+        retakeBtn.style.display = '';
+        startBtn.style.display = 'none';
+        stopBtn.style.display = 'none';
+        updateStatus('تم تسجيل الفيديو. يمكنك معاينته ثم حفظه.', 'var(--orders-success)');
+      };
+      mediaRecorder.start();
+      startBtn.style.display = 'none';
+      stopBtn.style.display = '';
+      saveBtn.style.display = 'none';
+      retakeBtn.style.display = 'none';
+      updateStatus('جاري التسجيل الآن...', '#f59e0b');
+    });
+
+    stopBtn.addEventListener('click', function () {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+      }
+    });
+
+    retakeBtn.addEventListener('click', async function () {
+      recordedBlob = null;
+      releasePreviewUrl();
+      previewEl.controls = false;
+      previewEl.src = '';
+      previewEl.srcObject = stream;
+      previewEl.muted = true;
+      await previewEl.play().catch(() => {});
+      startBtn.style.display = '';
+      stopBtn.style.display = 'none';
+      saveBtn.style.display = 'none';
+      retakeBtn.style.display = 'none';
+      updateStatus('تمت إعادة التهيئة. اضغط بدء التسجيل.', 'var(--orders-muted)');
+    });
+
+    saveBtn.addEventListener('click', async function () {
+      if (!recordedBlob) {
+        showToast('لا يوجد فيديو محفوظ لإرساله', 'warning');
+        return;
+      }
+      const ext = recordedBlob.type && recordedBlob.type.includes('mp4') ? 'mp4' : 'webm';
+      const file = new File([recordedBlob], `order-${orderId}-${Date.now()}.${ext}`, {
+        type: recordedBlob.type || 'video/webm'
+      });
+      const formData = new FormData();
+      formData.append('video', file);
+      showLoading();
+      try {
+        const response = await fetch(`/orders/${orderId}/video`, {
+          method: 'POST',
+          body: formData
+        });
+        const data = await response.json();
+        hideLoading();
+        if (!response.ok || !data.success) {
+          showToast((data && data.error) || 'تعذر حفظ الفيديو', 'error');
+          return;
+        }
+        showToast('تم حفظ فيديو الطلب بنجاح', 'success');
+        closeModal();
+        const orderDetailsModal = document.querySelector('.modal[data-order-details="1"]');
+        if (orderDetailsModal) orderDetailsModal.remove();
+        showDetails(orderId);
+      } catch (err) {
+        hideLoading();
+        console.error('Upload order video error:', err);
+        showToast('حدث خطأ أثناء رفع الفيديو', 'error');
+      }
+    });
+
+    closeBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', function (e) {
+      if (e.target === modal) closeModal();
+    });
+
+    await openCamera();
+  }
+
   function showOrderDetailsModal(data) {
     const order = data.order;
     const items = data.items || [];
 
     const modal = document.createElement('div');
     modal.className = 'modal';
+    modal.dataset.orderDetails = '1';
     modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9998;overflow-y:auto;padding:20px;';
 
     const totalItems = items.reduce((sum, item) => sum + (item.qty || 0), 0);
@@ -2332,6 +2607,7 @@
         '<h3 style="color:var(--orders-primary);margin:0 0 12px;font-size:18px;font-weight:700;">📝 {{ _("orders_details_notes_section") }}</h3>' +
         '<p style="color:var(--orders-text);margin:0;line-height:1.6;">' + order.note + '</p>' +
         '</div>' : '') +
+      orderVideoSectionHtml(order) +
 
       '<!-- أزرار الإجراءات -->' +
       '<div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:24px;">' +

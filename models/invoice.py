@@ -116,6 +116,39 @@ class Invoice(db.Model):
     )  # باركود شركة النقل
 
     # =====================
+    # Order Video
+    # =====================
+    order_video_path = db.Column(
+        db.String(255),
+        nullable=True
+    )  # اسم/مسار ملف الفيديو المرتبط بالطلب
+
+    order_video_original_name = db.Column(
+        db.String(255),
+        nullable=True
+    )  # الاسم الأصلي للملف عند الرفع
+
+    order_video_thumbnail_path = db.Column(
+        db.String(255),
+        nullable=True
+    )  # ثَمبنايل اختياري للفيديو
+
+    order_video_size_mb = db.Column(
+        db.Float,
+        nullable=True
+    )
+
+    order_video_duration_sec = db.Column(
+        db.Float,
+        nullable=True
+    )
+
+    order_video_recorded_at = db.Column(
+        db.DateTime,
+        nullable=True
+    )
+
+    # =====================
     # Time
     # =====================
     created_at = db.Column(

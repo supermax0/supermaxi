@@ -621,6 +621,29 @@ with app.app_context():
     except Exception as e:
         print(f"Migration note (paid_amount): {e}")
 
+    # Migration: Add order video columns to invoice table
+    try:
+        from sqlalchemy import inspect, text
+        inspector = inspect(db.engine)
+        if 'invoice' in inspector.get_table_names():
+            invoice_columns = [col['name'] for col in inspector.get_columns('invoice')]
+            if 'order_video_path' not in invoice_columns:
+                db.session.execute(text("ALTER TABLE invoice ADD COLUMN order_video_path VARCHAR(255)"))
+            if 'order_video_original_name' not in invoice_columns:
+                db.session.execute(text("ALTER TABLE invoice ADD COLUMN order_video_original_name VARCHAR(255)"))
+            if 'order_video_thumbnail_path' not in invoice_columns:
+                db.session.execute(text("ALTER TABLE invoice ADD COLUMN order_video_thumbnail_path VARCHAR(255)"))
+            if 'order_video_size_mb' not in invoice_columns:
+                db.session.execute(text("ALTER TABLE invoice ADD COLUMN order_video_size_mb FLOAT"))
+            if 'order_video_duration_sec' not in invoice_columns:
+                db.session.execute(text("ALTER TABLE invoice ADD COLUMN order_video_duration_sec FLOAT"))
+            if 'order_video_recorded_at' not in invoice_columns:
+                db.session.execute(text("ALTER TABLE invoice ADD COLUMN order_video_recorded_at DATETIME"))
+            db.session.commit()
+            print("Added order video columns to invoice table.")
+    except Exception as e:
+        print(f"Migration note (order video columns): {e}")
+
     # Migration: Create RBAC tables if needed
     try:
         from sqlalchemy import inspect, text

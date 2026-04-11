@@ -987,6 +987,22 @@ with app.app_context():
             print("customer.tg_chat_id: added")
         else:
             print("customer.tg_chat_id: exists")
+    if "invoice" in inspector.get_table_names():
+        cols = [c.get("name") for c in inspector.get_columns("invoice")]
+        if "order_video_path" not in cols:
+            db.session.execute(text("ALTER TABLE invoice ADD COLUMN order_video_path VARCHAR(255)"))
+        if "order_video_original_name" not in cols:
+            db.session.execute(text("ALTER TABLE invoice ADD COLUMN order_video_original_name VARCHAR(255)"))
+        if "order_video_thumbnail_path" not in cols:
+            db.session.execute(text("ALTER TABLE invoice ADD COLUMN order_video_thumbnail_path VARCHAR(255)"))
+        if "order_video_size_mb" not in cols:
+            db.session.execute(text("ALTER TABLE invoice ADD COLUMN order_video_size_mb FLOAT"))
+        if "order_video_duration_sec" not in cols:
+            db.session.execute(text("ALTER TABLE invoice ADD COLUMN order_video_duration_sec FLOAT"))
+        if "order_video_recorded_at" not in cols:
+            db.session.execute(text("ALTER TABLE invoice ADD COLUMN order_video_recorded_at DATETIME"))
+        db.session.commit()
+        print("invoice order video columns: ensured")
     TelegramChatProfile.__table__.create(bind=db.engine, checkfirst=True)
     print("telegram_chat_profiles: ensured")
     # tenant db files
