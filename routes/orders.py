@@ -27,6 +27,7 @@ from utils.order_status import is_canceled, is_returned, is_completed
 from services.media_service import get_thumbnail_upload_root, get_video_upload_root, save_uploaded_file
 
 orders_bp = Blueprint("orders", __name__, url_prefix="/orders")
+_ORDER_VIDEO_COLUMNS_ENSURED = False
 
 
 def _tenant_invoice_template_bundle():
@@ -174,6 +175,47 @@ def _apply_order_video_result(order: Invoice, result: dict, original_name: str |
     order.order_video_duration_sec = result.get("duration_sec")
     order.order_video_recorded_at = datetime.utcnow()
 
+
+def _ensure_order_video_columns() -> None:
+    global _ORDER_VIDEO_COLUMNS_ENSURED
+    if _ORDER_VIDEO_COLUMNS_ENSURED:
+        return
+    try:
+        from sqlalchemy import inspect, text
+
+        inspector = inspect(db.engine)
+        if "invoice" not in inspector.get_table_names():
+            _ORDER_VIDEO_COLUMNS_ENSURED = True
+            return
+
+        invoice_columns = [col["name"] for col in inspector.get_columns("invoice")]
+        changed = False
+        if "order_video_path" not in invoice_columns:
+            db.session.execute(text("ALTER TABLE invoice ADD COLUMN order_video_path VARCHAR(255)"))
+            changed = True
+        if "order_video_original_name" not in invoice_columns:
+            db.session.execute(text("ALTER TABLE invoice ADD COLUMN order_video_original_name VARCHAR(255)"))
+            changed = True
+        if "order_video_thumbnail_path" not in invoice_columns:
+            db.session.execute(text("ALTER TABLE invoice ADD COLUMN order_video_thumbnail_path VARCHAR(255)"))
+            changed = True
+        if "order_video_size_mb" not in invoice_columns:
+            db.session.execute(text("ALTER TABLE invoice ADD COLUMN order_video_size_mb FLOAT"))
+            changed = True
+        if "order_video_duration_sec" not in invoice_columns:
+            db.session.execute(text("ALTER TABLE invoice ADD COLUMN order_video_duration_sec FLOAT"))
+            changed = True
+        if "order_video_recorded_at" not in invoice_columns:
+            db.session.execute(text("ALTER TABLE invoice ADD COLUMN order_video_recorded_at DATETIME"))
+            changed = True
+        if changed:
+            db.session.commit()
+        _ORDER_VIDEO_COLUMNS_ENSURED = True
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Failed ensuring order video columns on invoice table")
+        raise
+
 # =====================================================
 # Orders Page (Optimized for many orders)
 # =====================================================
@@ -182,6 +224,7 @@ def orders():
     # فحص الصلاحية
     if not check_permission("can_see_orders"):
         return redirect("/pos"), 403
+    _ensure_order_video_columns()
 
     q = Invoice.query.join(Customer, isouter=True)
 
@@ -311,6 +354,7 @@ def orders_ordered():
     # فحص الصلاحية (الطلبات + حالة تم الطلب)
     if not check_permission("can_see_orders") or not check_permission("can_see_orders_placed"):
         return redirect("/pos"), 403
+    _ensure_order_video_columns()
     page = request.args.get("page", 1, type=int)
     per_page = 10
     
@@ -385,6 +429,7 @@ def orders_shipping():
     # فحص الصلاحية (الطلبات + حالة جاري الشحن)
     if not check_permission("can_see_orders") or not check_permission("can_see_orders_shipped"):
         return redirect("/pos"), 403
+    _ensure_order_video_columns()
     page = request.args.get("page", 1, type=int)
     per_page = 10
     
@@ -459,6 +504,7 @@ def orders_delivered():
     # فحص الصلاحية (الطلبات + حالة تم التوصيل)
     if not check_permission("can_see_orders") or not check_permission("can_see_orders_delivered"):
         return redirect("/pos"), 403
+    _ensure_order_video_columns()
     page = request.args.get("page", 1, type=int)
     per_page = 10
 
@@ -536,6 +582,7 @@ def orders_delivered():
 def orders_returned():
     if not check_permission("can_see_orders") or not check_permission("can_see_orders_returned"):
         return redirect("/pos"), 403
+    _ensure_order_video_columns()
     page = request.args.get("page", 1, type=int)
     per_page = 10
 
@@ -614,6 +661,7 @@ def orders_cancelled():
     # فحص الصلاحية (الطلبات فقط)
     if not check_permission("can_see_orders"):
         return redirect("/pos"), 403
+    _ensure_order_video_columns()
     page = request.args.get("page", 1, type=int)
     per_page = 10
     
@@ -703,6 +751,7 @@ def update_order():
 # =====================================================
 @orders_bp.route("/payment", methods=["POST"])
 def payment():
+    _ensure_order_video_columns()
     try:
         data = request.json
         if not data or "id" not in data:
@@ -784,6 +833,7 @@ def payment():
 # =====================================================
 @orders_bp.route("/delete/<int:order_id>", methods=["POST"])
 def delete_order(order_id):
+    _ensure_order_video_columns()
     order = Invoice.query.get_or_404(order_id)
 
     try:
@@ -858,6 +908,7 @@ def update_delivery_agent():
 # =====================================================
 @orders_bp.route("/details/<int:order_id>")
 def details(order_id):
+    _ensure_order_video_columns()
     order = Invoice.query.get_or_404(order_id)
 
     items = OrderItem.query.filter_by(invoice_id=order.id).all()
@@ -915,6 +966,7 @@ def details(order_id):
 
 @orders_bp.route("/<int:order_id>/video", methods=["POST"])
 def upload_order_video(order_id):
+    _ensure_order_video_columns()
     if not check_permission("can_see_orders"):
         return jsonify({"success": False, "error": "غير مصرح"}), 403
 
@@ -946,6 +998,7 @@ def upload_order_video(order_id):
 
 @orders_bp.route("/<int:order_id>/video", methods=["GET"])
 def stream_order_video(order_id):
+    _ensure_order_video_columns()
     if not check_permission("can_see_orders"):
         abort(403)
 
@@ -962,6 +1015,7 @@ def stream_order_video(order_id):
 
 @orders_bp.route("/<int:order_id>/video/download", methods=["GET"])
 def download_order_video(order_id):
+    _ensure_order_video_columns()
     if not check_permission("can_see_orders"):
         abort(403)
 
