@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, jsonify, request, session, redirect
+from flask import Blueprint, render_template, jsonify, request, session, redirect, g, current_app
 from sqlalchemy.sql import func
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
@@ -194,10 +194,23 @@ def index():
     # #region agent log
     _debug_log("180817", "H4", "index.index:serve_dash_admin", "serving dashboard admin", {})
     # #endregion
+    # مسار "/" يُعفى في require_login قبل ضبط g.tenant — نربط المستأجر هنا حتى Invoice.query يستخدم DB الصحيح.
+    overdue_rows = []
+    tenant_slug = (session.get("tenant_slug") or "").strip()
+    if tenant_slug:
+        prev_tenant = getattr(g, "tenant", None)
+        g.tenant = tenant_slug
+        try:
+            overdue_rows = _dashboard_overdue_invoices()
+        except Exception:
+            current_app.logger.exception("dashboard overdue invoices failed")
+            overdue_rows = []
+        finally:
+            g.tenant = prev_tenant
     return render_template(
         "dashbord.html",
         employee_name=session.get("name", ""),
-        dashboard_overdue_orders=_dashboard_overdue_invoices(),
+        dashboard_overdue_orders=overdue_rows,
     )
 
 
