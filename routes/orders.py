@@ -22,6 +22,7 @@ from io import BytesIO
 import pandas as pd
 import json
 from sqlalchemy import or_, and_
+from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 
 from utils.order_status import is_canceled, is_returned, is_completed
 from services.media_service import get_thumbnail_upload_root, get_video_upload_root, save_uploaded_file
@@ -139,6 +140,28 @@ def _order_video_payload(order: Invoice) -> dict:
         "duration_sec": order.order_video_duration_sec,
         "recorded_at": order.order_video_recorded_at.strftime("%Y-%m-%d %H:%M:%S") if order.order_video_recorded_at else None,
     }
+
+
+_INVOICE_VIDEO_TOKEN_SALT = "invoice-order-video-guest-v1"
+
+
+def _invoice_video_guest_serializer() -> URLSafeTimedSerializer:
+    return URLSafeTimedSerializer(current_app.secret_key, salt=_INVOICE_VIDEO_TOKEN_SALT)
+
+
+def build_invoice_video_guest_token(order_id: int) -> str:
+    """رمز موقّع لعرض فيديو الطلب من صفحة الفاتورة دون تسجيل دخول (مثلاً بعد مسح QR)."""
+    return _invoice_video_guest_serializer().dumps({"id": int(order_id)})
+
+
+def parse_invoice_video_guest_token(token: str, *, max_age: int = 86400 * 400) -> int | None:
+    """يُعيد رقم الطلب أو None إذا انتهت الصلاحية أو الرمز غير صالح."""
+    try:
+        data = _invoice_video_guest_serializer().loads(token, max_age=max_age)
+        oid = int(data.get("id", 0))
+        return oid if oid > 0 else None
+    except (BadSignature, SignatureExpired, TypeError, ValueError, KeyError):
+        return None
 
 
 def _collect_order_video_cleanup_targets(order: Invoice) -> dict | None:
@@ -1078,6 +1101,24 @@ def download_order_video(order_id):
     )
 
 
+@orders_bp.route("/invoice-video/<token>")
+def stream_invoice_video_guest(token: str):
+    """بث فيديو الطلب لمن يفتح رابط الفاتورة/QR بدون اشتراط جلسة (الرمز موقّع بـ SECRET_KEY)."""
+    _ensure_order_video_columns()
+    order_id = parse_invoice_video_guest_token(token.strip())
+    if not order_id:
+        abort(404)
+    order = Invoice.query.get_or_404(order_id)
+    safe_name = Path(order.order_video_path).name if getattr(order, "order_video_path", None) else None
+    if not safe_name:
+        abort(404)
+    root = get_video_upload_root()
+    path = root / safe_name
+    if not path.exists() or not path.is_file():
+        abort(404)
+    return send_from_directory(str(root), safe_name, conditional=True)
+
+
 # =====================================================
 # Order Query API (For Voice Assistant)
 # =====================================================
@@ -1127,8 +1168,9 @@ def query_order(order_id):
 # =====================================================
 @orders_bp.route("/invoice/<int:order_id>")
 def invoice_page(order_id):
+    _ensure_order_video_columns()
     order = Invoice.query.get_or_404(order_id)
-    
+
     items = OrderItem.query.filter_by(invoice_id=order.id).all()
     
     # حساب عدد الرواجع بناءً على رقم الهاتف (phone أو phone2)
@@ -1167,8 +1209,20 @@ def invoice_page(order_id):
     settings = InvoiceSettings.get_settings()
     
     template_file, template_styles = _tenant_invoice_template_bundle()
-    
-    return render_template(template_file,
+
+    invoice_video_guest_url = None
+    if getattr(order, "order_video_path", None):
+        try:
+            invoice_video_guest_url = url_for(
+                "orders.stream_invoice_video_guest",
+                token=build_invoice_video_guest_token(order.id),
+                _external=True,
+            )
+        except Exception:
+            current_app.logger.exception("invoice_video_guest_url failed for order %s", order.id)
+
+    return render_template(
+        template_file,
         order=order,
         items=items,
         total=total,
@@ -1176,7 +1230,8 @@ def invoice_page(order_id):
         returned_count=returned_count,
         cancelled_count=cancelled_count,
         settings=settings,
-        template_styles=template_styles
+        template_styles=template_styles,
+        invoice_video_guest_url=invoice_video_guest_url,
     )
 
 # =====================================================

@@ -1,0 +1,19 @@
+{# فيديو الطلب على صفحة الفاتورة — invoice_video_guest_url من المسار (رابط موقّع يعمل بدون تسجيل دخول) #}
+{% if getattr(order, 'order_video_path', None) and invoice_video_guest_url %}
+<div class="invoice-order-video-wrap" style="margin:18px 0;padding:18px;border-radius:14px;background:linear-gradient(145deg,#0f172a,#1e293b);border:1px solid rgba(59,130,246,0.25);">
+  <div style="font-weight:800;font-size:16px;color:#93c5fd;margin-bottom:12px;display:flex;align-items:center;gap:8px;">
+    <span>🎥</span><span>فيديو الطلب</span>
+  </div>
+  <video controls playsinline preload="metadata"
+    style="width:100%;max-height:min(55vh,480px);border-radius:12px;background:#020617;border:1px solid rgba(148,163,184,0.2);"
+    src="{{ invoice_video_guest_url }}">
+  </video>
+  <p style="font-size:12px;color:#94a3b8;margin-top:10px;line-height:1.5;margin-bottom:0;">
+    يظهر الفيديو عند المعاينة على الشاشة أو الجوال. قد لا يُطبع ضمن نسخة الورق.
+  </p>
+</div>
+{% elif getattr(order, 'order_video_path', None) and not invoice_video_guest_url %}
+<div class="invoice-order-video-wrap" style="margin:12px 0;padding:12px;border-radius:10px;background:#fef3c7;border:1px solid #fcd34d;font-size:13px;color:#92400e;">
+  يوجد فيديو لهذا الطلب لكن تعذّر تجهيز رابط التشغيل. حدّث الصفحة أو راجع سجلات الخادم.
+</div>
+{% endif %}

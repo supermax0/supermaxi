@@ -319,6 +319,8 @@
     <div class="divider"></div>
     {% endif %}
 
+    {% include 'partials/invoice_order_video.html' %}
+
     <div class="footer">
         <div style="margin-bottom: 10px;">{{ settings.invoice_note if settings and settings.invoice_note else 'شكراً
             لتسوقكم!' }}</div>
