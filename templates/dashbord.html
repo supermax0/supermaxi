@@ -1393,6 +1393,10 @@
     margin: 0;
   }
 
+  .dashboard-overdue-section--footer {
+    margin-top: 8px;
+  }
+
   .dashboard-overdue-card {
     border-radius: 22px;
     overflow: hidden;
@@ -1617,6 +1621,47 @@
     box-shadow: 0 6px 16px rgba(59, 130, 246, 0.18);
   }
 
+  .dashboard-overdue-empty {
+    padding: 28px 22px 32px;
+    text-align: center;
+    color: var(--dashboard-muted);
+  }
+
+  .dashboard-overdue-empty-icon {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 16px;
+    background: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.22);
+    color: #4ade80;
+    font-size: 24px;
+  }
+
+  :root[data-theme="light"] .dashboard-overdue-empty-icon {
+    background: rgba(22, 163, 74, 0.08);
+    border-color: rgba(22, 163, 74, 0.2);
+    color: #16a34a;
+  }
+
+  .dashboard-overdue-empty-title {
+    margin: 0 0 8px;
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--dashboard-text);
+  }
+
+  .dashboard-overdue-empty-note {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.75;
+    max-width: 420px;
+    margin-inline: auto;
+  }
+
   #additionalInfoRow {
     display: grid !important;
     margin: 0;
@@ -1754,63 +1799,6 @@
       </div>
     </aside>
   </section>
-
-  {% if dashboard_overdue_orders is defined and dashboard_overdue_orders|length > 0 %}
-  <section class="dashboard-overdue-section" aria-labelledby="dashboard-overdue-heading">
-    <div class="dashboard-overdue-card">
-      <div class="dashboard-overdue-head">
-        <div>
-          <h2 id="dashboard-overdue-heading" class="dashboard-overdue-title">
-            <i class="fas fa-clock" aria-hidden="true"></i>
-            {{ _('dashboard_overdue_title') }}
-          </h2>
-          <p class="dashboard-overdue-sub">{{ _('dashboard_overdue_subtitle') }}</p>
-        </div>
-        <div class="dashboard-overdue-legend" role="list">
-          <span class="leg-crit" role="listitem">{{ _('dashboard_overdue_legend_critical') }}</span>
-          <span class="leg-warn" role="listitem">{{ _('dashboard_overdue_legend_warning') }}</span>
-        </div>
-      </div>
-      <div class="dashboard-overdue-table-wrap">
-        <table class="dashboard-overdue-table">
-          <thead>
-            <tr>
-              <th scope="col">{{ _('dashboard_overdue_th_order') }}</th>
-              <th scope="col">{{ _('dashboard_th_customer') }}</th>
-              <th scope="col">{{ _('dashboard_th_phone') }}</th>
-              <th scope="col">{{ _('dashboard_overdue_th_status') }}</th>
-              <th scope="col">{{ _('dashboard_overdue_th_ref_date') }}</th>
-              <th scope="col">{{ _('dashboard_overdue_th_days') }}</th>
-              <th scope="col">{{ _('dashboard_overdue_th_action') }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for row in dashboard_overdue_orders %}
-            <tr class="dashboard-overdue-row{% if row.severity == 'critical' %} dashboard-overdue-row--crit{% else %} dashboard-overdue-row--warn{% endif %}">
-              <td><span class="dashboard-overdue-id">#{{ row.id }}</span></td>
-              <td>{{ row.customer_name }}</td>
-              <td dir="ltr" style="text-align:right;">{{ row.phone or '—' }}</td>
-              <td>{{ row.status }}</td>
-              <td dir="ltr" style="text-align:right;">{{ row.ref_date }}</td>
-              <td>
-                <span class="dashboard-overdue-days{% if row.severity == 'critical' %} dashboard-overdue-days--crit{% else %} dashboard-overdue-days--warn{% endif %}">
-                  {{ row.days }} {{ _('dashboard_overdue_days_suffix') }}
-                </span>
-              </td>
-              <td>
-                <a class="dashboard-overdue-link" href="{{ url_for('orders.invoice_page', order_id=row.id) }}">
-                  <i class="fas fa-external-link-alt" aria-hidden="true"></i>
-                  {{ _('dashboard_overdue_open') }}
-                </a>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </section>
-  {% endif %}
 
   <section class="dashboard-section">
     <div class="dashboard-section-head">
@@ -2303,6 +2291,72 @@
   <div id="aiAnalyzeError" class="ai-assistant-error" style="display:none;"></div>
 </div>
 </section>
+
+  {% if dashboard_overdue_orders is defined %}
+  <section class="dashboard-overdue-section dashboard-overdue-section--footer" aria-labelledby="dashboard-overdue-heading">
+    <div class="dashboard-overdue-card">
+      <div class="dashboard-overdue-head">
+        <div>
+          <h2 id="dashboard-overdue-heading" class="dashboard-overdue-title">
+            <i class="fas fa-clock" aria-hidden="true"></i>
+            {{ _('dashboard_overdue_title') }}
+          </h2>
+          <p class="dashboard-overdue-sub">{{ _('dashboard_overdue_subtitle') }}</p>
+        </div>
+        <div class="dashboard-overdue-legend" role="list">
+          <span class="leg-crit" role="listitem">{{ _('dashboard_overdue_legend_critical') }}</span>
+          <span class="leg-warn" role="listitem">{{ _('dashboard_overdue_legend_warning') }}</span>
+        </div>
+      </div>
+      {% if dashboard_overdue_orders|length > 0 %}
+      <div class="dashboard-overdue-table-wrap">
+        <table class="dashboard-overdue-table">
+          <thead>
+            <tr>
+              <th scope="col">{{ _('dashboard_overdue_th_order') }}</th>
+              <th scope="col">{{ _('dashboard_th_customer') }}</th>
+              <th scope="col">{{ _('dashboard_th_phone') }}</th>
+              <th scope="col">{{ _('dashboard_overdue_th_status') }}</th>
+              <th scope="col">{{ _('dashboard_overdue_th_ref_date') }}</th>
+              <th scope="col">{{ _('dashboard_overdue_th_days') }}</th>
+              <th scope="col">{{ _('dashboard_overdue_th_action') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in dashboard_overdue_orders %}
+            <tr class="dashboard-overdue-row{% if row.severity == 'critical' %} dashboard-overdue-row--crit{% else %} dashboard-overdue-row--warn{% endif %}">
+              <td><span class="dashboard-overdue-id">#{{ row.id }}</span></td>
+              <td>{{ row.customer_name }}</td>
+              <td dir="ltr" style="text-align:right;">{{ row.phone or '—' }}</td>
+              <td>{{ row.status }}</td>
+              <td dir="ltr" style="text-align:right;">{{ row.ref_date }}</td>
+              <td>
+                <span class="dashboard-overdue-days{% if row.severity == 'critical' %} dashboard-overdue-days--crit{% else %} dashboard-overdue-days--warn{% endif %}">
+                  {{ row.days }} {{ _('dashboard_overdue_days_suffix') }}
+                </span>
+              </td>
+              <td>
+                <a class="dashboard-overdue-link" href="{{ url_for('orders.invoice_page', order_id=row.id) }}">
+                  <i class="fas fa-external-link-alt" aria-hidden="true"></i>
+                  {{ _('dashboard_overdue_open') }}
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="dashboard-overdue-empty">
+        <div class="dashboard-overdue-empty-icon" aria-hidden="true"><i class="fas fa-check"></i></div>
+        <p class="dashboard-overdue-empty-title">{{ _('dashboard_overdue_empty_title') }}</p>
+        <p class="dashboard-overdue-empty-note">{{ _('dashboard_overdue_empty_note') }}</p>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+  {% endif %}
+
 </div>
 <style>
   .ai-assistant-card {

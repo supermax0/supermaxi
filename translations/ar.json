@@ -69,6 +69,8 @@
     "dashboard_overdue_th_action": "عرض",
     "dashboard_overdue_days_suffix": "يوم",
     "dashboard_overdue_open": "فتح الفاتورة",
+    "dashboard_overdue_empty_title": "لا توجد طلبات متأخرة",
+    "dashboard_overdue_empty_note": "يظهر هنا ما زال «تم الطلب» أو «جاري الشحن» لمدة 7 أيام فأكثر (برتقالي 7–9، أحمر 10+). باقي الطلبات أحدث أو منتهية.",
 
     "dashboard_alerts_title": "تنبيهات",
 

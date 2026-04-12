@@ -69,6 +69,8 @@
     "dashboard_overdue_th_action": "بینین",
     "dashboard_overdue_days_suffix": "ڕ",
     "dashboard_overdue_open": "کردنەوەی پسوڵە",
+    "dashboard_overdue_empty_title": "هیچ داواکاری دواکەوتوو نییە",
+    "dashboard_overdue_empty_note": "لێرە داواکاری «داوا کراو» یان «لە بارکردندا» بۆ 7+ ڕۆژ دەردەکەوێت. داواکاری نوێتر یان تەواوبوو لێرە نین.",
 
     "dashboard_alerts_title": "ئاگادارییەکان",
 

@@ -69,6 +69,8 @@
     "dashboard_overdue_th_action": "Görüntüle",
     "dashboard_overdue_days_suffix": "gün",
     "dashboard_overdue_open": "Faturayı aç",
+    "dashboard_overdue_empty_title": "Geciken sipariş yok",
+    "dashboard_overdue_empty_note": "Burada 7+ gündür «Sipariş alındı» veya «Kargoda» olanlar listelenir. Daha yeni veya tamamlananlar görünmez.",
 
     "dashboard_alerts_title": "Uyarılar",
 

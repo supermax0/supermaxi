@@ -69,6 +69,8 @@
     "dashboard_overdue_th_action": "View",
     "dashboard_overdue_days_suffix": "d",
     "dashboard_overdue_open": "Open invoice",
+    "dashboard_overdue_empty_title": "No overdue orders",
+    "dashboard_overdue_empty_note": "Orders still “Ordered” or “In shipping” for 7+ days appear here (orange 7–9, red 10+). Newer or finished orders are not listed.",
 
     "dashboard_alerts_title": "Alerts",
 
