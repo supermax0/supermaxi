@@ -13,7 +13,7 @@
   var hostId = {{ _host_id|tojson }};
   var host = document.getElementById(hostId);
   if (!host) return;
-  var text = {{ url_for('orders.invoice_page', order_id=order.id, _external=True)|tojson }};
+  var text = {{ (order_public_view_url if order_public_view_url is defined and order_public_view_url else url_for('orders.invoice_page', order_id=order.id))|tojson }};
   function draw() {
     if (typeof QRCode === 'undefined') return false;
     try {

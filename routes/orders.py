@@ -1,7 +1,21 @@
 import os
 from pathlib import Path
 
-from flask import Blueprint, render_template, request, jsonify, send_file, send_from_directory, session, redirect, url_for, current_app, abort, g
+from flask import (
+    Blueprint,
+    render_template,
+    request,
+    jsonify,
+    send_file,
+    send_from_directory,
+    session,
+    redirect,
+    url_for,
+    current_app,
+    abort,
+    g,
+    has_request_context,
+)
 from extensions import db
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload, selectinload
@@ -162,6 +176,46 @@ def parse_invoice_video_guest_token(token: str, *, max_age: int = 86400 * 400) -
         return oid if oid > 0 else None
     except (BadSignature, SignatureExpired, TypeError, ValueError, KeyError):
         return None
+
+
+_PUBLIC_ORDER_VIEW_SALT = "public-order-view-v1"
+
+
+def _public_order_view_serializer() -> URLSafeTimedSerializer:
+    return URLSafeTimedSerializer(current_app.secret_key, salt=_PUBLIC_ORDER_VIEW_SALT)
+
+
+def build_public_order_view_token(order_id: int) -> str:
+    """رمز لصفحة تفاصيل الطلب العامة (QR) دون تسجيل دخول."""
+    return _public_order_view_serializer().dumps({"id": int(order_id)})
+
+
+def parse_public_order_view_token(token: str, *, max_age: int = 86400 * 400) -> int | None:
+    try:
+        data = _public_order_view_serializer().loads(token, max_age=max_age)
+        oid = int(data.get("id", 0))
+        return oid if oid > 0 else None
+    except (BadSignature, SignatureExpired, TypeError, ValueError, KeyError):
+        return None
+
+
+def _absolute_url_for_path(path: str) -> str:
+    """رابط مطلق https://النطاق/... من الطلب الحالي (يعمل مع X-Forwarded-* خلف البروكسي)."""
+    if not path.startswith("/"):
+        path = "/" + path
+    if has_request_context():
+        try:
+            proto = (request.headers.get("X-Forwarded-Proto") or request.scheme or "https").split(",")[0].strip()
+            host = (request.headers.get("X-Forwarded-Host") or request.host or "").split(",")[0].strip()
+            if host:
+                return f"{proto}://{host}{path}"
+        except Exception:
+            current_app.logger.debug("absolute url from request failed", exc_info=True)
+    return path
+
+
+def _absolute_url_for_endpoint(endpoint: str, **values) -> str:
+    return _absolute_url_for_path(url_for(endpoint, **values))
 
 
 def _collect_order_video_cleanup_targets(order: Invoice) -> dict | None:
@@ -1119,6 +1173,42 @@ def stream_invoice_video_guest(token: str):
     return send_from_directory(str(root), safe_name, conditional=True)
 
 
+@orders_bp.route("/p/o/<token>")
+def public_order_view(token: str):
+    """تفاصيل الطلب + فيديو للعامة (مسح QR) دون تسجيل دخول — الرمز موقّع."""
+    _ensure_order_video_columns()
+    oid = parse_public_order_view_token((token or "").strip())
+    if not oid:
+        abort(404)
+    order = Invoice.query.options(
+        joinedload(Invoice.customer),
+        joinedload(Invoice.shipping_company),
+    ).get_or_404(oid)
+    items = OrderItem.query.filter_by(invoice_id=order.id).all()
+    total = sum(int(it.total) for it in items) if items else order.total
+    due = total
+    settings = InvoiceSettings.get_settings()
+    invoice_video_guest_url = None
+    if getattr(order, "order_video_path", None):
+        try:
+            vpath = url_for(
+                "orders.stream_invoice_video_guest",
+                token=build_invoice_video_guest_token(order.id),
+            )
+            invoice_video_guest_url = _absolute_url_for_path(vpath)
+        except Exception:
+            current_app.logger.exception("public_order_view video url for order %s", order.id)
+    return render_template(
+        "order_public_view.html",
+        order=order,
+        items=items,
+        total=total,
+        due=due,
+        settings=settings,
+        invoice_video_guest_url=invoice_video_guest_url,
+    )
+
+
 # =====================================================
 # Order Query API (For Voice Assistant)
 # =====================================================
@@ -1210,16 +1300,13 @@ def invoice_page(order_id):
     
     template_file, template_styles = _tenant_invoice_template_bundle()
 
-    invoice_video_guest_url = None
-    if getattr(order, "order_video_path", None):
-        try:
-            invoice_video_guest_url = url_for(
-                "orders.stream_invoice_video_guest",
-                token=build_invoice_video_guest_token(order.id),
-                _external=True,
-            )
-        except Exception:
-            current_app.logger.exception("invoice_video_guest_url failed for order %s", order.id)
+    order_public_view_url = ""
+    try:
+        if current_app.secret_key:
+            p = url_for("orders.public_order_view", token=build_public_order_view_token(order.id))
+            order_public_view_url = _absolute_url_for_path(p)
+    except Exception:
+        current_app.logger.exception("order_public_view_url failed for order %s", order.id)
 
     return render_template(
         template_file,
@@ -1231,7 +1318,7 @@ def invoice_page(order_id):
         cancelled_count=cancelled_count,
         settings=settings,
         template_styles=template_styles,
-        invoice_video_guest_url=invoice_video_guest_url,
+        order_public_view_url=order_public_view_url,
     )
 
 # =====================================================
@@ -1283,6 +1370,14 @@ def print_batch():
         total = sum(int(it.total) for it in items) if items else order.total
         due = total
 
+        public_view_url = ""
+        try:
+            if current_app.secret_key:
+                p = url_for("orders.public_order_view", token=build_public_order_view_token(order.id))
+                public_view_url = _absolute_url_for_path(p)
+        except Exception:
+            current_app.logger.exception("print_batch public_view_url order %s", order.id)
+
         batch.append({
             "order": order,
             "items": items,
@@ -1290,6 +1385,7 @@ def print_batch():
             "due": due,
             "returned_count": returned_count,
             "cancelled_count": cancelled_count,
+            "public_view_url": public_view_url,
         })
 
     _, template_styles = _tenant_invoice_template_bundle()

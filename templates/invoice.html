@@ -557,8 +557,6 @@
     </div>
     {% endif %}
 
-    {% include 'partials/invoice_order_video.html' %}
-    
     <!-- ==================== Footer ==================== -->
     <div class="invoice-footer" data-section="footer">
       <div class="warranty-notes">
@@ -697,7 +695,7 @@
         
         {% if show_qrcode %}
         try {
-          const invoiceUrl = {{ url_for('orders.invoice_page', order_id=order.id, _external=True)|tojson }};
+          const invoiceUrl = {{ (order_public_view_url if order_public_view_url is defined and order_public_view_url else url_for('orders.invoice_page', order_id=order.id))|tojson }};
           const qrContainer = document.getElementById("qrcode");
           function drawInvoiceQr() {
             if (!qrContainer || typeof QRCode === 'undefined') return false;

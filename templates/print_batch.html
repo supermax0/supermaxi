@@ -537,7 +537,7 @@
         {% set show_qrcode = visibility_settings.get('show_qrcode', True) %}
         {% if show_qrcode %}
         try {
-          const invoiceUrl = {{ url_for('orders.invoice_page', order_id=inv.order.id, _external=True)|tojson }};
+          const invoiceUrl = {{ (inv.public_view_url or url_for('orders.invoice_page', order_id=inv.order.id))|tojson }};
           const qrContainer = document.getElementById("qrcode_{{ inv.order.id }}");
           if (qrContainer) {
             qrContainer.innerHTML = '';
