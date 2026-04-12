@@ -419,13 +419,13 @@ document.addEventListener('keypress', function(e) {
 });
 
 function handleBarcodeScan(barcode) {
-  // البحث عن الفاتورة بالباركود
+  // البحث عن الفاتورة بالباركود (يشمل رقم الطلب كما على باركود الفاتورة المطبوع)
   fetch(`/orders/search-by-barcode?barcode=${encodeURIComponent(barcode)}`)
     .then(r => r.json())
     .then(data => {
       if (data.success && data.invoice) {
-        // الانتقال إلى صفحة الفاتورة
-        window.location.href = `/orders/invoice/${data.invoice.id}`;
+        // فتح قائمة الطلبات مع نافذة التفاصيل والفيديو
+        window.location.href = `/orders?open_order=${data.invoice.id}`;
       } else {
         alert('⚠️ لم يتم العثور على فاتورة بهذا الباركود: ' + barcode);
       }

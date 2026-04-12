@@ -1581,14 +1581,23 @@ def search_by_barcode():
     barcode = request.args.get("barcode", "").strip()
     if not barcode:
         return jsonify({"success": False, "error": "باركود مطلوب"}), 400
-    
+
+    # مطابقة باركود الفاتورة / شركة النقل، أو رقم الطلب نفسه (نفس القيمة المرمّزة على قوالب الفاتورة CODE128)
     invoice = Invoice.query.filter(
         or_(
             Invoice.barcode == barcode,
-            Invoice.shipping_barcode == barcode
+            Invoice.shipping_barcode == barcode,
         )
     ).first()
-    
+
+    if not invoice and barcode.isdigit():
+        try:
+            oid = int(barcode)
+            if oid > 0:
+                invoice = Invoice.query.get(oid)
+        except (TypeError, ValueError):
+            invoice = None
+
     if not invoice:
         return jsonify({"success": False, "error": "لم يتم العثور على فاتورة"}), 404
     

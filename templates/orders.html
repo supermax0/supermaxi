@@ -3284,28 +3284,57 @@
     });
     document.getElementById("searchInput")?.addEventListener("keyup", applyFilters);
 
-    // Barcode scanner support
+    // Barcode scanner support — الباركود المطبوع على الفاتورة يرمّز عادةً رقم الطلب (id) وليس حقل barcode فقط
+    function findOrderFromBarcodeScan(trimmed) {
+      const t = String(trimmed || "").trim();
+      if (!t) return null;
+      return allOrders.find(function (o) {
+        const bc = o.barcode && o.barcode !== "—" ? String(o.barcode).trim() : "";
+        return (bc && bc === t) || String(o.id) === t;
+      }) || null;
+    }
+
+    function openOrderFromBarcodeScan(trimmed) {
+      const t = String(trimmed || "").trim();
+      if (!t) return;
+      const local = findOrderFromBarcodeScan(t);
+      if (local) {
+        showDetails(local.id);
+        return;
+      }
+      fetch("/orders/search-by-barcode?barcode=" + encodeURIComponent(t))
+        .then(function (r) {
+          return r.json().then(function (data) {
+            return { ok: r.ok, data: data };
+          });
+        })
+        .then(function (_ref) {
+          var ok = _ref.ok;
+          var data = _ref.data;
+          if (ok && data.success && data.invoice && data.invoice.id) {
+            showDetails(data.invoice.id);
+            return;
+          }
+          showToast(data.error || "⚠️ لم يتم العثور على الطلب", "warning");
+        })
+        .catch(function () {
+          showToast("❌ حدث خطأ أثناء البحث عن الباركود", "error");
+        });
+    }
+
     let barcodeBuffer = '', barcodeTimeout;
     document.addEventListener('keydown', function (e) {
       if (document.activeElement?.tagName === 'INPUT') return;
 
       if (e.key === 'Enter' && barcodeBuffer) {
-        const order = allOrders.find(o => o.barcode === barcodeBuffer.trim());
-        if (order) {
-          showDetails(order.id);
-        } else {
-          showToast("⚠️ لم يتم العثور على الطلب", "warning");
-        }
+        openOrderFromBarcodeScan(barcodeBuffer);
         barcodeBuffer = '';
       } else if (e.key.length === 1 && /[0-9a-zA-Z]/.test(e.key)) {
         barcodeBuffer += e.key;
         clearTimeout(barcodeTimeout);
         barcodeTimeout = setTimeout(() => {
           if (barcodeBuffer) {
-            const order = allOrders.find(o => o.barcode === barcodeBuffer.trim());
-            if (order) {
-              showDetails(order.id);
-            }
+            openOrderFromBarcodeScan(barcodeBuffer);
           }
           barcodeBuffer = '';
         }, 300);
