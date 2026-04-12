@@ -216,18 +216,55 @@ def parse_public_order_view_token(token: str, *, max_age: int = 86400 * 400) -> 
         return None
 
 
+def _host_is_loopback_or_private(host: str) -> bool:
+    """True إذا كان النطاق/الـ IP محلياً أو شبكة داخلية — روابط الـ QR للعامة لا تعتمد عليه."""
+    h = (host or "").strip().lower()
+    if not h:
+        return True
+    h = h.split(",")[0].strip()
+    if h.startswith("[") and "]" in h:
+        inner = h[1 : h.index("]")].lower()
+        if inner in ("::1", "0:0:0:0:0:0:0:1"):
+            return True
+    # host:port — نفصل المنفذ لـ IPv4 فقط
+    if ":" in h and not h.startswith("["):
+        if h.count(":") == 1:
+            h = h.rsplit(":", 1)[0]
+    if h in ("localhost", "127.0.0.1", "::1", "[::1]", "0.0.0.0"):
+        return True
+    if h.startswith("192.168.") or h.startswith("10."):
+        return True
+    if h.startswith("172."):
+        parts = h.split(".")
+        if len(parts) >= 2 and parts[0] == "172":
+            try:
+                if 16 <= int(parts[1]) <= 31:
+                    return True
+            except ValueError:
+                pass
+    return False
+
+
 def _absolute_url_for_path(path: str) -> str:
-    """رابط مطلق https://النطاق/... من الطلب الحالي (يعمل مع X-Forwarded-* خلف البروكسي)."""
+    """رابط مطلق https://النطاق/... — X-Forwarded-* خلف البروكسي، وإلا BASE_URL عند 127.0.0.1/شبكة داخلية."""
     if not path.startswith("/"):
         path = "/" + path
+    base_cfg = (current_app.config.get("BASE_URL") or "").strip().rstrip("/")
     if has_request_context():
         try:
             proto = (request.headers.get("X-Forwarded-Proto") or request.scheme or "https").split(",")[0].strip()
-            host = (request.headers.get("X-Forwarded-Host") or request.host or "").split(",")[0].strip()
-            if host:
+            host = (
+                request.headers.get("X-Forwarded-Host")
+                or request.headers.get("Host")
+                or (getattr(request, "host", None) or "")
+            )
+            host = (host or "").split(",")[0].strip()
+            if host and not _host_is_loopback_or_private(host):
                 return f"{proto}://{host}{path}"
         except Exception:
             current_app.logger.debug("absolute url from request failed", exc_info=True)
+    if base_cfg:
+        return f"{base_cfg}{path}"
     return path
 
 
