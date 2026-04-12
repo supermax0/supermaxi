@@ -58,6 +58,18 @@
     "dashboard_orders_delivered": "تم التوصيل",
     "dashboard_orders_returned": "مرتجع وملغي",
 
+    "dashboard_overdue_title": "طلبات متأخرة",
+    "dashboard_overdue_subtitle": "طلبات ما زالت «تم الطلب» أو «جاري الشحن». البرتقالي: من 7 إلى 9 أيام. الأحمر: 10 أيام فأكثر ويُعرض أولاً.",
+    "dashboard_overdue_legend_critical": "10+ أيام — أولوية",
+    "dashboard_overdue_legend_warning": "7–9 أيام",
+    "dashboard_overdue_th_order": "رقم الطلب",
+    "dashboard_overdue_th_status": "الحالة",
+    "dashboard_overdue_th_ref_date": "مرجع التاريخ",
+    "dashboard_overdue_th_days": "أيام التأخير",
+    "dashboard_overdue_th_action": "عرض",
+    "dashboard_overdue_days_suffix": "يوم",
+    "dashboard_overdue_open": "فتح الفاتورة",
+
     "dashboard_alerts_title": "تنبيهات",
 
     "dashboard_search_order_title": "بحث عن طلب",

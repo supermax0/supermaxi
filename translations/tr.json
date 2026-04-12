@@ -58,6 +58,18 @@
     "dashboard_orders_delivered": "Teslim Edildi",
     "dashboard_orders_returned": "İade / İptal",
 
+    "dashboard_overdue_title": "Geciken siparişler",
+    "dashboard_overdue_subtitle": "Hâlâ «Sipariş alındı» veya «Kargoda». Turuncu: 7–9 gün. Kırmızı: 10+ gün (önce listelenir).",
+    "dashboard_overdue_legend_critical": "10+ gün — öncelik",
+    "dashboard_overdue_legend_warning": "7–9 gün",
+    "dashboard_overdue_th_order": "Sipariş no",
+    "dashboard_overdue_th_status": "Durum",
+    "dashboard_overdue_th_ref_date": "Referans tarihi",
+    "dashboard_overdue_th_days": "Gecikme (gün)",
+    "dashboard_overdue_th_action": "Görüntüle",
+    "dashboard_overdue_days_suffix": "gün",
+    "dashboard_overdue_open": "Faturayı aç",
+
     "dashboard_alerts_title": "Uyarılar",
 
     "dashboard_search_order_title": "Sipariş Ara",

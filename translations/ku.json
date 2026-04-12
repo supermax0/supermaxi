@@ -58,6 +58,18 @@
     "dashboard_orders_delivered": "گەیشتوو",
     "dashboard_orders_returned": "گەڕێندراو / هەڵوەشاو",
 
+    "dashboard_overdue_title": "داواکاری دواکەوتوو",
+    "dashboard_overdue_subtitle": "هێشتا «داوا کراو» یان «لە بارکردندا». نارەنجی: 7–9 ڕۆژ. سوور: 10+ ڕۆژ (سەرەتا).",
+    "dashboard_overdue_legend_critical": "10+ ڕۆژ — پێشینە",
+    "dashboard_overdue_legend_warning": "7–9 ڕۆژ",
+    "dashboard_overdue_th_order": "ژ. داواکاری",
+    "dashboard_overdue_th_status": "دۆخ",
+    "dashboard_overdue_th_ref_date": "بەرواری سەرچاوە",
+    "dashboard_overdue_th_days": "ڕۆژی دواکەوتن",
+    "dashboard_overdue_th_action": "بینین",
+    "dashboard_overdue_days_suffix": "ڕ",
+    "dashboard_overdue_open": "کردنەوەی پسوڵە",
+
     "dashboard_alerts_title": "ئاگادارییەکان",
 
     "dashboard_search_order_title": "گەڕان بۆ داواکاری",

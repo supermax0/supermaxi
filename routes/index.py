@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, jsonify, request, session, redirect
 from sqlalchemy.sql import func
 from sqlalchemy import or_
+from sqlalchemy.orm import joinedload
 from datetime import date, timedelta, datetime
 import json
 import json
@@ -31,6 +32,7 @@ from utils.accounting_calculations import (
 )
 from utils.date_periods import get_period_dates, get_period_label
 from utils.cash_calculations import calculate_cash_balance
+from utils.order_status import PENDING_STATUSES
 
 index_bp = Blueprint("index", __name__)
 
@@ -112,6 +114,55 @@ def _increment_landing_visits():
         print(f"[landing] failed to record visit: {e}")
 
 
+def _dashboard_overdue_invoices(*, min_days: int = 7, limit: int = 40):
+    """
+    طلبات لا تزال قيد التنفيذ (تم الطلب / جاري الشحن) متأخرة منذ min_days أيام على الأقل.
+    يُحسب من تاريخ التأجيل إن وُجد وإلا من تاريخ الإنشاء.
+    10+ أيام: severity=critical (أولوية العرض)، 7–9: severity=warning.
+    """
+    now = datetime.utcnow()
+    q = (
+        Invoice.query.options(joinedload(Invoice.customer))
+        .filter(Invoice.status.in_(list(PENDING_STATUSES)))
+        .filter(or_(Invoice.payment_status.is_(None), Invoice.payment_status != "مرتجع"))
+        .order_by(Invoice.created_at.asc())
+    )
+    rows = q.limit(400).all()
+    items = []
+    for inv in rows:
+        ref = inv.scheduled_date or inv.created_at
+        if not ref:
+            continue
+        if getattr(ref, "tzinfo", None) is not None:
+            ref = ref.replace(tzinfo=None)
+        try:
+            days = (now - ref).days
+        except Exception:
+            continue
+        if days < min_days:
+            continue
+        sev = "critical" if days >= 10 else "warning"
+        phone = ""
+        try:
+            if inv.customer is not None:
+                phone = (getattr(inv.customer, "phone", None) or "") or ""
+        except Exception:
+            phone = ""
+        items.append(
+            {
+                "id": inv.id,
+                "customer_name": (inv.customer_name or "").strip(),
+                "phone": str(phone).strip(),
+                "status": (inv.status or "").strip(),
+                "days": int(days),
+                "severity": sev,
+                "ref_date": ref.strftime("%Y-%m-%d"),
+            }
+        )
+    items.sort(key=lambda x: (0 if x["severity"] == "critical" else 1, -x["days"], -x["id"]))
+    return items[:limit]
+
+
 # =================================================
 # PAGE (الرئيسية)
 # =================================================
@@ -134,13 +185,19 @@ def index():
         # #region agent log
         _debug_log("180817", "H4", "index.index:serve_dash_cashier", "serving dashboard cashier", {})
         # #endregion
-        return render_template("dashbord.html", is_cashier=True, show_data=False)
+        return render_template(
+            "dashbord.html",
+            is_cashier=True,
+            show_data=False,
+            dashboard_overdue_orders=[],
+        )
     # #region agent log
     _debug_log("180817", "H4", "index.index:serve_dash_admin", "serving dashboard admin", {})
     # #endregion
     return render_template(
         "dashbord.html",
-        employee_name=session.get("name", "")
+        employee_name=session.get("name", ""),
+        dashboard_overdue_orders=_dashboard_overdue_invoices(),
     )
 
 

@@ -58,6 +58,18 @@
     "dashboard_orders_delivered": "Delivered",
     "dashboard_orders_returned": "Returned / Canceled",
 
+    "dashboard_overdue_title": "Overdue orders",
+    "dashboard_overdue_subtitle": "Still “Ordered” or “In shipping”. Orange: 7–9 days. Red: 10+ days (listed first).",
+    "dashboard_overdue_legend_critical": "10+ days — priority",
+    "dashboard_overdue_legend_warning": "7–9 days",
+    "dashboard_overdue_th_order": "Order #",
+    "dashboard_overdue_th_status": "Status",
+    "dashboard_overdue_th_ref_date": "Reference date",
+    "dashboard_overdue_th_days": "Days late",
+    "dashboard_overdue_th_action": "View",
+    "dashboard_overdue_days_suffix": "d",
+    "dashboard_overdue_open": "Open invoice",
+
     "dashboard_alerts_title": "Alerts",
 
     "dashboard_search_order_title": "Search Order",
