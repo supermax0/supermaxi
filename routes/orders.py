@@ -156,29 +156,40 @@ def _order_video_payload(order: Invoice) -> dict:
     }
 
 
-_INVOICE_VIDEO_TOKEN_SALT = "invoice-order-video-guest-v1"
+_INVOICE_VIDEO_TOKEN_SALT = "invoice-order-video-guest-v2"
 
 
 def _invoice_video_guest_serializer() -> URLSafeTimedSerializer:
     return URLSafeTimedSerializer(current_app.secret_key, salt=_INVOICE_VIDEO_TOKEN_SALT)
 
 
+def _tenant_slug_for_public_tokens() -> str:
+    """معرّف الشركة (المستأجر) لربط الرموز بقاعدة الطلبات الصحيحة."""
+    return (getattr(g, "tenant", None) or session.get("tenant_slug") or "").strip()
+
+
 def build_invoice_video_guest_token(order_id: int) -> str:
-    """رمز موقّع لعرض فيديو الطلب من صفحة الفاتورة دون تسجيل دخول (مثلاً بعد مسح QR)."""
-    return _invoice_video_guest_serializer().dumps({"id": int(order_id)})
+    """رمز موقّع لفيديو الطلب للعامة؛ يتضمن tenant حتى يعمل الاستعلام بدون جلسة."""
+    tslug = _tenant_slug_for_public_tokens()
+    if not tslug:
+        raise ValueError("tenant slug missing for invoice video token")
+    return _invoice_video_guest_serializer().dumps({"id": int(order_id), "t": tslug})
 
 
-def parse_invoice_video_guest_token(token: str, *, max_age: int = 86400 * 400) -> int | None:
-    """يُعيد رقم الطلب أو None إذا انتهت الصلاحية أو الرمز غير صالح."""
+def parse_invoice_video_guest_token(token: str, *, max_age: int = 86400 * 400) -> tuple[int, str] | None:
+    """(رقم الطلب، tenant_slug) أو None."""
     try:
         data = _invoice_video_guest_serializer().loads(token, max_age=max_age)
         oid = int(data.get("id", 0))
-        return oid if oid > 0 else None
+        tslug = (data.get("t") or "").strip()
+        if oid <= 0 or not tslug:
+            return None
+        return (oid, tslug)
     except (BadSignature, SignatureExpired, TypeError, ValueError, KeyError):
         return None
 
 
-_PUBLIC_ORDER_VIEW_SALT = "public-order-view-v1"
+_PUBLIC_ORDER_VIEW_SALT = "public-order-view-v2"
 
 
 def _public_order_view_serializer() -> URLSafeTimedSerializer:
@@ -186,15 +197,21 @@ def _public_order_view_serializer() -> URLSafeTimedSerializer:
 
 
 def build_public_order_view_token(order_id: int) -> str:
-    """رمز لصفحة تفاصيل الطلب العامة (QR) دون تسجيل دخول."""
-    return _public_order_view_serializer().dumps({"id": int(order_id)})
+    """رمز لصفحة تفاصيل الطلب العامة (QR)؛ يتضمن tenant."""
+    tslug = _tenant_slug_for_public_tokens()
+    if not tslug:
+        raise ValueError("tenant slug missing for public order view token")
+    return _public_order_view_serializer().dumps({"id": int(order_id), "t": tslug})
 
 
-def parse_public_order_view_token(token: str, *, max_age: int = 86400 * 400) -> int | None:
+def parse_public_order_view_token(token: str, *, max_age: int = 86400 * 400) -> tuple[int, str] | None:
     try:
         data = _public_order_view_serializer().loads(token, max_age=max_age)
         oid = int(data.get("id", 0))
-        return oid if oid > 0 else None
+        tslug = (data.get("t") or "").strip()
+        if oid <= 0 or not tslug:
+            return None
+        return (oid, tslug)
     except (BadSignature, SignatureExpired, TypeError, ValueError, KeyError):
         return None
 
@@ -1159,9 +1176,11 @@ def download_order_video(order_id):
 def stream_invoice_video_guest(token: str):
     """بث فيديو الطلب لمن يفتح رابط الفاتورة/QR بدون اشتراط جلسة (الرمز موقّع بـ SECRET_KEY)."""
     _ensure_order_video_columns()
-    order_id = parse_invoice_video_guest_token(token.strip())
-    if not order_id:
+    parsed = parse_invoice_video_guest_token(token.strip())
+    if not parsed:
         abort(404)
+    order_id, tenant_slug = parsed
+    g.tenant = tenant_slug
     order = Invoice.query.get_or_404(order_id)
     safe_name = Path(order.order_video_path).name if getattr(order, "order_video_path", None) else None
     if not safe_name:
@@ -1177,9 +1196,11 @@ def stream_invoice_video_guest(token: str):
 def public_order_view(token: str):
     """تفاصيل الطلب + فيديو للعامة (مسح QR) دون تسجيل دخول — الرمز موقّع."""
     _ensure_order_video_columns()
-    oid = parse_public_order_view_token((token or "").strip())
-    if not oid:
+    parsed = parse_public_order_view_token((token or "").strip())
+    if not parsed:
         abort(404)
+    oid, tenant_slug = parsed
+    g.tenant = tenant_slug
     order = Invoice.query.options(
         joinedload(Invoice.customer),
         joinedload(Invoice.shipping_company),

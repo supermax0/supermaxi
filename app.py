@@ -1010,6 +1010,8 @@ def require_login():
         "/api/landing-chat",  # مساعد الذكاء الاصطناعي لصفحة الهبوط
         "/telegram",  # بوت تيليجرام: webhook و setup و test — بدون تسجيل (ليستقبل التحديثات من Telegram)
         "/shop",  # المتجر العام للزبائن — بدون تسجيل دخول
+        "/orders/p/o",  # تفاصيل طلب عامة (QR) — موقّعة، بدون تسجيل
+        "/orders/invoice-video",  # بث فيديو الطلب للعامة — رمز موقّع
         "/webhook",  # WhatsApp Cloud API webhook verification/receive
         "/webhook-ui",  # صفحة اختبار webhook
     ]

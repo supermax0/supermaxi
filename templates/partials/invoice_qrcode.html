@@ -1,5 +1,5 @@
-{# QR للفاتورة — يحترم إعدادات العرض؛ رابط مطلق؛ تحميل qrcodejs مع بديل CDN إن لزم #}
-{% macro invoice_qr_block(settings, order, host_suffix='') %}
+{# QR للفاتورة — يمرّر public_url من القالب (order_public_view_url) لأن الماكرو المستورد لا يرى السياق بدون with context #}
+{% macro invoice_qr_block(settings, order, host_suffix='', public_url=None) %}
 {% set visibility_settings = settings.get_visibility_settings() %}
 {% set show_qrcode = visibility_settings.get('show_qrcode', True) %}
 {% if show_qrcode %}
@@ -13,7 +13,7 @@
   var hostId = {{ _host_id|tojson }};
   var host = document.getElementById(hostId);
   if (!host) return;
-  var text = {{ (order_public_view_url if order_public_view_url is defined and order_public_view_url else url_for('orders.invoice_page', order_id=order.id))|tojson }};
+  var text = {{ ((public_url if public_url is not none else '') or url_for('orders.invoice_page', order_id=order.id))|tojson }};
   function draw() {
     if (typeof QRCode === 'undefined') return false;
     try {
