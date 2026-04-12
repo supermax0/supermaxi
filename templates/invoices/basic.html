@@ -2,13 +2,13 @@
 <html lang="ar" dir="rtl">
 
 <head>
+    {% from 'partials/invoice_qrcode.html' import invoice_qr_block %}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>فاتورة رقم #{{ order.id }}</title>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <style>
         /* ================= DYNAMIC STYLES ================= */
         :root {
@@ -468,18 +468,21 @@
                 <strong>سياسة المتجر:</strong><br>
                 {{ settings.invoice_note if settings and settings.invoice_note else 'شكراً لتسوقكم معنا!' }}
             </div>
-            <div class="barcode-area">
-                <svg id="barcode"></svg>
-                <script>
-                    JsBarcode("#barcode", "{{ order.id }}", {
-                        format: "CODE128",
-                        width: 2,
-                        height: 40,
-                        displayValue: true,
-                        fontSize: 14,
-                        margin: 0
-                    });
-                </script>
+            <div class="barcode-area" style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;justify-content:flex-end;">
+                <div>
+                    <svg id="barcode"></svg>
+                    <script>
+                        JsBarcode("#barcode", "{{ order.id }}", {
+                            format: "CODE128",
+                            width: 2,
+                            height: 40,
+                            displayValue: true,
+                            fontSize: 14,
+                            margin: 0
+                        });
+                    </script>
+                </div>
+                {{ invoice_qr_block(settings, order) }}
             </div>
         </div>
 

@@ -296,8 +296,12 @@
     }
     
     .qrcode-div {
-      width: 100px;
-      height: 100px;
+      width: 108px;
+      min-width: 108px;
+      min-height: 108px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
     
     /* ==================== Print Styles ==================== */
@@ -510,7 +514,6 @@
       {% for inv in batch %}
         {% set visibility_settings = settings.get_visibility_settings() %}
         {% set show_barcode = visibility_settings.get('show_barcode', True) %}
-        {% set show_qrcode = visibility_settings.get('show_qrcode', True) %}
 
         {% if show_barcode %}
         try {
@@ -526,10 +529,15 @@
           console.error('Barcode generation error for order {{ inv.order.id }}:', e);
         }
         {% endif %}
+      {% endfor %}
 
+      function runQrCodesThenPrint() {
+        {% for inv in batch %}
+        {% set visibility_settings = settings.get_visibility_settings() %}
+        {% set show_qrcode = visibility_settings.get('show_qrcode', True) %}
         {% if show_qrcode %}
         try {
-          const invoiceUrl = window.location.origin + '/orders/invoice/{{ inv.order.id }}';
+          const invoiceUrl = {{ url_for('orders.invoice_page', order_id=inv.order.id, _external=True)|tojson }};
           const qrContainer = document.getElementById("qrcode_{{ inv.order.id }}");
           if (qrContainer) {
             qrContainer.innerHTML = '';
@@ -546,12 +554,28 @@
           console.error('QR Code generation error for order {{ inv.order.id }}:', e);
         }
         {% endif %}
-      {% endfor %}
-      
-      // Auto print after codes are generated
-      setTimeout(function() {
-        window.print();
-      }, 500);
+        {% endfor %}
+        setTimeout(function() {
+          window.print();
+        }, 500);
+      }
+
+      if (typeof QRCode !== 'undefined') {
+        runQrCodesThenPrint();
+      } else {
+        var s = document.createElement('script');
+        s.async = true;
+        s.src = 'https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js';
+        s.onload = runQrCodesThenPrint;
+        s.onerror = function () {
+          var t = document.createElement('script');
+          t.async = true;
+          t.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+          t.onload = runQrCodesThenPrint;
+          document.head.appendChild(t);
+        };
+        document.head.appendChild(s);
+      }
     });
   </script>
 </body>

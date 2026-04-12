@@ -2,6 +2,7 @@
 <html lang="ar" dir="rtl">
 
 <head>
+    {% from 'partials/invoice_qrcode.html' import invoice_qr_block %}
     <meta charset="UTF-8">
     <title>فاتورة رقم #{{ order.id }}</title>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -390,8 +391,9 @@
                 <p>{{ settings.invoice_note if settings and settings.invoice_note else 'هذه فاتورة رسمية صادرة من نظام
                     الشركة. يرجى الاحتفاظ بها للمراجعة أو الإرجاع حسب سياسة الاسترجاع المعتمدة.' }}</p>
             </div>
-            <div class="barcode-wrap">
+            <div class="barcode-wrap" style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;">
                 <svg id="barcode-corp"></svg>
+                {{ invoice_qr_block(settings, order) }}
             </div>
         </div>
 

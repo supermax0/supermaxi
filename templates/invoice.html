@@ -358,8 +358,12 @@
     }
     
     #qrcode {
-      width: 100px;
-      height: 100px;
+      width: 108px;
+      min-height: 108px;
+      min-width: 108px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
     
     /* ==================== Print Styles ==================== */
@@ -691,9 +695,10 @@
         
         {% if show_qrcode %}
         try {
-          const invoiceUrl = window.location.href;
+          const invoiceUrl = {{ url_for('orders.invoice_page', order_id=order.id, _external=True)|tojson }};
           const qrContainer = document.getElementById("qrcode");
-          if (qrContainer) {
+          function drawInvoiceQr() {
+            if (!qrContainer || typeof QRCode === 'undefined') return false;
             qrContainer.innerHTML = '';
             new QRCode(qrContainer, {
               text: invoiceUrl,
@@ -703,6 +708,24 @@
               colorLight: "#ffffff",
               correctLevel: QRCode.CorrectLevel.H
             });
+            return true;
+          }
+          function loadQrLib(cb) {
+            var s = document.createElement("script");
+            s.async = true;
+            s.src = "https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js";
+            s.onload = cb;
+            s.onerror = function () {
+              var t = document.createElement("script");
+              t.async = true;
+              t.src = "https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js";
+              t.onload = cb;
+              document.head.appendChild(t);
+            };
+            document.head.appendChild(s);
+          }
+          if (!drawInvoiceQr()) {
+            loadQrLib(function () { drawInvoiceQr(); });
           }
         } catch (e) {
           console.error('QR Code generation error:', e);

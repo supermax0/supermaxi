@@ -2,6 +2,7 @@
 <html lang="ar" dir="rtl">
 
 <head>
+    {% from 'partials/invoice_qrcode.html' import invoice_qr_block %}
     <meta charset="UTF-8">
     <title>فاتورة رقم #{{ order.id }}</title>
     <link
@@ -362,8 +363,11 @@
             {% if settings and settings.phone1 %}CONTACT: <span style="font-family:sans-serif; letter-spacing:0;">{{
                 settings.phone1 }}</span>{% endif %}
         </div>
-        <div class="barcode-container">
-            <svg id="barcode-elegant"></svg>
+        <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;justify-content:center;">
+            <div class="barcode-container">
+                <svg id="barcode-elegant"></svg>
+            </div>
+            {{ invoice_qr_block(settings, order) }}
         </div>
     </div>
     </div>

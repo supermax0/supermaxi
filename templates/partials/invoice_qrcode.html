@@ -1,0 +1,54 @@
+{# QR للفاتورة — يحترم إعدادات العرض؛ رابط مطلق؛ تحميل qrcodejs مع بديل CDN إن لزم #}
+{% macro invoice_qr_block(settings, order, host_suffix='') %}
+{% set visibility_settings = settings.get_visibility_settings() %}
+{% set show_qrcode = visibility_settings.get('show_qrcode', True) %}
+{% if show_qrcode %}
+{% set _host_id = 'invoiceQrHost' ~ (host_suffix|string) %}
+<div class="invoice-qr-addon" style="display:inline-block;text-align:center;margin-top:4px;vertical-align:top;">
+  <div style="font-size:10px;font-weight:700;margin-bottom:3px;opacity:.9;">QR Code</div>
+  <div id="{{ _host_id }}" style="width:108px;height:108px;display:inline-flex;align-items:center;justify-content:center;background:#fff;border-radius:8px;border:1px solid rgba(0,0,0,.08);"></div>
+</div>
+<script>
+(function () {
+  var hostId = {{ _host_id|tojson }};
+  var host = document.getElementById(hostId);
+  if (!host) return;
+  var text = {{ url_for('orders.invoice_page', order_id=order.id, _external=True)|tojson }};
+  function draw() {
+    if (typeof QRCode === 'undefined') return false;
+    try {
+      host.innerHTML = '';
+      new QRCode(host, {
+        text: text,
+        width: 100,
+        height: 100,
+        colorDark: '#000000',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.H
+      });
+    } catch (e) {
+      console.error('Invoice QR:', e);
+    }
+    return true;
+  }
+  function loadLib(cb) {
+    var s = document.createElement('script');
+    s.async = true;
+    s.src = 'https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js';
+    s.onload = cb;
+    s.onerror = function () {
+      var t = document.createElement('script');
+      t.async = true;
+      t.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+      t.onload = cb;
+      t.onerror = function () { console.error('QRCode library failed to load'); };
+      document.head.appendChild(t);
+    };
+    document.head.appendChild(s);
+  }
+  if (draw()) return;
+  loadLib(function () { draw(); });
+})();
+</script>
+{% endif %}
+{% endmacro %}
