@@ -5,12 +5,28 @@
 {% block content %}
 <style>
 .ai-chat-page {
-  max-width: 1100px;
+  max-width: 1260px;
   margin: 0 auto;
+  padding: 8px 0 20px;
 }
 
 .ai-chat-card {
-  padding: 18px;
+  padding: 22px;
+  border-radius: 28px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background:
+    radial-gradient(120% 120% at 100% 0%, rgba(59, 130, 246, 0.12), transparent 45%),
+    radial-gradient(120% 120% at 0% 0%, rgba(168, 85, 247, 0.10), transparent 40%),
+    linear-gradient(180deg, rgba(15, 23, 42, 0.94), rgba(15, 23, 42, 0.88));
+  box-shadow: 0 24px 70px rgba(2, 6, 23, 0.34);
+}
+
+:root[data-theme="light"] .ai-chat-card {
+  background:
+    radial-gradient(120% 120% at 100% 0%, rgba(59, 130, 246, 0.08), transparent 45%),
+    radial-gradient(120% 120% at 0% 0%, rgba(168, 85, 247, 0.06), transparent 40%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.08);
 }
 
 .ai-chat-head {
@@ -18,7 +34,15 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 14px;
+  margin-bottom: 18px;
+  padding: 20px;
+  border-radius: 24px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(2, 6, 23, 0.22);
+}
+
+:root[data-theme="light"] .ai-chat-head {
+  background: rgba(255, 255, 255, 0.76);
 }
 
 .ai-chat-title {
@@ -26,45 +50,107 @@
   align-items: center;
   gap: 10px;
   font-weight: 800;
-  font-size: 20px;
+  font-size: 24px;
   color: var(--text);
   margin: 0;
 }
 
+.ai-chat-title-mark {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.28), rgba(168, 85, 247, 0.26));
+  border: 1px solid rgba(96, 165, 250, 0.22);
+  box-shadow: 0 12px 30px rgba(37, 99, 235, 0.18);
+}
+
 .ai-chat-subtitle {
-  margin-top: 6px;
+  margin-top: 8px;
   color: var(--text-muted);
-  font-size: 13px;
-  line-height: 1.7;
+  font-size: 14px;
+  line-height: 1.85;
+  max-width: 780px;
+}
+
+.ai-chat-hero-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.ai-chat-hero-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.44);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+:root[data-theme="light"] .ai-chat-hero-stat {
+  background: rgba(248, 250, 252, 0.92);
 }
 
 .ai-chat-actions {
   display: inline-flex;
   gap: 10px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .ai-chat-actions .btn {
   padding: 10px 14px;
   font-size: 13px;
   border-radius: 14px;
+  min-height: 42px;
 }
 
 .ai-chat-layout {
   display: grid;
   grid-template-columns: 360px 1fr;
-  gap: 16px;
-  align-items: stretch;
+  gap: 18px;
+  align-items: start;
 }
 
 .ai-settings {
-  padding: 16px;
+  padding: 18px;
+  border-radius: 24px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(2, 6, 23, 0.26);
+  position: sticky;
+  top: 84px;
+}
+
+:root[data-theme="light"] .ai-settings {
+  background: rgba(255, 255, 255, 0.82);
 }
 
 .ai-settings h4 {
   margin: 0 0 12px 0;
-  font-size: 14px;
+  font-size: 15px;
   color: var(--text);
+}
+
+.ai-settings-section + .ai-settings-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.ai-section-kicker {
+  margin: 0 0 12px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.7;
 }
 
 .ai-field {
@@ -81,16 +167,24 @@
 .ai-field select,
 .ai-field input {
   width: 100%;
-  padding: 12px 12px;
+  padding: 13px 14px;
   border-radius: 14px;
   border: 1px solid var(--border);
   background: rgba(15, 23, 42, 0.35);
   color: var(--text);
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
 }
 
 :root[data-theme="light"] .ai-field select,
 :root[data-theme="light"] .ai-field input {
   background: rgba(255, 255, 255, 0.9);
+}
+
+.ai-field select:focus,
+.ai-field input:focus {
+  outline: none;
+  border-color: rgba(59, 130, 246, 0.55);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12);
 }
 
 .ai-chips {
@@ -102,17 +196,22 @@
 
 .ai-chip {
   border: 1px solid var(--border);
-  background: rgba(59, 130, 246, 0.10);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.14), rgba(168, 85, 247, 0.12));
   color: var(--text);
-  padding: 8px 10px;
-  border-radius: 999px;
+  padding: 9px 12px;
+  border-radius: 14px;
   font-size: 12px;
   cursor: pointer;
   user-select: none;
-  transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
+  font-weight: 700;
+  transition: transform 160ms ease, background 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
 }
 
-.ai-chip:hover { transform: translateY(-1px); border-color: var(--border-light); }
+.ai-chip:hover {
+  transform: translateY(-1px);
+  border-color: var(--border-light);
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.14);
+}
 .ai-chip:active { transform: translateY(0); }
 
 .ai-chat {
@@ -121,38 +220,92 @@
   /* Prevent page from growing with long chats */
   height: clamp(520px, calc(100vh - 320px), 760px);
   min-height: 520px;
+  padding: 18px;
+  border-radius: 24px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(2, 6, 23, 0.16);
+}
+
+:root[data-theme="light"] .ai-chat {
+  background: rgba(255, 255, 255, 0.7);
 }
 
 .ai-messages {
   flex: 1;
   overflow: auto;
   min-height: 0; /* critical for overflow in flex column */
-  padding: 14px;
-  border-radius: 16px;
+  padding: 16px;
+  border-radius: 20px;
   border: 1px solid var(--border-light);
-  background: rgba(2, 6, 23, 0.18);
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.52), rgba(15, 23, 42, 0.32));
   direction: rtl;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
 :root[data-theme="light"] .ai-messages {
-  background: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.86);
 }
 
 .ai-msg {
   display: flex;
   margin-bottom: 12px;
+  gap: 10px;
+  align-items: flex-end;
 }
 
 .ai-msg.user { justify-content: flex-end; }
 .ai-msg.assistant { justify-content: flex-start; }
 
+.ai-msg-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ai-msg.user .ai-msg-body {
+  align-items: flex-end;
+}
+
+.ai-msg.assistant .ai-msg-body {
+  align-items: flex-start;
+}
+
+.ai-msg-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+  flex: 0 0 34px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.ai-msg.assistant .ai-msg-avatar {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.28), rgba(168, 85, 247, 0.24));
+}
+
+.ai-msg.user .ai-msg-avatar {
+  background: rgba(148, 163, 184, 0.18);
+}
+
+.ai-msg-role {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  font-weight: 700;
+}
+
 .ai-bubble {
   max-width: 86%;
   width: fit-content;
-  padding: 12px 14px;
-  border-radius: 16px;
+  padding: 13px 15px;
+  border-radius: 18px;
   border: 1px solid var(--border-light);
-  box-shadow: var(--shadow-1);
+  box-shadow: 0 12px 28px rgba(2, 6, 23, 0.16);
   white-space: pre-wrap;
   overflow-wrap: break-word; /* avoid breaking short words/letters */
   word-break: break-word;
@@ -163,7 +316,7 @@
 }
 
 .ai-msg.user .ai-bubble {
-  background: rgba(148, 163, 184, 0.14);
+  background: linear-gradient(180deg, rgba(148, 163, 184, 0.16), rgba(148, 163, 184, 0.08));
   color: var(--text);
   border-top-right-radius: 6px;
 }
@@ -242,35 +395,60 @@
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 10px;
-  margin-top: 12px;
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 20px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(2, 6, 23, 0.22);
+}
+
+:root[data-theme="light"] .ai-compose {
+  background: rgba(255, 255, 255, 0.92);
 }
 
 .ai-input {
   width: 100%;
-  min-height: 48px;
+  min-height: 54px;
   max-height: 160px;
   resize: none;
-  padding: 12px 14px;
+  padding: 14px 16px;
   border-radius: 16px;
   border: 1px solid var(--border);
   background: rgba(15, 23, 42, 0.35);
   color: var(--text);
   outline: none;
+  line-height: 1.7;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
 }
 
 :root[data-theme="light"] .ai-input {
   background: rgba(255, 255, 255, 0.9);
 }
 
+.ai-input:focus {
+  border-color: rgba(59, 130, 246, 0.55);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12);
+}
+
 .ai-send {
   min-width: 120px;
   border-radius: 16px;
+  padding-inline: 18px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  color: #fff;
+  border: none;
+  box-shadow: 0 14px 30px rgba(37, 99, 235, 0.24);
 }
 
 .ai-note {
   margin-top: 10px;
   font-size: 12px;
   color: var(--text-muted);
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.26);
+  border: 1px solid rgba(148, 163, 184, 0.12);
 }
 
 .ai-typing-row {
@@ -319,8 +497,15 @@
 }
 
 @media (max-width: 900px) {
+  .ai-chat-head {
+    flex-direction: column;
+  }
   .ai-chat-layout {
     grid-template-columns: 1fr;
+  }
+  .ai-settings {
+    position: static;
+    top: auto;
   }
   .ai-chat {
     height: clamp(460px, calc(100vh - 380px), 720px);
@@ -337,11 +522,16 @@
     <div class="ai-chat-head">
       <div>
         <h2 class="ai-chat-title">
-          <span>🧠</span>
+          <span class="ai-chat-title-mark">🧠</span>
           <span>المساعد المالي</span>
         </h2>
         <div class="ai-chat-subtitle">
           تحليل ذكي يمزج ملخص الفترة (مبيعات، أرباح، مصاريف، مخزون، أفضل المنتجات) مع لقطة تشغيلية للطلبات المتأخرة (7+ أيام) وتوزيع حالات الطلبات داخل الفترة. اختر النوع والفترة ثم اكتب سؤالك أو استخدم الأسئلة السريعة.
+        </div>
+        <div class="ai-chat-hero-stats">
+          <span class="ai-chat-hero-stat">تحليل فوري</span>
+          <span class="ai-chat-hero-stat">ملخصات مالية + تشغيلية</span>
+          <span class="ai-chat-hero-stat">تنسيق عربي منظم</span>
         </div>
       </div>
       <div class="ai-chat-actions">
@@ -352,40 +542,44 @@
 
     <div class="ai-chat-layout">
       <div class="card ai-settings">
-        <h4>الإعدادات</h4>
-        <div class="ai-field">
-          <label for="aiType">نوع التحليل</label>
-          <select id="aiType">
-            <option value="report">استشارة/تقرير إداري</option>
-            <option value="profit">أرباح</option>
-            <option value="sales">مبيعات</option>
-            <option value="inventory">مخزون</option>
-            <option value="orders">طلبات وتشغيل (متأخرة)</option>
-          </select>
-        </div>
-        <div class="ai-field">
-          <label for="aiPeriod">الفترة</label>
-          <select id="aiPeriod">
-            <option value="today">اليوم</option>
-            <option value="this_week">هذا الأسبوع</option>
-            <option value="last_7_days">آخر 7 أيام</option>
-            <option value="this_month">هذا الشهر</option>
-            <option value="last_month">الشهر الماضي</option>
-            <option value="this_year">هذه السنة</option>
-            <option value="last_30_days" selected>آخر 30 يوم</option>
-            <option value="custom">فترة مخصصة</option>
-          </select>
-        </div>
-        <div class="ai-field" id="aiCustomDates" style="display:none">
-          <label>تاريخ مخصص</label>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-            <input type="date" id="aiDateFrom" />
-            <input type="date" id="aiDateTo" />
+        <div class="ai-settings-section">
+          <h4>الإعدادات</h4>
+          <p class="ai-section-kicker">اختر نوع التحليل والفترة حتى يحصل المساعد على السياق المناسب قبل بناء الرد.</p>
+          <div class="ai-field">
+            <label for="aiType">نوع التحليل</label>
+            <select id="aiType">
+              <option value="report">استشارة/تقرير إداري</option>
+              <option value="profit">أرباح</option>
+              <option value="sales">مبيعات</option>
+              <option value="inventory">مخزون</option>
+              <option value="orders">طلبات وتشغيل (متأخرة)</option>
+            </select>
+          </div>
+          <div class="ai-field">
+            <label for="aiPeriod">الفترة</label>
+            <select id="aiPeriod">
+              <option value="today">اليوم</option>
+              <option value="this_week">هذا الأسبوع</option>
+              <option value="last_7_days">آخر 7 أيام</option>
+              <option value="this_month">هذا الشهر</option>
+              <option value="last_month">الشهر الماضي</option>
+              <option value="this_year">هذه السنة</option>
+              <option value="last_30_days" selected>آخر 30 يوم</option>
+              <option value="custom">فترة مخصصة</option>
+            </select>
+          </div>
+          <div class="ai-field" id="aiCustomDates" style="display:none">
+            <label>تاريخ مخصص</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <input type="date" id="aiDateFrom" />
+              <input type="date" id="aiDateTo" />
+            </div>
           </div>
         </div>
 
-        <div class="ai-field">
-          <label>أسئلة سريعة</label>
+        <div class="ai-settings-section">
+          <h4>أسئلة سريعة</h4>
+          <p class="ai-section-kicker">اختر أحد السيناريوهات الجاهزة لتسريع التحليل، أو اكتب سؤالك بصياغة مخصصة.</p>
           <div class="ai-chips">
             <div class="ai-chip" data-msg="حلّل أرباح الفترة واشرح الأسباب وخطة تحسين.">تحليل أرباح</div>
             <div class="ai-chip" data-msg="ليش المبيعات نزلت؟ اذكر 3 أسباب محتملة من البيانات وخطوات عملية.">هبوط مبيعات</div>
@@ -508,7 +702,9 @@
         : escapeHtml(m.text);
       return `
         <div class="ai-msg ${m.role}">
-          <div>
+          <div class="ai-msg-avatar" aria-hidden="true">${isAssistant ? '🧠' : 'أنت'}</div>
+          <div class="ai-msg-body">
+            <div class="ai-msg-role">${isAssistant ? 'المساعد المالي' : 'أنت'}</div>
             <div class="${bubbleClass}">${bubbleInner}</div>
             <div class="ai-meta">${escapeHtml(m.time || '')}</div>
             ${metaLine}
