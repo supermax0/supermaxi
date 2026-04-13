@@ -1310,6 +1310,15 @@ def index_alerts():
     """تنبيهات لوحة التحكم — يُرجع دائماً JSON لتفادي خطأ التحليل في الواجهة."""
     alerts = []
     try:
+        from utils.financial_watchdog import get_watchdog_ephemeral_alerts, persist_watchdog_alerts
+
+        persist_watchdog_alerts()
+        wd = get_watchdog_ephemeral_alerts()
+        if wd:
+            alerts.extend(wd)
+    except Exception:
+        pass
+    try:
         # تنبيهات المخزون
         low_stock = Product.query.filter(Product.quantity <= 2).count()
         if low_stock:

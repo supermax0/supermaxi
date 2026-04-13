@@ -181,7 +181,7 @@ def ocr_confirm():
 @ai_bp.route("/analyze", methods=["POST"])
 def analyze_route():
     """
-    POST JSON: type (sales|profit|inventory|report), period, message (optional),
+    POST JSON: type (sales|profit|inventory|report|orders), period, message (optional),
     date_from, date_to (optional for custom period).
     Returns JSON: success, analysis (text), error, period_label.
     """

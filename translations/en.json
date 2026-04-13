@@ -144,6 +144,8 @@
     "dashboard_ai_type_profit": "Profit analysis",
     "dashboard_ai_type_sales": "Sales analysis",
     "dashboard_ai_type_inventory": "Inventory & loss-making products",
+    "dashboard_ai_type_orders": "Orders & operations (overdue)",
+    "dashboard_period_this_week": "This week",
     "dashboard_ai_period_label": "Period",
     "dashboard_ai_message_label": "Your message (optional)",
     "dashboard_ai_message_placeholder": "Example: Analyze this month's profit / Why are sales down? / Which products lose money?",

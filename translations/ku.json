@@ -144,6 +144,8 @@
     "dashboard_ai_type_profit": "وەسفی قازانج",
     "dashboard_ai_type_sales": "وەسفی فرۆشتن",
     "dashboard_ai_type_inventory": "کۆگا و بەرھەمە زیان‌دەرەکان",
+    "dashboard_ai_type_orders": "داواکاری و کارپێکردن (دواکەوتوو)",
+    "dashboard_period_this_week": "ئەم هەفتەیە",
     "dashboard_ai_period_label": "ماوە",
     "dashboard_ai_message_label": "پەیامەکەت (ئارەزوومەندانە)",
     "dashboard_ai_message_placeholder": "نموونە: قازانجی ئەم مانگان چۆنە؟ / بۆچی فرۆشتن کەم بوو؟ / کام بەرھەم زیان دەدات؟",

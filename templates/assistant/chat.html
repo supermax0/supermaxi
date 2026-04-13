@@ -178,6 +178,60 @@
   background: linear-gradient(135deg, rgba(37, 99, 235, 0.10), rgba(124, 58, 237, 0.08));
 }
 
+.ai-bubble--rich {
+  white-space: normal;
+}
+
+.ai-bubble--rich .ai-fmt-root {
+  line-height: 1.75;
+}
+
+.ai-bubble--rich .ai-fmt-p {
+  margin: 0 0 0.65em;
+}
+
+.ai-bubble--rich .ai-fmt-p:last-child {
+  margin-bottom: 0;
+}
+
+.ai-bubble--rich .ai-fmt-h3 {
+  font-size: 1.04rem;
+  font-weight: 800;
+  margin: 0.75em 0 0.35em;
+}
+
+.ai-bubble--rich .ai-fmt-h3-top {
+  margin-top: 0;
+}
+
+.ai-bubble--rich .ai-fmt-h4 {
+  font-size: 0.92rem;
+  font-weight: 700;
+  margin: 0.55em 0 0.3em;
+  opacity: 0.92;
+}
+
+.ai-bubble--rich .ai-fmt-list {
+  margin: 0.3em 0 0.65em;
+  padding-inline-start: 1.2rem;
+}
+
+.ai-bubble--rich .ai-fmt-list li {
+  margin: 0.28em 0;
+}
+
+.ai-bubble--rich .ai-fmt-code {
+  font-family: ui-monospace, monospace;
+  font-size: 0.88em;
+  padding: 0.08em 0.32em;
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+:root[data-theme="light"] .ai-bubble--rich .ai-fmt-code {
+  background: rgba(15, 23, 42, 0.07);
+}
+
 .ai-meta {
   font-size: 11px;
   color: var(--text-dim);
@@ -219,6 +273,51 @@
   color: var(--text-muted);
 }
 
+.ai-typing-row {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  border-radius: 14px;
+  border: 1px dashed var(--border-light);
+  background: rgba(59, 130, 246, 0.06);
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ai-typing-row.is-visible {
+  display: inline-flex;
+}
+
+.ai-typing-dots {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.ai-typing-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary);
+  opacity: 0.35;
+  animation: aiDot 1s ease-in-out infinite;
+}
+
+.ai-typing-dots span:nth-child(2) { animation-delay: 0.15s; }
+.ai-typing-dots span:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes aiDot {
+  0%, 100% { opacity: 0.25; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(-3px); }
+}
+
+.ai-chip-row {
+  margin-top: 8px;
+}
+
 @media (max-width: 900px) {
   .ai-chat-layout {
     grid-template-columns: 1fr;
@@ -242,7 +341,7 @@
           <span>المساعد المالي</span>
         </h2>
         <div class="ai-chat-subtitle">
-          اسأل عن الأرباح، المبيعات، المخزون، أو اطلب استشارة إدارية. التحليل يعتمد على بيانات النظام للفترة المختارة.
+          تحليل ذكي يمزج ملخص الفترة (مبيعات، أرباح، مصاريف، مخزون، أفضل المنتجات) مع لقطة تشغيلية للطلبات المتأخرة (7+ أيام) وتوزيع حالات الطلبات داخل الفترة. اختر النوع والفترة ثم اكتب سؤالك أو استخدم الأسئلة السريعة.
         </div>
       </div>
       <div class="ai-chat-actions">
@@ -261,6 +360,7 @@
             <option value="profit">أرباح</option>
             <option value="sales">مبيعات</option>
             <option value="inventory">مخزون</option>
+            <option value="orders">طلبات وتشغيل (متأخرة)</option>
           </select>
         </div>
         <div class="ai-field">
@@ -268,6 +368,7 @@
           <select id="aiPeriod">
             <option value="today">اليوم</option>
             <option value="this_week">هذا الأسبوع</option>
+            <option value="last_7_days">آخر 7 أيام</option>
             <option value="this_month">هذا الشهر</option>
             <option value="last_month">الشهر الماضي</option>
             <option value="this_year">هذه السنة</option>
@@ -291,6 +392,12 @@
             <div class="ai-chip" data-msg="شنو المنتجات اللي تحتاج إعادة طلب؟ اعطني قائمة مختصرة.">إعادة طلب</div>
             <div class="ai-chip" data-msg="سوّي ملخص إداري مختصر للفترة (نقاط).">ملخص إداري</div>
           </div>
+          <div class="ai-chips ai-chip-row">
+            <div class="ai-chip" data-msg="اعتماداً على بيانات الطلبات المتأخرة في السياق: رتّب الأولويات (أحمر 10+ أيام ثم برتقالي 7–9) واقترح إجراءات متابعة واضحة لكل فئة.">طلبات متأخرة</div>
+            <div class="ai-chip" data-msg="اشرح وضع المبيعات الآجلة مقابل النقدية في الفترة، والمخاطر على التدفق النقدي، و3 توصيات عملية.">تدفق وذمم</div>
+            <div class="ai-chip" data-msg="من توزيع حالات الطلبات داخل الفترة: اذكر الاختناقات (مثلاً تراكم تم الطلب أو جاري الشحن) وكيف نحسّن SLA.">اختناقات الطلبات</div>
+            <div class="ai-chip" data-msg="لخص أهم 5 ملاحظات من المخزون (كمية منخفضة، هامش، منتجات ضعيفة) مع أولوية تنفيذ.">مخزون وتوريد</div>
+          </div>
         </div>
 
         <div class="ai-note">
@@ -300,6 +407,10 @@
 
       <div class="ai-chat">
         <div class="ai-messages" id="aiMessages" aria-live="polite"></div>
+        <div id="aiTypingRow" class="ai-typing-row" aria-live="polite" aria-atomic="true">
+          <span class="ai-typing-dots" aria-hidden="true"><span></span><span></span><span></span></span>
+          <span>جاري تحليل البيانات…</span>
+        </div>
         <div class="ai-compose">
           <textarea class="ai-input" id="aiInput" placeholder="اكتب سؤالك هنا..."></textarea>
           <button class="btn ai-send" id="aiSendBtn" type="button">إرسال</button>
@@ -309,11 +420,12 @@
   </div>
 </div>
 
+<script src="{{ url_for('static', filename='js/ai_message_format.js') }}"></script>
 <script>
 (function() {
   'use strict';
 
-  const STORAGE_KEY = 'finora_ai_chat_v1';
+  const STORAGE_KEY = 'finora_ai_chat_v2';
   const MAX_MESSAGES = 60;
 
   const els = {
@@ -326,7 +438,8 @@
     period: document.getElementById('aiPeriod'),
     custom: document.getElementById('aiCustomDates'),
     dateFrom: document.getElementById('aiDateFrom'),
-    dateTo: document.getElementById('aiDateTo')
+    dateTo: document.getElementById('aiDateTo'),
+    typing: document.getElementById('aiTypingRow')
   };
 
   function nowTime() {
@@ -364,7 +477,7 @@
     date_from: '',
     date_to: '',
     messages: [
-      { role: 'assistant', text: 'هلا! اسألني عن الأرباح/المبيعات/المخزون أو اطلب استشارة إدارية، وراح أجاوب حسب بيانات النظام للفترة المختارة.', time: nowTime() }
+      { role: 'assistant', text: 'هلا! اختر نوع التحليل والفترة، ثم اسألني. أرى ملخص الفترة (مبيعات، أرباح، مخزون…) ولقطة الطلبات المتأخرة (7+ أيام) إن وُجدت، وأجاوب بالعربي وبنقاط واضحة.', time: nowTime() }
     ]
   };
 
@@ -388,10 +501,15 @@
   function renderMessages() {
     const html = state.messages.map(m => {
       const metaLine = m.meta && m.meta.label ? `<div class="ai-meta">${escapeHtml(m.meta.label)}</div>` : '';
+      const isAssistant = m.role === 'assistant';
+      const bubbleClass = isAssistant ? 'ai-bubble ai-bubble--rich' : 'ai-bubble';
+      const bubbleInner = (isAssistant && typeof formatAiMessageToHtml === 'function')
+        ? formatAiMessageToHtml(m.text)
+        : escapeHtml(m.text);
       return `
         <div class="ai-msg ${m.role}">
           <div>
-            <div class="ai-bubble">${escapeHtml(m.text)}</div>
+            <div class="${bubbleClass}">${bubbleInner}</div>
             <div class="ai-meta">${escapeHtml(m.time || '')}</div>
             ${metaLine}
           </div>
@@ -412,6 +530,10 @@
     els.dateFrom.disabled = !!busy;
     els.dateTo.disabled = !!busy;
     els.send.textContent = busy ? 'جارٍ...' : 'إرسال';
+    if (els.typing) {
+      els.typing.classList.toggle('is-visible', !!busy);
+    }
+    if (busy) scrollToBottom();
   }
 
   async function callAnalyze(userText) {

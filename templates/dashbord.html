@@ -539,6 +539,37 @@
     margin-bottom: 0;
   }
 
+  #alerts .alert-decisions {
+    margin-top: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-start;
+  }
+
+  #alerts .alert-dec-btn {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(59, 130, 246, 0.35);
+    background: rgba(59, 130, 246, 0.12);
+    color: var(--dashboard-primary, #3b82f6);
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.15s ease;
+  }
+
+  #alerts .alert-dec-btn:hover {
+    background: rgba(59, 130, 246, 0.22);
+    transform: translateY(-1px);
+  }
+
+  :root[data-theme="light"] #alerts .alert-dec-btn {
+    background: rgba(37, 99, 235, 0.1);
+    border-color: rgba(37, 99, 235, 0.28);
+    color: #2563eb;
+  }
+
   /* =======================
    PROFIT MODAL (Enhanced)
 ======================= */
@@ -2267,6 +2298,7 @@
         <option value="profit">{{ _('dashboard_ai_type_profit') }}</option>
         <option value="sales">{{ _('dashboard_ai_type_sales') }}</option>
         <option value="inventory">{{ _('dashboard_ai_type_inventory') }}</option>
+        <option value="orders">{{ _('dashboard_ai_type_orders') }}</option>
       </select>
     </div>
     <div class="ai-assistant-row">
@@ -2275,6 +2307,7 @@
         <option value="last_30_days">{{ _('dashboard_period_last_30_days') }}</option>
         <option value="this_month">{{ _('dashboard_period_this_month') }}</option>
         <option value="last_month">{{ _('dashboard_period_last_month') }}</option>
+        <option value="this_week">{{ _('dashboard_period_this_week') }}</option>
         <option value="last_7_days">{{ _('dashboard_period_last_7_days') }}</option>
         <option value="this_year">{{ _('dashboard_period_this_year') }}</option>
       </select>
@@ -2422,11 +2455,70 @@
     border-radius: 12px;
     color: #fca5a5;
   }
+
+  .ai-assistant-result.ai-assistant-result--rich {
+    white-space: normal;
+    text-align: right;
+  }
+
+  .ai-assistant-result--rich .ai-fmt-root {
+    font-size: 14px;
+    line-height: 1.75;
+    color: var(--dashboard-text);
+  }
+
+  .ai-assistant-result--rich .ai-fmt-p {
+    margin: 0 0 0.75em;
+  }
+
+  .ai-assistant-result--rich .ai-fmt-p:last-child {
+    margin-bottom: 0;
+  }
+
+  .ai-assistant-result--rich .ai-fmt-h3 {
+    font-size: 1.05rem;
+    font-weight: 800;
+    margin: 0.85em 0 0.4em;
+    color: var(--dashboard-text);
+  }
+
+  .ai-assistant-result--rich .ai-fmt-h3-top {
+    margin-top: 0;
+  }
+
+  .ai-assistant-result--rich .ai-fmt-h4 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin: 0.65em 0 0.35em;
+    color: var(--dashboard-muted);
+  }
+
+  .ai-assistant-result--rich .ai-fmt-list {
+    margin: 0.35em 0 0.85em;
+    padding-inline-start: 1.25rem;
+  }
+
+  .ai-assistant-result--rich .ai-fmt-list li {
+    margin: 0.35em 0;
+  }
+
+  .ai-assistant-result--rich .ai-fmt-code {
+    font-family: ui-monospace, monospace;
+    font-size: 0.88em;
+    padding: 0.1em 0.35em;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.2);
+  }
+
+  :root[data-theme="light"] .ai-assistant-result--rich .ai-fmt-code {
+    background: rgba(15, 23, 42, 0.06);
+  }
 </style>
 
 <!-- =======================
      JAVASCRIPT
 ======================= -->
+<script src="{{ url_for('static', filename='js/ai_message_format.js') }}"></script>
 <script>
   /* =======================
      Load Dashboard
@@ -2521,19 +2613,41 @@
           const li = document.createElement("li");
           li.className = `alert-${a.type || "warning"}`;
 
-          const message = typeof a === "string" ? a : a.message;
+          const message = typeof a === "string" ? a : (a.message || "");
           const icon = typeof a === "object" && a.icon ? a.icon : "⚠️";
 
-          li.innerHTML = `
-          <span class="alert-icon">${icon}</span>
-          <span class="alert-message">${message}</span>
-        `;
+          const iconEl = document.createElement("span");
+          iconEl.className = "alert-icon";
+          iconEl.textContent = icon;
+          const msgEl = document.createElement("span");
+          msgEl.className = "alert-message";
+          msgEl.textContent = message;
+          li.appendChild(iconEl);
+          li.appendChild(msgEl);
+
+          if (typeof a === "object" && Array.isArray(a.decisions) && a.decisions.length) {
+            const box = document.createElement("div");
+            box.className = "alert-decisions";
+            a.decisions.forEach(d => {
+              if (!d || !d.href) return;
+              const b = document.createElement("button");
+              b.type = "button";
+              b.className = "alert-dec-btn";
+              b.textContent = d.label || "انتقال";
+              b.addEventListener("click", function (e) {
+                e.stopPropagation();
+                window.location.href = d.href;
+              });
+              box.appendChild(b);
+            });
+            li.appendChild(box);
+          }
 
           if (typeof a === "object" && a.action) {
             li.style.cursor = "pointer";
-            li.onclick = () => {
+            li.addEventListener("click", function () {
               if (a.action) window.location.href = a.action;
-            };
+            });
           }
 
           alertsContainer.appendChild(li);
@@ -3157,6 +3271,8 @@
     var errEl = document.getElementById("aiAnalyzeError");
     if (!typeEl || !periodEl || !btn || !resultEl || !errEl) return;
     resultEl.style.display = "none";
+    resultEl.innerHTML = "";
+    resultEl.classList.remove("ai-assistant-result--rich");
     errEl.style.display = "none";
     btn.disabled = true;
     btn.textContent = "جاري التحليل...";
@@ -3178,7 +3294,12 @@
       })
       .then(function (data) {
         if (data.success && data.analysis) {
-          resultEl.textContent = data.analysis;
+          if (typeof formatAiMessageToHtml === "function") {
+            resultEl.innerHTML = formatAiMessageToHtml(data.analysis);
+            resultEl.classList.add("ai-assistant-result--rich");
+          } else {
+            resultEl.textContent = data.analysis;
+          }
           resultEl.style.display = "block";
         } else {
           errEl.textContent = data.error || "حدث خطأ غير متوقع.";

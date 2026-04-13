@@ -144,6 +144,8 @@
     "dashboard_ai_type_profit": "Kâr analizi",
     "dashboard_ai_type_sales": "Satış analizi",
     "dashboard_ai_type_inventory": "Stok ve zarar eden ürünler",
+    "dashboard_ai_type_orders": "Siparişler ve operasyon (geciken)",
+    "dashboard_period_this_week": "Bu hafta",
     "dashboard_ai_period_label": "Dönem",
     "dashboard_ai_message_label": "Mesajınız (isteğe bağlı)",
     "dashboard_ai_message_placeholder": "Örnek: Bu ayın kârını analiz et / Neden satışlar düştü? / Hangi ürün zarar ettiriyor?",

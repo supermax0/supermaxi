@@ -55,7 +55,7 @@ def call_openai(messages: list, timeout_sec: int = OPENAI_TIMEOUT_SEC) -> tuple[
         response = client.chat.completions.create(
             model=OPENAI_MODEL,
             messages=messages,
-            max_tokens=1500,
+            max_tokens=2200,
             timeout=timeout_sec,
         )
         choice = response.choices[0] if response.choices else None
@@ -77,10 +77,18 @@ def call_openai(messages: list, timeout_sec: int = OPENAI_TIMEOUT_SEC) -> tuple[
 # -----------------------------------------------------------------------------
 # Validation: allowed types and periods for /ai/analyze
 # -----------------------------------------------------------------------------
-ALLOWED_ANALYZE_TYPES = ("sales", "profit", "inventory", "report")
+ALLOWED_ANALYZE_TYPES = ("sales", "profit", "inventory", "report", "orders")
 ALLOWED_PERIODS = (
-    "today", "yesterday", "last_7_days", "last_30_days",
-    "this_month", "last_month", "this_year", "last_year", "custom"
+    "today",
+    "yesterday",
+    "last_7_days",
+    "this_week",
+    "last_30_days",
+    "this_month",
+    "last_month",
+    "this_year",
+    "last_year",
+    "custom",
 )
 
 def validate_analyze_params(analyze_type: Optional[str], period: Optional[str], custom_from=None, custom_to=None) -> tuple[bool, str]:
@@ -88,9 +96,9 @@ def validate_analyze_params(analyze_type: Optional[str], period: Optional[str], 
     Validates type, period, and optional custom dates. Returns (ok, error_message).
     """
     if not analyze_type or str(analyze_type).strip().lower() not in ALLOWED_ANALYZE_TYPES:
-        return False, "نوع التحليل غير صالح. القيم المسموحة: sales, profit, inventory, report"
+        return False, "نوع التحليل غير صالح. القيم المسموحة: sales, profit, inventory, report, orders"
     if not period or str(period).strip().lower() not in ALLOWED_PERIODS:
-        return False, "الفترة غير صالحة. القيم المسموحة: today, last_7_days, last_30_days, this_month, last_month, this_year, last_year, custom"
+        return False, "الفترة غير صالحة. راجع القائمة (اليوم، آخر 7، هذا الأسبوع، آخر 30 يوم، الشهور، سنة، مخصص)."
     if str(period).strip().lower() == "custom" and (not custom_from or not custom_to):
         return False, "عند اختيار فترة مخصصة يجب إرسال date_from و date_to"
     return True, ""
@@ -120,6 +128,63 @@ def check_rate_limit(identifier: str) -> tuple[bool, str]:
 
 
 # -----------------------------------------------------------------------------
+# Overdue orders (تشغيلي — غير مرتبط بفترة التقرير) للمساعد المالي
+# -----------------------------------------------------------------------------
+def _snapshot_overdue_orders(*, min_days: int = 7, limit: int = 22) -> dict:
+    """طلبات معلّقة (تم الطلب / جاري الشحن) متأخرة min_days+ يوماً؛ نفس منطق لوحة التحكم تقريباً."""
+    from datetime import datetime
+    from sqlalchemy import or_
+    from sqlalchemy.orm import joinedload
+    from models.invoice import Invoice
+    from utils.order_status import PENDING_STATUSES
+
+    now = datetime.utcnow()
+    rows = (
+        Invoice.query.options(joinedload(Invoice.customer))
+        .filter(Invoice.status.in_(list(PENDING_STATUSES)))
+        .filter(or_(Invoice.payment_status.is_(None), Invoice.payment_status != "مرتجع"))
+        .order_by(Invoice.created_at.asc())
+        .limit(320)
+        .all()
+    )
+    items = []
+    for inv in rows:
+        ref = inv.scheduled_date or inv.created_at
+        if not ref:
+            continue
+        if getattr(ref, "tzinfo", None) is not None:
+            ref = ref.replace(tzinfo=None)
+        try:
+            days = (now - ref).days
+        except Exception:
+            continue
+        if days < min_days:
+            continue
+        sev = "critical" if days >= 10 else "warning"
+        phone = ""
+        try:
+            if inv.customer is not None:
+                phone = (getattr(inv.customer, "phone", None) or "") or ""
+        except Exception:
+            phone = ""
+        items.append(
+            {
+                "id": int(inv.id),
+                "customer": (inv.customer_name or "").strip()[:80],
+                "phone": str(phone).strip()[:24],
+                "status": (inv.status or "").strip()[:40],
+                "days_overdue": int(days),
+                "severity": sev,
+            }
+        )
+    items.sort(key=lambda x: (0 if x["severity"] == "critical" else 1, -x["days_overdue"], -x["id"]))
+    items = items[:limit]
+    crit = sum(1 for x in items if x["severity"] == "critical")
+    warn = sum(1 for x in items if x["severity"] == "warning")
+    return {"orders": items, "listed_count": len(items), "critical_count": crit, "warning_only_count": warn}
+
+
+# -----------------------------------------------------------------------------
 # Data collector: aggregates only, no raw DB exposure to AI. Runs in Flask app context.
 # -----------------------------------------------------------------------------
 def collect_context_data(period_type: str, custom_date_from=None, custom_date_to=None) -> dict:
@@ -128,6 +193,7 @@ def collect_context_data(period_type: str, custom_date_from=None, custom_date_to
     (e.g. from a route). Used by ai_service to build context for the AI; AI never touches DB.
     """
     from utils.date_periods import get_period_dates, get_period_label
+    from collections import Counter
     from sqlalchemy import func
     from extensions import db
     from models.invoice import Invoice
@@ -226,6 +292,23 @@ def collect_context_data(period_type: str, custom_date_from=None, custom_date_to
 
     low_stock_count = Product.query.filter(Product.quantity <= 2).count()
 
+    # توزيع حالات الطلبات داخل الفترة (كل الفواتير المنشأة في النطاق)
+    orders_status_in_period: dict[str, int] = {}
+    try:
+        range_rows = Invoice.query.filter(
+            func.date(Invoice.created_at) >= date_from,
+            func.date(Invoice.created_at) <= date_to,
+        ).all()
+        orders_status_in_period = dict(Counter(((inv.status or "—").strip() or "—") for inv in range_rows).most_common(14))
+    except Exception:
+        orders_status_in_period = {}
+
+    overdue_block: dict = {"orders": [], "listed_count": 0, "critical_count": 0, "warning_only_count": 0}
+    try:
+        overdue_block = _snapshot_overdue_orders()
+    except Exception as ex:
+        logger.warning("overdue snapshot for AI context failed: %s", ex)
+
     return {
         "period_label": period_label,
         "date_from": date_from.isoformat() if date_from else None,
@@ -243,4 +326,9 @@ def collect_context_data(period_type: str, custom_date_from=None, custom_date_to
         "worst_products_by_margin": worst_by_margin,
         "low_stock_count": int(low_stock_count),
         "invoices_count": len(period_invoices),
+        "orders_status_in_period": orders_status_in_period,
+        "overdue_orders": overdue_block.get("orders") or [],
+        "overdue_orders_listed": int(overdue_block.get("listed_count") or 0),
+        "overdue_orders_critical": int(overdue_block.get("critical_count") or 0),
+        "overdue_orders_warning": int(overdue_block.get("warning_only_count") or 0),
     }

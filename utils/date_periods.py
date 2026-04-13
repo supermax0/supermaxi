@@ -12,7 +12,7 @@ def get_period_dates(period_type, custom_date_from=None, custom_date_to=None):
     حساب تاريخ البداية والنهاية للفترة الزمنية
     
     Args:
-        period_type: نوع الفترة (today, yesterday, last_7_days, last_30_days, this_month, last_month, this_year, last_year, custom)
+        period_type: نوع الفترة (today, yesterday, last_7_days, this_week, last_30_days, this_month, last_month, this_year, last_year, custom)
         custom_date_from: تاريخ البداية المخصص (إذا كان period_type == 'custom')
         custom_date_to: تاريخ النهاية المخصص (إذا كان period_type == 'custom')
     
@@ -33,6 +33,12 @@ def get_period_dates(period_type, custom_date_from=None, custom_date_to=None):
     elif period_type == "last_7_days":
         # آخر 7 أيام (من اليوم)
         date_from = today - timedelta(days=6)  # اليوم + 6 أيام سابقة = 7 أيام
+        return date_from, today
+
+    elif period_type == "this_week":
+        # من بداية الأسبوع (الاثنين) حتى اليوم
+        weekday = today.weekday()  # اثنين=0 ... أحد=6
+        date_from = today - timedelta(days=weekday)
         return date_from, today
 
     elif period_type == "last_30_days":
@@ -103,6 +109,7 @@ def get_period_label(period_type, custom_date_from=None, custom_date_to=None):
         "today": "اليوم",
         "yesterday": "أمس",
         "last_7_days": "آخر 7 أيام",
+        "this_week": "هذا الأسبوع (من الاثنين)",
         "last_30_days": "آخر 30 يوم",
         "this_month": "هذا الشهر",
         "last_month": "الشهر الماضي",

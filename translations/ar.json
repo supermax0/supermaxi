@@ -144,6 +144,8 @@
     "dashboard_ai_type_profit": "تحليل الأرباح",
     "dashboard_ai_type_sales": "تحليل المبيعات",
     "dashboard_ai_type_inventory": "المخزون والمنتجات الخاسرة",
+    "dashboard_ai_type_orders": "الطلبات والتشغيل (متأخرة)",
+    "dashboard_period_this_week": "هذا الأسبوع",
     "dashboard_ai_period_label": "الفترة",
     "dashboard_ai_message_label": "رسالتك (اختياري)",
     "dashboard_ai_message_placeholder": "مثال: حلل أرباح هذا الشهر / ليش المبيعات نازلة؟ / أي منتج يسبب خسارة؟",
