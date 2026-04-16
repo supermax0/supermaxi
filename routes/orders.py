@@ -44,6 +44,8 @@ from services.media_service import get_thumbnail_upload_root, get_video_upload_r
 orders_bp = Blueprint("orders", __name__, url_prefix="/orders")
 # Per-tenant (or core) bind: video-column ensure must inspect the same engine Invoice rows use.
 _ORDER_VIDEO_COLUMNS_ENSURED_BINDS: set[str] = set()
+# After a failed ALTER (read-only DB, lock, etc.) skip retrying every request in this process.
+_ORDER_VIDEO_COLUMNS_FAILED_BINDS: set[str] = set()
 
 
 def _orders_schema_engine():
@@ -336,6 +338,8 @@ def _ensure_order_video_columns() -> None:
     bind_key = getattr(g, "tenant", None) or "__core__"
     if bind_key in _ORDER_VIDEO_COLUMNS_ENSURED_BINDS:
         return
+    if bind_key in _ORDER_VIDEO_COLUMNS_FAILED_BINDS:
+        return
     try:
         from sqlalchemy import inspect, text
 
@@ -368,7 +372,7 @@ def _ensure_order_video_columns() -> None:
         _ORDER_VIDEO_COLUMNS_ENSURED_BINDS.add(bind_key)
     except Exception:
         current_app.logger.exception("Failed ensuring order video columns on invoice table")
-        raise
+        _ORDER_VIDEO_COLUMNS_FAILED_BINDS.add(bind_key)
 
 # =====================================================
 # Orders Page (Optimized for many orders)
@@ -1181,7 +1185,11 @@ def stream_order_video(order_id):
     path = root / safe_name
     if not path.exists() or not path.is_file():
         abort(404)
-    return send_from_directory(str(root), safe_name, conditional=True)
+    try:
+        return send_from_directory(str(root), safe_name, conditional=True)
+    except OSError as e:
+        current_app.logger.warning("stream_order_video send failed: %s", e, exc_info=True)
+        abort(404)
 
 
 @orders_bp.route("/<int:order_id>/video/download", methods=["GET"])
@@ -1200,13 +1208,17 @@ def download_order_video(order_id):
         abort(404)
 
     original_name = order.order_video_original_name or safe_name
-    return send_from_directory(
-        str(root),
-        safe_name,
-        as_attachment=True,
-        download_name=original_name,
-        conditional=True,
-    )
+    try:
+        return send_from_directory(
+            str(root),
+            safe_name,
+            as_attachment=True,
+            download_name=original_name,
+            conditional=True,
+        )
+    except OSError as e:
+        current_app.logger.warning("download_order_video send failed: %s", e, exc_info=True)
+        abort(404)
 
 
 @orders_bp.route("/invoice-video/<token>")
@@ -1226,7 +1238,11 @@ def stream_invoice_video_guest(token: str):
     path = root / safe_name
     if not path.exists() or not path.is_file():
         abort(404)
-    return send_from_directory(str(root), safe_name, conditional=True)
+    try:
+        return send_from_directory(str(root), safe_name, conditional=True)
+    except OSError as e:
+        current_app.logger.warning("stream_invoice_video_guest send failed: %s", e, exc_info=True)
+        abort(404)
 
 
 @orders_bp.route("/p/o/<token>")

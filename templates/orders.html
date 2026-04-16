@@ -2279,7 +2279,7 @@
     const durationLabel = video.duration_sec ? Math.round(video.duration_sec) + ' ثانية' : '—';
     return '<div class="od-card" style="background:rgba(15, 23, 42, 0.6);border-radius:16px;padding:20px;margin-bottom:20px;border:1px solid rgba(59, 130, 246, 0.2);">' +
       '<h3 style="color:var(--orders-primary);margin:0 0 16px;font-size:18px;font-weight:700;">🎥 فيديو الطلب</h3>' +
-      '<video controls preload="metadata" style="width:100%;max-height:360px;border-radius:14px;background:#020617;border:1px solid rgba(59,130,246,0.18);" src="' + escapeHtml(video.preview_url || '') + '"></video>' +
+      '<video controls preload="none" playsinline style="width:100%;max-height:360px;border-radius:14px;background:#020617;border:1px solid rgba(59,130,246,0.18);" src="' + escapeHtml(video.preview_url || '') + '"></video>' +
       '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));gap:10px;margin-top:14px;color:var(--orders-text);font-size:13px;">' +
       '<div><strong style="color:var(--orders-muted);">اسم الملف</strong><div>' + escapeHtml(video.filename || 'video') + '</div></div>' +
       '<div><strong style="color:var(--orders-muted);">الحجم</strong><div>' + (video.size_mb ? String(video.size_mb) + ' MB' : '—') + '</div></div>' +
