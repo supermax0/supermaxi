@@ -2280,51 +2280,6 @@
   </div>
 </div>
 
-<!-- =======================
-     AI ASSISTANT (محلل مالي / مساعد قرار)
-======================= -->
-<section class="dashboard-section">
-<div class="card ai-assistant-card">
-  <h3 class="ai-assistant-title">
-    <span>🧠</span>
-    <span>{{ _('dashboard_ai_title') }}</span>
-  </h3>
-  <p class="ai-assistant-desc">{{ _('dashboard_ai_desc') }}</p>
-  <div class="ai-assistant-form">
-    <div class="ai-assistant-row">
-      <label>{{ _('dashboard_ai_type_label') }}</label>
-      <select id="aiAnalyzeType">
-        <option value="report">{{ _('dashboard_ai_type_report') }}</option>
-        <option value="profit">{{ _('dashboard_ai_type_profit') }}</option>
-        <option value="sales">{{ _('dashboard_ai_type_sales') }}</option>
-        <option value="inventory">{{ _('dashboard_ai_type_inventory') }}</option>
-        <option value="orders">{{ _('dashboard_ai_type_orders') }}</option>
-      </select>
-    </div>
-    <div class="ai-assistant-row">
-      <label>{{ _('dashboard_ai_period_label') }}</label>
-      <select id="aiPeriod">
-        <option value="last_30_days">{{ _('dashboard_period_last_30_days') }}</option>
-        <option value="this_month">{{ _('dashboard_period_this_month') }}</option>
-        <option value="last_month">{{ _('dashboard_period_last_month') }}</option>
-        <option value="this_week">{{ _('dashboard_period_this_week') }}</option>
-        <option value="last_7_days">{{ _('dashboard_period_last_7_days') }}</option>
-        <option value="this_year">{{ _('dashboard_period_this_year') }}</option>
-      </select>
-    </div>
-    <div class="ai-assistant-row">
-      <label>{{ _('dashboard_ai_message_label') }}</label>
-      <input type="text" id="aiMessage" placeholder="{{ _('dashboard_ai_message_placeholder') }}">
-    </div>
-    <button type="button" class="btn btn-primary" id="aiAnalyzeBtn" onclick="runAiAnalyze()">
-      {{ _('dashboard_ai_button') }}
-    </button>
-  </div>
-  <div id="aiAnalyzeResult" class="ai-assistant-result" style="display:none;"></div>
-  <div id="aiAnalyzeError" class="ai-assistant-error" style="display:none;"></div>
-</div>
-</section>
-
   {% if dashboard_overdue_orders is defined %}
   <section class="dashboard-overdue-section dashboard-overdue-section--footer" aria-labelledby="dashboard-overdue-heading">
     <div class="dashboard-overdue-card">
