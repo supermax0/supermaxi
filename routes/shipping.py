@@ -14,6 +14,8 @@ shipping_bp = Blueprint("shipping", __name__, url_prefix="/shipping")
 RETURN_STATUSES = ["مرتجع", "راجع", "راجعة"]
 CANCELED_STATUSES = ["ملغي"]
 from utils.order_status import is_canceled, is_returned, is_completed
+from utils.cash_calculations import _effective_paid_amount as _effective_paid_amount_inv
+from utils.payment_ledger import append_payment_ledger_delta
 
 
 def effective_paid_amount(order: Invoice) -> int:
@@ -159,7 +161,9 @@ def company_orders(id):
 def settle_order(order_id):
     order = Invoice.query.get_or_404(order_id)
 
+    prev_eff = _effective_paid_amount_inv(order)
     order.payment_status = "مسدد"
+    order.paid_amount = order.total
 
     db.session.add(
         ShippingPayment(
@@ -170,6 +174,7 @@ def settle_order(order_id):
         )
     )
 
+    append_payment_ledger_delta(order.id, _effective_paid_amount_inv(order) - prev_eff)
     db.session.commit()
     return jsonify({"success": True})
 
@@ -219,7 +224,8 @@ def cancel_order(order_id):
 @shipping_bp.route("/return/<int:order_id>")
 def return_order(order_id):
     order = Invoice.query.get_or_404(order_id)
-    
+    prev_eff = _effective_paid_amount_inv(order)
+
     # التحقق من أن الطلب لم يكن مرتجعاً من قبل
     was_returned = is_returned(order.status, order.payment_status)
     if is_canceled(order.status, order.payment_status):
@@ -230,7 +236,8 @@ def return_order(order_id):
     # تغيير حالة الطلب إلى "راجع"
     order.status = "راجع"
     order.payment_status = "مرتجع"
-    
+    order.paid_amount = 0
+
     # إرجاع الكميات للمخزون فقط إذا لم يكن الطلب مرتجعاً من قبل
     try:
         items = OrderItem.query.filter_by(invoice_id=order.id).all()
@@ -248,6 +255,7 @@ def return_order(order_id):
                 action="ترجيع"
             )
         )
+        append_payment_ledger_delta(order.id, _effective_paid_amount_inv(order) - prev_eff)
         db.session.commit()
         return jsonify({"success": True, "message": "تم ترجيع الطلب وإرجاع الكمية للمخزون"})
     except Exception as e:

@@ -39,6 +39,8 @@ from sqlalchemy import or_, and_
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 
 from utils.order_status import is_canceled, is_returned, is_completed
+from utils.cash_calculations import _effective_paid_amount
+from utils.payment_ledger import append_payment_ledger_delta
 from services.media_service import get_thumbnail_upload_root, get_video_upload_root, save_uploaded_file
 
 orders_bp = Blueprint("orders", __name__, url_prefix="/orders")
@@ -924,7 +926,8 @@ def payment():
         payment_status = data.get("payment")
         paid_amount = data.get("paid_amount", 0)
         video_cleanup_targets = None
-        
+        prev_effective_paid = _effective_paid_amount(order)
+
         if payment_status in ["غير مسدد", "جزئي", "مسدد", "مرتجع"]:
             # إذا تم اختيار "مرتجع" من شاشة الدفع: نفّذ منطق ترجيع آمن (مرة واحدة)
             if payment_status == "مرتجع":
@@ -944,6 +947,8 @@ def payment():
                 order.paid_amount = 0
                 video_cleanup_targets = _collect_order_video_cleanup_targets(order)
                 _clear_order_video_fields(order)
+                delta_pay = _effective_paid_amount(order) - prev_effective_paid
+                append_payment_ledger_delta(order.id, delta_pay)
                 db.session.commit()
                 _delete_order_video_cleanup_targets(video_cleanup_targets)
                 try:
@@ -984,6 +989,8 @@ def payment():
         if payment_status == "مسدد":
             video_cleanup_targets = _collect_order_video_cleanup_targets(order)
             _clear_order_video_fields(order)
+        delta_pay = _effective_paid_amount(order) - prev_effective_paid
+        append_payment_ledger_delta(order.id, delta_pay)
         db.session.commit()
         _delete_order_video_cleanup_targets(video_cleanup_targets)
         return jsonify({"success": True})

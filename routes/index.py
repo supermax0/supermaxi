@@ -32,6 +32,9 @@ from utils.accounting_calculations import (
 )
 from utils.date_periods import get_period_dates, get_period_label
 from utils.cash_calculations import calculate_cash_balance, _effective_paid_amount
+from utils.period_net_profit import net_profit_for_range as _net_profit_for_range
+from utils.period_net_profit import expenses_sum_for_range as _expenses_sum_for_range
+from utils.payment_ledger import net_profit_for_collection_calendar_day
 from utils.order_status import PENDING_STATUSES
 from utils.decorators import admin_required
 
@@ -764,77 +767,6 @@ def signup():
     return redirect(f"/payment?plan={plan_key}&billing={billing}")
 
 # =================================================
-# صافي الربح لفترة (نفس منطق تقارير لوحة التحكم)
-# =================================================
-def _net_profit_for_range(date_from: date, date_to: date) -> int:
-    """
-    صافي الربح للفترة — يطابق منطق تقارير `/api/index/reports`.
-
-    المنهج:
-    - الفواتير المدرجة بتاريخ إنشائها (created_at) ضمن الفترة؛ التحصيل الفعلي فقط
-      (مسدد / جزئي). الطلبات الملغاة والمرتجعة والراجعة تُستبعد.
-    - COGS يتناسب مع نسبة التحصيل عند الدفع الجزئي.
-    - المصاريف من جدول Expense حسب expense_date داخل الفترة (تُتجاهل السجلات بدون تاريخ).
-
-    ملاحظة: تحصيل فاتورة أُنشئت خارج الفترة لا يُحسب في هذه الفترة (ربط بالتاريخ المحاسبي للطلب).
-    """
-    from models.order_item import OrderItem
-
-    RETURN_STATUSES = ["مرتجع", "راجع", "راجعة"]
-    CANCELED_STATUSES = ["ملغي"]
-
-    period_invoices = Invoice.query.filter(
-        func.date(Invoice.created_at) >= date_from,
-        func.date(Invoice.created_at) <= date_to,
-        Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
-        Invoice.payment_status != "مرتجع",
-    ).all()
-
-    cash_sales = sum(_effective_paid_amount(inv) for inv in period_invoices)
-    sales_total = int(cash_sales)
-
-    ratios = {}
-    for inv in period_invoices:
-        total = int(inv.total or 0)
-        paid = _effective_paid_amount(inv)
-        if total > 0 and paid > 0:
-            ratios[int(inv.id)] = min(max(paid / total, 0.0), 1.0)
-
-    cogs_period = 0
-    if ratios:
-        rows = db.session.query(
-            OrderItem.invoice_id,
-            func.sum(OrderItem.cost * OrderItem.quantity).label("cogs_sum"),
-        ).filter(
-            OrderItem.invoice_id.in_(list(ratios.keys()))
-        ).group_by(OrderItem.invoice_id).all()
-
-        for invoice_id, cogs_sum in rows:
-            if not cogs_sum:
-                continue
-            ratio = ratios.get(int(invoice_id), 0.0)
-            cogs_period += int(round(float(cogs_sum) * ratio))
-
-    expenses_period = db.session.query(func.sum(Expense.amount)).filter(
-        Expense.expense_date.isnot(None),
-        func.date(Expense.expense_date) >= date_from,
-        func.date(Expense.expense_date) <= date_to,
-    ).scalar() or 0
-
-    return int(sales_total - cogs_period - int(expenses_period or 0))
-
-
-def _expenses_sum_for_range(date_from: date, date_to: date) -> int:
-    """مجموع المصاريف المسجّلة ضمن الفترة (حقل expense_date). يُستبعد الصف بدون تاريخ."""
-    total = db.session.query(func.sum(Expense.amount)).filter(
-        Expense.expense_date.isnot(None),
-        func.date(Expense.expense_date) >= date_from,
-        func.date(Expense.expense_date) <= date_to,
-    ).scalar() or 0
-    return int(total or 0)
-
-
-# =================================================
 # لوحة المدير التنفيذي — صفحة + API
 # =================================================
 @index_bp.route("/executive-dashboard")
@@ -849,16 +781,16 @@ def index_executive_overview():
     """
     بيانات موحّدة للبطاقات والرسوم.
 
-    - الأرباح: `_net_profit_for_range` (تحصيل − COGS − مصاريف Expense بالتاريخ).
-    - النقدية: `calculate_cash_balance()` رصيد تراكمي من حركات نقدية (فواتير + معاملات صندوق…)،
-      لا يساوي مجموع «الربح» لأنه مقياس مختلف محاسبياً.
+    - ربح اليوم والمنحنى اليومي: حسب لحظة التسديد (سجل التحصيل)، يُصفَّر تقويمياً عند منتصف الليل بتوقيت الخادم.
+    - الشهر/السنة: إنشاء الطلب ضمن الفترة (`net_profit_for_range`).
+    - النقدية: رصيد تراكمي، مقياس مختلف عن الربح.
     """
     today = date.today()
     month_start = today.replace(day=1)
     year_start = today.replace(month=1, day=1)
 
     cash_balance = int(calculate_cash_balance())
-    profit_today = _net_profit_for_range(today, today)
+    profit_today = net_profit_for_collection_calendar_day(today)
     profit_month = _net_profit_for_range(month_start, today)
     profit_year = _net_profit_for_range(year_start, today)
 
@@ -867,7 +799,7 @@ def index_executive_overview():
     for i in range(13, -1, -1):
         d = today - timedelta(days=i)
         daily_labels.append(d.strftime("%m/%d"))
-        daily_profit.append(_net_profit_for_range(d, d))
+        daily_profit.append(net_profit_for_collection_calendar_day(d))
 
     month_names_ar = [
         "يناير",
@@ -1108,50 +1040,12 @@ def index_orders_count():
 @index_bp.route("/api/index/today-profit")
 def index_today_profit():
     """
-    حساب ربح اليوم
-    الصيغة المحاسبية: الربح = المبيعات المسددة - COGS (لليوم فقط)
-    ملاحظة: هذا للعرض فقط، لا يشمل المصاريف
+    صافي ربح اليوم التقويمي — يتوافق مع بطاقة «ربح اليوم» في لوحة المدير:
+    تحصيل بلحظة التسديد (مع COGS المتناسب والمصاريف اليومية)؛
+    قبل وجود أي سجل تحصيل يُستخدم احتياطياً منطق طلبات اُنشئت اليوم.
     """
     today = date.today()
-    RETURN_STATUSES = ["مرتجع", "راجع", "راجعة"]
-    CANCELED_STATUSES = ["ملغي"]
-
-    day_invoices = Invoice.query.filter(
-        func.date(Invoice.created_at) == today,
-        Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
-        Invoice.payment_status != "مرتجع",
-    ).all()
-
-    # المبيعات المسددة فعلياً (تشمل الجزئي)
-    sales = sum(_effective_paid_amount(inv) for inv in day_invoices)
-
-    # COGS متناسب مع التحصيل (تقريب)
-    ratios = {}
-    for inv in day_invoices:
-        total = int(inv.total or 0)
-        paid = _effective_paid_amount(inv)
-        if total > 0 and paid > 0:
-            ratios[int(inv.id)] = min(max(paid / total, 0.0), 1.0)
-
-    cost = 0
-    if ratios:
-        rows = db.session.query(
-            OrderItem.invoice_id,
-            func.sum(OrderItem.cost * OrderItem.quantity).label("cogs_sum"),
-        ).filter(
-            OrderItem.invoice_id.in_(list(ratios.keys()))
-        ).group_by(OrderItem.invoice_id).all()
-
-        for invoice_id, cogs_sum in rows:
-            if not cogs_sum:
-                continue
-            cost += int(round(float(cogs_sum) * ratios.get(int(invoice_id), 0.0)))
-
-    # الربح = المبيعات - COGS
-    # ملاحظة: هذا الربح الإجمالي (Gross Profit) بدون المصاريف
-    return jsonify({
-        "profit": int(int(sales) - int(cost))
-    })
+    return jsonify({"profit": int(net_profit_for_collection_calendar_day(today))})
 
 # =================================================
 # SEARCH ORDERS (BY RECEIPT NUMBER OR PHONE)
@@ -1245,8 +1139,14 @@ def index_execute():
         invoice.status = "تم التوصيل"
 
     elif action == "paid":
+        from utils.payment_ledger import append_payment_ledger_delta
+
+        prev_eff = _effective_paid_amount(invoice)
         invoice.status = "مسدد"
+        invoice.payment_status = "مسدد"
+        invoice.paid_amount = int(invoice.total or 0)
         invoice.shipping_status = "تم التسديد"
+        append_payment_ledger_delta(invoice.id, _effective_paid_amount(invoice) - prev_eff)
 
     elif action == "returned":
         invoice.status = "راجع"
@@ -1296,9 +1196,14 @@ def index_execute_bulk():
                 # ==========================
                 # تصحيح محاسبي: الطلب الواصل يتم تسديده بشكل صحيح
                 # ==========================
+                from utils.payment_ledger import append_payment_ledger_delta
+
+                prev_eff = _effective_paid_amount(invoice)
                 invoice.status = "مسدد"
                 invoice.payment_status = "مسدد"  # تأكيد حالة الدفع
+                invoice.paid_amount = int(invoice.total or 0)
                 invoice.shipping_status = "تم التسديد"
+                append_payment_ledger_delta(invoice.id, _effective_paid_amount(invoice) - prev_eff)
             elif action == "returned":
                 invoice.status = "راجع"
             else:

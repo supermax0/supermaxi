@@ -11,6 +11,9 @@ from sqlalchemy import or_, and_, func
 from datetime import datetime
 import json
 
+from utils.cash_calculations import _effective_paid_amount as _effective_paid_amount_inv
+from utils.payment_ledger import append_payment_ledger_delta
+
 delivery_bp = Blueprint("delivery", __name__, url_prefix="/delivery")
 
 RETURN_STATUSES = ["مرتجع", "راجع", "راجعة"]
@@ -631,8 +634,13 @@ def execute_report(report_id):
             if selected_status == "واصل":
                 # الطلبات الواصلة: حالة الطلب = مسدد/مكتمل، حالة الدفع = مسدد
                 # السبب المحاسبي: الطلب الواصل يُعتبر مكتمل ومسدد
+                prev_eff = _effective_paid_amount_inv(order)
                 order.status = "مسدد"  # أو "تم التوصيل" - لكن "مسدد" يعني مكتمل ومسدد
                 order.payment_status = "مسدد"  # تأكيد حالة الدفع
+                if not order.paid_amount or int(order.paid_amount or 0) < int(order.total or 0):
+                    order.paid_amount = order.total
+                delta_pay = _effective_paid_amount_inv(order) - prev_eff
+                append_payment_ledger_delta(order.id, delta_pay)
                 updated_count += 1
             elif selected_status == "ملغي":
                 # الطلبات الملغاة: حالة الطلب = ملغي، حالة الدفع = ملغي

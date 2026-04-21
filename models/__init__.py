@@ -6,6 +6,7 @@ from .purchase import Purchase
 from .expense import Expense
 from .employee import Employee
 from .invoice import Invoice
+from .invoice_payment_ledger import InvoicePaymentLedger
 from .order_item import OrderItem
 from .ai_feedback import AIFeedback
 from .shipping import ShippingCompany
