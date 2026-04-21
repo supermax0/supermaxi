@@ -33,6 +33,7 @@ from utils.accounting_calculations import (
 from utils.date_periods import get_period_dates, get_period_label
 from utils.cash_calculations import calculate_cash_balance
 from utils.order_status import PENDING_STATUSES
+from utils.decorators import admin_required
 
 index_bp = Blueprint("index", __name__)
 
@@ -761,6 +762,149 @@ def signup():
 
     # غير ذلك: توجيه لصفحة الدفع لإتمام الاشتراك
     return redirect(f"/payment?plan={plan_key}&billing={billing}")
+
+# =================================================
+# صافي الربح لفترة (نفس منطق تقارير لوحة التحكم)
+# =================================================
+def _net_profit_for_range(date_from: date, date_to: date) -> int:
+    """تحصيل نقدي − COGS المتناسب − مصاريف الفترة."""
+    from models.order_item import OrderItem
+
+    RETURN_STATUSES = ["مرتجع", "راجع", "راجعة"]
+    CANCELED_STATUSES = ["ملغي"]
+
+    def effective_paid_amount(inv: Invoice) -> int:
+        total = int(getattr(inv, "total", 0) or 0)
+        payment_status = getattr(inv, "payment_status", None)
+        status = getattr(inv, "status", None)
+        if payment_status == "مسدد" or status == "مسدد":
+            return max(total, 0)
+        if payment_status == "جزئي":
+            paid_amount = int(getattr(inv, "paid_amount", 0) or 0)
+            if paid_amount < 0:
+                return 0
+            return min(paid_amount, total) if total > 0 else paid_amount
+        return 0
+
+    period_invoices = Invoice.query.filter(
+        func.date(Invoice.created_at) >= date_from,
+        func.date(Invoice.created_at) <= date_to,
+        Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
+        Invoice.payment_status != "مرتجع",
+    ).all()
+
+    cash_sales = sum(effective_paid_amount(inv) for inv in period_invoices)
+    sales_total = int(cash_sales)
+
+    ratios = {}
+    for inv in period_invoices:
+        total = int(inv.total or 0)
+        paid = effective_paid_amount(inv)
+        if total > 0 and paid > 0:
+            ratios[int(inv.id)] = min(max(paid / total, 0.0), 1.0)
+
+    cogs_period = 0
+    if ratios:
+        rows = db.session.query(
+            OrderItem.invoice_id,
+            func.sum(OrderItem.cost * OrderItem.quantity).label("cogs_sum"),
+        ).filter(
+            OrderItem.invoice_id.in_(list(ratios.keys()))
+        ).group_by(OrderItem.invoice_id).all()
+
+        for invoice_id, cogs_sum in rows:
+            if not cogs_sum:
+                continue
+            ratio = ratios.get(int(invoice_id), 0.0)
+            cogs_period += int(round(float(cogs_sum) * ratio))
+
+    expenses_period = db.session.query(func.sum(Expense.amount)).filter(
+        func.date(Expense.expense_date) >= date_from,
+        func.date(Expense.expense_date) <= date_to
+    ).scalar() or 0
+
+    return int(sales_total - cogs_period - int(expenses_period or 0))
+
+
+# =================================================
+# لوحة المدير التنفيذي — صفحة + API
+# =================================================
+@index_bp.route("/executive-dashboard")
+@admin_required
+def executive_dashboard():
+    return render_template(
+        "executive_dashboard.html",
+        employee_name=session.get("name", ""),
+    )
+
+
+@index_bp.route("/api/index/executive-overview")
+@admin_required
+def index_executive_overview():
+    """بيانات موحّدة للبطاقات والرسوم (كاش، أرباح يوم/شهر/سنة، سلاسل زمنية)."""
+    today = date.today()
+    month_start = today.replace(day=1)
+    year_start = today.replace(month=1, day=1)
+
+    cash_balance = int(calculate_cash_balance())
+    profit_today = _net_profit_for_range(today, today)
+    profit_month = _net_profit_for_range(month_start, today)
+    profit_year = _net_profit_for_range(year_start, today)
+
+    daily_labels = []
+    daily_profit = []
+    for i in range(13, -1, -1):
+        d = today - timedelta(days=i)
+        daily_labels.append(d.strftime("%m/%d"))
+        daily_profit.append(_net_profit_for_range(d, d))
+
+    month_names_ar = [
+        "يناير",
+        "فبراير",
+        "مارس",
+        "أبريل",
+        "مايو",
+        "يونيو",
+        "يوليو",
+        "أغسطس",
+        "سبتمبر",
+        "أكتوبر",
+        "نوفمبر",
+        "ديسمبر",
+    ]
+    monthly_labels = []
+    monthly_profit = []
+    y = today.year
+    for m in range(1, 13):
+        d1 = date(y, m, 1)
+        if d1 > today:
+            monthly_labels.append(month_names_ar[m - 1])
+            monthly_profit.append(0)
+            continue
+        if m == 12:
+            d2 = date(y, 12, 31)
+        else:
+            d2 = date(y, m + 1, 1) - timedelta(days=1)
+        if d2 > today:
+            d2 = today
+        monthly_labels.append(month_names_ar[m - 1])
+        monthly_profit.append(_net_profit_for_range(d1, d2))
+
+    return jsonify(
+        {
+            "kpis": {
+                "cash_balance": cash_balance,
+                "profit_today": profit_today,
+                "profit_month": profit_month,
+                "profit_year": profit_year,
+            },
+            "series": {
+                "daily_14": {"labels": daily_labels, "profit": daily_profit},
+                "year_monthly": {"labels": monthly_labels, "profit": monthly_profit},
+            },
+        }
+    )
+
 
 # =================================================
 # REPORT CARDS (TOP)

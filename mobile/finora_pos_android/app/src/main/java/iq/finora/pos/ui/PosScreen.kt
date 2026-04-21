@@ -131,7 +131,6 @@ fun PosRoute(repository: PosRepository, nav: NavHostController) {
         snackbarHost = { SnackbarHost(snack) },
         bottomBar = {
             CheckoutBar(
-                total = total,
                 enabled = !loading && selected != null && cart.isNotEmpty(),
                 onCheckout = {
                     vm.submitOrder { inv, tot ->
@@ -173,29 +172,6 @@ fun PosRoute(repository: PosRepository, nav: NavHostController) {
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            item {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(Brush.horizontalGradient(listOf(Primary, Secondary)))
-                            .padding(14.dp)
-                    ) {
-                        Column {
-                            Text("إجمالي السلة", color = Color.White.copy(alpha = 0.85f))
-                            Text(
-                                "${fmtMoney(total)} د.ع",
-                                style = MaterialTheme.typography.headlineMedium,
-                                color = Color.White
-                            )
-                        }
-                    }
-                }
-            }
-
             item {
                 SectionTitle("الزبون")
                 if (selected != null) {
@@ -422,6 +398,28 @@ fun PosRoute(repository: PosRepository, nav: NavHostController) {
                             }
                         }
                     }
+                    PremiumCard(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Brush.horizontalGradient(listOf(Primary, Secondary)))
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("مجموع السلة", color = Color.White.copy(alpha = 0.92f))
+                            Text(
+                                "${fmtMoney(total)} د.ع",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.White
+                            )
+                        }
+                    }
                 }
             }
 
@@ -472,7 +470,6 @@ private fun PremiumCard(
 
 @Composable
 private fun CheckoutBar(
-    total: Double,
     enabled: Boolean,
     onCheckout: () -> Unit
 ) {
@@ -481,23 +478,15 @@ private fun CheckoutBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(MaterialTheme.shapes.medium)
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .padding(horizontal = 12.dp, vertical = 10.dp)
-            ) {
-                Text("الإجمالي", style = MaterialTheme.typography.bodySmall)
-                Text("${fmtMoney(total)} د.ع", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            }
             FilledTonalButton(
                 onClick = onCheckout,
                 enabled = enabled,
-                modifier = Modifier.height(52.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
             ) {
                 Text("تأكيد الطلب")
             }

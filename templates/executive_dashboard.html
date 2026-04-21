@@ -1,0 +1,571 @@
+{% extends "base.html" %}
+{% block page_title %}لوحة المدير التنفيذي{% endblock %}
+{% block content %}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<style>
+  .exec-scope {
+    --exec-bg0: #0f172a;
+    --exec-bg1: #1e293b;
+    --exec-accent: #38bdf8;
+    --exec-accent2: #a78bfa;
+    --exec-success: #34d399;
+    --exec-gold: #fbbf24;
+    --exec-card: rgba(30, 41, 59, 0.72);
+    --exec-border: rgba(148, 163, 184, 0.18);
+    --exec-text: #f8fafc;
+    --exec-muted: #94a3b8;
+    margin: 0 -12px;
+    padding: 0 8px 48px;
+    min-height: 72vh;
+  }
+
+  .exec-hero {
+    position: relative;
+    border-radius: 24px;
+    padding: 28px 28px 32px;
+    margin-bottom: 28px;
+    overflow: hidden;
+    background: linear-gradient(135deg, #0f172a 0%, #312e81 42%, #0f172a 100%);
+    border: 1px solid var(--exec-border);
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.45);
+  }
+
+  .exec-hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 100% 0%, rgba(56, 189, 248, 0.22), transparent 55%),
+      radial-gradient(ellipse 70% 50% at 0% 100%, rgba(167, 139, 250, 0.2), transparent 50%);
+    pointer-events: none;
+  }
+
+  .exec-hero-inner {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+  }
+
+  .exec-hero h1 {
+    margin: 0 0 8px;
+    font-size: clamp(1.45rem, 3vw, 2rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--exec-text);
+  }
+
+  .exec-hero p {
+    margin: 0;
+    color: var(--exec-muted);
+    font-size: 0.98rem;
+    max-width: 520px;
+    line-height: 1.65;
+  }
+
+  .exec-hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.55);
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    color: var(--exec-text);
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  .exec-hero-badge i {
+    color: var(--exec-gold);
+  }
+
+  .exec-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 18px;
+    margin-bottom: 28px;
+  }
+
+  .exec-kpi {
+    position: relative;
+    border-radius: 20px;
+    padding: 22px 22px 20px;
+    background: var(--exec-card);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--exec-border);
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.22);
+    overflow: hidden;
+    transition: transform 0.22s ease, box-shadow 0.22s ease;
+  }
+
+  .exec-kpi:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 22px 50px rgba(0, 0, 0, 0.35);
+  }
+
+  .exec-kpi::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--t0, #38bdf8), var(--t1, #a78bfa));
+    opacity: 0.95;
+  }
+
+  .exec-kpi.cash {
+    --t0: #22d3ee;
+    --t1: #3b82f6;
+  }
+
+  .exec-kpi.day {
+    --t0: #34d399;
+    --t1: #10b981;
+  }
+
+  .exec-kpi.month {
+    --t0: #fbbf24;
+    --t1: #f97316;
+  }
+
+  .exec-kpi.year {
+    --t0: #a78bfa;
+    --t1: #6366f1;
+  }
+
+  .exec-kpi-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .exec-kpi-label {
+    font-size: 0.88rem;
+    color: var(--exec-muted);
+    font-weight: 600;
+    line-height: 1.35;
+  }
+
+  .exec-kpi-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    background: rgba(148, 163, 184, 0.12);
+    color: var(--exec-text);
+  }
+
+  .exec-kpi-value {
+    font-size: clamp(1.35rem, 2.8vw, 1.85rem);
+    font-weight: 800;
+    color: var(--exec-text);
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .exec-kpi-sub {
+    margin-top: 8px;
+    font-size: 0.78rem;
+    color: var(--exec-muted);
+  }
+
+  .exec-chart-section {
+    margin-bottom: 24px;
+  }
+
+  .exec-chart-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .exec-chart-head h2 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text, #f8fafc);
+  }
+
+  .exec-chart-head span {
+    font-size: 0.8rem;
+    color: var(--exec-muted);
+  }
+
+  .exec-chart-card {
+    border-radius: 22px;
+    padding: 20px 20px 8px;
+    background: var(--exec-card);
+    border: 1px solid var(--exec-border);
+    box-shadow: 0 16px 44px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(10px);
+  }
+
+  .exec-chart-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+    gap: 22px;
+  }
+
+  .exec-canvas-wrap {
+    position: relative;
+    height: 300px;
+  }
+
+  .exec-loading,
+  .exec-error {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--exec-muted);
+    font-size: 1rem;
+  }
+
+  .exec-error {
+    color: #fca5a5;
+  }
+
+  :root[data-theme="light"] .exec-scope {
+    --exec-bg0: #f1f5f9;
+    --exec-bg1: #fff;
+    --exec-card: rgba(255, 255, 255, 0.88);
+    --exec-border: rgba(15, 23, 42, 0.1);
+    --exec-text: #0f172a;
+    --exec-muted: #64748b;
+  }
+
+  :root[data-theme="light"] .exec-hero {
+    background: linear-gradient(135deg, #eff6ff 0%, #e0e7ff 50%, #f8fafc 100%);
+    box-shadow: 0 18px 48px rgba(15, 23, 42, 0.08);
+  }
+
+  :root[data-theme="light"] .exec-hero h1 {
+    color: #0f172a;
+  }
+
+  :root[data-theme="light"] .exec-chart-head h2 {
+    color: #0f172a;
+  }
+</style>
+
+<div class="exec-scope">
+  <div class="exec-hero">
+    <div class="exec-hero-inner">
+      <div>
+        <h1>لوحة المدير التنفيذي</h1>
+        <p>
+          نظرة سريعة على النقدية وصافي الربح (اليوم، الشهر، السنة) مع مؤشرات بيانية للتوجهات.
+          الأرقام محسوبة بنفس منطق تقارير النظام المحاسبي.
+        </p>
+      </div>
+      <div class="exec-hero-badge" title="مخصص لحساب المدير">
+        <i class="fas fa-user-shield"></i>
+        <span>{{ employee_name or 'مدير' }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="exec-loading" class="exec-loading">
+    <i class="fas fa-circle-notch fa-spin"></i>
+    جاري تحميل المؤشرات والرسوم…
+  </div>
+  <div id="exec-error" class="exec-error" style="display:none;"></div>
+
+  <div id="exec-main" style="display:none;">
+    <div class="exec-kpi-grid" id="exec-kpis"></div>
+
+    <div class="exec-chart-section">
+      <div class="exec-chart-head">
+        <h2><i class="fas fa-chart-line" style="opacity:.85;margin-left:8px;"></i> تطور صافي الربح — آخر 14 يوماً</h2>
+        <span>خط زمني يومي</span>
+      </div>
+      <div class="exec-chart-card">
+        <div class="exec-canvas-wrap">
+          <canvas id="exec-chart-daily"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="exec-chart-row">
+      <div class="exec-chart-section">
+        <div class="exec-chart-head">
+          <h2><i class="fas fa-chart-bar" style="opacity:.85;margin-left:8px;"></i> صافي الربح حسب الشهر</h2>
+          <span>السنة الحالية</span>
+        </div>
+        <div class="exec-chart-card">
+          <div class="exec-canvas-wrap">
+            <canvas id="exec-chart-monthly"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="exec-chart-section">
+        <div class="exec-chart-head">
+          <h2><i class="fas fa-chart-area" style="opacity:.85;margin-left:8px;"></i> الربح التراكمي — آخر 14 يوماً</h2>
+          <span>مجموع جاري لصافي الربح اليومي</span>
+        </div>
+        <div class="exec-chart-card">
+          <div class="exec-canvas-wrap">
+            <canvas id="exec-chart-cumulative"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    function fmtMoney(n) {
+      const v = Number(n) || 0;
+      try {
+        return new Intl.NumberFormat('ar-IQ', { maximumFractionDigits: 0 }).format(v);
+      } catch (e) {
+        return String(Math.round(v));
+      }
+    }
+
+    const isLight = (document.documentElement.getAttribute('data-theme') || 'dark') === 'light';
+    const tickColor = isLight ? '#64748b' : '#94a3b8';
+    const gridColor = isLight ? 'rgba(15,23,42,0.06)' : 'rgba(148,163,184,0.12)';
+
+    function chartDefaults() {
+      Chart.defaults.font.family = "'Segoe UI', 'Tahoma', sans-serif";
+      Chart.defaults.color = tickColor;
+    }
+
+    let chartDaily, chartMonthly, chartCumulative;
+
+    function buildKpis(k) {
+      const cards = [
+        {
+          cls: 'cash',
+          icon: 'fa-wallet',
+          label: 'رصيد النقدية',
+          sub: 'رصيد تراكمي حالي',
+          value: k.cash_balance
+        },
+        {
+          cls: 'day',
+          icon: 'fa-sun',
+          label: 'ربح اليوم',
+          sub: 'صافي الربح لهذا اليوم',
+          value: k.profit_today
+        },
+        {
+          cls: 'month',
+          icon: 'fa-calendar-week',
+          label: 'ربح الشهر',
+          sub: 'من أول الشهر حتى اليوم',
+          value: k.profit_month
+        },
+        {
+          cls: 'year',
+          icon: 'fa-calendar-alt',
+          label: 'ربح السنة',
+          sub: 'من بداية السنة حتى اليوم',
+          value: k.profit_year
+        }
+      ];
+      document.getElementById('exec-kpis').innerHTML = cards.map(function (c) {
+        return '<div class="exec-kpi ' + c.cls + '">' +
+          '<div class="exec-kpi-top">' +
+          '<div class="exec-kpi-label">' + c.label + '</div>' +
+          '<div class="exec-kpi-icon"><i class="fas ' + c.icon + '"></i></div>' +
+          '</div>' +
+          '<div class="exec-kpi-value">' + fmtMoney(c.value) + ' <small style="font-weight:700;font-size:.55em;opacity:.85">د.ع</small></div>' +
+          '<div class="exec-kpi-sub">' + c.sub + '</div>' +
+          '</div>';
+      }).join('');
+    }
+
+    function destroyCharts() {
+      [chartDaily, chartMonthly, chartCumulative].forEach(function (ch) {
+        if (ch) try { ch.destroy(); } catch (e) {}
+      });
+    }
+
+    function renderCharts(data) {
+      chartDefaults();
+      destroyCharts();
+
+      const d14 = data.series.daily_14;
+      const yM = data.series.year_monthly;
+
+      const gradLine = document.getElementById('exec-chart-daily').getContext('2d');
+      const gradFill = gradLine.createLinearGradient(0, 0, 0, 280);
+      gradFill.addColorStop(0, 'rgba(56, 189, 248, 0.35)');
+      gradFill.addColorStop(1, 'rgba(56, 189, 248, 0.01)');
+
+      chartDaily = new Chart(document.getElementById('exec-chart-daily'), {
+        type: 'line',
+        data: {
+          labels: d14.labels,
+          datasets: [{
+            label: 'صافي الربح',
+            data: d14.profit,
+            borderColor: '#38bdf8',
+            backgroundColor: gradFill,
+            fill: true,
+            tension: 0.35,
+            pointRadius: 3,
+            pointHoverRadius: 6,
+            borderWidth: 2.5
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { intersect: false, mode: 'index' },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function (ctx) {
+                  return ' الربح: ' + fmtMoney(ctx.parsed.y) + ' د.ع';
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: gridColor },
+              ticks: { maxRotation: 0 }
+            },
+            y: {
+              grid: { color: gridColor },
+              ticks: {
+                callback: function (v) { return fmtMoney(v); }
+              }
+            }
+          }
+        }
+      });
+
+      chartMonthly = new Chart(document.getElementById('exec-chart-monthly'), {
+        type: 'bar',
+        data: {
+          labels: yM.labels,
+          datasets: [{
+            label: 'صافي الربح',
+            data: yM.profit,
+            backgroundColor: yM.labels.map(function (_, i) {
+              const a = 0.35 + (i % 4) * 0.12;
+              return 'rgba(167, 139, 250, ' + a + ')';
+            }),
+            borderColor: 'rgba(167, 139, 250, 0.95)',
+            borderWidth: 1.2,
+            borderRadius: 10
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function (ctx) {
+                  return ' الربح: ' + fmtMoney(ctx.parsed.y) + ' د.ع';
+                }
+              }
+            }
+          },
+          scales: {
+            x: { grid: { display: false } },
+            y: {
+              grid: { color: gridColor },
+              ticks: { callback: function (v) { return fmtMoney(v); } }
+            }
+          }
+        }
+      });
+
+      var cum = [];
+      var run = 0;
+      (d14.profit || []).forEach(function (p) {
+        run += Number(p) || 0;
+        cum.push(run);
+      });
+
+      var ctxC = document.getElementById('exec-chart-cumulative').getContext('2d');
+      var gradC = ctxC.createLinearGradient(0, 0, 0, 280);
+      gradC.addColorStop(0, 'rgba(167, 139, 250, 0.4)');
+      gradC.addColorStop(1, 'rgba(99, 102, 241, 0.05)');
+
+      chartCumulative = new Chart(document.getElementById('exec-chart-cumulative'), {
+        type: 'line',
+        data: {
+          labels: d14.labels,
+          datasets: [{
+            label: 'تراكمي صافي الربح',
+            data: cum,
+            borderColor: '#a78bfa',
+            backgroundColor: gradC,
+            fill: true,
+            tension: 0.25,
+            pointRadius: 0,
+            borderWidth: 2.5
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { intersect: false, mode: 'index' },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function (ctx) {
+                  return ' التراكمي: ' + fmtMoney(ctx.parsed.y) + ' د.ع';
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: gridColor },
+              ticks: { maxRotation: 0 }
+            },
+            y: {
+              grid: { color: gridColor },
+              ticks: { callback: function (v) { return fmtMoney(v); } }
+            }
+          }
+        }
+      });
+    }
+
+    fetch('/api/index/executive-overview', { credentials: 'same-origin' })
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        document.getElementById('exec-loading').style.display = 'none';
+        document.getElementById('exec-main').style.display = 'block';
+        buildKpis(data.kpis);
+        renderCharts(data);
+      })
+      .catch(function (e) {
+        document.getElementById('exec-loading').style.display = 'none';
+        var el = document.getElementById('exec-error');
+        el.style.display = 'block';
+        el.textContent = 'تعذر تحميل البيانات. تأكد أنك مسجّل كمدير ولديك صلاحية الوصول.';
+      });
+  })();
+</script>
+
+{% endblock %}

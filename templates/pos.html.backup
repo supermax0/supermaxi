@@ -1,0 +1,1479 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>POS</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<style>
+:root{
+  --primary:#3b82f6;
+  --primary-hover:#2563eb;
+  --success:#10b981;
+  --success-hover:#059669;
+  --danger:#ef4444;
+  --danger-hover:#dc2626;
+  --bg:#0b1220;
+  --card:linear-gradient(145deg, rgba(17, 24, 39, 0.95), rgba(11, 18, 32, 0.95));
+  --card-border:rgba(59, 130, 246, 0.15);
+  --text:#f1f5f9;
+  --text-muted:#94a3b8;
+  --border:rgba(255, 255, 255, 0.08);
+  --border-light:rgba(255, 255, 255, 0.05);
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:'Tajawal', system-ui, sans-serif;
+  background:linear-gradient(135deg, #0a0f1c 0%, #1a1f2e 100%);
+  color:var(--text);
+  min-height:100vh;
+}
+.pos{max-width:1400px;margin:auto;padding:24px}
+.card{
+  background:var(--card);
+  border-radius:20px;
+  padding:24px;
+  margin-bottom:20px;
+  box-shadow:0 15px 35px rgba(0,0,0,0.3);
+  border:1px solid var(--card-border);
+  transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position:relative;
+  overflow:hidden;
+}
+.card::before{
+  content:"";
+  position:absolute;
+  top:0;
+  right:0;
+  width:4px;
+  height:100%;
+  background:linear-gradient(180deg, var(--primary), var(--success));
+  border-radius:0 20px 20px 0;
+  opacity:0.7;
+}
+.card:hover{
+  transform:translateY(-4px);
+  box-shadow:0 20px 40px rgba(0,0,0,0.4);
+  border-color:rgba(59, 130, 246, 0.25);
+}
+.card h3{
+  font-size:20px;
+  font-weight:700;
+  margin:0 0 20px 0;
+  color:var(--text);
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:16px;
+}
+input,select,textarea{
+  width:100%;
+  padding:14px 16px;
+  border-radius:12px;
+  border:1px solid var(--border);
+  background:rgba(15, 23, 42, 0.6);
+  color:var(--text);
+  font-family:'Tajawal', sans-serif;
+  font-size:15px;
+  transition:all 0.3s ease;
+}
+input:focus,select:focus,textarea:focus{
+  outline:none;
+  border-color:var(--primary);
+  box-shadow:0 0 0 3px rgba(59, 130, 246, 0.1);
+  background:rgba(15, 23, 42, 0.8);
+}
+input::placeholder,textarea::placeholder{
+  color:var(--text-muted);
+}
+button{
+  cursor:pointer;
+  font-weight:600;
+  font-family:'Tajawal', sans-serif;
+  transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border:none;
+  padding:14px 24px;
+  border-radius:12px;
+  font-size:15px;
+}
+button:hover{
+  transform:translateY(-2px);
+  box-shadow:0 8px 20px rgba(0,0,0,0.3);
+}
+button:active{
+  transform:translateY(0);
+}
+.btn-primary{
+  background:linear-gradient(135deg, var(--primary), var(--primary-hover));
+  color:#fff;
+  box-shadow:0 6px 20px rgba(59, 130, 246, 0.3);
+}
+.btn-primary:hover{
+  box-shadow:0 10px 25px rgba(59, 130, 246, 0.4);
+}
+.btn-success{
+  background:linear-gradient(135deg, var(--success), var(--success-hover));
+  color:#fff;
+  box-shadow:0 6px 20px rgba(16, 185, 129, 0.3);
+}
+.btn-success:hover{
+  box-shadow:0 10px 25px rgba(16, 185, 129, 0.4);
+}
+.btn-danger{
+  background:linear-gradient(135deg, var(--danger), var(--danger-hover));
+  color:#fff;
+  box-shadow:0 6px 20px rgba(239, 68, 68, 0.3);
+}
+.btn-danger:hover{
+  box-shadow:0 10px 25px rgba(239, 68, 68, 0.4);
+}
+.btn-light{
+  background:rgba(15, 23, 42, 0.6);
+  color:var(--text);
+  border:1px solid var(--border);
+}
+.btn-light:hover{
+  background:rgba(15, 23, 42, 0.8);
+  border-color:var(--primary);
+}
+
+.list{
+  margin-top:12px;
+  border:1px solid var(--border);
+  border-radius:12px;
+  max-height:200px;
+  overflow:auto;
+  background:rgba(15, 23, 42, 0.4);
+}
+.list::-webkit-scrollbar{
+  width:8px;
+}
+.list::-webkit-scrollbar-track{
+  background:rgba(15, 23, 42, 0.5);
+  border-radius:4px;
+}
+.list::-webkit-scrollbar-thumb{
+  background:rgba(59, 130, 246, 0.5);
+  border-radius:4px;
+}
+.list::-webkit-scrollbar-thumb:hover{
+  background:rgba(59, 130, 246, 0.8);
+}
+.list div{
+  padding:12px 16px;
+  cursor:pointer;
+  border-bottom:1px solid var(--border-light);
+  transition:all 0.2s ease;
+  color:var(--text);
+}
+.list div:last-child{
+  border-bottom:none;
+}
+.list div:hover{
+  background:rgba(59, 130, 246, 0.15);
+  padding-right:20px;
+}
+
+table{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:0;
+  margin-top:16px;
+  background:rgba(15, 23, 42, 0.3);
+  border-radius:12px;
+  overflow:hidden;
+}
+th{
+  padding:16px;
+  background:linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(20, 30, 50, 0.95));
+  color:var(--text-muted);
+  font-weight:600;
+  text-align:center;
+  border-bottom:2px solid var(--border);
+  font-size:14px;
+  position:sticky;
+  top:0;
+  z-index:10;
+}
+td{
+  padding:16px;
+  border-bottom:1px solid var(--border-light);
+  text-align:center;
+  color:var(--text);
+  transition:all 0.2s ease;
+}
+tbody tr{
+  transition:all 0.2s ease;
+}
+tbody tr:hover{
+  background:rgba(59, 130, 246, 0.1);
+}
+tbody tr:last-child td{
+  border-bottom:none;
+}
+
+.badge{
+  background:linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(59, 130, 246, 0.1));
+  color:var(--primary);
+  padding:10px 16px;
+  border-radius:10px;
+  margin:12px 0;
+  font-size:14px;
+  font-weight:600;
+  border:1px solid rgba(59, 130, 246, 0.3);
+  display:inline-block;
+}
+
+.qty-btn{
+  padding:6px 12px;
+  border-radius:8px;
+  background:rgba(15, 23, 42, 0.6);
+  border:1px solid var(--border);
+  color:var(--text);
+  cursor:pointer;
+  font-weight:600;
+  transition:all 0.2s ease;
+  margin:0 4px;
+}
+.qty-btn:hover{
+  background:rgba(59, 130, 246, 0.2);
+  border-color:var(--primary);
+}
+.price-edit-btn{
+  background:linear-gradient(135deg, var(--primary), var(--primary-hover));
+  color:#fff;
+  border:none;
+  padding:6px 12px;
+  border-radius:8px;
+  cursor:pointer;
+  font-size:12px;
+  margin-right:8px;
+  transition:all 0.2s ease;
+  font-weight:600;
+  box-shadow:0 2px 8px rgba(59, 130, 246, 0.3);
+}
+.price-edit-btn:hover{
+  transform:translateY(-2px);
+  box-shadow:0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+/* Floating Chat Button */
+.floating-chat-btn {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  color: white;
+  border: none;
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.4);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  z-index: 1000;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: pulse 2s infinite;
+}
+
+.floating-chat-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 12px 32px rgba(59, 130, 246, 0.5);
+}
+
+.floating-chat-btn:active {
+  transform: scale(0.95);
+}
+
+/* Archive Button for Delivery Employees */
+.floating-archive-btn {
+  position: fixed;
+  bottom: 100px;
+  left: 24px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  font-size: 24px;
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4);
+  z-index: 1000;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  animation: pulse-green 2s infinite;
+}
+
+@keyframes pulse-green {
+  0%, 100% { transform: scale(1); box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4); }
+  50% { transform: scale(1.05); box-shadow: 0 12px 30px rgba(16, 185, 129, 0.6); }
+}
+
+.floating-archive-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 12px 25px rgba(16, 185, 129, 0.5);
+  animation: none;
+}
+
+.floating-chat-btn .badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #ef4444;
+  color: white;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  border: 2px solid white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.floating-chat-btn .badge.hidden {
+  display: none;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 8px 24px rgba(59, 130, 246, 0.4);
+  }
+  50% {
+    box-shadow: 0 8px 32px rgba(59, 130, 246, 0.6);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOut {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes pricePulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+@media (max-width: 768px) {
+  .pos{
+    padding:16px;
+  }
+  .card{
+    padding:20px;
+  }
+  .grid{
+    grid-template-columns:1fr;
+    gap:12px;
+  }
+  .modal-content{
+    min-width:auto;
+    padding:24px;
+  }
+  .floating-chat-btn {
+    width: 56px;
+    height: 56px;
+    bottom: 20px;
+    left: 20px;
+    font-size: 22px;
+  }
+  table{
+    font-size:14px;
+  }
+  th,td{
+    padding:12px 8px;
+  }
+}
+
+.toast{
+  position:fixed;
+  bottom:20px;
+  right:20px;
+  background:#111827;
+  color:#fff;
+  padding:12px 18px;
+  border-radius:12px;
+  opacity:0;
+  transition:.3s;
+}
+.toast.show{opacity:1}
+
+.modal{
+  display:none;
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background:rgba(0,0,0,0.5);
+  z-index:1000;
+  justify-content:center;
+  align-items:center;
+}
+.modal.show{display:flex}
+.modal-content{
+  background:#fff;
+  padding:24px;
+  border-radius:16px;
+  min-width:300px;
+  max-width:90%;
+}
+.modal-header{
+  font-size:18px;
+  font-weight:600;
+  margin-bottom:16px;
+  color:#0f172a;
+}
+.modal-input{
+  width:100%;
+  padding:12px;
+  border:2px solid #e5e7eb;
+  border-radius:8px;
+  font-size:16px;
+  margin-bottom:16px;
+}
+.modal-input:focus{
+  outline:none;
+  border-color:#3b82f6;
+}
+.modal-actions{
+  display:flex;
+  gap:12px;
+  justify-content:flex-end;
+}
+.modal-btn{
+  padding:10px 20px;
+  border-radius:8px;
+  border:none;
+  cursor:pointer;
+  font-weight:600;
+}
+.modal-btn-primary{
+  background:#3b82f6;
+  color:#fff;
+}
+.modal-btn-primary:hover{
+  background:#2563eb;
+}
+.modal-btn-secondary{
+  background:#e5e7eb;
+  color:#0f172a;
+}
+.modal-btn-secondary:hover{
+  background:#d1d5db;
+}
+
+/* ===== OCR Loader ===== */
+.ocr-loader-wrapper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(10px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  font-family: "Tajawal", sans-serif;
+}
+
+.ocr-loader-wrapper.active {
+  display: flex;
+}
+
+.ocr-loader-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 180px;
+  height: 180px;
+  font-size: 1.2em;
+  font-weight: 300;
+  color: white;
+  border-radius: 50%;
+  background-color: transparent;
+  user-select: none;
+}
+
+.ocr-loader-text {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  z-index: 1;
+  direction: ltr;
+  flex-direction: row;
+}
+
+.ocr-loader {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  background-color: transparent;
+  animation: ocr-loader-rotate 2s linear infinite;
+  z-index: 0;
+}
+
+@keyframes ocr-loader-rotate {
+  0% {
+    transform: rotate(90deg);
+    box-shadow:
+      0 10px 20px 0 #fff inset,
+      0 20px 30px 0 #ad5fff inset,
+      0 60px 60px 0 #471eec inset;
+  }
+  50% {
+    transform: rotate(270deg);
+    box-shadow:
+      0 10px 20px 0 #fff inset,
+      0 20px 10px 0 #d60a47 inset,
+      0 40px 60px 0 #311e80 inset;
+  }
+  100% {
+    transform: rotate(450deg);
+    box-shadow:
+      0 10px 20px 0 #fff inset,
+      0 20px 30px 0 #ad5fff inset,
+      0 60px 60px 0 #471eec inset;
+  }
+}
+
+.ocr-loader-letter {
+  display: inline-block;
+  opacity: 0.4;
+  transform: translateY(0);
+  animation: ocr-loader-letter-anim 2s infinite;
+  font-weight: 600;
+  position: relative;
+}
+
+.ocr-loader-letter:nth-child(1) {
+  animation-delay: 0s;
+}
+.ocr-loader-letter:nth-child(2) {
+  animation-delay: 0.1s;
+}
+.ocr-loader-letter:nth-child(3) {
+  animation-delay: 0.2s;
+}
+.ocr-loader-letter:nth-child(4) {
+  animation-delay: 0.3s;
+}
+.ocr-loader-letter:nth-child(5) {
+  animation-delay: 0.4s;
+}
+.ocr-loader-letter:nth-child(6) {
+  animation-delay: 0.5s;
+}
+.ocr-loader-letter:nth-child(7) {
+  animation-delay: 0.6s;
+}
+.ocr-loader-letter:nth-child(8) {
+  animation-delay: 0.7s;
+}
+.ocr-loader-letter:nth-child(9) {
+  animation-delay: 0.8s;
+}
+.ocr-loader-letter:nth-child(10) {
+  animation-delay: 0.9s;
+}
+
+@keyframes ocr-loader-letter-anim {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: translateY(0) scale(1);
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(-5px) scale(1.15);
+  }
+  40% {
+    opacity: 0.7;
+    transform: translateY(0) scale(1);
+  }
+}
+</style>
+</head>
+
+<body>
+<!-- OCR Loader -->
+<div id="ocrLoaderWrapper" class="ocr-loader-wrapper">
+  <div class="ocr-loader-container">
+    <div class="ocr-loader-text">
+      <span class="ocr-loader-letter">G</span>
+      <span class="ocr-loader-letter">e</span>
+      <span class="ocr-loader-letter">n</span>
+      <span class="ocr-loader-letter">e</span>
+      <span class="ocr-loader-letter">r</span>
+      <span class="ocr-loader-letter">a</span>
+      <span class="ocr-loader-letter">t</span>
+      <span class="ocr-loader-letter">i</span>
+      <span class="ocr-loader-letter">n</span>
+      <span class="ocr-loader-letter">g</span>
+    </div>
+    <div class="ocr-loader"></div>
+  </div>
+</div>
+
+<div class="pos">
+
+<!-- الزبون -->
+<div class="card">
+<h3>👤 الزبون</h3>
+
+<input id="searchCustomer" placeholder="بحث حي عن زبون">
+<div id="customerResults" class="list" style="display:none"></div>
+<div id="selectedCustomer" class="badge">لم يتم اختيار زبون</div>
+
+<div class="grid">
+  <input id="name" placeholder="الاسم">
+  <input id="phone" placeholder="رقم الهاتف">
+  <input id="phone2" placeholder="رقم آخر">
+  <select id="city">
+    <option>بغداد</option>
+    <option>محافظات</option>
+  </select>
+  <input id="address" placeholder="العنوان">
+</div>
+
+<!-- OCR -->
+<div id="ocrModal" class="card" style="display:none">
+<h3>🧠 نتيجة OCR</h3>
+<textarea id="ocrText" style="height:120px"></textarea>
+<input id="ocrName" placeholder="الاسم">
+<input id="ocrPhone" placeholder="رقم الهاتف">
+<input id="ocrAddress" placeholder="العنوان">
+<select id="ocrCity">
+  <option value="بغداد">بغداد</option>
+  <option value="البصرة">البصرة</option>
+  <option value="الموصل">الموصل</option>
+  <option value="أربيل">أربيل</option>
+  <option value="السليمانية">السليمانية</option>
+  <option value="كربلاء">كربلاء</option>
+  <option value="النجف">النجف</option>
+  <option value="بابل">بابل</option>
+  <option value="ديالى">ديالى</option>
+  <option value="واسط">واسط</option>
+  <option value="ميسان">ميسان</option>
+  <option value="ذي قار">ذي قار</option>
+  <option value="المثنى">المثنى</option>
+  <option value="صلاح الدين">صلاح الدين</option>
+  <option value="دهوك">دهوك</option>
+  <option value="كركوك">كركوك</option>
+  <option value="الأنبار">الأنبار</option>
+  <option value="محافظات">محافظات</option>
+</select>
+<div class="grid">
+  <button class="btn-success" onclick="confirmOCR()">✔ حفظ</button>
+  <button class="btn-danger" onclick="closeOCR()">✖ إلغاء</button>
+</div>
+</div>
+
+<div class="grid">
+  <button class="btn-success" onclick="saveCustomer()">➕ حفظ الزبون</button>
+  <button class="btn-primary" onclick="openCamera()">📷 كاميرا</button>
+  <button class="btn-light" onclick="uploadImage()">🤖 AI (صورة)</button>
+  <input type="file" id="cameraInput" accept="image/*" capture="environment" hidden>
+  <input type="file" id="imageInput" accept="image/*" hidden>
+</div>
+</div>
+
+<!-- المنتجات -->
+<div class="card">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+  <h3 style="margin:0">📦 المنتجات</h3>
+  <button class="btn-primary" onclick="showPricesModal()" style="width:auto;padding:8px 16px;font-size:14px">💰 عرض الأسعار</button>
+</div>
+<input id="searchProduct" placeholder="بحث حي عن منتج">
+<div id="productResults" class="list" style="display:none"></div>
+
+<table>
+<thead>
+<tr>
+<th>المنتج</th><th>الكمية</th><th>السعر</th><th>المجموع</th><th></th>
+</tr>
+</thead>
+<tbody id="orderItems"></tbody>
+</table>
+
+<!-- Modal لتغيير السعر -->
+<div id="priceModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">تغيير سعر البيع</div>
+    <div id="priceModalProductName" style="margin-bottom:8px;color:#6b7280;font-size:14px;"></div>
+    <input type="number" id="priceModalInput" class="modal-input" placeholder="أدخل السعر الجديد" min="0" step="0.01">
+    <div class="modal-actions">
+      <button class="modal-btn modal-btn-secondary" onclick="closePriceModal()">إلغاء</button>
+      <button class="modal-btn modal-btn-primary" onclick="confirmPriceChange()">حفظ</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal لعرض جميع الأسعار -->
+<div id="pricesModal" class="modal">
+  <div class="modal-content" style="max-width:700px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column">
+    <div class="modal-header" style="display:flex;justify-content:space-between;align-items:center;padding:20px;border-bottom:2px solid #e5e7eb;background:linear-gradient(135deg, #3b82f6, #2563eb);color:white;border-radius:12px 12px 0 0">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-size:28px">💰</span>
+        <span style="font-size:20px;font-weight:700">قائمة أسعار المنتجات</span>
+      </div>
+      <button onclick="closePricesModal()" style="background:rgba(255,255,255,0.2);border:none;font-size:24px;cursor:pointer;color:white;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:all 0.2s" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">&times;</button>
+    </div>
+    <div style="padding:16px;border-bottom:1px solid #e5e7eb;background:#f8fafc">
+      <input type="text" id="pricesSearch" placeholder="🔍 ابحث عن منتج..." style="width:100%;padding:12px 16px;border-radius:10px;border:2px solid #e5e7eb;font-size:15px;transition:all 0.2s" oninput="filterPrices()" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e5e7eb';this.style.boxShadow='none'">
+    </div>
+    <div id="pricesList" style="flex:1;overflow-y:auto;padding:16px;background:#fff">
+      <!-- سيتم ملؤها بالمنتجات -->
+    </div>
+  </div>
+</div>
+
+<div class="card" style="background:linear-gradient(145deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.1));border:2px solid rgba(16, 185, 129, 0.3);">
+<h3 style="margin-bottom:24px">💰 الإجمالي</h3>
+<div style="font-size:36px;font-weight:700;color:var(--success);margin-bottom:24px;text-align:center;padding:20px;background:rgba(16, 185, 129, 0.1);border-radius:12px;border:1px solid rgba(16, 185, 129, 0.2);">
+  <span id="totalPrice">0</span> <span style="font-size:20px;color:var(--text-muted)">د.ع</span>
+</div>
+<button class="btn-primary" onclick="openOrderNotesModal()" style="width:100%;padding:16px;font-size:16px;margin-bottom:12px">✅ تنفيذ الطلب</button>
+<button class="btn-success" onclick="openScheduleModal()" style="width:100%;padding:16px;font-size:16px">📅 تأجيل الطلب</button>
+</div>
+
+</div>
+
+<div id="toast" class="toast"></div>
+
+<!-- Modal ملاحظة البيع -->
+<div id="orderNotesModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">📝 ملاحظة البيع</div>
+    {% if pages %}
+    <div style="margin-bottom: 15px;">
+      <label style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--text);">اختر البيج:</label>
+      <select id="pageSelect" class="modal-input" style="width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: 8px; font-size: 15px; background: rgba(15, 23, 42, 0.6); color: var(--text);">
+        <option value="">-- اختر البيج --</option>
+        {% for page in pages %}
+        <option value="{{ page.id }}" data-name="{{ page.name }}">{{ page.name }}</option>
+        {% endfor %}
+        <option value="no_page">-- لا يوجد بيج --</option>
+      </select>
+    </div>
+    {% endif %}
+    <textarea id="orderNotesInput" class="modal-input" placeholder="أدخل ملاحظة البيع (اختياري)" rows="3" style="min-height:80px;resize:vertical"></textarea>
+    <div class="modal-actions">
+      <button class="modal-btn modal-btn-secondary" onclick="closeOrderNotesModal()">إلغاء</button>
+      <button class="modal-btn modal-btn-primary" onclick="confirmOrderWithNotes()">✅ تأكيد الطلب</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal تأجيل الطلب -->
+<div id="scheduleOrderModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">📅 تأجيل الطلب</div>
+    <input type="date" id="scheduleDateInput" class="modal-input" min="" style="margin-bottom:16px">
+    <textarea id="scheduleNotesInput" class="modal-input" placeholder="ملاحظة (اختياري)" rows="2" style="min-height:60px;resize:vertical"></textarea>
+    <div class="modal-actions">
+      <button class="modal-btn modal-btn-secondary" onclick="closeScheduleModal()">إلغاء</button>
+      <button class="modal-btn modal-btn-primary" onclick="confirmScheduleOrder()">✅ تأجيل الطلب</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let items=[]
+let selectedCustomerId=null
+let isSelectingCustomer=false
+
+// صلاحية تعديل السعر
+const canEditPrice = {{ 'true' if can_edit_price else 'false' }};
+
+const toast=(m)=>{
+  const t=document.getElementById("toast")
+  t.innerText=m
+  t.classList.add("show")
+  setTimeout(()=>t.classList.remove("show"),3000)
+}
+
+/* ===== بحث زبون ===== */
+searchCustomer.oninput=()=>{
+  if(searchCustomer.value.length<2){
+    customerResults.style.display="none";return
+  }
+  fetch(`/pos/search-customer?q=${searchCustomer.value}`)
+  .then(r=>r.json())
+  .then(d=>{
+    customerResults.innerHTML=d.map(c=>`
+      <div onclick='selectCustomer(${JSON.stringify(c)})'>
+        ${c.name} - ${c.phone}
+      </div>
+    `).join("")
+    customerResults.style.display="block"
+  })
+}
+
+function selectCustomer(c){
+  selectedCustomerId=c.id
+  isSelectingCustomer=true
+  selectedCustomer.innerText=`${c.name} - ${c.phone}`
+  customerResults.style.display="none"
+}
+
+/* ===== حفظ زبون ===== */
+function saveCustomer(){
+  // الحصول على العناصر
+  const nameInput = document.getElementById("name")
+  const phoneInput = document.getElementById("phone")
+  const phone2Input = document.getElementById("phone2")
+  const cityInput = document.getElementById("city")
+  const addressInput = document.getElementById("address")
+  
+  // التحقق من البيانات المطلوبة
+  const nameValue = nameInput ? nameInput.value.trim() : ""
+  const phoneValue = phoneInput ? phoneInput.value.trim() : ""
+  
+  if(!nameValue){
+    toast("يرجى إدخال اسم الزبون")
+    if(nameInput) nameInput.focus()
+    return
+  }
+  if(!phoneValue){
+    toast("يرجى إدخال رقم الهاتف")
+    if(phoneInput) phoneInput.focus()
+    return
+  }
+  
+  fetch("/pos/add-customer",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      name: nameValue,
+      phone: phoneValue,
+      phone2: phone2Input ? (phone2Input.value ? phone2Input.value.trim() : "") : "",
+      city: cityInput ? (cityInput.value ? cityInput.value.trim() : "") : "",
+      address: addressInput ? (addressInput.value ? addressInput.value.trim() : "") : ""
+    })
+  })
+  .then(r=>r.json())
+  .then(d=>{
+    if(d.status === "success" && d.id && d.name && d.phone){
+      selectedCustomerId=d.id
+      selectedCustomer.innerText=`${d.name} - ${d.phone}`
+      isSelectingCustomer=true
+      // مسح الحقول بعد الحفظ
+      if(nameInput) nameInput.value=""
+      if(phoneInput) phoneInput.value=""
+      if(phone2Input) phone2Input.value=""
+      if(cityInput) cityInput.value=""
+      if(addressInput) addressInput.value=""
+      toast("✅ تم حفظ الزبون بنجاح")
+    } else {
+      toast("❌ حدث خطأ: " + (d.msg || "فشل حفظ الزبون"))
+      console.error("Error response:", d)
+    }
+  })
+  .catch(err=>{
+    console.error("Error:", err)
+    toast("❌ حدث خطأ في الاتصال")
+  })
+}
+
+/* ===== منتجات ===== */
+searchProduct.oninput=()=>{
+  if(searchProduct.value.length<2){
+    productResults.style.display="none";return
+  }
+  fetch(`/pos/search-product?q=${searchProduct.value}`)
+  .then(r=>r.json())
+  .then(d=>{
+    productResults.innerHTML=d.map(p=>`
+      <div onclick="addItem(${p.id},'${p.name}',${p.price})">
+        ${p.name} - ${p.price}
+      </div>
+    `).join("")
+    productResults.style.display="block"
+  })
+}
+
+function addItem(id,name,price){
+  const item=items.find(i=>i.product_id===id)
+  if(item)item.qty++
+  else items.push({product_id:id,name,price,qty:1})
+  productResults.style.display="none"
+  renderItems()
+}
+
+function renderItems(){
+  let total=0
+  orderItems.innerHTML=items.map((i,idx)=>{
+    const t=i.price*i.qty
+    total+=t
+    return `
+    <tr>
+      <td>${i.name}</td>
+      <td>
+        <button class="qty-btn" onclick="updateQty(${idx},-1)">-</button>
+        ${i.qty}
+        <button class="qty-btn" onclick="updateQty(${idx},1)">+</button>
+      </td>
+      <td>
+        <span>${i.price.toLocaleString()} د.ع</span>
+        ${canEditPrice ? `<button class="price-edit-btn" onclick="changePrice(${idx})" title="تغيير السعر">✏️ تعديل</button>` : ''}
+      </td>
+      <td>${t.toLocaleString()}</td>
+      <td><button onclick="removeItem(${idx})">❌</button></td>
+    </tr>`
+  }).join("")
+  totalPrice.innerText=total.toLocaleString()
+}
+
+function updateQty(i,d){
+  items[i].qty=Math.max(1,items[i].qty+d)
+  renderItems()
+}
+
+function removeItem(i){
+  items.splice(i,1)
+  renderItems()
+}
+
+let currentPriceEditIndex = -1
+
+function changePrice(idx){
+  const item = items[idx]
+  currentPriceEditIndex = idx
+  document.getElementById('priceModalProductName').innerText = `المنتج: ${item.name}\nالسعر الحالي: ${item.price.toLocaleString()} د.ع`
+  document.getElementById('priceModalInput').value = item.price
+  document.getElementById('priceModal').classList.add('show')
+  document.getElementById('priceModalInput').focus()
+  document.getElementById('priceModalInput').select()
+}
+
+function closePriceModal(){
+  document.getElementById('priceModal').classList.remove('show')
+  currentPriceEditIndex = -1
+}
+
+function confirmPriceChange(){
+  if(currentPriceEditIndex === -1) return
+  
+  const priceInput = document.getElementById('priceModalInput')
+  const price = parseFloat(priceInput.value)
+  
+  if(isNaN(price) || price <= 0){
+    toast("يرجى إدخال سعر صحيح")
+    priceInput.focus()
+    return
+  }
+  
+  items[currentPriceEditIndex].price = price
+  renderItems()
+  toast(`تم تغيير السعر إلى ${price.toLocaleString()} د.ع`)
+  closePriceModal()
+}
+
+// إغلاق Modal عند الضغط على Enter
+document.addEventListener('DOMContentLoaded', function(){
+  const priceInput = document.getElementById('priceModalInput')
+  if(priceInput){
+    priceInput.addEventListener('keypress', function(e){
+      if(e.key === 'Enter'){
+        confirmPriceChange()
+      } else if(e.key === 'Escape'){
+        closePriceModal()
+      }
+    })
+  }
+  
+  // دعم Enter و Escape في modal الملاحظة
+  const notesInput = document.getElementById('orderNotesInput')
+  if(notesInput){
+    notesInput.addEventListener('keydown', function(e){
+      if(e.key === 'Enter' && e.ctrlKey){
+        confirmOrderWithNotes()
+      } else if(e.key === 'Escape'){
+        closeOrderNotesModal()
+      }
+    })
+  }
+  
+  // إزالة الحد الأحمر من pageSelect عند تغيير القيمة
+  const pageSelect = document.getElementById('pageSelect')
+  if(pageSelect){
+    pageSelect.addEventListener('change', function(){
+      if(this.value){
+        this.style.borderColor = ""
+        this.style.borderWidth = ""
+      }
+    })
+  }
+})
+
+/* ===== تنفيذ الطلب ===== */
+function openOrderNotesModal(){
+  if(!selectedCustomerId){toast("اختر زبون");return}
+  if(!items.length){toast("لا توجد منتجات");return}
+  
+  document.getElementById("orderNotesModal").classList.add("show")
+  document.getElementById("orderNotesInput").value = ""
+  document.getElementById("orderNotesInput").focus()
+}
+
+function closeOrderNotesModal(){
+  document.getElementById("orderNotesModal").classList.remove("show")
+  document.getElementById("orderNotesInput").value = ""
+  const pageSelect = document.getElementById("pageSelect")
+  if(pageSelect) pageSelect.value = ""
+}
+
+function confirmOrderWithNotes(){
+  const notesInput = document.getElementById("orderNotesInput")
+  const pageSelect = document.getElementById("pageSelect")
+  const notes = notesInput.value.trim()
+  
+  if(!selectedCustomerId){toast("اختر زبون");return}
+  if(!items.length){toast("لا توجد منتجات");return}
+  
+  // التحقق من اختيار البيج
+  if(pageSelect && !pageSelect.value){
+    toast("يرجى اختيار البيج أو اختيار 'لا يوجد بيج'")
+    pageSelect.style.borderColor = "#ef4444"
+    pageSelect.style.borderWidth = "2px"
+    pageSelect.focus()
+    // إزالة الحد الأحمر بعد ثانيتين
+    setTimeout(() => {
+      if(pageSelect) {
+        pageSelect.style.borderColor = ""
+        pageSelect.style.borderWidth = ""
+      }
+    }, 2000)
+    return
+  }
+  
+  // إزالة الحد الأحمر إذا تم الاختيار بنجاح
+  if(pageSelect) {
+    pageSelect.style.borderColor = ""
+    pageSelect.style.borderWidth = ""
+  }
+  
+  let pageId = null
+  let pageName = null
+  if(pageSelect && pageSelect.value && pageSelect.value !== "no_page"){
+    pageId = pageSelect.value
+    const selectedOption = pageSelect.options[pageSelect.selectedIndex]
+    pageName = selectedOption ? selectedOption.getAttribute('data-name') || selectedOption.text : null
+  }
+
+  fetch("/pos/create-order",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      customer_id:selectedCustomerId,
+      items:items,
+      note:notes || null,
+      scheduled_date: null,
+      page_id: pageId || null,
+      page_name: pageName || null
+    })
+  }).then(r=>r.json()).then(d=>{
+    if(d.error){
+      toast("❌ " + d.error)
+      return
+    }
+    toast("✅ تم تنفيذ الطلب")
+    closeOrderNotesModal()
+    items=[]
+    renderItems()
+    selectedCustomerId = null
+    selectedCustomer.innerText = "لم يتم اختيار زبون"
+    if(pageSelect) pageSelect.value = ""
+  }).catch(err=>{
+    toast("❌ حدث خطأ: " + err.message)
+  })
+}
+
+/* ===== تأجيل الطلب ===== */
+function openScheduleModal(){
+  if(!selectedCustomerId){toast("اختر زبون");return}
+  if(!items.length){toast("لا توجد منتجات");return}
+  
+  // تعيين الحد الأدنى للتاريخ (اليوم)
+  const today = new Date().toISOString().split('T')[0]
+  document.getElementById("scheduleDateInput").min = today
+  document.getElementById("scheduleDateInput").value = today
+  
+  document.getElementById("scheduleOrderModal").classList.add("show")
+  document.getElementById("scheduleDateInput").focus()
+}
+
+function closeScheduleModal(){
+  document.getElementById("scheduleOrderModal").classList.remove("show")
+  document.getElementById("scheduleDateInput").value = ""
+  document.getElementById("scheduleNotesInput").value = ""
+}
+
+function confirmScheduleOrder(){
+  const dateInput = document.getElementById("scheduleDateInput")
+  const notesInput = document.getElementById("scheduleNotesInput")
+  const scheduleDate = dateInput.value
+  const notes = notesInput.value.trim()
+  
+  if(!scheduleDate){
+    toast("اختر تاريخ التأجيل")
+    return
+  }
+  
+  if(!selectedCustomerId){toast("اختر زبون");return}
+  if(!items.length){toast("لا توجد منتجات");return}
+
+  // التحقق من اختيار البيج
+  const pageSelect = document.getElementById("pageSelect")
+  if(pageSelect && !pageSelect.value){
+    toast("يرجى اختيار البيج أو اختيار 'لا يوجد بيج'")
+    pageSelect.style.borderColor = "#ef4444"
+    pageSelect.style.borderWidth = "2px"
+    // إزالة الحد الأحمر بعد ثانيتين
+    setTimeout(() => {
+      if(pageSelect) {
+        pageSelect.style.borderColor = ""
+        pageSelect.style.borderWidth = ""
+      }
+    }, 2000)
+    return
+  }
+  
+  // إزالة الحد الأحمر إذا تم الاختيار بنجاح
+  if(pageSelect) {
+    pageSelect.style.borderColor = ""
+    pageSelect.style.borderWidth = ""
+  }
+  
+  let pageId = null
+  let pageName = null
+  if(pageSelect && pageSelect.value && pageSelect.value !== "no_page"){
+    pageId = pageSelect.value
+    const selectedOption = pageSelect.options[pageSelect.selectedIndex]
+    pageName = selectedOption ? selectedOption.getAttribute('data-name') || selectedOption.text : null
+  }
+
+  fetch("/pos/create-order",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      customer_id:selectedCustomerId,
+      items:items,
+      note:notes || null,
+      scheduled_date: scheduleDate,
+      page_id: pageId || null,
+      page_name: pageName || null
+    })
+  }).then(r=>r.json()).then(d=>{
+    if(d.error){
+      toast("❌ " + d.error)
+      return
+    }
+    const date = new Date(scheduleDate).toLocaleDateString('ar-SA')
+    toast(`✅ تم تأجيل الطلب إلى ${date}`)
+    closeScheduleModal()
+    items=[]
+    renderItems()
+    selectedCustomerId = null
+    selectedCustomer.innerText = "لم يتم اختيار زبون"
+  }).catch(err=>{
+    toast("❌ حدث خطأ: " + err.message)
+  })
+}
+
+function submitOrder(){
+  openOrderNotesModal()
+}
+
+/* ===== OCR ===== */
+function openCamera(){cameraInput.click()}
+function uploadImage(){imageInput.click()}
+
+cameraInput.onchange=e=>e.target.files[0]&&sendToOCR(e.target.files[0])
+imageInput.onchange=e=>e.target.files[0]&&sendToOCR(e.target.files[0])
+
+function sendToOCR(file){
+  if (!file) return;
+  
+  // إظهار OCR loader
+  const loaderWrapper = document.getElementById("ocrLoaderWrapper");
+  if (loaderWrapper) {
+    loaderWrapper.classList.add("active");
+  }
+  
+  const f=new FormData()
+  f.append("image",file)
+  fetch("/ai/ocr",{method:"POST",body:f})
+  .then(r=>r.json())
+  .then(d=>{
+    // إخفاء OCR loader
+    if (loaderWrapper) {
+      loaderWrapper.classList.remove("active");
+    }
+    
+    if(d.status === "fail"){
+      let errorMsg = "❌ حدث خطأ: " + (d.error || "فشل في معالجة الصورة");
+      
+      // Add helpful hints if Arabic recognition fails
+      if(d.error && d.error.includes("Tesseract")){
+        errorMsg += "\n\n💡 نصائح لتحسين التعرف على النص العربي:\n";
+        errorMsg += "1. تأكد من تثبيت Tesseract OCR\n";
+        errorMsg += "2. تأكد من تثبيت حزمة اللغة العربية (ara.traineddata)\n";
+        errorMsg += "3. تأكد من وضوح الصورة وإضاءة جيدة\n";
+        errorMsg += "4. حاول التقاط الصورة بشكل مستقيم وواضح\n";
+      } else if(d.error && d.error.includes("لم يتم التعرف")){
+        errorMsg += "\n\n💡 نصائح:\n";
+        errorMsg += "1. تأكد من وضوح الصورة\n";
+        errorMsg += "2. تأكد من إضاءة جيدة (تجنب الظلال)\n";
+        errorMsg += "3. اجعل النص في مركز الصورة\n";
+        errorMsg += "4. تجنب زوايا مائلة للصورة\n";
+        errorMsg += "5. تأكد من أن النص العربي واضح ومقروء\n";
+      }
+      
+      alert(errorMsg);
+      return;
+    }
+    
+    ocrModal.style.display="block"
+    ocrText.value=d.raw_text||""
+    ocrName.value=d.name||""
+    ocrPhone.value=d.phone||""
+    ocrAddress.value=d.address||""
+    
+    // تعيين المحافظة المستخرجة
+    if(d.city){
+      const citySelect = document.getElementById("ocrCity")
+      if(citySelect){
+        // البحث عن المحافظة في القائمة
+        for(let i=0; i<citySelect.options.length; i++){
+          if(citySelect.options[i].value === d.city){
+            citySelect.selectedIndex = i
+            break
+          }
+        }
+        // إذا لم يتم العثور عليها، إضافة كخيار جديد
+        if(citySelect.value !== d.city){
+          const option = document.createElement("option")
+          option.value = d.city
+          option.text = d.city
+          citySelect.appendChild(option)
+          citySelect.value = d.city
+        }
+      }
+    }
+    
+    // Show confidence if available
+    if(d.confidence){
+      const confMsg = document.createElement("div");
+      confMsg.style.cssText = "margin-top:10px;padding:8px;background:rgba(59,130,246,0.1);border-radius:5px;font-size:12px;color:#3b82f6";
+      confMsg.innerHTML = `📊 دقة التعرف: ${d.confidence}%`;
+      ocrModal.querySelector(".card").appendChild(confMsg);
+      setTimeout(() => confMsg.remove(), 5000);
+    }
+  })
+  .catch(error => {
+    // إخفاء OCR loader في حالة الخطأ
+    const loaderWrapper = document.getElementById("ocrLoaderWrapper");
+    if (loaderWrapper) {
+      loaderWrapper.classList.remove("active");
+    }
+    alert("❌ حدث خطأ أثناء معالجة الصورة: " + error.message);
+    console.error("OCR Error:", error);
+  })
+}
+
+function confirmOCR(){
+  fetch("/ai/ocr/confirm",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      raw_text:ocrText.value,  // إضافة raw_text للمساعدة في التعلم
+      name:ocrName.value,
+      phone:ocrPhone.value,
+      address:ocrAddress.value || "",  // إرسال العنوان كما هو (مثل "مجان")
+      city:document.getElementById("ocrCity") ? document.getElementById("ocrCity").value : ""
+    })
+  }).then(r=>r.json())
+   .then(d=>{
+    if (d.status === "success" || d.status === "exists") {
+      selectedCustomerId=d.id
+      selectedCustomer.innerText=`${d.name} - ${d.phone}`
+      closeOCR()
+      toast("تم حفظ بيانات OCR")
+    } else {
+      toast("❌ حدث خطأ أثناء حفظ البيانات")
+    }
+  })
+  .catch(error => {
+    console.error("OCR confirm error:", error);
+    toast("❌ حدث خطأ أثناء حفظ البيانات")
+  })
+}
+
+function closeOCR(){ocrModal.style.display="none"}
+
+/* ===== عرض الأسعار ===== */
+let allProducts = []
+let filteredProducts = []
+
+function showPricesModal(){
+  fetch('/pos/all-products')
+    .then(r => r.json())
+    .then(data => {
+      allProducts = data.products || []
+      filteredProducts = allProducts
+      renderPricesList()
+      document.getElementById('pricesModal').classList.add('show')
+    })
+    .catch(err => {
+      console.error('Error loading products:', err)
+      toast('حدث خطأ في جلب المنتجات')
+    })
+}
+
+function closePricesModal(){
+  document.getElementById('pricesModal').classList.remove('show')
+  allProducts = []
+  filteredProducts = []
+}
+
+function filterPrices(){
+  const search = document.getElementById('pricesSearch').value.toLowerCase()
+  filteredProducts = allProducts.filter(p => 
+    p.name.toLowerCase().includes(search)
+  )
+  renderPricesList()
+}
+
+function renderPricesList(){
+  const container = document.getElementById('pricesList')
+  if(filteredProducts.length === 0){
+    container.innerHTML = `
+      <div style="text-align:center;padding:60px 20px;color:#6b7280">
+        <div style="font-size:48px;margin-bottom:16px">🔍</div>
+        <div style="font-size:18px;font-weight:600;margin-bottom:8px">لا توجد منتجات</div>
+        <div style="font-size:14px;opacity:0.7">جرب البحث بكلمات مختلفة</div>
+      </div>
+    `
+    return
+  }
+  
+  container.innerHTML = `
+    <table style="width:100%;border-collapse:collapse">
+      <thead>
+        <tr style="background:linear-gradient(135deg, #f8fafc, #f1f5f9);border-bottom:2px solid #e5e7eb">
+          <th style="padding:14px 16px;text-align:right;font-weight:700;color:#0f172a;font-size:15px;border-bottom:2px solid #3b82f6">اسم المنتج</th>
+          <th style="padding:14px 16px;text-align:left;font-weight:700;color:#0f172a;font-size:15px;border-bottom:2px solid #3b82f6">السعر (د.ع)</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${filteredProducts.map((p, idx) => `
+          <tr style="border-bottom:1px solid #f1f5f9;transition:background 0.2s" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#fff'">
+            <td style="padding:16px;text-align:right;font-size:15px;color:#0f172a;font-weight:500">${p.name}</td>
+            <td style="padding:16px;text-align:left;font-size:16px;color:#16a34a;font-weight:700">${p.sale_price.toLocaleString()}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+    <div style="padding:16px;text-align:center;color:#6b7280;font-size:14px;border-top:1px solid #e5e7eb;margin-top:8px;background:#f8fafc;border-radius:0 0 12px 12px">
+      <strong>${filteredProducts.length}</strong> منتج
+    </div>
+  `
+}
+
+
+// إغلاق Modal عند الضغط خارجها
+document.addEventListener('click', function(e){
+  if(e.target.id === 'pricesModal'){
+    closePricesModal()
+  }
+})
+
+// Update unread messages badge
+function updateMessagesBadge() {
+  fetch('/messages/unread-count')
+    .then(r => {
+      if (!r.ok) {
+        throw new Error('Network response was not ok');
+      }
+      return r.json();
+    })
+    .then(data => {
+      const badge = document.getElementById('chatBadge');
+      if (badge) {
+        if (data.unread_count > 0) {
+          badge.textContent = data.unread_count;
+          badge.classList.remove('hidden');
+        } else {
+          badge.classList.add('hidden');
+        }
+      }
+    })
+    .catch(error => {
+      // إخفاء الأخطاء الصامتة - الخادم غير متاح
+      // Silently ignore connection errors
+      if (error.name !== 'TypeError' || !error.message.includes('fetch')) {
+        // فقط سجل الأخطاء غير المتعلقة بالاتصال
+        // Only log non-connection errors
+        console.error('Error updating messages badge:', error);
+      }
+    });
+}
+
+// Update badge on page load and periodically
+document.addEventListener('DOMContentLoaded', function() {
+  updateMessagesBadge();
+  setInterval(updateMessagesBadge, 10000); // Update every 10 seconds
+});
+</script>
+
+<!-- Floating Chat Button -->
+<button class="floating-chat-btn" onclick="window.location.href='/messages'" title="المراسلة">
+{% if employee and employee.shipping_company_id %}
+<a href="/delivery/archive" class="floating-archive-btn" title="أرشيف الكشوفات">📦</a>
+{% endif %}
+  <i class="fa fa-comments"></i>
+  <span class="badge hidden" id="chatBadge">0</span>
+</button>
+
+</body>
+</html>

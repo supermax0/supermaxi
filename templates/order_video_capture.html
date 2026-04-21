@@ -1,0 +1,432 @@
+{% extends "base.html" %}
+
+{% block title %}تسجيل فيديو الطلب #{{ order.id }}{% endblock %}
+{% block page_title %}تسجيل فيديو الطلب #{{ order.id }}{% endblock %}
+
+{% block content %}
+<style>
+  .video-page {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: grid;
+    gap: 20px;
+  }
+
+  .video-card {
+    background: linear-gradient(145deg, rgba(15, 23, 42, 0.88), rgba(30, 41, 59, 0.72));
+    border: 1px solid rgba(59, 130, 246, 0.18);
+    border-radius: 22px;
+    padding: 24px;
+  }
+
+  .video-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 14px;
+  }
+
+  .video-preview {
+    width: 100%;
+    max-height: 420px;
+    border-radius: 18px;
+    background: #020617;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .video-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 18px;
+  }
+
+  .video-btn {
+    border: none;
+    border-radius: 14px;
+    padding: 12px 18px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .video-btn.primary { background: #2563eb; color: #fff; }
+  .video-btn.success { background: #059669; color: #fff; }
+  .video-btn.warning { background: #d97706; color: #fff; }
+  .video-btn.danger { background: #dc2626; color: #fff; }
+  .video-btn.secondary { background: #475569; color: #fff; }
+  .video-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .video-status {
+    margin-top: 12px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    background: rgba(59, 130, 246, 0.12);
+    color: var(--text);
+  }
+
+  .video-note {
+    padding: 14px 16px;
+    border-radius: 14px;
+    background: rgba(245, 158, 11, 0.14);
+    color: var(--text);
+  }
+
+  .video-empty {
+    padding: 18px;
+    border-radius: 16px;
+    background: rgba(15, 23, 42, 0.45);
+    color: var(--text-muted);
+    text-align: center;
+  }
+</style>
+
+<div class="video-page">
+  <div class="video-card">
+    <div class="video-grid">
+      <div><strong>رقم الطلب:</strong> {{ order.id }}</div>
+      <div><strong>الزبون:</strong> {{ order.customer.name if order.customer else order.customer_name }}</div>
+      <div><strong>الهاتف:</strong> {{ order.customer.phone if order.customer else "—" }}</div>
+      <div><strong>الحالة:</strong> {{ order.status or "—" }}</div>
+      <div><strong>الدفع:</strong> {{ order.payment_status or "—" }}</div>
+      <div><strong>الباركود:</strong> {{ order.barcode or "—" }}</div>
+    </div>
+  </div>
+
+  {% if is_locked %}
+  <div class="video-note">
+    هذا الطلب مغلق حالياً، لذلك تم تعطيل تسجيل فيديو جديد له.
+  </div>
+  {% endif %}
+
+  <div class="video-card">
+    <h3 style="margin-top:0;">الكاميرا والتسجيل</h3>
+    <video id="livePreview" class="video-preview" autoplay playsinline muted></video>
+    <div class="video-actions">
+      <button id="startCameraBtn" class="video-btn primary" {% if is_locked %}disabled{% endif %}>فتح الكاميرا</button>
+      <button id="startRecordingBtn" class="video-btn success" disabled>بدء التسجيل</button>
+      <button id="stopRecordingBtn" class="video-btn danger" disabled>إيقاف التسجيل</button>
+      <button id="saveRecordingBtn" class="video-btn warning" disabled>حفظ الفيديو</button>
+      <button id="backToOrdersBtn" class="video-btn secondary">العودة للطلبات</button>
+    </div>
+    <div id="statusBox" class="video-status">جاهز لتسجيل فيديو الطلب.</div>
+  </div>
+
+  <div class="video-card">
+    <h3 style="margin-top:0;">المعاينة قبل الحفظ</h3>
+    <video id="recordedPreview" class="video-preview" controls playsinline></video>
+    <div class="video-actions">
+      <button id="downloadRecordedBtn" class="video-btn secondary" disabled>تنزيل المعاينة</button>
+      <button id="clearRecordedBtn" class="video-btn secondary" disabled>مسح المعاينة</button>
+    </div>
+  </div>
+
+  <div class="video-card">
+    <h3 style="margin-top:0;">الفيديو المحفوظ داخل الطلب</h3>
+    <div id="savedVideoSection"></div>
+  </div>
+</div>
+
+<script>
+  const orderId = {{ order.id }};
+  const autostart = {{ autostart|tojson }};
+  const isLocked = {{ is_locked|tojson }};
+  let currentVideo = {{ video_data|tojson }};
+  let mediaStream = null;
+  let mediaRecorder = null;
+  let recordedBlob = null;
+  let recordedUrl = null;
+  let recordedChunks = [];
+
+  const livePreview = document.getElementById("livePreview");
+  const recordedPreview = document.getElementById("recordedPreview");
+  const statusBox = document.getElementById("statusBox");
+  const startCameraBtn = document.getElementById("startCameraBtn");
+  const startRecordingBtn = document.getElementById("startRecordingBtn");
+  const stopRecordingBtn = document.getElementById("stopRecordingBtn");
+  const saveRecordingBtn = document.getElementById("saveRecordingBtn");
+  const downloadRecordedBtn = document.getElementById("downloadRecordedBtn");
+  const clearRecordedBtn = document.getElementById("clearRecordedBtn");
+  const savedVideoSection = document.getElementById("savedVideoSection");
+
+  function setStatus(message, isError = false) {
+    statusBox.textContent = message;
+    statusBox.style.background = isError ? "rgba(220, 38, 38, 0.15)" : "rgba(59, 130, 246, 0.12)";
+  }
+
+  function downloadFile(url, filename) {
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename || "";
+    link.target = "_blank";
+    link.rel = "noopener";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }
+
+  async function shareVideo(url, filename) {
+    const absoluteUrl = new URL(url, window.location.origin).href;
+
+    if (navigator.share) {
+      try {
+        const response = await fetch(absoluteUrl);
+        const blob = await response.blob();
+        const file = new File([blob], filename || `order-${orderId}-video.webm`, { type: blob.type || "video/webm" });
+
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            title: `فيديو الطلب #${orderId}`,
+            text: `فيديو الطلب رقم ${orderId}`,
+            files: [file]
+          });
+          return;
+        }
+      } catch (error) {
+        console.error("Share file failed:", error);
+      }
+
+      await navigator.share({
+        title: `فيديو الطلب #${orderId}`,
+        text: `فيديو الطلب رقم ${orderId}`,
+        url: absoluteUrl
+      });
+      return;
+    }
+
+    if (navigator.clipboard) {
+      await navigator.clipboard.writeText(absoluteUrl);
+      setStatus("تم نسخ رابط الفيديو للمشاركة.");
+      return;
+    }
+
+    setStatus("المشاركة غير مدعومة على هذا الجهاز.", true);
+  }
+
+  function resetRecordedPreview() {
+    if (recordedUrl) {
+      URL.revokeObjectURL(recordedUrl);
+    }
+
+    recordedBlob = null;
+    recordedUrl = null;
+    recordedChunks = [];
+    recordedPreview.removeAttribute("src");
+    recordedPreview.load();
+    saveRecordingBtn.disabled = true;
+    downloadRecordedBtn.disabled = true;
+    clearRecordedBtn.disabled = true;
+  }
+
+  function renderSavedVideo() {
+    if (!currentVideo || !currentVideo.has_video) {
+      savedVideoSection.innerHTML = '<div class="video-empty">لا يوجد فيديو محفوظ لهذا الطلب بعد.</div>';
+      return;
+    }
+
+    savedVideoSection.innerHTML = `
+      <video class="video-preview" controls playsinline src="${currentVideo.url}"></video>
+      <div class="video-actions">
+        <button class="video-btn secondary" id="downloadSavedBtn">تنزيل الفيديو</button>
+        <button class="video-btn primary" id="shareSavedBtn">مشاركة الفيديو</button>
+        ${!isLocked ? '<button class="video-btn danger" id="deleteSavedBtn">حذف الفيديو</button>' : ""}
+      </div>
+      <div class="video-status" style="margin-top:16px;">
+        اسم الملف: ${currentVideo.filename || "—"}<br>
+        وقت الحفظ: ${currentVideo.uploaded_at || "—"}
+      </div>
+    `;
+
+    document.getElementById("downloadSavedBtn")?.addEventListener("click", () => {
+      downloadFile(currentVideo.url, currentVideo.filename);
+    });
+
+    document.getElementById("shareSavedBtn")?.addEventListener("click", async () => {
+      try {
+        await shareVideo(currentVideo.url, currentVideo.filename);
+      } catch (error) {
+        console.error(error);
+        setStatus("تعذر مشاركة الفيديو.", true);
+      }
+    });
+
+    document.getElementById("deleteSavedBtn")?.addEventListener("click", async () => {
+      if (!confirm("هل تريد حذف الفيديو المحفوظ من هذا الطلب؟")) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`/orders/video-delete/${orderId}`, { method: "POST" });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          throw new Error(data.error || "فشل حذف الفيديو");
+        }
+
+        currentVideo = { has_video: false, url: null, filename: null, uploaded_at: null };
+        renderSavedVideo();
+        setStatus("تم حذف الفيديو من الطلب.");
+      } catch (error) {
+        console.error(error);
+        setStatus(error.message || "تعذر حذف الفيديو.", true);
+      }
+    });
+  }
+
+  function getSupportedMimeType() {
+    const candidates = [
+      "video/webm;codecs=vp9,opus",
+      "video/webm;codecs=vp8,opus",
+      "video/webm",
+      "video/mp4"
+    ];
+
+    return candidates.find((type) => window.MediaRecorder && MediaRecorder.isTypeSupported(type)) || "";
+  }
+
+  async function startCamera() {
+    if (isLocked) {
+      return;
+    }
+
+    try {
+      if (mediaStream) {
+        startRecordingBtn.disabled = false;
+        setStatus("الكاميرا مفتوحة وجاهزة للتسجيل.");
+        return;
+      }
+
+      mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" } },
+        audio: true
+      });
+
+      livePreview.srcObject = mediaStream;
+      startRecordingBtn.disabled = false;
+      setStatus("تم فتح الكاميرا. يمكنك بدء التسجيل الآن.");
+    } catch (error) {
+      console.error(error);
+      setStatus("تعذر فتح الكاميرا. تأكد من منح الإذن للكاميرا والمايكروفون.", true);
+    }
+  }
+
+  function stopCamera() {
+    if (!mediaStream) {
+      return;
+    }
+
+    mediaStream.getTracks().forEach((track) => track.stop());
+    mediaStream = null;
+    livePreview.srcObject = null;
+    startRecordingBtn.disabled = true;
+  }
+
+  async function startRecording() {
+    if (!mediaStream) {
+      await startCamera();
+      if (!mediaStream) {
+        return;
+      }
+    }
+
+    const mimeType = getSupportedMimeType();
+    recordedChunks = [];
+    resetRecordedPreview();
+
+    mediaRecorder = mimeType ? new MediaRecorder(mediaStream, { mimeType }) : new MediaRecorder(mediaStream);
+    mediaRecorder.ondataavailable = (event) => {
+      if (event.data && event.data.size > 0) {
+        recordedChunks.push(event.data);
+      }
+    };
+
+    mediaRecorder.onstop = () => {
+      recordedBlob = new Blob(recordedChunks, { type: mediaRecorder.mimeType || "video/webm" });
+      recordedUrl = URL.createObjectURL(recordedBlob);
+      recordedPreview.src = recordedUrl;
+      recordedPreview.load();
+      saveRecordingBtn.disabled = false;
+      downloadRecordedBtn.disabled = false;
+      clearRecordedBtn.disabled = false;
+      startRecordingBtn.disabled = false;
+      stopRecordingBtn.disabled = true;
+      setStatus("تم إيقاف التسجيل. راجع الفيديو ثم احفظه داخل الطلب.");
+    };
+
+    mediaRecorder.start();
+    startRecordingBtn.disabled = true;
+    stopRecordingBtn.disabled = false;
+    saveRecordingBtn.disabled = true;
+    setStatus("جاري تسجيل الفيديو...");
+  }
+
+  function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state !== "inactive") {
+      mediaRecorder.stop();
+    }
+  }
+
+  async function saveRecording() {
+    if (!recordedBlob) {
+      setStatus("لا يوجد فيديو جديد للحفظ.", true);
+      return;
+    }
+
+    const extension = recordedBlob.type.includes("mp4") ? "mp4" : "webm";
+    const formData = new FormData();
+    formData.append("video", recordedBlob, `order-${orderId}-${Date.now()}.${extension}`);
+
+    saveRecordingBtn.disabled = true;
+    setStatus("جاري رفع الفيديو وربطه بالطلب...");
+
+    try {
+      const response = await fetch(`/orders/video-upload/${orderId}`, {
+        method: "POST",
+        body: formData
+      });
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "فشل حفظ الفيديو");
+      }
+
+      currentVideo = data.video;
+      renderSavedVideo();
+      setStatus("تم حفظ الفيديو داخل تفاصيل الطلب بنجاح.");
+      resetRecordedPreview();
+    } catch (error) {
+      console.error(error);
+      saveRecordingBtn.disabled = false;
+      setStatus(error.message || "تعذر حفظ الفيديو.", true);
+    }
+  }
+
+  startCameraBtn.addEventListener("click", startCamera);
+  startRecordingBtn.addEventListener("click", startRecording);
+  stopRecordingBtn.addEventListener("click", stopRecording);
+  saveRecordingBtn.addEventListener("click", saveRecording);
+  downloadRecordedBtn.addEventListener("click", () => {
+    if (recordedUrl) {
+      downloadFile(recordedUrl, `order-${orderId}-preview.webm`);
+    }
+  });
+  clearRecordedBtn.addEventListener("click", () => {
+    resetRecordedPreview();
+    setStatus("تم مسح المعاينة الحالية.");
+  });
+
+  document.getElementById("backToOrdersBtn").addEventListener("click", () => {
+    window.location.href = "/orders";
+  });
+
+  window.addEventListener("beforeunload", () => {
+    stopCamera();
+    if (recordedUrl) {
+      URL.revokeObjectURL(recordedUrl);
+    }
+  });
+
+  renderSavedVideo();
+
+  if (autostart && !isLocked) {
+    startCamera();
+  }
+</script>
+{% endblock %}
