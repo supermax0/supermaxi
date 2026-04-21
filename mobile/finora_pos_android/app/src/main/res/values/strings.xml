@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Finora POS</string>
+    <string name="server_dialog_title">رابط الخادم</string>
+    <string name="server_dialog_message">أدخل عنوان Finora بدون / في النهاية.\nمثال: https://shop.example.com أو http://192.168.1.10:5000</string>
+    <string name="ok">حفظ وفتح POS</string>
+    <string name="menu_change_server">تغيير السيرفر</string>
+    <string name="menu_reload">إعادة تحميل</string>
+    <string name="hint_server_url">https://…</string>
+</resources>
