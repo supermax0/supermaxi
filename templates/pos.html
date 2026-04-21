@@ -4,7 +4,8 @@
 <head>
   <meta charset="UTF-8">
   <title>POS</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="format-detection" content="telephone=no">
   <!-- Favicon -->
   <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='IMG_0200.png') }}">
   <link rel="shortcut icon" href="{{ url_for('static', filename='IMG_0200.png') }}">
@@ -69,6 +70,11 @@
       -moz-osx-font-smoothing: grayscale;
     }
 
+    html {
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+    }
+
     body {
       margin: 0;
       font-family: 'Tajawal', system-ui, -apple-system, sans-serif;
@@ -78,7 +84,10 @@
         radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.1) 0px, transparent 50%);
       color: var(--text);
       min-height: 100vh;
+      min-height: 100dvh;
+      min-height: -webkit-fill-available;
       line-height: 1.6;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
     }
 
     .pos {
@@ -443,6 +452,15 @@
     .price-edit-btn:hover {
       transform: translateY(-2px);
       box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    }
+
+    /* iOS/Safari: منع التكبير التلقائي عند التركيز على الحقول */
+    @media (max-width: 768px) {
+      input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="range"]):not([type="color"]),
+      select,
+      textarea {
+        font-size: 16px !important;
+      }
     }
 
     /* Mobile Table to Cards */

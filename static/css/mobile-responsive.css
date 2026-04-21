@@ -54,15 +54,24 @@
     gap: 5px !important;
   }
 
-  /* تصغير المدخلات */
-  input,
+  /* مدخلات النماذج: 16px يمنع تكبير Safari/iOS عند التركيز */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="range"]):not([type="color"]),
   select,
   textarea {
     padding: 9px 12px !important;
-    font-size: 14px !important;
-    /* لمنع zoom على iOS */
+    font-size: 16px !important;
     border-radius: 10px !important;
-    min-height: 38px;
+    min-height: 40px;
+  }
+
+  .responsive-table input,
+  .responsive-table select,
+  .responsive-table textarea,
+  .table-mobile-cards input,
+  .table-mobile-cards select,
+  .table-mobile-cards textarea {
+    font-size: 12px !important;
+    min-height: 32px;
   }
 
   /* Topbar */
@@ -154,7 +163,14 @@
   button {
     padding: 6px 10px !important;
     font-size: 11px !important;
-    min-height: 34px;
+    min-height: 36px;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="range"]):not([type="color"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+    min-height: 40px;
   }
 
   main {

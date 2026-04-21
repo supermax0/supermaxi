@@ -4,7 +4,8 @@
 <head>
   <meta charset="UTF-8">
   <title>{% block title %}Finora{% endblock %}</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="format-detection" content="telephone=no">
   <meta name="description" content="Finora - نظام محاسبة متكامل لإدارة المبيعات والمخزون">
   <meta name="theme-color" content="#0a0f1c">
 
@@ -107,6 +108,26 @@
     /* Smooth scrolling */
     html {
       scroll-behavior: smooth;
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+    }
+
+    /* شقوق الشاشة والحواف الآمنة (آيفون وغيره) */
+    @supports (padding: max(0px)) {
+      .topbar {
+        padding-top: max(16px, env(safe-area-inset-top, 0px));
+        padding-right: max(28px, env(safe-area-inset-right, 0px));
+        padding-left: max(28px, env(safe-area-inset-left, 0px));
+      }
+
+      .sidebar {
+        padding-top: max(24px, env(safe-area-inset-top, 0px));
+        padding-bottom: max(24px, env(safe-area-inset-bottom, 0px));
+      }
+
+      main.page-main {
+        padding-bottom: max(0px, env(safe-area-inset-bottom, 0px));
+      }
     }
 
     /* Selection color */
@@ -121,6 +142,8 @@
     .app {
       display: flex;
       min-height: 100vh;
+      min-height: 100dvh;
+      min-height: -webkit-fill-available;
       overflow-x: hidden;
       position: relative;
       isolation: isolate;
@@ -1227,6 +1250,9 @@
 
       .topbar {
         padding: 14px 20px;
+        padding-top: max(14px, env(safe-area-inset-top, 0px));
+        padding-right: max(20px, env(safe-area-inset-right, 0px));
+        padding-left: max(20px, env(safe-area-inset-left, 0px));
         flex-wrap: wrap;
         gap: 12px;
       }
