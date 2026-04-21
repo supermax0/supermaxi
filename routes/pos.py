@@ -320,6 +320,7 @@ def search_product():
             "name": product_by_barcode.name,
             "price": product_by_barcode.sale_price,
             "quantity": product_by_barcode.quantity or 0,
+            "image_url": product_by_barcode.image_url or "",
             "is_barcode": True
         }])
 
@@ -335,6 +336,7 @@ def search_product():
             "name": p.name,
             "price": p.sale_price,
             "quantity": p.quantity,
+            "image_url": p.image_url or "",
             "is_barcode": False
         } for p in products
     ])
@@ -604,7 +606,8 @@ def all_products():
                 "name": p.name,
                 "sale_price": p.sale_price,
                 "buy_price": p.buy_price,
-                "quantity": p.quantity
+                "quantity": p.quantity,
+                "image_url": p.image_url or ""
             } for p in products
         ]
     })

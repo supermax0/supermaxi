@@ -1,125 +1,80 @@
-You are a senior Python engineer. Fix my Telegram bot conversation logic.
+Design a world-class Point of Sale (POS) mobile interface with a modern, clean, and premium UI/UX.
 
-## PROBLEM
+The design should follow top-tier product standards like Stripe, Apple, and Shopify POS systems.
 
-The bot is stateless and keeps asking repeated questions (address, quantity, date). It does not remember user answers and breaks the flow.
+Requirements:
 
-## GOAL
+* Use a card-based layout with proper spacing and visual hierarchy
+* Minimalist, clean, and highly readable interface
+* Soft shadows, rounded corners (12-16px), and smooth gradients
+* Use a modern color palette (primary: indigo or blue, neutral background, subtle gray borders)
+* Typography should be clear and modern (similar to Inter or SF Pro)
+* RTL (Right-to-left) Arabic layout support
 
-Implement a proper conversation workflow using:
+Sections:
 
-* Finite State Machine (FSM)
-* Persistent storage (SQLite via SQLAlchemy)
-* Clear step-based flow per user
-* Basic intent handling (cancel / confirm)
+1. Header:
 
-## TECH STACK
+   * Title: "نقطة البيع"
+   * Back button
+   * Clean minimal top bar
 
-* Python
-* Flask (already used)
-* Telegram Bot (assume pyTelegramBotAPI or aiogram – detect from project)
-* SQLite (SQLAlchemy ORM)
+2. Total Summary Card (highlighted):
 
-## REQUIREMENTS
+   * Large bold total price
+   * Gradient background
+   * Clear currency display (IQD)
 
-### 1. Create user session model
+3. Customer Section:
 
-Add a table:
+   * Search input with icon
+   * "Add Customer" button
 
-* id
-* user_id (telegram chat id)
-* step (string)
-* address (string)
-* quantity (integer)
-* date (string)
-* updated_at
+4. Product Section:
 
-### 2. Define steps
+   * Smart search / barcode input
+   * Autofocus and suggestions dropdown
 
-Use constants:
+5. Cart Section:
 
-* ASK_ADDRESS
-* ASK_QUANTITY
-* ASK_DATE
-* CONFIRM
+   * Product cards with:
 
-### 3. Build FSM logic
+     * Name
+     * Price
+     * Quantity controls (+ / -)
+     * Edit price button
+     * Remove icon
+   * Clean divider spacing
 
-Implement a handler:
+6. Additional Fields:
 
-function handle_message(user_id, text):
+   * Delivery date input (modern date picker)
+   * Notes textarea
 
-Flow:
+7. Checkout Button:
 
-* If no session → create with step = ASK_ADDRESS
+   * Fixed bottom button
+   * Large, high contrast, primary color
+   * Smooth hover / press animation
 
-* If step == ASK_ADDRESS:
-  save address
-  move to ASK_QUANTITY
-  reply: "كم الكمية؟"
+UX Enhancements:
 
-* If step == ASK_QUANTITY:
-  parse integer
-  save quantity
-  move to ASK_DATE
-  
+* Micro-interactions (hover, tap feedback, animations)
+* Smooth transitions
+* Focus states for inputs
+* Empty states design
+* Error states design
 
-* If step == ASK_DATE:
-  save date
-  move to CONFIRM
-  reply with summary:
-  العنوان
-  الكمية
-  
+Style:
 
-* If step == CONFIRM:
-  if user confirms → finalize order
-  if user cancels → reset session
+* Glassmorphism or soft neumorphism (optional, subtle only)
+* Modern SaaS dashboard feel
+* No clutter, no heavy borders
 
-### 4. Add intent detection (simple)
+Output:
 
-Before FSM:
+* High-fidelity UI design
+* Mobile-first responsive layout
+* Production-ready HTML + CSS + JavaScript
 
-if text contains:
-
-* "الغاء" → reset session
-* "نعم" or "تأكيد" → confirm
-
-### 5. Reset logic
-
-Function reset_session(user_id):
-
-* delete or reset step
-
-### 6. Persist everything in DB
-
-NO in-memory dicts.
-
-### 7. Clean architecture
-
-* models.py → DB models
-* services/session_manager.py → FSM logic
-* bot/handlers.py → telegram handlers
-
-### 8. Fix Arabic responses
-
-Make responses clear and not repetitive.
-
-### 9. Prevent loops
-
-Do NOT re-ask previous answered questions.
-
-### 10. Edge cases
-
-* If user sends random text → respond based on current step
-* If quantity invalid → ask again
-
-## OUTPUT
-
-* Full working code
-* SQLAlchemy model
-* FSM handler
-* Telegram integration
-* Clean structured files
-
-Do NOT explain. Only write clean production-ready code.
+Make it look like a premium, scalable commercial product used in real businesses.

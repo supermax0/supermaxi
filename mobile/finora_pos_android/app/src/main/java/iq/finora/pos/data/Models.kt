@@ -6,7 +6,8 @@ data class ProductRow(
     val id: Long,
     val name: String,
     @SerializedName("sale_price") val salePrice: Double,
-    val quantity: Int
+    val quantity: Int,
+    @SerializedName("image_url") val imageUrl: String? = ""
 )
 
 data class AllProductsResponse(
@@ -20,6 +21,7 @@ data class SearchProductItem(
     val name: String,
     val price: Double,
     val quantity: Int,
+    @SerializedName("image_url") val imageUrl: String? = "",
     @SerializedName("is_barcode") val isBarcode: Boolean = false
 )
 
@@ -55,4 +57,20 @@ data class CreateOrderResponse(
     val error: String?,
     val blacklisted: Boolean? = null,
     val available: Int? = null
+)
+
+data class AddCustomerRequest(
+    val name: String,
+    val phone: String,
+    val phone2: String? = null,
+    val city: String? = null,
+    val address: String? = null
+)
+
+data class AddCustomerResponse(
+    val status: String?,
+    val id: Long?,
+    val name: String?,
+    val phone: String?,
+    val msg: String?
 )

@@ -16,6 +16,7 @@ class FinoraApp : Application() {
     override fun onCreate() {
         super.onCreate()
         val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+        prefs.edit().putString(KEY_BASE_URL, FIXED_BASE_URL).apply()
         // إزالة كوكيز قديمة من نسخة OkHttp CookieJar السابقة
         prefs.edit().remove("okhttp_cookies").apply()
 
@@ -35,6 +36,7 @@ class FinoraApp : Application() {
     companion object {
         const val PREFS_NAME = "finora_pos"
         const val KEY_BASE_URL = "base_url"
+        const val FIXED_BASE_URL = "https://www.finora.company"
         /** قيمة رأس Cookie لكوكي الجلسة، مثل session=... */
         const val KEY_SESSION_COOKIE_PAIR = "session_cookie_pair"
     }

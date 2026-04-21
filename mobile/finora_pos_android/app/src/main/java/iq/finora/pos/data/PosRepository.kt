@@ -17,12 +17,10 @@ class PosRepository(
     private val gson: Gson = Gson()
 ) {
 
-    fun getBaseUrl(): String? =
-        prefs.getString(FinoraApp.KEY_BASE_URL, null)?.trim()?.trimEnd('/')
+    fun getBaseUrl(): String? = FinoraApp.FIXED_BASE_URL
 
-    fun setBaseUrl(url: String) {
-        val n = url.trim().trimEnd('/')
-        prefs.edit().putString(FinoraApp.KEY_BASE_URL, n).apply()
+    fun setBaseUrl(@Suppress("UNUSED_PARAMETER") url: String) {
+        // intentionally ignored: server URL is fixed for this app build
     }
 
     private fun clearStoredSession() {
@@ -143,14 +141,19 @@ class PosRepository(
         }
     }
 
-    fun createOrder(customerId: Long, items: List<CreateOrderItem>, note: String?): Result<CreateOrderResponse> {
+    fun createOrder(
+        customerId: Long,
+        items: List<CreateOrderItem>,
+        note: String?,
+        scheduledDate: String?
+    ): Result<CreateOrderResponse> {
         val base = getBaseUrl() ?: return Result.failure(IllegalStateException("لا يوجد خادم"))
         val payload = CreateOrderRequest(
             customerId = customerId,
             items = items,
             note = note?.takeIf { it.isNotBlank() },
             pageId = null,
-            scheduledDate = null
+            scheduledDate = scheduledDate?.takeIf { it.isNotBlank() }
         )
         val json = gson.toJson(payload)
         val body = json.toRequestBody(JSON)
@@ -174,6 +177,53 @@ class PosRepository(
                     ?: extractJsonError(responseBody)
                     ?: "HTTP ${resp.code}"
                 Result.failure(Exception(err))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    fun addCustomer(
+        name: String,
+        phone: String,
+        phone2: String?,
+        city: String?,
+        address: String?
+    ): Result<CustomerRow> {
+        val base = getBaseUrl() ?: return Result.failure(IllegalStateException("لا يوجد خادم"))
+        val payload = AddCustomerRequest(
+            name = name.trim(),
+            phone = phone.trim(),
+            phone2 = phone2?.trim()?.takeIf { it.isNotEmpty() },
+            city = city?.trim()?.takeIf { it.isNotEmpty() },
+            address = address?.trim()?.takeIf { it.isNotEmpty() }
+        )
+        val req = Request.Builder()
+            .url("$base/pos/add-customer")
+            .post(gson.toJson(payload).toRequestBody(JSON))
+            .header("Content-Type", "application/json; charset=utf-8")
+            .build()
+
+        return try {
+            client.newCall(req).execute().use { resp ->
+                val body = resp.body?.string().orEmpty()
+                val parsed = try { gson.fromJson(body, AddCustomerResponse::class.java) } catch (_: Exception) { null }
+                if (!resp.isSuccessful || parsed?.status != "success" || parsed.id == null) {
+                    val msg = parsed?.msg ?: extractJsonError(body) ?: "فشل إضافة الزبون"
+                    return Result.failure(Exception(msg))
+                }
+                Result.success(
+                    CustomerRow(
+                        id = parsed.id,
+                        name = parsed.name ?: name,
+                        phone = parsed.phone ?: phone,
+                        phone2 = phone2.orEmpty(),
+                        city = city.orEmpty(),
+                        address = address.orEmpty(),
+                        blacklisted = false,
+                        blacklistMessage = ""
+                    )
+                )
             }
         } catch (e: Exception) {
             Result.failure(e)

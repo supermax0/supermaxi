@@ -170,6 +170,47 @@
   font-size: 14px;
 }
 
+.app-downloads-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.download-card {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.download-card h4 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+
+.download-card p {
+  margin: 0 0 14px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.download-card a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-weight: 700;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  background: rgba(59, 130, 246, 0.15);
+  color: var(--text);
+}
+
+.download-card a:hover {
+  background: rgba(59, 130, 246, 0.25);
+}
+
 /* حقول العرض السريعة داخل إعدادات الفاتورة */
 .settings-readonly-label {
   display: block;
@@ -229,6 +270,11 @@
   background: #f9fafb;
   border-color: #e5e7eb;
   color: #111827;
+}
+
+:root[data-theme="light"] .download-card {
+  background: #f9fafb;
+  border-color: #e5e7eb;
 }
 
 @media (max-width: 768px) {
@@ -322,6 +368,31 @@
         <i class="fas fa-arrow-left"></i>
       </div>
     </a>
+  </div>
+
+  <div class="settings-section">
+    <div class="settings-section-title">
+      <i class="fas fa-mobile-alt"></i>
+      تحميل تطبيقات الهاتف
+    </div>
+    <div class="app-downloads-grid">
+      <div class="download-card">
+        <h4>نسخة WebView (مطابقة للموقع)</h4>
+        <p>تعرض نفس واجهة الموقع مباشرة داخل التطبيق.</p>
+        <a href="{{ app_downloads.webview }}" target="_blank" rel="noopener">
+          <i class="fas fa-download"></i>
+          تحميل APK
+        </a>
+      </div>
+      <div class="download-card">
+        <h4>نسخة Native (Kotlin)</h4>
+        <p>نسخة أصلية مبنية بـ Kotlin مع واجهات موبايل.</p>
+        <a href="{{ app_downloads.native }}" target="_blank" rel="noopener">
+          <i class="fas fa-download"></i>
+          تحميل APK
+        </a>
+      </div>
+    </div>
   </div>
 
   <div class="settings-section">

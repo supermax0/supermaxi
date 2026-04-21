@@ -96,11 +96,17 @@ def settings():
     if "user_id" in session:
         emp = Employee.query.get(session["user_id"])
         is_admin = bool(emp and emp.is_active and emp.role == "admin")
+
+    app_downloads = {
+        "webview": os.environ.get("APP_WEBVIEW_APK_URL", "/static/downloads/finora-pos-webview.apk"),
+        "native": os.environ.get("APP_NATIVE_APK_URL", "/static/downloads/finora-pos-native.apk"),
+    }
     return render_template(
         "settings.html",
         invoice_settings=invoice_settings,
         first_order=first_order,
         is_admin=is_admin,
+        app_downloads=app_downloads,
     )
 
 @settings_bp.route("/system")

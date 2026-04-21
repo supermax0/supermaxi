@@ -27,7 +27,8 @@ data class CartLine(
     val name: String,
     val unitPrice: Double,
     var qty: Int,
-    val maxStock: Int
+    val maxStock: Int,
+    val imageUrl: String? = ""
 )
 
 @OptIn(FlowPreview::class)
@@ -63,6 +64,9 @@ class PosViewModel(private val repository: PosRepository) : ViewModel() {
     private val _note = MutableStateFlow("")
     val note: StateFlow<String> = _note.asStateFlow()
 
+    private val _scheduledDate = MutableStateFlow("")
+    val scheduledDate: StateFlow<String> = _scheduledDate.asStateFlow()
+
     init {
         _customerQuery
             .debounce(350)
@@ -80,11 +84,45 @@ class PosViewModel(private val repository: PosRepository) : ViewModel() {
             .distinctUntilChanged()
             .filter { it.isNotEmpty() }
             .onEach { q ->
-                val r = withContext(Dispatchers.IO) { repository.searchProducts(q) }
-                if (r.isSuccess) _searchHits.value = r.getOrDefault(emptyList())
-                else _searchHits.value = emptyList()
+                val local = localProductSearch(q)
+                if (local.isNotEmpty()) {
+                    _searchHits.value = local
+                } else {
+                    val r = withContext(Dispatchers.IO) { repository.searchProducts(q) }
+                    if (r.isSuccess) _searchHits.value = r.getOrDefault(emptyList())
+                    else _searchHits.value = emptyList()
+                }
             }
             .launchIn(viewModelScope)
+    }
+
+    private fun normalizeText(s: String): String {
+        return s
+            .lowercase()
+            .replace("أ", "ا")
+            .replace("إ", "ا")
+            .replace("آ", "ا")
+            .replace("ى", "ي")
+            .replace("ة", "ه")
+            .trim()
+    }
+
+    private fun localProductSearch(query: String): List<SearchProductItem> {
+        val nq = normalizeText(query)
+        if (nq.isBlank()) return emptyList()
+        return _products.value
+            .filter { normalizeText(it.name).contains(nq) }
+            .take(20)
+            .map {
+                SearchProductItem(
+                    id = it.id,
+                    name = it.name,
+                    price = it.salePrice,
+                    quantity = it.quantity,
+                    imageUrl = it.imageUrl,
+                    isBarcode = false
+                )
+            }
     }
 
     fun refreshCatalog() {
@@ -126,17 +164,23 @@ class PosViewModel(private val repository: PosRepository) : ViewModel() {
     }
 
     fun addProductFromCatalog(p: ProductRow) {
-        addOrIncrement(p.id, p.name, p.salePrice, p.quantity)
+        addOrIncrement(p.id, p.name, p.salePrice, p.quantity, p.imageUrl)
         _message.value = null
     }
 
     fun addProductFromSearch(p: SearchProductItem) {
-        addOrIncrement(p.id, p.name, p.price, p.quantity)
+        addOrIncrement(p.id, p.name, p.price, p.quantity, p.imageUrl)
         _searchHits.value = emptyList()
         _productQuery.value = ""
     }
 
-    private fun addOrIncrement(productId: Long, name: String, price: Double, stock: Int) {
+    private fun addOrIncrement(
+        productId: Long,
+        name: String,
+        price: Double,
+        stock: Int,
+        imageUrl: String?
+    ) {
         _cart.update { lines ->
             val i = lines.indexOfFirst { it.productId == productId }
             if (i >= 0) {
@@ -151,7 +195,7 @@ class PosViewModel(private val repository: PosRepository) : ViewModel() {
                     _message.value = "الكمية غير متوفرة لهذا المنتج"
                     return@update lines
                 }
-                lines + CartLine(productId, name, price, qty = 1, maxStock = stock)
+                lines + CartLine(productId, name, price, qty = 1, maxStock = stock, imageUrl = imageUrl)
             }
         }
     }
@@ -173,6 +217,54 @@ class PosViewModel(private val repository: PosRepository) : ViewModel() {
 
     fun setNote(s: String) {
         _note.value = s
+    }
+
+    fun clearCart() {
+        _cart.value = emptyList()
+    }
+
+    fun setScheduledDate(s: String) {
+        _scheduledDate.value = s
+    }
+
+    fun setUnitPrice(productId: Long, price: Double) {
+        if (price <= 0) return
+        _cart.update { lines ->
+            lines.map {
+                if (it.productId == productId) it.copy(unitPrice = price) else it
+            }
+        }
+    }
+
+    fun addCustomer(
+        name: String,
+        phone: String,
+        phone2: String,
+        city: String,
+        address: String,
+        onSuccess: () -> Unit
+    ) {
+        if (name.isBlank() || phone.isBlank()) {
+            _message.value = "الاسم والهاتف مطلوبان"
+            return
+        }
+        viewModelScope.launch {
+            _loading.value = true
+            val r = withContext(Dispatchers.IO) {
+                repository.addCustomer(name, phone, phone2, city, address)
+            }
+            _loading.value = false
+            if (r.isSuccess) {
+                val c = r.getOrNull()!!
+                _selectedCustomer.value = c
+                _customerQuery.value = ""
+                _customers.value = emptyList()
+                _message.value = "تمت إضافة الزبون بنجاح"
+                onSuccess()
+            } else {
+                _message.value = r.exceptionOrNull()?.message ?: "تعذر إضافة الزبون"
+            }
+        }
     }
 
     fun submitOrder(onSuccess: (Long, Double) -> Unit) {
@@ -197,7 +289,7 @@ class PosViewModel(private val repository: PosRepository) : ViewModel() {
                 )
             }
             val r = withContext(Dispatchers.IO) {
-                repository.createOrder(cust.id, items, _note.value)
+                repository.createOrder(cust.id, items, _note.value, _scheduledDate.value)
             }
             _loading.value = false
             if (r.isSuccess) {
@@ -205,6 +297,7 @@ class PosViewModel(private val repository: PosRepository) : ViewModel() {
                 onSuccess(body.invoiceId ?: 0L, body.total ?: 0.0)
                 _cart.value = emptyList()
                 _note.value = ""
+                _scheduledDate.value = ""
             } else {
                 _message.value = r.exceptionOrNull()?.message ?: "فشل إنشاء الطلب"
             }

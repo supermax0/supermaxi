@@ -1,33 +1,60 @@
 package iq.finora.pos
 
+import android.annotation.SuppressLint
 import android.os.Bundle
+import android.webkit.CookieManager
+import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Surface
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.unit.LayoutDirection
-import iq.finora.pos.data.PosRepository
-import iq.finora.pos.ui.AppRoot
-import iq.finora.pos.ui.theme.FinoraTheme
 
 class MainActivity : ComponentActivity() {
+
+    private lateinit var webView: WebView
+
+    @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val app = application as FinoraApp
-        val repository = PosRepository.from(app)
-        setContent {
-            FinoraTheme {
-                CompositionLocalProvider(
-                    LocalLayoutDirection provides LayoutDirection.Rtl
-                ) {
-                    Surface(modifier = Modifier.fillMaxSize()) {
-                        AppRoot(repository = repository)
+        setContentView(R.layout.activity_main)
+        webView = findViewById(R.id.webView)
+
+        val cm = CookieManager.getInstance()
+        cm.setAcceptCookie(true)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+            cm.setAcceptThirdPartyCookies(webView, true)
+        }
+
+        webView.settings.apply {
+            javaScriptEnabled = true
+            domStorageEnabled = true
+            loadWithOverviewMode = true
+            useWideViewPort = true
+            builtInZoomControls = false
+            displayZoomControls = false
+        }
+        webView.webChromeClient = WebChromeClient()
+        webView.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+                return false
+            }
+        }
+
+        onBackPressedDispatcher.addCallback(
+            this,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    if (webView.canGoBack()) {
+                        webView.goBack()
+                    } else {
+                        isEnabled = false
+                        onBackPressedDispatcher.onBackPressed()
                     }
                 }
             }
-        }
+        )
+
+        webView.loadUrl("${FinoraApp.FIXED_BASE_URL}/pos")
     }
 }
