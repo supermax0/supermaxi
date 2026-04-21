@@ -11,78 +11,13 @@
     --exec-accent: #38bdf8;
     --exec-accent2: #a78bfa;
     --exec-success: #34d399;
-    --exec-gold: #fbbf24;
     --exec-card: rgba(30, 41, 59, 0.72);
     --exec-border: rgba(148, 163, 184, 0.18);
     --exec-text: #f8fafc;
     --exec-muted: #94a3b8;
     margin: 0 -12px;
-    padding: 0 8px 48px;
+    padding: 8px 8px 48px;
     min-height: 72vh;
-  }
-
-  .exec-hero {
-    position: relative;
-    border-radius: 24px;
-    padding: 28px 28px 32px;
-    margin-bottom: 28px;
-    overflow: hidden;
-    background: linear-gradient(135deg, #0f172a 0%, #312e81 42%, #0f172a 100%);
-    border: 1px solid var(--exec-border);
-    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.45);
-  }
-
-  .exec-hero::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background:
-      radial-gradient(ellipse 80% 60% at 100% 0%, rgba(56, 189, 248, 0.22), transparent 55%),
-      radial-gradient(ellipse 70% 50% at 0% 100%, rgba(167, 139, 250, 0.2), transparent 50%);
-    pointer-events: none;
-  }
-
-  .exec-hero-inner {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 20px;
-  }
-
-  .exec-hero h1 {
-    margin: 0 0 8px;
-    font-size: clamp(1.45rem, 3vw, 2rem);
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    color: var(--exec-text);
-  }
-
-  .exec-hero p {
-    margin: 0;
-    color: var(--exec-muted);
-    font-size: 0.98rem;
-    max-width: 520px;
-    line-height: 1.65;
-  }
-
-  .exec-hero-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 16px;
-    border-radius: 999px;
-    background: rgba(15, 23, 42, 0.55);
-    border: 1px solid rgba(148, 163, 184, 0.25);
-    color: var(--exec-text);
-    font-size: 0.85rem;
-    font-weight: 600;
-  }
-
-  .exec-hero-badge i {
-    color: var(--exec-gold);
   }
 
   .exec-kpi-grid {
@@ -181,6 +116,22 @@
     color: var(--exec-muted);
   }
 
+  .exec-footnote {
+    font-size: 0.78rem;
+    line-height: 1.65;
+    color: var(--exec-muted);
+    margin: -8px 0 22px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: rgba(148, 163, 184, 0.08);
+    border: 1px solid var(--exec-border);
+  }
+
+  .exec-footnote strong {
+    color: var(--exec-text);
+    font-weight: 600;
+  }
+
   .exec-chart-section {
     margin-bottom: 24px;
   }
@@ -247,37 +198,12 @@
     --exec-muted: #64748b;
   }
 
-  :root[data-theme="light"] .exec-hero {
-    background: linear-gradient(135deg, #eff6ff 0%, #e0e7ff 50%, #f8fafc 100%);
-    box-shadow: 0 18px 48px rgba(15, 23, 42, 0.08);
-  }
-
-  :root[data-theme="light"] .exec-hero h1 {
-    color: #0f172a;
-  }
-
   :root[data-theme="light"] .exec-chart-head h2 {
     color: #0f172a;
   }
 </style>
 
 <div class="exec-scope">
-  <div class="exec-hero">
-    <div class="exec-hero-inner">
-      <div>
-        <h1>لوحة المدير التنفيذي</h1>
-        <p>
-          نظرة سريعة على النقدية وصافي الربح (اليوم، الشهر، السنة) مع مؤشرات بيانية للتوجهات.
-          الأرقام محسوبة بنفس منطق تقارير النظام المحاسبي.
-        </p>
-      </div>
-      <div class="exec-hero-badge" title="مخصص لحساب المدير">
-        <i class="fas fa-user-shield"></i>
-        <span>{{ employee_name or 'مدير' }}</span>
-      </div>
-    </div>
-  </div>
-
   <div id="exec-loading" class="exec-loading">
     <i class="fas fa-circle-notch fa-spin"></i>
     جاري تحميل المؤشرات والرسوم…
@@ -286,6 +212,24 @@
 
   <div id="exec-main" style="display:none;">
     <div class="exec-kpi-grid" id="exec-kpis"></div>
+    <p class="exec-footnote">
+      <strong>توضيح محاسبي:</strong>
+      صافي الربح يعتمد على فواتير ضمن الفترة (تاريخ إنشاء الطلب) مع التحصيل الفعلي وتكلفة البضاعة والمصاريف المسجّلة بتاريخها.
+      <strong>رصيد النقدية</strong> مقياس تراكمي من حركات الصندوق والفواتير ولا يساوي مجموع أرباح الفترات.
+      رسم المصاريف يعرض جدول Expense فقط؛ السجلات بدون «تاريخ مصروف» تُستبعد من المجموع.
+    </p>
+
+    <div class="exec-chart-section">
+      <div class="exec-chart-head">
+        <h2><i class="fas fa-money-bill-wave" style="opacity:.85;margin-left:8px;color:#fb923c;"></i> المصاريف الشهرية</h2>
+        <span>مجموع المصاريف المسجّلة حسب شهر السنة الحالية</span>
+      </div>
+      <div class="exec-chart-card">
+        <div class="exec-canvas-wrap" style="height:320px;">
+          <canvas id="exec-chart-expenses"></canvas>
+        </div>
+      </div>
+    </div>
 
     <div class="exec-chart-section">
       <div class="exec-chart-head">
@@ -346,7 +290,7 @@
       Chart.defaults.color = tickColor;
     }
 
-    let chartDaily, chartMonthly, chartCumulative;
+    let chartDaily, chartMonthly, chartCumulative, chartExpenses;
 
     function buildKpis(k) {
       const cards = [
@@ -392,7 +336,7 @@
     }
 
     function destroyCharts() {
-      [chartDaily, chartMonthly, chartCumulative].forEach(function (ch) {
+      [chartDaily, chartMonthly, chartCumulative, chartExpenses].forEach(function (ch) {
         if (ch) try { ch.destroy(); } catch (e) {}
       });
     }
@@ -403,6 +347,50 @@
 
       const d14 = data.series.daily_14;
       const yM = data.series.year_monthly;
+      const yExp = data.series.year_monthly_expenses || { labels: [], expenses: [] };
+
+      chartExpenses = new Chart(document.getElementById('exec-chart-expenses'), {
+        type: 'bar',
+        data: {
+          labels: yExp.labels,
+          datasets: [{
+            label: 'المصاريف',
+            data: yExp.expenses,
+            backgroundColor: yExp.labels.map(function (_, i) {
+              var a = 0.45 + (i % 5) * 0.1;
+              return 'rgba(251, 146, 60, ' + Math.min(a, 0.92) + ')';
+            }),
+            borderColor: 'rgba(234, 88, 12, 0.55)',
+            borderWidth: 1,
+            borderRadius: 12
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function (ctx) {
+                  return ' المصاريف: ' + fmtMoney(ctx.parsed.y) + ' د.ع';
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { maxRotation: 45, minRotation: 0 }
+            },
+            y: {
+              beginAtZero: true,
+              grid: { color: gridColor },
+              ticks: { callback: function (v) { return fmtMoney(v); } }
+            }
+          }
+        }
+      });
 
       const gradLine = document.getElementById('exec-chart-daily').getContext('2d');
       const gradFill = gradLine.createLinearGradient(0, 0, 0, 280);

@@ -31,7 +31,7 @@ from utils.accounting_calculations import (
     calculate_total_sales_for_display  # إجمالي المبيعات (للعرض فقط)
 )
 from utils.date_periods import get_period_dates, get_period_label
-from utils.cash_calculations import calculate_cash_balance
+from utils.cash_calculations import calculate_cash_balance, _effective_paid_amount
 from utils.order_status import PENDING_STATUSES
 from utils.decorators import admin_required
 
@@ -767,24 +767,21 @@ def signup():
 # صافي الربح لفترة (نفس منطق تقارير لوحة التحكم)
 # =================================================
 def _net_profit_for_range(date_from: date, date_to: date) -> int:
-    """تحصيل نقدي − COGS المتناسب − مصاريف الفترة."""
+    """
+    صافي الربح للفترة — يطابق منطق تقارير `/api/index/reports`.
+
+    المنهج:
+    - الفواتير المدرجة بتاريخ إنشائها (created_at) ضمن الفترة؛ التحصيل الفعلي فقط
+      (مسدد / جزئي). الطلبات الملغاة والمرتجعة والراجعة تُستبعد.
+    - COGS يتناسب مع نسبة التحصيل عند الدفع الجزئي.
+    - المصاريف من جدول Expense حسب expense_date داخل الفترة (تُتجاهل السجلات بدون تاريخ).
+
+    ملاحظة: تحصيل فاتورة أُنشئت خارج الفترة لا يُحسب في هذه الفترة (ربط بالتاريخ المحاسبي للطلب).
+    """
     from models.order_item import OrderItem
 
     RETURN_STATUSES = ["مرتجع", "راجع", "راجعة"]
     CANCELED_STATUSES = ["ملغي"]
-
-    def effective_paid_amount(inv: Invoice) -> int:
-        total = int(getattr(inv, "total", 0) or 0)
-        payment_status = getattr(inv, "payment_status", None)
-        status = getattr(inv, "status", None)
-        if payment_status == "مسدد" or status == "مسدد":
-            return max(total, 0)
-        if payment_status == "جزئي":
-            paid_amount = int(getattr(inv, "paid_amount", 0) or 0)
-            if paid_amount < 0:
-                return 0
-            return min(paid_amount, total) if total > 0 else paid_amount
-        return 0
 
     period_invoices = Invoice.query.filter(
         func.date(Invoice.created_at) >= date_from,
@@ -793,13 +790,13 @@ def _net_profit_for_range(date_from: date, date_to: date) -> int:
         Invoice.payment_status != "مرتجع",
     ).all()
 
-    cash_sales = sum(effective_paid_amount(inv) for inv in period_invoices)
+    cash_sales = sum(_effective_paid_amount(inv) for inv in period_invoices)
     sales_total = int(cash_sales)
 
     ratios = {}
     for inv in period_invoices:
         total = int(inv.total or 0)
-        paid = effective_paid_amount(inv)
+        paid = _effective_paid_amount(inv)
         if total > 0 and paid > 0:
             ratios[int(inv.id)] = min(max(paid / total, 0.0), 1.0)
 
@@ -819,11 +816,22 @@ def _net_profit_for_range(date_from: date, date_to: date) -> int:
             cogs_period += int(round(float(cogs_sum) * ratio))
 
     expenses_period = db.session.query(func.sum(Expense.amount)).filter(
+        Expense.expense_date.isnot(None),
         func.date(Expense.expense_date) >= date_from,
-        func.date(Expense.expense_date) <= date_to
+        func.date(Expense.expense_date) <= date_to,
     ).scalar() or 0
 
     return int(sales_total - cogs_period - int(expenses_period or 0))
+
+
+def _expenses_sum_for_range(date_from: date, date_to: date) -> int:
+    """مجموع المصاريف المسجّلة ضمن الفترة (حقل expense_date). يُستبعد الصف بدون تاريخ."""
+    total = db.session.query(func.sum(Expense.amount)).filter(
+        Expense.expense_date.isnot(None),
+        func.date(Expense.expense_date) >= date_from,
+        func.date(Expense.expense_date) <= date_to,
+    ).scalar() or 0
+    return int(total or 0)
 
 
 # =================================================
@@ -832,16 +840,19 @@ def _net_profit_for_range(date_from: date, date_to: date) -> int:
 @index_bp.route("/executive-dashboard")
 @admin_required
 def executive_dashboard():
-    return render_template(
-        "executive_dashboard.html",
-        employee_name=session.get("name", ""),
-    )
+    return render_template("executive_dashboard.html")
 
 
 @index_bp.route("/api/index/executive-overview")
 @admin_required
 def index_executive_overview():
-    """بيانات موحّدة للبطاقات والرسوم (كاش، أرباح يوم/شهر/سنة، سلاسل زمنية)."""
+    """
+    بيانات موحّدة للبطاقات والرسوم.
+
+    - الأرباح: `_net_profit_for_range` (تحصيل − COGS − مصاريف Expense بالتاريخ).
+    - النقدية: `calculate_cash_balance()` رصيد تراكمي من حركات نقدية (فواتير + معاملات صندوق…)،
+      لا يساوي مجموع «الربح» لأنه مقياس مختلف محاسبياً.
+    """
     today = date.today()
     month_start = today.replace(day=1)
     year_start = today.replace(month=1, day=1)
@@ -874,12 +885,14 @@ def index_executive_overview():
     ]
     monthly_labels = []
     monthly_profit = []
+    monthly_expenses = []
     y = today.year
     for m in range(1, 13):
         d1 = date(y, m, 1)
         if d1 > today:
             monthly_labels.append(month_names_ar[m - 1])
             monthly_profit.append(0)
+            monthly_expenses.append(0)
             continue
         if m == 12:
             d2 = date(y, 12, 31)
@@ -889,6 +902,7 @@ def index_executive_overview():
             d2 = today
         monthly_labels.append(month_names_ar[m - 1])
         monthly_profit.append(_net_profit_for_range(d1, d2))
+        monthly_expenses.append(_expenses_sum_for_range(d1, d2))
 
     return jsonify(
         {
@@ -901,6 +915,10 @@ def index_executive_overview():
             "series": {
                 "daily_14": {"labels": daily_labels, "profit": daily_profit},
                 "year_monthly": {"labels": monthly_labels, "profit": monthly_profit},
+                "year_monthly_expenses": {
+                    "labels": monthly_labels,
+                    "expenses": monthly_expenses,
+                },
             },
         }
     )
@@ -930,20 +948,7 @@ def index_reports():
     
     RETURN_STATUSES = ["مرتجع", "راجع", "راجعة"]
     CANCELED_STATUSES = ["ملغي"]
-    
-    def effective_paid_amount(inv: Invoice) -> int:
-        total = int(getattr(inv, "total", 0) or 0)
-        payment_status = getattr(inv, "payment_status", None)
-        status = getattr(inv, "status", None)
-        if payment_status == "مسدد" or status == "مسدد":
-            return max(total, 0)
-        if payment_status == "جزئي":
-            paid_amount = int(getattr(inv, "paid_amount", 0) or 0)
-            if paid_amount < 0:
-                return 0
-            return min(paid_amount, total) if total > 0 else paid_amount
-        return 0
-    
+
     # إجمالي المبيعات/التحصيل/الذمم للفترة
     # تصحيح محاسبي: دعم الدفع الجزئي + استبعاد (راجع/مرتجع/ملغي)
     period_invoices = Invoice.query.filter(
@@ -954,9 +959,9 @@ def index_reports():
     ).all()
 
     total_sales = sum(int(inv.total or 0) for inv in period_invoices)
-    cash_sales = sum(effective_paid_amount(inv) for inv in period_invoices)
+    cash_sales = sum(_effective_paid_amount(inv) for inv in period_invoices)
     credit_sales = sum(
-        max(int(inv.total or 0) - effective_paid_amount(inv), 0)
+        max(int(inv.total or 0) - _effective_paid_amount(inv), 0)
         for inv in period_invoices
     )
     
@@ -978,42 +983,8 @@ def index_reports():
         )
     ).scalar() or 0
     
-    # حساب الأرباح للفترة (Cash-basis تقريباً):
-    # التحصيل الفعلي - COGS المتناسب مع التحصيل - مصاريف الفترة
-    sales_total = int(cash_sales)
-
-    # COGS للفترة (متناسب مع التحصيل عند الدفع الجزئي)
-    from models.order_item import OrderItem
-    ratios = {}
-    for inv in period_invoices:
-        total = int(inv.total or 0)
-        paid = effective_paid_amount(inv)
-        if total > 0 and paid > 0:
-            ratios[int(inv.id)] = min(max(paid / total, 0.0), 1.0)
-
-    cogs_period = 0
-    if ratios:
-        rows = db.session.query(
-            OrderItem.invoice_id,
-            func.sum(OrderItem.cost * OrderItem.quantity).label("cogs_sum"),
-        ).filter(
-            OrderItem.invoice_id.in_(list(ratios.keys()))
-        ).group_by(OrderItem.invoice_id).all()
-
-        for invoice_id, cogs_sum in rows:
-            if not cogs_sum:
-                continue
-            ratio = ratios.get(int(invoice_id), 0.0)
-            cogs_period += int(round(float(cogs_sum) * ratio))
-    
-    # المصاريف للفترة
-    expenses_period = db.session.query(func.sum(Expense.amount)).filter(
-        func.date(Expense.expense_date) >= date_from,
-        func.date(Expense.expense_date) <= date_to
-    ).scalar() or 0
-    
-    # الربح الصافي للفترة = التحصيل - COGS المتناسب - المصاريف
-    period_profit = int(sales_total - cogs_period - expenses_period)
+    # صافي الربح للفترة — مصدر وحيد للمنطق (يدمج تحصيلاً جزئياً، COGS متناسباً، مصاريف expense_date)
+    period_profit = _net_profit_for_range(date_from, date_to)
 
     # قيمة المخزون (Inventory Value)
     # السبب المحاسبي: المخزون يُعتبر أصل (Asset) ولا يدخل ضمن رأس المال
@@ -1145,19 +1116,6 @@ def index_today_profit():
     RETURN_STATUSES = ["مرتجع", "راجع", "راجعة"]
     CANCELED_STATUSES = ["ملغي"]
 
-    def effective_paid_amount(inv: Invoice) -> int:
-        total = int(getattr(inv, "total", 0) or 0)
-        payment_status = getattr(inv, "payment_status", None)
-        status = getattr(inv, "status", None)
-        if payment_status == "مسدد" or status == "مسدد":
-            return max(total, 0)
-        if payment_status == "جزئي":
-            paid_amount = int(getattr(inv, "paid_amount", 0) or 0)
-            if paid_amount < 0:
-                return 0
-            return min(paid_amount, total) if total > 0 else paid_amount
-        return 0
-
     day_invoices = Invoice.query.filter(
         func.date(Invoice.created_at) == today,
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
@@ -1165,13 +1123,13 @@ def index_today_profit():
     ).all()
 
     # المبيعات المسددة فعلياً (تشمل الجزئي)
-    sales = sum(effective_paid_amount(inv) for inv in day_invoices)
+    sales = sum(_effective_paid_amount(inv) for inv in day_invoices)
 
     # COGS متناسب مع التحصيل (تقريب)
     ratios = {}
     for inv in day_invoices:
         total = int(inv.total or 0)
-        paid = effective_paid_amount(inv)
+        paid = _effective_paid_amount(inv)
         if total > 0 and paid > 0:
             ratios[int(inv.id)] = min(max(paid / total, 0.0), 1.0)
 
@@ -1372,19 +1330,6 @@ def index_charts():
     
     RETURN_STATUSES = ["مرتجع", "راجع", "راجعة"]
     CANCELED_STATUSES = ["ملغي"]
-    
-    def effective_paid_amount(inv: Invoice) -> int:
-        total = int(getattr(inv, "total", 0) or 0)
-        payment_status = getattr(inv, "payment_status", None)
-        status = getattr(inv, "status", None)
-        if payment_status == "مسدد" or status == "مسدد":
-            return max(total, 0)
-        if payment_status == "جزئي":
-            paid_amount = int(getattr(inv, "paid_amount", 0) or 0)
-            if paid_amount < 0:
-                return 0
-            return min(paid_amount, total) if total > 0 else paid_amount
-        return 0
 
     for i in range(6, -1, -1):
         d = date.today() - timedelta(days=i)
@@ -1397,13 +1342,13 @@ def index_charts():
         ).all()
         
         # المبيعات المسددة فعلياً (تشمل الجزئي)
-        day_sales = sum(effective_paid_amount(inv) for inv in day_invoices)
+        day_sales = sum(_effective_paid_amount(inv) for inv in day_invoices)
         
         # COGS متناسب مع التحصيل (تقريب)
         ratios = {}
         for inv in day_invoices:
             total = int(inv.total or 0)
-            paid = effective_paid_amount(inv)
+            paid = _effective_paid_amount(inv)
             if total > 0 and paid > 0:
                 ratios[int(inv.id)] = min(max(paid / total, 0.0), 1.0)
         
