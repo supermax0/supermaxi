@@ -102,6 +102,51 @@
   color: var(--text-muted);
 }
 
+.appearance-switch {
+  position: relative;
+  width: 48px;
+  height: 28px;
+  display: inline-block;
+  flex: 0 0 auto;
+}
+
+.appearance-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.appearance-switch-slider {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: #64748b;
+  border: 1px solid var(--border-light);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.appearance-switch-slider::before {
+  content: "";
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  right: 3px;
+  top: 3px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s ease;
+}
+
+.appearance-switch input:checked + .appearance-switch-slider {
+  background: var(--primary);
+}
+
+.appearance-switch input:checked + .appearance-switch-slider::before {
+  transform: translateX(-20px);
+}
+
 .btn-save-appearance {
   margin-top: 20px;
   display: inline-flex;
@@ -188,9 +233,9 @@
           <strong>تفعيل المساعد المالي (AI)</strong>
           <span>السماح باستخدام المساعد في الداشبورد وصفحة المساعد.</span>
         </div>
-        <label class="toggle">
+        <label class="appearance-switch">
           <input type="checkbox" id="aiEnabled" {% if settings.ai_enabled %}checked{% endif %}>
-          <span class="toggle-slider"></span>
+          <span class="appearance-switch-slider"></span>
         </label>
       </div>
     </div>
@@ -201,15 +246,15 @@
         <p>فعّل/عطّل البطاقات التي تظهر في قسم "إجمالي المبيعات" داخل الداشبورد.</p>
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;">
-        <div class="switch-row"><div class="switch-label"><strong>رصيد النقدية</strong></div><label class="toggle"><input type="checkbox" id="showDashCashBalance" {% if ui_flags.get('show_dash_cash_balance', True) %}checked{% endif %}><span class="toggle-slider"></span></label></div>
-        <div class="switch-row"><div class="switch-label"><strong>ربح الفترة</strong></div><label class="toggle"><input type="checkbox" id="showDashPeriodProfit" {% if ui_flags.get('show_dash_period_profit', True) %}checked{% endif %}><span class="toggle-slider"></span></label></div>
-        <div class="switch-row"><div class="switch-label"><strong>إجمالي المبيعات</strong></div><label class="toggle"><input type="checkbox" id="showDashTotalSales" {% if ui_flags.get('show_dash_total_sales', True) %}checked{% endif %}><span class="toggle-slider"></span></label></div>
-        <div class="switch-row"><div class="switch-label"><strong>المبيعات النقدية</strong></div><label class="toggle"><input type="checkbox" id="showDashCashSales" {% if ui_flags.get('show_dash_cash_sales', True) %}checked{% endif %}><span class="toggle-slider"></span></label></div>
-        <div class="switch-row"><div class="switch-label"><strong>المبيعات الآجلة</strong></div><label class="toggle"><input type="checkbox" id="showDashCreditSales" {% if ui_flags.get('show_dash_credit_sales', True) %}checked{% endif %}><span class="toggle-slider"></span></label></div>
-        <div class="switch-row"><div class="switch-label"><strong>قيمة المخزون</strong></div><label class="toggle"><input type="checkbox" id="showDashInventory" {% if ui_flags.get('show_dash_inventory', True) %}checked{% endif %}><span class="toggle-slider"></span></label></div>
-        <div class="switch-row"><div class="switch-label"><strong>الالتزامات</strong></div><label class="toggle"><input type="checkbox" id="showDashLiabilities" {% if ui_flags.get('show_dash_liabilities', True) %}checked{% endif %}><span class="toggle-slider"></span></label></div>
-        <div class="switch-row"><div class="switch-label"><strong>مستحقات مندوب التوصيل</strong></div><label class="toggle"><input type="checkbox" id="showDashAgentDues" {% if ui_flags.get('show_dash_agent_dues', True) %}checked{% endif %}><span class="toggle-slider"></span></label></div>
-        <div class="switch-row"><div class="switch-label"><strong>المصاريف</strong></div><label class="toggle"><input type="checkbox" id="showDashExpenses" {% if ui_flags.get('show_dash_expenses', True) %}checked{% endif %}><span class="toggle-slider"></span></label></div>
+        <div class="switch-row"><div class="switch-label"><strong>رصيد النقدية</strong></div><label class="appearance-switch"><input type="checkbox" id="showDashCashBalance" {% if ui_flags.get('show_dash_cash_balance', True) %}checked{% endif %}><span class="appearance-switch-slider"></span></label></div>
+        <div class="switch-row"><div class="switch-label"><strong>ربح الفترة</strong></div><label class="appearance-switch"><input type="checkbox" id="showDashPeriodProfit" {% if ui_flags.get('show_dash_period_profit', True) %}checked{% endif %}><span class="appearance-switch-slider"></span></label></div>
+        <div class="switch-row"><div class="switch-label"><strong>إجمالي المبيعات</strong></div><label class="appearance-switch"><input type="checkbox" id="showDashTotalSales" {% if ui_flags.get('show_dash_total_sales', True) %}checked{% endif %}><span class="appearance-switch-slider"></span></label></div>
+        <div class="switch-row"><div class="switch-label"><strong>المبيعات النقدية</strong></div><label class="appearance-switch"><input type="checkbox" id="showDashCashSales" {% if ui_flags.get('show_dash_cash_sales', True) %}checked{% endif %}><span class="appearance-switch-slider"></span></label></div>
+        <div class="switch-row"><div class="switch-label"><strong>المبيعات الآجلة</strong></div><label class="appearance-switch"><input type="checkbox" id="showDashCreditSales" {% if ui_flags.get('show_dash_credit_sales', True) %}checked{% endif %}><span class="appearance-switch-slider"></span></label></div>
+        <div class="switch-row"><div class="switch-label"><strong>قيمة المخزون</strong></div><label class="appearance-switch"><input type="checkbox" id="showDashInventory" {% if ui_flags.get('show_dash_inventory', True) %}checked{% endif %}><span class="appearance-switch-slider"></span></label></div>
+        <div class="switch-row"><div class="switch-label"><strong>الالتزامات</strong></div><label class="appearance-switch"><input type="checkbox" id="showDashLiabilities" {% if ui_flags.get('show_dash_liabilities', True) %}checked{% endif %}><span class="appearance-switch-slider"></span></label></div>
+        <div class="switch-row"><div class="switch-label"><strong>مستحقات مندوب التوصيل</strong></div><label class="appearance-switch"><input type="checkbox" id="showDashAgentDues" {% if ui_flags.get('show_dash_agent_dues', True) %}checked{% endif %}><span class="appearance-switch-slider"></span></label></div>
+        <div class="switch-row"><div class="switch-label"><strong>المصاريف</strong></div><label class="appearance-switch"><input type="checkbox" id="showDashExpenses" {% if ui_flags.get('show_dash_expenses', True) %}checked{% endif %}><span class="appearance-switch-slider"></span></label></div>
       </div>
     </div>
 
