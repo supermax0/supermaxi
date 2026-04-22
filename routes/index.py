@@ -18,6 +18,7 @@ from models.delivery_agent import DeliveryAgent
 from models.account_transaction import AccountTransaction
 from models.tenant import Tenant
 from models.employee import Employee
+from models.system_settings import SystemSettings
 
 # =======================
 # Accounting Calculations (الحسابات المحاسبية الصحيحة)
@@ -184,6 +185,20 @@ def index():
         # #endregion
         return render_template("index.html", landing_plans=landing_plans)
     
+    # إعدادات الواجهة (ui_flags) — نقرأها على قاعدة المستأجر حتى تعمل بطاقات الداشبورد
+    system_settings = None
+    tenant_slug = (session.get("tenant_slug") or "").strip()
+    prev_tenant = getattr(g, "tenant", None)
+    if tenant_slug:
+        g.tenant = tenant_slug
+    try:
+        system_settings = SystemSettings.get_settings()
+    except Exception:
+        current_app.logger.exception("failed loading system settings for dashboard")
+        system_settings = None
+    finally:
+        g.tenant = prev_tenant
+
     # إذا كان مسجل دخول (آدمن أو كاشير)
     if session.get("role") == "cashier":
         # #region agent log
@@ -194,6 +209,7 @@ def index():
             is_cashier=True,
             show_data=False,
             dashboard_overdue_orders=[],
+            system_settings=system_settings,
         )
     # #region agent log
     _debug_log("180817", "H4", "index.index:serve_dash_admin", "serving dashboard admin", {})
@@ -215,6 +231,7 @@ def index():
         "dashbord.html",
         employee_name=session.get("name", ""),
         dashboard_overdue_orders=overdue_rows,
+        system_settings=system_settings,
     )
 
 
