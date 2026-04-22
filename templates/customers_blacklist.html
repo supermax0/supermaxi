@@ -7,6 +7,7 @@
   .bl-wrap { max-width: 1100px; margin: 0 auto; padding: 20px; }
   .bl-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 20px; }
   .bl-head a { color: var(--primary); text-decoration: none; }
+  .bl-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .bl-table-wrap { overflow: auto; border: 1px solid var(--border); border-radius: 12px; }
   .bl-table { width: 100%; border-collapse: collapse; font-size: 14px; }
   .bl-table th, .bl-table td { padding: 12px 14px; text-align: right; border-bottom: 1px solid var(--border); }
@@ -20,6 +21,11 @@
 <div class="bl-wrap">
   <div class="bl-head">
     <a href="/customers">← {{ _('customers_blacklist_back') }}</a>
+    <div class="bl-actions">
+      <button type="button" class="bl-btn bl-btn-danger" onclick="removeSelectedBlacklist()">
+        إزالة المحدد من القائمة السوداء
+      </button>
+    </div>
   </div>
   <p class="bl-note">{{ _('customers_blacklist_intro') }}</p>
 
@@ -27,6 +33,9 @@
     <table class="bl-table">
       <thead>
         <tr>
+          <th style="width:44px;">
+            <input type="checkbox" id="selectAllBlacklist" onchange="toggleAllBlacklist(this.checked)">
+          </th>
           <th>#</th>
           <th>{{ _('customers_col_name') }}</th>
           <th>{{ _('customers_col_phone') }}</th>
@@ -38,6 +47,9 @@
       <tbody>
         {% for c in customers %}
         <tr>
+          <td>
+            <input type="checkbox" class="bl-select-item" value="{{ c.id }}">
+          </td>
           <td>{{ c.id }}</td>
           <td><strong>{{ c.name }}</strong></td>
           <td>{{ c.phone }}{% if c.phone2 %} / {{ c.phone2 }}{% endif %}</td>
@@ -50,7 +62,7 @@
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="6" style="text-align:center;padding:32px;color:var(--text-muted);">{{ _('customers_blacklist_empty') }}</td></tr>
+        <tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text-muted);">{{ _('customers_blacklist_empty') }}</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -65,6 +77,42 @@ async function removeBlacklist(id) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ customer_ids: [id] })
+    });
+    const d = await r.json();
+    if (!d.success) {
+      alert(d.error || 'Error');
+      return;
+    }
+    location.reload();
+  } catch (e) {
+    alert(String(e));
+  }
+}
+
+function selectedBlacklistIds() {
+  return Array.from(document.querySelectorAll('.bl-select-item:checked'))
+    .map(el => Number(el.value))
+    .filter(Boolean);
+}
+
+function toggleAllBlacklist(checked) {
+  document.querySelectorAll('.bl-select-item').forEach(el => {
+    el.checked = !!checked;
+  });
+}
+
+async function removeSelectedBlacklist() {
+  const ids = selectedBlacklistIds();
+  if (!ids.length) {
+    alert('حدد زبون واحد على الأقل');
+    return;
+  }
+  if (!confirm(`سيتم إزالة ${ids.length} زبون من القائمة السوداء، هل أنت متأكد؟`)) return;
+  try {
+    const r = await fetch('/customers/blacklist/remove', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ customer_ids: ids })
     });
     const d = await r.json();
     if (!d.success) {
