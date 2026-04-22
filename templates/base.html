@@ -224,14 +224,88 @@
       color: #fff;
     }
 
+    .sidebar-header-end {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0;
+      min-width: 44px;
+    }
+
     @media (min-width: 901px) {
       .sidebar-mobile-header {
-        justify-content: center;
+        display: grid;
+        grid-template-columns: 44px minmax(0, 1fr) 44px;
+        align-items: center;
+        gap: 8px;
       }
 
       .sidebar-mobile-header .brand {
         flex: none;
         text-align: center;
+        justify-self: center;
+        grid-column: 2;
+      }
+
+      .sidebar-mobile-header .sidebar-hide-desktop-btn {
+        grid-column: 1;
+      }
+
+      .sidebar-mobile-header .sidebar-header-end {
+        grid-column: 3;
+        justify-self: end;
+      }
+    }
+
+    /* طي القائمة على الشاشات الواسعة */
+    .sidebar-hide-desktop-btn {
+      display: none;
+      width: 44px;
+      height: 44px;
+      min-width: 44px;
+      border: 1px solid var(--border-light);
+      border-radius: 12px;
+      background: rgba(99, 102, 241, 0.15);
+      color: var(--primary);
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      transition: background 0.2s, color 0.2s, transform 0.2s;
+      -webkit-tap-highlight-color: transparent;
+      grid-column: 1;
+      justify-self: start;
+    }
+
+    .sidebar-hide-desktop-btn:hover {
+      background: rgba(99, 102, 241, 0.28);
+    }
+
+    @media (min-width: 901px) {
+      .sidebar-hide-desktop-btn {
+        display: inline-flex;
+      }
+    }
+
+
+    @media (min-width: 901px) {
+      .app.sidebar-desktop-hidden .sidebar {
+        transform: translate3d(100%, 0, 0);
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        box-shadow: none;
+      }
+
+      .app.sidebar-desktop-hidden .sidebar~.content {
+        margin-right: 0;
+      }
+
+      /* إظهار زر ☰ في الشريط العلوي عند طي القائمة */
+      .app.sidebar-desktop-hidden .topbar .toggle {
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
       }
     }
 
@@ -1784,12 +1858,18 @@
     {% if session.get("user_id") and not is_payment_flow %}
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-mobile-header">
+        <button type="button" class="sidebar-hide-desktop-btn" onclick="collapseDesktopSidebar()"
+          title="إخفاء القائمة" aria-label="إخفاء القائمة الجانبية">
+          <i class="fa fa-outdent"></i>
+        </button>
         <div class="brand">
           <img src="{{ url_for('static', filename='IMG_0200.png') }}" alt="Finora" class="brand-logo">
           <span class="brand-text">Finora</span>
         </div>
-        <button type="button" class="sidebar-close-btn" onclick="closeSidebar()" aria-label="إغلاق القائمة"><i
-            class="fa fa-times"></i></button>
+        <div class="sidebar-header-end">
+          <button type="button" class="sidebar-close-btn" onclick="closeSidebar()" aria-label="إغلاق القائمة"><i
+              class="fa fa-times"></i></button>
+        </div>
       </div>
 
       <nav class="menu">
@@ -2113,14 +2193,35 @@
       var sidebarLastClose = 0;
       var SIDEBAR_FAST_TAP_MS = 320;
 
+      window.collapseDesktopSidebar = function () {
+        var app = document.querySelector(".app");
+        if (!app || window.innerWidth <= 900) return;
+        app.classList.add("sidebar-desktop-hidden");
+        try {
+          localStorage.setItem("sidebarDesktopHidden", "1");
+        } catch (e) {}
+      };
+
       window.toggleSidebar = function () {
         var sidebar = document.getElementById("sidebar");
+        var app = document.querySelector(".app");
         if (!sidebar) return;
-        if (sidebar.classList.contains("show")) {
-          closeSidebar();
-        } else {
-          openSidebar();
+        if (window.innerWidth <= 900) {
+          if (sidebar.classList.contains("show")) {
+            closeSidebar();
+          } else {
+            openSidebar();
+          }
+          return;
         }
+        if (!app) return;
+        app.classList.toggle("sidebar-desktop-hidden");
+        try {
+          localStorage.setItem(
+            "sidebarDesktopHidden",
+            app.classList.contains("sidebar-desktop-hidden") ? "1" : "0"
+          );
+        } catch (e) {}
       };
 
       window.openSidebar = function () {
@@ -2149,6 +2250,20 @@
         document.removeEventListener("click", closeSidebarOnOutsideClick, true);
         document.removeEventListener("touchstart", closeSidebarOnOutsideClick, true);
       };
+
+      try {
+        if (localStorage.getItem("sidebarDesktopHidden") === "1" && window.innerWidth > 900) {
+          var appInit = document.querySelector(".app");
+          if (appInit) appInit.classList.add("sidebar-desktop-hidden");
+        }
+      } catch (e) {}
+
+      window.addEventListener("resize", function () {
+        if (window.innerWidth <= 900) {
+          var appR = document.querySelector(".app");
+          if (appR) appR.classList.remove("sidebar-desktop-hidden");
+        }
+      });
 
       function closeSidebarOnOutsideClick(e) {
         var sidebar = document.getElementById("sidebar");
