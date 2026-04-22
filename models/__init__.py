@@ -3,6 +3,9 @@ from .customer import Customer
 from .account_transaction import AccountTransaction
 from .supplier import Supplier
 from .purchase import Purchase
+from .purchase_item import PurchaseItem
+from .purchase_payment import PurchasePayment
+from .purchase_attachment import PurchaseAttachment
 from .expense import Expense
 from .employee import Employee
 from .invoice import Invoice

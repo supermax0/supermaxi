@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>طباعة فاتورة شراء {{ purchase.invoice_no or purchase.id }}</title>
+  <style>
+    body { font-family: Tahoma, Arial, sans-serif; margin: 20px; color:#111; }
+    .head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; }
+    .box { border:1px solid #ccc; border-radius:8px; padding:10px; margin-bottom:12px; }
+    .grid { display:grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap:8px; }
+    table { width:100%; border-collapse:collapse; margin-top:8px; }
+    th, td { border:1px solid #ccc; padding:6px; text-align:right; font-size:13px; }
+    th { background:#f5f5f5; }
+    .totals { display:grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap:8px; margin-top:10px; }
+    .totals .box { margin:0; }
+    .muted { color:#555; font-size:12px; }
+    @media print { .no-print { display:none; } body { margin: 8mm; } }
+  </style>
+</head>
+<body>
+  <div class="head">
+    <div>
+      <h2 style="margin:0;">فاتورة مشتريات</h2>
+      <div class="muted">رقم: {{ purchase.invoice_no or ("LEG-" ~ purchase.id) }}</div>
+      <div class="muted">التاريخ: {{ purchase.purchase_date.strftime("%Y-%m-%d") if purchase.purchase_date else "-" }}</div>
+    </div>
+    <button class="no-print" onclick="window.print()">طباعة</button>
+  </div>
+
+  <div class="box">
+    <div class="grid">
+      <div><strong>المورد:</strong> {{ purchase.supplier.name if purchase.supplier else "-" }}</div>
+      <div><strong>الفرع:</strong> {{ purchase.branch_code or "-" }}</div>
+      <div><strong>الحالة:</strong> {{ purchase.status or "-" }}</div>
+      <div><strong>مرجع:</strong> {{ purchase.reference_no or "-" }}</div>
+      <div><strong>رقم مورد:</strong> {{ purchase.supplier_invoice_no or "-" }}</div>
+      <div><strong>فترة الدفع:</strong> {{ purchase.payment_term or "-" }}</div>
+    </div>
+    {% if purchase.address %}
+    <div style="margin-top:8px;"><strong>العنوان:</strong> {{ purchase.address }}</div>
+    {% endif %}
+    {% if purchase.notes %}
+    <div style="margin-top:6px;"><strong>ملاحظات:</strong> {{ purchase.notes }}</div>
+    {% endif %}
+  </div>
+
+  <div class="box">
+    <strong>العناصر</strong>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>المنتج</th>
+          <th>الكمية</th>
+          <th>تكلفة قبل الخصم</th>
+          <th>خصم</th>
+          <th>التكلفة النهائية</th>
+          <th>الإجمالي</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for it in purchase.items %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td>{{ it.product.name if it.product else "-" }}</td>
+          <td>{{ it.quantity }}</td>
+          <td>{{ "{:,}".format(it.unit_cost_before_discount or 0) }}</td>
+          <td>{{ "{:,}".format(it.discount_value or 0) }}</td>
+          <td>{{ "{:,}".format(it.final_unit_cost or 0) }}</td>
+          <td>{{ "{:,}".format(it.line_total or 0) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="box">
+    <strong>الدفعات</strong>
+    <table>
+      <thead>
+        <tr><th>#</th><th>المبلغ</th><th>الطريقة</th><th>الحساب</th><th>الملاحظة</th><th>التاريخ</th></tr>
+      </thead>
+      <tbody>
+        {% for p in purchase.payments %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td>{{ "{:,}".format(p.amount or 0) }}</td>
+          <td>{{ p.payment_method or "-" }}</td>
+          <td>{{ p.account_name or "-" }}</td>
+          <td>{{ p.note or "-" }}</td>
+          <td>{{ p.paid_at.strftime("%Y-%m-%d %H:%M") if p.paid_at else "-" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="totals">
+    <div class="box"><div class="muted">قبل الخصم</div><strong>{{ "{:,}".format(purchase.sub_total or purchase.total or 0) }} د.ع</strong></div>
+    <div class="box"><div class="muted">الخصم</div><strong>{{ "{:,}".format(purchase.discount_value or 0) }} د.ع</strong></div>
+    <div class="box"><div class="muted">الشحن</div><strong>{{ "{:,}".format(purchase.shipping_extra or 0) }} د.ع</strong></div>
+    <div class="box"><div class="muted">الإجمالي النهائي</div><strong>{{ "{:,}".format(purchase.grand_total or purchase.total or 0) }} د.ع</strong></div>
+    <div class="box"><div class="muted">المدفوع</div><strong>{{ "{:,}".format(purchase.paid_total or 0) }} د.ع</strong></div>
+    <div class="box"><div class="muted">المتبقي</div><strong>{{ "{:,}".format(purchase.remaining_total or 0) }} د.ع</strong></div>
+  </div>
+</body>
+</html>
