@@ -11,15 +11,40 @@ from sqlalchemy import func, inspect
 from extensions import db
 
 
+def _ledger_engine():
+    """
+    محرك قاعدة البيانات الفعلية لجدول الفواتير (مهم مع المستأجرين: كل شركة لها SQLite منفصل).
+    يطابق utils/product_schema_guard.py حتى لا يُنشَأ الجدول على Core بينما الاستعلام على المستأجر.
+    """
+    try:
+        from flask import g
+
+        tenant_slug = getattr(g, "tenant", None)
+        if tenant_slug:
+            from extensions_tenant import get_tenant_engine
+
+            return get_tenant_engine(tenant_slug)
+    except Exception:
+        pass
+    try:
+        b = db.session.get_bind()
+        if b is not None:
+            return b
+    except Exception:
+        pass
+    return db.engine
+
+
 def ensure_invoice_payment_ledger_table():
     """إنشاء الجدول في قاعدة المستأجر الحالية إذا لم يوجد."""
     from models.invoice_payment_ledger import InvoicePaymentLedger
 
-    bind = db.engine
+    bind = _ledger_engine()
     inspector = inspect(bind)
     tables = inspector.get_table_names()
     if "invoice_payment_ledger" not in tables:
-        InvoicePaymentLedger.__table__.create(bind=bind)
+        InvoicePaymentLedger.__table__.create(bind=bind, checkfirst=True)
+
 
 
 def append_payment_ledger_delta(invoice_id: int, delta: int) -> None:

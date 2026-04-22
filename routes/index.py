@@ -917,6 +917,7 @@ def index_reports():
     
     # صافي الربح للفترة — مصدر وحيد للمنطق (يدمج تحصيلاً جزئياً، COGS متناسباً، مصاريف expense_date)
     period_profit = _net_profit_for_range(date_from, date_to)
+    expenses_period = _expenses_sum_for_range(date_from, date_to)
 
     # قيمة المخزون (Inventory Value)
     # السبب المحاسبي: المخزون يُعتبر أصل (Asset) ولا يدخل ضمن رأس المال
@@ -1045,7 +1046,11 @@ def index_today_profit():
     قبل وجود أي سجل تحصيل يُستخدم احتياطياً منطق طلبات اُنشئت اليوم.
     """
     today = date.today()
-    return jsonify({"profit": int(net_profit_for_collection_calendar_day(today))})
+    try:
+        return jsonify({"profit": int(net_profit_for_collection_calendar_day(today))})
+    except Exception:
+        current_app.logger.exception("today-profit failed; falling back to creation-date day profit")
+        return jsonify({"profit": int(_net_profit_for_range(today, today))})
 
 # =================================================
 # SEARCH ORDERS (BY RECEIPT NUMBER OR PHONE)
