@@ -13,6 +13,27 @@
   </div>
 </div>
 {% else %}
+{% set _dash_flags = (system_settings.get_ui_flags() if system_settings else {}) %}
+{% set show_dash_cash_balance = _dash_flags.get('show_dash_cash_balance', True) %}
+{% set show_dash_period_profit = _dash_flags.get('show_dash_period_profit', True) %}
+{% set show_dash_total_sales = _dash_flags.get('show_dash_total_sales', True) %}
+{% set show_dash_cash_sales = _dash_flags.get('show_dash_cash_sales', True) %}
+{% set show_dash_credit_sales = _dash_flags.get('show_dash_credit_sales', True) %}
+{% set show_dash_inventory = _dash_flags.get('show_dash_inventory', True) %}
+{% set show_dash_liabilities = _dash_flags.get('show_dash_liabilities', True) %}
+{% set show_dash_agent_dues = _dash_flags.get('show_dash_agent_dues', True) %}
+{% set show_dash_expenses = _dash_flags.get('show_dash_expenses', True) %}
+{% set show_any_sales_cards = (
+  show_dash_cash_balance or
+  show_dash_period_profit or
+  show_dash_total_sales or
+  show_dash_cash_sales or
+  show_dash_credit_sales or
+  show_dash_inventory or
+  show_dash_liabilities or
+  show_dash_agent_dues or
+  show_dash_expenses
+) %}
 
 <!-- Chart.js Library -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -1812,23 +1833,31 @@
       </div>
     </div>
 
+    {% if show_dash_cash_balance or show_dash_total_sales or show_dash_period_profit %}
     <aside class="dashboard-hero-side">
       <div class="dashboard-side-panel">
+        {% if show_dash_cash_balance %}
         <span class="dashboard-side-kicker">{{ _('dashboard_cash_balance_title') }}</span>
         <div id="cashBalance" class="dashboard-side-value">0 د.ع</div>
         <p class="dashboard-side-note">{{ _('dashboard_cash_balance_note') }}</p>
+        {% endif %}
         <div class="dashboard-side-meta">
+          {% if show_dash_total_sales %}
           <div class="dashboard-mini-stat">
             <span class="dashboard-mini-stat-label">{{ _('dashboard_total_sales_title') }}</span>
             <span id="sales" class="dashboard-mini-stat-value">0 د.ع</span>
           </div>
+          {% endif %}
+          {% if show_dash_period_profit %}
           <div class="dashboard-mini-stat">
             <span class="dashboard-mini-stat-label">{{ _('dashboard_profit_title') }}</span>
             <span id="periodProfit" class="dashboard-mini-stat-value">0 د.ع</span>
           </div>
+          {% endif %}
         </div>
       </div>
     </aside>
+    {% endif %}
   </section>
 
   <section class="dashboard-section">
@@ -1887,6 +1916,7 @@
     </div>
   </section>
 
+  {% if show_any_sales_cards %}
   <section class="dashboard-section">
     <div class="dashboard-section-head">
       <div>
@@ -1896,44 +1926,59 @@
     </div>
 
     <div class="dashboard-primary-grid">
+      {% if show_dash_cash_balance %}
       <div class="card dashboard-card-highlight is-cash">
         <div class="metric-title"><i class="fas fa-wallet"></i> {{ _('dashboard_cash_balance_title') }}</div>
         <div class="metric-count"> <span id="cashBalanceHero">0 د.ع</span> </div>
         <div class="metric-note">{{ _('dashboard_cash_balance_note') }}</div>
       </div>
+      {% endif %}
+      {% if show_dash_period_profit %}
       <div class="card dashboard-card-highlight is-profit">
         <div class="metric-title"><i class="fas fa-gem"></i> {{ _('dashboard_profit_title') }}</div>
         <div class="metric-count" id="periodProfitHero">0 د.ع</div>
         <div class="metric-note">{{ _('dashboard_profit_note') }}</div>
       </div>
+      {% endif %}
     </div>
 
     <div class="dashboard-metrics-grid">
+      {% if show_dash_total_sales %}
       <div class="card metric-card is-sales">
         <div class="metric-title"><i class="fas fa-chart-bar"></i> {{ _('dashboard_total_sales_title') }}</div>
         <div id="salesMain" class="count metric-count">0</div>
         <div class="metric-note" id="salesPeriodLabel">{{ _('dashboard_for_selected_period') }}</div>
       </div>
+      {% endif %}
+      {% if show_dash_cash_sales %}
       <div class="card metric-card is-cash-sales">
         <div class="metric-title"><i class="fas fa-money-bill-wave"></i> {{ _('dashboard_cash_sales_title') }}</div>
         <div id="cashSales" class="count metric-count">0</div>
         <div class="metric-note">{{ _('dashboard_cash_sales_note') }}</div>
       </div>
+      {% endif %}
+      {% if show_dash_credit_sales %}
       <div class="card metric-card is-credit-sales">
         <div class="metric-title"><i class="fas fa-file-invoice-dollar"></i> {{ _('dashboard_credit_sales_title') }}</div>
         <div id="creditSales" class="count metric-count">0</div>
         <div class="metric-note">{{ _('dashboard_credit_sales_note') }}</div>
       </div>
+      {% endif %}
+      {% if show_dash_inventory %}
       <div class="card metric-card is-inventory">
         <div class="metric-title"><i class="fas fa-boxes"></i> {{ _('dashboard_inventory_value_title') }}</div>
         <div id="inventory" class="count metric-count">0</div>
         <div class="metric-note">{{ _('dashboard_inventory_value_note') }}</div>
       </div>
+      {% endif %}
+      {% if show_dash_liabilities %}
       <div class="card metric-card is-liabilities">
         <div class="metric-title"><i class="fas fa-scale-balanced"></i> {{ _('dashboard_liabilities_title') }}</div>
         <div id="liabilities" class="count metric-count">0</div>
         <div class="metric-note">{{ _('dashboard_liabilities_note') }}</div>
       </div>
+      {% endif %}
+      {% if show_dash_agent_dues %}
       <div class="card metric-card is-agent-dues" onclick="showAgentDuesDetails()" title="اضغط لعرض التفاصيل">
         <div class="metric-card-icon-title">
           <i class="fas fa-truck"></i>
@@ -1942,8 +1987,10 @@
         <div id="agentCommissions" class="count metric-count">0</div>
         <div class="metric-note">{{ _('dashboard_agent_dues_note') }}</div>
       </div>
+      {% endif %}
     </div>
 
+    {% if show_dash_expenses %}
     <div class="dashboard-metrics-grid" id="additionalInfoRow" style="display:none;">
       <div class="card metric-card">
         <div class="metric-title"><i class="fas fa-receipt"></i> {{ _('dashboard_expenses_total_title') }}</div>
@@ -1951,7 +1998,9 @@
         <div class="metric-note">{{ _('dashboard_for_selected_period') }}</div>
       </div>
     </div>
+    {% endif %}
   </section>
+  {% endif %}
 
   <section class="dashboard-insights-grid">
     <div class="card dashboard-alerts-card">

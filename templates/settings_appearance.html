@@ -4,6 +4,7 @@
 {% block page_title %}🎨 إعدادات الواجهة{% endblock %}
 
 {% block content %}
+{% set ui_flags = settings.get_ui_flags() if settings else {} %}
 <style>
 .appearance-page {
   max-width: 1000px;
@@ -194,6 +195,24 @@
       </div>
     </div>
 
+    <div class="appearance-card" style="margin-top:16px;">
+      <div class="appearance-header" style="margin-bottom:14px;">
+        <h2><i class="fas fa-th-large"></i> بطاقات الواجهة الرئيسية</h2>
+        <p>فعّل/عطّل البطاقات التي تظهر في قسم "إجمالي المبيعات" داخل الداشبورد.</p>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;">
+        <div class="switch-row"><div class="switch-label"><strong>رصيد النقدية</strong></div><label class="toggle"><input type="checkbox" id="showDashCashBalance" {% if ui_flags.get('show_dash_cash_balance', True) %}checked{% endif %}><span class="toggle-slider"></span></label></div>
+        <div class="switch-row"><div class="switch-label"><strong>ربح الفترة</strong></div><label class="toggle"><input type="checkbox" id="showDashPeriodProfit" {% if ui_flags.get('show_dash_period_profit', True) %}checked{% endif %}><span class="toggle-slider"></span></label></div>
+        <div class="switch-row"><div class="switch-label"><strong>إجمالي المبيعات</strong></div><label class="toggle"><input type="checkbox" id="showDashTotalSales" {% if ui_flags.get('show_dash_total_sales', True) %}checked{% endif %}><span class="toggle-slider"></span></label></div>
+        <div class="switch-row"><div class="switch-label"><strong>المبيعات النقدية</strong></div><label class="toggle"><input type="checkbox" id="showDashCashSales" {% if ui_flags.get('show_dash_cash_sales', True) %}checked{% endif %}><span class="toggle-slider"></span></label></div>
+        <div class="switch-row"><div class="switch-label"><strong>المبيعات الآجلة</strong></div><label class="toggle"><input type="checkbox" id="showDashCreditSales" {% if ui_flags.get('show_dash_credit_sales', True) %}checked{% endif %}><span class="toggle-slider"></span></label></div>
+        <div class="switch-row"><div class="switch-label"><strong>قيمة المخزون</strong></div><label class="toggle"><input type="checkbox" id="showDashInventory" {% if ui_flags.get('show_dash_inventory', True) %}checked{% endif %}><span class="toggle-slider"></span></label></div>
+        <div class="switch-row"><div class="switch-label"><strong>الالتزامات</strong></div><label class="toggle"><input type="checkbox" id="showDashLiabilities" {% if ui_flags.get('show_dash_liabilities', True) %}checked{% endif %}><span class="toggle-slider"></span></label></div>
+        <div class="switch-row"><div class="switch-label"><strong>مستحقات مندوب التوصيل</strong></div><label class="toggle"><input type="checkbox" id="showDashAgentDues" {% if ui_flags.get('show_dash_agent_dues', True) %}checked{% endif %}><span class="toggle-slider"></span></label></div>
+        <div class="switch-row"><div class="switch-label"><strong>المصاريف</strong></div><label class="toggle"><input type="checkbox" id="showDashExpenses" {% if ui_flags.get('show_dash_expenses', True) %}checked{% endif %}><span class="toggle-slider"></span></label></div>
+      </div>
+    </div>
+
     <button type="button" class="btn-save-appearance" id="saveAppearanceBtn">
       <i class="fas fa-save"></i>
       حفظ إعدادات الواجهة
@@ -221,7 +240,17 @@ document.getElementById("saveAppearanceBtn").addEventListener("click", function 
     font_scale: document.getElementById("fontScale").value,
     default_currency: document.getElementById("defaultCurrency").value,
     ai_enabled: document.getElementById("aiEnabled").checked,
-    ui_flags: {}
+    ui_flags: {
+      show_dash_cash_balance: document.getElementById("showDashCashBalance").checked,
+      show_dash_period_profit: document.getElementById("showDashPeriodProfit").checked,
+      show_dash_total_sales: document.getElementById("showDashTotalSales").checked,
+      show_dash_cash_sales: document.getElementById("showDashCashSales").checked,
+      show_dash_credit_sales: document.getElementById("showDashCreditSales").checked,
+      show_dash_inventory: document.getElementById("showDashInventory").checked,
+      show_dash_liabilities: document.getElementById("showDashLiabilities").checked,
+      show_dash_agent_dues: document.getElementById("showDashAgentDues").checked,
+      show_dash_expenses: document.getElementById("showDashExpenses").checked
+    }
   };
 
   fetch("/settings/appearance/update", {
