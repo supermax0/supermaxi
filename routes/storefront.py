@@ -144,6 +144,37 @@ def _safe_int(value, default=0):
         return default
 
 
+def _safe_hex_color(value: str, default: str) -> str:
+    raw = str(value or "").strip()
+    if re.fullmatch(r"#[0-9a-fA-F]{6}", raw):
+        return raw
+    return default
+
+
+def _storefront_design_settings() -> dict[str, str]:
+    defaults = {
+        "primary_color": "#4f8cff",
+        "shipping_color": "#10b981",
+        "card_style": "modern",
+    }
+    try:
+        settings = SystemSettings.get_settings()
+        flags = settings.get_ui_flags() if settings else {}
+    except Exception:
+        current_app.logger.exception("failed loading storefront design settings")
+        flags = {}
+
+    card_style = str(flags.get("storefront_product_card_style") or defaults["card_style"]).strip()
+    if card_style not in {"modern", "compact", "showcase"}:
+        card_style = defaults["card_style"]
+
+    return {
+        "primary_color": _safe_hex_color(flags.get("storefront_primary_color"), defaults["primary_color"]),
+        "shipping_color": _safe_hex_color(flags.get("storefront_shipping_color"), defaults["shipping_color"]),
+        "card_style": card_style,
+    }
+
+
 def _cart_raw() -> dict[str, int]:
     raw = session.get(_CART_SESSION_KEY) or {}
     if not isinstance(raw, dict):
@@ -249,13 +280,14 @@ def _create_invoice_from_cart(cart_items: list[dict], form_data: dict, shipping_
         if notes:
             customer.notes = notes
     else:
+        first_product = Product.query.get(cart_items[0]["id"]) if cart_items else None
         customer = Customer(
             name=name,
             phone=phone,
             city=city or None,
             address=address,
             notes=notes or None,
-            tenant_id=getattr(product, "tenant_id", None),
+            tenant_id=getattr(first_product, "tenant_id", None),
         )
         db.session.add(customer)
         db.session.flush()
@@ -338,6 +370,7 @@ def _run_product_detail(product_id: int, shop_slug: str):
         related_products=related_cards,
         cart_count=_cart_count(),
         shop_tenant_slug=shop_slug,
+        store_design=_storefront_design_settings(),
     )
 
 
@@ -412,6 +445,7 @@ def store_index(tenant_slug: str):
             "sort": sort,
         },
         badges=badges,
+        store_design=_storefront_design_settings(),
     )
 
 
@@ -432,6 +466,7 @@ def cart_page(tenant_slug: str):
         cart_items=items,
         subtotal=subtotal,
         cart_count=_cart_count(),
+        store_design=_storefront_design_settings(),
     )
 
 
@@ -529,4 +564,5 @@ def checkout_page(tenant_slug: str):
         checkout_form=checkout_form,
         checkout_error=checkout_error,
         checkout_success=checkout_success,
+        store_design=_storefront_design_settings(),
     )

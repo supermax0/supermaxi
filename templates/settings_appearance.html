@@ -86,6 +86,11 @@
   gap: 6px;
 }
 
+.store-color-input {
+  min-height: 42px;
+  padding: 4px;
+}
+
 .switch-row {
   display: flex;
   align-items: center;
@@ -271,13 +276,35 @@
 
     {% set storefront_shipping = ui_flags.get('storefront_shipping_by_city', {}) %}
     {% set storefront_default_shipping = ui_flags.get('storefront_shipping_default_fee', 7000) %}
+    {% set storefront_primary_color = ui_flags.get('storefront_primary_color', '#4f8cff') %}
+    {% set storefront_shipping_color = ui_flags.get('storefront_shipping_color', '#10b981') %}
+    {% set storefront_card_style = ui_flags.get('storefront_product_card_style', 'modern') %}
     {% set storefront_cities = ['بغداد', 'البصرة', 'نينوى', 'أربيل', 'النجف', 'كربلاء', 'ذي قار', 'السليمانية', 'دهوك', 'كركوك', 'ديالى', 'الأنبار', 'صلاح الدين', 'واسط', 'بابل', 'القادسية', 'ميسان', 'المثنى'] %}
     <div class="appearance-card" style="margin-top:16px;">
       <div class="appearance-header" style="margin-bottom:14px;">
         <h2><i class="fas fa-store"></i> إعدادات المتجر</h2>
-        <p>تحكم بأسعار الشحن التي تظهر في Checkout حسب المحافظة. المحافظات غير المحددة تستخدم السعر الافتراضي.</p>
+        <p>خصص لون المتجر، لون الشحن، شكل بطاقة المنتج، وأسعار الشحن التي تظهر في Checkout.</p>
       </div>
-      <div class="appearance-grid" style="margin-bottom:12px;">
+      <div class="appearance-grid" style="margin-bottom:14px;">
+        <div class="field-group">
+          <label class="field-label" for="storefrontPrimaryColor">لون المتجر الرئيسي</label>
+          <input id="storefrontPrimaryColor" class="appearance-input store-color-input" type="color" value="{{ storefront_primary_color }}">
+          <div class="field-help">يؤثر على الأزرار، البطاقات البارزة، وروابط السلة.</div>
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="storefrontShippingColor">لون الشحن</label>
+          <input id="storefrontShippingColor" class="appearance-input store-color-input" type="color" value="{{ storefront_shipping_color }}">
+          <div class="field-help">يظهر في سعر الشحن وتنبيهات الدفع عند الاستلام.</div>
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="storefrontProductCardStyle">شكل بطاقة المنتج</label>
+          <select id="storefrontProductCardStyle" class="appearance-select">
+            <option value="modern" {% if storefront_card_style == 'modern' %}selected{% endif %}>عصري</option>
+            <option value="compact" {% if storefront_card_style == 'compact' %}selected{% endif %}>مضغوط</option>
+            <option value="showcase" {% if storefront_card_style == 'showcase' %}selected{% endif %}>معرض فاخر</option>
+          </select>
+          <div class="field-help">يمكنك تغيير شكل بطاقات المنتجات في صفحة المتجر.</div>
+        </div>
         <div class="field-group">
           <label class="field-label" for="storefrontDefaultShipping">سعر الشحن الافتراضي</label>
           <input id="storefrontDefaultShipping" class="appearance-input" type="number" min="0" value="{{ storefront_default_shipping }}">
@@ -349,6 +376,9 @@ document.getElementById("saveAppearanceBtn").addEventListener("click", function 
       show_dash_liabilities: document.getElementById("showDashLiabilities").checked,
       show_dash_agent_dues: document.getElementById("showDashAgentDues").checked,
       show_dash_expenses: document.getElementById("showDashExpenses").checked,
+      storefront_primary_color: document.getElementById("storefrontPrimaryColor").value || "#4f8cff",
+      storefront_shipping_color: document.getElementById("storefrontShippingColor").value || "#10b981",
+      storefront_product_card_style: document.getElementById("storefrontProductCardStyle").value || "modern",
       storefront_shipping_default_fee: Math.max(0, parseInt(document.getElementById("storefrontDefaultShipping").value, 10) || 0),
       storefront_shipping_by_city: collectStorefrontShippingByCity()
     }

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>إتمام الطلب</title>
   <style>
-    :root { color-scheme: dark; --bg:#08111f; --card:#0f1b2d; --line:rgba(148,163,184,.2); --text:#e7eefc; --muted:#9eb1cc; --brand:#4f8cff; --ok:#10b981; --err:#ef4444; }
+    :root { color-scheme: dark; --bg:#08111f; --card:#0f1b2d; --line:rgba(148,163,184,.2); --text:#e7eefc; --muted:#9eb1cc; --brand:{{ store_design.primary_color }}; --shipping:{{ store_design.shipping_color }}; --ok:#10b981; --err:#ef4444; }
     *{box-sizing:border-box} body{margin:0;background:radial-gradient(circle at top right,rgba(79,140,255,.18),transparent 24%),linear-gradient(180deg,#0b1627,var(--bg));color:var(--text);font-family:Tahoma,Arial,sans-serif}
     .page{max-width:1160px;margin:0 auto;padding:24px 16px 44px}
     .top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:18px}
@@ -21,7 +21,8 @@
     .alert.err{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#fecaca}
     table{width:100%;border-collapse:collapse} th,td{padding:9px 0;border-bottom:1px solid var(--line);text-align:right} th{color:var(--muted);font-size:13px}
     .sum{display:flex;justify-content:space-between;padding:8px 0}.sum.final{font-size:20px;font-weight:800}
-    .chip{display:inline-block;padding:6px 10px;border-radius:999px;background:rgba(79,140,255,.16);border:1px solid rgba(96,165,250,.2);font-size:12px}
+    .chip{display:inline-block;padding:6px 10px;border-radius:999px;background:color-mix(in srgb,var(--shipping) 18%,transparent);border:1px solid color-mix(in srgb,var(--shipping) 34%,transparent);font-size:12px}
+    #shippingFeeText{color:var(--shipping)}
     @media (max-width:900px){.layout{grid-template-columns:1fr}}
   </style>
 </head>
