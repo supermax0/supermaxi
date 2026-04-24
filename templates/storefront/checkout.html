@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>إتمام الطلب</title>
+  <style>
+    :root { color-scheme: dark; --bg:#08111f; --card:#0f1b2d; --line:rgba(148,163,184,.2); --text:#e7eefc; --muted:#9eb1cc; --brand:#4f8cff; --ok:#10b981; --err:#ef4444; }
+    *{box-sizing:border-box} body{margin:0;background:radial-gradient(circle at top right,rgba(79,140,255,.18),transparent 24%),linear-gradient(180deg,#0b1627,var(--bg));color:var(--text);font-family:Tahoma,Arial,sans-serif}
+    .page{max-width:1160px;margin:0 auto;padding:24px 16px 44px}
+    .top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+    .btn{display:inline-flex;align-items:center;justify-content:center;padding:11px 14px;border-radius:12px;border:1px solid var(--line);font-weight:700;background:rgba(255,255,255,.03);color:var(--text);text-decoration:none;cursor:pointer}
+    .btn.primary{background:linear-gradient(135deg,var(--brand),#2f5ce4);border-color:transparent}
+    .layout{display:grid;grid-template-columns:1.1fr .9fr;gap:16px}
+    .card{background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.02));border:1px solid var(--line);border-radius:18px;padding:18px}
+    .field{margin-bottom:10px}.field label{display:block;color:var(--muted);font-size:13px;margin-bottom:6px}
+    .field input,.field textarea,.field select{width:100%;border-radius:12px;border:1px solid var(--line);padding:11px;background:rgba(255,255,255,.04);color:var(--text)}
+    .field textarea{min-height:88px;resize:vertical}
+    .alert{border-radius:12px;padding:12px 14px;margin-bottom:12px}
+    .alert.ok{background:rgba(16,185,129,.13);border:1px solid rgba(16,185,129,.32);color:#d1fae5}
+    .alert.err{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#fecaca}
+    table{width:100%;border-collapse:collapse} th,td{padding:9px 0;border-bottom:1px solid var(--line);text-align:right} th{color:var(--muted);font-size:13px}
+    .sum{display:flex;justify-content:space-between;padding:8px 0}.sum.final{font-size:20px;font-weight:800}
+    .chip{display:inline-block;padding:6px 10px;border-radius:999px;background:rgba(79,140,255,.16);border:1px solid rgba(96,165,250,.2);font-size:12px}
+    @media (max-width:900px){.layout{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="top">
+      <a class="btn" href="{{ url_for('storefront.cart_page', tenant_slug=shop_tenant_slug) }}">العودة إلى السلة</a>
+      <h2 style="margin:0;">إتمام الطلب</h2>
+    </div>
+    <div class="layout">
+      <div class="card">
+        {% if checkout_success %}
+          <div class="alert ok">
+            تم إنشاء الطلب بنجاح. رقم الطلب: <strong>#{{ checkout_success.invoice_id }}</strong><br>
+            الإجمالي النهائي: <strong>{{ "{:,.0f}".format(checkout_success.grand_total) }} د.ع</strong>
+          </div>
+          <a class="btn primary" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">مواصلة التسوق</a>
+        {% elif cart_items %}
+          {% if checkout_error %}<div class="alert err">{{ checkout_error }}</div>{% endif %}
+          <form method="post">
+            <div class="field">
+              <label>الاسم الكامل</label>
+              <input type="text" name="customer_name" required value="{{ checkout_form.customer_name }}">
+            </div>
+            <div class="field">
+              <label>رقم الهاتف</label>
+              <input type="text" name="phone" required value="{{ checkout_form.phone }}">
+            </div>
+            <div class="field">
+              <label>المحافظة</label>
+              <input id="checkoutCity" list="city-options" name="city" required value="{{ checkout_form.city }}" placeholder="مثال: بغداد">
+              <datalist id="city-options">
+                {% for city, fee in shipping_map.items() %}
+                <option value="{{ city }}">{{ city }} - {{ "{:,.0f}".format(fee) }} د.ع</option>
+                {% endfor %}
+              </datalist>
+              <small style="color:var(--muted);">الشحن الافتراضي للمحافظات غير المعرّفة: {{ "{:,.0f}".format(shipping_default_fee) }} د.ع</small>
+            </div>
+            <div class="field">
+              <label>العنوان التفصيلي</label>
+              <textarea name="address" required>{{ checkout_form.address }}</textarea>
+            </div>
+            <div class="field">
+              <label>ملاحظات</label>
+              <textarea name="notes">{{ checkout_form.notes }}</textarea>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <span class="chip">طريقة الدفع: الدفع عند الاستلام</span>
+              <button class="btn primary" type="submit">تأكيد الطلب</button>
+            </div>
+          </form>
+        {% else %}
+          <div class="alert err">لا يمكن إتمام الطلب لأن السلة فارغة.</div>
+          <a class="btn primary" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">العودة للمتجر</a>
+        {% endif %}
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0;">ملخص الطلب</h3>
+        <table>
+          <thead><tr><th>المنتج</th><th>الكمية</th><th>المجموع</th></tr></thead>
+          <tbody>
+            {% for item in cart_items %}
+            <tr>
+              <td>{{ item.name }}</td>
+              <td>{{ item.quantity }}</td>
+              <td>{{ "{:,.0f}".format(item.line_total) }} د.ع</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <div class="sum"><span>المجموع الفرعي</span><strong>{{ "{:,.0f}".format(subtotal) }} د.ع</strong></div>
+        <div class="sum"><span>الشحن</span><strong id="shippingFeeText">{{ "{:,.0f}".format(shipping_fee) }} د.ع</strong></div>
+        <div class="sum final"><span>الإجمالي النهائي</span><strong id="grandTotalText">{{ "{:,.0f}".format(grand_total) }} د.ع</strong></div>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      const cityInput = document.getElementById("checkoutCity");
+      const shippingText = document.getElementById("shippingFeeText");
+      const totalText = document.getElementById("grandTotalText");
+      if (!cityInput || !shippingText || !totalText) return;
+      const shippingMap = {{ shipping_map|tojson }};
+      const defaultFee = Number({{ shipping_default_fee|int }});
+      const subtotal = Number({{ subtotal|int }});
+      const normalize = (value) => String(value || "").replace(/-/g, " ").trim().toLowerCase();
+      const formatMoney = (value) => `${Number(value || 0).toLocaleString("en-US")} د.ع`;
+      const resolveFee = (city) => {
+        const needle = normalize(city);
+        for (const [name, fee] of Object.entries(shippingMap)) {
+          if (normalize(name) === needle) return Number(fee || 0);
+        }
+        return defaultFee;
+      };
+      const updateTotals = () => {
+        const fee = resolveFee(cityInput.value);
+        shippingText.textContent = formatMoney(fee);
+        totalText.textContent = formatMoney(subtotal + fee);
+      };
+      cityInput.addEventListener("input", updateTotals);
+      cityInput.addEventListener("change", updateTotals);
+      updateTotals();
+    })();
+  </script>
+</body>
+</html>

@@ -5,17 +5,28 @@ import re
 from datetime import datetime
 from urllib.parse import parse_qs, urlparse
 
-from flask import Blueprint, abort, current_app, g, redirect, render_template, request, url_for
+from flask import Blueprint, abort, current_app, g, jsonify, redirect, render_template, request, session, url_for
 
 from extensions import db
 from models.customer import Customer
 from models.invoice import Invoice
 from models.order_item import OrderItem
 from models.product import Product
+from models.system_settings import SystemSettings
 from utils.inventory_movements import validate_sale_quantity
 
 
 storefront_bp = Blueprint("storefront", __name__, url_prefix="/shop")
+_CART_SESSION_KEY = "storefront_cart"
+_DEFAULT_SHIPPING_BY_CITY = {
+    "بغداد": 5000,
+    "البصرة": 7000,
+    "نينوى": 7000,
+    "أربيل": 7000,
+    "النجف": 6000,
+    "كربلاء": 6000,
+    "ذي قار": 7000,
+}
 
 
 @storefront_bp.before_request
@@ -126,18 +137,93 @@ def _product_card(product: Product, shop_slug: str) -> dict:
     }
 
 
-def _save_storefront_booking(product: Product, form_data: dict) -> tuple[bool, str, dict]:
+def _safe_int(value, default=0):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _cart_raw() -> dict[str, int]:
+    raw = session.get(_CART_SESSION_KEY) or {}
+    if not isinstance(raw, dict):
+        return {}
+    clean: dict[str, int] = {}
+    for k, v in raw.items():
+        pid = _safe_int(k, 0)
+        qty = max(0, min(_safe_int(v, 0), 9999))
+        if pid > 0 and qty > 0:
+            clean[str(pid)] = qty
+    return clean
+
+
+def _save_cart_raw(cart: dict[str, int]) -> None:
+    session[_CART_SESSION_KEY] = cart
+    session.modified = True
+
+
+def _cart_count() -> int:
+    return sum(_cart_raw().values())
+
+
+def _cart_items(shop_slug: str) -> list[dict]:
+    raw = _cart_raw()
+    if not raw:
+        return []
+    ids = [_safe_int(k, 0) for k in raw.keys()]
+    products = Product.query.filter(Product.id.in_(ids)).all()
+    product_by_id = {p.id: p for p in products}
+    items = []
+    for sid, qty in raw.items():
+        pid = _safe_int(sid, 0)
+        p = product_by_id.get(pid)
+        if not p:
+            continue
+        card = _product_card(p, shop_slug)
+        card["quantity"] = max(1, qty)
+        card["line_total"] = card["price"] * card["quantity"]
+        items.append(card)
+    return items
+
+
+def _normalized_city(value: str) -> str:
+    return str(value or "").replace("-", " ").strip().lower()
+
+
+def _shipping_config() -> tuple[dict[str, int], int]:
+    city_fees = dict(_DEFAULT_SHIPPING_BY_CITY)
+    default_fee = 7000
+    try:
+        settings = SystemSettings.get_settings()
+        flags = settings.get_ui_flags() if settings else {}
+        custom = flags.get("storefront_shipping_by_city")
+        if isinstance(custom, dict):
+            for city, fee in custom.items():
+                city_name = str(city or "").strip()
+                if not city_name:
+                    continue
+                city_fees[city_name] = max(0, _safe_int(fee, city_fees.get(city_name, default_fee)))
+        default_fee = max(0, _safe_int(flags.get("storefront_shipping_default_fee"), default_fee))
+    except Exception:
+        current_app.logger.exception("failed loading storefront shipping settings")
+    return city_fees, default_fee
+
+
+def _shipping_fee_for_city(city: str) -> tuple[int, dict[str, int]]:
+    city_fees, default_fee = _shipping_config()
+    normalized = _normalized_city(city)
+    for name, fee in city_fees.items():
+        if _normalized_city(name) == normalized:
+            return fee, city_fees
+    return default_fee, city_fees
+
+
+def _create_invoice_from_cart(cart_items: list[dict], form_data: dict, shipping_fee: int) -> tuple[bool, str, dict]:
     name = str(form_data.get("customer_name") or "").strip()
     phone = str(form_data.get("phone") or "").strip()
     city = str(form_data.get("city") or "").strip()
     address = str(form_data.get("address") or "").strip()
     notes = str(form_data.get("notes") or "").strip()
-
-    try:
-        quantity = int(form_data.get("quantity") or 1)
-    except (TypeError, ValueError):
-        quantity = 1
-    quantity = max(1, min(quantity, 99999))
 
     if not name:
         return False, "يرجى إدخال الاسم الكامل.", {}
@@ -145,10 +231,13 @@ def _save_storefront_booking(product: Product, form_data: dict) -> tuple[bool, s
         return False, "يرجى إدخال رقم الهاتف.", {}
     if not address:
         return False, "يرجى إدخال العنوان.", {}
+    if not cart_items:
+        return False, "سلة الطلب فارغة.", {}
 
-    stock_check = validate_sale_quantity(product.id, quantity)
-    if not stock_check.get("valid"):
-        return False, str(stock_check.get("message") or "الكمية المطلوبة غير متوفرة حالياً."), {}
+    for item in cart_items:
+        check = validate_sale_quantity(item["id"], item["quantity"])
+        if not check.get("valid"):
+            return False, f"المنتج {item['name']}: {str(check.get('message') or 'الكمية غير متوفرة.')}", {}
 
     customer = Customer.query.filter_by(phone=phone).first()
     if customer:
@@ -171,38 +260,54 @@ def _save_storefront_booking(product: Product, form_data: dict) -> tuple[bool, s
         db.session.add(customer)
         db.session.flush()
 
+    subtotal = sum(int(i["line_total"]) for i in cart_items)
+    grand_total = subtotal + max(0, _safe_int(shipping_fee, 0))
+
     invoice = Invoice(
         customer_id=customer.id,
         customer_name=customer.name,
         employee_id=None,
         employee_name=None,
-        total=0,
-        status="حجز",
+        total=grand_total,
+        status="تم الطلب",
         payment_status="غير مسدد",
-        note=f"طلب من متجر المنتجات | product_id={product.id}",
+        note=f"طلب من متجر المنتجات | COD | city={city} | shipping={shipping_fee} | notes={notes}",
         created_at=datetime.utcnow(),
     )
     db.session.add(invoice)
     db.session.flush()
 
-    total = int(product.sale_price or 0) * quantity
-    item = OrderItem(
-        invoice_id=invoice.id,
-        product_id=product.id,
-        product_name=product.name,
-        quantity=quantity,
-        price=int(product.sale_price or 0),
-        cost=int(product.buy_price or 0),
-        total=total,
-    )
-    db.session.add(item)
-    product.quantity = int(product.quantity or 0) - quantity
-    invoice.total = total
+    for item in cart_items:
+        product = Product.query.get(item["id"])
+        if not product:
+            db.session.rollback()
+            return False, f"المنتج غير موجود: {item['name']}", {}
+        check = validate_sale_quantity(product.id, item["quantity"])
+        if not check.get("valid"):
+            db.session.rollback()
+            return False, f"المنتج {product.name}: {str(check.get('message') or 'الكمية غير متوفرة.')}", {}
+        line_total = int(product.sale_price or 0) * int(item["quantity"])
+        db.session.add(
+            OrderItem(
+                invoice_id=invoice.id,
+                product_id=product.id,
+                product_name=product.name,
+                quantity=int(item["quantity"]),
+                price=int(product.sale_price or 0),
+                cost=int(product.buy_price or 0),
+                total=line_total,
+            )
+        )
+        product.quantity = int(product.quantity or 0) - int(item["quantity"])
+
     db.session.commit()
 
     return True, "تم استلام طلبك بنجاح.", {
         "invoice_id": invoice.id,
-        "quantity": quantity,
+        "items_count": len(cart_items),
+        "subtotal": subtotal,
+        "shipping_fee": shipping_fee,
+        "grand_total": grand_total,
         "customer_name": customer.name,
     }
 
@@ -219,37 +324,6 @@ def _run_product_detail(product_id: int, shop_slug: str):
     if not product.active:
         abort(404)
 
-    booking_error = ""
-    booking_success = None
-    booking_form = {
-        "customer_name": "",
-        "phone": "",
-        "city": "",
-        "address": "",
-        "quantity": "1",
-        "notes": "",
-    }
-
-    if request.method == "POST":
-        booking_form = {
-            "customer_name": str(request.form.get("customer_name") or "").strip(),
-            "phone": str(request.form.get("phone") or "").strip(),
-            "city": str(request.form.get("city") or "").strip(),
-            "address": str(request.form.get("address") or "").strip(),
-            "quantity": str(request.form.get("quantity") or "1").strip(),
-            "notes": str(request.form.get("notes") or "").strip(),
-        }
-        ok, msg, payload = _save_storefront_booking(product, booking_form)
-        if ok:
-            booking_success = {
-                "message": msg,
-                "invoice_id": payload.get("invoice_id"),
-            }
-            booking_form["quantity"] = "1"
-            booking_form["notes"] = ""
-        else:
-            booking_error = msg
-
     card = _product_card(product, shop_slug)
     related = (
         Product.query.filter(Product.active == True, Product.id != product.id)  # noqa: E712
@@ -262,9 +336,7 @@ def _run_product_detail(product_id: int, shop_slug: str):
         "storefront/product_detail.html",
         product=card,
         related_products=related_cards,
-        booking_form=booking_form,
-        booking_error=booking_error,
-        booking_success=booking_success,
+        cart_count=_cart_count(),
         shop_tenant_slug=shop_slug,
     )
 
@@ -290,16 +362,171 @@ def shop_root():
 @storefront_bp.route("/<tenant_slug>/")
 def store_index(tenant_slug: str):
     slug = _resolved_shop_slug(tenant_slug)
+    q = str(request.args.get("q") or "").strip().lower()
+    min_price = max(0, _safe_int(request.args.get("min_price"), 0))
+    max_price = max(0, _safe_int(request.args.get("max_price"), 0))
+    availability = str(request.args.get("availability") or "all").strip().lower()
+    badge_filter = str(request.args.get("badge") or "").strip()
+    sort = str(request.args.get("sort") or "latest").strip().lower()
     products = (
         Product.query.filter(Product.active == True)  # noqa: E712
         .order_by(Product.id.desc())
         .all()
     )
     cards = [_product_card(product, slug) for product in products]
-    return render_template("storefront/index.html", products=cards, shop_tenant_slug=slug)
+
+    if q:
+        cards = [c for c in cards if q in c["name"].lower() or q in c["description"].lower()]
+    if min_price:
+        cards = [c for c in cards if c["price"] >= min_price]
+    if max_price:
+        cards = [c for c in cards if c["price"] <= max_price]
+    if availability == "in_stock":
+        cards = [c for c in cards if c["is_available"]]
+    elif availability == "out_stock":
+        cards = [c for c in cards if not c["is_available"]]
+    if badge_filter:
+        cards = [c for c in cards if c["badge"] == badge_filter]
+
+    if sort == "price_asc":
+        cards.sort(key=lambda c: c["price"])
+    elif sort == "price_desc":
+        cards.sort(key=lambda c: c["price"], reverse=True)
+    elif sort == "name_asc":
+        cards.sort(key=lambda c: c["name"])
+    else:
+        cards.sort(key=lambda c: c["id"], reverse=True)
+
+    badges = sorted({c["badge"] for c in [_product_card(p, slug) for p in products] if c["badge"]})
+    return render_template(
+        "storefront/index.html",
+        products=cards,
+        shop_tenant_slug=slug,
+        cart_count=_cart_count(),
+        filters={
+            "q": request.args.get("q", ""),
+            "min_price": request.args.get("min_price", ""),
+            "max_price": request.args.get("max_price", ""),
+            "availability": availability,
+            "badge": badge_filter,
+            "sort": sort,
+        },
+        badges=badges,
+    )
 
 
-@storefront_bp.route("/<tenant_slug>/product/<int:product_id>", methods=["GET", "POST"])
+@storefront_bp.route("/<tenant_slug>/product/<int:product_id>", methods=["GET"])
 def product_detail(tenant_slug: str, product_id: int):
     slug = _resolved_shop_slug(tenant_slug)
     return _run_product_detail(product_id, slug)
+
+
+@storefront_bp.route("/<tenant_slug>/cart")
+def cart_page(tenant_slug: str):
+    slug = _resolved_shop_slug(tenant_slug)
+    items = _cart_items(slug)
+    subtotal = sum(int(i["line_total"]) for i in items)
+    return render_template(
+        "storefront/cart.html",
+        shop_tenant_slug=slug,
+        cart_items=items,
+        subtotal=subtotal,
+        cart_count=_cart_count(),
+    )
+
+
+@storefront_bp.route("/<tenant_slug>/cart/add/<int:product_id>", methods=["POST"])
+def cart_add(tenant_slug: str, product_id: int):
+    _resolved_shop_slug(tenant_slug)
+    qty = max(1, min(_safe_int(request.form.get("quantity"), 1), 999))
+    product = Product.query.get_or_404(product_id)
+    if not product.active:
+        return jsonify({"success": False, "error": "المنتج غير متاح"}), 400
+    cart = _cart_raw()
+    current_qty = _safe_int(cart.get(str(product_id)), 0)
+    cart[str(product_id)] = current_qty + qty
+    _save_cart_raw(cart)
+    next_url = request.form.get("next") or request.referrer or url_for("storefront.store_index", tenant_slug=tenant_slug)
+    return redirect(next_url)
+
+
+@storefront_bp.route("/<tenant_slug>/cart/update", methods=["POST"])
+def cart_update(tenant_slug: str):
+    slug = _resolved_shop_slug(tenant_slug)
+    cart = _cart_raw()
+    raw_updates = request.form.to_dict(flat=False)
+    for key, values in raw_updates.items():
+        if not key.startswith("qty_"):
+            continue
+        pid = _safe_int(key.replace("qty_", ""), 0)
+        if pid <= 0:
+            continue
+        qty = max(0, min(_safe_int(values[0] if values else 0), 999))
+        if qty == 0:
+            cart.pop(str(pid), None)
+        else:
+            cart[str(pid)] = qty
+    _save_cart_raw(cart)
+    return redirect(url_for("storefront.cart_page", tenant_slug=slug))
+
+
+@storefront_bp.route("/<tenant_slug>/cart/remove/<int:product_id>", methods=["POST"])
+def cart_remove(tenant_slug: str, product_id: int):
+    slug = _resolved_shop_slug(tenant_slug)
+    cart = _cart_raw()
+    cart.pop(str(product_id), None)
+    _save_cart_raw(cart)
+    return redirect(url_for("storefront.cart_page", tenant_slug=slug))
+
+
+@storefront_bp.route("/<tenant_slug>/checkout", methods=["GET", "POST"])
+def checkout_page(tenant_slug: str):
+    slug = _resolved_shop_slug(tenant_slug)
+    items = _cart_items(slug)
+    subtotal = sum(int(i["line_total"]) for i in items)
+    shipping_map, default_fee = _shipping_config()
+    shipping_fee = default_fee
+    checkout_form = {
+        "customer_name": "",
+        "phone": "",
+        "city": "",
+        "address": "",
+        "notes": "",
+    }
+    checkout_error = ""
+    checkout_success = None
+
+    if request.method == "POST":
+        checkout_form = {
+            "customer_name": str(request.form.get("customer_name") or "").strip(),
+            "phone": str(request.form.get("phone") or "").strip(),
+            "city": str(request.form.get("city") or "").strip(),
+            "address": str(request.form.get("address") or "").strip(),
+            "notes": str(request.form.get("notes") or "").strip(),
+        }
+        shipping_fee, _ = _shipping_fee_for_city(checkout_form["city"])
+        ok, msg, payload = _create_invoice_from_cart(items, checkout_form, shipping_fee)
+        if ok:
+            _save_cart_raw({})
+            checkout_success = payload
+        else:
+            checkout_error = msg
+
+    if checkout_form["city"]:
+        shipping_fee, _ = _shipping_fee_for_city(checkout_form["city"])
+    grand_total = subtotal + shipping_fee
+
+    return render_template(
+        "storefront/checkout.html",
+        shop_tenant_slug=slug,
+        cart_items=items,
+        subtotal=subtotal,
+        shipping_fee=shipping_fee,
+        grand_total=grand_total,
+        cart_count=_cart_count(),
+        shipping_map=shipping_map,
+        shipping_default_fee=default_fee,
+        checkout_form=checkout_form,
+        checkout_error=checkout_error,
+        checkout_success=checkout_success,
+    )

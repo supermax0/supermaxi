@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>سلة المشتريات</title>
+  <style>
+    :root { color-scheme: dark; --bg:#071120; --card:#0f1b2d; --line:rgba(148,163,184,.2); --text:#e5eefc; --muted:#9db0cb; --brand:#4f8cff; --danger:#ef4444; --ok:#10b981; }
+    *{box-sizing:border-box} body{margin:0;background:radial-gradient(circle at top,#12223c 0%,var(--bg) 55%);color:var(--text);font-family:Tahoma,Arial,sans-serif}
+    .page{max-width:1120px;margin:0 auto;padding:24px 16px 40px}
+    .top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+    .top a{text-decoration:none;color:var(--text)}
+    .btn{display:inline-flex;align-items:center;justify-content:center;padding:10px 14px;border-radius:12px;border:1px solid var(--line);font-weight:700;background:rgba(255,255,255,.03);color:var(--text);cursor:pointer}
+    .btn.primary{background:linear-gradient(135deg,var(--brand),#2f5ce4);border-color:transparent}
+    .card{background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));border:1px solid var(--line);border-radius:18px}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:12px 10px;border-bottom:1px solid var(--line);text-align:right}
+    th{color:var(--muted);font-size:13px}
+    .product{display:flex;align-items:center;gap:10px}
+    .product img{width:58px;height:58px;border-radius:10px;object-fit:cover;background:#0b1728}
+    input[type="number"]{width:90px;border-radius:10px;border:1px solid var(--line);padding:8px;background:rgba(255,255,255,.05);color:var(--text)}
+    .danger{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.35);color:#fecaca}
+    .footer{margin-top:14px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+    .total{font-size:22px;font-weight:800}
+    .empty{text-align:center;padding:34px;color:var(--muted)}
+    @media (max-width:760px){table,thead,tbody,tr,td{display:block} thead{display:none} tr{border-bottom:1px solid var(--line);padding:8px 0} td{border:0;padding:8px 0} td::before{content:attr(data-label);display:block;color:var(--muted);font-size:12px;margin-bottom:4px}}
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="top">
+      <a class="btn" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">العودة للمتجر</a>
+      <h2 style="margin:0;">سلة المشتريات ({{ cart_count }})</h2>
+    </div>
+    <div class="card">
+      {% if cart_items %}
+      <form method="post" action="{{ url_for('storefront.cart_update', tenant_slug=shop_tenant_slug) }}">
+        <table>
+          <thead>
+            <tr><th>المنتج</th><th>السعر</th><th>الكمية</th><th>المجموع</th><th></th></tr>
+          </thead>
+          <tbody>
+            {% for item in cart_items %}
+            <tr>
+              <td data-label="المنتج">
+                <div class="product">
+                  {% if item.image_url %}<img src="{{ item.image_url }}" alt="{{ item.name }}">{% endif %}
+                  <div>{{ item.name }}</div>
+                </div>
+              </td>
+              <td data-label="السعر">{{ "{:,.0f}".format(item.price) }} د.ع</td>
+              <td data-label="الكمية"><input type="number" min="0" max="999" name="qty_{{ item.id }}" value="{{ item.quantity }}"></td>
+              <td data-label="المجموع">{{ "{:,.0f}".format(item.line_total) }} د.ع</td>
+              <td data-label="حذف">
+                <button class="btn danger" formaction="{{ url_for('storefront.cart_remove', tenant_slug=shop_tenant_slug, product_id=item.id) }}" formmethod="post" type="submit">حذف</button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <div class="footer">
+          <div class="total">الإجمالي: {{ "{:,.0f}".format(subtotal) }} د.ع</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn" type="submit">تحديث السلة</button>
+            <a class="btn primary" href="{{ url_for('storefront.checkout_page', tenant_slug=shop_tenant_slug) }}">إكمال الطلب</a>
+          </div>
+        </div>
+      </form>
+      {% else %}
+      <div class="empty">
+        السلة فارغة حالياً.
+        <div style="margin-top:12px;"><a class="btn primary" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">تصفح المنتجات</a></div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</body>
+</html>
