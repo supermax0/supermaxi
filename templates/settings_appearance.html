@@ -279,6 +279,12 @@
     {% set storefront_primary_color = ui_flags.get('storefront_primary_color', '#4f8cff') %}
     {% set storefront_shipping_color = ui_flags.get('storefront_shipping_color', '#10b981') %}
     {% set storefront_card_style = ui_flags.get('storefront_product_card_style', 'modern') %}
+    {% set storefront_theme_preset = ui_flags.get('storefront_theme_preset', 'custom') %}
+    {% set storefront_hero_title = ui_flags.get('storefront_hero_title', 'واجهة متجر احترافية') %}
+    {% set storefront_hero_subtitle = ui_flags.get('storefront_hero_subtitle', 'ابحث، فلتر، واختر منتجاتك بسهولة. كل عملية شراء تمر عبر سلة متكاملة ثم Checkout بالدفع عند الاستلام.') %}
+    {% set storefront_coupon_code = ui_flags.get('storefront_coupon_code', '') %}
+    {% set storefront_coupon_type = ui_flags.get('storefront_coupon_type', 'percent') %}
+    {% set storefront_coupon_value = ui_flags.get('storefront_coupon_value', 0) %}
     {% set storefront_cities = ['بغداد', 'البصرة', 'نينوى', 'أربيل', 'النجف', 'كربلاء', 'ذي قار', 'السليمانية', 'دهوك', 'كركوك', 'ديالى', 'الأنبار', 'صلاح الدين', 'واسط', 'بابل', 'القادسية', 'ميسان', 'المثنى'] %}
     <div class="appearance-card" style="margin-top:16px;">
       <div class="appearance-header" style="margin-bottom:14px;">
@@ -297,13 +303,34 @@
           <div class="field-help">يظهر في سعر الشحن وتنبيهات الدفع عند الاستلام.</div>
         </div>
         <div class="field-group">
+          <label class="field-label" for="storefrontThemePreset">قالب المتجر الجاهز</label>
+          <select id="storefrontThemePreset" class="appearance-select">
+            <option value="custom" {% if storefront_theme_preset == 'custom' %}selected{% endif %}>مخصص</option>
+            <option value="ocean" {% if storefront_theme_preset == 'ocean' %}selected{% endif %}>Ocean</option>
+            <option value="sunset" {% if storefront_theme_preset == 'sunset' %}selected{% endif %}>Sunset</option>
+            <option value="emerald" {% if storefront_theme_preset == 'emerald' %}selected{% endif %}>Emerald</option>
+          </select>
+          <div class="field-help">يغير ألوان المتجر بسرعة.</div>
+        </div>
+        <div class="field-group">
           <label class="field-label" for="storefrontProductCardStyle">شكل بطاقة المنتج</label>
           <select id="storefrontProductCardStyle" class="appearance-select">
             <option value="modern" {% if storefront_card_style == 'modern' %}selected{% endif %}>عصري</option>
             <option value="compact" {% if storefront_card_style == 'compact' %}selected{% endif %}>مضغوط</option>
             <option value="showcase" {% if storefront_card_style == 'showcase' %}selected{% endif %}>معرض فاخر</option>
+            <option value="minimal" {% if storefront_card_style == 'minimal' %}selected{% endif %}>Minimal</option>
+            <option value="bordered" {% if storefront_card_style == 'bordered' %}selected{% endif %}>Bordered</option>
+            <option value="overlay" {% if storefront_card_style == 'overlay' %}selected{% endif %}>Overlay</option>
           </select>
           <div class="field-help">يمكنك تغيير شكل بطاقات المنتجات في صفحة المتجر.</div>
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="storefrontHeroTitle">عنوان الواجهة</label>
+          <input id="storefrontHeroTitle" class="appearance-input" type="text" value="{{ storefront_hero_title }}">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="storefrontHeroSubtitle">وصف الواجهة</label>
+          <input id="storefrontHeroSubtitle" class="appearance-input" type="text" value="{{ storefront_hero_subtitle }}">
         </div>
         <div class="field-group">
           <label class="field-label" for="storefrontDefaultShipping">سعر الشحن الافتراضي</label>
@@ -324,6 +351,23 @@
             value="{{ storefront_shipping.get(city, '') }}">
         </div>
         {% endfor %}
+      </div>
+      <div class="appearance-grid" style="margin-top:14px;">
+        <div class="field-group">
+          <label class="field-label" for="storefrontCouponCode">كود الكوبون</label>
+          <input id="storefrontCouponCode" class="appearance-input" type="text" value="{{ storefront_coupon_code }}" placeholder="SAVE10">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="storefrontCouponType">نوع الخصم</label>
+          <select id="storefrontCouponType" class="appearance-select">
+            <option value="percent" {% if storefront_coupon_type == 'percent' %}selected{% endif %}>نسبة مئوية</option>
+            <option value="fixed" {% if storefront_coupon_type == 'fixed' %}selected{% endif %}>مبلغ ثابت</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="storefrontCouponValue">قيمة الخصم</label>
+          <input id="storefrontCouponValue" class="appearance-input" type="number" min="0" value="{{ storefront_coupon_value }}">
+        </div>
       </div>
     </div>
 
@@ -379,10 +423,28 @@ document.getElementById("saveAppearanceBtn").addEventListener("click", function 
       storefront_primary_color: document.getElementById("storefrontPrimaryColor").value || "#4f8cff",
       storefront_shipping_color: document.getElementById("storefrontShippingColor").value || "#10b981",
       storefront_product_card_style: document.getElementById("storefrontProductCardStyle").value || "modern",
+      storefront_theme_preset: document.getElementById("storefrontThemePreset").value || "custom",
+      storefront_hero_title: document.getElementById("storefrontHeroTitle").value || "واجهة متجر احترافية",
+      storefront_hero_subtitle: document.getElementById("storefrontHeroSubtitle").value || "",
       storefront_shipping_default_fee: Math.max(0, parseInt(document.getElementById("storefrontDefaultShipping").value, 10) || 0),
-      storefront_shipping_by_city: collectStorefrontShippingByCity()
+      storefront_shipping_by_city: collectStorefrontShippingByCity(),
+      storefront_coupon_code: (document.getElementById("storefrontCouponCode").value || "").trim().toUpperCase(),
+      storefront_coupon_type: document.getElementById("storefrontCouponType").value || "percent",
+      storefront_coupon_value: Math.max(0, parseInt(document.getElementById("storefrontCouponValue").value, 10) || 0)
     }
   };
+
+  const preset = payload.ui_flags.storefront_theme_preset;
+  if (preset === "ocean") {
+    payload.ui_flags.storefront_primary_color = "#2f80ed";
+    payload.ui_flags.storefront_shipping_color = "#00b894";
+  } else if (preset === "sunset") {
+    payload.ui_flags.storefront_primary_color = "#f97316";
+    payload.ui_flags.storefront_shipping_color = "#ef4444";
+  } else if (preset === "emerald") {
+    payload.ui_flags.storefront_primary_color = "#10b981";
+    payload.ui_flags.storefront_shipping_color = "#14b8a6";
+  }
 
   fetch("/settings/appearance/update", {
     method: "POST",

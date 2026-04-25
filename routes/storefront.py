@@ -18,6 +18,7 @@ from utils.inventory_movements import validate_sale_quantity
 
 storefront_bp = Blueprint("storefront", __name__, url_prefix="/shop")
 _CART_SESSION_KEY = "storefront_cart"
+_COUPON_SESSION_KEY = "storefront_coupon"
 _DEFAULT_SHIPPING_BY_CITY = {
     "بغداد": 5000,
     "البصرة": 7000,
@@ -156,6 +157,7 @@ def _storefront_design_settings() -> dict[str, str]:
         "primary_color": "#4f8cff",
         "shipping_color": "#10b981",
         "card_style": "modern",
+        "preset": "custom",
     }
     try:
         settings = SystemSettings.get_settings()
@@ -165,14 +167,66 @@ def _storefront_design_settings() -> dict[str, str]:
         flags = {}
 
     card_style = str(flags.get("storefront_product_card_style") or defaults["card_style"]).strip()
-    if card_style not in {"modern", "compact", "showcase"}:
+    if card_style not in {"modern", "compact", "showcase", "minimal", "bordered", "overlay"}:
         card_style = defaults["card_style"]
+    preset = str(flags.get("storefront_theme_preset") or defaults["preset"]).strip()
+    if preset not in {"custom", "ocean", "sunset", "emerald"}:
+        preset = defaults["preset"]
 
     return {
         "primary_color": _safe_hex_color(flags.get("storefront_primary_color"), defaults["primary_color"]),
         "shipping_color": _safe_hex_color(flags.get("storefront_shipping_color"), defaults["shipping_color"]),
         "card_style": card_style,
+        "preset": preset,
+        "hero_title": str(flags.get("storefront_hero_title") or "واجهة متجر احترافية").strip(),
+        "hero_subtitle": str(flags.get("storefront_hero_subtitle") or "ابحث، فلتر، واختر منتجاتك بسهولة. كل عملية شراء تمر عبر سلة متكاملة ثم Checkout بالدفع عند الاستلام.").strip(),
     }
+
+
+def _coupon_config() -> dict:
+    try:
+        settings = SystemSettings.get_settings()
+        flags = settings.get_ui_flags() if settings else {}
+    except Exception:
+        current_app.logger.exception("failed loading storefront coupon settings")
+        flags = {}
+    code = str(flags.get("storefront_coupon_code") or "").strip().upper()
+    ctype = str(flags.get("storefront_coupon_type") or "percent").strip().lower()
+    if ctype not in {"percent", "fixed"}:
+        ctype = "percent"
+    value = max(0, _safe_int(flags.get("storefront_coupon_value"), 0))
+    enabled = bool(code and value > 0)
+    return {"enabled": enabled, "code": code, "type": ctype, "value": value}
+
+
+def _coupon_get() -> dict | None:
+    data = session.get(_COUPON_SESSION_KEY) or {}
+    if not isinstance(data, dict):
+        return None
+    code = str(data.get("code") or "").strip().upper()
+    if not code:
+        return None
+    return {"code": code}
+
+
+def _coupon_set(code: str | None) -> None:
+    if not code:
+        session.pop(_COUPON_SESSION_KEY, None)
+    else:
+        session[_COUPON_SESSION_KEY] = {"code": str(code).strip().upper()}
+    session.modified = True
+
+
+def _discount_for_subtotal(subtotal: int) -> tuple[int, dict | None]:
+    current = _coupon_get()
+    conf = _coupon_config()
+    if not current or not conf["enabled"] or current["code"] != conf["code"]:
+        return 0, None
+    if conf["type"] == "fixed":
+        discount = min(subtotal, conf["value"])
+    else:
+        discount = min(subtotal, int(round(subtotal * (conf["value"] / 100.0))))
+    return max(0, discount), conf
 
 
 def _cart_raw() -> dict[str, int]:
@@ -260,8 +314,14 @@ def _create_invoice_from_cart(cart_items: list[dict], form_data: dict, shipping_
         return False, "يرجى إدخال الاسم الكامل.", {}
     if not phone:
         return False, "يرجى إدخال رقم الهاتف.", {}
+    if len(re.sub(r"\D+", "", phone)) < 8:
+        return False, "رقم الهاتف غير صحيح.", {}
+    if len(city) < 2:
+        return False, "يرجى إدخال المحافظة بشكل صحيح.", {}
     if not address:
         return False, "يرجى إدخال العنوان.", {}
+    if len(address) < 5:
+        return False, "العنوان قصير جداً.", {}
     if not cart_items:
         return False, "سلة الطلب فارغة.", {}
 
@@ -293,7 +353,9 @@ def _create_invoice_from_cart(cart_items: list[dict], form_data: dict, shipping_
         db.session.flush()
 
     subtotal = sum(int(i["line_total"]) for i in cart_items)
-    grand_total = subtotal + max(0, _safe_int(shipping_fee, 0))
+    discount_amount, _ = _discount_for_subtotal(subtotal)
+    net_subtotal = max(0, subtotal - discount_amount)
+    grand_total = net_subtotal + max(0, _safe_int(shipping_fee, 0))
 
     invoice = Invoice(
         customer_id=customer.id,
@@ -303,7 +365,7 @@ def _create_invoice_from_cart(cart_items: list[dict], form_data: dict, shipping_
         total=grand_total,
         status="تم الطلب",
         payment_status="غير مسدد",
-        note=f"طلب من متجر المنتجات | COD | city={city} | shipping={shipping_fee} | notes={notes}",
+        note=f"طلب من متجر المنتجات | COD | city={city} | shipping={shipping_fee} | discount={discount_amount} | notes={notes}",
         created_at=datetime.utcnow(),
     )
     db.session.add(invoice)
@@ -338,6 +400,8 @@ def _create_invoice_from_cart(cart_items: list[dict], form_data: dict, shipping_
         "invoice_id": invoice.id,
         "items_count": len(cart_items),
         "subtotal": subtotal,
+        "discount_amount": discount_amount,
+        "net_subtotal": net_subtotal,
         "shipping_fee": shipping_fee,
         "grand_total": grand_total,
         "customer_name": customer.name,
@@ -431,9 +495,11 @@ def store_index(tenant_slug: str):
         cards.sort(key=lambda c: c["id"], reverse=True)
 
     badges = sorted({c["badge"] for c in [_product_card(p, slug) for p in products] if c["badge"]})
+    featured = cards[:6]
     return render_template(
         "storefront/index.html",
         products=cards,
+        featured_products=featured,
         shop_tenant_slug=slug,
         cart_count=_cart_count(),
         filters={
@@ -460,14 +526,35 @@ def cart_page(tenant_slug: str):
     slug = _resolved_shop_slug(tenant_slug)
     items = _cart_items(slug)
     subtotal = sum(int(i["line_total"]) for i in items)
+    discount_amount, coupon = _discount_for_subtotal(subtotal)
+    net_subtotal = max(0, subtotal - discount_amount)
     return render_template(
         "storefront/cart.html",
         shop_tenant_slug=slug,
         cart_items=items,
         subtotal=subtotal,
+        discount_amount=discount_amount,
+        net_subtotal=net_subtotal,
+        active_coupon=(coupon["code"] if coupon else ""),
         cart_count=_cart_count(),
         store_design=_storefront_design_settings(),
     )
+
+
+@storefront_bp.route("/<tenant_slug>/cart/coupon", methods=["POST"])
+def cart_coupon(tenant_slug: str):
+    slug = _resolved_shop_slug(tenant_slug)
+    action = str(request.form.get("action") or "apply").strip().lower()
+    if action == "remove":
+        _coupon_set(None)
+        return redirect(url_for("storefront.cart_page", tenant_slug=slug))
+    code = str(request.form.get("coupon_code") or "").strip().upper()
+    conf = _coupon_config()
+    if conf["enabled"] and code == conf["code"]:
+        _coupon_set(code)
+    else:
+        _coupon_set(None)
+    return redirect(url_for("storefront.cart_page", tenant_slug=slug))
 
 
 @storefront_bp.route("/<tenant_slug>/cart/add/<int:product_id>", methods=["POST"])
@@ -519,6 +606,8 @@ def checkout_page(tenant_slug: str):
     slug = _resolved_shop_slug(tenant_slug)
     items = _cart_items(slug)
     subtotal = sum(int(i["line_total"]) for i in items)
+    discount_amount, coupon = _discount_for_subtotal(subtotal)
+    net_subtotal = max(0, subtotal - discount_amount)
     shipping_map, default_fee = _shipping_config()
     shipping_fee = default_fee
     checkout_form = {
@@ -549,20 +638,56 @@ def checkout_page(tenant_slug: str):
 
     if checkout_form["city"]:
         shipping_fee, _ = _shipping_fee_for_city(checkout_form["city"])
-    grand_total = subtotal + shipping_fee
+    grand_total = net_subtotal + shipping_fee
 
     return render_template(
         "storefront/checkout.html",
         shop_tenant_slug=slug,
         cart_items=items,
         subtotal=subtotal,
+        discount_amount=discount_amount,
+        net_subtotal=net_subtotal,
         shipping_fee=shipping_fee,
         grand_total=grand_total,
+        active_coupon=(coupon["code"] if coupon else ""),
         cart_count=_cart_count(),
         shipping_map=shipping_map,
         shipping_default_fee=default_fee,
         checkout_form=checkout_form,
         checkout_error=checkout_error,
         checkout_success=checkout_success,
+        store_design=_storefront_design_settings(),
+    )
+
+
+@storefront_bp.route("/<tenant_slug>/track", methods=["GET", "POST"])
+def tracking_page(tenant_slug: str):
+    slug = _resolved_shop_slug(tenant_slug)
+    form = {"invoice_id": "", "phone": ""}
+    found = None
+    error = ""
+    if request.method == "POST":
+        form = {
+            "invoice_id": str(request.form.get("invoice_id") or "").strip(),
+            "phone": str(request.form.get("phone") or "").strip(),
+        }
+        invoice_id = _safe_int(form["invoice_id"], 0)
+        if invoice_id <= 0 or not form["phone"]:
+            error = "أدخل رقم طلب ورقم هاتف صحيح."
+        else:
+            inv = Invoice.query.get(invoice_id)
+            phone = re.sub(r"\D+", "", form["phone"])
+            customer_phone = re.sub(r"\D+", "", str(getattr(getattr(inv, "customer", None), "phone", "")))
+            if not inv or (phone and customer_phone and phone != customer_phone):
+                error = "لم يتم العثور على الطلب بهذه البيانات."
+            else:
+                found = inv
+    return render_template(
+        "storefront/tracking.html",
+        shop_tenant_slug=slug,
+        form=form,
+        order=found,
+        error=error,
+        cart_count=_cart_count(),
         store_design=_storefront_design_settings(),
     )

@@ -30,7 +30,10 @@
   <div class="page">
     <div class="top">
       <a class="btn" href="{{ url_for('storefront.cart_page', tenant_slug=shop_tenant_slug) }}">العودة إلى السلة</a>
-      <h2 style="margin:0;">إتمام الطلب</h2>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <h2 style="margin:0;">إتمام الطلب</h2>
+        <a class="btn" href="{{ url_for('storefront.tracking_page', tenant_slug=shop_tenant_slug) }}">تتبع طلب</a>
+      </div>
     </div>
     <div class="layout">
       <div class="card">
@@ -49,7 +52,7 @@
             </div>
             <div class="field">
               <label>رقم الهاتف</label>
-              <input type="text" name="phone" required value="{{ checkout_form.phone }}">
+              <input type="text" name="phone" required minlength="8" value="{{ checkout_form.phone }}">
             </div>
             <div class="field">
               <label>المحافظة</label>
@@ -63,12 +66,17 @@
             </div>
             <div class="field">
               <label>العنوان التفصيلي</label>
-              <textarea name="address" required>{{ checkout_form.address }}</textarea>
+              <textarea name="address" required minlength="5">{{ checkout_form.address }}</textarea>
             </div>
             <div class="field">
               <label>ملاحظات</label>
               <textarea name="notes">{{ checkout_form.notes }}</textarea>
             </div>
+            {% if active_coupon %}
+            <div class="field">
+              <span class="chip">كوبون مفعّل: {{ active_coupon }}</span>
+            </div>
+            {% endif %}
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
               <span class="chip">طريقة الدفع: الدفع عند الاستلام</span>
               <button class="btn primary" type="submit">تأكيد الطلب</button>
@@ -94,6 +102,8 @@
           </tbody>
         </table>
         <div class="sum"><span>المجموع الفرعي</span><strong>{{ "{:,.0f}".format(subtotal) }} د.ع</strong></div>
+        <div class="sum"><span>الخصم</span><strong>- {{ "{:,.0f}".format(discount_amount) }} د.ع</strong></div>
+        <div class="sum"><span>بعد الخصم</span><strong>{{ "{:,.0f}".format(net_subtotal) }} د.ع</strong></div>
         <div class="sum"><span>الشحن</span><strong id="shippingFeeText">{{ "{:,.0f}".format(shipping_fee) }} د.ع</strong></div>
         <div class="sum final"><span>الإجمالي النهائي</span><strong id="grandTotalText">{{ "{:,.0f}".format(grand_total) }} د.ع</strong></div>
       </div>
@@ -107,7 +117,7 @@
       if (!cityInput || !shippingText || !totalText) return;
       const shippingMap = {{ shipping_map|tojson }};
       const defaultFee = Number({{ shipping_default_fee|int }});
-      const subtotal = Number({{ subtotal|int }});
+      const subtotal = Number({{ net_subtotal|int }});
       const normalize = (value) => String(value || "").replace(/-/g, " ").trim().toLowerCase();
       const formatMoney = (value) => `${Number(value || 0).toLocaleString("en-US")} د.ع`;
       const resolveFee = (city) => {

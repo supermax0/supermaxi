@@ -58,8 +58,21 @@
             {% endfor %}
           </tbody>
         </table>
+        <div style="padding:10px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <form method="post" action="{{ url_for('storefront.cart_coupon', tenant_slug=shop_tenant_slug) }}" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <input type="text" name="coupon_code" placeholder="كود الكوبون" value="{{ active_coupon }}" style="width:180px;">
+            <button class="btn" type="submit" name="action" value="apply">تطبيق الكوبون</button>
+            {% if active_coupon %}
+            <button class="btn danger" type="submit" name="action" value="remove">إزالة الكوبون</button>
+            {% endif %}
+          </form>
+        </div>
         <div class="footer">
-          <div class="total">الإجمالي: {{ "{:,.0f}".format(subtotal) }} د.ع</div>
+          <div>
+            <div style="color:var(--muted);font-size:13px;">المجموع: {{ "{:,.0f}".format(subtotal) }} د.ع</div>
+            <div style="color:var(--muted);font-size:13px;">الخصم: -{{ "{:,.0f}".format(discount_amount) }} د.ع</div>
+            <div class="total">الصافي: {{ "{:,.0f}".format(net_subtotal) }} د.ع</div>
+          </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <button class="btn" type="submit">تحديث السلة</button>
             <a class="btn primary" href="{{ url_for('storefront.checkout_page', tenant_slug=shop_tenant_slug) }}">إكمال الطلب</a>

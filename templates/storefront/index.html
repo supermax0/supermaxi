@@ -34,6 +34,15 @@
     body.store-card-showcase .content{padding:18px;gap:12px}
     body.store-card-showcase .title{font-size:20px}
     body.store-card-showcase .price{font-size:24px}
+    body.store-card-minimal .p-card{border-radius:10px;background:transparent;border-color:rgba(148,163,184,.24);box-shadow:none}
+    body.store-card-minimal .content{padding:10px}
+    body.store-card-minimal .media{border-radius:8px;overflow:hidden}
+    body.store-card-bordered .p-card{border-width:2px;border-color:color-mix(in srgb,var(--brand) 38%, var(--line));}
+    body.store-card-overlay .media{aspect-ratio:3/4}
+    body.store-card-overlay .content{margin-top:-60px;background:linear-gradient(180deg,rgba(2,6,23,.04),rgba(2,6,23,.75));backdrop-filter:blur(5px)}
+    .quick-links{display:flex;gap:8px;flex-wrap:wrap}
+    .quick-link{padding:8px 12px;border-radius:10px;border:1px solid var(--line);text-decoration:none;color:var(--text);font-size:13px}
+    .section-title{display:flex;justify-content:space-between;align-items:center;margin:16px 0 10px}
     @media (max-width:1020px){.filters form{grid-template-columns:repeat(2,minmax(120px,1fr))}.hero{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}}
     @media (max-width:580px){.stats{grid-template-columns:1fr}.hero-main h1{font-size:27px}.filters form{grid-template-columns:1fr}}
   </style>
@@ -42,13 +51,16 @@
   <div class="page">
     <div class="top">
       <h2 style="margin:0;">متجر المنتجات</h2>
-      <a class="cart-link" href="{{ url_for('storefront.cart_page', tenant_slug=shop_tenant_slug) }}">السلة ({{ cart_count }})</a>
+      <div class="quick-links">
+        <a class="quick-link" href="{{ url_for('storefront.tracking_page', tenant_slug=shop_tenant_slug) }}">تتبع الطلب</a>
+        <a class="cart-link" href="{{ url_for('storefront.cart_page', tenant_slug=shop_tenant_slug) }}">السلة ({{ cart_count }})</a>
+      </div>
     </div>
 
     <section class="hero">
       <div class="card hero-main">
-        <h1>واجهة متجر احترافية</h1>
-        <p>ابحث، فلتر، واختر منتجاتك بسهولة. كل عملية شراء تمر عبر سلة متكاملة ثم Checkout بالدفع عند الاستلام.</p>
+        <h1>{{ store_design.hero_title }}</h1>
+        <p>{{ store_design.hero_subtitle }}</p>
       </div>
       <div class="stats">
         <div class="card stat"><b>{{ products|length }}</b><span>منتج معروض</span></div>
@@ -82,7 +94,36 @@
       </form>
     </section>
 
+    {% if featured_products %}
+    <div class="section-title">
+      <h3 style="margin:0;">منتجات مميزة</h3>
+      <small style="color:var(--muted);">مختارة تلقائياً من أحدث المنتجات</small>
+    </div>
+    <section class="grid">
+      {% for product in featured_products %}
+      <article class="card p-card">
+        <a class="media" href="{{ product.url }}">
+          {% if product.image_url %}<img src="{{ product.image_url }}" alt="{{ product.name }}" loading="lazy">{% else %}<div style="display:grid;place-items:center;height:100%;color:var(--muted)">لا توجد صورة</div>{% endif %}
+          {% if product.badge %}<span class="badge">{{ product.badge }}</span>{% endif %}
+        </a>
+        <div class="content">
+          <a class="title" href="{{ product.url }}">{{ product.name }}</a>
+          <div class="desc">{{ product.description or "منتج بجودة عالية وتفاصيل واضحة." }}</div>
+          <div class="footer">
+            <div><div class="price">{{ "{:,.0f}".format(product.price) }} <small>د.ع</small></div></div>
+            <form method="post" action="{{ url_for('storefront.cart_add', tenant_slug=shop_tenant_slug, product_id=product.id) }}"><input type="hidden" name="quantity" value="1"><input type="hidden" name="next" value="{{ request.full_path }}"><button class="btn primary" type="submit" {% if not product.is_available %}disabled{% endif %}>أضف للسلة</button></form>
+          </div>
+        </div>
+      </article>
+      {% endfor %}
+    </section>
+    {% endif %}
+
     {% if products %}
+    <div class="section-title">
+      <h3 style="margin:0;">كل المنتجات</h3>
+      <small style="color:var(--muted);">{{ products|length }} عنصر</small>
+    </div>
     <section class="grid">
       {% for product in products %}
       <article class="card p-card">
