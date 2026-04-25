@@ -4,10 +4,30 @@ from models.expense import Expense
 from models.account_transaction import AccountTransaction
 from models.employee import Employee
 from sqlalchemy.sql import func
-from datetime import datetime
+from datetime import datetime, timedelta
 from utils.plan_guard import feature_required
 
 expenses_bp = Blueprint("expenses", __name__)
+
+
+def _add_months(base_date, months):
+    month = base_date.month - 1 + months
+    year = base_date.year + month // 12
+    month = month % 12 + 1
+    month_days = [31, 29 if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0) else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    day = min(base_date.day, month_days[month - 1])
+    return base_date.replace(year=year, month=month, day=day)
+
+
+def _next_recurring_date(base_date, step, unit, index):
+    offset = max(0, int(step or 1)) * index
+    if unit == "weeks":
+        return base_date + timedelta(weeks=offset)
+    if unit == "months":
+        return _add_months(base_date, offset)
+    if unit == "years":
+        return _add_months(base_date, offset * 12)
+    return base_date + timedelta(days=offset)
 
 def check_permission(permission_name):
     """فحص الصلاحية - helper function"""
@@ -42,29 +62,41 @@ def expenses():
         return redirect("/pos"), 403
 
     if request.method == "POST":
-        expense_amount = int(request.form["amount"])
+        expense_amount = int(float(request.form["amount"]))
         expense_title = request.form["title"]
         expense_category = request.form["category"]
         expense_note = request.form.get("note")
+        expense_date = datetime.strptime(
+            request.form["expense_date"], "%Y-%m-%d"
+        ).date()
+        repeat_enabled = request.form.get("repeat_enabled") == "1"
+        repeat_interval = max(1, min(int(request.form.get("repeat_interval") or 1), 365))
+        repeat_unit = (request.form.get("repeat_unit") or "days").strip()
+        if repeat_unit not in {"days", "weeks", "months", "years"}:
+            repeat_unit = "days"
+        repeat_count = 1
+        if repeat_enabled:
+            repeat_count = max(1, min(int(request.form.get("repeat_count") or 1), 120))
         
-        expense = Expense(
-            title=expense_title,
-            category=expense_category,
-            amount=expense_amount,
-            note=expense_note,
-            expense_date=datetime.strptime(
-                request.form["expense_date"], "%Y-%m-%d"
-            ).date()
-        )
-        db.session.add(expense)
-        
-        # خصم المبلغ من رأس المال تلقائياً
-        withdraw_tx = AccountTransaction(
-            type="withdraw",
-            amount=expense_amount,
-            note=f"مصروف: {expense_title} ({expense_category})" + (f" - {expense_note}" if expense_note else "")
-        )
-        db.session.add(withdraw_tx)
+        for i in range(repeat_count):
+            current_date = _next_recurring_date(expense_date, repeat_interval, repeat_unit, i)
+            repeat_suffix = f" | تكرار {i + 1}/{repeat_count}" if repeat_count > 1 else ""
+            expense = Expense(
+                title=expense_title,
+                category=expense_category,
+                amount=expense_amount,
+                note=(expense_note or "") + repeat_suffix,
+                expense_date=current_date
+            )
+            db.session.add(expense)
+            
+            # خصم المبلغ من رأس المال تلقائياً لكل مصروف يتم إنشاؤه
+            withdraw_tx = AccountTransaction(
+                type="withdraw",
+                amount=expense_amount,
+                note=f"مصروف: {expense_title} ({expense_category}) بتاريخ {current_date}" + (f" - {expense_note}" if expense_note else "") + repeat_suffix
+            )
+            db.session.add(withdraw_tx)
         
         db.session.commit()
         return redirect(url_for("expenses.expenses"))

@@ -197,6 +197,53 @@
     transform: translateY(0);
   }
 
+  .exp-repeat-box {
+    display: grid;
+    gap: 12px;
+    padding: 14px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .exp-repeat-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .exp-repeat-toggle label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--expenses-text);
+    font-weight: 600;
+  }
+
+  .exp-repeat-toggle input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    min-height: auto;
+    accent-color: var(--expenses-primary);
+  }
+
+  .exp-repeat-fields {
+    display: none;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .exp-repeat-box.is-active .exp-repeat-fields {
+    display: grid;
+  }
+
+  .exp-repeat-help {
+    color: var(--expenses-muted);
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
   /* AG Grid Custom Styles for Expenses */
   .ag-theme-quartz-dark .ag-row {
     cursor: pointer;
@@ -901,6 +948,35 @@
 
         <input name="expense_date" type="date" value="{{ default_date }}" required>
 
+        <div class="exp-repeat-box" id="expenseRepeatBox">
+          <div class="exp-repeat-toggle">
+            <label>
+              <input type="checkbox" id="repeatEnabled" name="repeat_enabled" value="1">
+              <span>تكرار المصروف</span>
+            </label>
+            <span class="exp-repeat-help">إنشاء المصروف تلقائياً على تواريخ متعددة</span>
+          </div>
+          <div class="exp-repeat-fields">
+            <div>
+              <input name="repeat_interval" id="repeatInterval" type="number" min="1" max="365" value="1" placeholder="الفاصل الزمني للتكرار">
+              <div class="exp-repeat-help">الفاصل الزمني للتكرار</div>
+            </div>
+            <div>
+              <select name="repeat_unit" id="repeatUnit">
+                <option value="days">الأيام</option>
+                <option value="weeks">الأسابيع</option>
+                <option value="months">الأشهر</option>
+                <option value="years">السنوات</option>
+              </select>
+              <div class="exp-repeat-help">وحدة التكرار</div>
+            </div>
+            <div>
+              <input name="repeat_count" id="repeatCount" type="number" min="1" max="120" value="2" placeholder="عدد التكرار">
+              <div class="exp-repeat-help">عدد مرات الإنشاء، يشمل المصروف الأول</div>
+            </div>
+          </div>
+        </div>
+
         <textarea name="note" placeholder="{{ _('expenses_field_note_placeholder') }}"></textarea>
 
         <button type="submit" class="btn-premium">
@@ -1116,6 +1192,14 @@
       if (filterCategory) filterCategory.addEventListener("change", applyFilters);
       if (filterDateFrom) filterDateFrom.addEventListener("change", applyFilters);
       if (filterDateTo) filterDateTo.addEventListener("change", applyFilters);
+
+      const repeatEnabled = document.getElementById("repeatEnabled");
+      const repeatBox = document.getElementById("expenseRepeatBox");
+      if (repeatEnabled && repeatBox) {
+        const syncRepeatBox = () => repeatBox.classList.toggle("is-active", repeatEnabled.checked);
+        repeatEnabled.addEventListener("change", syncRepeatBox);
+        syncRepeatBox();
+      }
     });
 
     // ==================== Toast Notifications ====================

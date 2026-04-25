@@ -91,6 +91,159 @@
   padding: 4px;
 }
 
+.store-preview {
+  --preview-primary: #4f8cff;
+  --preview-shipping: #10b981;
+  margin: 14px 0;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid var(--border-light);
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--preview-primary) 24%, transparent), transparent 30%),
+    linear-gradient(180deg, rgba(15, 23, 42, 0.94), rgba(2, 6, 23, 0.88));
+}
+
+.store-preview-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.store-preview-title {
+  display: grid;
+  gap: 4px;
+}
+
+.store-preview-title strong {
+  color: #fff;
+  font-size: 18px;
+}
+
+.store-preview-title span {
+  color: #cbd5e1;
+  font-size: 12px;
+}
+
+.store-preview-cart {
+  padding: 8px 12px;
+  border-radius: 999px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--preview-primary), color-mix(in srgb, var(--preview-primary) 70%, #111827));
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.store-preview-card {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-width: 280px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.025));
+  transition: all 0.2s ease;
+}
+
+.store-preview-media {
+  aspect-ratio: 1 / 1;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--preview-primary) 28%, #0f172a), #020617);
+  position: relative;
+}
+
+.store-preview-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--preview-primary) 26%, transparent);
+  color: #fff;
+  font-size: 11px;
+}
+
+.store-preview-body {
+  padding: 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.store-preview-body h4 {
+  margin: 0;
+  color: #fff;
+}
+
+.store-preview-body p {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.store-preview-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.store-preview-price {
+  color: var(--preview-shipping);
+  font-weight: 800;
+}
+
+.store-preview-btn {
+  border: 0;
+  width: auto;
+  padding: 8px 10px;
+  border-radius: 10px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--preview-primary), color-mix(in srgb, var(--preview-primary) 70%, #111827));
+}
+
+.store-preview-card.is-compact {
+  max-width: 220px;
+  border-radius: 14px;
+}
+
+.store-preview-card.is-compact .store-preview-media {
+  aspect-ratio: 4 / 3;
+}
+
+.store-preview-card.is-compact p {
+  display: none;
+}
+
+.store-preview-card.is-showcase {
+  max-width: 310px;
+  border-radius: 30px;
+}
+
+.store-preview-card.is-showcase .store-preview-media {
+  aspect-ratio: 4 / 5;
+}
+
+.store-preview-card.is-minimal {
+  background: transparent;
+  border-radius: 10px;
+}
+
+.store-preview-card.is-bordered {
+  border-width: 2px;
+  border-color: color-mix(in srgb, var(--preview-primary) 42%, rgba(148,163,184,.22));
+}
+
+.store-preview-card.is-overlay .store-preview-media {
+  aspect-ratio: 3 / 4;
+}
+
+.store-preview-card.is-overlay .store-preview-body {
+  margin-top: -58px;
+  background: linear-gradient(180deg, rgba(2,6,23,.08), rgba(2,6,23,.82));
+  backdrop-filter: blur(5px);
+}
+
 .switch-row {
   display: flex;
   align-items: center;
@@ -369,6 +522,28 @@
           <input id="storefrontCouponValue" class="appearance-input" type="number" min="0" value="{{ storefront_coupon_value }}">
         </div>
       </div>
+      <div class="store-preview" id="storePreview">
+        <div class="store-preview-top">
+          <div class="store-preview-title">
+            <strong id="storePreviewTitle">{{ storefront_hero_title }}</strong>
+            <span id="storePreviewSubtitle">{{ storefront_hero_subtitle }}</span>
+          </div>
+          <span class="store-preview-cart">السلة (1)</span>
+        </div>
+        <div class="store-preview-card" id="storePreviewCard">
+          <div class="store-preview-media">
+            <span class="store-preview-badge">مميز</span>
+          </div>
+          <div class="store-preview-body">
+            <h4>منتج تجريبي</h4>
+            <p>وصف مختصر يظهر شكل بطاقة المنتج قبل تطبيقه في المتجر.</p>
+            <div class="store-preview-footer">
+              <span class="store-preview-price">195,000 د.ع</span>
+              <button type="button" class="store-preview-btn">أضف للسلة</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <button type="button" class="btn-save-appearance" id="saveAppearanceBtn">
@@ -400,6 +575,58 @@ function collectStorefrontShippingByCity() {
   });
   return data;
 }
+
+const storefrontPresetColors = {
+  custom: null,
+  ocean: { primary: "#2f80ed", shipping: "#00b894" },
+  sunset: { primary: "#f97316", shipping: "#ef4444" },
+  emerald: { primary: "#10b981", shipping: "#14b8a6" }
+};
+
+function updateStorePreview() {
+  const preview = document.getElementById("storePreview");
+  const card = document.getElementById("storePreviewCard");
+  if (!preview || !card) return;
+
+  const primaryInput = document.getElementById("storefrontPrimaryColor");
+  const shippingInput = document.getElementById("storefrontShippingColor");
+  const styleInput = document.getElementById("storefrontProductCardStyle");
+  const titleInput = document.getElementById("storefrontHeroTitle");
+  const subtitleInput = document.getElementById("storefrontHeroSubtitle");
+
+  preview.style.setProperty("--preview-primary", primaryInput.value || "#4f8cff");
+  preview.style.setProperty("--preview-shipping", shippingInput.value || "#10b981");
+  document.getElementById("storePreviewTitle").textContent = titleInput.value || "واجهة متجر احترافية";
+  document.getElementById("storePreviewSubtitle").textContent = subtitleInput.value || "وصف مختصر للمتجر";
+
+  card.className = "store-preview-card";
+  card.classList.add(`is-${styleInput.value || "modern"}`);
+}
+
+function applyPresetToInputs() {
+  const preset = document.getElementById("storefrontThemePreset").value;
+  const colors = storefrontPresetColors[preset];
+  if (colors) {
+    document.getElementById("storefrontPrimaryColor").value = colors.primary;
+    document.getElementById("storefrontShippingColor").value = colors.shipping;
+  }
+  updateStorePreview();
+}
+
+["storefrontPrimaryColor", "storefrontShippingColor", "storefrontProductCardStyle", "storefrontHeroTitle", "storefrontHeroSubtitle"].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) {
+    el.addEventListener("input", updateStorePreview);
+    el.addEventListener("change", updateStorePreview);
+  }
+});
+
+const presetEl = document.getElementById("storefrontThemePreset");
+if (presetEl) {
+  presetEl.addEventListener("change", applyPresetToInputs);
+}
+
+updateStorePreview();
 
 document.getElementById("saveAppearanceBtn").addEventListener("click", function () {
   const btn = this;
