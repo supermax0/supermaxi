@@ -666,6 +666,22 @@ def tracking_page(tenant_slug: str):
     form = {"invoice_id": "", "phone": ""}
     found = None
     error = ""
+    def build_tracking_steps(invoice: Invoice | None) -> list[dict[str, str | bool]]:
+        status = str(getattr(invoice, "status", "") or "").strip()
+        shipping_status = str(getattr(invoice, "shipping_status", "") or "").strip()
+        cancelled = any(word in status for word in ("ملغي", "إلغاء", "مرتجع"))
+        delivered = any(word in f"{status} {shipping_status}" for word in ("تم التوصيل", "مكتمل", "مسلم"))
+        shipping = any(word in f"{status} {shipping_status}" for word in ("شحن", "توصيل", "قيد"))
+        return [
+            {"label": "تم استلام الطلب", "hint": "وصلنا طلبك بنجاح", "done": bool(invoice), "active": bool(invoice) and not shipping and not delivered and not cancelled},
+            {"label": "قيد التجهيز", "hint": "يتم مراجعة الطلب وتجهيزه", "done": shipping or delivered, "active": shipping and not delivered and not cancelled},
+            {"label": "قيد التوصيل", "hint": shipping_status or "بانتظار شركة التوصيل", "done": delivered, "active": shipping and not delivered and not cancelled},
+            {"label": "تم التوصيل", "hint": "اكتمل الطلب", "done": delivered, "active": delivered and not cancelled},
+        ] if not cancelled else [
+            {"label": "تم استلام الطلب", "hint": "وصلنا طلبك", "done": True, "active": False},
+            {"label": "تم إلغاء الطلب", "hint": status or "الطلب ملغي", "done": True, "active": True},
+        ]
+
     if request.method == "POST":
         form = {
             "invoice_id": str(request.form.get("invoice_id") or "").strip(),
@@ -687,6 +703,7 @@ def tracking_page(tenant_slug: str):
         shop_tenant_slug=slug,
         form=form,
         order=found,
+        tracking_steps=build_tracking_steps(found),
         error=error,
         cart_count=_cart_count(),
         store_design=_storefront_design_settings(),
