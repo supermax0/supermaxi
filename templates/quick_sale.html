@@ -36,15 +36,31 @@
   .quick-product-img span { color: var(--text-muted); font-size: 12px; }
   .quick-product strong { line-height: 1.5; }
   .quick-product small { color: var(--text-muted); }
-  .cart-list { display: grid; gap: 9px; }
-  .cart-row { display: grid; grid-template-columns: 1fr 82px 92px auto; gap: 8px; align-items: center; padding: 10px; border: 1px solid var(--border-light); border-radius: 14px; background: rgba(255,255,255,.03); }
-  .cart-row input { width: 100%; border: 1px solid var(--border-light); border-radius: 10px; background: var(--card-alt); color: var(--text); padding: 8px; }
+  .cart-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; color: var(--text-muted); font-size: 13px; }
+  .cart-list { display: grid; gap: 10px; }
+  .cart-row { display: grid; grid-template-columns: 64px 1fr; gap: 10px; align-items: center; padding: 10px; border: 1px solid var(--border-light); border-radius: 16px; background: rgba(255,255,255,.035); }
+  .cart-thumb { width: 64px; height: 64px; border-radius: 14px; background: rgba(15,23,42,.65); border: 1px solid var(--border-light); display: grid; place-items: center; overflow: hidden; }
+  .cart-thumb img { width: 100%; height: 100%; object-fit: contain; padding: 6px; }
+  .cart-thumb span { color: var(--text-muted); font-size: 10px; text-align: center; }
+  .cart-main { display: grid; gap: 8px; min-width: 0; }
+  .cart-title { display: flex; justify-content: space-between; gap: 8px; align-items: start; }
+  .cart-title strong { line-height: 1.5; }
+  .cart-title small { color: var(--text-muted); white-space: nowrap; }
+  .cart-controls { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .qty-control { display: inline-flex; align-items: center; gap: 6px; padding: 4px; border-radius: 999px; border: 1px solid var(--border-light); background: var(--card-alt); }
+  .qty-control button { width: 30px; height: 30px; border: 0; border-radius: 50%; background: rgba(148, 163, 184, .16); color: var(--text); cursor: pointer; font-weight: 900; }
+  .qty-control input { width: 48px; border: 0; background: transparent; color: var(--text); text-align: center; padding: 4px; }
+  .cart-line-total { font-weight: 900; color: #34d399; }
   .cart-row .remove { border: 0; border-radius: 10px; padding: 8px 10px; background: rgba(239, 68, 68, .15); color: #fecaca; cursor: pointer; }
+  .cart-summary { margin-top: 12px; padding: 12px; border-radius: 16px; background: rgba(16, 185, 129, .08); border: 1px solid rgba(16, 185, 129, .18); display: grid; gap: 8px; }
+  .cart-summary-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .cart-summary-row strong { font-size: 18px; color: #34d399; }
   .quick-empty { color: var(--text-muted); text-align: center; padding: 26px; border: 1px dashed var(--border-light); border-radius: 16px; }
   .quick-message { display: none; margin-top: 12px; padding: 12px; border-radius: 13px; border: 1px solid rgba(239,68,68,.28); background: rgba(239,68,68,.10); color: #fecaca; }
   @media (max-width: 900px) {
     .quick-grid, .quick-hero { grid-template-columns: 1fr; display: grid; }
-    .cart-row, .quick-search-row { grid-template-columns: 1fr; }
+    .quick-search-row { grid-template-columns: 1fr; }
+    .cart-row { grid-template-columns: 56px 1fr; }
   }
 </style>
 
@@ -76,8 +92,16 @@
       </div>
 
       <h3 style="margin-top:20px;"><i class="fa fa-receipt"></i> سلة البيع</h3>
+      <div class="cart-head">
+        <span id="cartItemsCount">0 منتج</span>
+        <span>راجع الكميات قبل التنفيذ</span>
+      </div>
       <div id="cartList" class="cart-list">
         <div class="quick-empty">لم تتم إضافة منتجات بعد.</div>
+      </div>
+      <div class="cart-summary" id="cartSummary" style="display:none;">
+        <div class="cart-summary-row"><span>عدد القطع</span><strong id="cartPiecesCount">0</strong></div>
+        <div class="cart-summary-row"><span>الإجمالي</span><strong id="cartSummaryTotal">0 د.ع</strong></div>
       </div>
       <button class="quick-btn success" id="executeSaleBtn" type="button">تنفيذ البيع وطباعة الفاتورة</button>
       <div class="quick-message" id="quickMessage"></div>
@@ -110,22 +134,44 @@ function renderCart() {
   if (!rows.length) {
     list.innerHTML = '<div class="quick-empty">لم تتم إضافة منتجات بعد.</div>';
     document.getElementById("quickTotal").textContent = money(0);
+    document.getElementById("cartItemsCount").textContent = "0 منتج";
+    document.getElementById("cartSummary").style.display = "none";
     return;
   }
   let total = 0;
+  let pieces = 0;
   list.innerHTML = rows.map(item => {
     const line = item.price * item.qty;
     total += line;
+    pieces += item.qty;
     return `
       <div class="cart-row">
-        <strong>${item.name}</strong>
-        <input type="number" min="1" max="${item.stock}" value="${item.qty}" onchange="updateQty(${item.id}, this.value)">
-        <span>${money(line)}</span>
-        <button class="remove" type="button" onclick="removeFromCart(${item.id})">حذف</button>
+        <div class="cart-thumb">
+          ${item.image_url ? `<img src="${item.image_url}" alt="${item.name}" loading="lazy">` : `<span>لا صورة</span>`}
+        </div>
+        <div class="cart-main">
+          <div class="cart-title">
+            <strong>${item.name}</strong>
+            <small>${money(item.price)}</small>
+          </div>
+          <div class="cart-controls">
+            <div class="qty-control">
+              <button type="button" onclick="changeQty(${item.id}, -1)">-</button>
+              <input type="number" min="1" max="${item.stock}" value="${item.qty}" onchange="updateQty(${item.id}, this.value)">
+              <button type="button" onclick="changeQty(${item.id}, 1)">+</button>
+            </div>
+            <span class="cart-line-total">${money(line)}</span>
+            <button class="remove" type="button" onclick="removeFromCart(${item.id})">حذف</button>
+          </div>
+        </div>
       </div>
     `;
   }).join("");
   document.getElementById("quickTotal").textContent = money(total);
+  document.getElementById("cartItemsCount").textContent = `${rows.length} منتج / ${pieces} قطعة`;
+  document.getElementById("cartPiecesCount").textContent = pieces;
+  document.getElementById("cartSummaryTotal").textContent = money(total);
+  document.getElementById("cartSummary").style.display = "grid";
 }
 
 function addToCart(product) {
@@ -142,6 +188,13 @@ function updateQty(id, value) {
   const item = cart.get(id);
   if (!item) return;
   item.qty = Math.max(1, Math.min(Number(value || 1), item.stock || 1));
+  renderCart();
+}
+
+function changeQty(id, delta) {
+  const item = cart.get(id);
+  if (!item) return;
+  item.qty = Math.max(1, Math.min(item.qty + delta, item.stock || 1));
   renderCart();
 }
 
