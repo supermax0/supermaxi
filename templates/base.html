@@ -1881,6 +1881,7 @@
         == "cashier") %}
         {% if show_pos %}
         <a href="/pos"><i class="fa fa-cash-register"></i> {{ _('dashboard_welcome_pos') }}</a>
+        <a href="/quick-sale" class="{% if request.path.startswith('/quick-sale') %}active{% endif %}"><i class="fa fa-bolt"></i> بيع سريع</a>
         {% endif %}
         {% if is_admin or (current_employee and can_manage_inventory) %}
         <a href="/inventory"><i class="fa fa-box"></i> {{ _('inventory') }}</a>
@@ -2043,6 +2044,11 @@
 
         {% if not is_payment_flow %}
         <div class="topbar-actions">
+          {% if session.get("user_id") and show_pos %}
+          <a class="assistant-quick-btn" href="/quick-sale" aria-label="بيع سريع" title="بيع سريع">
+            <i class="fa fa-bolt"></i>
+          </a>
+          {% endif %}
           {% if session.get("user_id") %}
           <a class="assistant-quick-btn" href="/social-ai/" aria-label="بناء الوكلاء"
             title="بناء الوكلاء (AI Agent Builder)">

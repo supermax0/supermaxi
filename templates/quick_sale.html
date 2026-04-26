@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+{% block title %}بيع سريع{% endblock %}
+{% block page_title %}بيع سريع{% endblock %}
+
+{% block content %}
+<style>
+  .quick-sale-page { display: grid; gap: 18px; }
+  .quick-hero {
+    display: flex; justify-content: space-between; align-items: center; gap: 16px;
+    padding: 22px; border: 1px solid var(--border-light); border-radius: 22px;
+    background: radial-gradient(circle at top right, rgba(59,130,246,.20), transparent 28%),
+      linear-gradient(135deg, rgba(15,23,42,.96), rgba(2,6,23,.86));
+    box-shadow: var(--shadow-sm);
+  }
+  .quick-hero h2 { margin: 0 0 6px; font-size: 28px; }
+  .quick-hero p { margin: 0; color: var(--text-muted); }
+  .quick-total-pill {
+    padding: 14px 18px; border-radius: 18px;
+    background: linear-gradient(135deg, var(--primary), #7c3aed);
+    color: #fff; font-size: 20px; font-weight: 800; white-space: nowrap;
+  }
+  .quick-grid { display: grid; grid-template-columns: minmax(300px, .85fr) minmax(0, 1.15fr); gap: 18px; align-items: start; }
+  .quick-card { background: var(--card); border: 1px solid var(--border-light); border-radius: 20px; padding: 18px; box-shadow: var(--shadow-sm); }
+  .quick-card h3 { margin: 0 0 14px; display: flex; align-items: center; gap: 8px; font-size: 18px; }
+  .quick-fields { display: grid; gap: 12px; }
+  .quick-field label { display: block; color: var(--text-muted); font-size: 13px; margin-bottom: 6px; }
+  .quick-field input { width: 100%; border: 1px solid var(--border-light); border-radius: 13px; background: var(--card-alt); color: var(--text); padding: 12px; font-family: inherit; }
+  .quick-search-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; }
+  .quick-btn { border: 0; border-radius: 13px; padding: 12px 16px; background: linear-gradient(135deg, var(--primary), #2563eb); color: #fff; font-weight: 800; cursor: pointer; font-family: inherit; }
+  .quick-btn.secondary { background: rgba(148, 163, 184, .12); color: var(--text); border: 1px solid var(--border-light); }
+  .quick-btn.success { width: 100%; margin-top: 14px; background: linear-gradient(135deg, #10b981, #059669); font-size: 16px; }
+  .product-results { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; margin-top: 12px; }
+  .quick-product { border: 1px solid var(--border-light); border-radius: 16px; padding: 12px; background: rgba(255,255,255,.035); display: grid; gap: 8px; }
+  .quick-product strong { line-height: 1.5; }
+  .quick-product small { color: var(--text-muted); }
+  .cart-list { display: grid; gap: 9px; }
+  .cart-row { display: grid; grid-template-columns: 1fr 82px 92px auto; gap: 8px; align-items: center; padding: 10px; border: 1px solid var(--border-light); border-radius: 14px; background: rgba(255,255,255,.03); }
+  .cart-row input { width: 100%; border: 1px solid var(--border-light); border-radius: 10px; background: var(--card-alt); color: var(--text); padding: 8px; }
+  .cart-row .remove { border: 0; border-radius: 10px; padding: 8px 10px; background: rgba(239, 68, 68, .15); color: #fecaca; cursor: pointer; }
+  .quick-empty { color: var(--text-muted); text-align: center; padding: 26px; border: 1px dashed var(--border-light); border-radius: 16px; }
+  .quick-message { display: none; margin-top: 12px; padding: 12px; border-radius: 13px; border: 1px solid rgba(239,68,68,.28); background: rgba(239,68,68,.10); color: #fecaca; }
+  @media (max-width: 900px) {
+    .quick-grid, .quick-hero { grid-template-columns: 1fr; display: grid; }
+    .cart-row, .quick-search-row { grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="quick-sale-page">
+  <section class="quick-hero">
+    <div>
+      <h2>بيع سريع وطباعة مباشرة</h2>
+      <p>أدخل رقم الهاتف، اختر المنتج، نفّذ البيع كطلب مسدد، وافتح الفاتورة للطباعة تلقائياً.</p>
+    </div>
+    <div class="quick-total-pill" id="quickTotal">0 د.ع</div>
+  </section>
+
+  <section class="quick-grid">
+    <div class="quick-card">
+      <h3><i class="fa fa-user-plus"></i> بيانات الزبون</h3>
+      <div class="quick-fields">
+        <div class="quick-field">
+          <label>رقم الهاتف</label>
+          <input id="customerPhone" type="text" placeholder="07xxxxxxxxx" required>
+        </div>
+        <div class="quick-field">
+          <label>المحافظة</label>
+          <input id="customerCity" type="text" value="بغداد">
+        </div>
+        <div class="quick-field">
+          <label>اسم الزبون (اختياري)</label>
+          <input id="customerName" type="text" placeholder="زبون سريع">
+        </div>
+      </div>
+
+      <h3 style="margin-top:20px;"><i class="fa fa-receipt"></i> سلة البيع</h3>
+      <div id="cartList" class="cart-list">
+        <div class="quick-empty">لم تتم إضافة منتجات بعد.</div>
+      </div>
+      <button class="quick-btn success" id="executeSaleBtn" type="button">تنفيذ البيع وطباعة الفاتورة</button>
+      <div class="quick-message" id="quickMessage"></div>
+    </div>
+
+    <div class="quick-card">
+      <h3><i class="fa fa-search"></i> بحث المنتج</h3>
+      <div class="quick-search-row">
+        <input id="productSearch" type="text" placeholder="ابحث باسم المنتج أو الباركود أو الوصف">
+        <button class="quick-btn" type="button" id="searchBtn">بحث</button>
+      </div>
+      <div id="productResults" class="product-results"></div>
+    </div>
+  </section>
+</div>
+
+<script>
+const cart = new Map();
+const money = (v) => `${Number(v || 0).toLocaleString("en-US")} د.ع`;
+
+function showQuickMessage(text) {
+  const box = document.getElementById("quickMessage");
+  box.textContent = text;
+  box.style.display = text ? "block" : "none";
+}
+
+function renderCart() {
+  const list = document.getElementById("cartList");
+  const rows = Array.from(cart.values());
+  if (!rows.length) {
+    list.innerHTML = '<div class="quick-empty">لم تتم إضافة منتجات بعد.</div>';
+    document.getElementById("quickTotal").textContent = money(0);
+    return;
+  }
+  let total = 0;
+  list.innerHTML = rows.map(item => {
+    const line = item.price * item.qty;
+    total += line;
+    return `
+      <div class="cart-row">
+        <strong>${item.name}</strong>
+        <input type="number" min="1" max="${item.stock}" value="${item.qty}" onchange="updateQty(${item.id}, this.value)">
+        <span>${money(line)}</span>
+        <button class="remove" type="button" onclick="removeFromCart(${item.id})">حذف</button>
+      </div>
+    `;
+  }).join("");
+  document.getElementById("quickTotal").textContent = money(total);
+}
+
+function addToCart(product) {
+  const existing = cart.get(product.id);
+  if (existing) {
+    existing.qty = Math.min(existing.stock, existing.qty + 1);
+  } else {
+    cart.set(product.id, { ...product, qty: 1 });
+  }
+  renderCart();
+}
+
+function updateQty(id, value) {
+  const item = cart.get(id);
+  if (!item) return;
+  item.qty = Math.max(1, Math.min(Number(value || 1), item.stock || 1));
+  renderCart();
+}
+
+function removeFromCart(id) {
+  cart.delete(id);
+  renderCart();
+}
+
+window.addProductById = function (id) {
+  const product = window.quickProductsById && window.quickProductsById[id];
+  if (product) addToCart(product);
+};
+
+async function searchProducts() {
+  const q = document.getElementById("productSearch").value.trim();
+  const target = document.getElementById("productResults");
+  target.innerHTML = '<div class="quick-empty">جاري البحث...</div>';
+  const res = await fetch(`/quick-sale/products?q=${encodeURIComponent(q)}`);
+  const data = await res.json();
+  if (!data.success) {
+    target.innerHTML = `<div class="quick-empty">${data.error || "تعذر البحث"}</div>`;
+    return;
+  }
+  if (!data.products.length) {
+    target.innerHTML = '<div class="quick-empty">لا توجد منتجات مطابقة.</div>';
+    return;
+  }
+  window.quickProductsById = {};
+  data.products.forEach(product => { window.quickProductsById[product.id] = product; });
+  target.innerHTML = data.products.map(product => `
+    <article class="quick-product">
+      <strong>${product.name}</strong>
+      <small>السعر: ${money(product.price)} | المخزون: ${product.stock}</small>
+      <button class="quick-btn secondary" type="button" ${product.stock <= 0 ? "disabled" : ""} onclick="addProductById(${product.id})">إضافة للسلة</button>
+    </article>
+  `).join("");
+}
+
+async function executeSale() {
+  showQuickMessage("");
+  const phone = document.getElementById("customerPhone").value.trim();
+  const city = document.getElementById("customerCity").value.trim() || "بغداد";
+  const name = document.getElementById("customerName").value.trim();
+  if (!phone) return showQuickMessage("رقم الهاتف مطلوب.");
+  if (!cart.size) return showQuickMessage("أضف منتج واحد على الأقل.");
+
+  const btn = document.getElementById("executeSaleBtn");
+  btn.disabled = true;
+  btn.textContent = "جاري التنفيذ...";
+  try {
+    const res = await fetch("/quick-sale/execute", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        customer: { phone, city, name },
+        items: Array.from(cart.values()).map(item => ({ product_id: item.id, qty: item.qty }))
+      })
+    });
+    const data = await res.json();
+    if (!data.success) {
+      showQuickMessage(data.error || "تعذر تنفيذ البيع.");
+      return;
+    }
+    cart.clear();
+    renderCart();
+    const printWindow = window.open(data.print_url, "_blank");
+    if (!printWindow) window.location.href = data.print_url;
+  } catch (err) {
+    showQuickMessage(String(err));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "تنفيذ البيع وطباعة الفاتورة";
+  }
+}
+
+document.getElementById("searchBtn").addEventListener("click", searchProducts);
+document.getElementById("productSearch").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") searchProducts();
+});
+document.getElementById("executeSaleBtn").addEventListener("click", executeSale);
+searchProducts();
+</script>
+{% endblock %}
