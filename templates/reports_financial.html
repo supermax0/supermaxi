@@ -129,9 +129,27 @@
     background: #fff !important;
     color: #000 !important;
   }
-  .report-section,
-  .report-table,
+  .report-page * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+  .report-section {
+    break-inside: auto;
+    page-break-inside: auto;
+    margin-bottom: 8mm !important;
+  }
   .report-cover {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    margin-bottom: 6mm !important;
+  }
+  .report-table {
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+  .report-table thead { display: table-header-group; }
+  .report-table tfoot { display: table-footer-group; }
+  .report-table tr {
     break-inside: avoid;
     page-break-inside: avoid;
   }
