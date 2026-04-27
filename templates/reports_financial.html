@@ -88,7 +88,62 @@
 :root[data-theme="light"] .report-actions .report-period-link { color: #2563eb; }
 :root[data-theme="light"] .report-actions .report-period-link:hover { background: #eff6ff; }
 
-@media print { .no-print { display: none !important; } .report-page { max-width: 100%; margin: 0; padding: 0; box-shadow: none; border: none; background: white; } }
+@page {
+  size: A4;
+  margin: 10mm;
+}
+
+@media print {
+  html, body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  .no-print,
+  .sidebar,
+  .topbar,
+  .sidebar-backdrop,
+  .sidebar-mobile-header,
+  .assistant-quick-btn,
+  .toggle,
+  .user-box {
+    display: none !important;
+  }
+  .app,
+  .content,
+  main {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+    overflow: visible !important;
+  }
+  .report-page {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: #fff !important;
+    color: #000 !important;
+  }
+  .report-section,
+  .report-table,
+  .report-cover {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .report-table th,
+  .report-table td {
+    color: #000 !important;
+    border-color: #d1d5db !important;
+  }
+  .report-table {
+    background: #fff !important;
+  }
+}
 </style>
 
 <div class="report-page">

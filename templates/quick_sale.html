@@ -271,6 +271,14 @@ async function searchProducts() {
   `).join("");
 }
 
+let quickSearchTimer = null;
+function scheduleLiveSearch() {
+  if (quickSearchTimer) clearTimeout(quickSearchTimer);
+  quickSearchTimer = setTimeout(() => {
+    searchProducts();
+  }, 180);
+}
+
 async function executeSale() {
   showQuickMessage("");
   const phone = document.getElementById("customerPhone").value.trim();
@@ -312,6 +320,7 @@ document.getElementById("searchBtn").addEventListener("click", searchProducts);
 document.getElementById("productSearch").addEventListener("keydown", (e) => {
   if (e.key === "Enter") searchProducts();
 });
+document.getElementById("productSearch").addEventListener("input", scheduleLiveSearch);
 document.getElementById("executeSaleBtn").addEventListener("click", executeSale);
 document.getElementById("customerPhone").addEventListener("input", (event) => {
   event.target.value = event.target.value.replace(/\D/g, "").slice(0, 11);
