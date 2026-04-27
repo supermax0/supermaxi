@@ -17,6 +17,8 @@
 .report-cover .meta { color: var(--text-muted); font-size: 14px; margin-top: 16px; }
 .report-note { background: rgba(250,204,21,0.10); border: 1px solid rgba(250,204,21,0.5); border-radius: 8px; padding: 10px 14px; margin: 10px 0; font-size: 13px; }
 .report-no-data { color: var(--text-muted); font-style: italic; }
+.report-print-head,
+.report-print-foot { display: none; }
 
 /* شريط الفترات والأزرار (لا يطبع) */
 .report-actions {
@@ -122,12 +124,39 @@
     width: 100% !important;
     max-width: none !important;
     margin: 0 !important;
-    padding: 0 !important;
+    padding: 8mm !important;
     box-shadow: none !important;
-    border: none !important;
+    border: 2px solid #0f172a !important;
     border-radius: 0 !important;
     background: #fff !important;
     color: #000 !important;
+  }
+  .report-print-head,
+  .report-print-foot {
+    display: block !important;
+    border: 1px solid #0f172a !important;
+    padding: 4mm 5mm !important;
+    margin-bottom: 5mm !important;
+    background: #fff !important;
+  }
+  .report-print-head {
+    text-align: center !important;
+  }
+  .report-print-head h1 {
+    margin: 0 0 2mm !important;
+    font-size: 18px !important;
+    color: #000 !important;
+  }
+  .report-print-head p,
+  .report-print-foot p {
+    margin: 0 !important;
+    font-size: 12px !important;
+    color: #111827 !important;
+  }
+  .report-print-foot {
+    margin-top: 6mm !important;
+    margin-bottom: 0 !important;
+    text-align: center !important;
   }
   .report-page * {
     box-shadow: none !important;
@@ -137,15 +166,22 @@
     break-inside: auto;
     page-break-inside: auto;
     margin-bottom: 8mm !important;
+    padding: 4mm !important;
+    border: 1px solid #1f2937 !important;
+    border-radius: 0 !important;
+    background: #fff !important;
   }
   .report-cover {
     break-inside: avoid;
     page-break-inside: avoid;
     margin-bottom: 6mm !important;
+    border: 1.5px solid #111827 !important;
+    background: #fff !important;
   }
   .report-table {
     break-inside: auto;
     page-break-inside: auto;
+    border: 1px solid #111827 !important;
   }
   .report-table thead { display: table-header-group; }
   .report-table tfoot { display: table-footer-group; }
@@ -156,15 +192,31 @@
   .report-table th,
   .report-table td {
     color: #000 !important;
-    border-color: #d1d5db !important;
+    border: 1px solid #374151 !important;
   }
   .report-table {
     background: #fff !important;
+  }
+  .report-section h2 {
+    border-bottom: 1px solid #111827 !important;
+    color: #000 !important;
+  }
+  .report-note {
+    background: #fff !important;
+    border: 1px dashed #92400e !important;
+    color: #000 !important;
+  }
+  .report-actions {
+    display: none !important;
   }
 }
 </style>
 
 <div class="report-page">
+  <header class="report-print-head">
+    <h1>{{ company_name }} — التقرير المالي الشامل</h1>
+    <p>الفترة: {{ period_label }} | من {{ date_from.strftime('%Y-%m-%d') if date_from else '—' }} إلى {{ date_to.strftime('%Y-%m-%d') if date_to else '—' }}</p>
+  </header>
   <!-- 1️⃣ صفحة الغلاف -->
   <section class="report-section report-cover">
     <h1>{{ company_name }}</h1>
@@ -317,5 +369,8 @@
     <a href="/reports" class="report-btn-back">العودة إلى التقارير</a>
     <button type="button" class="report-btn-print" onclick="window.print()">طباعة / PDF</button>
   </div>
+  <footer class="report-print-foot">
+    <p>نظام المحاسبة - تقرير رسمي للطباعة</p>
+  </footer>
 </div>
 {% endblock %}
