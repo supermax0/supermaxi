@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}مواعيد مركز التجميل{% endblock %}
+{% block page_title %}المواعيد والجلسات{% endblock %}
+
+{% block content %}
+<style>
+  .beauty-wrap{max-width:1200px;margin:0 auto;direction:rtl}
+  .beauty-card{background:linear-gradient(145deg,var(--card),var(--card-alt));border:1px solid var(--border-light);border-radius:20px;padding:22px;margin-bottom:18px}
+  .beauty-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+  .beauty-field label{display:block;color:var(--text-muted);font-size:12px;margin-bottom:7px;font-weight:800}
+  .beauty-field input,.beauty-field textarea,.beauty-field select{width:100%;padding:11px;border-radius:12px;border:1px solid var(--border-light);background:var(--card-alt);color:var(--text)}
+  .beauty-span-2{grid-column:span 2}.beauty-span-4{grid-column:span 4}
+  .beauty-btn{border:0;border-radius:12px;background:var(--primary);color:#fff;padding:10px 14px;font-weight:800;cursor:pointer}
+  .beauty-table{width:100%;border-collapse:collapse}.beauty-table th,.beauty-table td{padding:12px;border-bottom:1px solid var(--border-light);text-align:right;vertical-align:top}
+  @media(max-width:760px){.beauty-grid{grid-template-columns:1fr}.beauty-span-2,.beauty-span-4{grid-column:auto}}
+</style>
+<div class="beauty-wrap">
+  <form class="beauty-card" method="post">
+    <h3>حجز موعد جديد</h3>
+    <div class="beauty-grid">
+      <div class="beauty-field"><label>اسم العميل</label><input name="customer_name" required></div>
+      <div class="beauty-field"><label>رقم الهاتف</label><input name="phone" required inputmode="tel"></div>
+      <div class="beauty-field"><label>المدينة</label><input name="city" value="بغداد"></div>
+      <div class="beauty-field"><label>وقت الموعد</label><input name="appointment_at" type="datetime-local" required></div>
+      <div class="beauty-field beauty-span-2">
+        <label>الخدمة</label>
+        <select name="service_id" required>
+          <option value="">اختر خدمة</option>
+          {% for s in services %}<option value="{{ s.id }}">{{ s.name }} - {{ "{:,}".format(s.price or 0) }} د.ع</option>{% endfor %}
+        </select>
+      </div>
+      <div class="beauty-field"><label>الحالة</label><select name="status"><option value="pending">pending</option><option value="done">done</option><option value="cancelled">cancelled</option></select></div>
+      <div class="beauty-field beauty-span-4"><label>ملاحظات</label><textarea name="notes" rows="2"></textarea></div>
+    </div>
+    <button class="beauty-btn" type="submit">حفظ الموعد</button>
+  </form>
+
+  <div class="beauty-card">
+    <h3>آخر المواعيد</h3>
+    <table class="beauty-table">
+      <thead><tr><th>الوقت</th><th>العميل</th><th>الخدمة</th><th>الحالة</th><th>تنفيذ</th></tr></thead>
+      <tbody>
+      {% for a in appointments %}
+        <tr>
+          <td>{{ a.appointment_at.strftime('%Y-%m-%d %H:%M') }}</td>
+          <td>{{ a.customer.name }}<br><small>{{ a.customer.phone }}</small></td>
+          <td>{{ a.service.name }}</td>
+          <td>{{ a.status }}</td>
+          <td>
+            <form method="post" action="{{ url_for('beauty.update_appointment_status', appointment_id=a.id) }}" style="display:grid;gap:8px;min-width:180px">
+              <select name="status">
+                <option value="pending" {% if a.status == 'pending' %}selected{% endif %}>pending</option>
+                <option value="done" {% if a.status == 'done' %}selected{% endif %}>done</option>
+                <option value="cancelled" {% if a.status == 'cancelled' %}selected{% endif %}>cancelled</option>
+              </select>
+              <textarea name="session_note" rows="2" placeholder="ملاحظة الجلسة"></textarea>
+              <button class="beauty-btn" type="submit">تحديث</button>
+            </form>
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="5" style="text-align:center;color:var(--text-muted)">لا توجد مواعيد.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

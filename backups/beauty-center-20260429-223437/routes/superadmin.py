@@ -15,28 +15,6 @@ from models.user import User
 
 superadmin_bp = Blueprint("superadmin", __name__, url_prefix="/superadmin")
 
-BUSINESS_TYPES = {
-    "general": "شركة عامة",
-    "beauty_center": "مركز تجميل",
-}
-
-
-def _clean_business_type(value):
-    value = (value or "general").strip()
-    return value if value in BUSINESS_TYPES else "general"
-
-
-def _ensure_tenant_business_type_column(engine):
-    from sqlalchemy import inspect, text
-
-    inspector = inspect(engine)
-    if "tenant" not in inspector.get_table_names():
-        return
-    columns = {col["name"] for col in inspector.get_columns("tenant")}
-    if "business_type" not in columns:
-        with engine.begin() as conn:
-            conn.execute(text("ALTER TABLE tenant ADD COLUMN business_type VARCHAR(50) DEFAULT 'general'"))
-
 def is_superadmin():
     return session.get("is_superadmin") is True
 
@@ -170,7 +148,6 @@ def approve_request(req_id):
         name=payment_req.tenant_name.upper(), 
         slug=payment_req.tenant_name,
         db_path=db_path,
-        business_type="general",
         is_active=True,
         subscription_end_date=datetime.utcnow() + timedelta(days=30)
     )
@@ -188,21 +165,7 @@ def approve_request(req_id):
         tenant_session = SessionLocal()
         
         from models.employee import Employee
-        from models.tenant import Tenant as TenantModel
-        from utils.plan_limits import get_plan
         default_password = "password123" # A default password for them to login with
-        plan = get_plan("basic")
-        tenant_row = TenantModel(
-            name=payment_req.tenant_name.upper(),
-            plan_key="basic",
-            plan_name=plan["name"],
-            monthly_price=plan.get("price_monthly", 0),
-            business_type="general",
-            is_active=True,
-            subscription_end=new_tenant.subscription_end_date,
-        )
-        tenant_session.add(tenant_row)
-        tenant_session.flush()
         
         admin_employee = Employee(
             name=payment_req.owner_name,
@@ -210,8 +173,7 @@ def approve_request(req_id):
             password=generate_password_hash(default_password),
             role="admin",
             salary=0,
-            is_active=True,
-            tenant_id=tenant_row.id
+            is_active=True
         )
         tenant_session.add(admin_employee)
         tenant_session.commit()
@@ -250,7 +212,6 @@ def tenant_details(slug):
         g.tenant = tenant.slug
         from models.employee import Employee
         from models.tenant import Tenant as TenantModel
-        _ensure_tenant_business_type_column(get_tenant_engine(tenant.slug))
         admin_emp = Employee.query.filter(Employee.role == "admin").first()
         if not admin_emp:
             admin_emp = Employee.query.filter_by(username="admin").first()
@@ -260,7 +221,6 @@ def tenant_details(slug):
         admin_name = admin_emp.name if admin_emp else "—"
         plan_key = tenant_row.plan_key if tenant_row else "basic"
         plan_name = tenant_row.plan_name if tenant_row else "الخطة الأساسية"
-        business_type = getattr(tenant, "business_type", None) or getattr(tenant_row, "business_type", None) or "general"
 
         # رابط تسجيل الدخول الخاص بالشركة
         try:
@@ -275,8 +235,6 @@ def tenant_details(slug):
             "slug": tenant.slug,
             "db_path": tenant.db_path,
             "is_active": tenant.is_active,
-            "business_type": business_type,
-            "business_type_label": BUSINESS_TYPES.get(business_type, "شركة عامة"),
             "created_at": tenant.created_at.strftime("%Y-%m-%d %H:%M") if tenant.created_at else "—",
             "subscription_end_date": tenant.subscription_end_date.strftime("%Y-%m-%d") if tenant.subscription_end_date else "—",
             "admin_username": admin_username,
@@ -382,7 +340,6 @@ def tenant_reset_db(slug):
         
         tenant_row = TenantModel(
             name=tenant.name,
-            business_type=getattr(tenant, "business_type", None) or "general",
             plan_key=plan_key,
             plan_name=plan["name"],
             monthly_price=plan.get("price_monthly", 0),
@@ -420,7 +377,6 @@ def tenants_create():
         name = (request.form.get("name") or "").strip()
         slug = (request.form.get("slug") or "").strip().lower()
         owner_name = (request.form.get("owner_name") or "").strip()
-        business_type = _clean_business_type(request.form.get("business_type"))
         trial_days_val = request.form.get("trial_days") or ""
         
         if not name or not slug:
@@ -451,7 +407,6 @@ def tenants_create():
             name=name.upper(),
             slug=slug,
             db_path=db_path,
-            business_type=business_type,
             is_active=True,
             subscription_end_date=datetime.utcnow() + timedelta(days=trial_days),
         )
@@ -470,7 +425,6 @@ def tenants_create():
             plan = get_plan("basic")
             tenant_row = TenantModel(
                 name=name.upper(),
-                business_type=business_type,
                 plan_key="basic",
                 plan_name=plan["name"],
                 monthly_price=plan.get("price_monthly", 0),
@@ -495,7 +449,7 @@ def tenants_create():
             tenant_session.close()
             
             flash(
-                f"تم إنشاء الشركة «{name}» بنجاح. نوع النشاط = {BUSINESS_TYPES[business_type]}. الدخول: معرف الشركة = {slug}، المستخدم = admin، كلمة المرور = {default_password}",
+                f"تم إنشاء الشركة «{name}» بنجاح. الدخول: معرف الشركة = {slug}، المستخدم = admin، كلمة المرور = {default_password}",
                 "success",
             )
         except Exception as e:
@@ -512,11 +466,7 @@ def tenants_create():
     except Exception:
         pass
     
-    return render_template(
-        "superadmin_create_tenant.html",
-        trial_days_default=trial_days_default,
-        business_types=BUSINESS_TYPES,
-    )
+    return render_template("superadmin_create_tenant.html", trial_days_default=trial_days_default)
 
 
 @superadmin_bp.route("/settings", methods=["GET", "POST"])
@@ -919,51 +869,6 @@ def tenant_delete(slug):
         return jsonify({"ok": True, "message": "تم حذف الشركة وقاعدة البيانات الخاصة بها نهائياً"})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
-
-
-@superadmin_bp.route("/tenants/update-business-type/<slug>", methods=["POST"])
-def tenant_update_business_type(slug):
-    from flask import request, jsonify
-    from sqlalchemy.orm import sessionmaker
-    from extensions_tenant import get_tenant_engine, clear_tenant_engine
-    from models.tenant import Tenant as TenantSpecific
-
-    try:
-        data = request.get_json() or {}
-        business_type = _clean_business_type(data.get("business_type"))
-        slug_clean = (slug or "").strip().lower()
-        tenant_core = Tenant.query.filter(db.func.lower(Tenant.slug) == slug_clean).first()
-        if not tenant_core:
-            return jsonify({"ok": False, "error": "الشركة غير موجودة"}), 404
-
-        tenant_core.business_type = business_type
-        db.session.commit()
-
-        engine = get_tenant_engine(tenant_core.slug)
-        _ensure_tenant_business_type_column(engine)
-        SessionLocal = sessionmaker(bind=engine)
-        tenant_session = SessionLocal()
-        try:
-            tenant_spec = tenant_session.query(TenantSpecific).first()
-            if tenant_spec:
-                tenant_spec.business_type = business_type
-                tenant_session.commit()
-        except Exception as te:
-            tenant_session.rollback()
-            return jsonify({"ok": False, "error": f"فشل تحديث قاعدة بيانات الشركة: {str(te)}"}), 500
-        finally:
-            tenant_session.close()
-
-        clear_tenant_engine(tenant_core.slug)
-        return jsonify({
-            "ok": True,
-            "message": f"تم تغيير نوع النشاط إلى {BUSINESS_TYPES[business_type]}",
-            "business_type": business_type,
-        })
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"ok": False, "error": str(e)}), 500
-
 
 @superadmin_bp.route("/tenants/update-plan/<slug>", methods=["POST"])
 def tenant_update_plan(slug):

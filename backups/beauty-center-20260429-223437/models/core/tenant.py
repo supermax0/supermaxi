@@ -8,7 +8,6 @@ class Tenant(db.Model):
     name = db.Column(db.String(150), nullable=False)
     slug = db.Column(db.String(100), unique=True, nullable=False)
     db_path = db.Column(db.String(255), nullable=False)
-    business_type = db.Column(db.String(50), nullable=False, default="general")
     subscription_end_date = db.Column(db.DateTime, nullable=True)
     is_active = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

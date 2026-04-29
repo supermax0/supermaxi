@@ -16,7 +16,6 @@ class Tenant(db.Model):
     contact_name = db.Column(db.String(150), nullable=True)
     contact_email = db.Column(db.String(150), nullable=True)
     contact_phone = db.Column(db.String(50), nullable=True)
-    business_type = db.Column(db.String(50), nullable=False, default="general")
 
     # خطة الاشتراك
     plan_key = db.Column(db.String(50), nullable=False, default="basic")  # basic / pro / enterprise

@@ -67,6 +67,16 @@ def _parse_specs_text(raw) -> list[dict]:
     return items
 
 
+def _parse_optional_date(raw):
+    raw = (raw or "").strip()
+    if not raw:
+        return None
+    try:
+        return datetime.strptime(raw, "%Y-%m-%d").date()
+    except ValueError:
+        return None
+
+
 def _extract_specs_items(meta: dict | None) -> list[dict]:
     meta = meta or {}
     raw_items = meta.get("specs_items")
@@ -336,6 +346,12 @@ def add_product_page():
         low_stock_threshold = int(request.form.get("low_stock_threshold", 5) or 5)
         description = (request.form.get("description") or "").strip() or None
         external_image_url = (request.form.get("external_image_url") or "").strip() or None
+        skin_type = (request.form.get("skin_type") or "").strip() or None
+        usage_type = (request.form.get("usage_type") or "").strip() or None
+        requires_patch_test = bool(request.form.get("requires_patch_test"))
+        expiry_date = _parse_optional_date(request.form.get("expiry_date"))
+        opened_date = _parse_optional_date(request.form.get("opened_date"))
+        batch_number = (request.form.get("batch_number") or "").strip() or None
 
         meta = _meta_from_inventory_add_form(request.form)
 
@@ -377,6 +393,12 @@ def add_product_page():
             p.sale_price = sale_price
             p.low_stock_threshold = max(0, low_stock_threshold)
             p.description = description
+            p.skin_type = skin_type
+            p.usage_type = usage_type
+            p.requires_patch_test = requires_patch_test
+            p.expiry_date = expiry_date
+            p.opened_date = opened_date
+            p.batch_number = batch_number
             p.shipping_cost = 0
             p.marketing_cost = 0
             p.active = not not_for_sale_flag
@@ -433,6 +455,12 @@ def add_product_page():
             low_stock_threshold=max(0, low_stock_threshold),
             description=description,
             image_url=image_url,
+            skin_type=skin_type,
+            usage_type=usage_type,
+            requires_patch_test=requires_patch_test,
+            expiry_date=expiry_date,
+            opened_date=opened_date,
+            batch_number=batch_number,
             meta_json=json.dumps(meta, ensure_ascii=False) if meta else None,
         )
         db.session.add(p)

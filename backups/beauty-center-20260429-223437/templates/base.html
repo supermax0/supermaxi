@@ -1877,16 +1877,9 @@
         {% if is_admin %}
         <a href="/executive-dashboard" class="{% if request.path.startswith('/executive-dashboard') %}active{% endif %}"><i class="fa fa-crown"></i> لوحة المدير التنفيذي</a>
         {% endif %}
-        {% if is_beauty_center %}
-        <a href="/beauty" class="{% if request.path == '/beauty/' or request.path == '/beauty' %}active{% endif %}"><i class="fa fa-spa"></i> مركز التجميل</a>
-        <a href="/beauty/appointments" class="{% if request.path.startswith('/beauty/appointments') %}active{% endif %}"><i class="fa fa-calendar-check"></i> المواعيد</a>
-        <a href="/beauty/services" class="{% if request.path.startswith('/beauty/services') %}active{% endif %}"><i class="fa fa-list-check"></i> الخدمات</a>
-        <a href="/beauty/sessions" class="{% if request.path.startswith('/beauty/sessions') %}active{% endif %}"><i class="fa fa-notes-medical"></i> الجلسات</a>
-        <a href="/beauty/alerts" class="{% if request.path.startswith('/beauty/alerts') %}active{% endif %}"><i class="fa fa-bell"></i> تنبيهات المركز</a>
-        {% endif %}
         {% set show_pos = is_admin or not current_employee or can_use_pos or (current_employee and current_employee.role
         == "cashier") %}
-        {% if show_pos and business_allows('pos') %}
+        {% if show_pos %}
         <a href="/pos"><i class="fa fa-cash-register"></i> {{ _('dashboard_welcome_pos') }}</a>
         <a href="/quick-sale" class="{% if request.path.startswith('/quick-sale') %}active{% endif %}"><i class="fa fa-bolt"></i> بيع سريع</a>
         {% endif %}
@@ -1915,15 +1908,12 @@
         current_employee.role == "cashier") %}
         {% if show_customers %}
         <a href="/customers"><i class="fa fa-users"></i> {{ _('customers') }}</a>
-        {% if is_beauty_center %}
-        <a href="/beauty/clients" class="{% if request.path.startswith('/beauty/clients') %}active{% endif %}" style="padding-right: 30px; font-size: 0.9em;"><i class="fa fa-address-book"></i> سجل العملاء</a>
-        {% endif %}
         <a href="/customers/blacklist" title="{{ _('customers_nav_blacklist') }}"><i class="fa fa-ban"></i> {{
           _('customers_nav_blacklist') }}</a>
         {% endif %}
         {% set show_orders = is_admin or not current_employee or can_see_orders or (current_employee and
         current_employee.role == "cashier") %}
-        {% if show_orders and business_allows('orders') %}
+        {% if show_orders %}
         <div class="menu-group {% if request.path.startswith('/orders') %}open{% endif %}">
           <button type="button" class="menu-group-header {% if request.path.startswith('/orders') %}active{% endif %}"
             onclick="this.parentElement.classList.toggle('open')">
@@ -1952,7 +1942,7 @@
           </div>
         </div>
         {% endif %}
-        {% if (is_admin or (current_employee and can_see_shipping)) and business_allows('shipping') %}
+        {% if is_admin or (current_employee and can_see_shipping) %}
         {% if plan_has("shipping") %}
         <a href="/shipping"><i class="fa fa-truck"></i> {{ _('shipping') }}</a>
         {% else %}
@@ -1960,7 +1950,7 @@
           _('shipping') }} <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
         {% endif %}
         {% endif %}
-        {% if (is_admin or (current_employee and can_see_agents)) and business_allows('agents') %}
+        {% if is_admin or (current_employee and can_see_agents) %}
         {% if plan_has("agents") %}
         <a href="/agents"><i class="fa fa-user-tie"></i> {{ _('delivery_agents') }}</a>
         {% else %}
@@ -2054,7 +2044,7 @@
 
         {% if not is_payment_flow %}
         <div class="topbar-actions">
-          {% if session.get("user_id") and show_pos and business_allows('quick_sale') %}
+          {% if session.get("user_id") and show_pos %}
           <a class="assistant-quick-btn" href="/quick-sale" aria-label="بيع سريع" title="بيع سريع">
             <i class="fa fa-bolt"></i>
           </a>

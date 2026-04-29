@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}مركز التجميل{% endblock %}
+{% block page_title %}لوحة مركز التجميل{% endblock %}
+
+{% block content %}
+<style>
+  .beauty-wrap{max-width:1200px;margin:0 auto;direction:rtl}
+  .beauty-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:22px}
+  .beauty-card{background:linear-gradient(145deg,var(--card),var(--card-alt));border:1px solid var(--border-light);border-radius:20px;padding:20px;box-shadow:0 16px 34px rgba(15,23,42,.22)}
+  .beauty-card b{display:block;font-size:28px;color:var(--text)}
+  .beauty-card span{color:var(--text-muted);font-size:13px}
+  .beauty-actions{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:22px}
+  .beauty-btn{padding:11px 16px;border-radius:12px;background:var(--primary);color:#fff;text-decoration:none;font-weight:800}
+  .beauty-table{width:100%;border-collapse:collapse}
+  .beauty-table th,.beauty-table td{padding:12px;border-bottom:1px solid var(--border-light);text-align:right}
+  .status-pill{padding:5px 10px;border-radius:999px;background:rgba(99,102,241,.15);color:#c7d2fe;font-size:12px;font-weight:800}
+  @media(max-width:900px){.beauty-grid{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:560px){.beauty-grid{grid-template-columns:1fr}}
+</style>
+<div class="beauty-wrap">
+  <div class="beauty-grid">
+    <div class="beauty-card"><b>{{ appointments_today|length }}</b><span>مواعيد اليوم</span></div>
+    <div class="beauty-card"><b>{{ services_count }}</b><span>الخدمات الفعالة</span></div>
+    <div class="beauty-card"><b>{{ low_stock_count }}</b><span>منتجات منخفضة</span></div>
+    <div class="beauty-card"><b>{{ expiring_count }}</b><span>قرب انتهاء الصلاحية</span></div>
+  </div>
+  <div class="beauty-actions">
+    <a class="beauty-btn" href="{{ url_for('beauty.appointments') }}">حجز موعد</a>
+    <a class="beauty-btn" href="{{ url_for('beauty.services') }}">إدارة الخدمات</a>
+    <a class="beauty-btn" href="{{ url_for('beauty.alerts') }}">التنبيهات</a>
+  </div>
+  <div class="beauty-card">
+    <h3>مواعيد اليوم</h3>
+    <table class="beauty-table">
+      <thead><tr><th>الوقت</th><th>العميل</th><th>الخدمة</th><th>الحالة</th></tr></thead>
+      <tbody>
+      {% for a in appointments_today %}
+        <tr>
+          <td>{{ a.appointment_at.strftime('%H:%M') }}</td>
+          <td>{{ a.customer.name }}</td>
+          <td>{{ a.service.name }}</td>
+          <td><span class="status-pill">{{ a.status }}</span></td>
+        </tr>
+      {% else %}
+        <tr><td colspan="4" style="color:var(--text-muted);text-align:center">لا توجد مواعيد اليوم.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

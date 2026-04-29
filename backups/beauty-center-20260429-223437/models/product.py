@@ -35,12 +35,6 @@ class Product(db.Model):
 
     description = db.Column(db.Text, nullable=True)
     image_url = db.Column(db.String(512), nullable=True)
-    skin_type = db.Column(db.String(100), nullable=True)
-    usage_type = db.Column(db.String(100), nullable=True)
-    requires_patch_test = db.Column(db.Boolean, default=False)
-    expiry_date = db.Column(db.Date, nullable=True)
-    opened_date = db.Column(db.Date, nullable=True)
-    batch_number = db.Column(db.String(100), nullable=True)
     # حقول إضافية من نموذج الإدخال المتقدم (وحدة، ضريبة، رف، …) JSON
     meta_json = db.Column(db.Text, nullable=True)
 

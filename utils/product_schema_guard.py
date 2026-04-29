@@ -64,6 +64,15 @@ def ensure_product_schema() -> None:
             "low_stock_threshold",
             "ALTER TABLE product ADD COLUMN low_stock_threshold INTEGER DEFAULT 5",
         )
+        additions.setdefault("skin_type", "ALTER TABLE product ADD COLUMN skin_type VARCHAR(100)")
+        additions.setdefault("usage_type", "ALTER TABLE product ADD COLUMN usage_type VARCHAR(100)")
+        additions.setdefault(
+            "requires_patch_test",
+            "ALTER TABLE product ADD COLUMN requires_patch_test BOOLEAN DEFAULT 0",
+        )
+        additions.setdefault("expiry_date", "ALTER TABLE product ADD COLUMN expiry_date DATE")
+        additions.setdefault("opened_date", "ALTER TABLE product ADD COLUMN opened_date DATE")
+        additions.setdefault("batch_number", "ALTER TABLE product ADD COLUMN batch_number VARCHAR(100)")
 
         to_run = [stmt for col_name, stmt in additions.items() if col_name not in existing_cols]
         if to_run:

@@ -29,10 +29,6 @@ from models.role import Role, Permission
 from models.comment_log import CommentLog
 from models.telegram_chat_profile import TelegramChatProfile
 from models.telegram_booking_session import TelegramBookingSession
-from models.beauty_service import BeautyService
-from models.beauty_service_product import BeautyServiceProduct
-from models.beauty_appointment import BeautyAppointment
-from models.beauty_session_note import BeautySessionNote
 
 # Routes
 from routes.index import index_bp
@@ -63,7 +59,6 @@ from routes.pages import pages_bp
 from routes.invoice_store import invoice_store_bp
 from routes.storefront import storefront_bp
 from routes.quick_sale import quick_sale_bp
-from routes.beauty import beauty_bp
 from routes.whatsapp_webhook import whatsapp_webhook_bp
 from telegram_bot import telegram_bp
 from api_workflows import workflow_api
@@ -164,70 +159,8 @@ with app.app_context():
     from models.telegram_inbox_message import TelegramInboxMessage  # noqa: F401
     from models.telegram_chat_profile import TelegramChatProfile  # noqa: F401
     from models.telegram_booking_session import TelegramBookingSession  # noqa: F401
-    from models.beauty_service import BeautyService  # noqa: F401
-    from models.beauty_service_product import BeautyServiceProduct  # noqa: F401
-    from models.beauty_appointment import BeautyAppointment  # noqa: F401
-    from models.beauty_session_note import BeautySessionNote  # noqa: F401
 
     db.create_all()
-
-    try:
-        from sqlalchemy import inspect, text
-
-        inspector = inspect(db.engine)
-        if "tenants" in inspector.get_table_names():
-            tenant_cols = {col["name"] for col in inspector.get_columns("tenants")}
-            if "business_type" not in tenant_cols:
-                db.session.execute(text("ALTER TABLE tenants ADD COLUMN business_type VARCHAR(50) DEFAULT 'general'"))
-                db.session.commit()
-                print("Added business_type column to core tenants table.")
-    except Exception as e:
-        db.session.rollback()
-        print(f"Migration note (core tenant business_type): {e}")
-
-    try:
-        import sqlite3
-        from extensions_tenant import get_tenant_engine
-
-        tenants_dir = os.path.join(app.root_path, "tenants")
-        if os.path.isdir(tenants_dir):
-            for db_name in sorted(os.listdir(tenants_dir)):
-                if not db_name.endswith(".db"):
-                    continue
-                tenant_slug = os.path.splitext(db_name)[0]
-                db_path = os.path.join(tenants_dir, db_name)
-                try:
-                    engine = get_tenant_engine(tenant_slug)
-                    db.Model.metadata.create_all(engine)
-                    conn = sqlite3.connect(db_path)
-                    cur = conn.cursor()
-                    cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
-                    existing_tables = {row[0] for row in cur.fetchall()}
-                    if "tenant" in existing_tables:
-                        cur.execute("PRAGMA table_info(tenant)")
-                        tenant_cols = {row[1] for row in cur.fetchall()}
-                        if "business_type" not in tenant_cols:
-                            cur.execute("ALTER TABLE tenant ADD COLUMN business_type TEXT DEFAULT 'general'")
-                    if "product" in existing_tables:
-                        cur.execute("PRAGMA table_info(product)")
-                        product_cols = {row[1] for row in cur.fetchall()}
-                        product_additions = {
-                            "skin_type": "ALTER TABLE product ADD COLUMN skin_type TEXT",
-                            "usage_type": "ALTER TABLE product ADD COLUMN usage_type TEXT",
-                            "requires_patch_test": "ALTER TABLE product ADD COLUMN requires_patch_test BOOLEAN DEFAULT 0",
-                            "expiry_date": "ALTER TABLE product ADD COLUMN expiry_date DATE",
-                            "opened_date": "ALTER TABLE product ADD COLUMN opened_date DATE",
-                            "batch_number": "ALTER TABLE product ADD COLUMN batch_number TEXT",
-                        }
-                        for col, stmt in product_additions.items():
-                            if col not in product_cols:
-                                cur.execute(stmt)
-                    conn.commit()
-                    conn.close()
-                except Exception as _tenant_err:
-                    print(f"Tenant migration note ({db_name}, beauty/business type): {_tenant_err}")
-    except Exception as e:
-        print(f"Migration note (tenant beauty/business type): {e}")
 
     # Database health check on startup
     try:
@@ -1127,7 +1060,6 @@ def require_login():
                 # إنهاء الجلسة وإرجاعه لصفحة الخطط إذا انتهى الاشتراك
                 session.clear()
                 return redirect("/pricing")
-            session["business_type"] = getattr(core_tenant, "business_type", None) or "general"
     except Exception as e:
         print(f"Error checking tenant subscription: {e}")
         pass
@@ -1145,46 +1077,6 @@ def inject_system_settings():
     except Exception:
         settings = None
     return {"system_settings": settings}
-
-
-@app.context_processor
-def inject_business_context():
-    """Expose the active company's business type to all tenant templates."""
-    business_type = session.get("business_type") or "general"
-    if request.path.startswith("/superadmin"):
-        return {
-            "business_type": "general",
-            "is_beauty_center": False,
-            "business_allows": lambda module: True,
-        }
-    try:
-        tenant_slug = session.get("tenant_slug")
-        if tenant_slug:
-            old_tenant = getattr(g, "tenant", None)
-            g.tenant = None
-            try:
-                from models.core.tenant import Tenant as CoreTenant
-
-                core_tenant = CoreTenant.query.filter_by(slug=tenant_slug).first()
-                if core_tenant:
-                    business_type = getattr(core_tenant, "business_type", None) or "general"
-                    session["business_type"] = business_type
-            finally:
-                g.tenant = old_tenant
-    except Exception:
-        business_type = session.get("business_type") or "general"
-
-    def business_allows(module):
-        hidden_for_beauty = {"pos", "orders", "shipping", "agents", "delivery", "storefront", "quick_sale"}
-        if business_type == "beauty_center":
-            return module not in hidden_for_beauty
-        return True
-
-    return {
-        "business_type": business_type,
-        "is_beauty_center": business_type == "beauty_center",
-        "business_allows": business_allows,
-    }
 
 
 # تفضيل آمن عند فشل تحميل خطط الاشتراك (يتجنب 500)
@@ -1288,7 +1180,6 @@ app.register_blueprint(admin_bp)
 app.register_blueprint(invoice_store_bp)
 app.register_blueprint(storefront_bp)
 app.register_blueprint(quick_sale_bp)
-app.register_blueprint(beauty_bp)
 app.register_blueprint(whatsapp_webhook_bp)
 app.register_blueprint(telegram_bp)
 

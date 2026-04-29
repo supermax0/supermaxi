@@ -61,9 +61,9 @@
       </div>
       <div class="card info">
         {% if product.badge %}<span class="badge">{{ product.badge }}</span>{% endif %}
-        <h1>{{ product.name }}</h1>
+          <h1>{{ product.name }}</h1>
         <div class="desc">{{ product.description or "تفاصيل المنتج الكاملة موجودة في هذه الصفحة." }}</div>
-        <div class="price">{{ "{:,.0f}".format(product.price) }} <small>د.ع</small></div>
+            <div class="price">{{ "{:,.0f}".format(product.price) }} <small>د.ع</small></div>
         <div class="stock {{ '' if product.is_available else 'off' }}">{{ "متوفر وجاهز للطلب" if product.is_available else "غير متوفر حالياً" }}</div>
         <form class="buy" method="post" action="{{ url_for('storefront.cart_add', tenant_slug=shop_tenant_slug, product_id=product.id) }}">
           <input type="number" min="1" max="999" name="quantity" value="1">
@@ -74,33 +74,33 @@
       </div>
     </section>
 
-    {% if product.specs %}
+      {% if product.specs %}
     <section class="card section">
       <h3 style="margin-top:0;">المواصفات</h3>
-      <div class="spec-grid">
-        {% for item in product.specs %}
+        <div class="spec-grid">
+          {% for item in product.specs %}
         <div class="spec"><small>{{ item.label }}</small><strong>{{ item.value }}</strong></div>
-        {% endfor %}
-      </div>
-    </section>
-    {% endif %}
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
 
-    {% if related_products %}
-    <section class="card section">
+      {% if related_products %}
+      <section class="card section">
       <h3 style="margin-top:0;">منتجات مشابهة</h3>
       <div class="related">
-        {% for item in related_products %}
+          {% for item in related_products %}
         <a class="item" href="{{ item.url }}">
           {% if item.image_url %}<img src="{{ item.image_url }}" alt="{{ item.name }}" loading="lazy">{% else %}<div style="aspect-ratio:1/1;display:grid;place-items:center;color:var(--muted)">لا توجد صورة</div>{% endif %}
           <div class="b">
             <div>{{ item.name }}</div>
             <strong>{{ "{:,.0f}".format(item.price) }} د.ع</strong>
-          </div>
-        </a>
-        {% endfor %}
-      </div>
-    </section>
-    {% endif %}
+            </div>
+          </a>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
   </div>
   <script>
     (function () {
@@ -108,7 +108,7 @@
       if (!mainImage) return;
       document.querySelectorAll(".thumb[data-full]").forEach((thumb) => {
         thumb.addEventListener("click", () => {
-          const src = thumb.getAttribute("data-full");
+        const src = thumb.getAttribute("data-full");
           if (src) mainImage.src = src;
         });
       });

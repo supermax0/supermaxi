@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}تنبيهات مركز التجميل{% endblock %}
+{% block page_title %}تنبيهات مركز التجميل{% endblock %}
+
+{% block content %}
+<style>
+  .beauty-wrap{max-width:1200px;margin:0 auto;direction:rtl}
+  .beauty-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+  .beauty-card{background:linear-gradient(145deg,var(--card),var(--card-alt));border:1px solid var(--border-light);border-radius:20px;padding:20px}
+  .beauty-card h3{margin-top:0}.beauty-list{display:grid;gap:10px}.beauty-item{padding:10px;border:1px solid var(--border-light);border-radius:12px}
+  @media(max-width:900px){.beauty-grid{grid-template-columns:1fr}}
+</style>
+<div class="beauty-wrap">
+  <div class="beauty-grid">
+    <div class="beauty-card">
+      <h3>مخزون منخفض</h3>
+      <div class="beauty-list">
+      {% for p in low_stock %}
+        <div class="beauty-item">{{ p.name }} - المتوفر {{ p.quantity }} / الحد {{ p.low_stock_threshold }}</div>
+      {% else %}<p style="color:var(--text-muted)">لا توجد تنبيهات.</p>{% endfor %}
+      </div>
+    </div>
+    <div class="beauty-card">
+      <h3>قرب انتهاء الصلاحية</h3>
+      <div class="beauty-list">
+      {% for p in expiring %}
+        <div class="beauty-item">{{ p.name }} - {{ p.expiry_date.strftime('%Y-%m-%d') if p.expiry_date else '—' }}</div>
+      {% else %}<p style="color:var(--text-muted)">لا توجد منتجات قرب الانتهاء.</p>{% endfor %}
+      </div>
+    </div>
+    <div class="beauty-card">
+      <h3>استهلاك عالي بالخدمات</h3>
+      <div class="beauty-list">
+      {% for product, used in consumption %}
+        <div class="beauty-item">{{ product.name }} - كمية معرفة بالخدمات: {{ used }}</div>
+      {% else %}<p style="color:var(--text-muted)">لا توجد بيانات استهلاك.</p>{% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

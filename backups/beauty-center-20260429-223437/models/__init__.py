@@ -22,10 +22,6 @@ from .system_alert import SystemAlert
 from .assistant_memory import AssistantMemory
 from .role import Role, Permission
 from .tenant import Tenant  # SaaS multi-tenant support
-from .beauty_service import BeautyService
-from .beauty_service_product import BeautyServiceProduct
-from .beauty_appointment import BeautyAppointment
-from .beauty_session_note import BeautySessionNote
 from .ai_agent import (
     Agent,
     AgentWorkflow,

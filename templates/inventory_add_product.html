@@ -397,6 +397,38 @@
         <div class="inv-field"><label>حقل مخصص 3</label><input name="custom_field_3" placeholder="حقل مخصص 3" value="{{ m.get('custom_field_3', '') }}"></div>
         <div class="inv-field"><label>حقل مخصص 4</label><input name="custom_field_4" placeholder="حقل مخصص 4" value="{{ m.get('custom_field_4', '') }}"></div>
       </div>
+      {% if is_beauty_center %}
+      <h3 style="margin-top:18px;"><span>💆</span> بيانات مراكز التجميل</h3>
+      <div class="inv-form-grid" style="margin-top:10px;">
+        <div class="inv-field">
+          <label>نوع البشرة المناسب</label>
+          <input name="skin_type" placeholder="دهنية / جافة / حساسة" value="{{ edit_product.skin_type if edit_product and edit_product.skin_type else '' }}">
+        </div>
+        <div class="inv-field">
+          <label>نوع الاستخدام</label>
+          <input name="usage_type" placeholder="جلسات / بيع / عناية منزلية" value="{{ edit_product.usage_type if edit_product and edit_product.usage_type else '' }}">
+        </div>
+        <div class="inv-field">
+          <label>رقم التشغيلة</label>
+          <input name="batch_number" placeholder="Batch No." value="{{ edit_product.batch_number if edit_product and edit_product.batch_number else '' }}">
+        </div>
+        <div class="inv-field">
+          <label>يتطلب Patch Test</label>
+          <select name="requires_patch_test">
+            <option value="">لا</option>
+            <option value="1" {% if edit_product and edit_product.requires_patch_test %}selected{% endif %}>نعم</option>
+          </select>
+        </div>
+        <div class="inv-field">
+          <label>تاريخ الفتح</label>
+          <input name="opened_date" type="date" value="{{ edit_product.opened_date.strftime('%Y-%m-%d') if edit_product and edit_product.opened_date else '' }}">
+        </div>
+        <div class="inv-field">
+          <label>تاريخ الانتهاء</label>
+          <input name="expiry_date" type="date" value="{{ edit_product.expiry_date.strftime('%Y-%m-%d') if edit_product and edit_product.expiry_date else '' }}">
+        </div>
+      </div>
+      {% endif %}
     </div>
 
     <!-- قسم 3: ضريبة ونوع -->

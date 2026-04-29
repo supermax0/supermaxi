@@ -292,7 +292,6 @@
         <thead>
             <tr>
                 <th>الشركة</th>
-                <th>نوع النشاط</th>
                 <th>تاريخ التسجيل</th>
                 <th>انتهاء الاشتراك</th>
                 <th>قاعدة البيانات</th>
@@ -315,12 +314,6 @@
                             <span class="tenant-slug-text">{{ tenant.slug }}</span>
                         </div>
                     </div>
-                </td>
-                <td>
-                    <span class="status-badge status-active">
-                        <i class="fas fa-layer-group"></i>
-                        {{ 'مركز تجميل' if tenant.business_type == 'beauty_center' else 'شركة عامة' }}
-                    </span>
                 </td>
                 <td style="color: var(--text-muted);">{{ tenant.created_at.strftime('%Y-%m-%d') }}</td>
                 <td style="color: #fff; font-weight: 800;">
@@ -348,7 +341,7 @@
             </tr>
             {% else %}
             <tr>
-                <td colspan="7" style="text-align: center; padding: 80px; color: var(--text-muted);">
+                <td colspan="6" style="text-align: center; padding: 80px; color: var(--text-muted);">
                     <i class="fas fa-building" style="font-size: 48px; margin-bottom: 20px; opacity: 0.2;"></i>
                     <p style="font-size: 16px; font-weight: 700;">لا توجد شركات مسجلة في النظام حالياً</p>
                 </td>
@@ -371,8 +364,6 @@
                         id="m-name"></span></div>
                 <div class="detail-row"><span class="detail-label">المعرف الفريد</span><span class="detail-value"
                         id="m-slug" style="color: var(--primary);"></span></div>
-                <div class="detail-row"><span class="detail-label">نوع النشاط</span><span class="detail-value"
-                        id="m-business-type"></span></div>
                 <div class="detail-row"><span class="detail-label">قاعدة البيانات</span><span class="detail-value"
                         id="m-db"></span></div>
                 <div class="detail-row"><span class="detail-label">تاريخ التسجيل</span><span class="detail-value"
@@ -381,23 +372,6 @@
                         id="m-end"></span></div>
                 <div class="detail-row"><span class="detail-label">حالة الحساب</span><span class="detail-value"
                         id="m-status"></span></div>
-            </div>
-
-            <div class="action-group"
-                style="background: rgba(168, 85, 247, 0.05); border-color: rgba(168, 85, 247, 0.2);">
-                <div class="action-title" style="color: #c4b5fd;"><i class="fas fa-layer-group"></i> نوع نشاط الشركة</div>
-                <div style="display: flex; flex-direction: column; gap: 8px;">
-                    <label class="detail-label">اختيار نوع النشاط</label>
-                    <select id="m-business-type-select"
-                        style="background: var(--surface-color); border: 1px solid var(--border-color); color: #fff; padding: 10px; border-radius: 8px; font-weight: 600; cursor: pointer;">
-                        <option value="general">شركة عامة</option>
-                        <option value="beauty_center">مركز تجميل</option>
-                    </select>
-                    <button class="btn-update" id="m-save-business-type"
-                        style="background: rgba(168, 85, 247, 0.18); border-color: rgba(168, 85, 247, 0.35); color: #fff; margin-top: 5px;">
-                        <i class="fas fa-save"></i> حفظ نوع النشاط
-                    </button>
-                </div>
             </div>
 
             <div class="action-group"
@@ -505,8 +479,6 @@
                         if (data.ok) {
                             document.getElementById('m-name').textContent = data.name;
                             document.getElementById('m-slug').textContent = data.slug;
-                            document.getElementById('m-business-type').textContent = data.business_type_label || 'شركة عامة';
-                            document.getElementById('m-business-type-select').value = data.business_type || 'general';
                             document.getElementById('m-db').textContent = data.db_path;
                             document.getElementById('m-created').textContent = data.created_at;
                             document.getElementById('m-end').textContent = data.subscription_end_date;
@@ -616,39 +588,6 @@
                 }
             });
         }
-
-        // Save Business Type
-        document.getElementById('m-save-business-type').addEventListener('click', function () {
-            const slug = document.getElementById('m-slug').textContent;
-            const businessType = document.getElementById('m-business-type-select').value;
-            if (!slug || slug === '—') return;
-            if (!confirm('هل تريد تغيير نوع نشاط الشركة؟ سيتم تغيير القائمة الجانبية والموديولات المتاحة.')) return;
-
-            this.disabled = true;
-            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
-
-            fetch(`/superadmin/tenants/update-business-type/${slug}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ business_type: businessType })
-            })
-                .then(r => r.json())
-                .then(data => {
-                    this.disabled = false;
-                    this.innerHTML = '<i class="fas fa-save"></i> حفظ نوع النشاط';
-                    if (data.ok) {
-                        alert(data.message);
-                        location.reload();
-                    } else {
-                        alert('حدث خطأ: ' + (data.error || 'غير معروف'));
-                    }
-                })
-                .catch(() => {
-                    this.disabled = false;
-                    this.innerHTML = '<i class="fas fa-save"></i> حفظ نوع النشاط';
-                    alert('فشل الاتصال بالسيرفر');
-                });
-        });
 
         // Handle Reset Database
         document.getElementById('m-reset-db').addEventListener('click', function () {

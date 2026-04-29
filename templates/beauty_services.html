@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}خدمات مركز التجميل{% endblock %}
+{% block page_title %}خدمات مركز التجميل{% endblock %}
+
+{% block content %}
+<style>
+  .beauty-wrap{max-width:1200px;margin:0 auto;direction:rtl}
+  .beauty-card{background:linear-gradient(145deg,var(--card),var(--card-alt));border:1px solid var(--border-light);border-radius:20px;padding:22px;margin-bottom:18px}
+  .beauty-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+  .beauty-field label{display:block;color:var(--text-muted);font-size:12px;margin-bottom:7px;font-weight:800}
+  .beauty-field input,.beauty-field textarea,.beauty-field select{width:100%;padding:11px;border-radius:12px;border:1px solid var(--border-light);background:var(--card-alt);color:var(--text)}
+  .beauty-span-2{grid-column:span 2}.beauty-span-4{grid-column:span 4}
+  .beauty-btn{border:0;border-radius:12px;background:var(--primary);color:#fff;padding:11px 16px;font-weight:800;cursor:pointer}
+  .beauty-table{width:100%;border-collapse:collapse}.beauty-table th,.beauty-table td{padding:12px;border-bottom:1px solid var(--border-light);text-align:right}
+  .map-row{display:grid;grid-template-columns:2fr 1fr auto;gap:10px;margin-bottom:10px}
+  @media(max-width:760px){.beauty-grid{grid-template-columns:1fr}.beauty-span-2,.beauty-span-4{grid-column:auto}.map-row{grid-template-columns:1fr}}
+</style>
+<div class="beauty-wrap">
+  <form class="beauty-card" method="post">
+    <h3>إضافة خدمة</h3>
+    <div class="beauty-grid">
+      <div class="beauty-field beauty-span-2"><label>اسم الخدمة</label><input name="name" required placeholder="Facial / Laser"></div>
+      <div class="beauty-field"><label>السعر</label><input name="price" type="number" min="0" value="0"></div>
+      <div class="beauty-field"><label>المدة بالدقائق</label><input name="duration_minutes" type="number" min="1" value="30"></div>
+      <div class="beauty-field beauty-span-4"><label>وصف الخدمة</label><textarea name="description" rows="2"></textarea></div>
+    </div>
+    <h4>المنتجات المستهلكة من المخزون</h4>
+    <div id="mappingRows">
+      <div class="map-row">
+        <select name="product_id[]">
+          <option value="">بدون منتج</option>
+          {% for p in products %}<option value="{{ p.id }}">{{ p.name }} - المتوفر {{ p.quantity }}</option>{% endfor %}
+        </select>
+        <input name="amount_used[]" type="number" min="1" value="1" placeholder="الكمية">
+        <button type="button" class="beauty-btn" onclick="addMapRow()">+</button>
+      </div>
+    </div>
+    <button class="beauty-btn" type="submit">حفظ الخدمة</button>
+  </form>
+
+  <div class="beauty-card">
+    <h3>الخدمات الحالية</h3>
+    <table class="beauty-table">
+      <thead><tr><th>الخدمة</th><th>السعر</th><th>المدة</th><th>المنتجات</th><th>إجراء</th></tr></thead>
+      <tbody>
+      {% for s in services %}
+        <tr>
+          <td>{{ s.name }}</td>
+          <td>{{ "{:,}".format(s.price or 0) }}</td>
+          <td>{{ s.duration_minutes }} دقيقة</td>
+          <td>{% for m in s.product_mappings %}{{ m.product.name }} ({{ m.amount_used }}){% if not loop.last %}، {% endif %}{% else %}—{% endfor %}</td>
+          <td><form method="post" action="{{ url_for('beauty.delete_service', service_id=s.id) }}" onsubmit="return confirm('حذف/تعطيل الخدمة؟')"><button class="beauty-btn" type="submit">حذف</button></form></td>
+        </tr>
+      {% else %}
+        <tr><td colspan="5" style="text-align:center;color:var(--text-muted)">لا توجد خدمات بعد.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<script>
+function addMapRow(){
+  const first = document.querySelector('.map-row');
+  const clone = first.cloneNode(true);
+  clone.querySelectorAll('input').forEach(i => i.value = '1');
+  clone.querySelector('select').value = '';
+  clone.querySelector('button').textContent = '-';
+  clone.querySelector('button').onclick = () => clone.remove();
+  document.getElementById('mappingRows').appendChild(clone);
+}
+</script>
+{% endblock %}
