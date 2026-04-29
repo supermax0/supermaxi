@@ -21,13 +21,12 @@
   <div class="beauty-grid">
     <div class="beauty-card"><b>{{ appointments_today|length }}</b><span>مواعيد اليوم</span></div>
     <div class="beauty-card"><b>{{ services_count }}</b><span>الخدمات الفعالة</span></div>
-    <div class="beauty-card"><b>{{ "{:,}".format(today_summary.revenue or 0) }}</b><span>إيراد اليوم</span></div>
-    <div class="beauty-card"><b>{{ "{:,}".format(today_summary.profit or 0) }}</b><span>ربح اليوم</span></div>
+    <div class="beauty-card"><b>{{ low_stock_count }}</b><span>منتجات منخفضة</span></div>
+    <div class="beauty-card"><b>{{ expiring_count }}</b><span>قرب انتهاء الصلاحية</span></div>
   </div>
   <div class="beauty-actions">
     <a class="beauty-btn" href="{{ url_for('beauty.appointments') }}">حجز موعد</a>
     <a class="beauty-btn" href="{{ url_for('beauty.services') }}">إدارة الخدمات</a>
-    <a class="beauty-btn" href="{{ url_for('beauty.accounts') }}">حسابات المركز</a>
     <a class="beauty-btn" href="{{ url_for('beauty.alerts') }}">التنبيهات</a>
   </div>
   <div class="beauty-card">

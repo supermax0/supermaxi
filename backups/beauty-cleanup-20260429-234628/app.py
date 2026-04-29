@@ -1175,25 +1175,9 @@ def inject_business_context():
         business_type = session.get("business_type") or "general"
 
     def business_allows(module):
+        hidden_for_beauty = {"pos", "orders", "shipping", "agents", "delivery", "storefront", "quick_sale"}
         if business_type == "beauty_center":
-            allowed_for_beauty = {
-                "dashboard",
-                "executive_dashboard",
-                "beauty",
-                "beauty_accounts",
-                "inventory",
-                "inventory_audit",
-                "customers",
-                "beauty_clients",
-                "expenses",
-                "cash",
-                "accounts",
-                "employees",
-                "reports",
-                "settings",
-                "messages",
-            }
-            return module in allowed_for_beauty
+            return module not in hidden_for_beauty
         return True
 
     return {

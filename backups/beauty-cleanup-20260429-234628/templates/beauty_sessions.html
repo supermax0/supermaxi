@@ -11,20 +11,17 @@
 <div class="beauty-wrap">
   <div class="beauty-card">
     <table class="beauty-table">
-      <thead><tr><th>تاريخ التنفيذ</th><th>العميل</th><th>الخدمة</th><th>الإجمالي</th><th>المدفوع</th><th>ملاحظات</th><th>طباعة</th></tr></thead>
+      <thead><tr><th>تاريخ التنفيذ</th><th>العميل</th><th>الخدمة</th><th>ملاحظات</th></tr></thead>
       <tbody>
       {% for a in appointments %}
         <tr>
           <td>{{ a.completed_at.strftime('%Y-%m-%d %H:%M') if a.completed_at else '—' }}</td>
           <td><a href="{{ url_for('beauty.client_history', customer_id=a.customer_id) }}">{{ a.customer.name }}</a></td>
           <td>{{ a.service.name }}</td>
-          <td>{{ "{:,}".format(a.total_amount or 0) }}</td>
-          <td>{{ "{:,}".format(a.paid_amount or 0) }}</td>
           <td>{{ a.session_notes[-1].note if a.session_notes else a.notes or '—' }}</td>
-          <td><a href="{{ url_for('beauty.appointment_receipt', appointment_id=a.id) }}" target="_blank">إيصال</a></td>
         </tr>
       {% else %}
-        <tr><td colspan="7" style="text-align:center;color:var(--text-muted)">لا توجد جلسات منفذة.</td></tr>
+        <tr><td colspan="4" style="text-align:center;color:var(--text-muted)">لا توجد جلسات منفذة.</td></tr>
       {% endfor %}
       </tbody>
     </table>

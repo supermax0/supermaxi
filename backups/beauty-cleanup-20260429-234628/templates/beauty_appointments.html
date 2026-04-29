@@ -12,8 +12,6 @@
   .beauty-span-2{grid-column:span 2}.beauty-span-4{grid-column:span 4}
   .beauty-btn{border:0;border-radius:12px;background:var(--primary);color:#fff;padding:10px 14px;font-weight:800;cursor:pointer}
   .beauty-table{width:100%;border-collapse:collapse}.beauty-table th,.beauty-table td{padding:12px;border-bottom:1px solid var(--border-light);text-align:right;vertical-align:top}
-  .beauty-mini-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-  .beauty-link{display:inline-flex;align-items:center;justify-content:center;border-radius:10px;padding:8px 10px;background:rgba(99,102,241,.14);color:#c7d2fe;text-decoration:none;font-weight:800;font-size:12px}
   @media(max-width:760px){.beauty-grid{grid-template-columns:1fr}.beauty-span-2,.beauty-span-4{grid-column:auto}}
 </style>
 <div class="beauty-wrap">
@@ -40,46 +38,28 @@
   <div class="beauty-card">
     <h3>آخر المواعيد</h3>
     <table class="beauty-table">
-      <thead><tr><th>الوقت</th><th>العميل</th><th>الخدمة</th><th>الحساب</th><th>الحالة</th><th>تنفيذ</th></tr></thead>
+      <thead><tr><th>الوقت</th><th>العميل</th><th>الخدمة</th><th>الحالة</th><th>تنفيذ</th></tr></thead>
       <tbody>
       {% for a in appointments %}
         <tr>
           <td>{{ a.appointment_at.strftime('%Y-%m-%d %H:%M') }}</td>
           <td>{{ a.customer.name }}<br><small>{{ a.customer.phone }}</small></td>
-          <td>{{ a.service.name }}<br><small>{{ "{:,}".format(a.service_price or a.service.price or 0) }} د.ع</small></td>
+          <td>{{ a.service.name }}</td>
+          <td>{{ a.status }}</td>
           <td>
-            <strong>{{ "{:,}".format(a.total_amount or a.service.price or 0) }} د.ع</strong><br>
-            <small>مدفوع: {{ "{:,}".format(a.paid_amount or 0) }}</small><br>
-            <small>ذمة: {{ "{:,}".format((a.total_amount or a.service.price or 0) - (a.paid_amount or 0)) }}</small>
-          </td>
-          <td>{{ a.status }}<br><small>{{ a.payment_status or 'غير مسدد' }}</small></td>
-          <td>
-            <form method="post" action="{{ url_for('beauty.update_appointment_status', appointment_id=a.id) }}" style="display:grid;gap:8px;min-width:240px">
+            <form method="post" action="{{ url_for('beauty.update_appointment_status', appointment_id=a.id) }}" style="display:grid;gap:8px;min-width:180px">
               <select name="status">
                 <option value="pending" {% if a.status == 'pending' %}selected{% endif %}>pending</option>
                 <option value="done" {% if a.status == 'done' %}selected{% endif %}>done</option>
                 <option value="cancelled" {% if a.status == 'cancelled' %}selected{% endif %}>cancelled</option>
               </select>
-              <div class="beauty-mini-grid">
-                <input name="discount_amount" type="number" min="0" placeholder="الخصم" value="{{ a.discount_amount or 0 }}">
-                <input name="paid_amount" type="number" min="0" placeholder="المبلغ المدفوع" value="{{ a.paid_amount or 0 }}">
-              </div>
-              <select name="payment_method">
-                <option value="cash" {% if a.payment_method == 'cash' %}selected{% endif %}>كاش</option>
-                <option value="card" {% if a.payment_method == 'card' %}selected{% endif %}>بطاقة</option>
-                <option value="transfer" {% if a.payment_method == 'transfer' %}selected{% endif %}>تحويل</option>
-              </select>
               <textarea name="session_note" rows="2" placeholder="ملاحظة الجلسة"></textarea>
               <button class="beauty-btn" type="submit">تحديث</button>
-              {% if a.status == 'done' %}
-              <a class="beauty-link" href="{{ url_for('beauty.appointment_receipt', appointment_id=a.id) }}" target="_blank">طباعة الإيصال</a>
-              <a class="beauty-link" href="{{ url_for('beauty.client_history', customer_id=a.customer_id) }}">سجل العميل</a>
-              {% endif %}
             </form>
           </td>
         </tr>
       {% else %}
-        <tr><td colspan="6" style="text-align:center;color:var(--text-muted)">لا توجد مواعيد.</td></tr>
+        <tr><td colspan="5" style="text-align:center;color:var(--text-muted)">لا توجد مواعيد.</td></tr>
       {% endfor %}
       </tbody>
     </table>

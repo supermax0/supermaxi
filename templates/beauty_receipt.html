@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>إيصال جلسة #{{ appointment.id }}</title>
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;background:#f3f4f6;color:#111827;font-family:Tahoma,Arial,sans-serif}
+    .toolbar{display:flex;gap:8px;justify-content:center;padding:14px}
+    .btn{border:0;border-radius:10px;padding:10px 14px;background:#111827;color:#fff;font-weight:700;cursor:pointer}
+    .btn.alt{background:#2563eb}.btn.ok{background:#16a34a}
+    .receipt{width:80mm;max-width:100%;margin:0 auto 20px;background:#fff;padding:8mm 5mm;border:1px dashed #111827}
+    .center{text-align:center}.muted{color:#6b7280;font-size:11px}.line{border-top:1px dashed #111827;margin:8px 0}
+    h1{font-size:18px;margin:0 0 4px}.row{display:flex;justify-content:space-between;gap:8px;font-size:12px;margin:5px 0}.row b{font-size:13px}
+    .total{font-size:15px;font-weight:900}.note{font-size:11px;line-height:1.6}
+    @page{size:80mm auto;margin:0}
+    @media print{body{background:#fff}.toolbar{display:none}.receipt{border:0;margin:0;width:80mm;box-shadow:none}}
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <button class="btn" onclick="window.print()">طباعة عادية</button>
+    <button class="btn alt" onclick="printBluetooth()">طباعة Bluetooth</button>
+    <button class="btn ok" onclick="window.close()">إغلاق</button>
+  </div>
+
+  <main class="receipt" id="receipt">
+    <div class="center">
+      <h1>إيصال مركز التجميل</h1>
+      <div class="muted">جلسة رقم #{{ appointment.id }}</div>
+      <div class="muted">{{ appointment.completed_at.strftime('%Y-%m-%d %H:%M') if appointment.completed_at else appointment.appointment_at.strftime('%Y-%m-%d %H:%M') }}</div>
+    </div>
+    <div class="line"></div>
+    <div class="row"><span>العميل</span><b>{{ appointment.customer.name }}</b></div>
+    <div class="row"><span>الهاتف</span><b>{{ appointment.customer.phone }}</b></div>
+    <div class="row"><span>الخدمة</span><b>{{ appointment.service.name }}</b></div>
+    <div class="line"></div>
+    <div class="row"><span>سعر الخدمة</span><b>{{ "{:,}".format(appointment.service_price or appointment.service.price or 0) }} د.ع</b></div>
+    <div class="row"><span>الخصم</span><b>{{ "{:,}".format(appointment.discount_amount or 0) }} د.ع</b></div>
+    <div class="row total"><span>الإجمالي</span><b>{{ "{:,}".format(appointment.total_amount or 0) }} د.ع</b></div>
+    <div class="row"><span>المدفوع</span><b>{{ "{:,}".format(appointment.paid_amount or 0) }} د.ع</b></div>
+    <div class="row"><span>المتبقي</span><b>{{ "{:,}".format((appointment.total_amount or 0) - (appointment.paid_amount or 0)) }} د.ع</b></div>
+    <div class="row"><span>حالة الدفع</span><b>{{ appointment.payment_status or 'غير مسدد' }}</b></div>
+    <div class="row"><span>طريقة الدفع</span><b>{{ appointment.payment_method or 'cash' }}</b></div>
+    {% if appointment.notes %}
+    <div class="line"></div>
+    <div class="note">{{ appointment.notes }}</div>
+    {% endif %}
+    <div class="line"></div>
+    <div class="center muted">شكراً لزيارتكم</div>
+  </main>
+
+  <script>
+    const receiptText = `\x1B@\x1Ba\x01
+BEAUTY CENTER RECEIPT
+Session #{{ appointment.id }}
+Date: {{ appointment.completed_at.strftime('%Y-%m-%d %H:%M') if appointment.completed_at else appointment.appointment_at.strftime('%Y-%m-%d %H:%M') }}
+------------------------------
+Customer: {{ appointment.customer.name }}
+Phone: {{ appointment.customer.phone }}
+Service: {{ appointment.service.name }}
+------------------------------
+Service: {{ appointment.service_price or appointment.service.price or 0 }} IQD
+Discount: {{ appointment.discount_amount or 0 }} IQD
+Total: {{ appointment.total_amount or 0 }} IQD
+Paid: {{ appointment.paid_amount or 0 }} IQD
+Due: {{ (appointment.total_amount or 0) - (appointment.paid_amount or 0) }} IQD
+Status: {{ appointment.payment_status or 'unpaid' }}
+Method: {{ appointment.payment_method or 'cash' }}
+------------------------------
+Thank you
+\n\n\n\x1DVA\x00`;
+
+    async function findWritableCharacteristic(server) {
+      const services = await server.getPrimaryServices();
+      for (const service of services) {
+        const chars = await service.getCharacteristics();
+        for (const ch of chars) {
+          if (ch.properties.write || ch.properties.writeWithoutResponse) return ch;
+        }
+      }
+      return null;
+    }
+
+    async function printBluetooth() {
+      if (!navigator.bluetooth) {
+        alert('المتصفح لا يدعم Web Bluetooth. سيتم فتح الطباعة العادية.');
+        window.print();
+        return;
+      }
+      try {
+        const device = await navigator.bluetooth.requestDevice({
+          acceptAllDevices: true,
+          optionalServices: [
+            '0000ffe0-0000-1000-8000-00805f9b34fb',
+            '0000ff00-0000-1000-8000-00805f9b34fb',
+            '000018f0-0000-1000-8000-00805f9b34fb'
+          ]
+        });
+        const server = await device.gatt.connect();
+        const characteristic = await findWritableCharacteristic(server);
+        if (!characteristic) throw new Error('لم يتم العثور على قناة كتابة للطابعة.');
+        const encoder = new TextEncoder();
+        const data = encoder.encode(receiptText);
+        for (let i = 0; i < data.length; i += 180) {
+          const chunk = data.slice(i, i + 180);
+          if (characteristic.properties.writeWithoutResponse) {
+            await characteristic.writeValueWithoutResponse(chunk);
+          } else {
+            await characteristic.writeValue(chunk);
+          }
+        }
+        alert('تم إرسال الإيصال للطابعة.');
+      } catch (err) {
+        alert('تعذرت طباعة البلوتوث: ' + err.message + '\nسيتم فتح الطباعة العادية.');
+        window.print();
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1873,10 +1873,8 @@
       </div>
 
       <nav class="menu">
-        {% if business_allows('dashboard') %}
         <a href="/"><i class="fa fa-chart-line"></i> {{ _('dashboard') }}</a>
-        {% endif %}
-        {% if is_admin and business_allows('executive_dashboard') %}
+        {% if is_admin %}
         <a href="/executive-dashboard" class="{% if request.path.startswith('/executive-dashboard') %}active{% endif %}"><i class="fa fa-crown"></i> لوحة المدير التنفيذي</a>
         {% endif %}
         {% if is_beauty_center %}
@@ -1892,14 +1890,12 @@
         <a href="/pos"><i class="fa fa-cash-register"></i> {{ _('dashboard_welcome_pos') }}</a>
         <a href="/quick-sale" class="{% if request.path.startswith('/quick-sale') %}active{% endif %}"><i class="fa fa-bolt"></i> بيع سريع</a>
         {% endif %}
-        {% if (is_admin or (current_employee and can_manage_inventory)) and business_allows('inventory') %}
+        {% if is_admin or (current_employee and can_manage_inventory) %}
         <a href="/inventory"><i class="fa fa-box"></i> {{ _('inventory') }}</a>
-        {% if business_allows('inventory_audit') %}
         <a href="/inventory/audit" style="padding-right: 30px; font-size: 0.9em;"><i class="fa fa-barcode"></i> {{
           _('inventory_audit') }}</a>
         {% endif %}
-        {% endif %}
-        {% if (is_admin or (current_employee and can_manage_inventory)) and business_allows('purchases') %}
+        {% if is_admin or (current_employee and can_manage_inventory) %}
         {% if plan_has("purchases") %}
         <a href="/purchases"><i class="fa fa-shopping-cart"></i> {{ _('purchases') }}</a>
         {% else %}
@@ -1907,7 +1903,7 @@
           {{ _('purchases') }} <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
         {% endif %}
         {% endif %}
-        {% if (is_admin or (current_employee and can_manage_suppliers)) and business_allows('suppliers') %}
+        {% if is_admin or (current_employee and can_manage_suppliers) %}
         {% if plan_has("suppliers") %}
         <a href="/suppliers"><i class="fa fa-industry"></i> {{ _('suppliers') }}</a>
         {% else %}
@@ -1917,15 +1913,13 @@
         {% endif %}
         {% set show_customers = is_admin or not current_employee or can_manage_customers or (current_employee and
         current_employee.role == "cashier") %}
-        {% if show_customers and business_allows('customers') %}
+        {% if show_customers %}
         <a href="/customers"><i class="fa fa-users"></i> {{ _('customers') }}</a>
         {% if is_beauty_center %}
         <a href="/beauty/clients" class="{% if request.path.startswith('/beauty/clients') %}active{% endif %}" style="padding-right: 30px; font-size: 0.9em;"><i class="fa fa-address-book"></i> سجل العملاء</a>
         {% endif %}
-        {% if business_allows('customer_blacklist') %}
         <a href="/customers/blacklist" title="{{ _('customers_nav_blacklist') }}"><i class="fa fa-ban"></i> {{
           _('customers_nav_blacklist') }}</a>
-        {% endif %}
         {% endif %}
         {% set show_orders = is_admin or not current_employee or can_see_orders or (current_employee and
         current_employee.role == "cashier") %}
@@ -1974,7 +1968,7 @@
           _('delivery_agents') }} <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
         {% endif %}
         {% endif %}
-        {% if (is_admin or (current_employee and can_see_expenses)) and business_allows('expenses') %}
+        {% if is_admin or (current_employee and can_see_expenses) %}
         {% if plan_has("expenses") %}
         <a href="/expenses"><i class="fa fa-money-bill-wave"></i> {{ _('expenses') }}</a>
         {% else %}
@@ -1982,12 +1976,9 @@
           {{ _('expenses') }} <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
         {% endif %}
         {% endif %}
-        {% if (is_admin or (current_employee and can_see_accounts)) and business_allows('cash') %}<a href="/cash"><i
+        {% if is_admin or (current_employee and can_see_accounts) %}<a href="/cash"><i
             class="fa fa-money-bill-wave"></i> {{ _('cash_box') }}</a>{% endif %}
-        {% if is_beauty_center and business_allows('beauty_accounts') %}
-        <a href="/beauty/accounts" class="{% if request.path.startswith('/beauty/accounts') %}active{% endif %}"><i class="fa fa-calculator"></i> حسابات المركز</a>
-        {% endif %}
-        {% if (is_admin or (current_employee and can_see_accounts)) and business_allows('accounts') %}
+        {% if is_admin or (current_employee and can_see_accounts) %}
         {% if plan_has("accounts") %}
         <a href="/accounts"><i class="fa fa-wallet"></i> {{ _('accounts') }}</a>
         {% else %}
@@ -1995,11 +1986,11 @@
           _('accounts') }} <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
         {% endif %}
         {% endif %}
-        {% if is_admin and business_allows('employees') %}<a href="/employees"><i class="fa fa-user-tie"></i> {{ _('employees') }}</a>{% endif %}
-        {% if (is_admin or (current_employee and can_see_pages)) and business_allows('pages') %}
+        {% if is_admin %}<a href="/employees"><i class="fa fa-user-tie"></i> {{ _('employees') }}</a>{% endif %}
+        {% if is_admin or (current_employee and can_see_pages) %}
         <a href="/pages"><i class="fa fa-file-alt"></i> {{ _('pages') }}</a>
         {% endif %}
-        {% if (is_admin or (current_employee and can_see_reports)) and business_allows('reports') %}
+        {% if is_admin or (current_employee and can_see_reports) %}
         {% if plan_has("reports_adv") %}
         <a href="/reports"><i class="fa fa-chart-pie"></i> {{ _('reports') }}</a>
         {% else %}
@@ -2007,7 +1998,7 @@
           _('reports') }} <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
         {% endif %}
         {% endif %}
-        {% if is_admin and business_allows('permissions') %}
+        {% if is_admin %}
         {% if plan_has("rbac") %}
         <a href="/admin/permissions/roles"><i class="fa fa-user-shield"></i> {{ _('permissions') }}</a>
         {% else %}
@@ -2016,12 +2007,12 @@
           <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
         {% endif %}
         {% endif %}
-        {% if is_admin and business_allows('settings') %}<a href="/settings"><i class="fa fa-cog"></i>
+        {% if is_admin %}<a href="/settings"><i class="fa fa-cog"></i>
           {{ _('settings') }}</a>{% endif %}
-        {% if is_admin and business_allows('invoice_templates') %}
+        {% if is_admin %}
         <a href="/admin/invoice-templates"><i class="fa fa-file-invoice"></i> قوالب الفواتير</a>
         {% endif %}
-        {% if (is_admin or (current_employee and can_see_messages)) and business_allows('messages') %}
+        {% if is_admin or (current_employee and can_see_messages) %}
         {% if plan_has("messages") %}
         <a href="/messages"><i class="fa fa-comments"></i> {{ _('messaging') }} <span id="messagesBadge"
             class="badge badge-danger menu-badge">0</span></a>

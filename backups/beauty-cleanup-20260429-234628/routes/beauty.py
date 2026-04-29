@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 from flask import Blueprint, flash, g, redirect, render_template, request, session, url_for
 
 from extensions import db
-from models.account_transaction import AccountTransaction
 from models.beauty_appointment import BeautyAppointment
 from models.beauty_service import BeautyService
 from models.beauty_service_product import BeautyServiceProduct
@@ -15,7 +14,6 @@ from models.customer import Customer
 from models.employee import Employee
 from models.product import Product
 from models.tenant import Tenant as TenantModel
-from utils.beauty_accounting import beauty_daily_revenue_points, beauty_summary, payment_status, sync_beauty_cash_transaction
 from utils.beauty_schema_guard import ensure_beauty_schema
 from utils.product_schema_guard import ensure_product_schema
 
@@ -46,32 +44,6 @@ def _parse_int(value, default=0):
         return default
 
 
-def _appointment_material_cost(appointment: BeautyAppointment) -> int:
-    total = 0
-    for mapping in appointment.service.product_mappings:
-        product = mapping.product
-        if product:
-            total += int(product.buy_price or 0) * int(mapping.amount_used or 0)
-    return total
-
-
-def _sync_appointment_money(appointment: BeautyAppointment, form) -> None:
-    service_price = int(appointment.service.price or 0)
-    discount = max(0, _parse_int(form.get("discount_amount"), 0))
-    paid = max(0, _parse_int(form.get("paid_amount"), appointment.paid_amount or 0))
-    total = max(0, service_price - discount)
-    appointment.service_price = service_price
-    appointment.discount_amount = min(discount, service_price)
-    appointment.total_amount = total
-    appointment.paid_amount = min(paid, total)
-    appointment.payment_status = payment_status(total, appointment.paid_amount)
-    appointment.payment_method = (form.get("payment_method") or appointment.payment_method or "cash").strip()
-    appointment.material_cost = _appointment_material_cost(appointment)
-    appointment.net_profit = int(appointment.total_amount or 0) - int(appointment.material_cost or 0)
-    if appointment.paid_amount and not appointment.paid_at:
-        appointment.paid_at = datetime.utcnow()
-
-
 @beauty_bp.before_request
 def _guard_beauty_module():
     ensure_beauty_schema()
@@ -86,7 +58,6 @@ def _guard_beauty_module():
 @beauty_bp.route("/")
 def dashboard():
     today = datetime.utcnow().date()
-    today_summary = beauty_summary(today, today)
     appointments_today = BeautyAppointment.query.filter(
         BeautyAppointment.appointment_at >= datetime.combine(today, datetime.min.time()),
         BeautyAppointment.appointment_at <= datetime.combine(today, datetime.max.time()),
@@ -103,31 +74,6 @@ def dashboard():
         services_count=services_count,
         low_stock_count=low_stock_count,
         expiring_count=expiring_count,
-        today_summary=today_summary,
-    )
-
-
-@beauty_bp.route("/accounts")
-def accounts():
-    today = datetime.utcnow().date()
-    month_start = today.replace(day=1)
-    today_summary = beauty_summary(today, today)
-    month_summary = beauty_summary(month_start, today)
-    all_summary = beauty_summary()
-    cash_movements = (
-        AccountTransaction.query.filter(AccountTransaction.note.like("مركز التجميل - جلسة #%"))
-        .order_by(AccountTransaction.created_at.desc())
-        .limit(30)
-        .all()
-    )
-    points = beauty_daily_revenue_points(14)
-    return render_template(
-        "beauty_accounts.html",
-        today_summary=today_summary,
-        month_summary=month_summary,
-        all_summary=all_summary,
-        cash_movements=cash_movements,
-        points=points,
     )
 
 
@@ -208,11 +154,6 @@ def appointments():
             status=request.form.get("status") or "pending",
             notes=(request.form.get("notes") or "").strip() or None,
         )
-        service = db.session.get(BeautyService, service_id)
-        if service:
-            appointment.service_price = int(service.price or 0)
-            appointment.total_amount = int(service.price or 0)
-            appointment.payment_status = "غير مسدد"
         db.session.add(appointment)
         db.session.commit()
         flash("تم حجز الموعد بنجاح.", "success")
@@ -233,10 +174,7 @@ def update_appointment_status(appointment_id):
     if new_status not in {"pending", "done", "cancelled"}:
         flash("حالة الموعد غير صحيحة.", "error")
         return redirect(url_for("beauty.appointments"))
-    was_done = appointment.status == "done"
-    if new_status == "done":
-        _sync_appointment_money(appointment, request.form)
-    if new_status == "done" and not was_done:
+    if new_status == "done" and appointment.status != "done":
         used = []
         for mapping in appointment.service.product_mappings:
             product = mapping.product
@@ -258,21 +196,10 @@ def update_appointment_status(appointment_id):
                 products_used_json=json.dumps(used, ensure_ascii=False),
             )
         )
-    if new_status == "done":
-        sync_beauty_cash_transaction(appointment)
     appointment.status = new_status
     db.session.commit()
     flash("تم تحديث حالة الموعد.", "success")
     return redirect(url_for("beauty.appointments"))
-
-
-@beauty_bp.route("/appointments/<int:appointment_id>/receipt")
-def appointment_receipt(appointment_id):
-    appointment = db.session.get(BeautyAppointment, appointment_id)
-    if not appointment:
-        flash("الموعد غير موجود.", "error")
-        return redirect(url_for("beauty.appointments"))
-    return render_template("beauty_receipt.html", appointment=appointment)
 
 
 @beauty_bp.route("/sessions")

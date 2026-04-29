@@ -56,24 +56,5 @@ def ensure_beauty_schema() -> None:
                 with engine.begin() as conn:
                     for stmt in to_run:
                         conn.execute(text(stmt))
-        if "beauty_appointment" in tables:
-            appointment_cols = {col["name"] for col in inspector.get_columns("beauty_appointment")}
-            additions = {
-                "service_price": "ALTER TABLE beauty_appointment ADD COLUMN service_price INTEGER DEFAULT 0",
-                "discount_amount": "ALTER TABLE beauty_appointment ADD COLUMN discount_amount INTEGER DEFAULT 0",
-                "total_amount": "ALTER TABLE beauty_appointment ADD COLUMN total_amount INTEGER DEFAULT 0",
-                "paid_amount": "ALTER TABLE beauty_appointment ADD COLUMN paid_amount INTEGER DEFAULT 0",
-                "payment_status": "ALTER TABLE beauty_appointment ADD COLUMN payment_status VARCHAR(30) DEFAULT 'غير مسدد'",
-                "payment_method": "ALTER TABLE beauty_appointment ADD COLUMN payment_method VARCHAR(50)",
-                "material_cost": "ALTER TABLE beauty_appointment ADD COLUMN material_cost INTEGER DEFAULT 0",
-                "net_profit": "ALTER TABLE beauty_appointment ADD COLUMN net_profit INTEGER DEFAULT 0",
-                "invoice_id": "ALTER TABLE beauty_appointment ADD COLUMN invoice_id INTEGER",
-                "paid_at": "ALTER TABLE beauty_appointment ADD COLUMN paid_at DATETIME",
-            }
-            to_run = [stmt for col, stmt in additions.items() if col not in appointment_cols]
-            if to_run:
-                with engine.begin() as conn:
-                    for stmt in to_run:
-                        conn.execute(text(stmt))
     except Exception:
         _log.exception("ensure_beauty_schema failed")
