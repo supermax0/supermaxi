@@ -93,10 +93,7 @@ td:first-child:contains("مرتجع"){color:#dc2626}
   }
 }
 
-/* ================= MOBILE & TABLET ================= */
-@media(max-width:900px){
-  .card{padding:18px}
-}
+/* ================= MOBILE ================= */
 @media(max-width:700px){
   table thead{
     display:none;
@@ -138,18 +135,14 @@ td:first-child:contains("مرتجع"){color:#dc2626}
 <h3>📄 {{ product.name }}</h3>
 
 <table style="width:100%">
-<thead>
 <tr><th>الحالة</th><th>عدد الطلبات</th><th>المبلغ</th></tr>
-</thead>
-<tbody>
 {% for k,v in report.items() %}
 <tr>
-  <td data-label="الحالة">{{ k }}</td>
-  <td data-label="عدد الطلبات">{{ v.count }}</td>
-  <td data-label="المبلغ">{{ v.total }}</td>
+  <td>{{ k }}</td>
+  <td>{{ v.count }}</td>
+  <td>{{ v.total }}</td>
 </tr>
 {% endfor %}
-</tbody>
 </table>
 
 <button onclick="window.print()" class="pos-btn">🖨 طباعة التقرير</button>

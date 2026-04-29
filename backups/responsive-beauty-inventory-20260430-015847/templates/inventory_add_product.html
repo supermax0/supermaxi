@@ -1,0 +1,708 @@
+{% extends "base.html" %}
+{% block title %}{% if edit_product %}تعديل منتج{% else %}{{ _('inventory_add_page_title') }}{% endif %}{% endblock %}
+{% block page_title %}{% if edit_product %}تعديل منتج — {{ edit_product.name }}{% else %}{{ _('inventory_add_page_title') }}{% endif %}{% endblock %}
+
+{% block content %}
+<div class="inventory-page inv-add-page">
+  <style>
+    .inv-add-page { max-width: 1100px; margin: 0 auto; padding: 0 0 32px; }
+    .inv-add-page .footer { display: none !important; }
+
+    .inv-add-page .inv-summary {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .inv-add-page .inv-box {
+      background: linear-gradient(145deg, var(--card), var(--card-alt));
+      border: 1px solid var(--border-light);
+      border-radius: 18px;
+      padding: 18px 16px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .inv-add-page .inv-box::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      border-radius: 18px 18px 0 0;
+    }
+    .inv-add-page .inv-box:nth-child(1)::before { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+    .inv-add-page .inv-box:nth-child(2)::before { background: linear-gradient(90deg, #10b981, #34d399); }
+    .inv-add-page .inv-box:nth-child(3)::before { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
+    .inv-add-page .inv-box h4 { color: var(--text-muted); font-size: 12px; margin-bottom: 6px; font-weight: 500; }
+    .inv-add-page .inv-box b { font-size: 22px; font-weight: 700; color: var(--text); }
+
+    .inv-add-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 16px 20px !important;
+      margin-bottom: 18px;
+    }
+    .inv-add-toolbar .left, .inv-add-toolbar .right { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+
+    .inv-btn {
+      padding: 10px 18px;
+      border-radius: 12px;
+      border: none;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+      transition: transform .2s, box-shadow .2s;
+    }
+    .inv-btn:hover { transform: translateY(-1px); }
+    .inv-btn.primary { background: linear-gradient(135deg, #3b82f6, #2563eb); color: #fff;
+      box-shadow: 0 6px 16px rgba(59, 130, 246, 0.3); }
+    .inv-btn.purple { background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: #fff;
+      box-shadow: 0 6px 16px rgba(139, 92, 246, 0.3); }
+    .inv-btn.orange { background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff;
+      box-shadow: 0 6px 16px rgba(245, 158, 11, 0.3); }
+    .inv-btn.ghost {
+      background: rgba(15, 23, 42, 0.5);
+      color: var(--text);
+      border: 1px solid var(--border-light);
+    }
+
+    .inv-add-card {
+      background: linear-gradient(145deg, var(--card), var(--card-alt));
+      border: 1px solid var(--border-light);
+      border-radius: 20px;
+      padding: 24px 22px;
+      margin-bottom: 18px;
+    }
+    .inv-add-card h3 {
+      margin: 0 0 18px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-light);
+      font-size: 17px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .inv-form-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px 16px;
+    }
+    @media (max-width: 1000px) {
+      .inv-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 560px) {
+      .inv-form-grid { grid-template-columns: 1fr; }
+      .inv-add-page .inv-summary { grid-template-columns: 1fr; }
+    }
+
+    .inv-field label {
+      display: block;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+    .inv-field input, .inv-field select, .inv-field textarea {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(15, 23, 42, 0.6);
+      color: #f1f5f9;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+    .inv-field textarea { min-height: 120px; resize: vertical; }
+    .inv-field input:focus, .inv-field select:focus, .inv-field textarea:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+    }
+    :root[data-theme="light"] .inv-field input,
+    :root[data-theme="light"] .inv-field select,
+    :root[data-theme="light"] .inv-field textarea {
+      background: rgba(255, 255, 255, 0.92);
+      color: #0f172a;
+      border-color: rgba(15, 23, 42, 0.12);
+    }
+
+    .inv-span-2 { grid-column: span 2; }
+    .inv-span-4 { grid-column: span 4; }
+    @media (max-width: 1000px) {
+      .inv-span-2, .inv-span-4 { grid-column: span 2; }
+    }
+    @media (max-width: 560px) {
+      .inv-span-2, .inv-span-4 { grid-column: span 1; }
+    }
+
+    .inv-check-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px 24px;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+    .inv-check {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+    .inv-check input { width: auto; margin-top: 4px; }
+
+    .inv-pricing-head {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 8px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.15));
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      font-size: 12px;
+      font-weight: 700;
+      color: #ecfdf5;
+      text-align: center;
+    }
+    @media (max-width: 900px) {
+      .inv-pricing-head { grid-template-columns: 1fr 1fr; }
+    }
+
+    .inv-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 8px;
+    }
+    .inv-actions .inv-btn.save { background: linear-gradient(135deg, #3b82f6, #2563eb); color: #fff; }
+    .inv-actions .inv-btn.pink { background: linear-gradient(135deg, #ec4899, #db2777); color: #fff; }
+    .inv-actions .inv-btn.purple { background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: #fff; }
+    .inv-actions .inv-btn.orange { background: linear-gradient(135deg, #f97316, #ea580c); color: #fff; }
+
+    .inv-alert {
+      padding: 12px 16px;
+      border-radius: 12px;
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      color: #fecaca;
+      margin-bottom: 16px;
+      font-size: 14px;
+    }
+
+    .inv-hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+    .inv-specs-box {
+      display: grid;
+      gap: 12px;
+    }
+    .inv-specs-list {
+      display: grid;
+      gap: 10px;
+    }
+    .inv-spec-row {
+      display: grid;
+      grid-template-columns: minmax(180px, .8fr) minmax(0, 1.2fr) auto;
+      gap: 10px;
+      align-items: center;
+    }
+    .inv-spec-remove {
+      width: 42px;
+      height: 42px;
+      border: 1px solid rgba(248, 113, 113, 0.25);
+      border-radius: 12px;
+      background: rgba(239, 68, 68, 0.12);
+      color: #fda4af;
+      cursor: pointer;
+    }
+    .inv-spec-remove:hover {
+      background: rgba(239, 68, 68, 0.18);
+    }
+    .inv-spec-add {
+      width: fit-content;
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1px dashed rgba(59, 130, 246, 0.35);
+      background: rgba(59, 130, 246, 0.08);
+      color: #bfdbfe;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    @media (max-width: 760px) {
+      .inv-spec-row {
+        grid-template-columns: 1fr;
+      }
+      .inv-spec-remove,
+      .inv-spec-add {
+        width: 100%;
+      }
+    }
+  </style>
+
+  {% if error %}
+  <div class="inv-alert">{{ error }}</div>
+  {% endif %}
+  {% if edit_product %}
+  <div class="inv-add-card" style="padding:14px 18px;margin-bottom:14px;border-color:rgba(59,130,246,0.35);background:rgba(59,130,246,0.08);">
+    <strong style="color:#93c5fd;">تعديل منتج موجود</strong>
+    <span style="color:var(--text-muted);font-size:13px;margin-inline-start:10px;">رقم #{{ edit_product.id }} — يمكنك تغيير أي حقل ثم حفظ.</span>
+  </div>
+  {% endif %}
+
+  <div class="inv-summary">
+    <div class="inv-box">
+      <h4>{{ _('inventory_summary_products_title') }}</h4>
+      <b>{{ products_count }}</b>
+    </div>
+    <div class="inv-box">
+      <h4>{{ _('inventory_summary_value_title') }}</h4>
+      <b>{{ "{:,.0f}".format(current_inventory_value) }} <span style="font-size:12px;opacity:.65">د.ع</span></b>
+    </div>
+    <div class="inv-box">
+      <h4>{{ _('inventory_summary_profit_title') }}</h4>
+      <b>{{ "{:,.0f}".format(expected_profit_from_stock) }} <span style="font-size:12px;opacity:.65">د.ع</span></b>
+    </div>
+  </div>
+
+  <div class="inv-add-card inv-add-toolbar">
+    <div class="left">
+      <a class="inv-btn ghost" href="{{ url_for('inventory.inventory') }}"><i class="fas fa-arrow-right"></i> {{ _('inventory_back_to_list') }}</a>
+      <a class="inv-btn primary" href="{{ url_for('inventory.add_product_page') }}"><i class="fas fa-plus"></i> {{ _('inventory_add_product') }}</a>
+      <a class="inv-btn purple" href="/inventory/ledger"><i class="fas fa-list"></i> {{ _('inventory_movements_log') }}</a>
+      <a class="inv-btn orange" href="/inventory/audit"><i class="fas fa-barcode"></i> {{ _('inventory_audit') }}</a>
+    </div>
+    <div class="right">
+      <span style="color:var(--text-muted);font-size:13px;"><i class="fas fa-info-circle"></i> {{ _('inventory_add_page_hint') }}</span>
+    </div>
+  </div>
+
+  <form method="post" action="{{ url_for('inventory.add_product_page') }}" enctype="multipart/form-data" class="inv-add-form">
+    {% set m = product_meta or {} %}
+    {% set spec_items = product_specs_items or [] %}
+    {% if edit_product %}<input type="hidden" name="edit_product_id" value="{{ edit_product.id }}">{% endif %}
+    <!-- قسم 1: بيانات أساسية -->
+    <div class="inv-add-card">
+      <h3><span>📋</span> {% if is_beauty_center %}بيانات المادة / المنتج{% else %}{{ _('inventory_section_basic') }}{% endif %}</h3>
+      <div class="inv-form-grid">
+        <div class="inv-field inv-span-2">
+          <label>{% if is_beauty_center %}اسم المادة أو المنتج{% else %}{{ _('inventory_field_name') }}{% endif %} <span style="color:#f87171">*</span></label>
+          <input name="name" required placeholder="{% if is_beauty_center %}مثال: سيروم فيتامين C / جل ليزر{% else %}{{ _('inventory_field_name') }}{% endif %}" autocomplete="off" value="{{ edit_product.name if edit_product else '' }}">
+        </div>
+        {% if not is_beauty_center %}
+        <div class="inv-field">
+          <label>{{ _('inventory_field_sku') }}</label>
+          <input name="sku" placeholder="SKU" autocomplete="off" value="{{ edit_product.sku if edit_product and edit_product.sku else '' }}">
+        </div>
+        <div class="inv-field">
+          <label>{{ _('inventory_field_barcode_type') }}</label>
+          <select name="barcode_type">
+            <option value="C128" {% if m.get('barcode_type', 'C128') == 'C128' %}selected{% endif %}>Code 128 (C128)</option>
+            <option value="EAN13" {% if m.get('barcode_type') == 'EAN13' %}selected{% endif %}>EAN-13</option>
+            <option value="CODE39" {% if m.get('barcode_type') == 'CODE39' %}selected{% endif %}>Code 39</option>
+          </select>
+        </div>
+        <div class="inv-field">
+          <label>{{ _('inventory_field_barcode_optional') }}</label>
+          <input name="barcode" placeholder="{{ _('inventory_field_barcode_optional') }}" value="{{ edit_product.barcode if edit_product and edit_product.barcode else '' }}">
+        </div>
+        <div class="inv-field">
+          <label>{{ _('inventory_field_unit') }}</label>
+          <select name="unit">
+            <option value="piece" {% if m.get('unit', 'piece') == 'piece' %}selected{% endif %}>{{ _('inventory_unit_piece') }}</option>
+            <option value="box" {% if m.get('unit') == 'box' %}selected{% endif %}>صندوق</option>
+            <option value="kg" {% if m.get('unit') == 'kg' %}selected{% endif %}>كيلوغرام</option>
+          </select>
+        </div>
+        <div class="inv-field">
+          <label>{{ _('inventory_field_brand') }}</label>
+          <input name="brand" placeholder="{{ _('inventory_field_brand') }}" value="{{ m.get('brand', '') }}">
+        </div>
+        <div class="inv-field">
+          <label>{{ _('inventory_field_category') }}</label>
+          <input name="category" placeholder="{{ _('inventory_field_category') }}" value="{{ m.get('category', '') }}">
+        </div>
+        <div class="inv-field">
+          <label>{{ _('inventory_field_subcategory') }}</label>
+          <input name="subcategory" placeholder="{{ _('inventory_field_subcategory') }}" value="{{ m.get('subcategory', '') }}">
+        </div>
+        <div class="inv-field inv-span-2">
+          <label>{{ _('inventory_field_branch_note') }}</label>
+          <input name="branch_note" placeholder="{{ _('inventory_field_branch_note') }}" value="{{ m.get('branch_note', '') }}">
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- قسم 2: خيارات ومخزون -->
+    <div class="inv-add-card">
+      <h3><span>📦</span> {{ _('inventory_section_stock') }}</h3>
+      {% if not is_beauty_center %}
+      <div class="inv-check-row">
+        <label class="inv-check">
+          <input type="checkbox" name="enable_imei" value="1" {% if m.get('enable_imei') %}checked{% endif %}>
+          <span>{{ _('inventory_enable_imei') }}</span>
+        </label>
+        <label class="inv-check">
+          <input type="checkbox" name="not_for_sale" value="1" {% if edit_product and not edit_product.active %}checked{% elif m.get('not_for_sale') %}checked{% endif %}>
+          <span>{{ _('inventory_not_for_sale') }}</span>
+        </label>
+      </div>
+      {% else %}
+      <div class="inv-check-row">
+        <label class="inv-check">
+          <input type="checkbox" name="not_for_sale" value="1" {% if edit_product and not edit_product.active %}checked{% elif m.get('not_for_sale') %}checked{% endif %}>
+          <span>مادة للجلسات فقط ولا تباع للزبون</span>
+        </label>
+      </div>
+      {% endif %}
+      <div class="inv-form-grid" style="margin-top:12px;">
+        <div class="inv-field">
+          <label>{% if is_beauty_center %}الكمية الحالية{% else %}{{ _('inventory_field_opening_stock_label') }}{% endif %}</label>
+          <input name="opening_stock" type="number" min="0" value="{{ edit_product.opening_stock if edit_product else 0 }}" id="opening_stock">
+        </div>
+        <div class="inv-field">
+          <label>{{ _('inventory_field_low_stock_alert') }}</label>
+          <input name="low_stock_threshold" type="number" min="0" value="{{ edit_product.low_stock_threshold if edit_product else 5 }}">
+        </div>
+        {% if not is_beauty_center %}
+        <div class="inv-field">
+          <label>{{ _('inventory_field_warranty') }}</label>
+          <select name="warranty">
+            <option value="">{{ _('inventory_select_placeholder') }}</option>
+            <option value="none" {% if m.get('warranty') == 'none' %}selected{% endif %}>بدون ضمان</option>
+            <option value="6m" {% if m.get('warranty') == '6m' %}selected{% endif %}>6 أشهر</option>
+            <option value="1y" {% if m.get('warranty') == '1y' %}selected{% endif %}>سنة</option>
+            <option value="2y" {% if m.get('warranty') == '2y' %}selected{% endif %}>سنتان</option>
+          </select>
+        </div>
+        <div class="inv-field">
+          <label>{{ _('inventory_field_weight') }}</label>
+          <input name="weight" placeholder="0" value="{{ m.get('weight', '') }}">
+        </div>
+        {% endif %}
+      </div>
+      {% if not is_beauty_center %}
+      <p class="inv-hint">{{ _('inventory_section_shelf_hint') }}</p>
+      <div class="inv-form-grid" style="margin-top:10px;">
+        <div class="inv-field">
+          <label>رف</label>
+          <input name="shelf" placeholder="رف" value="{{ m.get('shelf', '') }}">
+        </div>
+        <div class="inv-field">
+          <label>صف</label>
+          <input name="shelf_row" placeholder="صف" value="{{ m.get('shelf_row', '') }}">
+        </div>
+        <div class="inv-field">
+          <label>مكان</label>
+          <input name="shelf_loc" placeholder="مكان" value="{{ m.get('shelf_loc', '') }}">
+        </div>
+        <div class="inv-field"></div>
+      </div>
+      <div class="inv-form-grid" style="margin-top:10px;">
+        <div class="inv-field"><label>حقل مخصص 1</label><input name="custom_field_1" placeholder="حقل مخصص 1" value="{{ m.get('custom_field_1', '') }}"></div>
+        <div class="inv-field"><label>حقل مخصص 2</label><input name="custom_field_2" placeholder="حقل مخصص 2" value="{{ m.get('custom_field_2', '') }}"></div>
+        <div class="inv-field"><label>حقل مخصص 3</label><input name="custom_field_3" placeholder="حقل مخصص 3" value="{{ m.get('custom_field_3', '') }}"></div>
+        <div class="inv-field"><label>حقل مخصص 4</label><input name="custom_field_4" placeholder="حقل مخصص 4" value="{{ m.get('custom_field_4', '') }}"></div>
+      </div>
+      {% endif %}
+      {% if is_beauty_center %}
+      <h3 style="margin-top:18px;"><span>💆</span> الاستخدام والجلسات</h3>
+      <div class="inv-form-grid" style="margin-top:10px;">
+        <div class="inv-field">
+          <label>نوع المنتج</label>
+          <select name="beauty_product_type">
+            <option value="">اختر النوع</option>
+            <option value="session_material" {% if m.get('beauty_product_type') == 'session_material' %}selected{% endif %}>مادة جلسات</option>
+            <option value="retail_product" {% if m.get('beauty_product_type') == 'retail_product' %}selected{% endif %}>منتج بيع للزبون</option>
+            <option value="tool" {% if m.get('beauty_product_type') == 'tool' %}selected{% endif %}>أداة</option>
+            <option value="consumable" {% if m.get('beauty_product_type') == 'consumable' %}selected{% endif %}>مستهلكات</option>
+          </select>
+        </div>
+        <div class="inv-field">
+          <label>نوع البشرة المناسب</label>
+          {% set current_skin = edit_product.skin_type if edit_product and edit_product.skin_type else '' %}
+          <select name="skin_type">
+            <option value="">غير محدد</option>
+            <option value="all" {% if current_skin == 'all' %}selected{% endif %}>كل الأنواع</option>
+            <option value="oily" {% if current_skin == 'oily' %}selected{% endif %}>دهنية</option>
+            <option value="dry" {% if current_skin == 'dry' %}selected{% endif %}>جافة</option>
+            <option value="combination" {% if current_skin == 'combination' %}selected{% endif %}>مختلطة</option>
+            <option value="sensitive" {% if current_skin == 'sensitive' %}selected{% endif %}>حساسة</option>
+          </select>
+        </div>
+        <div class="inv-field">
+          <label>منطقة الاستخدام</label>
+          {% set current_usage = edit_product.usage_type if edit_product and edit_product.usage_type else '' %}
+          <select name="usage_type">
+            <option value="">غير محدد</option>
+            <option value="face" {% if current_usage == 'face' %}selected{% endif %}>وجه</option>
+            <option value="body" {% if current_usage == 'body' %}selected{% endif %}>جسم</option>
+            <option value="hair" {% if current_usage == 'hair' %}selected{% endif %}>شعر</option>
+            <option value="laser" {% if current_usage == 'laser' %}selected{% endif %}>ليزر</option>
+            <option value="general_care" {% if current_usage == 'general_care' %}selected{% endif %}>عناية عامة</option>
+          </select>
+        </div>
+        <div class="inv-field">
+          <label>الشركة / الماركة</label>
+          <input name="brand" placeholder="اسم الماركة" value="{{ m.get('brand', '') }}">
+        </div>
+        <div class="inv-field">
+          <label>رقم التشغيلة</label>
+          <input name="batch_number" placeholder="Batch No." value="{{ edit_product.batch_number if edit_product and edit_product.batch_number else '' }}">
+        </div>
+        <div class="inv-field">
+          <label>يتطلب Patch Test</label>
+          <select name="requires_patch_test">
+            <option value="">لا</option>
+            <option value="1" {% if edit_product and edit_product.requires_patch_test %}selected{% endif %}>نعم</option>
+          </select>
+        </div>
+        <div class="inv-field">
+          <label>مدة الصلاحية بعد الفتح (بالأيام)</label>
+          <input name="shelf_life_after_opening_days" type="number" min="0" placeholder="مثال: 90" value="{{ m.get('shelf_life_after_opening_days', '') }}">
+        </div>
+        <div class="inv-field">
+          <label>تاريخ الفتح</label>
+          <input name="opened_date" type="date" value="{{ edit_product.opened_date.strftime('%Y-%m-%d') if edit_product and edit_product.opened_date else '' }}">
+        </div>
+        <div class="inv-field">
+          <label>تاريخ الانتهاء</label>
+          <input name="expiry_date" type="date" value="{{ edit_product.expiry_date.strftime('%Y-%m-%d') if edit_product and edit_product.expiry_date else '' }}">
+        </div>
+        <div class="inv-field inv-span-2">
+          <label>طريقة الاستخدام المختصرة</label>
+          <textarea name="usage_instructions" placeholder="مثال: يستخدم بعد تنظيف البشرة لمدة 10 دقائق">{{ m.get('usage_instructions', '') }}</textarea>
+        </div>
+        <div class="inv-field inv-span-2">
+          <label>ملاحظات تحذيرية</label>
+          <textarea name="warning_notes" placeholder="مثال: يمنع استخدامه للبشرة المتهيجة">{{ m.get('warning_notes', '') }}</textarea>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- قسم 3: ضريبة ونوع -->
+    {% if not is_beauty_center %}
+    <div class="inv-add-card">
+      <h3><span>⚙️</span> {{ _('inventory_section_tax') }}</h3>
+      <div class="inv-form-grid">
+        <div class="inv-field">
+          <label>{{ _('inventory_field_tax_applied') }}</label>
+          <select name="tax_applied">
+            <option value="none" {% if m.get('tax_applied', 'none') == 'none' %}selected{% endif %}>{{ _('inventory_tax_none') }}</option>
+            <option value="vat" {% if m.get('tax_applied') == 'vat' %}selected{% endif %}>ضريبة مبيعات</option>
+          </select>
+        </div>
+        <div class="inv-field">
+          <label>{{ _('inventory_field_sales_tax_type') }}</label>
+          <select name="sales_tax_type">
+            <option value="exclusive" {% if m.get('sales_tax_type', 'exclusive') == 'exclusive' %}selected{% endif %}>{{ _('inventory_tax_exclusive') }}</option>
+            <option value="inclusive" {% if m.get('sales_tax_type') == 'inclusive' %}selected{% endif %}>{{ _('inventory_tax_inclusive') }}</option>
+          </select>
+        </div>
+        <div class="inv-field">
+          <label>{{ _('inventory_field_product_type') }}</label>
+          <select name="product_type">
+            <option value="single" {% if m.get('product_type', 'single') == 'single' %}selected{% endif %}>{{ _('inventory_product_type_single') }}</option>
+            <option value="variable" {% if m.get('product_type') == 'variable' %}selected{% endif %}>متعدد الأصناف</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- قسم 4: وصف -->
+    <div class="inv-add-card">
+      <h3><span>📝</span> {% if is_beauty_center %}الصورة والوصف{% else %}{{ _('inventory_section_description') }}{% endif %}</h3>
+      <div class="inv-form-grid">
+        <div class="inv-field inv-span-4">
+          <label>{{ _('inventory_field_description') }}</label>
+          <textarea name="description" placeholder="{{ _('inventory_field_description') }}">{{ edit_product.description if edit_product and edit_product.description else '' }}</textarea>
+        </div>
+        {% if not is_beauty_center %}
+        <div class="inv-field inv-span-2">
+          <label>رابط فيديو المنتج</label>
+          <input name="video_url" placeholder="https://... أو /autoposter/serve/video/..." value="{{ m.get('video_url', '') }}">
+          <p class="inv-hint">يظهر في صفحة المنتج ويمكن للبوت إرساله عند طلب فيديو.</p>
+        </div>
+        <div class="inv-field inv-span-2">
+          <label>شارة المتجر</label>
+          <input name="store_badge" placeholder="جديد / الأكثر طلباً / عرض خاص" value="{{ m.get('store_badge', '') }}">
+        </div>
+        <div class="inv-field inv-span-2">
+          <label>رابط صورة رئيسية بديل</label>
+          <input name="external_image_url" placeholder="https://..." value="{{ edit_product.image_url if edit_product and edit_product.image_url else '' }}">
+          <p class="inv-hint">يُستخدم إذا لم ترفع صورة من الجهاز.</p>
+        </div>
+        <div class="inv-field inv-span-2">
+          <label>صور إضافية</label>
+          <textarea name="gallery_urls" placeholder="كل رابط أو مسار في سطر مستقل">{% if m.get('gallery') %}{% if m.gallery is string %}{{ m.gallery }}{% else %}{{ m.gallery | join('\n') }}{% endif %}{% endif %}</textarea>
+          <p class="inv-hint">مثال: `/static/uploads/products/x.jpg` أو رابط خارجي مباشر.</p>
+        </div>
+        <div class="inv-field inv-span-4">
+          <label>مواصفات صفحة المنتج</label>
+          <div class="inv-specs-box">
+            <div id="specRows" class="inv-specs-list">
+              {% if spec_items %}
+                {% for item in spec_items %}
+                <div class="inv-spec-row">
+                  <input name="spec_label[]" placeholder="اسم المواصفة" value="{{ item.label }}">
+                  <input name="spec_value[]" placeholder="القيمة التي تظهر للعميل" value="{{ item.value }}">
+                  <button type="button" class="inv-spec-remove" onclick="removeSpecRow(this)">✕</button>
+                </div>
+                {% endfor %}
+              {% else %}
+              <div class="inv-spec-row">
+                <input name="spec_label[]" placeholder="اسم المواصفة" value="">
+                <input name="spec_value[]" placeholder="القيمة التي تظهر للعميل" value="">
+                <button type="button" class="inv-spec-remove" onclick="removeSpecRow(this)">✕</button>
+              </div>
+              {% endif %}
+            </div>
+            <button type="button" class="inv-spec-add" onclick="addSpecRow()">+ إضافة مواصفة</button>
+          </div>
+          <p class="inv-hint">كل سطر هنا يمثل مواصفة مستقلة في صفحة المنتج، ولن يتم جمع المواصفات من حقول المنتج الأخرى.</p>
+        </div>
+        {% else %}
+        <div class="inv-field inv-span-2">
+          <label>رابط صورة رئيسية بديل</label>
+          <input name="external_image_url" placeholder="https://..." value="{{ edit_product.image_url if edit_product and edit_product.image_url else '' }}">
+          <p class="inv-hint">اختياري إذا لم ترفع صورة من الجهاز.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- قسم 5: أسعار وصورة -->
+    <div class="inv-add-card">
+      <h3><span>💰</span> {% if is_beauty_center %}الكلفة والبيع{% else %}{{ _('inventory_section_pricing') }}{% endif %}</h3>
+      <div class="inv-pricing-head">
+        <span>{% if is_beauty_center %}كلفة المنتج/المادة{% else %}{{ _('inventory_purchase_price') }}{% endif %}</span>
+        {% if not is_beauty_center %}
+        <span>{{ _('inventory_margin_percent') }}</span>
+        {% endif %}
+        <span>{% if is_beauty_center %}سعر البيع للزبون{% else %}{{ _('inventory_sale_price') }}{% endif %}</span>
+        <span>{{ _('inventory_product_image') }}</span>
+      </div>
+      <div class="inv-form-grid">
+        <div class="inv-field">
+          <label>{% if is_beauty_center %}كلفة المنتج/المادة{% else %}{{ _('inventory_field_buy_price') }}{% endif %} <span style="color:#f87171">*</span></label>
+          <input name="buy_price" id="buy_price" type="number" min="0" required placeholder="0" value="{{ edit_product.buy_price if edit_product else '' }}">
+        </div>
+        {% if not is_beauty_center %}
+        <div class="inv-field">
+          <label>{{ _('inventory_margin_percent') }}</label>
+          <input type="number" id="margin_percent" value="25" step="0.01" min="0" placeholder="25">
+          <p class="inv-hint">{{ _('inventory_margin_hint') }}</p>
+        </div>
+        {% endif %}
+        <div class="inv-field">
+          <label>{% if is_beauty_center %}سعر البيع للزبون{% else %}{{ _('inventory_field_sale_price') }} <span style="color:#f87171">*</span>{% endif %}</label>
+          <input name="sale_price" id="sale_price" type="number" min="0" {% if not is_beauty_center %}required{% endif %} placeholder="0" value="{{ edit_product.sale_price if edit_product else '' }}">
+          {% if is_beauty_center %}<p class="inv-hint">إذا المادة للجلسات فقط، يمكن تركه بنفس الكلفة أو صفر حسب طريقة عملك.</p>{% endif %}
+        </div>
+        <div class="inv-field">
+          <label>{{ _('inventory_product_image') }}</label>
+          <input type="file" name="product_image" accept="image/jpeg,image/png,image/webp,image/gif">
+          <p class="inv-hint">{{ _('inventory_image_hint') }}</p>
+        </div>
+        {% if not is_beauty_center %}
+        <div class="inv-field">
+          <label>{{ _('inventory_purchase_ex_tax') }}</label>
+          <input name="purchase_ex_tax" placeholder="—" value="{{ m.get('purchase_ex_tax', '') }}">
+        </div>
+        <div class="inv-field">
+          <label>{{ _('inventory_purchase_inc_tax') }}</label>
+          <input name="purchase_inc_tax" placeholder="—" value="{{ m.get('purchase_inc_tax', '') }}">
+        </div>
+        <div class="inv-field">
+          <label>{{ _('inventory_sale_ex_tax') }}</label>
+          <input name="sale_ex_tax" placeholder="—" value="{{ m.get('sale_ex_tax', '') }}">
+        </div>
+        <div class="inv-field">
+          <label>{{ _('inventory_sale_inc_tax') }}</label>
+          <input name="sale_inc_tax" placeholder="—" value="{{ m.get('sale_inc_tax', '') }}">
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="inv-add-card">
+      <div class="inv-actions">
+        <button type="submit" class="inv-btn save" name="submit_action" value="save"><i class="fas fa-save"></i> {{ _('inventory_save') }}</button>
+        <button type="submit" class="inv-btn pink" name="submit_action" value="add_another"><i class="fas fa-plus"></i> {{ _('inventory_save_and_add_another') }}</button>
+        {% if not is_beauty_center %}
+        <button type="submit" class="inv-btn purple" name="submit_action" value="opening"><i class="fas fa-warehouse"></i> {{ _('inventory_save_opening') }}</button>
+        <button type="submit" class="inv-btn orange" name="submit_action" value="group_prices"><i class="fas fa-tags"></i> {{ _('inventory_save_group_prices') }}</button>
+        {% endif %}
+      </div>
+      <p class="inv-hint" style="margin-top:12px;">{% if is_beauty_center %}بعد الحفظ يمكن ربط المادة بالخدمات من صفحة الخدمات لتخصم تلقائياً عند تنفيذ الجلسة.{% else %}{{ _('inventory_save_actions_hint') }}{% endif %}</p>
+    </div>
+  </form>
+</div>
+
+<script>
+(function () {
+  var buy = document.getElementById('buy_price');
+  var sale = document.getElementById('sale_price');
+  var margin = document.getElementById('margin_percent');
+  var specRows = document.getElementById('specRows');
+
+  window.addSpecRow = function (label, value) {
+    if (!specRows) return;
+    var row = document.createElement('div');
+    row.className = 'inv-spec-row';
+    row.innerHTML =
+      '<input name="spec_label[]" placeholder="اسم المواصفة" value="' + escapeAttr(label || '') + '">' +
+      '<input name="spec_value[]" placeholder="القيمة التي تظهر للعميل" value="' + escapeAttr(value || '') + '">' +
+      '<button type="button" class="inv-spec-remove" onclick="removeSpecRow(this)">✕</button>';
+    specRows.appendChild(row);
+  };
+
+  window.removeSpecRow = function (btn) {
+    if (!specRows || !btn) return;
+    var rows = specRows.querySelectorAll('.inv-spec-row');
+    if (rows.length <= 1) {
+      rows[0].querySelectorAll('input').forEach(function (input) { input.value = ''; });
+      return;
+    }
+    btn.closest('.inv-spec-row').remove();
+  };
+
+  function escapeAttr(value) {
+    return String(value || '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('"', '&quot;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;');
+  }
+
+  function syncFromMargin() {
+    if (!margin) return;
+    var b = parseFloat(buy.value) || 0;
+    var m = parseFloat(margin.value) || 0;
+    sale.value = Math.max(0, Math.round(b * (1 + m / 100)));
+  }
+  function syncMarginFromSale() {
+    if (!margin) return;
+    var b = parseFloat(buy.value) || 0;
+    var s = parseFloat(sale.value) || 0;
+    if (b <= 0) return;
+    margin.value = (((s - b) / b) * 100).toFixed(2);
+  }
+  if (margin) margin.addEventListener('input', syncFromMargin);
+  if (buy) buy.addEventListener('input', syncFromMargin);
+  if (sale) sale.addEventListener('change', syncMarginFromSale);
+  {% if edit_product %}
+  syncMarginFromSale();
+  {% endif %}
+})();
+</script>
+{% endblock %}

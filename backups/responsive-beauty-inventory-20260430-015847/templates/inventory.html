@@ -1080,57 +1080,6 @@
       justify-content: center;
     }
 
-    @media (max-width: 768px) {
-      .inventory-page .inv-toolbar-left .inv-btn {
-        flex: 1 1 calc(50% - 8px);
-        min-width: 140px;
-        justify-content: center;
-      }
-
-      .inventory-page .inv-toolbar-left,
-      .inventory-page .inv-toolbar-right,
-      .inventory-page .inv-products-controls {
-        width: 100%;
-      }
-
-      .inv-table-wrap-products {
-        height: min(68vh, 520px) !important;
-        min-height: 360px !important;
-        margin-inline: -8px;
-        border-radius: 14px;
-      }
-
-      .ag-theme-finora .ag-cell,
-      .ag-theme-finora .ag-header-cell {
-        padding-inline: 6px !important;
-        font-size: 12px !important;
-      }
-
-      .ag-theme-finora .ag-paging-panel {
-        height: auto;
-        min-height: 44px;
-        padding: 6px;
-        flex-wrap: wrap;
-        gap: 6px;
-        justify-content: center;
-      }
-
-      .inv-actions-grid {
-        gap: 6px !important;
-      }
-    }
-
-    @media (max-width: 480px) {
-      .inventory-page .inv-toolbar-left .inv-btn {
-        flex-basis: 100%;
-      }
-
-      .inv-table-wrap-products {
-        height: 62vh !important;
-        margin-inline: -12px;
-      }
-    }
-
     .inv-modal {
       display: none;
       position: fixed;
@@ -1663,7 +1612,6 @@
   // ================= AG GRID INITIALIZATION =================
   let gridApi;
   let allProducts = [];
-  let inventoryColumnDefs = [];
 
   function safeParseMeta(metaJson) {
     try {
@@ -1684,10 +1632,6 @@
       .replaceAll("'", '&#39;');
   }
 
-  function isInventoryMobile() {
-    return window.matchMedia && window.matchMedia('(max-width: 700px)').matches;
-  }
-
   function initAgGrid() {
     const productsDataElement = document.getElementById("productsData");
     if (!productsDataElement) return;
@@ -1699,7 +1643,7 @@
       return;
     }
 
-    inventoryColumnDefs = [
+    const columnDefs = [
       {
         headerName: "{{ _('inventory_col_actions') }}",
         field: "actions",
@@ -1880,19 +1824,13 @@
       }
     ];
 
-    const columnDefs = inventoryColumnDefs;
-    const mobileColumnFields = new Set(["actions", "name", "quantity", "buy_price", "sale_price"]);
-    const effectiveColumnDefs = isInventoryMobile()
-      ? columnDefs.filter(col => mobileColumnFields.has(col.field))
-      : columnDefs;
-
     const gridOptions = {
-      columnDefs: effectiveColumnDefs,
+      columnDefs: columnDefs,
       rowData: allProducts,
-      rowHeight: isInventoryMobile() ? 58 : 52,
-      headerHeight: isInventoryMobile() ? 44 : 48,
+      rowHeight: 52,
+      headerHeight: 48,
       pagination: true,
-      paginationPageSize: isInventoryMobile() ? 10 : 20,
+      paginationPageSize: 20,
       paginationPageSizeSelector: [10, 20, 50, 100],
       enableRtl: true,
       animateRows: true,
@@ -1936,22 +1874,6 @@
     const eGridDiv = document.querySelector('#productsTable');
     agGrid.createGrid(eGridDiv, gridOptions);
   }
-
-  let inventoryResponsiveTimer;
-  window.addEventListener('resize', function () {
-    if (!gridApi) return;
-    clearTimeout(inventoryResponsiveTimer);
-    inventoryResponsiveTimer = setTimeout(function () {
-      const mobileColumnFields = new Set(["actions", "name", "quantity", "buy_price", "sale_price"]);
-      gridApi.setGridOption(
-        'columnDefs',
-        isInventoryMobile() ? columnDefs.filter(col => mobileColumnFields.has(col.field)) : columnDefs
-      );
-      gridApi.setGridOption('paginationPageSize', isInventoryMobile() ? 10 : 20);
-      gridApi.setGridOption('rowHeight', isInventoryMobile() ? 58 : 52);
-      gridApi.resetRowHeights();
-    }, 160);
-  });
 
   function filterProducts() {
     if (gridApi) gridApi.onFilterChanged();

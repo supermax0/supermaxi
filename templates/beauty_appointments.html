@@ -15,6 +15,7 @@
   .beauty-mini-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
   .beauty-link{display:inline-flex;align-items:center;justify-content:center;border-radius:10px;padding:8px 10px;background:rgba(99,102,241,.14);color:#c7d2fe;text-decoration:none;font-weight:800;font-size:12px}
   @media(max-width:760px){.beauty-grid{grid-template-columns:1fr}.beauty-span-2,.beauty-span-4{grid-column:auto}}
+  @media(max-width:480px){.beauty-mini-grid{grid-template-columns:1fr}}
 </style>
 <div class="beauty-wrap">
   <form class="beauty-card" method="post">
@@ -39,6 +40,7 @@
 
   <div class="beauty-card">
     <h3>آخر المواعيد</h3>
+    <div class="table-mobile-scroll mobile-scroll beauty-table-scroll">
     <table class="beauty-table">
       <thead><tr><th>الوقت</th><th>العميل</th><th>الخدمة</th><th>الحساب</th><th>الحالة</th><th>تنفيذ</th></tr></thead>
       <tbody>
@@ -53,7 +55,7 @@
             <small>ذمة: {{ "{:,}".format((a.total_amount or a.service.price or 0) - (a.paid_amount or 0)) }}</small>
           </td>
           <td>{{ a.status }}<br><small>{{ a.payment_status or 'غير مسدد' }}</small></td>
-          <td>
+          <td class="beauty-cell-wrap">
             <form method="post" action="{{ url_for('beauty.update_appointment_status', appointment_id=a.id) }}" style="display:grid;gap:8px;min-width:240px">
               <select name="status">
                 <option value="pending" {% if a.status == 'pending' %}selected{% endif %}>pending</option>
@@ -83,6 +85,7 @@
       {% endfor %}
       </tbody>
     </table>
+    </div>
   </div>
 </div>
 {% endblock %}

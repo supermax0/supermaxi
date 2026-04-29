@@ -14,7 +14,7 @@
   .chart-bar{flex:1;min-width:28px;background:linear-gradient(180deg,#8b5cf6,#22c55e);border-radius:10px 10px 4px 4px;position:relative}
   .chart-bar small{position:absolute;bottom:-24px;right:50%;transform:translateX(50%);font-size:10px;color:var(--text-muted);white-space:nowrap}
   @media(max-width:900px){.beauty-grid{grid-template-columns:repeat(2,1fr)}}
-  @media(max-width:560px){.beauty-grid{grid-template-columns:1fr}.chart-bars{overflow-x:auto}}
+  @media(max-width:560px){.beauty-grid{grid-template-columns:1fr}.chart-bars{overflow-x:auto;padding-bottom:28px;min-height:160px;-webkit-overflow-scrolling:touch}}
 </style>
 <div class="beauty-wrap">
   <div class="beauty-grid">
@@ -46,6 +46,7 @@
 
   <div class="beauty-card">
     <h3>الجلسات المالية الأخيرة</h3>
+    <div class="table-mobile-scroll mobile-scroll beauty-table-scroll">
     <table class="beauty-table">
       <thead><tr><th>التاريخ</th><th>العميل</th><th>الخدمة</th><th>الإجمالي</th><th>المدفوع</th><th>الذمة</th><th>الربح</th><th>طباعة</th></tr></thead>
       <tbody>
@@ -65,10 +66,12 @@
       {% endfor %}
       </tbody>
     </table>
+    </div>
   </div>
 
   <div class="beauty-card">
     <h3>آخر حركات الصندوق من جلسات المركز</h3>
+    <div class="table-mobile-scroll mobile-scroll beauty-table-scroll">
     <table class="beauty-table">
       <thead><tr><th>التاريخ</th><th>النوع</th><th>المبلغ</th><th>الملاحظة</th></tr></thead>
       <tbody>
@@ -79,6 +82,7 @@
       {% endfor %}
       </tbody>
     </table>
+    </div>
   </div>
 </div>
 {% endblock %}

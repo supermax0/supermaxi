@@ -2,12 +2,12 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>إيصال جلسة #{{ appointment.id }}</title>
   <style>
     *{box-sizing:border-box}
     body{margin:0;background:#f3f4f6;color:#111827;font-family:Tahoma,Arial,sans-serif}
-    .toolbar{display:flex;gap:8px;justify-content:center;padding:max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));flex-wrap:wrap}
+    .toolbar{display:flex;gap:8px;justify-content:center;padding:14px}
     .btn{border:0;border-radius:10px;padding:10px 14px;background:#111827;color:#fff;font-weight:700;cursor:pointer}
     .btn.alt{background:#2563eb}.btn.ok{background:#16a34a}
     .receipt{width:80mm;max-width:100%;margin:0 auto 20px;background:#fff;padding:8mm 5mm;border:1px dashed #111827}
@@ -15,8 +15,7 @@
     h1{font-size:18px;margin:0 0 4px}.row{display:flex;justify-content:space-between;gap:8px;font-size:12px;margin:5px 0}.row b{font-size:13px}
     .total{font-size:15px;font-weight:900}.note{font-size:11px;line-height:1.6}
     @page{size:80mm auto;margin:0}
-    @media (max-width:480px){body{padding:max(8px, env(safe-area-inset-top, 0px)) max(8px, env(safe-area-inset-right, 0px)) max(8px, env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px))}.toolbar{display:grid;grid-template-columns:1fr;gap:8px;padding:max(8px, env(safe-area-inset-top, 0px)) max(8px, env(safe-area-inset-right, 0px)) max(8px, env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px))}.btn{width:100%;min-height:42px}.receipt{width:100%;margin:0 auto 12px;padding:7mm 4mm}}
-    @media print{body{background:#fff;padding:0}.toolbar{display:none}.receipt{border:0;margin:0;width:80mm;box-shadow:none}}
+    @media print{body{background:#fff}.toolbar{display:none}.receipt{border:0;margin:0;width:80mm;box-shadow:none}}
   </style>
 </head>
 <body>

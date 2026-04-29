@@ -16,6 +16,7 @@
   .status-pill{padding:5px 10px;border-radius:999px;background:rgba(99,102,241,.15);color:#c7d2fe;font-size:12px;font-weight:800}
   @media(max-width:900px){.beauty-grid{grid-template-columns:repeat(2,1fr)}}
   @media(max-width:560px){.beauty-grid{grid-template-columns:1fr}}
+  @media(max-width:768px){.beauty-actions{flex-direction:column}.beauty-btn{width:100%;text-align:center;justify-content:center;display:inline-flex}}
 </style>
 <div class="beauty-wrap">
   <div class="beauty-grid">
@@ -32,6 +33,7 @@
   </div>
   <div class="beauty-card">
     <h3>مواعيد اليوم</h3>
+    <div class="table-mobile-scroll mobile-scroll beauty-table-scroll">
     <table class="beauty-table">
       <thead><tr><th>الوقت</th><th>العميل</th><th>الخدمة</th><th>الحالة</th></tr></thead>
       <tbody>
@@ -47,6 +49,7 @@
       {% endfor %}
       </tbody>
     </table>
+    </div>
   </div>
 </div>
 {% endblock %}
