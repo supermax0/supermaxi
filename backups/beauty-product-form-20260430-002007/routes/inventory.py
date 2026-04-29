@@ -134,10 +134,6 @@ def _meta_from_inventory_add_form(form) -> dict:
         "purchase_inc_tax",
         "sale_ex_tax",
         "sale_inc_tax",
-        "beauty_product_type",
-        "usage_instructions",
-        "warning_notes",
-        "shelf_life_after_opening_days",
     )
     meta: dict = {}
     for k in meta_keys:

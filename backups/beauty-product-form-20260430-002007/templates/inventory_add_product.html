@@ -289,13 +289,12 @@
     {% if edit_product %}<input type="hidden" name="edit_product_id" value="{{ edit_product.id }}">{% endif %}
     <!-- قسم 1: بيانات أساسية -->
     <div class="inv-add-card">
-      <h3><span>📋</span> {% if is_beauty_center %}بيانات المادة / المنتج{% else %}{{ _('inventory_section_basic') }}{% endif %}</h3>
+      <h3><span>📋</span> {{ _('inventory_section_basic') }}</h3>
       <div class="inv-form-grid">
         <div class="inv-field inv-span-2">
-          <label>{% if is_beauty_center %}اسم المادة أو المنتج{% else %}{{ _('inventory_field_name') }}{% endif %} <span style="color:#f87171">*</span></label>
-          <input name="name" required placeholder="{% if is_beauty_center %}مثال: سيروم فيتامين C / جل ليزر{% else %}{{ _('inventory_field_name') }}{% endif %}" autocomplete="off" value="{{ edit_product.name if edit_product else '' }}">
+          <label>{{ _('inventory_field_name') }} <span style="color:#f87171">*</span></label>
+          <input name="name" required placeholder="{{ _('inventory_field_name') }}" autocomplete="off" value="{{ edit_product.name if edit_product else '' }}">
         </div>
-        {% if not is_beauty_center %}
         <div class="inv-field">
           <label>{{ _('inventory_field_sku') }}</label>
           <input name="sku" placeholder="SKU" autocomplete="off" value="{{ edit_product.sku if edit_product and edit_product.sku else '' }}">
@@ -336,14 +335,12 @@
           <label>{{ _('inventory_field_branch_note') }}</label>
           <input name="branch_note" placeholder="{{ _('inventory_field_branch_note') }}" value="{{ m.get('branch_note', '') }}">
         </div>
-        {% endif %}
       </div>
     </div>
 
     <!-- قسم 2: خيارات ومخزون -->
     <div class="inv-add-card">
       <h3><span>📦</span> {{ _('inventory_section_stock') }}</h3>
-      {% if not is_beauty_center %}
       <div class="inv-check-row">
         <label class="inv-check">
           <input type="checkbox" name="enable_imei" value="1" {% if m.get('enable_imei') %}checked{% endif %}>
@@ -354,24 +351,15 @@
           <span>{{ _('inventory_not_for_sale') }}</span>
         </label>
       </div>
-      {% else %}
-      <div class="inv-check-row">
-        <label class="inv-check">
-          <input type="checkbox" name="not_for_sale" value="1" {% if edit_product and not edit_product.active %}checked{% elif m.get('not_for_sale') %}checked{% endif %}>
-          <span>مادة للجلسات فقط ولا تباع للزبون</span>
-        </label>
-      </div>
-      {% endif %}
       <div class="inv-form-grid" style="margin-top:12px;">
         <div class="inv-field">
-          <label>{% if is_beauty_center %}الكمية الحالية{% else %}{{ _('inventory_field_opening_stock_label') }}{% endif %}</label>
+          <label>{{ _('inventory_field_opening_stock_label') }}</label>
           <input name="opening_stock" type="number" min="0" value="{{ edit_product.opening_stock if edit_product else 0 }}" id="opening_stock">
         </div>
         <div class="inv-field">
           <label>{{ _('inventory_field_low_stock_alert') }}</label>
           <input name="low_stock_threshold" type="number" min="0" value="{{ edit_product.low_stock_threshold if edit_product else 5 }}">
         </div>
-        {% if not is_beauty_center %}
         <div class="inv-field">
           <label>{{ _('inventory_field_warranty') }}</label>
           <select name="warranty">
@@ -386,9 +374,7 @@
           <label>{{ _('inventory_field_weight') }}</label>
           <input name="weight" placeholder="0" value="{{ m.get('weight', '') }}">
         </div>
-        {% endif %}
       </div>
-      {% if not is_beauty_center %}
       <p class="inv-hint">{{ _('inventory_section_shelf_hint') }}</p>
       <div class="inv-form-grid" style="margin-top:10px;">
         <div class="inv-field">
@@ -411,47 +397,16 @@
         <div class="inv-field"><label>حقل مخصص 3</label><input name="custom_field_3" placeholder="حقل مخصص 3" value="{{ m.get('custom_field_3', '') }}"></div>
         <div class="inv-field"><label>حقل مخصص 4</label><input name="custom_field_4" placeholder="حقل مخصص 4" value="{{ m.get('custom_field_4', '') }}"></div>
       </div>
-      {% endif %}
       {% if is_beauty_center %}
-      <h3 style="margin-top:18px;"><span>💆</span> الاستخدام والجلسات</h3>
+      <h3 style="margin-top:18px;"><span>💆</span> بيانات مراكز التجميل</h3>
       <div class="inv-form-grid" style="margin-top:10px;">
         <div class="inv-field">
-          <label>نوع المنتج</label>
-          <select name="beauty_product_type">
-            <option value="">اختر النوع</option>
-            <option value="session_material" {% if m.get('beauty_product_type') == 'session_material' %}selected{% endif %}>مادة جلسات</option>
-            <option value="retail_product" {% if m.get('beauty_product_type') == 'retail_product' %}selected{% endif %}>منتج بيع للزبون</option>
-            <option value="tool" {% if m.get('beauty_product_type') == 'tool' %}selected{% endif %}>أداة</option>
-            <option value="consumable" {% if m.get('beauty_product_type') == 'consumable' %}selected{% endif %}>مستهلكات</option>
-          </select>
-        </div>
-        <div class="inv-field">
           <label>نوع البشرة المناسب</label>
-          {% set current_skin = edit_product.skin_type if edit_product and edit_product.skin_type else '' %}
-          <select name="skin_type">
-            <option value="">غير محدد</option>
-            <option value="all" {% if current_skin == 'all' %}selected{% endif %}>كل الأنواع</option>
-            <option value="oily" {% if current_skin == 'oily' %}selected{% endif %}>دهنية</option>
-            <option value="dry" {% if current_skin == 'dry' %}selected{% endif %}>جافة</option>
-            <option value="combination" {% if current_skin == 'combination' %}selected{% endif %}>مختلطة</option>
-            <option value="sensitive" {% if current_skin == 'sensitive' %}selected{% endif %}>حساسة</option>
-          </select>
+          <input name="skin_type" placeholder="دهنية / جافة / حساسة" value="{{ edit_product.skin_type if edit_product and edit_product.skin_type else '' }}">
         </div>
         <div class="inv-field">
-          <label>منطقة الاستخدام</label>
-          {% set current_usage = edit_product.usage_type if edit_product and edit_product.usage_type else '' %}
-          <select name="usage_type">
-            <option value="">غير محدد</option>
-            <option value="face" {% if current_usage == 'face' %}selected{% endif %}>وجه</option>
-            <option value="body" {% if current_usage == 'body' %}selected{% endif %}>جسم</option>
-            <option value="hair" {% if current_usage == 'hair' %}selected{% endif %}>شعر</option>
-            <option value="laser" {% if current_usage == 'laser' %}selected{% endif %}>ليزر</option>
-            <option value="general_care" {% if current_usage == 'general_care' %}selected{% endif %}>عناية عامة</option>
-          </select>
-        </div>
-        <div class="inv-field">
-          <label>الشركة / الماركة</label>
-          <input name="brand" placeholder="اسم الماركة" value="{{ m.get('brand', '') }}">
+          <label>نوع الاستخدام</label>
+          <input name="usage_type" placeholder="جلسات / بيع / عناية منزلية" value="{{ edit_product.usage_type if edit_product and edit_product.usage_type else '' }}">
         </div>
         <div class="inv-field">
           <label>رقم التشغيلة</label>
@@ -465,10 +420,6 @@
           </select>
         </div>
         <div class="inv-field">
-          <label>مدة الصلاحية بعد الفتح (بالأيام)</label>
-          <input name="shelf_life_after_opening_days" type="number" min="0" placeholder="مثال: 90" value="{{ m.get('shelf_life_after_opening_days', '') }}">
-        </div>
-        <div class="inv-field">
           <label>تاريخ الفتح</label>
           <input name="opened_date" type="date" value="{{ edit_product.opened_date.strftime('%Y-%m-%d') if edit_product and edit_product.opened_date else '' }}">
         </div>
@@ -476,20 +427,11 @@
           <label>تاريخ الانتهاء</label>
           <input name="expiry_date" type="date" value="{{ edit_product.expiry_date.strftime('%Y-%m-%d') if edit_product and edit_product.expiry_date else '' }}">
         </div>
-        <div class="inv-field inv-span-2">
-          <label>طريقة الاستخدام المختصرة</label>
-          <textarea name="usage_instructions" placeholder="مثال: يستخدم بعد تنظيف البشرة لمدة 10 دقائق">{{ m.get('usage_instructions', '') }}</textarea>
-        </div>
-        <div class="inv-field inv-span-2">
-          <label>ملاحظات تحذيرية</label>
-          <textarea name="warning_notes" placeholder="مثال: يمنع استخدامه للبشرة المتهيجة">{{ m.get('warning_notes', '') }}</textarea>
-        </div>
       </div>
       {% endif %}
     </div>
 
     <!-- قسم 3: ضريبة ونوع -->
-    {% if not is_beauty_center %}
     <div class="inv-add-card">
       <h3><span>⚙️</span> {{ _('inventory_section_tax') }}</h3>
       <div class="inv-form-grid">
@@ -516,17 +458,15 @@
         </div>
       </div>
     </div>
-    {% endif %}
 
     <!-- قسم 4: وصف -->
     <div class="inv-add-card">
-      <h3><span>📝</span> {% if is_beauty_center %}الصورة والوصف{% else %}{{ _('inventory_section_description') }}{% endif %}</h3>
+      <h3><span>📝</span> {{ _('inventory_section_description') }}</h3>
       <div class="inv-form-grid">
         <div class="inv-field inv-span-4">
           <label>{{ _('inventory_field_description') }}</label>
           <textarea name="description" placeholder="{{ _('inventory_field_description') }}">{{ edit_product.description if edit_product and edit_product.description else '' }}</textarea>
         </div>
-        {% if not is_beauty_center %}
         <div class="inv-field inv-span-2">
           <label>رابط فيديو المنتج</label>
           <input name="video_url" placeholder="https://... أو /autoposter/serve/video/..." value="{{ m.get('video_url', '') }}">
@@ -570,50 +510,37 @@
           </div>
           <p class="inv-hint">كل سطر هنا يمثل مواصفة مستقلة في صفحة المنتج، ولن يتم جمع المواصفات من حقول المنتج الأخرى.</p>
         </div>
-        {% else %}
-        <div class="inv-field inv-span-2">
-          <label>رابط صورة رئيسية بديل</label>
-          <input name="external_image_url" placeholder="https://..." value="{{ edit_product.image_url if edit_product and edit_product.image_url else '' }}">
-          <p class="inv-hint">اختياري إذا لم ترفع صورة من الجهاز.</p>
-        </div>
-        {% endif %}
       </div>
     </div>
 
     <!-- قسم 5: أسعار وصورة -->
     <div class="inv-add-card">
-      <h3><span>💰</span> {% if is_beauty_center %}الكلفة والبيع{% else %}{{ _('inventory_section_pricing') }}{% endif %}</h3>
+      <h3><span>💰</span> {{ _('inventory_section_pricing') }}</h3>
       <div class="inv-pricing-head">
-        <span>{% if is_beauty_center %}كلفة المنتج/المادة{% else %}{{ _('inventory_purchase_price') }}{% endif %}</span>
-        {% if not is_beauty_center %}
+        <span>{{ _('inventory_purchase_price') }}</span>
         <span>{{ _('inventory_margin_percent') }}</span>
-        {% endif %}
-        <span>{% if is_beauty_center %}سعر البيع للزبون{% else %}{{ _('inventory_sale_price') }}{% endif %}</span>
+        <span>{{ _('inventory_sale_price') }}</span>
         <span>{{ _('inventory_product_image') }}</span>
       </div>
       <div class="inv-form-grid">
         <div class="inv-field">
-          <label>{% if is_beauty_center %}كلفة المنتج/المادة{% else %}{{ _('inventory_field_buy_price') }}{% endif %} <span style="color:#f87171">*</span></label>
+          <label>{{ _('inventory_field_buy_price') }} <span style="color:#f87171">*</span></label>
           <input name="buy_price" id="buy_price" type="number" min="0" required placeholder="0" value="{{ edit_product.buy_price if edit_product else '' }}">
         </div>
-        {% if not is_beauty_center %}
         <div class="inv-field">
           <label>{{ _('inventory_margin_percent') }}</label>
           <input type="number" id="margin_percent" value="25" step="0.01" min="0" placeholder="25">
           <p class="inv-hint">{{ _('inventory_margin_hint') }}</p>
         </div>
-        {% endif %}
         <div class="inv-field">
-          <label>{% if is_beauty_center %}سعر البيع للزبون{% else %}{{ _('inventory_field_sale_price') }} <span style="color:#f87171">*</span>{% endif %}</label>
-          <input name="sale_price" id="sale_price" type="number" min="0" {% if not is_beauty_center %}required{% endif %} placeholder="0" value="{{ edit_product.sale_price if edit_product else '' }}">
-          {% if is_beauty_center %}<p class="inv-hint">إذا المادة للجلسات فقط، يمكن تركه بنفس الكلفة أو صفر حسب طريقة عملك.</p>{% endif %}
+          <label>{{ _('inventory_field_sale_price') }} <span style="color:#f87171">*</span></label>
+          <input name="sale_price" id="sale_price" type="number" min="0" required placeholder="0" value="{{ edit_product.sale_price if edit_product else '' }}">
         </div>
         <div class="inv-field">
           <label>{{ _('inventory_product_image') }}</label>
           <input type="file" name="product_image" accept="image/jpeg,image/png,image/webp,image/gif">
           <p class="inv-hint">{{ _('inventory_image_hint') }}</p>
         </div>
-        {% if not is_beauty_center %}
         <div class="inv-field">
           <label>{{ _('inventory_purchase_ex_tax') }}</label>
           <input name="purchase_ex_tax" placeholder="—" value="{{ m.get('purchase_ex_tax', '') }}">
@@ -630,7 +557,6 @@
           <label>{{ _('inventory_sale_inc_tax') }}</label>
           <input name="sale_inc_tax" placeholder="—" value="{{ m.get('sale_inc_tax', '') }}">
         </div>
-        {% endif %}
       </div>
     </div>
 
@@ -638,12 +564,10 @@
       <div class="inv-actions">
         <button type="submit" class="inv-btn save" name="submit_action" value="save"><i class="fas fa-save"></i> {{ _('inventory_save') }}</button>
         <button type="submit" class="inv-btn pink" name="submit_action" value="add_another"><i class="fas fa-plus"></i> {{ _('inventory_save_and_add_another') }}</button>
-        {% if not is_beauty_center %}
         <button type="submit" class="inv-btn purple" name="submit_action" value="opening"><i class="fas fa-warehouse"></i> {{ _('inventory_save_opening') }}</button>
         <button type="submit" class="inv-btn orange" name="submit_action" value="group_prices"><i class="fas fa-tags"></i> {{ _('inventory_save_group_prices') }}</button>
-        {% endif %}
       </div>
-      <p class="inv-hint" style="margin-top:12px;">{% if is_beauty_center %}بعد الحفظ يمكن ربط المادة بالخدمات من صفحة الخدمات لتخصم تلقائياً عند تنفيذ الجلسة.{% else %}{{ _('inventory_save_actions_hint') }}{% endif %}</p>
+      <p class="inv-hint" style="margin-top:12px;">{{ _('inventory_save_actions_hint') }}</p>
     </div>
   </form>
 </div>
@@ -685,13 +609,11 @@
   }
 
   function syncFromMargin() {
-    if (!margin) return;
     var b = parseFloat(buy.value) || 0;
     var m = parseFloat(margin.value) || 0;
     sale.value = Math.max(0, Math.round(b * (1 + m / 100)));
   }
   function syncMarginFromSale() {
-    if (!margin) return;
     var b = parseFloat(buy.value) || 0;
     var s = parseFloat(sale.value) || 0;
     if (b <= 0) return;
