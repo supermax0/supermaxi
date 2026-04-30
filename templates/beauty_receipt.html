@@ -14,6 +14,10 @@
     .center{text-align:center}.muted{color:#6b7280;font-size:11px}.line{border-top:1px dashed #111827;margin:8px 0}
     h1{font-size:18px;margin:0 0 4px}.row{display:flex;justify-content:space-between;gap:8px;font-size:12px;margin:5px 0}.row b{font-size:13px}
     .total{font-size:15px;font-weight:900}.note{font-size:11px;line-height:1.6}
+    .brand-head{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:6px}
+    .brand-logo{width:42px;height:42px;object-fit:contain;border:1px solid #e5e7eb;border-radius:8px;padding:2px;background:#fff}
+    .brand-name{font-size:16px;font-weight:900;line-height:1.3}
+    .brand-phone{font-size:10px;color:#6b7280}
     @page{size:80mm auto;margin:0}
     @media (max-width:480px){body{padding:max(8px, env(safe-area-inset-top, 0px)) max(8px, env(safe-area-inset-right, 0px)) max(8px, env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px))}.toolbar{display:grid;grid-template-columns:1fr;gap:8px;padding:max(8px, env(safe-area-inset-top, 0px)) max(8px, env(safe-area-inset-right, 0px)) max(8px, env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px))}.btn{width:100%;min-height:42px}.receipt{width:100%;margin:0 auto 12px;padding:7mm 4mm}}
     @media print{body{background:#fff;padding:0}.toolbar{display:none}.receipt{border:0;margin:0;width:80mm;box-shadow:none}}
@@ -28,7 +32,21 @@
 
   <main class="receipt" id="receipt">
     <div class="center">
-      <h1>إيصال مركز التجميل</h1>
+      {% set center_name = (invoice_settings.store_name if invoice_settings and invoice_settings.store_name else 'مركز التجميل') %}
+      {% set center_logo = (invoice_settings.logo_path if invoice_settings and invoice_settings.use_logo_image and invoice_settings.logo_path else '') %}
+      {% set center_phone = (invoice_settings.phone1 if invoice_settings and invoice_settings.phone1 else '') %}
+      <div class="brand-head">
+        {% if center_logo %}
+        <img class="brand-logo" src="{{ center_logo }}" alt="{{ center_name }}">
+        {% endif %}
+        <div>
+          <div class="brand-name">{{ center_name }}</div>
+          {% if center_phone %}
+          <div class="brand-phone">{{ center_phone }}</div>
+          {% endif %}
+        </div>
+      </div>
+      <h1>إيصال جلسة</h1>
       <div class="muted">جلسة رقم #{{ appointment.id }}</div>
       <div class="muted">{{ appointment.completed_at.strftime('%Y-%m-%d %H:%M') if appointment.completed_at else appointment.appointment_at.strftime('%Y-%m-%d %H:%M') }}</div>
     </div>
@@ -54,10 +72,12 @@
 
   <script>
     const receiptText = `\x1B@\x1Ba\x01
-BEAUTY CENTER RECEIPT
+{{ (invoice_settings.store_name if invoice_settings and invoice_settings.store_name else 'BEAUTY CENTER') }}
+RECEIPT
 Session #{{ appointment.id }}
 Date: {{ appointment.completed_at.strftime('%Y-%m-%d %H:%M') if appointment.completed_at else appointment.appointment_at.strftime('%Y-%m-%d %H:%M') }}
-------------------------------
+{% if invoice_settings and invoice_settings.phone1 %}Phone: {{ invoice_settings.phone1 }}
+{% endif %}------------------------------
 Customer: {{ appointment.customer.name }}
 Phone: {{ appointment.customer.phone }}
 Service: {{ appointment.service.name }}

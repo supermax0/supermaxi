@@ -13,6 +13,7 @@ from models.beauty_service_product import BeautyServiceProduct
 from models.beauty_session_note import BeautySessionNote
 from models.customer import Customer
 from models.employee import Employee
+from models.invoice_settings import InvoiceSettings
 from models.product import Product
 from models.tenant import Tenant as TenantModel
 from utils.beauty_accounting import beauty_daily_revenue_points, beauty_summary, payment_status, sync_beauty_cash_transaction
@@ -272,7 +273,8 @@ def appointment_receipt(appointment_id):
     if not appointment:
         flash("الموعد غير موجود.", "error")
         return redirect(url_for("beauty.appointments"))
-    return render_template("beauty_receipt.html", appointment=appointment)
+    invoice_settings = InvoiceSettings.get_settings()
+    return render_template("beauty_receipt.html", appointment=appointment, invoice_settings=invoice_settings)
 
 
 @beauty_bp.route("/sessions")
