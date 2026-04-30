@@ -1427,6 +1427,13 @@
         <i class="fas fa-plus"></i>
         <span>{{ _('inventory_add_product') }}</span>
       </a>
+      {% if is_beauty_center %}
+      <a href="{{ url_for('static', filename='downloads/beauty_product_template.xlsx') }}" class="inv-btn ghost" download="beauty_product_template.xlsx"
+        style="border:1px solid rgba(16,185,129,.45);background:rgba(15,23,42,.45);color:#6ee7b7;">
+        <i class="fas fa-file-excel" style="color:#107C41;"></i>
+        <span>تحميل قالب Excel</span>
+      </a>
+      {% endif %}
       <button type="button" class="inv-btn ghost" onclick="toggleAdd()" style="border:1px solid var(--border-light);background:rgba(15,23,42,.45);color:var(--text);">
         <i class="fas fa-bolt"></i>
         <span>{{ _('inventory_quick_add') }}</span>

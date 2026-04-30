@@ -277,6 +277,12 @@
       <a class="inv-btn primary" href="{{ url_for('inventory.add_product_page') }}"><i class="fas fa-plus"></i> {{ _('inventory_add_product') }}</a>
       <a class="inv-btn purple" href="/inventory/ledger"><i class="fas fa-list"></i> {{ _('inventory_movements_log') }}</a>
       <a class="inv-btn orange" href="/inventory/audit"><i class="fas fa-barcode"></i> {{ _('inventory_audit') }}</a>
+      {% if is_beauty_center %}
+      <a class="inv-btn ghost" href="{{ url_for('static', filename='downloads/beauty_product_template.xlsx') }}" download="beauty_product_template.xlsx" style="border-color:rgba(16,185,129,.45);color:#6ee7b7;">
+        <i class="fas fa-file-excel" style="color:#107C41;"></i>
+        <span>تحميل قالب Excel</span>
+      </a>
+      {% endif %}
     </div>
     <div class="right">
       <span style="color:var(--text-muted);font-size:13px;"><i class="fas fa-info-circle"></i> {{ _('inventory_add_page_hint') }}</span>
