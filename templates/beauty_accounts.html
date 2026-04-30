@@ -5,7 +5,7 @@
 {% block content %}
 <style>
   .beauty-wrap{max-width:1250px;margin:0 auto;direction:rtl}
-  .beauty-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:18px}
+  .beauty-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:18px}
   .beauty-card{background:linear-gradient(145deg,var(--card),var(--card-alt));border:1px solid var(--border-light);border-radius:20px;padding:20px;margin-bottom:18px;box-shadow:0 16px 34px rgba(15,23,42,.18)}
   .beauty-card b{display:block;font-size:25px;color:var(--text);margin-bottom:6px}
   .beauty-card span{color:var(--text-muted);font-size:13px}
@@ -21,21 +21,23 @@
     <div class="beauty-card"><b>{{ "{:,}".format(today_summary.revenue or 0) }}</b><span>إيرادات اليوم</span></div>
     <div class="beauty-card"><b>{{ "{:,}".format(today_summary.paid or 0) }}</b><span>مدفوع اليوم</span></div>
     <div class="beauty-card"><b>{{ "{:,}".format(today_summary.material_cost or 0) }}</b><span>كلفة مواد اليوم</span></div>
-    <div class="beauty-card"><b>{{ "{:,}".format(today_summary.profit or 0) }}</b><span>ربح اليوم</span></div>
+    <div class="beauty-card"><b>{{ "{:,}".format(today_summary.expenses or 0) }}</b><span>صرفيات اليوم</span></div>
+    <div class="beauty-card"><b>{{ "{:,}".format(today_summary.profit or 0) }}</b><span>صافي الربح اليوم (بعد الصرفيات)</span></div>
   </div>
   <div class="beauty-grid">
     <div class="beauty-card"><b>{{ "{:,}".format(month_summary.revenue or 0) }}</b><span>إيرادات الشهر</span></div>
     <div class="beauty-card"><b>{{ "{:,}".format(month_summary.receivable or 0) }}</b><span>ذمم الشهر</span></div>
     <div class="beauty-card"><b>{{ "{:,}".format(month_summary.material_cost or 0) }}</b><span>كلفة مواد الشهر</span></div>
-    <div class="beauty-card"><b>{{ "{:,}".format(month_summary.profit or 0) }}</b><span>ربح الشهر</span></div>
+    <div class="beauty-card"><b>{{ "{:,}".format(month_summary.expenses or 0) }}</b><span>صرفيات الشهر</span></div>
+    <div class="beauty-card"><b>{{ "{:,}".format(month_summary.profit or 0) }}</b><span>صافي ربح الشهر (بعد الصرفيات)</span></div>
   </div>
 
   <div class="beauty-card">
-    <h3>إيرادات وربح آخر الأيام</h3>
+    <h3>إيرادات وصافي الربح آخر الأيام</h3>
     {% set max_revenue = (points | map(attribute='revenue') | max) if points else 0 %}
     <div class="chart-bars">
       {% for p in points %}
-      <div class="chart-bar" title="الإيراد {{ p.revenue }} / الربح {{ p.profit }}" style="height: {{ 20 + ((p.revenue or 0) * 150 / (max_revenue or 1)) }}px;">
+      <div class="chart-bar" title="إيراد {{ p.revenue }} — صافي {{ p.profit }} (بعد الصرفيات)" style="height: {{ 20 + ((p.revenue or 0) * 150 / (max_revenue or 1)) }}px;">
         <small>{{ p.day[5:] }}</small>
       </div>
       {% else %}

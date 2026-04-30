@@ -1844,13 +1844,13 @@
         <div class="dashboard-side-meta">
           {% if show_dash_total_sales %}
           <div class="dashboard-mini-stat">
-            <span class="dashboard-mini-stat-label">{{ _('dashboard_total_sales_title') }}</span>
+            <span class="dashboard-mini-stat-label">{% if is_beauty_center %}إيراد الجلسات (الفترة){% else %}{{ _('dashboard_total_sales_title') }}{% endif %}</span>
             <span id="sales" class="dashboard-mini-stat-value">0 د.ع</span>
           </div>
           {% endif %}
           {% if show_dash_period_profit %}
           <div class="dashboard-mini-stat">
-            <span class="dashboard-mini-stat-label">{{ _('dashboard_profit_title') }}</span>
+            <span class="dashboard-mini-stat-label">{% if is_beauty_center %}صافي الربح بعد المصاريف{% else %}{{ _('dashboard_profit_title') }}{% endif %}</span>
             <span id="periodProfit" class="dashboard-mini-stat-value">0 د.ع</span>
           </div>
           {% endif %}
@@ -1863,10 +1863,50 @@
   <section class="dashboard-section">
     <div class="dashboard-section-head">
       <div>
-        <h2 class="dashboard-section-title">{{ _('dashboard_orders_all') }}</h2>
-        <p class="dashboard-section-subtitle">{{ _('dashboard_for_selected_period') }}</p>
+        <h2 class="dashboard-section-title">{% if is_beauty_center %}المواعيد والجلسات{% else %}{{ _('dashboard_orders_all') }}{% endif %}</h2>
+        <p class="dashboard-section-subtitle">{% if is_beauty_center %}إحصاءات مواعيد مركز التجميل{% else %}{{ _('dashboard_for_selected_period') }}{% endif %}</p>
       </div>
     </div>
+    {% if is_beauty_center %}
+    <div class="dashboard-order-grid">
+      <a href="/beauty/appointments" class="order-stat-link">
+        <div class="card order-stat-card">
+          <div class="order-stat-top">
+            <div class="order-stat-label"><i class="fas fa-layer-group order-stat-icon"></i> كل المواعيد</div>
+            <div id="c_all" class="order-stat-value">0</div>
+          </div>
+          <div class="order-stat-note">إجمالي السجل</div>
+        </div>
+      </a>
+      <a href="/beauty/appointments" class="order-stat-link">
+        <div class="card order-stat-card">
+          <div class="order-stat-top">
+            <div class="order-stat-label"><i class="fas fa-clock order-stat-icon"></i> قيد الانتظار</div>
+            <div id="c_ordered" class="order-stat-value">0</div>
+          </div>
+          <div class="order-stat-note">pending</div>
+        </div>
+      </a>
+      <a href="/beauty/sessions" class="order-stat-link">
+        <div class="card order-stat-card">
+          <div class="order-stat-top">
+            <div class="order-stat-label"><i class="fas fa-check-circle order-stat-icon"></i> جلسات منفذة</div>
+            <div id="c_delivered" class="order-stat-value">0</div>
+          </div>
+          <div class="order-stat-note">done</div>
+        </div>
+      </a>
+      <a href="/beauty/appointments" class="order-stat-link">
+        <div class="card order-stat-card">
+          <div class="order-stat-top">
+            <div class="order-stat-label"><i class="fas fa-ban order-stat-icon"></i> ملغاة</div>
+            <div id="c_returned" class="order-stat-value">0</div>
+          </div>
+          <div class="order-stat-note">cancelled</div>
+        </div>
+      </a>
+    </div>
+    {% else %}
     <div class="dashboard-order-grid">
       <a href="/orders/" class="order-stat-link">
         <div class="card order-stat-card">
@@ -1914,13 +1954,14 @@
         </div>
       </a>
     </div>
+    {% endif %}
   </section>
 
   {% if show_any_sales_cards %}
   <section class="dashboard-section">
     <div class="dashboard-section-head">
       <div>
-        <h2 class="dashboard-section-title">{{ _('dashboard_total_sales_title') }}</h2>
+        <h2 class="dashboard-section-title">{% if is_beauty_center %}إيراد الجلسات وصافي الربح{% else %}{{ _('dashboard_total_sales_title') }}{% endif %}</h2>
         <p class="dashboard-section-subtitle">{{ _('dashboard_for_selected_period') }}</p>
       </div>
     </div>
@@ -1935,9 +1976,9 @@
       {% endif %}
       {% if show_dash_period_profit %}
       <div class="card dashboard-card-highlight is-profit">
-        <div class="metric-title"><i class="fas fa-gem"></i> {{ _('dashboard_profit_title') }}</div>
+        <div class="metric-title"><i class="fas fa-gem"></i> {% if is_beauty_center %}صافي الربح بعد المصاريف{% else %}{{ _('dashboard_profit_title') }}{% endif %}</div>
         <div class="metric-count" id="periodProfitHero">0 د.ع</div>
-        <div class="metric-note">{{ _('dashboard_profit_note') }}</div>
+        <div class="metric-note">{% if is_beauty_center %}جلسات مكتملة في الفترة − كلفة المواد − مصاريف الصرفيات بنفس الفترة{% else %}{{ _('dashboard_profit_note') }}{% endif %}</div>
       </div>
       {% endif %}
     </div>
@@ -1945,23 +1986,23 @@
     <div class="dashboard-metrics-grid">
       {% if show_dash_total_sales %}
       <div class="card metric-card is-sales">
-        <div class="metric-title"><i class="fas fa-chart-bar"></i> {{ _('dashboard_total_sales_title') }}</div>
+        <div class="metric-title"><i class="fas fa-chart-bar"></i> {% if is_beauty_center %}إيراد الجلسات (الفترة){% else %}{{ _('dashboard_total_sales_title') }}{% endif %}</div>
         <div id="salesMain" class="count metric-count">0</div>
         <div class="metric-note" id="salesPeriodLabel">{{ _('dashboard_for_selected_period') }}</div>
       </div>
       {% endif %}
       {% if show_dash_cash_sales %}
       <div class="card metric-card is-cash-sales">
-        <div class="metric-title"><i class="fas fa-money-bill-wave"></i> {{ _('dashboard_cash_sales_title') }}</div>
+        <div class="metric-title"><i class="fas fa-money-bill-wave"></i> {% if is_beauty_center %}المبالغ المدفوعة (جلسات){% else %}{{ _('dashboard_cash_sales_title') }}{% endif %}</div>
         <div id="cashSales" class="count metric-count">0</div>
-        <div class="metric-note">{{ _('dashboard_cash_sales_note') }}</div>
+        <div class="metric-note">{% if is_beauty_center %}مجموع المدفوع من العملاء{% else %}{{ _('dashboard_cash_sales_note') }}{% endif %}</div>
       </div>
       {% endif %}
       {% if show_dash_credit_sales %}
       <div class="card metric-card is-credit-sales">
-        <div class="metric-title"><i class="fas fa-file-invoice-dollar"></i> {{ _('dashboard_credit_sales_title') }}</div>
+        <div class="metric-title"><i class="fas fa-file-invoice-dollar"></i> {% if is_beauty_center %}ذمم العملاء (متبقي){% else %}{{ _('dashboard_credit_sales_title') }}{% endif %}</div>
         <div id="creditSales" class="count metric-count">0</div>
-        <div class="metric-note">{{ _('dashboard_credit_sales_note') }}</div>
+        <div class="metric-note">{% if is_beauty_center %}متبقي على الزبائن للجلسات{% else %}{{ _('dashboard_credit_sales_note') }}{% endif %}</div>
       </div>
       {% endif %}
       {% if show_dash_inventory %}
@@ -2009,8 +2050,8 @@
     </div>
     <div class="card dashboard-quick-card">
       <div>
-        <h3 class="dashboard-section-title" style="font-size:18px;">{{ _('dashboard_profit_today') }}</h3>
-        <p class="dashboard-section-subtitle">{{ _('dashboard_profit_note') }}</p>
+        <h3 class="dashboard-section-title" style="font-size:18px;">{% if is_beauty_center %}ملخص سريع — مركز التجميل{% else %}{{ _('dashboard_profit_today') }}{% endif %}</h3>
+        <p class="dashboard-section-subtitle">{% if is_beauty_center %}إيراد وصافي بعد المصاريف للفترة المختارة{% else %}{{ _('dashboard_profit_note') }}{% endif %}</p>
       </div>
       <div class="dashboard-quick-card-grid">
         <div class="dashboard-quick-item">
@@ -2018,11 +2059,11 @@
           <span id="quickCashBalance" class="dashboard-quick-item-value">0 د.ع</span>
         </div>
         <div class="dashboard-quick-item">
-          <span class="dashboard-quick-item-label">{{ _('dashboard_total_sales_title') }}</span>
+          <span class="dashboard-quick-item-label">{% if is_beauty_center %}إيراد الجلسات{% else %}{{ _('dashboard_total_sales_title') }}{% endif %}</span>
           <span id="quickSales" class="dashboard-quick-item-value">0 د.ع</span>
         </div>
         <div class="dashboard-quick-item">
-          <span class="dashboard-quick-item-label">{{ _('dashboard_profit_title') }}</span>
+          <span class="dashboard-quick-item-label">{% if is_beauty_center %}صافي بعد المصاريف{% else %}{{ _('dashboard_profit_title') }}{% endif %}</span>
           <span id="quickProfit" class="dashboard-quick-item-value">0 د.ع</span>
         </div>
         <div class="dashboard-quick-item">
@@ -2084,13 +2125,13 @@
 <section class="dashboard-section dashboard-chart-section">
   <div class="dashboard-section-head">
     <div>
-      <h2 class="dashboard-section-title">{{ _('dashboard_status_chart_title') }}</h2>
+      <h2 class="dashboard-section-title">{% if is_beauty_center %}مؤشرات الجلسات (7 أيام){% else %}{{ _('dashboard_status_chart_title') }}{% endif %}</h2>
       <p class="dashboard-section-subtitle">{{ _('dashboard_for_selected_period') }}</p>
     </div>
   </div>
 <div class="charts-container">
   <div class="chart-card">
-    <h4>📈 {{ _('dashboard_sales_chart_title') }}</h4>
+    <h4>📈 {% if is_beauty_center %}إيراد الجلسات — آخر 7 أيام{% else %}{{ _('dashboard_sales_chart_title') }}{% endif %}</h4>
     <div class="chart-meta">
       <div class="chart-meta-item">
         <span class="chart-meta-label">{{ _('dashboard_chart_total_7_days') }}</span>
@@ -2106,7 +2147,7 @@
     </div>
   </div>
   <div class="chart-card">
-    <h4>💰 {{ _('dashboard_profit_chart_title') }}</h4>
+    <h4>💰 {% if is_beauty_center %}صافي الربح بعد المصاريف — 7 أيام{% else %}{{ _('dashboard_profit_chart_title') }}{% endif %}</h4>
     <div class="chart-meta">
       <div class="chart-meta-item">
         <span class="chart-meta-label">{{ _('dashboard_chart_total_7_days') }}</span>
@@ -2122,7 +2163,7 @@
     </div>
   </div>
   <div class="chart-card">
-    <h4>📊 {{ _('dashboard_status_chart_title') }}</h4>
+    <h4>📊 {% if is_beauty_center %}توزيع حالات المواعيد{% else %}{{ _('dashboard_status_chart_title') }}{% endif %}</h4>
     <div class="chart-wrapper">
       <canvas id="statusChart"></canvas>
     </div>
@@ -2595,7 +2636,8 @@
     fetch("/api/index/orders-count").then(r => r.json()).then(d => {
       document.getElementById("c_all").innerText = d.all;
       document.getElementById("c_ordered").innerText = d.ordered;
-      document.getElementById("c_shipping").innerText = d.shipping;
+      var elShip = document.getElementById("c_shipping");
+      if (elShip) elShip.innerText = d.shipping;
       document.getElementById("c_delivered").innerText = d.delivered;
       document.getElementById("c_returned").innerText = d.returned;
     });
@@ -2691,7 +2733,7 @@
           data: {
             labels: data.labels,
             datasets: [{
-              label: "الربح (د.ع)",
+              label: (data.dashboard_mode === 'beauty_center') ? "صافي الربح بعد المصاريف (د.ع)" : "الربح (د.ع)",
               data: data.profit,
               borderColor: getChartTheme().success,
               backgroundColor: getChartTheme().theme === "light" ? "rgba(22, 163, 74, 0.12)" : "rgba(16, 185, 129, 0.10)",
@@ -3087,6 +3129,7 @@
       .then(data => {
         const t = getChartTheme();
         const baseOpts = commonChartOptions();
+        const beautyDash = (data.dashboard_mode === 'beauty_center');
 
         // Summaries (totals & averages for the last 7 days)
         const sum = arr => (arr || []).reduce((acc, v) => acc + (v || 0), 0);
@@ -3116,7 +3159,7 @@
           data: {
             labels: data.labels,
             datasets: [{
-              label: "المبيعات (د.ع)",
+              label: beautyDash ? "إيراد الجلسات (د.ع)" : "المبيعات (د.ع)",
               data: data.sales,
               backgroundColor: t.theme === "light" ? "rgba(37, 99, 235, 0.35)" : "rgba(59, 130, 246, 0.45)",
               borderColor: t.primary,
@@ -3138,7 +3181,7 @@
           data: {
             labels: data.labels,
             datasets: [{
-              label: "الربح (د.ع)",
+              label: beautyDash ? "صافي الربح بعد المصاريف (د.ع)" : "الربح (د.ع)",
               data: data.profit,
               borderColor: t.success,
               backgroundColor: t.theme === "light" ? "rgba(22, 163, 74, 0.12)" : "rgba(16, 185, 129, 0.10)",
@@ -3159,7 +3202,13 @@
           if (statusChart) statusChart.destroy();
 
           const statusSource = data.status || {};
-          const statusConfig = [
+          const statusConfig = beautyDash ? [
+            { key: "ordered", label: "قيد الانتظار (pending)", bg: "rgba(59, 130, 246, 0.55)", border: "rgba(59, 130, 246, 1)" },
+            { key: "shipping", label: "—", bg: "rgba(14, 165, 233, 0.12)", border: "rgba(14, 165, 233, 0.3)" },
+            { key: "delivered", label: "—", bg: "rgba(16, 185, 129, 0.12)", border: "rgba(16, 185, 129, 0.3)" },
+            { key: "paid", label: "جلسات منفذة (done)", bg: "rgba(132, 204, 22, 0.55)", border: "rgba(132, 204, 22, 1)" },
+            { key: "returned", label: "ملغاة (cancelled)", bg: "rgba(239, 68, 68, 0.55)", border: "rgba(239, 68, 68, 1)" }
+          ] : [
             { key: "ordered", label: "تم الطلب", bg: "rgba(59, 130, 246, 0.55)", border: "rgba(59, 130, 246, 1)" },
             { key: "shipping", label: "جاري الشحن", bg: "rgba(14, 165, 233, 0.55)", border: "rgba(14, 165, 233, 1)" },
             { key: "delivered", label: "تم التوصيل", bg: "rgba(16, 185, 129, 0.55)", border: "rgba(16, 185, 129, 1)" },

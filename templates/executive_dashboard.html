@@ -212,7 +212,7 @@
 
   <div id="exec-main" style="display:none;">
     <div class="exec-kpi-grid" id="exec-kpis"></div>
-    <p class="exec-footnote">
+    <p class="exec-footnote" id="exec-footnote">
       <strong>توضيح محاسبي:</strong>
       <strong>ربح اليوم</strong> وخط آخر 14 يوماً يعتمدان على لحظة التسديد (التسديد يظهر بنفس اليوم التقويمي؛ يبدأ يوم محاسبي جديد عند منتصف الليل بتوقيت الخادم).
       أرباح الشهر/السنة ما زالت وفق تاريخ إنشاء الطلب ضمن الفترة مع التحصيل الفعلي والمصاريف.
@@ -293,8 +293,37 @@
 
     let chartDaily, chartMonthly, chartCumulative, chartExpenses;
 
-    function buildKpis(k) {
-      const cards = [
+    function buildKpis(k, beautyMode) {
+      const cards = beautyMode ? [
+        {
+          cls: 'cash',
+          icon: 'fa-wallet',
+          label: 'رصيد النقدية',
+          sub: 'رصيد تراكمي حالي (الصندوق)',
+          value: k.cash_balance
+        },
+        {
+          cls: 'day',
+          icon: 'fa-sun',
+          label: 'صافي ربح اليوم',
+          sub: 'جلسات مكتملة ذلك اليوم − كلفة المواد − مصاريف بنفس تاريخ الصرف',
+          value: k.profit_today
+        },
+        {
+          cls: 'month',
+          icon: 'fa-calendar-week',
+          label: 'صافي ربح الشهر',
+          sub: 'من أول الشهر حتى اليوم — جلسات منجزة في الفترة − مصاريف الفترة',
+          value: k.profit_month
+        },
+        {
+          cls: 'year',
+          icon: 'fa-calendar-alt',
+          label: 'صافي ربح السنة',
+          sub: 'من بداية السنة — جلسات ومصاريف ضمن الفترة',
+          value: k.profit_year
+        }
+      ] : [
         {
           cls: 'cash',
           icon: 'fa-wallet',
@@ -342,7 +371,7 @@
       });
     }
 
-    function renderCharts(data) {
+    function renderCharts(data, beautyMode) {
       chartDefaults();
       destroyCharts();
 
@@ -403,7 +432,7 @@
         data: {
           labels: d14.labels,
           datasets: [{
-            label: 'صافي الربح',
+            label: beautyMode ? 'صافي الربح (مركز التجميل)' : 'صافي الربح',
             data: d14.profit,
             borderColor: '#38bdf8',
             backgroundColor: gradFill,
@@ -448,7 +477,7 @@
         data: {
           labels: yM.labels,
           datasets: [{
-            label: 'صافي الربح',
+            label: beautyMode ? 'صافي الربح — مركز التجميل' : 'صافي الربح',
             data: yM.profit,
             backgroundColor: yM.labels.map(function (_, i) {
               const a = 0.35 + (i % 4) * 0.12;
@@ -545,8 +574,17 @@
       .then(function (data) {
         document.getElementById('exec-loading').style.display = 'none';
         document.getElementById('exec-main').style.display = 'block';
-        buildKpis(data.kpis);
-        renderCharts(data);
+        var beauty = (data.dashboard_mode === 'beauty_center');
+        buildKpis(data.kpis, beauty);
+        renderCharts(data, beauty);
+        var fn = document.getElementById('exec-footnote');
+        if (fn) {
+          if (beauty) {
+            fn.innerHTML = '<strong>توضيح مركز التجميل:</strong> <strong>صافي الربح</strong> = إيراد الجلسات المكتملة − كلفة مواد الجلسات − المصاريف المسجّلة في «المصروفات» بتاريخ الصرف ضمن نفس اليوم/الفترة. المصاريف بدون «تاريخ مصروف» لا تُدخل في المجاميع الزمنية. <strong>رصيد النقدية</strong> تراكمي من الصندوق. خط 14 يوماً يوميّ بتقويم الخادم.';
+          } else {
+            fn.innerHTML = '<strong>توضيح محاسبي:</strong> <strong>ربح اليوم</strong> وخط آخر 14 يوماً يعتمدان على لحظة التسديد (التسديد يظهر بنفس اليوم التقويمي؛ يبدأ يوم محاسبي جديد عند منتصف الليل بتوقيت الخادم). أرباح الشهر/السنة ما زالت وفق تاريخ إنشاء الطلب ضمن الفترة مع التحصيل الفعلي والمصاريف. <strong>رصيد النقدية</strong> مقياس تراكمي من حركات الصندوق والفواتير ولا يساوي مجموع أرباح الفترات. رسم المصاريف يعرض جدول Expense فقط؛ السجلات بدون «تاريخ مصروف» تُستبعد من المجموع.';
+          }
+        }
       })
       .catch(function (e) {
         document.getElementById('exec-loading').style.display = 'none';

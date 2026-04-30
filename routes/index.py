@@ -41,6 +41,12 @@ from utils.decorators import admin_required
 
 index_bp = Blueprint("index", __name__)
 
+
+def _is_beauty_center_session() -> bool:
+    """شركة مركز تجميل — لوحة التحكم والمدير التنفيذي يعتمدان الجلسات والصرفيات."""
+    return (session.get("business_type") or "").strip() == "beauty_center"
+
+
 # #region agent log
 def _debug_log(session_id: str, hypothesis_id: str, location: str, message: str, data: dict):
     import os
@@ -806,6 +812,76 @@ def index_executive_overview():
     month_start = today.replace(day=1)
     year_start = today.replace(month=1, day=1)
 
+    if _is_beauty_center_session():
+        from utils.beauty_accounting import beauty_net_profit_calendar_day, beauty_summary
+
+        cash_balance = int(calculate_cash_balance())
+        profit_today = int(beauty_net_profit_calendar_day(today))
+        profit_month = int(beauty_summary(month_start, today)["profit"])
+        profit_year = int(beauty_summary(year_start, today)["profit"])
+
+        daily_labels = []
+        daily_profit = []
+        for i in range(13, -1, -1):
+            d = today - timedelta(days=i)
+            daily_labels.append(d.strftime("%m/%d"))
+            daily_profit.append(int(beauty_net_profit_calendar_day(d)))
+
+        month_names_ar = [
+            "يناير",
+            "فبراير",
+            "مارس",
+            "أبريل",
+            "مايو",
+            "يونيو",
+            "يوليو",
+            "أغسطس",
+            "سبتمبر",
+            "أكتوبر",
+            "نوفمبر",
+            "ديسمبر",
+        ]
+        monthly_labels = []
+        monthly_profit = []
+        monthly_expenses = []
+        y = today.year
+        for m in range(1, 13):
+            d1 = date(y, m, 1)
+            if d1 > today:
+                monthly_labels.append(month_names_ar[m - 1])
+                monthly_profit.append(0)
+                monthly_expenses.append(0)
+                continue
+            if m == 12:
+                d2 = date(y, 12, 31)
+            else:
+                d2 = date(y, m + 1, 1) - timedelta(days=1)
+            if d2 > today:
+                d2 = today
+            monthly_labels.append(month_names_ar[m - 1])
+            monthly_profit.append(int(beauty_summary(d1, d2)["profit"]))
+            monthly_expenses.append(_expenses_sum_for_range(d1, d2))
+
+        return jsonify(
+            {
+                "dashboard_mode": "beauty_center",
+                "kpis": {
+                    "cash_balance": cash_balance,
+                    "profit_today": profit_today,
+                    "profit_month": profit_month,
+                    "profit_year": profit_year,
+                },
+                "series": {
+                    "daily_14": {"labels": daily_labels, "profit": daily_profit},
+                    "year_monthly": {"labels": monthly_labels, "profit": monthly_profit},
+                    "year_monthly_expenses": {
+                        "labels": monthly_labels,
+                        "expenses": monthly_expenses,
+                    },
+                },
+            }
+        )
+
     cash_balance = int(calculate_cash_balance())
     profit_today = net_profit_for_collection_calendar_day(today)
     profit_month = _net_profit_for_range(month_start, today)
@@ -887,7 +963,38 @@ def index_reports():
     
     # حساب تواريخ الفترة
     date_from, date_to = get_period_dates(period_type, custom_date_from, custom_date_to)
-    
+
+    if _is_beauty_center_session():
+        from utils.beauty_accounting import beauty_summary
+
+        bs = beauty_summary(date_from, date_to)
+        cash_balance = calculate_cash_balance()
+        inventory_value = calculate_inventory_value()
+        supplier_debts = calculate_supplier_debts()
+        shipping_due = calculate_shipping_due()
+        expenses_total = calculate_total_expenses()
+        return jsonify(
+            {
+                "dashboard_mode": "beauty_center",
+                "period_type": period_type,
+                "period_label": get_period_label(period_type, custom_date_from, custom_date_to),
+                "date_from": date_from.isoformat() if date_from else None,
+                "date_to": date_to.isoformat() if date_to else None,
+                "cash_balance": int(cash_balance),
+                "sales": int(bs["revenue"]),
+                "cash_sales": int(bs["paid"]),
+                "credit_sales": int(bs["receivable"]),
+                "period_profit": int(bs["profit"]),
+                "delivered_paid_sales": int(bs["revenue"]),
+                "inventory": int(inventory_value),
+                "debts": int(supplier_debts),
+                "shipping": int(shipping_due),
+                "expenses": int(expenses_total),
+                "expenses_period": int(bs["expenses"]),
+                "agent_commissions": 0,
+            }
+        )
+
     # ===============================
     # حساب القيم المحاسبية الصحيحة للفترة الزمنية
     # استخدام الدوال المحاسبية لضمان فصل المفاهيم
@@ -1033,6 +1140,25 @@ def index_reports():
 # =================================================
 @index_bp.route("/api/index/orders-count")
 def index_orders_count():
+    if _is_beauty_center_session():
+        from models.beauty_appointment import BeautyAppointment
+
+        total = BeautyAppointment.query.count()
+        pending = BeautyAppointment.query.filter_by(status="pending").count()
+        done = BeautyAppointment.query.filter_by(status="done").count()
+        cancelled = BeautyAppointment.query.filter_by(status="cancelled").count()
+        return jsonify(
+            {
+                "all": total,
+                "ordered": pending,
+                "shipping": 0,
+                "delivered": done,
+                "paid": done,
+                "returned": cancelled,
+                "dashboard_mode": "beauty_center",
+            }
+        )
+
     # حساب المرتجع والملغي معاً
     returned_count = Invoice.query.filter(
         or_(
@@ -1063,6 +1189,15 @@ def index_today_profit():
     قبل وجود أي سجل تحصيل يُستخدم احتياطياً منطق طلبات اُنشئت اليوم.
     """
     today = date.today()
+    if _is_beauty_center_session():
+        from utils.beauty_accounting import beauty_net_profit_calendar_day
+
+        return jsonify(
+            {
+                "profit": int(beauty_net_profit_calendar_day(today)),
+                "dashboard_mode": "beauty_center",
+            }
+        )
     try:
         return jsonify({"profit": int(net_profit_for_collection_calendar_day(today))})
     except Exception:
@@ -1254,7 +1389,34 @@ def index_charts():
     labels = []
     sales = []
     profit = []
-    
+
+    if _is_beauty_center_session():
+        from models.beauty_appointment import BeautyAppointment
+        from utils.beauty_accounting import beauty_summary
+
+        for i in range(6, -1, -1):
+            d = date.today() - timedelta(days=i)
+            labels.append(d.strftime("%m/%d"))
+            bs = beauty_summary(d, d)
+            sales.append(int(bs["revenue"]))
+            profit.append(int(bs["profit"]))
+        status_data = {
+            "ordered": BeautyAppointment.query.filter_by(status="pending").count(),
+            "shipping": 0,
+            "delivered": 0,
+            "paid": BeautyAppointment.query.filter_by(status="done").count(),
+            "returned": BeautyAppointment.query.filter_by(status="cancelled").count(),
+        }
+        return jsonify(
+            {
+                "labels": labels,
+                "sales": sales,
+                "profit": profit,
+                "status": status_data,
+                "dashboard_mode": "beauty_center",
+            }
+        )
+
     RETURN_STATUSES = ["مرتجع", "راجع", "راجعة"]
     CANCELED_STATUSES = ["ملغي"]
 
