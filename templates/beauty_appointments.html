@@ -27,6 +27,9 @@
   .status-cancelled{background:rgba(239,68,68,.18);color:#fca5a5}
   .pay-pill{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:800;background:rgba(148,163,184,.18);color:#cbd5e1}
   .beauty-action-form{display:grid;gap:8px;min-width:260px}
+  .beauty-actions-compact{display:grid;gap:8px}
+  .beauty-btn.cancel{background:#ef4444}
+  .beauty-btn.cancel:hover{box-shadow:0 8px 18px rgba(239,68,68,.28)}
   @media(max-width:760px){.beauty-grid{grid-template-columns:1fr}.beauty-span-2,.beauty-span-4{grid-column:auto}}
   @media(max-width:900px){.beauty-action-form{min-width:220px}}
   @media(max-width:480px){.beauty-mini-grid{grid-template-columns:1fr}}
@@ -76,22 +79,13 @@
           </td>
           <td class="beauty-cell-wrap">
             <form method="post" action="{{ url_for('beauty.update_appointment_status', appointment_id=a.id) }}" class="beauty-action-form">
-              <select name="status">
-                <option value="pending" {% if a.status == 'pending' %}selected{% endif %}>قيد الانتظار</option>
-                <option value="done" {% if a.status == 'done' %}selected{% endif %}>منجزة</option>
-                <option value="cancelled" {% if a.status == 'cancelled' %}selected{% endif %}>ملغية</option>
-              </select>
-              <div class="beauty-mini-grid">
-                <input name="discount_amount" type="number" min="0" placeholder="الخصم" value="{{ a.discount_amount or 0 }}">
-                <input name="paid_amount" type="number" min="0" placeholder="المبلغ المدفوع" value="{{ a.paid_amount or 0 }}">
+              <input type="hidden" name="discount_amount" value="{{ a.discount_amount or 0 }}">
+              <input type="hidden" name="payment_method" value="{{ a.payment_method or 'cash' }}">
+              <div class="beauty-actions-compact">
+                <button class="beauty-btn" type="submit" name="status" value="done">تسديد</button>
+                <input type="hidden" name="paid_amount" value="{{ a.total_amount or a.service.price or 0 }}">
+                <button class="beauty-btn cancel" type="submit" name="status" value="cancelled">ملغي</button>
               </div>
-              <select name="payment_method">
-                <option value="cash" {% if a.payment_method == 'cash' %}selected{% endif %}>كاش</option>
-                <option value="card" {% if a.payment_method == 'card' %}selected{% endif %}>بطاقة</option>
-                <option value="transfer" {% if a.payment_method == 'transfer' %}selected{% endif %}>تحويل</option>
-              </select>
-              <textarea name="session_note" rows="2" placeholder="ملاحظة الجلسة"></textarea>
-              <button class="beauty-btn" type="submit">تحديث</button>
               {% if a.status == 'done' %}
               <a class="beauty-link" href="{{ url_for('beauty.appointment_receipt', appointment_id=a.id) }}" target="_blank">طباعة الإيصال</a>
               <a class="beauty-link" href="{{ url_for('beauty.client_history', customer_id=a.customer_id) }}">سجل العميل</a>
