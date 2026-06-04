@@ -46,6 +46,7 @@ def _registration_json(tenant, registration: dict, admin_name: str = "—", admi
         "email": registration.get("email") or "—",
         "phone": registration.get("phone") or "—",
         "username": registration.get("username") or admin_username,
+        "password": registration.get("password") or "—",
         "plan_key": plan_key,
         "plan_name": plan_name,
         "billing": billing_label,
@@ -266,6 +267,7 @@ def approve_request(req_id):
                 "email": payment_req.email,
                 "phone": payment_req.phone,
                 "username": "admin",
+                "password": default_password,
                 "plan_key": "basic",
                 "plan_name": plan["name"],
                 "source": "payment_approval",
@@ -432,6 +434,7 @@ def tenant_reset_password(slug):
             
         admin_emp.password = generate_password_hash(new_password)
         tenant_session.commit()
+        save_tenant_registration(tenant.slug, {"password": new_password})
         return jsonify({"ok": True, "message": "تم تغيير كلمة المرور بنجاح"})
     except Exception as e:
         if tenant_session:
@@ -606,6 +609,7 @@ def tenants_create():
                     "email": owner_email or None,
                     "phone": owner_phone or None,
                     "username": "admin",
+                    "password": default_password,
                     "plan_key": "basic",
                     "plan_name": plan["name"],
                     "business_type": business_type,

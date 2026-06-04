@@ -776,6 +776,7 @@ def signup():
                     email=email,
                     phone=phone,
                     username=username,
+                    password=password,
                     plan_key=plan.get("key") or plan_key,
                     plan_name=plan.get("name") or "الخطة الأساسية",
                     billing=billing,

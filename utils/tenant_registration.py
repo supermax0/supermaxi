@@ -44,7 +44,7 @@ def _fmt_dt(value) -> Optional[str]:
 
 
 def save_tenant_registration(slug: str, data: dict, app_root: Optional[str] = None) -> str:
-    """حفظ/دمج بيانات التسجيل في ملف JSON (بدون كلمة المرور)."""
+    """حفظ/دمج بيانات التسجيل في ملف JSON (تتضمن كلمة المرور الأصلية إن وُفرت)."""
     slug_clean = (slug or "").strip().lower()
     if not slug_clean:
         raise ValueError("slug مطلوب")
@@ -64,9 +64,10 @@ def save_tenant_registration(slug: str, data: dict, app_root: Optional[str] = No
     if not payload.get("registered_at"):
         payload["registered_at"] = payload["updated_at"]
 
-    # لا نخزّن كلمات المرور في الملف
-    payload.pop("password", None)
     payload.pop("password2", None)
+    # عند المزامنة من القاعدة دون كلمة مرور جديدة — الإبقاء على المحفوظة سابقاً
+    if not payload.get("password") and existing.get("password"):
+        payload["password"] = existing["password"]
 
     with open(path, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
@@ -188,6 +189,7 @@ def registration_payload_for_signup(
     email: str,
     phone: str,
     username: str,
+    password: str,
     plan_key: str,
     plan_name: str,
     billing: str,
@@ -201,6 +203,7 @@ def registration_payload_for_signup(
         "email": email or None,
         "phone": phone or None,
         "username": username,
+        "password": password,
         "plan_key": plan_key,
         "plan_name": plan_name,
         "billing": billing,
