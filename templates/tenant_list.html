@@ -383,6 +383,29 @@
                         id="m-status"></span></div>
             </div>
 
+            <div class="action-group" id="registration-section"
+                style="background: rgba(16, 185, 129, 0.06); border-color: rgba(16, 185, 129, 0.25); margin-top: 16px;">
+                <div class="action-title" style="color: #6ee7b7;"><i class="fas fa-id-card"></i> بيانات التسجيل</div>
+                <div class="detail-row"><span class="detail-label">اسم الشركة</span><span class="detail-value"
+                        id="reg-company"></span></div>
+                <div class="detail-row"><span class="detail-label">صاحب الحساب</span><span class="detail-value"
+                        id="reg-contact"></span></div>
+                <div class="detail-row"><span class="detail-label">البريد</span><span class="detail-value" id="reg-email"
+                        dir="ltr" style="text-align:left;"></span></div>
+                <div class="detail-row"><span class="detail-label">الهاتف</span><span class="detail-value" id="reg-phone"
+                        dir="ltr" style="text-align:left;"></span></div>
+                <div class="detail-row"><span class="detail-label">اسم المستخدم</span><span class="detail-value"
+                        id="reg-username" dir="ltr" style="text-align:left;"></span></div>
+                <div class="detail-row"><span class="detail-label">الخطة</span><span class="detail-value"
+                        id="reg-plan"></span></div>
+                <div class="detail-row"><span class="detail-label">تاريخ التسجيل</span><span class="detail-value"
+                        id="reg-registered"></span></div>
+                <div class="detail-row" style="margin-bottom:0;"><span class="detail-label">ملف البيانات</span><code
+                        id="reg-file"
+                        style="font-size:11px;color:var(--accent);word-break:break-all;display:block;margin-top:4px;"></code>
+                </div>
+            </div>
+
             <div class="action-group"
                 style="background: rgba(168, 85, 247, 0.05); border-color: rgba(168, 85, 247, 0.2);">
                 <div class="action-title" style="color: #c4b5fd;"><i class="fas fa-layer-group"></i> نوع نشاط الشركة</div>
@@ -511,6 +534,18 @@
                             document.getElementById('m-created').textContent = data.created_at;
                             document.getElementById('m-end').textContent = data.subscription_end_date;
                             document.getElementById('m-login-url').value = data.login_url || '';
+
+                            const reg = data.registration || {};
+                            document.getElementById('reg-company').textContent = reg.company_name || data.name || '—';
+                            document.getElementById('reg-contact').textContent = reg.contact_name || data.admin_name || '—';
+                            document.getElementById('reg-email').textContent = reg.email || '—';
+                            document.getElementById('reg-phone').textContent = reg.phone || '—';
+                            document.getElementById('reg-username').textContent = reg.username || data.admin_username || '—';
+                            const planLabel = reg.plan_name || data.plan_name || reg.plan_key || data.plan_key || '—';
+                            const billingLabel = reg.billing && reg.billing !== '—' ? ` (${reg.billing})` : '';
+                            document.getElementById('reg-plan').textContent = planLabel + billingLabel;
+                            document.getElementById('reg-registered').textContent = reg.registered_at || data.created_at || '—';
+                            document.getElementById('reg-file').textContent = reg.profile_file || '—';
 
                             // Plan info
                             document.getElementById('m-plan-select').value = data.plan_key || 'basic';

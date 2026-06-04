@@ -12,6 +12,11 @@ from models.core.tenant import Tenant
 from models.core.subscription_plan import SubscriptionPlan
 from models.invoice_template import InvoiceTemplate, TenantTemplateSettings
 from models.user import User
+from utils.tenant_registration import (
+    delete_tenant_registration,
+    get_tenant_registration,
+    save_tenant_registration,
+)
 
 superadmin_bp = Blueprint("superadmin", __name__, url_prefix="/superadmin")
 
@@ -194,6 +199,9 @@ def approve_request(req_id):
         plan = get_plan("basic")
         tenant_row = TenantModel(
             name=payment_req.tenant_name.upper(),
+            contact_name=payment_req.owner_name,
+            contact_email=payment_req.email,
+            contact_phone=payment_req.phone,
             plan_key="basic",
             plan_name=plan["name"],
             monthly_price=plan.get("price_monthly", 0),
@@ -216,6 +224,22 @@ def approve_request(req_id):
         tenant_session.add(admin_employee)
         tenant_session.commit()
         tenant_session.close()
+
+        save_tenant_registration(
+            payment_req.tenant_name,
+            {
+                "slug": payment_req.tenant_name,
+                "company_name": payment_req.tenant_name.upper(),
+                "contact_name": payment_req.owner_name,
+                "email": payment_req.email,
+                "phone": payment_req.phone,
+                "username": "admin",
+                "plan_key": "basic",
+                "plan_name": plan["name"],
+                "source": "payment_approval",
+                "registered_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+            },
+        )
         
         flash(f"تم تفعيل الشركة بنجاح مع اسم مستخدم admin وكلمة مرور: {default_password}")
         
@@ -269,6 +293,11 @@ def tenant_details(slug):
             base_url = ""
         login_url = f"{base_url}/login/{tenant.slug}"
 
+        from utils.tenant_registration import registration_file_path
+
+        registration = get_tenant_registration(tenant.slug, core_tenant=tenant)
+        reg_file = registration_file_path(tenant.slug)
+
         return jsonify({
             "ok": True,
             "name": tenant.name,
@@ -285,6 +314,21 @@ def tenant_details(slug):
             "plan_key": plan_key,
             "plan_name": plan_name,
             "login_url": login_url,
+            "registration": {
+                "company_name": registration.get("company_name") or tenant.name,
+                "contact_name": registration.get("contact_name") or admin_name,
+                "email": registration.get("email") or "—",
+                "phone": registration.get("phone") or "—",
+                "username": registration.get("username") or admin_username,
+                "plan_key": registration.get("plan_key") or plan_key,
+                "plan_name": registration.get("plan_name") or plan_name,
+                "billing": registration.get("billing") or "—",
+                "registered_at": registration.get("registered_at") or (
+                    tenant.created_at.strftime("%Y-%m-%d %H:%M") if tenant.created_at else "—"
+                ),
+                "source": registration.get("source") or "—",
+                "profile_file": reg_file,
+            },
         })
     except Exception as e:
         g.tenant = None
@@ -468,8 +512,13 @@ def tenants_create():
             from models.tenant import Tenant as TenantModel
             from utils.plan_limits import get_plan
             plan = get_plan("basic")
+            owner_email = (request.form.get("owner_email") or "").strip()
+            owner_phone = (request.form.get("owner_phone") or "").strip()
             tenant_row = TenantModel(
                 name=name.upper(),
+                contact_name=owner_name or name,
+                contact_email=owner_email or None,
+                contact_phone=owner_phone or None,
                 business_type=business_type,
                 plan_key="basic",
                 plan_name=plan["name"],
@@ -493,6 +542,23 @@ def tenants_create():
             tenant_session.add(admin_employee)
             tenant_session.commit()
             tenant_session.close()
+
+            save_tenant_registration(
+                slug,
+                {
+                    "slug": slug,
+                    "company_name": name.upper(),
+                    "contact_name": admin_display_name,
+                    "email": owner_email or None,
+                    "phone": owner_phone or None,
+                    "username": "admin",
+                    "plan_key": "basic",
+                    "plan_name": plan["name"],
+                    "business_type": business_type,
+                    "source": "superadmin_create",
+                    "registered_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+                },
+            )
             
             flash(
                 f"تم إنشاء الشركة «{name}» بنجاح. نوع النشاط = {BUSINESS_TYPES[business_type]}. الدخول: معرف الشركة = {slug}، المستخدم = admin، كلمة المرور = {default_password}",
@@ -911,6 +977,8 @@ def tenant_delete(slug):
                 
         # 2. Clear engine cache
         clear_tenant_engine(tenant.slug)
+
+        delete_tenant_registration(tenant.slug)
         
         # 3. Delete from Core DB
         db.session.delete(tenant)

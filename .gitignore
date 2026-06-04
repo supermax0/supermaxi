@@ -21,6 +21,7 @@ instance/
 *.sqlite
 *.sqlite3
 tenants/*.db
+tenants/profiles/*.json
 
 # بيئة وتكوين
 .env

@@ -762,6 +762,26 @@ def signup():
             )
             db.session.add(admin)
             db.session.commit()
+
+            from utils.tenant_registration import (
+                registration_payload_for_signup,
+                save_tenant_registration,
+            )
+            save_tenant_registration(
+                slug,
+                registration_payload_for_signup(
+                    slug=slug,
+                    company_name=company_name,
+                    contact_name=contact_name,
+                    email=email,
+                    phone=phone,
+                    username=username,
+                    plan_key=plan.get("key") or plan_key,
+                    plan_name=plan.get("name") or "الخطة الأساسية",
+                    billing=billing,
+                    business_type=getattr(core_tenant, "business_type", "general") or "general",
+                ),
+            )
         finally:
             g.tenant = old_tenant
 
