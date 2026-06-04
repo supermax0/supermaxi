@@ -140,6 +140,40 @@
         color: #fff;
     }
 
+    .btn-action-icon.btn-reg-trigger:hover {
+        background: rgba(16, 185, 129, 0.85);
+        border-color: rgba(16, 185, 129, 0.9);
+    }
+
+    .tenant-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .reg-modal-body {
+        display: grid;
+        gap: 0;
+    }
+
+    .reg-modal-body .detail-row:last-child {
+        border-bottom: none;
+    }
+
+    .reg-loading {
+        text-align: center;
+        padding: 40px 20px;
+        color: var(--text-muted);
+        font-weight: 700;
+    }
+
+    .reg-loading i {
+        font-size: 28px;
+        margin-bottom: 12px;
+        color: var(--primary);
+    }
+
     /* Modal Styling */
     .modal-overlay {
         position: fixed;
@@ -341,9 +375,16 @@
                     </span>
                 </td>
                 <td>
-                    <button class="btn-action-icon btn-details-trigger" data-slug="{{ tenant.slug }}">
-                        <i class="fas fa-eye"></i>
-                    </button>
+                    <div class="tenant-actions">
+                        <button type="button" class="btn-action-icon btn-reg-trigger" data-slug="{{ tenant.slug }}"
+                            data-name="{{ tenant.name }}" title="بيانات التسجيل">
+                            <i class="fas fa-id-card"></i>
+                        </button>
+                        <button type="button" class="btn-action-icon btn-details-trigger" data-slug="{{ tenant.slug }}"
+                            title="تفاصيل وإدارة">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
                 </td>
             </tr>
             {% else %}
@@ -381,29 +422,6 @@
                         id="m-end"></span></div>
                 <div class="detail-row"><span class="detail-label">حالة الحساب</span><span class="detail-value"
                         id="m-status"></span></div>
-            </div>
-
-            <div class="action-group" id="registration-section"
-                style="background: rgba(16, 185, 129, 0.06); border-color: rgba(16, 185, 129, 0.25); margin-top: 16px;">
-                <div class="action-title" style="color: #6ee7b7;"><i class="fas fa-id-card"></i> بيانات التسجيل</div>
-                <div class="detail-row"><span class="detail-label">اسم الشركة</span><span class="detail-value"
-                        id="reg-company"></span></div>
-                <div class="detail-row"><span class="detail-label">صاحب الحساب</span><span class="detail-value"
-                        id="reg-contact"></span></div>
-                <div class="detail-row"><span class="detail-label">البريد</span><span class="detail-value" id="reg-email"
-                        dir="ltr" style="text-align:left;"></span></div>
-                <div class="detail-row"><span class="detail-label">الهاتف</span><span class="detail-value" id="reg-phone"
-                        dir="ltr" style="text-align:left;"></span></div>
-                <div class="detail-row"><span class="detail-label">اسم المستخدم</span><span class="detail-value"
-                        id="reg-username" dir="ltr" style="text-align:left;"></span></div>
-                <div class="detail-row"><span class="detail-label">الخطة</span><span class="detail-value"
-                        id="reg-plan"></span></div>
-                <div class="detail-row"><span class="detail-label">تاريخ التسجيل</span><span class="detail-value"
-                        id="reg-registered"></span></div>
-                <div class="detail-row" style="margin-bottom:0;"><span class="detail-label">ملف البيانات</span><code
-                        id="reg-file"
-                        style="font-size:11px;color:var(--accent);word-break:break-all;display:block;margin-top:4px;"></code>
-                </div>
             </div>
 
             <div class="action-group"
@@ -482,6 +500,54 @@
     </div>
 </div>
 
+<!-- Registration Data Modal -->
+<div id="registrationModal" class="modal-overlay">
+    <div class="premium-card premium-modal" style="max-width: 520px;">
+        <div class="modal-header">
+            <div class="modal-title">
+                <i class="fas fa-id-card" style="color:#6ee7b7;"></i>
+                <span>بيانات التسجيل — <span id="reg-modal-slug" style="color:var(--primary);"></span></span>
+            </div>
+            <button type="button" class="modal-close reg-modal-close" aria-label="إغلاق"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <div id="reg-modal-loading" class="reg-loading">
+                <div><i class="fas fa-spinner fa-spin"></i></div>
+                جاري تحميل بيانات التسجيل...
+            </div>
+            <div id="reg-modal-content" class="reg-modal-body" style="display:none;">
+                <div class="detail-row"><span class="detail-label">اسم الشركة</span><span class="detail-value"
+                        id="rm-company"></span></div>
+                <div class="detail-row"><span class="detail-label">صاحب الحساب</span><span class="detail-value"
+                        id="rm-contact"></span></div>
+                <div class="detail-row"><span class="detail-label">البريد الإلكتروني</span><span class="detail-value"
+                        id="rm-email" dir="ltr"></span></div>
+                <div class="detail-row"><span class="detail-label">رقم الهاتف</span><span class="detail-value"
+                        id="rm-phone" dir="ltr"></span></div>
+                <div class="detail-row"><span class="detail-label">اسم المستخدم</span><span class="detail-value"
+                        id="rm-username" dir="ltr"></span></div>
+                <div class="detail-row"><span class="detail-label">الخطة</span><span class="detail-value"
+                        id="rm-plan"></span></div>
+                <div class="detail-row"><span class="detail-label">نوع الاشتراك</span><span class="detail-value"
+                        id="rm-billing"></span></div>
+                <div class="detail-row"><span class="detail-label">نوع النشاط</span><span class="detail-value"
+                        id="rm-business"></span></div>
+                <div class="detail-row"><span class="detail-label">تاريخ التسجيل</span><span class="detail-value"
+                        id="rm-registered"></span></div>
+                <div class="detail-row"><span class="detail-label">آخر تحديث</span><span class="detail-value"
+                        id="rm-updated"></span></div>
+                <div class="detail-row"><span class="detail-label">مصدر البيانات</span><span class="detail-value"
+                        id="rm-source"></span></div>
+                <div class="detail-row" style="margin-bottom:0;"><span class="detail-label">ملف البيانات</span><code
+                        id="rm-file"
+                        style="font-size:11px;color:var(--accent);word-break:break-all;display:block;margin-top:6px;direction:ltr;text-align:left;"></code>
+                </div>
+            </div>
+            <p id="reg-modal-error" style="display:none;color:#ef4444;font-weight:700;text-align:center;padding:24px;"></p>
+        </div>
+    </div>
+</div>
+
 <!-- Password Reset Modal -->
 <div id="passwordResetModal" class="modal-overlay">
     <div class="premium-card premium-modal" style="max-width: 450px;">
@@ -515,6 +581,67 @@
         const modal = document.getElementById('tenantModal');
         const closeBtn = modal.querySelector('.modal-close');
 
+        const regModal = document.getElementById('registrationModal');
+        const regCloseBtn = regModal.querySelector('.reg-modal-close');
+        const regLoading = document.getElementById('reg-modal-loading');
+        const regContent = document.getElementById('reg-modal-content');
+        const regError = document.getElementById('reg-modal-error');
+        const businessLabels = { general: 'شركة عامة', beauty_center: 'مركز تجميل' };
+
+        function fillRegistrationModal(reg, fallbackName) {
+            document.getElementById('rm-company').textContent = reg.company_name || fallbackName || '—';
+            document.getElementById('rm-contact').textContent = reg.contact_name || '—';
+            document.getElementById('rm-email').textContent = reg.email || '—';
+            document.getElementById('rm-phone').textContent = reg.phone || '—';
+            document.getElementById('rm-username').textContent = reg.username || '—';
+            const planText = [reg.plan_name, reg.plan_key].filter(v => v && v !== '—').join(' — ') || '—';
+            document.getElementById('rm-plan').textContent = planText;
+            document.getElementById('rm-billing').textContent = reg.billing || '—';
+            document.getElementById('rm-business').textContent =
+                businessLabels[reg.business_type] || reg.business_type || '—';
+            document.getElementById('rm-registered').textContent = reg.registered_at || '—';
+            document.getElementById('rm-updated').textContent = reg.updated_at || '—';
+            document.getElementById('rm-source').textContent = reg.source || '—';
+            document.getElementById('rm-file').textContent = reg.profile_file || '—';
+        }
+
+        function openRegistrationModal(slug, displayName) {
+            document.getElementById('reg-modal-slug').textContent = slug;
+            regLoading.style.display = 'block';
+            regContent.style.display = 'none';
+            regError.style.display = 'none';
+            regModal.classList.add('active');
+
+            fetch(`/superadmin/tenants/registration/${encodeURIComponent(slug)}`)
+                .then(r => r.json())
+                .then(data => {
+                    regLoading.style.display = 'none';
+                    if (data.ok && data.registration) {
+                        fillRegistrationModal(data.registration, data.name || displayName);
+                        regContent.style.display = 'block';
+                    } else {
+                        regError.textContent = data.error || 'تعذّر جلب البيانات';
+                        regError.style.display = 'block';
+                    }
+                })
+                .catch(() => {
+                    regLoading.style.display = 'none';
+                    regError.textContent = 'فشل الاتصال بالسيرفر';
+                    regError.style.display = 'block';
+                });
+        }
+
+        document.querySelectorAll('.btn-reg-trigger').forEach(btn => {
+            btn.addEventListener('click', function () {
+                openRegistrationModal(this.dataset.slug, this.dataset.name);
+            });
+        });
+
+        regCloseBtn.addEventListener('click', () => regModal.classList.remove('active'));
+        regModal.addEventListener('click', (e) => {
+            if (e.target === regModal) regModal.classList.remove('active');
+        });
+
         document.querySelectorAll('.btn-details-trigger').forEach(btn => {
             btn.addEventListener('click', function () {
                 const slug = this.dataset.slug;
@@ -534,18 +661,6 @@
                             document.getElementById('m-created').textContent = data.created_at;
                             document.getElementById('m-end').textContent = data.subscription_end_date;
                             document.getElementById('m-login-url').value = data.login_url || '';
-
-                            const reg = data.registration || {};
-                            document.getElementById('reg-company').textContent = reg.company_name || data.name || '—';
-                            document.getElementById('reg-contact').textContent = reg.contact_name || data.admin_name || '—';
-                            document.getElementById('reg-email').textContent = reg.email || '—';
-                            document.getElementById('reg-phone').textContent = reg.phone || '—';
-                            document.getElementById('reg-username').textContent = reg.username || data.admin_username || '—';
-                            const planLabel = reg.plan_name || data.plan_name || reg.plan_key || data.plan_key || '—';
-                            const billingLabel = reg.billing && reg.billing !== '—' ? ` (${reg.billing})` : '';
-                            document.getElementById('reg-plan').textContent = planLabel + billingLabel;
-                            document.getElementById('reg-registered').textContent = reg.registered_at || data.created_at || '—';
-                            document.getElementById('reg-file').textContent = reg.profile_file || '—';
 
                             // Plan info
                             document.getElementById('m-plan-select').value = data.plan_key || 'basic';

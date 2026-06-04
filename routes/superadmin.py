@@ -15,6 +15,7 @@ from models.user import User
 from utils.tenant_registration import (
     delete_tenant_registration,
     get_tenant_registration,
+    registration_file_path,
     save_tenant_registration,
 )
 
@@ -24,6 +25,37 @@ BUSINESS_TYPES = {
     "general": "شركة عامة",
     "beauty_center": "مركز تجميل",
 }
+
+
+def _registration_json(tenant, registration: dict, admin_name: str = "—", admin_username: str = "—") -> dict:
+    """تنسيق بيانات التسجيل للواجهة."""
+    plan_key = registration.get("plan_key") or "basic"
+    plan_name = registration.get("plan_name") or "—"
+    billing = registration.get("billing")
+    billing_label = {"monthly": "شهري", "yearly": "سنوي"}.get(billing, billing) if billing else "—"
+    source_labels = {
+        "signup": "تسجيل ذاتي",
+        "superadmin_create": "إنشاء من المدير",
+        "payment_approval": "موافقة دفع",
+        "database_sync": "مزامنة من القاعدة",
+        "core_only": "بيانات أساسية",
+    }
+    return {
+        "company_name": registration.get("company_name") or tenant.name,
+        "contact_name": registration.get("contact_name") or admin_name,
+        "email": registration.get("email") or "—",
+        "phone": registration.get("phone") or "—",
+        "username": registration.get("username") or admin_username,
+        "plan_key": plan_key,
+        "plan_name": plan_name,
+        "billing": billing_label,
+        "business_type": registration.get("business_type") or getattr(tenant, "business_type", "general"),
+        "registered_at": registration.get("registered_at")
+        or (tenant.created_at.strftime("%Y-%m-%d %H:%M") if tenant.created_at else "—"),
+        "updated_at": registration.get("updated_at") or "—",
+        "source": source_labels.get(registration.get("source"), registration.get("source") or "—"),
+        "profile_file": registration_file_path(tenant.slug),
+    }
 
 
 def _clean_business_type(value):
@@ -293,10 +325,7 @@ def tenant_details(slug):
             base_url = ""
         login_url = f"{base_url}/login/{tenant.slug}"
 
-        from utils.tenant_registration import registration_file_path
-
         registration = get_tenant_registration(tenant.slug, core_tenant=tenant)
-        reg_file = registration_file_path(tenant.slug)
 
         return jsonify({
             "ok": True,
@@ -314,25 +343,50 @@ def tenant_details(slug):
             "plan_key": plan_key,
             "plan_name": plan_name,
             "login_url": login_url,
-            "registration": {
-                "company_name": registration.get("company_name") or tenant.name,
-                "contact_name": registration.get("contact_name") or admin_name,
-                "email": registration.get("email") or "—",
-                "phone": registration.get("phone") or "—",
-                "username": registration.get("username") or admin_username,
-                "plan_key": registration.get("plan_key") or plan_key,
-                "plan_name": registration.get("plan_name") or plan_name,
-                "billing": registration.get("billing") or "—",
-                "registered_at": registration.get("registered_at") or (
-                    tenant.created_at.strftime("%Y-%m-%d %H:%M") if tenant.created_at else "—"
-                ),
-                "source": registration.get("source") or "—",
-                "profile_file": reg_file,
-            },
+            "registration": _registration_json(
+                tenant, registration, admin_name=admin_name, admin_username=admin_username
+            ),
         })
     except Exception as e:
         g.tenant = None
         current_app.logger.exception("tenant_details")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@superadmin_bp.route("/tenants/registration/<slug>")
+def tenant_registration_view(slug):
+    """جلب بيانات التسجيل فقط (للنافذة المنبثقة)."""
+    from flask import jsonify
+
+    try:
+        slug_clean = (slug or "").strip().lower()
+        tenant = Tenant.query.filter(db.func.lower(Tenant.slug) == slug_clean).first()
+        if not tenant:
+            return jsonify({"ok": False, "error": "الشركة غير موجودة"}), 404
+
+        g.tenant = tenant.slug
+        from models.employee import Employee
+
+        admin_emp = Employee.query.filter(Employee.role == "admin").first()
+        if not admin_emp:
+            admin_emp = Employee.query.filter_by(username="admin").first()
+        g.tenant = None
+
+        admin_username = admin_emp.username if admin_emp else "—"
+        admin_name = admin_emp.name if admin_emp else "—"
+        registration = get_tenant_registration(tenant.slug, core_tenant=tenant)
+
+        return jsonify({
+            "ok": True,
+            "slug": tenant.slug,
+            "name": tenant.name,
+            "registration": _registration_json(
+                tenant, registration, admin_name=admin_name, admin_username=admin_username
+            ),
+        })
+    except Exception as e:
+        g.tenant = None
+        current_app.logger.exception("tenant_registration_view")
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
