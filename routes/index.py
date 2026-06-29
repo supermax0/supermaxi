@@ -824,6 +824,7 @@ def executive_dashboard():
 @index_bp.route("/api/executive_dashboard_data")
 @admin_required
 def api_executive_dashboard_data():
+    from models.purchase import Purchase
     today = date.today()
     month_start = today.replace(day=1)
     
@@ -831,7 +832,7 @@ def api_executive_dashboard_data():
     orders_today = Invoice.query.filter(func.date(Invoice.created_at) == today).count()
     
     # 2. Purchases Today
-    purchases_today_val = db.session.query(func.sum(Purchase.grand_total)).filter(func.date(Purchase.created_at) == today).scalar() or 0
+    purchases_today_val = db.session.query(func.sum(Purchase.total)).filter(func.date(Purchase.created_at) == today).scalar() or 0
     
     # 3. Current Balance
     cash_balance = calculate_cash_balance()
@@ -867,7 +868,11 @@ def api_executive_dashboard_data():
     liabilities = supplier_debts + shipping_due
     inventory_value = calculate_inventory_value()
     
-    new_customers = Customer.query.filter(func.date(Customer.created_at) >= today - timedelta(days=7)).count()
+    try:
+        from sqlalchemy import text
+        new_customers = db.session.execute(text("SELECT count(id) FROM customer WHERE created_at >= :d"), {"d": today - timedelta(days=7)}).scalar() or 0
+    except:
+        new_customers = 0
     
     # Calculate daily avg for this month
     days_passed = today.day

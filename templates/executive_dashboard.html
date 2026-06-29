@@ -3,529 +3,772 @@
 {% block content %}
 
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-    /* Reset and base styles */
-    .app > .sidebar { display: none !important; }
-    .app > .content { margin-right: 0 !important; width: 100%; background: #f8f9fa; }
-    .content > .topbar { display: none !important; }
-    
-    .exec-dashboard {
+    :root {
+        --bg-color: #f8fafc;
+        --card-bg: #ffffff;
+        --text-primary: #1e293b;
+        --text-secondary: #64748b;
+        --accent-blue: #3b82f6;
+        --success-green: #10b981;
+        --danger-red: #ef4444;
+        --warning-yellow: #f59e0b;
+        --purple: #8b5cf6;
+        --border-color: #e2e8f0;
+        --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        --radius: 12px;
+    }
+
+    body {
+        margin: 0;
+        background-color: var(--bg-color);
         font-family: 'Tajawal', sans-serif;
-        background-color: #f8faff;
-        color: #1e293b;
+    }
+    
+    .dashboard-container {
+        padding: 1rem 1.5rem;
         direction: rtl;
-        height: 100vh;
-        padding: 15px 25px;
-        overflow: hidden; /* Prevent scrolling */
+        color: var(--text-primary);
+        min-height: 100vh; /* Allow scrolling if it overflows */
+        overflow-y: auto;
         display: flex;
         flex-direction: column;
+        gap: 1rem;
+        box-sizing: border-box;
     }
 
     /* Header */
-    .exec-header {
+    .dashboard-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 15px;
-        flex-shrink: 0;
+        flex-wrap: wrap; /* allow wrap on small screens */
+        gap: 1rem;
+    }
+    .header-start, .header-center, .header-end {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+    .header-center {
+        flex-direction: column;
+        gap: 0.2rem;
+        text-align: center;
+        flex: 1; /* allow it to take available space */
+        min-width: 200px;
     }
     
-    .header-start { display: flex; align-items: center; } 
-    .header-end { display: flex; align-items: center; gap: 15px; }
+    /* Fix alignment of brand and select */
+    .header-end {
+        flex-direction: row; /* branch selector then brand */
+    }
 
-    .brand { display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 20px; color: #1e40af; }
-    .brand img { width: 24px; }
-    .branch-selector, .date-picker {
-        background: white; border: 1px solid #e2e8f0; border-radius: 8px;
-        padding: 6px 12px; font-size: 13px; display: flex; align-items: center; gap: 6px;
-        cursor: pointer; font-weight: 500; color: #334155;
+    .brand {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--accent-blue);
+        font-weight: 800;
+        font-size: 1.1rem;
     }
-    .header-center { text-align: center; flex: 1; }
-    .header-center h1 { font-size: 20px; font-weight: 700; margin: 0 0 2px 0; display: flex; align-items: center; justify-content: center; gap: 6px; }
-    .header-center h1 span.badge { background: #3b82f6; width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-    .header-center p { font-size: 12px; color: #64748b; margin: 0; }
+    .branch-selector select {
+        padding: 0.4rem 2rem 0.4rem 1rem;
+        border: 1px solid var(--border-color);
+        border-radius: 20px;
+        background-color: var(--card-bg);
+        font-family: inherit;
+        color: var(--text-primary);
+        font-size: 0.8rem;
+        outline: none;
+    }
+    .date-picker {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.4rem 1rem;
+        border: 1px solid var(--border-color);
+        border-radius: 20px;
+        background-color: var(--card-bg);
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+    }
     
-    /* Top Cards Grid */
-    .kpi-grid {
+    .header-title-container {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        justify-content: center;
+    }
+    .header-line {
+        width: 15px;
+        height: 3px;
+        background-color: var(--accent-blue);
+        border-radius: 2px;
+    }
+    .header-title {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 800;
+    }
+    .header-subtitle {
+        margin: 0;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+    }
+
+    /* KPI Cards */
+    .kpi-cards {
         display: grid;
         grid-template-columns: repeat(5, 1fr);
-        gap: 15px;
-        margin-bottom: 15px;
-        flex-shrink: 0;
+        gap: 1rem;
+        width: 100%;
     }
+    
     .kpi-card {
-        background: white; border-radius: 12px; padding: 12px 15px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-        display: flex; flex-direction: column;
+        background: var(--card-bg);
+        border-radius: var(--radius);
+        padding: 1rem; /* smaller padding */
+        box-shadow: var(--shadow-sm);
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        position: relative;
     }
     .kpi-header {
-        display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+    }
+    .kpi-title {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        font-weight: 600;
     }
     .kpi-icon {
-        width: 32px; height: 32px; border-radius: 8px;
-        display: flex; align-items: center; justify-content: center; font-size: 16px;
+        width: 24px;
+        height: 24px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.8rem;
     }
-    .icon-sales { background: #eff6ff; color: #3b82f6; }
-    .icon-profit { background: #f0fdf4; color: #22c55e; }
-    .icon-balance { background: #f5f3ff; color: #8b5cf6; }
-    .icon-purchases { background: #fff7ed; color: #f97316; }
-    .icon-orders { background: #eff6ff; color: #3b82f6; }
-
-    .kpi-title { font-size: 13px; color: #64748b; font-weight: 600; }
-    .kpi-value { font-size: 18px; font-weight: 800; color: #0f172a; margin: 2px 0; }
-    .kpi-trend { font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 4px; }
-    .trend-up { color: #22c55e; }
-    .trend-down { color: #ef4444; }
-    .trend-text { color: #94a3b8; font-weight: 400; margin-right: 2px; }
+    .icon-blue { background: #eff6ff; color: var(--accent-blue); }
+    .icon-green { background: #f0fdf4; color: var(--success-green); }
+    .icon-purple { background: #faf5ff; color: var(--purple); }
+    .icon-orange { background: #fff7ed; color: var(--warning-yellow); }
     
-    .sparkline-container { height: 30px; width: 100%; margin-top: 5px; }
+    .kpi-value {
+        font-size: 1.3rem; /* smaller */
+        font-weight: 800;
+        margin: 0;
+    }
+    .kpi-trend {
+        font-size: 0.7rem; /* smaller */
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    .trend-up { color: var(--success-green); }
+    .trend-down { color: var(--danger-red); }
+    .trend-neutral { color: var(--text-secondary); }
+
+    .sparkline-container {
+        height: 30px;
+        width: 100%;
+        margin-top: auto; /* push to bottom */
+    }
 
     /* Middle Section */
-    .mid-section {
+    .dashboard-middle {
         display: grid;
-        grid-template-columns: 1fr 2.5fr; /* Health (Right), Chart (Left) */
-        gap: 15px;
-        margin-bottom: 15px;
-        flex: 1;
-        min-height: 0;
+        grid-template-columns: 3fr 1fr;
+        gap: 1rem;
+        width: 100%;
     }
-    .card-panel {
-        background: white; border-radius: 12px; padding: 15px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-        display: flex; flex-direction: column;
-    }
-    .panel-header {
-        display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-shrink: 0;
-    }
-    .panel-title { font-size: 14px; font-weight: 700; color: #0f172a; }
-    .chart-filters { display: flex; background: #f1f5f9; border-radius: 16px; padding: 2px; gap: 2px; }
-    .chart-filter-btn { background: transparent; border: none; padding: 4px 10px; border-radius: 14px; font-size: 11px; font-weight: 600; color: #64748b; cursor: pointer; }
-    .chart-filter-btn.active { background: #3b82f6; color: white; }
-    .chart-legend { display: flex; gap: 10px; font-size: 12px; font-weight: 500; color: #475569; }
-    .legend-item { display: flex; align-items: center; gap: 4px; }
-    .dot { width: 6px; height: 6px; border-radius: 50%; }
-
-    /* Health Circular Progress */
-    .health-container { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; }
-    .health-circle-wrapper { position: relative; width: 110px; height: 110px; margin-bottom: 15px; }
-    .health-score { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
-    .health-score-val { font-size: 24px; font-weight: 800; color: #0f172a; line-height: 1; }
-    .health-score-text { font-size: 11px; color: #22c55e; font-weight: 600; margin-top: 2px; display: flex; align-items:center; gap:3px; justify-content:center;}
     
-    .health-metrics { width: 100%; padding: 0 10px; }
-    .health-metric-row { display: flex; align-items: center; margin-bottom: 8px; font-size: 12px; font-weight: 500; color: #475569; }
-    .metric-name { width: 75px; display: flex; align-items: center; gap: 6px; }
-    .metric-bar-bg { flex: 1; height: 5px; background: #f1f5f9; border-radius: 3px; margin: 0 8px; overflow: hidden; }
-    .metric-bar-fill { height: 100%; border-radius: 3px; }
-    .metric-value { width: 30px; text-align: left; font-weight: 700; color: #0f172a; }
+    .card-panel {
+        background: var(--card-bg);
+        border-radius: var(--radius);
+        padding: 1rem;
+        box-shadow: var(--shadow-sm);
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+    .panel-title {
+        font-size: 0.9rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .chart-filters {
+        display: flex;
+        gap: 0.2rem;
+        background: var(--bg-color);
+        padding: 0.2rem;
+        border-radius: 20px;
+    }
+    .chart-filters button {
+        border: none;
+        background: transparent;
+        padding: 0.2rem 0.6rem;
+        border-radius: 15px;
+        font-size: 0.7rem;
+        font-family: inherit;
+        color: var(--text-secondary);
+        cursor: pointer;
+    }
+    .chart-filters button.active {
+        background: var(--accent-blue);
+        color: white;
+    }
+
+    .chart-container {
+        position: relative;
+        height: 200px;
+        width: 100%;
+    }
+
+    /* Health Gauge */
+    .health-gauge-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        height: 100%;
+    }
+    .gauge-wrapper {
+        position: relative;
+        width: 100px;
+        height: 100px;
+    }
+    .gauge-text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+    }
+    .gauge-score {
+        font-size: 1.4rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        line-height: 1;
+    }
+    .gauge-status {
+        font-size: 0.65rem;
+        color: var(--success-green);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.2rem;
+    }
+    
+    .health-metrics {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+    }
+    .health-metric-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.7rem;
+    }
+    .metric-label {
+        flex: 1;
+        display: flex;
+        justify-content: space-between;
+    }
+    .metric-bar-bg {
+        flex: 2;
+        height: 4px;
+        background: var(--bg-color);
+        border-radius: 2px;
+        overflow: hidden;
+    }
+    .metric-bar-fill {
+        height: 100%;
+        border-radius: 2px;
+    }
 
     /* Bottom Section */
-    .bottom-section {
+    .dashboard-bottom {
         display: grid;
-        grid-template-columns: 1.2fr 1.5fr 1fr; /* Quick Overview, Fin Summary, Cash Flow */
-        gap: 15px;
-        flex-shrink: 0;
-        height: 150px;
+        grid-template-columns: 1fr 1fr 1.5fr;
+        gap: 1rem;
+        width: 100%;
     }
     
-    /* Cash Flow Diagram */
-    .cashflow-diagram { display: flex; flex-direction: column; align-items: center; justify-content: center; flex:1; gap: 8px;}
-    .cf-row { display: flex; align-items: center; justify-content: center; gap: 15px; width: 100%; }
-    .cf-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px; text-align: center; width: 100px; }
-    .cf-box.main { background: #eff6ff; border-color: #bfdbfe; }
-    .cf-box.green { background: #f0fdf4; border-color: #bbf7d0; }
-    .cf-box.red { background: #fef2f2; border-color: #fecaca; }
-    .cf-title { font-size: 11px; color: #64748b; font-weight: 600; margin-bottom: 2px; }
-    .cf-val { font-size: 14px; font-weight: 700; color: #0f172a; }
-    .cf-arrow { color: #94a3b8; font-size: 14px; }
+    /* Cashflow Diagram */
+    .cashflow-diagram {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.5rem;
+    }
+    .cf-box {
+        text-align: center;
+        padding: 0.5rem;
+        border-radius: var(--radius);
+        flex: 1;
+        border: 1px solid var(--border-color);
+    }
+    .cf-box.income { background: #f0fdf4; border-color: #bbf7d0; }
+    .cf-box.net { background: #eff6ff; border-color: #bfdbfe; }
+    .cf-box.expense { background: #fef2f2; border-color: #fecaca; }
     
-    /* Financial Status */
-    .fin-status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; flex: 1; align-content: center;}
-    .fin-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; display: flex; align-items: center; gap: 10px; }
-    .fin-icon { width: 30px; height: 30px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
-    .fin-details h4 { font-size: 11px; color: #64748b; margin: 0 0 2px 0; font-weight: 600; }
-    .fin-details p { font-size: 14px; font-weight: 700; color: #0f172a; margin: 0; }
+    .cf-title { font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 0.2rem; }
+    .cf-amount { font-size: 0.9rem; font-weight: 800; }
+    .cf-arrow { color: var(--text-secondary); font-size: 0.8rem; }
+
+    /* Financial Summary */
+    .financial-summary {
+        display: flex;
+        gap: 1rem;
+    }
+    .fin-box {
+        flex: 1;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius);
+        padding: 0.8rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .fin-info {
+        display: flex;
+        flex-direction: column;
+    }
+    .fin-label { font-size: 0.7rem; color: var(--text-secondary); }
+    .fin-value { font-size: 1rem; font-weight: 800; }
+    .fin-icon {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg-color);
+        color: var(--accent-blue);
+    }
 
     /* Quick Overview */
-    .quick-overview { display: flex; justify-content: space-between; align-items: stretch; flex:1; padding: 0; gap: 10px; }
-    .qo-item { flex: 1; text-align: center; display: flex; flex-direction: column; justify-content: center; align-items: center;}
-    .qo-title { font-size: 11px; color: #64748b; font-weight: 600; margin-bottom: 6px; }
-    .qo-val { font-size: 16px; font-weight: 800; color: #0f172a; margin-bottom: 4px; }
-    .qo-trend { font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 2px; }
+    .quick-overview-grid {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem;
+    }
+    .qo-item {
+        text-align: center;
+    }
+    .qo-label { font-size: 0.65rem; color: var(--text-secondary); margin-bottom: 0.2rem; }
+    .qo-value { font-size: 0.9rem; font-weight: 800; margin-bottom: 0.1rem; }
+    .qo-trend { font-size: 0.6rem; }
+    
+    /* Responsive Media Queries */
+    @media (max-width: 1200px) {
+        .kpi-cards { grid-template-columns: repeat(3, 1fr); }
+        .dashboard-bottom { grid-template-columns: 1fr; }
+    }
+    
+    @media (max-width: 992px) {
+        .dashboard-middle { grid-template-columns: 1fr; }
+        .chart-container { height: 250px; }
+    }
+    
+    @media (max-width: 768px) {
+        .kpi-cards { grid-template-columns: repeat(2, 1fr); }
+        .dashboard-header { flex-direction: column; text-align: center; }
+        .header-center { width: 100%; order: -1; }
+        .header-end { justify-content: center; width: 100%; }
+        .header-start { justify-content: center; width: 100%; }
+        .cashflow-diagram { flex-direction: column; gap: 0.5rem; }
+        .cf-arrow { transform: rotate(90deg); }
+    }
+    
+    @media (max-width: 480px) {
+        .kpi-cards { grid-template-columns: 1fr; }
+        .financial-summary { flex-direction: column; }
+        .quick-overview-grid { flex-direction: column; gap: 1rem; }
+    }
 </style>
 
-<div class="exec-dashboard">
+<div class="dashboard-container">
     <!-- Header -->
-    <div class="exec-header">
+    <div class="dashboard-header">
         <div class="header-start">
             <div class="date-picker">
-                12 مايو 2024 <i class="far fa-calendar-alt" style="color: #94a3b8; margin-right:5px;"></i>
+                <span id="header-date">12 مايو 2024</span>
+                <i class="fas fa-calendar-alt"></i>
             </div>
         </div>
         <div class="header-center">
-            <h1>لوحة المدير التنفيذي <span class="badge"></span></h1>
-            <p>مرحباً بك، المدير</p>
+            <div class="header-title-container">
+                <div class="header-line"></div>
+                <h1 class="header-title">لوحة المدير التنفيذي</h1>
+            </div>
+            <p class="header-subtitle">مرحباً بك، المدير</p>
         </div>
         <div class="header-end">
             <div class="branch-selector">
-                كل الفروع <i class="fas fa-chevron-down" style="color: #94a3b8; font-size: 10px;"></i>
-                <i class="fas fa-map-marker-alt" style="color: #94a3b8; margin-right:5px;"></i>
+                <select>
+                    <option>كل الفروع</option>
+                </select>
             </div>
             <div class="brand">
-                <div style="background: #3b82f6; width:26px; height:26px; border-radius:6px; display:flex; align-items:center; justify-content:center; color:white; font-size:16px;">
-                    <i class="fas fa-layer-group"></i>
-                </div>
-                Finora
+                <span>Finora</span>
+                <i class="fas fa-layer-group"></i>
             </div>
         </div>
     </div>
 
-    <!-- Top KPI Cards -->
-    <div class="kpi-grid">
-        <!-- Orders Today (Rightmost) -->
+    <!-- Top KPI Cards (Right to Left order matches design: Orders, Purchases, Balance, Profit, Sales) -->
+    <div class="kpi-cards">
+        
+        <!-- الطلبات -->
         <div class="kpi-card">
             <div class="kpi-header">
-                <div style="text-align: right;">
+                <div>
                     <div class="kpi-title">الطلبات اليوم</div>
-                    <div class="kpi-value" id="val_orders">0</div>
-                    <div class="kpi-trend trend-up"><i class="fas fa-arrow-up"></i> 8% <span class="trend-text">من أمس</span></div>
+                    <div class="kpi-value" id="orders-val">0</div>
+                    <div class="kpi-trend trend-up"><i class="fas fa-arrow-up"></i> 8% من أمس</div>
                 </div>
-                <div class="kpi-icon icon-orders"><i class="fas fa-clipboard-list"></i></div>
+                <div class="kpi-icon icon-blue"><i class="fas fa-clipboard-list"></i></div>
             </div>
-            <div class="sparkline-container"><canvas id="spark_orders"></canvas></div>
+            <div class="sparkline-container"><canvas id="sparkline-orders"></canvas></div>
         </div>
-        
-        <!-- Purchases -->
+
+        <!-- المشتريات -->
         <div class="kpi-card">
             <div class="kpi-header">
-                <div style="text-align: right;">
+                <div>
                     <div class="kpi-title">المشتريات</div>
-                    <div class="kpi-value"><span id="val_purchases">0</span> د.ع</div>
-                    <div class="kpi-trend trend-down"><i class="fas fa-arrow-down"></i> 5% <span class="trend-text">من أمس</span></div>
+                    <div class="kpi-value" id="purchases-val">0 د.ع</div>
+                    <div class="kpi-trend trend-down"><i class="fas fa-arrow-down"></i> 5% من أمس</div>
                 </div>
-                <div class="kpi-icon icon-purchases"><i class="fas fa-shopping-bag"></i></div>
+                <div class="kpi-icon icon-orange"><i class="fas fa-shopping-bag"></i></div>
             </div>
-            <div class="sparkline-container"><canvas id="spark_purchases"></canvas></div>
+            <div class="sparkline-container"><canvas id="sparkline-purchases"></canvas></div>
         </div>
 
-        <!-- Balance -->
+        <!-- الرصيد الحالي -->
         <div class="kpi-card">
             <div class="kpi-header">
-                <div style="text-align: right;">
+                <div>
                     <div class="kpi-title">الرصيد الحالي</div>
-                    <div class="kpi-value"><span id="val_balance">0</span> د.ع</div>
-                    <div class="kpi-trend trend-up"><i class="fas fa-arrow-up"></i> 12% <span class="trend-text">من أمس</span></div>
+                    <div class="kpi-value" id="balance-val">0 د.ع</div>
+                    <div class="kpi-trend trend-up"><i class="fas fa-arrow-up"></i> 12% من أمس</div>
                 </div>
-                <div class="kpi-icon icon-balance"><i class="fas fa-wallet"></i></div>
+                <div class="kpi-icon icon-purple"><i class="fas fa-wallet"></i></div>
             </div>
-            <div class="sparkline-container"><canvas id="spark_balance"></canvas></div>
+            <div class="sparkline-container"><canvas id="sparkline-balance"></canvas></div>
+        </div>
+
+        <!-- صافي الربح -->
+        <div class="kpi-card">
+            <div class="kpi-header">
+                <div>
+                    <div class="kpi-title">صافي الربح</div>
+                    <div class="kpi-value" id="profit-val">0 د.ع</div>
+                    <div class="kpi-trend trend-up"><i class="fas fa-arrow-up"></i> 18% من أمس</div>
+                </div>
+                <div class="kpi-icon icon-green"><i class="fas fa-chart-pie"></i></div>
+            </div>
+            <div class="sparkline-container"><canvas id="sparkline-profit"></canvas></div>
+        </div>
+
+        <!-- المبيعات -->
+        <div class="kpi-card">
+            <div class="kpi-header">
+                <div>
+                    <div class="kpi-title">إجمالي المبيعات</div>
+                    <div class="kpi-value" id="sales-val">0 د.ع</div>
+                    <div class="kpi-trend trend-up"><i class="fas fa-arrow-up"></i> 12% من أمس</div>
+                </div>
+                <div class="kpi-icon icon-green"><i class="fas fa-chart-line"></i></div>
+            </div>
+            <div class="sparkline-container"><canvas id="sparkline-sales"></canvas></div>
         </div>
         
-        <!-- Profit -->
-        <div class="kpi-card">
-            <div class="kpi-header">
-                <div style="text-align: right;">
-                    <div class="kpi-title">صافي الربح</div>
-                    <div class="kpi-value"><span id="val_profit">0</span> د.ع</div>
-                    <div class="kpi-trend trend-up"><i class="fas fa-arrow-up"></i> 18% <span class="trend-text">من أمس</span></div>
-                </div>
-                <div class="kpi-icon icon-profit"><i class="fas fa-chart-line"></i></div>
-            </div>
-            <div class="sparkline-container"><canvas id="spark_profit"></canvas></div>
-        </div>
-
-        <!-- Sales (Leftmost) -->
-        <div class="kpi-card">
-            <div class="kpi-header">
-                <div style="text-align: right;">
-                    <div class="kpi-title">إجمالي المبيعات</div>
-                    <div class="kpi-value"><span id="val_sales">0</span> د.ع</div>
-                    <div class="kpi-trend trend-up"><i class="fas fa-arrow-up"></i> 12% <span class="trend-text">من أمس</span></div>
-                </div>
-                <div class="kpi-icon icon-sales"><i class="fas fa-shopping-cart"></i></div>
-            </div>
-            <div class="sparkline-container"><canvas id="spark_sales"></canvas></div>
-        </div>
     </div>
 
-    <!-- Middle Section -->
-    <div class="mid-section">
-        <!-- Business Health (Right) -->
+    <!-- Middle Section: Chart and Health -->
+    <div class="dashboard-middle">
+        
+        <!-- Main Line Chart -->
         <div class="card-panel">
             <div class="panel-header">
-                <div class="panel-title" style="display:flex; align-items:center; gap:8px;">
-                    <i class="fas fa-stethoscope" style="color:#94a3b8;"></i> صحة الأعمال
+                <div class="panel-title">
+                    الأداء خلال آخر 7 أيام
                 </div>
-                <i class="fas fa-chart-line" style="color:#94a3b8;"></i>
+                <div class="chart-filters">
+                    <button>سنة</button>
+                    <button>90 يوم</button>
+                    <button>30 يوم</button>
+                    <button class="active">7 أيام</button>
+                </div>
             </div>
-            
-            <div class="health-container">
-                <div class="health-circle-wrapper">
-                    <canvas id="healthCircle"></canvas>
-                    <div class="health-score">
-                        <div class="health-score-val">92%</div>
-                        <div class="health-score-text"><i class="fas fa-star"></i> ممتاز</div>
+            <div class="chart-container">
+                <canvas id="performanceChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Business Health -->
+        <div class="card-panel">
+            <div class="panel-header">
+                <div class="panel-title">
+                    <i class="fas fa-stethoscope"></i> صحة الأعمال
+                </div>
+            </div>
+            <div class="health-gauge-container">
+                <div class="gauge-wrapper">
+                    <canvas id="healthGauge"></canvas>
+                    <div class="gauge-text">
+                        <div class="gauge-score">92%</div>
+                        <div class="gauge-status"><i class="fas fa-star"></i> ممتاز</div>
                     </div>
                 </div>
                 
                 <div class="health-metrics">
                     <div class="health-metric-row">
-                        <div class="metric-name"><i class="fas fa-chart-pie" style="color:#64748b; width:16px;"></i> الربحية</div>
-                        <div class="metric-bar-bg"><div class="metric-bar-fill" style="width: 92%; background: #22c55e;"></div></div>
-                        <div class="metric-value">92%</div>
+                        <div class="metric-label"><span>الربحية</span> <i class="fas fa-chart-pie text-secondary"></i></div>
+                        <div class="metric-bar-bg"><div class="metric-bar-fill" style="width: 92%; background: var(--success-green);"></div></div>
+                        <span>92%</span>
                     </div>
                     <div class="health-metric-row">
-                        <div class="metric-name"><i class="fas fa-coins" style="color:#64748b; width:16px;"></i> السيولة</div>
-                        <div class="metric-bar-bg"><div class="metric-bar-fill" style="width: 88%; background: #eab308;"></div></div>
-                        <div class="metric-value">88%</div>
+                        <div class="metric-label"><span>السيولة</span> <i class="fas fa-money-bill text-secondary"></i></div>
+                        <div class="metric-bar-bg"><div class="metric-bar-fill" style="width: 88%; background: var(--warning-yellow);"></div></div>
+                        <span>88%</span>
                     </div>
                     <div class="health-metric-row">
-                        <div class="metric-name"><i class="fas fa-shopping-cart" style="color:#64748b; width:16px;"></i> المبيعات</div>
-                        <div class="metric-bar-bg"><div class="metric-bar-fill" style="width: 91%; background: #3b82f6;"></div></div>
-                        <div class="metric-value">91%</div>
+                        <div class="metric-label"><span>المبيعات</span> <i class="fas fa-shopping-cart text-secondary"></i></div>
+                        <div class="metric-bar-bg"><div class="metric-bar-fill" style="width: 91%; background: var(--accent-blue);"></div></div>
+                        <span>91%</span>
                     </div>
                     <div class="health-metric-row">
-                        <div class="metric-name"><i class="fas fa-box" style="color:#64748b; width:16px;"></i> المخزون</div>
-                        <div class="metric-bar-bg"><div class="metric-bar-fill" style="width: 85%; background: #8b5cf6;"></div></div>
-                        <div class="metric-value">85%</div>
+                        <div class="metric-label"><span>المخزون</span> <i class="fas fa-boxes text-secondary"></i></div>
+                        <div class="metric-bar-bg"><div class="metric-bar-fill" style="width: 85%; background: var(--purple);"></div></div>
+                        <span>85%</span>
                     </div>
                     <div class="health-metric-row">
-                        <div class="metric-name"><i class="fas fa-users" style="color:#64748b; width:16px;"></i> العملاء</div>
-                        <div class="metric-bar-bg"><div class="metric-bar-fill" style="width: 90%; background: #06b6d4;"></div></div>
-                        <div class="metric-value">90%</div>
+                        <div class="metric-label"><span>العملاء</span> <i class="fas fa-users text-secondary"></i></div>
+                        <div class="metric-bar-bg"><div class="metric-bar-fill" style="width: 90%; background: #0ea5e9;"></div></div>
+                        <span>90%</span>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Main Chart (Left) -->
-        <div class="card-panel">
-            <div class="panel-header">
-                <div class="panel-title">الأداء خلال آخر 7 أيام</div>
-                <div class="chart-legend">
-                    <div class="legend-item"><div class="dot" style="background:#3b82f6;"></div> المبيعات</div>
-                    <div class="legend-item"><div class="dot" style="background:#22c55e;"></div> الأرباح</div>
-                    <div class="legend-item"><div class="dot" style="background:#ef4444;"></div> المصروفات</div>
-                    <div class="legend-item"><div class="dot" style="background:#a855f7;"></div> التدفق النقدي</div>
-                </div>
-                <div class="chart-filters">
-                    <button class="chart-filter-btn">سنة</button>
-                    <button class="chart-filter-btn">90 يوم</button>
-                    <button class="chart-filter-btn">30 يوم</button>
-                    <button class="chart-filter-btn active">7 أيام</button>
-                    <button class="chart-filter-btn" style="padding:4px 8px; margin-right:5px;"><i class="fas fa-filter"></i></button>
-                </div>
-            </div>
-            <div style="flex: 1; min-height: 0; width: 100%; position: relative;">
-                <canvas id="mainChart"></canvas>
-            </div>
-        </div>
     </div>
 
     <!-- Bottom Section -->
-    <div class="bottom-section">
-        <!-- Quick Overview (Right) -->
+    <div class="dashboard-bottom">
+        
+        <!-- Quick Overview (Right side based on original design? Original design had quick overview on the left, let's keep the order we had, flex-dir rtl handles it) -->
         <div class="card-panel">
             <div class="panel-header">
                 <div class="panel-title">نظرة سريعة</div>
             </div>
-            <div class="quick-overview">
+            <div class="quick-overview-grid">
                 <div class="qo-item">
-                    <div class="qo-title">معدل تحصيل الديون</div>
-                    <div class="qo-val"><span id="qo_debt">0</span>%</div>
-                    <div class="qo-trend trend-up"><i class="fas fa-arrow-up"></i> 6%</div>
-                    <div style="margin-top:6px;"><i class="fas fa-percent" style="color:#3b82f6; background:#eff6ff; padding:4px; border-radius:50%; font-size:10px;"></i></div>
+                    <div class="qo-label">معدل تحصيل الديون</div>
+                    <div class="qo-value">0%</div>
                 </div>
                 <div class="qo-item">
-                    <div class="qo-title">قيمة المخزون</div>
-                    <div class="qo-val"><span id="qo_inv">0</span> د.ع</div>
+                    <div class="qo-label">قيمة المخزون</div>
+                    <div class="qo-value" id="qo-inventory">0 د.ع</div>
                     <div class="qo-trend trend-up"><i class="fas fa-arrow-up"></i> 7%</div>
-                    <div style="margin-top:6px;"><i class="fas fa-box" style="color:#f97316; background:#fff7ed; padding:4px; border-radius:50%; font-size:10px;"></i></div>
                 </div>
                 <div class="qo-item">
-                    <div class="qo-title">العملاء الجدد</div>
-                    <div class="qo-val" id="qo_cust">0</div>
+                    <div class="qo-label">العملاء الجدد</div>
+                    <div class="qo-value" id="qo-customers">0</div>
                     <div class="qo-trend trend-up"><i class="fas fa-arrow-up"></i> 20%</div>
-                    <div style="margin-top:6px;"><i class="fas fa-user-plus" style="color:#22c55e; background:#f0fdf4; padding:4px; border-radius:50%; font-size:10px;"></i></div>
                 </div>
                 <div class="qo-item">
-                    <div class="qo-title">متوسط البيع اليومي</div>
-                    <div class="qo-val"><span id="qo_avg_sale">0</span> د.ع</div>
-                    <div class="qo-trend trend-up"><i class="fas fa-arrow-up"></i> 11%</div>
-                    <div style="margin-top:6px;"><i class="fas fa-chart-line" style="color:#8b5cf6; background:#f5f3ff; padding:4px; border-radius:50%; font-size:10px;"></i></div>
+                    <div class="qo-label">متوسط البيع اليومي</div>
+                    <div class="qo-value" id="qo-avg-sales">0 د.ع</div>
                 </div>
             </div>
         </div>
-
-        <!-- Financial Summary (Middle) -->
+        
+        <!-- Financial Summary (Center) -->
         <div class="card-panel">
             <div class="panel-header">
-                <div class="panel-title" style="margin: 0 auto;">ملخص الوضع المالي</div>
+                <div class="panel-title">ملخص الوضع المالي</div>
             </div>
-            <div class="fin-status-grid">
-                <div class="fin-card">
-                    <div class="fin-icon" style="background:#dcfce7; color:#22c55e;"><i class="fas fa-cash-register"></i></div>
-                    <div class="fin-details">
-                        <h4>الصندوق</h4>
-                        <p><span id="val_box">0</span> د.ع</p>
+            <div class="financial-summary">
+                <div class="fin-box">
+                    <div class="fin-info">
+                        <span class="fin-label">الصندوق</span>
+                        <span class="fin-value" id="cash-box">0 د.ع</span>
                     </div>
+                    <div class="fin-icon"><i class="fas fa-cash-register"></i></div>
                 </div>
-                <div class="fin-card">
-                    <div class="fin-icon" style="background:#e0e7ff; color:#4f46e5;"><i class="fas fa-university"></i></div>
-                    <div class="fin-details">
-                        <h4>البنك</h4>
-                        <p><span id="val_bank">0</span> د.ع</p>
+                <div class="fin-box">
+                    <div class="fin-info">
+                        <span class="fin-label">البنك</span>
+                        <span class="fin-value" id="bank-box">0 د.ع</span>
                     </div>
-                </div>
-                <div class="fin-card">
-                    <div class="fin-icon" style="background:#ffedd5; color:#f97316;"><i class="fas fa-file-invoice-dollar"></i></div>
-                    <div class="fin-details">
-                        <h4>المستحقات</h4>
-                        <p><span id="val_receivables">0</span> د.ع</p>
-                    </div>
-                </div>
-                <div class="fin-card">
-                    <div class="fin-icon" style="background:#fee2e2; color:#ef4444;"><i class="fas fa-chart-line"></i></div>
-                    <div class="fin-details">
-                        <h4>الالتزامات</h4>
-                        <p><span id="val_liabilities">0</span> د.ع</p>
-                    </div>
+                    <div class="fin-icon"><i class="fas fa-university"></i></div>
                 </div>
             </div>
         </div>
 
-        <!-- Cash Flow (Left) -->
+        <!-- Cashflow Diagram (Left) -->
         <div class="card-panel">
             <div class="panel-header">
                 <div class="panel-title">التدفق النقدي</div>
             </div>
             <div class="cashflow-diagram">
-                <div class="cf-row">
-                    <div class="cf-box green">
-                        <div class="cf-title">إجمالي الواردات</div>
-                        <div class="cf-val"><span id="cf_in">0</span> د.ع</div>
-                    </div>
-                    <i class="fas fa-arrow-left cf-arrow"></i>
-                    <div class="cf-box main">
-                        <div class="cf-title">الصافي</div>
-                        <div class="cf-val" style="color:#3b82f6;"><span id="cf_net">0</span> د.ع</div>
-                    </div>
-                    <i class="fas fa-arrow-left cf-arrow"></i>
-                    <div class="cf-box red">
-                        <div class="cf-title">إجمالي المصروفات</div>
-                        <div class="cf-val"><span id="cf_out">0</span> د.ع</div>
-                    </div>
+                <div class="cf-box income">
+                    <div class="cf-title">إجمالي الواردات</div>
+                    <div class="cf-amount" id="cf-income">0 د.ع</div>
                 </div>
-                <div class="cf-row" style="margin-top:2px;">
-                    <i class="fas fa-arrows-alt-v cf-arrow"></i>
+                <i class="fas fa-arrow-left cf-arrow"></i>
+                <div class="cf-box net">
+                    <div class="cf-title">الصافي</div>
+                    <div class="cf-amount" id="cf-net">0 د.ع</div>
                 </div>
-                <div class="cf-row">
-                    <div class="cf-box" style="background:white;">
-                        <div class="cf-title">البنك</div>
-                        <div class="cf-val"><span id="cf_bank">0</span> د.ع</div>
-                    </div>
+                <i class="fas fa-arrow-left cf-arrow"></i>
+                <div class="cf-box expense">
+                    <div class="cf-title">إجمالي المصروفات</div>
+                    <div class="cf-amount" id="cf-expense">0 د.ع</div>
                 </div>
             </div>
         </div>
+
     </div>
+
 </div>
 
 <script>
-    function fmt(num) { return Number(num).toLocaleString('en-US'); }
-    Chart.defaults.font.family = "'Tajawal', sans-serif";
-    
-    function createSparkline(ctxId, color, data) {
+    // Set today's date in header
+    const today = new Date();
+    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+    document.getElementById('header-date').innerText = today.toLocaleDateString('ar-EG', options);
+
+    // Common Chart Options
+    const sparklineOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        scales: { x: { display: false }, y: { display: false, min: 0 } },
+        elements: { point: { radius: 0 }, line: { tension: 0.4, borderWidth: 2 } }
+    };
+
+    function drawSparkline(ctxId, color, data) {
         const ctx = document.getElementById(ctxId).getContext('2d');
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: ['1','2','3','4','5','6','7'],
-                datasets: [{ data: data, borderColor: color, borderWidth: 2, tension: 0.4, pointRadius: 0 }]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { display: false }, tooltip: { enabled: false } },
-                scales: { x: { display: false }, y: { display: false, min: Math.min(...data)*0.9 } },
-                layout: { padding: 0 }
-            }
-        });
-    }
-
-    function initHealthCircle() {
-        const ctx = document.getElementById('healthCircle').getContext('2d');
-        new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                datasets: [{ data: [92, 8], backgroundColor: ['#0ea5e9', '#f1f5f9'], borderWidth: 0, circumference: 360, rotation: 270, cutout: '80%', borderRadius: 20 }]
-            },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false } } },
-            plugins: [{
-                id: 'customGradient',
-                beforeDraw: (chart) => {
-                    const ctx = chart.ctx; const gradient = ctx.createLinearGradient(0, 0, 0, 110);
-                    gradient.addColorStop(0, '#3b82f6'); gradient.addColorStop(1, '#22c55e');
-                    chart.data.datasets[0].backgroundColor[0] = gradient;
-                }
-            }]
-        });
-    }
-
-    initHealthCircle();
-
-    fetch('/api/executive_dashboard_data').then(res => res.json()).then(data => {
-        document.getElementById('val_sales').innerText = fmt(data.sales_today);
-        document.getElementById('val_profit').innerText = fmt(data.profit_today);
-        document.getElementById('val_balance').innerText = fmt(data.balance);
-        document.getElementById('val_purchases').innerText = fmt(data.purchases_today);
-        document.getElementById('val_orders').innerText = fmt(data.orders_today);
-
-        createSparkline('spark_sales', '#3b82f6', [10, 20, 15, 25, 20, 30, data.sales_today > 0 ? 35 : 10]);
-        createSparkline('spark_profit', '#22c55e', [5, 10, 8, 12, 10, 15, data.profit_today > 0 ? 18 : 5]);
-        createSparkline('spark_balance', '#8b5cf6', [50, 48, 55, 60, 58, 65, data.balance > 0 ? 70 : 50]);
-        createSparkline('spark_purchases', '#f97316', [20, 15, 25, 10, 30, 20, data.purchases_today > 0 ? 15 : 20]);
-        createSparkline('spark_orders', '#0ea5e9', [5, 8, 12, 7, 15, 10, data.orders_today > 0 ? 12 : 5]);
-
-        const ctxMain = document.getElementById('mainChart').getContext('2d');
-        const gradSales = ctxMain.createLinearGradient(0, 0, 0, 200);
-        gradSales.addColorStop(0, 'rgba(59, 130, 246, 0.2)'); gradSales.addColorStop(1, 'rgba(59, 130, 246, 0)');
+        const gradient = ctx.createLinearGradient(0, 0, 0, 30);
+        gradient.addColorStop(0, color + '66');
+        gradient.addColorStop(1, color + '00');
         
-        new Chart(ctxMain, {
+        new Chart(ctx, {
             type: 'line',
             data: {
-                labels: data.chart_labels,
-                datasets: [
-                    { label: 'المبيعات', data: data.chart_sales, borderColor: '#3b82f6', backgroundColor: gradSales, fill: true, tension: 0.4, borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#fff', pointBorderColor: '#3b82f6' },
-                    { label: 'الأرباح', data: data.chart_profit, borderColor: '#22c55e', fill: false, tension: 0.4, borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#fff', pointBorderColor: '#22c55e' },
-                    { label: 'المصروفات', data: data.chart_expenses, borderColor: '#ef4444', fill: false, tension: 0.4, borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#fff', pointBorderColor: '#ef4444' },
-                    { label: 'التدفق النقدي', data: data.chart_cashflow, borderColor: '#a855f7', fill: false, tension: 0.4, borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#fff', pointBorderColor: '#a855f7' }
-                ]
+                labels: ['1', '2', '3', '4', '5', '6', '7'],
+                datasets: [{
+                    data: data,
+                    borderColor: color,
+                    backgroundColor: gradient,
+                    fill: true
+                }]
             },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    x: { grid: { display: false } },
-                    y: { border: { display: false }, grid: { color: '#f1f5f9' }, ticks: { callback: function(value) { return value >= 1000 ? (value/1000) + 'k' : value; } } }
-                }
-            }
+            options: sparklineOptions
         });
+    }
 
-        document.getElementById('cf_in').innerText = fmt(data.sales_today);
-        document.getElementById('cf_net').innerText = fmt(data.balance);
-        document.getElementById('cf_out').innerText = fmt(data.chart_expenses.reduce((a,b)=>a+b,0) + data.purchases_today);
-        document.getElementById('cf_bank').innerText = fmt(data.bank_balance);
+    // Fetch Data
+    fetch('/api/executive_dashboard_data')
+        .then(res => res.json())
+        .then(data => {
+            // Update Text Values
+            document.getElementById('orders-val').innerText = data.orders_today;
+            document.getElementById('purchases-val').innerText = data.purchases_today.toLocaleString() + ' د.ع';
+            document.getElementById('balance-val').innerText = data.cash_balance.toLocaleString() + ' د.ع';
+            document.getElementById('profit-val').innerText = data.profit_today.toLocaleString() + ' د.ع';
+            document.getElementById('sales-val').innerText = data.sales_today.toLocaleString() + ' د.ع';
+            
+            document.getElementById('cf-income').innerText = data.sales_today.toLocaleString() + ' د.ع';
+            document.getElementById('cf-expense').innerText = data.expenses_today.toLocaleString() + ' د.ع';
+            document.getElementById('cf-net').innerText = (data.sales_today - data.expenses_today).toLocaleString() + ' د.ع';
+            
+            document.getElementById('cash-box').innerText = data.cash_balance.toLocaleString() + ' د.ع';
+            document.getElementById('bank-box').innerText = '0 د.ع'; // Mock bank
+            
+            document.getElementById('qo-inventory').innerText = data.inventory_value.toLocaleString() + ' د.ع';
+            document.getElementById('qo-customers').innerText = data.new_customers;
+            document.getElementById('qo-avg-sales').innerText = Math.round(data.avg_daily_sales).toLocaleString() + ' د.ع';
 
-        document.getElementById('val_box').innerText = fmt(data.box_balance);
-        document.getElementById('val_bank').innerText = fmt(data.bank_balance);
-        document.getElementById('val_receivables').innerText = fmt(data.receivables);
-        document.getElementById('val_liabilities').innerText = fmt(data.liabilities);
+            // Sparklines
+            drawSparkline('sparkline-orders', '#3b82f6', [10,12,15,8,14,20,data.orders_today]); // Mock history + today
+            drawSparkline('sparkline-purchases', '#f59e0b', [50,40,60,30,80,45,data.purchases_today]);
+            drawSparkline('sparkline-balance', '#8b5cf6', [100,120,110,140,130,150,data.cash_balance]);
+            drawSparkline('sparkline-profit', '#10b981', [20,25,22,30,28,35,data.profit_today]);
+            drawSparkline('sparkline-sales', '#10b981', data.daily_sales);
 
-        document.getElementById('qo_debt').innerText = data.debt_collection_rate;
-        document.getElementById('qo_inv').innerText = fmt(data.inventory_value);
-        document.getElementById('qo_cust').innerText = data.new_customers;
-        document.getElementById('qo_avg_sale').innerText = fmt(data.avg_daily_sales);
-    });
+            // Main Line Chart
+            const ctxMain = document.getElementById('performanceChart').getContext('2d');
+            new Chart(ctxMain, {
+                type: 'line',
+                data: {
+                    labels: data.daily_labels,
+                    datasets: [
+                        { label: 'المبيعات', data: data.daily_sales, borderColor: '#3b82f6', backgroundColor: '#3b82f6', tension: 0.4 },
+                        { label: 'الأرباح', data: data.daily_profit, borderColor: '#10b981', backgroundColor: '#10b981', tension: 0.4 },
+                        { label: 'المصروفات', data: data.daily_expenses, borderColor: '#ef4444', backgroundColor: '#ef4444', tension: 0.4 },
+                        { label: 'التدفق النقدي', data: data.daily_cashflow, borderColor: '#8b5cf6', backgroundColor: '#8b5cf6', tension: 0.4 }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { 
+                        legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 6, font: { family: 'Tajawal' } } }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, grid: { borderDash: [5, 5] } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+
+            // Gauge Chart
+            const ctxGauge = document.getElementById('healthGauge').getContext('2d');
+            new Chart(ctxGauge, {
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        data: [92, 8],
+                        backgroundColor: ['#0ea5e9', '#e0f2fe'],
+                        borderWidth: 0,
+                        circumference: 360,
+                        cutout: '80%'
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { tooltip: { enabled: false } }
+                }
+            });
+        })
+        .catch(err => {
+            console.error("Error fetching dashboard data:", err);
+        });
 </script>
+
 {% endblock %}
