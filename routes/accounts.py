@@ -20,6 +20,67 @@ from utils.accounting_calculations import (
 
 accounts_bp = Blueprint("accounts", __name__, url_prefix="/accounts")
 
+def _build_order_accounting_impact(limit=12):
+    """Read-only impact cards for recent orders; it does not post accounting entries."""
+    rows = []
+    invoices = (
+        db.session.query(
+            Invoice.id,
+            Invoice.customer_name,
+            Invoice.created_at,
+            Invoice.status,
+            Invoice.payment_status,
+            Invoice.total,
+            Invoice.paid_amount,
+        )
+        .order_by(Invoice.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    invoice_ids = [invoice.id for invoice in invoices]
+    cost_rows = {}
+
+    if invoice_ids:
+        cost_rows = {
+            row.invoice_id: {
+                "stock_cost": int(row.stock_cost or 0),
+                "items_count": int(row.items_count or 0),
+            }
+            for row in (
+                db.session.query(
+                    OrderItem.invoice_id,
+                    func.sum(OrderItem.cost * OrderItem.quantity).label("stock_cost"),
+                    func.sum(OrderItem.quantity).label("items_count"),
+                )
+                .filter(OrderItem.invoice_id.in_(invoice_ids))
+                .group_by(OrderItem.invoice_id)
+                .all()
+            )
+        }
+
+    for invoice in invoices:
+        sale_value = int(invoice.total or 0)
+        paid_amount = int(invoice.paid_amount or 0)
+        impact_cost = cost_rows.get(invoice.id, {})
+        total_cost = impact_cost.get("stock_cost", 0)
+        items_count = impact_cost.get("items_count", 0)
+
+        rows.append({
+            "invoice_id": invoice.id,
+            "customer_name": invoice.customer_name,
+            "created_at": invoice.created_at,
+            "status": invoice.status,
+            "payment_status": invoice.payment_status,
+            "sale_value": sale_value,
+            "paid_amount": paid_amount,
+            "receivable_amount": max(sale_value - paid_amount, 0),
+            "stock_cost": total_cost,
+            "gross_profit": sale_value - total_cost,
+            "items_count": items_count,
+        })
+
+    return rows
+
 def check_permission(permission_name):
     """فحص الصلاحية - helper function"""
     if "user_id" not in session:
@@ -179,6 +240,7 @@ def accounts():
         total_expenses=total_expenses,
         gross_profit=gross_profit,
         paid_sales=paid_sales,
+        order_accounting_impact=_build_order_accounting_impact(),
         alert_type=alert_type,
         alert_message=alert_message
     )

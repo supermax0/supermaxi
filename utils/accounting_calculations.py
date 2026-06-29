@@ -286,7 +286,13 @@ def calculate_paid_sales():
     Returns:
         int: إجمالي المبيعات المسددة
     """
-    paid_orders = Invoice.query.filter(
+    paid_orders = db.session.query(
+        Invoice.id,
+        Invoice.status,
+        Invoice.payment_status,
+        Invoice.total,
+        Invoice.paid_amount,
+    ).filter(
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
         Invoice.payment_status != "مرتجع",
         or_(
@@ -322,7 +328,13 @@ def calculate_operational_profit():
     
     # COGS "المسدد" (Cash-basis approximation):
     # - عند الدفع الجزئي: نحمّل جزءاً متناسباً من COGS حسب نسبة التحصيل
-    paid_orders = Invoice.query.filter(
+    paid_orders = db.session.query(
+        Invoice.id,
+        Invoice.status,
+        Invoice.payment_status,
+        Invoice.total,
+        Invoice.paid_amount,
+    ).filter(
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
         Invoice.payment_status != "مرتجع",
         or_(
@@ -395,7 +407,14 @@ def calculate_shipping_due():
     Returns:
         int: إجمالي مستحقات شركات النقل
     """
-    all_orders = Invoice.query.filter(
+    all_orders = db.session.query(
+        Invoice.id,
+        Invoice.status,
+        Invoice.payment_status,
+        Invoice.total,
+        Invoice.paid_amount,
+        Invoice.shipping_company_id,
+    ).filter(
         Invoice.shipping_company_id.isnot(None),
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
         Invoice.payment_status != "مرتجع",
@@ -428,7 +447,13 @@ def calculate_accounts_receivable():
     Returns:
         int: إجمالي الذمم المدينة
     """
-    receivable_orders = Invoice.query.filter(
+    receivable_orders = db.session.query(
+        Invoice.id,
+        Invoice.status,
+        Invoice.payment_status,
+        Invoice.total,
+        Invoice.paid_amount,
+    ).filter(
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
         Invoice.payment_status != "مرتجع",
     ).all()
@@ -480,7 +505,13 @@ def calculate_paid_cogs():
     Returns:
         int: إجمالي COGS للطلبات المسددة
     """
-    paid_orders = Invoice.query.filter(
+    paid_orders = db.session.query(
+        Invoice.id,
+        Invoice.status,
+        Invoice.payment_status,
+        Invoice.total,
+        Invoice.paid_amount,
+    ).filter(
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
         Invoice.payment_status != "مرتجع",
         or_(

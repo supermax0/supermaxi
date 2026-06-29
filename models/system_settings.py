@@ -1,6 +1,7 @@
 from extensions import db
 from datetime import datetime
 import json
+from sqlalchemy.orm import load_only
 
 
 class SystemSettings(db.Model):
@@ -43,7 +44,23 @@ class SystemSettings(db.Model):
     @staticmethod
     def get_settings():
         """Get or create the single SystemSettings row."""
-        settings = SystemSettings.query.first()
+        try:
+            settings = SystemSettings.query.options(
+                load_only(
+                    SystemSettings.id,
+                    SystemSettings.default_currency,
+                    SystemSettings.default_language,
+                    SystemSettings.default_theme,
+                    SystemSettings.font_scale,
+                    SystemSettings.ui_flags,
+                    SystemSettings.ai_enabled,
+                    SystemSettings.created_at,
+                    SystemSettings.updated_at,
+                )
+            ).first()
+        except Exception:
+            db.session.rollback()
+            return SystemSettings(ui_flags="{}")
         if not settings:
             settings = SystemSettings()
             db.session.add(settings)

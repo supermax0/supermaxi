@@ -22,7 +22,14 @@ def net_profit_for_range(date_from: date, date_to: date) -> int:
     RETURN_STATUSES = ["مرتجع", "راجع", "راجعة"]
     CANCELED_STATUSES = ["ملغي"]
 
-    period_invoices = Invoice.query.filter(
+    period_invoices = db.session.query(
+        Invoice.id,
+        Invoice.status,
+        Invoice.payment_status,
+        Invoice.total,
+        Invoice.paid_amount,
+        Invoice.created_at,
+    ).filter(
         func.date(Invoice.created_at) >= date_from,
         func.date(Invoice.created_at) <= date_to,
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),

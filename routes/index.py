@@ -1,7 +1,6 @@
 from flask import Blueprint, render_template, jsonify, request, session, redirect, g, current_app
 from sqlalchemy.sql import func
 from sqlalchemy import or_
-from sqlalchemy.orm import joinedload
 from datetime import date, timedelta, datetime
 import json
 import json
@@ -133,7 +132,16 @@ def _dashboard_overdue_invoices(*, min_days: int = 7, limit: int = 40):
     """
     now = datetime.utcnow()
     q = (
-        Invoice.query.options(joinedload(Invoice.customer))
+        db.session.query(
+            Invoice.id,
+            Invoice.customer_name,
+            Invoice.status,
+            Invoice.payment_status,
+            Invoice.created_at,
+            Invoice.scheduled_date,
+            Customer.phone.label("phone"),
+        )
+        .outerjoin(Customer, Invoice.customer_id == Customer.id)
         .filter(Invoice.status.in_(list(PENDING_STATUSES)))
         .filter(or_(Invoice.payment_status.is_(None), Invoice.payment_status != "مرتجع"))
         .order_by(Invoice.created_at.asc())
@@ -153,17 +161,11 @@ def _dashboard_overdue_invoices(*, min_days: int = 7, limit: int = 40):
         if days < min_days:
             continue
         sev = "critical" if days >= 10 else "warning"
-        phone = ""
-        try:
-            if inv.customer is not None:
-                phone = (getattr(inv.customer, "phone", None) or "") or ""
-        except Exception:
-            phone = ""
         items.append(
             {
                 "id": inv.id,
                 "customer_name": (inv.customer_name or "").strip(),
-                "phone": str(phone).strip(),
+                "phone": str(inv.phone or "").strip(),
                 "status": (inv.status or "").strip(),
                 "days": int(days),
                 "severity": sev,
@@ -200,6 +202,7 @@ def index():
     try:
         system_settings = SystemSettings.get_settings()
     except Exception:
+        db.session.rollback()
         current_app.logger.exception("failed loading system settings for dashboard")
         system_settings = None
     finally:
@@ -1028,7 +1031,14 @@ def index_reports():
 
     # إجمالي المبيعات/التحصيل/الذمم للفترة
     # تصحيح محاسبي: دعم الدفع الجزئي + استبعاد (راجع/مرتجع/ملغي)
-    period_invoices = Invoice.query.filter(
+    period_invoices = db.session.query(
+        Invoice.id,
+        Invoice.status,
+        Invoice.payment_status,
+        Invoice.total,
+        Invoice.paid_amount,
+        Invoice.created_at,
+    ).filter(
         func.date(Invoice.created_at) >= date_from,
         func.date(Invoice.created_at) <= date_to,
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
@@ -1088,7 +1098,12 @@ def index_reports():
     from models.shipping_report import ShippingReport
     
     # جلب جميع الطلبات المرتبطة بمندوبي التوصيل
-    agent_orders = Invoice.query.filter(
+    agent_orders = db.session.query(
+        Invoice.id,
+        Invoice.total,
+        Invoice.delivery_agent_id,
+        Invoice.status,
+    ).filter(
         Invoice.delivery_agent_id.isnot(None),
         Invoice.status.in_(["تم التوصيل", "مسدد", "جاري الشحن"]),
         Invoice.status != "ملغي",
@@ -1181,20 +1196,20 @@ def index_orders_count():
         )
 
     # حساب المرتجع والملغي معاً
-    returned_count = Invoice.query.filter(
+    returned_count = db.session.query(func.count(Invoice.id)).filter(
         or_(
             Invoice.status == "راجع",
             Invoice.status == "ملغي",
             Invoice.payment_status == "مرتجع"
         )
-    ).count()
+    ).scalar() or 0
     
     return jsonify({
-        "all": Invoice.query.count(),
-        "ordered": Invoice.query.filter_by(status="تم الطلب").count(),
-        "shipping": Invoice.query.filter_by(status="جاري الشحن").count(),
-        "delivered": Invoice.query.filter_by(status="تم التوصيل").count(),
-        "paid": Invoice.query.filter_by(status="مسدد").count(),
+        "all": db.session.query(func.count(Invoice.id)).scalar() or 0,
+        "ordered": db.session.query(func.count(Invoice.id)).filter(Invoice.status == "تم الطلب").scalar() or 0,
+        "shipping": db.session.query(func.count(Invoice.id)).filter(Invoice.status == "جاري الشحن").scalar() or 0,
+        "delivered": db.session.query(func.count(Invoice.id)).filter(Invoice.status == "تم التوصيل").scalar() or 0,
+        "paid": db.session.query(func.count(Invoice.id)).filter(Invoice.status == "مسدد").scalar() or 0,
         "returned": returned_count
     })
 
@@ -1248,7 +1263,13 @@ def index_search():
         # إذا كان رقم فقط (مثل "1")، ابحث عن مطابقة كاملة لرقم الفاتورة فقط
         # هذا يضمن أن "1" يبحث فقط عن الطلب رقم 1 وليس 10 أو 11
         invoice_id = int(q_normalized)
-        orders = Invoice.query.join(Customer).filter(
+        orders = db.session.query(
+            Invoice.id,
+            Invoice.total,
+            Invoice.status,
+            Customer.phone,
+            Customer.name.label("customer"),
+        ).join(Customer).filter(
             Invoice.id == invoice_id
         ).order_by(
             Invoice.id.desc()
@@ -1271,7 +1292,13 @@ def index_search():
                 phone_filters.append(Customer.phone.like(f"%{num_normalized}%"))
                 phone_filters.append(Customer.phone2.like(f"%{num_normalized}%"))
             
-            orders = Invoice.query.join(Customer).filter(
+            orders = db.session.query(
+                Invoice.id,
+                Invoice.total,
+                Invoice.status,
+                Customer.phone,
+                Customer.name.label("customer"),
+            ).join(Customer).filter(
                 or_(*phone_filters)
             ).order_by(
                 Invoice.id.desc()
@@ -1284,8 +1311,8 @@ def index_search():
     return jsonify([
         {
             "id": o.id,
-            "phone": o.customer.phone if o.customer else "",
-            "customer": o.customer.name if o.customer else "",
+            "phone": o.phone or "",
+            "customer": o.customer or "",
             "total": o.total,
             "status": o.status
         }
@@ -1445,7 +1472,14 @@ def index_charts():
         d = date.today() - timedelta(days=i)
         labels.append(d.strftime("%m/%d"))
 
-        day_invoices = Invoice.query.filter(
+        day_invoices = db.session.query(
+            Invoice.id,
+            Invoice.status,
+            Invoice.payment_status,
+            Invoice.total,
+            Invoice.paid_amount,
+            Invoice.created_at,
+        ).filter(
             func.date(Invoice.created_at) == d,
             Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
             Invoice.payment_status != "مرتجع",
@@ -1481,17 +1515,17 @@ def index_charts():
         profit.append(int(int(day_sales) - int(day_cost)))
 
     status_data = {
-        "ordered": Invoice.query.filter_by(status="تم الطلب").count(),
-        "shipping": Invoice.query.filter_by(status="جاري الشحن").count(),
-        "delivered": Invoice.query.filter_by(status="تم التوصيل").count(),
-        "paid": Invoice.query.filter_by(status="مسدد").count(),
-        "returned": Invoice.query.filter(
+        "ordered": db.session.query(func.count(Invoice.id)).filter(Invoice.status == "تم الطلب").scalar() or 0,
+        "shipping": db.session.query(func.count(Invoice.id)).filter(Invoice.status == "جاري الشحن").scalar() or 0,
+        "delivered": db.session.query(func.count(Invoice.id)).filter(Invoice.status == "تم التوصيل").scalar() or 0,
+        "paid": db.session.query(func.count(Invoice.id)).filter(Invoice.status == "مسدد").scalar() or 0,
+        "returned": db.session.query(func.count(Invoice.id)).filter(
             or_(
                 Invoice.status == "راجع",
                 Invoice.status == "ملغي",
                 Invoice.payment_status == "مرتجع"
             )
-        ).count()
+        ).scalar() or 0
     }
 
     return jsonify({
@@ -1516,10 +1550,12 @@ def index_alerts():
         if wd:
             alerts.extend(wd)
     except Exception:
+        db.session.rollback()
         pass
+    db.session.rollback()
     try:
         # تنبيهات المخزون
-        low_stock = Product.query.filter(Product.quantity <= 2).count()
+        low_stock = db.session.query(func.count(Product.id)).filter(Product.quantity <= 2).scalar() or 0
         if low_stock:
             alerts.append({
                 "type": "warning",
@@ -1565,7 +1601,7 @@ def index_alerts():
                 "action": "/accounts"
             })
 
-        pending_orders = Invoice.query.filter(Invoice.status == "تم الطلب").count()
+        pending_orders = db.session.query(func.count(Invoice.id)).filter(Invoice.status == "تم الطلب").scalar() or 0
         if pending_orders > 10:
             alerts.append({
                 "type": "warning",
@@ -1583,6 +1619,7 @@ def index_alerts():
                 "action": "/shipping"
             })
     except Exception as e:
+        db.session.rollback()
         import traceback
         traceback.print_exc()
     return jsonify(alerts)
@@ -1593,7 +1630,7 @@ def index_alerts():
 @index_bp.route("/api/index/new-orders")
 def check_new_orders():
     # الحصول على آخر طلب تم إنشاؤه
-    last_order = Invoice.query.order_by(
+    last_order = db.session.query(Invoice.id).order_by(
         Invoice.created_at.desc()
     ).first()
     
@@ -1607,7 +1644,13 @@ def check_new_orders():
     from datetime import datetime, timedelta
     five_minutes_ago = datetime.utcnow() - timedelta(minutes=5)
     
-    new_orders = Invoice.query.filter(
+    new_orders = db.session.query(
+        Invoice.id,
+        Invoice.customer_name,
+        Invoice.total,
+        Invoice.status,
+        Invoice.created_at,
+    ).filter(
         Invoice.created_at >= five_minutes_ago
     ).order_by(Invoice.created_at.desc()).limit(10).all()
     
@@ -1637,7 +1680,18 @@ def agent_dues_details():
     from models.shipping_report import ShippingReport
     
     # جلب جميع الطلبات المرتبطة بمندوبي التوصيل
-    orders = Invoice.query.filter(
+    orders = db.session.query(
+        Invoice.id,
+        Invoice.customer_name,
+        Invoice.total,
+        Invoice.created_at,
+        Invoice.status,
+        Invoice.delivery_agent_id,
+        Customer.name.label("customer"),
+        DeliveryAgent.name.label("agent"),
+    ).outerjoin(Customer, Invoice.customer_id == Customer.id).outerjoin(
+        DeliveryAgent, Invoice.delivery_agent_id == DeliveryAgent.id
+    ).filter(
         Invoice.delivery_agent_id.isnot(None),
         Invoice.status.in_(["تم التوصيل", "مسدد", "جاري الشحن"])
     ).order_by(Invoice.created_at.desc()).limit(100).all()
@@ -1671,8 +1725,8 @@ def agent_dues_details():
         "orders": [
             {
                 "id": o.id,
-                "customer": o.customer.name if o.customer else o.customer_name or "—",
-                "agent": o.delivery_agent.name if o.delivery_agent else "—",
+                "customer": o.customer or o.customer_name or "—",
+                "agent": o.agent or "—",
                 "total": int(o.total),
                 "date": o.created_at.strftime("%Y-%m-%d %H:%M") if o.created_at else "—",
                 "status": o.status
@@ -1691,7 +1745,14 @@ def delivered_paid_details():
     # 1. status == "تم التوصيل" AND payment_status == "مسدد"
     # 2. status == "مسدد" (يعني واصل ومسدد معاً)
     from sqlalchemy import and_
-    orders = Invoice.query.filter(
+    orders = db.session.query(
+        Invoice.id,
+        Invoice.customer_name,
+        Invoice.total,
+        Invoice.created_at,
+        Invoice.status,
+        Customer.name.label("customer"),
+    ).outerjoin(Customer, Invoice.customer_id == Customer.id).filter(
         or_(
             # الحالة الأولى: واصل ومسدد بشكل منفصل
             and_(
@@ -1714,7 +1775,7 @@ def delivered_paid_details():
         "orders": [
             {
                 "id": o.id,
-                "customer": o.customer.name if o.customer else o.customer_name or "—",
+                "customer": o.customer or o.customer_name or "—",
                 "total": int(o.total),
                 "date": o.created_at.strftime("%Y-%m-%d %H:%M") if o.created_at else "—",
                 "status": "واصل ومسدد"

@@ -84,7 +84,13 @@ def calculate_cash_balance():
     # السبب المحاسبي: البيع النقدي يزيد الكاش فوراً
     # تصحيح محاسبي: دعم الدفع الجزئي (paid_amount)
     # المبيعات النقدية/التحصيل = مجموع المبالغ المسددة فعلياً (جزئي أو كامل)
-    paid_invoices = Invoice.query.filter(
+    paid_invoices = db.session.query(
+        Invoice.id,
+        Invoice.status,
+        Invoice.payment_status,
+        Invoice.total,
+        Invoice.paid_amount,
+    ).filter(
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
         Invoice.payment_status != "مرتجع",
         or_(
@@ -167,7 +173,15 @@ def get_cash_movements():
     # 1. المبيعات النقدية المسددة
     # ==========================
     # السبب المحاسبي: البيع النقدي يزيد الكاش فوراً
-    cash_sales_invoices = Invoice.query.filter(
+    cash_sales_invoices = db.session.query(
+        Invoice.id,
+        Invoice.customer_name,
+        Invoice.created_at,
+        Invoice.status,
+        Invoice.payment_status,
+        Invoice.total,
+        Invoice.paid_amount,
+    ).filter(
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
         Invoice.payment_status != "مرتجع",
         or_(

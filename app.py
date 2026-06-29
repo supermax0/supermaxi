@@ -696,6 +696,7 @@ with app.app_context():
         inspector = inspect(db.engine)
         if 'invoice' in inspector.get_table_names():
             invoice_columns = [col['name'] for col in inspector.get_columns('invoice')]
+            recorded_type = "TIMESTAMP" if db.engine.dialect.name == "postgresql" else "DATETIME"
             if 'order_video_path' not in invoice_columns:
                 db.session.execute(text("ALTER TABLE invoice ADD COLUMN order_video_path VARCHAR(255)"))
             if 'order_video_original_name' not in invoice_columns:
@@ -707,10 +708,11 @@ with app.app_context():
             if 'order_video_duration_sec' not in invoice_columns:
                 db.session.execute(text("ALTER TABLE invoice ADD COLUMN order_video_duration_sec FLOAT"))
             if 'order_video_recorded_at' not in invoice_columns:
-                db.session.execute(text("ALTER TABLE invoice ADD COLUMN order_video_recorded_at DATETIME"))
+                db.session.execute(text(f"ALTER TABLE invoice ADD COLUMN order_video_recorded_at {recorded_type}"))
             db.session.commit()
             print("Added order video columns to invoice table.")
     except Exception as e:
+        db.session.rollback()
         print(f"Migration note (order video columns): {e}")
 
     # Migration: Create RBAC tables if needed

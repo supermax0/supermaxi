@@ -740,8 +740,11 @@
 
     // ================= Form Validation =================
     function validateCashForm(e) {
+      const form = e.currentTarget;
       const reason = document.getElementById('reason').value.trim();
-      const amount = document.getElementById('amount').value;
+      const amount = Number(document.getElementById('amount').value || 0);
+      const type = document.getElementById('transaction_type').value;
+      const note = document.getElementById('note').value.trim();
 
       if (!reason) {
         e.preventDefault();
@@ -755,7 +758,30 @@
         return false;
       }
 
-      return true;
+      if (form.dataset.confirmed === "1" || typeof window.finoraConfirmImpact !== "function") {
+        return true;
+      }
+
+      e.preventDefault();
+
+      const isCashIn = type === "cash_in";
+      window.finoraConfirmImpact({
+        title: isCashIn ? "تأكيد قبض نقدي" : "تأكيد صرف نقدي",
+        message: `${reason} - ${amount.toLocaleString("ar-IQ")} {{ _('cash_currency_iqd') }}`,
+        confirmText: isCashIn ? "تسجيل القبض" : "تسجيل الصرف",
+        danger: !isCashIn,
+        impact: [
+          isCashIn ? "يزيد رصيد الصندوق بعد حفظ الحركة." : "ينقص رصيد الصندوق بعد حفظ الحركة.",
+          "تظهر الحركة في سجل الصندوق مع الرصيد بعد التنفيذ.",
+          note ? `الملاحظة: ${note}` : "لا توجد ملاحظة إضافية لهذه الحركة."
+        ]
+      }).then((ok) => {
+        if (!ok) return;
+        form.dataset.confirmed = "1";
+        form.requestSubmit();
+      });
+
+      return false;
     }
 
     // ================= Initialize =================

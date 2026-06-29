@@ -346,7 +346,7 @@
 <!-- ===== Form ===== -->
 <div class="acc-form">
   <h3>➕ {{ _('accounts_add_title') }}</h3>
-  <form method="post">
+  <form method="post" id="accountsTransactionForm" onsubmit="return confirmAccountsTransaction(event)">
     <select name="type" required>
       <option value="deposit">➕ {{ _('accounts_type_deposit') }}</option>
       <option value="withdraw">➖ {{ _('accounts_type_withdraw') }}</option>
@@ -355,6 +355,60 @@
     <input name="note" placeholder="{{ _('accounts_field_note_placeholder') }}">
     <button type="submit">💾 {{ _('accounts_save_button') }}</button>
   </form>
+</div>
+
+<!-- ===== Order Accounting Impact ===== -->
+<div class="table-container accounts-impact-panel">
+  <div class="accounts-impact-head">
+    <div>
+      <h3>الأثر المحاسبي للطلبات</h3>
+      <p>آخر الطلبات وكيف تظهر على المبيعات، تكلفة المخزون، الربح، والصندوق.</p>
+    </div>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>الطلب</th>
+        <th>الزبون</th>
+        <th>قيمة البيع</th>
+        <th>تكلفة المخزون</th>
+        <th>الربح الإجمالي</th>
+        <th>دخل الصندوق</th>
+        <th>ذمم</th>
+        <th>الحالة</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if order_accounting_impact %}
+        {% for row in order_accounting_impact %}
+        <tr>
+          <td>
+            <strong>#{{ row.invoice_id }}</strong>
+            <small>{{ row.created_at.strftime("%Y-%m-%d") if row.created_at else "" }}</small>
+          </td>
+          <td>{{ row.customer_name or "—" }}</td>
+          <td>{{ "{:,.0f}".format(row.sale_value) }} {{ _('accounts_currency_iqd') }}</td>
+          <td>{{ "{:,.0f}".format(row.stock_cost) }} {{ _('accounts_currency_iqd') }}</td>
+          <td class="{% if row.gross_profit < 0 %}red{% else %}green{% endif %}">
+            {{ "{:,.0f}".format(row.gross_profit) }} {{ _('accounts_currency_iqd') }}
+          </td>
+          <td class="green">{{ "{:,.0f}".format(row.paid_amount) }} {{ _('accounts_currency_iqd') }}</td>
+          <td>{{ "{:,.0f}".format(row.receivable_amount) }} {{ _('accounts_currency_iqd') }}</td>
+          <td>
+            <span class="accounts-status-pill">{{ row.status or "—" }}</span>
+            <span class="accounts-status-pill muted">{{ row.payment_status or "—" }}</span>
+          </td>
+        </tr>
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td colspan="8" style="text-align:center;padding:34px;color:var(--accounts-muted)">
+            لا توجد طلبات لعرض أثرها المحاسبي حالياً.
+          </td>
+        </tr>
+      {% endif %}
+    </tbody>
+  </table>
 </div>
 
 <!-- ===== Table ===== -->
@@ -406,5 +460,50 @@
 
 
 </div>
+
+<script>
+  function confirmAccountsTransaction(event) {
+    const form = event.currentTarget;
+    if (form.dataset.confirmed === "1") {
+      return true;
+    }
+
+    const type = form.elements.type.value;
+    const amount = Number(form.elements.amount.value || 0);
+    const note = (form.elements.note.value || "").trim();
+
+    if (!amount || amount <= 0) {
+      return true;
+    }
+
+    if (typeof window.finoraConfirmImpact !== "function") {
+      return true;
+    }
+
+    event.preventDefault();
+
+    const isDeposit = type === "deposit";
+    const title = isDeposit ? "تأكيد تسجيل إيداع" : "تأكيد تسجيل سحب";
+    const actionLabel = isDeposit ? "تسجيل الإيداع" : "تسجيل السحب";
+
+    window.finoraConfirmImpact({
+      title,
+      message: `المبلغ: ${amount.toLocaleString("ar-IQ")} {{ _('accounts_currency_iqd') }}${note ? " - " + note : ""}`,
+      confirmText: actionLabel,
+      danger: !isDeposit,
+      impact: [
+        isDeposit ? "يزيد إجمالي الإيداعات المعروضة في الحسابات." : "يزيد إجمالي السحوبات المعروضة في الحسابات.",
+        "لا يغير معادلات أرباح الطلبات أو تكلفة المخزون.",
+        "رصيد النقد يبقى معتمداً على صفحة الصندوق كمصدر موثوق."
+      ]
+    }).then((ok) => {
+      if (!ok) return;
+      form.dataset.confirmed = "1";
+      form.requestSubmit();
+    });
+
+    return false;
+  }
+</script>
 
 {% endblock %}
