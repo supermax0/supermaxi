@@ -16,8 +16,11 @@
         background-color: #f8faff;
         color: #1e293b;
         direction: rtl;
-        min-height: 100vh;
-        padding: 20px 30px;
+        height: 100vh;
+        padding: 15px 25px;
+        overflow: hidden; /* Prevent scrolling */
+        display: flex;
+        flex-direction: column;
     }
 
     /* Header */
@@ -25,339 +28,231 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 25px;
+        margin-bottom: 15px;
+        flex-shrink: 0;
     }
-    .header-right { display: flex; align-items: center; gap: 20px; }
-    .brand { display: flex; align-items: center; gap: 10px; font-weight: bold; font-size: 22px; color: #1e40af; }
-    .brand img { width: 28px; }
-    .branch-selector {
-        background: white; border: 1px solid #e2e8f0; border-radius: 8px;
-        padding: 8px 15px; font-size: 14px; display: flex; align-items: center; gap: 8px;
-        cursor: pointer; font-weight: 500;
-    }
-    .header-center { text-align: center; }
-    .header-center h1 { font-size: 24px; font-weight: 700; margin: 0 0 5px 0; display: flex; align-items: center; justify-content: center; gap: 8px; }
-    .header-center h1 span.badge { background: #3b82f6; width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-    .header-center p { font-size: 14px; color: #64748b; margin: 0; }
     
-    .header-left .date-picker {
-        background: white; border: 1px solid #e2e8f0; border-radius: 8px;
-        padding: 8px 15px; font-size: 14px; display: flex; align-items: center; gap: 8px; color: #334155; font-weight: 500;
-    }
+    .header-start { display: flex; align-items: center; } 
+    .header-end { display: flex; align-items: center; gap: 15px; }
 
+    .brand { display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 20px; color: #1e40af; }
+    .brand img { width: 24px; }
+    .branch-selector, .date-picker {
+        background: white; border: 1px solid #e2e8f0; border-radius: 8px;
+        padding: 6px 12px; font-size: 13px; display: flex; align-items: center; gap: 6px;
+        cursor: pointer; font-weight: 500; color: #334155;
+    }
+    .header-center { text-align: center; flex: 1; }
+    .header-center h1 { font-size: 20px; font-weight: 700; margin: 0 0 2px 0; display: flex; align-items: center; justify-content: center; gap: 6px; }
+    .header-center h1 span.badge { background: #3b82f6; width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .header-center p { font-size: 12px; color: #64748b; margin: 0; }
+    
     /* Top Cards Grid */
     .kpi-grid {
         display: grid;
         grid-template-columns: repeat(5, 1fr);
         gap: 15px;
-        margin-bottom: 25px;
+        margin-bottom: 15px;
+        flex-shrink: 0;
     }
     .kpi-card {
-        background: white;
-        border-radius: 16px;
-        padding: 20px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-        display: flex;
-        flex-direction: column;
-        position: relative;
-        overflow: hidden;
+        background: white; border-radius: 12px; padding: 12px 15px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        display: flex; flex-direction: column;
     }
     .kpi-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 10px;
+        display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px;
     }
     .kpi-icon {
-        width: 40px; height: 40px; border-radius: 12px;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 20px;
+        width: 32px; height: 32px; border-radius: 8px;
+        display: flex; align-items: center; justify-content: center; font-size: 16px;
     }
-    /* Colors for icons */
     .icon-sales { background: #eff6ff; color: #3b82f6; }
     .icon-profit { background: #f0fdf4; color: #22c55e; }
     .icon-balance { background: #f5f3ff; color: #8b5cf6; }
     .icon-purchases { background: #fff7ed; color: #f97316; }
     .icon-orders { background: #eff6ff; color: #3b82f6; }
 
-    .kpi-title { font-size: 14px; color: #64748b; font-weight: 500; }
-    .kpi-value { font-size: 24px; font-weight: 800; color: #0f172a; margin: 5px 0; }
-    .kpi-trend { font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 4px; }
+    .kpi-title { font-size: 13px; color: #64748b; font-weight: 600; }
+    .kpi-value { font-size: 18px; font-weight: 800; color: #0f172a; margin: 2px 0; }
+    .kpi-trend { font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 4px; }
     .trend-up { color: #22c55e; }
     .trend-down { color: #ef4444; }
-    .trend-text { color: #94a3b8; font-weight: 400; margin-right: 5px; }
+    .trend-text { color: #94a3b8; font-weight: 400; margin-right: 2px; }
     
-    .sparkline-container { height: 40px; width: 100%; margin-top: 10px; }
+    .sparkline-container { height: 30px; width: 100%; margin-top: 5px; }
 
     /* Middle Section */
     .mid-section {
         display: grid;
-        grid-template-columns: 2fr 1fr;
-        gap: 20px;
-        margin-bottom: 25px;
+        grid-template-columns: 1fr 2.5fr; /* Health (Right), Chart (Left) */
+        gap: 15px;
+        margin-bottom: 15px;
+        flex: 1;
+        min-height: 0;
     }
     .card-panel {
-        background: white;
-        border-radius: 16px;
-        padding: 20px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        background: white; border-radius: 12px; padding: 15px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        display: flex; flex-direction: column;
     }
     .panel-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 20px;
+        display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-shrink: 0;
     }
-    .panel-title { font-size: 16px; font-weight: 700; color: #0f172a; }
-    .chart-filters {
-        display: flex;
-        background: #f1f5f9;
-        border-radius: 20px;
-        padding: 4px;
-        gap: 5px;
-    }
-    .chart-filter-btn {
-        background: transparent; border: none; padding: 6px 12px; border-radius: 16px;
-        font-size: 12px; font-weight: 600; color: #64748b; cursor: pointer;
-    }
-    .chart-filter-btn.active {
-        background: #3b82f6; color: white;
-    }
-    .chart-legend { display: flex; gap: 15px; font-size: 13px; font-weight: 500; color: #475569; }
-    .legend-item { display: flex; align-items: center; gap: 6px; }
-    .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .panel-title { font-size: 14px; font-weight: 700; color: #0f172a; }
+    .chart-filters { display: flex; background: #f1f5f9; border-radius: 16px; padding: 2px; gap: 2px; }
+    .chart-filter-btn { background: transparent; border: none; padding: 4px 10px; border-radius: 14px; font-size: 11px; font-weight: 600; color: #64748b; cursor: pointer; }
+    .chart-filter-btn.active { background: #3b82f6; color: white; }
+    .chart-legend { display: flex; gap: 10px; font-size: 12px; font-weight: 500; color: #475569; }
+    .legend-item { display: flex; align-items: center; gap: 4px; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; }
 
     /* Health Circular Progress */
-    .health-container {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-    }
-    .health-circle-wrapper {
-        position: relative;
-        width: 150px;
-        height: 150px;
-        margin-bottom: 20px;
-    }
-    .health-score {
-        position: absolute;
-        top: 50%; left: 50%; transform: translate(-50%, -50%);
-        text-align: center;
-    }
-    .health-score-val { font-size: 32px; font-weight: 800; color: #0f172a; line-height: 1; }
-    .health-score-text { font-size: 12px; color: #22c55e; font-weight: 600; margin-top: 5px; }
+    .health-container { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; }
+    .health-circle-wrapper { position: relative; width: 110px; height: 110px; margin-bottom: 15px; }
+    .health-score { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
+    .health-score-val { font-size: 24px; font-weight: 800; color: #0f172a; line-height: 1; }
+    .health-score-text { font-size: 11px; color: #22c55e; font-weight: 600; margin-top: 2px; display: flex; align-items:center; gap:3px; justify-content:center;}
     
-    .health-metrics { width: 100%; }
-    .health-metric-row {
-        display: flex;
-        align-items: center;
-        margin-bottom: 12px;
-        font-size: 13px;
-        font-weight: 500;
-        color: #475569;
-    }
-    .metric-name { width: 80px; display: flex; align-items: center; gap: 6px; }
-    .metric-bar-bg {
-        flex: 1; height: 6px; background: #f1f5f9; border-radius: 3px; margin: 0 10px; overflow: hidden;
-    }
+    .health-metrics { width: 100%; padding: 0 10px; }
+    .health-metric-row { display: flex; align-items: center; margin-bottom: 8px; font-size: 12px; font-weight: 500; color: #475569; }
+    .metric-name { width: 75px; display: flex; align-items: center; gap: 6px; }
+    .metric-bar-bg { flex: 1; height: 5px; background: #f1f5f9; border-radius: 3px; margin: 0 8px; overflow: hidden; }
     .metric-bar-fill { height: 100%; border-radius: 3px; }
-    .metric-value { width: 35px; text-align: left; font-weight: 700; color: #0f172a; }
+    .metric-value { width: 30px; text-align: left; font-weight: 700; color: #0f172a; }
 
     /* Bottom Section */
     .bottom-section {
         display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
-        gap: 20px;
+        grid-template-columns: 1.2fr 1.5fr 1fr; /* Quick Overview, Fin Summary, Cash Flow */
+        gap: 15px;
+        flex-shrink: 0;
+        height: 150px;
     }
     
     /* Cash Flow Diagram */
-    .cashflow-diagram {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 15px;
-        padding: 10px 0;
-    }
-    .cf-row { display: flex; align-items: center; justify-content: center; gap: 20px; width: 100%; }
-    .cf-box {
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 15px;
-        text-align: center;
-        width: 130px;
-    }
+    .cashflow-diagram { display: flex; flex-direction: column; align-items: center; justify-content: center; flex:1; gap: 8px;}
+    .cf-row { display: flex; align-items: center; justify-content: center; gap: 15px; width: 100%; }
+    .cf-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px; text-align: center; width: 100px; }
     .cf-box.main { background: #eff6ff; border-color: #bfdbfe; }
     .cf-box.green { background: #f0fdf4; border-color: #bbf7d0; }
     .cf-box.red { background: #fef2f2; border-color: #fecaca; }
-    
-    .cf-title { font-size: 12px; color: #64748b; font-weight: 600; margin-bottom: 5px; }
-    .cf-val { font-size: 16px; font-weight: 700; color: #0f172a; }
-    .cf-arrow { color: #94a3b8; font-size: 18px; }
+    .cf-title { font-size: 11px; color: #64748b; font-weight: 600; margin-bottom: 2px; }
+    .cf-val { font-size: 14px; font-weight: 700; color: #0f172a; }
+    .cf-arrow { color: #94a3b8; font-size: 14px; }
     
     /* Financial Status */
-    .fin-status-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 15px;
-    }
-    .fin-card {
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 15px;
-        display: flex;
-        align-items: center;
-        gap: 15px;
-    }
-    .fin-icon {
-        width: 36px; height: 36px; border-radius: 8px;
-        display: flex; align-items: center; justify-content: center; font-size: 18px;
-    }
-    .fin-details h4 { font-size: 12px; color: #64748b; margin: 0 0 5px 0; font-weight: 600; }
-    .fin-details p { font-size: 16px; font-weight: 700; color: #0f172a; margin: 0; }
+    .fin-status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; flex: 1; align-content: center;}
+    .fin-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; display: flex; align-items: center; gap: 10px; }
+    .fin-icon { width: 30px; height: 30px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+    .fin-details h4 { font-size: 11px; color: #64748b; margin: 0 0 2px 0; font-weight: 600; }
+    .fin-details p { font-size: 14px; font-weight: 700; color: #0f172a; margin: 0; }
 
     /* Quick Overview */
-    .quick-overview {
-        display: flex;
-        justify-content: space-between;
-        align-items: stretch;
-        padding: 10px 0;
-        gap: 15px;
-    }
-    .qo-item {
-        flex: 1;
-        text-align: center;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-    }
-    .qo-title { font-size: 11px; color: #64748b; font-weight: 600; margin-bottom: 8px; }
-    .qo-val { font-size: 18px; font-weight: 800; color: #0f172a; margin-bottom: 5px; }
-    .qo-trend { font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 4px; }
+    .quick-overview { display: flex; justify-content: space-between; align-items: stretch; flex:1; padding: 0; gap: 10px; }
+    .qo-item { flex: 1; text-align: center; display: flex; flex-direction: column; justify-content: center; align-items: center;}
+    .qo-title { font-size: 11px; color: #64748b; font-weight: 600; margin-bottom: 6px; }
+    .qo-val { font-size: 16px; font-weight: 800; color: #0f172a; margin-bottom: 4px; }
+    .qo-trend { font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 2px; }
 </style>
 
 <div class="exec-dashboard">
     <!-- Header -->
     <div class="exec-header">
-        <div class="header-right">
-            <div class="brand">
-                <div style="background: #3b82f6; width:28px; height:28px; border-radius:6px; display:flex; align-items:center; justify-content:center; color:white; font-size:18px;">
-                    <i class="fas fa-layer-group"></i>
-                </div>
-                Finora
-            </div>
-            <div class="branch-selector">
-                كل الفروع <i class="fas fa-chevron-down" style="color: #94a3b8; font-size: 10px;"></i>
-                <i class="fas fa-map-marker-alt" style="color: #94a3b8; margin-right:5px;"></i>
+        <div class="header-start">
+            <div class="date-picker">
+                12 مايو 2024 <i class="far fa-calendar-alt" style="color: #94a3b8; margin-right:5px;"></i>
             </div>
         </div>
         <div class="header-center">
             <h1>لوحة المدير التنفيذي <span class="badge"></span></h1>
             <p>مرحباً بك، المدير</p>
         </div>
-        <div class="header-left">
-            <div class="date-picker">
-                12 مايو 2024 <i class="far fa-calendar-alt" style="color: #94a3b8; margin-right:5px;"></i>
+        <div class="header-end">
+            <div class="branch-selector">
+                كل الفروع <i class="fas fa-chevron-down" style="color: #94a3b8; font-size: 10px;"></i>
+                <i class="fas fa-map-marker-alt" style="color: #94a3b8; margin-right:5px;"></i>
+            </div>
+            <div class="brand">
+                <div style="background: #3b82f6; width:26px; height:26px; border-radius:6px; display:flex; align-items:center; justify-content:center; color:white; font-size:16px;">
+                    <i class="fas fa-layer-group"></i>
+                </div>
+                Finora
             </div>
         </div>
     </div>
 
     <!-- Top KPI Cards -->
     <div class="kpi-grid">
-        <!-- Sales -->
+        <!-- Orders Today (Rightmost) -->
         <div class="kpi-card">
             <div class="kpi-header">
-                <div class="kpi-icon icon-sales"><i class="fas fa-shopping-cart"></i></div>
-                <div style="text-align: left;">
-                    <div class="kpi-title">إجمالي المبيعات</div>
-                    <div class="kpi-value"><span id="val_sales">0</span> د.ع</div>
-                    <div class="kpi-trend trend-up"><i class="fas fa-arrow-up"></i> 12% <span class="trend-text">من أمس</span></div>
+                <div style="text-align: right;">
+                    <div class="kpi-title">الطلبات اليوم</div>
+                    <div class="kpi-value" id="val_orders">0</div>
+                    <div class="kpi-trend trend-up"><i class="fas fa-arrow-up"></i> 8% <span class="trend-text">من أمس</span></div>
                 </div>
+                <div class="kpi-icon icon-orders"><i class="fas fa-clipboard-list"></i></div>
             </div>
-            <div class="sparkline-container"><canvas id="spark_sales"></canvas></div>
+            <div class="sparkline-container"><canvas id="spark_orders"></canvas></div>
         </div>
         
-        <!-- Profit -->
+        <!-- Purchases -->
         <div class="kpi-card">
             <div class="kpi-header">
-                <div class="kpi-icon icon-profit"><i class="fas fa-chart-line"></i></div>
-                <div style="text-align: left;">
-                    <div class="kpi-title">صافي الربح</div>
-                    <div class="kpi-value"><span id="val_profit">0</span> د.ع</div>
-                    <div class="kpi-trend trend-up"><i class="fas fa-arrow-up"></i> 18% <span class="trend-text">من أمس</span></div>
+                <div style="text-align: right;">
+                    <div class="kpi-title">المشتريات</div>
+                    <div class="kpi-value"><span id="val_purchases">0</span> د.ع</div>
+                    <div class="kpi-trend trend-down"><i class="fas fa-arrow-down"></i> 5% <span class="trend-text">من أمس</span></div>
                 </div>
+                <div class="kpi-icon icon-purchases"><i class="fas fa-shopping-bag"></i></div>
             </div>
-            <div class="sparkline-container"><canvas id="spark_profit"></canvas></div>
+            <div class="sparkline-container"><canvas id="spark_purchases"></canvas></div>
         </div>
 
         <!-- Balance -->
         <div class="kpi-card">
             <div class="kpi-header">
-                <div class="kpi-icon icon-balance"><i class="fas fa-wallet"></i></div>
-                <div style="text-align: left;">
+                <div style="text-align: right;">
                     <div class="kpi-title">الرصيد الحالي</div>
                     <div class="kpi-value"><span id="val_balance">0</span> د.ع</div>
                     <div class="kpi-trend trend-up"><i class="fas fa-arrow-up"></i> 12% <span class="trend-text">من أمس</span></div>
                 </div>
+                <div class="kpi-icon icon-balance"><i class="fas fa-wallet"></i></div>
             </div>
             <div class="sparkline-container"><canvas id="spark_balance"></canvas></div>
         </div>
-
-        <!-- Purchases -->
+        
+        <!-- Profit -->
         <div class="kpi-card">
             <div class="kpi-header">
-                <div class="kpi-icon icon-purchases"><i class="fas fa-shopping-bag"></i></div>
-                <div style="text-align: left;">
-                    <div class="kpi-title">المشتريات</div>
-                    <div class="kpi-value"><span id="val_purchases">0</span> د.ع</div>
-                    <div class="kpi-trend trend-down"><i class="fas fa-arrow-down"></i> 5% <span class="trend-text">من أمس</span></div>
+                <div style="text-align: right;">
+                    <div class="kpi-title">صافي الربح</div>
+                    <div class="kpi-value"><span id="val_profit">0</span> د.ع</div>
+                    <div class="kpi-trend trend-up"><i class="fas fa-arrow-up"></i> 18% <span class="trend-text">من أمس</span></div>
                 </div>
+                <div class="kpi-icon icon-profit"><i class="fas fa-chart-line"></i></div>
             </div>
-            <div class="sparkline-container"><canvas id="spark_purchases"></canvas></div>
+            <div class="sparkline-container"><canvas id="spark_profit"></canvas></div>
         </div>
 
-        <!-- Orders Today -->
+        <!-- Sales (Leftmost) -->
         <div class="kpi-card">
             <div class="kpi-header">
-                <div class="kpi-icon icon-orders"><i class="fas fa-clipboard-list"></i></div>
-                <div style="text-align: left;">
-                    <div class="kpi-title">الطلبات اليوم</div>
-                    <div class="kpi-value" id="val_orders">0</div>
-                    <div class="kpi-trend trend-up"><i class="fas fa-arrow-up"></i> 8% <span class="trend-text">من أمس</span></div>
+                <div style="text-align: right;">
+                    <div class="kpi-title">إجمالي المبيعات</div>
+                    <div class="kpi-value"><span id="val_sales">0</span> د.ع</div>
+                    <div class="kpi-trend trend-up"><i class="fas fa-arrow-up"></i> 12% <span class="trend-text">من أمس</span></div>
                 </div>
+                <div class="kpi-icon icon-sales"><i class="fas fa-shopping-cart"></i></div>
             </div>
-            <div class="sparkline-container"><canvas id="spark_orders"></canvas></div>
+            <div class="sparkline-container"><canvas id="spark_sales"></canvas></div>
         </div>
     </div>
 
     <!-- Middle Section -->
     <div class="mid-section">
-        <!-- Main Chart -->
-        <div class="card-panel">
-            <div class="panel-header">
-                <div class="panel-title">الأداء خلال آخر 7 أيام</div>
-                <div class="chart-legend">
-                    <div class="legend-item"><div class="dot" style="background:#3b82f6;"></div> المبيعات</div>
-                    <div class="legend-item"><div class="dot" style="background:#22c55e;"></div> الأرباح</div>
-                    <div class="legend-item"><div class="dot" style="background:#ef4444;"></div> المصروفات</div>
-                    <div class="legend-item"><div class="dot" style="background:#a855f7;"></div> التدفق النقدي</div>
-                </div>
-                <div class="chart-filters">
-                    <button class="chart-filter-btn">سنة</button>
-                    <button class="chart-filter-btn">90 يوم</button>
-                    <button class="chart-filter-btn">30 يوم</button>
-                    <button class="chart-filter-btn active">7 أيام</button>
-                    <button class="chart-filter-btn" style="padding:6px; margin-right:5px;"><i class="fas fa-filter"></i></button>
-                </div>
-            </div>
-            <div style="height: 300px; width: 100%;">
-                <canvas id="mainChart"></canvas>
-            </div>
-        </div>
-
-        <!-- Business Health -->
+        <!-- Business Health (Right) -->
         <div class="card-panel">
             <div class="panel-header">
                 <div class="panel-title" style="display:flex; align-items:center; gap:8px;">
@@ -404,50 +299,72 @@
                 </div>
             </div>
         </div>
+
+        <!-- Main Chart (Left) -->
+        <div class="card-panel">
+            <div class="panel-header">
+                <div class="panel-title">الأداء خلال آخر 7 أيام</div>
+                <div class="chart-legend">
+                    <div class="legend-item"><div class="dot" style="background:#3b82f6;"></div> المبيعات</div>
+                    <div class="legend-item"><div class="dot" style="background:#22c55e;"></div> الأرباح</div>
+                    <div class="legend-item"><div class="dot" style="background:#ef4444;"></div> المصروفات</div>
+                    <div class="legend-item"><div class="dot" style="background:#a855f7;"></div> التدفق النقدي</div>
+                </div>
+                <div class="chart-filters">
+                    <button class="chart-filter-btn">سنة</button>
+                    <button class="chart-filter-btn">90 يوم</button>
+                    <button class="chart-filter-btn">30 يوم</button>
+                    <button class="chart-filter-btn active">7 أيام</button>
+                    <button class="chart-filter-btn" style="padding:4px 8px; margin-right:5px;"><i class="fas fa-filter"></i></button>
+                </div>
+            </div>
+            <div style="flex: 1; min-height: 0; width: 100%; position: relative;">
+                <canvas id="mainChart"></canvas>
+            </div>
+        </div>
     </div>
 
     <!-- Bottom Section -->
     <div class="bottom-section">
-        <!-- Cash Flow -->
+        <!-- Quick Overview (Right) -->
         <div class="card-panel">
             <div class="panel-header">
-                <div class="panel-title">التدفق النقدي</div>
+                <div class="panel-title">نظرة سريعة</div>
             </div>
-            <div class="cashflow-diagram">
-                <div class="cf-row">
-                    <div class="cf-box green">
-                        <div class="cf-title">إجمالي الواردات</div>
-                        <div class="cf-val"><span id="cf_in">0</span> د.ع</div>
-                    </div>
-                    <i class="fas fa-arrow-left cf-arrow"></i>
-                    <div class="cf-box main">
-                        <div class="cf-title">الصافي</div>
-                        <div class="cf-val" style="color:#3b82f6;"><span id="cf_net">0</span> د.ع</div>
-                    </div>
-                    <i class="fas fa-arrow-left cf-arrow"></i>
-                    <div class="cf-box red">
-                        <div class="cf-title">إجمالي المصروفات</div>
-                        <div class="cf-val"><span id="cf_out">0</span> د.ع</div>
-                    </div>
+            <div class="quick-overview">
+                <div class="qo-item">
+                    <div class="qo-title">معدل تحصيل الديون</div>
+                    <div class="qo-val"><span id="qo_debt">0</span>%</div>
+                    <div class="qo-trend trend-up"><i class="fas fa-arrow-up"></i> 6%</div>
+                    <div style="margin-top:6px;"><i class="fas fa-percent" style="color:#3b82f6; background:#eff6ff; padding:4px; border-radius:50%; font-size:10px;"></i></div>
                 </div>
-                <div class="cf-row" style="margin-top:10px;">
-                    <i class="fas fa-arrows-alt-v cf-arrow"></i>
+                <div class="qo-item">
+                    <div class="qo-title">قيمة المخزون</div>
+                    <div class="qo-val"><span id="qo_inv">0</span> د.ع</div>
+                    <div class="qo-trend trend-up"><i class="fas fa-arrow-up"></i> 7%</div>
+                    <div style="margin-top:6px;"><i class="fas fa-box" style="color:#f97316; background:#fff7ed; padding:4px; border-radius:50%; font-size:10px;"></i></div>
                 </div>
-                <div class="cf-row">
-                    <div class="cf-box" style="background:white;">
-                        <div class="cf-title">البنك</div>
-                        <div class="cf-val"><span id="cf_bank">0</span> د.ع</div>
-                    </div>
+                <div class="qo-item">
+                    <div class="qo-title">العملاء الجدد</div>
+                    <div class="qo-val" id="qo_cust">0</div>
+                    <div class="qo-trend trend-up"><i class="fas fa-arrow-up"></i> 20%</div>
+                    <div style="margin-top:6px;"><i class="fas fa-user-plus" style="color:#22c55e; background:#f0fdf4; padding:4px; border-radius:50%; font-size:10px;"></i></div>
+                </div>
+                <div class="qo-item">
+                    <div class="qo-title">متوسط البيع اليومي</div>
+                    <div class="qo-val"><span id="qo_avg_sale">0</span> د.ع</div>
+                    <div class="qo-trend trend-up"><i class="fas fa-arrow-up"></i> 11%</div>
+                    <div style="margin-top:6px;"><i class="fas fa-chart-line" style="color:#8b5cf6; background:#f5f3ff; padding:4px; border-radius:50%; font-size:10px;"></i></div>
                 </div>
             </div>
         </div>
 
-        <!-- Financial Summary -->
+        <!-- Financial Summary (Middle) -->
         <div class="card-panel">
             <div class="panel-header">
                 <div class="panel-title" style="margin: 0 auto;">ملخص الوضع المالي</div>
             </div>
-            <div class="fin-status-grid" style="margin-top: 15px;">
+            <div class="fin-status-grid">
                 <div class="fin-card">
                     <div class="fin-icon" style="background:#dcfce7; color:#22c55e;"><i class="fas fa-cash-register"></i></div>
                     <div class="fin-details">
@@ -479,35 +396,36 @@
             </div>
         </div>
 
-        <!-- Quick Overview -->
+        <!-- Cash Flow (Left) -->
         <div class="card-panel">
             <div class="panel-header">
-                <div class="panel-title">نظرة سريعة</div>
+                <div class="panel-title">التدفق النقدي</div>
             </div>
-            <div class="quick-overview" style="margin-top:20px;">
-                <div class="qo-item">
-                    <div class="qo-title">معدل تحصيل الديون</div>
-                    <div class="qo-val"><span id="qo_debt">0</span>%</div>
-                    <div class="qo-trend trend-up"><i class="fas fa-arrow-up"></i> 6%</div>
-                    <div style="margin-top:8px;"><i class="fas fa-percent" style="color:#3b82f6; background:#eff6ff; padding:5px; border-radius:50%; font-size:10px;"></i></div>
+            <div class="cashflow-diagram">
+                <div class="cf-row">
+                    <div class="cf-box green">
+                        <div class="cf-title">إجمالي الواردات</div>
+                        <div class="cf-val"><span id="cf_in">0</span> د.ع</div>
+                    </div>
+                    <i class="fas fa-arrow-left cf-arrow"></i>
+                    <div class="cf-box main">
+                        <div class="cf-title">الصافي</div>
+                        <div class="cf-val" style="color:#3b82f6;"><span id="cf_net">0</span> د.ع</div>
+                    </div>
+                    <i class="fas fa-arrow-left cf-arrow"></i>
+                    <div class="cf-box red">
+                        <div class="cf-title">إجمالي المصروفات</div>
+                        <div class="cf-val"><span id="cf_out">0</span> د.ع</div>
+                    </div>
                 </div>
-                <div class="qo-item">
-                    <div class="qo-title">قيمة المخزون</div>
-                    <div class="qo-val"><span id="qo_inv">0</span> د.ع</div>
-                    <div class="qo-trend trend-up"><i class="fas fa-arrow-up"></i> 7%</div>
-                    <div style="margin-top:8px;"><i class="fas fa-box" style="color:#f97316; background:#fff7ed; padding:5px; border-radius:50%; font-size:10px;"></i></div>
+                <div class="cf-row" style="margin-top:2px;">
+                    <i class="fas fa-arrows-alt-v cf-arrow"></i>
                 </div>
-                <div class="qo-item">
-                    <div class="qo-title">عدد العملاء الجدد</div>
-                    <div class="qo-val" id="qo_cust">0</div>
-                    <div class="qo-trend trend-up"><i class="fas fa-arrow-up"></i> 20%</div>
-                    <div style="margin-top:8px;"><i class="fas fa-user-plus" style="color:#22c55e; background:#f0fdf4; padding:5px; border-radius:50%; font-size:10px;"></i></div>
-                </div>
-                <div class="qo-item">
-                    <div class="qo-title">متوسط البيع اليومي</div>
-                    <div class="qo-val"><span id="qo_avg_sale">0</span> د.ع</div>
-                    <div class="qo-trend trend-up"><i class="fas fa-arrow-up"></i> 11%</div>
-                    <div style="margin-top:8px;"><i class="fas fa-chart-line" style="color:#8b5cf6; background:#f5f3ff; padding:5px; border-radius:50%; font-size:10px;"></i></div>
+                <div class="cf-row">
+                    <div class="cf-box" style="background:white;">
+                        <div class="cf-title">البنك</div>
+                        <div class="cf-val"><span id="cf_bank">0</span> د.ع</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -515,12 +433,7 @@
 </div>
 
 <script>
-    // Format numbers
-    function fmt(num) {
-        return Number(num).toLocaleString('en-US');
-    }
-
-    // Chart configs
+    function fmt(num) { return Number(num).toLocaleString('en-US'); }
     Chart.defaults.font.family = "'Tajawal', sans-serif";
     
     function createSparkline(ctxId, color, data) {
@@ -529,49 +442,30 @@
             type: 'line',
             data: {
                 labels: ['1','2','3','4','5','6','7'],
-                datasets: [{
-                    data: data,
-                    borderColor: color,
-                    borderWidth: 2,
-                    tension: 0.4,
-                    pointRadius: 0
-                }]
+                datasets: [{ data: data, borderColor: color, borderWidth: 2, tension: 0.4, pointRadius: 0 }]
             },
             options: {
                 responsive: true, maintainAspectRatio: false,
                 plugins: { legend: { display: false }, tooltip: { enabled: false } },
-                scales: { x: { display: false }, y: { display: false, min: Math.min(...data)*0.9 } }
+                scales: { x: { display: false }, y: { display: false, min: Math.min(...data)*0.9 } },
+                layout: { padding: 0 }
             }
         });
     }
 
-    // Initialize circular progress for Health
     function initHealthCircle() {
         const ctx = document.getElementById('healthCircle').getContext('2d');
         new Chart(ctx, {
             type: 'doughnut',
             data: {
-                datasets: [{
-                    data: [92, 8],
-                    backgroundColor: ['#0ea5e9', '#f1f5f9'],
-                    borderWidth: 0,
-                    circumference: 360,
-                    rotation: 270,
-                    cutout: '80%',
-                    borderRadius: 20
-                }]
+                datasets: [{ data: [92, 8], backgroundColor: ['#0ea5e9', '#f1f5f9'], borderWidth: 0, circumference: 360, rotation: 270, cutout: '80%', borderRadius: 20 }]
             },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { display: false }, tooltip: { enabled: false } }
-            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false } } },
             plugins: [{
                 id: 'customGradient',
                 beforeDraw: (chart) => {
-                    const ctx = chart.ctx;
-                    const gradient = ctx.createLinearGradient(0, 0, 0, 150);
-                    gradient.addColorStop(0, '#3b82f6');
-                    gradient.addColorStop(1, '#22c55e');
+                    const ctx = chart.ctx; const gradient = ctx.createLinearGradient(0, 0, 0, 110);
+                    gradient.addColorStop(0, '#3b82f6'); gradient.addColorStop(1, '#22c55e');
                     chart.data.datasets[0].backgroundColor[0] = gradient;
                 }
             }]
@@ -580,73 +474,58 @@
 
     initHealthCircle();
 
-    // Fetch live data
-    fetch('/api/executive_dashboard_data')
-        .then(res => res.json())
-        .then(data => {
-            // Populate KPIs
-            document.getElementById('val_sales').innerText = fmt(data.sales_today);
-            document.getElementById('val_profit').innerText = fmt(data.profit_today);
-            document.getElementById('val_balance').innerText = fmt(data.balance);
-            document.getElementById('val_purchases').innerText = fmt(data.purchases_today);
-            document.getElementById('val_orders').innerText = fmt(data.orders_today);
+    fetch('/api/executive_dashboard_data').then(res => res.json()).then(data => {
+        document.getElementById('val_sales').innerText = fmt(data.sales_today);
+        document.getElementById('val_profit').innerText = fmt(data.profit_today);
+        document.getElementById('val_balance').innerText = fmt(data.balance);
+        document.getElementById('val_purchases').innerText = fmt(data.purchases_today);
+        document.getElementById('val_orders').innerText = fmt(data.orders_today);
 
-            // Populate Sparklines (Mock trend data ending in the real value)
-            createSparkline('spark_sales', '#3b82f6', [10, 20, 15, 25, 20, 30, data.sales_today > 0 ? 35 : 10]);
-            createSparkline('spark_profit', '#22c55e', [5, 10, 8, 12, 10, 15, data.profit_today > 0 ? 18 : 5]);
-            createSparkline('spark_balance', '#8b5cf6', [50, 48, 55, 60, 58, 65, data.balance > 0 ? 70 : 50]);
-            createSparkline('spark_purchases', '#f97316', [20, 15, 25, 10, 30, 20, data.purchases_today > 0 ? 15 : 20]);
-            createSparkline('spark_orders', '#0ea5e9', [5, 8, 12, 7, 15, 10, data.orders_today > 0 ? 12 : 5]);
+        createSparkline('spark_sales', '#3b82f6', [10, 20, 15, 25, 20, 30, data.sales_today > 0 ? 35 : 10]);
+        createSparkline('spark_profit', '#22c55e', [5, 10, 8, 12, 10, 15, data.profit_today > 0 ? 18 : 5]);
+        createSparkline('spark_balance', '#8b5cf6', [50, 48, 55, 60, 58, 65, data.balance > 0 ? 70 : 50]);
+        createSparkline('spark_purchases', '#f97316', [20, 15, 25, 10, 30, 20, data.purchases_today > 0 ? 15 : 20]);
+        createSparkline('spark_orders', '#0ea5e9', [5, 8, 12, 7, 15, 10, data.orders_today > 0 ? 12 : 5]);
 
-            // Main Chart
-            const ctxMain = document.getElementById('mainChart').getContext('2d');
-            
-            // Gradients
-            const gradSales = ctxMain.createLinearGradient(0, 0, 0, 300);
-            gradSales.addColorStop(0, 'rgba(59, 130, 246, 0.2)'); gradSales.addColorStop(1, 'rgba(59, 130, 246, 0)');
-            
-            new Chart(ctxMain, {
-                type: 'line',
-                data: {
-                    labels: data.chart_labels,
-                    datasets: [
-                        { label: 'المبيعات', data: data.chart_sales, borderColor: '#3b82f6', backgroundColor: gradSales, fill: true, tension: 0.4, borderWidth: 2, pointRadius: 4, pointBackgroundColor: '#fff', pointBorderColor: '#3b82f6' },
-                        { label: 'الأرباح', data: data.chart_profit, borderColor: '#22c55e', fill: false, tension: 0.4, borderWidth: 2, pointRadius: 4, pointBackgroundColor: '#fff', pointBorderColor: '#22c55e' },
-                        { label: 'المصروفات', data: data.chart_expenses, borderColor: '#ef4444', fill: false, tension: 0.4, borderWidth: 2, pointRadius: 4, pointBackgroundColor: '#fff', pointBorderColor: '#ef4444' },
-                        { label: 'التدفق النقدي', data: data.chart_cashflow, borderColor: '#a855f7', fill: false, tension: 0.4, borderWidth: 2, pointRadius: 4, pointBackgroundColor: '#fff', pointBorderColor: '#a855f7' }
-                    ]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { grid: { display: false } },
-                        y: { 
-                            border: { display: false },
-                            grid: { color: '#f1f5f9' },
-                            ticks: { callback: function(value) { return value >= 1000 ? (value/1000) + 'k' : value; } }
-                        }
-                    }
+        const ctxMain = document.getElementById('mainChart').getContext('2d');
+        const gradSales = ctxMain.createLinearGradient(0, 0, 0, 200);
+        gradSales.addColorStop(0, 'rgba(59, 130, 246, 0.2)'); gradSales.addColorStop(1, 'rgba(59, 130, 246, 0)');
+        
+        new Chart(ctxMain, {
+            type: 'line',
+            data: {
+                labels: data.chart_labels,
+                datasets: [
+                    { label: 'المبيعات', data: data.chart_sales, borderColor: '#3b82f6', backgroundColor: gradSales, fill: true, tension: 0.4, borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#fff', pointBorderColor: '#3b82f6' },
+                    { label: 'الأرباح', data: data.chart_profit, borderColor: '#22c55e', fill: false, tension: 0.4, borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#fff', pointBorderColor: '#22c55e' },
+                    { label: 'المصروفات', data: data.chart_expenses, borderColor: '#ef4444', fill: false, tension: 0.4, borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#fff', pointBorderColor: '#ef4444' },
+                    { label: 'التدفق النقدي', data: data.chart_cashflow, borderColor: '#a855f7', fill: false, tension: 0.4, borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#fff', pointBorderColor: '#a855f7' }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false } },
+                    y: { border: { display: false }, grid: { color: '#f1f5f9' }, ticks: { callback: function(value) { return value >= 1000 ? (value/1000) + 'k' : value; } } }
                 }
-            });
-
-            // Populate Cash Flow
-            document.getElementById('cf_in').innerText = fmt(data.sales_today);
-            document.getElementById('cf_net').innerText = fmt(data.balance);
-            document.getElementById('cf_out').innerText = fmt(data.chart_expenses.reduce((a,b)=>a+b,0) + data.purchases_today);
-            document.getElementById('cf_bank').innerText = fmt(data.bank_balance);
-
-            // Populate Fin Status
-            document.getElementById('val_box').innerText = fmt(data.box_balance);
-            document.getElementById('val_bank').innerText = fmt(data.bank_balance);
-            document.getElementById('val_receivables').innerText = fmt(data.receivables);
-            document.getElementById('val_liabilities').innerText = fmt(data.liabilities);
-
-            // Populate Quick Overview
-            document.getElementById('qo_debt').innerText = data.debt_collection_rate;
-            document.getElementById('qo_inv').innerText = fmt(data.inventory_value);
-            document.getElementById('qo_cust').innerText = data.new_customers;
-            document.getElementById('qo_avg_sale').innerText = fmt(data.avg_daily_sales);
+            }
         });
+
+        document.getElementById('cf_in').innerText = fmt(data.sales_today);
+        document.getElementById('cf_net').innerText = fmt(data.balance);
+        document.getElementById('cf_out').innerText = fmt(data.chart_expenses.reduce((a,b)=>a+b,0) + data.purchases_today);
+        document.getElementById('cf_bank').innerText = fmt(data.bank_balance);
+
+        document.getElementById('val_box').innerText = fmt(data.box_balance);
+        document.getElementById('val_bank').innerText = fmt(data.bank_balance);
+        document.getElementById('val_receivables').innerText = fmt(data.receivables);
+        document.getElementById('val_liabilities').innerText = fmt(data.liabilities);
+
+        document.getElementById('qo_debt').innerText = data.debt_collection_rate;
+        document.getElementById('qo_inv').innerText = fmt(data.inventory_value);
+        document.getElementById('qo_cust').innerText = data.new_customers;
+        document.getElementById('qo_avg_sale').innerText = fmt(data.avg_daily_sales);
+    });
 </script>
 {% endblock %}
