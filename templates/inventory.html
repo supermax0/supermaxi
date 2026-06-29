@@ -1724,7 +1724,7 @@
                 <a class="action-btn" href="#" onclick="openAdjustModal(${p.id}, '${nameEscaped}', ${p.quantity}); return false;" title="{{ _('inventory_action_adjust_stock') }}"><i class="fas fa-wrench"></i></a>
                 <a class="action-btn inv-action--edit" href="/inventory/add?edit=${p.id}" title="{{ _('inventory_action_edit') }}"><i class="fas fa-edit"></i></a>
                 <a class="action-btn" href="/inventory/toggle/${p.id}" title="{{ _('inventory_action_toggle') }}"><i class="fas fa-power-off"></i></a>
-                <a class="action-btn delete" href="/inventory/delete/${p.id}" onclick="return confirm('{{ _('inventory_confirm_delete') }}')" title="{{ _('inventory_action_delete') }}"><i class="fas fa-trash"></i></a>
+                <a class="action-btn delete" href="/inventory/delete/${p.id}" data-inventory-delete="1" title="{{ _('inventory_action_delete') }}"><i class="fas fa-trash"></i></a>
               </div>
             `;
         }
@@ -2151,6 +2151,26 @@
 
     return true;
   }
+
+  document.addEventListener("click", async function (event) {
+    const deleteLink = event.target && event.target.closest ? event.target.closest("[data-inventory-delete]") : null;
+    if (!deleteLink) return;
+    event.preventDefault();
+    const ok = window.finoraConfirmImpact
+      ? await window.finoraConfirmImpact({
+          tone: "danger",
+          title: "حذف منتج من المخزون",
+          message: "راجع الأثر قبل حذف المنتج.",
+          impact: [
+            "سيتم حذف المنتج من جدول المنتجات إذا سمح النظام بذلك.",
+            "قد تتأثر تقارير المخزون والربح المتوقع المرتبطة بهذا المنتج.",
+            "لإيقاف البيع مؤقتاً استخدم تعطيل المنتج بدلاً من الحذف عندما يكون ذلك مناسباً."
+          ],
+          confirmText: "حذف المنتج"
+        })
+      : confirm({{ _('inventory_confirm_delete')|tojson }});
+    if (ok) window.location.href = deleteLink.href;
+  });
 </script>
 </div>
 {% endblock %}

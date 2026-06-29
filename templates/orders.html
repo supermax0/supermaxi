@@ -2898,16 +2898,23 @@
     const phoneRaw = row && row.phone && row.phone !== '—' ? String(row.phone) : "";
     const phoneEnc = encodeURIComponent(phoneRaw);
 
-    const isDelivered = row && row.status === "تم التوصيل";
     const isReturned = row && row.status === "مرتجع";
     const isPaid = row && row.payment_status === "مسدد";
+    const canEdit = row && row.status !== 'تم التوصيل' && row.status !== 'مرتجع' && row.status !== 'ملغي';
 
     return '<div class="orders-row-actions">' +
-      ((!isReturned && !isPaid) ? '<button type="button" class="action-btn-small return-btn" data-action="return" data-order-id="' + id + '" title="إرجاع الطلب">مرتجع</button>' : '') +
+      '<button type="button" class="action-btn-small details-btn" data-action="details" data-order-id="' + id + '" title="عرض الطلب">عرض</button>' +
       '<button type="button" class="action-btn-small print-btn" data-action="invoice" data-order-id="' + id + '" title="طباعة الفاتورة">فاتورة</button>' +
       '<button type="button" class="action-btn-small whatsapp-btn" data-action="whatsapp" data-order-id="' + id + '" data-phone="' + phoneEnc + '" title="إرسال واتساب">واتساب</button>' +
       (row && row.can_pay ? '<button type="button" class="action-btn-small pay-btn" data-action="pay" data-order-id="' + id + '" title="تسديد كامل">تسديد</button>' : '') +
+      '<div class="orders-more">' +
+      '<button type="button" class="action-btn-small" title="المزيد" aria-label="المزيد"><i class="fas fa-ellipsis-h"></i></button>' +
+      '<div class="orders-more-menu">' +
+      (canEdit ? '<button type="button" class="action-btn-small" data-action="edit" data-order-id="' + id + '" title="تعديل الطلب">تعديل</button>' : '') +
+      ((!isReturned && !isPaid) ? '<button type="button" class="action-btn-small return-btn" data-action="return" data-order-id="' + id + '" title="إرجاع الطلب">إرجاع</button>' : '') +
       (row && row.can_cancel ? '<button type="button" class="action-btn-small cancel-btn" data-action="cancel" data-order-id="' + id + '" title="حذف الفاتورة">حذف</button>' : '') +
+      '</div>' +
+      '</div>' +
       '</div>';
   }
 
@@ -2921,6 +2928,8 @@
 
     const orderId = Number(actionEl.getAttribute('data-order-id'));
 
+    if (action === 'details') return showDetails(orderId);
+    if (action === 'edit') return editOrder(orderId);
     if (action === 'return') return returnOrder(orderId);
     if (action === 'invoice') return printInvoice(orderId);
     if (action === 'pay') return pay(orderId);
@@ -2932,7 +2941,7 @@
   });
 
   function returnOrder(orderId) {
-    showConfirm("⚠️ هل أنت متأكد من ترجيع هذا الطلب؟", function () {
+    showConfirm("تأكيد المرتجع\n\nسيتم تحديث حالة الطلب إلى مرتجع، وتحديث حالة الدفع إلى مرتجع، وتنفيذ أثر المخزون والصندوق والربح حسب منطق النظام الحالي.", function () {
       showLoading();
       fetch(`/orders/payment`, {
         method: "POST",

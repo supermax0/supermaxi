@@ -2063,6 +2063,55 @@
 
         {% if not is_payment_flow %}
         <div class="topbar-actions">
+          <div class="finora-top-search" role="search">
+            <i class="fa fa-search" aria-hidden="true"></i>
+            <input type="search" aria-label="بحث عام" placeholder="بحث عام">
+          </div>
+          {% if session.get("user_id") and show_pos and business_allows('pos') %}
+          <a class="finora-pos-link" href="/pos" aria-label="نقطة البيع" title="نقطة البيع">
+            <i class="fa fa-cash-register"></i>
+            <span>POS</span>
+          </a>
+          {% endif %}
+          {% if session.get("user_id") %}
+          <div class="finora-notifications">
+            <button class="finora-topbar-icon" type="button" aria-label="مركز الإشعارات">
+              <i class="fa fa-bell"></i>
+              <span class="finora-notification-badge">4</span>
+            </button>
+            <div class="finora-notification-menu" role="menu" aria-label="الإشعارات">
+              <div class="finora-notification-item" role="menuitem">
+                <i class="fa fa-clock"></i>
+                <div>
+                  <div class="finora-notification-title">طلب متأخر</div>
+                  <div class="finora-notification-time">منذ 15 دقيقة</div>
+                </div>
+                <span class="badge">جديد</span>
+              </div>
+              <div class="finora-notification-item" role="menuitem">
+                <i class="fa fa-file-invoice-dollar"></i>
+                <div>
+                  <div class="finora-notification-title">فاتورة تحتاج مراجعة</div>
+                  <div class="finora-notification-time">اليوم</div>
+                </div>
+              </div>
+              <div class="finora-notification-item" role="menuitem">
+                <i class="fa fa-box-open"></i>
+                <div>
+                  <div class="finora-notification-title">مخزون منخفض</div>
+                  <div class="finora-notification-time">اليوم</div>
+                </div>
+              </div>
+              <div class="finora-notification-item" role="menuitem">
+                <i class="fa fa-money-bill-wave"></i>
+                <div>
+                  <div class="finora-notification-title">حركة نقدية جديدة</div>
+                  <div class="finora-notification-time">قبل قليل</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endif %}
           {% if session.get("user_id") and show_pos and business_allows('quick_sale') %}
           <a class="assistant-quick-btn" href="/quick-sale" aria-label="بيع سريع" title="بيع سريع">
             <i class="fa fa-bolt"></i>
@@ -2357,6 +2406,54 @@
 
     // Make toast function globally available
     window.showToast = showToast;
+
+    function finoraConfirmImpact(options) {
+      options = options || {};
+      return new Promise(function (resolve) {
+        var overlay = document.createElement("div");
+        overlay.className = "finora-confirm-overlay";
+        var tone = options.tone === "danger" ? "danger" : "warning";
+        var impact = Array.isArray(options.impact) ? options.impact : [];
+        overlay.innerHTML = `
+          <div class="finora-confirm-dialog is-${tone}" role="dialog" aria-modal="true" aria-label="${options.title || "تأكيد الإجراء"}">
+            <div class="finora-confirm-head">
+              <div class="finora-confirm-icon"><i class="fa ${tone === "danger" ? "fa-triangle-exclamation" : "fa-circle-info"}"></i></div>
+              <div>
+                <h3 class="finora-confirm-title">${options.title || "تأكيد الإجراء"}</h3>
+                <p class="finora-confirm-message">${options.message || "يرجى مراجعة الأثر قبل المتابعة."}</p>
+              </div>
+            </div>
+            ${impact.length ? `<div class="finora-impact-list">${impact.map(function (item) {
+              return `<div class="finora-impact-item"><i class="fa fa-check"></i><span>${item}</span></div>`;
+            }).join("")}</div>` : ""}
+            <div class="finora-confirm-actions">
+              <button type="button" class="finora-confirm-cancel">${options.cancelText || "إلغاء"}</button>
+              <button type="button" class="finora-confirm-confirm">${options.confirmText || "تأكيد"}</button>
+            </div>
+          </div>
+        `;
+        function escHandler(e) {
+          if (e.key === "Escape" && document.body.contains(overlay)) {
+            close(false);
+          }
+        }
+        function close(value) {
+          document.removeEventListener("keydown", escHandler);
+          overlay.remove();
+          resolve(value);
+        }
+        overlay.addEventListener("click", function (e) {
+          if (e.target === overlay) close(false);
+        });
+        overlay.querySelector(".finora-confirm-cancel").addEventListener("click", function () { close(false); });
+        overlay.querySelector(".finora-confirm-confirm").addEventListener("click", function () { close(true); });
+        document.addEventListener("keydown", escHandler);
+        document.body.appendChild(overlay);
+        overlay.querySelector(".finora-confirm-cancel").focus();
+      });
+    }
+
+    window.finoraConfirmImpact = finoraConfirmImpact;
 
     // ======================================================
     // THEME TOGGLE (Dark/Light) — localStorage + prefers-color-scheme

@@ -406,8 +406,26 @@
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  async function purchaseImpactConfirm(options) {
+    if (window.finoraConfirmImpact) {
+      return window.finoraConfirmImpact(options);
+    }
+    return confirm(options.message || options.title || "تأكيد الإجراء");
+  }
+
   async function cancelPurchase(id) {
-    if (!confirm("تأكيد إلغاء الفاتورة؟ سيتم عكس المخزون والحركة المحاسبية.")) return;
+    const ok = await purchaseImpactConfirm({
+      tone: "warning",
+      title: "إلغاء فاتورة شراء",
+      message: "راجع الأثر قبل تنفيذ الإلغاء.",
+      impact: [
+        "سيتم عكس أثر المخزون لهذه الفاتورة حسب منطق النظام الحالي.",
+        "سيتم عكس الحركة المحاسبية المرتبطة بها.",
+        "ستبقى الفاتورة في السجل بحالة ملغية للمراجعة."
+      ],
+      confirmText: "تأكيد الإلغاء"
+    });
+    if (!ok) return;
     const r = await fetch(`/purchases/api/${id}/cancel`, { method: "POST" });
     const d = await r.json();
     alert(d.message || d.error || "تم التنفيذ");
@@ -415,7 +433,18 @@
   }
 
   async function deletePurchase(id) {
-    if (!confirm("تأكيد حذف الفاتورة نهائياً؟")) return;
+    const ok = await purchaseImpactConfirm({
+      tone: "danger",
+      title: "حذف فاتورة شراء",
+      message: "هذا إجراء حساس ونهائي.",
+      impact: [
+        "سيتم حذف الفاتورة من سجل المشتريات.",
+        "إذا كانت الفاتورة مؤكدة فقد يمنع النظام الحذف أو يعالج الأثر حسب صلاحياتك.",
+        "يفضل استخدام الإلغاء عندما تحتاج إلى أثر محاسبي قابل للتتبع."
+      ],
+      confirmText: "حذف الفاتورة"
+    });
+    if (!ok) return;
     const r = await fetch(`/purchases/api/${id}/delete`, { method: "POST" });
     const d = await r.json();
     alert(d.message || d.error || "تم التنفيذ");
@@ -423,7 +452,17 @@
   }
 
   async function reopenPurchase(id) {
-    if (!confirm("تأكيد إعادة فتح الفاتورة الملغية؟")) return;
+    const ok = await purchaseImpactConfirm({
+      tone: "warning",
+      title: "إعادة فتح فاتورة ملغية",
+      message: "سيتم تغيير حالة الفاتورة لتصبح قابلة للعمل من جديد.",
+      impact: [
+        "سيتم فتح الفاتورة الملغية حسب صلاحيات المستخدم.",
+        "راجع المخزون والحركة المالية بعد التنفيذ من سجل النظام."
+      ],
+      confirmText: "إعادة فتح"
+    });
+    if (!ok) return;
     const r = await fetch(`/purchases/api/${id}/reopen`, { method: "POST" });
     const d = await r.json();
     alert(d.message || d.error || "تم التنفيذ");
@@ -431,7 +470,18 @@
   }
 
   async function unlockPurchaseForEdit(id) {
-    if (!confirm("هذه الفاتورة مؤكدة ومقفلة. هل تريد فتحها للتحرير؟")) return;
+    const ok = await purchaseImpactConfirm({
+      tone: "warning",
+      title: "فتح فاتورة مؤكدة للتحرير",
+      message: "هذه الفاتورة مؤكدة ومقفلة حالياً.",
+      impact: [
+        "سيتم فتح الفاتورة للتحرير حسب صلاحيات المدير.",
+        "أي تعديل لاحق قد يؤثر على المخزون والكلفة والذمم.",
+        "احفظ نسخة أو اطبع الفاتورة قبل تعديل بيانات حساسة."
+      ],
+      confirmText: "فتح للتحرير"
+    });
+    if (!ok) return;
     const r = await fetch(`/purchases/api/${id}/unlock-edit`, { method: "POST" });
     const d = await r.json();
     alert(d.message || d.error || "تم التنفيذ");
@@ -444,7 +494,17 @@
   }
 
   async function clonePurchase(id) {
-    if (!confirm("تأكيد استنساخ هذه الفاتورة كمسودة جديدة؟")) return;
+    const ok = await purchaseImpactConfirm({
+      tone: "warning",
+      title: "استنساخ فاتورة شراء",
+      message: "سيتم إنشاء مسودة جديدة من بيانات هذه الفاتورة.",
+      impact: [
+        "لن يتم تغيير الفاتورة الأصلية.",
+        "راجع الكميات والأسعار قبل تأكيد المسودة الجديدة."
+      ],
+      confirmText: "استنساخ"
+    });
+    if (!ok) return;
     const r = await fetch(`/purchases/api/${id}/clone`, { method: "POST" });
     const d = await r.json();
     alert(d.message || d.error || "تم التنفيذ");

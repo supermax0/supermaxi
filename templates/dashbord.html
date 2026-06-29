@@ -1860,6 +1860,78 @@
     {% endif %}
   </section>
 
+  <section class="finora-summary-grid" aria-label="ملخص مالي رئيسي">
+    <div class="finora-stat-card">
+      <div class="finora-stat-top">
+        <div>
+          <div class="finora-stat-label">المشتريات</div>
+          <div id="finoraPurchasesValue" class="finora-stat-value">0 د.ع</div>
+        </div>
+        <span class="finora-stat-icon purple"><i class="fas fa-cart-shopping"></i></span>
+      </div>
+      <div class="finora-stat-note">إجمالي فواتير المشتريات المتاحة</div>
+    </div>
+    <div class="finora-stat-card">
+      <div class="finora-stat-top">
+        <div>
+          <div class="finora-stat-label">المبيعات</div>
+          <div id="finoraSalesValue" class="finora-stat-value">0 د.ع</div>
+        </div>
+        <span class="finora-stat-icon success"><i class="fas fa-chart-line"></i></span>
+      </div>
+      <div class="finora-stat-note">حسب الفترة المحددة</div>
+    </div>
+    <div class="finora-stat-card">
+      <div class="finora-stat-top">
+        <div>
+          <div class="finora-stat-label">المشتريات غير المدفوعة</div>
+          <div id="finoraUnpaidPurchasesValue" class="finora-stat-value">0 د.ع</div>
+        </div>
+        <span class="finora-stat-icon warning"><i class="fas fa-file-circle-exclamation"></i></span>
+      </div>
+      <div class="finora-stat-note">المتبقي على فواتير الشراء</div>
+    </div>
+    <div class="finora-stat-card">
+      <div class="finora-stat-top">
+        <div>
+          <div class="finora-stat-label">الفواتير غير المدفوعة</div>
+          <div id="finoraUnpaidInvoicesValue" class="finora-stat-value">0 د.ع</div>
+        </div>
+        <span class="finora-stat-icon danger"><i class="fas fa-receipt"></i></span>
+      </div>
+      <div class="finora-stat-note">ذمم العملاء للفترة</div>
+    </div>
+  </section>
+
+  <section class="finora-wide-grid" aria-label="ملخص المصروفات والمرتجعات">
+    <div class="finora-wide-card">
+      <div class="finora-stat-top">
+        <div>
+          <div class="finora-stat-label">المصروفات</div>
+          <div id="finoraExpensesValue" class="finora-stat-value">0 د.ع</div>
+        </div>
+        <span class="finora-stat-icon info"><i class="fas fa-money-bill-trend-up"></i></span>
+      </div>
+      <div class="finora-stat-note">إجمالي مصروفات الفترة المحددة</div>
+      <svg class="finora-sparkline" viewBox="0 0 240 50" aria-hidden="true">
+        <path d="M4 38 C42 18, 72 44, 112 24 S178 16, 236 30" fill="none" stroke="#0EA5E9" stroke-width="4" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="finora-wide-card">
+      <div class="finora-stat-top">
+        <div>
+          <div class="finora-stat-label">إجمالي الفواتير المرتجعة</div>
+          <div id="finoraReturnedValue" class="finora-stat-value">0</div>
+        </div>
+        <span class="finora-stat-icon danger"><i class="fas fa-rotate-left"></i></span>
+      </div>
+      <div class="finora-stat-note">طلبات مرتجعة أو ملغاة حسب بيانات الطلبات</div>
+      <svg class="finora-sparkline" viewBox="0 0 240 50" aria-hidden="true">
+        <path d="M4 34 C46 40, 70 18, 116 28 S178 44, 236 14" fill="none" stroke="#DC2626" stroke-width="4" stroke-linecap="round"/>
+      </svg>
+    </div>
+  </section>
+
   <section class="dashboard-section">
     <div class="dashboard-section-head">
       <div>
@@ -2169,6 +2241,23 @@
     </div>
   </div>
 </div>
+</section>
+
+<section class="dashboard-section dashboard-year-section">
+  <div class="chart-card">
+    <div class="dashboard-section-head">
+      <div>
+        <h2 class="dashboard-section-title">السنة المالية</h2>
+        <p class="dashboard-section-subtitle">الأرباح والمصروفات حسب أشهر السنة الحالية</p>
+      </div>
+    </div>
+    <div class="chart-wrapper" id="financialYearChartWrap">
+      <canvas id="financialYearChart"></canvas>
+    </div>
+    <div class="empty-state" id="financialYearEmpty" style="display:none;padding:24px;text-align:center;color:var(--text-muted);">
+      لا توجد بيانات كافية لعرض السنة المالية حالياً.
+    </div>
+  </div>
 </section>
 
 <!-- =======================
@@ -2610,9 +2699,9 @@
         const salesText = formatNumber(d.sales || 0) + " د.ع";
         const cashSalesText = formatNumber(d.cash_sales || 0) + " د.ع";
         const creditSalesText = formatNumber(d.credit_sales || 0) + " د.ع";
-        setTextForIds(["sales", "salesMain", "quickSales"], salesText);
+        setTextForIds(["sales", "salesMain", "quickSales", "finoraSalesValue"], salesText);
         setTextForIds(["cashSales"], cashSalesText);
-        setTextForIds(["creditSales"], creditSalesText);
+        setTextForIds(["creditSales", "finoraUnpaidInvoicesValue"], creditSalesText);
 
         // الصف الثالث: الأرباح
         const profitText = formatNumber(d.period_profit || 0) + " د.ع";
@@ -2626,11 +2715,25 @@
 
         // معلومات إضافية (مخفية)
         if (document.getElementById("expenses")) document.getElementById("expenses").innerText = formatNumber(d.expenses || 0) + " د.ع";
+        setTextForIds(["finoraExpensesValue"], formatNumber(d.expenses_period || d.expenses || 0) + " د.ع");
         if (document.getElementById("agentCommissions")) document.getElementById("agentCommissions").innerText = formatNumber(d.agent_commissions || 0) + " د.ع";
       })
       .catch(error => {
         console.error("Error loading dashboard data:", error);
         // في حالة الخطأ، نعرض رسالة للمستخدم (اختياري)
+      });
+
+    fetch("/purchases/api/list")
+      .then(r => r.ok ? r.json() : [])
+      .then(list => {
+        if (!Array.isArray(list)) return;
+        const purchasesTotal = list.reduce((sum, p) => sum + Number(p.grand_total || p.total || 0), 0);
+        const purchasesUnpaid = list.reduce((sum, p) => sum + Number(p.remaining_total || 0), 0);
+        setTextForIds(["finoraPurchasesValue"], formatNumber(purchasesTotal) + " د.ع");
+        setTextForIds(["finoraUnpaidPurchasesValue"], formatNumber(purchasesUnpaid) + " د.ع");
+      })
+      .catch(() => {
+        setTextForIds(["finoraPurchasesValue", "finoraUnpaidPurchasesValue"], "—");
       });
 
     fetch("/api/index/orders-count").then(r => r.json()).then(d => {
@@ -2640,6 +2743,7 @@
       if (elShip) elShip.innerText = d.shipping;
       document.getElementById("c_delivered").innerText = d.delivered;
       document.getElementById("c_returned").innerText = d.returned;
+      setTextForIds(["finoraReturnedValue"], formatNumber(d.returned || 0));
     });
 
     fetch("/api/index/alerts").then(r => r.json()).then(list => {
@@ -3054,6 +3158,7 @@
   let salesChart = null;
   let profitChart = null;
   let statusChart = null;
+  let financialYearChart = null;
 
   function getChartTheme() {
     const root = document.documentElement;
@@ -3254,6 +3359,64 @@
             }
           });
         }
+
+        initFinancialYearChart();
+      });
+  }
+
+  function initFinancialYearChart() {
+    const canvas = document.getElementById("financialYearChart");
+    const empty = document.getElementById("financialYearEmpty");
+    const wrap = document.getElementById("financialYearChartWrap");
+    if (!canvas) return;
+
+    fetch("/api/index/executive-overview")
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        const yearProfit = data && data.series && data.series.year_monthly;
+        const yearExpenses = data && data.series && data.series.year_monthly_expenses;
+        if (!yearProfit || !Array.isArray(yearProfit.labels) || !yearProfit.labels.length) {
+          if (empty) empty.style.display = "block";
+          if (wrap) wrap.style.display = "none";
+          return;
+        }
+
+        if (empty) empty.style.display = "none";
+        if (wrap) wrap.style.display = "block";
+        const t = getChartTheme();
+        if (financialYearChart) financialYearChart.destroy();
+
+        financialYearChart = new Chart(canvas, {
+          type: "line",
+          data: {
+            labels: yearProfit.labels,
+            datasets: [
+              {
+                label: "الأرباح",
+                data: yearProfit.profit || [],
+                borderColor: t.success,
+                backgroundColor: "rgba(22, 163, 74, 0.12)",
+                fill: true,
+                tension: 0.38,
+                pointRadius: 2
+              },
+              {
+                label: "المصروفات",
+                data: yearExpenses && yearExpenses.expenses ? yearExpenses.expenses : [],
+                borderColor: "#7C3AED",
+                backgroundColor: "rgba(124, 58, 237, 0.08)",
+                fill: true,
+                tension: 0.38,
+                pointRadius: 2
+              }
+            ]
+          },
+          options: commonChartOptions()
+        });
+      })
+      .catch(() => {
+        if (empty) empty.style.display = "block";
+        if (wrap) wrap.style.display = "none";
       });
   }
 

@@ -1109,7 +1109,7 @@
             const e = params.data;
             return `
               <div class="exp-actions-grid">
-                <a href="/expenses/delete/${e.id}" class="delete-btn" onclick="return confirm('{{ _('expenses_confirm_delete') }}')">{{ _('expenses_action_delete') }}</a>
+                <a href="/expenses/delete/${e.id}" class="delete-btn" data-expense-delete="1">{{ _('expenses_action_delete') }}</a>
               </div>
             `;
           }
@@ -1157,6 +1157,26 @@
 
       const eGridDiv = document.querySelector('#expensesTable');
       agGrid.createGrid(eGridDiv, gridOptions);
+
+      document.addEventListener("click", async function (event) {
+        const deleteLink = event.target && event.target.closest ? event.target.closest("[data-expense-delete]") : null;
+        if (!deleteLink) return;
+        event.preventDefault();
+        const ok = window.finoraConfirmImpact
+          ? await window.finoraConfirmImpact({
+              tone: "danger",
+              title: "حذف مصروف",
+              message: "راجع الأثر قبل حذف المصروف.",
+              impact: [
+                "سيتم حذف سجل المصروف من القائمة.",
+                "قد يتغير إجمالي المصروفات والتقارير المرتبطة مباشرة.",
+                "إذا كان الحذف غير مقصود، استخدم الإلغاء الآن وراجع السجل أولاً."
+              ],
+              confirmText: "حذف المصروف"
+            })
+          : confirm({{ _('expenses_confirm_delete')|tojson }});
+        if (ok) window.location.href = deleteLink.href;
+      });
       eGridDiv.classList.add('ag-theme-finora');
       eGridDiv.classList.remove('ag-theme-quartz-dark');
     }

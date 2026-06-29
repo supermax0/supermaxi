@@ -11,6 +11,41 @@ from datetime import datetime
 
 CONFIG_FILE = Path("finora_deploy_config.json")
 
+SAFE_PUSH_EXCLUDED_PARTS = {
+    ".git",
+    "__pycache__",
+    "node_modules",
+    "venv",
+    ".venv",
+    "env",
+    "logs",
+    "instance",
+    "uploads",
+    "playwright-report",
+    "test-results",
+    ".pytest_cache",
+}
+
+SAFE_PUSH_EXCLUDED_SUFFIXES = {
+    ".db",
+    ".sqlite",
+    ".sqlite3",
+    ".log",
+    ".tmp",
+    ".pyc",
+}
+
+SAFE_PUSH_EXCLUDED_FILES = {
+    ".env",
+    ".env.local",
+    "database.db",
+    "debug-180817.log",
+    "nexus-execution.log",
+    "nexus-workflows.json",
+    "supermaxi",
+    "t",
+}
+
 
 DEFAULT_CONFIG = {
     "local_project_path": str(Path.cwd()),
@@ -611,6 +646,84 @@ class FinoraDeployStudio(tk.Tk):
                 return 1
         return rc
 
+    def git_capture(self, args: list[str], cwd: Path) -> tuple[int, str]:
+        try:
+            proc = subprocess.run(
+                ["git", *args],
+                cwd=str(cwd),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                check=False,
+            )
+            stderr = proc.stderr or ""
+            if stderr.strip():
+                self.append_log(stderr)
+            return proc.returncode, proc.stdout or ""
+        except FileNotFoundError:
+            return 1, "[ERROR] git command not found.\n"
+
+    def is_safe_push_path(self, path_text: str) -> bool:
+        cleaned = path_text.strip().replace("\\", "/")
+        if not cleaned:
+            return False
+        path = Path(cleaned)
+        if path.is_absolute():
+            return False
+        if path.name in SAFE_PUSH_EXCLUDED_FILES:
+            return False
+        if path.suffix.lower() in SAFE_PUSH_EXCLUDED_SUFFIXES:
+            return False
+        parts = set(path.parts)
+        return not bool(parts.intersection(SAFE_PUSH_EXCLUDED_PARTS))
+
+    def collect_safe_push_paths(self, cwd: Path) -> tuple[list[str], list[str]]:
+        rc_mod, modified_out = self.git_capture(["diff", "--name-only", "--diff-filter=AM"], cwd)
+        rc_untracked, untracked_out = self.git_capture(["ls-files", "-o", "--exclude-standard"], cwd)
+        rc_deleted, deleted_out = self.git_capture(["ls-files", "-d"], cwd)
+
+        if rc_mod != 0:
+            self.append_log(modified_out)
+        if rc_untracked != 0:
+            self.append_log(untracked_out)
+        if rc_deleted != 0:
+            self.append_log(deleted_out)
+
+        candidates: list[str] = []
+        for output in (modified_out, untracked_out):
+            for line in output.splitlines():
+                p = line.strip()
+                if p:
+                    candidates.append(p)
+
+        safe_paths: list[str] = []
+        skipped_paths: list[str] = []
+        seen: set[str] = set()
+        for p in candidates:
+            if p in seen:
+                continue
+            seen.add(p)
+            if self.is_safe_push_path(p):
+                safe_paths.append(p)
+            else:
+                skipped_paths.append(p)
+
+        deleted = [line.strip() for line in deleted_out.splitlines() if line.strip()]
+        if deleted:
+            self.append_log(
+                f"[WARN] Ignoring {len(deleted)} deleted tracked files. "
+                "Safe Push will not stage deletions. Restore or stage deletions manually if intentional.\n"
+            )
+
+        if skipped_paths:
+            self.append_log(f"[WARN] Skipped {len(skipped_paths)} unsafe/local paths.\n")
+            for p in skipped_paths[:30]:
+                self.append_log(f"  - {p}\n")
+            if len(skipped_paths) > 30:
+                self.append_log(f"  ... and {len(skipped_paths) - 30} more\n")
+
+        return safe_paths, deleted
+
     def run_ssh_script(self, script: str) -> int:
         server = self.server_ssh_var.get().strip()
         if not server:
@@ -703,13 +816,41 @@ class FinoraDeployStudio(tk.Tk):
                 return
 
             self.set_status("Pushing to GitHub…")
-            cmds = [
-                ["git", "status"],
-                ["git", "add", "."],
-                ["git", "commit", "-m", "update"],
-                ["git", "push"],
-            ]
-            rc = self.run_local_commands(cmds, cwd=local_path)
+            self.append_log("[INFO] Safe Push mode: staging modified/new safe files only; deletions are ignored.\n")
+
+            self.run_local_commands([["git", "restore", "--staged", "."]], cwd=local_path)
+            self.run_local_commands([["git", "status", "--short"]], cwd=local_path)
+
+            safe_paths, deleted_paths = self.collect_safe_push_paths(local_path)
+            if not safe_paths:
+                self.append_log("[INFO] No safe files to stage. Nothing was pushed.\n")
+                if deleted_paths:
+                    self.append_log("[INFO] There are deleted files in the working tree, but Safe Push did not stage them.\n")
+                self.set_status("Nothing safe to push.")
+                return
+
+            self.append_log(f"[INFO] Staging {len(safe_paths)} safe files.\n")
+            rc = self.run_local_commands([["git", "add", "--", *safe_paths]], cwd=local_path)
+            if rc != 0:
+                self.set_status("Push failed while staging files.")
+                return
+
+            rc, staged_out = self.git_capture(["diff", "--cached", "--stat"], local_path)
+            self.append_log(staged_out or "[INFO] No staged diff.\n")
+            if rc != 0:
+                self.set_status("Push failed while reading staged diff.")
+                return
+
+            if not staged_out.strip():
+                self.append_log("[INFO] Nothing staged after safety filters. Nothing was pushed.\n")
+                self.set_status("Nothing to push.")
+                return
+
+            commit_message = f"update {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+            rc = self.run_local_commands(
+                [["git", "commit", "-m", commit_message], ["git", "push"]],
+                cwd=local_path,
+            )
             if rc == 0:
                 self.append_log("[INFO] Push to GitHub completed.\n")
                 self.set_status("Push completed.")
