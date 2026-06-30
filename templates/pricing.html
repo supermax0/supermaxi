@@ -1,50 +1,46 @@
 {% extends "base.html" %}
-
-{% block title %}خطط الاشتراك{% endblock %}
-{% block page_title %}💳 خطط الاشتراك الشهرية{% endblock %}
+{% from "payment_flow/_macros.html" import pf_topbar %}
+{% block title %}خطط الاشتراك — Finora{% endblock %}
+{% block page_title %}{% endblock %}
 
 {% block content %}
-<div class="card" style="max-width: 1100px; margin: 0 auto;">
-  <div class="card-header">
-    اختر الخطة المناسبة لشركتك
-  </div>
-  <div class="card-body">
-    <p style="margin-bottom: 24px; color: var(--muted);">
-      هذا النظام يعمل كـ SaaS (نظام كخدمة). اختر واحدة من الخطط أدناه، ثم أكمل بيانات شركتك لإنشاء لوحة تحكم خاصة باسم
-      شركتك.
-    </p>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/payment-flow.css') }}">
+<div class="pf-page">
+  {{ pf_topbar('/', 'العودة للرئيسية') }}
 
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px;">
+  <div class="pf-wrap-wide">
+    <div class="pf-header">
+      <h1>خطط الاشتراك الشهرية</h1>
+      <p>اختر الخطة المناسبة لشركتك، ثم أكمل بياناتك لإنشاء لوحة تحكم خاصة باسم شركتك.</p>
+    </div>
+
+    <div class="pf-pricing-grid">
       {% for plan in plans %}
-      <div
-        style="border-radius: 16px; border: 1px solid rgba(148,163,184,0.3); padding: 20px; background: rgba(15,23,42,0.8); position: relative;">
-        <h3 style="margin: 0 0 8px; font-size: 20px; color: var(--text);">{{ plan.name }}</h3>
-        <p style="margin: 0 0 16px; color: var(--muted); font-size: 14px;">{{ plan.description }}</p>
-        <div
-          style="font-size: 26px; font-weight: 800; margin-bottom: 16px; color: var(--primary); display: flex; align-items: baseline; gap: 10px;">
+      <div class="pf-pricing-card">
+        <h3>{{ plan.name }}</h3>
+        <p class="desc">{{ plan.description }}</p>
+        <div class="pf-pricing-price">
           {% if plan.original_price and plan.original_price > plan.price %}
-          <span
-            style="text-decoration: line-through; opacity: 0.5; font-size: 16px; color: var(--muted); font-weight: 400;">
-            {{ "{:,}".format(plan.original_price) }}
-          </span>
+          <span class="pf-strike" style="font-size:16px">{{ "{:,}".format(plan.original_price) }}</span>
           {% endif %}
-          <span>{{ "{:,}".format(plan.price) }} <span style="font-size: 14px; color: var(--muted);">د.ع /
-              شهر</span></span>
+          {{ "{:,}".format(plan.price) }} <small style="font-size:14px;color:var(--pf-muted)">د.ع/شهر</small>
         </div>
-        <ul style="list-style: none; padding: 0; margin: 0 0 20px; font-size: 14px; color: var(--muted);">
+        <ul class="pf-pricing-feats">
           {% for feat in plan.features %}
-          <li style="margin-bottom: 6px;">✅ {{ feat }}</li>
+          <li>✓ {{ feat }}</li>
           {% endfor %}
         </ul>
         <form method="get" action="/signup">
           <input type="hidden" name="plan" value="{{ plan.key }}">
-          <button type="submit" class="btn btn-primary" style="width: 100%;">
-            اشترك في {{ plan.name }}
-          </button>
+          <button type="submit" class="pf-btn pf-btn-primary pf-btn-block">اشترك في {{ plan.name }}</button>
         </form>
       </div>
       {% endfor %}
     </div>
+
+    <p class="pf-footer-links" style="margin-top:32px">
+      تريد مقارنة تفصيلية؟ <a href="/#pricing">عرض الأسعار على الصفحة الرئيسية</a>
+    </p>
   </div>
 </div>
 {% endblock %}

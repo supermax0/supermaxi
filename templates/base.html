@@ -1850,6 +1850,7 @@
     <!-- ================= SIDEBAR (جميع المستخدمين المسجلين — العناصر حسب الصلاحيات) ================= -->
     {# اعتبر مسار /superadmin أيضاً كمسار خارجي عن لوحة الشركة حتى لا تظهر القائمة الجانبية معها #}
     {% set is_payment_flow = request.path.startswith('/payment')
+    or request.path.startswith('/payments')
     or request.path.startswith('/signup')
     or request.path.startswith('/pricing')
     or request.path.startswith('/login')
@@ -2055,6 +2056,7 @@
     <div class="content">
 
       <!-- ================= TOPBAR ================= -->
+      {% if not is_payment_flow %}
       <header class="topbar">
         <div class="topbar-left">
           <span class="toggle" onclick="toggleSidebar()">☰</span>
@@ -2148,6 +2150,7 @@
         {% endif %}
         {% endif %}
       </header>
+      {% endif %}
 
       <!-- ================= MAIN ================= -->
       <main class="page-main">

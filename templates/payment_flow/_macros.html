@@ -1,0 +1,26 @@
+{% macro pf_topbar(back_href='/', back_label='العودة للرئيسية') %}
+<div class="pf-topbar">
+  <a href="/" class="pf-logo">
+    <img src="{{ url_for('static', filename='IMG_0200.png') }}" alt="Finora">
+    <strong>Finora</strong>
+  </a>
+  <a href="{{ back_href }}" class="pf-topbar-link"><i class="fas fa-arrow-right"></i> {{ back_label }}</a>
+</div>
+{% endmacro %}
+
+{% macro pf_steps(active) %}
+<div class="pf-steps">
+  <div class="pf-step {% if active == 1 %}active{% elif active > 1 %}done{% endif %}">
+    <div class="pf-step-dot">{% if active > 1 %}<i class="fas fa-check"></i>{% else %}1{% endif %}</div>
+    <div class="pf-step-label">الحساب</div>
+  </div>
+  <div class="pf-step {% if active == 2 %}active{% elif active > 2 %}done{% endif %}">
+    <div class="pf-step-dot">{% if active > 2 %}<i class="fas fa-check"></i>{% else %}2{% endif %}</div>
+    <div class="pf-step-label">الدفع</div>
+  </div>
+  <div class="pf-step {% if active == 3 %}active{% elif active > 3 %}done{% endif %}">
+    <div class="pf-step-dot">{% if active > 3 %}<i class="fas fa-check"></i>{% else %}3{% endif %}</div>
+    <div class="pf-step-label">التفعيل</div>
+  </div>
+</div>
+{% endmacro %}
