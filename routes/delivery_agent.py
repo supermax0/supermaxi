@@ -38,9 +38,16 @@ def login():
     if not username or not password:
         return jsonify({"error": "يرجى إدخال اسم المستخدم وكلمة المرور"}), 400
     
-    agent = DeliveryAgent.query.filter_by(username=username, password=password).first()
-    if not agent:
+    from utils.agent_passwords import needs_password_rehash, verify_agent_password, hash_agent_password
+
+    agent = DeliveryAgent.query.filter_by(username=username).first()
+    if not agent or not verify_agent_password(agent.password, password):
         return jsonify({"error": "اسم المستخدم أو كلمة المرور غير صحيحة"}), 401
+    if not getattr(agent, "is_active", True):
+        return jsonify({"error": "حساب المندوب معطّل"}), 403
+    if needs_password_rehash(agent.password):
+        agent.password = hash_agent_password(password)
+        db.session.commit()
     
     # حفظ معلومات المندوب في الجلسة
     session["agent_id"] = agent.id

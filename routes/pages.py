@@ -1,190 +1,150 @@
 # routes/pages.py
-from flask import Blueprint, render_template, request, redirect, url_for, jsonify, session
+from flask import Blueprint, render_template, request, redirect, url_for, jsonify
 from extensions import db
-from models.page import Page
+from models.page import Page, employee_pages
 from models.employee import Employee
 from models.invoice import Invoice
 from sqlalchemy.sql import func
 from sqlalchemy import or_
 
+from utils.decorators import permission_required
+from utils.permission_checks import employee_can, get_current_employee
+
 pages_bp = Blueprint("pages", __name__, url_prefix="/pages")
 
-# ===============================
-# Pages Page
-# ===============================
-@pages_bp.route("/", methods=["GET", "POST"])
-def pages():
-    # إضافة بيج جديد
-    if request.method == "POST":
-        page = Page(
-            name=request.form["name"]
-        )
-        db.session.add(page)
-        db.session.commit()
-        return redirect(url_for("pages.pages"))
-    
-    # جلب جميع البيجات
-    pages = Page.query.all()
-    
-    # حساب عدد الطلبات لكل بيج (الطلبات الكلية)
+
+def _pages_stats():
     stats = (
-        db.session.query(
-            Invoice.page_id,
-            func.count(Invoice.id).label("orders")
-        )
+        db.session.query(Invoice.page_id, func.count(Invoice.id).label("orders"))
         .filter(Invoice.page_id.isnot(None))
         .group_by(Invoice.page_id)
         .all()
     )
-    
-    stats_map = {
-        s.page_id: s.orders
-        for s in stats
-    }
-    
-    # حساب عدد الراجع لكل بيج
+    stats_map = {s.page_id: s.orders for s in stats}
     returned_stats = (
-        db.session.query(
-            Invoice.page_id,
-            func.count(Invoice.id).label("returned")
-        )
+        db.session.query(Invoice.page_id, func.count(Invoice.id).label("returned"))
         .filter(
             Invoice.page_id.isnot(None),
-            or_(
-                Invoice.status == "راجع",
-                Invoice.status == "ملغي",
-                Invoice.payment_status == "مرتجع"
-            )
+            or_(Invoice.status == "راجع", Invoice.status == "ملغي", Invoice.payment_status == "مرتجع"),
         )
         .group_by(Invoice.page_id)
         .all()
     )
-    
-    returned_map = {
-        s.page_id: s.returned
-        for s in returned_stats
-    }
-    
-    # حساب عدد الواصل لكل بيج
+    returned_map = {s.page_id: s.returned for s in returned_stats}
     delivered_stats = (
-        db.session.query(
-            Invoice.page_id,
-            func.count(Invoice.id).label("delivered")
-        )
-        .filter(
-            Invoice.page_id.isnot(None),
-            or_(
-                Invoice.status == "تم التوصيل",
-                Invoice.status == "مسدد"
-            )
-        )
+        db.session.query(Invoice.page_id, func.count(Invoice.id).label("delivered"))
+        .filter(Invoice.page_id.isnot(None), or_(Invoice.status == "تم التوصيل", Invoice.status == "مسدد"))
         .group_by(Invoice.page_id)
         .all()
     )
-    
-    delivered_map = {
-        s.page_id: s.delivered
-        for s in delivered_stats
-    }
-    
-    # جلب الموظفين لكل بيج
-    pages_data = []
-    for page in pages:
-        employees_list = page.employees.all()
-        orders_count = stats_map.get(page.id, 0)
-        returned_count = returned_map.get(page.id, 0)
-        delivered_count = delivered_map.get(page.id, 0)
-        pages_data.append({
-            "page": page,
-            "employees": employees_list,
-            "orders_count": orders_count,
-            "returned_count": returned_count,
-            "delivered_count": delivered_count
-        })
-    
-    return render_template("pages.html", pages_data=pages_data)
+    delivered_map = {s.page_id: s.delivered for s in delivered_stats}
+    return stats_map, returned_map, delivered_map
 
-# ===============================
-# Delete Page
-# ===============================
-@pages_bp.route("/delete/<int:id>")
+
+@pages_bp.route("/", methods=["GET", "POST"])
+@permission_required("view_pages")
+def pages():
+    if request.method == "POST":
+        if not employee_can(get_current_employee(), "manage_pages"):
+            return jsonify({"error": "غير مصرح"}), 403
+        page = Page(name=request.form["name"])
+        db.session.add(page)
+        db.session.commit()
+        return redirect(url_for("pages.pages"))
+
+    pages_list = Page.query.all()
+    stats_map, returned_map, delivered_map = _pages_stats()
+    employees_all = Employee.query.filter_by(is_active=True).all()
+    pages_data = []
+    for page in pages_list:
+        employees_list = page.employees.all()
+        pages_data.append(
+            {
+                "page": page,
+                "employees": employees_list,
+                "orders_count": stats_map.get(page.id, 0),
+                "returned_count": returned_map.get(page.id, 0),
+                "delivered_count": delivered_map.get(page.id, 0),
+            }
+        )
+    return render_template(
+        "pages.html",
+        pages_data=pages_data,
+        employees_all=employees_all,
+        can_manage_pages=employee_can(get_current_employee(), "manage_pages"),
+    )
+
+
+@pages_bp.route("/delete/<int:id>", methods=["POST"])
+@permission_required("manage_pages")
 def delete_page(id):
     page = Page.query.get_or_404(id)
+    linked = Invoice.query.filter_by(page_id=page.id).count()
+    if linked:
+        return jsonify({"success": False, "error": f"لا يمكن الحذف: {linked} فاتورة مرتبطة بهذا البيج"}), 400
     db.session.delete(page)
     db.session.commit()
+    if request.is_json or request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return jsonify({"success": True})
     return redirect(url_for("pages.pages"))
 
-# ===============================
-# Get Pages for Employee (API)
-# ===============================
-@pages_bp.route("/employee/<int:employee_id>")
-def get_employee_pages(employee_id):
-    """جلب البيجات التابعة لموظف معين"""
-    employee = Employee.query.get_or_404(employee_id)
-    pages = employee.pages.all()
-    return jsonify({
-        "pages": [{"id": p.id, "name": p.name} for p in pages]
-    })
 
-# ===============================
-# Get Employee Orders with Pages (API)
-# ===============================
-@pages_bp.route("/employee-orders/<int:employee_id>")
-def get_employee_orders(employee_id):
-    """جلب طلبات الموظف مع عدد البيجات"""
+@pages_bp.route("/employee/<int:employee_id>")
+@permission_required("view_pages")
+def get_employee_pages(employee_id):
     employee = Employee.query.get_or_404(employee_id)
-    
-    # جلب الطلبات
-    orders = Invoice.query.filter_by(employee_id=employee_id).all()
-    
-    # جلب البيجات
     pages = employee.pages.all()
-    
-    # حساب عدد الطلبات لكل بيج
+    return jsonify({"pages": [{"id": p.id, "name": p.name} for p in pages]})
+
+
+@pages_bp.route("/employee-orders/<int:employee_id>")
+@permission_required("view_pages")
+def get_employee_orders(employee_id):
+    employee = Employee.query.get_or_404(employee_id)
+    orders = Invoice.query.filter_by(employee_id=employee_id).all()
+    pages = employee.pages.all()
     page_stats = {}
     for page in pages:
-        page_orders = Invoice.query.filter_by(
-            employee_id=employee_id,
-            page_id=page.id
-        ).all()
+        page_orders = Invoice.query.filter_by(employee_id=employee_id, page_id=page.id).all()
         page_stats[page.id] = {
             "name": page.name,
             "orders_count": len(page_orders),
-            "orders": [{"id": o.id, "total": o.total} for o in page_orders]
+            "orders": [{"id": o.id, "total": o.total} for o in page_orders],
         }
-    
-    return jsonify({
-        "employee": {"id": employee.id, "name": employee.name},
-        "pages_count": len(pages),
-        "pages": [{"id": p.id, "name": p.name} for p in pages],
-        "total_orders": len(orders),
-        "page_stats": page_stats
-    })
+    return jsonify(
+        {
+            "employee": {"id": employee.id, "name": employee.name},
+            "pages_count": len(pages),
+            "pages": [{"id": p.id, "name": p.name} for p in pages],
+            "total_orders": len(orders),
+            "page_stats": page_stats,
+        }
+    )
 
-# ===============================
-# Update Page Visibility
-# ===============================
-@pages_bp.route("/update-visibility/<int:page_id>", methods=["POST"])
-def update_page_visibility(page_id):
-    """تحديث إظهار/إخفاء البيج"""
-    if "user_id" not in session:
-        return jsonify({"success": False, "error": "غير مصرح"}), 403
-    
-    employee = Employee.query.get(session["user_id"])
-    if not employee or employee.role != "admin":
-        return jsonify({"success": False, "error": "غير مصرح"}), 403
-    
+
+@pages_bp.route("/assign-employees/<int:page_id>", methods=["POST"])
+@permission_required("manage_pages")
+def assign_page_employees(page_id):
     page = Page.query.get_or_404(page_id)
-    data = request.get_json()
-    
+    data = request.get_json(silent=True) or {}
+    employee_ids = data.get("employee_ids") or []
+    page.employees = []
+    for eid in employee_ids:
+        emp = Employee.query.get(eid)
+        if emp:
+            page.employees.append(emp)
+    db.session.commit()
+    return jsonify({"success": True, "message": "تم تحديث موظفي البيج"})
+
+
+@pages_bp.route("/update-visibility/<int:page_id>", methods=["POST"])
+@permission_required("manage_pages")
+def update_page_visibility(page_id):
+    page = Page.query.get_or_404(page_id)
+    data = request.get_json() or {}
     if "visible_to_cashier" in data:
         page.visible_to_cashier = bool(data["visible_to_cashier"])
     if "visible_to_admin" in data:
         page.visible_to_admin = bool(data["visible_to_admin"])
-    
     db.session.commit()
-    
-    return jsonify({
-        "success": True,
-        "message": "تم تحديث الإعدادات بنجاح"
-    })
+    return jsonify({"success": True, "message": "تم تحديث الإعدادات بنجاح"})

@@ -14,19 +14,9 @@ from utils.cash_calculations import (
     get_cash_movements,
     get_cash_summary
 )
+from utils.permission_checks import check_permission
 
 cash_bp = Blueprint("cash", __name__, url_prefix="/cash")
-
-def check_permission(permission_name):
-    """فحص الصلاحية"""
-    if "user_id" not in session:
-        return False
-    employee = Employee.query.get(session["user_id"])
-    if not employee or not employee.is_active:
-        return False
-    if employee.role == "admin":
-        return True
-    return getattr(employee, permission_name, False)
 
 
 # ======================================

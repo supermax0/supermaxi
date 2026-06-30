@@ -247,12 +247,13 @@
         <div class="emp-card">
             <div class="emp-header">
                 <h5><i class="fas fa-user-lock"></i> تعديل أدوار الموظف: {{ employee.name }}</h5>
-                <a href="{{ url_for('employees.list_employees') }}" class="btn-back-elegant">
+                <a href="{{ url_for('employees.employees') }}?highlight={{ employee.id }}" class="btn-back-elegant">
                     <i class="fas fa-arrow-left"></i> عودة
                 </a>
             </div>
             <div class="emp-body">
-                <form action="{{ url_for('permissions.employee_roles', id=employee.id) }}" method="POST">
+                {% if effective_permissions %}<div style="padding:16px 24px;border-bottom:1px solid var(--emp-border)"><strong>الصلاحيات الفعلية:</strong> {% for perm in effective_permissions %}<span style="display:inline-block;margin:4px;padding:4px 8px;border-radius:8px;background:rgba(99,102,241,.15)">{{ perm.description or perm.name }}</span>{% endfor %}</div>{% endif %}
+<form action="{{ url_for('permissions.employee_roles', id=employee.id) }}" method="POST">
                     <p class="emp-desc">
                         اختر الأدوار التي تريد منحها للموظف <strong>{{ employee.name }}</strong> ({{ employee.username
                         }}):

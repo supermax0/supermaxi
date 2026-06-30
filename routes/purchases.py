@@ -22,30 +22,9 @@ from models.purchase_attachment import PurchaseAttachment
 from models.purchase_item import PurchaseItem
 from models.purchase_payment import PurchasePayment
 from models.supplier import Supplier
+from utils.permission_checks import check_permission
 
 purchases_bp = Blueprint("purchases", __name__, url_prefix="/purchases")
-
-
-def check_permission(permission_name):
-    if "user_id" not in session:
-        return False
-    employee = Employee.query.get(session["user_id"])
-    if not employee or not employee.is_active:
-        return False
-    if employee.role == "admin":
-        return True
-    perm_map = {
-        "can_see_orders": "view_orders",
-        "can_see_reports": "view_reports",
-        "can_manage_inventory": "manage_inventory",
-        "can_see_expenses": "view_expenses",
-        "can_manage_suppliers": "manage_suppliers",
-        "can_manage_customers": "manage_customers",
-        "can_see_accounts": "view_accounts",
-        "can_see_financial": "view_financial",
-        "can_edit_price": "edit_price",
-    }
-    return employee.has_permission(perm_map.get(permission_name, permission_name))
 
 
 def _is_admin_user():

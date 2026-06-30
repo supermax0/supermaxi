@@ -837,6 +837,7 @@ td strong {
   </div>
 </div>
 
+<p style="margin-bottom:12px;"><a href="/employees">← الموظفون والحسابات</a></p>
 <!-- ============ ADD AGENT FORM ============ -->
 <div class="card">
   <h3>➕ {{ _('agents_add_title') }}</h3>
@@ -848,7 +849,8 @@ td strong {
     </div>
     <div>
       <label>{{ _('agents_field_phone_label') }}</label>
-      <input type="text" id="agentPhone" placeholder="{{ _('agents_field_phone_placeholder') }}">
+      <input type="text" id="agentNotes" placeholder="ملاحظات" style="grid-column:span 2">
+    <input type="text" id="agentPhone" placeholder="{{ _('agents_field_phone_placeholder') }}">
     </div>
     <button type="submit" class="btn btn-primary" id="addAgentBtn">
       <span>➕</span>
@@ -1081,3 +1083,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
 </div>
 {% endblock %}
+
+
+function editAgent(id, name, phone, notes) {
+  const n = prompt('اسم المندوب', name);
+  if (n === null) return;
+  const ph = prompt('الهاتف', phone || '');
+  if (ph === null) return;
+  const nt = prompt('ملاحظات', notes || '');
+  if (nt === null) return;
+  fetch('/agents/edit/' + id, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: n, phone: ph, notes: nt }) })
+    .then(r => r.json()).then(d => { showToast(d.message || d.error, d.success ? 'success' : 'error'); if (d.success) setTimeout(() => location.reload(), 600); });
+}

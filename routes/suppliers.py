@@ -13,33 +13,10 @@ from datetime import datetime
 from models.purchase import Purchase
 from models.employee import Employee
 from utils.plan_guard import feature_required
+from utils.permission_checks import check_permission
 
 suppliers_bp = Blueprint("suppliers", __name__)
 
-def check_permission(permission_name):
-    """فحص الصلاحية - helper function"""
-    if "user_id" not in session:
-        return False
-    employee = Employee.query.get(session["user_id"])
-    if not employee or not employee.is_active:
-        return False
-    # Admin لديه جميع الصلاحيات
-    if employee.role == "admin":
-        return True
-        
-    perm_map = {
-        "can_see_orders": "view_orders",
-        "can_see_reports": "view_reports",
-        "can_manage_inventory": "manage_inventory",
-        "can_see_expenses": "view_expenses",
-        "can_manage_suppliers": "manage_suppliers",
-        "can_manage_customers": "manage_customers",
-        "can_see_accounts": "view_accounts",
-        "can_see_financial": "view_financial",
-        "can_edit_price": "edit_price",
-    }
-    rbac_name = perm_map.get(permission_name, permission_name)
-    return employee.has_permission(rbac_name)
 
 # =============================
 # Suppliers Page

@@ -106,7 +106,7 @@ def pos():
                 # الكاشير يرى البيجات المرئية للكاشير
                 pages = [p for p in all_pages if getattr(p, "visible_to_cashier", True)]
             # فحص صلاحية تعديل السعر
-            can_edit_price = employee.role == "admin" or getattr(employee, "can_edit_price", False)
+            can_edit_price = employee.role == "admin" or employee.has_permission("edit_price")
     
     # جلب بيانات الطلب للتعديل إذا كان order_id موجود
     order_id = request.args.get("order_id")
@@ -682,7 +682,7 @@ def update_product_price():
     if not employee or not employee.is_active:
         return jsonify({"error": "غير مصرح"}), 403
     
-    if employee.role != "admin" and not getattr(employee, "can_edit_price", False):
+    if employee.role != "admin" and not employee.has_permission("edit_price"):
         return jsonify({"error": "ليس لديك صلاحية لتعديل السعر"}), 403
     
     data = request.get_json() or {}

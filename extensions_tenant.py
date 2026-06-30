@@ -66,6 +66,13 @@ def init_tenant_db(tenant_slug):
             ('view_agents', 'رؤية مندوبي التوصيل'),
             ('view_pages', 'رؤية / إدارة الصفحات'),
             ('view_messages', 'رؤية واجهة المراسلة'),
+            ('view_orders_placed', 'رؤية طلبات تم الطلب'),
+            ('view_orders_delivered', 'رؤية الطلبات الواصلة'),
+            ('view_orders_returned', 'رؤية المرتجعات'),
+            ('view_orders_shipped', 'رؤية المشحونة'),
+            ('manage_employees', 'إدارة الموظفين'),
+            ('manage_agents', 'إدارة المندوبين'),
+            ('manage_pages', 'إدارة البيجات'),
         ]
         
         # Add permissions
@@ -81,7 +88,7 @@ def init_tenant_db(tenant_slug):
         if not session.query(Role).filter_by(name='cashier').first():
             cashier_role = Role(name='cashier', description='كاشير', created_at=datetime.utcnow())
             # Add some default permissions for cashier
-            perms = session.query(Permission).filter(Permission.name.in_(['view_orders', 'manage_customers'])).all()
+            perms = session.query(Permission).filter(Permission.name.in_(['view_orders', 'manage_customers', 'view_orders_placed', 'view_orders_delivered', 'view_orders_returned', 'view_orders_shipped', 'view_pos'])).all()
             cashier_role.permissions.extend(perms)
             session.add(cashier_role)
             

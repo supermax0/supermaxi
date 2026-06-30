@@ -24,6 +24,7 @@ from models.order_item import OrderItem
 from models.product import Product
 from models.customer import Customer
 from models.employee import Employee
+from utils.permission_checks import check_permission, employee_can
 from models.shipping import ShippingCompany
 from models.report import Report
 from models.shipping_report import ShippingReport
@@ -94,30 +95,6 @@ def _tenant_invoice_template_bundle():
     return template_file, template_styles
 
 
-def check_permission(permission_name):
-    """فحص الصلاحية - helper function"""
-    if "user_id" not in session:
-        return False
-    employee = Employee.query.get(session["user_id"])
-    if not employee or not employee.is_active:
-        return False
-    # Admin لديه جميع الصلاحيات
-    if employee.role == "admin":
-        return True
-        
-    perm_map = {
-        "can_see_orders": "view_orders",
-        "can_see_reports": "view_reports",
-        "can_manage_inventory": "manage_inventory",
-        "can_see_expenses": "view_expenses",
-        "can_manage_suppliers": "manage_suppliers",
-        "can_manage_customers": "manage_customers",
-        "can_see_accounts": "view_accounts",
-        "can_see_financial": "view_financial",
-        "can_edit_price": "edit_price",
-    }
-    rbac_name = perm_map.get(permission_name, permission_name)
-    return employee.has_permission(rbac_name)
 
 
 def _db_user_facing_error(exc: BaseException) -> str:
@@ -466,13 +443,13 @@ def orders():
         if employee and employee.role != "admin":
             # تصفية الطلبات بناءً على الصلاحيات
             allowed_statuses = []
-            if getattr(employee, "can_see_orders_placed", True):
+            if employee_can(employee, "view_orders_placed"):
                 allowed_statuses.append("تم الطلب")
-            if getattr(employee, "can_see_orders_delivered", True):
+            if employee_can(employee, "view_orders_delivered"):
                 allowed_statuses.extend(["واصل", "واصلة"])
-            if getattr(employee, "can_see_orders_returned", True):
+            if employee_can(employee, "view_orders_returned"):
                 allowed_statuses.append("مرتجع")
-            if getattr(employee, "can_see_orders_shipped", True):
+            if employee_can(employee, "view_orders_shipped"):
                 allowed_statuses.extend(["مشحون", "مشحونة", "جاري الشحن"])
             
             if allowed_statuses:

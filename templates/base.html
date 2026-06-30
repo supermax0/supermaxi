@@ -2004,7 +2004,7 @@ or request.path.startswith('/superadmin') %}
           _('accounts') }} <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
         {% endif %}
         {% endif %}
-        {% if is_admin and business_allows('employees') %}<a href="/employees"><i class="fa fa-user-tie"></i> {{ _('employees') }}</a>{% endif %}
+        {% if (is_admin or (current_employee and can_manage_employees)) and business_allows('employees') %}<a href="/employees"><i class="fa fa-user-tie"></i> {{ _('employees') }}</a>{% endif %}
         {% if (is_admin or (current_employee and can_see_pages)) and business_allows('pages') %}
         <a href="/pages"><i class="fa fa-file-alt"></i> {{ _('pages') }}</a>
         {% endif %}

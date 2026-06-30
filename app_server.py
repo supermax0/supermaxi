@@ -452,6 +452,8 @@ with app.app_context():
                 db.session.execute(text("ALTER TABLE delivery_agent ADD COLUMN username VARCHAR(50) UNIQUE"))
             if 'password' not in delivery_agent_columns:
                 db.session.execute(text("ALTER TABLE delivery_agent ADD COLUMN password VARCHAR(200)"))
+            if 'is_active' not in delivery_agent_columns:
+                db.session.execute(text("ALTER TABLE delivery_agent ADD COLUMN is_active BOOLEAN DEFAULT TRUE"))
             db.session.commit()
             print("Added username and password columns to delivery_agent table.")
     except Exception as e:
@@ -827,6 +829,9 @@ def inject_global_data():
             "can_see_pages": employee.has_permission("view_pages"),
             "can_see_messages": employee.has_permission("view_messages"),
             "can_edit_price": employee.has_permission("edit_price"),
+            "can_manage_employees": employee.has_permission("manage_employees"),
+            "can_manage_agents": employee.has_permission("manage_agents"),
+            "can_manage_pages": employee.has_permission("manage_pages"),
             "_": translate,
             "current_lang": final_lang
         }
@@ -859,6 +864,7 @@ _OPEN_ROUTES = [
     "/messages/unread-count",  # واجهة للشارة — تُرجع JSON بدون إعادة توجيه
     "/api/landing-chat",  # مساعد الذكاء الاصطناعي لصفحة الهبوط
     "/telegram",  # بوت تيليجرام: webhook و setup و test — بدون تسجيل (ليستقبل التحديثات من Telegram)
+    "/delivery-agent",  # بوابة مندوب التوصيل
     "/shop",  # المتجر العام للزبائن — بدون تسجيل دخول
     "/orders/p/o",  # تفاصيل طلب عامة (QR) — موقّعة، بدون تسجيل
     "/orders/invoice-video",  # بث فيديو الطلب للعامة — رمز موقّع

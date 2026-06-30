@@ -692,7 +692,7 @@
   }
 </style>
 
-<div class="pages-container">
+<div class="pages-container"><p style="margin-bottom:10px;"><a href="/admin/permissions/roles#communication">من يستطيع رؤية البيجات؟ — إدارة الصلاحيات</a></p>
   <!-- ============ ADD PAGE FORM ============ -->
   <div class="add-page-form collapsible-group collapsed" id="groupAddPage"
     style="padding:0; overflow:hidden; transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position:relative;">
@@ -733,6 +733,8 @@
           <th>{{ _('pages_th_total_orders') }}</th>
           <th>{{ _('pages_th_returns') }}</th>
           <th>{{ _('pages_th_delivered') }}</th>
+          <th>كاشير</th>
+          <th>أدمن</th>
           <th>{{ _('pages_th_actions') }}</th>
         </tr>
       </thead>
@@ -752,11 +754,13 @@
           <td><span class="pages-metric pages-metric--neutral">{{ data.orders_count }}</span></td>
           <td><span class="pages-metric pages-metric--danger">{{ data.returned_count }}</span></td>
           <td><span class="pages-metric pages-metric--success">{{ data.delivered_count }}</span></td>
+          <td><input type="checkbox" {% if data.page.visible_to_cashier %}checked{% endif %} onchange="updateVisibility({{ data.page.id }}, 'cashier', this.checked)"></td>
+          <td><input type="checkbox" {% if data.page.visible_to_admin %}checked{% endif %} onchange="updateVisibility({{ data.page.id }}, 'admin', this.checked)"></td>
           <td>
-            <a href="/pages/delete/{{ data.page.id }}" class="btn-delete"
-              onclick="return confirm('{{ _('pages_confirm_delete') }}')">
-              🗑️ {{ _('pages_delete_button') }}
-            </a>
+            {% if can_manage_pages %}
+            <button type="button" class="btn-add" onclick="openAssignEmployees({{ data.page.id }}, {{ data.page.name|tojson }})">👥 موظفين</button>
+            <button type="button" class="btn-delete" onclick="deletePage({{ data.page.id }})">🗑️ حذف</button>
+            {% endif %}
           </td>
         </tr>
         {% else %}
@@ -930,3 +934,15 @@
 </script>
 
 {% endblock %}
+function deletePage(id) {
+  if (!confirm("حذف هذا البيج؟")) return;
+  fetch(`/pages/delete/${id}`, { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+    .then(r => r.json()).then(d => { showToast(d.error || 'تم الحذف', d.success ? 'success' : 'error'); if (d.success) location.reload(); });
+}
+function openAssignEmployees(pageId, pageName) {
+  const ids = prompt(`أدخل معرفات الموظفين مفصولة بفاصلة للبيج: ${pageName}`, '');
+  if (ids === null) return;
+  const employee_ids = ids.split(',').map(s => parseInt(s.trim(), 10)).filter(n => n > 0);
+  fetch(`/pages/assign-employees/${pageId}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ employee_ids }) })
+    .then(r => r.json()).then(d => { showToast(d.message || d.error, d.success ? 'success' : 'error'); if (d.success) location.reload(); });
+}

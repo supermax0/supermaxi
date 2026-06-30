@@ -12,19 +12,9 @@ from utils.inventory_movements import (
     get_product_inventory_summary,
     get_all_products_movements_summary
 )
+from utils.permission_checks import check_permission
 
 inventory_ledger_bp = Blueprint("inventory_ledger", __name__, url_prefix="/inventory/ledger")
-
-def check_permission(permission_name):
-    """فحص الصلاحية"""
-    if "user_id" not in session:
-        return False
-    employee = Employee.query.get(session["user_id"])
-    if not employee or not employee.is_active:
-        return False
-    if employee.role == "admin":
-        return True
-    return getattr(employee, permission_name, False)
 
 
 # ======================================

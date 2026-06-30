@@ -194,45 +194,12 @@ def update_employee_password():
 
 @settings_bp.route("/system/update-permissions", methods=["POST"])
 def update_employee_permissions():
-    """تحديث صلاحيات موظف"""
-    try:
-        from models.employee import Employee
-        data = request.get_json()
-        employee_id = data.get("employee_id")
-        
-        if not employee_id:
-            return jsonify({"success": False, "error": "بيانات ناقصة"}), 400
-        
-        employee = Employee.query.get(employee_id)
-        if not employee:
-            return jsonify({"success": False, "error": "الموظف غير موجود"}), 404
-        
-        # تحديث الصلاحيات
-        permissions = [
-            'can_see_orders',
-            'can_see_orders_placed',
-            'can_see_orders_delivered',
-            'can_see_orders_returned',
-            'can_see_orders_shipped',
-            'can_edit_price',
-            'can_see_reports',
-            'can_manage_inventory',
-            'can_see_expenses',
-            'can_manage_suppliers',
-            'can_see_accounts',
-            'can_see_financial'
-        ]
-        
-        for perm in permissions:
-            if perm in data:
-                setattr(employee, perm, bool(data[perm]))
-        
-        db.session.commit()
-        
-        return jsonify({"success": True, "message": "تم تحديث الصلاحيات بنجاح"})
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"success": False, "error": str(e)}), 400
+    """معطّل — استخدم /admin/permissions/roles لإدارة الصلاحيات عبر RBAC."""
+    return jsonify({
+        "success": False,
+        "error": "تم إيقاف تعديل الصلاحيات القديمة. استخدم صفحة الأدوار والصلاحيات.",
+        "redirect": "/admin/permissions/roles",
+    }), 410
 
 @settings_bp.route("/system/get-permissions/<int:employee_id>")
 def get_employee_permissions(employee_id):
@@ -243,20 +210,11 @@ def get_employee_permissions(employee_id):
         if not employee:
             return jsonify({"success": False, "error": "الموظف غير موجود"}), 404
         
-        permissions = {
-            'can_see_orders': getattr(employee, 'can_see_orders', True),
-            'can_see_orders_placed': getattr(employee, 'can_see_orders_placed', True),
-            'can_see_orders_delivered': getattr(employee, 'can_see_orders_delivered', True),
-            'can_see_orders_returned': getattr(employee, 'can_see_orders_returned', True),
-            'can_see_orders_shipped': getattr(employee, 'can_see_orders_shipped', True),
-            'can_edit_price': getattr(employee, 'can_edit_price', False),
-            'can_see_reports': getattr(employee, 'can_see_reports', True),
-            'can_manage_inventory': getattr(employee, 'can_manage_inventory', False),
-            'can_see_expenses': getattr(employee, 'can_see_expenses', False),
-            'can_manage_suppliers': getattr(employee, 'can_manage_suppliers', False),
-            'can_see_accounts': getattr(employee, 'can_see_accounts', False),
-            'can_see_financial': getattr(employee, 'can_see_financial', False)
-        }
+        from utils.permission_checks import LEGACY_TO_RBAC, employee_can
+
+        permissions = {}
+        for legacy_key, rbac_key in LEGACY_TO_RBAC.items():
+            permissions[legacy_key] = employee_can(employee, rbac_key)
         
         return jsonify({"success": True, "permissions": permissions})
     except Exception as e:

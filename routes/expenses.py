@@ -6,6 +6,7 @@ from models.employee import Employee
 from sqlalchemy.sql import func
 from datetime import datetime, timedelta
 from utils.plan_guard import feature_required
+from utils.permission_checks import check_permission
 
 expenses_bp = Blueprint("expenses", __name__)
 
@@ -29,30 +30,6 @@ def _next_recurring_date(base_date, step, unit, index):
         return _add_months(base_date, offset * 12)
     return base_date + timedelta(days=offset)
 
-def check_permission(permission_name):
-    """فحص الصلاحية - helper function"""
-    if "user_id" not in session:
-        return False
-    employee = Employee.query.get(session["user_id"])
-    if not employee or not employee.is_active:
-        return False
-    # Admin لديه جميع الصلاحيات
-    if employee.role == "admin":
-        return True
-        
-    perm_map = {
-        "can_see_orders": "view_orders",
-        "can_see_reports": "view_reports",
-        "can_manage_inventory": "manage_inventory",
-        "can_see_expenses": "view_expenses",
-        "can_manage_suppliers": "manage_suppliers",
-        "can_manage_customers": "manage_customers",
-        "can_see_accounts": "view_accounts",
-        "can_see_financial": "view_financial",
-        "can_edit_price": "edit_price",
-    }
-    rbac_name = perm_map.get(permission_name, permission_name)
-    return employee.has_permission(rbac_name)
 
 @expenses_bp.route("/", methods=["GET", "POST"])
 @feature_required("expenses")
