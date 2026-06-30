@@ -1064,12 +1064,12 @@
     font-size: 12px;
   }
 
-  .search-orders-table col.col-check { width: 34px; }
-  .search-orders-table col.col-id { width: 42px; }
-  .search-orders-table col.col-party { width: auto; }
-  .search-orders-table col.col-amount { width: 82px; }
-  .search-orders-table col.col-status { width: 88px; }
-  .search-orders-table col.col-action { width: 44px; }
+  .search-orders-table col.col-check { width: 6%; }
+  .search-orders-table col.col-id { width: 8%; }
+  .search-orders-table col.col-party { width: 34%; }
+  .search-orders-table col.col-amount { width: 16%; }
+  .search-orders-table col.col-status { width: 22%; }
+  .search-orders-table col.col-action { width: 14%; }
 
   .search-orders-table thead th {
     position: sticky;
@@ -1125,12 +1125,28 @@
     white-space: nowrap;
   }
 
+  .search-orders-table .search-party-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    margin-top: 1px;
+  }
+
   .search-orders-table .search-party-phone {
-    display: block;
     font-size: 10px;
     color: var(--dashboard-muted, var(--text-muted));
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+  }
+
+  .search-orders-table .search-party-amount-inline {
+    display: none;
+    font-weight: 800;
+    font-size: 10px;
+    color: var(--dashboard-success, var(--success));
     white-space: nowrap;
   }
 
@@ -1212,44 +1228,118 @@
 
   @media (max-width: 768px) {
     #searchModal.modal {
-      padding: 12px;
+      padding: 10px;
     }
 
     #searchModal .finora-dash-modal__panel {
-      width: min(100%, 520px);
+      width: min(100%, 100%);
       max-height: min(88vh, 600px);
+    }
+
+    #searchModal .finora-dash-modal__body {
+      padding: 10px !important;
     }
 
     #searchModal .finora-dash-modal__head h3 {
       font-size: 14px;
     }
 
-    .search-orders-table col.col-amount { width: 72px; }
-    .search-orders-table col.col-status { width: 76px; }
-    .search-orders-table col.col-action { width: 40px; }
+    .search-toolbar {
+      flex-wrap: nowrap;
+      gap: 6px;
+    }
+
+    #searchModal .search-toolbar .btn,
+    #searchModal .search-toolbar button {
+      width: 42px !important;
+      max-width: 42px !important;
+      margin-bottom: 0 !important;
+    }
+
+    #searchModal .search-toolbar input#q {
+      flex: 1 1 0 !important;
+      min-height: 42px;
+      height: 42px;
+    }
+
+    #searchModal .search-submit-btn {
+      flex: 0 0 42px !important;
+      width: 42px !important;
+      min-width: 42px !important;
+      height: 42px !important;
+      min-height: 42px !important;
+    }
+
+    #searchModal .search-submit-text {
+      display: none !important;
+    }
+
+    #searchModal .search-submit-icon {
+      display: inline !important;
+    }
+
+    .search-results-wrap {
+      overflow-x: hidden;
+      overflow-y: auto;
+      max-height: min(44vh, 340px);
+    }
+
+    .search-orders-table col.col-check { width: 9%; }
+    .search-orders-table col.col-id { width: 10%; }
+    .search-orders-table col.col-party { width: 46%; }
+    .search-orders-table col.col-amount { width: 0; }
+    .search-orders-table col.col-status { width: 23%; }
+    .search-orders-table col.col-action { width: 12%; }
+
+    .search-orders-table .search-td-amount {
+      display: none !important;
+    }
+
+    .search-orders-table thead .search-td-amount {
+      display: none !important;
+    }
+
+    .search-orders-table .search-party-amount-inline {
+      display: inline;
+    }
+
+    .search-orders-table .search-party-meta {
+      gap: 3px;
+    }
+
+    .search-orders-table .search-party-phone::after {
+      content: "·";
+      margin-inline: 2px;
+      opacity: 0.5;
+    }
 
     .search-orders-table thead th {
-      padding: 6px 4px;
-      font-size: 10px;
+      padding: 5px 3px;
+      font-size: 9px;
     }
 
     .search-orders-table tbody td {
-      padding: 6px 4px;
+      padding: 5px 3px !important;
+      font-size: 10px !important;
+    }
+
+    .search-orders-table .search-party-name {
       font-size: 11px;
     }
 
     #searchModal select.search-status-select {
-      min-height: 28px !important;
-      height: 28px !important;
-      font-size: 10px !important;
+      min-height: 26px !important;
+      height: 26px !important;
+      font-size: 9px !important;
+      padding: 0 2px !important;
     }
 
     #searchModal .search-orders-table .btn-exec {
-      width: 30px !important;
-      height: 30px !important;
-      min-height: 30px !important;
-      min-width: 30px !important;
-      font-size: 13px !important;
+      width: 28px !important;
+      height: 28px !important;
+      min-height: 28px !important;
+      min-width: 28px !important;
+      font-size: 12px !important;
     }
 
     #searchModal .search-modal-footer .btn,
@@ -3295,7 +3385,10 @@
           <td class="search-td-id"><strong>#${o.id}</strong></td>
           <td class="search-td-party">
             <div class="search-party-name">${o.customer || "—"}</div>
-            <div class="search-party-phone" dir="ltr">${o.phone || "—"}</div>
+            <div class="search-party-meta">
+              <span class="search-party-phone" dir="ltr">${o.phone || "—"}</span>
+              <span class="search-party-amount-inline">${formatNumber(o.total)} د.ع</span>
+            </div>
           </td>
           <td class="search-td-amount">${formatNumber(o.total)} د.ع</td>
           <td class="search-td-status">
