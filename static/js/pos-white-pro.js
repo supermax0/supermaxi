@@ -98,12 +98,13 @@
   function updateStats() {
     const total = calcTotal();
     const count = items.reduce((s, i) => s + (i.qty || 0), 0);
-    const mcb = $("mobileCartBtn");
-    if (mcb) mcb.textContent = `السلة: ${count} منتجات — ${fmt(total)} د.ع`;
+    const countLabel = count + " منتج";
+    const itemCountEl = $("itemCount");
+    if (itemCountEl) itemCountEl.textContent = countLabel;
+    const itemCountMobile = $("itemCountMobile");
+    if (itemCountMobile) itemCountMobile.textContent = countLabel;
     const execBtn = $("btnExecute");
     if (execBtn) execBtn.disabled = items.length === 0 || isSubmitting;
-    const execMobile = $("btnExecuteMobile");
-    if (execMobile) execMobile.disabled = items.length === 0 || isSubmitting;
   }
 
   function updateSummary() {
@@ -117,10 +118,6 @@
     set("summaryDiscount", discStr);
     set("summaryShipping", fmt(ship) + " د.ع");
     set("summaryTotal", fmt(total) + " د.ع");
-    set("summarySubtotalMobile", fmt(sub) + " د.ع");
-    set("summaryDiscountMobile", discStr);
-    set("summaryShippingMobile", fmt(ship) + " د.ع");
-    set("summaryTotalMobile", fmt(total) + " د.ع");
     const tp = $("totalPrice");
     if (tp) tp.textContent = fmt(total);
     updateStats();
@@ -250,6 +247,7 @@
   }
 
   function renderProductGrid() {
+    if (window.innerWidth < 768) return;
     const grid = $("productGrid");
     const empty = $("productEmpty");
     if (!grid) return;
@@ -513,8 +511,7 @@
     }
 
     const notes = ($("orderNotesInput")?.value || "").trim()
-      || ($("invoiceNotes")?.value || "").trim()
-      || ($("invoiceNotesMobile")?.value || "").trim();
+      || ($("invoiceNotes")?.value || "").trim();
 
     isSubmitting = true;
     updateStats();
@@ -637,18 +634,6 @@
     closeClearCartDialog();
     renderItems();
     toast("تم إفراغ السلة");
-  }
-
-  function openMobileCart() {
-    $("mobileSheetBackdrop")?.classList.add("open");
-    $("mobileCartSheet")?.classList.add("open");
-    document.body.style.overflow = "hidden";
-  }
-
-  function closeMobileCart() {
-    $("mobileSheetBackdrop")?.classList.remove("open");
-    $("mobileCartSheet")?.classList.remove("open");
-    document.body.style.overflow = "";
   }
 
   function openInventoryModal() {
@@ -821,33 +806,6 @@
       });
   }
 
-  function syncMobileFields() {
-    const sync = (from, to) => {
-      const f = $(from);
-      const t = $(to);
-      if (f && t) {
-        f.addEventListener("input", () => { t.value = f.value; updateSummary(); });
-        t.addEventListener("input", () => { f.value = t.value; updateSummary(); });
-      }
-    };
-    sync("discountValue", "discountValueMobile");
-    sync("shippingValue", "shippingValueMobile");
-    sync("invoiceNotes", "invoiceNotesMobile");
-
-    $("discountTypeMobile")?.addEventListener("change", (e) => {
-      discountType = e.target.value;
-      const dt = $("discountType");
-      if (dt) dt.value = e.target.value;
-      updateSummary();
-    });
-    $("discountType")?.addEventListener("change", (e) => {
-      discountType = e.target.value;
-      const dt = $("discountTypeMobile");
-      if (dt) dt.value = e.target.value;
-      updateSummary();
-    });
-  }
-
   function initSearch() {
     const searchCustomer = $("searchCustomer");
     const customerResults = $("customerResults");
@@ -942,7 +900,6 @@
         $("searchProduct")?.focus();
       }
       if (e.key === "Escape") {
-        closeMobileCart();
         closeOrderNotesModal();
         closeScheduleModal();
         closeClearCartDialog();
@@ -955,7 +912,7 @@
       }
       if (e.key === "F4") {
         e.preventDefault();
-        if (window.innerWidth < 768) openMobileCart();
+        $("searchProduct")?.focus();
       }
       if (e.ctrlKey && e.key === "Enter" && !["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName)) {
         openOrderNotesModal();
@@ -968,7 +925,6 @@
     bindStockPills();
     initSearch();
     initDiscountShipping();
-    syncMobileFields();
     initKeyboard();
 
     $("cameraInput")?.addEventListener("change", (e) => {
@@ -1017,8 +973,6 @@
     openClearCartDialog,
     closeClearCartDialog,
     confirmClearCart,
-    openMobileCart,
-    closeMobileCart,
     openInventoryModal,
     closeInventoryModal,
     filterInventory,
