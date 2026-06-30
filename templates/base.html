@@ -1843,7 +1843,7 @@
   <link rel="stylesheet" href="/static/css/saas-admin.css">
 </head>
 
-<body>
+<body class="{% block body_class %}{% endblock %}">
 
   <div class="app">
 
@@ -2065,6 +2065,7 @@
 
         {% if not is_payment_flow %}
         <div class="topbar-actions">
+          {% block topbar_actions %}
           <div class="finora-top-search" role="search">
             <i class="fa fa-search" aria-hidden="true"></i>
             <input type="search" aria-label="بحث عام" placeholder="بحث عام">
@@ -2131,6 +2132,7 @@
             <i class="fa fa-robot"></i>
           </a>
           {% endif %}
+          {% endblock %}
         </div>
 
         {% if session.get("user_id") %}
