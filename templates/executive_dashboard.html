@@ -38,7 +38,7 @@
   .exec-board {
     direction: rtl;
     min-height: 100vh;
-    padding: 10px 14px;
+    padding: 0 10px;
     color: var(--exec-text);
     font-family: "Tajawal", sans-serif;
     overflow: hidden;
@@ -46,11 +46,11 @@
 
   .exec-shell {
     max-width: 1700px;
-    min-height: calc(100vh - 20px);
-    max-height: calc(100vh - 20px);
+    min-height: 100vh;
+    max-height: 100vh;
     margin: 0 auto;
     border: 1px solid rgba(230, 237, 245, 0.82);
-    border-radius: 22px;
+    border-radius: 18px;
     background: rgba(255, 255, 255, 0.72);
     box-shadow: 0 22px 70px rgba(16, 24, 40, 0.08);
     backdrop-filter: blur(14px);
@@ -381,7 +381,7 @@
   }
 
   .quick-card {
-    padding: 10px 12px;
+    padding: 7px 8px;
   }
 
   .quick-grid {
@@ -391,12 +391,12 @@
   }
 
   .quick-item {
-    min-height: 74px;
+    min-height: 58px;
     display: grid;
     justify-items: center;
     align-content: center;
     text-align: center;
-    gap: 5px;
+    gap: 3px;
     border-left: 1px solid var(--exec-border);
   }
 
@@ -406,26 +406,27 @@
 
   .quick-label {
     color: var(--exec-muted);
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 900;
-    min-height: 26px;
+    line-height: 1.15;
+    min-height: 20px;
   }
 
   .quick-value {
     color: #111827;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 900;
     font-variant-numeric: tabular-nums;
   }
 
   .quick-trend {
     color: var(--exec-green);
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 900;
   }
 
   .quick-icon {
-    font-size: 19px;
+    font-size: 16px;
     color: #98a2b3;
   }
 
