@@ -1,31 +1,5 @@
 {% extends "base.html" %}
 {% block body_class %}page-dashboard{% endblock %}
-{% block topbar_actions %}
-{% if show_data is defined and show_data == False %}
-<a href="/pos" class="dq-btn dq-btn--pos" title="{{ _('dashboard_welcome_pos') }}">
-  <i class="fas fa-cash-register"></i>
-</a>
-{% else %}
-<div class="dashboard-top-quick-actions">
-  <a href="/pos" class="dq-btn dq-btn--pos" title="{{ _('dashboard_pos') }}">
-    <i class="fas fa-cash-register"></i>
-    <span class="dq-label">{{ _('dashboard_pos') }}</span>
-  </a>
-  <button type="button" class="dq-btn dq-btn--search" onclick="openSearch()" title="{{ _('dashboard_search') }}">
-    <i class="fas fa-search"></i>
-    <span class="dq-label">{{ _('dashboard_search') }}</span>
-  </button>
-  <button type="button" class="dq-btn dq-btn--profit" onclick="openProfit()" title="{{ _('dashboard_profit_today') }}">
-    <i class="fas fa-chart-line"></i>
-    <span class="dq-label">{{ _('dashboard_profit_today') }}</span>
-  </button>
-  <button type="button" class="dq-btn dq-btn--expense" onclick="openAddExpense()" title="{{ _('dashboard_add_expense') }}">
-    <i class="fas fa-plus"></i>
-    <span class="dq-label">{{ _('dashboard_add_expense') }}</span>
-  </button>
-</div>
-{% endif %}
-{% endblock %}
 {% block page_title %}{{ _('dashboard') }}{% endblock %}
 {% block content %}
 {% if show_data is defined and show_data == False %}
@@ -1751,68 +1725,6 @@
     max-width: none;
   }
 
-  /* Topbar quick actions (dashboard home) */
-  .dashboard-top-quick-actions {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-wrap: nowrap;
-  }
-
-  .dq-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    min-height: 34px;
-    min-width: 34px;
-    padding: 0 8px;
-    border-radius: 10px;
-    border: 1px solid rgba(148, 163, 184, 0.22);
-    background: var(--surface, #fff);
-    color: var(--dashboard-text, #0f172a);
-    font-family: inherit;
-    font-size: 11px;
-    font-weight: 700;
-    cursor: pointer;
-    text-decoration: none;
-    white-space: nowrap;
-    transition: background 0.15s, transform 0.15s;
-    line-height: 1;
-  }
-
-  .dq-btn:hover {
-    transform: translateY(-1px);
-  }
-
-  .dq-btn .dq-label {
-    display: none;
-  }
-
-  .dq-btn--pos {
-    background: linear-gradient(135deg, var(--dashboard-primary, #3b82f6), #2563eb);
-    color: #fff;
-    border-color: transparent;
-  }
-
-  .dq-btn--search {
-    background: rgba(14, 165, 233, 0.12);
-    color: #0ea5e9;
-    border-color: rgba(14, 165, 233, 0.2);
-  }
-
-  .dq-btn--profit {
-    background: rgba(22, 163, 74, 0.12);
-    color: #16a34a;
-    border-color: rgba(22, 163, 74, 0.2);
-  }
-
-  .dq-btn--expense {
-    background: rgba(245, 158, 11, 0.12);
-    color: #d97706;
-    border-color: rgba(245, 158, 11, 0.22);
-  }
-
   body.page-dashboard .dashboard-shell {
     gap: 14px;
   }
@@ -1888,56 +1800,7 @@
     margin-top: 4px;
   }
 
-  @media (min-width: 900px) {
-    .dq-btn .dq-label {
-      display: inline;
-    }
-
-    .dq-btn {
-      padding: 0 10px;
-      font-size: 12px;
-    }
-  }
-
   @media (max-width: 640px) {
-    body.page-dashboard .page-title {
-      display: none;
-    }
-
-    body.page-dashboard .topbar {
-      padding: 8px 10px;
-      gap: 8px;
-    }
-
-    body.page-dashboard .topbar-actions {
-      min-width: 0;
-      flex: 1;
-    }
-
-    body.page-dashboard .dashboard-top-quick-actions {
-      width: 100%;
-      justify-content: flex-end;
-    }
-
-    body.page-dashboard .user-box {
-      padding-top: 2px;
-    }
-
-    body.page-dashboard .user-info {
-      padding: 5px 8px;
-    }
-
-    body.page-dashboard .avatar {
-      width: 28px;
-      height: 28px;
-      font-size: 12px;
-    }
-
-    body.page-dashboard main,
-    body.page-dashboard .page-main {
-      padding: 10px !important;
-    }
-
     body.page-dashboard .dashboard-hero {
       padding: 12px;
       border-radius: 14px;
@@ -1950,20 +1813,6 @@
     body.page-dashboard .finora-stat-card {
       min-height: 88px;
       padding: 10px;
-    }
-  }
-
-  @media (max-width: 380px) {
-    .dq-btn {
-      min-width: 30px;
-      min-height: 30px;
-      padding: 0 5px;
-      border-radius: 8px;
-      font-size: 12px;
-    }
-
-    .dq-btn i {
-      font-size: 12px;
     }
   }
 
@@ -3841,6 +3690,15 @@
   // استدعاء load عند تحميل الصفحة مع الفترة الافتراضية (آخر 30 يوم من السنة الحالية)
   window.addEventListener("DOMContentLoaded", function () {
     load("last_30_days");
+    const quick = new URLSearchParams(window.location.search).get("quick");
+    if (quick === "search" && typeof openSearch === "function") openSearch();
+    else if (quick === "profit" && typeof openProfit === "function") openProfit();
+    else if (quick === "expense" && typeof openAddExpense === "function") openAddExpense();
+    if (quick) {
+      const u = new URL(window.location.href);
+      u.searchParams.delete("quick");
+      window.history.replaceState({}, "", u.pathname + u.search + u.hash);
+    }
   });
 
   /* =======================

@@ -534,11 +534,138 @@ tbody tr:hover td {
     gap: 6px !important;
   }
 
-  .assistant-quick-btn,
-  .finora-topbar-icon,
-  .finora-pos-link,
   .toggle {
     min-width: 40px;
     min-height: 40px;
+  }
+}
+
+/* Global compact topbar quick actions */
+.dashboard-top-quick-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+.dq-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 34px;
+  min-width: 34px;
+  padding: 0 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: var(--surface, #fff);
+  color: var(--text-main, #0f172a);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.15s, transform 0.15s;
+  line-height: 1;
+}
+
+.dq-btn:hover {
+  transform: translateY(-1px);
+}
+
+.dq-btn .dq-label {
+  display: none;
+}
+
+.dq-btn--pos {
+  background: linear-gradient(135deg, var(--primary, #3b82f6), #2563eb);
+  color: #fff;
+  border-color: transparent;
+}
+
+.dq-btn--search {
+  background: rgba(14, 165, 233, 0.12);
+  color: #0ea5e9;
+  border-color: rgba(14, 165, 233, 0.2);
+}
+
+.dq-btn--profit {
+  background: rgba(22, 163, 74, 0.12);
+  color: #16a34a;
+  border-color: rgba(22, 163, 74, 0.2);
+}
+
+.dq-btn--expense {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+  border-color: rgba(245, 158, 11, 0.22);
+}
+
+@media (min-width: 900px) {
+  .dq-btn .dq-label {
+    display: inline;
+  }
+
+  .dq-btn {
+    padding: 0 10px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 640px) {
+  body.finora-app .page-title {
+    display: none;
+  }
+
+  body.finora-app .topbar {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  body.finora-app .topbar-actions {
+    min-width: 0;
+    flex: 1;
+  }
+
+  body.finora-app .dashboard-top-quick-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  body.finora-app .user-box {
+    padding-top: 2px;
+  }
+
+  body.finora-app .user-info {
+    padding: 5px 8px;
+  }
+
+  body.finora-app .avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 380px) {
+  .dq-btn {
+    min-width: 30px;
+    min-height: 30px;
+    padding: 0 5px;
+    border-radius: 8px;
+  }
+
+  .dq-btn i {
+    font-size: 12px;
+  }
+}
+
+/* Prevent iOS zoom on input focus */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="range"]):not([type="color"]),
+  select,
+  textarea {
+    font-size: 16px !important;
   }
 }

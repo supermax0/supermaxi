@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <title>{% block title %}Finora{% endblock %}</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="format-detection" content="telephone=no">
   <meta name="description" content="Finora - نظام محاسبة متكامل لإدارة المبيعات والمخزون">
   <meta name="theme-color" content="#0a0f1c">
@@ -1843,18 +1843,18 @@
   <link rel="stylesheet" href="/static/css/saas-admin.css">
 </head>
 
-<body class="{% block body_class %}{% endblock %}">
+{% set is_payment_flow = request.path.startswith('/payment')
+or request.path.startswith('/payments')
+or request.path.startswith('/signup')
+or request.path.startswith('/pricing')
+or request.path.startswith('/login')
+or request.path.startswith('/superadmin') %}
+<body class="{% block body_class %}{% endblock %}{% if session.get('user_id') and not is_payment_flow %} finora-app{% endif %}">
 
   <div class="app">
 
     <!-- ================= SIDEBAR (جميع المستخدمين المسجلين — العناصر حسب الصلاحيات) ================= -->
     {# اعتبر مسار /superadmin أيضاً كمسار خارجي عن لوحة الشركة حتى لا تظهر القائمة الجانبية معها #}
-    {% set is_payment_flow = request.path.startswith('/payment')
-    or request.path.startswith('/payments')
-    or request.path.startswith('/signup')
-    or request.path.startswith('/pricing')
-    or request.path.startswith('/login')
-    or request.path.startswith('/superadmin') %}
     {% set is_admin = session.get("role") == "admin" or (current_employee and current_employee.role == "admin") %}
     {% if session.get("user_id") and not is_payment_flow %}
     <aside class="sidebar" id="sidebar">
@@ -2066,71 +2066,27 @@
         {% if not is_payment_flow %}
         <div class="topbar-actions">
           {% block topbar_actions %}
-          <div class="finora-top-search" role="search">
-            <i class="fa fa-search" aria-hidden="true"></i>
-            <input type="search" aria-label="بحث عام" placeholder="بحث عام">
-          </div>
-          {% if session.get("user_id") and show_pos and business_allows('pos') %}
-          <a class="finora-pos-link" href="/pos" aria-label="نقطة البيع" title="نقطة البيع">
-            <i class="fa fa-cash-register"></i>
-            <span>POS</span>
-          </a>
-          {% endif %}
           {% if session.get("user_id") %}
-          <div class="finora-notifications">
-            <button class="finora-topbar-icon" type="button" aria-label="مركز الإشعارات">
-              <i class="fa fa-bell"></i>
-              <span class="finora-notification-badge">4</span>
+          <div class="dashboard-top-quick-actions">
+            {% if show_pos and business_allows('pos') %}
+            <a href="/pos" class="dq-btn dq-btn--pos" title="{{ _('dashboard_pos') }}">
+              <i class="fas fa-cash-register"></i>
+              <span class="dq-label">{{ _('dashboard_pos') }}</span>
+            </a>
+            {% endif %}
+            <button type="button" class="dq-btn dq-btn--search" onclick="FinoraTopbar.run('search')" title="{{ _('dashboard_search') }}">
+              <i class="fas fa-search"></i>
+              <span class="dq-label">{{ _('dashboard_search') }}</span>
             </button>
-            <div class="finora-notification-menu" role="menu" aria-label="الإشعارات">
-              <div class="finora-notification-item" role="menuitem">
-                <i class="fa fa-clock"></i>
-                <div>
-                  <div class="finora-notification-title">طلب متأخر</div>
-                  <div class="finora-notification-time">منذ 15 دقيقة</div>
-                </div>
-                <span class="badge">جديد</span>
-              </div>
-              <div class="finora-notification-item" role="menuitem">
-                <i class="fa fa-file-invoice-dollar"></i>
-                <div>
-                  <div class="finora-notification-title">فاتورة تحتاج مراجعة</div>
-                  <div class="finora-notification-time">اليوم</div>
-                </div>
-              </div>
-              <div class="finora-notification-item" role="menuitem">
-                <i class="fa fa-box-open"></i>
-                <div>
-                  <div class="finora-notification-title">مخزون منخفض</div>
-                  <div class="finora-notification-time">اليوم</div>
-                </div>
-              </div>
-              <div class="finora-notification-item" role="menuitem">
-                <i class="fa fa-money-bill-wave"></i>
-                <div>
-                  <div class="finora-notification-title">حركة نقدية جديدة</div>
-                  <div class="finora-notification-time">قبل قليل</div>
-                </div>
-              </div>
-            </div>
+            <button type="button" class="dq-btn dq-btn--profit" onclick="FinoraTopbar.run('profit')" title="{{ _('dashboard_profit_today') }}">
+              <i class="fas fa-chart-line"></i>
+              <span class="dq-label">{{ _('dashboard_profit_today') }}</span>
+            </button>
+            <button type="button" class="dq-btn dq-btn--expense" onclick="FinoraTopbar.run('expense')" title="{{ _('dashboard_add_expense') }}">
+              <i class="fas fa-plus"></i>
+              <span class="dq-label">{{ _('dashboard_add_expense') }}</span>
+            </button>
           </div>
-          {% endif %}
-          {% if session.get("user_id") and show_pos and business_allows('quick_sale') %}
-          <a class="assistant-quick-btn" href="/quick-sale" aria-label="بيع سريع" title="بيع سريع">
-            <i class="fa fa-bolt"></i>
-          </a>
-          {% endif %}
-          {% if session.get("user_id") %}
-          <a class="assistant-quick-btn" href="/social-ai/" aria-label="بناء الوكلاء"
-            title="بناء الوكلاء (AI Agent Builder)">
-            <i class="fa fa-project-diagram"></i>
-          </a>
-          {% endif %}
-          {% if session.get("user_id") and plan_has("ai_assistant") %}
-          <a class="assistant-quick-btn" href="/assistant/chat" aria-label="{{ _('financial_assistant') }}"
-            title="{{ _('financial_assistant') }}">
-            <i class="fa fa-robot"></i>
-          </a>
           {% endif %}
           {% endblock %}
         </div>
@@ -2873,6 +2829,17 @@
       // Also run after a short delay to ensure all elements are loaded
       setTimeout(initMobileNav, 100);
     })();
+  </script>
+
+  <script>
+    window.FinoraTopbar = {
+      run(action) {
+        if (action === "search" && typeof openSearch === "function") { openSearch(); return; }
+        if (action === "profit" && typeof openProfit === "function") { openProfit(); return; }
+        if (action === "expense" && typeof openAddExpense === "function") { openAddExpense(); return; }
+        window.location.href = "/?quick=" + encodeURIComponent(action);
+      },
+    };
   </script>
 
 </body>
