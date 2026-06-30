@@ -1071,6 +1071,7 @@ def require_login():
         "/payment",
         "/login",
         "/payment/success",
+        "/payments",
         "/payments/failed",
         "/payments/mock-gateway",
         "/payments/simulate",

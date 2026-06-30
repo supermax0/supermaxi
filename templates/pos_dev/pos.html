@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <title>نقطة البيع — Finora POS White Pro</title>
+  <title>نقطة البيع — Finora POS</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='IMG_0200.png') }}">
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -18,7 +18,6 @@
   </div>
 
   <div class="pos-app">
-    <!-- Header -->
     <header class="pos-header">
       <div class="pos-header-start">
         <a href="/" class="pos-btn-icon" title="الرئيسية"><i class="fas fa-home"></i></a>
@@ -34,7 +33,7 @@
         <button type="button" class="pos-btn-icon" title="بحث (Ctrl+K)" onclick="document.getElementById('searchProduct').focus()">
           <i class="fas fa-search"></i>
         </button>
-        <a href="/pos" class="pos-btn-icon" title="الواجهة الحالية"><i class="fas fa-layer-group"></i></a>
+        <a href="/pos?legacy=1" class="pos-btn-icon" title="الواجهة القديمة"><i class="fas fa-layer-group"></i></a>
       </div>
     </header>
 
@@ -42,60 +41,72 @@
     <div class="edit-banner">✏️ تعديل الطلب #{{ order_data['id'] }}</div>
     {% endif %}
 
-    <!-- Stats -->
+    <!-- Stats: last sale → cash → cart count → invoice total -->
     <div class="pos-stats">
-      <div class="pos-stat">
-        <div class="pos-stat-icon blue"><i class="fas fa-receipt"></i></div>
-        <div>
-          <div class="pos-stat-label">إجمالي الفاتورة الحالية</div>
-          <div class="pos-stat-value" id="statCartTotal">0 د.ع</div>
-        </div>
-      </div>
-      <div class="pos-stat">
-        <div class="pos-stat-icon green"><i class="fas fa-shopping-basket"></i></div>
-        <div>
-          <div class="pos-stat-label">عدد المنتجات في السلة</div>
-          <div class="pos-stat-value" id="statItemCount">0</div>
-        </div>
-      </div>
-      <div class="pos-stat">
-        <div class="pos-stat-icon purple"><i class="fas fa-cash-register"></i></div>
-        <div>
-          <div class="pos-stat-label">الرصيد النقدي</div>
-          <div class="pos-stat-value" id="statCashBalance">{{ "{:,.0f}".format(cash_balance) }} د.ع</div>
-        </div>
-      </div>
-      <div class="pos-stat">
-        <div class="pos-stat-icon amber"><i class="fas fa-clock"></i></div>
+      <div class="pos-stat pos-stat--green">
+        <div class="pos-stat-icon green"><i class="fas fa-check-circle"></i></div>
         <div>
           <div class="pos-stat-label">آخر عملية بيع</div>
           <div class="pos-stat-value" id="statLastSale">—</div>
         </div>
       </div>
+      <div class="pos-stat pos-stat--blue">
+        <div class="pos-stat-icon blue"><i class="fas fa-wallet"></i></div>
+        <div>
+          <div class="pos-stat-label">الرصيد النقدي</div>
+          <div class="pos-stat-value" id="statCashBalance">{{ "{:,.0f}".format(cash_balance) }} د.ع</div>
+        </div>
+      </div>
+      <div class="pos-stat pos-stat--amber">
+        <div class="pos-stat-icon amber"><i class="fas fa-shopping-cart"></i></div>
+        <div>
+          <div class="pos-stat-label">عدد المنتجات في السلة</div>
+          <div class="pos-stat-value" id="statItemCount">0</div>
+        </div>
+      </div>
+      <div class="pos-stat pos-stat--purple">
+        <div class="pos-stat-icon purple"><i class="fas fa-file-invoice"></i></div>
+        <div>
+          <div class="pos-stat-label">إجمالي الفاتورة الحالية</div>
+          <div class="pos-stat-value" id="statCartTotal">0 د.ع</div>
+        </div>
+      </div>
     </div>
 
     <div class="pos-layout">
-      <!-- Cart panel (desktop) -->
+      <!-- Cart panel (left visually via ltr layout) -->
       <aside class="pos-desktop-cart">
-        <div class="pos-card">
+        <div class="pos-card pos-card--cart">
           <h2 class="pos-card-title">
             <span><i class="fas fa-shopping-cart"></i> السلة / الفاتورة</span>
             <span id="itemCount" class="pos-badge">0 منتج</span>
           </h2>
 
           <div class="pos-customer-row">
-            <div class="pos-search-wrap" style="position:relative;flex:1">
+            <div class="pos-search-wrap pos-search-wrap--inline">
               <i class="fas fa-user"></i>
               <input type="text" id="searchCustomer" class="pos-input" placeholder="ابحث عن زبون بالاسم أو الهاتف..." autocomplete="off">
               <div id="customerResults" class="pos-dropdown"></div>
             </div>
-            <button type="button" class="pos-btn-primary" style="min-height:44px;padding:0 14px" onclick="PosWP.openCustomerModal()">
+            <button type="button" class="pos-btn-primary pos-btn-icon-only" onclick="PosWP.openCustomerModal()">
               <i class="fas fa-user-plus"></i>
             </button>
           </div>
+
           <div id="selectedCustomer" class="pos-customer-selected">زبون سريع — اختر أو أضف زبون</div>
 
-          <div class="pos-cart-table-wrap" style="margin-top:14px">
+          <div class="pos-customer-fields">
+            <div>
+              <label class="pos-field-label">رقم الهاتف</label>
+              <input type="text" id="customerPhone" class="pos-input" readonly placeholder="—">
+            </div>
+            <div>
+              <label class="pos-field-label">المحافظة</label>
+              <input type="text" id="customerCity" class="pos-input" readonly placeholder="—">
+            </div>
+          </div>
+
+          <div class="pos-cart-table-wrap">
             <table class="pos-cart-table">
               <thead>
                 <tr>
@@ -110,24 +121,24 @@
             </table>
           </div>
 
-          <div class="pos-form-grid" style="margin-top:12px">
+          <div class="pos-form-grid">
             <div>
-              <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">نوع الخصم</label>
+              <label class="pos-field-label">نوع الخصم</label>
               <select id="discountType" class="pos-select">
                 <option value="amount">مبلغ</option>
                 <option value="percent">نسبة</option>
               </select>
             </div>
             <div>
-              <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">قيمة الخصم</label>
+              <label class="pos-field-label">قيمة الخصم</label>
               <input type="number" id="discountValue" class="pos-input" min="0" value="0" placeholder="0">
             </div>
             <div>
-              <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">الشحن</label>
+              <label class="pos-field-label">الشحن</label>
               <input type="number" id="shippingValue" class="pos-input" min="0" value="0" placeholder="0">
             </div>
             <div>
-              <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">ملاحظات</label>
+              <label class="pos-field-label">ملاحظات</label>
               <input type="text" id="invoiceNotes" class="pos-input" placeholder="ملاحظات الفاتورة">
             </div>
           </div>
@@ -161,40 +172,63 @@
         </div>
       </aside>
 
-      <!-- Products panel -->
-      <main>
-        <div class="pos-card">
+      <!-- Products panel (right visually) -->
+      <main class="pos-products-panel">
+        <div class="pos-card pos-card--products">
           <h2 class="pos-card-title"><i class="fas fa-boxes"></i> المنتجات</h2>
 
-          <div class="pos-search-wrap" style="position:relative">
-            <i class="fas fa-search"></i>
-            <input type="text" id="searchProduct" class="pos-input" placeholder="ابحث عن منتج بالاسم أو الباركود" autocomplete="off">
-            <div id="productResults" class="pos-dropdown"></div>
+          <div class="pos-search-bar">
+            <div class="pos-search-wrap pos-search-wrap--inline">
+              <i class="fas fa-search"></i>
+              <input type="text" id="searchProduct" class="pos-input" placeholder="ابحث عن منتج بالاسم أو الباركود..." autocomplete="off">
+              <div id="productResults" class="pos-dropdown"></div>
+            </div>
+            <button type="button" class="pos-btn-barcode" title="مسح باركود" onclick="PosWP.focusBarcode()">
+              <i class="fas fa-barcode"></i>
+            </button>
           </div>
 
-          <div class="pos-search-actions">
-            <button type="button" class="pos-btn-secondary" onclick="PosWP.openInventoryModal()">
+          <div class="pos-toolbar">
+            <button type="button" class="pos-btn-filter" id="btnToggleStockFilter" onclick="PosWP.toggleStockFilter()">
+              <i class="fas fa-sliders-h"></i> فلتر المخزون
+            </button>
+            <button type="button" class="pos-btn-secondary pos-btn-sm" onclick="PosWP.openInventoryModal()">
               <i class="fas fa-warehouse"></i> المخزون
             </button>
-            <button type="button" class="pos-btn-secondary" onclick="document.getElementById('searchProduct').focus()">
-              <i class="fas fa-barcode"></i> باركود
-            </button>
           </div>
 
-          <div class="pos-pills">
-            <button type="button" class="pos-pill active" data-cat="all">الكل</button>
-            <button type="button" class="pos-pill" data-cat="available">متوفر</button>
-            <button type="button" class="pos-pill" data-cat="low">منخفض المخزون</button>
-            <button type="button" class="pos-pill" data-cat="out">نفد</button>
+          <div id="stockFilterPills" class="pos-pills pos-pills--stock" style="display:none">
+            <button type="button" class="pos-pill pos-pill--stock" data-cat="available">متوفر</button>
+            <button type="button" class="pos-pill pos-pill--stock" data-cat="low">منخفض المخزون</button>
+            <button type="button" class="pos-pill pos-pill--stock" data-cat="out">نفد</button>
           </div>
 
-          <div id="productGrid" class="pos-product-grid"></div>
+          <div id="categoryPills" class="pos-pills"></div>
+
+    <div id="productGrid" class="pos-product-grid"></div>
 
           <div id="productEmpty" class="pos-empty" style="display:none">
             <i class="fas fa-search"></i>
             <p><strong>لا توجد منتجات مطابقة</strong></p>
-            <p style="font-size:13px">جرب البحث باسم آخر أو امسح الفلاتر</p>
-            <button type="button" class="pos-btn-secondary" style="margin-top:12px" onclick="PosWP.clearProductSearch()">مسح البحث</button>
+            <p class="pos-empty-hint">جرب البحث باسم آخر أو امسح الفلاتر</p>
+            <button type="button" class="pos-btn-secondary" onclick="PosWP.clearProductSearch()">مسح البحث</button>
+          </div>
+
+          <div class="pos-pagination">
+            <span id="paginationInfo">0 من 0</span>
+            <div class="pos-pagination-controls">
+              <button type="button" id="btnPrevPage" class="pos-btn-page" disabled onclick="PosWP.prevPage()">
+                <i class="fas fa-chevron-right"></i>
+              </button>
+              <button type="button" id="btnNextPage" class="pos-btn-page" disabled onclick="PosWP.nextPage()">
+                <i class="fas fa-chevron-left"></i>
+              </button>
+              <select id="pageSizeSelect" class="pos-select pos-select--sm" onchange="PosWP.changePageSize(this.value)">
+                <option value="12" selected>12</option>
+                <option value="24">24</option>
+                <option value="48">48</option>
+              </select>
+            </div>
           </div>
         </div>
       </main>
@@ -208,20 +242,51 @@
   <div id="mobileCartSheet" class="mobile-cart-sheet">
     <div class="mobile-sheet-handle"></div>
     <div class="mobile-sheet-body">
-      <h3 style="margin:8px 0 12px;font-size:18px">السلة / الفاتورة</h3>
+      <h3 class="mobile-sheet-title">السلة / الفاتورة</h3>
       <div class="pos-customer-row">
         <input type="text" class="pos-input" placeholder="ابحث عن زبون..." onfocus="document.getElementById('searchCustomer').focus(); PosWP.closeMobileCart()">
-        <button type="button" class="pos-btn-primary" style="min-width:48px" onclick="PosWP.openCustomerModal(); PosWP.closeMobileCart()"><i class="fas fa-user-plus"></i></button>
+        <button type="button" class="pos-btn-primary pos-btn-icon-only" onclick="PosWP.openCustomerModal(); PosWP.closeMobileCart()"><i class="fas fa-user-plus"></i></button>
       </div>
+      <div id="selectedCustomerMobile" class="pos-customer-selected pos-customer-selected--mobile"></div>
       <div id="cartMobileList" class="pos-cart-mobile-list"></div>
-      <div class="pos-summary" style="margin-top:12px">
-        <div class="pos-summary-row total"><span>الإجمالي</span><span id="summaryTotalMobile">0 د.ع</span></div>
+
+      <div class="pos-form-grid pos-form-grid--mobile">
+        <div>
+          <label class="pos-field-label">نوع الخصم</label>
+          <select id="discountTypeMobile" class="pos-select">
+            <option value="amount">مبلغ</option>
+            <option value="percent">نسبة</option>
+          </select>
+        </div>
+        <div>
+          <label class="pos-field-label">قيمة الخصم</label>
+          <input type="number" id="discountValueMobile" class="pos-input" min="0" value="0">
+        </div>
+        <div>
+          <label class="pos-field-label">الشحن</label>
+          <input type="number" id="shippingValueMobile" class="pos-input" min="0" value="0">
+        </div>
+        <div>
+          <label class="pos-field-label">ملاحظات</label>
+          <input type="text" id="invoiceNotesMobile" class="pos-input" placeholder="ملاحظات">
+        </div>
+      </div>
+
+      <div class="pos-summary">
+        <div class="pos-summary-row"><span>المجموع الفرعي</span><span id="summarySubtotalMobile">0 د.ع</span></div>
+        <div class="pos-summary-row"><span>الخصم</span><span id="summaryDiscountMobile">0 د.ع</span></div>
+        <div class="pos-summary-row"><span>الشحن</span><span id="summaryShippingMobile">0 د.ع</span></div>
+        <div class="pos-summary-row total"><span>الإجمالي النهائي</span><span id="summaryTotalMobile">0 د.ع</span></div>
       </div>
     </div>
     <div class="mobile-sheet-footer">
-      <button type="button" id="btnExecuteMobile" class="pos-btn-primary" style="width:100%" disabled onclick="PosWP.openOrderNotesModal(); PosWP.closeMobileCart()">
-        <i class="fas fa-print"></i> تنفيذ و طباعة
-      </button>
+      <div class="mobile-sheet-actions">
+        <button type="button" class="pos-btn-danger-soft pos-btn-sm" onclick="PosWP.openClearCartDialog(); PosWP.closeMobileCart()">إلغاء</button>
+        <button type="button" class="pos-btn-secondary pos-btn-sm" onclick="PosWP.openScheduleModal(); PosWP.closeMobileCart()">تأجيل</button>
+        <button type="button" id="btnExecuteMobile" class="pos-btn-primary pos-btn-sm" disabled onclick="PosWP.openOrderNotesModal(); PosWP.closeMobileCart()">
+          <i class="fas fa-print"></i> تنفيذ
+        </button>
+      </div>
     </div>
   </div>
 
@@ -232,9 +297,9 @@
     <div class="pos-modal-content">
       <div class="pos-modal-header">
         <span><i class="fas fa-user-plus"></i> إضافة زبون جديد</span>
-        <button type="button" style="border:none;background:none;font-size:22px;cursor:pointer" onclick="PosWP.closeCustomerModal()">&times;</button>
+        <button type="button" class="pos-modal-close" onclick="PosWP.closeCustomerModal()">&times;</button>
       </div>
-      <div style="display:grid;gap:10px">
+      <div class="pos-modal-form">
         <input id="name" class="pos-input" placeholder="الاسم">
         <input id="phone" class="pos-input" placeholder="رقم الهاتف">
         <input id="phone2" class="pos-input" placeholder="رقم آخر">
@@ -244,20 +309,20 @@
         </select>
         <input id="address" class="pos-input" placeholder="العنوان">
       </div>
-      <div id="ocrModal" style="display:none;margin-top:12px;padding:12px;background:var(--surface-soft);border-radius:12px">
+      <div id="ocrModal" class="pos-ocr-block" style="display:none">
         <textarea id="ocrText" class="pos-textarea" placeholder="نص OCR"></textarea>
-        <div style="display:grid;gap:8px;margin-top:8px">
+        <div class="pos-modal-form">
           <input id="ocrName" class="pos-input" placeholder="الاسم">
           <input id="ocrPhone" class="pos-input" placeholder="الهاتف">
           <input id="ocrAddress" class="pos-input" placeholder="العنوان">
           <select id="ocrCity" class="pos-select"><option value="بغداد">بغداد</option><option value="محافظات">محافظات</option></select>
         </div>
-        <div style="display:flex;gap:8px;margin-top:8px">
+        <div class="pos-modal-actions">
           <button type="button" class="pos-btn-primary" onclick="PosWP.confirmOCR()">حفظ OCR</button>
           <button type="button" class="pos-btn-secondary" onclick="PosWP.closeOCR()">إلغاء</button>
         </div>
       </div>
-      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px">
+      <div class="pos-modal-actions pos-modal-actions--wrap">
         <button type="button" class="pos-btn-primary" onclick="PosWP.saveCustomer()">حفظ الزبون</button>
         <button type="button" class="pos-btn-secondary" onclick="PosWP.openCamera()">📷 كاميرا</button>
         <button type="button" class="pos-btn-secondary" onclick="PosWP.uploadImage()">صورة AI</button>
@@ -269,18 +334,18 @@
 
   <!-- Inventory modal -->
   <div id="inventoryModal" class="pos-modal">
-    <div class="pos-modal-content" style="max-width:700px">
+    <div class="pos-modal-content pos-modal-content--wide">
       <div class="pos-modal-header">
         <span><i class="fas fa-warehouse"></i> منتجات المخزون</span>
-        <button type="button" style="border:none;background:none;font-size:22px;cursor:pointer" onclick="PosWP.closeInventoryModal()">&times;</button>
+        <button type="button" class="pos-modal-close" onclick="PosWP.closeInventoryModal()">&times;</button>
       </div>
       <input type="text" id="inventorySearch" class="pos-input" placeholder="ابحث في المخزون..." oninput="PosWP.filterInventory()">
-      <div id="inventoryModalList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:12px;max-height:400px;overflow-y:auto">
+      <div id="inventoryModalList" class="pos-inventory-grid">
         {% for p in products %}
         <div class="inventory-card pos-product-card" data-id="{{ p.id }}" data-name="{{ p.name|lower }}"
           data-price="{{ p.sale_price or 0 }}" data-stock="{{ p.quantity or 0 }}"
-          onclick="PosWP.addItem({{ p.id }}, {{ p.name|tojson }}, {{ p.sale_price or 0 }}, {{ p.quantity or 0 }})"
-          style="cursor:pointer">
+          data-image="{{ p.image_url or '' }}"
+          onclick="PosWP.addItemFromCard(this)">
           <div class="pos-product-name">{{ p.name }}</div>
           <div class="pos-product-sku">متوفر: {{ p.quantity or 0 }}</div>
           <div class="pos-product-price">{{ "{:,.0f}".format(p.sale_price or 0) }} د.ع</div>
@@ -294,7 +359,7 @@
   <div id="priceModal" class="pos-modal">
     <div class="pos-modal-content">
       <div class="pos-modal-header">تغيير سعر البيع</div>
-      <div id="priceModalProductName" style="margin-bottom:8px;color:var(--text-secondary)"></div>
+      <div id="priceModalProductName" class="pos-modal-subtitle"></div>
       <input type="number" id="priceModalInput" class="pos-input" min="0" step="1">
       <div class="pos-modal-actions">
         <button type="button" class="pos-btn-secondary" onclick="PosWP.closePriceModal()">إلغاء</button>
@@ -308,8 +373,8 @@
     <div class="pos-modal-content">
       <div class="pos-modal-header">📝 ملاحظة البيع</div>
       {% if pages %}
-      <label style="font-size:13px;color:var(--text-secondary)">اختر البيج:</label>
-      <select id="pageSelect" class="pos-select" style="margin-bottom:12px">
+      <label class="pos-field-label">اختر البيج:</label>
+      <select id="pageSelect" class="pos-select pos-select--mb">
         <option value="">-- اختر البيج --</option>
         {% for page in pages %}
         <option value="{{ page.id }}" data-name="{{ page.name }}">{{ page.name }}</option>
@@ -330,7 +395,7 @@
     <div class="pos-modal-content">
       <div class="pos-modal-header">📅 تأجيل الطلب</div>
       <input type="date" id="scheduleDateInput" class="pos-input">
-      <textarea id="scheduleNotesInput" class="pos-textarea" placeholder="ملاحظة (اختياري)" rows="2" style="margin-top:10px"></textarea>
+      <textarea id="scheduleNotesInput" class="pos-textarea pos-textarea--mt" placeholder="ملاحظة (اختياري)" rows="2"></textarea>
       <div class="pos-modal-actions">
         <button type="button" class="pos-btn-secondary" onclick="PosWP.closeScheduleModal()">إلغاء</button>
         <button type="button" class="pos-btn-primary" onclick="PosWP.confirmScheduleOrder()">تأجيل الطلب</button>
@@ -342,7 +407,7 @@
   <div id="clearCartModal" class="pos-modal">
     <div class="pos-modal-content">
       <div class="pos-modal-header">إلغاء السلة؟</div>
-      <p style="color:var(--text-secondary);margin:0 0 16px">سيتم حذف جميع المنتجات من السلة الحالية. لن يتم إنشاء طلب.</p>
+      <p class="pos-modal-text">سيتم حذف جميع المنتجات من السلة الحالية. لن يتم إنشاء طلب.</p>
       <div class="pos-modal-actions">
         <button type="button" class="pos-btn-secondary" onclick="PosWP.closeClearCartDialog()">إلغاء</button>
         <button type="button" class="pos-btn-danger-soft" onclick="PosWP.confirmClearCart()">نعم، إفراغ السلة</button>
@@ -354,11 +419,7 @@
     "canEditPrice": {{ can_edit_price|tojson }},
     "orderData": {{ order_data|tojson }},
     "cashBalance": {{ cash_balance|tojson }},
-    "products": [
-      {%- for p in products -%}
-      {"id":{{ p.id }},"name":{{ p.name|tojson }},"sku":{{ (p.sku or '')|tojson }},"barcode":{{ (p.barcode or '')|tojson }},"sale_price":{{ p.sale_price or 0 }},"quantity":{{ p.quantity or 0 }},"image_url":{{ (p.image_url or '')|tojson }}}{% if not loop.last %},{% endif %}
-      {%- endfor -%}
-    ]
+    "products": {{ bootstrap_products|tojson }}
   }</script>
   <script src="{{ url_for('static', filename='js/pos-white-pro.js') }}"></script>
 </body>

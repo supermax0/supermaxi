@@ -87,6 +87,12 @@ def get_public_plans():
             py = getattr(p, "price_yearly", 0) or 0
             om = getattr(p, "original_price_monthly", None)
             oy = getattr(p, "original_price_yearly", None)
+            # تصحيح شائع: السعر السنوي مخزّن في حقل الشهري (مثلاً 250,000 بدل 25,000)
+            fb = FALLBACK_PLANS.get(p.plan_key)
+            if fb and pm and fb.get("price_yearly") and pm == fb["price_yearly"]:
+                fb_pm = fb.get("price_monthly")
+                if fb_pm is not None and pm != fb_pm:
+                    pm = fb_pm
             by_key[p.plan_key] = {
                 "key": p.plan_key,
                 "name": p.name,
@@ -644,6 +650,33 @@ def payment_success():
 
 
 # =================================================
+# SaaS Signup — تحقق البريد قبل التسجيل
+# =================================================
+@index_bp.route("/signup/send-verification-code", methods=["POST"])
+def signup_send_verification_code():
+    from utils.signup_email_verify import issue_signup_verification_code
+
+    data = request.get_json(silent=True) or {}
+    email = (data.get("email") or request.form.get("email") or "").strip()
+    ok, message, dev_code = issue_signup_verification_code(email)
+    payload = {"ok": ok, "message": message}
+    if dev_code:
+        payload["dev_code"] = dev_code
+    return jsonify(payload), (200 if ok else 400)
+
+
+@index_bp.route("/signup/verify-email", methods=["POST"])
+def signup_verify_email():
+    from utils.signup_email_verify import verify_signup_email_code
+
+    data = request.get_json(silent=True) or {}
+    email = (data.get("email") or request.form.get("email") or "").strip()
+    code = (data.get("code") or request.form.get("code") or "").strip()
+    ok, message = verify_signup_email_code(email, code)
+    return jsonify({"ok": ok, "message": message, "verified": ok}), (200 if ok else 400)
+
+
+# =================================================
 # SaaS Signup (تسجيل شركة جديدة)
 # =================================================
 @index_bp.route("/signup", methods=["GET", "POST"])
@@ -698,6 +731,16 @@ def signup():
     if password != password2:
         return render_err("كلمة المرور وتأكيدها غير متطابقتين")
 
+    from utils.signup_email_verify import is_valid_email, is_email_verified_for_signup, normalize_email
+
+    if not email:
+        return render_err("البريد الإلكتروني مطلوب لإتمام التسجيل")
+    if not is_valid_email(email):
+        return render_err("يرجى إدخال بريد إلكتروني صحيح")
+    if not is_email_verified_for_signup(email):
+        return render_err("يجب التحقق من بريدك الإلكتروني قبل إنشاء الحساب (أرسل الرمز وأدخله)")
+    email = normalize_email(email)
+
     def _slugify(s: str) -> str:
         s = (s or "").strip().lower()
         s = re.sub(r"[^\w\s\-]", "", s, flags=re.UNICODE)
@@ -735,11 +778,16 @@ def signup():
         db.session.add(core_tenant)
         db.session.commit()
 
+        # يجب قراءة حقول Core قبل ضبط g.tenant — وإلا DynamicTenantSession يبحث في قاعدة الشركة
+        core_business_type = getattr(core_tenant, "business_type", None) or "general"
+        db.session.expunge(core_tenant)
+
         # 2) تهيئة قاعدة بيانات الشركة (SQLite) + إنشاء صف Tenant داخلي + إنشاء Admin داخل قاعدة الشركة
         init_tenant_db(slug)
 
         old_tenant = getattr(g, "tenant", None)
         g.tenant = slug
+        admin_id = admin_name = admin_role = admin_tenant_id = None
         try:
             tenant_row = Tenant(
                 name=company_name,
@@ -767,6 +815,11 @@ def signup():
             db.session.add(admin)
             db.session.commit()
 
+            admin_id = admin.id
+            admin_name = admin.name
+            admin_role = admin.role
+            admin_tenant_id = admin.tenant_id
+
             from utils.tenant_registration import (
                 registration_payload_for_signup,
                 save_tenant_registration,
@@ -784,7 +837,7 @@ def signup():
                     plan_key=plan.get("key") or plan_key,
                     plan_name=plan.get("name") or "الخطة الأساسية",
                     billing=billing,
-                    business_type=getattr(core_tenant, "business_type", "general") or "general",
+                    business_type=core_business_type,
                 ),
             )
         finally:
@@ -792,17 +845,24 @@ def signup():
 
     except Exception as e:
         db.session.rollback()
-        return render_err(f"حدث خطأ أثناء إنشاء الحساب، يرجى المحاولة مجدداً. ({str(e)})")
+        try:
+            current_app.logger.exception("signup failed: %s", e)
+        except Exception:
+            pass
+        return render_err("حدث خطأ أثناء إنشاء الحساب، يرجى المحاولة مجدداً.")
 
     # تسجيل الجلسة (Auto-login) + توجيه
     session.clear()
     session.permanent = True
     session["tenant_slug"] = slug
-    session["user_id"] = admin.id
-    session["name"] = admin.name
-    session["role"] = admin.role
-    session["tenant_id"] = admin.tenant_id
+    session["user_id"] = admin_id
+    session["name"] = admin_name
+    session["role"] = admin_role
+    session["tenant_id"] = admin_tenant_id
     session["plan_key"] = plan.get("key") or plan_key
+
+    from utils.signup_email_verify import clear_signup_email_verification
+    clear_signup_email_verification()
 
     # خطة بسعر 0 للفترة المختارة: دخول مباشر بدون بوابة دفع
     pm = int(plan.get("price_monthly", 0) or 0)

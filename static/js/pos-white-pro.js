@@ -1,4 +1,4 @@
-/* Finora POS White Pro — client logic (same APIs as stable POS) */
+/* Finora POS White Pro — client logic */
 (function () {
   "use strict";
 
@@ -10,6 +10,7 @@
 
   let items = [];
   let selectedCustomerId = null;
+  let selectedCustomerName = "";
   let editingOrderId = null;
   let currentPriceEditIndex = -1;
   let activeCategory = "all";
@@ -19,15 +20,26 @@
   let shippingValue = 0;
   let lastOrderLabel = "—";
   let isSubmitting = false;
+  let currentPage = 1;
+  let pageSize = 12;
 
   const initialOrderData = bootstrap.orderData ?? null;
   if (initialOrderData) {
     editingOrderId = initialOrderData.id ?? null;
     selectedCustomerId = initialOrderData.customer_id ?? null;
+    selectedCustomerName = initialOrderData.customer_name || "";
     items = Array.isArray(initialOrderData.items) ? initialOrderData.items.slice() : [];
   }
 
   const $ = (id) => document.getElementById(id);
+
+  function debounce(fn, ms) {
+    let t;
+    return function (...args) {
+      clearTimeout(t);
+      t = setTimeout(() => fn.apply(this, args), ms);
+    };
+  }
 
   function toast(msg) {
     const t = $("posToast");
@@ -39,6 +51,10 @@
 
   function fmt(n) {
     return (Number(n) || 0).toLocaleString("ar-IQ");
+  }
+
+  function getProductById(id) {
+    return allProducts.find((p) => p.id === id);
   }
 
   function calcSubtotal() {
@@ -59,10 +75,45 @@
     return Math.max(0, sub - disc + ship);
   }
 
-  function stockBadge(qty) {
-    if (qty <= 0) return { cls: "out", text: "نفد" };
-    if (qty <= 5) return { cls: "low", text: "مخزون منخفض" };
-    return { cls: "ok", text: "متوفر" };
+  function stockBadge(product, qty) {
+    const threshold = product?.low_stock_threshold ?? 5;
+    if (qty <= 0) return { cls: "out", text: "نفد", overlay: false };
+    if (qty <= threshold) return { cls: "low", text: "مخزون منخفض", overlay: true };
+    return { cls: "ok", text: "متوفر", overlay: false };
+  }
+
+  function cartThumbHtml(item) {
+    if (item.image_url) {
+      return `<img src="${item.image_url}" alt="" class="pos-cart-thumb">`;
+    }
+    return `<span class="pos-cart-thumb pos-cart-thumb--placeholder"><i class="fas fa-box"></i></span>`;
+  }
+
+  function updateCustomerDisplay(c) {
+    const name = c?.name || selectedCustomerName || "";
+    const phone = c?.phone || "";
+    const city = c?.city || "";
+    const label = name + (phone ? " — " + phone : "");
+    const set = (id, val) => { const el = $(id); if (el) el.textContent = val; };
+    set("selectedCustomer", label || "زبون سريع — اختر أو أضف زبون");
+    const mobileEl = $("selectedCustomerMobile");
+    if (mobileEl) mobileEl.textContent = label;
+    const phoneEl = $("customerPhone");
+    if (phoneEl) phoneEl.value = phone;
+    const cityEl = $("customerCity");
+    if (cityEl) cityEl.value = city;
+  }
+
+  function clearCustomerDisplay() {
+    selectedCustomerName = "";
+    updateCustomerDisplay(null);
+    $("selectedCustomer").textContent = "زبون سريع — اختر أو أضف زبون";
+    const phoneEl = $("customerPhone");
+    if (phoneEl) phoneEl.value = "";
+    const cityEl = $("customerCity");
+    if (cityEl) cityEl.value = "";
+    const mobileEl = $("selectedCustomerMobile");
+    if (mobileEl) mobileEl.textContent = "";
   }
 
   function updateStats() {
@@ -86,11 +137,15 @@
     const disc = calcDiscount(sub);
     const ship = Number(shippingValue) || 0;
     const total = calcTotal();
+    const discStr = disc > 0 ? "−" + fmt(disc) + " د.ع" : "0 د.ع";
     const set = (id, val) => { const el = $(id); if (el) el.textContent = val; };
     set("summarySubtotal", fmt(sub) + " د.ع");
-    set("summaryDiscount", disc > 0 ? "−" + fmt(disc) + " د.ع" : "0 د.ع");
+    set("summaryDiscount", discStr);
     set("summaryShipping", fmt(ship) + " د.ع");
     set("summaryTotal", fmt(total) + " د.ع");
+    set("summarySubtotalMobile", fmt(sub) + " د.ع");
+    set("summaryDiscountMobile", discStr);
+    set("summaryShippingMobile", fmt(ship) + " د.ع");
     set("summaryTotalMobile", fmt(total) + " د.ع");
     const tp = $("totalPrice");
     if (tp) tp.textContent = fmt(total);
@@ -105,9 +160,7 @@
       box.innerHTML = "<li>أضف منتجات لمعاينة أثر العملية</li>";
       return;
     }
-    const lines = items.map((i) => {
-      return `<li>${i.name}: −${i.qty} من المخزون</li>`;
-    });
+    const lines = items.map((i) => `<li>${i.name}: −${i.qty} من المخزون</li>`);
     lines.push(`<li>الصندوق: +${fmt(total)} د.ع عند الدفع النقدي</li>`);
     lines.push("<li>فاتورة جديدة سيتم إنشاؤها</li>");
     lines.push("<li>حالة الدفع: غير مسدد (حسب المنطق الحالي)</li>");
@@ -123,21 +176,30 @@
 
     const rowHtml = items.map((i, idx) => {
       const t = (i.price || 0) * (i.qty || 0);
+      const sku = i.sku || "";
       const priceEdit = canEditPrice
         ? `<button type="button" class="pos-qty-btn" onclick="PosWP.changePrice(${idx})" title="تعديل السعر"><i class="fas fa-pen"></i></button>`
         : "";
       return `<tr>
-        <td><strong>${i.name}</strong></td>
+        <td>
+          <div class="pos-cart-product-cell">
+            ${cartThumbHtml(i)}
+            <div>
+              <strong>${i.name}</strong>
+              ${sku ? `<div class="pos-cart-sku">${sku}</div>` : ""}
+            </div>
+          </div>
+        </td>
         <td>${fmt(i.price)} د.ع ${priceEdit}</td>
         <td>
           <div class="pos-qty-stepper">
             <button type="button" class="pos-qty-btn" onclick="PosWP.updateQty(${idx},-1)">−</button>
-            <span style="min-width:24px;text-align:center;font-weight:700">${i.qty}</span>
+            <span class="pos-qty-value">${i.qty}</span>
             <button type="button" class="pos-qty-btn" onclick="PosWP.updateQty(${idx},1)">+</button>
           </div>
         </td>
-        <td style="font-weight:700">${fmt(t)} د.ع</td>
-        <td><button type="button" class="pos-btn-remove" onclick="PosWP.removeItem(${idx})" title="حذف">×</button></td>
+        <td class="pos-cart-line-total">${fmt(t)} د.ع</td>
+        <td><button type="button" class="pos-btn-remove" onclick="PosWP.removeItem(${idx})" title="حذف"><i class="fas fa-trash-alt"></i></button></td>
       </tr>`;
     }).join("");
 
@@ -147,18 +209,24 @@
       const t = (i.price || 0) * (i.qty || 0);
       return `<div class="pos-cart-mobile-item">
         <div class="pos-cart-mobile-item-head">
-          <div class="pos-cart-mobile-item-name">${i.name}</div>
-          <button type="button" class="pos-btn-remove" onclick="PosWP.removeItem(${idx})">×</button>
+          <div class="pos-cart-product-cell">
+            ${cartThumbHtml(i)}
+            <div>
+              <div class="pos-cart-mobile-item-name">${i.name}</div>
+              ${i.sku ? `<div class="pos-cart-sku">${i.sku}</div>` : ""}
+            </div>
+          </div>
+          <button type="button" class="pos-btn-remove" onclick="PosWP.removeItem(${idx})"><i class="fas fa-trash-alt"></i></button>
         </div>
         <div class="pos-product-row">
           <span>${fmt(i.price)} د.ع</span>
           <div class="pos-qty-stepper">
             <button type="button" class="pos-qty-btn" onclick="PosWP.updateQty(${idx},-1)">−</button>
-            <span style="min-width:24px;text-align:center;font-weight:700">${i.qty}</span>
+            <span class="pos-qty-value">${i.qty}</span>
             <button type="button" class="pos-qty-btn" onclick="PosWP.updateQty(${idx},1)">+</button>
           </div>
         </div>
-        <div style="margin-top:6px;font-weight:700;color:var(--primary)">${fmt(t)} د.ع</div>
+        <div class="pos-cart-line-total pos-cart-line-total--mobile">${fmt(t)} د.ع</div>
       </div>`;
     }).join("");
 
@@ -182,17 +250,54 @@
         return name.includes(q) || sku.includes(q) || bc.includes(q);
       });
     }
-    if (activeCategory === "low") list = list.filter((p) => (p.quantity || 0) > 0 && (p.quantity || 0) <= 5);
-    else if (activeCategory === "out") list = list.filter((p) => (p.quantity || 0) <= 0);
-    else if (activeCategory === "available") list = list.filter((p) => (p.quantity || 0) > 5);
+    if (activeCategory === "offers") {
+      list = list.filter((p) => !!(p.store_badge || "").trim());
+    } else if (activeCategory === "low") {
+      list = list.filter((p) => {
+        const qty = p.quantity || 0;
+        const th = p.low_stock_threshold ?? 5;
+        return qty > 0 && qty <= th;
+      });
+    } else if (activeCategory === "out") {
+      list = list.filter((p) => (p.quantity || 0) <= 0);
+    } else if (activeCategory === "available") {
+      list = list.filter((p) => {
+        const qty = p.quantity || 0;
+        const th = p.low_stock_threshold ?? 5;
+        return qty > th;
+      });
+    } else if (activeCategory !== "all") {
+      list = list.filter((p) => (p.category || "") === activeCategory);
+    }
     return list;
+  }
+
+  function updatePagination(list) {
+    const total = list.length;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
+
+    const start = total === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+    const end = Math.min(currentPage * pageSize, total);
+    const info = $("paginationInfo");
+    if (info) {
+      info.textContent = total === 0 ? "0 من 0" : `${start}-${end} من ${total}`;
+    }
+    const prev = $("btnPrevPage");
+    const next = $("btnNextPage");
+    if (prev) prev.disabled = currentPage <= 1;
+    if (next) next.disabled = currentPage >= totalPages;
   }
 
   function renderProductGrid() {
     const grid = $("productGrid");
     const empty = $("productEmpty");
     if (!grid) return;
+
     const list = filteredProducts();
+    updatePagination(list);
+
     if (!list.length) {
       grid.innerHTML = "";
       if (empty) empty.style.display = "block";
@@ -200,32 +305,66 @@
     }
     if (empty) empty.style.display = "none";
 
-    grid.innerHTML = list.map((p) => {
+    const startIdx = (currentPage - 1) * pageSize;
+    const pageList = list.slice(startIdx, startIdx + pageSize);
+
+    grid.innerHTML = pageList.map((p) => {
       const qty = p.quantity || 0;
-      const badge = stockBadge(qty);
-      const img = p.image_url
+      const badge = stockBadge(p, qty);
+      const imgInner = p.image_url
         ? `<img src="${p.image_url}" alt="" loading="lazy">`
         : '<i class="fas fa-box"></i>';
+      const overlay = badge.overlay
+        ? `<span class="pos-stock-overlay ${badge.cls}">${badge.text}</span>`
+        : "";
       const sku = p.sku || p.barcode || ("#" + p.id);
-      const nameEsc = (p.name || "").replace(/'/g, "\\'");
+      const nameEsc = (p.name || "").replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+      const stockLabel = qty <= 0 ? "نفد" : `المخزون: ${qty}`;
       return `<article class="pos-product-card" data-id="${p.id}">
-        <div class="pos-product-img">${img}</div>
+        <div class="pos-product-img">${imgInner}${overlay}</div>
         <div class="pos-product-name">${p.name}</div>
         <div class="pos-product-sku">${sku}</div>
         <div class="pos-product-row">
           <span class="pos-product-price">${fmt(p.sale_price)} د.ع</span>
-          <span class="pos-stock-badge ${badge.cls}">${badge.text}</span>
+          ${!badge.overlay ? `<span class="pos-stock-badge ${badge.cls}">${badge.text}</span>` : ""}
         </div>
-        <div class="pos-product-row" style="font-size:12px;color:var(--text-muted)">المخزون: ${qty}</div>
+        <div class="pos-product-stock">${stockLabel}</div>
         <button type="button" class="pos-btn-add" ${qty <= 0 ? "disabled" : ""}
-          onclick="PosWP.addItem(${p.id},'${nameEsc}',${p.sale_price || 0},${qty})">إضافة</button>
+          onclick="PosWP.addItemById(${p.id})"><i class="fas fa-cart-plus"></i> إضافة</button>
       </article>`;
     }).join("");
   }
 
-  function addItem(id, name, price, stock) {
+  function syncLocalStock(productId, delta) {
+    const p = allProducts.find((x) => x.id === productId);
+    if (p) p.quantity = Math.max(0, (p.quantity || 0) - delta);
+    renderProductGrid();
+  }
+
+  function addItemById(id) {
+    const p = getProductById(id);
+    if (!p) return;
+    addItem(p.id, p.name, p.sale_price, p.quantity, p.image_url, p.sku);
+  }
+
+  function addItemFromCard(el) {
+    if (!el) return;
+    addItem(
+      parseInt(el.getAttribute("data-id"), 10),
+      el.querySelector(".pos-product-name")?.textContent || "",
+      parseInt(el.getAttribute("data-price"), 10) || 0,
+      parseInt(el.getAttribute("data-stock"), 10) || 0,
+      el.getAttribute("data-image") || "",
+      ""
+    );
+  }
+
+  function addItem(id, name, price, stock, imageUrl, sku) {
     const idNum = typeof id === "string" ? parseInt(id, 10) : id;
     const stockNum = typeof stock === "string" ? parseInt(stock, 10) : (stock || 0);
+    const product = getProductById(idNum);
+    const img = imageUrl || product?.image_url || "";
+    const itemSku = sku || product?.sku || product?.barcode || "";
     const item = items.find((i) => i.product_id === idNum);
 
     if (item) {
@@ -240,13 +379,21 @@
         toast("المنتج غير متوفر في المخزون");
         return;
       }
-      items.push({ product_id: idNum, name: name || "", price: Number(price) || 0, qty: 1, stock: stockNum });
+      items.push({
+        product_id: idNum,
+        name: name || "",
+        price: Number(price) || 0,
+        qty: 1,
+        stock: stockNum,
+        image_url: img,
+        sku: itemSku,
+      });
       toast("تم إضافة " + (name || "منتج") + " للسلة");
     }
     const sp = $("searchProduct");
     if (sp) sp.value = "";
-    const pr = $("productResults");
-    if (pr) pr.classList.remove("open");
+    productSearchQuery = "";
+    $("productResults")?.classList.remove("open");
     renderItems();
   }
 
@@ -282,7 +429,7 @@
     const nameEl = $("priceModalProductName");
     const input = $("priceModalInput");
     if (nameEl) nameEl.textContent = item.name + " — السعر الحالي: " + fmt(item.price) + " د.ع";
-    if (input) { input.value = item.price; }
+    if (input) input.value = item.price;
     $("priceModal")?.classList.add("show");
     input?.focus();
   }
@@ -312,8 +459,8 @@
       return;
     }
     selectedCustomerId = c.id;
-    const el = $("selectedCustomer");
-    if (el) el.textContent = c.name + " — " + (c.phone || "");
+    selectedCustomerName = c.name || "";
+    updateCustomerDisplay(c);
     $("customerResults")?.classList.remove("open");
     const sc = $("searchCustomer");
     if (sc) sc.value = "";
@@ -360,8 +507,8 @@
         }
         if (d.status === "success" && d.id) {
           selectedCustomerId = d.id;
-          const el = $("selectedCustomer");
-          if (el) el.textContent = d.name + " — " + d.phone;
+          selectedCustomerName = d.name;
+          updateCustomerDisplay({ id: d.id, name: d.name, phone: d.phone, city: $("city")?.value || "" });
           toast("تم حفظ الزبون بنجاح");
           closeCustomerModal();
         } else {
@@ -406,7 +553,10 @@
       pageName = opt ? opt.getAttribute("data-name") || opt.text : null;
     }
 
-    const notes = ($("orderNotesInput")?.value || "").trim();
+    const notes = ($("orderNotesInput")?.value || "").trim()
+      || ($("invoiceNotes")?.value || "").trim()
+      || ($("invoiceNotesMobile")?.value || "").trim();
+
     isSubmitting = true;
     updateStats();
     const btn = $("btnExecute");
@@ -417,7 +567,7 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         customer_id: selectedCustomerId,
-        items: items,
+        items: items.map(({ product_id, qty, price }) => ({ product_id, qty, price })),
         note: notes || null,
         scheduled_date: null,
         page_id: pageId || null,
@@ -434,13 +584,13 @@
           return;
         }
         toast("تم تنفيذ البيع وإنشاء الفاتورة");
-        lastOrderLabel = "INV-" + d.invoice_id;
+        items.forEach((i) => syncLocalStock(i.product_id, i.qty));
+        lastOrderLabel = "#INV-" + d.invoice_id;
         closeOrderNotesModal();
         printServerInvoice(d.invoice_id);
         items = [];
         selectedCustomerId = null;
-        const el = $("selectedCustomer");
-        if (el) el.textContent = "زبون سريع — اختر أو أضف زبون";
+        clearCustomerDisplay();
         if (pageSelect) pageSelect.value = "";
         renderItems();
         fetchLastOrders();
@@ -496,7 +646,7 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         customer_id: selectedCustomerId,
-        items: items,
+        items: items.map(({ product_id, qty, price }) => ({ product_id, qty, price })),
         note: notes || null,
         scheduled_date: scheduleDate,
         page_id: pageSelect?.value && pageSelect.value !== "no_page" ? pageSelect.value : null,
@@ -505,11 +655,12 @@
       .then((r) => r.json())
       .then((d) => {
         if (d.error) { toast(d.error); return; }
+        items.forEach((i) => syncLocalStock(i.product_id, i.qty));
         toast("تم تأجيل الطلب — رقم " + d.invoice_id);
         closeScheduleModal();
         items = [];
         selectedCustomerId = null;
-        $("selectedCustomer").textContent = "زبون سريع — اختر أو أضف زبون";
+        clearCustomerDisplay();
         renderItems();
       })
       .catch((err) => toast("حدث خطأ: " + err.message));
@@ -563,17 +714,128 @@
     });
   }
 
+  function formatLastSaleTime(dateStr) {
+    if (!dateStr) return "";
+    const parts = dateStr.split(" ");
+    if (parts.length >= 2) {
+      const timePart = parts[1];
+      const [h, m] = timePart.split(":").map(Number);
+      if (!isNaN(h)) {
+        const ampm = h >= 12 ? "PM" : "AM";
+        const h12 = h % 12 || 12;
+        return `${h12}:${String(m || 0).padStart(2, "0")} ${ampm}`;
+      }
+    }
+    return dateStr;
+  }
+
   function fetchLastOrders() {
     fetch("/pos/last-orders")
       .then((r) => r.json())
       .then((orders) => {
         if (orders && orders.length) {
           const o = orders[0];
-          lastOrderLabel = "INV-" + o.id + " / " + (o.date || "").split(" ")[1] || o.date;
+          const time = formatLastSaleTime(o.date);
+          lastOrderLabel = time ? `#INV-${o.id} · ${time}` : `#INV-${o.id}`;
           updateStats();
         }
       })
       .catch(() => { /* */ });
+  }
+
+  function buildCategoryTabs() {
+    const container = $("categoryPills");
+    if (!container) return;
+
+    const cats = new Set();
+    let hasOffers = false;
+    allProducts.forEach((p) => {
+      if (p.category) cats.add(p.category);
+      if (p.store_badge) hasOffers = true;
+    });
+
+    let html = '<button type="button" class="pos-pill active" data-cat="all">الكل</button>';
+    Array.from(cats).sort().forEach((cat) => {
+      html += `<button type="button" class="pos-pill" data-cat="${cat.replace(/"/g, "&quot;")}">${cat}</button>`;
+    });
+    if (hasOffers) {
+      html += '<button type="button" class="pos-pill" data-cat="offers">عروض</button>';
+    }
+    container.innerHTML = html;
+    bindCategoryPills(container);
+  }
+
+  function bindCategoryPills(container) {
+    container.querySelectorAll(".pos-pill").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        container.querySelectorAll(".pos-pill").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        activeCategory = btn.getAttribute("data-cat") || "all";
+        currentPage = 1;
+        renderProductGrid();
+      });
+    });
+  }
+
+  function bindStockPills() {
+    document.querySelectorAll(".pos-pill--stock").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("#categoryPills .pos-pill").forEach((b) => b.classList.remove("active"));
+        document.querySelectorAll(".pos-pill--stock").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        activeCategory = btn.getAttribute("data-cat") || "all";
+        currentPage = 1;
+        renderProductGrid();
+      });
+    });
+  }
+
+  function toggleStockFilter() {
+    const el = $("stockFilterPills");
+    if (!el) return;
+    const show = el.style.display === "none" || !el.style.display;
+    el.style.display = show ? "flex" : "none";
+    $("btnToggleStockFilter")?.classList.toggle("active", show);
+  }
+
+  function focusBarcode() {
+    const sp = $("searchProduct");
+    if (sp) { sp.focus(); sp.select(); }
+  }
+
+  function prevPage() {
+    if (currentPage > 1) {
+      currentPage--;
+      renderProductGrid();
+    }
+  }
+
+  function nextPage() {
+    const totalPages = Math.ceil(filteredProducts().length / pageSize);
+    if (currentPage < totalPages) {
+      currentPage++;
+      renderProductGrid();
+    }
+  }
+
+  function changePageSize(val) {
+    pageSize = parseInt(val, 10) || 12;
+    currentPage = 1;
+    renderProductGrid();
+  }
+
+  function clearProductSearch() {
+    const sp = $("searchProduct");
+    if (sp) sp.value = "";
+    productSearchQuery = "";
+    activeCategory = "all";
+    currentPage = 1;
+    document.querySelectorAll("#categoryPills .pos-pill").forEach((b, i) => b.classList.toggle("active", i === 0));
+    document.querySelectorAll(".pos-pill--stock").forEach((b) => b.classList.remove("active"));
+    $("stockFilterPills").style.display = "none";
+    $("btnToggleStockFilter")?.classList.remove("active");
+    $("productResults")?.classList.remove("open");
+    renderProductGrid();
   }
 
   /* OCR */
@@ -623,28 +885,39 @@
       .then((d) => {
         if (d.status === "success" || d.status === "exists") {
           selectedCustomerId = d.id;
-          $("selectedCustomer").textContent = d.name + " — " + d.phone;
+          selectedCustomerName = d.name;
+          updateCustomerDisplay({ id: d.id, name: d.name, phone: d.phone, city: $("ocrCity")?.value || "" });
           closeOCR();
           toast("تم حفظ بيانات OCR");
         }
       });
   }
 
-  function clearProductSearch() {
-    const sp = $("searchProduct");
-    if (sp) sp.value = "";
-    productSearchQuery = "";
-    activeCategory = "all";
-    document.querySelectorAll(".pos-pill").forEach((b, i) => b.classList.toggle("active", i === 0));
-    const pr = $("productResults");
-    if (pr) pr.classList.remove("open");
-    renderProductGrid();
-  }
-    let t;
-    return function (...args) {
-      clearTimeout(t);
-      t = setTimeout(() => fn.apply(this, args), ms);
+  function syncMobileFields() {
+    const sync = (from, to) => {
+      const f = $(from);
+      const t = $(to);
+      if (f && t) {
+        f.addEventListener("input", () => { t.value = f.value; updateSummary(); });
+        t.addEventListener("input", () => { f.value = t.value; updateSummary(); });
+      }
     };
+    sync("discountValue", "discountValueMobile");
+    sync("shippingValue", "shippingValueMobile");
+    sync("invoiceNotes", "invoiceNotesMobile");
+
+    $("discountTypeMobile")?.addEventListener("change", (e) => {
+      discountType = e.target.value;
+      const dt = $("discountType");
+      if (dt) dt.value = e.target.value;
+      updateSummary();
+    });
+    $("discountType")?.addEventListener("change", (e) => {
+      discountType = e.target.value;
+      const dt = $("discountTypeMobile");
+      if (dt) dt.value = e.target.value;
+      updateSummary();
+    });
   }
 
   function initSearch() {
@@ -676,6 +949,7 @@
     const runProductSearch = (val) => {
       if (!val) {
         productSearchQuery = "";
+        currentPage = 1;
         renderProductGrid();
         productResults?.classList.remove("open");
         return;
@@ -684,23 +958,25 @@
         .then((r) => r.json())
         .then((d) => {
           if (d.length === 1 && d[0].is_barcode) {
-            addItem(d[0].id, d[0].name, d[0].price, d[0].quantity);
+            const p = getProductById(d[0].id);
+            addItem(d[0].id, d[0].name, d[0].price, d[0].quantity, d[0].image_url || p?.image_url, p?.sku);
             if (searchProduct) searchProduct.value = "";
+            productSearchQuery = "";
             return;
           }
           productSearchQuery = val.toLowerCase();
+          currentPage = 1;
           renderProductGrid();
           if (d.length > 0 && productResults) {
             productResults.innerHTML = d.map((p) => {
-              const name = (p.name || "").replace(/"/g, "&quot;");
-              return `<div class="pos-product-item" onclick="PosWP.addItem(${p.id},'${name.replace(/'/g, "\\'")}',${p.price},${p.quantity || 0})">${p.name} — ${fmt(p.price)} <small>(${p.quantity || 0})</small></div>`;
+              const prod = getProductById(p.id);
+              const nameEsc = (p.name || "").replace(/'/g, "\\'");
+              return `<div class="pos-product-item" onclick="PosWP.addItem(${p.id},'${nameEsc}',${p.price},${p.quantity || 0},'${(p.image_url || prod?.image_url || "").replace(/'/g, "\\'")}','${(prod?.sku || "").replace(/'/g, "\\'")}')">${p.name} — ${fmt(p.price)} <small>(${p.quantity || 0})</small></div>`;
             }).join("");
             productResults.classList.add("open");
-          } else {
-            if (productResults) {
-              productResults.innerHTML = '<div style="padding:12px;color:var(--text-muted)">لا توجد نتائج</div>';
-              productResults.classList.add("open");
-            }
+          } else if (productResults) {
+            productResults.innerHTML = '<div class="pos-dropdown-empty">لا توجد نتائج</div>';
+            productResults.classList.add("open");
           }
         });
     };
@@ -714,17 +990,6 @@
         }
       });
     }
-  }
-
-  function initPills() {
-    document.querySelectorAll(".pos-pill").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        document.querySelectorAll(".pos-pill").forEach((b) => b.classList.remove("active"));
-        btn.classList.add("active");
-        activeCategory = btn.getAttribute("data-cat") || "all";
-        renderProductGrid();
-      });
-    });
   }
 
   function initDiscountShipping() {
@@ -771,9 +1036,11 @@
   }
 
   function init() {
+    buildCategoryTabs();
+    bindStockPills();
     initSearch();
-    initPills();
     initDiscountShipping();
+    syncMobileFields();
     initKeyboard();
     fetchLastOrders();
 
@@ -785,9 +1052,8 @@
     });
 
     if (initialOrderData) {
-      const el = $("selectedCustomer");
-      if (el && initialOrderData.customer_name) {
-        el.textContent = initialOrderData.customer_name;
+      if (initialOrderData.customer_name) {
+        updateCustomerDisplay({ name: initialOrderData.customer_name });
       }
       if (initialOrderData.note && $("invoiceNotes")) {
         $("invoiceNotes").value = initialOrderData.note;
@@ -804,6 +1070,8 @@
 
   window.PosWP = {
     addItem,
+    addItemById,
+    addItemFromCard,
     updateQty,
     removeItem,
     changePrice,
@@ -832,6 +1100,11 @@
     confirmOCR,
     closeOCR,
     clearProductSearch,
+    toggleStockFilter,
+    focusBarcode,
+    prevPage,
+    nextPage,
+    changePageSize,
   };
 
   if (document.readyState === "loading") {

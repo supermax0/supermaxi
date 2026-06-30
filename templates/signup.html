@@ -16,7 +16,7 @@
 
     <div class="pf-header">
       <h1>اختر خطتك وأنشئ حسابك</h1>
-      <p>كل المعلومات في خطوة واحدة. لا بيانات بنكية مطلوبة الآن.</p>
+      <p>أدخل بريدك الحقيقي وتحقق منه برمز يُرسل إليك قبل إنشاء الحساب.</p>
     </div>
 
     <div style="text-align:center">
@@ -73,6 +73,33 @@
         <input type="hidden" name="billing" id="billing_input" value="{{ billing or 'monthly' }}">
 
         <div class="pf-form-grid">
+          <div class="pf-email-verify" id="emailVerifyBox">
+            <label style="display:block;font-weight:800;margin-bottom:10px;font-size:14px">
+              البريد الإلكتروني <span class="req">*</span>
+            </label>
+            <div class="pf-email-row">
+              <div class="pf-field">
+                <input type="email" id="email" name="email" placeholder="example@domain.com" required dir="ltr"
+                  value="{{ (form.email if form else '') | default('') }}" autocomplete="email">
+                <div class="pf-hint">سيُرسل رمز تحقق من 6 أرقام إلى هذا البريد</div>
+              </div>
+              <button type="button" class="pf-btn pf-btn-outline pf-btn-sm" id="btnSendCode">
+                <i class="fas fa-paper-plane"></i> إرسال الرمز
+              </button>
+            </div>
+            <div class="pf-code-row" id="codeRow">
+              <div class="pf-field">
+                <label for="email_verify_code">رمز التحقق</label>
+                <input type="text" id="email_verify_code" inputmode="numeric" pattern="[0-9]*" maxlength="6"
+                  placeholder="123456" dir="ltr" autocomplete="one-time-code">
+              </div>
+              <button type="button" class="pf-btn pf-btn-primary pf-btn-sm" id="btnVerifyCode">
+                <i class="fas fa-check"></i> تحقق
+              </button>
+            </div>
+            <div class="pf-verify-status" id="verifyStatus"></div>
+          </div>
+
           <div class="pf-field">
             <label for="company_name">اسم الشركة / المشروع <span class="req">*</span></label>
             <input type="text" id="company_name" name="company_name" placeholder="مثال: متجر النور" required value="{{ (form.company_name if form else '') | default('') }}" oninput="liveCheck(this,1)">
@@ -85,12 +112,6 @@
             <input type="text" id="contact_name" name="contact_name" placeholder="مثال: محمد أحمد" required value="{{ (form.contact_name if form else '') | default('') }}" oninput="liveCheck(this,1)">
             <div class="pf-hint">اسم صاحب الحساب (الأدمن)</div>
             <div class="pf-field-error">يرجى إدخال اسمك الكامل</div>
-          </div>
-
-          <div class="pf-field">
-            <label for="email">البريد الإلكتروني</label>
-            <input type="email" id="email" name="email" placeholder="example@domain.com" value="{{ (form.email if form else '') | default('') }}">
-            <div class="pf-hint">اختياري — للتواصل والاسترداد</div>
           </div>
 
           <div class="pf-field">
@@ -120,10 +141,11 @@
           </div>
         </div>
 
-        <div style="margin-top:24px">
-          <button type="submit" class="pf-btn pf-btn-primary pf-btn-block">
+        <div class="pf-submit-wrap">
+          <button type="submit" class="pf-btn pf-btn-primary pf-btn-block" id="btnSignupSubmit" disabled>
             <i class="fas fa-rocket"></i> إنشاء الحساب والدخول للنظام
           </button>
+          <p class="pf-hint" style="text-align:center;margin-top:10px" id="signupHint">تحقق من بريدك الإلكتروني أولاً لتفعيل زر التسجيل</p>
         </div>
 
         <p class="pf-footer-links">

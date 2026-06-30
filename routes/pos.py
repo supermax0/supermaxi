@@ -1,3 +1,5 @@
+import json
+
 from flask import Blueprint, render_template, request, jsonify, session, redirect, g
 from jinja2 import TemplateNotFound
 from extensions import db
@@ -15,9 +17,35 @@ from utils.customer_blacklist import is_phone_blacklisted_for_new_customer
 pos_bp = Blueprint("pos", __name__, url_prefix="/pos")
 
 
-def _should_use_dev_ui():
-    """Dev UI switch: isolated White Pro redesign via ?dev=1."""
-    return request.args.get("dev") == "1"
+def _should_use_legacy_ui():
+    """Legacy POS UI via ?legacy=1; White Pro is the default."""
+    return request.args.get("legacy") == "1"
+
+
+def _parse_product_meta(product):
+    raw = getattr(product, "meta_json", None)
+    if not raw:
+        return {}
+    try:
+        return json.loads(raw) if isinstance(raw, str) else dict(raw)
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return {}
+
+
+def _product_bootstrap_dict(product):
+    meta = _parse_product_meta(product)
+    return {
+        "id": product.id,
+        "name": product.name,
+        "sku": product.sku or "",
+        "barcode": product.barcode or "",
+        "sale_price": product.sale_price or 0,
+        "quantity": product.quantity or 0,
+        "image_url": product.image_url or "",
+        "low_stock_threshold": product.low_stock_threshold or 5,
+        "category": (meta.get("category") or "").strip(),
+        "store_badge": (meta.get("store_badge") or "").strip(),
+    }
 
 
 @pos_bp.before_request
@@ -142,8 +170,11 @@ def pos():
     except Exception:
         pass
 
+    bootstrap_products = [_product_bootstrap_dict(p) for p in products]
+
     ctx = dict(
         products=products,
+        bootstrap_products=bootstrap_products,
         customers=customers,
         cashier_name=session.get("name"),
         role=session.get("role"),
@@ -155,7 +186,7 @@ def pos():
         company_name=session.get("tenant_slug") or session.get("name") or "Finora",
     )
 
-    if _should_use_dev_ui():
+    if not _should_use_legacy_ui():
         try:
             return render_template("pos_dev/pos.html", **ctx)
         except TemplateNotFound:
