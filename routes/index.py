@@ -827,13 +827,23 @@ def executive_dashboard():
 def api_executive_dashboard_data():
     from models.purchase import Purchase
     today = date.today()
+    yesterday = today - timedelta(days=1)
     month_start = today.replace(day=1)
+
+    def percent_change(current, previous):
+        current = int(current or 0)
+        previous = int(previous or 0)
+        if previous == 0:
+            return 100 if current > 0 else 0
+        return max(-999, min(999, round(((current - previous) / previous) * 100)))
     
     # 1. Orders Today
     orders_today = db.session.query(func.count(Invoice.id)).filter(func.date(Invoice.created_at) == today).scalar() or 0
+    orders_yesterday = db.session.query(func.count(Invoice.id)).filter(func.date(Invoice.created_at) == yesterday).scalar() or 0
     
     # 2. Purchases Today
     purchases_today_val = db.session.query(func.sum(Purchase.total)).filter(func.date(Purchase.created_at) == today).scalar() or 0
+    purchases_yesterday_val = db.session.query(func.sum(Purchase.total)).filter(func.date(Purchase.created_at) == yesterday).scalar() or 0
     
     # 3. Current Balance
     cash_balance = calculate_cash_balance()
@@ -843,7 +853,10 @@ def api_executive_dashboard_data():
     
     # 5. Total Sales Today
     sales_today_val = db.session.query(func.sum(Invoice.total)).filter(func.date(Invoice.created_at) == today, Invoice.status != 'ملغي').scalar() or 0
+    sales_yesterday_val = db.session.query(func.sum(Invoice.total)).filter(func.date(Invoice.created_at) == yesterday, Invoice.status != 'ملغي').scalar() or 0
     expenses_today_val = _expenses_sum_for_range(today, today)
+    expenses_yesterday_val = _expenses_sum_for_range(yesterday, yesterday)
+    profit_yesterday = _net_profit_for_range(yesterday, yesterday)
     
     # 6. Chart Data (Last 7 Days)
     daily_labels = []
@@ -944,6 +957,13 @@ def api_executive_dashboard_data():
         "new_customers": new_customers,
         "avg_daily_sales": int(avg_daily_sales),
         "debt_collection_rate": int(debt_collection_rate),
+        "trends": {
+            "orders": percent_change(orders_today, orders_yesterday),
+            "purchases": percent_change(purchases_today_val, purchases_yesterday_val),
+            "cash": percent_change(int(sales_today_val) - int(expenses_today_val), int(sales_yesterday_val) - int(expenses_yesterday_val)),
+            "profit": percent_change(profit_today, profit_yesterday),
+            "sales": percent_change(sales_today_val, sales_yesterday_val),
+        },
         "health": {
             "score": int(business_health),
             "profitability": int(profitability_score),

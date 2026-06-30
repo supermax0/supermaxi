@@ -44,6 +44,8 @@ def ensure_product_schema() -> None:
             return
 
         existing_cols = {col["name"] for col in inspector.get_columns("product")}
+        dialect = engine.dialect.name
+        bool_default = "BOOLEAN DEFAULT false" if dialect == "postgresql" else "BOOLEAN DEFAULT 0"
 
         # Columns introduced for the advanced product page.
         additions = {
@@ -68,7 +70,7 @@ def ensure_product_schema() -> None:
         additions.setdefault("usage_type", "ALTER TABLE product ADD COLUMN usage_type VARCHAR(100)")
         additions.setdefault(
             "requires_patch_test",
-            "ALTER TABLE product ADD COLUMN requires_patch_test BOOLEAN DEFAULT 0",
+            f"ALTER TABLE product ADD COLUMN requires_patch_test {bool_default}",
         )
         additions.setdefault("expiry_date", "ALTER TABLE product ADD COLUMN expiry_date DATE")
         additions.setdefault("opened_date", "ALTER TABLE product ADD COLUMN opened_date DATE")
@@ -94,9 +96,10 @@ def ensure_customer_blacklist_columns() -> None:
         existing = {c["name"] for c in inspector.get_columns("customer")}
         dialect = engine.dialect.name
         dt_type = "TIMESTAMP" if dialect == "postgresql" else "DATETIME"
+        bool_default = "BOOLEAN DEFAULT false" if dialect == "postgresql" else "BOOLEAN DEFAULT 0"
         stmts: list[str] = []
         if "is_blacklisted" not in existing:
-            stmts.append("ALTER TABLE customer ADD COLUMN is_blacklisted BOOLEAN DEFAULT 0")
+            stmts.append(f"ALTER TABLE customer ADD COLUMN is_blacklisted {bool_default}")
         if "blacklist_reason" not in existing:
             stmts.append("ALTER TABLE customer ADD COLUMN blacklist_reason TEXT")
         if "blacklisted_at" not in existing:
@@ -117,4 +120,3 @@ if __name__ == "__main__":
         "This script is not meant to be run standalone.\n"
         "Start the app (app.py) and visit /inventory or /inventory/add to auto-apply the schema guard."
     )
-

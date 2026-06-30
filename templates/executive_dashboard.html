@@ -599,7 +599,7 @@
             <div class="kpi-value" id="ordersToday">0</div>
             <div class="kpi-bottom">
               <div class="kpi-spark"><canvas id="sparkOrders"></canvas></div>
-              <div class="trend up"><b>↑ 8%</b><span>من أمس</span></div>
+              <div class="trend up" id="ordersTrend"><b>0%</b><span>من أمس</span></div>
             </div>
           </article>
 
@@ -611,7 +611,7 @@
             <div class="kpi-value"><span id="purchasesToday">0</span><span class="kpi-unit">د.ع</span></div>
             <div class="kpi-bottom">
               <div class="kpi-spark"><canvas id="sparkPurchases"></canvas></div>
-              <div class="trend down"><b>↓ 5%</b><span>من أمس</span></div>
+              <div class="trend up" id="purchasesTrend"><b>0%</b><span>من أمس</span></div>
             </div>
           </article>
 
@@ -623,7 +623,7 @@
             <div class="kpi-value"><span id="cashBalance">0</span><span class="kpi-unit">د.ع</span></div>
             <div class="kpi-bottom">
               <div class="kpi-spark"><canvas id="sparkBalance"></canvas></div>
-              <div class="trend up"><b>↑ 12%</b><span>من أمس</span></div>
+              <div class="trend up" id="cashTrend"><b>0%</b><span>تدفق اليوم</span></div>
             </div>
           </article>
 
@@ -635,7 +635,7 @@
             <div class="kpi-value"><span id="profitToday">0</span><span class="kpi-unit">د.ع</span></div>
             <div class="kpi-bottom">
               <div class="kpi-spark"><canvas id="sparkProfit"></canvas></div>
-              <div class="trend up"><b>↑ 18%</b><span>من أمس</span></div>
+              <div class="trend up" id="profitTrend"><b>0%</b><span>من أمس</span></div>
             </div>
           </article>
 
@@ -647,7 +647,7 @@
             <div class="kpi-value"><span id="salesToday">0</span><span class="kpi-unit">د.ع</span></div>
             <div class="kpi-bottom">
               <div class="kpi-spark"><canvas id="sparkSales"></canvas></div>
-              <div class="trend up"><b>↑ 12%</b><span>من أمس</span></div>
+              <div class="trend up" id="salesTrend"><b>0%</b><span>من أمس</span></div>
             </div>
           </article>
         </section>
@@ -786,25 +786,25 @@
             <div class="quick-item">
               <div class="quick-label">معدل تحصيل الديون</div>
               <div class="quick-value"><span id="debtRate">85</span>%</div>
-              <div class="quick-trend">↑ 6%</div>
+              <div class="quick-trend">فعلي</div>
               <div class="quick-icon"><i class="fas fa-percent"></i></div>
             </div>
             <div class="quick-item">
               <div class="quick-label">قيمة المخزون</div>
               <div class="quick-value"><span id="inventoryValue">0</span> د.ع</div>
-              <div class="quick-trend">↑ 7%</div>
+              <div class="quick-trend">فعلي</div>
               <div class="quick-icon" style="color:#f79009"><i class="fas fa-cube"></i></div>
             </div>
             <div class="quick-item">
               <div class="quick-label">العملاء الجدد</div>
               <div class="quick-value" id="newCustomers">0</div>
-              <div class="quick-trend">↑ 20%</div>
+              <div class="quick-trend">فعلي</div>
               <div class="quick-icon" style="color:#0ea5e9"><i class="fas fa-user-group"></i></div>
             </div>
             <div class="quick-item">
               <div class="quick-label">متوسط البيع اليومي</div>
               <div class="quick-value"><span id="avgDailySales">0</span> د.ع</div>
-              <div class="quick-trend">↑ 11%</div>
+              <div class="quick-trend">فعلي</div>
               <div class="quick-icon" style="color:#2f80ed"><i class="fas fa-chart-line"></i></div>
             </div>
           </div>
@@ -845,6 +845,18 @@
     const bar = document.getElementById(barId);
     if (bar) bar.style.width = percent + "%";
     setText(textId, nf.format(percent) + "%");
+  }
+
+  function setTrend(id, value) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const percent = Math.round(Number(value || 0));
+    el.classList.toggle("up", percent >= 0);
+    el.classList.toggle("down", percent < 0);
+    const label = percent > 0 ? "↑ " : percent < 0 ? "↓ " : "";
+    const number = nf.format(Math.abs(percent)) + "%";
+    const b = el.querySelector("b");
+    if (b) b.textContent = label + number;
   }
 
   function gradient(ctx, color) {
@@ -942,6 +954,7 @@
     const net = sales - expenses;
     const health = data.health || {};
     const healthScore = clampPercent(health.score);
+    const trends = data.trends || {};
 
     setText("ordersToday", nf.format(data.orders_today ?? 0));
     setText("purchasesToday", money(data.purchases_today));
@@ -969,6 +982,11 @@
     setPercentMetric("healthSalesBar", "healthSalesText", health.sales);
     setPercentMetric("healthInventoryBar", "healthInventoryText", health.inventory);
     setPercentMetric("healthCustomersBar", "healthCustomersText", health.customers);
+    setTrend("ordersTrend", trends.orders);
+    setTrend("purchasesTrend", trends.purchases);
+    setTrend("cashTrend", trends.cash);
+    setTrend("profitTrend", trends.profit);
+    setTrend("salesTrend", trends.sales);
 
     const salesSeries = data.daily_sales || [0, 0, 0, 0, 0, 0, sales];
     const profitSeries = data.daily_profit || [0, 0, 0, 0, 0, 0, data.profit_today || 0];
@@ -1005,7 +1023,8 @@
         daily_profit: [0, 0, 0, 0, 0, 0, 0],
         daily_expenses: [0, 0, 0, 0, 0, 0, 0],
         daily_cashflow: [0, 0, 0, 0, 0, 0, 0],
-        health: { score: 0, profitability: 0, liquidity: 0, sales: 0, inventory: 0, customers: 0 }
+        health: { score: 0, profitability: 0, liquidity: 0, sales: 0, inventory: 0, customers: 0 },
+        trends: { orders: 0, purchases: 0, cash: 0, profit: 0, sales: 0 }
       });
     });
 </script>

@@ -35,6 +35,9 @@ def pos():
     if "user_id" not in session:
         return redirect("/login")
 
+    ensure_product_schema()
+    ensure_customer_blacklist_columns()
+
     # المنتجات والزبائن من قاعدة بيانات الشركة (جدول المخزون product)
     tenant_id = session.get("tenant_id")
     if getattr(g, "tenant", None):

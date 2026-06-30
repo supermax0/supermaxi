@@ -23,6 +23,7 @@
   </script>
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="/static/css/design-refresh.css">
   <link rel="stylesheet" href="/static/css/saas-admin.css">
 
   <style>
@@ -1066,9 +1067,300 @@
         font-size: 12px;
       }
     }
+
+    /* Finora white POS layout */
+    :root,
+    :root[data-theme="dark"],
+    :root[data-theme="light"] {
+      --primary: #2f80ed;
+      --primary-hover: #2563eb;
+      --primary-glow: rgba(47, 128, 237, 0.16);
+      --success: #17b26a;
+      --success-hover: #10a15f;
+      --danger: #f04438;
+      --danger-hover: #d92d20;
+      --bg: #f7f9fc;
+      --card: rgba(255, 255, 255, 0.86);
+      --card-border: #e6edf5;
+      --text: #101828;
+      --text-muted: #667085;
+      --border: #e6edf5;
+      --border-light: #eef2f7;
+      --glass: blur(14px);
+      --shadow-premium: 0 10px 28px rgba(16, 24, 40, 0.06);
+    }
+
+    body {
+      background:
+        radial-gradient(circle at 4% 86%, rgba(124, 58, 237, 0.08), transparent 22%),
+        radial-gradient(circle at 92% 8%, rgba(14, 165, 233, 0.08), transparent 24%),
+        var(--bg) !important;
+      color: var(--text) !important;
+    }
+
+    .pos {
+      width: min(100%, 1500px);
+      max-width: 1500px;
+      padding: 14px;
+    }
+
+    .pos-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      margin-bottom: 12px;
+    }
+
+    .pos-back {
+      min-height: 42px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 16px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.9);
+      color: #1f2937;
+      box-shadow: 0 8px 18px rgba(16, 24, 40, 0.045);
+      font-size: 14px;
+      font-weight: 900;
+      text-decoration: none;
+    }
+
+    .pos-shell {
+      min-height: calc(100vh - 28px);
+      border: 1px solid rgba(230, 237, 245, 0.82);
+      border-radius: 22px;
+      background: rgba(255, 255, 255, 0.74);
+      box-shadow: 0 22px 70px rgba(16, 24, 40, 0.08);
+      backdrop-filter: blur(14px);
+      padding: 18px;
+    }
+
+    .pos-order-flow {
+      display: grid;
+      grid-template-columns: minmax(360px, 0.88fr) minmax(0, 1.12fr);
+      gap: 12px;
+      align-items: start;
+    }
+
+    .pos-panel,
+    .pos-total-card,
+    .edit-banner {
+      background: var(--card) !important;
+      border: 1px solid var(--card-border) !important;
+      border-radius: 18px !important;
+      box-shadow: var(--shadow-premium) !important;
+      margin-bottom: 12px !important;
+      padding: 16px !important;
+    }
+
+    .card:hover {
+      transform: none !important;
+      border-color: var(--card-border) !important;
+      box-shadow: var(--shadow-premium) !important;
+    }
+
+    .card-header {
+      margin-bottom: 12px;
+      padding-bottom: 0;
+      border-bottom: 0;
+    }
+
+    .card h3 {
+      color: var(--text);
+      font-size: 17px;
+      font-weight: 900;
+    }
+
+    .card h3 i {
+      color: var(--primary);
+    }
+
+    .customer-search-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    .customer-search-row .search-wrapper,
+    .product-search-row .search-wrapper {
+      margin: 0;
+    }
+
+    .customer-search-row .btn-primary {
+      min-width: 132px;
+      min-height: 48px;
+      border-radius: 14px;
+      white-space: nowrap;
+    }
+
+    .product-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    input,
+    select,
+    textarea,
+    .modal-input {
+      min-height: 48px;
+      background: #fff !important;
+      border: 1px solid var(--border) !important;
+      border-radius: 14px !important;
+      color: var(--text) !important;
+      box-shadow: none !important;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus,
+    .modal-input:focus {
+      background: #fff !important;
+      border-color: var(--primary) !important;
+      box-shadow: 0 0 0 4px var(--primary-glow) !important;
+      transform: none !important;
+    }
+
+    .list {
+      background: #fff !important;
+      border: 1px solid var(--border) !important;
+      box-shadow: 0 14px 30px rgba(16, 24, 40, 0.08) !important;
+      max-height: 260px;
+    }
+
+    .list div,
+    .pos-product-item,
+    .inventory-card {
+      color: var(--text) !important;
+    }
+
+    .badge,
+    #selectedCustomer {
+      background: #eff6ff !important;
+      color: #2563eb !important;
+      border-color: #bfdbfe !important;
+      box-shadow: none !important;
+    }
+
+    .cart-panel {
+      grid-column: 1 / -1;
+    }
+
+    .cart-panel table {
+      margin-top: 10px;
+    }
+
+    .cart-panel td {
+      background: #fff !important;
+      color: var(--text) !important;
+      border-color: var(--border-light) !important;
+    }
+
+    .cart-panel th {
+      color: var(--text-muted);
+      letter-spacing: 0;
+    }
+
+    .pos-total-card {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: minmax(220px, 0.4fr) minmax(0, 0.6fr);
+      gap: 12px;
+      align-items: center;
+      background: linear-gradient(145deg, rgba(234, 251, 240, 0.9), rgba(255, 255, 255, 0.92)) !important;
+    }
+
+    .pos-total-value {
+      font-size: clamp(28px, 3vw, 40px);
+      font-weight: 900;
+      color: var(--success);
+      text-align: center;
+      padding: 16px;
+      background: rgba(23, 178, 106, 0.10);
+      border: 1px solid rgba(23, 178, 106, 0.18);
+      border-radius: 16px;
+    }
+
+    .pos-total-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .pos-total-actions button {
+      min-height: 54px;
+      border-radius: 14px;
+      font-size: 15px;
+    }
+
+    .floating-chat-btn,
+    .floating-archive-btn {
+      display: none !important;
+    }
+
+    @media (max-width: 900px) {
+      .pos {
+        padding: 0;
+      }
+
+      .pos-shell {
+        min-height: 100vh;
+        border-radius: 0;
+        padding: 12px;
+      }
+
+      .pos-order-flow {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .pos-panel,
+      .pos-total-card,
+      .edit-banner {
+        width: 100%;
+        margin-bottom: 0 !important;
+        padding: 13px !important;
+      }
+
+      .customer-panel {
+        order: 1;
+      }
+
+      .product-panel {
+        order: 2;
+      }
+
+      .cart-panel {
+        order: 3;
+      }
+
+      .pos-total-card {
+        order: 4;
+        grid-template-columns: 1fr;
+      }
+
+      .customer-search-row,
+      .product-actions,
+      .pos-total-actions {
+        grid-template-columns: 1fr;
+      }
+
+      .customer-search-row .btn-primary {
+        width: 100%;
+      }
+
+      .pos-topbar {
+        padding: 10px 10px 0;
+        margin-bottom: 10px;
+      }
+    }
   </style>
-  <link rel="stylesheet" href="/static/css/design-refresh.css">
-  <link rel="stylesheet" href="/static/css/saas-admin.css">
 </head>
 
 <body>
@@ -1092,23 +1384,16 @@
   </div>
 
   <div class="pos">
-    {% if session.get("role") and session.get("role") != "admin" %}
-    <div style="margin-bottom:16px;">
-      <a href="/" title="رجوع للوحة التحكم"
-        style="display:inline-flex;align-items:center;gap:8px;padding:10px 18px;background:rgba(59,130,246,0.2);color:var(--primary);border-radius:999px;text-decoration:none;font-size:14px;font-weight:600;border:1px solid rgba(59,130,246,0.3);transition:all 0.2s;">
-        <i class="fas fa-chevron-right"></i>
-        <span>لوحة التحكم</span>
+    <div class="pos-shell">
+    <div class="pos-topbar">
+      <a href="/" class="pos-back" title="رجوع">
+        <i class="fas fa-arrow-right"></i>
+        <span>رجوع</span>
       </a>
     </div>
-    {% elif session.get("role") == "admin" %}
-    <div style="margin-bottom:16px;">
-      <a href="/" title="رجوع للداشبورد"
-        style="display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;background:rgba(59,130,246,0.2);color:var(--primary);border-radius:10px;text-decoration:none;font-size:18px;transition:all 0.2s;">↩</a>
-    </div>
-    {% endif %}
     {% if order_data %}
     <!-- عرض رقم الطلب عند التعديل -->
-    <div class="card"
+    <div class="card edit-banner"
       style="background:linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.15));border:2px solid rgba(245, 158, 11, 0.4);margin-bottom:20px;">
       <h3
         style="color:#f59e0b;margin:0;font-size:22px;font-weight:700;text-align:center;display:flex;align-items:center;justify-content:center;gap:12px;">
@@ -1119,43 +1404,48 @@
     {% endif %}
 
     <!-- القسم العلوي: الزبون والبحث -->
-    <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
+    <div class="pos-order-flow">
       <!-- الزبون -->
-      <div class="card">
+      <section class="card pos-panel customer-panel">
         <div class="card-header">
           <h3><i class="fas fa-user"></i> الزبون</h3>
-          <button onclick="openCustomerModal()" class="btn-primary" style="padding: 6px 12px; font-size: 12px;">
-            <i class="fas fa-user-plus"></i> إضافة زبون
-          </button>
         </div>
 
-        <div class="search-wrapper">
-          <i class="fas fa-search"></i>
-          <input id="searchCustomer" placeholder="بحث عن زبون بالاسم أو الهاتف...">
+        <div class="customer-search-row">
+          <div class="search-wrapper">
+            <i class="fas fa-search"></i>
+            <input id="searchCustomer" placeholder="بحث عن زبون بالاسم أو الهاتف...">
+          </div>
+          <button onclick="openCustomerModal()" class="btn-primary" type="button">
+            <i class="fas fa-user-plus"></i> إضافة زبون
+          </button>
         </div>
         <div id="customerResults" class="list" style="display:none"></div>
         <div id="selectedCustomer" class="badge" style="width: 100%; justify-content: center; margin-top: 8px;">لم يتم
           اختيار زبون</div>
-      </div>
+      </section>
 
       <!-- إضافة سريع منتج -->
-      <div class="card">
+      <section class="card pos-panel product-panel">
         <div class="card-header">
           <h3><i class="fas fa-box"></i> إضافة منتج</h3>
-          <button class="btn-light" onclick="showPricesModal()" style="padding: 6px 12px; font-size: 12px;">
+        </div>
+        <div class="product-search-row">
+          <div class="search-wrapper">
+            <i class="fas fa-barcode"></i>
+            <input id="searchProduct" placeholder="البحث بالاسم أو الباركود...">
+          </div>
+        </div>
+        <div id="productResults" class="list" style="display:none"></div>
+        <div class="product-actions">
+          <button class="btn-success" onclick="openInventoryModal()" type="button">
+            <i class="fas fa-warehouse"></i> اختيار من المخزن
+          </button>
+          <button class="btn-light" onclick="showPricesModal()" type="button">
             <i class="fas fa-tags"></i> عرض الأسعار
           </button>
         </div>
-        <div class="search-wrapper">
-          <i class="fas fa-barcode"></i>
-          <input id="searchProduct" placeholder="البحث بالاسم أو الباركود...">
-        </div>
-        <div id="productResults" class="list" style="display:none"></div>
-        <button class="btn-success" onclick="openInventoryModal()" style="width:100%; margin-top: 8px;">
-          <i class="fas fa-warehouse"></i> اختيار من المخزن
-        </button>
-      </div>
-    </div>
+      </section>
 
     <!-- Modal إضافة زبون -->
     <div id="customerModal" class="modal">
@@ -1228,7 +1518,7 @@
     </div>
 
     <!-- سلة الطلب -->
-    <div class="card">
+    <section class="card pos-panel cart-panel">
       <div class="card-header">
         <h3><i class="fas fa-shopping-cart"></i> سلة الطلب</h3>
         <div id="itemCount" class="badge" style="padding: 4px 10px; font-size: 12px;">0 أصناف</div>
@@ -1248,7 +1538,7 @@
           <tbody id="orderItems"></tbody>
         </table>
       </div>
-    </div>
+    </section>
 
     <!-- Modal اختيار من المخزون -->
     <div id="inventoryModal" class="modal">
@@ -1382,19 +1672,19 @@
       </div>
     </div>
 
-    <div class="card"
-      style="background:linear-gradient(145deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.1));border:2px solid rgba(16, 185, 129, 0.3);">
+    <section class="card pos-total-card">
       <h3><i class="fas fa-wallet"></i> الإجمالي</h3>
-      <div
-        style="font-size:36px;font-weight:700;color:var(--success);margin-bottom:24px;text-align:center;padding:20px;background:rgba(16, 185, 129, 0.1);border-radius:12px;border:1px solid rgba(16, 185, 129, 0.2);">
+      <div class="pos-total-value">
         <span id="totalPrice">0</span> <span style="font-size:20px;color:var(--text-muted)">د.ع</span>
       </div>
-      <button class="btn-primary" onclick="openOrderNotesModal()"
-        style="width:100%;padding:16px;font-size:16px;margin-bottom:12px">✅ تنفيذ الطلب</button>
-      <button class="btn-success" onclick="openScheduleModal()" style="width:100%;padding:16px;font-size:16px">📅
-        تأجيل الطلب</button>
-    </div>
+      <div class="pos-total-actions">
+        <button class="btn-primary" onclick="openOrderNotesModal()">✅ تنفيذ الطلب</button>
+        <button class="btn-success" onclick="openScheduleModal()">📅 تأجيل الطلب</button>
+      </div>
+    </section>
 
+    </div>
+    </div>
   </div>
 
   <div id="toast" class="toast"></div>
@@ -2477,59 +2767,8 @@
       }
     })
 
-    // Update unread messages badge
-    function updateMessagesBadge() {
-      fetch('/messages/unread-count')
-        .then(r => {
-          if (!r.ok) {
-            throw new Error('Network response was not ok');
-          }
-          return r.json();
-        })
-        .then(data => {
-          const badge = document.getElementById('chatBadge');
-          if (badge) {
-            if (data.unread_count > 0) {
-              badge.textContent = data.unread_count;
-              badge.classList.remove('hidden');
-            } else {
-              badge.classList.add('hidden');
-            }
-          }
-        })
-        .catch(error => {
-          // إخفاء الأخطاء الصامتة - الخادم غير متاح
-          // Silently ignore connection errors
-          if (error.name !== 'TypeError' || !error.message.includes('fetch')) {
-            // فقط سجل الأخطاء غير المتعلقة بالاتصال
-            // Only log non-connection errors
-            console.error('Error updating messages badge:', error);
-          }
-        });
-    }
-
-    // Update badge on page load and periodically
-    document.addEventListener('DOMContentLoaded', function () {
-      updateMessagesBadge();
-      setInterval(updateMessagesBadge, 10000); // Update every 10 seconds
-    });
   </script>
 
-  <!-- زر المراسلة — يظهر فقط لخطة الشركات (Enterprise) -->
-  {% if plan_has("messages") %}
-  <button class="floating-chat-btn" onclick="window.location.href='/messages'" title="المراسلة">
-    <i class="fa fa-comments"></i>
-    <span class="chat-badge hidden" id="chatBadge">0</span>
-  </button>
-  {% endif %}
-
-  <!-- أرشيف الكشوفات للموظفين ذوي الصلاحية -->
-  {% if employee and employee.shipping_company_id %}
-  <a href="/delivery/archive" class="floating-archive-btn" title="أرشيف الكشوفات">📦</a>
-  {% endif %}
-
 </body>
-
-</html>
 
 </html>
