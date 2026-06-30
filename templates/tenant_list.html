@@ -1,6 +1,7 @@
 {% extends "superadmin_base.html" %}
 {% block title %}إدارة الشركات - Finora{% endblock %}
 {% block page_title %}إدارة الشركات والمنشآت{% endblock %}
+{% block breadcrumb_current %}الشركات المسجلة{% endblock %}
 
 {% block extra_style %}
 <style>
@@ -364,7 +365,7 @@
                     </span>
                 </td>
                 <td style="color: var(--text-muted);">{{ tenant.created_at.strftime('%Y-%m-%d') }}</td>
-                <td style="color: #fff; font-weight: 800;">
+                <td style="font-weight: 800;">
                     <i class="far fa-calendar-alt"
                         style="color: var(--primary); margin-left: 6px; font-size: 13px;"></i>
                     {{ tenant.subscription_end_date.strftime('%Y-%m-%d') if tenant.subscription_end_date else '—' }}

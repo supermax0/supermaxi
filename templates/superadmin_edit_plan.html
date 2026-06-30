@@ -34,7 +34,7 @@
         background: rgba(255, 255, 255, 0.05);
         border: 1px solid var(--border-color);
         border-radius: 12px;
-        color: #fff;
+        color: var(--text-main);
         font-weight: 600;
         transition: var(--transition);
     }
@@ -92,8 +92,6 @@
         border: none;
         border-radius: 14px;
         color: #fff;
-        font-weight: 800;
-        font-size: 16px;
         cursor: pointer;
         transition: var(--transition);
         margin-top: 30px;
@@ -108,6 +106,7 @@
 {% endblock %}
 
 {% block page_title %}تعديل الخطة: {{ plan.name }}{% endblock %}
+{% block breadcrumb_current %}تعديل الخطة{% endblock %}
 
 {% block content %}
 <form action="{{ url_for('superadmin.edit_plan', plan_id=plan.id) }}" method="POST">

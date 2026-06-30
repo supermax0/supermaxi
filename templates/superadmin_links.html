@@ -1,7 +1,8 @@
 {% extends "superadmin_base.html" %}
 
 {% block title %}دليل الصفحات — كل الروابط | Finora{% endblock %}
-{% block page_title %}<i class="fas fa-link"></i> دليل وصول الصفحات{% endblock %}
+{% block page_title %}دليل وصول الصفحات{% endblock %}
+{% block breadcrumb_current %}دليل الصفحات{% endblock %}
 
 {% block extra_style %}
 <style>
@@ -38,7 +39,7 @@
         background: rgba(255, 255, 255, 0.03);
         border: 1px solid var(--border-color);
         border-radius: 20px;
-        color: #fff;
+        color: var(--text-main);
         font-size: 16px;
         font-weight: 600;
         font-family: 'Cairo', sans-serif;
@@ -80,7 +81,7 @@
     .section-header h2 {
         font-size: 18px;
         font-weight: 800;
-        color: #fff;
+        color: var(--text-main);
         letter-spacing: 0.5px;
     }
 
@@ -118,7 +119,7 @@
     .link-label {
         font-size: 15px;
         font-weight: 800;
-        color: #fff;
+        color: var(--text-main);
         transition: var(--transition);
     }
 

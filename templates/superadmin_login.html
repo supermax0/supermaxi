@@ -1,249 +1,137 @@
-{% extends "base.html" %}
-{% block title %}Super Admin Login - Finora{% endblock %}
-{% block page_title %}🛡️ منصة الإدارة العليا{% endblock %}
-
-{% block content %}
-<style>
-    /* Premium background with mesh-like gradients */
-    .auth-page {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: radial-gradient(circle at 0% 0%, #0f172a 0%, transparent 50%),
-            radial-gradient(circle at 100% 0%, #1e1b4b 0%, transparent 50%),
-            radial-gradient(circle at 100% 100%, #1e293b 0%, transparent 50%),
-            radial-gradient(circle at 0% 100%, #0d1424 0%, transparent 50%),
-            var(--bg);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 10;
-        overflow: hidden;
-    }
-
-    /* Ambient animated blobs for background depth */
-    .blob {
-        position: absolute;
-        width: 500px;
-        height: 500px;
-        background: var(--primary);
-        filter: blur(120px);
-        opacity: 0.15;
-        border-radius: 50%;
-        z-index: -1;
-        animation: blobFloat 20s infinite alternate cubic-bezier(0.45, 0, 0.55, 1);
-    }
-
-    .blob-1 {
-        top: -100px;
-        right: -100px;
-        animation-delay: 0s;
-    }
-
-    .blob-2 {
-        bottom: -100px;
-        left: -100px;
-        background: var(--accent);
-        animation-delay: -5s;
-    }
-
-    @keyframes blobFloat {
-        0% {
-            transform: translate(0, 0) scale(1);
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل دخول سوبر أدمن — Finora</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='IMG_0200.png') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin.css') }}">
+    <style>
+        body.sa-login {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background:
+                radial-gradient(circle at 10% 20%, rgba(37, 99, 235, 0.08), transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(124, 58, 237, 0.06), transparent 35%),
+                var(--bg-main);
         }
-
-        100% {
-            transform: translate(100px, 50px) scale(1.2);
+        .sa-login-card {
+            width: 100%;
+            max-width: 420px;
+            background: var(--surface);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            box-shadow: var(--shadow-hover);
+            padding: 36px 32px;
         }
-    }
-
-    /* Glassmorphism card */
-    .admin-login-card {
-        width: 100%;
-        max-width: 440px;
-        padding: 48px;
-        background: rgba(17, 24, 39, 0.7);
-        backdrop-filter: blur(24px) saturate(180%);
-        -webkit-backdrop-filter: blur(24px) saturate(180%);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 32px;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-        text-align: center;
-        animation: cardAppear 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
-        position: relative;
-        z-index: 20;
-    }
-
-    @keyframes cardAppear {
-        from {
-            opacity: 0;
-            transform: translateY(30px) scale(0.95);
+        .sa-login-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, var(--primary), #4F46E5);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin: 0 auto 20px;
         }
-
-        to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
+        .sa-login-card h1 {
+            margin: 0 0 6px;
+            text-align: center;
+            font-size: 22px;
+            font-weight: 800;
         }
-    }
-
-    .card-header-icon {
-        width: 64px;
-        height: 64px;
-        background: var(--gradient-primary);
-        color: white;
-        border-radius: 18px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 28px;
-        margin: 0 auto 24px;
-        box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3);
-    }
-
-    .card-title {
-        font-size: 26px;
-        font-weight: 800;
-        margin-bottom: 8px;
-        background: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
-
-    .card-subtitle {
-        color: var(--text-dim);
-        font-size: 15px;
-        margin-bottom: 32px;
-    }
-
-    /* Modern minimalist inputs */
-    .input-group {
-        position: relative;
-        margin-bottom: 24px;
-        text-align: right;
-    }
-
-    .input-group label {
-        display: block;
-        margin-bottom: 8px;
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--text-muted);
-        padding-right: 4px;
-    }
-
-    .input-wrapper {
-        position: relative;
-        overflow: hidden;
-        border-radius: 14px;
-    }
-
-    .admin-login-card input {
-        width: 100%;
-        padding: 14px 18px;
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 14px;
-        color: white;
-        font-size: 16px;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        outline: none;
-    }
-
-    .admin-login-card input:focus {
-        background: rgba(255, 255, 255, 0.06);
-        border-color: var(--primary);
-        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
-    }
-
-    /* Glowing Submit button */
-    .btn-submit {
-        width: 100%;
-        padding: 16px;
-        margin-top: 12px;
-        background: var(--gradient-primary);
-        color: white;
-        border: none;
-        border-radius: 14px;
-        font-size: 16px;
-        font-weight: 700;
-        cursor: pointer;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
-    }
-
-    .btn-submit:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4);
-        filter: brightness(1.1);
-    }
-
-    .btn-submit:active {
-        transform: translateY(0);
-    }
-
-    /* Flash Message Tuning */
-    .flash-error {
-        background: rgba(239, 68, 68, 0.1);
-        border: 1px solid rgba(239, 68, 68, 0.2);
-        color: #ef4444;
-        padding: 12px;
-        border-radius: 12px;
-        margin-bottom: 24px;
-        font-size: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-    }
-</style>
-
-<div class="auth-page">
-    <div class="blob blob-1"></div>
-    <div class="blob blob-2"></div>
-
-    <div class="admin-login-card">
-        <div class="card-header-icon">
-            <i class="fas fa-user-shield"></i>
-        </div>
-
-        <h2 class="card-title">منصة الإدارة العليا</h2>
-        <p class="card-subtitle">سجل الدخول للمتابعة إلى لوحة التحكم</p>
+        .sa-login-card p {
+            margin: 0 0 24px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+        .sa-login-field { margin-bottom: 16px; }
+        .sa-login-field label {
+            display: block;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+        .sa-login-field input {
+            width: 100%;
+            min-height: 46px;
+            padding: 0 14px;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            font-family: inherit;
+            font-size: 15px;
+        }
+        .sa-login-field input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-glow);
+        }
+        .sa-login-submit {
+            width: 100%;
+            min-height: 48px;
+            margin-top: 8px;
+            border: none;
+            border-radius: 12px;
+            background: var(--primary);
+            color: #fff;
+            font-weight: 800;
+            font-size: 15px;
+            font-family: inherit;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .sa-login-submit:hover { background: var(--primary-hover); }
+        .sa-login-error {
+            background: var(--danger-soft);
+            color: var(--danger);
+            border: 1px solid #fecaca;
+            padding: 12px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            font-size: 14px;
+            font-weight: 600;
+            text-align: center;
+        }
+    </style>
+</head>
+<body class="sa-body sa-login">
+    <div class="sa-login-card">
+        <div class="sa-login-icon"><i class="fas fa-user-shield"></i></div>
+        <h1>Finora Superadmin</h1>
+        <p>سجّل الدخول للوصول إلى مركز التحكم المركزي</p>
 
         {% with messages = get_flashed_messages() %}
         {% if messages %}
-        <div class="flash-error">
-            <i class="fas fa-exclamation-circle"></i>
-            {{ messages[0] }}
-        </div>
+        <div class="sa-login-error"><i class="fas fa-exclamation-circle"></i> {{ messages[0] }}</div>
         {% endif %}
         {% endwith %}
 
         <form method="post">
-            <div class="input-group">
-                <label>اسم المستخدم</label>
-                <div class="input-wrapper">
-                    <input type="text" name="username" placeholder="إضافة اسم المستخدم" required value="supermax">
-                </div>
+            <div class="sa-login-field">
+                <label for="username">اسم المستخدم</label>
+                <input type="text" id="username" name="username" required autocomplete="username" value="supermax">
             </div>
-
-            <div class="input-group">
-                <label>كلمة المرور</label>
-                <div class="input-wrapper">
-                    <input type="password" name="password" placeholder="••••••••" required>
-                </div>
+            <div class="sa-login-field">
+                <label for="password">كلمة المرور</label>
+                <input type="password" id="password" name="password" required autocomplete="current-password" placeholder="••••••••">
             </div>
-
-            <button type="submit" class="btn-submit">
+            <button type="submit" class="sa-login-submit">
                 <span>دخول آمن</span>
                 <i class="fas fa-arrow-left"></i>
             </button>
         </form>
     </div>
-</div>
-{% endblock %}
+</body>
+</html>

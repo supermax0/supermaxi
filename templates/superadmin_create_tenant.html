@@ -1,7 +1,8 @@
 {% extends "superadmin_base.html" %}
 
 {% block title %}إنشاء شركة جديدة - Finora{% endblock %}
-{% block page_title %}<i class="fas fa-plus-circle"></i> إضافة منشأة جديدة{% endblock %}
+{% block page_title %}إضافة منشأة جديدة{% endblock %}
+{% block breadcrumb_current %}إنشاء شركة{% endblock %}
 
 {% block extra_style %}
 <style>
@@ -56,7 +57,7 @@
         background: rgba(255, 255, 255, 0.03);
         border: 1px solid var(--border-color);
         border-radius: 14px;
-        color: #fff;
+        color: var(--text-main);
         font-size: 15px;
         font-weight: 600;
         font-family: 'Cairo', sans-serif;
@@ -134,7 +135,7 @@
     }
 
     .btn-cancel:hover {
-        color: #fff;
+        color: var(--text-main);
     }
 </style>
 {% endblock %}
