@@ -6,7 +6,6 @@
   const bootstrap = bootstrapEl ? JSON.parse(bootstrapEl.textContent || "{}") : {};
   const canEditPrice = !!bootstrap.canEditPrice;
   const allProducts = Array.isArray(bootstrap.products) ? bootstrap.products : [];
-  const cashBalanceBase = Number(bootstrap.cashBalance) || 0;
 
   let items = [];
   let selectedCustomerId = null;
@@ -18,7 +17,6 @@
   let discountType = "amount";
   let discountValue = 0;
   let shippingValue = 0;
-  let lastOrderLabel = "—";
   let isSubmitting = false;
   let currentPage = 1;
   let pageSize = 12;
@@ -100,11 +98,6 @@
   function updateStats() {
     const total = calcTotal();
     const count = items.reduce((s, i) => s + (i.qty || 0), 0);
-    const set = (id, val) => { const el = $(id); if (el) el.textContent = val; };
-    set("statCartTotal", fmt(total) + " د.ع");
-    set("statItemCount", String(count));
-    set("statCashBalance", fmt(cashBalanceBase) + " د.ع");
-    set("statLastSale", lastOrderLabel);
     const mcb = $("mobileCartBtn");
     if (mcb) mcb.textContent = `السلة: ${count} منتجات — ${fmt(total)} د.ع`;
     const execBtn = $("btnExecute");
@@ -551,7 +544,6 @@
         }
         toast("تم تنفيذ البيع وإنشاء الفاتورة");
         items.forEach((i) => syncLocalStock(i.product_id, i.qty));
-        lastOrderLabel = "#INV-" + d.invoice_id;
         closeOrderNotesModal();
         printServerInvoice(d.invoice_id);
         items = [];
@@ -559,7 +551,6 @@
         clearCustomerDisplay();
         if (pageSelect) pageSelect.value = "";
         renderItems();
-        fetchLastOrders();
       })
       .catch((err) => {
         isSubmitting = false;
@@ -678,35 +669,6 @@
       const name = (card.getAttribute("data-name") || "").toLowerCase();
       card.style.display = name.includes(q) ? "" : "none";
     });
-  }
-
-  function formatLastSaleTime(dateStr) {
-    if (!dateStr) return "";
-    const parts = dateStr.split(" ");
-    if (parts.length >= 2) {
-      const timePart = parts[1];
-      const [h, m] = timePart.split(":").map(Number);
-      if (!isNaN(h)) {
-        const ampm = h >= 12 ? "PM" : "AM";
-        const h12 = h % 12 || 12;
-        return `${h12}:${String(m || 0).padStart(2, "0")} ${ampm}`;
-      }
-    }
-    return dateStr;
-  }
-
-  function fetchLastOrders() {
-    fetch("/pos/last-orders")
-      .then((r) => r.json())
-      .then((orders) => {
-        if (orders && orders.length) {
-          const o = orders[0];
-          const time = formatLastSaleTime(o.date);
-          lastOrderLabel = time ? `#INV-${o.id} · ${time}` : `#INV-${o.id}`;
-          updateStats();
-        }
-      })
-      .catch(() => { /* */ });
   }
 
   function buildCategoryTabs() {
@@ -1008,7 +970,6 @@
     initDiscountShipping();
     syncMobileFields();
     initKeyboard();
-    fetchLastOrders();
 
     $("cameraInput")?.addEventListener("change", (e) => {
       if (e.target.files?.[0]) sendToOCR(e.target.files[0]);

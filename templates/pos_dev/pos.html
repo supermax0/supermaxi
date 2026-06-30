@@ -41,38 +41,6 @@
     <div class="edit-banner">✏️ تعديل الطلب #{{ order_data['id'] }}</div>
     {% endif %}
 
-    <!-- Stats: last sale → cash → cart count → invoice total -->
-    <div class="pos-stats">
-      <div class="pos-stat pos-stat--green">
-        <div class="pos-stat-icon green"><i class="fas fa-check-circle"></i></div>
-        <div>
-          <div class="pos-stat-label">آخر عملية بيع</div>
-          <div class="pos-stat-value" id="statLastSale">—</div>
-        </div>
-      </div>
-      <div class="pos-stat pos-stat--blue">
-        <div class="pos-stat-icon blue"><i class="fas fa-wallet"></i></div>
-        <div>
-          <div class="pos-stat-label">الرصيد النقدي</div>
-          <div class="pos-stat-value" id="statCashBalance">{{ "{:,.0f}".format(cash_balance) }} د.ع</div>
-        </div>
-      </div>
-      <div class="pos-stat pos-stat--amber">
-        <div class="pos-stat-icon amber"><i class="fas fa-shopping-cart"></i></div>
-        <div>
-          <div class="pos-stat-label">عدد المنتجات في السلة</div>
-          <div class="pos-stat-value" id="statItemCount">0</div>
-        </div>
-      </div>
-      <div class="pos-stat pos-stat--purple">
-        <div class="pos-stat-icon purple"><i class="fas fa-file-invoice"></i></div>
-        <div>
-          <div class="pos-stat-label">إجمالي الفاتورة الحالية</div>
-          <div class="pos-stat-value" id="statCartTotal">0 د.ع</div>
-        </div>
-      </div>
-    </div>
-
     <div class="pos-layout">
       <!-- Cart panel (left visually via ltr layout) -->
       <aside class="pos-desktop-cart">
