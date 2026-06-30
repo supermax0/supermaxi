@@ -90,30 +90,11 @@
   }
 
   function updateCustomerDisplay(c) {
-    const name = c?.name || selectedCustomerName || "";
-    const phone = c?.phone || "";
-    const city = c?.city || "";
-    const label = name + (phone ? " — " + phone : "");
-    const set = (id, val) => { const el = $(id); if (el) el.textContent = val; };
-    set("selectedCustomer", label || "زبون سريع — اختر أو أضف زبون");
-    const mobileEl = $("selectedCustomerMobile");
-    if (mobileEl) mobileEl.textContent = label;
-    const phoneEl = $("customerPhone");
-    if (phoneEl) phoneEl.value = phone;
-    const cityEl = $("customerCity");
-    if (cityEl) cityEl.value = city;
+    if (c?.name) selectedCustomerName = c.name;
   }
 
   function clearCustomerDisplay() {
     selectedCustomerName = "";
-    updateCustomerDisplay(null);
-    $("selectedCustomer").textContent = "زبون سريع — اختر أو أضف زبون";
-    const phoneEl = $("customerPhone");
-    if (phoneEl) phoneEl.value = "";
-    const cityEl = $("customerCity");
-    if (cityEl) cityEl.value = "";
-    const mobileEl = $("selectedCustomerMobile");
-    if (mobileEl) mobileEl.textContent = "";
   }
 
   function updateStats() {
@@ -149,22 +130,7 @@
     set("summaryTotalMobile", fmt(total) + " د.ع");
     const tp = $("totalPrice");
     if (tp) tp.textContent = fmt(total);
-    updateOperationImpact(total);
     updateStats();
-  }
-
-  function updateOperationImpact(total) {
-    const box = $("operationImpactList");
-    if (!box) return;
-    if (!items.length) {
-      box.innerHTML = "<li>أضف منتجات لمعاينة أثر العملية</li>";
-      return;
-    }
-    const lines = items.map((i) => `<li>${i.name}: −${i.qty} من المخزون</li>`);
-    lines.push(`<li>الصندوق: +${fmt(total)} د.ع عند الدفع النقدي</li>`);
-    lines.push("<li>فاتورة جديدة سيتم إنشاؤها</li>");
-    lines.push("<li>حالة الدفع: غير مسدد (حسب المنطق الحالي)</li>");
-    box.innerHTML = lines.join("");
   }
 
   function renderItems() {
