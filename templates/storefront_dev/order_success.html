@@ -1,0 +1,19 @@
+{% extends "storefront_dev/base.html" %}
+{% block title %}تم الطلب — {{ store_design.store_name }}{% endblock %}
+{% block content %}
+<div class="sf-card" style="padding:28px;max-width:720px;margin:0 auto;text-align:center;">
+  <div class="sf-alert ok" style="text-align:right;">
+    تم استلام طلبك بنجاح.<br>
+    رقم الطلب: <strong>#{{ order.invoice_id }}</strong><br>
+    الإجمالي: <strong>{{ "{:,.0f}".format(order.grand_total) }} د.ع</strong><br>
+    باسم: <strong>{{ order.customer_name }}</strong>
+  </div>
+  <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px;">
+    {% if track_url %}
+    <a class="sf-btn primary" href="{{ track_url }}" target="_blank" rel="noopener">تتبع الطلب (رابط آمن)</a>
+    {% endif %}
+    <a class="sf-btn" href="{{ url_for('storefront.tracking_page', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.tracking_page', tenant_slug=shop_tenant_slug) }}">تتبع برقم الطلب</a>
+    <a class="sf-btn" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">مواصلة التسوق</a>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends "storefront_dev/base.html" %}
+{% block title %}تتبع الطلب — {{ store_design.store_name }}{% endblock %}
+{% block content %}
+<div class="sf-layout-2">
+  <div class="sf-card" style="padding:18px;">
+    <h2 style="margin-top:0;">تتبع الطلب</h2>
+    {% if error %}<div class="sf-alert err">{{ error }}</div>{% endif %}
+    <form method="post" style="display:grid;gap:10px;">
+      {% if request.args.get('dev') %}<input type="hidden" name="dev" value="1">{% endif %}
+      <div>
+        <label style="display:block;color:var(--muted);font-size:.85rem;margin-bottom:6px;">رقم الطلب</label>
+        <input type="text" name="invoice_id" required value="{{ form.invoice_id }}" placeholder="مثال: 1024">
+      </div>
+      <div>
+        <label style="display:block;color:var(--muted);font-size:.85rem;margin-bottom:6px;">رقم الهاتف</label>
+        <input type="text" name="phone" required value="{{ form.phone }}" placeholder="نفس رقم الطلب">
+      </div>
+      <button class="sf-btn primary" type="submit">بحث</button>
+    </form>
+  </div>
+
+  <div class="sf-card" style="padding:18px;">
+    {% if order %}
+    <h3 style="margin-top:0;">طلب #{{ order.id }}</h3>
+    <p style="color:var(--muted);margin:0 0 10px;">{{ order.customer_name }} — {{ "{:,.0f}".format(order.total or 0) }} د.ع</p>
+    <p style="margin:0 0 10px;"><strong>الحالة:</strong> {{ order.status or "—" }} / {{ order.shipping_status or "—" }}</p>
+    {% if public_track_url %}
+    <a class="sf-btn" href="{{ public_track_url }}" target="_blank" rel="noopener">فتح صفحة التتبع التفصيلية</a>
+    {% endif %}
+    <div class="sf-steps">
+      {% for step in tracking_steps %}
+      <div class="sf-step {{ 'done' if step.done else '' }} {{ 'active' if step.active else '' }}">
+        <span class="sf-step-dot"></span>
+        <div>
+          <strong>{{ step.label }}</strong>
+          <div style="color:var(--muted);font-size:.86rem;">{{ step.hint }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="sf-empty">أدخل رقم الطلب ورقم الهاتف لعرض حالة الشحن.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

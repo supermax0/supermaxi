@@ -1,0 +1,1 @@
+"""Storefront e-commerce module."""

@@ -1,0 +1,70 @@
+{% extends "storefront_dev/base.html" %}
+{% block title %}السلة — {{ store_design.store_name }}{% endblock %}
+{% block content %}
+<div class="sf-section-title">
+  <h2 style="margin:0;">سلة المشتريات</h2>
+  <a class="sf-btn" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">متابعة التسوق</a>
+</div>
+
+{% if coupon_success %}<div class="sf-alert ok">{{ coupon_success }}</div>{% endif %}
+{% if coupon_error %}<div class="sf-alert err">{{ coupon_error }}</div>{% endif %}
+
+<div class="sf-card" style="padding:14px;">
+  {% if cart_items %}
+  <form method="post" action="{{ url_for('storefront.cart_update', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.cart_update', tenant_slug=shop_tenant_slug) }}">
+    <div class="sf-table-wrap">
+      <table class="sf-table">
+        <thead>
+          <tr><th>المنتج</th><th>السعر</th><th>الكمية</th><th>المجموع</th><th></th></tr>
+        </thead>
+        <tbody>
+          {% for item in cart_items %}
+          <tr>
+            <td data-label="المنتج">
+              <div class="sf-product-row">
+                {% if item.image_url %}<img src="{{ item.image_url }}" alt="{{ item.name }}" loading="lazy">{% endif %}
+                <div>{{ item.name }}</div>
+              </div>
+            </td>
+            <td data-label="السعر">{{ "{:,.0f}".format(item.price) }} د.ع</td>
+            <td data-label="الكمية"><input type="number" min="0" max="999" name="qty_{{ item.id }}" value="{{ item.quantity }}"></td>
+            <td data-label="المجموع">{{ "{:,.0f}".format(item.line_total) }} د.ع</td>
+            <td data-label="حذف">
+              <button class="sf-btn danger" formaction="{{ url_for('storefront.cart_remove', tenant_slug=shop_tenant_slug, product_id=item.id, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.cart_remove', tenant_slug=shop_tenant_slug, product_id=item.id) }}" formmethod="post" type="submit">حذف</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+      <div>
+        <div style="color:var(--muted);font-size:.9rem;">المجموع: {{ "{:,.0f}".format(subtotal) }} د.ع</div>
+        <div style="color:var(--muted);font-size:.9rem;">الخصم: -{{ "{:,.0f}".format(discount_amount) }} د.ع</div>
+        <div class="sf-price" style="font-size:1.4rem;">الصافي: {{ "{:,.0f}".format(net_subtotal) }} د.ع</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="sf-btn" type="submit">تحديث السلة</button>
+        <a class="sf-btn primary" href="{{ url_for('storefront.checkout_page', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.checkout_page', tenant_slug=shop_tenant_slug) }}">إكمال الطلب</a>
+      </div>
+    </div>
+  </form>
+
+  <form id="sfCouponForm" method="post" action="{{ url_for('storefront.cart_coupon', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.cart_coupon', tenant_slug=shop_tenant_slug) }}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0;">
+    <input type="text" name="coupon_code" placeholder="كود الكوبون" value="{{ active_coupon }}" style="width:200px;border-radius:12px;border:1px solid var(--line);padding:10px;background:var(--surface);color:var(--text);">
+    <button class="sf-btn" type="submit" name="action" value="apply">تطبيق الكوبون</button>
+    {% if active_coupon %}
+    <button class="sf-btn danger" type="submit" name="action" value="remove">إزالة الكوبون</button>
+    {% endif %}
+  </form>
+  {% else %}
+  <div class="sf-empty">
+    السلة فارغة حالياً.
+    <div style="margin-top:12px;">
+      <a class="sf-btn primary" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">تصفح المنتجات</a>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

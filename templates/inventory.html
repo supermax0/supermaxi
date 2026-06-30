@@ -1459,6 +1459,11 @@
         <i class="fas fa-store"></i>
         <span>فتح المتجر</span>
       </a>
+      <a href="{{ url_for('storefront.store_index', tenant_slug=_store_tslug, dev=1) }}" target="_blank" rel="noopener" class="inv-btn"
+        style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; box-shadow: 0 6px 16px rgba(37,99,235,0.28);">
+        <i class="fas fa-wand-magic-sparkles"></i>
+        <span>معاينة التصميم الجديد</span>
+      </a>
       {% endif %}
     </div>
     <div class="inv-toolbar-right">

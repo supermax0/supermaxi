@@ -1,0 +1,67 @@
+{% extends "storefront_dev/base.html" %}
+{% block title %}{{ store_design.store_name }} — المتجر{% endblock %}
+{% block content %}
+<section class="sf-hero">
+  <div class="sf-card sf-hero-main">
+    <h1>{{ store_design.hero_title }}</h1>
+    <p>{{ store_design.hero_subtitle }}</p>
+  </div>
+  <div class="sf-stats">
+    <div class="sf-card sf-stat"><b>{{ products|length }}</b><span>منتج معروض</span></div>
+    <div class="sf-card sf-stat"><b>{{ products|selectattr('is_available')|list|length }}</b><span>متوفر الآن</span></div>
+  </div>
+</section>
+
+<section class="sf-card sf-filters">
+  <form method="get">
+    {% if request.args.get('dev') %}<input type="hidden" name="dev" value="1">{% endif %}
+    <input name="q" value="{{ filters.q }}" placeholder="بحث باسم المنتج أو الوصف">
+    <input type="number" name="min_price" min="0" value="{{ filters.min_price }}" placeholder="أقل سعر">
+    <input type="number" name="max_price" min="0" value="{{ filters.max_price }}" placeholder="أعلى سعر">
+    <select name="availability">
+      <option value="all" {% if filters.availability == 'all' %}selected{% endif %}>كل الحالات</option>
+      <option value="in_stock" {% if filters.availability == 'in_stock' %}selected{% endif %}>متوفر</option>
+      <option value="out_stock" {% if filters.availability == 'out_stock' %}selected{% endif %}>غير متوفر</option>
+    </select>
+    <select name="badge">
+      <option value="">كل التصنيفات</option>
+      {% for b in badges %}
+      <option value="{{ b }}" {% if filters.badge == b %}selected{% endif %}>{{ b }}</option>
+      {% endfor %}
+    </select>
+    <select name="sort">
+      <option value="latest" {% if filters.sort == 'latest' %}selected{% endif %}>الأحدث</option>
+      <option value="price_asc" {% if filters.sort == 'price_asc' %}selected{% endif %}>السعر: الأقل</option>
+      <option value="price_desc" {% if filters.sort == 'price_desc' %}selected{% endif %}>السعر: الأعلى</option>
+      <option value="name_asc" {% if filters.sort == 'name_asc' %}selected{% endif %}>الاسم</option>
+    </select>
+    <button class="sf-btn primary" type="submit">تطبيق</button>
+  </form>
+</section>
+
+{% if featured_products %}
+<div class="sf-section-title">
+  <h3>منتجات مميزة</h3>
+  <small>مختارة من أحدث المنتجات</small>
+</div>
+<section class="sf-grid">
+  {% for product in featured_products %}
+  {% include "storefront_dev/partials/product_card.html" %}
+  {% endfor %}
+</section>
+{% endif %}
+
+{% if products %}
+<div class="sf-section-title">
+  <h3>كل المنتجات</h3>
+  <small>{{ products|length }} عنصر</small>
+</div>
+<section class="sf-grid">
+  {% for product in products %}
+  {% include "storefront_dev/partials/product_card.html" %}
+  {% endfor %}
+</section>
+{% else %}
+<div class="sf-empty">لا توجد منتجات مطابقة للفلاتر الحالية.</div>
+{% endif %}
+{% endblock %}

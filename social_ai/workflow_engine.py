@@ -1044,12 +1044,6 @@ def _product_video_url(p: Product) -> str:
     return str(meta.get("video_url") or "").strip()
 
 
-def _product_book_url(p: Product, context: Dict[str, Any] | None = None) -> str:
-    base = _product_public_url(p, context)
-    sep = "&" if "?" in base else "?"
-    return f"{base}{sep}book=1#booking-form"
-
-
 def _product_specs_list(p: Product, limit: int = 3) -> list[str]:
     meta = _product_meta_dict(p)
     specs_items = meta.get("specs_items")
@@ -1089,7 +1083,6 @@ def _product_share_payload(p: Product, context: Dict[str, Any] | None = None) ->
     return {
         "name": str(p.name or "").strip() or f"منتج #{p.id}",
         "url": _product_public_url(p, context),
-        "book_url": _product_book_url(p, context),
         "video_url": _product_video_url(p),
         "price": str(int(p.sale_price or 0)),
         "specs": _product_specs_preview(p, limit=3),
@@ -2109,15 +2102,13 @@ def _build_product_share_reply_markup(context: Dict[str, Any]) -> dict[str, Any]
 
     primary = share_items[0] if isinstance(share_items[0], dict) else {}
     details_url = str(primary.get("url") or "").strip()
-    book_url = str(primary.get("book_url") or "").strip()
     video_url = str(primary.get("video_url") or "").strip()
 
     rows: list[list[dict[str, str]]] = []
     first_row: list[dict[str, str]] = []
     if _is_public_button_url(details_url):
         first_row.append({"text": "عرض التفاصيل", "url": details_url})
-    if _is_public_button_url(book_url):
-        first_row.append({"text": "احجز الآن", "url": book_url})
+        first_row.append({"text": "اطلب الآن", "url": details_url})
     if first_row:
         rows.append(first_row[:2])
     if wants_video and _is_public_button_url(video_url):

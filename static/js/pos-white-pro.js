@@ -39,12 +39,26 @@
     };
   }
 
-  function toast(msg) {
+  function toast(msg, type) {
     const t = $("posToast");
     if (!t) return;
     t.textContent = msg;
     t.classList.add("show");
     setTimeout(() => t.classList.remove("show"), 3000);
+
+    if (typeof window.playNotificationSound === "function") {
+      var soundType = type;
+      if (!soundType) {
+        if (/خطأ|فشل|غير|لا يُسمح|لا توجد|يرجى|اختر|اسمح/i.test(String(msg))) {
+          soundType = /تم |نجاح|حفظ|تنفيذ|إضافة|تطبيق/i.test(String(msg)) ? "success" : "warning";
+        } else if (/تم |نجاح|حفظ|تنفيذ|إضافة|تطبيق/i.test(String(msg))) {
+          soundType = "success";
+        } else {
+          soundType = "info";
+        }
+      }
+      window.playNotificationSound(soundType, { soundType: soundType });
+    }
   }
 
   function fmt(n) {

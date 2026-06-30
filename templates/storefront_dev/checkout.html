@@ -1,0 +1,88 @@
+{% extends "storefront_dev/base.html" %}
+{% block title %}إتمام الطلب — {{ store_design.store_name }}{% endblock %}
+{% block content %}
+<div class="sf-section-title">
+  <h2 style="margin:0;">إتمام الطلب</h2>
+  <a class="sf-btn" href="{{ url_for('storefront.cart_page', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.cart_page', tenant_slug=shop_tenant_slug) }}">العودة للسلة</a>
+</div>
+
+<div class="sf-layout-2">
+  <div class="sf-card" style="padding:18px;">
+    {% if checkout_error %}<div class="sf-alert err">{{ checkout_error }}</div>{% endif %}
+    {% if cart_items %}
+    <form method="post">
+      {% if request.args.get('dev') %}<input type="hidden" name="dev" value="1">{% endif %}
+      <div style="display:grid;gap:10px;">
+        <div>
+          <label style="display:block;color:var(--muted);font-size:.85rem;margin-bottom:6px;">الاسم الكامل</label>
+          <input type="text" name="customer_name" required value="{{ checkout_form.customer_name }}">
+        </div>
+        <div>
+          <label style="display:block;color:var(--muted);font-size:.85rem;margin-bottom:6px;">رقم الهاتف</label>
+          <input type="text" name="phone" required minlength="8" value="{{ checkout_form.phone }}">
+        </div>
+        <div>
+          <label style="display:block;color:var(--muted);font-size:.85rem;margin-bottom:6px;">المحافظة</label>
+          <input id="sfCheckoutCity" list="sf-city-options" name="city" required value="{{ checkout_form.city }}" placeholder="مثال: بغداد">
+          <datalist id="sf-city-options">
+            {% for city, fee in shipping_map.items() %}
+            <option value="{{ city }}">{{ city }} - {{ "{:,.0f}".format(fee) }} د.ع</option>
+            {% endfor %}
+          </datalist>
+          <small style="color:var(--muted);">الشحن الافتراضي: {{ "{:,.0f}".format(shipping_default_fee) }} د.ع</small>
+        </div>
+        <div>
+          <label style="display:block;color:var(--muted);font-size:.85rem;margin-bottom:6px;">العنوان التفصيلي</label>
+          <textarea name="address" required minlength="5" style="min-height:88px;resize:vertical;width:100%;border-radius:12px;border:1px solid var(--line);padding:10px;background:var(--surface);color:var(--text);">{{ checkout_form.address }}</textarea>
+        </div>
+        <div>
+          <label style="display:block;color:var(--muted);font-size:.85rem;margin-bottom:6px;">ملاحظات</label>
+          <textarea name="notes" style="min-height:70px;resize:vertical;width:100%;border-radius:12px;border:1px solid var(--line);padding:10px;background:var(--surface);color:var(--text);">{{ checkout_form.notes }}</textarea>
+        </div>
+      </div>
+      {% if active_coupon %}<div style="margin-top:10px;"><span class="sf-shipping-chip">كوبون: {{ active_coupon }}</span></div>{% endif %}
+      <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="sf-btn primary" type="submit">تأكيد الطلب — الدفع عند الاستلام</button>
+      </div>
+    </form>
+    {% else %}
+    <div class="sf-empty">السلة فارغة. <a href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">تصفح المنتجات</a></div>
+    {% endif %}
+  </div>
+
+  <div class="sf-card sf-checkout-summary">
+    <h3 style="margin-top:0;">ملخص الطلب</h3>
+    {% if cart_items %}
+    <div class="sf-table-wrap">
+      <table class="sf-table">
+        <tbody>
+          {% for item in cart_items %}
+          <tr>
+            <td>{{ item.name }} × {{ item.quantity }}</td>
+            <td>{{ "{:,.0f}".format(item.line_total) }} د.ع</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="sf-sum-row"><span>المجموع</span><span>{{ "{:,.0f}".format(subtotal) }} د.ع</span></div>
+    <div class="sf-sum-row"><span>الخصم</span><span>-{{ "{:,.0f}".format(discount_amount) }} د.ع</span></div>
+    <div class="sf-sum-row"><span>الشحن</span><span id="sfShippingFeeText">{{ "{:,.0f}".format(shipping_fee) }} د.ع</span></div>
+    <div class="sf-sum-row final"><span>الإجمالي</span><span id="sfGrandTotalText">{{ "{:,.0f}".format(grand_total) }} د.ع</span></div>
+    <div style="margin-top:10px;"><span class="sf-shipping-chip">الدفع عند الاستلام (COD)</span></div>
+    {% else %}
+    <p style="color:var(--muted);">لا توجد عناصر في السلة.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  window.STOREFRONT_CONFIG = Object.assign(window.STOREFRONT_CONFIG || {}, {
+    shippingMap: {{ shipping_map|tojson }},
+    shippingDefault: {{ shipping_default_fee|tojson }},
+    netSubtotal: {{ net_subtotal|tojson }}
+  });
+</script>
+{% endblock %}

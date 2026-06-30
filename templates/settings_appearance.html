@@ -438,6 +438,11 @@
     {% set storefront_coupon_code = ui_flags.get('storefront_coupon_code', '') %}
     {% set storefront_coupon_type = ui_flags.get('storefront_coupon_type', 'percent') %}
     {% set storefront_coupon_value = ui_flags.get('storefront_coupon_value', 0) %}
+    {% set storefront_store_name = ui_flags.get('storefront_store_name', 'متجر المنتجات') %}
+    {% set storefront_logo_url = ui_flags.get('storefront_logo_url', '') %}
+    {% set storefront_whatsapp = ui_flags.get('storefront_whatsapp', '') %}
+    {% set storefront_theme_mode = ui_flags.get('storefront_theme_mode', 'light') %}
+    {% set _store_tslug = session.get('tenant_slug') or config.get('STOREFRONT_DEFAULT_TENANT_SLUG', '') %}
     {% set storefront_cities = ['بغداد', 'البصرة', 'نينوى', 'أربيل', 'النجف', 'كربلاء', 'ذي قار', 'السليمانية', 'دهوك', 'كركوك', 'ديالى', 'الأنبار', 'صلاح الدين', 'واسط', 'بابل', 'القادسية', 'ميسان', 'المثنى'] %}
     <div class="appearance-card" style="margin-top:16px;">
       <div class="appearance-header" style="margin-bottom:14px;">
@@ -490,7 +495,35 @@
           <input id="storefrontDefaultShipping" class="appearance-input" type="number" min="0" value="{{ storefront_default_shipping }}">
           <div class="field-help">يُستخدم إذا كتب العميل محافظة غير موجودة في القائمة.</div>
         </div>
+        <div class="field-group">
+          <label class="field-label" for="storefrontStoreName">اسم المتجر</label>
+          <input id="storefrontStoreName" class="appearance-input" type="text" value="{{ storefront_store_name }}">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="storefrontLogoUrl">رابط الشعار</label>
+          <input id="storefrontLogoUrl" class="appearance-input" type="url" value="{{ storefront_logo_url }}" placeholder="https://...">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="storefrontWhatsapp">واتساب (رقم دولي)</label>
+          <input id="storefrontWhatsapp" class="appearance-input" type="text" value="{{ storefront_whatsapp }}" placeholder="9647XXXXXXXX">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="storefrontThemeMode">وضع العرض</label>
+          <select id="storefrontThemeMode" class="appearance-select">
+            <option value="light" {% if storefront_theme_mode == 'light' %}selected{% endif %}>فاتح</option>
+            <option value="dark" {% if storefront_theme_mode == 'dark' %}selected{% endif %}>داكن</option>
+            <option value="auto" {% if storefront_theme_mode == 'auto' %}selected{% endif %}>تلقائي</option>
+          </select>
+        </div>
       </div>
+      {% if _store_tslug %}
+      <div style="margin-bottom:14px;display:flex;gap:8px;flex-wrap:wrap;">
+        <a class="appearance-input" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-weight:700;"
+           href="{{ url_for('storefront.store_index', tenant_slug=_store_tslug) }}" target="_blank" rel="noopener">فتح المتجر الحالي</a>
+        <a class="appearance-input" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-weight:700;background:#2563eb;color:#fff;border-color:#2563eb;"
+           href="{{ url_for('storefront.store_index', tenant_slug=_store_tslug, dev=1) }}" target="_blank" rel="noopener">معاينة التصميم الجديد (?dev=1)</a>
+      </div>
+      {% endif %}
       <div class="store-shipping-grid">
         {% for city in storefront_cities %}
         <div class="store-shipping-row">
@@ -657,7 +690,11 @@ document.getElementById("saveAppearanceBtn").addEventListener("click", function 
       storefront_shipping_by_city: collectStorefrontShippingByCity(),
       storefront_coupon_code: (document.getElementById("storefrontCouponCode").value || "").trim().toUpperCase(),
       storefront_coupon_type: document.getElementById("storefrontCouponType").value || "percent",
-      storefront_coupon_value: Math.max(0, parseInt(document.getElementById("storefrontCouponValue").value, 10) || 0)
+      storefront_coupon_value: Math.max(0, parseInt(document.getElementById("storefrontCouponValue").value, 10) || 0),
+      storefront_store_name: (document.getElementById("storefrontStoreName").value || "").trim() || "متجر المنتجات",
+      storefront_logo_url: (document.getElementById("storefrontLogoUrl").value || "").trim(),
+      storefront_whatsapp: (document.getElementById("storefrontWhatsapp").value || "").trim(),
+      storefront_theme_mode: document.getElementById("storefrontThemeMode").value || "light"
     }
   };
 

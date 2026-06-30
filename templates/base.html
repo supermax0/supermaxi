@@ -1073,6 +1073,10 @@
       background: var(--warning);
     }
 
+    .toast.order::before {
+      background: var(--primary);
+    }
+
     @keyframes slideInLeft {
       from {
         transform: translateX(-100%);
@@ -1113,6 +1117,10 @@
     }
 
     .toast.info i {
+      color: var(--primary);
+    }
+
+    .toast.order i {
       color: var(--primary);
     }
 
@@ -2194,6 +2202,9 @@ or request.path.startswith('/superadmin') %}
           onclick="setProfileLang('tr', this)">
           Türkçe
         </div>
+        <div class="setting-item" id="notificationSoundToggle" onclick="toggleNotificationSound(this)">
+          <i class="fa fa-bell"></i> <span id="notificationSoundLabel">صوت الإشعارات</span>
+        </div>
       </div>
 
       <div class="modal-footer">
@@ -2215,6 +2226,8 @@ or request.path.startswith('/superadmin') %}
   <div class="loading-overlay" id="loadingOverlay">
     <div class="loading-spinner"></div>
   </div>
+
+  <script src="{{ url_for('static', filename='js/notification-sound.js') }}"></script>
 
   <script>
     // ======================================================
@@ -2334,9 +2347,19 @@ or request.path.startswith('/superadmin') %}
     // ======================================================
     // TOAST NOTIFICATIONS
     // ======================================================
-    function showToast(message, type = "info", duration = 3000) {
+    function showToast(message, type = "info", duration = 3000, options) {
+      if (typeof duration === "object" && duration !== null) {
+        options = duration;
+        duration = options.duration != null ? options.duration : 3000;
+      }
+      options = options || {};
+
       const container = document.getElementById("toastContainer");
       if (!container) return;
+
+      if (!options.silent && options.sound !== false && typeof window.playNotificationSound === "function") {
+        window.playNotificationSound(type, options);
+      }
 
       const toast = document.createElement("div");
       toast.className = `toast ${type}`;
@@ -2345,7 +2368,8 @@ or request.path.startswith('/superadmin') %}
         success: "fa-check-circle",
         error: "fa-exclamation-circle",
         warning: "fa-exclamation-triangle",
-        info: "fa-info-circle"
+        info: "fa-info-circle",
+        order: "fa-bell"
       };
 
       toast.innerHTML = `
@@ -2516,8 +2540,37 @@ or request.path.startswith('/superadmin') %}
     // ======================================================
     window.openProfileModal = function () {
       const modal = document.getElementById("profileModal");
-      if (modal) modal.style.display = "flex";
+      if (modal) {
+        syncNotificationSoundToggle();
+        modal.style.display = "flex";
+      }
     };
+
+    function syncNotificationSoundToggle() {
+      var toggle = document.getElementById("notificationSoundToggle");
+      var label = document.getElementById("notificationSoundLabel");
+      if (!toggle) return;
+      var enabled = typeof window.finoraNotificationSoundEnabled === "function"
+        ? window.finoraNotificationSoundEnabled()
+        : true;
+      toggle.classList.toggle("active", enabled);
+      if (label) label.textContent = enabled ? "صوت الإشعارات: مفعّل" : "صوت الإشعارات: متوقف";
+    }
+
+    window.toggleNotificationSound = function (el) {
+      var enabled = typeof window.finoraNotificationSoundEnabled === "function"
+        ? window.finoraNotificationSoundEnabled()
+        : true;
+      if (typeof window.finoraSetNotificationSound === "function") {
+        window.finoraSetNotificationSound(!enabled);
+      }
+      syncNotificationSoundToggle();
+      if (!enabled && typeof window.playNotificationSound === "function") {
+        window.playNotificationSound("success", { soundType: "success" });
+      }
+    };
+
+    document.addEventListener("finora:notification-sound-changed", syncNotificationSoundToggle);
 
     window.closeProfileModal = function () {
       const modal = document.getElementById("profileModal");

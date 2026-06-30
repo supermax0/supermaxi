@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ar" dir="rtl" data-theme="{{ store_design.theme_mode if store_design.theme_mode in ['light','dark'] else 'light' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ store_design.store_name }}{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='storefront/css/store.css') }}">
+  <style>
+    :root {
+      --brand: {{ store_design.primary_color }};
+      --shipping: {{ store_design.shipping_color }};
+    }
+  </style>
+  {% if store_design.theme_mode == 'auto' %}
+  <script>
+    (function () {
+      const dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    })();
+  </script>
+  {% endif %}
+  {% block head_extra %}{% endblock %}
+</head>
+<body class="store-card-{{ store_design.card_style }}">
+  <header class="sf-header">
+    <div class="sf-header-inner">
+      <a class="sf-brand" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">
+        {% if store_design.logo_url %}
+        <img src="{{ store_design.logo_url }}" alt="{{ store_design.store_name }}">
+        {% endif %}
+        <span>{{ store_design.store_name }}</span>
+      </a>
+      <nav class="sf-nav">
+        <a class="sf-link" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">المنتجات</a>
+        <a class="sf-link" href="{{ url_for('storefront.tracking_page', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.tracking_page', tenant_slug=shop_tenant_slug) }}">تتبع الطلب</a>
+        {% if store_design.whatsapp %}
+        <a class="sf-link" href="https://wa.me/{{ store_design.whatsapp|replace('+','')|replace(' ','') }}" target="_blank" rel="noopener">واتساب</a>
+        {% endif %}
+        <a class="sf-cart-btn" href="{{ url_for('storefront.cart_page', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.cart_page', tenant_slug=shop_tenant_slug) }}">
+          السلة
+          <span class="sf-cart-count" data-sf-cart-count>{{ cart_count }}</span>
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="sf-page">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="sf-footer sf-page">
+    {{ store_design.store_name }} — الدفع عند الاستلام
+  </footer>
+
+  <div class="sf-mobile-bar">
+    <div class="sf-mobile-bar-inner">
+      <a class="sf-btn" style="flex:1" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">المنتجات</a>
+      <a class="sf-btn primary" style="flex:1" href="{{ url_for('storefront.cart_page', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.cart_page', tenant_slug=shop_tenant_slug) }}">السلة (<span data-sf-cart-count>{{ cart_count }}</span>)</a>
+    </div>
+  </div>
+
+  <div class="sf-toast-wrap" id="sfToastWrap"></div>
+
+  <script>
+    window.STOREFRONT_CONFIG = {
+      tenantSlug: {{ shop_tenant_slug|tojson }},
+      dev: {{ (request.args.get('dev') == '1')|tojson }},
+      useAjaxCoupon: true
+    };
+  </script>
+  <script src="{{ url_for('static', filename='storefront/js/store.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
