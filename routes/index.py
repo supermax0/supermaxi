@@ -829,7 +829,7 @@ def api_executive_dashboard_data():
     month_start = today.replace(day=1)
     
     # 1. Orders Today
-    orders_today = Invoice.query.filter(func.date(Invoice.created_at) == today).count()
+    orders_today = db.session.query(func.count(Invoice.id)).filter(func.date(Invoice.created_at) == today).scalar() or 0
     
     # 2. Purchases Today
     purchases_today_val = db.session.query(func.sum(Purchase.total)).filter(func.date(Purchase.created_at) == today).scalar() or 0
@@ -842,6 +842,7 @@ def api_executive_dashboard_data():
     
     # 5. Total Sales Today
     sales_today_val = db.session.query(func.sum(Invoice.total)).filter(func.date(Invoice.created_at) == today, Invoice.status != 'ملغي').scalar() or 0
+    expenses_today_val = _expenses_sum_for_range(today, today)
     
     # 6. Chart Data (Last 7 Days)
     daily_labels = []
@@ -882,9 +883,16 @@ def api_executive_dashboard_data():
     return jsonify({
         "orders_today": orders_today,
         "purchases_today": int(purchases_today_val),
+        "cash_balance": int(cash_balance),
         "balance": int(cash_balance),
         "profit_today": int(profit_today),
         "sales_today": int(sales_today_val),
+        "expenses_today": int(expenses_today_val),
+        "daily_labels": daily_labels,
+        "daily_sales": sales_data,
+        "daily_profit": profit_data,
+        "daily_expenses": expenses_data,
+        "daily_cashflow": cashflow_data,
         "chart_labels": daily_labels,
         "chart_sales": sales_data,
         "chart_profit": profit_data,
