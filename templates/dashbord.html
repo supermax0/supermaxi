@@ -2736,10 +2736,22 @@
   // ========================
   let currentPeriod = { type: "last_30_days", date_from: null, date_to: null };
 
+  function setText(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.innerText = value;
+  }
+
   function setTextForIds(ids, value) {
     ids.forEach(id => {
       const el = document.getElementById(id);
       if (el) el.innerText = value;
+    });
+  }
+
+  function fetchJson(url) {
+    return fetch(url).then(r => {
+      if (!r.ok) throw new Error("HTTP " + r.status + " for " + url);
+      return r.json();
     });
   }
 
@@ -2758,12 +2770,10 @@
     if (dateTo) url += "&date_to=" + dateTo;
 
     // جلب البيانات باستخدام AJAX (بدون إعادة تحميل الصفحة)
-    fetch(url)
-      .then(r => r.json())
+    fetchJson(url)
       .then(d => {
-        // تحديث الفترة المعروضة
-        document.getElementById("periodLabel").innerText = d.period_label || "اليوم";
-        document.getElementById("salesPeriodLabel").innerText = "للفترة: " + (d.period_label || "اليوم");
+        setText("periodLabel", d.period_label || "اليوم");
+        setText("salesPeriodLabel", "للفترة: " + (d.period_label || "اليوم"));
 
         // الصف الأول: الرصيد النقدي
         const cashBalanceText = formatNumber(d.cash_balance || 0) + " د.ع";
@@ -2785,12 +2795,11 @@
         const inventoryText = formatNumber(d.inventory || 0) + " د.ع";
         setTextForIds(["inventory", "quickInventory"], inventoryText);
         const liabilities = (d.debts || 0) + (d.shipping || 0);
-        document.getElementById("liabilities").innerText = formatNumber(liabilities) + " د.ع";
+        setText("liabilities", formatNumber(liabilities) + " د.ع");
 
-        // معلومات إضافية (مخفية)
-        if (document.getElementById("expenses")) document.getElementById("expenses").innerText = formatNumber(d.expenses || 0) + " د.ع";
+        setText("expenses", formatNumber(d.expenses || 0) + " د.ع");
         setTextForIds(["finoraExpensesValue"], formatNumber(d.expenses_period || d.expenses || 0) + " د.ع");
-        if (document.getElementById("agentCommissions")) document.getElementById("agentCommissions").innerText = formatNumber(d.agent_commissions || 0) + " د.ع";
+        setText("agentCommissions", formatNumber(d.agent_commissions || 0) + " د.ع");
       })
       .catch(error => {
         console.error("Error loading dashboard data:", error);
@@ -2810,18 +2819,18 @@
         setTextForIds(["finoraPurchasesValue", "finoraUnpaidPurchasesValue"], "—");
       });
 
-    fetch("/api/index/orders-count").then(r => r.json()).then(d => {
-      document.getElementById("c_all").innerText = d.all;
-      document.getElementById("c_ordered").innerText = d.ordered;
-      var elShip = document.getElementById("c_shipping");
-      if (elShip) elShip.innerText = d.shipping;
-      document.getElementById("c_delivered").innerText = d.delivered;
-      document.getElementById("c_returned").innerText = d.returned;
+    fetchJson("/api/index/orders-count").then(d => {
+      setText("c_all", d.all);
+      setText("c_ordered", d.ordered);
+      setText("c_shipping", d.shipping);
+      setText("c_delivered", d.delivered);
+      setText("c_returned", d.returned);
       setTextForIds(["finoraReturnedValue"], formatNumber(d.returned || 0));
-    });
+    }).catch(err => console.error("orders-count:", err));
 
-    fetch("/api/index/alerts").then(r => r.json()).then(list => {
+    fetchJson("/api/index/alerts").then(list => {
       const alertsContainer = document.getElementById("alerts");
+      if (!alertsContainer) return;
       alertsContainer.innerHTML = "";
 
       if (list.length === 0) {
@@ -2877,7 +2886,7 @@
           alertsContainer.appendChild(li);
         });
       }
-    });
+    }).catch(err => console.error("alerts:", err));
   }
 
   /* =======================

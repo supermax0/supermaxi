@@ -3,493 +3,616 @@
 {% block page_title %}{{ _('accounts_page_title') }}{% endblock %}
 
 {% block content %}
-
 <style>
-/* ================= VARIABLES ================= */
-:root {
-  --accounts-primary: var(--primary);
-  --accounts-success: var(--success);
-  --accounts-danger: var(--danger);
-  --accounts-warning: var(--warning);
-  --accounts-card: var(--card);
-  --accounts-border: var(--border-light);
-  --accounts-text: var(--text);
-  --accounts-muted: var(--text-muted);
-}
-
-/* ================= GRID ================= */
-.accounts-page .accounts-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 20px;
-  margin-bottom: 30px;
-}
-
-/* ================= CARDS ================= */
-.accounts-page .acc-box {
-  background: linear-gradient(145deg, rgba(17, 24, 39, 0.9), rgba(11, 18, 32, 0.9));
-  border-radius: 20px;
-  padding: 24px;
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(59, 130, 246, 0.15);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
-}
-
-.acc-box::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 6px;
-  height: 100%;
-  background: linear-gradient(180deg, var(--accounts-primary), var(--accounts-success));
-  border-radius: 0 20px 20px 0;
-  opacity: 0.7;
-}
-
-.acc-box:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.35);
-  border-color: rgba(59, 130, 246, 0.25);
-}
-
-.accounts-page .acc-box span {
-  color: var(--accounts-muted);
-  font-size: 14px;
-  font-weight: 500;
-  display: block;
-  margin-bottom: 8px;
-}
-
-.accounts-page .acc-box strong {
-  font-size: 32px;
-  display: block;
-  margin-top: 10px;
-  font-weight: 700;
-  background: linear-gradient(135deg, #f1f5f9, #cbd5e1);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.accounts-page .green {
-  color: var(--accounts-success) !important;
-  -webkit-text-fill-color: var(--accounts-success) !important;
-}
-
-.accounts-page .red {
-  color: var(--accounts-danger) !important;
-  -webkit-text-fill-color: var(--accounts-danger) !important;
-}
-
-.accounts-page .blue {
-  color: var(--accounts-primary) !important;
-  -webkit-text-fill-color: var(--accounts-primary) !important;
-}
-
-/* ================= FORM ================= */
-.accounts-page .acc-form {
-  background: linear-gradient(145deg, rgba(17, 24, 39, 0.9), rgba(11, 18, 32, 0.9));
-  padding: 28px;
-  border-radius: 20px;
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(59, 130, 246, 0.15);
-  margin-bottom: 30px;
-  position: relative;
-  overflow: hidden;
-}
-
-.accounts-page .acc-form::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 6px;
-  height: 100%;
-  background: linear-gradient(180deg, var(--accounts-primary), var(--accounts-success));
-  border-radius: 0 20px 20px 0;
-  opacity: 0.7;
-}
-
-.accounts-page .acc-form h3 {
-  color: var(--accounts-text);
-  font-size: 20px;
-  margin: 0 0 24px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.accounts-page .acc-form select,
-.accounts-page .acc-form input {
-  padding: 16px 20px;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(15, 23, 42, 0.6);
-  color: var(--accounts-text);
-  font-size: 16px;
-  width: 100%;
-  margin-bottom: 16px;
-  transition: all 0.3s ease;
-}
-
-.accounts-page .acc-form select:focus,
-.accounts-page .acc-form input:focus {
-  outline: none;
-  border-color: var(--accounts-primary);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-  background: rgba(15, 23, 42, 0.8);
-}
-
-.accounts-page .acc-form input::placeholder {
-  color: var(--accounts-muted);
-}
-
-.accounts-page .acc-form button {
-  padding: 16px 24px;
-  border: none;
-  border-radius: 16px;
-  background: linear-gradient(135deg, var(--accounts-success), #059669);
-  color: #fff;
-  font-weight: 600;
-  font-size: 16px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  width: 100%;
-  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
-}
-
-.accounts-page .acc-form button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 15px 30px rgba(16, 185, 129, 0.4);
-}
-
-/* ================= TABLE ================= */
-.accounts-page .table-container {
-  background: linear-gradient(145deg, rgba(17, 24, 39, 0.9), rgba(11, 18, 32, 0.9));
-  padding: 24px;
-  border-radius: 20px;
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(59, 130, 246, 0.15);
-  overflow-x: auto;
-}
-
-.accounts-page table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-}
-
-.accounts-page th {
-  background: rgba(30, 41, 59, 0.8);
-  padding: 18px 16px;
-  text-align: center;
-  color: var(--accounts-muted);
-  font-weight: 600;
-  font-size: 15px;
-  border-bottom: 2px solid rgba(59, 130, 246, 0.2);
-}
-
-.accounts-page td {
-  padding: 20px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
-  color: var(--accounts-text);
-  text-align: center;
-  transition: all 0.2s ease;
-}
-
-.accounts-page tbody tr {
-  transition: all 0.3s ease;
-}
-
-.accounts-page tbody tr:hover {
-  background: rgba(59, 130, 246, 0.05);
-  transform: scale(1.002);
-}
-
-.accounts-page tbody tr:last-child td {
-  border-bottom: none;
-}
-
-/* ================= RESPONSIVE ================= */
-@media (max-width: 768px) {
-  .accounts-page .accounts-grid {
-    grid-template-columns: 1fr;
+  .accounts-page {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    max-width: 1280px;
+    margin: 0 auto;
   }
-  
-  .accounts-page .acc-box strong {
-    font-size: 28px;
+
+  .acc-alert {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    box-shadow: var(--shadow-card, 0 4px 14px rgba(16, 24, 40, 0.06));
   }
-  
-  .accounts-page .table-container {
-    padding: 16px;
+
+  .acc-alert--danger { border-color: rgba(239, 68, 68, 0.35); background: rgba(239, 68, 68, 0.06); }
+  .acc-alert--warning { border-color: rgba(245, 158, 11, 0.35); background: rgba(245, 158, 11, 0.06); }
+  .acc-alert--info { border-color: rgba(59, 130, 246, 0.35); background: rgba(59, 130, 246, 0.06); }
+
+  .acc-alert-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-main);
+    line-height: 1.5;
   }
-  
-  .accounts-page th,
-  .accounts-page td {
-    padding: 12px 8px;
+
+  .acc-alert-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--border);
+    font-size: 12px;
+  }
+
+  .acc-alert-metrics span { color: var(--text-secondary); display: block; margin-bottom: 2px; }
+  .acc-alert-metrics strong { color: var(--text-main); font-size: 13px; }
+
+  .acc-stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .acc-stat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 12px 14px;
+    box-shadow: var(--shadow-card, 0 4px 14px rgba(16, 24, 40, 0.05));
+    min-height: 96px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .acc-stat-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .acc-stat-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    line-height: 1.35;
+  }
+
+  .acc-stat-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .acc-stat-icon--green { background: var(--success-soft, rgba(22, 163, 74, 0.12)); color: var(--success); }
+  .acc-stat-icon--red { background: var(--danger-soft, rgba(239, 68, 68, 0.12)); color: var(--danger); }
+  .acc-stat-icon--blue { background: var(--primary-soft, rgba(59, 130, 246, 0.12)); color: var(--primary); }
+  .acc-stat-icon--profit { background: rgba(16, 185, 129, 0.12); color: #059669; }
+
+  .acc-stat-value {
+    font-size: clamp(17px, 2.5vw, 22px);
+    font-weight: 800;
+    color: var(--text-main);
+    font-variant-numeric: tabular-nums;
+    margin-top: 8px;
+    line-height: 1.2;
+  }
+
+  .acc-stat-value--green { color: var(--success); }
+  .acc-stat-value--red { color: var(--danger); }
+  .acc-stat-value--blue { color: var(--primary); }
+
+  .acc-stat-note {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  .acc-main-grid {
+    display: grid;
+    grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+  }
+
+  .acc-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    box-shadow: var(--shadow-card, 0 4px 14px rgba(16, 24, 40, 0.05));
+  }
+
+  .acc-panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .acc-panel-head h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .acc-panel-head p {
+    margin: 4px 0 0;
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+
+  .acc-form-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .acc-field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+  }
+
+  .acc-field select,
+  .acc-field input {
+    width: 100%;
+    min-height: 42px;
+    padding: 0 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface-soft, #f8fafc);
+    color: var(--text-main);
+    font: inherit;
+    font-size: 16px;
+  }
+
+  .acc-field select:focus,
+  .acc-field input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+  }
+
+  .acc-btn-save {
+    width: 100%;
+    min-height: 42px;
+    border: none;
+    border-radius: 10px;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  .acc-btn-save:hover { filter: brightness(1.05); }
+
+  .acc-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .acc-table {
+    width: 100%;
+    border-collapse: collapse;
     font-size: 13px;
   }
-}
 
-/* ================= Light Mode Fixes ================= */
-:root[data-theme="light"] .accounts-page .acc-box,
-:root[data-theme="light"] .accounts-page .acc-form,
-:root[data-theme="light"] .accounts-page .table-container{
-  background: rgba(255, 255, 255, 0.92);
-  border-color: rgba(2, 6, 23, 0.08);
-  box-shadow: 0 16px 34px rgba(2, 6, 23, 0.08);
-}
+  .acc-table th {
+    padding: 10px 8px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
 
-:root[data-theme="light"] .accounts-page .acc-box span,
-:root[data-theme="light"] .accounts-page .acc-form h3{
-  color: rgba(15, 23, 42, 0.70);
-}
+  .acc-table td {
+    padding: 10px 8px;
+    text-align: center;
+    color: var(--text-main);
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
 
-:root[data-theme="light"] .accounts-page .acc-box strong{
-  background: none;
-  -webkit-text-fill-color: currentColor;
-  color: #0f172a;
-}
+  .acc-table tbody tr:last-child td { border-bottom: none; }
+  .acc-table tbody tr:hover { background: var(--surface-hover, rgba(59, 130, 246, 0.04)); }
 
-:root[data-theme="light"] .accounts-page .green{
-  color: var(--accounts-success) !important;
-}
+  .acc-type {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 700;
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 999px;
+  }
 
-:root[data-theme="light"] .accounts-page .red{
-  color: var(--accounts-danger) !important;
-}
+  .acc-type--deposit { background: rgba(22, 163, 74, 0.12); color: var(--success); }
+  .acc-type--withdraw { background: rgba(239, 68, 68, 0.12); color: var(--danger); }
 
-:root[data-theme="light"] .accounts-page .blue{
-  color: var(--accounts-primary) !important;
-}
+  .acc-amount { font-weight: 800; font-variant-numeric: tabular-nums; }
+  .acc-amount--green { color: var(--success); }
+  .acc-amount--red { color: var(--danger); }
 
-:root[data-theme="light"] .accounts-page .acc-form select,
-:root[data-theme="light"] .accounts-page .acc-form input{
-  background: rgba(255, 255, 255, 0.94);
-  border-color: rgba(2, 6, 23, 0.10);
-  color: #0f172a;
-}
+  .acc-status-pill {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    background: var(--primary-soft);
+    color: var(--primary);
+    margin: 2px;
+  }
 
-:root[data-theme="light"] .accounts-page th{
-  background: rgba(241, 245, 249, 0.96);
-  color: rgba(15, 23, 42, 0.75);
-  border-bottom-color: rgba(2, 6, 23, 0.10);
-}
+  .acc-status-pill.muted {
+    background: var(--surface-soft);
+    color: var(--text-secondary);
+  }
 
-:root[data-theme="light"] .accounts-page td{
-  color: #0f172a;
-  border-bottom-color: rgba(2, 6, 23, 0.08);
-}
+  .acc-empty {
+    text-align: center;
+    padding: 28px 12px;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
 
-:root[data-theme="light"] .accounts-page tbody tr:hover{
-  background: rgba(37, 99, 235, 0.06);
-}
+  .acc-order-id {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    align-items: center;
+  }
+
+  .acc-order-id strong { font-size: 13px; }
+  .acc-order-id small { font-size: 11px; color: var(--text-muted); }
+
+  .acc-mobile-cards { display: none; }
+
+  .acc-tx-card,
+  .acc-impact-card {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    background: var(--surface-soft, #f8fafc);
+  }
+
+  .acc-tx-card-top,
+  .acc-impact-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .acc-tx-card-meta,
+  .acc-impact-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 10px;
+    font-size: 12px;
+  }
+
+  .acc-tx-card-meta span,
+  .acc-impact-grid span {
+    color: var(--text-secondary);
+    display: block;
+    font-size: 10px;
+    margin-bottom: 2px;
+  }
+
+  .acc-tx-card-meta strong,
+  .acc-impact-grid strong {
+    color: var(--text-main);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .acc-link-cash {
+    font-size: 11px;
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 700;
+  }
+
+  .acc-link-cash:hover { text-decoration: underline; }
+
+  @media (max-width: 900px) {
+    .acc-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .acc-main-grid { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 640px) {
+    .accounts-page { gap: 10px; }
+    .acc-stat { min-height: 84px; padding: 10px 12px; }
+    .acc-stat-value { font-size: 16px; }
+    .acc-stat-icon { width: 30px; height: 30px; font-size: 12px; }
+    .acc-panel { padding: 12px; border-radius: 12px; }
+    .acc-alert-metrics { grid-template-columns: 1fr; }
+    .acc-table-wrap.acc-desktop-only { display: none; }
+    .acc-mobile-cards { display: block; }
+  }
 </style>
 
 <div class="accounts-page">
 
-<!-- ===== Alerts ===== -->
-{% if alert_message %}
-<div class="acc-form" style="background:{% if alert_type == 'danger' %}linear-gradient(145deg, rgba(239,68,68,0.2), rgba(220,38,38,0.15));border-color:rgba(239,68,68,0.4){% elif alert_type == 'warning' %}linear-gradient(145deg, rgba(245,158,11,0.2), rgba(217,119,6,0.15));border-color:rgba(245,158,11,0.4){% else %}linear-gradient(145deg, rgba(59,130,246,0.2), rgba(37,99,235,0.15));border-color:rgba(59,130,246,0.4){% endif %};margin-bottom:20px">
-  <div style="display:flex;align-items:center;gap:12px">
-    <span style="font-size:24px">{% if alert_type == 'danger' %}🚨{% elif alert_type == 'warning' %}⚠️{% else %}💡{% endif %}</span>
-    <p style="margin:0;color:{% if alert_type == 'danger' %}var(--accounts-danger){% elif alert_type == 'warning' %}var(--accounts-warning){% else %}var(--accounts-primary){% endif %};font-size:16px;font-weight:600;flex:1">
-      {{ alert_message }}
-    </p>
+  {% if alert_message %}
+  <div class="acc-alert acc-alert--{{ alert_type or 'info' }}">
+    <div class="acc-alert-head">
+      <span>{% if alert_type == 'danger' %}🚨{% elif alert_type == 'warning' %}⚠️{% else %}💡{% endif %}</span>
+      <span>{{ alert_message }}</span>
+    </div>
+    <div class="acc-alert-metrics">
+      <div>
+        <span>{{ _('accounts_alert_paid_sales') }}</span>
+        <strong>{{ "{:,.0f}".format(paid_sales|default(0)) }} {{ _('accounts_currency_iqd') }}</strong>
+      </div>
+      <div>
+        <span>{{ _('accounts_alert_gross_profit') }}</span>
+        <strong style="color:var(--success)">{{ "{:,.0f}".format(gross_profit|default(0)) }} {{ _('accounts_currency_iqd') }}</strong>
+      </div>
+      <div>
+        <span>{{ _('accounts_alert_total_expenses') }}</span>
+        <strong style="color:var(--danger)">{{ "{:,.0f}".format(total_expenses|default(0)) }} {{ _('accounts_currency_iqd') }}</strong>
+      </div>
+      <div>
+        <span>{{ _('accounts_alert_net_profit') }}</span>
+        <strong style="color:{% if net_profit < 0 %}var(--danger){% else %}var(--success){% endif %}">
+          {{ "{:,.0f}".format(net_profit|default(0)) }} {{ _('accounts_currency_iqd') }}
+        </strong>
+      </div>
+    </div>
   </div>
-  <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.1);display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;font-size:14px">
-    <div>
-      <span style="color:var(--accounts-muted)">{{ _('accounts_alert_paid_sales') }}:</span>
-      <strong style="color:var(--accounts-text);margin-right:8px">{{ paid_sales|default(0) }} {{ _('accounts_currency_iqd') }}</strong>
-    </div>
-    <div>
-      <span style="color:var(--accounts-muted)">{{ _('accounts_alert_gross_profit') }}:</span>
-      <strong style="color:var(--accounts-success);margin-right:8px">{{ gross_profit|default(0) }} {{ _('accounts_currency_iqd') }}</strong>
-    </div>
-    <div>
-      <span style="color:var(--accounts-muted)">{{ _('accounts_alert_total_expenses') }}:</span>
-      <strong style="color:var(--accounts-danger);margin-right:8px">{{ total_expenses|default(0) }} {{ _('accounts_currency_iqd') }}</strong>
-    </div>
-    <div>
-      <span style="color:var(--accounts-muted)">{{ _('accounts_alert_net_profit') }}:</span>
-      <strong style="color:{% if net_profit < 0 %}var(--accounts-danger){% else %}var(--accounts-success){% endif %};margin-right:8px">{{ net_profit|default(0) }} {{ _('accounts_currency_iqd') }}</strong>
-    </div>
-  </div>
-</div>
-{% endif %}
+  {% endif %}
 
-<!-- ===== Summary ===== -->
-<div class="accounts-grid">
-  <div class="acc-box">
-    <span>{{ _('accounts_stat_deposits') }}</span>
-    <strong class="green">{{ total_deposit }} {{ _('accounts_currency_iqd') }}</strong>
-  </div>
-  <div class="acc-box">
-    <span>{{ _('accounts_stat_withdrawals') }}</span>
-    <strong class="red">{{ total_withdraw }} {{ _('accounts_currency_iqd') }}</strong>
-  </div>
-  <div class="acc-box">
-    <span>{{ _('accounts_stat_balance') }}</span>
-    <strong class="blue">{{ balance }} {{ _('accounts_currency_iqd') }}</strong>
-  </div>
-  <div class="acc-box" style="background:linear-gradient(145deg, rgba(16,185,129,0.15), rgba(5,150,105,0.1));border-color:rgba(16,185,129,0.3)">
-    <span>{{ _('accounts_stat_net_profit') }}</span>
-    <strong style="color:var(--accounts-success) !important;-webkit-text-fill-color:var(--accounts-success) !important">
-      {{ net_profit }} {{ _('accounts_currency_iqd') }}
-    </strong>
-  </div>
-</div>
-
-
-<!-- ===== Form ===== -->
-<div class="acc-form">
-  <h3>➕ {{ _('accounts_add_title') }}</h3>
-  <form method="post" id="accountsTransactionForm" onsubmit="return confirmAccountsTransaction(event)">
-    <select name="type" required>
-      <option value="deposit">➕ {{ _('accounts_type_deposit') }}</option>
-      <option value="withdraw">➖ {{ _('accounts_type_withdraw') }}</option>
-    </select>
-    <input name="amount" type="number" placeholder="{{ _('accounts_field_amount_placeholder') }}" required min="1">
-    <input name="note" placeholder="{{ _('accounts_field_note_placeholder') }}">
-    <button type="submit">💾 {{ _('accounts_save_button') }}</button>
-  </form>
-</div>
-
-<!-- ===== Order Accounting Impact ===== -->
-<div class="table-container accounts-impact-panel">
-  <div class="accounts-impact-head">
-    <div>
-      <h3>الأثر المحاسبي للطلبات</h3>
-      <p>آخر الطلبات وكيف تظهر على المبيعات، تكلفة المخزون، الربح، والصندوق.</p>
+  <div class="acc-stats">
+    <div class="acc-stat">
+      <div class="acc-stat-top">
+        <span class="acc-stat-label">{{ _('accounts_stat_deposits') }}</span>
+        <span class="acc-stat-icon acc-stat-icon--green"><i class="fas fa-arrow-down"></i></span>
+      </div>
+      <div class="acc-stat-value acc-stat-value--green">{{ "{:,.0f}".format(total_deposit) }} <small style="font-size:11px;font-weight:600">{{ _('accounts_currency_iqd') }}</small></div>
+    </div>
+    <div class="acc-stat">
+      <div class="acc-stat-top">
+        <span class="acc-stat-label">{{ _('accounts_stat_withdrawals') }}</span>
+        <span class="acc-stat-icon acc-stat-icon--red"><i class="fas fa-arrow-up"></i></span>
+      </div>
+      <div class="acc-stat-value acc-stat-value--red">{{ "{:,.0f}".format(total_withdraw) }} <small style="font-size:11px;font-weight:600">{{ _('accounts_currency_iqd') }}</small></div>
+    </div>
+    <div class="acc-stat">
+      <div class="acc-stat-top">
+        <span class="acc-stat-label">{{ _('accounts_stat_balance') }}</span>
+        <span class="acc-stat-icon acc-stat-icon--blue"><i class="fas fa-wallet"></i></span>
+      </div>
+      <div class="acc-stat-value acc-stat-value--blue">{{ "{:,.0f}".format(balance) }} <small style="font-size:11px;font-weight:600">{{ _('accounts_currency_iqd') }}</small></div>
+      <div class="acc-stat-note"><a href="/cash" class="acc-link-cash">من الصندوق ←</a></div>
+    </div>
+    <div class="acc-stat">
+      <div class="acc-stat-top">
+        <span class="acc-stat-label">{{ _('accounts_stat_net_profit') }}</span>
+        <span class="acc-stat-icon acc-stat-icon--profit"><i class="fas fa-chart-line"></i></span>
+      </div>
+      <div class="acc-stat-value acc-stat-value--green">{{ "{:,.0f}".format(net_profit) }} <small style="font-size:11px;font-weight:600">{{ _('accounts_currency_iqd') }}</small></div>
     </div>
   </div>
-  <table>
-    <thead>
-      <tr>
-        <th>الطلب</th>
-        <th>الزبون</th>
-        <th>قيمة البيع</th>
-        <th>تكلفة المخزون</th>
-        <th>الربح الإجمالي</th>
-        <th>دخل الصندوق</th>
-        <th>ذمم</th>
-        <th>الحالة</th>
-      </tr>
-    </thead>
-    <tbody>
+
+  <div class="acc-main-grid">
+    <div class="acc-panel">
+      <div class="acc-panel-head">
+        <h3><i class="fas fa-plus-circle" style="color:var(--primary)"></i> {{ _('accounts_add_title') }}</h3>
+      </div>
+      <form method="post" id="accountsTransactionForm" class="acc-form-grid" onsubmit="return confirmAccountsTransaction(event)">
+        <div class="acc-field">
+          <label for="accType">{{ _('accounts_col_type') }}</label>
+          <select name="type" id="accType" required>
+            <option value="deposit">{{ _('accounts_type_deposit') }}</option>
+            <option value="withdraw">{{ _('accounts_type_withdraw') }}</option>
+          </select>
+        </div>
+        <div class="acc-field">
+          <label for="accAmount">{{ _('accounts_col_amount') }}</label>
+          <input name="amount" id="accAmount" type="number" placeholder="{{ _('accounts_field_amount_placeholder') }}" required min="1" inputmode="numeric">
+        </div>
+        <div class="acc-field">
+          <label for="accNote">{{ _('accounts_col_note') }}</label>
+          <input name="note" id="accNote" placeholder="{{ _('accounts_field_note_placeholder') }}">
+        </div>
+        <button type="submit" class="acc-btn-save"><i class="fas fa-save"></i> {{ _('accounts_save_button') }}</button>
+      </form>
+    </div>
+
+    <div class="acc-panel">
+      <div class="acc-panel-head">
+        <div>
+          <h3><i class="fas fa-list" style="color:var(--primary)"></i> {{ _('accounts_log_title') }}</h3>
+        </div>
+      </div>
+
+      <div class="acc-table-wrap acc-desktop-only">
+        <table class="acc-table">
+          <thead>
+            <tr>
+              <th>{{ _('accounts_col_type') }}</th>
+              <th>{{ _('accounts_col_amount') }}</th>
+              <th>{{ _('accounts_col_note') }}</th>
+              <th>{{ _('accounts_col_date') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if transactions %}
+              {% for t in transactions %}
+              <tr>
+                <td>
+                  <span class="acc-type acc-type--{{ t.type }}">
+                    {% if t.type == "deposit" %}{{ _('accounts_type_deposit_short') }}{% else %}{{ _('accounts_type_withdraw_short') }}{% endif %}
+                  </span>
+                </td>
+                <td class="acc-amount acc-amount--{% if t.type=='deposit' %}green{% else %}red{% endif %}">
+                  {{ "{:,.0f}".format(t.amount) }} {{ _('accounts_currency_iqd') }}
+                </td>
+                <td>{{ t.note or "—" }}</td>
+                <td style="font-size:12px;color:var(--text-secondary)">{{ t.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+              </tr>
+              {% endfor %}
+            {% else %}
+              <tr><td colspan="4" class="acc-empty">{{ _('accounts_empty_state') }}</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="acc-mobile-cards">
+        {% if transactions %}
+          {% for t in transactions %}
+          <div class="acc-tx-card">
+            <div class="acc-tx-card-top">
+              <span class="acc-type acc-type--{{ t.type }}">
+                {% if t.type == "deposit" %}{{ _('accounts_type_deposit_short') }}{% else %}{{ _('accounts_type_withdraw_short') }}{% endif %}
+              </span>
+              <span class="acc-amount acc-amount--{% if t.type=='deposit' %}green{% else %}red{% endif %}">
+                {{ "{:,.0f}".format(t.amount) }} {{ _('accounts_currency_iqd') }}
+              </span>
+            </div>
+            <div class="acc-tx-card-meta">
+              <div><span>{{ _('accounts_col_note') }}</span><strong>{{ t.note or "—" }}</strong></div>
+              <div><span>{{ _('accounts_col_date') }}</span><strong>{{ t.created_at.strftime("%Y-%m-%d %H:%M") }}</strong></div>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="acc-empty">{{ _('accounts_empty_state') }}</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="acc-panel">
+    <div class="acc-panel-head">
+      <div>
+        <h3><i class="fas fa-receipt" style="color:var(--primary)"></i> الأثر المحاسبي للطلبات</h3>
+        <p>آخر الطلبات وكيف تظهر على المبيعات، تكلفة المخزون، الربح، والصندوق.</p>
+      </div>
+    </div>
+
+    <div class="acc-table-wrap acc-desktop-only">
+      <table class="acc-table">
+        <thead>
+          <tr>
+            <th>الطلب</th>
+            <th>الزبون</th>
+            <th>قيمة البيع</th>
+            <th>تكلفة المخزون</th>
+            <th>الربح</th>
+            <th>دخل الصندوق</th>
+            <th>ذمم</th>
+            <th>الحالة</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if order_accounting_impact %}
+            {% for row in order_accounting_impact %}
+            <tr>
+              <td>
+                <div class="acc-order-id">
+                  <strong>#{{ row.invoice_id }}</strong>
+                  <small>{{ row.created_at.strftime("%Y-%m-%d") if row.created_at else "" }}</small>
+                </div>
+              </td>
+              <td>{{ row.customer_name or "—" }}</td>
+              <td>{{ "{:,.0f}".format(row.sale_value) }}</td>
+              <td>{{ "{:,.0f}".format(row.stock_cost) }}</td>
+              <td class="acc-amount acc-amount--{% if row.gross_profit < 0 %}red{% else %}green{% endif %}">{{ "{:,.0f}".format(row.gross_profit) }}</td>
+              <td class="acc-amount acc-amount--green">{{ "{:,.0f}".format(row.paid_amount) }}</td>
+              <td>{{ "{:,.0f}".format(row.receivable_amount) }}</td>
+              <td>
+                <span class="acc-status-pill">{{ row.status or "—" }}</span>
+                <span class="acc-status-pill muted">{{ row.payment_status or "—" }}</span>
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr><td colspan="8" class="acc-empty">لا توجد طلبات لعرض أثرها المحاسبي حالياً.</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="acc-mobile-cards">
       {% if order_accounting_impact %}
         {% for row in order_accounting_impact %}
-        <tr>
-          <td>
-            <strong>#{{ row.invoice_id }}</strong>
-            <small>{{ row.created_at.strftime("%Y-%m-%d") if row.created_at else "" }}</small>
-          </td>
-          <td>{{ row.customer_name or "—" }}</td>
-          <td>{{ "{:,.0f}".format(row.sale_value) }} {{ _('accounts_currency_iqd') }}</td>
-          <td>{{ "{:,.0f}".format(row.stock_cost) }} {{ _('accounts_currency_iqd') }}</td>
-          <td class="{% if row.gross_profit < 0 %}red{% else %}green{% endif %}">
-            {{ "{:,.0f}".format(row.gross_profit) }} {{ _('accounts_currency_iqd') }}
-          </td>
-          <td class="green">{{ "{:,.0f}".format(row.paid_amount) }} {{ _('accounts_currency_iqd') }}</td>
-          <td>{{ "{:,.0f}".format(row.receivable_amount) }} {{ _('accounts_currency_iqd') }}</td>
-          <td>
-            <span class="accounts-status-pill">{{ row.status or "—" }}</span>
-            <span class="accounts-status-pill muted">{{ row.payment_status or "—" }}</span>
-          </td>
-        </tr>
+        <div class="acc-impact-card">
+          <div class="acc-impact-card-top">
+            <div class="acc-order-id" style="align-items:flex-start">
+              <strong>#{{ row.invoice_id }}</strong>
+              <small>{{ row.created_at.strftime("%Y-%m-%d") if row.created_at else "" }} · {{ row.customer_name or "—" }}</small>
+            </div>
+            <div>
+              <span class="acc-status-pill">{{ row.status or "—" }}</span>
+            </div>
+          </div>
+          <div class="acc-impact-grid">
+            <div><span>قيمة البيع</span><strong>{{ "{:,.0f}".format(row.sale_value) }}</strong></div>
+            <div><span>تكلفة المخزون</span><strong>{{ "{:,.0f}".format(row.stock_cost) }}</strong></div>
+            <div><span>الربح</span><strong class="acc-amount acc-amount--{% if row.gross_profit < 0 %}red{% else %}green{% endif %}">{{ "{:,.0f}".format(row.gross_profit) }}</strong></div>
+            <div><span>دخل الصندوق</span><strong class="acc-amount acc-amount--green">{{ "{:,.0f}".format(row.paid_amount) }}</strong></div>
+            <div><span>ذمم</span><strong>{{ "{:,.0f}".format(row.receivable_amount) }}</strong></div>
+            <div><span>الدفع</span><strong>{{ row.payment_status or "—" }}</strong></div>
+          </div>
+        </div>
         {% endfor %}
       {% else %}
-        <tr>
-          <td colspan="8" style="text-align:center;padding:34px;color:var(--accounts-muted)">
-            لا توجد طلبات لعرض أثرها المحاسبي حالياً.
-          </td>
-        </tr>
+        <div class="acc-empty">لا توجد طلبات لعرض أثرها المحاسبي حالياً.</div>
       {% endif %}
-    </tbody>
-  </table>
-</div>
-
-<!-- ===== Table ===== -->
-<div class="table-container">
-  <h3 style="color: var(--accounts-text); margin: 0 0 20px; padding-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.08);">
-    📋 {{ _('accounts_log_title') }}
-  </h3>
-  <table>
-    <thead>
-      <tr>
-        <th>{{ _('accounts_col_type') }}</th>
-        <th>{{ _('accounts_col_amount') }}</th>
-        <th>{{ _('accounts_col_note') }}</th>
-        <th>{{ _('accounts_col_date') }}</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% if transactions %}
-        {% for t in transactions %}
-        <tr>
-          <td>
-            <span style="display:inline-flex;align-items:center;gap:6px">
-              {% if t.type == "deposit" %}
-                <span style="color:var(--accounts-success)">➕</span>
-                <span style="color:var(--accounts-success);font-weight:600">{{ _('accounts_type_deposit_short') }}</span>
-              {% else %}
-                <span style="color:var(--accounts-danger)">➖</span>
-                <span style="color:var(--accounts-danger);font-weight:600">{{ _('accounts_type_withdraw_short') }}</span>
-              {% endif %}
-            </span>
-          </td>
-          <td style="font-weight:600;color:{% if t.type=='deposit' %}var(--accounts-success){% else %}var(--accounts-danger){% endif %}">
-            {{ t.amount }} {{ _('accounts_currency_iqd') }}
-          </td>
-          <td>{{ t.note or "—" }}</td>
-          <td>{{ t.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
-        </tr>
-        {% endfor %}
-      {% else %}
-        <tr>
-          <td colspan="4" style="text-align:center;padding:40px;color:var(--accounts-muted)">
-            {{ _('accounts_empty_state') }}
-          </td>
-        </tr>
-      {% endif %}
-    </tbody>
-  </table>
-</div>
-
+    </div>
+  </div>
 
 </div>
 
 <script>
   function confirmAccountsTransaction(event) {
     const form = event.currentTarget;
-    if (form.dataset.confirmed === "1") {
-      return true;
-    }
+    if (form.dataset.confirmed === "1") return true;
 
     const type = form.elements.type.value;
     const amount = Number(form.elements.amount.value || 0);
     const note = (form.elements.note.value || "").trim();
 
-    if (!amount || amount <= 0) {
-      return true;
-    }
-
-    if (typeof window.finoraConfirmImpact !== "function") {
-      return true;
-    }
+    if (!amount || amount <= 0) return true;
+    if (typeof window.finoraConfirmImpact !== "function") return true;
 
     event.preventDefault();
 
     const isDeposit = type === "deposit";
-    const title = isDeposit ? "تأكيد تسجيل إيداع" : "تأكيد تسجيل سحب";
-    const actionLabel = isDeposit ? "تسجيل الإيداع" : "تسجيل السحب";
-
     window.finoraConfirmImpact({
-      title,
+      title: isDeposit ? "تأكيد تسجيل إيداع" : "تأكيد تسجيل سحب",
       message: `المبلغ: ${amount.toLocaleString("ar-IQ")} {{ _('accounts_currency_iqd') }}${note ? " - " + note : ""}`,
-      confirmText: actionLabel,
+      confirmText: isDeposit ? "تسجيل الإيداع" : "تسجيل السحب",
       danger: !isDeposit,
       impact: [
         isDeposit ? "يزيد إجمالي الإيداعات المعروضة في الحسابات." : "يزيد إجمالي السحوبات المعروضة في الحسابات.",
@@ -505,5 +628,4 @@
     return false;
   }
 </script>
-
 {% endblock %}

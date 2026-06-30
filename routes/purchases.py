@@ -344,7 +344,12 @@ def _create_purchase_from_payload(payload, files):
 def purchases():
     if not check_permission("can_manage_inventory"):
         return redirect("/pos"), 403
-    _ensure_purchase_schema()
+    try:
+        _ensure_purchase_schema()
+    except Exception:
+        db.session.rollback()
+        from flask import current_app
+        current_app.logger.exception("purchase schema migration failed")
 
     if request.method == "POST":
         payload = {}
@@ -389,16 +394,23 @@ def purchases():
     products = Product.query.filter_by(active=True).all()
     suppliers = Supplier.query.order_by(Supplier.name.asc()).all()
 
-    purchases_list = Purchase.query.order_by(Purchase.created_at.desc()).limit(500).all()
-    total_purchases = sum(int(p.grand_total or p.total or 0) for p in purchases_list)
-    purchases_count = len(purchases_list)
-    current_month_start = date.today().replace(day=1)
-    monthly_total = sum(
-        int(p.grand_total or p.total or 0)
-        for p in Purchase.query.filter(Purchase.purchase_date >= current_month_start).all()
-    )
-    total_supplier_debts = sum(int(s.total_debt or 0) for s in suppliers)
-    suppliers_with_debt = len([s for s in suppliers if int(s.total_debt or 0) > 0])
+    try:
+        purchases_list = Purchase.query.order_by(Purchase.created_at.desc()).limit(500).all()
+        total_purchases = sum(int(p.grand_total or p.total or 0) for p in purchases_list)
+        purchases_count = len(purchases_list)
+        current_month_start = date.today().replace(day=1)
+        monthly_total = sum(
+            int(p.grand_total or p.total or 0)
+            for p in Purchase.query.filter(Purchase.purchase_date >= current_month_start).all()
+        )
+        total_supplier_debts = sum(int(getattr(s, "total_debt", 0) or 0) for s in suppliers)
+        suppliers_with_debt = len([s for s in suppliers if int(getattr(s, "total_debt", 0) or 0) > 0])
+    except Exception:
+        db.session.rollback()
+        from flask import current_app
+        current_app.logger.exception("purchases page query failed")
+        purchases_list = []
+        total_purchases = purchases_count = monthly_total = total_supplier_debts = suppliers_with_debt = 0
 
     return render_template(
         "purchases.html",
@@ -417,7 +429,13 @@ def purchases():
 def get_purchases():
     if not check_permission("can_manage_inventory"):
         return jsonify({"error": "Unauthorized"}), 403
-    _ensure_purchase_schema()
+    try:
+        _ensure_purchase_schema()
+    except Exception:
+        db.session.rollback()
+        from flask import current_app
+        current_app.logger.exception("purchase schema migration failed (api/list)")
+        return jsonify([])
 
     supplier_id = request.args.get("supplier_id", type=int)
     date_from = request.args.get("date_from")
@@ -438,71 +456,83 @@ def get_purchases():
         except Exception:
             pass
 
-    rows = query.order_by(Purchase.created_at.desc()).all()
+    try:
+        rows = query.order_by(Purchase.created_at.desc()).all()
+    except Exception:
+        db.session.rollback()
+        from flask import current_app
+        current_app.logger.exception("purchases api/list query failed")
+        return jsonify([])
+
     data = []
     for p in rows:
-        items = p.items or []
-        item_count = len(items) if items else (1 if p.product_id else 0)
-        first_product = ""
-        if items:
-            first_product = items[0].product.name if items[0].product else ""
-        elif getattr(p, "product", None):
-            first_product = p.product.name
-        rec = {
-            "id": p.id,
-            "invoice_no": p.invoice_no or f"LEG-{p.id}",
-            "date": p.purchase_date.strftime("%Y-%m-%d") if p.purchase_date else "",
-            "supplier_id": p.supplier_id,
-            "supplier": p.supplier.name if p.supplier else "",
-            "status": p.status or "confirmed",
-            "branch_code": p.branch_code or "",
-            "reference_no": p.reference_no or "",
-            "supplier_invoice_no": p.supplier_invoice_no or "",
-            "payment_term": p.payment_term or "",
-            "address": p.address or "",
-            "notes": p.notes or "",
-            "shipping_details": p.shipping_details or "",
-            "extra_cost_note": p.extra_cost_note or "",
-            "item_count": item_count,
-            "first_product": first_product,
-            "sub_total": int(p.sub_total or p.total or 0),
-            "discount_value": int(p.discount_value or 0),
-            "shipping_extra": int(p.shipping_extra or 0),
-            "grand_total": int(p.grand_total or p.total or 0),
-            "paid_total": int(p.paid_total or 0),
-            "remaining_total": int(p.remaining_total if p.remaining_total is not None else max(int((p.grand_total or p.total or 0) - (p.paid_total or 0)), 0)),
-            "purchase_mode": p.purchase_mode or "credit",
-            "items": [
-                {
-                    "product_id": it.product_id,
-                    "product": it.product.name if it.product else "",
-                    "quantity": int(it.quantity or 0),
-                    "unit_cost_before_discount": int(it.unit_cost_before_discount or 0),
-                    "discount_value": int(it.discount_value or 0),
-                    "unit_cost": int(it.final_unit_cost or 0),
-                    "line_total": int(it.line_total or 0),
-                }
-                for it in items
-            ],
-            "payments": [
-                {
-                    "amount": int(pay.amount or 0),
-                    "paid_at": pay.paid_at.strftime("%Y-%m-%d %H:%M") if pay.paid_at else "",
-                    "payment_method": pay.payment_method or "",
-                    "account_name": pay.account_name or "",
-                    "note": pay.note or "",
-                }
-                for pay in (p.payments or [])
-            ],
-            "attachments": [
-                {
-                    "name": att.original_name or "",
-                    "url": "/" + (att.file_path or "").lstrip("/"),
-                }
-                for att in (p.attachments or [])
-            ],
-        }
-        data.append(rec)
+        try:
+            items = p.items or []
+            item_count = len(items) if items else (1 if p.product_id else 0)
+            first_product = ""
+            if items:
+                first_product = items[0].product.name if items[0].product else ""
+            elif getattr(p, "product", None):
+                first_product = p.product.name
+            rec = {
+                "id": p.id,
+                "invoice_no": p.invoice_no or f"LEG-{p.id}",
+                "date": p.purchase_date.strftime("%Y-%m-%d") if p.purchase_date else "",
+                "supplier_id": p.supplier_id,
+                "supplier": p.supplier.name if p.supplier else "",
+                "status": p.status or "confirmed",
+                "branch_code": p.branch_code or "",
+                "reference_no": p.reference_no or "",
+                "supplier_invoice_no": p.supplier_invoice_no or "",
+                "payment_term": p.payment_term or "",
+                "address": p.address or "",
+                "notes": p.notes or "",
+                "shipping_details": p.shipping_details or "",
+                "extra_cost_note": p.extra_cost_note or "",
+                "item_count": item_count,
+                "first_product": first_product,
+                "sub_total": int(p.sub_total or p.total or 0),
+                "discount_value": int(p.discount_value or 0),
+                "shipping_extra": int(p.shipping_extra or 0),
+                "grand_total": int(p.grand_total or p.total or 0),
+                "paid_total": int(p.paid_total or 0),
+                "remaining_total": int(p.remaining_total if p.remaining_total is not None else max(int((p.grand_total or p.total or 0) - (p.paid_total or 0)), 0)),
+                "purchase_mode": p.purchase_mode or "credit",
+                "items": [
+                    {
+                        "product_id": it.product_id,
+                        "product": it.product.name if it.product else "",
+                        "quantity": int(it.quantity or 0),
+                        "unit_cost_before_discount": int(it.unit_cost_before_discount or 0),
+                        "discount_value": int(it.discount_value or 0),
+                        "unit_cost": int(it.final_unit_cost or 0),
+                        "line_total": int(it.line_total or 0),
+                    }
+                    for it in items
+                ],
+                "payments": [
+                    {
+                        "amount": int(pay.amount or 0),
+                        "paid_at": pay.paid_at.strftime("%Y-%m-%d %H:%M") if pay.paid_at else "",
+                        "payment_method": pay.payment_method or "",
+                        "account_name": pay.account_name or "",
+                        "note": pay.note or "",
+                    }
+                    for pay in (p.payments or [])
+                ],
+                "attachments": [
+                    {
+                        "name": att.original_name or "",
+                        "url": "/" + (att.file_path or "").lstrip("/"),
+                    }
+                    for att in (p.attachments or [])
+                ],
+            }
+            data.append(rec)
+        except Exception:
+            from flask import current_app
+            current_app.logger.exception("purchases api/list row failed purchase_id=%s", getattr(p, "id", "?"))
+            continue
 
     if search:
         data = [
