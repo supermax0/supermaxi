@@ -1,0 +1,28 @@
+<nav class="l-nav" id="lNav">
+    <a href="/" class="l-logo">
+        <img src="{{ url_for('static', filename='IMG_0200.png') }}" alt="Finora">
+        <div>
+            <strong>Finora</strong>
+            <span>منصة إدارة الأعمال</span>
+        </div>
+    </a>
+    <div class="l-nav-links">
+        <a href="#features">المنتج</a>
+        <a href="#showcase">الحلول</a>
+        <a href="#pricing">الأسعار</a>
+        <a href="#contact">اتصل بنا</a>
+    </div>
+    <div class="l-nav-actions">
+        <a href="/login" class="l-btn l-btn-ghost">تسجيل الدخول</a>
+        <a href="/signup?plan=free&billing=monthly" class="l-btn l-btn-primary">ابدأ مجاناً</a>
+        <button type="button" class="l-menu-btn" id="lMenuBtn" aria-label="القائمة"><i class="fas fa-bars"></i></button>
+    </div>
+</nav>
+<div class="l-mobile-nav" id="lMobileNav">
+    <a href="#features">المنتج</a>
+    <a href="#showcase">الحلول</a>
+    <a href="#pricing">الأسعار</a>
+    <a href="#contact">اتصل بنا</a>
+    <a href="/login">تسجيل الدخول</a>
+    <a href="/signup?plan=free&billing=monthly">ابدأ مجاناً</a>
+</div>

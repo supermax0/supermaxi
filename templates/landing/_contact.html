@@ -1,0 +1,43 @@
+<section id="contact" class="l-section l-section-soft">
+    <div class="l-container l-center l-reveal">
+        <span class="l-badge">اتصل بنا</span>
+        <h2 class="l-title">تواصل معنا الآن</h2>
+        <p class="l-sub">لديك استفسار أو تحتاج مساعدة في اختيار الخطة؟ فريقنا في خدمتك.</p>
+    </div>
+    <div class="l-container l-contact-grid">
+        <div class="l-reveal">
+            <div class="l-contact-card">
+                <div class="l-bento-icon" style="background:#ECFDF5;color:#25D366;margin:0"><i class="fab fa-whatsapp"></i></div>
+                <div>
+                    <h3>واتساب</h3>
+                    <a href="https://wa.me/9647734049148" target="_blank" rel="noopener">07734049148</a>
+                </div>
+            </div>
+            <div class="l-contact-card">
+                <div class="l-bento-icon" style="background:var(--primary-soft);color:var(--primary);margin:0"><i class="fas fa-envelope"></i></div>
+                <div>
+                    <h3>البريد الإلكتروني</h3>
+                    <a href="mailto:supermax@supermax.space">supermax@supermax.space</a>
+                </div>
+            </div>
+            <div class="l-contact-card">
+                <div class="l-bento-icon" style="background:var(--warning-soft);color:var(--warning);margin:0"><i class="fas fa-map-marker-alt"></i></div>
+                <div>
+                    <h3>الموقع</h3>
+                    <p style="margin:0;color:var(--muted)">العراق - بغداد - الكرادة</p>
+                </div>
+            </div>
+        </div>
+        <div class="l-reveal">
+            <form action="/contact" method="POST" class="l-form">
+                <label for="contact-name">الاسم الكامل</label>
+                <input type="text" id="contact-name" name="name" required>
+                <label for="contact-phone">رقم الهاتف</label>
+                <input type="tel" id="contact-phone" name="phone" required>
+                <label for="contact-message">رسالتك</label>
+                <textarea id="contact-message" name="message" rows="4" required></textarea>
+                <button type="submit" class="l-btn l-btn-primary" style="width:100%"><i class="fas fa-paper-plane"></i> إرسال الرسالة</button>
+            </form>
+        </div>
+    </div>
+</section>

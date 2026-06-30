@@ -1,0 +1,14 @@
+<script type="application/json" id="landingBootstrap">{
+  "prices": {
+    {%- for k, v in (landing_plans or {}).items() -%}
+    "{{ k }}": {
+      "monthly": {{ v.get('price_monthly', 0) }},
+      "yearly": {{ v.get('price_yearly', 0) }},
+      "name": {{ v.get('name', '')|tojson }},
+      "original_monthly": {{ v.get('original_price_monthly') if v.get('original_price_monthly') is not none else 'null' }},
+      "original_yearly": {{ v.get('original_price_yearly') if v.get('original_price_yearly') is not none else 'null' }}
+    }{% if not loop.last %},{% endif %}
+    {%- endfor -%}
+  }
+}</script>
+<script src="{{ url_for('static', filename='js/landing.js') }}"></script>

@@ -1,0 +1,86 @@
+<section id="pricing" class="l-section">
+    <div class="l-container l-center l-reveal">
+        <span class="l-badge">الأسعار</span>
+        <h2 class="l-title">خطط واضحة <span class="hl">بلا مفاجآت</span></h2>
+        <p class="l-sub">ادفع شهرياً أو وفّر 17% بالدفع السنوي. ترقية في أي وقت.</p>
+        <div class="l-billing-toggle">
+            <button type="button" id="btn_monthly" class="active">شهري</button>
+            <button type="button" id="btn_yearly"><span class="save-badge">وفّر 17%</span>سنوي</button>
+        </div>
+    </div>
+
+    {% set lp = landing_plans or {} %}
+    <div class="l-container l-pricing-grid">
+        <div class="l-plan l-reveal">
+            <div class="l-plan-name">المجانية</div>
+            <div class="l-plan-desc">ابدأ بدون بطاقة — جرّب النظام</div>
+            <div class="l-plan-price" id="price_free">{% set fr = lp.get('free', {}) %}{% if fr.get('original_price_monthly') and fr.get('original_price_monthly') > fr.get('price_monthly', 0) %}<span style="text-decoration:line-through;opacity:0.55;font-size:0.8em;color:var(--muted)">{{ "{:,.0f}".format(fr.get('original_price_monthly')) }}</span> {% endif %}{{ "{:,.0f}".format(fr.get('price_monthly', 0)) }} <small>د.ع / شهر</small></div>
+            <div id="saving_free"></div>
+            <div class="l-plan-divider"></div>
+            <ul class="l-plan-features">
+                <li><i class="fas fa-check-circle ck"></i> 0 د.ع — تفعيل فوري</li>
+                <li><i class="fas fa-check-circle ck"></i> حتى 3 مستخدمين</li>
+                <li><i class="fas fa-check-circle ck"></i> حتى 500 طلب شهرياً</li>
+                <li><i class="fas fa-check-circle ck"></i> POS + مخزون + زبائن</li>
+                <li class="dim"><i class="fas fa-times"></i> تقارير متقدمة</li>
+            </ul>
+            <a id="link_free" href="/signup?plan=free&billing=monthly" class="l-plan-cta outline">سجّل مجاناً</a>
+        </div>
+
+        <div class="l-plan l-reveal">
+            <div class="l-plan-name">الأساسية</div>
+            <div class="l-plan-desc">للمشاريع الصغيرة والناشئة</div>
+            <div class="l-plan-price" id="price_basic">{% set b = lp.get('basic', {}) %}{% if b.get('original_price_monthly') and b.get('original_price_monthly') > b.get('price_monthly', 0) %}<span style="text-decoration:line-through;opacity:0.55;font-size:0.8em;color:var(--muted)">{{ "{:,.0f}".format(b.get('original_price_monthly')) }}</span> {% endif %}{{ "{:,.0f}".format(b.get('price_monthly', 25000)) }} <small>د.ع / شهر</small></div>
+            <div id="saving_basic"></div>
+            <div class="l-plan-divider"></div>
+            <ul class="l-plan-features">
+                <li><i class="fas fa-check-circle ck"></i> 5 مستخدمين</li>
+                <li><i class="fas fa-check-circle ck"></i> حتى 1,000 طلب شهرياً</li>
+                <li><i class="fas fa-check-circle ck"></i> إدارة الطلبات والمخزون</li>
+                <li><i class="fas fa-check-circle ck"></i> نقطة البيع POS</li>
+                <li><i class="fas fa-check-circle ck"></i> إدارة الزبائن والتحصيل</li>
+                <li><i class="fas fa-check-circle ck"></i> الطباعة والفواتير</li>
+                <li class="dim"><i class="fas fa-times"></i> تقارير مالية متقدمة</li>
+                <li class="dim"><i class="fas fa-times"></i> صلاحيات RBAC</li>
+            </ul>
+            <a id="link_basic" href="/signup?plan=basic&billing=monthly" class="l-plan-cta outline">ابدأ بالخطة الأساسية</a>
+        </div>
+
+        <div class="l-plan featured l-reveal">
+            <div class="l-plan-badge">الأكثر طلباً</div>
+            <div class="l-plan-name">المتقدمة</div>
+            <div class="l-plan-desc">للمتاجر النامية والمتوسطة</div>
+            <div class="l-plan-price" id="price_pro">{% set pr = lp.get('pro', {}) %}{% if pr.get('original_price_monthly') and pr.get('original_price_monthly') > pr.get('price_monthly', 0) %}<span style="text-decoration:line-through;opacity:0.55;font-size:0.8em;color:var(--muted)">{{ "{:,.0f}".format(pr.get('original_price_monthly')) }}</span> {% endif %}{{ "{:,.0f}".format(pr.get('price_monthly', 45000)) }} <small>د.ع / شهر</small></div>
+            <div id="saving_pro"></div>
+            <div class="l-plan-divider"></div>
+            <ul class="l-plan-features">
+                <li><i class="fas fa-check-circle ck"></i> 15 مستخدم</li>
+                <li><i class="fas fa-check-circle ck"></i> حتى 10,000 طلب شهرياً</li>
+                <li><i class="fas fa-check-circle ck"></i> كل ميزات الخطة الأساسية</li>
+                <li><i class="fas fa-check-circle ck"></i> تقارير مالية كاملة</li>
+                <li><i class="fas fa-check-circle ck"></i> صلاحيات RBAC</li>
+                <li><i class="fas fa-check-circle ck"></i> شركات النقل والموردين</li>
+                <li><i class="fas fa-check-circle ck"></i> مساعد AI للأعمال</li>
+            </ul>
+            <a id="link_pro" href="/signup?plan=pro&billing=monthly" class="l-plan-cta solid">ابدأ الخطة المتقدمة</a>
+        </div>
+
+        <div class="l-plan l-reveal">
+            <div class="l-plan-name">الشركات</div>
+            <div class="l-plan-desc">للشركات الكبيرة — كل شيء بلا حدود</div>
+            <div class="l-plan-price" id="price_enterprise">{% set e = lp.get('enterprise', {}) %}{% if e.get('original_price_monthly') and e.get('original_price_monthly') > e.get('price_monthly', 0) %}<span style="text-decoration:line-through;opacity:0.55;font-size:0.8em;color:var(--muted)">{{ "{:,.0f}".format(e.get('original_price_monthly')) }}</span> {% endif %}{{ "{:,.0f}".format(e.get('price_monthly', 90000)) }} <small>د.ع / شهر</small></div>
+            <div id="saving_enterprise"></div>
+            <div class="l-plan-divider"></div>
+            <ul class="l-plan-features">
+                <li><i class="fas fa-check-circle ck"></i> مستخدمون غير محدودين</li>
+                <li><i class="fas fa-check-circle ck"></i> طلبات غير محدودة</li>
+                <li><i class="fas fa-check-circle ck"></i> كل ميزات الخطة المتقدمة</li>
+                <li><i class="fas fa-check-circle ck"></i> دعم أولوية عالية</li>
+                <li><i class="fas fa-check-circle ck"></i> تخصيص الفواتير والواجهة</li>
+                <li><i class="fas fa-check-circle ck"></i> نسخ احتياطي دوري</li>
+                <li><i class="fas fa-check-circle ck"></i> لوحة تحليلات للإدارة</li>
+            </ul>
+            <a id="link_enterprise" href="/signup?plan=enterprise&billing=monthly" class="l-plan-cta outline">ابدأ بخطة الشركات</a>
+        </div>
+    </div>
+</section>
