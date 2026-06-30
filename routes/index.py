@@ -28,7 +28,8 @@ from utils.accounting_calculations import (
     calculate_total_expenses,          # المصاريف
     calculate_supplier_debts,          # ديون الموردين (التزامات)
     calculate_shipping_due,            # مستحقات النقل (التزامات)
-    calculate_total_sales_for_display  # إجمالي المبيعات (للعرض فقط)
+    calculate_total_sales_for_display, # إجمالي المبيعات (للعرض فقط)
+    calculate_accounts_receivable      # الذمم المدينة
 )
 from utils.date_periods import get_period_dates, get_period_label
 from utils.cash_calculations import calculate_cash_balance, _effective_paid_amount
@@ -868,6 +869,21 @@ def api_executive_dashboard_data():
     shipping_due = calculate_shipping_due()
     liabilities = supplier_debts + shipping_due
     inventory_value = calculate_inventory_value()
+    receivables = calculate_accounts_receivable()
+
+    paid_rows = db.session.query(
+        Invoice.id,
+        Invoice.status,
+        Invoice.payment_status,
+        Invoice.total,
+        Invoice.paid_amount,
+    ).filter(
+        Invoice.status != "ملغي",
+        Invoice.payment_status != "مرتجع",
+    ).all()
+    collected_total = sum(_effective_paid_amount(row) for row in paid_rows)
+    collection_base = collected_total + int(receivables or 0)
+    debt_collection_rate = round((collected_total / collection_base) * 100) if collection_base > 0 else 0
     
     try:
         from sqlalchemy import text
@@ -879,6 +895,28 @@ def api_executive_dashboard_data():
     days_passed = today.day
     sales_this_month = db.session.query(func.sum(Invoice.total)).filter(func.date(Invoice.created_at) >= month_start, Invoice.status != 'ملغي').scalar() or 0
     avg_daily_sales = int(sales_this_month) / days_passed if days_passed > 0 else 0
+
+    profitability_score = 0
+    if int(sales_today_val or 0) > 0:
+        profitability_score = max(0, min(100, round((int(profit_today) / int(sales_today_val)) * 100)))
+
+    liquidity_score = 100 if int(liabilities or 0) <= 0 and int(cash_balance or 0) >= 0 else 0
+    if int(liabilities or 0) > 0:
+        liquidity_score = max(0, min(100, round((int(cash_balance or 0) / int(liabilities)) * 100)))
+
+    sales_score = 0
+    if avg_daily_sales > 0:
+        sales_score = max(0, min(100, round((int(sales_today_val or 0) / avg_daily_sales) * 100)))
+
+    inventory_score = 0
+    if int(inventory_value or 0) > 0:
+        reference_sales = max(int(sales_this_month or 0), int(sales_today_val or 0), 1)
+        inventory_score = max(0, min(100, round((int(inventory_value) / reference_sales) * 100)))
+
+    customer_score = max(0, min(100, int(new_customers or 0) * 10))
+    business_health = round(
+        (profitability_score + liquidity_score + sales_score + inventory_score + customer_score) / 5
+    )
     
     return jsonify({
         "orders_today": orders_today,
@@ -899,13 +937,21 @@ def api_executive_dashboard_data():
         "chart_expenses": expenses_data,
         "chart_cashflow": cashflow_data,
         "box_balance": int(cash_balance),
-        "bank_balance": 34800, # Example fixed or fetch from a specific bank account if exists
-        "receivables": 68900,  # Example fixed
+        "cash_available": int(cash_balance),
+        "receivables": int(receivables),
         "liabilities": int(liabilities),
         "inventory_value": int(inventory_value),
         "new_customers": new_customers,
         "avg_daily_sales": int(avg_daily_sales),
-        "debt_collection_rate": 85
+        "debt_collection_rate": int(debt_collection_rate),
+        "health": {
+            "score": int(business_health),
+            "profitability": int(profitability_score),
+            "liquidity": int(liquidity_score),
+            "sales": int(sales_score),
+            "inventory": int(inventory_score),
+            "customers": int(customer_score),
+        }
     })
 
 

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block page_title %}لوحة المدير التنفيذي{% endblock %}
+{% block page_title %}{% endblock %}
 {% block content %}
 
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
@@ -37,83 +37,25 @@
 
   .exec-board {
     direction: rtl;
-    min-height: calc(100vh - 20px);
-    padding: 22px 26px 28px;
+    min-height: 100vh;
+    padding: 10px 14px;
     color: var(--exec-text);
     font-family: "Tajawal", sans-serif;
+    overflow: hidden;
   }
 
   .exec-shell {
-    max-width: 1360px;
+    max-width: 1700px;
+    min-height: calc(100vh - 20px);
+    max-height: calc(100vh - 20px);
     margin: 0 auto;
     border: 1px solid rgba(230, 237, 245, 0.82);
-    border-radius: 24px;
+    border-radius: 22px;
     background: rgba(255, 255, 255, 0.72);
     box-shadow: 0 22px 70px rgba(16, 24, 40, 0.08);
     backdrop-filter: blur(14px);
-    padding: 22px;
-  }
-
-  .exec-brand-row {
-    display: grid;
-    grid-template-columns: 220px 1fr 220px;
-    align-items: start;
-    gap: 14px;
-    margin-bottom: 18px;
-  }
-
-  .exec-brand {
-    display: inline-flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 10px;
-    direction: ltr;
-    font-weight: 900;
-    font-size: 22px;
-    color: #111827;
-  }
-
-  .exec-logo-mark {
-    width: 28px;
-    height: 28px;
-    border-radius: 7px 14px 7px 14px;
-    background: linear-gradient(135deg, #2563eb 0%, #0ea5e9 55%, #22c55e 100%);
-    transform: skew(-10deg);
-    box-shadow: 0 8px 18px rgba(37, 99, 235, 0.22);
-  }
-
-  .exec-title-block {
-    text-align: center;
-  }
-
-  .exec-title {
-    margin: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    font-size: 25px;
-    line-height: 1.2;
-    font-weight: 900;
-    color: #0f172a;
-  }
-
-  .exec-verified {
-    width: 18px;
-    height: 18px;
-    display: inline-grid;
-    place-items: center;
-    border-radius: 50%;
-    background: var(--exec-blue);
-    color: #fff;
-    font-size: 11px;
-  }
-
-  .exec-subtitle {
-    margin: 5px 0 0;
-    color: var(--exec-muted);
-    font-weight: 700;
-    font-size: 13px;
+    padding: 14px;
+    overflow: hidden;
   }
 
   .exec-top-controls {
@@ -121,11 +63,11 @@
     justify-content: space-between;
     align-items: center;
     gap: 10px;
-    margin-bottom: 14px;
+    margin-bottom: 10px;
   }
 
   .exec-pill {
-    height: 40px;
+    height: 36px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -137,7 +79,7 @@
     box-shadow: var(--exec-shadow-soft);
     padding: 0 14px;
     font-weight: 800;
-    font-size: 13px;
+    font-size: 12px;
     white-space: nowrap;
   }
 
@@ -152,45 +94,45 @@
 
   .exec-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 390px;
-    gap: 16px;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 10px;
   }
 
   .exec-main {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 10px;
     min-width: 0;
   }
 
   .exec-side {
     display: grid;
-    grid-template-rows: 1fr auto auto;
-    gap: 14px;
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: 10px;
     min-width: 0;
   }
 
   .kpi-row {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 14px;
+    gap: 10px;
   }
 
   .exec-card {
     background: var(--exec-surface);
     border: 1px solid var(--exec-border);
-    border-radius: 18px;
+    border-radius: 16px;
     box-shadow: var(--exec-shadow);
     position: relative;
     overflow: hidden;
   }
 
   .kpi-card {
-    min-height: 142px;
-    padding: 17px 16px 13px;
+    min-height: 104px;
+    padding: 12px 12px 9px;
     display: grid;
     grid-template-rows: auto auto 1fr;
-    gap: 6px;
+    gap: 3px;
   }
 
   .kpi-top {
@@ -209,11 +151,11 @@
   .kpi-icon {
     width: 40px;
     height: 40px;
-    border-radius: 14px;
+    border-radius: 13px;
     display: grid;
     place-items: center;
     color: #fff;
-    font-size: 18px;
+    font-size: 17px;
     box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
   }
 
@@ -226,7 +168,7 @@
   .kpi-value {
     direction: rtl;
     text-align: right;
-    font-size: 23px;
+    font-size: 20px;
     font-weight: 900;
     color: #111827;
     letter-spacing: 0;
@@ -248,12 +190,12 @@
   }
 
   .kpi-spark {
-    height: 42px;
+    height: 30px;
     min-width: 0;
   }
 
   .trend {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 900;
     display: grid;
     gap: 1px;
@@ -267,7 +209,7 @@
   .trend span { color: var(--exec-muted); font-weight: 700; }
 
   .panel {
-    padding: 18px;
+    padding: 13px;
   }
 
   .panel-head {
@@ -275,13 +217,13 @@
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    margin-bottom: 14px;
+    margin-bottom: 8px;
   }
 
   .panel-title {
     margin: 0;
     color: #111827;
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 900;
   }
 
@@ -298,7 +240,7 @@
   .period-tabs button {
     border: 0;
     background: transparent;
-    min-height: 30px;
+    min-height: 28px;
     padding: 0 12px;
     border-radius: 999px;
     color: var(--exec-muted);
@@ -355,12 +297,12 @@
   }
 
   .main-chart-wrap {
-    height: 302px;
+    height: clamp(230px, 32vh, 292px);
     position: relative;
   }
 
   .health-card {
-    min-height: 274px;
+    min-height: 0;
   }
 
   .health-wave {
@@ -370,16 +312,16 @@
 
   .health-body {
     display: grid;
-    grid-template-columns: 150px minmax(0, 1fr);
-    gap: 12px;
+    grid-template-columns: 128px minmax(0, 1fr);
+    gap: 10px;
     align-items: center;
-    min-height: 198px;
+    min-height: 178px;
   }
 
   .gauge {
     position: relative;
-    width: 150px;
-    height: 150px;
+    width: 128px;
+    height: 128px;
   }
 
   .gauge-center {
@@ -391,7 +333,7 @@
   }
 
   .gauge-score {
-    font-size: 42px;
+    font-size: 36px;
     line-height: 1;
     font-weight: 900;
     color: #111827;
@@ -406,7 +348,7 @@
 
   .health-list {
     display: grid;
-    gap: 12px;
+    gap: 9px;
   }
 
   .health-row {
@@ -414,7 +356,7 @@
     grid-template-columns: 68px 1fr 36px;
     align-items: center;
     gap: 9px;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 900;
     color: #344054;
   }
@@ -438,101 +380,8 @@
     border-radius: inherit;
   }
 
-  .leon-card {
-    padding: 14px 16px 15px;
-    min-height: 188px;
-    background:
-      linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(246, 250, 255, 0.92)),
-      var(--exec-surface);
-  }
-
-  .leon-card::after {
-    content: "";
-    position: absolute;
-    right: 84px;
-    top: 24px;
-    width: 190px;
-    height: 18px;
-    border-radius: 999px;
-    background: rgba(239, 68, 68, 0.82);
-    transform: rotate(-28deg);
-    box-shadow: 0 14px 24px rgba(239, 68, 68, 0.12);
-    pointer-events: none;
-  }
-
-  .leon-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    margin-bottom: 8px;
-  }
-
-  .leon-name {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-weight: 900;
-    color: #3b2a7a;
-  }
-
-  .leon-badge {
-    width: 24px;
-    height: 24px;
-    border-radius: 9px;
-    display: grid;
-    place-items: center;
-    color: #fff;
-    background: linear-gradient(145deg, #7c3aed, #2563eb);
-    font-weight: 900;
-  }
-
-  .leon-avatar {
-    width: 74px;
-    height: 74px;
-    border-radius: 50%;
-    background:
-      radial-gradient(circle at 35% 42%, #20e6ff 0 5px, transparent 6px),
-      radial-gradient(circle at 66% 42%, #20e6ff 0 5px, transparent 6px),
-      radial-gradient(circle at center, #162044 0 42%, #6d5dfc 43% 62%, #eef2ff 63% 100%);
-    box-shadow: 0 12px 26px rgba(124, 58, 237, 0.24);
-    position: absolute;
-    left: 22px;
-    top: 48px;
-  }
-
-  .leon-list {
-    display: grid;
-    gap: 8px;
-    padding-left: 92px;
-  }
-
-  .leon-line {
-    display: grid;
-    grid-template-columns: 18px 1fr auto;
-    align-items: center;
-    gap: 8px;
-    font-size: 12px;
-    font-weight: 800;
-    color: #344054;
-  }
-
-  .leon-cta {
-    margin-top: 12px;
-    height: 32px;
-    width: calc(100% - 92px);
-    margin-left: 92px;
-    border: 0;
-    border-radius: 999px;
-    background: linear-gradient(90deg, #7c3aed, #2563eb);
-    color: #fff;
-    font-family: inherit;
-    font-weight: 900;
-    box-shadow: 0 10px 20px rgba(124, 58, 237, 0.22);
-  }
-
   .quick-card {
-    padding: 12px 14px;
+    padding: 10px 12px;
   }
 
   .quick-grid {
@@ -542,7 +391,7 @@
   }
 
   .quick-item {
-    min-height: 88px;
+    min-height: 74px;
     display: grid;
     justify-items: center;
     align-content: center;
@@ -557,14 +406,14 @@
 
   .quick-label {
     color: var(--exec-muted);
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 900;
     min-height: 26px;
   }
 
   .quick-value {
     color: #111827;
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 900;
     font-variant-numeric: tabular-nums;
   }
@@ -583,11 +432,11 @@
   .bottom-grid {
     display: grid;
     grid-template-columns: minmax(0, 0.96fr) minmax(0, 1.04fr);
-    gap: 16px;
+    gap: 10px;
   }
 
   .cashflow-body {
-    height: 178px;
+    height: clamp(138px, 19vh, 172px);
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
     align-items: center;
@@ -612,7 +461,7 @@
 
   .flow-box {
     min-width: 118px;
-    min-height: 58px;
+    min-height: 50px;
     border-radius: 14px;
     border: 1px solid var(--exec-border);
     display: grid;
@@ -635,7 +484,7 @@
 
   .flow-value {
     color: #111827;
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 900;
     font-variant-numeric: tabular-nums;
   }
@@ -643,11 +492,11 @@
   .summary-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
+    gap: 9px;
   }
 
   .summary-box {
-    min-height: 78px;
+    min-height: 61px;
     border: 1px solid var(--exec-border);
     border-radius: 14px;
     background: #fbfdff;
@@ -655,16 +504,16 @@
     grid-template-columns: auto 1fr;
     align-items: center;
     gap: 12px;
-    padding: 12px 14px;
+    padding: 9px 11px;
   }
 
   .summary-icon {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     border-radius: 12px;
     display: grid;
     place-items: center;
-    font-size: 17px;
+    font-size: 15px;
   }
 
   .summary-label {
@@ -676,7 +525,7 @@
 
   .summary-value {
     color: #111827;
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 900;
     font-variant-numeric: tabular-nums;
   }
@@ -703,8 +552,6 @@
   @media (max-width: 900px) {
     .exec-board { padding: 12px; }
     .exec-shell { padding: 14px; border-radius: 18px; }
-    .exec-brand-row { grid-template-columns: 1fr; text-align: center; }
-    .exec-brand { justify-content: center; }
     .exec-top-controls { flex-wrap: wrap; }
     .kpi-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .bottom-grid, .exec-side { grid-template-columns: 1fr; }
@@ -718,8 +565,6 @@
     .kpi-row { grid-template-columns: 1fr; }
     .cashflow-body { grid-template-columns: 1fr; height: auto; }
     .flow-svg { display: none; }
-    .leon-list, .leon-cta { padding-left: 0; margin-left: 0; width: 100%; }
-    .leon-avatar { position: static; margin: 4px auto 8px; }
     .summary-grid, .quick-grid { grid-template-columns: 1fr; }
     .quick-item { border-left: 0; border-bottom: 1px solid var(--exec-border); }
     .quick-item:last-child { border-bottom: 0; }
@@ -728,21 +573,6 @@
 
 <div class="exec-board">
   <div class="exec-shell">
-    <header class="exec-brand-row">
-      <div class="exec-brand">
-        <span>Finora</span>
-        <span class="exec-logo-mark" aria-hidden="true"></span>
-      </div>
-      <div class="exec-title-block">
-        <h1 class="exec-title">
-          لوحة المدير التنفيذي
-          <span class="exec-verified"><i class="fas fa-check"></i></span>
-        </h1>
-        <p class="exec-subtitle">مرحباً بك، المدير</p>
-      </div>
-      <div></div>
-    </header>
-
     <div class="exec-top-controls">
       <div class="exec-pill">
         <i class="fas fa-chevron-down"></i>
@@ -880,8 +710,8 @@
                 </div>
                 <div class="flow-box bank">
                   <div>
-                    <div class="flow-label">البنك</div>
-                    <div class="flow-value"><span id="flowBank">34,800</span> د.ع</div>
+                    <div class="flow-label">النقد المتاح</div>
+                    <div class="flow-value"><span id="flowBank">0</span> د.ع</div>
                   </div>
                 </div>
               </div>
@@ -907,7 +737,7 @@
               </div>
               <div class="summary-box">
                 <span class="summary-icon" style="background:#eaf1ff;color:#2563eb"><i class="fas fa-building-columns"></i></span>
-                <div><div class="summary-label">البنك</div><div class="summary-value"><span id="summaryBank">34,800</span> د.ع</div></div>
+                <div><div class="summary-label">النقد المتاح</div><div class="summary-value"><span id="summaryBank">0</span> د.ع</div></div>
               </div>
               <div class="summary-box">
                 <span class="summary-icon" style="background:#fff7e6;color:#f79009"><i class="fas fa-file-invoice-dollar"></i></span>
@@ -935,33 +765,19 @@
               <canvas id="healthGauge"></canvas>
               <div class="gauge-center">
                 <div>
-                  <div class="gauge-score" id="healthScore">92<span style="font-size:22px">%</span></div>
+                  <div class="gauge-score"><span id="healthScore">0</span><span style="font-size:22px">%</span></div>
                   <div class="gauge-label">ممتاز <i class="fas fa-star"></i></div>
                 </div>
               </div>
             </div>
             <div class="health-list">
-              <div class="health-row"><span class="health-name">الربحية <i class="fas fa-lock"></i></span><span class="health-bar"><i class="health-fill" style="width:92%;background:#17b26a"></i></span><span>92%</span></div>
-              <div class="health-row"><span class="health-name">السيولة <i class="fas fa-clock"></i></span><span class="health-bar"><i class="health-fill" style="width:88%;background:#14b8a6"></i></span><span>88%</span></div>
-              <div class="health-row"><span class="health-name">المبيعات <i class="fas fa-cart-shopping"></i></span><span class="health-bar"><i class="health-fill" style="width:91%;background:#22c55e"></i></span><span>91%</span></div>
-              <div class="health-row"><span class="health-name">المخزون <i class="fas fa-box"></i></span><span class="health-bar"><i class="health-fill" style="width:85%;background:#0ea5e9"></i></span><span>85%</span></div>
-              <div class="health-row"><span class="health-name">العملاء <i class="fas fa-users"></i></span><span class="health-bar"><i class="health-fill" style="width:90%;background:#2563eb"></i></span><span>90%</span></div>
+              <div class="health-row"><span class="health-name">الربحية <i class="fas fa-lock"></i></span><span class="health-bar"><i id="healthProfitBar" class="health-fill" style="width:0%;background:#17b26a"></i></span><span id="healthProfitText">0%</span></div>
+              <div class="health-row"><span class="health-name">السيولة <i class="fas fa-clock"></i></span><span class="health-bar"><i id="healthLiquidityBar" class="health-fill" style="width:0%;background:#14b8a6"></i></span><span id="healthLiquidityText">0%</span></div>
+              <div class="health-row"><span class="health-name">المبيعات <i class="fas fa-cart-shopping"></i></span><span class="health-bar"><i id="healthSalesBar" class="health-fill" style="width:0%;background:#22c55e"></i></span><span id="healthSalesText">0%</span></div>
+              <div class="health-row"><span class="health-name">المخزون <i class="fas fa-box"></i></span><span class="health-bar"><i id="healthInventoryBar" class="health-fill" style="width:0%;background:#0ea5e9"></i></span><span id="healthInventoryText">0%</span></div>
+              <div class="health-row"><span class="health-name">العملاء <i class="fas fa-users"></i></span><span class="health-bar"><i id="healthCustomersBar" class="health-fill" style="width:0%;background:#2563eb"></i></span><span id="healthCustomersText">0%</span></div>
             </div>
           </div>
-        </section>
-
-        <section class="exec-card leon-card">
-          <div class="leon-head">
-            <div class="leon-name"><span class="leon-badge">A</span> LEON</div>
-          </div>
-          <div class="leon-avatar" aria-hidden="true"></div>
-          <div class="leon-list">
-            <div class="leon-line"><i class="fas fa-chevron-left"></i><span>الربح ارتفع مقارنة بالأمس</span><b style="color:#17b26a">↑</b></div>
-            <div class="leon-line"><i class="fas fa-chevron-left"></i><span>المبيعات تحتاج إعادة طلب</span><b style="color:#f79009">!</b></div>
-            <div class="leon-line"><i class="fas fa-chevron-left"></i><span>معدل أعلى مبيعاً</span><b style="color:#2563eb">◆</b></div>
-            <div class="leon-line"><i class="fas fa-chevron-left"></i><span>المصروفات زادت عن أمس</span><b style="color:#f04438">↗</b></div>
-          </div>
-          <button class="leon-cta" type="button">تحدث مع LEON <i class="fas fa-microphone"></i></button>
         </section>
 
         <section class="exec-card quick-card">
@@ -1017,6 +833,17 @@
   function setText(id, value) {
     const el = document.getElementById(id);
     if (el) el.textContent = value;
+  }
+
+  function clampPercent(value) {
+    return Math.max(0, Math.min(100, Math.round(Number(value || 0))));
+  }
+
+  function setPercentMetric(barId, textId, value) {
+    const percent = clampPercent(value);
+    const bar = document.getElementById(barId);
+    if (bar) bar.style.width = percent + "%";
+    setText(textId, nf.format(percent) + "%");
   }
 
   function gradient(ctx, color) {
@@ -1106,12 +933,14 @@
 
   function hydrate(data) {
     const cash = data.cash_balance ?? data.balance ?? 0;
-    const bank = data.bank_balance ?? 34800;
+    const bank = data.cash_available ?? cash;
     const receivables = data.receivables ?? 0;
     const liabilities = data.liabilities ?? 0;
     const sales = data.sales_today ?? 0;
     const expenses = data.expenses_today ?? 0;
     const net = sales - expenses;
+    const health = data.health || {};
+    const healthScore = clampPercent(health.score);
 
     setText("ordersToday", nf.format(data.orders_today ?? 0));
     setText("purchasesToday", money(data.purchases_today));
@@ -1129,10 +958,16 @@
     setText("summaryReceivables", money(receivables));
     setText("summaryLiabilities", money(liabilities));
 
-    setText("debtRate", nf.format(data.debt_collection_rate ?? 85));
+    setText("debtRate", nf.format(clampPercent(data.debt_collection_rate)));
     setText("inventoryValue", money(data.inventory_value));
     setText("newCustomers", nf.format(data.new_customers ?? 0));
     setText("avgDailySales", money(data.avg_daily_sales));
+    setText("healthScore", nf.format(healthScore));
+    setPercentMetric("healthProfitBar", "healthProfitText", health.profitability);
+    setPercentMetric("healthLiquidityBar", "healthLiquidityText", health.liquidity);
+    setPercentMetric("healthSalesBar", "healthSalesText", health.sales);
+    setPercentMetric("healthInventoryBar", "healthInventoryText", health.inventory);
+    setPercentMetric("healthCustomersBar", "healthCustomersText", health.customers);
 
     const salesSeries = data.daily_sales || [0, 0, 0, 0, 0, 0, sales];
     const profitSeries = data.daily_profit || [0, 0, 0, 0, 0, 0, data.profit_today || 0];
@@ -1146,7 +981,7 @@
     drawSpark("sparkSales", "#2f80ed", salesSeries);
 
     drawPerformance({ ...data, daily_sales: salesSeries, daily_profit: profitSeries, daily_expenses: expenseSeries, daily_cashflow: cashSeries });
-    drawHealth(92);
+    drawHealth(healthScore);
   }
 
   fetch("/api/executive_dashboard_data", { headers: { "Accept": "application/json" } })
@@ -1168,7 +1003,8 @@
         daily_sales: [0, 0, 0, 0, 0, 0, 0],
         daily_profit: [0, 0, 0, 0, 0, 0, 0],
         daily_expenses: [0, 0, 0, 0, 0, 0, 0],
-        daily_cashflow: [0, 0, 0, 0, 0, 0, 0]
+        daily_cashflow: [0, 0, 0, 0, 0, 0, 0],
+        health: { score: 0, profitability: 0, liquidity: 0, sales: 0, inventory: 0, customers: 0 }
       });
     });
 </script>
