@@ -43,7 +43,10 @@
     event.preventDefault();
     if (btn.disabled) return;
     const productId = parseInt(btn.getAttribute("data-sf-add-cart"), 10);
-    const qtyInput = btn.closest("form")?.querySelector("[name=quantity]");
+    const qtyInput =
+      btn.closest("form")?.querySelector("[name=quantity]") ||
+      document.querySelector(`[form="${btn.closest("form")?.id}"][name=quantity]`) ||
+      btn.closest(".sf-detail-info, .sf-product-card")?.querySelector("[name=quantity]");
     const qty = qtyInput ? parseInt(qtyInput.value, 10) || 1 : 1;
     btn.disabled = true;
     try {

@@ -1,118 +1,74 @@
-<!doctype html>
-<html lang="ar" dir="rtl">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ product.name }}</title>
-  <style>
-    :root{color-scheme:dark;--bg:#08111f;--line:rgba(148,163,184,.18);--text:#e7eefc;--muted:#9eb1cc;--brand:{{ store_design.primary_color }};--shipping:{{ store_design.shipping_color }};--ok:#10b981;--warn:#f59e0b}
-    *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top right,rgba(79,140,255,.18),transparent 24%),linear-gradient(180deg,#0b1627,var(--bg));color:var(--text);font-family:Tahoma,Arial,sans-serif}
-    .page{max-width:1240px;margin:0 auto;padding:24px 16px 44px}.card{background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.02));border:1px solid var(--line);border-radius:24px}
-    .top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:15px}
-    .btn{display:inline-flex;align-items:center;justify-content:center;padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--text);text-decoration:none;cursor:pointer}
-    .btn.primary{background:linear-gradient(135deg,var(--brand),#305ce2);border-color:transparent;color:#fff;font-weight:700}
-    .layout{display:grid;grid-template-columns:1.05fr .95fr;gap:16px}
-    .media{padding:16px}.hero-image{aspect-ratio:1/1;background:#091524;border-radius:18px;overflow:hidden;display:grid;place-items:center}
-    .hero-image img{width:100%;height:100%;object-fit:contain;padding:12px}
-    .thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px;margin-top:10px}
-    .thumb{aspect-ratio:1/1;border:1px solid var(--line);border-radius:12px;background:#0b1728;overflow:hidden;padding:0;cursor:pointer}
-    .thumb img{width:100%;height:100%;object-fit:contain;padding:5px}
-    .info{padding:22px;display:grid;gap:14px}.badge{padding:6px 10px;border-radius:999px;background:rgba(79,140,255,.16);font-size:12px;width:fit-content}
-    h1{margin:0;font-size:33px}.desc{color:var(--muted);line-height:1.9}.price{font-size:32px;font-weight:800}.price small{font-size:13px;color:var(--muted)}
-    .stock{font-size:14px;font-weight:700;color:var(--shipping)}.stock.off{color:var(--warn)}
-    .buy{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-    .buy input{width:90px;border-radius:10px;border:1px solid var(--line);padding:10px;background:rgba(255,255,255,.04);color:var(--text)}
-    .section{margin-top:14px;padding:20px}.spec-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
-    .spec{border:1px solid var(--line);border-radius:14px;padding:12px}.spec small{color:var(--muted);display:block;margin-bottom:4px}
-    .related{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
-    .item{border:1px solid var(--line);border-radius:16px;overflow:hidden;text-decoration:none;color:var(--text)}
-    .item img{width:100%;aspect-ratio:1/1;object-fit:cover;background:#091524}.item .b{padding:10px}
-    @media (max-width:900px){.layout{grid-template-columns:1fr}}
-  </style>
-</head>
-<body>
-  <div class="page">
-    <div class="top">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <a class="btn" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">رجوع للمتجر</a>
-        <a class="btn primary" href="{{ url_for('storefront.cart_page', tenant_slug=shop_tenant_slug) }}">السلة ({{ cart_count }})</a>
-      </div>
-      <small style="color:var(--muted);">المتجر / {{ product.name }}</small>
+{% extends "storefront/base.html" %}
+{% block title %}{{ product.name }} - {{ store_design.store_name }}{% endblock %}
+{% block content %}
+<section class="sf-product-detail">
+  <div class="sf-card sf-gallery">
+    <div class="sf-detail-media">
+      {% if product.image_url %}
+      <img id="sfMainImage" src="{{ product.image_url }}" alt="{{ product.name }}" loading="lazy">
+      {% else %}
+      <span class="sf-media-empty">لا توجد صورة</span>
+      {% endif %}
     </div>
-
-    <section class="layout">
-      <div class="card media">
-        <div class="hero-image">
-          {% if product.image_url %}
-          <img id="mainProductImage" src="{{ product.image_url }}" alt="{{ product.name }}" loading="lazy">
-          {% else %}
-          <span style="color:var(--muted);">لا توجد صورة</span>
-          {% endif %}
-        </div>
-        {% if product.gallery %}
-        <div class="thumbs">
-          {% for image in product.gallery %}
-          <button class="thumb" type="button" data-full="{{ image }}">
-            <img src="{{ image }}" alt="{{ product.name }}" loading="lazy">
-          </button>
-          {% endfor %}
-        </div>
-        {% endif %}
-      </div>
-      <div class="card info">
-        {% if product.badge %}<span class="badge">{{ product.badge }}</span>{% endif %}
-          <h1>{{ product.name }}</h1>
-        <div class="desc">{{ product.description or "تفاصيل المنتج الكاملة موجودة في هذه الصفحة." }}</div>
-            <div class="price">{{ "{:,.0f}".format(product.price) }} <small>د.ع</small></div>
-        <div class="stock {{ '' if product.is_available else 'off' }}">{{ "متوفر وجاهز للطلب" if product.is_available else "غير متوفر حالياً" }}</div>
-        <form class="buy" method="post" action="{{ url_for('storefront.cart_add', tenant_slug=shop_tenant_slug, product_id=product.id) }}">
-          <input type="number" min="1" max="999" name="quantity" value="1">
-          <input type="hidden" name="next" value="{{ request.full_path }}">
-          <button class="btn primary" type="submit" {% if not product.is_available %}disabled{% endif %}>أضف إلى السلة</button>
-          <a class="btn" href="{{ url_for('storefront.checkout_page', tenant_slug=shop_tenant_slug) }}">إتمام الطلب</a>
-        </form>
-      </div>
-    </section>
-
-      {% if product.specs %}
-    <section class="card section">
-      <h3 style="margin-top:0;">المواصفات</h3>
-        <div class="spec-grid">
-          {% for item in product.specs %}
-        <div class="spec"><small>{{ item.label }}</small><strong>{{ item.value }}</strong></div>
-          {% endfor %}
-        </div>
-      </section>
-      {% endif %}
-
-      {% if related_products %}
-      <section class="card section">
-      <h3 style="margin-top:0;">منتجات مشابهة</h3>
-      <div class="related">
-          {% for item in related_products %}
-        <a class="item" href="{{ item.url }}">
-          {% if item.image_url %}<img src="{{ item.image_url }}" alt="{{ item.name }}" loading="lazy">{% else %}<div style="aspect-ratio:1/1;display:grid;place-items:center;color:var(--muted)">لا توجد صورة</div>{% endif %}
-          <div class="b">
-            <div>{{ item.name }}</div>
-            <strong>{{ "{:,.0f}".format(item.price) }} د.ع</strong>
-            </div>
-          </a>
-          {% endfor %}
-        </div>
-      </section>
-      {% endif %}
+    {% if product.gallery %}
+    <div class="sf-thumbs">
+      {% for image in product.gallery %}
+      <button class="sf-thumb" type="button" data-full="{{ image }}">
+        <img src="{{ image }}" alt="{{ product.name }}" loading="lazy">
+      </button>
+      {% endfor %}
+    </div>
+    {% endif %}
   </div>
-  <script>
-    (function () {
-      const mainImage = document.getElementById("mainProductImage");
-      if (!mainImage) return;
-      document.querySelectorAll(".thumb[data-full]").forEach((thumb) => {
-        thumb.addEventListener("click", () => {
-        const src = thumb.getAttribute("data-full");
-          if (src) mainImage.src = src;
-        });
-      });
-    })();
-  </script>
-</body>
-</html>
+
+  <div class="sf-card sf-detail-info">
+    {% if product.badge %}<span class="sf-badge static">{{ product.badge }}</span>{% endif %}
+    <h1>{{ product.name }}</h1>
+    <p>{{ product.description or "تفاصيل المنتج الكاملة في هذه الصفحة." }}</p>
+    <div class="sf-detail-price">{{ "{:,.0f}".format(product.price) }} <small>د.ع</small></div>
+    <div class="sf-stock-row">
+      <span class="sf-status {{ '' if product.is_available else 'out' }}">{{ "متوفر وجاهز للطلب" if product.is_available else "غير متوفر حالياً" }}</span>
+      {% if product.is_available %}<span class="sf-stock-count">الكمية المتاحة: {{ product.stock }}</span>{% endif %}
+    </div>
+    <div class="sf-buy-panel">
+      <label for="sfQuantity">الكمية</label>
+      <input id="sfQuantity" type="number" min="1" max="{{ product.stock if product.is_available else 1 }}" name="quantity" value="1" form="sfAddForm">
+      <form id="sfAddForm" class="sf-contents">
+        <button class="sf-btn primary" type="button" data-sf-add-cart="{{ product.id }}" {% if not product.is_available %}disabled{% endif %}>أضف إلى السلة</button>
+      </form>
+      <a class="sf-btn ghost" href="{{ url_for('storefront.checkout_page', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.checkout_page', tenant_slug=shop_tenant_slug) }}">إتمام الطلب</a>
+    </div>
+  </div>
+</section>
+
+{% if product.specs %}
+<section class="sf-card sf-panel">
+  <div class="sf-section-title compact">
+    <h2>المواصفات</h2>
+  </div>
+  <div class="sf-spec-grid">
+    {% for item in product.specs %}
+    <div class="sf-spec">
+      <span>{{ item.label }}</span>
+      <strong>{{ item.value }}</strong>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% if related_products %}
+<section class="sf-section">
+  <div class="sf-section-title">
+    <h2>منتجات مشابهة</h2>
+    <span>قد تناسب طلبك أيضاً</span>
+  </div>
+  <div class="sf-grid">
+    {% for item in related_products %}
+    {% set product = item %}
+    {% include "storefront/partials/product_card.html" %}
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}

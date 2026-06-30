@@ -929,36 +929,76 @@
   }
 
   /* =======================
-   SEARCH MODAL
+   SEARCH MODAL — centered + locked backdrop
    ======================= */
+  html.finora-search-modal-open,
+  body.finora-search-modal-open {
+    overflow: hidden !important;
+    position: fixed;
+    width: 100%;
+    height: 100%;
+  }
+
+  #searchModal .finora-dash-modal__panel,
+  #searchModal .search-results-wrap {
+    touch-action: pan-y;
+    overscroll-behavior: contain;
+  }
+
+  #searchModal.modal {
+    z-index: 1200;
+    padding: 16px;
+    align-items: center !important;
+    justify-content: center !important;
+    overscroll-behavior: contain;
+  }
+
+  #searchModal .finora-dash-modal__panel {
+    width: min(100%, 680px);
+    max-height: min(86vh, 640px);
+    border-radius: 14px !important;
+    border-bottom: 1px solid var(--border-light) !important;
+    margin: auto;
+  }
+
   #searchModal .finora-dash-modal__body {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
     min-height: 0;
+    padding: 12px 14px !important;
+  }
+
+  #searchModal .finora-dash-modal__head {
+    padding: 12px 14px !important;
+  }
+
+  #searchModal .finora-dash-modal__footer {
+    padding: 10px 14px 12px !important;
   }
 
   .search-toolbar {
     display: flex;
     flex-direction: row;
-    align-items: center;
+    align-items: stretch;
     gap: 8px;
-    margin-bottom: 0;
     flex-shrink: 0;
   }
 
-  .search-toolbar input#q {
+  #searchModal .search-toolbar input#q {
     flex: 1 1 auto;
     min-width: 0;
     width: auto !important;
     margin-bottom: 0 !important;
-    min-height: 40px;
-    padding: 8px 12px !important;
+    min-height: 44px;
+    height: 44px;
+    padding: 0 12px !important;
     font-size: 16px !important;
     border: 1px solid var(--border-light);
     border-radius: 10px;
     background: var(--card, #fff);
     color: var(--dashboard-text, var(--text));
+    box-sizing: border-box;
   }
 
   :root[data-theme="dark"] #searchModal .search-toolbar input#q {
@@ -966,26 +1006,25 @@
     border-color: rgba(255, 255, 255, 0.12);
   }
 
-  .search-submit-btn {
-    flex: 0 0 auto !important;
-    width: auto !important;
-    min-width: 44px;
-    min-height: 40px !important;
-    padding: 0 14px !important;
+  #searchModal .search-submit-btn {
+    flex: 0 0 44px !important;
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    padding: 0 !important;
     margin: 0 !important;
-    white-space: nowrap;
+    border-radius: 10px;
     justify-content: center;
+    align-items: center;
   }
 
   .search-submit-icon {
-    display: none;
+    font-size: 17px;
+    line-height: 1;
   }
 
   .search-submit-text {
-    display: inline;
-  }
-
-  .search-toolbar-actions {
     display: none;
   }
 
@@ -999,268 +1038,224 @@
   #searchModal .search-modal-footer button {
     width: auto !important;
     margin-bottom: 0 !important;
-  }
-
-  .search-modal-footer .search-action-btn {
-    width: 100%;
-    justify-content: center;
+    min-height: 38px !important;
     font-size: 12px !important;
-    padding: 8px 10px !important;
-    min-height: 38px;
   }
 
   .search-results-wrap {
     flex: 1;
-    min-height: 0;
-    max-height: min(52vh, 480px);
+    min-height: 120px;
+    max-height: min(48vh, 400px);
     overflow: auto;
+    -webkit-overflow-scrolling: touch;
     border: 1px solid var(--border-light);
     border-radius: 10px;
+    background: var(--card-alt, #f8fafc);
   }
 
-  .search-results-wrap table {
-    margin: 0;
-    border: none;
+  :root[data-theme="dark"] .search-results-wrap {
+    background: rgba(15, 23, 42, 0.35);
+  }
+
+  .search-orders-table {
     width: 100%;
     border-collapse: collapse;
+    table-layout: fixed;
+    font-size: 12px;
   }
 
-  .search-results-table th,
-  .search-results-table td {
+  .search-orders-table col.col-check { width: 34px; }
+  .search-orders-table col.col-id { width: 42px; }
+  .search-orders-table col.col-party { width: auto; }
+  .search-orders-table col.col-amount { width: 82px; }
+  .search-orders-table col.col-status { width: 88px; }
+  .search-orders-table col.col-action { width: 44px; }
+
+  .search-orders-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
     padding: 8px 6px;
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--dashboard-muted, var(--text-muted));
+    background: var(--card, #fff);
+    border-bottom: 2px solid var(--border-light);
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  :root[data-theme="dark"] .search-orders-table thead th {
+    background: rgba(15, 23, 42, 0.95);
+  }
+
+  .search-orders-table tbody td {
+    padding: 7px 6px;
     vertical-align: middle;
     border-bottom: 1px solid var(--border-light);
     text-align: right;
     line-height: 1.25;
   }
 
-  .search-results-table thead th {
+  .search-orders-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  .search-orders-table tbody tr:nth-child(even) {
+    background: rgba(148, 163, 184, 0.06);
+  }
+
+  .search-orders-table .search-td-check {
+    text-align: center;
+    padding: 7px 4px;
+  }
+
+  .search-orders-table .search-td-id {
     font-size: 11px;
     font-weight: 800;
-    color: var(--dashboard-muted, var(--text-muted));
-    background: var(--card-alt, rgba(148, 163, 184, 0.08));
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    padding: 6px 4px;
-  }
-
-  .search-td-check {
-    width: 32px;
-    text-align: center;
-    padding-left: 4px !important;
-    padding-right: 4px !important;
-  }
-
-  .search-td-id {
-    width: 44px;
     white-space: nowrap;
-    font-size: 11px;
   }
 
-  .search-td-party {
-    min-width: 0;
-  }
-
-  .search-party-name {
+  .search-orders-table .search-party-name {
+    display: block;
     font-weight: 700;
     font-size: 12px;
-    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
-  .search-party-phone {
+  .search-orders-table .search-party-phone {
+    display: block;
     font-size: 10px;
     color: var(--dashboard-muted, var(--text-muted));
-    margin-top: 1px;
-    line-height: 1.2;
-  }
-
-  .search-td-amount {
+    overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
-    font-weight: 700;
-    color: var(--dashboard-success, var(--success));
-    width: 78px;
+  }
+
+  .search-orders-table .search-td-amount {
+    font-weight: 800;
     font-size: 11px;
+    color: var(--dashboard-success, var(--success));
+    white-space: nowrap;
   }
 
-  .search-td-status {
-    width: 84px;
+  .search-orders-table .search-td-action {
+    text-align: center;
+    padding: 7px 4px;
   }
 
-  .search-status-select {
-    width: 100%;
-    max-width: 84px;
-    min-height: 30px;
-    padding: 3px 4px;
-    border-radius: 8px;
+  #searchModal select.search-status-select {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-bottom: 0 !important;
+    min-height: 30px !important;
+    height: 30px !important;
+    padding: 0 4px !important;
+    font-size: 11px !important;
+    font-weight: 600;
+    border-radius: 6px;
     border: 1px solid var(--border-light);
     background: var(--card, #fff);
     color: var(--dashboard-text, var(--text));
-    font-size: 11px;
-    font-weight: 600;
-    font-family: inherit;
-    margin: 0 !important;
+    box-sizing: border-box;
   }
 
-  :root[data-theme="dark"] .search-status-select {
-    background: rgba(15, 23, 42, 0.6);
+  :root[data-theme="dark"] #searchModal select.search-status-select {
+    background: rgba(15, 23, 42, 0.8);
     border-color: rgba(255, 255, 255, 0.12);
-    color: var(--dashboard-text);
   }
 
-  .search-td-action {
-    width: 40px;
-    text-align: center;
-    padding-left: 2px !important;
-    padding-right: 4px !important;
-  }
-
-  .search-results-wrap .btn-exec {
-    min-height: 28px !important;
-    min-width: 28px;
-    padding: 4px 6px !important;
-    font-size: 13px !important;
-    line-height: 1;
+  #searchModal .search-orders-table .btn-exec {
+    width: 34px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    min-width: 34px !important;
+    padding: 0 !important;
     margin: 0 !important;
-    width: auto !important;
+    border-radius: 8px;
+    font-size: 14px !important;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
-  .search-results-wrap .btn-exec .btn-exec-label {
+  #searchModal .search-orders-table .btn-exec .btn-exec-label {
     display: none;
   }
 
+  .search-orders-empty td {
+    padding: 28px 12px !important;
+    text-align: center !important;
+    color: var(--dashboard-muted, var(--text-muted));
+    font-size: 13px;
+  }
+
+  @media (min-width: 769px) {
+    #searchModal .search-submit-btn {
+      flex: 0 0 auto !important;
+      width: auto !important;
+      min-width: 88px !important;
+      padding: 0 16px !important;
+    }
+
+    .search-submit-text {
+      display: inline;
+    }
+
+    .search-submit-icon {
+      display: none;
+    }
+  }
+
   @media (max-width: 768px) {
-    #searchModal .finora-dash-modal__head {
-      padding: 10px 12px !important;
+    #searchModal.modal {
+      padding: 12px;
+    }
+
+    #searchModal .finora-dash-modal__panel {
+      width: min(100%, 520px);
+      max-height: min(88vh, 600px);
     }
 
     #searchModal .finora-dash-modal__head h3 {
       font-size: 14px;
     }
 
-    #searchModal .finora-dash-modal__body {
-      padding: 8px 10px !important;
-      gap: 6px;
-    }
+    .search-orders-table col.col-amount { width: 72px; }
+    .search-orders-table col.col-status { width: 76px; }
+    .search-orders-table col.col-action { width: 40px; }
 
-    #searchModal .finora-dash-modal__footer {
-      padding: 8px 10px 10px !important;
-      gap: 6px;
-    }
-
-    #searchModal .finora-dash-modal__close {
-      width: 32px;
-      height: 32px;
-      font-size: 18px;
-    }
-
-    .search-toolbar {
-      gap: 6px;
-    }
-
-    .search-toolbar input#q {
-      min-height: 42px;
-      flex: 1 1 0;
-    }
-
-    .search-submit-btn {
-      min-width: 42px !important;
-      width: 42px !important;
-      padding: 0 !important;
-    }
-
-    .search-submit-icon {
-      display: inline;
-      font-size: 16px;
-      line-height: 1;
-    }
-
-    .search-submit-text {
-      display: none;
-    }
-
-    .search-results-wrap {
-      max-height: min(46vh, 360px);
-      border-radius: 8px;
-    }
-
-    .search-results-table {
-      table-layout: fixed;
-    }
-
-    .search-results-table th,
-    .search-results-table td {
-      padding: 4px 3px !important;
-      font-size: 10px !important;
-      line-height: 1.15 !important;
-    }
-
-    .search-results-table thead th {
-      font-size: 9px !important;
-      padding: 5px 3px !important;
-    }
-
-    .search-td-check {
-      width: 24px;
-    }
-
-    .search-td-id {
-      width: 30px;
-    }
-
-    .search-td-party .search-party-name,
-    .search-td-party .search-party-phone {
-      display: inline;
+    .search-orders-table thead th {
+      padding: 6px 4px;
       font-size: 10px;
     }
 
-    .search-td-party .search-party-phone::before {
-      content: " · ";
-      opacity: 0.6;
+    .search-orders-table tbody td {
+      padding: 6px 4px;
+      font-size: 11px;
     }
 
-    .search-td-amount {
-      width: 58px;
-      font-size: 9px !important;
-    }
-
-    .search-td-status {
-      width: 62px;
-    }
-
-    .search-status-select {
-      min-height: 26px !important;
-      max-width: 62px;
-      font-size: 9px !important;
-      padding: 2px 1px !important;
-    }
-
-    .search-td-action {
-      width: 32px;
-    }
-
-    .search-modal-footer .search-action-btn {
-      min-height: 34px !important;
-      padding: 6px 8px !important;
+    #searchModal select.search-status-select {
+      min-height: 28px !important;
+      height: 28px !important;
       font-size: 10px !important;
     }
-  }
 
-  @media (max-width: 480px) {
-    #searchModal .search-toolbar input#q {
-      min-height: 44px;
-    }
-
-    #searchModal .search-submit-btn {
-      min-width: 44px !important;
-      width: 44px !important;
-      min-height: 44px !important;
+    #searchModal .search-orders-table .btn-exec {
+      width: 30px !important;
+      height: 30px !important;
+      min-height: 30px !important;
+      min-width: 30px !important;
+      font-size: 13px !important;
     }
 
     #searchModal .search-modal-footer .btn,
     #searchModal .search-modal-footer button {
-      width: auto !important;
-      margin-bottom: 0 !important;
+      min-height: 36px !important;
+      font-size: 11px !important;
     }
   }
 
@@ -2493,15 +2488,15 @@
 <!-- =======================
      SEARCH MODAL
 ======================= -->
-<div id="searchModal" class="modal finora-dash-modal" onclick="if(event.target===this) closeSearch()">
+<div id="searchModal" class="modal finora-dash-modal finora-search-modal" role="dialog" aria-modal="true" aria-labelledby="searchModalTitle" onclick="if(event.target===this) closeSearch()">
   <div class="finora-dash-modal__panel finora-dash-modal__panel--wide" onclick="event.stopPropagation()">
     <div class="finora-dash-modal__head">
-      <h3>🔍 {{ _('dashboard_search_order_title') }}</h3>
+      <h3 id="searchModalTitle">🔍 {{ _('dashboard_search_order_title') }}</h3>
       <button type="button" class="finora-dash-modal__close" onclick="closeSearch()" aria-label="إغلاق">×</button>
     </div>
     <div class="finora-dash-modal__body">
       <div class="search-toolbar">
-        <input id="q" placeholder="{{ _('dashboard_search_order_placeholder') }}"
+        <input id="q" type="search" inputmode="numeric" autocomplete="off" placeholder="{{ _('dashboard_search_order_placeholder') }}"
           onkeyup="if(event.key==='Enter') search()">
         <button type="button" onclick="search()" class="btn btn-primary search-submit-btn" aria-label="{{ _('dashboard_search_button') }}">
           <span class="search-submit-icon" aria-hidden="true">🔍</span>
@@ -2510,10 +2505,18 @@
       </div>
 
       <div class="search-results-wrap">
-        <table class="search-results-table">
+        <table class="search-orders-table">
+          <colgroup>
+            <col class="col-check">
+            <col class="col-id">
+            <col class="col-party">
+            <col class="col-amount">
+            <col class="col-status">
+            <col class="col-action">
+          </colgroup>
           <thead>
             <tr>
-              <th class="search-td-check"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"></th>
+              <th class="search-td-check"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()" aria-label="تحديد الكل"></th>
               <th class="search-td-id">#</th>
               <th class="search-td-party">{{ _('dashboard_th_customer') }}</th>
               <th class="search-td-amount">{{ _('dashboard_th_amount') }}</th>
@@ -2521,7 +2524,11 @@
               <th class="search-td-action">{{ _('dashboard_th_action') }}</th>
             </tr>
           </thead>
-          <tbody id="rows"></tbody>
+          <tbody id="rows">
+            <tr class="search-orders-empty" id="searchEmptyRow">
+              <td colspan="6">ابحث برقم الوصل أو الهاتف لعرض النتائج</td>
+            </tr>
+          </tbody>
         </table>
       </div>
     </div>
@@ -3215,12 +3222,33 @@
   /* =======================
      Search
   ======================= */
+  function syncSearchEmptyState() {
+    const rowsContainer = document.getElementById("rows");
+    const emptyRow = document.getElementById("searchEmptyRow");
+    if (!rowsContainer || !emptyRow) return;
+    const hasData = rowsContainer.querySelectorAll("tr:not(.search-orders-empty)").length > 0;
+    emptyRow.style.display = hasData ? "none" : "";
+  }
+
+  function setSearchModalLock(locked) {
+    document.documentElement.classList.toggle("finora-search-modal-open", locked);
+    document.body.classList.toggle("finora-search-modal-open", locked);
+  }
+
   function openSearch() {
-    document.getElementById("searchModal").style.display = "flex";
+    const modal = document.getElementById("searchModal");
+    modal.style.display = "flex";
+    setSearchModalLock(true);
+    syncSearchEmptyState();
+    setTimeout(function () {
+      const input = document.getElementById("q");
+      if (input) input.focus();
+    }, 80);
   }
 
   function closeSearch() {
     document.getElementById("searchModal").style.display = "none";
+    setSearchModalLock(false);
   }
 
   function search() {
@@ -3283,8 +3311,10 @@
           addedCount++;
         });
 
+        syncSearchEmptyState();
+
         if (addedCount > 0) {
-          showToast(`✅ تم إضافة ${addedCount} طلب جديد (إجمالي: ${rowsContainer.querySelectorAll("tr").length})`, "success");
+          showToast(`✅ تم إضافة ${addedCount} طلب جديد (إجمالي: ${rowsContainer.querySelectorAll("tr:not(.search-orders-empty)").length})`, "success");
         } else {
           showToast("ℹ️ جميع الطلبات موجودة مسبقاً", "info");
         }
@@ -3335,6 +3365,7 @@
         hideLoading();
         if (res.success !== false) {
           document.getElementById("r" + id).remove();
+          syncSearchEmptyState();
           showToast("✅ تم تنفيذ الطلب بنجاح", "success");
           load();
         } else {
@@ -3371,7 +3402,8 @@
   ======================= */
   function clearSearchResults() {
     const rowsContainer = document.getElementById("rows");
-    const count = rowsContainer.querySelectorAll("tr").length;
+    const dataRows = rowsContainer.querySelectorAll("tr:not(.search-orders-empty)");
+    const count = dataRows.length;
 
     if (count === 0) {
       showToast("ℹ️ لا توجد نتائج للمسح", "info");
@@ -3379,8 +3411,9 @@
     }
 
     if (confirm(`⚠️ هل تريد مسح جميع النتائج (${count} طلب)؟`)) {
-      rowsContainer.innerHTML = "";
+      dataRows.forEach(function (row) { row.remove(); });
       document.getElementById("selectAllCheckbox").checked = false;
+      syncSearchEmptyState();
       showToast(`✅ تم مسح ${count} طلب`, "success");
     }
   }
@@ -3436,6 +3469,7 @@
             const row = document.getElementById("r" + id);
             if (row) row.remove();
           });
+          syncSearchEmptyState();
           load(currentPeriod.type, currentPeriod.date_from, currentPeriod.date_to); // تحديث الداشبورد بالفترة الحالية (بدون إعادة تحميل)
         } else {
           showToast(res.error || "❌ حدث خطأ أثناء التنفيذ الجماعي", "error");
@@ -4087,6 +4121,15 @@
   document.getElementById('searchModal').addEventListener('click', function (e) {
     if (e.target.id === 'searchModal') {
       closeSearch();
+    }
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      const searchModal = document.getElementById('searchModal');
+      if (searchModal && searchModal.style.display === 'flex') {
+        closeSearch();
+      }
     }
   });
 

@@ -13,6 +13,7 @@ from modules.storefront.services.product_presenter import product_card
 from modules.storefront.services.settings_service import StorefrontSettingsService, safe_int
 from modules.storefront.template_utils import storefront_template
 from routes.orders import build_public_order_view_token
+from utils.product_schema_guard import ensure_product_schema
 
 
 storefront_bp = Blueprint("storefront", __name__, url_prefix="/shop")
@@ -31,6 +32,7 @@ def _storefront_bind_tenant():
     if not slug:
         abort(404)
     g.tenant = slug
+    ensure_product_schema()
 
 
 def _resolved_shop_slug(tenant_slug_from_url: str | None) -> str:
@@ -214,9 +216,13 @@ def cart_add(tenant_slug: str, product_id: int):
             return jsonify({"success": False, "error": "المنتج غير متاح"}), 400
         abort(400)
     cart = _cart(slug)
-    cart.add(product_id, qty)
+    ok, msg = cart.try_add(product_id, qty)
+    if not ok:
+        if request.is_json or request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return jsonify({"success": False, "error": msg, "cart": cart.summary()}), 400
+        return _preserve_dev_query("storefront.cart_page", tenant_slug=slug, coupon_error=msg)
     if request.is_json or request.headers.get("X-Requested-With") == "XMLHttpRequest":
-        return jsonify({"success": True, "cart": cart.summary()})
+        return jsonify({"success": True, "message": msg, "cart": cart.summary()})
     next_url = request.form.get("next") or request.referrer or url_for("storefront.store_index", tenant_slug=slug)
     return redirect(next_url)
 
@@ -234,9 +240,13 @@ def cart_update(tenant_slug: str):
         if pid <= 0:
             continue
         updates[pid] = max(0, min(safe_int(values[0] if values else 0), 999))
-    cart.update_quantities(updates)
+    ok, msg = cart.try_update_quantities(updates)
+    if not ok:
+        if request.is_json or request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return jsonify({"success": False, "error": msg, "cart": cart.summary()}), 400
+        return _preserve_dev_query("storefront.cart_page", tenant_slug=slug, coupon_error=msg)
     if request.is_json or request.headers.get("X-Requested-With") == "XMLHttpRequest":
-        return jsonify({"success": True, "cart": cart.summary()})
+        return jsonify({"success": True, "message": msg, "cart": cart.summary()})
     return _preserve_dev_query("storefront.cart_page", tenant_slug=slug)
 
 
@@ -269,8 +279,10 @@ def api_cart_add(tenant_slug: str):
     if not product or not product.active:
         return jsonify({"success": False, "error": "المنتج غير متاح"}), 400
     cart = _cart(slug)
-    cart.add(product_id, qty)
-    return jsonify({"success": True, "message": "تمت الإضافة إلى السلة", "cart": cart.summary()})
+    ok, msg = cart.try_add(product_id, qty)
+    if not ok:
+        return jsonify({"success": False, "error": msg, "cart": cart.summary()}), 400
+    return jsonify({"success": True, "message": msg, "cart": cart.summary()})
 
 
 @storefront_bp.route("/<tenant_slug>/api/cart/update", methods=["POST"])
@@ -282,8 +294,10 @@ def api_cart_update(tenant_slug: str):
     if product_id <= 0:
         return jsonify({"success": False, "error": "معرّف المنتج غير صالح"}), 400
     cart = _cart(slug)
-    cart.update_quantities({product_id: qty})
-    return jsonify({"success": True, "cart": cart.summary()})
+    ok, msg = cart.try_update_quantities({product_id: qty})
+    if not ok:
+        return jsonify({"success": False, "error": msg, "cart": cart.summary()}), 400
+    return jsonify({"success": True, "message": msg, "cart": cart.summary()})
 
 
 @storefront_bp.route("/<tenant_slug>/api/coupon", methods=["POST"])

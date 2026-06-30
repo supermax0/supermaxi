@@ -1,41 +1,23 @@
-<!doctype html>
-<html lang="ar" dir="rtl">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>سلة المشتريات</title>
-  <style>
-    :root { color-scheme: dark; --bg:#071120; --card:#0f1b2d; --line:rgba(148,163,184,.2); --text:#e5eefc; --muted:#9db0cb; --brand:{{ store_design.primary_color }}; --shipping:{{ store_design.shipping_color }}; --danger:#ef4444; --ok:#10b981; }
-    *{box-sizing:border-box} body{margin:0;background:radial-gradient(circle at top,#12223c 0%,var(--bg) 55%);color:var(--text);font-family:Tahoma,Arial,sans-serif}
-    .page{max-width:1120px;margin:0 auto;padding:24px 16px 40px}
-    .top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
-    .top a{text-decoration:none;color:var(--text)}
-    .btn{display:inline-flex;align-items:center;justify-content:center;padding:10px 14px;border-radius:12px;border:1px solid var(--line);font-weight:700;background:rgba(255,255,255,.03);color:var(--text);cursor:pointer}
-    .btn.primary{background:linear-gradient(135deg,var(--brand),#2f5ce4);border-color:transparent}
-    .card{background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));border:1px solid var(--line);border-radius:18px}
-    table{width:100%;border-collapse:collapse}
-    th,td{padding:12px 10px;border-bottom:1px solid var(--line);text-align:right}
-    th{color:var(--muted);font-size:13px}
-    .product{display:flex;align-items:center;gap:10px}
-    .product img{width:58px;height:58px;border-radius:10px;object-fit:cover;background:#0b1728}
-    input[type="number"]{width:90px;border-radius:10px;border:1px solid var(--line);padding:8px;background:rgba(255,255,255,.05);color:var(--text)}
-    .danger{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.35);color:#fecaca}
-    .footer{margin-top:14px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
-    .total{font-size:22px;font-weight:800;color:var(--shipping)}
-    .empty{text-align:center;padding:34px;color:var(--muted)}
-    @media (max-width:760px){table,thead,tbody,tr,td{display:block} thead{display:none} tr{border-bottom:1px solid var(--line);padding:8px 0} td{border:0;padding:8px 0} td::before{content:attr(data-label);display:block;color:var(--muted);font-size:12px;margin-bottom:4px}}
-  </style>
-</head>
-<body>
-  <div class="page">
-    <div class="top">
-      <a class="btn" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">العودة للمتجر</a>
-      <h2 style="margin:0;">سلة المشتريات ({{ cart_count }})</h2>
-    </div>
-    <div class="card">
-      {% if cart_items %}
-      <form method="post" action="{{ url_for('storefront.cart_update', tenant_slug=shop_tenant_slug) }}">
-        <table>
+{% extends "storefront/base.html" %}
+{% block title %}السلة - {{ store_design.store_name }}{% endblock %}
+{% block content %}
+<div class="sf-page-head">
+  <div>
+    <span class="sf-eyebrow">سلة المشتريات</span>
+    <h1>راجع طلبك قبل الإتمام</h1>
+  </div>
+  <a class="sf-btn ghost" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">متابعة التسوق</a>
+</div>
+
+{% if coupon_success %}<div class="sf-alert ok">{{ coupon_success }}</div>{% endif %}
+{% if coupon_error %}<div class="sf-alert err">{{ coupon_error }}</div>{% endif %}
+
+{% if cart_items %}
+<section class="sf-cart-layout">
+  <div class="sf-card sf-panel">
+    <form method="post" action="{{ url_for('storefront.cart_update', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.cart_update', tenant_slug=shop_tenant_slug) }}">
+      <div class="sf-table-wrap">
+        <table class="sf-table">
           <thead>
             <tr><th>المنتج</th><th>السعر</th><th>الكمية</th><th>المجموع</th><th></th></tr>
           </thead>
@@ -43,49 +25,57 @@
             {% for item in cart_items %}
             <tr>
               <td data-label="المنتج">
-                <div class="product">
+                <div class="sf-product-row">
                   {% if item.image_url %}<img src="{{ item.image_url }}" alt="{{ item.name }}" loading="lazy">{% endif %}
-                  <div>{{ item.name }}</div>
+                  <div>
+                    <strong>{{ item.name }}</strong>
+                    <small>المتوفر: {{ item.stock }}</small>
+                  </div>
                 </div>
               </td>
               <td data-label="السعر">{{ "{:,.0f}".format(item.price) }} د.ع</td>
-              <td data-label="الكمية"><input type="number" min="0" max="999" name="qty_{{ item.id }}" value="{{ item.quantity }}"></td>
+              <td data-label="الكمية">
+                <input class="sf-qty-input" type="number" min="0" max="{{ item.stock }}" name="qty_{{ item.id }}" value="{{ item.quantity }}">
+              </td>
               <td data-label="المجموع">{{ "{:,.0f}".format(item.line_total) }} د.ع</td>
               <td data-label="حذف">
-                <button class="btn danger" formaction="{{ url_for('storefront.cart_remove', tenant_slug=shop_tenant_slug, product_id=item.id) }}" formmethod="post" type="submit">حذف</button>
+                <button class="sf-btn danger" formaction="{{ url_for('storefront.cart_remove', tenant_slug=shop_tenant_slug, product_id=item.id, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.cart_remove', tenant_slug=shop_tenant_slug, product_id=item.id) }}" formmethod="post" type="submit">حذف</button>
               </td>
             </tr>
             {% endfor %}
           </tbody>
         </table>
-        <div style="padding:10px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-          <form method="post" action="{{ url_for('storefront.cart_coupon', tenant_slug=shop_tenant_slug) }}" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-            <input type="text" name="coupon_code" placeholder="كود الكوبون" value="{{ active_coupon }}" style="width:180px;">
-            <button class="btn" type="submit" name="action" value="apply">تطبيق الكوبون</button>
-            {% if active_coupon %}
-            <button class="btn danger" type="submit" name="action" value="remove">إزالة الكوبون</button>
-            {% endif %}
-          </form>
-        </div>
-        <div class="footer">
-          <div>
-            <div style="color:var(--muted);font-size:13px;">المجموع: {{ "{:,.0f}".format(subtotal) }} د.ع</div>
-            <div style="color:var(--muted);font-size:13px;">الخصم: -{{ "{:,.0f}".format(discount_amount) }} د.ع</div>
-            <div class="total">الصافي: {{ "{:,.0f}".format(net_subtotal) }} د.ع</div>
-          </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button class="btn" type="submit">تحديث السلة</button>
-            <a class="btn primary" href="{{ url_for('storefront.checkout_page', tenant_slug=shop_tenant_slug) }}">إكمال الطلب</a>
-          </div>
-        </div>
-      </form>
-      {% else %}
-      <div class="empty">
-        السلة فارغة حالياً.
-        <div style="margin-top:12px;"><a class="btn primary" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">تصفح المنتجات</a></div>
       </div>
-      {% endif %}
-    </div>
+      <div class="sf-cart-actions">
+        <button class="sf-btn ghost" type="submit">تحديث السلة</button>
+        <a class="sf-btn primary" href="{{ url_for('storefront.checkout_page', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.checkout_page', tenant_slug=shop_tenant_slug) }}">إكمال الطلب</a>
+      </div>
+    </form>
   </div>
-</body>
-</html>
+
+  <aside class="sf-card sf-summary">
+    <h2>ملخص السلة</h2>
+    <div class="sf-sum-row"><span>المجموع</span><strong>{{ "{:,.0f}".format(subtotal) }} د.ع</strong></div>
+    <div class="sf-sum-row"><span>الخصم</span><strong>-{{ "{:,.0f}".format(discount_amount) }} د.ع</strong></div>
+    <div class="sf-sum-row final"><span>الصافي</span><strong>{{ "{:,.0f}".format(net_subtotal) }} د.ع</strong></div>
+
+    <form id="sfCouponForm" class="sf-coupon" method="post" action="{{ url_for('storefront.cart_coupon', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.cart_coupon', tenant_slug=shop_tenant_slug) }}">
+      <label for="sfCoupon">كود الكوبون</label>
+      <div class="sf-coupon-row">
+        <input id="sfCoupon" type="text" name="coupon_code" placeholder="مثال: SAVE10" value="{{ active_coupon }}">
+        <button class="sf-btn ghost" type="submit" name="action" value="apply">تطبيق</button>
+      </div>
+      {% if active_coupon %}
+      <button class="sf-btn danger full" type="submit" name="action" value="remove">إزالة الكوبون</button>
+      {% endif %}
+    </form>
+  </aside>
+</section>
+{% else %}
+<div class="sf-empty">
+  <h2>السلة فارغة حالياً</h2>
+  <p>ابدأ بإضافة منتجاتك المفضلة، وسنحفظها هنا حتى إتمام الطلب.</p>
+  <a class="sf-btn primary" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">تصفح المنتجات</a>
+</div>
+{% endif %}
+{% endblock %}

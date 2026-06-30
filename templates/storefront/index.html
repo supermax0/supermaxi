@@ -1,161 +1,95 @@
-<!doctype html>
-<html lang="ar" dir="rtl">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>متجر المنتجات</title>
-  <style>
-    :root{color-scheme:dark;--bg:#071120;--line:rgba(148,163,184,.18);--text:#e5eefc;--muted:#9db0cb;--brand:{{ store_design.primary_color }};--shipping:{{ store_design.shipping_color }};--ok:#10b981;--warn:#f59e0b}
-    *{box-sizing:border-box}body{margin:0;font-family:Tahoma,Arial,sans-serif;background:radial-gradient(circle at top,#10213a 0%,var(--bg) 55%);color:var(--text)}
-    .page{max-width:1260px;margin:0 auto;padding:24px 16px 42px}.card{background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));border:1px solid var(--line);border-radius:20px}
-    .top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
-    .cart-link{display:inline-flex;gap:8px;align-items:center;padding:10px 14px;border-radius:12px;background:linear-gradient(135deg,var(--brand),#315ce3);color:#fff;text-decoration:none;font-weight:700}
-    .hero{display:grid;grid-template-columns:1.2fr .8fr;gap:14px;margin-bottom:14px}.hero-main{padding:22px}.hero-main h1{margin:0 0 8px;font-size:32px}.hero-main p{margin:0;color:var(--muted);line-height:1.8}
-    .stats{display:grid;gap:12px;grid-template-columns:1fr 1fr}.stat{padding:18px}.stat b{display:block;font-size:28px}.stat span{color:var(--muted);font-size:13px}
-    .filters{padding:14px;margin-bottom:16px}.filters form{display:grid;grid-template-columns:1.2fr repeat(5,minmax(120px,1fr));gap:10px}
-    input,select,button{width:100%;border-radius:12px;border:1px solid var(--line);padding:10px;background:rgba(255,255,255,.04);color:var(--text)}
-    button{background:linear-gradient(135deg,var(--brand),#315ce3);border-color:transparent;font-weight:700;cursor:pointer}
-    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
-    .p-card{overflow:hidden;display:flex;flex-direction:column;transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease}.p-card:hover{transform:translateY(-3px);border-color:color-mix(in srgb,var(--brand) 42%,transparent);box-shadow:0 18px 34px rgba(2,6,23,.28)}.media{aspect-ratio:1/1;background:linear-gradient(180deg,#0b1728,#071120);position:relative;display:grid;place-items:center;padding:10px}.media img{width:100%;height:100%;object-fit:contain;display:block;border-radius:14px}.badge{position:absolute;top:10px;right:10px;padding:5px 10px;border-radius:999px;background:color-mix(in srgb,var(--brand) 22%,rgba(2,6,23,.75));font-size:12px;backdrop-filter:blur(8px)}
-    .content{padding:14px;display:flex;flex-direction:column;gap:10px;flex:1}.title{font-size:17px;font-weight:700;text-decoration:none;color:var(--text)}.desc,.specs{color:var(--muted);font-size:13px;line-height:1.7}
-    .footer{margin-top:auto;display:flex;justify-content:space-between;align-items:center;gap:8px}.price{font-size:21px;font-weight:800}.price small{font-size:12px;color:var(--muted)}
-    .status{font-size:12px;color:var(--ok)}.status.out{color:var(--warn)} .row-actions{display:flex;gap:6px;flex-wrap:wrap}
-    .btn{display:inline-flex;padding:9px 10px;border-radius:10px;border:1px solid var(--line);text-decoration:none;color:var(--text);font-size:12px}
-    .btn.primary{background:linear-gradient(135deg,var(--brand),#315ce3);border-color:transparent;color:#fff}
-    .empty{text-align:center;padding:48px 20px;color:var(--muted);border:1px dashed var(--line);border-radius:20px}
-    body.store-card-compact .grid{grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}
-    body.store-card-compact .media{aspect-ratio:4/3}
-    body.store-card-compact .desc{display:none}
-    body.store-card-compact .content{gap:8px;padding:12px}
-    body.store-card-compact .title{font-size:15px}
-    body.store-card-showcase .grid{grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px}
-    body.store-card-showcase .p-card{border-radius:30px;background:linear-gradient(180deg,color-mix(in srgb,var(--brand) 10%,rgba(255,255,255,.04)),rgba(255,255,255,.018))}
-    body.store-card-showcase .media{aspect-ratio:1/1}
-    body.store-card-showcase .content{padding:18px;gap:12px}
-    body.store-card-showcase .title{font-size:20px}
-    body.store-card-showcase .price{font-size:24px}
-    body.store-card-minimal .p-card{border-radius:10px;background:transparent;border-color:rgba(148,163,184,.24);box-shadow:none}
-    body.store-card-minimal .content{padding:10px}
-    body.store-card-minimal .media{border-radius:8px;overflow:hidden}
-    body.store-card-bordered .p-card{border-width:2px;border-color:color-mix(in srgb,var(--brand) 38%, var(--line));}
-    body.store-card-overlay .media{aspect-ratio:1/1}
-    body.store-card-overlay .content{margin-top:-60px;background:linear-gradient(180deg,rgba(2,6,23,.04),rgba(2,6,23,.75));backdrop-filter:blur(5px)}
-    .quick-links{display:flex;gap:8px;flex-wrap:wrap}
-    .quick-link{padding:8px 12px;border-radius:10px;border:1px solid var(--line);text-decoration:none;color:var(--text);font-size:13px}
-    .section-title{display:flex;justify-content:space-between;align-items:center;margin:16px 0 10px}
-    @media (max-width:1020px){.filters form{grid-template-columns:repeat(2,minmax(120px,1fr))}.hero{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}}
-    @media (max-width:580px){.stats{grid-template-columns:1fr}.hero-main h1{font-size:27px}.filters form{grid-template-columns:1fr}}
-  </style>
-</head>
-<body class="store-card-{{ store_design.card_style }}">
-  <div class="page">
-    <div class="top">
-      <h2 style="margin:0;">متجر المنتجات</h2>
-      <div class="quick-links">
-        <a class="quick-link" href="{{ url_for('storefront.tracking_page', tenant_slug=shop_tenant_slug) }}">تتبع الطلب</a>
-        <a class="cart-link" href="{{ url_for('storefront.cart_page', tenant_slug=shop_tenant_slug) }}">السلة ({{ cart_count }})</a>
-      </div>
+{% extends "storefront/base.html" %}
+{% block title %}{{ store_design.store_name }} - المتجر{% endblock %}
+{% block content %}
+<section class="sf-hero">
+  <div class="sf-hero-main">
+    <span class="sf-eyebrow">متجر إلكتروني مرتبط بالمخزون</span>
+    <h1>{{ store_design.hero_title }}</h1>
+    <p>{{ store_design.hero_subtitle }}</p>
+    <div class="sf-hero-actions">
+      <a class="sf-btn primary" href="#sfProducts">تصفح المنتجات</a>
+      <a class="sf-btn ghost" href="{{ url_for('storefront.tracking_page', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.tracking_page', tenant_slug=shop_tenant_slug) }}">تتبع طلبك</a>
     </div>
-
-    <section class="hero">
-      <div class="card hero-main">
-        <h1>{{ store_design.hero_title }}</h1>
-        <p>{{ store_design.hero_subtitle }}</p>
-      </div>
-      <div class="stats">
-        <div class="card stat"><b>{{ products|length }}</b><span>منتج معروض</span></div>
-        <div class="card stat"><b>{{ products|selectattr('is_available')|list|length }}</b><span>منتج متوفر</span></div>
-      </div>
-    </section>
-
-    <section class="card filters">
-      <form method="get">
-        <input name="q" value="{{ filters.q }}" placeholder="بحث باسم المنتج أو الوصف">
-        <input type="number" name="min_price" min="0" value="{{ filters.min_price }}" placeholder="أقل سعر">
-        <input type="number" name="max_price" min="0" value="{{ filters.max_price }}" placeholder="أعلى سعر">
-        <select name="availability">
-          <option value="all" {% if filters.availability == 'all' %}selected{% endif %}>كل الحالات</option>
-          <option value="in_stock" {% if filters.availability == 'in_stock' %}selected{% endif %}>متوفر</option>
-          <option value="out_stock" {% if filters.availability == 'out_stock' %}selected{% endif %}>غير متوفر</option>
-        </select>
-        <select name="badge">
-          <option value="">كل التصنيفات</option>
-          {% for b in badges %}
-          <option value="{{ b }}" {% if filters.badge == b %}selected{% endif %}>{{ b }}</option>
-          {% endfor %}
-        </select>
-        <select name="sort">
-          <option value="latest" {% if filters.sort == 'latest' %}selected{% endif %}>الأحدث</option>
-          <option value="price_asc" {% if filters.sort == 'price_asc' %}selected{% endif %}>السعر: الأقل</option>
-          <option value="price_desc" {% if filters.sort == 'price_desc' %}selected{% endif %}>السعر: الأعلى</option>
-          <option value="name_asc" {% if filters.sort == 'name_asc' %}selected{% endif %}>الاسم</option>
-        </select>
-        <button type="submit">تطبيق</button>
-      </form>
-    </section>
-
-    {% if featured_products %}
-    <div class="section-title">
-      <h3 style="margin:0;">منتجات مميزة</h3>
-      <small style="color:var(--muted);">مختارة تلقائياً من أحدث المنتجات</small>
-    </div>
-    <section class="grid">
-      {% for product in featured_products %}
-      <article class="card p-card">
-        <a class="media" href="{{ product.url }}">
-          {% if product.image_url %}<img src="{{ product.image_url }}" alt="{{ product.name }}" loading="lazy">{% else %}<div style="display:grid;place-items:center;height:100%;color:var(--muted)">لا توجد صورة</div>{% endif %}
-          {% if product.badge %}<span class="badge">{{ product.badge }}</span>{% endif %}
-        </a>
-        <div class="content">
-          <a class="title" href="{{ product.url }}">{{ product.name }}</a>
-          <div class="desc">{{ product.description or "منتج بجودة عالية وتفاصيل واضحة." }}</div>
-          <div class="footer">
-            <div><div class="price">{{ "{:,.0f}".format(product.price) }} <small>د.ع</small></div></div>
-            <form method="post" action="{{ url_for('storefront.cart_add', tenant_slug=shop_tenant_slug, product_id=product.id) }}"><input type="hidden" name="quantity" value="1"><input type="hidden" name="next" value="{{ request.full_path }}"><button class="btn primary" type="submit" {% if not product.is_available %}disabled{% endif %}>أضف للسلة</button></form>
-          </div>
-        </div>
-      </article>
-      {% endfor %}
-    </section>
-    {% endif %}
-
-    {% if products %}
-    <div class="section-title">
-      <h3 style="margin:0;">كل المنتجات</h3>
-      <small style="color:var(--muted);">{{ products|length }} عنصر</small>
-    </div>
-    <section class="grid">
-      {% for product in products %}
-      <article class="card p-card">
-        <a class="media" href="{{ product.url }}">
-          {% if product.image_url %}<img src="{{ product.image_url }}" alt="{{ product.name }}" loading="lazy">{% else %}<div style="display:grid;place-items:center;height:100%;color:var(--muted)">لا توجد صورة</div>{% endif %}
-          {% if product.badge %}<span class="badge">{{ product.badge }}</span>{% endif %}
-        </a>
-        <div class="content">
-          <a class="title" href="{{ product.url }}">{{ product.name }}</a>
-          <div class="desc">{{ product.description or "منتج بجودة عالية وتفاصيل واضحة." }}</div>
-          <div class="specs">{{ product.short_specs or "تفاصيل إضافية داخل صفحة المنتج." }}</div>
-          <div class="footer">
-            <div>
-              <div class="price">{{ "{:,.0f}".format(product.price) }} <small>د.ع</small></div>
-              <div class="status {{ '' if product.is_available else 'out' }}">{{ "متوفر" if product.is_available else "غير متوفر" }}</div>
-            </div>
-            <div class="row-actions">
-              <a class="btn" href="{{ product.url }}">التفاصيل</a>
-              <form method="post" action="{{ url_for('storefront.cart_add', tenant_slug=shop_tenant_slug, product_id=product.id) }}">
-                <input type="hidden" name="quantity" value="1">
-                <input type="hidden" name="next" value="{{ request.full_path }}">
-                <button class="btn primary" type="submit" {% if not product.is_available %}disabled{% endif %}>أضف للسلة</button>
-              </form>
-            </div>
-          </div>
-        </div>
-      </article>
-      {% endfor %}
-    </section>
-    {% else %}
-      <div class="empty">لا توجد منتجات مطابقة للفلاتر الحالية.</div>
-    {% endif %}
   </div>
-</body>
-</html>
+  <div class="sf-hero-panel">
+    <div class="sf-stat"><b>{{ products|length }}</b><span>منتج معروض</span></div>
+    <div class="sf-stat"><b>{{ products|selectattr('is_available')|list|length }}</b><span>متوفر الآن</span></div>
+    <div class="sf-stat wide"><b>COD</b><span>الدفع عند الاستلام</span></div>
+  </div>
+</section>
+
+<section class="sf-card sf-filters" aria-label="فلترة المنتجات">
+  <form method="get">
+    {% if request.args.get('dev') %}<input type="hidden" name="dev" value="1">{% endif %}
+    <div class="sf-field search">
+      <label for="sfSearch">بحث</label>
+      <input id="sfSearch" name="q" value="{{ filters.q }}" placeholder="اسم المنتج أو الوصف">
+    </div>
+    <div class="sf-field">
+      <label for="sfMinPrice">أقل سعر</label>
+      <input id="sfMinPrice" type="number" name="min_price" min="0" value="{{ filters.min_price }}" placeholder="0">
+    </div>
+    <div class="sf-field">
+      <label for="sfMaxPrice">أعلى سعر</label>
+      <input id="sfMaxPrice" type="number" name="max_price" min="0" value="{{ filters.max_price }}" placeholder="0">
+    </div>
+    <div class="sf-field">
+      <label for="sfAvailability">التوفر</label>
+      <select id="sfAvailability" name="availability">
+        <option value="all" {% if filters.availability == 'all' %}selected{% endif %}>كل الحالات</option>
+        <option value="in_stock" {% if filters.availability == 'in_stock' %}selected{% endif %}>متوفر</option>
+        <option value="out_stock" {% if filters.availability == 'out_stock' %}selected{% endif %}>غير متوفر</option>
+      </select>
+    </div>
+    <div class="sf-field">
+      <label for="sfBadge">التصنيف</label>
+      <select id="sfBadge" name="badge">
+        <option value="">كل التصنيفات</option>
+        {% for b in badges %}
+        <option value="{{ b }}" {% if filters.badge == b %}selected{% endif %}>{{ b }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="sf-field">
+      <label for="sfSort">الترتيب</label>
+      <select id="sfSort" name="sort">
+        <option value="latest" {% if filters.sort == 'latest' %}selected{% endif %}>الأحدث</option>
+        <option value="price_asc" {% if filters.sort == 'price_asc' %}selected{% endif %}>السعر: الأقل</option>
+        <option value="price_desc" {% if filters.sort == 'price_desc' %}selected{% endif %}>السعر: الأعلى</option>
+        <option value="name_asc" {% if filters.sort == 'name_asc' %}selected{% endif %}>الاسم</option>
+      </select>
+    </div>
+    <button class="sf-btn primary" type="submit">تطبيق</button>
+  </form>
+</section>
+
+{% if featured_products %}
+<section class="sf-section">
+  <div class="sf-section-title">
+    <h2>منتجات مميزة</h2>
+    <span>مختارة من أحدث المنتجات</span>
+  </div>
+  <div class="sf-grid">
+    {% for product in featured_products %}
+    {% include "storefront/partials/product_card.html" %}
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section class="sf-section" id="sfProducts">
+  <div class="sf-section-title">
+    <h2>كل المنتجات</h2>
+    <span>{{ products|length }} عنصر</span>
+  </div>
+  {% if products %}
+  <div class="sf-grid">
+    {% for product in products %}
+    {% include "storefront/partials/product_card.html" %}
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="sf-empty">لا توجد منتجات مطابقة للفلاتر الحالية.</div>
+  {% endif %}
+</section>
+{% endblock %}

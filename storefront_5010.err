@@ -1,0 +1,53 @@
+[2026-06-30 23:01:08,280] WARNING in app: BOT_TOKEN / TELEGRAM_BOT_TOKEN not set; Telegram bot will not send replies. Set in systemd Environment= or .env.
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5010
+ * Running on http://192.168.1.111:5010
+Press CTRL+C to quit
+127.0.0.1 - - [30/Jun/2026 23:01:22] "GET /shop/alnoor/ HTTP/1.1" 200 -
+127.0.0.1 - - [30/Jun/2026 23:02:25] "GET /shop/alnoor/ HTTP/1.1" 200 -
+127.0.0.1 - - [30/Jun/2026 23:02:25] "GET /static/storefront/css/store.css HTTP/1.1" 200 -
+127.0.0.1 - - [30/Jun/2026 23:02:25] "GET /static/storefront/js/store.js HTTP/1.1" 200 -
+127.0.0.1 - - [30/Jun/2026 23:02:25] "GET /favicon.ico HTTP/1.1" 302 -
+127.0.0.1 - - [30/Jun/2026 23:02:25] "GET /login HTTP/1.1" 200 -
+127.0.0.1 - - [30/Jun/2026 23:02:38] "GET /shop/alnoor/ HTTP/1.1" 200 -
+127.0.0.1 - - [30/Jun/2026 23:02:38] "GET /static/storefront/css/store.css HTTP/1.1" 304 -
+127.0.0.1 - - [30/Jun/2026 23:02:38] "GET /static/storefront/js/store.js HTTP/1.1" 304 -
+127.0.0.1 - - [30/Jun/2026 23:02:38] "GET /favicon.ico HTTP/1.1" 302 -
+127.0.0.1 - - [30/Jun/2026 23:02:38] "GET /login HTTP/1.1" 200 -
+127.0.0.1 - - [30/Jun/2026 23:02:46] "GET /shop/alnoor/track HTTP/1.1" 200 -
+127.0.0.1 - - [30/Jun/2026 23:02:46] "GET /static/storefront/css/store.css HTTP/1.1" 304 -
+127.0.0.1 - - [30/Jun/2026 23:02:46] "GET /static/storefront/js/store.js HTTP/1.1" 304 -
+127.0.0.1 - - [30/Jun/2026 23:02:46] "GET /favicon.ico HTTP/1.1" 302 -
+127.0.0.1 - - [30/Jun/2026 23:02:46] "GET /login HTTP/1.1" 200 -
+127.0.0.1 - - [30/Jun/2026 23:02:47] "GET /shop/alnoor/ HTTP/1.1" 200 -
+127.0.0.1 - - [30/Jun/2026 23:02:47] "GET /static/storefront/css/store.css HTTP/1.1" 304 -
+127.0.0.1 - - [30/Jun/2026 23:02:47] "GET /static/storefront/js/store.js HTTP/1.1" 304 -
+127.0.0.1 - - [30/Jun/2026 23:02:47] "GET /favicon.ico HTTP/1.1" 302 -
+127.0.0.1 - - [30/Jun/2026 23:02:47] "GET /login HTTP/1.1" 200 -
+127.0.0.1 - - [30/Jun/2026 23:02:48] "GET /shop/alnoor/cart HTTP/1.1" 200 -
+127.0.0.1 - - [30/Jun/2026 23:02:48] "GET /static/storefront/css/store.css HTTP/1.1" 304 -
+127.0.0.1 - - [30/Jun/2026 23:02:48] "GET /static/storefront/js/store.js HTTP/1.1" 304 -
+127.0.0.1 - - [30/Jun/2026 23:02:48] "GET /favicon.ico HTTP/1.1" 302 -
+127.0.0.1 - - [30/Jun/2026 23:02:48] "GET /login HTTP/1.1" 200 -
+127.0.0.1 - - [30/Jun/2026 23:02:49] "GET /shop/alnoor/track HTTP/1.1" 200 -
+127.0.0.1 - - [30/Jun/2026 23:02:49] "GET /static/storefront/css/store.css HTTP/1.1" 304 -
+127.0.0.1 - - [30/Jun/2026 23:02:49] "GET /static/storefront/js/store.js HTTP/1.1" 304 -
+127.0.0.1 - - [30/Jun/2026 23:02:49] "GET /favicon.ico HTTP/1.1" 302 -
+127.0.0.1 - - [30/Jun/2026 23:02:49] "GET /login HTTP/1.1" 200 -
+127.0.0.1 - - [30/Jun/2026 23:02:52] "GET /shop/alnoor/track HTTP/1.1" 200 -
+127.0.0.1 - - [30/Jun/2026 23:02:52] "GET /static/storefront/css/store.css HTTP/1.1" 304 -
+127.0.0.1 - - [30/Jun/2026 23:02:52] "GET /static/storefront/js/store.js HTTP/1.1" 304 -
+127.0.0.1 - - [30/Jun/2026 23:02:52] "GET /favicon.ico HTTP/1.1" 302 -
+127.0.0.1 - - [30/Jun/2026 23:02:52] "GET /login HTTP/1.1" 200 -
+127.0.0.1 - - [30/Jun/2026 23:02:52] "GET /shop/alnoor/ HTTP/1.1" 200 -
+127.0.0.1 - - [30/Jun/2026 23:02:52] "GET /static/storefront/css/store.css HTTP/1.1" 304 -
+127.0.0.1 - - [30/Jun/2026 23:02:52] "GET /static/storefront/js/store.js HTTP/1.1" 304 -
+127.0.0.1 - - [30/Jun/2026 23:02:52] "GET /favicon.ico HTTP/1.1" 302 -
+127.0.0.1 - - [30/Jun/2026 23:02:52] "GET /login HTTP/1.1" 200 -
+127.0.0.1 - - [30/Jun/2026 23:03:02] "GET /shop/supermax/ HTTP/1.1" 200 -
+127.0.0.1 - - [30/Jun/2026 23:03:02] "GET /static/storefront/js/store.js HTTP/1.1" 304 -
+127.0.0.1 - - [30/Jun/2026 23:03:02] "GET /static/storefront/css/store.css HTTP/1.1" 304 -
+127.0.0.1 - - [30/Jun/2026 23:03:03] "GET /favicon.ico HTTP/1.1" 302 -
+127.0.0.1 - - [30/Jun/2026 23:03:03] "GET /login HTTP/1.1" 200 -
+127.0.0.1 - - [30/Jun/2026 23:03:08] "POST /shop/supermax/api/cart/add HTTP/1.1" 200 -

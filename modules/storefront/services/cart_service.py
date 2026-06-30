@@ -48,6 +48,23 @@ class StorefrontCartService:
         cart[str(product_id)] = current_qty + max(1, min(quantity, 999))
         self.save_cart_raw(cart)
 
+    def try_add(self, product_id: int, quantity: int = 1) -> tuple[bool, str]:
+        product = Product.query.get(product_id)
+        if not product or not product.active:
+            return False, "المنتج غير متاح."
+        available = max(0, self._safe_int(product.quantity, 0))
+        requested = max(1, min(self._safe_int(quantity, 1), 999))
+        current_qty = self._safe_int(self.cart_raw().get(str(product_id)), 0)
+        if available <= 0:
+            return False, "هذا المنتج غير متوفر حالياً."
+        if current_qty + requested > available:
+            remaining = max(0, available - current_qty)
+            if remaining <= 0:
+                return False, "وصلت للحد المتاح من هذا المنتج في السلة."
+            return False, f"الكمية المتاحة للإضافة هي {remaining} فقط."
+        self.add(product_id, requested)
+        return True, "تمت الإضافة إلى السلة."
+
     def update_quantities(self, updates: dict[int, int]) -> None:
         cart = self.cart_raw()
         for pid, qty in updates.items():
@@ -56,6 +73,28 @@ class StorefrontCartService:
             else:
                 cart[str(pid)] = max(1, min(qty, 999))
         self.save_cart_raw(cart)
+
+    def try_update_quantities(self, updates: dict[int, int]) -> tuple[bool, str]:
+        if not updates:
+            return True, "تم تحديث السلة."
+        product_ids = [pid for pid in updates.keys() if pid > 0]
+        products = Product.query.filter(Product.id.in_(product_ids), Product.active == True).all()  # noqa: E712
+        product_by_id = {product.id: product for product in products}
+        clean: dict[int, int] = {}
+        for pid, qty in updates.items():
+            qty = max(0, min(self._safe_int(qty, 0), 999))
+            if qty <= 0:
+                clean[pid] = 0
+                continue
+            product = product_by_id.get(pid)
+            if not product:
+                return False, "أحد منتجات السلة لم يعد متاحاً."
+            available = max(0, self._safe_int(product.quantity, 0))
+            if qty > available:
+                return False, f"المنتج {product.name}: الكمية المتاحة {available} فقط."
+            clean[pid] = qty
+        self.update_quantities(clean)
+        return True, "تم تحديث السلة."
 
     def remove(self, product_id: int) -> None:
         cart = self.cart_raw()

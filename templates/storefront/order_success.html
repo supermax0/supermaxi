@@ -1,0 +1,24 @@
+{% extends "storefront/base.html" %}
+{% block title %}تم الطلب - {{ store_design.store_name }}{% endblock %}
+{% block content %}
+<section class="sf-success">
+  <div class="sf-card sf-success-card">
+    <span class="sf-success-mark">✓</span>
+    <span class="sf-eyebrow">تم استلام الطلب</span>
+    <h1>طلبك وصل بنجاح</h1>
+    <p>سنراجع الطلب ونجهزه للتوصيل. احتفظ برقم الطلب لاستخدامه في التتبع.</p>
+    <div class="sf-success-grid">
+      <div><span>رقم الطلب</span><strong>#{{ order.invoice_id }}</strong></div>
+      <div><span>الإجمالي</span><strong>{{ "{:,.0f}".format(order.grand_total) }} د.ع</strong></div>
+      <div><span>الاسم</span><strong>{{ order.customer_name }}</strong></div>
+    </div>
+    <div class="sf-success-actions">
+      {% if track_url %}
+      <a class="sf-btn primary" href="{{ track_url }}" target="_blank" rel="noopener">تتبع الطلب</a>
+      {% endif %}
+      <a class="sf-btn ghost" href="{{ url_for('storefront.tracking_page', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.tracking_page', tenant_slug=shop_tenant_slug) }}">تتبع برقم الطلب</a>
+      <a class="sf-btn ghost" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">مواصلة التسوق</a>
+    </div>
+  </div>
+</section>
+{% endblock %}
