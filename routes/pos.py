@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, request, jsonify, session, redirect, g
+from jinja2 import TemplateNotFound
 from extensions import db
 from datetime import datetime
 
@@ -12,6 +13,11 @@ from utils.product_schema_guard import ensure_customer_blacklist_columns, ensure
 from utils.customer_blacklist import is_phone_blacklisted_for_new_customer
 
 pos_bp = Blueprint("pos", __name__, url_prefix="/pos")
+
+
+def _should_use_dev_ui():
+    """Dev UI switch: isolated White Pro redesign via ?dev=1."""
+    return request.args.get("dev") == "1"
 
 
 @pos_bp.before_request
@@ -129,17 +135,33 @@ def pos():
             print(f"Warning: order_data not JSON serializable, setting to None: {e}")
             order_data = None
     
-    return render_template(
-        "pos.html",
+    cash_balance = 0
+    try:
+        from utils.cash_calculations import calculate_cash_balance
+        cash_balance = calculate_cash_balance()
+    except Exception:
+        pass
+
+    ctx = dict(
         products=products,
         customers=customers,
         cashier_name=session.get("name"),
-        role=session.get("role"),  # مهم
-        employee=employee,  # للمندوبين
-        pages=pages,  # البيجات التابعة للموظف
-        can_edit_price=can_edit_price,  # صلاحية تعديل السعر
-        order_data=order_data  # بيانات الطلب للتعديل (dict أو None فقط)
+        role=session.get("role"),
+        employee=employee,
+        pages=pages,
+        can_edit_price=can_edit_price,
+        order_data=order_data,
+        cash_balance=cash_balance,
+        company_name=session.get("tenant_slug") or session.get("name") or "Finora",
     )
+
+    if _should_use_dev_ui():
+        try:
+            return render_template("pos_dev/pos.html", **ctx)
+        except TemplateNotFound:
+            pass
+
+    return render_template("pos.html", **ctx)
 
 
 # =================================================
