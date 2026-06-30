@@ -370,8 +370,12 @@
 
   </div>
 
-  <!-- Mobile fixed footer: total + actions -->
+  <!-- Mobile fixed footer: discount + total + actions -->
   <div class="pos-mobile-fixed-bar pos-mobile-only">
+    <button type="button" class="pos-mobile-discount-row" onclick="PosWP.openDiscountModal()">
+      <span class="pos-mobile-discount-label"><i class="fas fa-tag"></i> خصم</span>
+      <span id="summaryDiscountFixed">0 د.ع</span>
+    </button>
     <div class="pos-mobile-fixed-total">
       <span>الإجمالي</span>
       <strong id="summaryTotalFixed">0 د.ع</strong>
@@ -387,6 +391,24 @@
   </div>
 
   <div id="posToast" class="pos-toast"></div>
+
+  <!-- Discount modal (mobile + shared) -->
+  <div id="discountModal" class="pos-modal">
+    <div class="pos-modal-content">
+      <div class="pos-modal-header">
+        <span><i class="fas fa-tag"></i> إضافة خصم</span>
+        <button type="button" class="pos-modal-close" onclick="PosWP.closeDiscountModal()">&times;</button>
+      </div>
+      <label class="pos-field-label">مبلغ الخصم الثابت (د.ع)</label>
+      <div class="pos-modal-form">
+        <input type="number" id="discountModalInput" class="pos-input" min="0" step="1" placeholder="0">
+      </div>
+      <div class="pos-modal-actions">
+        <button type="button" class="pos-btn-secondary" onclick="PosWP.closeDiscountModal()">إلغاء</button>
+        <button type="button" class="pos-btn-primary" onclick="PosWP.confirmDiscount()">تطبيق الخصم</button>
+      </div>
+    </div>
+  </div>
 
 
 

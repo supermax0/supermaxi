@@ -121,6 +121,8 @@
     set("summaryShipping", fmt(ship) + " د.ع");
     set("summaryTotal", fmt(total) + " د.ع");
     set("summaryTotalFixed", fmt(total) + " د.ع");
+    set("summaryDiscountFixed", disc > 0 ? "−" + fmt(disc) + " د.ع" : "0 د.ع");
+    document.querySelector(".pos-mobile-discount-row")?.classList.toggle("has-discount", disc > 0);
     const tp = $("totalPrice");
     if (tp) tp.textContent = fmt(total);
     updateStats();
@@ -167,17 +169,14 @@
     const mobileHtml = items.map((i, idx) => {
       const t = (i.price || 0) * (i.qty || 0);
       return `<div class="pos-cart-mobile-item">
-        ${cartThumbHtml(i)}
-        <div class="pos-cart-mobile-item-body">
-          <div class="pos-cart-mobile-item-top">
-            <div>
-              <div class="pos-cart-mobile-item-name">${i.name}</div>
-              ${i.sku ? `<div class="pos-cart-sku">${i.sku}</div>` : ""}
-            </div>
-            <button type="button" class="pos-btn-remove pos-btn-remove--sm" onclick="PosWP.removeItem(${idx})"><i class="fas fa-trash-alt"></i></button>
+        <div class="pos-cart-mobile-thumb-wrap">${cartThumbHtml(i)}</div>
+        <div class="pos-cart-mobile-main">
+          <div class="pos-cart-mobile-item-name">${i.name}</div>
+          <div class="pos-cart-mobile-meta">
+            ${i.sku ? `<span class="pos-cart-sku">${i.sku}</span>` : "<span></span>"}
+            <span class="pos-cart-mobile-unit">${fmt(i.price)} د.ع</span>
           </div>
-          <div class="pos-cart-mobile-item-bottom">
-            <span class="pos-cart-mobile-price">${fmt(i.price)} د.ع</span>
+          <div class="pos-cart-mobile-controls">
             <div class="pos-qty-stepper pos-qty-stepper--sm">
               <button type="button" class="pos-qty-btn" onclick="PosWP.updateQty(${idx},-1)">−</button>
               <span class="pos-qty-value">${i.qty}</span>
@@ -186,6 +185,7 @@
             <span class="pos-cart-line-total">${fmt(t)} د.ع</span>
           </div>
         </div>
+        <button type="button" class="pos-btn-remove pos-btn-remove--sm" onclick="PosWP.removeItem(${idx})" title="حذف"><i class="fas fa-trash-alt"></i></button>
       </div>`;
     }).join("");
 
@@ -885,6 +885,34 @@
     }
   }
 
+  function openDiscountModal() {
+    discountType = "amount";
+    const dt = $("discountType");
+    if (dt) dt.value = "amount";
+    const input = $("discountModalInput");
+    if (input) input.value = Number(discountValue) || 0;
+    $("discountModal")?.classList.add("show");
+    input?.focus();
+  }
+
+  function closeDiscountModal() {
+    $("discountModal")?.classList.remove("show");
+  }
+
+  function confirmDiscount() {
+    const input = $("discountModalInput");
+    const val = Math.max(0, parseInt(input?.value, 10) || 0);
+    discountType = "amount";
+    discountValue = val;
+    const dv = $("discountValue");
+    if (dv) dv.value = val;
+    const dt = $("discountType");
+    if (dt) dt.value = "amount";
+    updateSummary();
+    closeDiscountModal();
+    toast(val > 0 ? "تم تطبيق خصم " + fmt(val) + " د.ع" : "تم إلغاء الخصم");
+  }
+
   function initDiscountShipping() {
     $("discountType")?.addEventListener("change", (e) => {
       discountType = e.target.value;
@@ -907,6 +935,7 @@
         $("searchProduct")?.focus();
       }
       if (e.key === "Escape") {
+        closeDiscountModal();
         closeOrderNotesModal();
         closeScheduleModal();
         closeClearCartDialog();
@@ -988,6 +1017,9 @@
     confirmOCR,
     closeOCR,
     clearProductSearch,
+    openDiscountModal,
+    closeDiscountModal,
+    confirmDiscount,
     toggleStockFilter,
     focusBarcode,
     prevPage,

@@ -1026,7 +1026,7 @@ body.pos-white-pro {
   body.pos-white-pro { font-size: 12px; }
 
   .pos-app {
-    padding: 0 8px calc(72px + env(safe-area-inset-bottom));
+    padding: 0 8px calc(108px + env(safe-area-inset-bottom));
   }
 
   .pos-desktop-only { display: none !important; }
@@ -1060,12 +1060,34 @@ body.pos-white-pro {
   .pos-block-search { order: 2; }
   .pos-block-cart { order: 3; }
 
-  .pos-block-customer,
-  .pos-block-search,
+  /* Customer + search as one visual card */
+  .pos-block-customer {
+    border-radius: 10px 10px 0 0;
+    margin-bottom: 0;
+    border-bottom: none;
+    padding-bottom: 4px;
+  }
+
+  .pos-block-search {
+    border-radius: 0 0 10px 10px;
+    margin-bottom: 0;
+    border-top: 1px dashed var(--border);
+    padding-top: 4px;
+  }
+
   .pos-block-cart {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 10px;
+    padding: 8px;
+    box-shadow: none;
+    margin-top: 6px;
+  }
+
+  .pos-block-customer,
+  .pos-block-search {
+    background: var(--surface);
+    border: 1px solid var(--border);
     padding: 8px;
     box-shadow: none;
   }
@@ -1115,52 +1137,71 @@ body.pos-white-pro {
   .pos-cart-mobile-item {
     display: flex;
     gap: 8px;
-    align-items: flex-start;
+    align-items: stretch;
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 6px 8px;
+    padding: 8px;
     margin-bottom: 6px;
     background: var(--surface-soft);
   }
 
+  .pos-cart-mobile-thumb-wrap {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+  }
+
   .pos-cart-mobile-item .pos-cart-thumb,
   .pos-cart-mobile-item .pos-cart-thumb--placeholder {
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
     border-radius: 6px;
     flex-shrink: 0;
     font-size: 12px;
+    object-fit: cover;
   }
 
-  .pos-cart-mobile-item-body { flex: 1; min-width: 0; }
-
-  .pos-cart-mobile-item-top {
+  .pos-cart-mobile-main {
+    flex: 1;
+    min-width: 0;
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
+    flex-direction: column;
     gap: 4px;
-    margin-bottom: 4px;
   }
 
   .pos-cart-mobile-item-name {
     font-weight: 700;
     font-size: 12px;
-    line-height: 1.3;
+    line-height: 1.35;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
-  .pos-cart-sku { font-size: 10px; }
-
-  .pos-cart-mobile-item-bottom {
+  .pos-cart-mobile-meta {
     display: flex;
-    align-items: center;
     justify-content: space-between;
+    align-items: center;
     gap: 6px;
   }
 
-  .pos-cart-mobile-price {
-    font-size: 11px;
+  .pos-cart-sku {
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+
+  .pos-cart-mobile-unit {
+    font-size: 10px;
     color: var(--text-secondary);
     white-space: nowrap;
+  }
+
+  .pos-cart-mobile-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 2px;
   }
 
   .pos-cart-line-total {
@@ -1183,17 +1224,12 @@ body.pos-white-pro {
   }
 
   .pos-btn-remove--sm {
-    width: 24px;
-    height: 24px;
+    width: 28px;
+    height: 28px;
     font-size: 11px;
     flex-shrink: 0;
-  }
-
-  .pos-empty--compact {
-    padding: 12px;
-    font-size: 12px;
-    color: var(--text-muted);
-    text-align: center;
+    align-self: center;
+    margin-right: -2px;
   }
 
   /* Fixed bottom bar */
@@ -1203,12 +1239,63 @@ body.pos-white-pro {
     left: 0;
     right: 0;
     z-index: 200;
+    display: flex;
     flex-direction: column;
     gap: 0;
     background: var(--surface);
     border-top: 1px solid var(--border);
     box-shadow: 0 -4px 16px rgba(16, 24, 40, 0.08);
     padding: 6px 10px calc(6px + env(safe-area-inset-bottom));
+  }
+
+  .pos-mobile-discount-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 6px 2px;
+    margin: 0;
+    border: none;
+    border-bottom: 1px dashed var(--border);
+    background: transparent;
+    font-family: inherit;
+    font-size: 13px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    text-align: inherit;
+  }
+
+  .pos-mobile-discount-row:active {
+    background: var(--surface-soft);
+  }
+
+  .pos-mobile-discount-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    color: var(--primary);
+  }
+
+  .pos-mobile-discount-label i {
+    font-size: 11px;
+  }
+
+  #summaryDiscountFixed {
+    font-weight: 500;
+    color: var(--text-muted);
+  }
+
+  .pos-mobile-discount-row.has-discount #summaryDiscountFixed {
+    font-weight: 700;
+    color: var(--danger, #c0392b);
+  }
+
+  .pos-empty--compact {
+    padding: 12px;
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: center;
   }
 
   .pos-mobile-fixed-total {
