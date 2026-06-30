@@ -415,6 +415,113 @@
     padding: 18px;
   }
 
+  /* Unified dashboard modals */
+  .finora-dash-modal {
+    padding: 16px;
+    align-items: center;
+  }
+
+  .finora-dash-modal__panel {
+    width: min(100%, 920px);
+    max-height: min(92vh, 880px);
+    display: flex;
+    flex-direction: column;
+    background: var(--card, #fff);
+    border: 1px solid var(--border-light);
+    border-radius: 16px;
+    box-shadow: 0 24px 48px rgba(15, 23, 42, 0.18);
+    animation: slideUp 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+  }
+
+  .finora-dash-modal__panel--narrow {
+    max-width: 520px;
+  }
+
+  .finora-dash-modal__panel--wide {
+    max-width: min(100%, 960px);
+  }
+
+  .finora-dash-modal__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border-light);
+    flex-shrink: 0;
+  }
+
+  .finora-dash-modal__head h3,
+  .finora-dash-modal__head h2 {
+    margin: 0;
+    padding: 0;
+    border: none;
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--dashboard-text, var(--text));
+  }
+
+  .finora-dash-modal__close {
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    background: var(--card-alt, rgba(15, 23, 42, 0.06));
+    color: var(--dashboard-text, var(--text));
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .finora-dash-modal__body {
+    padding: 14px 16px 16px;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .finora-dash-modal__footer {
+    display: flex;
+    gap: 10px;
+    padding: 12px 16px 16px;
+    border-top: 1px solid var(--border-light);
+    flex-shrink: 0;
+  }
+
+  .finora-dash-modal__footer .btn {
+    flex: 1;
+    min-height: 42px;
+    justify-content: center;
+  }
+
+  @media (max-width: 768px) {
+    .finora-dash-modal {
+      padding: 0;
+      align-items: flex-end;
+    }
+
+    .finora-dash-modal__panel {
+      width: 100%;
+      max-height: 94vh;
+      border-radius: 16px 16px 0 0;
+      border-bottom: none;
+    }
+
+    .finora-dash-modal__head {
+      padding: 12px 14px;
+    }
+
+    .finora-dash-modal__body {
+      padding: 12px 14px 14px;
+    }
+  }
+
   @keyframes slideUp {
     from {
       opacity: 0;
@@ -448,6 +555,27 @@
     font-size: 14px;
     margin-bottom: 12px;
     transition: all 0.3s ease;
+  }
+
+  .finora-dash-modal select,
+  .finora-dash-modal textarea {
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(15, 23, 42, 0.6);
+    color: var(--dashboard-text);
+    font-size: 16px;
+    margin-bottom: 12px;
+    transition: all 0.3s ease;
+    font-family: inherit;
+  }
+
+  :root[data-theme="light"] .finora-dash-modal select,
+  :root[data-theme="light"] .finora-dash-modal textarea {
+    background: #fff;
+    border: 1px solid var(--border-light);
+    color: var(--text);
   }
 
   :root[data-theme="light"] .modal input {
@@ -595,24 +723,18 @@
   /* =======================
    PROFIT MODAL (Enhanced)
 ======================= */
-  #profitModal .card {
+  #profitModal .finora-dash-modal__panel {
+    max-width: min(100%, 720px);
+  }
+
+  #profitModal .profit-modal-body {
     text-align: center;
-    max-width: 800px;
-    width: 95%;
   }
 
-  #profitModal h2 {
-    color: var(--dashboard-text);
-    font-size: 24px;
-    margin-bottom: 24px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  }
-
-  #profitModal h1 {
-    font-size: 56px;
+  #profitModal #profitBig {
+    font-size: clamp(36px, 8vw, 56px);
     color: var(--dashboard-success);
-    margin: 20px 0;
+    margin: 8px 0 16px;
     font-weight: 700;
     background: linear-gradient(135deg, var(--dashboard-success), #22d3ee);
     -webkit-background-clip: text;
@@ -621,8 +743,8 @@
   }
 
   #profitChartContainer {
-    margin: 30px 0;
-    height: 300px;
+    margin: 0;
+    height: min(40vh, 280px);
     position: relative;
   }
 
@@ -807,42 +929,99 @@
   }
 
   /* =======================
-   SEARCH MODAL OPTIMIZATION
+   SEARCH MODAL
    ======================= */
-  .search-bar-integrated {
+  .search-toolbar {
     display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
+    gap: 8px;
+    align-items: stretch;
+    margin-bottom: 10px;
   }
 
-  .search-bar-integrated input {
-    margin-bottom: 0 !important;
+  .search-toolbar input {
     flex: 1;
+    min-width: 0;
+    margin-bottom: 0 !important;
+    min-height: 42px;
+    font-size: 16px;
   }
 
-  .search-bar-integrated .btn {
+  .search-toolbar .btn {
+    flex-shrink: 0;
+    min-height: 42px;
     padding: 0 16px;
-    height: 44px;
-    /* Matches input height */
+    white-space: nowrap;
   }
 
-  .search-actions-row {
+  .search-toolbar-actions {
+    display: none;
+  }
+
+  .search-modal-footer {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-    margin-bottom: 20px;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
   }
 
-  .search-action-btn {
+  .search-modal-footer .search-action-btn {
     width: 100%;
     justify-content: center;
     font-size: 12px !important;
-    padding: 6px 4px !important;
+    padding: 8px 10px !important;
+    min-height: 42px;
+  }
+
+  .search-results-wrap {
+    max-height: min(52vh, 480px);
+    overflow: auto;
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+  }
+
+  .search-results-wrap table {
+    margin: 0;
+    border: none;
+  }
+
+  .search-status-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .search-status-opt {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border-light);
+    background: rgba(148, 163, 184, 0.08);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .search-status-opt:has(input:checked) {
+    border-color: var(--dashboard-primary, var(--primary));
+    background: rgba(59, 130, 246, 0.12);
+    color: var(--dashboard-primary, var(--primary));
+  }
+
+  .search-results-wrap .btn-exec {
+    min-height: 34px;
+    padding: 6px 12px !important;
+    font-size: 12px !important;
   }
 
   @media (max-width: 768px) {
-    .search-actions-row {
-      grid-template-columns: repeat(2, 1fr);
+    .search-results-wrap {
+      max-height: none;
+      overflow: visible;
+      border: none;
+      background: transparent;
     }
 
     .search-results-wrap thead {
@@ -850,197 +1029,139 @@
     }
 
     .search-results-wrap table,
-    .search-results-wrap tbody,
-    .search-results-wrap tr,
-    .search-results-wrap td {
+    .search-results-wrap tbody {
       display: block;
       width: 100%;
     }
 
     .search-results-wrap tr {
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 16px;
-      margin-bottom: 16px;
-      padding: 16px;
-      position: relative;
+      display: block;
+      background: var(--card-alt, rgba(255, 255, 255, 0.04));
+      border: 1px solid var(--border-light);
+      border-radius: 12px;
+      margin-bottom: 8px;
+      padding: 10px 12px;
     }
 
     .search-results-wrap td {
-      text-align: right;
-      padding: 8px 0;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      gap: 10px;
+      text-align: right;
+      padding: 5px 0;
+      border: none;
+      font-size: 13px;
     }
 
-    .search-results-wrap td:last-child {
-      border-bottom: none;
-      margin-top: 10px;
-      padding-top: 15px;
-    }
-
-    .search-results-wrap td:before {
+    .search-results-wrap td::before {
       content: attr(data-label);
       font-weight: 700;
       color: var(--dashboard-muted);
-      font-size: 12px;
+      font-size: 11px;
+      flex-shrink: 0;
     }
 
-    /* Checkbox & ID positioning */
     .search-results-wrap td:first-child {
-      position: absolute;
-      top: 12px;
-      left: 12px;
+      position: static;
       width: auto;
-      border: none;
-      padding: 0;
+      justify-content: flex-end;
     }
 
-    .search-results-wrap td:first-child:before {
-      content: "";
+    .search-results-wrap td:first-child::before {
+      content: "تحديد";
     }
 
-    .search-results-wrap td:nth-child(2) {
-      font-size: 18px;
-      color: var(--dashboard-primary);
-      border-bottom: 2px solid rgba(59, 130, 246, 0.2);
-      margin-bottom: 10px;
-      padding-bottom: 10px;
-    }
-
-    .search-results-wrap td:nth-child(2):before {
+    .search-results-wrap td:nth-child(2)::before {
       content: "رقم الطلب";
     }
 
-    /* Status radios row */
-    .search-results-wrap td.status-cell {
-      justify-content: flex-end;
-      gap: 15px;
-    }
-  }
-
-  /* Extra-small phones: make search UI stacked */
-  @media (max-width: 420px) {
-    #searchModal .card {
-      padding: 16px 12px !important;
+    .search-results-wrap td.search-status-group {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
     }
 
-    .search-bar-integrated {
-      flex-direction: row;
-      gap: 8px;
-      margin-bottom: 14px;
-      align-items: center;
-    }
-
-    .search-bar-integrated input {
-      width: 100% !important;
-      min-width: 0 !important;
-    }
-
-    .search-bar-integrated .btn {
-      width: auto !important;
-      height: 36px !important;
-      padding: 0 10px !important;
-      font-size: 12px !important;
-    }
-
-    .search-actions-row {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px;
-      margin-bottom: 12px;
-    }
-
-    .search-action-btn {
-      font-size: 11px !important;
-      padding: 6px 6px !important;
-      min-height: 30px;
-      justify-content: center !important;
-      width: 100% !important;
-    }
-
-    .search-results-wrap table {
+    .search-results-wrap td.search-status-group::before {
+      content: attr(data-label);
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 700;
+      color: var(--dashboard-muted);
       font-size: 11px;
     }
+
+    .search-results-wrap td.search-status-group .search-status-opt {
+      display: inline-flex;
+      margin: 2px;
+      flex: 1 1 calc(33% - 6px);
+      justify-content: center;
+      font-size: 11px;
+      padding: 6px 4px;
+    }
+
+    .search-results-wrap td:last-child {
+      padding-top: 8px;
+      border-top: 1px dashed var(--border-light);
+      margin-top: 4px;
+    }
+
+    .search-results-wrap td:last-child::before {
+      display: none;
+    }
+
+    .search-results-wrap td:last-child .btn-exec {
+      width: 100%;
+    }
   }
 
-  /* Close button for search modal (top-right corner) */
-  #searchModal .card {
-    position: relative;
+  @media (max-width: 420px) {
+    .search-modal-footer {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .search-modal-footer .search-action-btn {
+      font-size: 11px !important;
+      padding: 6px 8px !important;
+    }
   }
 
-  #searchModal .search-modal-close {
-    position: absolute;
-    top: 12px;
-    right: 12px; /* RTL */
-    width: 38px;
-    height: 38px;
-    padding: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+  .period-options-grid {
+    display: grid;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .period-custom-range {
+    padding-top: 12px;
+    border-top: 1px solid var(--border-light);
+  }
+
+  .period-custom-range-title {
+    margin: 0 0 10px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--dashboard-text, var(--text));
+  }
+
+  .period-custom-range-fields {
+    display: grid;
+    gap: 8px;
+  }
+
+  .period-custom-range-fields input {
+    margin-bottom: 0 !important;
+  }
+
+  .period-apply-btn {
+    width: 100%;
+    min-height: 42px;
     border-radius: 12px;
-    font-size: 20px;
-    background: rgba(15, 23, 42, 0.35);
-    border: 1px solid var(--border-light);
-  }
-
-  #searchModal .search-modal-close:hover {
-    background: rgba(59, 130, 246, 0.16);
-    border-color: rgba(59, 130, 246, 0.35);
-  }
-
-  /* Close button for period modal (top-right corner) */
-  #periodModal .card {
-    position: relative;
-  }
-
-  #periodModal .period-modal-close {
-    position: absolute;
-    top: 12px;
-    right: 12px; /* RTL */
-    width: 38px;
-    height: 38px;
-    padding: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 12px;
-    font-size: 20px;
-    background: rgba(15, 23, 42, 0.35);
-    border: 1px solid var(--border-light);
-  }
-
-  #periodModal .period-modal-close:hover {
-    background: rgba(59, 130, 246, 0.16);
-    border-color: rgba(59, 130, 246, 0.35);
-  }
-
-  /* Close button for profit modal (top-right corner) */
-  #profitModal .card {
-    position: relative;
-  }
-
-  #profitModal .profit-modal-close {
-    position: absolute;
-    top: 12px;
-    right: 12px; /* RTL */
-    width: 38px;
-    height: 38px;
-    padding: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 12px;
-    font-size: 20px;
-    background: rgba(15, 23, 42, 0.35);
-    border: 1px solid var(--border-light);
-  }
-
-  #profitModal .profit-modal-close:hover {
-    background: rgba(59, 130, 246, 0.16);
-    border-color: rgba(59, 130, 246, 0.35);
+    border: 1px solid rgba(59, 130, 246, 0.35);
+    background: rgba(59, 130, 246, 0.12);
+    color: var(--dashboard-primary, var(--primary));
+    font-weight: 700;
+    cursor: pointer;
   }
 </style>
 <style>
@@ -2223,45 +2344,40 @@
 <!-- =======================
      SEARCH MODAL
 ======================= -->
-<div id="searchModal" class="modal">
-  <div class="card">
-    <h3>🔍 {{ _('dashboard_search_order_title') }}</h3>
-
-    <div class="search-bar-integrated">
-      <input id="q" placeholder="{{ _('dashboard_search_order_placeholder') }}"
-        onkeyup="if(event.key==='Enter') search()">
-      <button onclick="search()" class="btn btn-primary">{{ _('dashboard_search_button') }}</button>
+<div id="searchModal" class="modal finora-dash-modal" onclick="if(event.target===this) closeSearch()">
+  <div class="finora-dash-modal__panel finora-dash-modal__panel--wide" onclick="event.stopPropagation()">
+    <div class="finora-dash-modal__head">
+      <h3>🔍 {{ _('dashboard_search_order_title') }}</h3>
+      <button type="button" class="finora-dash-modal__close" onclick="closeSearch()" aria-label="إغلاق">×</button>
     </div>
+    <div class="finora-dash-modal__body">
+      <div class="search-toolbar">
+        <input id="q" placeholder="{{ _('dashboard_search_order_placeholder') }}"
+          onkeyup="if(event.key==='Enter') search()">
+        <button type="button" onclick="search()" class="btn btn-primary">{{ _('dashboard_search_button') }}</button>
+      </div>
 
-    <div class="search-actions-row">
-      <button onclick="clearSearchResults()" class="btn btn-sm search-action-btn is-danger">🗑️ {{
-        _('dashboard_clear_results') }}</button>
-      <button onclick="executeBulk()" class="btn btn-primary search-action-btn is-primary">🚀 {{
-        _('dashboard_execute_bulk') }}</button>
+      <div class="search-results-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:36px"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"></th>
+              <th>#</th>
+              <th>{{ _('dashboard_th_customer') }}</th>
+              <th>{{ _('dashboard_th_phone') }}</th>
+              <th>{{ _('dashboard_th_amount') }}</th>
+              <th>الحالة</th>
+              <th>{{ _('dashboard_th_action') }}</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
     </div>
-
-    <div class="search-results-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th style="width:30px"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"></th>
-            <th>#</th>
-            <th>{{ _('dashboard_th_customer') }}</th>
-            <th>{{ _('dashboard_th_phone') }}</th>
-            <th>{{ _('dashboard_th_amount') }}</th>
-            <th>{{ _('dashboard_th_ordered') }}</th>
-            <th>{{ _('dashboard_th_delivered') }}</th>
-            <th>{{ _('dashboard_th_returned') }}</th>
-            <th>{{ _('dashboard_th_action') }}</th>
-          </tr>
-        </thead>
-        <tbody id="rows"></tbody>
-      </table>
+    <div class="finora-dash-modal__footer search-modal-footer">
+      <button type="button" onclick="clearSearchResults()" class="btn btn-sm search-action-btn is-danger">🗑️ {{ _('dashboard_clear_results') }}</button>
+      <button type="button" onclick="executeBulk()" class="btn btn-primary search-action-btn is-primary">🚀 {{ _('dashboard_execute_bulk') }}</button>
     </div>
-
-    <button onclick="closeSearch()" class="btn modal-close-btn-soft search-modal-close" aria-label="Close">
-      ×
-    </button>
   </div>
 </div>
 
@@ -2337,39 +2453,31 @@
 <!-- =======================
      ADD EXPENSE MODAL
 ======================= -->
-<div id="addExpenseModal" class="modal">
-  <div class="card">
-    <h3>➕ {{ _('dashboard_add_expense_title') }}</h3>
-
-    <input type="text" id="expenseTitle" placeholder="{{ _('dashboard_expense_title_placeholder') }}"
-      style="margin-bottom:16px;">
-
-    <select id="expenseCategory" style="margin-bottom:16px;">
-      <option value="">{{ _('dashboard_expense_category_placeholder') }}</option>
-      <option value="إيجار">🏠 {{ _('dashboard_expense_category_rent') }}</option>
-      <option value="رواتب">💰 {{ _('dashboard_expense_category_salaries') }}</option>
-      <option value="كهرباء">⚡ {{ _('dashboard_expense_category_electricity') }}</option>
-      <option value="إنترنت">🌐 {{ _('dashboard_expense_category_internet') }}</option>
-      <option value="إعلان">📢 {{ _('dashboard_expense_category_ads') }}</option>
-      <option value="صيانة">🔧 {{ _('dashboard_expense_category_maintenance') }}</option>
-      <option value="أخرى">📦 {{ _('dashboard_expense_category_other') }}</option>
-    </select>
-
-    <input type="number" id="expenseAmount" placeholder="{{ _('dashboard_expense_amount_placeholder') }}" min="0"
-      step="0.01" style="margin-bottom:16px;">
-
-    <input type="date" id="expenseDate" style="margin-bottom:16px;">
-
-    <textarea id="expenseNote" placeholder="{{ _('dashboard_expense_note_placeholder') }}"
-      style="min-height:80px;margin-bottom:16px;resize:vertical;"></textarea>
-
-    <div class="expense-form-actions">
-      <button class="btn modal-close-btn-soft" onclick="closeAddExpense()">
-        {{ _('dashboard_cancel') }}
-      </button>
-      <button class="btn btn-danger" onclick="submitExpense()">
-        {{ _('dashboard_save') }}
-      </button>
+<div id="addExpenseModal" class="modal finora-dash-modal" onclick="if(event.target===this) closeAddExpense()">
+  <div class="finora-dash-modal__panel finora-dash-modal__panel--narrow" onclick="event.stopPropagation()">
+    <div class="finora-dash-modal__head">
+      <h3>➕ {{ _('dashboard_add_expense_title') }}</h3>
+      <button type="button" class="finora-dash-modal__close" onclick="closeAddExpense()" aria-label="إغلاق">×</button>
+    </div>
+    <div class="finora-dash-modal__body">
+      <input type="text" id="expenseTitle" placeholder="{{ _('dashboard_expense_title_placeholder') }}">
+      <select id="expenseCategory">
+        <option value="">{{ _('dashboard_expense_category_placeholder') }}</option>
+        <option value="إيجار">🏠 {{ _('dashboard_expense_category_rent') }}</option>
+        <option value="رواتب">💰 {{ _('dashboard_expense_category_salaries') }}</option>
+        <option value="كهرباء">⚡ {{ _('dashboard_expense_category_electricity') }}</option>
+        <option value="إنترنت">🌐 {{ _('dashboard_expense_category_internet') }}</option>
+        <option value="إعلان">📢 {{ _('dashboard_expense_category_ads') }}</option>
+        <option value="صيانة">🔧 {{ _('dashboard_expense_category_maintenance') }}</option>
+        <option value="أخرى">📦 {{ _('dashboard_expense_category_other') }}</option>
+      </select>
+      <input type="number" id="expenseAmount" placeholder="{{ _('dashboard_expense_amount_placeholder') }}" min="0" step="0.01">
+      <input type="date" id="expenseDate">
+      <textarea id="expenseNote" placeholder="{{ _('dashboard_expense_note_placeholder') }}" style="min-height:80px;resize:vertical;"></textarea>
+    </div>
+    <div class="finora-dash-modal__footer">
+      <button type="button" class="btn modal-close-btn-soft" onclick="closeAddExpense()">{{ _('dashboard_cancel') }}</button>
+      <button type="button" class="btn btn-danger" onclick="submitExpense()">{{ _('dashboard_save') }}</button>
     </div>
   </div>
 </div>
@@ -2377,13 +2485,13 @@
 <!-- =======================
      PERIOD MODAL
 ======================= -->
-<div id="periodModal" class="modal" onclick="if(event.target===this) closePeriodModal()">
-  <div class="card period-modal-card" onclick="event.stopPropagation()">
-    <h3 class="period-modal-title">
-      <span>📅</span>
-      <span>{{ _('dashboard_period_modal_title') }}</span>
-    </h3>
-
+<div id="periodModal" class="modal finora-dash-modal" onclick="if(event.target===this) closePeriodModal()">
+  <div class="finora-dash-modal__panel finora-dash-modal__panel--narrow period-modal-card" onclick="event.stopPropagation()">
+    <div class="finora-dash-modal__head">
+      <h3 class="period-modal-title"><span>📅</span> {{ _('dashboard_period_modal_title') }}</h3>
+      <button type="button" class="finora-dash-modal__close" onclick="closePeriodModal()" aria-label="إغلاق">×</button>
+    </div>
+    <div class="finora-dash-modal__body">
     <div class="period-options-grid">
       <button onclick="selectPeriod('last_30_days')" class="period-option" data-period="last_30_days">
         <span>📅 {{ _('dashboard_period_last_30_days') }}</span>
@@ -2422,10 +2530,7 @@
         </button>
       </div>
     </div>
-
-    <button class="btn modal-close-btn-soft period-modal-close" onclick="closePeriodModal()" aria-label="Close">
-      ×
-    </button>
+    </div>
   </div>
 </div>
 
@@ -2465,39 +2570,7 @@
     font-weight: 600;
   }
 
-  /* =======================
-   PERIOD MODAL - Mobile Responsive (Bottom Sheet)
-======================= */
-  #periodModal .card {
-    max-height: min(90vh, 740px);
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
   @media (max-width: 768px) {
-
-    /* اجعل نافذة الفترة مثل Bottom Sheet */
-    #periodModal {
-      align-items: flex-end;
-      justify-content: center;
-      padding: 0;
-    }
-
-    #periodModal .card {
-      width: 100% !important;
-      max-width: none !important;
-      margin: 0 !important;
-      border-radius: 18px 18px 0 0 !important;
-      max-height: 92vh;
-      padding: 18px 14px !important;
-    }
-
-    #periodModal h3 {
-      font-size: 18px;
-      margin-bottom: 14px;
-      padding-bottom: 12px;
-    }
-
     .period-option {
       padding: 14px 14px;
       font-size: 15px;
@@ -2508,28 +2581,26 @@
       padding: 4px 6px;
     }
   }
-
-  @media (max-width: 480px) {
-    #periodModal .card {
-      max-height: 94vh;
-      padding: 16px 12px !important;
-    }
-  }
 </style>
 
 <!-- =======================
      PROFIT MODAL (Enhanced)
 ======================= -->
-<div id="profitModal" class="modal">
-  <div class="card">
-    <h2>💰 {{ _('dashboard_profit_today') }}</h2>
-    <h1 id="profitBig">0</h1>
-    <div id="profitChartContainer">
-      <canvas id="profitModalChart"></canvas>
+<div id="profitModal" class="modal finora-dash-modal" onclick="if(event.target===this) closeProfit()">
+  <div class="finora-dash-modal__panel finora-dash-modal__panel--narrow" onclick="event.stopPropagation()">
+    <div class="finora-dash-modal__head">
+      <h3>💰 {{ _('dashboard_profit_today') }}</h3>
+      <button type="button" class="finora-dash-modal__close" onclick="closeProfit()" aria-label="إغلاق">×</button>
     </div>
-    <button class="btn modal-close-btn-soft profit-modal-close" onclick="profitModal.style.display='none'" aria-label="Close">
-      ×
-    </button>
+    <div class="finora-dash-modal__body profit-modal-body">
+      <div id="profitBig">0</div>
+      <div id="profitChartContainer">
+        <canvas id="profitModalChart"></canvas>
+      </div>
+    </div>
+    <div class="finora-dash-modal__footer">
+      <button type="button" class="btn modal-close-btn-soft" onclick="closeProfit()">{{ _('dashboard_cancel') }}</button>
+    </div>
   </div>
 </div>
 
@@ -2906,6 +2977,10 @@
       })
   }
 
+  function closeProfit() {
+    document.getElementById("profitModal").style.display = "none";
+  }
+
   function loadProfitChart() {
     fetch("/api/index/charts")
       .then(r => r.json())
@@ -3038,21 +3113,16 @@
 
           tr.innerHTML = `
           <td data-label="تحديد"><input type="checkbox" class="row-checkbox" data-id="${o.id}"></td>
-          <td data-label="رقم الطلب"><strong>${o.id}</strong></td>
+          <td data-label="رقم الطلب"><strong>#${o.id}</strong></td>
           <td data-label="الزبون">${o.customer || "—"}</td>
-          <td data-label="الهاتف">${o.phone || "—"}</td>
+          <td data-label="الهاتف" dir="ltr">${o.phone || "—"}</td>
           <td data-label="المبلغ" style="color:var(--dashboard-success);font-weight:600">${formatNumber(o.total)} د.ع</td>
-
-          <td data-label="تم الطلب" class="status-cell"><input type="radio" name="s${o.id}" checked
-              onclick="setRowColor(${o.id},'ordered')"></td>
-
-          <td data-label="واصل" class="status-cell"><input type="radio" name="s${o.id}"
-              onclick="setRowColor(${o.id},'delivered')"></td>
-
-          <td data-label="مرتجع" class="status-cell"><input type="radio" name="s${o.id}"
-              onclick="setRowColor(${o.id},'returned')"></td>
-
-          <td data-label="إجراء"><button class="btn btn-exec" onclick="exec(${o.id})">🚀 تنفيذ</button></td>
+          <td data-label="الحالة" class="search-status-group">
+            <label class="search-status-opt"><input type="radio" name="s${o.id}" value="ordered" checked onchange="setRowColor(${o.id},'ordered')"> {{ _('dashboard_th_ordered') }}</label>
+            <label class="search-status-opt"><input type="radio" name="s${o.id}" value="delivered" onchange="setRowColor(${o.id},'delivered')"> {{ _('dashboard_th_delivered') }}</label>
+            <label class="search-status-opt"><input type="radio" name="s${o.id}" value="returned" onchange="setRowColor(${o.id},'returned')"> {{ _('dashboard_th_returned') }}</label>
+          </td>
+          <td data-label="إجراء"><button type="button" class="btn btn-exec" onclick="exec(${o.id})">🚀 تنفيذ</button></td>
         `;
           rowsContainer.appendChild(tr);
           addedCount++;
@@ -3094,9 +3164,7 @@
   function exec(id) {
     const radio = document.querySelector(`input[name=s${id}]:checked`);
     if (!radio) return;
-
-    const action = radio.parentElement.previousElementSibling.textContent === "واصل" ? "delivered" :
-      radio.parentElement.previousElementSibling.previousElementSibling.textContent === "مرتجع" ? "returned" : "ordered";
+    const action = radio.value || "ordered";
 
     showLoading();
     fetch("/api/index/execute", {
@@ -3179,19 +3247,7 @@
     // الحصول على الإجراء المحدد لكل طلب
     const orders = selected.map(id => {
       const radio = document.querySelector(`input[name=s${id}]:checked`);
-      let action = "ordered";
-      if (radio) {
-        const row = radio.closest("tr");
-        const cells = row.querySelectorAll("td");
-        // البحث عن الإجراء من الأعمدة (تم الطلب = 5, واصل = 6, مرتجع = 7)
-        if (cells[6] && cells[6].querySelector("input[type='radio']:checked")) {
-          action = "delivered";
-        } else if (cells[7] && cells[7].querySelector("input[type='radio']:checked")) {
-          action = "returned";
-        } else {
-          action = "ordered";
-        }
-      }
+      const action = radio?.value || "ordered";
       return { id, action };
     });
 
@@ -3879,7 +3935,7 @@
 
   document.getElementById('profitModal').addEventListener('click', function (e) {
     if (e.target.id === 'profitModal') {
-      document.getElementById('profitModal').style.display = 'none';
+      closeProfit();
     }
   });
 
