@@ -105,6 +105,8 @@
     if (itemCountMobile) itemCountMobile.textContent = countLabel;
     const execBtn = $("btnExecute");
     if (execBtn) execBtn.disabled = items.length === 0 || isSubmitting;
+    const execMobile = $("btnExecuteMobile");
+    if (execMobile) execMobile.disabled = items.length === 0 || isSubmitting;
   }
 
   function updateSummary() {
@@ -118,6 +120,7 @@
     set("summaryDiscount", discStr);
     set("summaryShipping", fmt(ship) + " د.ع");
     set("summaryTotal", fmt(total) + " د.ع");
+    set("summaryTotalFixed", fmt(total) + " د.ع");
     const tp = $("totalPrice");
     if (tp) tp.textContent = fmt(total);
     updateStats();
@@ -164,32 +167,32 @@
     const mobileHtml = items.map((i, idx) => {
       const t = (i.price || 0) * (i.qty || 0);
       return `<div class="pos-cart-mobile-item">
-        <div class="pos-cart-mobile-item-head">
-          <div class="pos-cart-product-cell">
-            ${cartThumbHtml(i)}
+        ${cartThumbHtml(i)}
+        <div class="pos-cart-mobile-item-body">
+          <div class="pos-cart-mobile-item-top">
             <div>
               <div class="pos-cart-mobile-item-name">${i.name}</div>
               ${i.sku ? `<div class="pos-cart-sku">${i.sku}</div>` : ""}
             </div>
+            <button type="button" class="pos-btn-remove pos-btn-remove--sm" onclick="PosWP.removeItem(${idx})"><i class="fas fa-trash-alt"></i></button>
           </div>
-          <button type="button" class="pos-btn-remove" onclick="PosWP.removeItem(${idx})"><i class="fas fa-trash-alt"></i></button>
-        </div>
-        <div class="pos-product-row">
-          <span>${fmt(i.price)} د.ع</span>
-          <div class="pos-qty-stepper">
-            <button type="button" class="pos-qty-btn" onclick="PosWP.updateQty(${idx},-1)">−</button>
-            <span class="pos-qty-value">${i.qty}</span>
-            <button type="button" class="pos-qty-btn" onclick="PosWP.updateQty(${idx},1)">+</button>
+          <div class="pos-cart-mobile-item-bottom">
+            <span class="pos-cart-mobile-price">${fmt(i.price)} د.ع</span>
+            <div class="pos-qty-stepper pos-qty-stepper--sm">
+              <button type="button" class="pos-qty-btn" onclick="PosWP.updateQty(${idx},-1)">−</button>
+              <span class="pos-qty-value">${i.qty}</span>
+              <button type="button" class="pos-qty-btn" onclick="PosWP.updateQty(${idx},1)">+</button>
+            </div>
+            <span class="pos-cart-line-total">${fmt(t)} د.ع</span>
           </div>
         </div>
-        <div class="pos-cart-line-total pos-cart-line-total--mobile">${fmt(t)} د.ع</div>
       </div>`;
     }).join("");
 
     if (mobileList) {
       mobileList.innerHTML = items.length
         ? mobileHtml
-        : '<div class="pos-empty"><i class="fas fa-shopping-basket"></i><p>لم يتم إضافة منتجات بعد</p></div>';
+        : '<div class="pos-empty pos-empty--compact"><p>السلة فارغة</p></div>';
     }
 
     updateSummary();
@@ -516,7 +519,9 @@
     isSubmitting = true;
     updateStats();
     const btn = $("btnExecute");
+    const btnM = $("btnExecuteMobile");
     if (btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري التنفيذ...';
+    if (btnM) btnM.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ...';
 
     fetch("/pos/create-order", {
       method: "POST",
@@ -534,6 +539,7 @@
       .then((d) => {
         isSubmitting = false;
         if (btn) btn.innerHTML = '<i class="fas fa-print"></i> تنفيذ و طباعة';
+        if (btnM) btnM.innerHTML = '<i class="fas fa-print"></i> تنفيذ';
         if (d.error) {
           toast(d.error);
           updateStats();
@@ -552,6 +558,7 @@
       .catch((err) => {
         isSubmitting = false;
         if (btn) btn.innerHTML = '<i class="fas fa-print"></i> تنفيذ و طباعة';
+        if (btnM) btnM.innerHTML = '<i class="fas fa-print"></i> تنفيذ';
         toast("حدث خطأ: " + err.message);
         updateStats();
       });

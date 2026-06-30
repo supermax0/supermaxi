@@ -1021,19 +1021,31 @@ body.pos-white-pro {
   }
 }
 
-/* Mobile — simple vertical flow: customer → search → cart */
+/* Mobile — compact vertical flow + fixed action bar */
 @media (max-width: 767px) {
-  .pos-app { padding-bottom: 24px; }
+  body.pos-white-pro { font-size: 12px; }
+
+  .pos-app {
+    padding: 0 8px calc(72px + env(safe-area-inset-bottom));
+  }
+
   .pos-desktop-only { display: none !important; }
   .pos-mobile-only { display: flex; }
 
-  .pos-header { min-height: 56px; padding: 8px 0; }
-  .pos-header-title-wrap h1 { font-size: 18px; }
+  .pos-header {
+    min-height: 40px;
+    padding: 4px 0;
+    margin-bottom: 6px;
+  }
+
+  .pos-header-title-wrap h1 { font-size: 14px; }
+  .pos-badge { font-size: 9px; padding: 2px 6px; }
+  .pos-btn-icon { width: 32px; height: 32px; font-size: 13px; border-radius: 8px; }
 
   .pos-layout {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 6px;
     direction: rtl;
   }
 
@@ -1053,60 +1065,184 @@ body.pos-white-pro {
   .pos-block-cart {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: var(--radius-card);
-    padding: 12px;
-    box-shadow: var(--shadow-card);
+    border-radius: 10px;
+    padding: 8px;
+    box-shadow: none;
   }
 
-  .pos-block-search .pos-search-bar { margin-bottom: 0; }
-  .pos-block-customer .pos-customer-row { margin-bottom: 0; }
+  .pos-block-search .pos-search-bar { margin-bottom: 0; gap: 6px; }
+  .pos-block-customer .pos-customer-row { margin-bottom: 0; gap: 6px; }
 
-  .pos-cart-mobile-list { display: block; min-height: 60px; }
-
-  .pos-summary {
-    margin-bottom: 10px;
-    padding: 10px 12px;
+  .pos-input,
+  .pos-select {
+    min-height: 34px;
+    font-size: 14px !important;
+    padding: 0 10px;
+    border-radius: 8px;
   }
 
-  .pos-summary-row.total {
-    font-size: 20px;
-    padding-top: 8px;
-    margin-top: 0;
-    border-top: none;
+  .pos-search-wrap .pos-input { padding-right: 32px; }
+  .pos-search-wrap i { right: 10px; font-size: 12px; }
+
+  .pos-btn-primary.pos-btn-icon-only {
+    min-width: 34px;
+    min-height: 34px;
+    padding: 0 8px !important;
+    font-size: 13px;
   }
 
-  .pos-actions {
-    margin: 0;
-    padding: 0;
-    border: none;
-    gap: 8px;
+  .pos-btn-barcode {
+    width: 34px;
+    min-height: 34px;
+    font-size: 16px;
+    border-radius: 8px;
   }
 
-  .pos-actions .pos-btn-primary { min-height: 52px; font-size: 16px; }
-  .pos-actions .pos-btn-danger-soft { min-height: 44px; }
+  .pos-cart-header-mobile {
+    margin-bottom: 6px;
+    font-size: 13px;
+  }
+
+  .pos-cart-header-mobile i { margin-left: 4px; font-size: 12px; }
+
+  .pos-cart-mobile-list {
+    display: block;
+    min-height: 32px;
+    max-height: 42vh;
+    overflow-y: auto;
+  }
 
   .pos-cart-mobile-item {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
     border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 12px;
-    margin-bottom: 8px;
+    border-radius: 8px;
+    padding: 6px 8px;
+    margin-bottom: 6px;
+    background: var(--surface-soft);
   }
 
-  .pos-cart-mobile-item-head {
+  .pos-cart-mobile-item .pos-cart-thumb,
+  .pos-cart-mobile-item .pos-cart-thumb--placeholder {
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    flex-shrink: 0;
+    font-size: 12px;
+  }
+
+  .pos-cart-mobile-item-body { flex: 1; min-width: 0; }
+
+  .pos-cart-mobile-item-top {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
+    gap: 4px;
+    margin-bottom: 4px;
+  }
+
+  .pos-cart-mobile-item-name {
+    font-weight: 700;
+    font-size: 12px;
+    line-height: 1.3;
+  }
+
+  .pos-cart-sku { font-size: 10px; }
+
+  .pos-cart-mobile-item-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+
+  .pos-cart-mobile-price {
+    font-size: 11px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+
+  .pos-cart-line-total {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--primary);
+    white-space: nowrap;
+  }
+
+  .pos-qty-stepper--sm .pos-qty-btn {
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
+    border-radius: 6px;
+  }
+
+  .pos-qty-stepper--sm .pos-qty-value {
+    min-width: 18px;
+    font-size: 12px;
+  }
+
+  .pos-btn-remove--sm {
+    width: 24px;
+    height: 24px;
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+
+  .pos-empty--compact {
+    padding: 12px;
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: center;
+  }
+
+  /* Fixed bottom bar */
+  .pos-mobile-fixed-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 200;
+    flex-direction: column;
+    gap: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -4px 16px rgba(16, 24, 40, 0.08);
+    padding: 6px 10px calc(6px + env(safe-area-inset-bottom));
+  }
+
+  .pos-mobile-fixed-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 2px 6px;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  .pos-mobile-fixed-total strong {
+    font-size: 15px;
+    color: var(--primary);
+  }
+
+  .pos-mobile-fixed-actions {
+    display: flex;
     gap: 8px;
-    margin-bottom: 8px;
   }
 
-  .pos-cart-mobile-item-name { font-weight: 700; font-size: 14px; }
-
-  .pos-input,
-  .pos-select,
-  .pos-textarea {
-    font-size: 16px !important;
+  .pos-mobile-fixed-actions .pos-btn-primary,
+  .pos-mobile-fixed-actions .pos-btn-danger-soft {
+    flex: 1;
+    min-height: 38px;
+    font-size: 13px;
+    border-radius: 8px;
+    margin: 0;
   }
+
+  .pos-mobile-fixed-actions .pos-btn-primary { flex: 1.4; }
+
+  .pos-dropdown { max-height: 180px; font-size: 12px; }
+  .pos-dropdown div { padding: 8px 10px; }
 
   .mobile-cart-btn,
   .mobile-sheet-backdrop,
@@ -1115,6 +1251,7 @@ body.pos-white-pro {
 
 @media (min-width: 768px) {
   .pos-cart-mobile-list { display: none; }
+  .pos-mobile-fixed-bar { display: none !important; }
 }
 
 @media (max-width: 400px) {
