@@ -784,6 +784,10 @@ def inject_global_data():
         "can_see_pages": False,
         "can_see_messages": False,
         "can_edit_price": False,
+        "can_manage_orders": False,
+        "can_manage_shipping": False,
+        "can_manage_settings": False,
+        "can_view_dashboard": False,
         "_": lambda x: x,
         "current_lang": "ar"
     }
@@ -833,6 +837,10 @@ def inject_global_data():
             "can_manage_employees": employee.has_permission("manage_employees"),
             "can_manage_agents": employee.has_permission("manage_agents"),
             "can_manage_pages": employee.has_permission("manage_pages"),
+            "can_manage_orders": employee.has_permission("manage_orders"),
+            "can_manage_shipping": employee.has_permission("manage_shipping"),
+            "can_manage_settings": employee.has_permission("manage_settings"),
+            "can_view_dashboard": employee.has_permission("view_dashboard"),
             "_": translate,
             "current_lang": final_lang
         }

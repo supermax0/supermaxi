@@ -4,7 +4,8 @@
 <head>
   <meta charset="UTF-8">
   <title>{% block title %}Finora{% endblock %}</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <script src="/static/js/no-zoom.js"></script>
   <meta name="format-detection" content="telephone=no">
   <meta name="description" content="Finora - نظام محاسبة متكامل لإدارة المبيعات والمخزون">
   <meta name="theme-color" content="#0a0f1c">
@@ -110,6 +111,11 @@
       scroll-behavior: smooth;
       -webkit-text-size-adjust: 100%;
       text-size-adjust: 100%;
+      touch-action: manipulation;
+    }
+
+    body {
+      touch-action: manipulation;
     }
 
     /* شقوق الشاشة والحواف الآمنة (آيفون وغيره) */
@@ -2268,7 +2274,7 @@ or request.path.startswith('/superadmin') %}
           <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
         {% endif %}
         {% endif %}
-        {% if is_admin and business_allows('settings') %}<a href="/settings"><i class="fa fa-cog"></i>
+        {% if (is_admin or (current_employee and can_manage_settings)) and business_allows('settings') %}<a href="/settings"><i class="fa fa-cog"></i>
           {{ _('settings') }}</a>{% endif %}
         {% if is_admin and business_allows('invoice_templates') %}
         <a href="/admin/invoice-templates"><i class="fa fa-file-invoice"></i> قوالب الفواتير</a>

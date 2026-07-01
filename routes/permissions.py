@@ -8,11 +8,13 @@ permissions_bp = Blueprint("permissions", __name__)
 
 
 DEFAULT_PERMISSIONS = [
+    ("view_dashboard", "لوحة التحكم الرئيسية"),
     ("view_orders", "رؤية الطلبات"),
     ("view_orders_placed", "رؤية طلبات «تم الطلب»"),
     ("view_orders_delivered", "رؤية الطلبات الواصلة"),
     ("view_orders_returned", "رؤية المرتجعات"),
     ("view_orders_shipped", "رؤية الطلبات المشحونة"),
+    ("manage_orders", "إدارة الطلبات (تسديد / إرجاع / حذف / تعديل)"),
     ("edit_price", "تعديل السعر من نقطة البيع"),
     ("view_reports", "رؤية التقارير"),
     ("manage_inventory", "إدارة المخزون"),
@@ -20,15 +22,17 @@ DEFAULT_PERMISSIONS = [
     ("manage_suppliers", "إدارة الموردين"),
     ("manage_customers", "إدارة الزبائن"),
     ("view_accounts", "رؤية الحسابات والصندوق"),
-    ("view_financial", "رؤية البيانات المالية"),
+    ("view_financial", "رؤية التقرير المالي الشامل"),
     ("view_pos", "استخدام نقطة البيع"),
-    ("view_shipping", "رؤية / استخدام الشحن"),
+    ("view_shipping", "رؤية شركات الشحن"),
+    ("manage_shipping", "إدارة شركات الشحن والتسويات"),
     ("view_agents", "رؤية مندوبي التوصيل"),
     ("manage_agents", "إدارة مندوبي التوصيل"),
     ("view_pages", "رؤية البيجات"),
     ("manage_pages", "إدارة البيجات (إنشاء/حذف)"),
     ("manage_employees", "إدارة الموظفين"),
     ("view_messages", "رؤية واجهة المراسلة"),
+    ("manage_settings", "إعدادات النظام"),
 ]
 
 
@@ -60,7 +64,8 @@ def list_roles():
     permissions_by_name = {p.name: p for p in permissions}
 
     groups_config = [
-        ("sales", "المبيعات وواجهة الكاشير", ["view_pos", "view_orders", "edit_price", "manage_customers"]),
+        ("dashboard", "لوحة التحكم", ["view_dashboard"]),
+        ("sales", "المبيعات وواجهة الكاشير", ["view_pos", "view_orders", "manage_orders", "edit_price", "manage_customers"]),
         (
             "order_status",
             "حالات الطلبات",
@@ -68,8 +73,8 @@ def list_roles():
         ),
         ("inventory", "المخزون والموردين", ["manage_inventory", "manage_suppliers"]),
         ("finance", "الحسابات والتقارير المالية", ["view_expenses", "view_accounts", "view_financial", "view_reports"]),
-        ("communication", "الصفحات والمراسلة والشحن", ["view_shipping", "view_agents", "view_pages", "view_messages"]),
-        ("team", "إدارة الفريق", ["manage_employees", "manage_agents", "manage_pages"]),
+        ("communication", "الصفحات والمراسلة والشحن", ["view_shipping", "manage_shipping", "view_agents", "view_pages", "view_messages"]),
+        ("team", "إدارة الفريق والإعدادات", ["manage_employees", "manage_agents", "manage_pages", "manage_settings"]),
     ]
 
     used_names = set()

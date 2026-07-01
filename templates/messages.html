@@ -91,36 +91,6 @@
     z-index: 1;
   }
 
-  .messages-back-bar {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 12px 20px;
-    margin-bottom: 8px;
-    color: var(--chat-muted);
-    font-size: 14px;
-  }
-
-  .messages-back-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    border-radius: 999px;
-    border: 1px solid var(--glass-border);
-    background: var(--glass-hover);
-    color: var(--chat-text);
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .messages-back-btn:hover {
-    background: rgba(99, 102, 241, 0.2);
-    border-color: var(--chat-primary);
-    transform: translateX(2px);
-  }
-
   /* Remove radius for full-screen edge-to-edge look */
   .users-list,
   .chat-area {
@@ -427,15 +397,23 @@
   .message {
     display: flex;
     gap: var(--spacing-md);
-    align-items: flex-start;
+    align-items: flex-end;
     position: relative;
     z-index: 1;
     animation: fadeInUp 0.3s ease-out;
     pointer-events: auto;
     margin-bottom: var(--spacing-sm);
+    width: 100%;
+  }
+
+  /* RTL: المستلم يمين، المرسل يسار (مثل واتساب) */
+  .message.received {
+    justify-content: flex-start;
+    flex-direction: row;
   }
 
   .message.sent {
+    justify-content: flex-end;
     flex-direction: row-reverse;
   }
 
@@ -443,7 +421,8 @@
     display: flex;
     flex-direction: column;
     gap: var(--spacing-xs);
-    flex: 1;
+    flex: 0 1 auto;
+    max-width: 82%;
     min-width: 0;
   }
 
@@ -485,14 +464,14 @@
     background: var(--emp-surface-hover);
     border: 1px solid var(--emp-border);
     color: var(--emp-text);
-    border-top-right-radius: 4px;
+    border-top-left-radius: 4px;
     box-shadow: var(--shadow-sm);
   }
 
   .message.sent .message-content {
     background: linear-gradient(135deg, var(--chat-primary), var(--chat-primary-light));
     color: white;
-    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
     box-shadow: var(--shadow-md);
   }
 
@@ -913,13 +892,52 @@
     width: 100%;
     display: block;
     margin: 0;
+    min-width: 220px;
   }
 
   .message-file-audio audio {
     width: 100%;
+    min-width: 200px;
+    height: 36px;
     outline: none;
-    border-radius: var(--radius-md);
-    background: var(--glass-hover);
+    border-radius: var(--radius-full);
+    background: transparent;
+  }
+
+  .message.sent .message-file-audio audio {
+    filter: brightness(1.1);
+  }
+
+  .message-voice-player {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 220px;
+    padding: 4px 0;
+  }
+
+  .message-voice-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-full);
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--chat-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 16px;
+  }
+
+  .message.sent .message-voice-icon {
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+  }
+
+  .message-voice-player audio {
+    flex: 1;
+    min-width: 0;
+    height: 32px;
   }
 
   .message-file-download {
@@ -1264,7 +1282,7 @@
     }
 
     .chat-input {
-      font-size: 15px;
+      font-size: 16px;
       padding: 8px 4px !important;
       min-height: 36px !important;
       width: 100% !important;
@@ -1994,13 +2012,6 @@
   }
 </style>
 
-<div class="messages-back-bar">
-  <button type="button" class="messages-back-btn" onclick="window.history.back()">
-    <i class="fa fa-chevron-right"></i>
-  </button>
-  <span>{{ _('back') if _('back') != 'back' else 'رجوع' }}</span>
-</div>
-
 <div class="messages-container">
   <!-- Users List -->
   <div class="users-list" id="usersList">
@@ -2423,6 +2434,10 @@
     stopDmPolling();
     stopChannelPolling();
     stopPresence();
+    document.getElementById('channelItem').classList.remove('active');
+    document.getElementById('chatHeader').style.display = 'none';
+    document.getElementById('chatInputArea').style.display = 'none';
+    document.getElementById('channelReadonlyBar').style.display = 'none';
     updateMobileUI();
   }
 
@@ -2432,8 +2447,8 @@
     const chatArea = document.querySelector('.chat-area');
 
     if (window.innerWidth <= 900) {
-      if (currentChatUserId) {
-        // Show Chat, Hide List
+      if (currentChatUserId || inChannel) {
+        // Show Chat (DM or channel), Hide List
         if (usersList) usersList.classList.add('hidden-mobile');
         if (chatArea) chatArea.classList.remove('hidden-mobile');
         if (backBtn) backBtn.style.display = 'flex';
@@ -2477,14 +2492,25 @@
   }
 
   // ==================== UNIFIED MESSAGE BUILDER ====================
+  function isVoiceMessage(msg) {
+    if (msg.file_type === 'audio') return true;
+    const name = (msg.file_name || msg.file_path || '').toLowerCase();
+    return name.includes('voice_') && name.endsWith('.webm');
+  }
+
   function buildFileContent(msg) {
     if (!msg.file_path) return '';
     if (msg.file_type === 'image') {
       return `<div class="message-media"><div class="message-file-image"><img src="${msg.file_path}" alt="" onclick="openImageViewer('${msg.file_path}')" loading="lazy"></div></div>`;
-    } else if (msg.file_type === 'video') {
+    }
+    if (isVoiceMessage(msg) || msg.file_type === 'audio') {
+      return `<div class="message-voice-player">
+        <span class="message-voice-icon"><i class="fa fa-microphone"></i></span>
+        <audio controls preload="metadata"><source src="${msg.file_path}" type="audio/webm"><source src="${msg.file_path}"></audio>
+      </div>`;
+    }
+    if (msg.file_type === 'video') {
       return `<div class="message-media"><div class="message-file-video"><video controls onclick="event.stopPropagation()"><source src="${msg.file_path}"></video></div></div>`;
-    } else if (msg.file_type === 'audio') {
-      return `<div class="message-file-audio"><audio controls><source src="${msg.file_path}"></audio></div>`;
     }
     return `<div class="message-file-download"><a href="${msg.file_path}" download="${escapeHtml(msg.file_name || '')}"><i class="fa fa-download"></i> ${escapeHtml(msg.file_name || msgsFileLabel)}</a></div>`;
   }
@@ -2516,8 +2542,17 @@
     }
 
     const fileContent = buildFileContent(msg);
-    const showAvatar = !isSent;
+    const showAvatar = !isSent && !grouped;
     const avatarStyle = `style="--avatar-bg:${avatarGradientFor(senderName)}"`;
+
+    // لا نعرض اسم الملف كنص تحت مشغّل الصوت
+    let textContent = msg.content || '';
+    if (isVoiceMessage(msg)) {
+      const t = textContent.trim();
+      if (!t || t.startsWith('📎') || t.includes('voice_') || t === '🎤 تسجيل صوتي') {
+        textContent = '';
+      }
+    }
 
     // Action buttons: DM -> own messages; Channel -> admin only
     const canControl = inChannel ? isAdmin : isSent;
@@ -2550,7 +2585,7 @@
             ${showAvatar ? `<div class="message-sender">${escapeHtml(senderName)}</div>` : ''}
             ${replyHtml}
             ${fileContent}
-            ${msg.content ? `<div class="message-text-content">${escapeHtml(msg.content)}</div>` : ''}
+            ${textContent ? `<div class="message-text-content">${escapeHtml(textContent)}</div>` : ''}
             <div class="message-timestamp-wrapper">
               <div class="message-time">
                 ${msg.is_edited ? '<span class="message-edited-badge">' + msgsEditedBadge + '</span>' : ''}

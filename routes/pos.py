@@ -13,6 +13,7 @@ from models.employee import Employee
 from models.page import Page
 from utils.product_schema_guard import ensure_customer_blacklist_columns, ensure_product_schema
 from utils.customer_blacklist import is_phone_blacklisted_for_new_customer
+from utils.permission_checks import guard_permission
 
 pos_bp = Blueprint("pos", __name__, url_prefix="/pos")
 
@@ -58,6 +59,17 @@ def pos_use_tenant_db():
         g.tenant = tenant_slug  # جعل الاستعلامات تستهدف قاعدة بيانات الشركة
         ensure_product_schema()
         ensure_customer_blacklist_columns()
+
+
+@pos_bp.before_request
+def pos_permission_guard():
+    if request.endpoint in ("pos.login", "pos.logout"):
+        return None
+    if "user_id" not in session:
+        return None
+    if request.endpoint == "pos.update_product_price":
+        return guard_permission("edit_price", json=True)
+    return guard_permission("view_pos")
 
 
 # =================================================

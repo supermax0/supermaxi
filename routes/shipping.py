@@ -8,14 +8,33 @@ from models.product import Product
 from datetime import datetime
 import secrets
 
+from utils.payment_ledger import append_payment_ledger_delta
+from utils.permission_checks import guard_permission
+
 shipping_bp = Blueprint("shipping", __name__, url_prefix="/shipping")
+
+_SHIPPING_WRITE_ENDPOINTS = {
+    "shipping.add_company",
+    "shipping.delete_company",
+    "shipping.settle_order",
+    "shipping.cancel_order",
+    "shipping.return_order",
+}
+
+
+@shipping_bp.before_request
+def _shipping_permission_guard():
+    from flask import session
+    if "user_id" not in session:
+        return None
+    perm = "manage_shipping" if request.endpoint in _SHIPPING_WRITE_ENDPOINTS else "view_shipping"
+    return guard_permission(perm)
 
 # حالات مساعدة لتوحيد المنطق مع الدفع الجزئي
 RETURN_STATUSES = ["مرتجع", "راجع", "راجعة"]
 CANCELED_STATUSES = ["ملغي"]
 from utils.order_status import is_canceled, is_returned, is_completed
 from utils.cash_calculations import _effective_paid_amount as _effective_paid_amount_inv
-from utils.payment_ledger import append_payment_ledger_delta
 
 
 def effective_paid_amount(order: Invoice) -> int:

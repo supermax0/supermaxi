@@ -18,6 +18,35 @@ from utils.permission_checks import check_permission
 suppliers_bp = Blueprint("suppliers", __name__)
 
 
+def _ensure_supplier_opening_balance_column():
+    try:
+        from sqlalchemy import inspect, text
+
+        inspector = inspect(db.engine)
+        if "supplier" not in inspector.get_table_names():
+            return
+        cols = {col["name"] for col in inspector.get_columns("supplier")}
+        if "opening_balance" not in cols:
+            db.session.execute(
+                text("ALTER TABLE supplier ADD COLUMN opening_balance INTEGER DEFAULT 0")
+            )
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+
+def _parse_opening_balance(raw_value):
+    if raw_value is None:
+        return 0
+    cleaned = str(raw_value).strip().replace(",", "").replace(" ", "")
+    if not cleaned:
+        return 0
+    try:
+        return max(0, int(float(cleaned)))
+    except (TypeError, ValueError):
+        return 0
+
+
 # =============================
 # Suppliers Page
 # =============================
@@ -28,11 +57,16 @@ def suppliers():
     if not check_permission("can_manage_suppliers"):
         return redirect("/pos"), 403
 
+    _ensure_supplier_opening_balance_column()
+
     if request.method == "POST":
+        opening_balance = _parse_opening_balance(request.form.get("opening_balance"))
         supplier = Supplier(
             name=request.form["name"],
             phone=request.form.get("phone"),
-            address=request.form.get("address")
+            address=request.form.get("address"),
+            opening_balance=opening_balance,
+            total_debt=opening_balance,
         )
         db.session.add(supplier)
         db.session.commit()
@@ -50,14 +84,23 @@ def supplier_details(id):
     # فحص الصلاحية
     if not check_permission("can_manage_suppliers"):
         return redirect("/pos"), 403
+    _ensure_supplier_opening_balance_column()
     supplier = Supplier.query.get_or_404(id)
-    products = Purchase.query.filter_by(supplier_id=id).all()
-    payments = SupplierPayment.query.filter_by(supplier_id=id).all()
+    purchases = (
+        Purchase.query.filter_by(supplier_id=id)
+        .order_by(Purchase.purchase_date.desc(), Purchase.id.desc())
+        .all()
+    )
+    payments = (
+        SupplierPayment.query.filter_by(supplier_id=id)
+        .order_by(SupplierPayment.created_at.desc())
+        .all()
+    )
 
     return render_template(
         "supplier_details.html",
         supplier=supplier,
-        products=products,
+        purchases=purchases,
         payments=payments
     )
 
@@ -193,24 +236,28 @@ def supplier_statement_pdf(id):
     )
 @suppliers_bp.route("/statement/print/<int:id>")
 def supplier_statement_print(id):
+    _ensure_supplier_opening_balance_column()
     supplier = Supplier.query.get_or_404(id)
 
-    purchases  = Purchase.query.filter_by(supplier_id=id).all()
+    purchases = Purchase.query.filter_by(supplier_id=id).all()
     payments = SupplierPayment.query.filter_by(supplier_id=id).all()
 
+    opening_balance = int(getattr(supplier, "opening_balance", 0) or 0)
     total_purchase = sum(p.total for p in purchases)
-
-    total_paid = sum(p.amount for p in payments)
-    remaining = total_purchase - total_paid
+    total_paid = int(supplier.total_paid or 0)
+    total_debt = int(supplier.total_debt or 0)
+    remaining = int(supplier.remaining or 0)
 
     return render_template(
         "supplier_statement_print.html",
         supplier=supplier,
         purchases=purchases,
         payments=payments,
+        opening_balance=opening_balance,
         total_purchase=total_purchase,
         total_paid=total_paid,
+        total_debt=total_debt,
         remaining=remaining,
-        today=datetime.now()   # 🔴 هذا السطر لازم يكون موجود
+        today=datetime.now(),
     )
 

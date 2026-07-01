@@ -223,6 +223,20 @@ with app.app_context():
                         for col, stmt in product_additions.items():
                             if col not in product_cols:
                                 cur.execute(stmt)
+                    if "supplier" in existing_tables:
+                        cur.execute("PRAGMA table_info(supplier)")
+                        supplier_cols = {row[1] for row in cur.fetchall()}
+                        if "opening_balance" not in supplier_cols:
+                            cur.execute(
+                                "ALTER TABLE supplier ADD COLUMN opening_balance INTEGER DEFAULT 0"
+                            )
+                    if "employee" in existing_tables:
+                        cur.execute("PRAGMA table_info(employee)")
+                        employee_cols = {row[1] for row in cur.fetchall()}
+                        if "last_active" not in employee_cols:
+                            cur.execute(
+                                "ALTER TABLE employee ADD COLUMN last_active DATETIME"
+                            )
                     conn.commit()
                     conn.close()
                 except Exception as _tenant_err:
@@ -788,6 +802,13 @@ with app.app_context():
                     conn.execute(text("ALTER TABLE employee ADD COLUMN theme_preference VARCHAR(20) DEFAULT 'dark'"))
                     added = True
                     print("--> Added 'theme_preference'")
+                if 'last_active' not in columns:
+                    if db.engine.dialect.name == 'postgresql':
+                        conn.execute(text("ALTER TABLE employee ADD COLUMN last_active TIMESTAMP"))
+                    else:
+                        conn.execute(text("ALTER TABLE employee ADD COLUMN last_active DATETIME"))
+                    added = True
+                    print("--> Added 'last_active'")
                 
                 if added:
                     conn.commit()
@@ -989,6 +1010,10 @@ def inject_global_data():
         "can_manage_agents": False,
         "can_manage_pages": False,
         "can_edit_price": False,
+        "can_manage_orders": False,
+        "can_manage_shipping": False,
+        "can_manage_settings": False,
+        "can_view_dashboard": False,
         "_": lambda x: x,
         "current_lang": "ar"
     }
@@ -1010,8 +1035,15 @@ def inject_global_data():
         
         if "user_id" not in session:
             return {**default, "_": translate, "current_lang": lang_now}
-            
-        employee = db.session.get(Employee, session["user_id"])
+
+        tenant_slug = (session.get("tenant_slug") or "").strip()
+        prev_tenant = getattr(g, "tenant", None)
+        if tenant_slug:
+            g.tenant = tenant_slug
+        try:
+            employee = db.session.get(Employee, session["user_id"])
+        finally:
+            g.tenant = prev_tenant
         if not employee:
             return {**default, "_": translate, "current_lang": lang_now}
             
@@ -1034,12 +1066,16 @@ def inject_global_data():
             "can_see_agents": employee.has_permission("view_agents"),
             "can_see_pages": employee.has_permission("view_pages"),
             "can_see_messages": employee.has_permission("view_messages"),
-            "can_edit_price": employee.has_permission("edit_price"),
             "can_manage_employees": employee.has_permission("manage_employees"),
             "can_manage_agents": employee.has_permission("manage_agents"),
             "can_manage_pages": employee.has_permission("manage_pages"),
+            "can_edit_price": employee.has_permission("edit_price"),
+            "can_manage_orders": employee.has_permission("manage_orders"),
+            "can_manage_shipping": employee.has_permission("manage_shipping"),
+            "can_manage_settings": employee.has_permission("manage_settings"),
+            "can_view_dashboard": employee.has_permission("view_dashboard"),
             "_": translate,
-            "current_lang": final_lang
+            "current_lang": final_lang,
         }
     except Exception as e:
         print(f"Error in context processor: {e}")
@@ -1099,6 +1135,11 @@ def require_login():
 
     # السماح للمسارات المفتوحة: "/" تطابق تامة، الباقي يبدأ بـ المسار
     if request.path == "/" or any(request.path.startswith(p) for p in open_routes if p != "/"):
+        # لوحة التحكم "/" معفاة من require_login لكن تحتاج g.tenant للجلسات النشطة
+        if "user_id" in session:
+            tenant_slug = session.get("tenant_slug")
+            if tenant_slug:
+                g.tenant = tenant_slug
         return
 
     publisher_api_path = (request.path or "").startswith("/publisher/api/")
@@ -1153,10 +1194,17 @@ def inject_system_settings():
     # لا نستعلم عن SystemSettings في مسارات الإدارة العليا (قاعدة Core قد لا تحتوي الجدول)
     if request.path.startswith("/superadmin"):
         return {"system_settings": None}
+    tenant_slug = (session.get("tenant_slug") or "").strip()
+    prev_tenant = getattr(g, "tenant", None)
+    if tenant_slug:
+        g.tenant = tenant_slug
     try:
         settings = SystemSettings.get_settings()
     except Exception:
+        db.session.rollback()
         settings = None
+    finally:
+        g.tenant = prev_tenant
     return {"system_settings": settings}
 
 

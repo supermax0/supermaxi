@@ -48,10 +48,14 @@ def init_tenant_db(tenant_slug):
         from models.role import Permission, Role
         from datetime import datetime
         
-        # الصلاحيات الافتراضية لكل شركة جديدة
-        # ملاحظة: إذا أُضيفت صلاحية جديدة هنا فسيتم إنشاؤها فقط إذا لم تكن موجودة مسبقاً.
         default_perms = [
+            ('view_dashboard', 'لوحة التحكم الرئيسية'),
             ('view_orders', 'رؤية الطلبات'),
+            ('view_orders_placed', 'رؤية طلبات تم الطلب'),
+            ('view_orders_delivered', 'رؤية الطلبات الواصلة'),
+            ('view_orders_returned', 'رؤية المرتجعات'),
+            ('view_orders_shipped', 'رؤية المشحونة'),
+            ('manage_orders', 'إدارة الطلبات'),
             ('edit_price', 'تعديل السعر'),
             ('view_reports', 'رؤية التقارير'),
             ('manage_inventory', 'إدارة المخزون'),
@@ -59,36 +63,34 @@ def init_tenant_db(tenant_slug):
             ('manage_suppliers', 'إدارة الموردين'),
             ('manage_customers', 'إدارة الزبائن'),
             ('view_accounts', 'رؤية الحسابات'),
-            ('view_financial', 'رؤية البيانات المالية'),
-            # صلاحيات للروابط في القائمة الجانبية حتى يمكن إخفاؤها من الأدوار
+            ('view_financial', 'رؤية التقرير المالي'),
             ('view_pos', 'استخدام نقطة البيع'),
-            ('view_shipping', 'رؤية / استخدام الشحن'),
+            ('view_shipping', 'رؤية شركات الشحن'),
+            ('manage_shipping', 'إدارة شركات الشحن'),
             ('view_agents', 'رؤية مندوبي التوصيل'),
             ('view_pages', 'رؤية / إدارة الصفحات'),
             ('view_messages', 'رؤية واجهة المراسلة'),
-            ('view_orders_placed', 'رؤية طلبات تم الطلب'),
-            ('view_orders_delivered', 'رؤية الطلبات الواصلة'),
-            ('view_orders_returned', 'رؤية المرتجعات'),
-            ('view_orders_shipped', 'رؤية المشحونة'),
             ('manage_employees', 'إدارة الموظفين'),
             ('manage_agents', 'إدارة المندوبين'),
             ('manage_pages', 'إدارة البيجات'),
+            ('manage_settings', 'إعدادات النظام'),
         ]
-        
-        # Add permissions
+
         for name, desc in default_perms:
             if not session.query(Permission).filter_by(name=name).first():
                 session.add(Permission(name=name, description=desc, created_at=datetime.utcnow()))
         
-        # Add roles
         if not session.query(Role).filter_by(name='admin').first():
             admin_role = Role(name='admin', description='مدير النظام', created_at=datetime.utcnow())
             session.add(admin_role)
             
         if not session.query(Role).filter_by(name='cashier').first():
             cashier_role = Role(name='cashier', description='كاشير', created_at=datetime.utcnow())
-            # Add some default permissions for cashier
-            perms = session.query(Permission).filter(Permission.name.in_(['view_orders', 'manage_customers', 'view_orders_placed', 'view_orders_delivered', 'view_orders_returned', 'view_orders_shipped', 'view_pos'])).all()
+            perms = session.query(Permission).filter(Permission.name.in_([
+                'view_dashboard', 'view_orders', 'manage_orders', 'manage_customers',
+                'view_orders_placed', 'view_orders_delivered', 'view_orders_returned',
+                'view_orders_shipped', 'view_pos',
+            ])).all()
             cashier_role.permissions.extend(perms)
             session.add(cashier_role)
             

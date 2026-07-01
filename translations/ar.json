@@ -359,6 +359,8 @@
     "suppliers_field_name": "اسم المورد",
     "suppliers_field_phone": "رقم الهاتف",
     "suppliers_field_address": "العنوان",
+    "suppliers_field_opening_balance": "الرصيد الافتتاحي (د.ع)",
+    "suppliers_opening_balance": "الرصيد الافتتاحي",
     "suppliers_save_button": "حفظ المورد",
 
     "suppliers_list_title": "قائمة الموردين",
@@ -1026,6 +1028,7 @@
     "supplier_statement_no_purchases_short": "لا توجد مشتريات",
     "supplier_statement_note_label": "ملاحظة",
     "supplier_statement_total_purchases": "إجمالي المشتريات",
+    "supplier_statement_total_debt": "إجمالي الدين",
     "supplier_statement_total_paid": "إجمالي المدفوع",
     "supplier_statement_remaining": "المتبقي"
 }

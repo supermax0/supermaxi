@@ -13,8 +13,17 @@ import os
 import json
 from datetime import datetime
 from types import SimpleNamespace
+from utils.permission_checks import guard_permission
 
 settings_bp = Blueprint("settings", __name__, url_prefix="/settings")
+
+
+@settings_bp.before_request
+def _settings_permission_guard():
+    from flask import session
+    if "user_id" not in session:
+        return None
+    return guard_permission("manage_settings")
 
 # Allowed extensions for logo upload
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'}

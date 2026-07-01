@@ -359,6 +359,8 @@
     "suppliers_field_name": "Supplier name",
     "suppliers_field_phone": "Phone number",
     "suppliers_field_address": "Address",
+    "suppliers_field_opening_balance": "Opening balance (IQD)",
+    "suppliers_opening_balance": "Opening balance",
     "suppliers_save_button": "Save supplier",
 
     "suppliers_list_title": "Suppliers list",
@@ -1025,6 +1027,7 @@
     "supplier_statement_no_purchases_short": "No purchases",
     "supplier_statement_note_label": "Note",
     "supplier_statement_total_purchases": "Total Purchases",
+    "supplier_statement_total_debt": "Total Debt",
     "supplier_statement_total_paid": "Total Paid",
     "supplier_statement_remaining": "Remaining"
 }

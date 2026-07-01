@@ -1949,6 +1949,7 @@
   // AG Grid Global Config
   // ==========================
   let gridApi;
+  const ORDERS_USER_CAN_MANAGE = {{ 'true' if can_manage_orders else 'false' }};
   let allOrders = [];
 
   // Actions Renderer for AG Grid
@@ -3484,8 +3485,8 @@
 
     const isReturned = row && (row.status === "مرتجع" || row.status === "ملغي" || row.status === "راجع" || row.status === "راجعة");
     const isPaid = row && row.payment_status === "مسدد";
-    const canPay = !!(row && row.can_pay);
-    const canReturn = !!(row && !isReturned && !isPaid);
+    const canPay = !!(ORDERS_USER_CAN_MANAGE && row && row.can_pay);
+    const canReturn = !!(ORDERS_USER_CAN_MANAGE && row && !isReturned && !isPaid);
 
     function actionBtn(className, action, label, title, extraAttrs, disabled) {
       const disClass = disabled ? ' is-disabled' : '';

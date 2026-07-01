@@ -10,6 +10,7 @@ class Supplier(db.Model):
     phone = db.Column(db.String(50))
     address = db.Column(db.String(255))
 
+    opening_balance = db.Column(db.Integer, default=0)
     total_debt = db.Column(db.Integer, default=0)
     total_paid = db.Column(db.Integer, default=0)
 

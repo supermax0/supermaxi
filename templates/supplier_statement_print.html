@@ -125,9 +125,19 @@ th,td{
 
 <h3>{{ _('supplier_statement_section_summary') }}</h3>
 <table class="summary">
+    {% if opening_balance %}
+    <tr>
+        <td>{{ _('suppliers_opening_balance') }}</td>
+        <td>{{ opening_balance }}</td>
+    </tr>
+    {% endif %}
     <tr>
         <td>{{ _('supplier_statement_total_purchases') }}</td>
         <td>{{ total_purchase }}</td>
+    </tr>
+    <tr>
+        <td>{{ _('supplier_statement_total_debt') }}</td>
+        <td>{{ total_debt }}</td>
     </tr>
     <tr>
         <td>{{ _('supplier_statement_total_paid') }}</td>

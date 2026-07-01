@@ -10,13 +10,50 @@ import os
 import json
 import uuid
 from werkzeug.utils import secure_filename
+from utils.permission_checks import guard_permission
 
 messages_bp = Blueprint("messages", __name__, url_prefix="/messages")
 
 
+@messages_bp.before_request
+def _messages_permission_guard():
+    if request.endpoint == "messages.unread_count":
+        return None
+    if "user_id" not in session:
+        return jsonify({"error": "غير مصرح"}), 403
+    return guard_permission("view_messages", json=True)
+
+
 ALLOWED_IMAGE_EXT = {"jpg", "jpeg", "png", "gif", "webp", "bmp"}
-ALLOWED_VIDEO_EXT = {"mp4", "webm", "ogg", "mov", "avi", "mkv"}
-ALLOWED_AUDIO_EXT = {"mp3", "wav", "ogg", "m4a", "aac", "flac"}
+ALLOWED_VIDEO_EXT = {"mp4", "mov", "avi", "mkv"}  # webm/ogg تُحدَّد حسب النوع (صوت/فيديو)
+ALLOWED_AUDIO_EXT = {"mp3", "wav", "ogg", "m4a", "aac", "flac", "webm"}
+
+
+def _detect_file_type(filename, content_type=None):
+    """يحدّد نوع الملف — تسجيلات voice_*.webm تُعامل كصوت وليس فيديو."""
+    ext = filename.rsplit(".", 1)[1].lower() if "." in filename else ""
+    base = os.path.basename(filename).lower()
+
+    if ext in ALLOWED_IMAGE_EXT:
+        return "image"
+
+    ct = (content_type or "").lower()
+    if ct.startswith("audio/"):
+        return "audio"
+    if ct.startswith("video/") and ext not in ALLOWED_AUDIO_EXT:
+        return "video"
+
+    # تسجيل صوتي من MediaRecorder (voice_123.webm)
+    if base.startswith("voice_") and ext == "webm":
+        return "audio"
+    if ext == "webm" and ct.startswith("audio"):
+        return "audio"
+
+    if ext in ALLOWED_VIDEO_EXT or ext == "webm":
+        return "video"
+    if ext in ALLOWED_AUDIO_EXT:
+        return "audio"
+    return "file"
 
 
 def _save_uploaded_file(file):
@@ -26,15 +63,7 @@ def _save_uploaded_file(file):
 
     filename = secure_filename(file.filename)
     ext = filename.rsplit(".", 1)[1].lower() if "." in filename else ""
-
-    if ext in ALLOWED_IMAGE_EXT:
-        file_type = "image"
-    elif ext in ALLOWED_VIDEO_EXT:
-        file_type = "video"
-    elif ext in ALLOWED_AUDIO_EXT:
-        file_type = "audio"
-    else:
-        file_type = "file"
+    file_type = _detect_file_type(filename, getattr(file, "content_type", None))
 
     unique_filename = f"{uuid.uuid4()}.{ext}" if ext else f"{uuid.uuid4()}"
     file_path_full = os.path.join(upload_folder, unique_filename)
@@ -237,31 +266,7 @@ def send_message():
             file = request.files['file']
             if file and file.filename:
                 try:
-                    # إنشاء مجلد التحميل
-                    upload_folder = 'static/uploads/messages'
-                    os.makedirs(upload_folder, exist_ok=True)
-                    
-                    # تحديد نوع الملف
-                    filename = secure_filename(file.filename)
-                    ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
-                    
-                    if ext in ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp']:
-                        file_type = 'image'
-                    elif ext in ['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv']:
-                        file_type = 'video'
-                    elif ext in ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac']:
-                        file_type = 'audio'
-                    else:
-                        file_type = 'file'
-                    
-                    # إنشاء اسم فريد للملف
-                    unique_filename = f"{uuid.uuid4()}.{ext}"
-                    file_path_full = os.path.join(upload_folder, unique_filename)
-                    file.save(file_path_full)
-                    file_name = filename
-                    
-                    # حفظ المسار النسبي
-                    file_path = f"/{upload_folder.replace(chr(92), '/')}/{unique_filename}"
+                    file_type, file_path, file_name = _save_uploaded_file(file)
                 except Exception as e:
                     print(f"Error saving file: {e}")
                     return jsonify({"error": f"خطأ في رفع الملف: {str(e)}"}), 500
@@ -270,7 +275,7 @@ def send_message():
         message = Message(
             sender_id=current_user_id,
             receiver_id=receiver_id,
-            content=content or (f"📎 {file_name}" if file_name else ""),
+            content=content or ("" if file_type == "audio" else (f"📎 {file_name}" if file_name else "")),
             file_type=file_type,
             file_path=file_path,
             file_name=file_name,

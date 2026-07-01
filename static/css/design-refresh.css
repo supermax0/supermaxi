@@ -61,12 +61,18 @@
 
 html {
   color-scheme: light;
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  overscroll-behavior: none;
 }
 
 body {
   font-family: "Tajawal", "Cairo", "IBM Plex Sans Arabic", system-ui, sans-serif !important;
   background: var(--bg-page) !important;
   color: var(--text-main) !important;
+  touch-action: manipulation;
+  overscroll-behavior: none;
 }
 
 .content,

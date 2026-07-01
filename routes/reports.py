@@ -103,7 +103,7 @@ def reports_dashboard():
 # ======================================================
 @reports_bp.route("/financial")
 def financial_report():
-    if not check_permission("can_see_reports"):
+    if not (check_permission("view_financial") or check_permission("can_see_reports")):
         return redirect("/pos"), 403
 
     period_type = request.args.get("period_type", "this_month")

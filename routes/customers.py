@@ -8,8 +8,17 @@ from extensions import db
 from models.customer import Customer
 from models.invoice import Invoice
 from utils.product_schema_guard import ensure_customer_blacklist_columns
+from utils.permission_checks import guard_permission
 
 customers_bp = Blueprint("customers", __name__, url_prefix="/customers")
+
+
+@customers_bp.before_request
+def _customers_permission_guard():
+    from flask import session
+    if "user_id" not in session:
+        return None
+    return guard_permission("manage_customers")
 
 
 def _xlsx_xml_to_dataframe(raw_bytes):

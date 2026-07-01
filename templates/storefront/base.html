@@ -1,8 +1,9 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="ar" dir="rtl" data-theme="{{ store_design.theme_mode if store_design.theme_mode in ['light','dark'] else 'light' }}">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <script src="/static/js/no-zoom.js"></script>
   <title>{% block title %}{{ store_design.store_name }}{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='storefront/css/store.css') }}">
   <style>

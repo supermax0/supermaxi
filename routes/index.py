@@ -42,6 +42,25 @@ from utils.decorators import admin_required
 index_bp = Blueprint("index", __name__)
 
 
+@index_bp.before_request
+def _index_api_permission_guard():
+    path = request.path or ""
+    if not path.startswith("/api/index"):
+        return None
+    if "user_id" not in session:
+        return jsonify({"success": False, "error": "غير مصرح"}), 403
+    from utils.permission_checks import guard_permission
+    if path.endswith("/add-expense"):
+        return guard_permission("view_expenses", json=True)
+    if "/execute" in path:
+        return guard_permission("manage_orders", json=True)
+    if path.endswith("/search"):
+        return guard_permission("view_orders", json=True)
+    if path.endswith("/reports") or path.endswith("/charts"):
+        return guard_permission("view_reports", json=True)
+    return guard_permission("view_dashboard", json=True)
+
+
 def _is_beauty_center_session() -> bool:
     """شركة مركز تجميل — لوحة التحكم والمدير التنفيذي يعتمدان الجلسات والصرفيات."""
     return (session.get("business_type") or "").strip() == "beauty_center"
@@ -199,6 +218,10 @@ def index():
         _debug_log("180817", "H4", "index.index:serve_landing", "serving landing", {})
         # #endregion
         return render_template("index.html", landing_plans=landing_plans)
+
+    from utils.permission_checks import check_permission
+    if not check_permission("view_dashboard"):
+        return redirect("/pos")
     
     # إعدادات الواجهة (ui_flags) — نقرأها على قاعدة المستأجر حتى تعمل بطاقات الداشبورد
     system_settings = None

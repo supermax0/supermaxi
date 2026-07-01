@@ -41,7 +41,7 @@ def _can_use_quick_sale(employee: Employee | None) -> bool:
     if employee.role in {"admin", "cashier"}:
         return True
     try:
-        return employee.has_permission("use_pos")
+        return employee.has_permission("view_pos")
     except Exception:
         return False
 

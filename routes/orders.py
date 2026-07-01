@@ -24,7 +24,14 @@ from models.order_item import OrderItem
 from models.product import Product
 from models.customer import Customer
 from models.employee import Employee
-from utils.permission_checks import check_permission, employee_can
+from utils.permission_checks import (
+    allowed_order_statuses_for,
+    check_permission,
+    employee_can,
+    get_current_employee,
+    guard_order_access,
+    guard_permission,
+)
 from models.shipping import ShippingCompany
 from models.report import Report
 from models.shipping_report import ShippingReport
@@ -45,6 +52,20 @@ from utils.payment_ledger import append_payment_ledger_delta
 from services.media_service import get_thumbnail_upload_root, get_video_upload_root, save_uploaded_file
 
 orders_bp = Blueprint("orders", __name__, url_prefix="/orders")
+_ORDERS_PUBLIC_PREFIXES = ("/orders/p/o/", "/orders/invoice-video/")
+
+
+@orders_bp.before_request
+def _orders_mutations_guard():
+    path = request.path or ""
+    if any(path.startswith(prefix) for prefix in _ORDERS_PUBLIC_PREFIXES):
+        return None
+    if "user_id" not in session:
+        return None
+    if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+        return guard_permission("manage_orders", json=True)
+    return None
+
 # Per-tenant (or core) bind: video-column ensure must inspect the same engine Invoice rows use.
 _ORDER_VIDEO_COLUMNS_ENSURED_BINDS: set[str] = set()
 # After a failed ALTER (read-only DB, lock, etc.) skip retrying every request in this process.
@@ -438,25 +459,13 @@ def orders():
     q = q.order_by(Invoice.created_at.desc())
 
     # ------------------ Filter by Permissions ------------------
-    if "user_id" in session:
-        employee = Employee.query.get(session["user_id"])
-        if employee and employee.role != "admin":
-            # تصفية الطلبات بناءً على الصلاحيات
-            allowed_statuses = []
-            if employee_can(employee, "view_orders_placed"):
-                allowed_statuses.append("تم الطلب")
-            if employee_can(employee, "view_orders_delivered"):
-                allowed_statuses.extend(["واصل", "واصلة"])
-            if employee_can(employee, "view_orders_returned"):
-                allowed_statuses.append("مرتجع")
-            if employee_can(employee, "view_orders_shipped"):
-                allowed_statuses.extend(["مشحون", "مشحونة", "جاري الشحن"])
-            
-            if allowed_statuses:
-                q = q.filter(Invoice.status.in_(allowed_statuses))
-            else:
-                # إذا لم يكن لديه أي صلاحية، إرجاع قائمة فارغة
-                q = q.filter(Invoice.id == -1)  # استعلام فارغ
+    employee = get_current_employee()
+    if employee and employee.role != "admin":
+        allowed_statuses = allowed_order_statuses_for(employee)
+        if allowed_statuses:
+            q = q.filter(Invoice.status.in_(allowed_statuses))
+        else:
+            q = q.filter(Invoice.id == -1)
 
     # جلب جميع الطلبات للعرض (بدون pagination للبيانات في JSON)
     all_orders_for_data = q.all()
@@ -1057,7 +1066,13 @@ def update_delivery_agent():
 @orders_bp.route("/details/<int:order_id>")
 def details(order_id):
     _ensure_order_video_columns()
+    denied = guard_permission("can_see_orders", json=True)
+    if denied:
+        return denied
     order = Invoice.query.get_or_404(order_id)
+    denied = guard_order_access(order, json=True)
+    if denied:
+        return denied
 
     items = OrderItem.query.filter_by(invoice_id=order.id).all()
     
@@ -1275,6 +1290,9 @@ def public_order_view(token: str):
 @orders_bp.route("/query/<int:order_id>")
 def query_order(order_id):
     """API للاستعلام عن تفاصيل الطلب للمساعد الصوتي"""
+    denied = guard_permission("can_see_orders", json=True)
+    if denied:
+        return denied
     order = Invoice.query.get(order_id)
     
     if not order:
@@ -1282,6 +1300,9 @@ def query_order(order_id):
             "success": False,
             "error": "الطلب غير موجود"
         }), 404
+    denied = guard_order_access(order, json=True)
+    if denied:
+        return denied
     
     items = OrderItem.query.filter_by(invoice_id=order.id).all()
     
@@ -1319,7 +1340,13 @@ def query_order(order_id):
 @orders_bp.route("/invoice/<int:order_id>")
 def invoice_page(order_id):
     _ensure_order_video_columns()
+    denied = guard_permission("can_see_orders")
+    if denied:
+        return denied
     order = Invoice.query.get_or_404(order_id)
+    denied = guard_order_access(order)
+    if denied:
+        return denied
 
     items = OrderItem.query.filter_by(invoice_id=order.id).all()
     
