@@ -316,4 +316,11 @@ class DocumentStorageService:
                 )
         results = DocumentIntelligenceService.list_session_results(session.id)
         data["intelligence_results"] = [r.to_dict() for r in results]
+        from modules.workspace.services.courier_settlement.courier_readonly_analysis_service import (
+            CourierReadonlyAnalysisService,
+        )
+
+        courier = CourierReadonlyAnalysisService.get_latest_for_session(session.id)
+        if courier:
+            data["courier_analysis"] = courier.to_dict()
         return data

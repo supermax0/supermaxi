@@ -15,6 +15,10 @@ DEFAULT_POSITIONS = {
     "session_timeline": {"x": 40, "y": 420, "width": 360, "height": 220, "placement": "bottom"},
     "document_intelligence": {"x": 40, "y": 320, "width": 400, "height": 360, "placement": "left"},
     "raw_table_preview": {"x": 200, "y": 480, "width": 480, "height": 280, "placement": "bottom"},
+    "courier_settlement_analysis": {"x": 40, "y": 80, "width": 380, "height": 320, "placement": "left"},
+    "courier_rows": {"x": 40, "y": 420, "width": 720, "height": 300, "placement": "bottom"},
+    "courier_issues": {"x": 440, "y": 320, "width": 360, "height": 280, "placement": "right"},
+    "financial_preview": {"x": 400, "y": 100, "width": 380, "height": 300, "placement": "center"},
 }
 
 DOC_PREVIEW_KEYS = frozenset({
@@ -209,6 +213,55 @@ class WindowOrchestrator:
               existing.get("props") or {},
               props,
               "document_intelligence",
+          )
+          existing["opened_by_step_id"] = step_id
+          session.set_windows(windows)
+          return existing
+
+      window = WindowOrchestrator.ensure_window(session, spec, step_id)
+      if window not in windows:
+          windows.append(window)
+      session.set_windows(windows)
+      return window
+
+  @staticmethod
+  def ensure_courier_window(
+      session: WorkspaceSession,
+      window_type: str,
+      analysis_id: str,
+      props: Dict[str, Any],
+      step_id: str,
+  ) -> Dict[str, Any]:
+      windows = session.get_windows()
+      existing = None
+      for w in windows:
+          if w.get("type") == window_type and (w.get("props") or {}).get("analysisId") == analysis_id:
+              existing = w
+              break
+
+      titles = {
+          "courier_settlement_analysis": "ملخص كشف التسديد",
+          "courier_rows": "صفوف الكشف",
+          "courier_issues": "مشاكل الكشف",
+          "financial_preview": "معاينة مالية",
+      }
+      placements = {
+          "courier_settlement_analysis": "left",
+          "courier_rows": "bottom",
+          "courier_issues": "right",
+          "financial_preview": "center",
+      }
+      spec = {
+          "id": f"win_{window_type}_{analysis_id[:8]}",
+          "type": window_type,
+          "title": titles.get(window_type, window_type),
+          "placement": placements.get(window_type, "center"),
+          "props": {**props, "analysisId": analysis_id},
+      }
+      if existing:
+          existing["title"] = spec["title"]
+          existing["props"] = WindowOrchestrator._merge_props(
+              existing.get("props") or {}, spec["props"], window_type
           )
           existing["opened_by_step_id"] = step_id
           session.set_windows(windows)

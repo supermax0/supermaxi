@@ -106,6 +106,14 @@ class WorkspaceEventStream {
       "document.classified",
       "document.intelligence.completed",
       "document.intelligence.failed",
+      "courier.analysis.started",
+      "courier.rows.parsed",
+      "courier.matching.started",
+      "courier.row.matched",
+      "courier.issues.detected",
+      "courier.financial_preview.ready",
+      "courier.analysis.completed",
+      "courier.analysis.failed",
     ];
 
     eventTypes.forEach((type) => {

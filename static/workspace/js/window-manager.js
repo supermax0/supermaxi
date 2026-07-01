@@ -15,7 +15,16 @@ class WorkspaceWindowManager {
       session_timeline: SessionTimelineWindow,
       document_intelligence: DocumentIntelligenceWindow,
       raw_table_preview: RawTablePreviewWindow,
+      courier_settlement_analysis: CourierSettlementAnalysisWindow,
+      courier_rows: CourierRowsWindow,
+      courier_issues: CourierIssuesWindow,
+      financial_preview: FinancialPreviewWindow,
     };
+    this.courierHandlers = {};
+  }
+
+  setCourierHandlers(handlers) {
+    this.courierHandlers = handlers || {};
   }
 
   setWorkflowHandlers(handlers) {
@@ -137,6 +146,27 @@ class WorkspaceWindowManager {
         RawTablePreviewWindow.patchFromEvent(body, payload);
       }
     }
+    if (type === "courier.financial_preview.ready") {
+      const win = [...this.windows.entries()].find(([, el]) => {
+        const spec = JSON.parse(el.dataset.spec || "{}");
+        return spec.type === "financial_preview";
+      });
+      if (win) {
+        FinancialPreviewWindow.patchFromEvent(win[1].querySelector(".ws-window-body"), payload);
+      }
+    }
+    if (type === "courier.analysis.completed" && payload.summary) {
+      const win = [...this.windows.entries()].find(([, el]) => {
+        const spec = JSON.parse(el.dataset.spec || "{}");
+        return spec.type === "courier_settlement_analysis";
+      });
+      if (win) {
+        CourierSettlementAnalysisWindow.patchFromEvent(
+          win[1].querySelector(".ws-window-body"),
+          payload
+        );
+      }
+    }
   }
 
   _createShell(spec) {
@@ -184,6 +214,16 @@ class WorkspaceWindowManager {
         renderer.render(body, spec, {
           onSelect: (type) => h.onSelectWorkflow && h.onSelectWorkflow(type),
         });
+      } else if (spec.type === "courier_rows") {
+        renderer.render(body, spec, {
+          onFilter: (f) => this.courierHandlers.onFilter && this.courierHandlers.onFilter(spec, f),
+          loadRows: (aid, f) => this.courierHandlers.loadRows && this.courierHandlers.loadRows(aid, f, body),
+        });
+      } else if (spec.type === "courier_issues" && this.courierHandlers.loadIssues) {
+        renderer.render(body, spec);
+        if (spec.props && spec.props.analysisId) {
+          this.courierHandlers.loadIssues(spec.props.analysisId, body);
+        }
       } else {
         renderer.render(body, spec);
       }

@@ -67,6 +67,34 @@ WORKSPACE_TABLES = {
         "created_at": "DATETIME",
         "updated_at": "DATETIME",
     },
+    "ai_workspace_courier_statement_analyses": {
+        "session_id": "VARCHAR(36)",
+        "document_id": "VARCHAR(36)",
+        "extraction_result_id": "VARCHAR(36)",
+        "tenant_slug": "VARCHAR(100)",
+        "user_id": "INTEGER",
+        "status": "VARCHAR(30)",
+        "courier_company_id": "INTEGER",
+        "courier_company_name_detected": "VARCHAR(200)",
+        "document_kind": "VARCHAR(50)",
+        "confidence": "FLOAT",
+        "total_rows": "INTEGER",
+        "matched_rows": "INTEGER",
+        "review_rows": "INTEGER",
+        "unmatched_rows": "INTEGER",
+        "issue_rows": "INTEGER",
+        "duplicate_rows": "INTEGER",
+        "total_collected_amount": "INTEGER",
+        "total_delivery_fees": "INTEGER",
+        "expected_net_amount": "INTEGER",
+        "unmatched_amount": "INTEGER",
+        "total_variance_amount": "INTEGER",
+        "summary_json": "TEXT",
+        "metadata_json": "TEXT",
+        "error_message": "TEXT",
+        "created_at": "DATETIME",
+        "updated_at": "DATETIME",
+    },
 }
 
 
@@ -76,6 +104,9 @@ def ensure_workspace_schema() -> None:
     from modules.workspace.models.workspace_audit_event import WorkspaceAuditEvent  # noqa: F401
     from modules.workspace.models.workspace_document import WorkspaceDocument  # noqa: F401
     from modules.workspace.models.document_extraction_result import DocumentExtractionResult  # noqa: F401
+    from modules.workspace.models.courier_statement_analysis import CourierStatementAnalysis  # noqa: F401
+    from modules.workspace.models.courier_statement_analysis_row import CourierStatementAnalysisRow  # noqa: F401
+    from modules.workspace.models.courier_statement_analysis_issue import CourierStatementAnalysisIssue  # noqa: F401
 
     try:
         db.create_all()

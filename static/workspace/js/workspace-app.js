@@ -13,11 +13,13 @@
   let uploadManager = null;
   let workflowClient = null;
   let documentIntelligenceClient = null;
+  let courierAnalysisClient = null;
   let timelineStore = null;
 
   const statusPill = document.getElementById("ws-status-pill");
   const btnUpload = document.getElementById("btn-upload");
   const btnIntelligence = document.getElementById("btn-intelligence");
+  const btnCourierAnalysis = document.getElementById("btn-courier-analysis");
   const btnWorkflow = document.getElementById("btn-workflow");
   const btnSelectWorkflow = document.getElementById("btn-select-workflow");
   const btnNextStep = document.getElementById("btn-next-step");
@@ -68,6 +70,19 @@
     if (!btnIntelligence) return;
     const busy = documentIntelligenceClient && documentIntelligenceClient.isBusy();
     btnIntelligence.disabled = busy || !hasActiveDocument();
+  }
+
+  function updateCourierButton() {
+    if (!btnCourierAnalysis) return;
+    const busy = courierAnalysisClient && courierAnalysisClient.isBusy();
+    btnCourierAnalysis.disabled = busy || !hasActiveDocument();
+  }
+
+  function setCourierBusy(busy) {
+    if (!btnCourierAnalysis) return;
+    btnCourierAnalysis.disabled = busy || !hasActiveDocument();
+    btnCourierAnalysis.textContent = busy ? "جاري التحليل..." : "تحليل كشف التسديد قراءة فقط";
+    btnCourierAnalysis.classList.toggle("ws-btn-loading", busy);
   }
 
   function setUploadBusy(busy) {
@@ -151,6 +166,7 @@
     windowManager.renderWindows(windows);
     avatar.applyState(session.avatar_state || {});
     updateIntelligenceButton();
+    updateCourierButton();
     if (btnRun) {
       btnRun.disabled = session.status === "running" || session.status === "completed";
     }
@@ -213,6 +229,21 @@
       avatar.setMode("warning");
       const err = (data.payload && data.payload.error) || "فشل تحليل المستند";
       avatar.speak(err);
+    });
+
+    eventStream.on("courier.analysis.started", () => {
+      avatar.setMode("matching");
+      avatar.speak("أبدأ تحليل كشف التسديد قراءة فقط.");
+    });
+
+    eventStream.on("courier.analysis.completed", () => {
+      avatar.setMode("success");
+      updateCourierButton();
+    });
+
+    eventStream.on("courier.analysis.failed", (data) => {
+      avatar.setMode("warning");
+      avatar.speak((data.payload && data.payload.error) || "فشل تحليل الكشف");
     });
 
     eventStream.on("session.completed", () => {
@@ -320,6 +351,49 @@
       },
     });
 
+    courierAnalysisClient = new CourierAnalysisClient({
+      apiBase: API,
+      getSessionId: () => (store.getSession() || {}).id,
+      onSessionUpdate,
+      onStart: () => setCourierBusy(true),
+      onComplete: () => {
+        setCourierBusy(false);
+        updateCourierButton();
+      },
+      onError: (err) => {
+        setCourierBusy(false);
+        updateCourierButton();
+        alert(err.message || "فشل تحليل كشف التسديد");
+      },
+    });
+
+    windowManager.setCourierHandlers({
+      loadRows: async (analysisId, filter, bodyEl) => {
+        const status = filter === "all" ? undefined : filter;
+        const data = await courierAnalysisClient.getRows(analysisId, { status, page_size: 100 });
+        CourierRowsWindow.showRows(bodyEl.closest(".ws-courier-rows") ? bodyEl.parentElement : bodyEl, data.rows);
+      },
+      loadIssues: async (analysisId, bodyEl) => {
+        const data = await courierAnalysisClient.getIssues(analysisId);
+        CourierIssuesWindow.showIssues(bodyEl, data.issues);
+      },
+      onFilter: async (spec, filter) => {
+        const aid = (spec.props || {}).analysisId;
+        if (!aid) return;
+        const data = await courierAnalysisClient.getRows(aid, {
+          status: filter === "all" ? undefined : filter,
+          page_size: 100,
+        });
+        const winEl = [...windowManager.windows.values()].find((el) => {
+          const s = JSON.parse(el.dataset.spec || "{}");
+          return s.type === "courier_rows" && (s.props || {}).analysisId === aid;
+        });
+        if (winEl) {
+          CourierRowsWindow.showRows(winEl.querySelector(".ws-window-body"), data.rows);
+        }
+      },
+    });
+
     store.subscribe(renderFromSession);
 
     if (btnUpload) btnUpload.addEventListener("click", () => uploadManager.openPicker());
@@ -329,7 +403,17 @@
         try {
           await documentIntelligenceClient.runForActiveSessionDocument();
         } catch (e) {
-          /* onError handles alert */
+          /* onError */
+        }
+      });
+    }
+
+    if (btnCourierAnalysis) {
+      btnCourierAnalysis.addEventListener("click", async () => {
+        try {
+          await courierAnalysisClient.runForSession();
+        } catch (e) {
+          /* onError */
         }
       });
     }

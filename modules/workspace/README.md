@@ -1,6 +1,6 @@
 # Finora AI Workspace
 
-## Phase 1 + 2 + 3 + 4
+## Phase 1 + 2 + 3 + 4 + 5
 
 ### الوصول
 
@@ -9,6 +9,57 @@
 - **استعادة جلسة:** `http://localhost:5008/workspace/?session=<uuid>`
 
 يتطلب Enterprise + تسجيل دخول.
+
+---
+
+## Phase 5 — Courier Settlement Read-Only Analysis
+
+تحليل كشف تسديد شركة التوصيل **قراءة فقط** — بدون ترحيل، بدون تعديل فواتير، بدون AI.
+
+### زر جديد
+
+| الزر | الوظيفة |
+|------|---------|
+| **تحليل كشف التسديد قراءة فقط** | يشغّل التحليل بعد فهم المستند (أو يعيد استخدام نتيجة الاستخراج) |
+
+### API
+
+| Method | Path |
+|--------|------|
+| POST | `/workspace/api/sessions/{id}/courier-analysis/run` |
+| GET | `/workspace/api/sessions/{id}/courier-analysis` |
+| GET | `/workspace/api/courier-analysis/{id}` |
+| GET | `/workspace/api/courier-analysis/{id}/rows` |
+| GET | `/workspace/api/courier-analysis/{id}/issues` |
+| GET | `/workspace/api/courier-analysis/{id}/financial-preview` |
+
+### نوافذ جديدة
+
+- `courier_settlement_analysis` — ملخص الصفوف والمطابقة والمشاكل
+- `courier_rows` — صفوف الكشف مع حالة المطابقة
+- `courier_issues` — المشاكل مجمّعة حسب الخطورة
+- `financial_preview` — معاينة مالية فقط (ليست تسديداً)
+
+### أحداث SSE
+
+`courier.analysis.started`, `courier.rows.parsed`, `courier.matching.started`, `courier.row.matched`, `courier.issues.detected`, `courier.financial_preview.ready`, `courier.analysis.completed`, `courier.analysis.failed`
+
+### اختبار يدوي (Phase 5)
+
+1. افتح `/workspace/`
+2. ارفع PDF كشف تسديد
+3. اضغط **فهم المستند** ثم **تحليل كشف التسديد قراءة فقط**
+4. أو شغّل workflow `courier_settlement`
+5. تأكد من نوافذ الصفوف والمشاكل والمعاينة المالية
+6. رسالة التقرير: «هذه نتائج قراءة فقط، لا يوجد ترحيل»
+7. Refresh مع `?session=` — النتائج محفوظة
+8. تأكد أن فواتير Finora لم تتغير
+
+### قيود Phase 5
+
+- لا ترحيل · لا تسديد · لا تعديل فواتير/مخزون/حسابات
+- لا موافقة تنفّذ ترحيلاً
+- لا استدعاء OpenAI
 
 ---
 
@@ -79,7 +130,7 @@
 
 - `mock_workspace` — تجربة كاملة + موافقة تجريبية
 - `unknown_document` — اختيار يدوي لنوع العمل
-- `courier_settlement` — هيكل بدون مطابقة/ترحيل
+- `courier_settlement` — تحليل قراءة فقط (Phase 5)
 - `return_statement` — هيكل بدون باركود
 - `purchase_invoice` — هيكل بدون مطابقة منتجات
 
@@ -121,15 +172,26 @@ python tests/workspace/test_event_replay.py
 python tests/workspace/test_workflow_api.py
 python tests/workspace/test_workspace_session_service.py
 python tests/workspace/test_workspace_document_upload.py
+python tests/workspace/test_workspace_routes.py
+python tests/workspace/test_courier_statement_parser.py
+python tests/workspace/test_courier_order_matcher.py
+python tests/workspace/test_courier_issue_detector.py
+python tests/workspace/test_courier_financial_preview.py
+python tests/workspace/test_courier_readonly_analysis_service.py
+python tests/workspace/test_courier_analysis_api.py
+python tests/workspace/test_courier_workflow_readonly.py
 ```
 
 ---
 
 ## قيود
 
-- لا OCR · لا AI · لا مطابقة · لا ترحيل
-- الموافقة تجريبية فقط
+- لا OCR · لا AI · لا ترحيل فعلي
+- تحليل كشف التسديد قراءة فقط في Phase 5
 
 ## التالي
 
-**Phase 4 — Document Intelligence Foundation**
+**Phase 6 — Courier Settlement Review & Manual Corrections**
+- حل الصفوف غير المطابقة يدوياً
+- اختيار فاتورة مرشحة / تجاهل صف / تعليم مكرر
+- ما زال بدون ترحيل

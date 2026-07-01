@@ -810,6 +810,74 @@ html, body {
   font-weight: 700;
 }
 
+/* Courier analysis — Phase 5 */
+.ws-courier-cards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.ws-courier-card {
+  background: #f8fafc;
+  border: 1px solid var(--ws-border);
+  border-radius: 10px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.ws-courier-card-label {
+  color: var(--ws-muted);
+  font-size: 11px;
+}
+
+.ws-courier-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.ws-courier-table th,
+.ws-courier-table td {
+  border: 1px solid var(--ws-border);
+  padding: 4px 6px;
+  text-align: right;
+}
+
+.ws-courier-row-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.ws-courier-filter.active {
+  background: var(--ws-accent-soft);
+  border-color: var(--ws-accent);
+}
+
+.ws-courier-status-matched { color: #166534; }
+.ws-courier-status-review { color: #b45309; }
+.ws-courier-status-unmatched { color: #b91c1c; }
+.ws-courier-status-duplicate { color: #7c3aed; }
+
+.ws-courier-issue-group {
+  margin-bottom: 10px;
+  font-size: 12px;
+}
+
+.ws-courier-sev-critical { border-right: 3px solid #b91c1c; padding-right: 8px; }
+.ws-courier-sev-error { border-right: 3px solid #dc2626; padding-right: 8px; }
+.ws-courier-sev-warning { border-right: 3px solid #d97706; padding-right: 8px; }
+
+.ws-financial-note {
+  font-size: 11px;
+  color: var(--ws-muted);
+  margin-top: 8px;
+}
+
 @media (max-width: 900px) {
   .ws-window {
     max-width: calc(100vw - 24px) !important;

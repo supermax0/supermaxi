@@ -404,6 +404,19 @@ class WorkflowEngine:
                 )
             return
 
+        if handler == "courier_analysis.run_readonly":
+            from modules.workspace.services.courier_settlement.courier_readonly_analysis_service import (
+                CourierReadonlyAnalysisService,
+            )
+
+            doc_id = (step.get("handler_params") or {}).get("document_id")
+            meta = session.get_metadata() or {}
+            doc_id = doc_id or meta.get("active_document_id")
+            CourierReadonlyAnalysisService.analyze(
+                session.id, document_id=doc_id, user_id=user_id, tenant_slug=tenant_slug
+            )
+            return
+
         raise WorkflowInvalidStateError(f"معالج غير معروف: {handler}")
 
     @staticmethod
