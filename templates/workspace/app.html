@@ -12,6 +12,8 @@
       <div class="ws-toolbar-start">
         <span class="ws-logo">◆</span>
         <h1 class="ws-title">Finora AI Workspace</h1>
+      </div>
+      <div class="ws-toolbar-center">
         <span id="ws-status-pill" class="ws-status-pill ws-status-idle">جاهز</span>
       </div>
       <div class="ws-toolbar-actions">
@@ -21,15 +23,25 @@
         <button type="button" id="btn-workflow" class="ws-btn ws-btn-primary">تشغيل Workflow</button>
         <button type="button" id="btn-select-workflow" class="ws-btn ws-btn-ghost">اختيار نوع العمل</button>
         <button type="button" id="btn-next-step" class="ws-btn ws-btn-ghost" hidden>الخطوة التالية</button>
-        <button type="button" id="btn-new-session" class="ws-btn ws-btn-ghost">جلسة جديدة</button>
         <button type="button" id="btn-run-mock" class="ws-btn ws-btn-ghost">تشغيل تجربة</button>
         <button type="button" id="btn-cancel" class="ws-btn ws-btn-danger">إلغاء</button>
+        <button type="button" id="btn-focus" class="ws-focus-pill" title="وضع التركيز"><span class="ws-focus-ico">◎</span> وضع التركيز</button>
+        <button type="button" id="btn-new-session" class="ws-icon-btn" title="جلسة جديدة">+</button>
+        <button type="button" id="btn-fullscreen" class="ws-icon-btn" title="ملء الشاشة">⤢</button>
       </div>
     </header>
 
     <main id="ws-canvas" class="ws-canvas" aria-label="مساحة العمل">
       <div id="ws-windows-layer" class="ws-windows-layer"></div>
       <div id="ws-avatar-layer" class="ws-avatar-layer"></div>
+
+      <div class="ws-chatbar">
+        <div class="ws-chatbar-inner">
+          <span class="ico">&#9000;</span>
+          <input id="ws-chat-input" class="ws-chat-input" type="text" placeholder="اسأل LEON أو أعطه أمراً..." autocomplete="off" />
+          <button type="button" id="ws-chat-send" class="ws-chat-send" title="إرسال">&#127908;</button>
+        </div>
+      </div>
     </main>
   </div>
 
@@ -54,6 +66,7 @@
   <script src="{{ url_for('static', filename='workspace/js/windows/courier-issues-window.js') }}"></script>
   <script src="{{ url_for('static', filename='workspace/js/windows/financial-preview-window.js') }}"></script>
   <script src="{{ url_for('static', filename='workspace/js/leon-avatar.js') }}"></script>
+  <script src="{{ url_for('static', filename='workspace/js/progress-panel.js') }}"></script>
   <script src="{{ url_for('static', filename='workspace/js/upload-manager.js') }}"></script>
   <script src="{{ url_for('static', filename='workspace/js/workspace-app.js') }}"></script>
 </body>

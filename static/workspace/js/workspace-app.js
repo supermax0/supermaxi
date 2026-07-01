@@ -15,6 +15,7 @@
   let documentIntelligenceClient = null;
   let courierAnalysisClient = null;
   let timelineStore = null;
+  let progressPanel = null;
 
   const statusPill = document.getElementById("ws-status-pill");
   const btnUpload = document.getElementById("btn-upload");
@@ -107,7 +108,11 @@
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      throw new Error(data.message || data.error || `HTTP ${res.status}`);
+      const code = data.error || `HTTP ${res.status}`;
+      if (code === "not_found") {
+        throw new Error("SESSION_NOT_FOUND");
+      }
+      throw new Error(data.message || code);
     }
     return data;
   }
@@ -233,17 +238,45 @@
 
     eventStream.on("courier.analysis.started", () => {
       avatar.setMode("matching");
-      avatar.speak("أبدأ تحليل كشف التسديد قراءة فقط.");
+      avatar.speak("أهلاً، جاري تحليل كشف شركة التوصيل ومطابقة الطلبات...");
+      if (progressPanel) {
+        progressPanel.reset();
+        progressPanel.show();
+        progressPanel.markActive("read");
+      }
+    });
+
+    eventStream.on("courier.rows.parsed", () => {
+      if (progressPanel) progressPanel.markActive("match");
+    });
+
+    eventStream.on("courier.matching.started", () => {
+      avatar.setMode("matching");
+      if (progressPanel) progressPanel.markActive("match");
+    });
+
+    eventStream.on("courier.issues.detected", () => {
+      if (progressPanel) progressPanel.markActive("fees");
+    });
+
+    eventStream.on("courier.financial_preview.ready", () => {
+      if (progressPanel) progressPanel.markActive("profit");
     });
 
     eventStream.on("courier.analysis.completed", () => {
       avatar.setMode("success");
+      avatar.speak("اكتمل تحليل كشف التسديد — نتائج قراءة فقط.");
       updateCourierButton();
+      if (progressPanel) {
+        progressPanel.completeAll();
+        setTimeout(() => progressPanel.hide(), 2500);
+      }
     });
 
     eventStream.on("courier.analysis.failed", (data) => {
       avatar.setMode("warning");
       avatar.speak((data.payload && data.payload.error) || "فشل تحليل الكشف");
+      if (progressPanel) progressPanel.hide();
     });
 
     eventStream.on("session.completed", () => {
@@ -277,18 +310,37 @@
     return data.session;
   }
 
+  async function recoverMissingSession() {
+    console.warn("Workspace session missing — creating a new session");
+    try {
+      await createSession();
+      alert("انتهت صلاحية الجلسة السابقة. تم إنشاء جلسة جديدة.");
+    } catch (err) {
+      alert(err.message || "تعذّر إنشاء جلسة جديدة");
+    }
+  }
+
   async function init() {
     canvas = new WorkspaceCanvas(canvasEl);
     timelineStore = new SessionTimelineStore();
     windowManager = new WorkspaceWindowManager(windowsLayer);
     avatar = new LeonAvatarAdapter(avatarLayer, canvas);
+    if (window.WorkspaceProgressPanel) {
+      progressPanel = new WorkspaceProgressPanel(canvasEl);
+    }
 
     workflowClient = new WorkspaceWorkflowClient({
       apiBase: API,
       getSessionId: () => (store.getSession() || {}).id,
       onSessionUpdate,
       onWaiting: (kind) => setStatus(kind === "approval" ? "waiting_approval" : "waiting_user"),
-      onError: (err) => alert(err.message),
+      onError: (err) => {
+        if (String(err.message || "").includes("الجلسة غير موجودة")) {
+          recoverMissingSession();
+          return;
+        }
+        alert(err.message);
+      },
     });
 
     windowManager.setWorkflowHandlers({
@@ -312,7 +364,11 @@
             await workflowClient.runUntilBlocked();
           }
         } catch (e) {
-          alert(e.message);
+          if (e.message === "SESSION_NOT_FOUND") {
+            await recoverMissingSession();
+          } else {
+            alert(e.message);
+          }
         }
       },
     });
@@ -377,6 +433,17 @@
         const data = await courierAnalysisClient.getIssues(analysisId);
         CourierIssuesWindow.showIssues(bodyEl, data.issues);
       },
+      loadReportIssues: async (analysisId, bodyEl) => {
+        try {
+          const data = await courierAnalysisClient.getIssues(analysisId);
+          CourierSettlementAnalysisWindow.patchFromEvent(bodyEl, { issues: data.issues || [] });
+        } catch (e) {
+          /* keep placeholder */
+        }
+      },
+      onExport: () => {
+        window.print();
+      },
       onFilter: async (spec, filter) => {
         const aid = (spec.props || {}).analysisId;
         if (!aid) return;
@@ -397,6 +464,14 @@
     store.subscribe(renderFromSession);
 
     if (btnUpload) btnUpload.addEventListener("click", () => uploadManager.openPicker());
+    window.addEventListener("ws:upload-request", () => uploadManager.openPicker());
+    window.addEventListener("ws:show-issues-details", () => {
+      const win = [...windowManager.windows.entries()].find(([, el]) => {
+        const s = JSON.parse(el.dataset.spec || "{}");
+        return s.type === "courier_issues" || s.type === "courier_settlement_analysis";
+      });
+      if (win) windowManager.focusWindow(win[0]);
+    });
 
     if (btnIntelligence) {
       btnIntelligence.addEventListener("click", async () => {
@@ -425,7 +500,11 @@
           await workflowClient.startWorkflow("mock_workspace");
           await workflowClient.runUntilBlocked();
         } catch (e) {
-          alert(e.message);
+          if (e.message === "SESSION_NOT_FOUND") {
+            await recoverMissingSession();
+          } else {
+            alert(e.message);
+          }
         } finally {
           btnWorkflow.disabled = false;
         }
@@ -438,7 +517,11 @@
           await workflowClient.startWorkflow("unknown_document");
           await workflowClient.runNextStep();
         } catch (e) {
-          alert(e.message);
+          if (e.message === "SESSION_NOT_FOUND") {
+            await recoverMissingSession();
+          } else {
+            alert(e.message);
+          }
         }
       });
     }
@@ -454,16 +537,57 @@
       });
     }
 
-    btnNew.addEventListener("click", async () => {
-      try {
-        btnNew.disabled = true;
-        await createSession();
-      } catch (e) {
-        alert(e.message);
-      } finally {
-        btnNew.disabled = false;
-      }
-    });
+    if (btnNew) {
+      btnNew.addEventListener("click", async () => {
+        try {
+          btnNew.disabled = true;
+          await createSession();
+        } catch (e) {
+          alert(e.message);
+        } finally {
+          btnNew.disabled = false;
+        }
+      });
+    }
+
+    const btnFocus = document.getElementById("btn-focus");
+    if (btnFocus) {
+      btnFocus.addEventListener("click", () => {
+        document.getElementById("workspace-root").classList.toggle("ws-focus");
+      });
+    }
+
+    const btnFullscreen = document.getElementById("btn-fullscreen");
+    if (btnFullscreen) {
+      btnFullscreen.addEventListener("click", () => {
+        if (document.fullscreenElement) {
+          document.exitFullscreen();
+        } else {
+          document.documentElement.requestFullscreen?.();
+        }
+      });
+    }
+
+    const chatInput = document.getElementById("ws-chat-input");
+    const chatSend = document.getElementById("ws-chat-send");
+    function sendChat() {
+      const text = (chatInput.value || "").trim();
+      if (!text) return;
+      chatInput.value = "";
+      avatar.speak(text.length > 90 ? text.slice(0, 90) + "…" : text);
+      setTimeout(() => {
+        avatar.setMode("thinking");
+        avatar.speak(
+          "المساعد النصي التفاعلي غير مفعّل بعد. استخدم أزرار التحليل قراءة فقط في الأعلى."
+        );
+      }, 1200);
+    }
+    if (chatSend) chatSend.addEventListener("click", sendChat);
+    if (chatInput) {
+      chatInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") sendChat();
+      });
+    }
 
     btnRun.addEventListener("click", async () => {
       const session = store.getSession();

@@ -15,10 +15,10 @@ DEFAULT_POSITIONS = {
     "session_timeline": {"x": 40, "y": 420, "width": 360, "height": 220, "placement": "bottom"},
     "document_intelligence": {"x": 40, "y": 320, "width": 400, "height": 360, "placement": "left"},
     "raw_table_preview": {"x": 200, "y": 480, "width": 480, "height": 280, "placement": "bottom"},
-    "courier_settlement_analysis": {"x": 40, "y": 80, "width": 380, "height": 320, "placement": "left"},
-    "courier_rows": {"x": 40, "y": 420, "width": 720, "height": 300, "placement": "bottom"},
-    "courier_issues": {"x": 440, "y": 320, "width": 360, "height": 280, "placement": "right"},
-    "financial_preview": {"x": 400, "y": 100, "width": 380, "height": 300, "placement": "center"},
+    "courier_settlement_analysis": {"x": 32, "y": 72, "width": 470, "height": 640, "placement": "left"},
+    "courier_rows": {"x": 40, "y": 730, "width": 720, "height": 300, "placement": "bottom"},
+    "courier_issues": {"x": 900, "y": 430, "width": 360, "height": 260, "placement": "right"},
+    "financial_preview": {"x": 900, "y": 120, "width": 380, "height": 300, "placement": "center"},
 }
 
 DOC_PREVIEW_KEYS = frozenset({
@@ -240,16 +240,21 @@ class WindowOrchestrator:
               break
 
       titles = {
-          "courier_settlement_analysis": "ملخص كشف التسديد",
+          "courier_settlement_analysis": "تقرير تحليل كشف شركة التوصيل",
           "courier_rows": "صفوف الكشف",
           "courier_issues": "مشاكل الكشف",
           "financial_preview": "معاينة مالية",
+          "assistant_notes": "ملاحظات وتحليل LEON",
       }
       placements = {
           "courier_settlement_analysis": "left",
           "courier_rows": "bottom",
           "courier_issues": "right",
           "financial_preview": "center",
+          "assistant_notes": "bottom",
+      }
+      courier_positions = {
+          "assistant_notes": {"x": 900, "y": 430, "width": 380, "height": 240, "placement": "bottom"},
       }
       spec = {
           "id": f"win_{window_type}_{analysis_id[:8]}",
@@ -258,6 +263,8 @@ class WindowOrchestrator:
           "placement": placements.get(window_type, "center"),
           "props": {**props, "analysisId": analysis_id},
       }
+      if window_type in courier_positions:
+          spec["position"] = courier_positions[window_type]
       if existing:
           existing["title"] = spec["title"]
           existing["props"] = WindowOrchestrator._merge_props(

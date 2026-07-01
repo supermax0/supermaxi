@@ -224,6 +224,13 @@ class WorkspaceWindowManager {
         if (spec.props && spec.props.analysisId) {
           this.courierHandlers.loadIssues(spec.props.analysisId, body);
         }
+      } else if (spec.type === "courier_settlement_analysis") {
+        renderer.render(body, spec, {
+          onExport: (s) => this.courierHandlers.onExport && this.courierHandlers.onExport(s),
+        });
+        if (spec.props && spec.props.analysisId && !(spec.props.issues && spec.props.issues.length) && this.courierHandlers.loadReportIssues) {
+          this.courierHandlers.loadReportIssues(spec.props.analysisId, body);
+        }
       } else {
         renderer.render(body, spec);
       }

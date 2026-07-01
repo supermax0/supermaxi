@@ -98,6 +98,33 @@ WORKSPACE_TABLES = {
 }
 
 
+_tenant_schema_ready: set = set()
+
+
+def ensure_workspace_schema_for_tenant(tenant_slug: str | None) -> None:
+    """Ensure workspace tables exist on the active tenant database."""
+    if not tenant_slug or tenant_slug in _tenant_schema_ready:
+        return
+    from modules.workspace.models.workspace_session import WorkspaceSession  # noqa: F401
+    from modules.workspace.models.workspace_audit_event import WorkspaceAuditEvent  # noqa: F401
+    from modules.workspace.models.workspace_document import WorkspaceDocument  # noqa: F401
+    from modules.workspace.models.document_extraction_result import DocumentExtractionResult  # noqa: F401
+    from modules.workspace.models.courier_statement_analysis import CourierStatementAnalysis  # noqa: F401
+    from modules.workspace.models.courier_statement_analysis_row import CourierStatementAnalysisRow  # noqa: F401
+    from modules.workspace.models.courier_statement_analysis_issue import CourierStatementAnalysisIssue  # noqa: F401
+
+    try:
+        from extensions_tenant import get_tenant_engine
+
+        engine = get_tenant_engine(tenant_slug)
+        db.Model.metadata.create_all(engine)
+        _tenant_schema_ready.add(tenant_slug)
+    except Exception:
+        current_app.logger.warning(
+            "Workspace schema for tenant %s: %s", tenant_slug, traceback.format_exc()
+        )
+
+
 def ensure_workspace_schema() -> None:
     """Create workspace tables on current bind and tenant SQLite files."""
     from modules.workspace.models.workspace_session import WorkspaceSession  # noqa: F401

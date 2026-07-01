@@ -47,6 +47,14 @@
     <main id="ws-canvas" class="ws-canvas" aria-label="مساحة العمل">
       <div id="ws-windows-layer" class="ws-windows-layer"></div>
       <div id="ws-avatar-layer" class="ws-avatar-layer"></div>
+
+      <div class="ws-chatbar">
+        <div class="ws-chatbar-inner">
+          <span class="ico">&#9000;</span>
+          <input id="ws-chat-input" class="ws-chat-input" type="text" placeholder="اسأل LEON أو أعطه أمراً..." autocomplete="off" />
+          <button type="button" id="ws-chat-send" class="ws-chat-send" title="إرسال">&#127908;</button>
+        </div>
+      </div>
     </main>
   </div>
 
@@ -71,6 +79,7 @@
   <script src="{{ url_for('static', filename='workspace/js/windows/courier-issues-window.js') }}"></script>
   <script src="{{ url_for('static', filename='workspace/js/windows/financial-preview-window.js') }}"></script>
   <script src="{{ url_for('static', filename='workspace/js/leon-avatar.js') }}"></script>
+  <script src="{{ url_for('static', filename='workspace/js/progress-panel.js') }}"></script>
   <script src="{{ url_for('static', filename='workspace/js/upload-manager.js') }}"></script>
   <script src="{{ url_for('static', filename='workspace/js/workspace-app.js') }}"></script>
 </body>

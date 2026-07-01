@@ -21,7 +21,11 @@ class WorkspaceWorkflowClient {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      throw new Error(data.message || data.error || `HTTP ${res.status}`);
+      const code = data.error || `HTTP ${res.status}`;
+      if (code === "not_found") {
+        throw new Error("الجلسة غير موجودة — اضغط «جلسة جديدة»");
+      }
+      throw new Error(data.message || code);
     }
     return data;
   }

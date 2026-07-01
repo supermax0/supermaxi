@@ -19,6 +19,7 @@ const DocumentViewerWindow = {
     if (props.previewUrl && (props.documentId || props.fileName)) {
       container.innerHTML = this._previewHtml(props);
       this._applyScanState(container, props);
+      this._wireAdd(container);
       return;
     }
 
@@ -75,19 +76,51 @@ const DocumentViewerWindow = {
 
     return `
       <div class="ws-doc-viewer">
-        <div class="ws-doc-meta">
-          <div class="ws-doc-meta-name" title="${this._esc(props.fileName || "")}">${this._esc(props.fileName || "مستند")}</div>
-          <div class="ws-doc-meta-details">
-            <span>${this._esc(props.mimeType || "")}</span>
-            ${sizeLabel ? `<span>${sizeLabel}</span>` : ""}
-          </div>
-        </div>
+        ${this._toolbarHtml(props)}
         <div class="ws-doc-paper ws-doc-paper-has-preview">
           ${previewBlock}
           ${this._scanOverlayHtml(scanActive, progress)}
         </div>
+        ${this._thumbsHtml(props)}
       </div>
     `;
+  },
+
+  _toolbarHtml(props) {
+    const pages = props.pageCount || props.page_count || 1;
+    return `
+      <div class="ws-doc-toolbar">
+        <button type="button" class="tool" title="قائمة">&#9776;</button>
+        <span class="sep"></span>
+        <button type="button" class="tool" title="السابق">&#8250;</button>
+        <span class="page">1 / ${pages}</span>
+        <button type="button" class="tool" title="التالي">&#8249;</button>
+        <span class="sep"></span>
+        <button type="button" class="tool" title="تصغير">&minus;</button>
+        <span class="zoom">100%</span>
+        <button type="button" class="tool" title="تكبير">+</button>
+        <span class="sep"></span>
+        <button type="button" class="tool" title="تحميل">&#8681;</button>
+        <button type="button" class="tool" title="طباعة" onclick="window.print()">&#128424;</button>
+      </div>
+    `;
+  },
+
+  _wireAdd(container) {
+    const btn = container.querySelector("#ws-doc-add-more");
+    if (btn) {
+      btn.addEventListener("click", () => {
+        window.dispatchEvent(new CustomEvent("ws:upload-request"));
+      });
+    }
+  },
+
+  _thumbsHtml(props) {
+    const thumb = props.previewUrl
+      ? `<div class="ws-doc-thumb active"><img src="${props.previewUrl}" alt="صفحة" onerror="this.style.display='none'"/></div>`
+      : `<div class="ws-doc-thumb active"></div>`;
+    const addBtn = `<button type="button" class="ws-doc-add" id="ws-doc-add-more"><span style="font-size:18px">&#8681;</span>إضافة ملفات أخرى</button>`;
+    return `<div class="ws-doc-thumbs">${thumb}${addBtn}</div>`;
   },
 
   _scanOverlayHtml(active, progress) {

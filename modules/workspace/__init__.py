@@ -30,6 +30,28 @@ workspace_bp.register_blueprint(document_intelligence_api_bp, url_prefix="/api")
 workspace_bp.register_blueprint(courier_analysis_api_bp, url_prefix="/api")
 workspace_bp.register_blueprint(workspace_html_bp)
 
+_tenant_context_ready: set = set()
+
+
+def _ensure_workspace_request_context():
+    """Bind tenant DB and ensure workspace tables before API/HTML handlers."""
+    slug = session.get("tenant_slug") or getattr(g, "tenant", None)
+    if slug:
+        g.tenant = slug
+        if slug not in _tenant_context_ready:
+            from modules.workspace.services.schema_guard import ensure_workspace_schema_for_tenant
+
+            ensure_workspace_schema_for_tenant(slug)
+            _tenant_context_ready.add(slug)
+
+
+@workspace_bp.before_request
+def bind_workspace_tenant():
+    if request.endpoint and str(request.endpoint).endswith("static"):
+        return None
+    _ensure_workspace_request_context()
+    return None
+
 
 def _resolve_plan_key():
     plan_key = session.get("plan_key", "basic")

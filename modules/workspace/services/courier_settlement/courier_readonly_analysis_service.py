@@ -366,7 +366,30 @@ class CourierReadonlyAnalysisService:
             {"analysisId": aid, "preview": preview},
             "courier_analysis",
         )
+        WindowOrchestrator.ensure_courier_window(
+            session,
+            "assistant_notes",
+            aid,
+            {"analysisId": aid, "notes": CourierReadonlyAnalysisService._build_notes(analysis, issues)},
+            "courier_analysis",
+        )
         event_bus.emit_event(session.id, "window.updated", {"windows": session.get_windows()}, user_id=user_id)
+
+    @staticmethod
+    def _build_notes(analysis, issues):
+        notes = []
+        crit = [i for i in (issues or []) if i.severity in ("critical", "error")]
+        for i in crit[:3]:
+            notes.append(i.message)
+        if analysis.unmatched_rows:
+            notes.append(
+                f"تم العثور على {analysis.unmatched_rows} طلب غير موجود في النظام — راجع تفاصيل المشاكل."
+            )
+        safe = (analysis.matched_rows or 0)
+        if safe:
+            notes.append(f"{safe} طلب مطابق وسليم نظرياً وجاهز للتسديد (بعد الموافقة في مرحلة لاحقة).")
+        notes.append("جميع النتائج قراءة فقط — لم يتم تسديد أو ترحيل أي طلب.")
+        return notes
 
     @staticmethod
     def list_rows(

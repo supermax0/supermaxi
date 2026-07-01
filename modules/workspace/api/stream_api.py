@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import queue
 
-from flask import Blueprint, Response, g, jsonify, request, session
+from flask import Blueprint, Response, current_app, g, jsonify, request, session
 
 from modules.workspace.services import event_bus
 from modules.workspace.services.session_service import SessionService
@@ -42,9 +42,18 @@ def stream_session(session_id):
         after_id = 0
 
     def generate():
-        for ev in event_bus.replay_events(session_id, after_id):
-            data = json.dumps(ev.to_sse_dict(), ensure_ascii=False)
-            yield f"id: {ev.id}\nevent: {ev.event_type}\ndata: {data}\n\n"
+        try:
+            for ev in event_bus.replay_events(session_id, after_id):
+                data = json.dumps(ev.to_sse_dict(), ensure_ascii=False)
+                yield f"id: {ev.id}\nevent: {ev.event_type}\ndata: {data}\n\n"
+        except Exception as exc:
+            current_app.logger.error("Workspace SSE replay failed: %s", exc)
+            err = json.dumps(
+                {"type": "stream.error", "message": "تعذّر تحميل سجل الأحداث"},
+                ensure_ascii=False,
+            )
+            yield f"event: stream.error\ndata: {err}\n\n"
+            return
 
         q = event_bus.subscribe(session_id)
         try:

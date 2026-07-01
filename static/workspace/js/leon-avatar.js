@@ -17,16 +17,18 @@ class LeonAvatarAdapter {
     this.el.className = "ws-leon ws-leon-mode-idle";
     this.el.innerHTML = `
       <div class="ws-leon-bubble"></div>
-      <div class="ws-leon-core">
-        <div class="ws-leon-face">
+      <div class="ws-leon-orb-wrap">
+        <div class="ws-leon-halo"></div>
+        <div class="ws-leon-core">
           <span class="ws-leon-eye"></span>
           <span class="ws-leon-eye"></span>
         </div>
       </div>
+      <div class="ws-leon-platform"></div>
     `;
     this.bubbleEl = this.el.querySelector(".ws-leon-bubble");
     this.layer.appendChild(this.el);
-    this.moveTo(0.5, 0.55, false);
+    this.moveTo(0.5, 0.5, false);
   }
 
   setMode(mode) {
