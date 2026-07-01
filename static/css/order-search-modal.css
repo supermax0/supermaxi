@@ -500,6 +500,7 @@ body.finora-search-modal-open {
     width: min(92vw, 100%);
     max-height: min(92vh, 760px);
     border-radius: 22px;
+    border-bottom: 1px solid #e2e8f0;
   }
 
   .order-search-header {

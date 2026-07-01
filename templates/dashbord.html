@@ -2195,7 +2195,7 @@
               <tr>
                 <th class="order-td-id">#</th>
                 <th class="order-td-customer">{{ _('dashboard_th_customer') }}</th>
-                <th class="order-td-phone">{{ _('dashboard_th_phone') }}</th>
+                <th class="order-td-phone">رقم الهاتف</th>
                 <th class="order-td-status">الحالة</th>
                 <th class="order-td-amount">{{ _('dashboard_th_amount') }}</th>
                 <th class="order-td-check"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()" aria-label="تحديد الكل"></th>
@@ -2213,9 +2213,9 @@
     </div>
 
     <footer class="order-footer finora-dash-modal__footer">
-      <button type="button" onclick="executeBulk()" class="order-footer__bulk">🚀 {{ _('dashboard_execute_bulk') }}</button>
+      <button type="button" onclick="executeBulk()" class="order-footer__bulk">تنفيذ المحدد 🚀</button>
       <span id="searchSelectedCount" class="order-footer__count">تم تحديد 0 طلب</span>
-      <button type="button" onclick="clearSearchResults()" class="order-footer__clear">🗑️ {{ _('dashboard_clear_results') }}</button>
+      <button type="button" onclick="clearSearchResults()" class="order-footer__clear">مسح النتائج 🗑</button>
     </footer>
   </div>
 </div>
@@ -3043,10 +3043,12 @@
   ======================= */
   function setRowColor(id, type) {
     const row = document.getElementById("r" + id);
+    if (!row) return;
     row.className =
       type === "ordered" ? "row-ordered" :
         type === "delivered" ? "row-delivered" :
           "row-returned";
+    syncStatusBadgeClass(document.querySelector(`select[name=s${id}]`));
   }
 
   function getOrderStatus(id) {
@@ -3091,16 +3093,19 @@
   function selectAll() {
     document.querySelectorAll(".row-checkbox").forEach(cb => cb.checked = true);
     document.getElementById("selectAllCheckbox").checked = true;
+    updateSelectionCount();
   }
 
   function deselectAll() {
     document.querySelectorAll(".row-checkbox").forEach(cb => cb.checked = false);
     document.getElementById("selectAllCheckbox").checked = false;
+    updateSelectionCount();
   }
 
   function toggleSelectAll() {
     const checked = document.getElementById("selectAllCheckbox").checked;
     document.querySelectorAll(".row-checkbox").forEach(cb => cb.checked = checked);
+    updateSelectionCount();
   }
 
   /* =======================
@@ -3108,7 +3113,7 @@
   ======================= */
   function clearSearchResults() {
     const rowsContainer = document.getElementById("rows");
-    const dataRows = rowsContainer.querySelectorAll("tr:not(.search-orders-empty)");
+    const dataRows = rowsContainer.querySelectorAll("tr:not(.order-orders-empty)");
     const count = dataRows.length;
 
     if (count === 0) {
@@ -3652,6 +3657,15 @@
   // استدعاء load عند تحميل الصفحة مع الفترة الافتراضية (آخر 30 يوم من السنة الحالية)
   window.addEventListener("DOMContentLoaded", function () {
     load("last_30_days");
+    const rowsEl = document.getElementById("rows");
+    if (rowsEl) {
+      rowsEl.addEventListener("change", function (e) {
+        if (e.target && e.target.classList.contains("row-checkbox")) {
+          updateSelectionCount();
+        }
+      });
+    }
+    syncSearchEmptyState();
     const quick = new URLSearchParams(window.location.search).get("quick");
     if (quick === "search" && typeof openSearch === "function") openSearch();
     else if (quick === "profit" && typeof openProfit === "function") openProfit();
