@@ -2039,6 +2039,15 @@ or request.path.startswith('/superadmin') %}
           _('messaging') }} <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
         {% endif %}
         {% endif %}
+        {% if session.get("user_id") %}
+        {% if plan_has("ai_workspace") %}
+        <a href="/workspace/" class="{% if request.path.startswith('/workspace') %}active{% endif %}"><i
+            class="fa fa-layer-group"></i> مساحة LEON</a>
+        {% else %}
+        <a href="/upgrade" style="opacity:.55" title="{{ _('upgrade_plan') }}"><i class="fa fa-layer-group"></i> مساحة
+          LEON <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
+        {% endif %}
+        {% endif %}
       </nav>
 
       <!-- Plan Badge in Sidebar -->

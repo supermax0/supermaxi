@@ -965,7 +965,7 @@ def edit_plan(plan_id):
         all_features = [
             "orders", "pos", "inventory", "customers", "cashflow", "printing",
             "expenses", "suppliers", "purchases", "shipping", "reports_adv",
-            "rbac", "agents", "accounts", "ai_assistant", "messages"
+            "rbac", "agents", "accounts", "ai_assistant", "ai_workspace", "messages"
         ]
         for feat in all_features:
             features[feat] = True if request.form.get(f"feat_{feat}") else False

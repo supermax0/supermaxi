@@ -128,10 +128,14 @@ def get_plan(plan_key: str) -> dict:
 def has_feature(plan_key: str, feature: str) -> bool:
     """
     التحقق إذا كانت الخطة تدعم ميزة معينة.
+    إذا الميزة غير موجودة في قاعدة البيانات، نرجع للتعريف الثابت في PLAN_DEFINITIONS.
     """
     plan = get_plan(plan_key)
     features = plan.get("features", {})
-    return features.get(feature, False)
+    if feature in features:
+        return bool(features[feature])
+    fallback = PLAN_DEFINITIONS.get(plan_key, _DEFAULT_PLAN)
+    return bool(fallback.get("features", {}).get(feature, False))
 
 
 def check_user_limit(plan_key: str, current_user_count: int) -> bool:

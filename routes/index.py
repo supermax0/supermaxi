@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, jsonify, request, session, redirect, g, current_app
 from sqlalchemy.sql import func
-from sqlalchemy import or_
+from sqlalchemy import inspect, or_
 from datetime import date, timedelta, datetime
 import json
 import json
@@ -32,7 +32,7 @@ from utils.accounting_calculations import (
     calculate_accounts_receivable      # الذمم المدينة
 )
 from utils.date_periods import get_period_dates, get_period_label
-from utils.cash_calculations import calculate_cash_balance, _effective_paid_amount
+from utils.cash_calculations import calculate_cash_balance, get_cash_movements, _effective_paid_amount
 from utils.period_net_profit import net_profit_for_range as _net_profit_for_range
 from utils.period_net_profit import expenses_sum_for_range as _expenses_sum_for_range
 from utils.payment_ledger import net_profit_for_collection_calendar_day
@@ -896,14 +896,26 @@ def api_executive_dashboard_data():
         if previous == 0:
             return 100 if current > 0 else 0
         return max(-999, min(999, round(((current - previous) / previous) * 100)))
-    
+
+    purchase_columns = {
+        column["name"] for column in inspect(db.session.get_bind()).get_columns(Purchase.__tablename__)
+    }
+
+    def purchase_total_for_date(day):
+        if "grand_total" in purchase_columns:
+            rows = db.session.query(Purchase.grand_total, Purchase.total).filter(func.date(Purchase.created_at) == day).all()
+            return sum(int(row.grand_total or row.total or 0) for row in rows)
+
+        total = db.session.query(func.sum(Purchase.total)).filter(func.date(Purchase.created_at) == day).scalar() or 0
+        return int(total)
+
     # 1. Orders Today
     orders_today = db.session.query(func.count(Invoice.id)).filter(func.date(Invoice.created_at) == today).scalar() or 0
     orders_yesterday = db.session.query(func.count(Invoice.id)).filter(func.date(Invoice.created_at) == yesterday).scalar() or 0
     
     # 2. Purchases Today
-    purchases_today_val = db.session.query(func.sum(Purchase.total)).filter(func.date(Purchase.created_at) == today).scalar() or 0
-    purchases_yesterday_val = db.session.query(func.sum(Purchase.total)).filter(func.date(Purchase.created_at) == yesterday).scalar() or 0
+    purchases_today_val = purchase_total_for_date(today)
+    purchases_yesterday_val = purchase_total_for_date(yesterday)
     
     # 3. Current Balance
     cash_balance = calculate_cash_balance()
@@ -918,24 +930,53 @@ def api_executive_dashboard_data():
     expenses_yesterday_val = _expenses_sum_for_range(yesterday, yesterday)
     profit_yesterday = _net_profit_for_range(yesterday, yesterday)
     
+    cash_movements = get_cash_movements()
+    cash_by_date = {}
+    for movement in cash_movements:
+        movement_date = movement.get("date") or today
+        direction = 1 if movement.get("type") == "cash_in" else -1
+        amount = int(movement.get("amount") or 0)
+        cash_by_date.setdefault(movement_date, {"in": 0, "out": 0, "net": 0})
+        if direction > 0:
+            cash_by_date[movement_date]["in"] += amount
+        else:
+            cash_by_date[movement_date]["out"] += amount
+        cash_by_date[movement_date]["net"] += direction * amount
+
+    today_cash = cash_by_date.get(today, {"in": 0, "out": 0, "net": 0})
+    yesterday_cash = cash_by_date.get(yesterday, {"in": 0, "out": 0, "net": 0})
+
     # 6. Chart Data (Last 7 Days)
     daily_labels = []
+    orders_data = []
+    purchases_data = []
     sales_data = []
     profit_data = []
     expenses_data = []
     cashflow_data = []
+    cash_balance_data = []
+    running_cash_balance = 0
+    movement_dates = sorted(cash_by_date)
     for i in range(6, -1, -1):
         d = today - timedelta(days=i)
         daily_labels.append(d.strftime("%d %b"))
-        
+
+        d_orders = db.session.query(func.count(Invoice.id)).filter(func.date(Invoice.created_at) == d).scalar() or 0
+        d_purchases = purchase_total_for_date(d)
         d_sales = db.session.query(func.sum(Invoice.total)).filter(func.date(Invoice.created_at) == d, Invoice.status != 'ملغي').scalar() or 0
         d_profit = _net_profit_for_range(d, d)
         d_expenses = _expenses_sum_for_range(d, d)
-        
+
+        while movement_dates and movement_dates[0] <= d:
+            running_cash_balance += cash_by_date[movement_dates.pop(0)]["net"]
+
+        orders_data.append(int(d_orders))
+        purchases_data.append(int(d_purchases))
         sales_data.append(int(d_sales))
         profit_data.append(int(d_profit))
         expenses_data.append(int(d_expenses))
-        cashflow_data.append(int(d_sales) - int(d_expenses))
+        cashflow_data.append(int(cash_by_date.get(d, {}).get("net", 0)))
+        cash_balance_data.append(int(running_cash_balance))
         
     # 7. Financial Status
     supplier_debts = calculate_supplier_debts()
@@ -958,11 +999,9 @@ def api_executive_dashboard_data():
     collection_base = collected_total + int(receivables or 0)
     debt_collection_rate = round((collected_total / collection_base) * 100) if collection_base > 0 else 0
     
-    try:
-        from sqlalchemy import text
-        new_customers = db.session.execute(text("SELECT count(id) FROM customer WHERE created_at >= :d"), {"d": today - timedelta(days=7)}).scalar() or 0
-    except:
-        new_customers = 0
+    new_customers = db.session.query(func.count(Customer.id)).filter(
+        func.date(Customer.created_at) >= today - timedelta(days=7)
+    ).scalar() or 0
     
     # Calculate daily avg for this month
     days_passed = today.day
@@ -999,11 +1038,17 @@ def api_executive_dashboard_data():
         "profit_today": int(profit_today),
         "sales_today": int(sales_today_val),
         "expenses_today": int(expenses_today_val),
+        "cash_in_today": int(today_cash["in"]),
+        "cash_out_today": int(today_cash["out"]),
+        "cash_net_today": int(today_cash["net"]),
         "daily_labels": daily_labels,
+        "daily_orders": orders_data,
+        "daily_purchases": purchases_data,
         "daily_sales": sales_data,
         "daily_profit": profit_data,
         "daily_expenses": expenses_data,
         "daily_cashflow": cashflow_data,
+        "daily_cash_balance": cash_balance_data,
         "chart_labels": daily_labels,
         "chart_sales": sales_data,
         "chart_profit": profit_data,
@@ -1020,7 +1065,7 @@ def api_executive_dashboard_data():
         "trends": {
             "orders": percent_change(orders_today, orders_yesterday),
             "purchases": percent_change(purchases_today_val, purchases_yesterday_val),
-            "cash": percent_change(int(sales_today_val) - int(expenses_today_val), int(sales_yesterday_val) - int(expenses_yesterday_val)),
+            "cash": percent_change(today_cash["net"], yesterday_cash["net"]),
             "profit": percent_change(profit_today, profit_yesterday),
             "sales": percent_change(sales_today_val, sales_yesterday_val),
         },

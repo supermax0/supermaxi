@@ -29,6 +29,7 @@
   .content { background: var(--exec-bg) !important; }
   main.page-main {
     padding: 0 !important;
+    overflow: visible !important;
     background:
       radial-gradient(circle at 4% 86%, rgba(124, 58, 237, 0.08), transparent 22%),
       radial-gradient(circle at 92% 8%, rgba(14, 165, 233, 0.08), transparent 24%),
@@ -38,16 +39,15 @@
   .exec-board {
     direction: rtl;
     min-height: 100vh;
-    padding: 0 10px;
+    padding: 0 10px 18px;
     color: var(--exec-text);
     font-family: "Tajawal", sans-serif;
-    overflow: hidden;
+    overflow: visible;
   }
 
   .exec-shell {
     max-width: 1700px;
-    min-height: 100vh;
-    max-height: 100vh;
+    min-height: calc(100vh - 18px);
     margin: 0 auto;
     border: 1px solid rgba(230, 237, 245, 0.82);
     border-radius: 18px;
@@ -55,7 +55,7 @@
     box-shadow: 0 22px 70px rgba(16, 24, 40, 0.08);
     backdrop-filter: blur(14px);
     padding: 14px;
-    overflow: hidden;
+    overflow: visible;
   }
 
   .exec-top-controls {
@@ -107,7 +107,8 @@
 
   .exec-side {
     display: grid;
-    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    align-content: start;
     gap: 10px;
     min-width: 0;
   }
@@ -306,22 +307,22 @@
   }
 
   .health-wave {
-    width: 76px;
-    height: 30px;
+    width: 68px;
+    height: 26px;
   }
 
   .health-body {
     display: grid;
-    grid-template-columns: 128px minmax(0, 1fr);
-    gap: 10px;
+    grid-template-columns: 112px minmax(0, 1fr);
+    gap: 9px;
     align-items: center;
-    min-height: 178px;
+    min-height: 134px;
   }
 
   .gauge {
     position: relative;
-    width: 128px;
-    height: 128px;
+    width: 112px;
+    height: 112px;
   }
 
   .gauge-center {
@@ -333,29 +334,29 @@
   }
 
   .gauge-score {
-    font-size: 36px;
+    font-size: 30px;
     line-height: 1;
     font-weight: 900;
     color: #111827;
   }
 
   .gauge-label {
-    margin-top: 8px;
+    margin-top: 6px;
     color: var(--exec-green);
     font-weight: 900;
-    font-size: 13px;
+    font-size: 12px;
   }
 
   .health-list {
     display: grid;
-    gap: 9px;
+    gap: 7px;
   }
 
   .health-row {
     display: grid;
     grid-template-columns: 68px 1fr 36px;
     align-items: center;
-    gap: 9px;
+    gap: 7px;
     font-size: 12px;
     font-weight: 900;
     color: #344054;
@@ -767,7 +768,7 @@
               <div class="gauge-center">
                 <div>
                   <div class="gauge-score"><span id="healthScore">0</span><span style="font-size:22px">%</span></div>
-                  <div class="gauge-label">ممتاز <i class="fas fa-star"></i></div>
+                  <div class="gauge-label"><span id="healthLabel">غير متاح</span> <i class="fas fa-star"></i></div>
                 </div>
               </div>
             </div>
@@ -838,6 +839,14 @@
 
   function clampPercent(value) {
     return Math.max(0, Math.min(100, Math.round(Number(value || 0))));
+  }
+
+  function healthLabel(score) {
+    if (score >= 85) return "ممتاز";
+    if (score >= 70) return "جيد";
+    if (score >= 50) return "متوسط";
+    if (score > 0) return "يحتاج متابعة";
+    return "غير متاح";
   }
 
   function setPercentMetric(barId, textId, value) {
@@ -951,7 +960,9 @@
     const liabilities = data.liabilities ?? 0;
     const sales = data.sales_today ?? 0;
     const expenses = data.expenses_today ?? 0;
-    const net = sales - expenses;
+    const cashIn = data.cash_in_today ?? sales;
+    const cashOut = data.cash_out_today ?? expenses;
+    const net = data.cash_net_today ?? (cashIn - cashOut);
     const health = data.health || {};
     const healthScore = clampPercent(health.score);
     const trends = data.trends || {};
@@ -962,8 +973,8 @@
     setText("profitToday", money(data.profit_today));
     setText("salesToday", money(sales));
 
-    setText("flowIncome", money(sales));
-    setText("flowExpense", money(expenses));
+    setText("flowIncome", money(cashIn));
+    setText("flowExpense", money(cashOut));
     setText("flowNet", money(net));
     setText("flowBank", money(bank));
 
@@ -977,6 +988,7 @@
     setText("newCustomers", nf.format(data.new_customers ?? 0));
     setText("avgDailySales", money(data.avg_daily_sales));
     setText("healthScore", nf.format(healthScore));
+    setText("healthLabel", healthLabel(healthScore));
     setPercentMetric("healthProfitBar", "healthProfitText", health.profitability);
     setPercentMetric("healthLiquidityBar", "healthLiquidityText", health.liquidity);
     setPercentMetric("healthSalesBar", "healthSalesText", health.sales);
@@ -992,10 +1004,13 @@
     const profitSeries = data.daily_profit || [0, 0, 0, 0, 0, 0, data.profit_today || 0];
     const expenseSeries = data.daily_expenses || [0, 0, 0, 0, 0, 0, expenses];
     const cashSeries = data.daily_cashflow || salesSeries.map((v, i) => Number(v || 0) - Number(expenseSeries[i] || 0));
+    const ordersSeries = data.daily_orders || [0, 0, 0, 0, 0, 0, data.orders_today || 0];
+    const purchasesSeries = data.daily_purchases || [0, 0, 0, 0, 0, 0, data.purchases_today || 0];
+    const balanceSeries = data.daily_cash_balance || cashSeries;
 
-    drawSpark("sparkOrders", "#0ea5e9", [5, 8, 7, 10, 9, 12, data.orders_today || 0]);
-    drawSpark("sparkPurchases", "#f79009", [10, 18, 12, 22, 16, 24, data.purchases_today || 0]);
-    drawSpark("sparkBalance", "#7c3aed", [cash * 0.74, cash * 0.86, cash * 0.79, cash * 0.92, cash * 0.85, cash * 0.96, cash]);
+    drawSpark("sparkOrders", "#0ea5e9", ordersSeries);
+    drawSpark("sparkPurchases", "#f79009", purchasesSeries);
+    drawSpark("sparkBalance", "#7c3aed", balanceSeries);
     drawSpark("sparkProfit", "#17b26a", profitSeries);
     drawSpark("sparkSales", "#2f80ed", salesSeries);
 
@@ -1018,11 +1033,17 @@
         profit_today: 0,
         sales_today: 0,
         expenses_today: 0,
+        cash_in_today: 0,
+        cash_out_today: 0,
+        cash_net_today: 0,
         daily_labels: ["اليوم 1", "اليوم 2", "اليوم 3", "اليوم 4", "اليوم 5", "اليوم 6", "اليوم 7"],
+        daily_orders: [0, 0, 0, 0, 0, 0, 0],
+        daily_purchases: [0, 0, 0, 0, 0, 0, 0],
         daily_sales: [0, 0, 0, 0, 0, 0, 0],
         daily_profit: [0, 0, 0, 0, 0, 0, 0],
         daily_expenses: [0, 0, 0, 0, 0, 0, 0],
         daily_cashflow: [0, 0, 0, 0, 0, 0, 0],
+        daily_cash_balance: [0, 0, 0, 0, 0, 0, 0],
         health: { score: 0, profitability: 0, liquidity: 0, sales: 0, inventory: 0, customers: 0 },
         trends: { orders: 0, purchases: 0, cash: 0, profit: 0, sales: 0 }
       });
