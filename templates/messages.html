@@ -3333,6 +3333,7 @@
   let cachedIceServers = null;
   let lastSignalId = 0;
   let pendingRemoteCandidates = [];
+  let pendingLocalCandidates = [];
   let remoteDescSet = false;
 
   let signalPollInterval = null;
@@ -3357,12 +3358,12 @@
     const conn = new RTCPeerConnection({ iceServers: iceServers });
 
     conn.onicecandidate = (e) => {
-      if (e.candidate && callState.id) {
-        fetch(`/messages/call/${callState.id}/signal`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ kind: 'ice', payload: e.candidate })
-        }).catch(() => {});
+      if (!e.candidate) return;
+      if (callState.id) {
+        sendIceCandidate(e.candidate);
+      } else {
+        // المتصل يولّد مرشّحات قبل معرفة call_id → خزّنها ثم أرسلها لاحقاً
+        pendingLocalCandidates.push(e.candidate);
       }
     };
 
@@ -3379,6 +3380,7 @@
 
     conn.onconnectionstatechange = () => {
       if (!pc) return;
+      console.log('[call] connectionState:', pc.connectionState);
       if (pc.connectionState === 'connected') {
         setCallStatus('متصل');
         startCallTimer();
@@ -3388,7 +3390,35 @@
       }
     };
 
+    conn.oniceconnectionstatechange = () => {
+      if (!pc) return;
+      console.log('[call] iceConnectionState:', pc.iceConnectionState);
+      // بعض المتصفحات لا تطلق connectionState=connected بشكل موثوق
+      if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
+        setCallStatus('متصل');
+        startCallTimer();
+      } else if (pc.iceConnectionState === 'failed') {
+        setCallStatus('فشل الاتصال');
+        setTimeout(endCallCleanup, 1000);
+      }
+    };
+
     return conn;
+  }
+
+  function sendIceCandidate(candidate) {
+    if (!callState.id) return;
+    fetch(`/messages/call/${callState.id}/signal`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kind: 'ice', payload: candidate })
+    }).catch(() => {});
+  }
+
+  function flushLocalCandidates() {
+    if (!callState.id) return;
+    pendingLocalCandidates.forEach(c => sendIceCandidate(c));
+    pendingLocalCandidates = [];
   }
 
   function flushRemoteCandidates() {
@@ -3474,6 +3504,7 @@
         callState.id = data.call_id;
         setCallStatus('يرن…');
         lastSignalId = 0;
+        flushLocalCandidates();   // أرسل المرشّحات التي تولّدت قبل معرفة call_id
         startSignalPolling();
         startStatePolling();
       })
@@ -3685,6 +3716,7 @@
     callState = { id: null, type: 'audio', isCaller: false, peerId: null, peerName: '', active: false };
     lastSignalId = 0;
     pendingRemoteCandidates = [];
+    pendingLocalCandidates = [];
     remoteDescSet = false;
   }
 
