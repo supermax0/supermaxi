@@ -167,12 +167,26 @@
 </div>
 
 <div class="card">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
     <h3 style="color:var(--reports-text);margin:0;display:flex;align-items:center;gap:10px">
       📊 كشوفات المندوب
     </h3>
-    <a href="/agents" class="btn btn-primary">← العودة للمندوبين</a>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <a href="/delivery-agent/login" target="_blank" rel="noopener" class="btn btn-success">🚪 بوابة المندوب</a>
+      <a href="/agents" class="btn btn-primary">← العودة للمندوبين</a>
+    </div>
   </div>
+  
+  {% if agent.username %}
+  <p style="color:var(--reports-muted);font-size:14px;margin:0 0 16px;">
+    حساب الدخول: <strong style="color:var(--reports-text);">{{ agent.username }}</strong>
+    — يمكن للمندوب الدخول من <a href="/delivery-agent/login" target="_blank" rel="noopener">بوابة المندوب</a>
+  </p>
+  {% else %}
+  <p style="color:var(--reports-warning, #f59e0b);font-size:14px;margin:0 0 16px;background:rgba(245,158,11,0.1);padding:10px 14px;border-radius:10px;">
+    ⚠️ لم تُحدَّد بيانات دخول لهذا المندوب. من صفحة المندوبين اضغط 🔑 لإعداد اسم المستخدم وكلمة المرور.
+  </p>
+  {% endif %}
   
   <table>
     <thead>

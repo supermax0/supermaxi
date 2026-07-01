@@ -102,6 +102,38 @@ function editAgent(id, name, phone, notes) {
     });
 }
 
+function setAgentCredentials(agentId, agentName, currentUsername) {
+  const username = prompt('اسم مستخدم الدخول للمندوب: ' + agentName, currentUsername || '');
+  if (username === null) return;
+  const u = username.trim();
+  if (!u) {
+    showToast('يرجى إدخال اسم المستخدم', 'warning');
+    return;
+  }
+  const password = prompt('كلمة المرور للمندوب:');
+  if (password === null) return;
+  if (!password.trim()) {
+    showToast('يرجى إدخال كلمة المرور', 'warning');
+    return;
+  }
+  showLoading();
+  fetch('/agents/set-credentials/' + agentId, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: u, password: password.trim() }),
+  })
+    .then((r) => r.json())
+    .then((d) => {
+      hideLoading();
+      showToast(d.message || d.error, d.success ? 'success' : 'error');
+      if (d.success) setTimeout(() => location.reload(), 600);
+    })
+    .catch(() => {
+      hideLoading();
+      showToast(window.AGENTS_I18N?.err_generic || 'خطأ', 'error');
+    });
+}
+
 function filterTable() {
   const searchInput = (document.getElementById('searchInput')?.value || '').toLowerCase();
   const agentFilter = document.getElementById('filterAgent')?.value || '';
@@ -120,7 +152,7 @@ function filterTable() {
   if (visibleCount === 0 && rows.length && !emptyState) {
     const tr = document.createElement('tr');
     tr.id = 'emptyState';
-    tr.innerHTML = `<td colspan="6" class="admin-empty"><div class="admin-empty-icon">🔍</div><div>${window.AGENTS_I18N?.empty_filter || 'لا نتائج'}</div></td>`;
+    tr.innerHTML = `<td colspan="8" class="admin-empty"><div class="admin-empty-icon">🔍</div><div>${window.AGENTS_I18N?.empty_filter || 'لا نتائج'}</div></td>`;
     document.getElementById('agentsTableBody')?.appendChild(tr);
   } else if (visibleCount > 0 && emptyState) {
     emptyState.remove();

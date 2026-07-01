@@ -19,6 +19,7 @@
       <p>{{ _('agents_list_title') }}</p>
     </div>
     <div class="admin-page-header__actions">
+      <a href="/delivery-agent/login" target="_blank" rel="noopener" class="nav-crosslink nav-crosslink--portal"><i class="fas fa-truck"></i> بوابة المندوب</a>
       <a href="/employees" class="nav-crosslink"><i class="fas fa-user-tie"></i> {{ _('employees') }}</a>
     </div>
   </div>
@@ -95,6 +96,7 @@
           <th>{{ _('agents_th_phone') }}</th>
           <th>{{ _('agents_th_orders') }}</th>
           <th>{{ _('agents_th_total_amount') }}</th>
+          <th>الدخول</th>
           <th>{{ _('agents_th_actions') }}</th>
         </tr>
       </thead>
@@ -107,11 +109,25 @@
           <td><span class="admin-metric admin-metric--neutral">{{ data.total_orders }}</span></td>
           <td class="total-cell">{{ "{:,.0f}".format(data.total_amount) }} {{ _('agents_currency_iqd') }}</td>
           <td>
+            {% if data.agent.username %}
+            <span class="admin-metric admin-metric--success" title="{{ data.agent.username }}">✓ مفعّل</span>
+            {% else %}
+            <span class="admin-metric admin-metric--neutral">غير مُعد</span>
+            {% endif %}
+          </td>
+          <td>
             <div class="admin-actions">
-              <a href="/agents/{{ data.agent.id }}/reports" class="action-btn" title="{{ _('agents_action_view') if _('agents_action_view') != 'agents_action_view' else 'تقارير' }}">
-                <i class="fas fa-chart-bar"></i>
+              <a href="/agents/{{ data.agent.id }}/reports" class="action-btn action-btn--text" title="كشف حساب المندوب">
+                <i class="fas fa-file-invoice"></i><span>كشف</span>
+              </a>
+              <a href="/delivery-agent/login" target="_blank" rel="noopener" class="action-btn action-btn--text" title="بوابة المندوب">
+                <i class="fas fa-external-link-alt"></i><span>بوابة</span>
               </a>
               {% if can_manage_agents %}
+              <button type="button" class="action-btn" title="بيانات الدخول"
+                onclick="setAgentCredentials({{ data.agent.id }}, {{ data.agent.name|tojson }}, {{ (data.agent.username or '')|tojson }})">
+                <i class="fas fa-key"></i>
+              </button>
               <button type="button" class="action-btn" title="تعديل"
                 onclick="editAgent({{ data.agent.id }}, {{ data.agent.name|tojson }}, {{ (data.agent.phone or '')|tojson }}, {{ (data.agent.notes or '')|tojson }})">
                 <i class="fas fa-pen"></i>
@@ -126,7 +142,7 @@
         </tr>
         {% else %}
         <tr>
-          <td colspan="6" class="admin-empty">
+          <td colspan="8" class="admin-empty">
             <div class="admin-empty-icon">🚚</div>
             <div>{{ _('agents_empty_title') }}</div>
             <div style="font-size:13px;margin-top:6px;">{{ _('agents_empty_subtitle') }}</div>

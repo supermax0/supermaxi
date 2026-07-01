@@ -18,6 +18,34 @@ from utils.payment_ledger import append_payment_ledger_delta
 
 delivery_agent_bp = Blueprint("delivery_agent", __name__, url_prefix="/delivery-agent")
 
+_AGENT_ACTIVE_STATUSES = ("تم الطلب", "جاري الشحن", "قيد الشحن")
+
+
+def _serialize_agent_order(order):
+    items_count = OrderItem.query.filter_by(invoice_id=order.id).count()
+    return {
+        "id": order.id,
+        "customer_name": order.customer_name,
+        "phone": order.customer.phone if order.customer else "",
+        "city": order.customer.city if order.customer else "",
+        "address": order.customer.address if order.customer else "",
+        "total": order.total,
+        "status": order.status,
+        "payment_status": order.payment_status,
+        "items_count": items_count,
+        "created_at": order.created_at.strftime("%Y-%m-%d %H:%M") if order.created_at else "",
+        "note": order.note or "",
+        "scheduled_date": order.scheduled_date.strftime("%Y-%m-%d") if order.scheduled_date else None,
+    }
+
+
+@delivery_agent_bp.route("/")
+def index():
+    if "agent_id" in session:
+        return redirect(url_for("delivery_agent.dashboard"))
+    return redirect(url_for("delivery_agent.login_page"))
+
+
 # =====================================================
 # Delivery Agent Login Page
 # =====================================================
@@ -78,6 +106,17 @@ def dashboard():
     if not agent:
         session.clear()
         return redirect(url_for("delivery_agent.login_page"))
+
+    direct_orders_raw = (
+        Invoice.query.filter(
+            Invoice.delivery_agent_id == agent_id,
+            Invoice.status.in_(_AGENT_ACTIVE_STATUSES),
+        )
+        .order_by(Invoice.created_at.desc())
+        .all()
+    )
+    direct_orders = [_serialize_agent_order(o) for o in direct_orders_raw]
+    direct_total = sum(int(o.get("total") or 0) for o in direct_orders)
     
     # جلب الكشوف التي تحتوي على طلبات هذا المندوب ولم يتم تنفيذها
     all_reports = ShippingReport.query.filter_by(is_executed=False).order_by(ShippingReport.created_at.desc()).all()
@@ -96,21 +135,7 @@ def dashboard():
                         order = Invoice.query.get(order_id)
                         if order and order.delivery_agent_id == agent_id:
                             report_has_agent_orders = True
-                            items_count = OrderItem.query.filter_by(invoice_id=order.id).count()
-                            report_orders.append({
-                                "id": order.id,
-                                "customer_name": order.customer_name,
-                                "phone": order.customer.phone if order.customer else "",
-                                "city": order.customer.city if order.customer else "",
-                                "address": order.customer.address if order.customer else "",
-                                "total": order.total,
-                                "status": order.status,
-                                "payment_status": order.payment_status,
-                                "items_count": items_count,
-                                "created_at": order.created_at.strftime("%Y-%m-%d %H:%M") if order.created_at else "",
-                                "note": order.note or "",
-                                "scheduled_date": order.scheduled_date.strftime("%Y-%m-%d") if order.scheduled_date else None
-                            })
+                            report_orders.append(_serialize_agent_order(order))
                 
                 if report_has_agent_orders:
                     # جلب الحالات المحفوظة للكشف
@@ -137,10 +162,26 @@ def dashboard():
     employees = Employee.query.filter_by(is_active=True).all()
     other_agents = DeliveryAgent.query.filter(DeliveryAgent.id != agent_id).filter(DeliveryAgent.username.isnot(None)).all()
     
-    # التحقق من صلاحيات الأدمن (إذا كان مسجل دخول كأدمن)
+    # التحقق من صلاحيات الأدmin (إذا كان مسجل دخول كأدمن)
     is_admin = session.get("role") == "admin" and "user_id" in session
-    
-    return render_template("delivery_agent/dashboard.html", agent=agent, reports=agent_reports, employees=employees, other_agents=other_agents, is_admin=is_admin)
+
+    report_order_ids = set()
+    for rep in agent_reports:
+        for o in rep.get("orders", []):
+            report_order_ids.add(o["id"])
+    direct_orders_display = [o for o in direct_orders if o["id"] not in report_order_ids]
+    direct_total_display = sum(int(o.get("total") or 0) for o in direct_orders_display)
+
+    return render_template(
+        "delivery_agent/dashboard.html",
+        agent=agent,
+        direct_orders=direct_orders_display,
+        direct_total=direct_total_display,
+        reports=agent_reports,
+        employees=employees,
+        other_agents=other_agents,
+        is_admin=is_admin,
+    )
 
 # =====================================================
 # Update Order Status

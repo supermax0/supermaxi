@@ -382,6 +382,72 @@
     </div>
   </div>
 
+  {% macro agent_order_row(order, loop_index, report_id=None, status_selections={}) %}
+  <tr data-order-id="{{ order.id }}" style="animation-delay: {{ loop_index * 0.05 }}s;">
+    <td data-label="#"><span style="background: rgba(59, 130, 246, 0.2); color: #3b82f6; padding: 4px 10px; border-radius: 8px; font-weight: 600; font-size: 13px;">{{ loop_index }}</span></td>
+    <td data-label="رقم الطلب"><strong style="color: #3b82f6;">#{{ order.id }}</strong></td>
+    <td data-label="اسم الزبون"><strong>{{ order.customer_name }}</strong></td>
+    <td data-label="الهاتف" style="font-family: 'Courier New', monospace; color: #94a3b8;">{{ order.phone }}</td>
+    <td data-label="المحافظة">{{ order.city }}</td>
+    <td data-label="المجموع" style="color: #10b981; font-weight: 700; font-size: 15px;">{{ order.total }} د.ع</td>
+    <td data-label="حالة الطلب">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <select class="status-select" id="status-{{ order.id }}" data-order-id="{{ order.id }}" data-report-id="{{ report_id or '' }}" style="flex: 1;">
+          <option value="تم الطلب" {% if order.status == 'تم الطلب' and order.note != 'مؤجل' %}selected{% endif %}>تم الطلب</option>
+          <option value="واصل" {% if order.status == 'تم التوصيل' or (status_selections.get(order.id|string) == 'Delivered') %}selected{% endif %}>واصل</option>
+          <option value="ملغي" {% if order.status == 'ملغي' or (status_selections.get(order.id|string) == 'Canceled') %}selected{% endif %}>ملغي</option>
+          <option value="مؤجل" {% if order.note == 'مؤجل' or (status_selections.get(order.id|string) == 'Delayed') %}selected{% endif %}>مؤجل</option>
+        </select>
+        <button type="button" onclick="applyStatusChange({{ order.id }}, {{ report_id if report_id else 'null' }})" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12px; white-space: nowrap;">
+          ✅ تطبيق
+        </button>
+      </div>
+    </td>
+    <td>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <input type="date" class="date-input" id="date-{{ order.id }}" data-order-id="{{ order.id }}" style="flex: 1; display: {% if order.scheduled_date or (status_selections.get(order.id|string) == 'Delayed') %}block{% else %}none{% endif %};">
+        <span id="date-display-{{ order.id }}">{% if order.scheduled_date %}<span style="background: rgba(139, 92, 246, 0.2); color: #8b5cf6; padding: 4px 10px; border-radius: 8px; font-size: 13px;">{{ order.scheduled_date }}</span>{% else %}—{% endif %}</span>
+      </div>
+    </td>
+  </tr>
+  {% endmacro %}
+
+  {% if direct_orders %}
+  <div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 16px;">
+      <div>
+        <h2 style="margin: 0;">📦 كشف طلباتي</h2>
+        <span style="color: #94a3b8; font-size: 14px; display: block; margin-top: 4px;">الطلبات المربوطة بك مباشرة — غيّر الحالة ثم اضغط تطبيق</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="background: rgba(59, 130, 246, 0.2); color: #3b82f6; padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: 600;">{{ direct_orders|length }} طلب</span>
+        <span style="background: rgba(16, 185, 129, 0.2); color: #10b981; padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: 600;">{{ direct_total }} د.ع</span>
+      </div>
+    </div>
+    <div class="table-wrap table-mobile-scroll" style="overflow-x: auto; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.05);">
+      <table class="responsive-table" style="width: 100%; min-width: 600px;">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>رقم الطلب</th>
+            <th>اسم الزبون</th>
+            <th>الهاتف</th>
+            <th>المحافظة</th>
+            <th>المجموع</th>
+            <th>حالة الطلب</th>
+            <th>تاريخ التأجيل</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for order in direct_orders %}
+          {{ agent_order_row(order, loop.index) }}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
   {% if reports %}
     {% for report in reports %}
     <div class="card" style="animation-delay: {{ loop.index * 0.1 }}s;">
@@ -418,33 +484,7 @@
           </thead>
           <tbody>
             {% for order in report.orders %}
-            <tr data-order-id="{{ order.id }}" style="animation-delay: {{ loop.index * 0.05 }}s;">
-              <td data-label="#"><span style="background: rgba(59, 130, 246, 0.2); color: #3b82f6; padding: 4px 10px; border-radius: 8px; font-weight: 600; font-size: 13px;">{{ loop.index }}</span></td>
-              <td data-label="رقم الطلب"><strong style="color: #3b82f6;">#{{ order.id }}</strong></td>
-              <td data-label="اسم الزبون"><strong>{{ order.customer_name }}</strong></td>
-              <td data-label="الهاتف" style="font-family: 'Courier New', monospace; color: #94a3b8;">{{ order.phone }}</td>
-              <td data-label="المحافظة">{{ order.city }}</td>
-              <td data-label="المجموع" style="color: #10b981; font-weight: 700; font-size: 15px;">{{ order.total }} د.ع</td>
-              <td data-label="حالة الطلب">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <select class="status-select" id="status-{{ order.id }}" data-order-id="{{ order.id }}" data-report-id="{{ report.report_id }}" style="flex: 1;">
-                    <option value="تم الطلب" {% if order.status == 'تم الطلب' and order.note != 'مؤجل' %}selected{% endif %}>تم الطلب</option>
-                    <option value="واصل" {% if order.status == 'تم التوصيل' or (report.status_selections.get(order.id|string) == 'Delivered') %}selected{% endif %}>واصل</option>
-                    <option value="ملغي" {% if order.status == 'ملغي' or (report.status_selections.get(order.id|string) == 'Canceled') %}selected{% endif %}>ملغي</option>
-                    <option value="مؤجل" {% if order.note == 'مؤجل' or (report.status_selections.get(order.id|string) == 'Delayed') %}selected{% endif %}>مؤجل</option>
-                  </select>
-                  <button onclick="applyStatusChange({{ order.id }}, {{ report.report_id }})" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12px; transition: all 0.3s ease; white-space: nowrap;" onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(59, 130, 246, 0.4)'" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none'">
-                    ✅ تطبيق
-                  </button>
-                </div>
-              </td>
-              <td>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <input type="date" class="date-input" id="date-{{ order.id }}" data-order-id="{{ order.id }}" style="flex: 1; display: {% if order.scheduled_date or (report.status_selections.get(order.id|string) == 'Delayed') %}block{% else %}none{% endif %};">
-                  <span id="date-display-{{ order.id }}">{% if order.scheduled_date %}<span style="background: rgba(139, 92, 246, 0.2); color: #8b5cf6; padding: 4px 10px; border-radius: 8px; font-size: 13px;">{{ order.scheduled_date }}</span>{% else %}—{% endif %}</span>
-                </div>
-              </td>
-            </tr>
+            {{ agent_order_row(order, loop.index, report.report_id, report.status_selections) }}
             {% endfor %}
           </tbody>
           <tfoot>
@@ -462,9 +502,12 @@
       </div>
     </div>
     {% endfor %}
-  {% else %}
+  {% elif not direct_orders %}
     <div class="card">
-      <div class="no-orders">لا توجد كشوفات مخصصة لك</div>
+      <div class="no-orders">
+        لا توجد طلبات مربوطة بك حالياً.<br>
+        <span style="font-size:14px;color:#94a3b8;margin-top:8px;display:block;">اطلب من الإدارة ربط الطلبات باسمك من صفحة الطلبات.</span>
+      </div>
     </div>
   {% endif %}
 

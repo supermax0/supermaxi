@@ -18,3 +18,29 @@
   font-weight: 800;
   color: var(--success);
 }
+
+.team-admin-page.agents-page .nav-crosslink--portal {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(16, 185, 129, 0.1));
+  border-color: rgba(59, 130, 246, 0.25);
+  color: var(--primary);
+  font-weight: 800;
+}
+
+.team-admin-page.agents-page .action-btn--text {
+  width: auto;
+  min-width: 0;
+  padding: 6px 10px;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.team-admin-page.agents-page .action-btn--text span {
+  display: inline;
+}
+
+@media (max-width: 900px) {
+  .team-admin-page.agents-page .action-btn--text span {
+    display: none;
+  }
+}
