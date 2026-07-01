@@ -3605,47 +3605,45 @@
   }
 
   function cancelOrder(orderId) {
-    showConfirm({{ _('orders_confirm_cancel')|tojson }}, function () {
-      showLoading();
-      fetch(`/orders/cancel/${orderId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" }
+    showLoading();
+    fetch(`/orders/cancel/${orderId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" }
+    })
+      .then(r => {
+        if (!r.ok) {
+          return r.text().then(text => {
+            throw new Error(`HTTP ${r.status}: ${text.substring(0, 100)}`);
+          });
+        }
+        return r.json();
       })
-        .then(r => {
-          if (!r.ok) {
-            return r.text().then(text => {
-              throw new Error(`HTTP ${r.status}: ${text.substring(0, 100)}`);
+      .then(data => {
+        hideLoading();
+        if (data.success) {
+          playCancelSound();
+          showToast({{ _('orders_toast_cancel_success')|tojson }}, "success");
+          if (gridApi) {
+            gridApi.forEachNode(node => {
+              if (node.data.id === orderId) {
+                const rd = node.data;
+                rd.status = "ملغي";
+                rd.payment_status = "ملغي";
+                rd.can_pay = false;
+                rd.can_cancel = false;
+                gridApi.applyTransaction({ update: [rd] });
+              }
             });
           }
-          return r.json();
-        })
-        .then(data => {
-          hideLoading();
-          if (data.success) {
-            playCancelSound();
-            showToast({{ _('orders_toast_cancel_success')|tojson }}, "success");
-            if (gridApi) {
-              gridApi.forEachNode(node => {
-                if (node.data.id === orderId) {
-                  const rd = node.data;
-                  rd.status = "ملغي";
-                  rd.payment_status = "ملغي";
-                  rd.can_pay = false;
-                  rd.can_cancel = false;
-                  gridApi.applyTransaction({ update: [rd] });
-                }
-              });
-            }
-          } else {
-            showToast(data.error || {{ _('orders_err_generic')|tojson }}, "error");
-          }
-        })
-        .catch(error => {
-          hideLoading();
-          showToast({{ _('orders_err_cancel')|tojson }}, "error");
-          console.error("Cancel error:", error);
-        });
-    });
+        } else {
+          showToast(data.error || {{ _('orders_err_generic')|tojson }}, "error");
+        }
+      })
+      .catch(error => {
+        hideLoading();
+        showToast({{ _('orders_err_cancel')|tojson }}, "error");
+        console.error("Cancel error:", error);
+      });
   }
 
   // ============= Row Actions (Buttons) =============

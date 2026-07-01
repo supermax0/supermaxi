@@ -1103,10 +1103,6 @@
     }
 
     function cancelOrder(id) {
-      if (!confirm("{{ _('shipping_confirm_cancel_order') }}")) {
-        return;
-      }
-
       showLoading();
 
       fetch("/shipping/cancel/" + id, {
@@ -1119,9 +1115,9 @@
           if (data.success) {
             showToast("{{ _('shipping_toast_cancel_success') }}", "success");
             viewOrders(currentCompany);
-            updateCompanyDue(); // تحديث المستحقات في الجدول الرئيسي
+            updateCompanyDue();
           } else {
-            showToast("{{ _('shipping_err_cancel') }}", "error");
+            showToast(data.error || "{{ _('shipping_err_cancel') }}", "error");
           }
         })
         .catch(error => {
