@@ -77,11 +77,17 @@ class Config:
         "STUN_URLS",
         "stun:stun.l.google.com:19302,stun:stun1.l.google.com:19302"
     ).strip()
-    # TURN للوصول لموثوقية 100% خلف NAT الصعب. اتركها فارغة = STUN فقط.
-    # تدعم الخدمات المُدارة (Metered/Twilio) أو coturn الذاتي.
-    TURN_URLS = os.environ.get("TURN_URLS", "").strip()          # مثال: turn:turn.example.com:3478,turns:turn.example.com:5349
-    TURN_USERNAME = os.environ.get("TURN_USERNAME", "").strip()
-    TURN_CREDENTIAL = os.environ.get("TURN_CREDENTIAL", "").strip()
+    # TURN ضروري لعمل المكالمات بين شبكتين مختلفتين (خلف NAT الصعب / بيانات الموبايل).
+    # الافتراضي: خوادم OpenRelay المجانية (للتجربة). للإنتاج والموثوقية 100% استخدم
+    # coturn ذاتي أو خدمة مُدارة (Metered/Twilio) عبر متغيرات البيئة.
+    TURN_URLS = os.environ.get(
+        "TURN_URLS",
+        "turn:openrelay.metered.ca:80,"
+        "turn:openrelay.metered.ca:443,"
+        "turn:openrelay.metered.ca:443?transport=tcp"
+    ).strip()
+    TURN_USERNAME = os.environ.get("TURN_USERNAME", "openrelayproject").strip()
+    TURN_CREDENTIAL = os.environ.get("TURN_CREDENTIAL", "openrelayproject").strip()
 
 
 class DevelopmentConfig(Config):
