@@ -65,34 +65,59 @@
 
   {% for role in roles %}
   <div id="editRoleModal{{ role.id }}" class="team-modal-overlay" onclick="closeModalOnBackdrop(event, 'editRoleModal{{ role.id }}')">
-    <div class="team-modal-box team-modal-box--wide" onclick="event.stopPropagation()">
+    <div class="team-modal-box team-modal-box--wide team-modal-box--permissions" onclick="event.stopPropagation()">
       <button type="button" class="modal-close" onclick="closeModal('editRoleModal{{ role.id }}')">&times;</button>
-      <h3>{{ _('roles_edit_title') }}: <span style="color:var(--primary);">{{ role.name }}</span></h3>
       <form action="{{ url_for('permissions.edit_role', id=role.id) }}" method="POST">
-        <div class="team-form-grid" style="margin-bottom:16px;">
-          <div class="team-modal-field">
-            <label>{{ _('roles_th_name') }}</label>
-            <input type="text" name="name" value="{{ role.name }}" required {% if role.name in ['admin', 'cashier'] %}readonly{% endif %}>
-          </div>
-          <div class="team-modal-field">
-            <label>{{ _('roles_th_description') }}</label>
-            <input type="text" name="description" value="{{ role.description or '' }}">
+        <div class="perm-modal-top">
+          <h3>{{ _('roles_edit_title') }}: <span style="color:var(--primary);">{{ role.name }}</span></h3>
+          <div class="team-form-grid" style="margin-bottom:16px;">
+            <div class="team-modal-field">
+              <label>{{ _('roles_th_name') }}</label>
+              <input type="text" name="name" value="{{ role.name }}" required {% if role.name in ['admin', 'cashier'] %}readonly{% endif %}>
+            </div>
+            <div class="team-modal-field">
+              <label>{{ _('roles_th_description') }}</label>
+              <input type="text" name="description" value="{{ role.description or '' }}">
+            </div>
           </div>
         </div>
-        <p style="font-weight:800;margin:0 0 12px;color:var(--text-main);">{{ _('roles_assign_permissions') }}</p>
-        <div class="permission-grid">
-          {% for group in perm_groups %}
-          <div class="perm-group-title" id="{{ group.key }}">{{ group.title }}</div>
-          {% for perm in group.permissions %}
-          <label class="perm-checkbox-card" for="perm{{ role.id }}_{{ perm.id }}">
-            <input type="checkbox" name="permissions" value="{{ perm.id }}" id="perm{{ role.id }}_{{ perm.id }}"
-              {% if perm in role.permissions %}checked{% endif %}>
-            <span>{{ perm.description or perm.name }}</span>
-          </label>
-          {% endfor %}
-          {% endfor %}
+
+        <div class="perm-modal-body">
+          <p class="perm-section-title">{{ _('roles_assign_permissions') }}</p>
+          <div class="perm-assign-wrap">
+            {% for group in perm_groups %}
+            <div class="perm-assign-group" id="{{ group.key }}">
+              <div class="perm-assign-group__title">{{ group.title }}</div>
+              <table class="perm-assign-table">
+                <thead>
+                  <tr>
+                    <th class="perm-col-toggle">تفعيل</th>
+                    <th class="perm-col-name">الصلاحية</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for perm in group.permissions %}
+                  <tr class="perm-row{% if perm in role.permissions %} is-on{% endif %}" data-perm-row>
+                    <td class="perm-col-toggle">
+                      <label class="perm-switch" for="perm{{ role.id }}_{{ perm.id }}" aria-label="تفعيل {{ perm.description or perm.name }}">
+                        <input type="checkbox" name="permissions" value="{{ perm.id }}" id="perm{{ role.id }}_{{ perm.id }}"
+                          {% if perm in role.permissions %}checked{% endif %}>
+                        <span class="perm-switch__track" aria-hidden="true"></span>
+                      </label>
+                    </td>
+                    <td class="perm-col-name" onclick="document.getElementById('perm{{ role.id }}_{{ perm.id }}').click()">
+                      {{ perm.description or perm.name }}
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            {% endfor %}
+          </div>
         </div>
-        <div class="team-modal-actions" style="margin-top:20px;">
+
+        <div class="team-modal-actions">
           <button type="button" class="btn btn-light" onclick="closeModal('editRoleModal{{ role.id }}')">{{ _('cancel') }}</button>
           <button type="submit" class="btn btn-primary">{{ _('roles_save_changes') }}</button>
         </div>

@@ -9,3 +9,195 @@
   color: var(--primary);
   font-weight: 800;
 }
+
+/* ===== Edit role modal — permissions table ===== */
+.team-admin-page.permissions-page .team-modal-box--permissions {
+  max-width: 520px;
+  width: 100%;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+}
+
+.team-admin-page.permissions-page .team-modal-box--permissions .perm-modal-top {
+  padding: 22px 22px 0;
+  flex-shrink: 0;
+}
+
+.team-admin-page.permissions-page .team-modal-box--permissions h3 {
+  margin: 0 0 16px;
+  padding-left: 36px;
+  font-size: 18px;
+}
+
+.team-admin-page.permissions-page .team-modal-box--permissions form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+.team-admin-page.permissions-page .perm-modal-body {
+  padding: 0 22px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.team-admin-page.permissions-page .perm-section-title {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.team-admin-page.permissions-page .perm-assign-wrap {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--surface);
+  margin-bottom: 16px;
+}
+
+.team-admin-page.permissions-page .perm-assign-group + .perm-assign-group {
+  border-top: 1px solid var(--border);
+}
+
+.team-admin-page.permissions-page .perm-assign-group__title {
+  padding: 9px 14px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--primary);
+  background: var(--primary-soft);
+  border-bottom: 1px solid var(--border);
+}
+
+.team-admin-page.permissions-page .perm-assign-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.team-admin-page.permissions-page .perm-assign-table thead th {
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-secondary);
+  background: var(--surface-soft);
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+}
+
+.team-admin-page.permissions-page .perm-assign-table thead th.perm-col-toggle {
+  width: 76px;
+  text-align: center;
+}
+
+.team-admin-page.permissions-page .perm-assign-table tbody td {
+  padding: 0;
+  border-bottom: 1px solid var(--border-light, var(--border));
+  vertical-align: middle;
+}
+
+.team-admin-page.permissions-page .perm-assign-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.team-admin-page.permissions-page .perm-assign-table tbody tr:hover {
+  background: var(--surface-hover);
+}
+
+.team-admin-page.permissions-page .perm-assign-table tbody tr.is-on {
+  background: rgba(37, 99, 235, 0.04);
+}
+
+.team-admin-page.permissions-page .perm-col-toggle {
+  text-align: center;
+  padding: 10px 8px !important;
+}
+
+.team-admin-page.permissions-page .perm-col-name {
+  padding: 10px 14px !important;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-main);
+  line-height: 1.45;
+  cursor: pointer;
+  user-select: none;
+}
+
+.team-admin-page.permissions-page .perm-col-name:hover {
+  color: var(--primary);
+}
+
+.team-admin-page.permissions-page .perm-switch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin: 0;
+  min-height: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+}
+
+.team-admin-page.permissions-page .perm-switch input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.team-admin-page.permissions-page .perm-switch__track {
+  width: 40px;
+  height: 22px;
+  border-radius: 999px;
+  background: #d0d5dd;
+  position: relative;
+  transition: background 180ms ease;
+  flex-shrink: 0;
+}
+
+.team-admin-page.permissions-page .perm-switch__track::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.18);
+  transition: transform 180ms ease;
+}
+
+.team-admin-page.permissions-page .perm-switch input:checked + .perm-switch__track {
+  background: var(--primary);
+}
+
+.team-admin-page.permissions-page .perm-switch input:checked + .perm-switch__track::after {
+  transform: translateX(-18px);
+}
+
+.team-admin-page.permissions-page .perm-switch input:focus-visible + .perm-switch__track {
+  outline: 2px solid var(--primary-soft);
+  outline-offset: 2px;
+}
+
+.team-admin-page.permissions-page .team-modal-box--permissions .team-modal-actions {
+  padding: 14px 22px 20px;
+  margin-top: 0;
+  border-top: 1px solid var(--border);
+  background: var(--surface-soft);
+  flex-shrink: 0;
+}
+
+.team-admin-page.permissions-page .team-modal-box--permissions .modal-close {
+  top: 14px;
+  left: 14px;
+  z-index: 2;
+}
