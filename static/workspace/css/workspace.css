@@ -1,0 +1,451 @@
+/* Finora AI Workspace — Phase 1 */
+
+:root {
+  --ws-bg: #f8fafc;
+  --ws-grid: rgba(99, 102, 241, 0.06);
+  --ws-accent: #6366f1;
+  --ws-accent-soft: #eef2ff;
+  --ws-border: rgba(15, 23, 42, 0.08);
+  --ws-shadow: 0 12px 40px rgba(15, 23, 42, 0.08);
+  --ws-text: #0f172a;
+  --ws-muted: #64748b;
+  --ws-radius: 18px;
+  --ws-font: "Segoe UI", Tahoma, Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: var(--ws-font);
+  background: var(--ws-bg);
+  color: var(--ws-text);
+}
+
+.ws-body {
+  overflow: hidden;
+}
+
+.ws-root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* Toolbar */
+.ws-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: #fff;
+  border-bottom: 1px solid var(--ws-border);
+  flex-shrink: 0;
+  z-index: 100;
+}
+
+.ws-toolbar-start {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ws-logo {
+  color: var(--ws-accent);
+  font-size: 20px;
+}
+
+.ws-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.ws-status-pill {
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--ws-accent-soft);
+  color: var(--ws-accent);
+  font-weight: 600;
+}
+
+.ws-status-running {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.ws-status-completed {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.ws-status-cancelled {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.ws-toolbar-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.ws-btn {
+  border: 1px solid var(--ws-border);
+  border-radius: 10px;
+  padding: 8px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+.ws-btn-primary {
+  background: var(--ws-accent);
+  color: #fff;
+  border-color: var(--ws-accent);
+}
+
+.ws-btn-primary:hover {
+  filter: brightness(1.05);
+}
+
+.ws-btn-ghost {
+  background: #fff;
+  color: var(--ws-text);
+}
+
+.ws-btn-ghost:hover {
+  background: #f1f5f9;
+}
+
+.ws-btn-danger {
+  background: #fff;
+  color: #dc2626;
+  border-color: #fecaca;
+}
+
+.ws-btn-danger:hover {
+  background: #fef2f2;
+}
+
+.ws-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Canvas */
+.ws-canvas {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  background-color: #fff;
+  background-image:
+    linear-gradient(var(--ws-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--ws-grid) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+.ws-windows-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.ws-windows-layer > * {
+  pointer-events: auto;
+}
+
+.ws-avatar-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+}
+
+/* Floating windows */
+.ws-window {
+  position: absolute;
+  background: #fff;
+  border: 1px solid var(--ws-border);
+  border-radius: var(--ws-radius);
+  box-shadow: var(--ws-shadow);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  min-width: 280px;
+  min-height: 160px;
+}
+
+.ws-window-focused {
+  box-shadow: 0 16px 48px rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.25);
+}
+
+.ws-window-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--ws-border);
+  background: linear-gradient(180deg, #fff, #fafbff);
+  cursor: default;
+  user-select: none;
+}
+
+.ws-window-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.ws-window-status {
+  font-size: 11px;
+  color: var(--ws-muted);
+}
+
+.ws-window-body {
+  flex: 1;
+  overflow: auto;
+  padding: 14px;
+}
+
+/* Document viewer */
+.ws-doc-paper {
+  position: relative;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  min-height: 320px;
+  padding: 20px;
+  overflow: hidden;
+}
+
+.ws-doc-placeholder {
+  color: var(--ws-muted);
+  text-align: center;
+  padding: 40px 16px;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.ws-doc-lines {
+  opacity: 0.35;
+}
+
+.ws-doc-line {
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.ws-scan-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.ws-scan-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--ws-accent), transparent);
+  box-shadow: 0 0 16px var(--ws-accent);
+  animation: ws-scan-move 2s linear infinite;
+  opacity: 0;
+}
+
+.ws-scan-overlay.active .ws-scan-line {
+  opacity: 1;
+}
+
+@keyframes ws-scan-move {
+  0% { top: 0%; }
+  100% { top: 100%; }
+}
+
+.ws-scan-shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(99, 102, 241, 0.04) 0%,
+    rgba(99, 102, 241, 0.12) 50%,
+    rgba(99, 102, 241, 0.04) 100%
+  );
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.ws-scan-overlay.active .ws-scan-shimmer {
+  opacity: 1;
+}
+
+/* Live report */
+.ws-report-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ws-report-line {
+  font-size: 14px;
+  line-height: 1.7;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border-radius: 10px;
+  border-right: 3px solid var(--ws-accent);
+  animation: ws-line-in 0.4s ease;
+}
+
+@keyframes ws-line-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ws-report-empty {
+  color: var(--ws-muted);
+  font-size: 13px;
+  text-align: center;
+  padding: 24px;
+}
+
+/* Assistant notes */
+.ws-notes-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ws-notes-list li {
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--ws-border);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.ws-notes-list li:last-child {
+  border-bottom: none;
+}
+
+/* LEON Avatar */
+.ws-leon {
+  position: absolute;
+  width: 88px;
+  height: 88px;
+  transform: translate(-50%, -50%);
+  transition: left 0.8s cubic-bezier(0.4, 0, 0.2, 1),
+              top 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 60;
+}
+
+.ws-leon-core {
+  width: 72px;
+  height: 72px;
+  margin: 8px auto 0;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #a5b4fc, #6366f1);
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.45);
+  position: relative;
+  animation: ws-leon-pulse 3s ease-in-out infinite;
+}
+
+@keyframes ws-leon-pulse {
+  0%, 100% { box-shadow: 0 8px 24px rgba(99, 102, 241, 0.45); }
+  50% { box-shadow: 0 12px 32px rgba(99, 102, 241, 0.6); }
+}
+
+.ws-leon-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding-top: 8px;
+}
+
+.ws-leon-eye {
+  width: 10px;
+  height: 12px;
+  background: #fff;
+  border-radius: 50%;
+  animation: ws-blink 4s infinite;
+}
+
+@keyframes ws-blink {
+  0%, 96%, 100% { transform: scaleY(1); }
+  98% { transform: scaleY(0.1); }
+}
+
+.ws-leon-bubble {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #fff;
+  border: 1px solid var(--ws-border);
+  border-radius: 12px;
+  padding: 8px 12px;
+  font-size: 12px;
+  max-width: 220px;
+  text-align: center;
+  box-shadow: var(--ws-shadow);
+  margin-bottom: 8px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  white-space: nowrap;
+}
+
+.ws-leon-bubble.visible {
+  opacity: 1;
+}
+
+.ws-leon-bubble::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #fff;
+}
+
+.ws-leon-mode-thinking .ws-leon-core {
+  animation: ws-think 1s ease infinite;
+}
+
+@keyframes ws-think {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.ws-leon-mode-success .ws-leon-core {
+  background: linear-gradient(145deg, #86efac, #22c55e);
+}
+
+.ws-leon-mode-reading_document .ws-leon-core,
+.ws-leon-mode-writing_report .ws-leon-core {
+  background: linear-gradient(145deg, #c4b5fd, #8b5cf6);
+}
+
+@media (max-width: 900px) {
+  .ws-window {
+    max-width: calc(100vw - 24px) !important;
+  }
+}

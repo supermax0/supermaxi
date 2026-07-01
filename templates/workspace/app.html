@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Finora AI Workspace — LEON</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='workspace/css/workspace.css') }}">
+</head>
+<body class="ws-body">
+  <div id="workspace-root" class="ws-root">
+    <header class="ws-toolbar">
+      <div class="ws-toolbar-start">
+        <span class="ws-logo">◆</span>
+        <h1 class="ws-title">Finora AI Workspace</h1>
+        <span id="ws-status-pill" class="ws-status-pill ws-status-idle">جاهز</span>
+      </div>
+      <div class="ws-toolbar-actions">
+        <button type="button" id="btn-new-session" class="ws-btn ws-btn-ghost">جلسة جديدة</button>
+        <button type="button" id="btn-run-mock" class="ws-btn ws-btn-primary">تشغيل تجربة</button>
+        <button type="button" id="btn-cancel" class="ws-btn ws-btn-danger">إلغاء</button>
+      </div>
+    </header>
+
+    <main id="ws-canvas" class="ws-canvas" aria-label="مساحة العمل">
+      <div id="ws-windows-layer" class="ws-windows-layer"></div>
+      <div id="ws-avatar-layer" class="ws-avatar-layer"></div>
+    </main>
+  </div>
+
+  <script src="{{ url_for('static', filename='workspace/js/session-store.js') }}"></script>
+  <script src="{{ url_for('static', filename='workspace/js/event-stream.js') }}"></script>
+  <script src="{{ url_for('static', filename='workspace/js/workspace-canvas.js') }}"></script>
+  <script src="{{ url_for('static', filename='workspace/js/windows/live-report-window.js') }}"></script>
+  <script src="{{ url_for('static', filename='workspace/js/windows/document-viewer-window.js') }}"></script>
+  <script src="{{ url_for('static', filename='workspace/js/windows/assistant-notes-window.js') }}"></script>
+  <script src="{{ url_for('static', filename='workspace/js/window-manager.js') }}"></script>
+  <script src="{{ url_for('static', filename='workspace/js/leon-avatar.js') }}"></script>
+  <script src="{{ url_for('static', filename='workspace/js/workspace-app.js') }}"></script>
+</body>
+</html>

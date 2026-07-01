@@ -11,12 +11,18 @@ import json
 from utils.agent_passwords import hash_agent_password
 from utils.decorators import permission_required
 from utils.permission_checks import employee_can, get_current_employee
+from utils.team_schema import ensure_delivery_agent_schema
 
 agents_bp = Blueprint("agents", __name__, url_prefix="/agents")
 
 
 def _agents_manage_allowed() -> bool:
     return employee_can(get_current_employee(), "manage_agents")
+
+
+@agents_bp.before_request
+def ensure_agents_schema():
+    ensure_delivery_agent_schema()
 
 
 @agents_bp.route("/")

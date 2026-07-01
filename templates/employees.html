@@ -142,58 +142,18 @@
   </div>
 </div>
 
-<script type="application/json" id="employeesData">
-[
-  {% for e in employees %}
-  {% set s = stats.get(e.id, {"orders":0,"sales":0}) %}
-  {% set commission_value = (s.sales * e.commission_percent / 100) | int %}
-  {% set total_due = e.salary + commission_value %}
-  {
-    "id": {{ e.id }},
-    "name": {{ e.name|tojson }},
-    "username": {{ e.username|tojson }},
-    "role": "{{ e.role }}",
-    "role_name": "{% if e.role=='cashier' %}{{ _('employees_role_cashier') }}{% else %}{{ _('employees_role_admin') }}{% endif %}",
-    "role_labels": {{ e.roles|map(attribute='name')|list|tojson }},
-    "pages_count": {{ e.pages.count() }},
-    "status": "{{ 'active' if e.is_active else 'inactive' }}",
-    "status_name": "{% if e.is_active %}{{ _('employees_status_active') }}{% else %}{{ _('employees_status_inactive') }}{% endif %}",
-    "orders": {{ s.orders }},
-    "sales": {{ s.sales|int }},
-    "salary": {{ e.salary|int }},
-    "commission": {{ e.commission_percent }},
-    "total_due": {{ total_due }},
-    "is_delivery": false
-  }{% if not loop.last or (delivery_agents | selectattr("username") | list) %},{% endif %}
-  {% endfor %}
-  {% for agent in delivery_agents %}
-  {% if agent.username %}
-  {% set s = agent_stats.get(agent.id, {"orders":0,"sales":0}) %}
-  {
-    "id": {{ agent.id }},
-    "name": "🚚 " + {{ agent.name|tojson }},
-    "username": {{ agent.username|tojson }},
-    "role": "delivery",
-    "role_name": "{{ _('employees_role_delivery') }}",
-    "status": "active",
-    "status_name": "{{ _('employees_status_active') }}",
-    "orders": {{ s.orders }},
-    "sales": {{ s.sales|int }},
-    "salary": 0,
-    "commission": 0,
-    "total_due": 0,
-    "is_delivery": true
-  }{% if not loop.last %},{% endif %}
-  {% endif %}
-  {% endfor %}
-]
-</script>
+<script type="application/json" id="employeesData">{{ employees_grid_rows|tojson }}</script>
 
 <script type="application/json" id="pagesData">
 {{ pages|tojson if pages else '[]' }}
 </script>
 
 {% set emp_i18n = {
+  "employees_role_cashier": _("employees_role_cashier"),
+  "employees_role_admin": _("employees_role_admin"),
+  "employees_role_delivery": _("employees_role_delivery"),
+  "employees_status_active": _("employees_status_active"),
+  "employees_status_inactive": _("employees_status_inactive"),
   "employees_action_agent_page": _("employees_action_agent_page"),
   "employees_action_disable": _("employees_action_disable"),
   "employees_action_enable": _("employees_action_enable"),

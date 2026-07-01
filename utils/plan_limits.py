@@ -30,6 +30,7 @@ PLAN_DEFINITIONS = {
             "agents":       False,  # مناديب التوصيل
             "accounts":     False,  # دفتر الحسابات
             "ai_assistant": False,  # مساعد AI
+            "ai_workspace": False,  # مساحة LEON التفاعلية
             "messages":     False,  # نظام الرسائل
         },
     },
@@ -57,6 +58,7 @@ PLAN_DEFINITIONS = {
             "agents":       True,
             "accounts":     True,
             "ai_assistant": False,  # فقط في Enterprise
+            "ai_workspace": False,
             "messages":     False,
         },
     },
@@ -84,6 +86,7 @@ PLAN_DEFINITIONS = {
             "agents":       True,
             "accounts":     True,
             "ai_assistant": True,
+            "ai_workspace": True,
             "messages":     True,
         },
     },

@@ -1329,6 +1329,15 @@ try:
 except Exception as _pub_ex:
     print(f"Publisher module load warning: {_pub_ex}")
 
+# ── AI Workspace (LEON) — Phase 1 foundation ─────────────────────────────
+try:
+    from modules.workspace import workspace_bp, init_workspace
+    app.register_blueprint(workspace_bp, url_prefix="/workspace")
+    init_workspace(app)
+    print("Workspace module loaded.")
+except Exception as _ws_ex:
+    print(f"Workspace module load warning: {_ws_ex}")
+
 # =====================================
 # Logging
 # =====================================

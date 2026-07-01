@@ -37,6 +37,7 @@ def test_templates():
   assert "employees-admin.css" in tpl
   assert "employees-admin.js" in tpl
   assert "team-admin-page" in tpl
+  assert "employees_grid_rows" in tpl
   assert "/agents" in tpl
   js = (ROOT / "static/js/employees-admin.js").read_text(encoding="utf-8")
   assert "/admin/permissions/employee/" in js
@@ -70,6 +71,7 @@ def test_templates():
     "agents-admin.css", "error-pages.css",
   ):
     assert (ROOT / f"static/css/{css}").is_file(), css
+  assert (ROOT / "utils/team_schema.py").is_file()
   team_css = (ROOT / "static/css/team-admin.css").read_text(encoding="utf-8")
   for cls in ("admin-page-header", "admin-table", "admin-actions", "permission-grid", "team-modal"):
     assert cls in team_css, cls

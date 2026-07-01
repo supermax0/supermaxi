@@ -11,6 +11,7 @@ from sqlalchemy import inspect, text
 from utils.agent_passwords import hash_agent_password
 from utils.decorators import permission_required
 from utils.permission_checks import employee_can, get_current_employee
+from utils.team_schema import build_employees_grid_rows, ensure_delivery_agent_schema
 
 employees_bp = Blueprint("employees", __name__)
 
@@ -60,6 +61,7 @@ def _require_manage_employees():
 @employees_bp.before_request
 def ensure_employee_schema():
     _ensure_employee_profile_schema()
+    ensure_delivery_agent_schema()
 
 
 @employees_bp.route("/", methods=["GET", "POST"])
@@ -111,10 +113,14 @@ def employees():
     pages = Page.query.all()
     pages_list = [{"id": p.id, "name": p.name} for p in pages]
     agents_without_login = [a for a in delivery_agents if not a.username]
+    employees_grid_rows = build_employees_grid_rows(
+        employees_list, stats_map, delivery_agents, agent_stats_map
+    )
 
     return render_template(
         "employees.html",
         employees=employees_list,
+        employees_grid_rows=employees_grid_rows,
         stats=stats_map,
         delivery_agents=delivery_agents,
         agent_stats=agent_stats_map,

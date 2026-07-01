@@ -184,7 +184,21 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
 
     let rowData = [];
     try {
-      rowData = JSON.parse(employeesDataElement.textContent.trim());
+      const raw = JSON.parse(employeesDataElement.textContent.trim());
+      const roleNames = {
+        cashier: __t('employees_role_cashier'),
+        admin: __t('employees_role_admin'),
+        delivery: __t('employees_role_delivery'),
+      };
+      const statusNames = {
+        active: __t('employees_status_active'),
+        inactive: __t('employees_status_inactive'),
+      };
+      rowData = raw.map((r) => ({
+        ...r,
+        role_name: r.role_name || roleNames[r.role] || r.role,
+        status_name: r.status_name || statusNames[r.status] || r.status,
+      }));
     } catch (e) {
       console.error("Error parsing employees data:", e);
       return;
@@ -272,8 +286,6 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
           }
 
           const isActive = e.status === 'active';
-          const empActionDisable = __t('employees_action_disable');
-          const empActionEnable = __t('employees_action_enable');
           return `
           <div class="admin-actions">
             <form method="post" action="/employees/toggle/${e.id}" style="display:inline;margin:0"><button type="submit" class="action-btn" onclick="return confirmToggle(event, '${nameEscaped}', ${isActive})" title="${isActive ? empActionDisable : empActionEnable}">

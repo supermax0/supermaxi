@@ -1,847 +1,481 @@
-# Finora POS Redesign Prompt — White Professional Point of Sale UI
-
-## الدور المطلوب
-
-أنت Senior Frontend Engineer + UI/UX Designer.
-مطلوب منك إعادة تصميم صفحة **POS / نقطة البيع** في نظام Finora بشكل احترافي جداً، أبيض، سريع، واضح، ومناسب للاستخدام اليومي على الهاتف والتابلت واللابتوب.
-
-صفحة POS هي أهم شاشة تشغيلية في النظام، لذلك يجب أن تكون:
-
-* أسرع صفحة بالنظام.
-* سهلة للموظف العادي.
-* واضحة لصاحب الشركة.
-* تمنع الأخطاء أثناء البيع.
-* متجاوبة بالكامل.
-* محافظة على كل المنطق الحالي للمبيعات والمخزون والصندوق.
-
-استخدم صورة POS البيضاء المرفقة كمرجع بصري رئيسي للتصميم المطلوب.
-
----
-
-# 1. قواعد صارمة
-
-1. لا تغيّر منطق البيع الحالي.
-2. لا تغيّر APIs أو routes أو أسماء الدوال أو بنية البيانات إلا إذا كان ضرورياً جداً وبأقل تعديل ممكن.
-3. لا تغيّر طريقة حساب:
-
-   * الإجمالي.
-   * الخصم.
-   * الشحن.
-   * الربح.
-   * الصندوق.
-   * المخزون.
-4. لا تكسر تنفيذ الطلب أو تأجيل الطلب.
-5. لا تحذف أي feature موجودة.
-6. لا تجعل التصميم فقط جميل؛ يجب أن يكون عملياً وسريعاً.
-7. الصفحة يجب أن تدعم RTL بالكامل.
-8. الصفحة يجب أن تعمل على:
-
-   * Mobile 360px+
-   * Tablet 768px+
-   * Laptop 1024px+
-   * Desktop 1440px+
-9. لا يوجد scroll أفقي مزعج.
-10. لا تجعل الأزرار الخطرة قريبة من أزرار التنفيذ.
-
----
-
-# 2. الهدف من إعادة تصميم POS
-
-حوّل صفحة POS إلى واجهة بيع حديثة باسم:
-
-**Finora POS White Pro**
-
-التصميم المطلوب:
-
-* أبيض.
-* نظيف.
-* سريع.
-* فيه مسافات بسيطة ومدروسة بين البطاقات.
-* واضح جداً.
-* كل شيء داخل Cards منظمة.
-* أزرار كبيرة وسهلة النقر.
-* تجربة هاتف حقيقية وليست مجرد تصغير للواجهة.
-* السلة واضحة دائماً.
-* المنتجات واضحة وسريعة الإضافة.
-* التأثير المالي والمخزني يظهر قبل تنفيذ البيع.
-
----
-
-# 3. Design Style
-
-## الألوان
-
-استخدم نفس هوية Finora البيضاء:
-
-```css
-:root {
-  --bg-main: #F7F9FC;
-  --surface: #FFFFFF;
-  --surface-soft: #F3F6FB;
-  --surface-hover: #EEF4FF;
-
-  --border: #E4EAF2;
-  --border-strong: #D6DEEA;
-
-  --text-main: #101828;
-  --text-secondary: #667085;
-  --text-muted: #98A2B3;
-
-  --primary: #2563EB;
-  --primary-hover: #1D4ED8;
-  --primary-soft: #EAF1FF;
-
-  --success: #16A34A;
-  --success-soft: #EAFBF0;
-
-  --warning: #F59E0B;
-  --warning-soft: #FFF7E6;
-
-  --danger: #DC2626;
-  --danger-soft: #FEECEC;
-
-  --purple: #7C3AED;
-  --purple-soft: #F3EAFF;
-
-  --shadow-card: 0 6px 20px rgba(16, 24, 40, 0.06);
-  --shadow-hover: 0 10px 30px rgba(16, 24, 40, 0.10);
-}
-```
-
-## الشكل العام
-
-* الخلفية: رمادي/أزرق فاتح جداً.
-* كل جزء داخل Card بيضاء.
-* الحدود خفيفة.
-* الظلال ناعمة.
-* الأزرار rounded.
-* لا تستخدم gradients قوية.
-* المسافة بين الكروت من 10px إلى 14px.
-* لا تجعل الواجهة مكدسة.
-
----
-
-# 4. Typography
-
-استخدم خط عربي واضح:
-
-* Cairo
-  أو
-* IBM Plex Sans Arabic
-  أو
-* Tajawal
-
-القواعد:
-
-* العنوان الرئيسي: 24px إلى 28px، وزن 700.
-* عناوين الأقسام: 18px إلى 20px، وزن 700.
-* النصوص: 14px إلى 15px.
-* الأرقام والأسعار: وزن 700.
-* استخدم tabular numbers للأرقام المالية.
-
----
-
-# 5. Desktop Layout
-
-على اللابتوب والديسكتوب، قسّم صفحة POS إلى هيكل واضح:
-
-## A. Header أعلى الصفحة
-
-الهيدر يحتوي:
-
-1. معلومات المستخدم.
-2. اسم الشركة/الفرع.
-3. عنوان الصفحة: **نقطة البيع**
-4. Badge صغير مكتوب عليه POS.
-5. بحث عام اختياري.
-6. أيقونة إشعارات.
-7. زر رجوع للرئيسية إذا موجود.
-
-شكل الهيدر:
-
-* أبيض.
-* ارتفاع 68px تقريباً.
-* shadow خفيف.
-* sticky top إذا أمكن.
-
----
-
-## B. شريط مؤشرات أعلى POS
-
-أسفل الهيدر مباشرة ضع 4 بطاقات صغيرة:
-
-1. **إجمالي الفاتورة الحالية**
-2. **عدد المنتجات في السلة**
-3. **الرصيد النقدي**
-4. **آخر عملية بيع**
-
-كل بطاقة:
-
-* عنوان صغير.
-* رقم واضح.
-* أيقونة داخل مربع ملون ناعم.
-* ارتفاع 72px إلى 90px.
-* مسافة بسيطة بين البطاقات.
-
-مثال:
-
-* إجمالي الفاتورة الحالية: 171,500 د.ع
-* عدد المنتجات في السلة: 3
-* الرصيد النقدي: 5,420,000 د.ع
-* آخر عملية بيع: 11:42 ص / فاتورة INV-1256
-
----
-
-# 6. Main POS Body
-
-## Desktop Structure
-
-قسّم المحتوى الرئيسي إلى عمودين:
-
-### العمود الأيسر: السلة / الفاتورة
-
-العرض المقترح: 38% إلى 42%.
-
-### العمود الأيمن: المنتجات
-
-العرض المقترح: 58% إلى 62%.
-
-بما أن النظام RTL، المنتجات تكون في الجهة الأكبر، والسلة تكون واضحة وثابتة.
-
----
-
-# 7. Cart / Invoice Panel
-
-صمم Card كبيرة بعنوان:
-
-**السلة / الفاتورة**
-
-## داخلها:
-
-### 1. بيانات الزبون
-
-ضع حقول مرتبة:
-
-* اسم الزبون أو اختيار زبون
-* رقم الهاتف
-* المحافظة
-* زر إضافة زبون جديد
-
-القواعد:
-
-* رقم الهاتف واضح.
-* المحافظة dropdown.
-* إذا لم يتم اختيار زبون، استخدم “زبون سريع”.
-* زر إضافة زبون يكون صغير وواضح.
-
----
-
-### 2. جدول السلة
-
-على Desktop استخدم جدول نظيف بأعمدة:
-
-* المنتج
-* السعر
-* الكمية
-* الإجمالي
-* حذف
-
-كل صف يحتوي:
-
-* صورة صغيرة للمنتج.
-* اسم المنتج.
-* SKU تحت الاسم.
-* السعر.
-* quantity stepper:
-
-  * زر ناقص
-  * الرقم
-  * زر زائد
-* الإجمالي.
-* زر حذف أحمر صغير.
-
-لا تجعل زر الحذف قريب من تنفيذ الطلب.
-
----
-
-### 3. الخصم والشحن
-
-أسفل السلة أضف:
-
-#### الخصم
-
-* نوع الخصم:
-
-  * مبلغ
-  * نسبة
-* قيمة الخصم
-
-#### الشحن
-
-* قيمة الشحن
-* اختيار شركة النقل إن كانت متاحة
-
-#### ملاحظات
-
-* textarea صغير لملاحظات الفاتورة.
-
----
-
-### 4. ملخص الفاتورة
-
-Card صغيرة داخل السلة تعرض:
-
-* المجموع الفرعي
-* الخصم
-* الشحن
-* الإجمالي النهائي
-
-الإجمالي النهائي يكون كبير، أزرق، واضح.
-
-مثال:
-**171,500 د.ع**
-
----
-
-### 5. أثر العملية قبل التنفيذ
-
-أضف Box مهم جداً بعنوان:
-
-**أثر العملية**
-
-يعرض قبل تنفيذ البيع:
-
-* سيتم خصم هذه الكميات من المخزون.
-* سيتم إضافة المبلغ إلى الصندوق عند الدفع النقدي.
-* سيتم إنشاء فاتورة جديدة.
-* حالة الدفع: مسدد / غير مسدد حسب نوع العملية.
-
-مثال:
-
-* شاشة حجم 42: -1 من المخزون.
-* الصندوق: +195,000 د.ع.
-* فاتورة جديدة سيتم إنشاؤها.
-
-هذا مهم حتى المستخدم يثق بالأرقام.
-
----
-
-### 6. أزرار القرار
-
-أسفل السلة، اجعل الأزرار sticky داخل panel:
-
-1. **تنفيذ و طباعة**
-
-   * Primary blue.
-   * أكبر زر.
-   * icon طابعة أو check.
-
-2. **تأجيل الطلب**
-
-   * Secondary.
-   * icon ساعة.
-
-3. **إلغاء السلة**
-
-   * Danger soft.
-   * لا يكون قريب جداً من زر تنفيذ و طباعة.
-   * يحتاج confirmation modal.
-
-القواعد:
-
-* إذا السلة فارغة، زر التنفيذ disabled.
-* إذا رقم الهاتف مطلوب ولم يُدخل، أظهر validation.
-* إذا منتج نفد مخزونه، امنع التنفيذ أو أظهر تنبيه واضح.
-
----
-
-# 8. Products Panel
-
-صمم Card كبيرة للمنتجات بعنوان:
-
-**المنتجات**
-
-## الجزء العلوي
-
-### Search Bar
-
-شريط بحث كبير:
-
-Placeholder:
-**ابحث عن منتج بالاسم أو الباركود**
-
-يحتوي:
-
-* icon بحث.
-* زر scan barcode.
-* اختصار Keyboard إن أمكن.
-
-القواعد:
-
-* البحث يعمل بسرعة.
-* عند إدخال باركود مباشر، يضيف المنتج للسلة إن وجد.
-* إذا لا يوجد منتج، أظهر empty state واضح.
-
----
-
-### Filters / Categories
-
-أسفل البحث ضع أزرار category pills:
-
-* الكل
-* الشاشات
-* الإكسسوارات
-* العروض
-* منخفض المخزون
-* الأكثر مبيعاً
-
-كل زر:
-
-* pill button.
-* active state أزرق.
-* hover خفيف.
-* لا تكون كبيرة جداً.
-
----
-
-## Product Grid
-
-اعرض المنتجات على شكل Cards.
-
-### Desktop
-
-* 3 أعمدة.
-
-### Tablet
-
-* 2 أعمدة.
-
-### Mobile
-
-* 1 أو 2 حسب العرض.
-
-## Product Card يجب أن يحتوي:
-
-1. صورة المنتج.
-2. اسم المنتج.
-3. SKU.
-4. السعر.
-5. كمية المخزون.
-6. badge حالة المخزون:
-
-   * متوفر
-   * منخفض
-   * نفد
-7. زر إضافة.
-8. عند hover يظهر ظل خفيف.
-
-## Product Card Rules
-
-* إذا المخزون > 5:
-
-  * badge أخضر: متوفر.
-* إذا المخزون بين 1 و 5:
-
-  * badge برتقالي: مخزون منخفض.
-* إذا المخزون = 0:
-
-  * badge أحمر: نفد.
-  * زر الإضافة disabled.
-
-مثال Card:
-
-* شاشة سامسونج 27 بوصة
-* SKU: MON-27-SAM
-* السعر: 89,900 د.ع
-* المخزون: 12
-* زر: إضافة
-
----
-
-# 9. Mobile POS Design
-
-على الهاتف لا تستخدم نفس desktop layout.
-
-## Mobile Layout
-
-الترتيب:
-
-1. Header مختصر.
-2. Search bar.
-3. Categories horizontal scroll.
-4. Product cards.
-5. Floating cart button أسفل الشاشة.
-6. عند الضغط على السلة، يفتح bottom sheet.
-
-## Floating Cart Button
-
-يظهر أسفل الشاشة:
-
-* عدد المنتجات.
-* الإجمالي.
-* زر فتح السلة.
-
-مثال:
-**السلة: 3 منتجات — 171,500 د.ع**
-
-## Bottom Sheet Cart
-
-يحتوي:
-
-* بيانات الزبون.
-* المنتجات.
-* الكمية.
-* الخصم.
-* الشحن.
-* الإجمالي.
-* زر تنفيذ و طباعة sticky bottom.
-
-القواعد:
-
-* لا يوجد table على الهاتف.
-* كل منتج داخل السلة يظهر كـ card صغيرة.
-* أزرار + و - كبيرة سهلة النقر.
-* زر التنفيذ ثابت أسفل الشاشة.
-
----
-
-# 10. Tablet POS
-
-على التابلت:
-
-* إذا العرض يسمح:
-
-  * المنتجات عمودين.
-  * السلة panel جانبي.
-* إذا العرض ضيق:
-
-  * استخدم تصميم قريب من mobile مع bottom cart drawer.
-
----
-
-# 11. Behavior Requirements
-
-## إضافة منتج للسلة
-
-عند الضغط على إضافة:
-
-* أضف المنتج للسلة.
-* إذا المنتج موجود، زد الكمية.
-* أظهر toast صغير:
-
-  * تم إضافة المنتج للسلة.
-* حدث الإجمالي مباشرة.
-* حدث عدد المنتجات في السلة مباشرة.
-
-## تعديل الكمية
-
-عند الضغط +:
-
-* زد الكمية.
-* لا تسمح بتجاوز المخزون المتوفر.
-* إذا وصل الحد الأعلى:
-
-  * أظهر تنبيه: الكمية المطلوبة أكبر من المخزون.
-
-عند الضغط -:
-
-* نقص الكمية.
-* إذا وصلت 0، اطلب تأكيد حذف من السلة أو احذفها بسلاسة.
-
-## حذف منتج من السلة
-
-* زر الحذف فقط داخل صف المنتج.
-* عند الحذف، أظهر toast:
-
-  * تم حذف المنتج من السلة.
-
-## تنفيذ البيع
-
-قبل التنفيذ:
-
-* تحقق من السلة.
-* تحقق من رقم الهاتف إذا مطلوب.
-* تحقق من المخزون.
-* تحقق من الإجمالي.
-
-عند الضغط:
-
-* أظهر modal أو loading state.
-* لا تسمح بالضغط مرتين.
-* بعد النجاح:
-
-  * أظهر invoice page أو نافذة الطباعة حسب السلوك الحالي.
-  * أظهر toast:
-
-    * تم تنفيذ البيع.
-    * تم إنشاء الفاتورة.
-    * تم تحديث المخزون.
-    * تم تحديث الصندوق.
-
-## تأجيل الطلب
-
-عند الضغط على تأجيل:
-
-* أظهر modal بسيط:
-
-  * ملاحظة اختيارية.
-  * تأكيد التأجيل.
-* بعد التأجيل:
-
-  * أظهر رقم الطلب.
-  * لا تسجله كمسدد إذا المنطق الحالي لا يفعل ذلك.
-
-## إلغاء السلة
-
-لا تنفذ مباشرة.
-أظهر ConfirmDialog:
-
-العنوان:
-**إلغاء السلة؟**
-
-الوصف:
-**سيتم حذف جميع المنتجات من السلة الحالية. لن يتم إنشاء طلب.**
-
-الأزرار:
-
-* إلغاء
-* نعم، إفراغ السلة
-
----
-
-# 12. Empty States
-
-## إذا لا توجد منتجات
-
-اعرض Card جميلة:
-
-* لا توجد منتجات مطابقة.
-* جرب البحث باسم آخر أو امسح الفلاتر.
-* زر: مسح البحث.
-
-## إذا السلة فارغة
-
-اعرض:
-
-* لم يتم إضافة منتجات بعد.
-* ابدأ بالبحث أو اختر من المنتجات.
-* صورة أو icon خفيف.
-
----
-
-# 13. Loading States
-
-* skeleton cards للمنتجات.
-* skeleton للسلة إذا كانت تعدل طلب موجود.
-* spinner داخل زر تنفيذ و طباعة أثناء التنفيذ.
-* لا تجعل الصفحة تقفز عند تحميل البيانات.
-
----
-
-# 14. Error States
-
-إذا فشل تنفيذ البيع:
-
-* أظهر رسالة واضحة.
-* لا تفرغ السلة.
-* لا تنقل المستخدم.
-* اذكر سبب الخطأ إن وجد:
-
-  * المخزون غير كاف.
-  * فشل الاتصال.
-  * خطأ في إنشاء الفاتورة.
-
----
-
-# 15. Keyboard Shortcuts
-
-إذا ممكن، أضف اختصارات:
-
-* Ctrl + K: البحث.
-* Enter: إضافة المنتج المحدد أو تنفيذ البحث.
-* Ctrl + Enter: تنفيذ البيع.
-* Esc: إغلاق modal أو drawer.
-* F2: التركيز على رقم الهاتف.
-* F4: فتح السلة.
-
-لا تنفذ الاختصارات إذا كانت تسبب تعارض مع browser أو inputs.
-
----
-
-# 16. تحسينات مهمة للسرعة
-
-صفحة POS لازم تكون سريعة جداً:
-
-* استخدم memoization للمنتجات.
-* لا تعمل re-render لكل الصفحة عند تغيير كمية منتج.
-* اجعل cart state منفصل قدر الإمكان.
-* استخدم debounce للبحث.
-* إذا المنتجات كثيرة، استخدم pagination أو virtualization.
-* الصور lazy loaded.
-* لا تحمل صور كبيرة جداً.
-
----
-
-# 17. Components المطلوبة
-
-أنشئ أو حسّن components التالية:
-
-* PosPage
-* PosHeader
-* PosStatsBar
-* ProductSearch
-* CategoryPills
-* ProductGrid
-* ProductCard
-* CartPanel
-* CartItemRow
-* CartItemMobileCard
-* CustomerPicker
-* InvoiceSummary
-* OperationImpactBox
-* PosActionButtons
-* ConfirmClearCartDialog
-* PosToast
-* MobileCartButton
-* MobileCartBottomSheet
-
-كل component يجب أن يكون:
-
-* reusable.
-* RTL-ready.
-* responsive.
-* واضح ومنظم.
-
----
-
-# 18. Visual Details
-
-## Card Style
-
-```css
-.card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  box-shadow: var(--shadow-card);
-}
-```
-
-## Button Style
-
-```css
-.btn-primary {
-  background: var(--primary);
-  color: white;
-  border-radius: 12px;
-  height: 48px;
-  font-weight: 700;
-}
-```
-
-## Input Style
-
-```css
-.input {
-  background: white;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  height: 44px;
-  padding: 0 14px;
-}
-```
-
----
-
-# 19. Responsive Breakpoints
-
-```css
-/* Mobile */
-@media (max-width: 767px) {}
-
-/* Tablet */
-@media (min-width: 768px) and (max-width: 1023px) {}
-
-/* Desktop */
-@media (min-width: 1024px) {}
-```
-
-## Desktop Grid
-
-```css
-.pos-layout {
-  display: grid;
-  grid-template-columns: minmax(360px, 42%) minmax(0, 58%);
-  gap: 14px;
-}
-```
-
-## Mobile
-
-```css
-.pos-layout {
-  display: block;
-}
-.cart-panel {
-  display: none;
-}
-.mobile-cart-button {
-  display: flex;
-}
-```
-
----
-
-# 20. حالات يجب اختبارها
-
-اختبر كل الحالات التالية:
-
-1. فتح POS والسلة فارغة.
-2. البحث عن منتج.
-3. إضافة منتج واحد.
-4. إضافة نفس المنتج مرتين.
-5. زيادة الكمية.
-6. محاولة زيادة كمية أكثر من المخزون.
-7. حذف منتج من السلة.
-8. إضافة خصم.
-9. إضافة شحن.
-10. تنفيذ بيع نقدي.
-11. تأجيل طلب.
-12. إلغاء السلة.
-13. منتج مخزونه صفر.
-14. منتج منخفض المخزون.
-15. شاشة الهاتف 375px.
-16. شاشة تابلت 768px.
-17. شاشة لابتوب 1366px.
-
----
-
-# 21. Acceptance Criteria
-
-لا تعتبر المهمة مكتملة إلا إذا:
-
-1. صفحة POS أصبحت بيضاء واحترافية مثل الصورة المرجعية.
-2. المسافات بين الكروت بسيطة ومنظمة.
-3. السلة واضحة ومثبتة على desktop.
-4. المنتجات واضحة داخل Product Cards.
-5. زر تنفيذ و طباعة واضح وقوي.
-6. زر إلغاء السلة بعيد عن زر التنفيذ ويحتاج تأكيد.
-7. الهاتف يستخدم bottom sheet للسلة.
-8. لا يوجد scroll أفقي على الهاتف.
-9. البحث سريع.
-10. إضافة المنتجات للسلة سلسة.
-11. الحسابات الحالية لم تتغير.
-12. المخزون والصندوق والطلبات تعمل بنفس المنطق السابق.
-13. RTL مضبوط بالكامل.
-14. الأزرار سهلة النقر.
-15. الواجهة لا تبدو مزدحمة.
-16. التصميم موحد مع Finora White Pro.
-
----
-
-# 22. ملاحظة أخيرة
-
-تعامل مع POS كواجهة تشغيل يومية لموظف يبيع بسرعة.
-كل خطوة يجب أن تكون واضحة، وكل رقم يجب أن يكون موثوق، وكل زر خطر يجب أن يكون محمي.
-
-النتيجة النهائية يجب أن تكون صفحة POS نظيفة، سريعة، بيضاء، احترافية، مناسبة للموبايل والتابلت واللابتوب، وقريبة جداً من الصورة المرجعية المرفقة.
+You are working inside the existing Finora codebase.
+
+You have already generated the file:
+
+FINORA_AI_WORKSPACE_IMPLEMENTATION_PLAN.md
+
+Now implement ONLY:
+
+PHASE 1 — Workspace Foundation
+
+Do not implement Phase 2, Phase 3, OCR, document extraction, courier settlement, return workflow, purchase workflow, product matching, accounting posting, inventory posting, or real AI document analysis.
+
+This phase must only create the foundation of the interactive LEON workspace.
+
+============================================================
+PHASE 1 OBJECTIVE
+============================================================
+
+Build a full-page interactive workspace shell inside Finora.
+
+The page must look and behave like a clean AI accounting workspace:
+
+- white / very light background
+- subtle grid canvas
+- floating rounded windows
+- soft shadows and thin borders
+- Arabic-first RTL layout
+- central LEON avatar
+- avatar can move between workspace areas
+- live report text streams gradually
+- basic mock workflow events through SSE
+- workspace session can be created, loaded, and restored after refresh
+
+This phase is a visual/runtime foundation only.
+
+No real financial data should be changed.
+No orders should be updated.
+No inventory should be updated.
+No purchases should be created.
+No accounting entries should be posted.
+No shipping reports should be executed.
+No OCR should run.
+No AI model should be called.
+
+============================================================
+STRICT SAFETY RULES
+============================================================
+
+1. Do not modify operational business data.
+2. Do not call delivery_agent.execute_report.
+3. Do not call purchases._create_purchase_from_payload.
+4. Do not modify Invoice, Product, Purchase, ShippingReport, AccountTransaction, Expense, or JournalEntry records.
+5. Do not add OCR or PDF extraction in this phase.
+6. Do not install new heavy dependencies unless absolutely required.
+7. Prefer existing project patterns.
+8. Do not touch modules/publisher unless absolutely necessary.
+9. Keep this feature isolated under modules/workspace.
+10. The feature must be easy to disable if it breaks.
+
+============================================================
+CURRENT FINORA CONTEXT
+============================================================
+
+The project appears to use:
+
+- Flask
+- SQLAlchemy
+- tenant SQLite databases through DynamicTenantSession
+- Jinja templates
+- static JavaScript/CSS
+- existing assistant avatar code in static/js/assistant-character.js
+- existing app.py blueprint registration pattern
+- plan limits / feature gates
+- existing session auth
+
+Verify these assumptions from the repository before coding.
+
+============================================================
+FILES TO CREATE
+============================================================
+
+Create the following structure if it does not already exist:
+
+modules/workspace/
+  __init__.py
+  routes.py
+  api/
+    __init__.py
+    session_api.py
+    stream_api.py
+  models/
+    __init__.py
+    workspace_session.py
+    workspace_audit_event.py
+  services/
+    __init__.py
+    session_service.py
+    event_bus.py
+    mock_workflow_service.py
+
+templates/workspace/
+  app.html
+
+templates/workspace_dev/
+  app.html
+
+static/workspace/
+  css/
+    workspace.css
+  js/
+    workspace-app.js
+    session-store.js
+    event-stream.js
+    workspace-canvas.js
+    window-manager.js
+    leon-avatar.js
+    windows/
+      live-report-window.js
+      document-viewer-window.js
+      assistant-notes-window.js
+
+tests/workspace/
+  test_workspace_session_service.py
+  test_workspace_routes.py
+
+If the current project has a different test convention, adapt to it.
+
+============================================================
+FILES TO MODIFY
+============================================================
+
+Modify only if needed:
+
+app.py
+  - Register workspace blueprint:
+    from modules.workspace import workspace_bp, init_workspace
+    app.register_blueprint(workspace_bp, url_prefix="/workspace")
+    init_workspace(app)
+
+utils/plan_limits.py
+  - Add ai_workspace feature flag if project uses feature flags.
+
+extensions_tenant.py or the existing permissions seed file
+  - Add workspace permissions only if permission seeding is currently centralized and safe.
+
+templates/base.html or existing navigation template
+  - Add a link to /workspace/ only if there is a clear sidebar/nav pattern.
+  - If this is risky, skip nav link and keep direct route only.
+
+models/__init__.py
+  - Export workspace models only if existing project requires central model imports.
+
+Do not modify core business routes.
+
+============================================================
+BACKEND REQUIREMENTS
+============================================================
+
+Implement a workspace blueprint.
+
+Routes:
+
+GET /workspace/
+  - Renders templates/workspace/app.html
+  - Requires login
+  - If feature gate exists, require ai_workspace
+  - If feature gate is not ready, use admin-only or logged-in only temporarily, but write a clear TODO.
+
+GET /workspace/?dev=1
+  - Renders templates/workspace_dev/app.html
+  - Use dev shell only if useful.
+
+API prefix:
+
+/workspace/api
+
+Endpoints:
+
+POST /workspace/api/sessions
+  - Creates a WorkspaceSession.
+  - Default workflow_type: "mock_workspace"
+  - Initial status: "created"
+  - Initial current_step_id: "session_created"
+  - Initial windows_json should include:
+    1. document_viewer window on right
+    2. live_report window on left
+    3. assistant_notes window optional
+  - Initial avatar_state_json:
+    mode: "idle"
+    position: center
+    speech: "أهلاً، جاهز لتحليل المستندات."
+
+GET /workspace/api/sessions/<session_id>
+  - Returns session state.
+  - Must verify the session belongs to the current tenant/user if applicable.
+
+GET /workspace/api/sessions
+  - Returns recent workspace sessions for current user/tenant.
+
+POST /workspace/api/sessions/<session_id>/run-mock
+  - Starts or advances a mock workflow.
+  - It should emit events to the event bus:
+    workflow.step.started
+    window.opened
+    avatar.updated
+    report.appended
+    document.scan.updated
+    workflow.step.completed
+    session.completed
+  - This is mock only.
+
+GET /workspace/api/sessions/<session_id>/stream
+  - Server-Sent Events endpoint.
+  - Streams events as text/event-stream.
+  - Must support reconnect as much as practical.
+  - For Phase 1, in-memory queues are acceptable.
+  - Also persist events as WorkspaceAuditEvent.
+
+POST /workspace/api/sessions/<session_id>/cancel
+  - Marks session as cancelled.
+  - Emits session.cancelled event.
+
+============================================================
+DATABASE MODELS
+============================================================
+
+Create minimal models only.
+
+WorkspaceSession:
+
+- id: string UUID primary key
+- tenant_slug: string nullable or required depending on current tenant system
+- user_id: integer nullable or current user id type
+- workflow_type: string
+- status: string
+- current_step_id: string nullable
+- windows_json: JSON/text depending on current DB compatibility
+- avatar_state_json: JSON/text
+- metadata_json: JSON/text
+- created_at
+- updated_at
+
+WorkspaceAuditEvent:
+
+- id: integer primary key autoincrement OR UUID depending on project style
+- session_id
+- event_type
+- message
+- payload_json
+- user_id nullable
+- created_at
+
+Use the project’s existing SQLAlchemy conventions.
+
+Since tenant databases are SQLite, ensure JSON fields are compatible.
+If the project does not use native JSON consistently, store JSON as Text and serialize/deserialize safely.
+
+============================================================
+EVENT BUS REQUIREMENTS
+============================================================
+
+Implement modules/workspace/services/event_bus.py
+
+Phase 1 can use:
+
+- in-memory queue per session
+- persistent audit events in DB
+- helper emit_event(session_id, event_type, payload, message=None)
+
+Each emitted event must:
+
+1. Be appended to the in-memory queue.
+2. Be persisted as WorkspaceAuditEvent.
+3. Include:
+   - event_id
+   - type
+   - payload
+   - message
+   - created_at
+
+SSE format:
+
+event: report.appended
+id: <event_id>
+data: {"type":"report.appended","payload":{...}}
+
+Do not overcomplicate with Redis in Phase 1.
+
+============================================================
+MOCK WORKFLOW REQUIREMENTS
+============================================================
+
+Implement MockWorkflowService.
+
+When run-mock is called, it should simulate this sequence:
+
+Step 1:
+- avatar moves toward right document viewer
+- report: "تم إنشاء جلسة LEON Workspace."
+- report: "تم فتح نافذة معاينة المستند."
+
+Step 2:
+- open/update document_viewer
+- document scan overlay active
+- report: "جاري تجهيز معاينة المستند التجريبية..."
+- avatar mode: "reading_document"
+
+Step 3:
+- avatar moves toward left report window
+- report: "جاري كتابة تقرير التحليل التجريبي..."
+- report: "هذه المرحلة لا تقوم بأي ترحيل مالي أو مخزني."
+- avatar mode: "writing_report"
+
+Step 4:
+- open assistant_notes window
+- report: "تم اختبار فتح النوافذ التلقائي بنجاح."
+- avatar mode: "success"
+- session status: "completed"
+
+The frontend should show this as live progressive updates.
+
+============================================================
+FRONTEND REQUIREMENTS
+============================================================
+
+Build a full-page workspace UI.
+
+templates/workspace/app.html:
+
+- Full page, no heavy dashboard layout if possible.
+- Load static/workspace/css/workspace.css.
+- Load JS modules/files:
+  - session-store.js
+  - event-stream.js
+  - workspace-canvas.js
+  - window-manager.js
+  - leon-avatar.js
+  - windows/live-report-window.js
+  - windows/document-viewer-window.js
+  - windows/assistant-notes-window.js
+  - workspace-app.js
+
+UI layout:
+
+- Top small toolbar:
+  - title: "Finora AI Workspace"
+  - status pill
+  - button: "جلسة جديدة"
+  - button: "تشغيل تجربة"
+  - button: "إلغاء"
+
+- Main canvas:
+  - white/light background
+  - subtle grid
+  - floating windows
+  - central avatar
+
+Floating windows:
+
+1. Document Viewer Window
+   - title: "معاينة المستند"
+   - placeholder paper preview
+   - fake scan-line overlay when document.scan.updated active
+
+2. Live Report Window
+   - title: "تقرير التحليل"
+   - receives report.appended events
+   - writes text gradually, not all at once
+   - Arabic RTL
+
+3. Assistant Notes Window
+   - title: "ملاحظات LEON"
+   - receives assistant notes / success messages
+
+Avatar:
+
+- Use existing assistant-character.js if compatible.
+- If existing avatar is hard to reuse safely, create a temporary lightweight CSS avatar for Phase 1:
+  - glowing circular face
+  - eyes
+  - small speech bubble
+  - smooth transform movement
+- Wrap it in LeonAvatarAdapter with:
+  - setMode(mode)
+  - moveTo(x, y)
+  - speak(text)
+  - setProgress(progress)
+
+The adapter must be written so it can later be connected to the real Three.js avatar.
+
+Window Manager:
+
+- openWindow(windowSpec)
+- updateWindow(windowId, patch)
+- focusWindow(windowId)
+- closeWindow(windowId)
+- renderWindows(session.windows)
+- applyEvent(event)
+
+No need for full drag/resize in Phase 1 if it risks delay.
+But window positions must be controlled by state.
+
+State restore:
+
+- On page load:
+  - if URL has ?session=<id>, load that session.
+  - else create a new session.
+  - render windows from session state.
+  - connect SSE.
+
+============================================================
+CSS REQUIREMENTS
+============================================================
+
+The visual style should match the target design:
+
+- clean white SaaS workspace
+- light blue/purple accent
+- thin borders
+- border-radius 18px or similar
+- box-shadow subtle
+- smooth transitions
+- RTL text
+- responsive enough for 1366px width minimum
+
+Do not use dark theme for this workspace.
+
+============================================================
+TESTING REQUIREMENTS
+============================================================
+
+Add tests if the project supports pytest.
+
+Test:
+
+1. Creating a WorkspaceSession.
+2. Getting a session.
+3. Emitting an event persists WorkspaceAuditEvent.
+4. run-mock changes session status eventually.
+5. Unauthenticated user cannot access /workspace/ if auth tests are feasible.
+
+If tests are hard due to the current app setup, write a manual test checklist in:
+
+modules/workspace/README.md
+
+============================================================
+ACCEPTANCE CRITERIA
+============================================================
+
+Phase 1 is complete only when:
+
+1. /workspace/ opens without crashing.
+2. A new workspace session can be created.
+3. The workspace displays a white canvas with subtle grid.
+4. At least two floating windows appear:
+   - document viewer
+   - live report
+5. LEON avatar appears and can move based on events.
+6. Clicking "تشغيل تجربة" starts a mock workflow.
+7. The live report receives streaming lines gradually.
+8. The document viewer shows a fake scan-line overlay.
+9. Refreshing the page can restore the session state when session id is present.
+10. Events are persisted as WorkspaceAuditEvent.
+11. No operational business records are modified.
+12. No OCR/AI/accounting/inventory/shipping posting is implemented in this phase.
+
+============================================================
+OUTPUT REQUIRED
+============================================================
+
+After implementation, provide:
+
+1. Summary of created files.
+2. Summary of modified files.
+3. How to open the workspace.
+4. How to test the mock workflow.
+5. Any errors or limitations.
+6. Confirmation that no business data posting was added.
+7. Next recommended task: Phase 2 — Document Upload + Viewer.
+
+Start implementing Phase 1 only.
