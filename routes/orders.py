@@ -47,6 +47,7 @@ from sqlalchemy import or_, and_
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 
 from utils.order_status import is_canceled, is_returned, is_completed
+from utils.order_lifecycle import OrderLifecycleError, process_order_cancel, process_order_return
 from utils.cash_calculations import _effective_paid_amount
 from utils.payment_ledger import append_payment_ledger_delta
 from services.media_service import get_thumbnail_upload_root, get_video_upload_root, save_uploaded_file
@@ -932,20 +933,18 @@ def payment():
         if payment_status in ["غير مسدد", "جزئي", "مسدد", "مرتجع"]:
             # إذا تم اختيار "مرتجع" من شاشة الدفع: نفّذ منطق ترجيع آمن (مرة واحدة)
             if payment_status == "مرتجع":
-                if is_canceled(order.status, order.payment_status):
-                    return jsonify({"success": False, "error": "لا يمكن ترجيع طلب ملغي"}), 400
+                scanned_barcode = (data.get("barcode") or "").strip()
+                if not scanned_barcode:
+                    return jsonify({"success": False, "error": "يجب مسح باركود الطلب لتأكيد المرتجع"}), 400
 
-                already_returned = is_returned(order.status, order.payment_status)
-                if not already_returned:
-                    items = OrderItem.query.filter_by(invoice_id=order.id).all()
-                    for item in items:
-                        product = Product.query.get(item.product_id)
-                        if product:
-                            product.quantity += int(item.quantity or 0)
+                try:
+                    already_returned, _msg = process_order_return(order, scanned_barcode)
+                except OrderLifecycleError as exc:
+                    return jsonify({"success": False, "error": exc.message}), exc.status_code
 
-                order.status = "مرتجع"
-                order.payment_status = "مرتجع"
-                order.paid_amount = 0
+                if already_returned:
+                    return jsonify({"success": True, "message": _msg})
+
                 video_cleanup_targets = _collect_order_video_cleanup_targets(order)
                 _clear_order_video_fields(order)
                 delta_pay = _effective_paid_amount(order) - prev_effective_paid
@@ -1019,6 +1018,38 @@ def payment():
         except Exception:
             pass
         return jsonify({"success": True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": _db_user_facing_error(e)}), 500
+
+
+# =====================================================
+# Cancel Order (soft cancel — تم الطلب only)
+# =====================================================
+@orders_bp.route("/cancel/<int:order_id>", methods=["POST"])
+def cancel_order(order_id):
+    order = Invoice.query.get_or_404(order_id)
+    before = snapshot_attrs(order, *INVOICE_SNAPSHOT_FIELDS)
+
+    try:
+        process_order_cancel(order)
+        db.session.commit()
+        try:
+            log_mutation(
+                "update",
+                "orders",
+                "invoice",
+                order.id,
+                before,
+                snapshot_attrs(order, *INVOICE_SNAPSHOT_FIELDS),
+                f"إلغاء الطلب #{order.id}",
+            )
+        except Exception:
+            pass
+        return jsonify({"success": True})
+    except OrderLifecycleError as exc:
+        db.session.rollback()
+        return jsonify({"success": False, "error": exc.message}), exc.status_code
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "error": _db_user_facing_error(e)}), 500

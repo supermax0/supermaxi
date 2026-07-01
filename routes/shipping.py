@@ -38,6 +38,7 @@ def _shipping_permission_guard():
 RETURN_STATUSES = ["مرتجع", "راجع", "راجعة"]
 CANCELED_STATUSES = ["ملغي"]
 from utils.order_status import is_canceled, is_returned, is_completed
+from utils.order_lifecycle import OrderLifecycleError, process_order_cancel, process_order_return
 from utils.cash_calculations import _effective_paid_amount as _effective_paid_amount_inv
 
 
@@ -270,7 +271,7 @@ def settle_order(order_id):
 # =====================================
 # Cancel Order (with history)
 # =====================================
-@shipping_bp.route("/cancel/<int:order_id>")
+@shipping_bp.route("/cancel/<int:order_id>", methods=["GET", "POST"])
 def cancel_order(order_id):
     order = Invoice.query.get_or_404(order_id)
 
@@ -283,15 +284,7 @@ def cancel_order(order_id):
         return jsonify({"success": True, "message": "الطلب ملغي مسبقاً"})
 
     try:
-        # استرجاع الكمية للمخزون (مرة واحدة فقط)
-        items = OrderItem.query.filter_by(invoice_id=order.id).all()
-        for item in items:
-            product = Product.query.get(item.product_id)
-            if product:
-                product.quantity += int(item.quantity or 0)
-
-        order.status = "ملغي"
-        order.payment_status = "ملغي"
+        process_order_cancel(order)
 
         db.session.add(
             ShippingPayment(
@@ -303,6 +296,9 @@ def cancel_order(order_id):
         )
         db.session.commit()
         return jsonify({"success": True})
+    except OrderLifecycleError as exc:
+        db.session.rollback()
+        return jsonify({"success": False, "error": exc.message}), exc.status_code
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
@@ -310,32 +306,21 @@ def cancel_order(order_id):
 # =====================================
 # Return Order (with inventory restore)
 # =====================================
-@shipping_bp.route("/return/<int:order_id>")
+@shipping_bp.route("/return/<int:order_id>", methods=["GET", "POST"])
 def return_order(order_id):
     order = Invoice.query.get_or_404(order_id)
     prev_eff = _effective_paid_amount_inv(order)
 
-    # التحقق من أن الطلب لم يكن مرتجعاً من قبل
-    was_returned = is_returned(order.status, order.payment_status)
-    if is_canceled(order.status, order.payment_status):
-        return jsonify({"success": False, "error": "لا يمكن ترجيع طلب ملغي"}), 400
-    if was_returned:
-        return jsonify({"success": True, "message": "الطلب مرتجع مسبقاً"})
-    
-    # تغيير حالة الطلب إلى "راجع"
-    order.status = "راجع"
-    order.payment_status = "مرتجع"
-    order.paid_amount = 0
+    data = request.get_json(silent=True) or {}
+    scanned_barcode = (data.get("barcode") or request.args.get("barcode") or "").strip()
+    if request.method == "GET" and not scanned_barcode:
+        return jsonify({"success": False, "error": "يجب مسح باركود الطلب لتأكيد المرتجع"}), 400
 
-    # إرجاع الكميات للمخزون فقط إذا لم يكن الطلب مرتجعاً من قبل
     try:
-        items = OrderItem.query.filter_by(invoice_id=order.id).all()
-        for item in items:
-            product = Product.query.get(item.product_id)
-            if product:
-                product.quantity += int(item.quantity or 0)
-    
-        # إضافة سجل في تاريخ الشحن
+        already_returned, message = process_order_return(order, scanned_barcode)
+        if already_returned:
+            return jsonify({"success": True, "message": message})
+
         db.session.add(
             ShippingPayment(
                 shipping_company_id=order.shipping_company_id,
@@ -346,7 +331,10 @@ def return_order(order_id):
         )
         append_payment_ledger_delta(order.id, _effective_paid_amount_inv(order) - prev_eff)
         db.session.commit()
-        return jsonify({"success": True, "message": "تم ترجيع الطلب وإرجاع الكمية للمخزون"})
+        return jsonify({"success": True, "message": message})
+    except OrderLifecycleError as exc:
+        db.session.rollback()
+        return jsonify({"success": False, "error": exc.message}), exc.status_code
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 500

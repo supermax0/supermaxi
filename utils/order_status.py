@@ -12,8 +12,8 @@ from typing import Optional, Iterable
 
 
 # حالات الإلغاء والمرتجع (تم توحيدها حسب طلب المستخدم)
-CANCELED_STATUSES: set[str] = {"مرتجع"}
-RETURN_STATUSES: set[str] = {"مرتجع"}
+CANCELED_STATUSES: set[str] = {"ملغي"}
+RETURN_STATUSES: set[str] = {"مرتجع", "راجع", "راجعة"}
 
 # حالات الطلب “غير مكتمل”
 PENDING_STATUSES: set[str] = {"تم الطلب", "جاري الشحن"}

@@ -660,9 +660,18 @@
     "orders_partial_err_max": "⚠️ المبلغ لا يمكن أن يتجاوز {max} د.ع",
     "orders_partial_success": "✅ تم تسديد {amount} د.ع بنجاح",
 
-    "orders_confirm_cancel": "⚠️ هل أنت متأكد من حذف هذه الفاتورة نهائياً؟",
-    "orders_toast_cancel_success": "✅ تم حذف الفاتورة بنجاح",
-    "orders_err_cancel": "❌ حدث خطأ أثناء حذف الفاتورة",
+    "orders_confirm_cancel": "⚠️ هل أنت متأكد من إلغاء هذا الطلب؟\n\nسيتم إرجاع الكمية للمخزون وتغيير الحالة إلى ملغي.",
+    "orders_toast_cancel_success": "✅ تم إلغاء الطلب بنجاح",
+    "orders_err_cancel": "❌ حدث خطأ أثناء إلغاء الطلب",
+
+    "orders_return_scan_title": "تأكيد المرتجع بالباركود",
+    "orders_return_scan_hint": "امسح باركود الطلب أو أدخله لتأكيد الإرجاع وإعادة الكمية للمخزون",
+    "orders_return_scan_placeholder": "امسح أو أدخل باركود الطلب",
+    "orders_return_scan_confirm": "تأكيد المرتجع",
+    "orders_return_scan_required": "⚠️ يجب مسح باركود الطلب لتأكيد المرتجع",
+    "orders_err_barcode_mismatch": "❌ الباركود لا يطابق الطلب",
+    "orders_toast_return_success": "✅ تم ترجيع الطلب بنجاح",
+    "orders_err_return": "❌ حدث خطأ أثناء ترجيع الطلب",
 
     "shipping_page_title": "إدارة شركات النقل",
     "shipping_stat_total_companies": "إجمالي الشركات",
