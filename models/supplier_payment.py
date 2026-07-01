@@ -16,6 +16,15 @@ class SupplierPayment(db.Model):
     amount = db.Column(db.Integer, nullable=False)
     note = db.Column(db.String(255))
 
+    treasury_account_id = db.Column(
+        db.Integer,
+        db.ForeignKey("treasury_account.id"),
+        nullable=True,
+        index=True,
+    )
+
+    treasury_account = db.relationship("TreasuryAccount", lazy=True)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def __repr__(self):

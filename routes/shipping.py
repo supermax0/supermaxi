@@ -11,6 +11,9 @@ import secrets
 from utils.payment_ledger import append_payment_ledger_delta
 from utils.permission_checks import guard_permission
 from utils.activity_logger import log_activity
+from utils.treasury_helpers import resolve_treasury_account_id, treasury_choices_for_form
+from utils.treasury_calculations import assert_sufficient_balance, InsufficientTreasuryBalance
+from utils.treasury_schema_guard import ensure_treasury_schema
 
 shipping_bp = Blueprint("shipping", __name__, url_prefix="/shipping")
 
@@ -118,7 +121,7 @@ def shipping_page():
             "public_url": f"/delivery/public/{c.access_token}" if c.access_token else None
         })
 
-    return render_template("shipping.html", companies=result)
+    return render_template("shipping.html", companies=result, treasury_choices=treasury_choices_for_form())
 
 # =====================================
 # Add Shipping Company
@@ -233,9 +236,18 @@ def company_orders(id):
 # =====================================
 # Settle Order (with history)
 # =====================================
-@shipping_bp.route("/settle/<int:order_id>")
+@shipping_bp.route("/settle/<int:order_id>", methods=["POST"])
 def settle_order(order_id):
     order = Invoice.query.get_or_404(order_id)
+    data = request.get_json(silent=True) or {}
+    ensure_treasury_schema()
+    treasury_account_id = resolve_treasury_account_id(data.get("treasury_account_id"))
+
+    amount = int(order.total or 0)
+    try:
+        assert_sufficient_balance(treasury_account_id, amount)
+    except InsufficientTreasuryBalance as exc:
+        return jsonify({"success": False, "error": str(exc)}), 400
 
     prev_eff = _effective_paid_amount_inv(order)
     order.payment_status = "مسدد"
@@ -246,7 +258,8 @@ def settle_order(order_id):
             shipping_company_id=order.shipping_company_id,
             invoice_id=order.id,
             amount=order.total,
-            action="تسديد"
+            action="تسديد",
+            treasury_account_id=treasury_account_id,
         )
     )
 

@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% block title %}تنفيذ كشوف المندوب{% endblock %}
+{% block page_title %}🚚 كشوف المندوب — بانتظار التنفيذ{% endblock %}
+{% block content %}
+
+<style>
+.agent-pending-page .card {
+  background: linear-gradient(145deg, rgba(17, 24, 39, 0.9), rgba(11, 18, 32, 0.9));
+  border-radius: 20px;
+  padding: 24px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(59, 130, 246, 0.1);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+.agent-pending-page .stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.agent-pending-page .stat-box {
+  background: rgba(15, 23, 42, 0.6);
+  border-radius: 14px;
+  padding: 18px;
+  text-align: center;
+}
+.agent-pending-page .stat-box .num {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--primary);
+}
+.agent-pending-page .stat-box .label {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin-top: 6px;
+}
+.agent-pending-page table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.agent-pending-page th,
+.agent-pending-page td {
+  padding: 16px 12px;
+  text-align: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+.agent-pending-page th {
+  background: rgba(30, 41, 59, 0.7);
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.agent-pending-page .badge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.agent-pending-page .badge-ready {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+.agent-pending-page .badge-progress {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+.agent-pending-page .badge-wait {
+  background: rgba(148, 163, 184, 0.15);
+  color: #94a3b8;
+}
+.agent-pending-page .btn {
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 4px;
+}
+.agent-pending-page .btn-primary {
+  background: linear-gradient(135deg, var(--primary), #2563eb);
+  color: #fff;
+}
+.agent-pending-page .btn-success {
+  background: linear-gradient(135deg, var(--success), #059669);
+  color: #fff;
+}
+.agent-pending-page .btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+</style>
+
+<div class="agent-pending-page">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+      <div>
+        <h3 style="margin:0;color:var(--text);">طابور تنفيذ كشوف المندوب</h3>
+        <p style="margin:8px 0 0;color:var(--text-muted);font-size:14px;">
+          بعد أن يطبّق المندوب حالات الطلبات، ينفّذ المحاسب الكشف هنا — كل طلب يذهب لمكانه النهائي.
+        </p>
+      </div>
+      <a href="/agents" class="btn btn-primary">← المندوبين</a>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-box">
+        <div class="num">{{ ready_count }}</div>
+        <div class="label">جاهز للتنفيذ</div>
+      </div>
+      <div class="stat-box">
+        <div class="num">{{ in_progress_count }}</div>
+        <div class="label">قيد التطبيق</div>
+      </div>
+      <div class="stat-box">
+        <div class="num">{{ pending_count }}</div>
+        <div class="label">إجمالي المفتوح</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>رقم الكشف</th>
+          <th>المندوب</th>
+          <th>التقدم</th>
+          <th>المبلغ</th>
+          <th>التاريخ</th>
+          <th>الحالة</th>
+          <th>إجراءات</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if reports %}
+          {% for r in reports %}
+          <tr>
+            <td>{{ loop.index }}</td>
+            <td><strong>{{ r.report_number }}</strong></td>
+            <td>{{ r.agent_name }}</td>
+            <td>{{ r.progress_label }}</td>
+            <td>{{ "{:,.0f}".format(r.total_amount) }} د.ع</td>
+            <td>{{ r.created_at }}</td>
+            <td>
+              {% if r.ready_for_execution %}
+              <span class="badge badge-ready">جاهز للتنفيذ</span>
+              {% elif r.applied_count > 0 %}
+              <span class="badge badge-progress">قيد التطبيق</span>
+              {% else %}
+              <span class="badge badge-wait">بانتظار المندوب</span>
+              {% endif %}
+            </td>
+            <td>
+              <a href="/delivery/report/{{ r.id }}" class="btn btn-primary">👁️ عرض</a>
+              {% if r.ready_for_execution %}
+              <button type="button" class="btn btn-success" onclick="executeAgentReport({{ r.id }})">✅ تنفيذ</button>
+              {% else %}
+              <button type="button" class="btn btn-success" disabled title="بانتظار اكتمال تطبيق المندوب">✅ تنفيذ</button>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="8" style="padding:40px;color:var(--text-muted);">لا توجد كشوف مندوب مفتوحة حالياً</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+function executeAgentReport(reportId) {
+  if (!confirm('تنفيذ الكشف؟ سيتم تطبيق: الواصل → مسدد | الملغي → ملغي | المؤجل → تم الطلب')) return;
+  fetch('/delivery/execute-report/' + reportId, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ expense_amount: 0 })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.success) {
+      if (typeof showToast === 'function') showToast(data.message || 'تم التنفيذ', 'success', 4000);
+      setTimeout(function() { location.reload(); }, 900);
+    } else {
+      alert(data.error || 'حدث خطأ');
+    }
+  })
+  .catch(function() { alert('حدث خطأ أثناء التنفيذ'); });
+}
+</script>
+{% endblock %}

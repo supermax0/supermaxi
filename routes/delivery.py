@@ -6,13 +6,11 @@ from models.shipping import ShippingCompany
 from models.order_item import OrderItem
 from models.customer import Customer
 from models.shipping_report import ShippingReport
-from models.expense import Expense
 from sqlalchemy import or_, and_, func
 from datetime import datetime
 import json
 
-from utils.cash_calculations import _effective_paid_amount as _effective_paid_amount_inv
-from utils.payment_ledger import append_payment_ledger_delta
+from utils.shipping_report_execute import execute_shipping_report
 
 delivery_bp = Blueprint("delivery", __name__, url_prefix="/delivery")
 
@@ -574,108 +572,13 @@ def execute_report(report_id):
     
     # جلب الكشف
     report = ShippingReport.query.get_or_404(report_id)
-    
-    # التحقق من أن الكشف لم يتم تنفيذه بعد
-    if report.is_executed:
-        return jsonify({"error": "تم تنفيذ هذا الكشف مسبقاً"}), 400
-    
-    # التحقق من وجود حالات محفوظة
-    if not report.order_status_selections:
-        return jsonify({"error": "لا توجد حالات محفوظة للتنفيذ"}), 400
-    
-    # تحليل الحالات المحفوظة
-    try:
-        status_selections = json.loads(report.order_status_selections)
-    except:
-        return jsonify({"error": "خطأ في قراءة الحالات المحفوظة"}), 500
-    
-    # جلب بيانات الطلبات
-    orders_data = json.loads(report.orders_data) if report.orders_data else []
-    
-    # جلب مبلغ المصروف إذا كان موجوداً
     data = request.get_json() or {}
     expense_amount = data.get("expense_amount", 0)
-    
-    # تطبيق التغييرات على كل طلب
-    updated_count = 0
-    canceled_count = 0
-    delayed_count = 0
-    
-    try:
-        # حفظ المصروف إذا كان موجوداً
-        if expense_amount and expense_amount > 0:
-            expense = Expense(
-                title=f"كروة - كشف {report.report_number}",
-                category="كروة",
-                amount=int(expense_amount),
-                note=f"مصروف كروة لكشف رقم {report.report_number}"
-            )
-            db.session.add(expense)
-        
-        for order_data in orders_data:
-            order_id = order_data.get("id")
-            if not order_id:
-                continue
-            
-            # جلب الطلب من قاعدة البيانات
-            order = Invoice.query.get(order_id)
-            if not order:
-                continue
-            
-            # الحصول على الحالة المحددة
-            selected_status = status_selections.get(str(order_id))
-            if not selected_status:
-                continue
-            
-            # تطبيق التغييرات حسب الحالة
-            # ==========================
-            # تصحيح محاسبي: حالات مندوبي التوصيل
-            # ==========================
-            if selected_status == "واصل":
-                # الطلبات الواصلة: حالة الطلب = مسدد/مكتمل، حالة الدفع = مسدد
-                # السبب المحاسبي: الطلب الواصل يُعتبر مكتمل ومسدد
-                prev_eff = _effective_paid_amount_inv(order)
-                order.status = "مسدد"  # أو "تم التوصيل" - لكن "مسدد" يعني مكتمل ومسدد
-                order.payment_status = "مسدد"  # تأكيد حالة الدفع
-                if not order.paid_amount or int(order.paid_amount or 0) < int(order.total or 0):
-                    order.paid_amount = order.total
-                delta_pay = _effective_paid_amount_inv(order) - prev_eff
-                append_payment_ledger_delta(order.id, delta_pay)
-                updated_count += 1
-            elif selected_status == "ملغي":
-                # الطلبات الملغاة: حالة الطلب = ملغي، حالة الدفع = ملغي
-                # السبب المحاسبي: الطلب الملغي يُعتبر ملغي تماماً (حالة الطلب وحالة الدفع)
-                from utils.order_status import is_canceled, is_returned
-                already_canceled = is_canceled(order.status, order.payment_status)
-                already_returned = is_returned(order.status, order.payment_status)
-
-                order.status = "ملغي"
-                order.payment_status = "ملغي"  # تأكيد إلغاء حالة الدفع
-                canceled_count += 1
-                
-                # استرجاع الكميات للمنتجات
-                if not already_canceled and not already_returned:
-                    items = OrderItem.query.filter_by(invoice_id=order.id).all()
-                    for item in items:
-                        if item.product:
-                            item.product.quantity += int(item.quantity or 0)
-            elif selected_status == "مؤجل":
-                # مؤجل → تم الطلب
-                order.status = "تم الطلب"
-                order.payment_status = "غير مسدد"
-                delayed_count += 1
-        
-        # تحديث حالة الكشف
-        report.is_executed = True
-        db.session.commit()
-        
-        return jsonify({
-            "success": True,
-            "message": f"تم تنفيذ التغييرات بنجاح: {updated_count} واصل، {canceled_count} ملغي، {delayed_count} مؤجل"
-        })
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": f"حدث خطأ أثناء التنفيذ: {str(e)}"}), 500
+    result = execute_shipping_report(report, expense_amount=expense_amount)
+    if result.get("error"):
+        status_code = 400 if "مسبقاً" in result["error"] or "لا توجد" in result["error"] else 500
+        return jsonify({"error": result["error"]}), status_code
+    return jsonify(result)
 
 # =====================================================
 # Public Access Redirect (Legacy Support)

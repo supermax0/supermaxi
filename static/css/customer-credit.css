@@ -24,7 +24,7 @@
   .cc-stats { grid-template-columns: repeat(2, 1fr); }
 }
 
-@media (max-width: 520px) {
+@media (max-width: 360px) {
   .cc-stats { grid-template-columns: 1fr; }
 }
 
@@ -97,34 +97,32 @@
 }
 
 .cc-table-wrap {
-  overflow-x: auto;
-  border-radius: 14px;
-  border: 1px solid var(--border-light);
+  display: none !important;
 }
 
 .cc-table {
-  width: 100%;
-  min-width: 760px;
-  border-collapse: collapse;
+  display: none !important;
 }
 
-.cc-table th,
-.cc-table td {
-  padding: 12px 14px;
-  text-align: right;
-  border-bottom: 1px solid var(--border-light);
-  font-size: 0.9rem;
+/* Cards layout — always, no tables on mobile or desktop */
+.cc-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.cc-table th {
-  background: var(--bg);
-  color: var(--text-muted);
-  font-weight: 700;
-  font-size: 0.78rem;
-}
+@media (min-width: 900px) {
+  .cc-page:not(.cc-page--detail) .cc-cards {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
 
-.cc-table tbody tr:hover {
-  background: rgba(59, 130, 246, 0.04);
+  .cc-page--detail .cc-cards--installments,
+  .cc-page--detail .cc-panel:nth-of-type(n) .cc-cards {
+    display: flex;
+    flex-direction: column;
+  }
 }
 
 .cc-badge {
@@ -344,4 +342,314 @@
   height: 100%;
   background: linear-gradient(90deg, var(--primary), var(--success));
   border-radius: 999px;
+}
+
+/* Utility text colors */
+.text-success { color: var(--success) !important; }
+.text-danger { color: var(--danger) !important; }
+
+/* Utility text colors */
+.text-success { color: var(--success) !important; }
+.text-danger { color: var(--danger) !important; }
+
+.cc-progress-panel {
+  margin-bottom: 16px;
+}
+
+.cc-progress-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.cc-progress-pct {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+
+.cc-mcard {
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  padding: 14px;
+  background: var(--bg);
+}
+
+.cc-mcard__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.cc-mcard__index {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.cc-mcard__title {
+  font-weight: 800;
+  font-size: 1rem;
+  line-height: 1.3;
+  margin-bottom: 10px;
+}
+
+.cc-mcard__sub {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.cc-mcard__due {
+  font-size: 1.05rem;
+  font-weight: 800;
+  margin-bottom: 10px;
+  color: var(--text);
+}
+
+.cc-mcard__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 12px;
+}
+
+.cc-mcard__grid--3 {
+  grid-template-columns: 1fr;
+}
+
+.cc-mcard__grid span {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.cc-mcard__grid strong {
+  font-size: 0.88rem;
+  word-break: break-word;
+}
+
+.cc-mcard__grid strong small {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.cc-mcard__amount {
+  font-size: 1rem;
+  white-space: nowrap;
+}
+
+.cc-mcard__date {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.cc-mcard__note {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-light);
+}
+
+.cc-mcard__action {
+  width: 100%;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.cc-mcard--installment.cc-mcard--overdue-highlight {
+  border-color: rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.04);
+}
+
+.cc-detail-name {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.cc-detail-meta {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.cc-detail-customer {
+  flex: 1;
+  min-width: 0;
+}
+
+.cc-field-hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.cc-search-input {
+  width: 100%;
+  max-width: 280px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border-light);
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+}
+
+.cc-pay-form__fields {
+  display: flex;
+  flex: 1;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ========== MOBILE ========== */
+@media (max-width: 768px) {
+  .cc-page {
+    padding: 0 2px 100px;
+  }
+
+  .cc-page--detail {
+    padding-bottom: 120px;
+  }
+
+  .cc-panel {
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .cc-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cc-header .cc-btn-primary {
+    width: 100%;
+    justify-content: center;
+    padding: 14px 16px;
+  }
+
+  .cc-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cc-search-input {
+    max-width: none;
+    width: 100%;
+  }
+
+  .cc-stat {
+    padding: 12px 14px;
+  }
+
+  .cc-stat-value {
+    font-size: 1.1rem;
+    word-break: break-word;
+  }
+
+  .cc-detail-hero {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cc-back-btn {
+    width: fit-content;
+  }
+
+  .cc-section {
+    margin-top: 14px;
+  }
+
+  .cc-section-title {
+    font-size: 0.95rem;
+  }
+
+  .cc-pay-form {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 14px;
+    gap: 12px;
+  }
+
+  .cc-pay-form__fields {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .cc-pay-form .cc-field {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .cc-pay-form .cc-field input {
+    padding: 14px 12px;
+    font-size: 1rem;
+  }
+
+  .cc-pay-submit {
+    width: 100%;
+    justify-content: center;
+    padding: 14px 16px;
+    font-size: 1rem;
+  }
+
+  .cc-pay-form--sticky {
+    position: sticky;
+    bottom: 0;
+    z-index: 100;
+    margin-top: 12px;
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.12);
+    border-radius: 16px 16px 0 0;
+    border-bottom: none;
+  }
+
+  .cc-modal {
+    margin: 0;
+    min-height: 100dvh;
+    max-width: none;
+    border-radius: 0;
+    padding: 16px;
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+
+  .cc-modal-overlay {
+    padding: 0;
+  }
+
+  .cc-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+  }
+
+  .cc-tab {
+    padding: 10px 6px;
+    font-size: 0.75rem;
+    text-align: center;
+  }
+
+  .cc-product-line {
+    grid-template-columns: 1fr;
+    gap: 6px;
+    padding: 10px;
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+  }
+
+  .cc-modal-footer {
+    flex-direction: column-reverse;
+  }
+
+  .cc-modal-footer .cc-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 14px;
+  }
 }

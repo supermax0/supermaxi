@@ -8,6 +8,9 @@ from datetime import datetime, timedelta
 from utils.plan_guard import feature_required
 from utils.permission_checks import check_permission
 from utils.activity_logger import log_activity
+from utils.treasury_helpers import resolve_treasury_account_id, treasury_choices_for_form
+from utils.treasury_calculations import assert_sufficient_balance, InsufficientTreasuryBalance
+from utils.treasury_schema_guard import ensure_treasury_schema
 
 expenses_bp = Blueprint("expenses", __name__)
 
@@ -40,7 +43,15 @@ def expenses():
         return redirect("/pos"), 403
 
     if request.method == "POST":
+        ensure_treasury_schema()
         expense_amount = int(float(request.form["amount"]))
+        treasury_account_id = resolve_treasury_account_id(request.form.get("treasury_account_id"))
+        try:
+            assert_sufficient_balance(treasury_account_id, expense_amount)
+        except InsufficientTreasuryBalance as exc:
+            from flask import flash
+            flash(str(exc), "error")
+            return redirect(url_for("expenses.expenses"))
         expense_title = request.form["title"]
         expense_category = request.form["category"]
         expense_note = request.form.get("note")
@@ -72,7 +83,8 @@ def expenses():
             withdraw_tx = AccountTransaction(
                 type="withdraw",
                 amount=expense_amount,
-                note=f"مصروف: {expense_title} ({expense_category}) بتاريخ {current_date}" + (f" - {expense_note}" if expense_note else "") + repeat_suffix
+                note=f"مصروف: {expense_title} ({expense_category}) بتاريخ {current_date}" + (f" - {expense_note}" if expense_note else "") + repeat_suffix,
+                treasury_account_id=treasury_account_id,
             )
             db.session.add(withdraw_tx)
         
@@ -132,7 +144,8 @@ def expenses():
         today_total=today_total,
         current_month_name=current_month_name,
         today_date=today_date,
-        default_date=default_date
+        default_date=default_date,
+        treasury_choices=treasury_choices_for_form(),
     )
 
 
@@ -157,7 +170,8 @@ def delete_expense(id):
         deposit_tx = AccountTransaction(
             type="deposit",
             amount=e.amount,
-            note=f"إلغاء مصروف: {e.title} ({e.category})"
+            note=f"إلغاء مصروف: {e.title} ({e.category})",
+            treasury_account_id=withdraw_tx.treasury_account_id,
         )
         db.session.add(deposit_tx)
     

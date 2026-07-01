@@ -53,6 +53,15 @@ class ShippingPayment(db.Model):
         db.String(255)
     )
 
+    treasury_account_id = db.Column(
+        db.Integer,
+        db.ForeignKey("treasury_account.id"),
+        nullable=True,
+        index=True,
+    )
+
+    treasury_account = db.relationship("TreasuryAccount", lazy=True)
+
     # =====================
     # Time
     # =====================

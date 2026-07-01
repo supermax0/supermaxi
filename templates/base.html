@@ -2228,6 +2228,7 @@ or request.path.startswith('/superadmin') %}
         {% if (is_admin or (current_employee and can_see_agents)) and business_allows('agents') %}
         {% if plan_has("agents") %}
         <a href="/agents"><i class="fa fa-user-tie"></i> {{ _('delivery_agents') }}</a>
+        <a href="/agents/pending-execution"><i class="fa fa-clipboard-check"></i> تنفيذ كشوف المندوب</a>
         {% else %}
         <a href="/upgrade" style="opacity:.55" title="{{ _('upgrade_plan') }}"><i class="fa fa-user-tie"></i> {{
           _('delivery_agents') }} <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>

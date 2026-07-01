@@ -37,6 +37,17 @@ def allowed_file(filename):
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
+def _settings_ctx(nav_key, **extra):
+    """سياق مشترك لكل صفحات الإعدادات."""
+    from models.employee import Employee
+
+    is_admin = False
+    if "user_id" in session:
+        emp = Employee.query.get(session["user_id"])
+        is_admin = bool(emp and emp.is_active and emp.role == "admin")
+    return dict(settings_nav=nav_key, is_admin=is_admin, **extra)
+
+
 def _template_owner_uid():
     slug = _session_tenant_slug()
     if slug:
@@ -97,26 +108,21 @@ def _ensure_invoice_owner_user(owner_id):
 def settings():
     """صفحة الإعدادات الرئيسية"""
     from models.invoice import Invoice
-    from models.employee import Employee
 
     invoice_settings = InvoiceSettings.get_settings()
-    # Get first order for preview link
     first_order = Invoice.query.order_by(Invoice.id.desc()).first()
-    is_admin = False
-    if "user_id" in session:
-        emp = Employee.query.get(session["user_id"])
-        is_admin = bool(emp and emp.is_active and emp.role == "admin")
-
     app_downloads = {
         "webview": os.environ.get("APP_WEBVIEW_APK_URL", "/static/downloads/finora-pos-webview.apk"),
         "native": os.environ.get("APP_NATIVE_APK_URL", "/static/downloads/finora-pos-native.apk"),
     }
     return render_template(
         "settings.html",
-        invoice_settings=invoice_settings,
-        first_order=first_order,
-        is_admin=is_admin,
-        app_downloads=app_downloads,
+        **_settings_ctx(
+            "overview",
+            invoice_settings=invoice_settings,
+            first_order=first_order,
+            app_downloads=app_downloads,
+        ),
     )
 
 @settings_bp.route("/system")
@@ -124,7 +130,10 @@ def system_settings():
     """صفحة إعدادات النظام"""
     from models.employee import Employee
     employees = Employee.query.order_by(Employee.created_at.desc()).all()
-    return render_template("system_settings.html", employees=employees)
+    return render_template(
+        "system_settings.html",
+        **_settings_ctx("system", employees=employees),
+    )
 
 @settings_bp.route("/system/update-role", methods=["POST"])
 def update_employee_role():
@@ -269,11 +278,14 @@ def invoice_settings():
     settings = InvoiceSettings.get_settings()
     return render_template(
         "invoice_settings.html",
-        settings=settings,
-        templates=templates,
-        active_template_id=(tset.active_template_id if tset else None),
-        purchased_ids=purchased_ids,
-        template_style=template_style,
+        **_settings_ctx(
+            "invoice",
+            settings=settings,
+            templates=templates,
+            active_template_id=(tset.active_template_id if tset else None),
+            purchased_ids=purchased_ids,
+            template_style=template_style,
+        ),
     )
 
 
@@ -281,7 +293,20 @@ def invoice_settings():
 def appearance_settings():
     """صفحة إعدادات الواجهة (الثيم، الخط، المساعد)"""
     settings = SystemSettings.get_settings()
-    return render_template("settings_appearance.html", settings=settings)
+    return render_template(
+        "settings_appearance.html",
+        **_settings_ctx("appearance", settings=settings),
+    )
+
+
+@settings_bp.route("/storefront")
+def storefront_settings():
+    """صفحة إعدادات المتجر الإلكتروني."""
+    settings = SystemSettings.get_settings()
+    return render_template(
+        "settings_storefront.html",
+        **_settings_ctx("storefront", settings=settings),
+    )
 
 
 @settings_bp.route("/appearance/update", methods=["POST"])
@@ -623,7 +648,10 @@ def database_repair_page():
     if not _require_active_admin():
         return redirect("/settings")
     slug = session.get("tenant_slug") or ""
-    return render_template("database_repair.html", tenant_slug=slug)
+    return render_template(
+        "database_repair.html",
+        **_settings_ctx("database", tenant_slug=slug),
+    )
 
 
 @settings_bp.route("/database-repair/api", methods=["POST"])

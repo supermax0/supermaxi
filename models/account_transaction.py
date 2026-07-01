@@ -21,6 +21,23 @@ class AccountTransaction(db.Model):
         db.String(255)
     )
 
+    treasury_account_id = db.Column(
+        db.Integer,
+        db.ForeignKey("treasury_account.id"),
+        nullable=True,
+        index=True,
+    )
+
+    treasury_transfer_id = db.Column(
+        db.Integer,
+        db.ForeignKey("treasury_transfer.id"),
+        nullable=True,
+        index=True,
+    )
+
+    treasury_account = db.relationship("TreasuryAccount", lazy=True)
+    treasury_transfer = db.relationship("TreasuryTransfer", lazy=True)
+
     created_at = db.Column(
         db.DateTime,
         default=datetime.utcnow
@@ -51,6 +68,8 @@ class AccountTransaction(db.Model):
             "مخزون افتتاحي",
             "تسوية جرد",
             "شراء نقدي",
+            "تحويل →",
+            "تحويل ←",
         )
         return any(marker in note for marker in automated_markers)
 
@@ -69,6 +88,8 @@ class AccountTransaction(db.Model):
             "مخزون افتتاحي",
             "تسوية جرد",
             "غير نقدي",
+            "تحويل →",
+            "تحويل ←",
         )
         return any(marker in note for marker in automated_markers)
 

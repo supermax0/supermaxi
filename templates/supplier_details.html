@@ -527,6 +527,14 @@
         <input id="payAmount" name="amount" type="number" min="1" step="1" placeholder="0" required>
       </div>
       <div class="ss-field">
+        <label for="payTreasury">{{ _('pay_from_account') }}</label>
+        <select id="payTreasury" name="treasury_account_id" required>
+          {% for acc in treasury_choices|default([]) %}
+          <option value="{{ acc.id }}">{{ acc.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="ss-field">
         <label for="payNote">{{ _('supplier_statement_note_optional') }}</label>
         <input id="payNote" name="note" type="text" placeholder="{{ _('supplier_statement_note_optional') }}">
       </div>

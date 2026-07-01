@@ -37,53 +37,33 @@
   <div class="cc-panel">
     <div class="cc-toolbar">
       <h3 style="margin:0;font-weight:800;">{{ _('customer_credit_list_title') }}</h3>
-      <input type="search" id="ccSearch" placeholder="{{ _('customer_credit_search') }}" style="max-width:260px;padding:10px 12px;border-radius:10px;border:1px solid var(--border-light);background:var(--bg);color:var(--text);" oninput="filterCreditRows()">
+      <input type="search" id="ccSearch" class="cc-search-input" placeholder="{{ _('customer_credit_search') }}" oninput="filterCreditRows()">
     </div>
 
     {% if rows %}
-    <div class="cc-table-wrap">
-      <table class="cc-table" id="ccTable">
-        <thead>
-          <tr>
-            <th>{{ _('customer_credit_th_customer') }}</th>
-            <th>{{ _('customer_credit_th_phone') }}</th>
-            <th>{{ _('customer_credit_th_plans') }}</th>
-            <th>{{ _('customer_credit_th_debt') }}</th>
-            <th>{{ _('customer_credit_th_paid') }}</th>
-            <th>{{ _('customer_credit_th_remaining') }}</th>
-            <th>{{ _('customer_credit_th_next_due') }}</th>
-            <th>{{ _('customer_credit_th_overdue') }}</th>
-            <th>{{ _('customer_credit_th_actions') }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for row in rows %}
-          <tr class="cc-row" data-search="{{ row.customer.name }} {{ row.customer.phone }}">
-            <td><strong>{{ row.customer.name }}</strong></td>
-            <td>{{ row.customer.phone }}</td>
-            <td>{{ row.summary.active_plans }}</td>
-            <td>{{ "{:,}".format(row.summary.total_debt) }}</td>
-            <td>{{ "{:,}".format(row.summary.total_paid) }}</td>
-            <td style="color:var(--danger);font-weight:700;">{{ "{:,}".format(row.summary.remaining) }}</td>
-            <td>
-              {% if row.next_due_amount %}
-              {{ row.next_due_date }}<br><small>{{ "{:,}".format(row.next_due_amount) }} {{ _('reports_currency_iqd') }}</small>
-              {% else %}—{% endif %}
-            </td>
-            <td>
-              {% if row.summary.overdue_count %}
-              <span class="cc-badge cc-badge-overdue">{{ row.summary.overdue_count }}</span>
-              {% else %}—{% endif %}
-            </td>
-            <td>
-              <a href="{{ url_for('customer_credit.detail', customer_id=row.customer.id) }}" class="cc-btn cc-btn-ghost" style="padding:8px 12px;">
-                <i class="fas fa-file-invoice"></i> {{ _('customer_credit_action_statement') }}
-              </a>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    <div class="cc-cards" id="ccCards">
+      {% for row in rows %}
+      <article class="cc-mcard cc-mcard--customer cc-row" data-search="{{ row.customer.name }} {{ row.customer.phone }}">
+        <div class="cc-mcard__head">
+          <div>
+            <div class="cc-mcard__title">{{ row.customer.name }}</div>
+            <div class="cc-mcard__sub">{{ row.customer.phone }}</div>
+          </div>
+          {% if row.summary.overdue_count %}
+          <span class="cc-badge cc-badge-overdue">{{ row.summary.overdue_count }} {{ _('customer_credit_th_overdue') }}</span>
+          {% endif %}
+        </div>
+        <div class="cc-mcard__grid">
+          <div><span>{{ _('customer_credit_th_debt') }}</span><strong>{{ "{:,}".format(row.summary.total_debt) }}</strong></div>
+          <div><span>{{ _('customer_credit_th_remaining') }}</span><strong class="text-danger">{{ "{:,}".format(row.summary.remaining) }}</strong></div>
+          <div><span>{{ _('customer_credit_th_paid') }}</span><strong class="text-success">{{ "{:,}".format(row.summary.total_paid) }}</strong></div>
+          <div><span>{{ _('customer_credit_th_next_due') }}</span><strong>{% if row.next_due_amount %}{{ row.next_due_date }}<br><small>{{ "{:,}".format(row.next_due_amount) }}</small>{% else %}—{% endif %}</strong></div>
+        </div>
+        <a href="{{ url_for('customer_credit.detail', customer_id=row.customer.id) }}" class="cc-btn cc-btn-primary cc-mcard__action">
+          <i class="fas fa-file-invoice"></i> {{ _('customer_credit_action_statement') }}
+        </a>
+      </article>
+      {% endfor %}
     </div>
     {% else %}
     <div class="cc-empty">

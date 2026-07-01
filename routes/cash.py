@@ -16,6 +16,15 @@ from utils.cash_calculations import (
 )
 from utils.permission_checks import check_permission
 from utils.activity_logger import log_activity
+from utils.treasury_helpers import get_default_cash_account
+from utils.treasury_calculations import (
+    list_treasury_accounts,
+    calculate_treasury_balance,
+    calculate_total_liquidity,
+    assert_sufficient_balance,
+    InsufficientTreasuryBalance,
+)
+from utils.treasury_schema_guard import ensure_treasury_schema
 
 cash_bp = Blueprint("cash", __name__, url_prefix="/cash")
 
@@ -46,10 +55,19 @@ def cash():
         if amount <= 0:
             flash("⚠️ المبلغ يجب أن يكون أكبر من صفر", "error")
             return redirect(url_for("cash.cash"))
+
+        ensure_treasury_schema()
+        cash_account = get_default_cash_account()
+        tx_type = "deposit" if transaction_type == "cash_in" else "withdraw"
+        if tx_type == "withdraw":
+            try:
+                assert_sufficient_balance(cash_account.id, amount)
+            except InsufficientTreasuryBalance as exc:
+                flash(str(exc), "error")
+                return redirect(url_for("cash.cash"))
         
         # تسجيل الحركة في AccountTransaction
         # استخدام note للتمييز بأنها حركة كاش يدوية
-        tx_type = "deposit" if transaction_type == "cash_in" else "withdraw"
         cash_note = f"صندوق - {reason}"
         if note:
             cash_note += f" - {note}"
@@ -57,7 +75,8 @@ def cash():
         tx = AccountTransaction(
             type=tx_type,
             amount=amount,
-            note=cash_note
+            note=cash_note,
+            treasury_account_id=cash_account.id,
         )
         
         db.session.add(tx)
@@ -86,11 +105,21 @@ def cash():
     # آخر 50 حركة للعرض
     recent_movements = cash_movements[-50:] if cash_movements else []
     
+    ensure_treasury_schema()
+    bank_balances = [
+        {"account": acc, "balance": calculate_treasury_balance(acc.id)}
+        for acc in list_treasury_accounts()
+        if not acc.is_cash
+    ]
+    total_liquidity = calculate_total_liquidity()
+
     return render_template(
         "cash.html",
         cash_balance=cash_balance,
         cash_summary=cash_summary,
-        movements=recent_movements
+        movements=recent_movements,
+        bank_balances=bank_balances,
+        total_liquidity=total_liquidity,
     )
 
 

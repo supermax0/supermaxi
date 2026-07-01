@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, jsonify, session
+from flask import Blueprint, render_template, request, redirect, url_for, jsonify, session, flash
 from extensions import db
 from sqlalchemy import func, or_
 from models.account_transaction import AccountTransaction
@@ -6,6 +6,7 @@ from models.invoice import Invoice
 from models.order_item import OrderItem
 from models.expense import Expense
 from models.employee import Employee
+from models.treasury_account import TreasuryAccount
 
 # =======================
 # Accounting Calculations (الحسابات المحاسبية الصحيحة)
@@ -19,6 +20,15 @@ from utils.accounting_calculations import (
 )
 from utils.permission_checks import check_permission
 from utils.activity_logger import log_activity
+from utils.treasury_helpers import resolve_treasury_account_id, treasury_choices_for_form
+from utils.treasury_calculations import (
+    calculate_treasury_balance,
+    calculate_total_liquidity,
+    record_treasury_transfer,
+    InsufficientTreasuryBalance,
+    list_treasury_accounts,
+)
+from utils.treasury_schema_guard import ensure_treasury_schema
 
 accounts_bp = Blueprint("accounts", __name__, url_prefix="/accounts")
 
@@ -94,10 +104,23 @@ def accounts():
         return redirect("/pos"), 403
 
     if request.method == "POST":
+        ensure_treasury_schema()
+        treasury_account_id = resolve_treasury_account_id(request.form.get("treasury_account_id"))
+        tx_type = request.form["type"]
+        amount = int(request.form["amount"])
+        if tx_type == "withdraw":
+            try:
+                from utils.treasury_calculations import assert_sufficient_balance
+
+                assert_sufficient_balance(treasury_account_id, amount)
+            except InsufficientTreasuryBalance as exc:
+                flash(str(exc), "error")
+                return redirect(url_for("accounts.accounts"))
         tx = AccountTransaction(
-            type=request.form["type"],
-            amount=int(request.form["amount"]),
-            note=request.form.get("note")
+            type=tx_type,
+            amount=amount,
+            note=request.form.get("note"),
+            treasury_account_id=treasury_account_id,
         )
         db.session.add(tx)
         db.session.commit()
@@ -216,7 +239,18 @@ def accounts():
         # الربح قليل (أقل من 20% من المبيعات)
         alert_type = "info"
         alert_message = f"💡 ملاحظة: الربح الصافي ({net_profit:,} د.ع) يمثل {profit_ratio:.1f}% فقط من المبيعات ({paid_sales:,} د.ع) - ربح قليل"
-    
+
+    ensure_treasury_schema()
+    treasury_accounts = list_treasury_accounts()
+    treasury_balances = [
+        {
+            "account": acc,
+            "balance": calculate_treasury_balance(acc.id),
+        }
+        for acc in treasury_accounts
+    ]
+    total_liquidity = calculate_total_liquidity()
+
     return render_template(
         "accounts.html",
         transactions=transactions_to_display,  # عرض الحركات المالية فقط (بدون المخزون الافتتاحي)
@@ -229,7 +263,11 @@ def accounts():
         paid_sales=paid_sales,
         order_accounting_impact=_build_order_accounting_impact(),
         alert_type=alert_type,
-        alert_message=alert_message
+        alert_message=alert_message,
+        treasury_accounts=treasury_accounts,
+        treasury_balances=treasury_balances,
+        total_liquidity=total_liquidity,
+        treasury_choices=treasury_choices_for_form(),
     )
 
 # ============================
@@ -279,3 +317,80 @@ def add_capital_from_profit():
         "message": f"تم إضافة {net_profit:,} د.ع إلى رأس المال من صافي الأرباح",
         "amount": int(net_profit)
     })
+
+
+@accounts_bp.route("/add-bank", methods=["POST"])
+def add_bank():
+    if not check_permission("can_see_accounts"):
+        return redirect("/pos"), 403
+
+    ensure_treasury_schema()
+    name = (request.form.get("bank_name") or "").strip()
+    if not name:
+        flash("يرجى إدخال اسم البنك", "error")
+        return redirect(url_for("accounts.accounts"))
+
+    existing = TreasuryAccount.query.filter(
+        TreasuryAccount.account_type == "bank",
+        func.lower(TreasuryAccount.name) == name.lower(),
+    ).first()
+    if existing:
+        flash("يوجد بنك بنفس الاسم مسبقاً", "error")
+        return redirect(url_for("accounts.accounts"))
+
+    bank = TreasuryAccount(name=name, account_type="bank", is_default=False, is_active=True)
+    db.session.add(bank)
+    db.session.commit()
+    try:
+        log_activity(
+            "create",
+            "finance",
+            f"إضافة بنك — {name}",
+            entity_type="treasury_account",
+            payload={"name": name},
+        )
+    except Exception:
+        pass
+    flash(f"تم إضافة البنك: {name}", "success")
+    return redirect(url_for("accounts.accounts"))
+
+
+@accounts_bp.route("/transfer", methods=["POST"])
+def treasury_transfer():
+    if not check_permission("can_see_accounts"):
+        return redirect("/pos"), 403
+
+    ensure_treasury_schema()
+    try:
+        from_account_id = int(request.form.get("from_account_id") or 0)
+        to_account_id = int(request.form.get("to_account_id") or 0)
+        amount = int(request.form.get("amount") or 0)
+    except (TypeError, ValueError):
+        flash("بيانات التحويل غير صالحة", "error")
+        return redirect(url_for("accounts.accounts"))
+
+    note = (request.form.get("note") or "").strip() or None
+    try:
+        transfer = record_treasury_transfer(from_account_id, to_account_id, amount, note)
+        try:
+            log_activity(
+                "create",
+                "finance",
+                f"تحويل {amount} من {transfer.from_account_id} إلى {transfer.to_account_id}",
+                entity_type="treasury_transfer",
+                payload={
+                    "from_account_id": from_account_id,
+                    "to_account_id": to_account_id,
+                    "amount": amount,
+                    "note": note,
+                },
+            )
+        except Exception:
+            pass
+        flash("تم تنفيذ التحويل بنجاح", "success")
+    except InsufficientTreasuryBalance as exc:
+        flash(str(exc), "error")
+    except ValueError as exc:
+        flash(str(exc), "error")
+
+    return redirect(url_for("accounts.accounts"))

@@ -277,6 +277,8 @@
     .da-badge-pending { background: rgba(59,130,246,0.15); color: #3b82f6; }
     .da-badge-shipping { background: rgba(245,158,11,0.15); color: #d97706; }
     .da-badge-delay { background: rgba(139,92,246,0.15); color: #8b5cf6; }
+    .da-badge-applied { background: rgba(16,185,129,0.15); color: #059669; }
+    .da-apply-btn.is-applied { opacity: 0.65; cursor: default; }
 
     .da-status-row {
       display: flex;
@@ -551,7 +553,9 @@
               <td>{{ order.city or '—' }}</td>
               <td class="da-amount">{{ "{:,}".format(order.total|int) }} د.ع</td>
               <td>
-                {% if order.note == 'مؤجل' %}
+                {% if order.applied_status %}
+                <span class="da-badge da-badge-applied"><i class="fa-solid fa-hourglass-half"></i> {{ order.applied_status }} — بانتظار المحاسب</span>
+                {% elif order.note == 'مؤجل' %}
                 <span class="da-badge da-badge-delay"><i class="fa-solid fa-clock"></i> مؤجل</span>
                 {% elif order.status == 'جاري الشحن' or order.status == 'قيد الشحن' %}
                 <span class="da-badge da-badge-shipping">{{ order.status }}</span>
@@ -561,13 +565,13 @@
               </td>
               <td>
                 <div class="da-status-row">
-                  <select class="da-status-select status-select" id="status-{{ order.id }}" data-order-id="{{ order.id }}">
-                    <option value="تم الطلب" {% if order.status == 'تم الطلب' and order.note != 'مؤجل' %}selected{% endif %}>تم الطلب</option>
-                    <option value="واصل" {% if order.status == 'تم التوصيل' %}selected{% endif %}>واصل</option>
-                    <option value="ملغي" {% if order.status == 'ملغي' %}selected{% endif %}>ملغي</option>
-                    <option value="مؤجل" {% if order.note == 'مؤجل' %}selected{% endif %}>مؤجل</option>
+                  <select class="da-status-select status-select" id="status-{{ order.id }}" data-order-id="{{ order.id }}" {% if order.applied_status %}disabled{% endif %}>
+                    <option value="تم الطلب" {% if order.status == 'تم الطلب' and order.note != 'مؤجل' and not order.applied_status %}selected{% endif %}>تم الطلب</option>
+                    <option value="واصل" {% if order.applied_status == 'واصل' %}selected{% endif %}>واصل</option>
+                    <option value="ملغي" {% if order.applied_status == 'ملغي' %}selected{% endif %}>ملغي</option>
+                    <option value="مؤجل" {% if order.applied_status == 'مؤجل' or (order.note == 'مؤجل' and not order.applied_status) %}selected{% endif %}>مؤجل</option>
                   </select>
-                  <button type="button" class="da-apply-btn" onclick="applyStatusChange({{ order.id }})">تطبيق</button>
+                  <button type="button" class="da-apply-btn{% if order.applied_status %} is-applied{% endif %}" id="apply-btn-{{ order.id }}" onclick="applyStatusChange({{ order.id }})" {% if order.applied_status %}disabled{% endif %}>{% if order.applied_status %}تم التطبيق{% else %}تطبيق{% endif %}</button>
                 </div>
               </td>
               <td>
@@ -601,19 +605,21 @@
             <div><span>المحافظة</span>{{ order.city or '—' }}</div>
             <div><span>التاريخ</span>{{ order.created_at }}</div>
             <div><span>الحالة</span>
-              {% if order.note == 'مؤجل' %}مؤجل{% else %}{{ order.status }}{% endif %}
+              {% if order.applied_status %}
+              <span class="da-badge da-badge-applied">{{ order.applied_status }} — بانتظار المحاسب</span>
+              {% elif order.note == 'مؤجل' %}مؤجل{% else %}{{ order.status }}{% endif %}
             </div>
           </div>
           <div class="da-card-actions">
             <label>تحديث الحالة</label>
             <div class="da-status-row">
-              <select class="da-status-select status-select" id="status-m-{{ order.id }}" data-order-id="{{ order.id }}" data-sync="status-{{ order.id }}">
-                <option value="تم الطلب" {% if order.status == 'تم الطلب' and order.note != 'مؤجل' %}selected{% endif %}>تم الطلب</option>
-                <option value="واصل" {% if order.status == 'تم التوصيل' %}selected{% endif %}>واصل</option>
-                <option value="ملغي" {% if order.status == 'ملغي' %}selected{% endif %}>ملغي</option>
-                <option value="مؤجل" {% if order.note == 'مؤجل' %}selected{% endif %}>مؤجل</option>
+              <select class="da-status-select status-select" id="status-m-{{ order.id }}" data-order-id="{{ order.id }}" data-sync="status-{{ order.id }}" {% if order.applied_status %}disabled{% endif %}>
+                <option value="تم الطلب" {% if order.status == 'تم الطلب' and order.note != 'مؤجل' and not order.applied_status %}selected{% endif %}>تم الطلب</option>
+                <option value="واصل" {% if order.applied_status == 'واصل' %}selected{% endif %}>واصل</option>
+                <option value="ملغي" {% if order.applied_status == 'ملغي' %}selected{% endif %}>ملغي</option>
+                <option value="مؤجل" {% if order.applied_status == 'مؤجل' or (order.note == 'مؤجل' and not order.applied_status) %}selected{% endif %}>مؤجل</option>
               </select>
-              <button type="button" class="da-apply-btn" onclick="applyStatusChange({{ order.id }})">تطبيق</button>
+              <button type="button" class="da-apply-btn{% if order.applied_status %} is-applied{% endif %}" onclick="applyStatusChange({{ order.id }})" {% if order.applied_status %}disabled{% endif %}>{% if order.applied_status %}تم التطبيق{% else %}تطبيق{% endif %}</button>
             </div>
             <div style="margin-top:10px;">
               <label>تاريخ التأجيل</label>
@@ -684,6 +690,29 @@
       });
     }
 
+    function markOrderApplied(orderId, status, allComplete) {
+      syncStatusSelects(orderId, status);
+      ['status-' + orderId, 'status-m-' + orderId].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.disabled = true;
+      });
+      document.querySelectorAll('.da-order-row[data-search]').forEach(function(row) {
+        if (row.getAttribute('data-search').indexOf(' ' + orderId + ' ') === -1 && row.getAttribute('data-search').indexOf('#' + orderId) === -1) return;
+      });
+      var applyBtns = document.querySelectorAll('[onclick="applyStatusChange(' + orderId + ')"]');
+      applyBtns.forEach(function(btn) {
+        btn.disabled = true;
+        btn.textContent = 'تم التطبيق';
+        btn.classList.add('is-applied');
+      });
+      showToast('تم حفظ الحالة — بانتظار تنفيذ المحاسب');
+      if (allComplete) {
+        setTimeout(function() {
+          showToast('تم تطبيق كل الطلبات — بانتظار تنفيذ المحاسب');
+        }, 600);
+      }
+    }
+
     function applyStatusChange(orderId) {
       var selectElement = getStatusSelect(orderId);
       if (!selectElement) return;
@@ -717,10 +746,7 @@
         selectElement.disabled = false;
         if (btn) { btn.disabled = false; btn.textContent = 'تطبيق'; }
         if (data.success) {
-          showToast('تم تحديث الحالة بنجاح');
-          if (status === 'واصل' || status === 'ملغي') {
-            setTimeout(function() { location.reload(); }, 800);
-          }
+          markOrderApplied(orderId, status, !!data.all_complete);
         } else {
           alert(data.error || 'حدث خطأ');
         }
@@ -747,10 +773,9 @@
       .then(function(data) {
         if (btn) { btn.disabled = false; btn.textContent = 'تطبيق'; }
         if (data.success) {
-          syncStatusSelects(orderId, 'مؤجل');
+          markOrderApplied(orderId, 'مؤجل', !!data.all_complete);
           var disp = document.getElementById('date-display-' + orderId);
           if (disp) disp.innerHTML = '<span class="da-badge da-badge-delay">' + date + '</span>';
-          showToast('تم تأجيل الطلب');
         } else {
           alert(data.error || 'حدث خطأ');
         }

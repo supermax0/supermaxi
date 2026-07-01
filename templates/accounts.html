@@ -114,6 +114,73 @@
     margin-top: 4px;
   }
 
+  .acc-treasury-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 10px;
+  }
+
+  .acc-treasury-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    box-shadow: var(--shadow-card, 0 4px 14px rgba(16, 24, 40, 0.05));
+  }
+
+  .acc-treasury-card--cash {
+    border-color: rgba(16, 185, 129, 0.35);
+  }
+
+  .acc-treasury-card--bank {
+    border-color: rgba(59, 130, 246, 0.35);
+  }
+
+  .acc-treasury-name {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+  }
+
+  .acc-treasury-value {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--text-main);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .acc-treasury-type {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  .acc-side-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .acc-flash {
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .acc-flash--success {
+    background: rgba(22, 163, 74, 0.1);
+    border: 1px solid rgba(22, 163, 74, 0.3);
+    color: var(--success);
+  }
+
+  .acc-flash--error {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: var(--danger);
+  }
+
   .acc-main-grid {
     display: grid;
     grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
@@ -363,6 +430,14 @@
 
 <div class="accounts-page">
 
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+      <div class="acc-flash acc-flash--{% if category == 'error' %}error{% else %}success{% endif %}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
   {% if alert_message %}
   <div class="acc-alert acc-alert--{{ alert_type or 'info' }}">
     <div class="acc-alert-head">
@@ -424,29 +499,101 @@
     </div>
   </div>
 
-  <div class="acc-main-grid">
-    <div class="acc-panel">
-      <div class="acc-panel-head">
-        <h3><i class="fas fa-plus-circle" style="color:var(--primary)"></i> {{ _('accounts_add_title') }}</h3>
+  <div class="acc-panel">
+    <div class="acc-panel-head">
+      <h3><i class="fas fa-university" style="color:var(--primary)"></i> {{ _('treasury_accounts_title') }}</h3>
+      <span style="font-size:12px;color:var(--text-secondary)">{{ _('treasury_total_liquidity') }}: <strong>{{ "{:,.0f}".format(total_liquidity|default(0)) }}</strong> {{ _('accounts_currency_iqd') }}</span>
+    </div>
+    <div class="acc-treasury-grid">
+      {% for item in treasury_balances|default([]) %}
+      <div class="acc-treasury-card acc-treasury-card--{% if item.account.is_cash %}cash{% else %}bank{% endif %}">
+        <div class="acc-treasury-name">{{ item.account.name }}</div>
+        <div class="acc-treasury-value">{{ "{:,.0f}".format(item.balance) }} <small style="font-size:10px">{{ _('accounts_currency_iqd') }}</small></div>
+        <div class="acc-treasury-type">{% if item.account.is_cash %}{{ _('treasury_cash') }}{% else %}{{ _('treasury_bank') }}{% endif %}</div>
       </div>
-      <form method="post" id="accountsTransactionForm" class="acc-form-grid" onsubmit="return confirmAccountsTransaction(event)">
-        <div class="acc-field">
-          <label for="accType">{{ _('accounts_col_type') }}</label>
-          <select name="type" id="accType" required>
-            <option value="deposit">{{ _('accounts_type_deposit') }}</option>
-            <option value="withdraw">{{ _('accounts_type_withdraw') }}</option>
-          </select>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="acc-main-grid">
+    <div class="acc-side-stack">
+      <div class="acc-panel">
+        <div class="acc-panel-head">
+          <h3><i class="fas fa-plus-circle" style="color:var(--primary)"></i> {{ _('accounts_add_title') }}</h3>
         </div>
-        <div class="acc-field">
-          <label for="accAmount">{{ _('accounts_col_amount') }}</label>
-          <input name="amount" id="accAmount" type="number" placeholder="{{ _('accounts_field_amount_placeholder') }}" required min="1" inputmode="numeric">
+        <form method="post" id="accountsTransactionForm" class="acc-form-grid" onsubmit="return confirmAccountsTransaction(event)">
+          <div class="acc-field">
+            <label for="accTreasury">{{ _('pay_from_account') }}</label>
+            <select name="treasury_account_id" id="accTreasury" required>
+              {% for acc in treasury_choices|default([]) %}
+              <option value="{{ acc.id }}">{{ acc.name }}{% if acc.is_cash %} ({{ _('treasury_cash') }}){% else %} ({{ _('treasury_bank') }}){% endif %}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="acc-field">
+            <label for="accType">{{ _('accounts_col_type') }}</label>
+            <select name="type" id="accType" required>
+              <option value="deposit">{{ _('accounts_type_deposit') }}</option>
+              <option value="withdraw">{{ _('accounts_type_withdraw') }}</option>
+            </select>
+          </div>
+          <div class="acc-field">
+            <label for="accAmount">{{ _('accounts_col_amount') }}</label>
+            <input name="amount" id="accAmount" type="number" placeholder="{{ _('accounts_field_amount_placeholder') }}" required min="1" inputmode="numeric">
+          </div>
+          <div class="acc-field">
+            <label for="accNote">{{ _('accounts_col_note') }}</label>
+            <input name="note" id="accNote" placeholder="{{ _('accounts_field_note_placeholder') }}">
+          </div>
+          <button type="submit" class="acc-btn-save"><i class="fas fa-save"></i> {{ _('accounts_save_button') }}</button>
+        </form>
+      </div>
+
+      <div class="acc-panel">
+        <div class="acc-panel-head">
+          <h3><i class="fas fa-exchange-alt" style="color:var(--primary)"></i> {{ _('treasury_transfer') }}</h3>
         </div>
-        <div class="acc-field">
-          <label for="accNote">{{ _('accounts_col_note') }}</label>
-          <input name="note" id="accNote" placeholder="{{ _('accounts_field_note_placeholder') }}">
+        <form method="post" action="{{ url_for('accounts.treasury_transfer') }}" class="acc-form-grid">
+          <div class="acc-field">
+            <label for="fromAccount">{{ _('treasury_from_account') }}</label>
+            <select name="from_account_id" id="fromAccount" required>
+              {% for acc in treasury_choices|default([]) %}
+              <option value="{{ acc.id }}">{{ acc.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="acc-field">
+            <label for="toAccount">{{ _('treasury_to_account') }}</label>
+            <select name="to_account_id" id="toAccount" required>
+              {% for acc in treasury_choices|default([]) %}
+              <option value="{{ acc.id }}">{{ acc.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="acc-field">
+            <label for="transferAmount">{{ _('accounts_col_amount') }}</label>
+            <input name="amount" id="transferAmount" type="number" min="1" required inputmode="numeric">
+          </div>
+          <div class="acc-field">
+            <label for="transferNote">{{ _('accounts_col_note') }}</label>
+            <input name="note" id="transferNote" placeholder="{{ _('accounts_field_note_placeholder') }}">
+          </div>
+          <button type="submit" class="acc-btn-save"><i class="fas fa-random"></i> {{ _('treasury_transfer_button') }}</button>
+        </form>
+      </div>
+
+      <div class="acc-panel">
+        <div class="acc-panel-head">
+          <h3><i class="fas fa-building-columns" style="color:var(--primary)"></i> {{ _('add_bank') }}</h3>
         </div>
-        <button type="submit" class="acc-btn-save"><i class="fas fa-save"></i> {{ _('accounts_save_button') }}</button>
-      </form>
+        <form method="post" action="{{ url_for('accounts.add_bank') }}" class="acc-form-grid">
+          <div class="acc-field">
+            <label for="bankName">{{ _('treasury_bank_name') }}</label>
+            <input name="bank_name" id="bankName" placeholder="{{ _('treasury_bank_name_placeholder') }}" required>
+          </div>
+          <button type="submit" class="acc-btn-save"><i class="fas fa-plus"></i> {{ _('add_bank_button') }}</button>
+        </form>
+      </div>
     </div>
 
     <div class="acc-panel">
@@ -461,6 +608,7 @@
           <thead>
             <tr>
               <th>{{ _('accounts_col_type') }}</th>
+              <th>{{ _('treasury_account_col') }}</th>
               <th>{{ _('accounts_col_amount') }}</th>
               <th>{{ _('accounts_col_note') }}</th>
               <th>{{ _('accounts_col_date') }}</th>
@@ -478,6 +626,7 @@
                     {% else %}{{ _('accounts_type_withdraw_short') }}{% endif %}
                   </span>
                 </td>
+                <td style="font-size:12px">{{ t.treasury_account.name if t.treasury_account else _('treasury_cash') }}</td>
                 <td class="acc-amount acc-amount--{% if t.display_category() in ['deposit', 'expense_cancel'] %}green{% else %}red{% endif %}">
                   {{ "{:,.0f}".format(t.amount) }} {{ _('accounts_currency_iqd') }}
                 </td>
@@ -486,7 +635,7 @@
               </tr>
               {% endfor %}
             {% else %}
-              <tr><td colspan="4" class="acc-empty">{{ _('accounts_empty_state') }}</td></tr>
+              <tr><td colspan="5" class="acc-empty">{{ _('accounts_empty_state') }}</td></tr>
             {% endif %}
           </tbody>
         </table>
@@ -508,6 +657,7 @@
               </span>
             </div>
             <div class="acc-tx-card-meta">
+              <div><span>{{ _('treasury_account_col') }}</span><strong>{{ t.treasury_account.name if t.treasury_account else _('treasury_cash') }}</strong></div>
               <div><span>{{ _('accounts_col_note') }}</span><strong>{{ t.note or "—" }}</strong></div>
               <div><span>{{ _('accounts_col_date') }}</span><strong>{{ t.created_at.strftime("%Y-%m-%d %H:%M") }}</strong></div>
             </div>

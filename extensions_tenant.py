@@ -95,6 +95,23 @@ def init_tenant_db(tenant_slug):
             session.add(cashier_role)
             
         session.commit()
+
+        try:
+            from models.treasury_account import TreasuryAccount
+
+            if not session.query(TreasuryAccount).filter_by(account_type="cash", is_default=True).first():
+                session.add(
+                    TreasuryAccount(
+                        name="الصندوق",
+                        account_type="cash",
+                        is_default=True,
+                        is_active=True,
+                    )
+                )
+                session.commit()
+        except Exception as treasury_err:
+            session.rollback()
+            print(f"Treasury init note ({tenant_slug}): {treasury_err}")
     except Exception as e:
         session.rollback()
         print(f"Error initializing tenant defaults {tenant_slug}: {e}")

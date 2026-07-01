@@ -11,11 +11,12 @@
 
 {% set paid_pct = ((summary.total_paid or 0) * 100 // (summary.total_debt or 1)) if (summary.total_debt or 0) > 0 else 0 %}
 
-<div class="cc-page">
+<div class="cc-page cc-page--detail">
   <div class="cc-detail-hero">
-    <a href="{{ url_for('customer_credit.index') }}" class="cc-btn cc-btn-ghost"><i class="fas fa-arrow-right"></i> {{ _('customer_credit_back') }}</a>
-    <div style="text-align:left;">
-      <div style="font-size:0.85rem;color:var(--text-muted);">{{ customer.phone }}{% if customer.city %} — {{ customer.city }}{% endif %}</div>
+    <a href="{{ url_for('customer_credit.index') }}" class="cc-btn cc-btn-ghost cc-back-btn"><i class="fas fa-arrow-right"></i> {{ _('customer_credit_back') }}</a>
+    <div class="cc-detail-customer">
+      <h2 class="cc-detail-name">{{ customer.name }}</h2>
+      <div class="cc-detail-meta">{{ customer.phone }}{% if customer.city %} · {{ customer.city }}{% endif %}</div>
     </div>
   </div>
 
@@ -39,23 +40,26 @@
   </div>
 
   {% if summary.total_debt > 0 %}
-  <div class="cc-panel" style="margin-bottom:16px;">
-    <div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:4px;">{{ _('customer_credit_payment_progress') }}</div>
+  <div class="cc-panel cc-progress-panel">
+    <div class="cc-progress-label">{{ _('customer_credit_payment_progress') }}</div>
     <div class="cc-progress"><div class="cc-progress-bar" style="width:{{ paid_pct }}%;"></div></div>
-    <div style="font-size:0.8rem;color:var(--text-muted);margin-top:6px;">{{ paid_pct }}%</div>
+    <div class="cc-progress-pct">{{ paid_pct }}%</div>
   </div>
   {% endif %}
 
-  <form class="cc-pay-form" method="POST" action="{{ url_for('customer_credit.pay_customer', customer_id=customer.id) }}" onsubmit="return validatePayForm(event)">
-    <div class="cc-field">
-      <label>{{ _('customer_credit_pay_amount') }}</label>
-      <input type="number" name="amount" id="payAmount" min="1" step="1" max="{{ summary.remaining }}" placeholder="0" required>
+  <form class="cc-pay-form cc-pay-form--sticky" method="POST" action="{{ url_for('customer_credit.pay_customer', customer_id=customer.id) }}" onsubmit="return validatePayForm(event)">
+    <div class="cc-pay-form__fields">
+      <div class="cc-field">
+        <label>{{ _('customer_credit_pay_amount') }}</label>
+        <input type="number" name="amount" id="payAmount" min="1" step="1" max="{{ summary.remaining }}" placeholder="0" inputmode="numeric" required>
+        <small class="cc-field-hint">{{ _('customer_credit_stat_remaining') }}: {{ fmt_money(summary.remaining) }}</small>
+      </div>
+      <div class="cc-field">
+        <label>{{ _('customer_credit_pay_note') }}</label>
+        <input type="text" name="note" placeholder="{{ _('customer_credit_pay_note_placeholder') }}">
+      </div>
     </div>
-    <div class="cc-field">
-      <label>{{ _('customer_credit_pay_note') }}</label>
-      <input type="text" name="note" placeholder="{{ _('customer_credit_pay_note_placeholder') }}">
-    </div>
-    <button type="submit" class="cc-btn cc-btn-primary" {% if summary.remaining <= 0 %}disabled{% endif %}>
+    <button type="submit" class="cc-btn cc-btn-primary cc-pay-submit" {% if summary.remaining <= 0 %}disabled{% endif %}>
       <i class="fas fa-coins"></i> {{ _('customer_credit_pay_submit') }}
     </button>
   </form>
@@ -63,33 +67,24 @@
   <div class="cc-section cc-panel">
     <div class="cc-section-title"><i class="fas fa-list"></i> {{ _('customer_credit_plans_title') }}</div>
     {% if plans %}
-    <div class="cc-table-wrap">
-      <table class="cc-table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>{{ _('customer_credit_th_type') }}</th>
-            <th>{{ _('customer_credit_th_description') }}</th>
-            <th>{{ _('customer_credit_th_total') }}</th>
-            <th>{{ _('customer_credit_th_paid') }}</th>
-            <th>{{ _('customer_credit_th_remaining') }}</th>
-            <th>{{ _('customer_credit_th_order') }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for plan in plans %}
-          <tr>
-            <td>{{ loop.index }}</td>
-            <td>{{ entry_type_label(plan.entry_type) }}</td>
-            <td>{{ plan.description or '—' }}</td>
-            <td>{{ fmt_money(plan.total_amount) }}</td>
-            <td>{{ fmt_money(plan.paid_amount) }}</td>
-            <td style="font-weight:700;color:var(--danger);">{{ fmt_money(plan.remaining) }}</td>
-            <td>{% if plan.invoice_id %}<a href="/orders">#{{ plan.invoice_id }}</a>{% else %}—{% endif %}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    <div class="cc-cards">
+      {% for plan in plans %}
+      <article class="cc-mcard">
+        <div class="cc-mcard__head">
+          <span class="cc-mcard__index">#{{ loop.index }}</span>
+          <span class="cc-badge cc-badge-pending">{{ entry_type_label(plan.entry_type) }}</span>
+        </div>
+        <div class="cc-mcard__title">{{ plan.description or '—' }}</div>
+        <div class="cc-mcard__grid">
+          <div><span>{{ _('customer_credit_th_total') }}</span><strong>{{ fmt_money(plan.total_amount) }}</strong></div>
+          <div><span>{{ _('customer_credit_th_paid') }}</span><strong class="text-success">{{ fmt_money(plan.paid_amount) }}</strong></div>
+          <div><span>{{ _('customer_credit_th_remaining') }}</span><strong class="text-danger">{{ fmt_money(plan.remaining) }}</strong></div>
+          {% if plan.invoice_id %}
+          <div><span>{{ _('customer_credit_th_order') }}</span><strong><a href="/orders">#{{ plan.invoice_id }}</a></strong></div>
+          {% endif %}
+        </div>
+      </article>
+      {% endfor %}
     </div>
     {% else %}
     <p class="cc-empty">{{ _('customer_credit_no_plans') }}</p>
@@ -99,35 +94,23 @@
   <div class="cc-section cc-panel">
     <div class="cc-section-title"><i class="fas fa-calendar-days"></i> {{ _('customer_credit_installments_title') }}</div>
     {% if installments %}
-    <div class="cc-table-wrap">
-      <table class="cc-table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>{{ _('customer_credit_th_due_date') }}</th>
-            <th>{{ _('customer_credit_th_amount') }}</th>
-            <th>{{ _('customer_credit_th_paid') }}</th>
-            <th>{{ _('customer_credit_th_remaining') }}</th>
-            <th>{{ _('customer_credit_th_status') }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for inst in installments %}
-          <tr>
-            <td>{{ inst.sequence }}</td>
-            <td>{{ inst.due_date.strftime('%Y-%m-%d') if inst.due_date else '—' }}</td>
-            <td>{{ fmt_money(inst.amount) }}</td>
-            <td>{{ fmt_money(inst.paid_amount) }}</td>
-            <td>{{ fmt_money(inst.remaining) }}</td>
-            <td>
-              <span class="cc-badge cc-badge-{{ inst.status if inst.status in ['pending','partial','paid','overdue'] else 'pending' }}">
-                {{ status_label(inst.status) }}
-              </span>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    <div class="cc-cards">
+      {% for inst in installments %}
+      <article class="cc-mcard cc-mcard--installment{% if inst.status == 'overdue' %} cc-mcard--overdue-highlight{% endif %}">
+        <div class="cc-mcard__head">
+          <span class="cc-mcard__index">{{ _('customer_credit_th_due_date') }} · #{{ inst.sequence }}</span>
+          <span class="cc-badge cc-badge-{{ inst.status if inst.status in ['pending','partial','paid','overdue'] else 'pending' }}">
+            {{ status_label(inst.status) }}
+          </span>
+        </div>
+        <div class="cc-mcard__due">{{ inst.due_date.strftime('%Y-%m-%d') if inst.due_date else '—' }}</div>
+        <div class="cc-mcard__grid">
+          <div><span>{{ _('customer_credit_th_amount') }}</span><strong>{{ fmt_money(inst.amount) }}</strong></div>
+          <div><span>{{ _('customer_credit_th_paid') }}</span><strong class="text-success">{{ fmt_money(inst.paid_amount) }}</strong></div>
+          <div><span>{{ _('customer_credit_th_remaining') }}</span><strong class="text-danger">{{ fmt_money(inst.remaining) }}</strong></div>
+        </div>
+      </article>
+      {% endfor %}
     </div>
     {% else %}
     <p class="cc-empty">{{ _('customer_credit_no_installments') }}</p>
@@ -137,25 +120,16 @@
   <div class="cc-section cc-panel">
     <div class="cc-section-title"><i class="fas fa-receipt"></i> {{ _('customer_credit_payments_title') }}</div>
     {% if payments %}
-    <div class="cc-table-wrap">
-      <table class="cc-table">
-        <thead>
-          <tr>
-            <th>{{ _('customer_credit_th_date') }}</th>
-            <th>{{ _('customer_credit_th_amount') }}</th>
-            <th>{{ _('customer_credit_pay_note') }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for pay in payments %}
-          <tr>
-            <td>{{ pay.created_at.strftime('%Y-%m-%d %H:%M') if pay.created_at else '—' }}</td>
-            <td style="color:var(--success);font-weight:700;">{{ fmt_money(pay.amount) }}</td>
-            <td>{{ pay.note or '—' }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    <div class="cc-cards">
+      {% for pay in payments %}
+      <article class="cc-mcard cc-mcard--payment">
+        <div class="cc-mcard__head">
+          <span class="cc-mcard__date">{{ pay.created_at.strftime('%Y-%m-%d %H:%M') if pay.created_at else '—' }}</span>
+          <strong class="cc-mcard__amount text-success">{{ fmt_money(pay.amount) }}</strong>
+        </div>
+        {% if pay.note %}<div class="cc-mcard__note">{{ pay.note }}</div>{% endif %}
+      </article>
+      {% endfor %}
     </div>
     {% else %}
     <p class="cc-empty">{{ _('customer_credit_no_payments') }}</p>

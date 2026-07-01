@@ -538,8 +538,29 @@
   <div class="cash-card cash-balance-card">
     <span class="cash-balance-label">💰 {{ _('cash_balance_title') }}</span>
     <div class="cash-balance-value">{{ "{:,.0f}".format(cash_balance) }} {{ _('cash_currency_iqd') }}</div>
-    <span class="cash-balance-subtitle">{{ _('cash_balance_subtitle') }}</span>
+    <span class="cash-balance-subtitle">{{ _('cash_balance_subtitle') }} · <a href="/accounts" style="color:#60a5fa;text-decoration:none;">{{ _('treasury_manage_link') }}</a></span>
   </div>
+
+  {% if bank_balances|default([]) %}
+  <div class="cash-card">
+    <h3 class="cash-section-header">
+      <span>🏦</span>
+      <span>{{ _('treasury_banks_summary') }}</span>
+    </h3>
+    <div class="cash-stats">
+      {% for item in bank_balances %}
+      <div class="cash-stat">
+        <div class="cash-stat-label">{{ item.account.name }}</div>
+        <div class="cash-stat-value">{{ "{:,.0f}".format(item.balance) }} {{ _('cash_currency_iqd') }}</div>
+      </div>
+      {% endfor %}
+      <div class="cash-stat">
+        <div class="cash-stat-label">{{ _('treasury_total_liquidity') }}</div>
+        <div class="cash-stat-value in">{{ "{:,.0f}".format(total_liquidity|default(0)) }} {{ _('cash_currency_iqd') }}</div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 
   <!-- ================= Stats ================= -->
   <div class="cash-stats">

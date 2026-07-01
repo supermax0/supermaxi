@@ -196,31 +196,43 @@
         <th>عدد الطلبات</th>
         <th>المبلغ</th>
         <th>التاريخ</th>
+        <th>التقدم</th>
+        <th>الحالة</th>
         <th>الإجراءات</th>
       </tr>
     </thead>
     <tbody>
       {% if reports %}
         {% for report in reports %}
+        {% set rd = reports_data[loop.index0] if reports_data else none %}
         <tr>
           <td>{{ loop.index }}</td>
           <td><strong>{{ report.report_number }}</strong></td>
           <td>{{ report.orders_count }}</td>
           <td class="total-cell">{{ "{:,.0f}".format(report.total_amount) }} د.ع</td>
           <td>{{ report.created_at.strftime('%Y-%m-%d %H:%M') if report.created_at else '—' }}</td>
+          <td>{{ rd.progress_label if rd else '—' }}</td>
           <td>
-            <button onclick="viewAgentOrders({{ agent.id }})" class="btn btn-success">
-              👁️ عرض
-            </button>
-            <button onclick="printAgentOrders({{ agent.id }})" class="btn btn-primary">
-              🖨️ طباعة
-            </button>
+            {% if report.is_executed %}
+            <span style="color:#94a3b8;font-weight:600;">منفّذ</span>
+            {% elif rd and rd.ready_for_execution %}
+            <span style="color:#10b981;font-weight:600;">جاهز للتنفيذ</span>
+            {% elif rd and rd.applied_count > 0 %}
+            <span style="color:#f59e0b;font-weight:600;">قيد التطبيق</span>
+            {% else %}
+            <span style="color:#94a3b8;">بانتظار المندوب</span>
+            {% endif %}
+          </td>
+          <td>
+            <a href="/delivery/report/{{ report.id }}" class="btn btn-success" target="_blank">
+              👁️ عرض / تنفيذ
+            </a>
           </td>
         </tr>
         {% endfor %}
       {% else %}
         <tr>
-          <td colspan="6" style="padding:40px;text-align:center;color:var(--reports-muted)">
+          <td colspan="8" style="padding:40px;text-align:center;color:var(--reports-muted)">
             لا توجد كشوفات لهذا المندوب
           </td>
         </tr>
@@ -229,49 +241,4 @@
   </table>
 </div>
 
-<script>
-function viewAgentOrders(agentId) {
-  // جلب جميع طلبات المندوب وعرضها في صفحة الطباعة
-  fetch('/agents/' + agentId + '/orders')
-    .then(r => r.json())
-    .then(data => {
-      if (data.success && data.orders && data.orders.length > 0) {
-        const orderIds = data.orders.map(o => o.id);
-        const url = `/orders/print-report-page?ids=${orderIds.join(",")}&agent_id=${agentId}`;
-        window.open(url, "_blank");
-      } else {
-        alert('⚠️ لا توجد طلبات لهذا المندوب');
-      }
-    })
-    .catch(error => {
-      console.error('Error:', error);
-      alert('❌ حدث خطأ أثناء جلب البيانات');
-    });
-}
-
-function printAgentOrders(agentId) {
-  fetch('/agents/' + agentId + '/orders')
-    .then(r => r.json())
-    .then(data => {
-      if (data.success && data.orders && data.orders.length > 0) {
-        const orderIds = data.orders.map(o => o.id);
-        const url = `/orders/print-report-page?ids=${orderIds.join(",")}&agent_id=${agentId}`;
-        const w = window.open(url, "_blank");
-        if (w) {
-          w.addEventListener?.('load', () => {
-            try { w.print(); } catch (e) {}
-          });
-        }
-      } else {
-        alert('⚠️ لا توجد طلبات لهذا المندوب');
-      }
-    })
-    .catch(error => {
-      console.error('Error:', error);
-      alert('❌ حدث خطأ أثناء جلب البيانات');
-    });
-}
-</script>
-
-</div>
 {% endblock %}

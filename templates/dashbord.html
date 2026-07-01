@@ -23,6 +23,7 @@
 {% set show_dash_inventory = _dash_flags.get('show_dash_inventory', True) %}
 {% set show_dash_liabilities = _dash_flags.get('show_dash_liabilities', True) %}
 {% set show_dash_agent_dues = _dash_flags.get('show_dash_agent_dues', True) %}
+{% set show_dash_agent_pending = _dash_flags.get('show_dash_agent_pending', True) %}
 {% set show_dash_expenses = _dash_flags.get('show_dash_expenses', True) %}
 {% set show_any_sales_cards = (
   show_dash_cash_balance or
@@ -33,6 +34,7 @@
   show_dash_inventory or
   show_dash_liabilities or
   show_dash_agent_dues or
+  show_dash_agent_pending or
   show_dash_expenses
 ) %}
 
@@ -2065,6 +2067,16 @@
         <div class="metric-note">{{ _('dashboard_agent_dues_note') }}</div>
       </div>
       {% endif %}
+      {% if show_dash_agent_pending %}
+      <div class="card metric-card is-agent-pending" onclick="window.location.href='/agents/pending-execution'" title="كشوف المندوب الجاهزة للتنفيذ">
+        <div class="metric-card-icon-title">
+          <i class="fas fa-clipboard-check"></i>
+          <span>كشوف المندوب — بانتظار التنفيذ</span>
+        </div>
+        <div id="agentPendingReports" class="count metric-count">0</div>
+        <div class="metric-note">اضغط لفتح طابور التنفيذ</div>
+      </div>
+      {% endif %}
     </div>
 
     {% if show_dash_expenses %}
@@ -3018,6 +3030,10 @@
       setTextForIds(["finoraReturnedValue"], formatNumber(d.returned || 0));
     }).catch(err => console.error("orders-count:", err));
 
+    fetchJson("/api/index/agent-reports-pending").then(d => {
+      setText("agentPendingReports", String(d.ready_count || 0));
+    }).catch(err => console.error("agent-reports-pending:", err));
+
     fetchJson("/api/index/alerts").then(list => {
       const alertsContainer = document.getElementById("alerts");
       if (!alertsContainer) return;
@@ -3806,6 +3822,7 @@
      Real-time Notifications
   ======================= */
   let lastOrderId = null;
+  let knownReadyAgentReportIds = null;
 
   function checkNewOrders() {
     fetch("/api/index/new-orders")
@@ -3833,6 +3850,33 @@
         }
       })
       .catch(err => console.error("Error checking new orders:", err));
+  }
+
+  function checkAgentReportsReady() {
+    fetch("/api/index/agent-reports-pending")
+      .then(r => r.json())
+      .then(data => {
+        const ids = data.ready_report_ids || [];
+        setText("agentPendingReports", String(data.ready_count || 0));
+        if (knownReadyAgentReportIds === null) {
+          knownReadyAgentReportIds = new Set(ids);
+          return;
+        }
+        ids.forEach(function(id) {
+          if (!knownReadyAgentReportIds.has(id)) {
+            const report = (data.ready_reports || []).find(function(r) { return r.id === id; });
+            const label = report ? (report.report_number + " — " + report.agent_name) : ("#" + id);
+            showToast(
+              "🚚 كشف المندوب جاهز للتنفيذ\n" + label,
+              "order",
+              6000,
+              { soundType: "order" }
+            );
+          }
+        });
+        knownReadyAgentReportIds = new Set(ids);
+      })
+      .catch(err => console.error("Error checking agent reports:", err));
   }
 
   /* =======================
@@ -4160,8 +4204,10 @@
   // ==========================
   load();
   initCharts();
+  checkAgentReportsReady();
   // setInterval(load, 5000); // تم إزالته - منع التحديث التلقائي
   setInterval(checkNewOrders, 3000); // Check for new orders every 3 seconds (للطلبات الجديدة فقط)
+  setInterval(checkAgentReportsReady, 5000);
   setInterval(initCharts, 30000); // Refresh charts every 30 seconds (للرسوم فقط)
 
   // Close modals when clicking outside

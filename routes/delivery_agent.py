@@ -8,13 +8,19 @@ from models.shipping_report import ShippingReport
 from models.message import Message
 from models.employee import Employee
 from models.agent_message import AgentMessage
-from models.expense import Expense
 from sqlalchemy import or_, and_, func
 from datetime import datetime
 import json
 
-from utils.cash_calculations import _effective_paid_amount as _effective_paid_amount_inv
-from utils.payment_ledger import append_payment_ledger_delta
+from utils.agent_report_helpers import (
+    find_open_agent_report_for_order,
+    get_order_applied_status,
+    get_report_progress,
+    is_agent_report,
+    notify_agent_report_ready,
+    save_selection_to_report,
+)
+from utils.shipping_report_execute import execute_shipping_report
 
 delivery_agent_bp = Blueprint("delivery_agent", __name__, url_prefix="/delivery-agent")
 
@@ -51,6 +57,7 @@ def _agent_order_stats(agent_id):
 
 def _serialize_agent_order(order):
     items_count = OrderItem.query.filter_by(invoice_id=order.id).count()
+    applied_status = get_order_applied_status(order.id)
     return {
         "id": order.id,
         "customer_name": order.customer_name,
@@ -64,6 +71,8 @@ def _serialize_agent_order(order):
         "created_at": order.created_at.strftime("%Y-%m-%d %H:%M") if order.created_at else "",
         "note": order.note or "",
         "scheduled_date": order.scheduled_date.strftime("%Y-%m-%d") if order.scheduled_date else None,
+        "applied_status": applied_status,
+        "pending_accountant": bool(applied_status),
     }
 
 
@@ -159,84 +168,77 @@ def dashboard():
 # =====================================================
 @delivery_agent_bp.route("/update-order-status", methods=["POST"])
 def update_order_status():
-    """تحديث حالة الطلب من قبل المندوب"""
+    """حفظ اختيار المندوب في الكشف — التنفيذ النهائي للمحاسب."""
     if "agent_id" not in session:
         return jsonify({"error": "غير مصرح"}), 403
-    
-    data = request.json
+
+    data = request.json or {}
     order_id = data.get("order_id")
     status = data.get("status")  # واصل، ملغي، مؤجل
     report_id = data.get("report_id")
-    
+    agent_id = session["agent_id"]
+
     if not order_id or not status:
         return jsonify({"error": "بيانات غير كاملة"}), 400
-    
+
+    if status not in ("واصل", "ملغي", "مؤجل"):
+        return jsonify({"error": "حالة غير صالحة"}), 400
+
     order = Invoice.query.get(order_id)
     if not order:
         return jsonify({"error": "الطلب غير موجود"}), 404
-    
-    # التحقق من أن الطلب مرتبط بهذا المندوب
-    if order.delivery_agent_id != session["agent_id"]:
+
+    if order.delivery_agent_id != agent_id:
         return jsonify({"error": "غير مصرح"}), 403
-    
-    # تحديث الحالة
+
+    agent = DeliveryAgent.query.get(agent_id)
+
+    report = None
+    if report_id:
+        report = ShippingReport.query.get(report_id)
+    if not report:
+        report = find_open_agent_report_for_order(int(order_id))
+
+    if not report:
+        from routes.orders import create_agent_report_internal
+
+        result = create_agent_report_internal([int(order_id)], agent_id, save_to_db=True)
+        if result.get("error"):
+            return jsonify({"error": result["error"]}), 400
+        report = ShippingReport.query.get(result.get("report_id"))
+
+    if not report or not is_agent_report(report):
+        return jsonify({"error": "تعذر العثور على كشف مندوب للطلب"}), 400
+
+    if report.is_executed:
+        return jsonify({"error": "تم تنفيذ هذا الكشف مسبقاً"}), 400
+
+    progress_before = get_report_progress(report)
+
     if status == "مؤجل":
         scheduled_date = data.get("scheduled_date")
         if scheduled_date:
             try:
                 order.scheduled_date = datetime.strptime(scheduled_date, "%Y-%m-%d")
-            except:
+            except Exception:
                 pass
-        order.status = "تم الطلب"  # الحالة تبقى "تم الطلب" لكن مع scheduled_date
-        order.note = "مؤجل"  # إضافة ملاحظة للتأجيل
-    elif status == "ملغي":
-        order.status = "ملغي"
-    elif status == "واصل":
-        order.status = "تم التوصيل"
-    
-    # حفظ الحالة في الكشف إذا كان موجوداً
-    if report_id:
-        report = ShippingReport.query.get(report_id)
-        if report and not report.is_executed:
-            status_selections = {}
-            if report.order_status_selections:
-                try:
-                    status_selections = json.loads(report.order_status_selections)
-                except:
-                    pass
-            
-            # تحويل الحالة إلى الإنجليزية للتوافق مع نظام شركة النقل
-            status_map = {"واصل": "Delivered", "ملغي": "Canceled", "مؤجل": "Delayed"}
-            status_selections[str(order_id)] = status_map.get(status, status)
-            report.order_status_selections = json.dumps(status_selections)
-    else:
-        # البحث عن الكشف الذي يحتوي على هذا الطلب
-        all_reports = ShippingReport.query.filter_by(is_executed=False).all()
-        for report in all_reports:
-            if report.orders_data:
-                try:
-                    orders_data = json.loads(report.orders_data)
-                    order_ids = [o.get("id") or o.get("order_id") for o in orders_data]
-                    if order_id in order_ids:
-                        # تحديث order_status_selections في الكشف
-                        status_selections = {}
-                        if report.order_status_selections:
-                            try:
-                                status_selections = json.loads(report.order_status_selections)
-                            except:
-                                pass
-                        
-                        # تحويل الحالة إلى الإنجليزية للتوافق مع نظام شركة النقل
-                        status_map = {"واصل": "Delivered", "ملغي": "Canceled", "مؤجل": "Delayed"}
-                        status_selections[str(order_id)] = status_map.get(status, status)
-                        report.order_status_selections = json.dumps(status_selections)
-                        break
-                except:
-                    pass
-    
+        order.note = "مؤجل"
+
+    progress = save_selection_to_report(report, int(order_id), status)
+
+    if progress["all_complete"] and not progress_before.get("all_complete"):
+        notify_agent_report_ready(report, agent.name if agent else "مندوب")
+
     db.session.commit()
-    
-    return jsonify({"success": True, "message": "تم تحديث حالة الطلب بنجاح"})
+
+    return jsonify({
+        "success": True,
+        "message": "تم حفظ الحالة — بانتظار تنفيذ المحاسب",
+        "report_id": report.id,
+        "report_progress": progress,
+        "all_complete": progress["all_complete"],
+        "applied_status": status,
+    })
 
 # =====================================================
 # Execute Report (Admin Only)
@@ -246,79 +248,20 @@ def execute_report(report_id):
     """تنفيذ الكشف - للأدمن فقط"""
     if "user_id" not in session or session.get("role") != "admin":
         return jsonify({"error": "غير مصرح"}), 403
-    
+
     report = ShippingReport.query.get(report_id)
     if not report:
         return jsonify({"error": "الكشف غير موجود"}), 404
-    
+
     if not report.orders_data:
         return jsonify({"error": "لا توجد بيانات طلبات في الكشف"}), 400
-    
+
     data = request.get_json() or {}
     expense_amount = data.get("expense_amount", 0)
-    
-    try:
-        # حفظ المصروف إذا كان موجوداً
-        if expense_amount and expense_amount > 0:
-            expense = Expense(
-                title=f"كروة - كشف {report.report_number}",
-                category="كروة",
-                amount=int(expense_amount),
-                note=f"مصروف كروة لكشف رقم {report.report_number}"
-            )
-            db.session.add(expense)
-        orders_data = json.loads(report.orders_data)
-        status_selections = json.loads(report.order_status_selections) if report.order_status_selections else {}
-        
-        updated_count = 0
-        canceled_count = 0
-        delayed_count = 0
-        
-        for order_data in orders_data:
-            order_id = order_data.get("id") or order_data.get("order_id")
-            if not order_id:
-                continue
-            
-            order = Invoice.query.get(order_id)
-            if not order:
-                continue
-            
-            # تطبيق الحالة المختارة
-            selected_status = status_selections.get(str(order_id))
-            if selected_status == "Delivered" or selected_status == "واصل":
-                prev_eff = _effective_paid_amount_inv(order)
-                order.status = "مسدد"
-                order.payment_status = "مسدد"
-                if not order.paid_amount or int(order.paid_amount or 0) < int(order.total or 0):
-                    order.paid_amount = order.total
-                delta_pay = _effective_paid_amount_inv(order) - prev_eff
-                append_payment_ledger_delta(order.id, delta_pay)
-                updated_count += 1
-            elif selected_status == "Canceled" or selected_status == "ملغي":
-                order.status = "ملغي"
-                order.payment_status = "ملغي"
-                canceled_count += 1
-                
-                # استرجاع الكميات للمنتجات
-                items = OrderItem.query.filter_by(invoice_id=order.id).all()
-                for item in items:
-                    if item.product:
-                        item.product.quantity += item.quantity
-            elif selected_status == "Delayed" or selected_status == "مؤجل":
-                order.status = "تم الطلب"
-                delayed_count += 1
-        
-        # تحديث حالة الكشف
-        report.is_executed = True
-        db.session.commit()
-        
-        return jsonify({
-            "success": True, 
-            "message": f"تم تنفيذ الكشف بنجاح: {updated_count} واصل، {canceled_count} ملغي، {delayed_count} مؤجل"
-        })
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": f"حدث خطأ: {str(e)}"}), 500
+    result = execute_shipping_report(report, expense_amount=expense_amount)
+    if result.get("error"):
+        return jsonify({"error": result["error"]}), 400
+    return jsonify(result)
 
 # =====================================================
 # Chat System

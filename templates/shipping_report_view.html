@@ -513,11 +513,11 @@ document.addEventListener('DOMContentLoaded', function() {
         <td>
           {% if status_selections.get(order.id|string) %}
             {% set selected_status = status_selections.get(order.id|string) %}
-            {% if selected_status == "واصل" %}
+            {% if selected_status == "واصل" or selected_status == "Delivered" %}
               <span style="color: #10b981; font-weight: 600;">✅ واصل</span>
-            {% elif selected_status == "ملغي" %}
+            {% elif selected_status == "ملغي" or selected_status == "Canceled" %}
               <span style="color: #ef4444; font-weight: 600;">❌ ملغي</span>
-            {% elif selected_status == "مؤجل" %}
+            {% elif selected_status == "مؤجل" or selected_status == "Delayed" %}
               <span style="color: #f59e0b; font-weight: 600;">⏸️ مؤجل</span>
             {% else %}
               <span>{{ selected_status }}</span>

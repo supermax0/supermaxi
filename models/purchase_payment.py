@@ -12,8 +12,15 @@ class PurchasePayment(db.Model):
     payment_method = db.Column(db.String(30), nullable=True)  # cash / bank / credit
     account_name = db.Column(db.String(80), nullable=True)
     note = db.Column(db.String(255), nullable=True)
+    treasury_account_id = db.Column(
+        db.Integer,
+        db.ForeignKey("treasury_account.id"),
+        nullable=True,
+        index=True,
+    )
 
     purchase = db.relationship("Purchase", back_populates="payments", lazy=True)
+    treasury_account = db.relationship("TreasuryAccount", lazy=True)
 
     def __repr__(self):
         return f"<PurchasePayment purchase={self.purchase_id} amount={self.amount}>"

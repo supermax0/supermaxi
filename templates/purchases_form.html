@@ -154,7 +154,14 @@
         <label>طريقة</label>
         <select id="payMethod"><option value="cash">نقدا</option><option value="bank">بنك</option><option value="credit">آجل</option></select>
       </div>
-      <div class="pur-field"><label>الحساب</label><input type="text" id="payAccount"></div>
+      <div class="pur-field">
+        <label>{{ _('pay_from_account') }}</label>
+        <select id="payTreasury">
+          {% for acc in treasury_choices|default([]) %}
+          <option value="{{ acc.id }}">{{ acc.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
       <div class="pur-field"><label>ملاحظة</label><input type="text" id="payNote"></div>
     </div>
     <div style="margin-top:10px;">
@@ -211,6 +218,25 @@
 </div>
 
 <script>
+  const treasuryChoices = [
+    {% for acc in treasury_choices|default([]) %}
+    { id: {{ acc.id }}, name: {{ acc.name|tojson }}, is_cash: {{ 'true' if acc.is_cash else 'false' }} },
+    {% endfor %}
+  ];
+
+  function treasuryLabel(id) {
+    const row = treasuryChoices.find(x => String(x.id) === String(id));
+    return row ? row.name : "-";
+  }
+
+  function defaultTreasuryForMethod(method) {
+    if (method === "bank") {
+      const bank = treasuryChoices.find(x => !x.is_cash);
+      if (bank) return bank.id;
+    }
+    const cash = treasuryChoices.find(x => x.is_cash);
+    return cash ? cash.id : (treasuryChoices[0] ? treasuryChoices[0].id : "");
+  }
   const items = [];
   const payments = [];
   let paymentMode = "credit";
@@ -285,7 +311,7 @@
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td>${i + 1}</td><td>${fmt(p.amount)}</td><td>${p.payment_method}</td>
-        <td>${p.account_name || "-"}</td><td>${p.note || "-"}</td>
+        <td>${treasuryLabel(p.treasury_account_id)}</td><td>${p.note || "-"}</td>
         <td><button class="pur-btn pur-btn-danger" type="button" data-del-pay="${i}" style="padding:4px 8px;font-size:12px;">حذف</button></td>
       `;
       tbody.appendChild(tr);
@@ -378,15 +404,20 @@
   byId("addPayBtn").addEventListener("click", () => {
     const amount = Number(byId("payAmount").value || 0);
     if (amount <= 0) { alert("أدخل مبلغ الدفعة."); return; }
+    const payment_method = byId("payMethod").value || "cash";
     payments.push({
       amount,
-      payment_method: byId("payMethod").value || "cash",
-      account_name: byId("payAccount").value || "",
+      payment_method,
+      treasury_account_id: Number(byId("payTreasury").value || defaultTreasuryForMethod(payment_method)),
       note: byId("payNote").value || "",
       paid_at: new Date().toISOString()
     });
     byId("payAmount").value = "0";
     renderPayments();
+  });
+
+  byId("payMethod").addEventListener("change", () => {
+    byId("payTreasury").value = defaultTreasuryForMethod(byId("payMethod").value || "cash");
   });
 
   ["discountValue", "shippingExtra"].forEach(id => byId(id).addEventListener("input", recalc));
@@ -480,7 +511,7 @@
         {
           amount: {{ pay.amount or 0 }},
           payment_method: {{ (pay.payment_method or 'cash')|tojson }},
-          account_name: {{ (pay.account_name or '')|tojson }},
+          treasury_account_id: {{ pay.treasury_account_id or 'null' }},
           note: {{ (pay.note or '')|tojson }},
           paid_at: "{{ pay.paid_at.isoformat() if pay.paid_at else '' }}"
         }{% if not loop.last %},{% endif %}

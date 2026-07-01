@@ -2,6 +2,8 @@ from .product import Product
 from .customer import Customer
 from .customer_credit import CustomerCreditPlan, CustomerInstallment, CustomerCreditPayment
 from .account_transaction import AccountTransaction
+from .treasury_account import TreasuryAccount
+from .treasury_transfer import TreasuryTransfer
 from .supplier import Supplier
 from .purchase import Purchase
 from .purchase_item import PurchaseItem

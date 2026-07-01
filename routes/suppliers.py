@@ -14,6 +14,9 @@ from models.purchase import Purchase
 from models.employee import Employee
 from utils.plan_guard import feature_required
 from utils.permission_checks import check_permission
+from utils.treasury_helpers import resolve_treasury_account_id, treasury_choices_for_form
+from utils.treasury_calculations import assert_sufficient_balance, InsufficientTreasuryBalance
+from utils.treasury_schema_guard import ensure_treasury_schema
 
 suppliers_bp = Blueprint("suppliers", __name__)
 
@@ -101,7 +104,8 @@ def supplier_details(id):
         "supplier_details.html",
         supplier=supplier,
         purchases=purchases,
-        payments=payments
+        payments=payments,
+        treasury_choices=treasury_choices_for_form(),
     )
 
 
@@ -117,11 +121,20 @@ def supplier_pay(id):
 
     amount = int(request.form["amount"])
     note = request.form.get("note", "")
+    ensure_treasury_schema()
+    treasury_account_id = resolve_treasury_account_id(request.form.get("treasury_account_id"))
+    try:
+        assert_sufficient_balance(treasury_account_id, amount)
+    except InsufficientTreasuryBalance as exc:
+        from flask import flash
+        flash(str(exc), "error")
+        return redirect(url_for("suppliers.supplier_details", id=id))
 
     payment = SupplierPayment(
         supplier_id=id,
         amount=amount,
-        note=note
+        note=note,
+        treasury_account_id=treasury_account_id,
     )
 
     supplier.total_paid += amount

@@ -580,6 +580,15 @@
 
   <!-- Companies -->
   <div class="card">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px;padding:12px 14px;border-radius:12px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);">
+      <label for="shippingTreasuryAccount" style="font-size:13px;font-weight:700;color:var(--shipping-text);">{{ _('pay_from_account') }}:</label>
+      <select id="shippingTreasuryAccount" style="min-width:220px;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:rgba(15,23,42,0.6);color:var(--shipping-text);">
+        {% for acc in treasury_choices|default([]) %}
+        <option value="{{ acc.id }}">{{ acc.name }}</option>
+        {% endfor %}
+      </select>
+      <a href="/accounts" style="font-size:12px;color:var(--shipping-primary);text-decoration:none;">{{ _('treasury_manage_link') }}</a>
+    </div>
     <div id="activeShippingBanner" style="display:none;margin-bottom:16px;padding:12px 16px;border-radius:12px;background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.25);color:var(--shipping-text);font-size:14px;">
       <span>📡 شركة المسح النشطة:</span>
       <strong id="activeShippingBannerName"></strong>
@@ -987,7 +996,13 @@
 
       showLoading();
 
-      fetch("/shipping/settle/" + id)
+      fetch("/shipping/settle/" + id, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          treasury_account_id: document.getElementById("shippingTreasuryAccount").value
+        })
+      })
         .then(r => r.json())
         .then(data => {
           hideLoading();
@@ -996,7 +1011,7 @@
             viewOrders(currentCompany);
             updateCompanyDue(); // تحديث المستحقات في الجدول الرئيسي
           } else {
-            showToast("{{ _('shipping_err_settle') }}", "error");
+            showToast(data.error || "{{ _('shipping_err_settle') }}", "error");
           }
         })
         .catch(error => {

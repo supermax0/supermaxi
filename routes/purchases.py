@@ -24,6 +24,9 @@ from models.purchase_payment import PurchasePayment
 from models.supplier import Supplier
 from utils.permission_checks import check_permission
 from utils.activity_logger import log_activity
+from utils.treasury_helpers import resolve_treasury_account_id, get_default_cash_account, treasury_choices_for_form
+from utils.treasury_calculations import assert_sufficient_balance, InsufficientTreasuryBalance
+from utils.treasury_schema_guard import ensure_treasury_schema
 
 purchases_bp = Blueprint("purchases", __name__, url_prefix="/purchases")
 
@@ -112,20 +115,56 @@ def _is_cash_method(method):
     return (method or "").strip().lower() in ("cash", "صندوق", "نقدي")
 
 
+def _is_bank_method(method):
+    return (method or "").strip().lower() in ("bank", "بنك")
+
+
+def _affects_treasury(method):
+    return _is_cash_method(method) or _is_bank_method(method)
+
+
+def _payment_treasury_id(pay_payload: dict, payment_method: str) -> int:
+    ensure_treasury_schema()
+    raw_id = pay_payload.get("treasury_account_id")
+    if raw_id not in (None, ""):
+        return resolve_treasury_account_id(raw_id)
+    if _is_bank_method(payment_method):
+        banks = treasury_choices_for_form(banks_only=True)
+        if banks:
+            return banks[0].id
+    return get_default_cash_account().id
+
+
+def _add_purchase_withdraw(pay: PurchasePayment, purchase, supplier, note_suffix: str = ""):
+    if not _affects_treasury(pay.payment_method):
+        return
+    treasury_id = pay.treasury_account_id or get_default_cash_account().id
+    assert_sufficient_balance(treasury_id, int(pay.amount or 0))
+    label = "بنك" if _is_bank_method(pay.payment_method) else "صندوق"
+    db.session.add(
+        AccountTransaction(
+            type="withdraw",
+            amount=int(pay.amount or 0),
+            note=f"{label} - دفعة شراء {purchase.invoice_no} للمورد {supplier.name}{note_suffix}",
+            treasury_account_id=treasury_id,
+        )
+    )
+
+
+def _treasury_paid_amount(purchase):
+    rows = purchase.payments or []
+    if rows:
+        return sum(_safe_int(x.amount, 0) for x in rows if _affects_treasury(x.payment_method))
+    if _affects_treasury(purchase.purchase_mode) and _safe_int(purchase.paid_total, 0) > 0:
+        return _safe_int(purchase.paid_total, 0)
+    return 0
+
+
 def _safe_int(v, default=0):
     try:
         return int(v)
     except Exception:
         return default
-
-
-def _cash_paid_amount(purchase):
-    rows = purchase.payments or []
-    if rows:
-        return sum(_safe_int(x.amount, 0) for x in rows if _is_cash_method(x.payment_method))
-    if _is_cash_method(purchase.purchase_mode) and _safe_int(purchase.paid_total, 0) > 0:
-        return _safe_int(purchase.paid_total, 0)
-    return 0
 
 
 def _reverse_purchase_effects(purchase, reason):
@@ -145,14 +184,21 @@ def _reverse_purchase_effects(purchase, reason):
             0,
         )
 
-    # Reverse cash movement with opposite transaction (audit-safe)
-    cash_paid = _cash_paid_amount(purchase)
-    if cash_paid > 0:
+    # Reverse treasury movement with opposite transaction (audit-safe)
+    treasury_paid = _treasury_paid_amount(purchase)
+    if treasury_paid > 0:
+        default_cash_id = get_default_cash_account().id
+        treasury_id = default_cash_id
+        for pay in (purchase.payments or []):
+            if _affects_treasury(pay.payment_method):
+                treasury_id = pay.treasury_account_id or default_cash_id
+                break
         db.session.add(
             AccountTransaction(
                 type="deposit",
-                amount=cash_paid,
+                amount=treasury_paid,
                 note=f"صندوق - عكس دفعات شراء {purchase.invoice_no or purchase.id} ({reason})",
+                treasury_account_id=treasury_id,
             )
         )
 
@@ -220,13 +266,16 @@ def _create_purchase_from_payload(payload, files):
                 paid_at = datetime.fromisoformat(paid_at_raw.replace("Z", ""))
             except Exception:
                 paid_at = datetime.utcnow()
+        payment_method = (pay.get("payment_method") or "").strip() or "cash"
+        treasury_account_id = _payment_treasury_id(pay, payment_method)
         parsed_payments.append(
             PurchasePayment(
                 amount=amount,
                 paid_at=paid_at,
-                payment_method=(pay.get("payment_method") or "").strip() or "cash",
+                payment_method=payment_method,
                 account_name=(pay.get("account_name") or "").strip() or None,
                 note=(pay.get("note") or "").strip() or None,
+                treasury_account_id=treasury_account_id,
             )
         )
 
@@ -243,6 +292,7 @@ def _create_purchase_from_payload(payload, files):
                 payment_method="cash",
                 account_name=None,
                 note="دفعة نقدية تلقائية (شراء نقدي كامل)",
+                treasury_account_id=get_default_cash_account().id,
             )
         )
 
@@ -294,14 +344,11 @@ def _create_purchase_from_payload(payload, files):
     for pay in parsed_payments:
         pay.purchase_id = purchase.id
         db.session.add(pay)
-        if (pay.payment_method or "").lower() in ("cash", "صندوق", "نقدي"):
-            db.session.add(
-                AccountTransaction(
-                    type="withdraw",
-                    amount=int(pay.amount or 0),
-                    note=f"صندوق - دفعة شراء {purchase.invoice_no} للمورد {supplier.name}",
-                )
-            )
+        try:
+            _add_purchase_withdraw(pay, purchase, supplier)
+        except InsufficientTreasuryBalance as exc:
+            db.session.rollback()
+            return None, str(exc)
 
     # supplier debt logic: increase by unpaid remaining only
     supplier.total_debt = int(supplier.total_debt or 0) + remaining_total
@@ -365,7 +412,7 @@ def _prepare_purchases_context():
         current_app.logger.exception("purchase schema migration failed")
     suppliers = Supplier.query.order_by(Supplier.name.asc()).all()
     stats = _get_purchase_stats()
-    return {"suppliers": suppliers, **stats}
+    return {"suppliers": suppliers, "treasury_choices": treasury_choices_for_form(), **stats}
 
 
 @purchases_bp.route("/", methods=["GET"])
@@ -795,14 +842,17 @@ def update_purchase(purchase_id):
                     paid_at = datetime.fromisoformat(paid_at_raw.replace("Z", ""))
                 except Exception:
                     paid_at = datetime.utcnow()
+            payment_method = (pay.get("payment_method") or "").strip() or "cash"
+            treasury_account_id = _payment_treasury_id(pay, payment_method)
             parsed_payments.append(
                 PurchasePayment(
                     purchase_id=purchase.id,
                     amount=amount,
                     paid_at=paid_at,
-                    payment_method=(pay.get("payment_method") or "").strip() or "cash",
+                    payment_method=payment_method,
                     account_name=(pay.get("account_name") or "").strip() or None,
                     note=(pay.get("note") or "").strip() or None,
+                    treasury_account_id=treasury_account_id,
                 )
             )
 
@@ -820,6 +870,7 @@ def update_purchase(purchase_id):
                     paid_at=datetime.utcnow(),
                     payment_method="cash",
                     note="دفعة نقدية تلقائية (شراء نقدي كامل)",
+                    treasury_account_id=get_default_cash_account().id,
                 )
             )
 
@@ -864,14 +915,11 @@ def update_purchase(purchase_id):
 
         for pay in parsed_payments:
             db.session.add(pay)
-            if _is_cash_method(pay.payment_method):
-                db.session.add(
-                    AccountTransaction(
-                        type="withdraw",
-                        amount=_safe_int(pay.amount, 0),
-                        note=f"صندوق - دفعة شراء {purchase.invoice_no} للمورد {supplier.name} (بعد تعديل)",
-                    )
-                )
+            try:
+                _add_purchase_withdraw(pay, purchase, supplier, " (بعد تعديل)")
+            except InsufficientTreasuryBalance as exc:
+                db.session.rollback()
+                return jsonify({"success": False, "error": str(exc)}), 400
 
         supplier.total_debt = _safe_int(supplier.total_debt, 0) + remaining_total
         supplier.total_paid = _safe_int(supplier.total_paid, 0) + paid_total

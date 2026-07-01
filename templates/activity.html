@@ -57,13 +57,212 @@
 }
 .modal-header { padding: 16px 20px; border-bottom: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; }
 .modal-body { padding: 16px 20px; overflow: auto; }
-.modal-body pre {
-  background: var(--card-alt); padding: 14px; border-radius: 12px;
-  font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-break: break-word;
-  direction: ltr; text-align: left;
-}
 .modal-close { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--text-muted); }
 .empty-state { text-align: center; padding: 40px; color: var(--text-muted); }
+
+.detail-section { margin-bottom: 18px; }
+.detail-section-title {
+  font-size: 13px; font-weight: 800; color: var(--text-muted);
+  margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border-light);
+}
+.detail-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px 16px;
+}
+.detail-kv {
+  background: var(--card-alt); border: 1px solid var(--border-light);
+  border-radius: 12px; padding: 10px 12px;
+}
+.detail-kv-label { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; font-weight: 600; }
+.detail-kv-value { font-size: 14px; color: var(--text); word-break: break-word; line-height: 1.45; }
+.detail-kv-value.mono { direction: ltr; text-align: left; font-family: ui-monospace, monospace; font-size: 12px; }
+.detail-diff { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 640px) { .detail-diff { grid-template-columns: 1fr; } }
+.detail-diff-box {
+  background: var(--card-alt); border: 1px solid var(--border-light);
+  border-radius: 12px; padding: 12px;
+}
+.detail-diff-box.before { border-right: 3px solid #f59e0b; }
+.detail-diff-box.after { border-right: 3px solid #10b981; }
+.detail-diff-title { font-size: 12px; font-weight: 800; margin-bottom: 8px; }
+.detail-rows { display: flex; flex-direction: column; gap: 6px; }
+.detail-row {
+  display: flex; justify-content: space-between; gap: 10px; align-items: flex-start;
+  font-size: 13px; padding: 4px 0; border-bottom: 1px dashed var(--border-light);
+}
+.detail-row:last-child { border-bottom: none; }
+.detail-row-key { color: var(--text-muted); flex-shrink: 0; min-width: 90px; }
+.detail-row-val { color: var(--text); text-align: left; direction: ltr; word-break: break-word; flex: 1; }
+.detail-empty { color: var(--text-muted); font-size: 13px; padding: 8px 0; }
+.detail-toggle-json {
+  margin-top: 8px; background: none; border: 1px solid var(--border-light);
+  color: var(--text-muted); padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 12px;
+}
+.detail-json-raw {
+  display: none; margin-top: 10px; background: var(--card-alt); padding: 12px;
+  border-radius: 10px; font-size: 11px; direction: ltr; text-align: left;
+  white-space: pre-wrap; word-break: break-word; max-height: 200px; overflow: auto;
+}
+.detail-json-raw.open { display: block; }
+
+/* ── Mobile cards (hidden on desktop) ── */
+.activity-cards { display: none; flex-direction: column; gap: 12px; }
+.activity-card {
+  background: var(--card);
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  padding: 14px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+.activity-card-top {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 10px; margin-bottom: 10px;
+}
+.activity-card-meta { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+.activity-card-summary {
+  font-size: 14px; font-weight: 600; color: var(--text);
+  margin-bottom: 8px; line-height: 1.45; word-break: break-word;
+}
+.activity-card-footer {
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border-light);
+}
+.activity-card-footer .btn-detail {
+  flex: 1; padding: 10px 14px; font-size: 14px; min-height: 44px;
+}
+
+/* Collapsible filters on mobile */
+.filters-toggle {
+  display: none; width: 100%; padding: 12px 16px; min-height: 44px;
+  border-radius: 12px; border: 1px solid var(--border-light);
+  background: var(--card); color: var(--text); font-weight: 700;
+  cursor: pointer; margin-bottom: 12px; align-items: center; justify-content: space-between;
+}
+.filters-toggle i { transition: transform 0.2s; }
+.filters-toggle.open i { transform: rotate(180deg); }
+
+@media (max-width: 768px) {
+  .activity-page { padding: 0 2px; }
+  .activity-page .admin-page-header__meta p { font-size: 13px; line-height: 1.5; }
+
+  .activity-page .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .activity-page .stat-card { padding: 12px 14px; }
+  .activity-page .stat-label { font-size: 11px; }
+  .activity-page .stat-value { font-size: 20px; }
+
+  .filters-toggle { display: flex; }
+  .activity-filters {
+    display: none;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding: 14px;
+    background: var(--card-alt);
+    border-radius: 14px;
+    border: 1px solid var(--border-light);
+  }
+  .activity-filters.open { display: grid; }
+  .activity-filters input,
+  .activity-filters select {
+    padding: 12px 14px;
+    font-size: 16px;
+    min-height: 44px;
+  }
+  .activity-filters label { font-size: 13px; margin-bottom: 6px; }
+  #btnApplyFilters { min-height: 48px; font-size: 15px; }
+
+  .activity-table-wrap { display: none; }
+  .activity-cards { display: flex; }
+
+  .pagination-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin-top: 14px;
+  }
+  #paginationInfo { text-align: center; font-size: 13px; }
+  .pagination-bar > div {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .pagination-bar button {
+    min-height: 48px;
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .modal-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+  .modal-box {
+    max-width: 100%;
+    max-height: 92vh;
+    border-radius: 20px 20px 0 0;
+    border-bottom: none;
+  }
+  .modal-header {
+    padding: 14px 16px;
+    position: sticky;
+    top: 0;
+    background: var(--card);
+    z-index: 2;
+  }
+  #modalTitle {
+    font-size: 15px;
+    line-height: 1.4;
+    padding-left: 28px;
+    display: block;
+    word-break: break-word;
+  }
+  .modal-close {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: -8px;
+  }
+  .modal-body {
+    padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .detail-grid { grid-template-columns: 1fr; gap: 8px; }
+  .detail-kv { padding: 12px 14px; }
+  .detail-kv-value { font-size: 15px; }
+  .detail-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    padding: 8px 0;
+  }
+  .detail-row-key { min-width: 0; font-size: 12px; font-weight: 700; }
+  .detail-row-val {
+    text-align: right;
+    direction: rtl;
+    font-size: 14px;
+  }
+  .detail-kv-value.mono { font-size: 13px; }
+  .detail-toggle-json {
+    width: 100%;
+    min-height: 44px;
+    margin-top: 12px;
+    font-size: 13px;
+  }
+  .detail-diff-box.before,
+  .detail-diff-box.after { border-right: none; border-top: 3px solid; }
+  .detail-diff-box.before { border-top-color: #f59e0b; }
+  .detail-diff-box.after { border-top-color: #10b981; }
+}
+
+@media (max-width: 380px) {
+  .activity-page .stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .activity-page .stat-value { font-size: 18px; }
+}
 </style>
 
 <div class="team-admin-page activity-page">
@@ -80,7 +279,12 @@
     <div class="stat-card primary"><div class="stat-label">{{ _('activity_stat_mutations') }}</div><div class="stat-value" id="statMutations">—</div></div>
   </div>
 
-  <div class="admin-toolbar activity-filters">
+  <button type="button" class="filters-toggle" id="btnToggleFilters" aria-expanded="false">
+    <span><i class="fas fa-filter"></i> فلاتر البحث</span>
+    <i class="fas fa-chevron-down"></i>
+  </button>
+
+  <div class="admin-toolbar activity-filters" id="activityFilters">
     <div><label>{{ _('activity_filter_date_from') }}</label><input type="date" id="filterDateFrom"></div>
     <div><label>{{ _('activity_filter_date_to') }}</label><input type="date" id="filterDateTo"></div>
     <div>
@@ -134,6 +338,10 @@
     </table>
   </div>
 
+  <div class="activity-cards" id="activityCards">
+    <div class="empty-state">{{ _('activity_loading') }}</div>
+  </div>
+
   <div class="pagination-bar">
     <span id="paginationInfo">—</span>
     <div>
@@ -149,8 +357,10 @@
       <strong id="modalTitle">{{ _('activity_details_title') }}</strong>
       <button type="button" class="modal-close" id="modalClose">&times;</button>
     </div>
-    <div class="modal-body">
-      <pre id="modalPayload"></pre>
+    <div class="modal-body" id="modalBody">
+      <div id="modalContent"></div>
+      <button type="button" class="detail-toggle-json" id="btnToggleJson">عرض البيانات الخام (JSON)</button>
+      <pre class="detail-json-raw" id="modalJsonRaw"></pre>
     </div>
   </div>
 </div>
@@ -161,7 +371,168 @@
   let totalPages = 1;
   let lastItems = [];
 
+  const ACTION_LABELS = {{ action_labels | tojson }};
+  const CATEGORY_LABELS = {{ category_labels | tojson }};
+
+  const FIELD_LABELS = {
+    id: 'رقم السجل', employee: 'الموظف', employee_name: 'الموظف', action: 'الإجراء',
+    category: 'القسم', entity_type: 'نوع الكيان', entity_id: 'معرف الكيان',
+    summary: 'الوصف', request_method: 'طريقة الطلب', request_path: 'المسار',
+    status_code: 'حالة الاستجابة', ip_address: 'عنوان IP', user_agent: 'المتصفح',
+    created_at: 'التاريخ', before: 'قبل التعديل', after: 'بعد التعديل',
+    body: 'البيانات المرسلة', query: 'معاملات الرابط', request: 'تفاصيل الطلب',
+    success: 'نجح', username: 'اسم المستخدم', tenant_slug: 'الشركة', role: 'الدور',
+    reason: 'السبب', name: 'الاسم', phone: 'الهاتف', amount: 'المبلغ', total: 'الإجمالي',
+    title: 'العنوان', type: 'النوع', note: 'ملاحظة', status: 'الحالة',
+    payment_status: 'حالة الدفع', paid_amount: 'المبلغ المدفوع', customer_id: 'الزبون',
+    product: 'المنتج', customer: 'الزبون', invoice: 'الفاتورة', items: 'العناصر',
+    items_count: 'عدد العناصر', method: 'الطريقة', path: 'المسار', ip: 'IP',
+    permission_ids: 'الصلاحيات', role_ids: 'الأدوار', payload: 'بيانات إضافية',
+  };
+
   const badgeClass = (action) => 'badge-action badge-' + (action || 'view');
+
+  function esc(s) {
+    return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function fmtVal(v) {
+    if (v === null || v === undefined || v === '') return '—';
+    if (typeof v === 'boolean') return v ? 'نعم' : 'لا';
+    if (typeof v === 'object') return null;
+    return String(v);
+  }
+
+  function labelFor(key) {
+    return FIELD_LABELS[key] || key.replace(/_/g, ' ');
+  }
+
+  function fmtAction(action) {
+    return ACTION_LABELS[action] || action || '—';
+  }
+
+  function fmtCategory(cat) {
+    return CATEGORY_LABELS[cat] || cat || '—';
+  }
+
+  function simplifyUserAgent(ua) {
+    if (!ua) return '—';
+    if (ua.includes('Android')) {
+      const m = ua.match(/Android\s[\d.]+/);
+      const model = ua.match(/\([^)]*;\s*([^;)]+)/);
+      return 'أندرويد' + (m ? ' ' + m[0].replace('Android', '').trim() : '') + (model ? ' — ' + model[1].trim() : '');
+    }
+    if (ua.includes('iPhone') || ua.includes('iPad')) return 'آيفون / آيباد';
+    if (ua.includes('Windows')) return 'Windows';
+    if (ua.includes('Mac OS')) return 'Mac';
+    if (ua.includes('Chrome/')) return 'Chrome';
+    if (ua.includes('Firefox/')) return 'Firefox';
+    return ua.length > 60 ? ua.slice(0, 60) + '…' : ua;
+  }
+
+  function renderObjectRows(obj, skipKeys) {
+    skipKeys = skipKeys || new Set();
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return '';
+    const keys = Object.keys(obj).filter(k => !skipKeys.has(k) && obj[k] !== null && obj[k] !== '' && obj[k] !== undefined);
+    if (!keys.length) return '<div class="detail-empty">لا توجد بيانات</div>';
+    return keys.map(k => {
+      const v = obj[k];
+      if (typeof v === 'object' && v !== null && !Array.isArray(v)) {
+        const inner = renderObjectRows(v);
+        return `<div class="detail-row" style="flex-direction:column;align-items:stretch"><span class="detail-row-key">${esc(labelFor(k))}</span><div style="margin-top:4px">${inner}</div></div>`;
+      }
+      if (Array.isArray(v)) {
+        return `<div class="detail-row"><span class="detail-row-key">${esc(labelFor(k))}</span><span class="detail-row-val">${esc(v.length ? v.length + ' عنصر' : '—')}</span></div>`;
+      }
+      let display = fmtVal(v);
+      if (k === 'action') display = fmtAction(v);
+      if (k === 'category') display = fmtCategory(v);
+      if (k === 'user_agent') display = simplifyUserAgent(v);
+      if (k === 'success') display = v ? 'نعم' : 'لا';
+      return `<div class="detail-row"><span class="detail-row-key">${esc(labelFor(k))}</span><span class="detail-row-val">${esc(display)}</span></div>`;
+    }).join('');
+  }
+
+  function readableSummary(row) {
+    if (row.summary && !/^(view|create|update|delete)\s+\//.test(row.summary)) {
+      return row.summary;
+    }
+    const act = row.action_label || fmtAction(row.action);
+    const path = (row.request_path || row.summary || '').replace(/^(view|create|update|delete)\s+/, '').replace(/^\//, '');
+    return path ? act + ' — ' + path : (row.summary || '—');
+  }
+
+  function renderKvGrid(items) {
+    return `<div class="detail-grid">${items.map(([label, value, mono]) =>
+      `<div class="detail-kv"><div class="detail-kv-label">${esc(label)}</div><div class="detail-kv-value${mono ? ' mono' : ''}">${esc(value)}</div></div>`
+    ).join('')}</div>`;
+  }
+
+  function renderDetailHtml(row) {
+    const payload = row.payload || {};
+    const req = payload.request || {};
+    const body = payload.body || {};
+    const query = payload.query || {};
+    const before = payload.before;
+    const after = payload.after;
+    const extra = { ...payload };
+    delete extra.request; delete extra.body; delete extra.query;
+    delete extra.before; delete extra.after;
+
+    let html = '';
+
+    html += `<div class="detail-section"><div class="detail-section-title">معلومات الحدث</div>`;
+    html += renderKvGrid([
+      ['الموظف', row.employee_name || '—'],
+      ['الإجراء', fmtAction(row.action)],
+      ['القسم', row.category_label || fmtCategory(row.category)],
+      ['التاريخ', fmtDate(row.created_at)],
+      ['الوصف', row.summary || '—'],
+    ]);
+    html += '</div>';
+
+    if (row.entity_type || row.entity_id) {
+      html += `<div class="detail-section"><div class="detail-section-title">الكيان المتأثر</div>`;
+      html += renderKvGrid([
+        ['نوع الكيان', row.entity_type || '—'],
+        ['المعرف', row.entity_id || '—'],
+      ]);
+      html += '</div>';
+    }
+
+    html += `<div class="detail-section"><div class="detail-section-title">تفاصيل الطلب</div>`;
+    html += renderKvGrid([
+      ['الطريقة', row.request_method || req.method || '—', true],
+      ['المسار', row.request_path || req.path || '—', true],
+      ['حالة الاستجابة', row.status_code != null ? (row.status_code + (row.status_code === 200 ? ' — ناجح' : '')) : '—'],
+      ['عنوان IP', row.ip_address || req.ip || '—', true],
+      ['المتصفح / الجهاز', simplifyUserAgent(row.user_agent || req.user_agent)],
+    ]);
+    html += '</div>';
+
+    if (before || after) {
+      html += `<div class="detail-section"><div class="detail-section-title">التغييرات</div><div class="detail-diff">`;
+      html += `<div class="detail-diff-box before"><div class="detail-diff-title">قبل</div><div class="detail-rows">${before ? renderObjectRows(before) : '<div class="detail-empty">—</div>'}</div></div>`;
+      html += `<div class="detail-diff-box after"><div class="detail-diff-title">بعد</div><div class="detail-rows">${after ? renderObjectRows(after) : '<div class="detail-empty">—</div>'}</div></div>`;
+      html += '</div></div>';
+    }
+
+    const hasQuery = query && Object.keys(query).length;
+    const hasBody = body && Object.keys(body).length;
+    if (hasQuery || hasBody) {
+      html += `<div class="detail-section"><div class="detail-section-title">بيانات الطلب</div><div class="detail-rows">`;
+      if (hasQuery) html += renderObjectRows(query);
+      if (hasBody) html += renderObjectRows(body);
+      html += '</div></div>';
+    }
+
+    const extraKeys = Object.keys(extra).filter(k => extra[k] !== null && extra[k] !== undefined && extra[k] !== '');
+    if (extraKeys.length) {
+      html += `<div class="detail-section"><div class="detail-section-title">بيانات إضافية</div><div class="detail-rows">${renderObjectRows(extra)}</div></div>`;
+    }
+
+    return html;
+  }
 
   function fmtDate(iso) {
     if (!iso) return '—';
@@ -202,10 +573,54 @@
     return p.toString();
   }
 
+  function renderActivityList(items) {
+    const tbody = document.getElementById('activityTableBody');
+    const cards = document.getElementById('activityCards');
+
+    if (!items.length) {
+      const empty = '<div class="empty-state">{{ _("activity_empty") }}</div>';
+      tbody.innerHTML = '<tr><td colspan="6" class="empty-state">{{ _("activity_empty") }}</td></tr>';
+      cards.innerHTML = empty;
+      return;
+    }
+
+    tbody.innerHTML = items.map((row, idx) => `
+      <tr>
+        <td>${fmtDate(row.created_at)}</td>
+        <td>${esc(row.employee_name || '—')}</td>
+        <td>${esc(row.category_label || row.category)}</td>
+        <td><span class="${badgeClass(row.action)}">${esc(row.action_label || row.action)}</span></td>
+        <td>${esc(readableSummary(row))}</td>
+        <td><button type="button" class="btn-detail" data-idx="${idx}">{{ _('activity_view_details') }}</button></td>
+      </tr>
+    `).join('');
+
+    cards.innerHTML = items.map((row, idx) => `
+      <article class="activity-card">
+        <div class="activity-card-top">
+          <span class="${badgeClass(row.action)}">${esc(row.action_label || row.action)}</span>
+          <span class="activity-card-meta">${fmtDate(row.created_at)}</span>
+        </div>
+        <div class="activity-card-summary">${esc(readableSummary(row))}</div>
+        <div class="activity-card-meta">${esc(row.employee_name || '—')} · ${esc(row.category_label || row.category)}</div>
+        <div class="activity-card-footer">
+          <button type="button" class="btn-detail" data-idx="${idx}">{{ _('activity_view_details') }}</button>
+        </div>
+      </article>
+    `).join('');
+
+    document.querySelectorAll('.btn-detail').forEach(btn => {
+      btn.addEventListener('click', () => showDetail(parseInt(btn.dataset.idx, 10)));
+    });
+  }
+
   function loadList(page) {
     currentPage = page;
     const tbody = document.getElementById('activityTableBody');
-    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">{{ _("activity_loading") }}</td></tr>';
+    const cards = document.getElementById('activityCards');
+    const loading = '<tr><td colspan="6" class="empty-state">{{ _("activity_loading") }}</td></tr>';
+    tbody.innerHTML = loading;
+    cards.innerHTML = '<div class="empty-state">{{ _("activity_loading") }}</div>';
     fetch('/activity/api/list?' + buildQuery(page))
       .then(r => r.json())
       .then(data => {
@@ -215,55 +630,59 @@
           'صفحة ' + data.page + ' من ' + totalPages + ' — ' + (data.total || 0) + ' سجل';
         document.getElementById('btnPrev').disabled = data.page <= 1;
         document.getElementById('btnNext').disabled = data.page >= totalPages;
-        if (!lastItems.length) {
-          tbody.innerHTML = '<tr><td colspan="6" class="empty-state">{{ _("activity_empty") }}</td></tr>';
-          return;
-        }
-        tbody.innerHTML = lastItems.map((row, idx) => `
-          <tr>
-            <td>${fmtDate(row.created_at)}</td>
-            <td>${row.employee_name || '—'}</td>
-            <td>${row.category_label || row.category}</td>
-            <td><span class="${badgeClass(row.action)}">${row.action_label || row.action}</span></td>
-            <td>${(row.summary || '').replace(/</g, '&lt;')}</td>
-            <td><button type="button" class="btn-detail" data-idx="${idx}">{{ _('activity_view_details') }}</button></td>
-          </tr>
-        `).join('');
-        tbody.querySelectorAll('.btn-detail').forEach(btn => {
-          btn.addEventListener('click', () => showDetail(parseInt(btn.dataset.idx, 10)));
-        });
+        renderActivityList(lastItems);
       })
       .catch(() => {
         tbody.innerHTML = '<tr><td colspan="6" class="empty-state">{{ _("activity_load_error") }}</td></tr>';
+        cards.innerHTML = '<div class="empty-state">{{ _("activity_load_error") }}</div>';
       });
   }
 
   function showDetail(idx) {
     const row = lastItems[idx];
     if (!row) return;
-    document.getElementById('modalTitle').textContent = row.summary || '{{ _("activity_details_title") }}';
-    document.getElementById('modalPayload').textContent = JSON.stringify({
-      id: row.id,
-      employee: row.employee_name,
-      action: row.action,
-      category: row.category,
-      entity_type: row.entity_type,
-      entity_id: row.entity_id,
-      request_method: row.request_method,
-      request_path: row.request_path,
-      status_code: row.status_code,
-      ip_address: row.ip_address,
-      payload: row.payload
-    }, null, 2);
+    document.getElementById('modalTitle').textContent = readableSummary(row);
+    document.getElementById('modalContent').innerHTML = renderDetailHtml(row);
+    document.getElementById('modalJsonRaw').textContent = JSON.stringify(row, null, 2);
+    document.getElementById('modalJsonRaw').classList.remove('open');
+    document.getElementById('btnToggleJson').textContent = 'عرض البيانات الخام (JSON)';
     document.getElementById('detailModal').classList.add('open');
+    document.body.style.overflow = 'hidden';
   }
 
-  document.getElementById('btnApplyFilters').addEventListener('click', () => loadList(1));
+  function closeModal() {
+    document.getElementById('detailModal').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  document.getElementById('btnToggleFilters').addEventListener('click', function () {
+    const panel = document.getElementById('activityFilters');
+    const open = panel.classList.toggle('open');
+    this.classList.toggle('open', open);
+    this.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+
+  document.getElementById('btnToggleJson').addEventListener('click', function () {
+    const el = document.getElementById('modalJsonRaw');
+    const open = el.classList.toggle('open');
+    this.textContent = open ? 'إخفاء البيانات الخام' : 'عرض البيانات الخام (JSON)';
+  });
+
+  document.getElementById('btnApplyFilters').addEventListener('click', () => {
+    loadList(1);
+    if (window.matchMedia('(max-width: 768px)').matches) {
+      const panel = document.getElementById('activityFilters');
+      const toggle = document.getElementById('btnToggleFilters');
+      panel.classList.remove('open');
+      toggle.classList.remove('open');
+      toggle.setAttribute('aria-expanded', 'false');
+    }
+  });
   document.getElementById('btnPrev').addEventListener('click', () => { if (currentPage > 1) loadList(currentPage - 1); });
   document.getElementById('btnNext').addEventListener('click', () => { if (currentPage < totalPages) loadList(currentPage + 1); });
-  document.getElementById('modalClose').addEventListener('click', () => document.getElementById('detailModal').classList.remove('open'));
+  document.getElementById('modalClose').addEventListener('click', closeModal);
   document.getElementById('detailModal').addEventListener('click', (e) => {
-    if (e.target.id === 'detailModal') document.getElementById('detailModal').classList.remove('open');
+    if (e.target.id === 'detailModal') closeModal();
   });
   document.getElementById('filterSearch').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') loadList(1);

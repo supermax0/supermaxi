@@ -8,7 +8,11 @@ from models.order_item import OrderItem
 from sqlalchemy import func
 import json
 
-from utils.agent_passwords import hash_agent_password
+from utils.agent_report_helpers import (
+    get_pending_agent_reports_summary,
+    list_pending_agent_reports,
+    serialize_pending_report,
+)
 from utils.decorators import permission_required
 from utils.permission_checks import employee_can, get_current_employee
 from utils.team_schema import ensure_delivery_agent_schema
@@ -23,6 +27,20 @@ def _agents_manage_allowed() -> bool:
 @agents_bp.before_request
 def ensure_agents_schema():
     ensure_delivery_agent_schema()
+
+
+@agents_bp.route("/pending-execution")
+@permission_required("view_agents")
+def pending_execution():
+    reports = list_pending_agent_reports()
+    summary = get_pending_agent_reports_summary()
+    return render_template(
+        "agent_pending_execution.html",
+        reports=[serialize_pending_report(r) for r in reports],
+        ready_count=summary["ready_count"],
+        in_progress_count=summary["in_progress_count"],
+        pending_count=summary["pending_count"],
+    )
 
 
 @agents_bp.route("/")
@@ -186,10 +204,12 @@ def agent_reports(agent_id):
                     break
         except Exception:
             continue
+    reports_data = [serialize_pending_report(r) for r in agent_reports_list]
     return render_template(
         "agent_reports.html",
         agent=agent,
         reports=agent_reports_list,
+        reports_data=reports_data,
         total_orders=total_orders,
         total_amount=total_amount,
     )

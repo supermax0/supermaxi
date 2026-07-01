@@ -38,6 +38,11 @@ from utils.period_net_profit import expenses_sum_for_range as _expenses_sum_for_
 from utils.payment_ledger import net_profit_for_collection_calendar_day
 from utils.order_status import PENDING_STATUSES
 from utils.decorators import admin_required
+from utils.executive_dashboard_data import (
+    get_treasury_summary,
+    get_credit_executive_summary,
+    get_executive_alerts,
+)
 
 index_bp = Blueprint("index", __name__)
 
@@ -1062,9 +1067,27 @@ def api_executive_dashboard_data():
     if int(sales_today_val or 0) > 0:
         profitability_score = max(0, min(100, round((int(profit_today) / int(sales_today_val)) * 100)))
 
-    liquidity_score = 100 if int(liabilities or 0) <= 0 and int(cash_balance or 0) >= 0 else 0
+    treasury = get_treasury_summary()
+    total_liquidity = treasury["total_liquidity"]
+    bank_total = treasury["bank_total"]
+    cash_box_balance = treasury["cash_box_balance"]
+
+    credit_summary = get_credit_executive_summary(today, debt_collection_rate)
+    liabilities_breakdown = {
+        "supplier_debts": int(supplier_debts),
+        "shipping_due": int(shipping_due),
+        "total": int(liabilities),
+    }
+    net_financial_position = int(total_liquidity) + int(receivables) - int(liabilities)
+    alerts = get_executive_alerts(
+        overdue_installments_count=credit_summary["overdue_installments_count"],
+        overdue_installments_amount=credit_summary["overdue_installments_amount"],
+        overdue_orders_fn=_dashboard_overdue_invoices,
+    )
+
+    liquidity_score = 100 if int(liabilities or 0) <= 0 and int(total_liquidity or 0) >= 0 else 0
     if int(liabilities or 0) > 0:
-        liquidity_score = max(0, min(100, round((int(cash_balance or 0) / int(liabilities)) * 100)))
+        liquidity_score = max(0, min(100, round((int(total_liquidity or 0) / int(liabilities)) * 100)))
 
     sales_score = 0
     if avg_daily_sales > 0:
@@ -1105,9 +1128,17 @@ def api_executive_dashboard_data():
         "chart_expenses": expenses_data,
         "chart_cashflow": cashflow_data,
         "box_balance": int(cash_balance),
-        "cash_available": int(cash_balance),
+        "cash_available": int(total_liquidity),
+        "cash_box_balance": int(cash_box_balance),
+        "total_liquidity": int(total_liquidity),
+        "bank_total": int(bank_total),
+        "treasury_accounts": treasury["treasury_accounts"],
         "receivables": int(receivables),
         "liabilities": int(liabilities),
+        "liabilities_breakdown": liabilities_breakdown,
+        "credit_summary": credit_summary,
+        "net_financial_position": net_financial_position,
+        "alerts": alerts,
         "inventory_value": int(inventory_value),
         "new_customers": new_customers,
         "avg_daily_sales": int(avg_daily_sales),
@@ -1943,6 +1974,23 @@ def index_alerts():
                 "message": f"مستحقات النقل عالية: {shipping_due} د.ع",
                 "action": "/shipping"
             })
+
+        from utils.agent_report_helpers import list_pending_agent_reports, get_report_progress, get_agent_name_for_report
+        for report in list_pending_agent_reports():
+            progress = get_report_progress(report)
+            if not progress["ready_for_execution"]:
+                continue
+            agent_name = get_agent_name_for_report(report)
+            alerts.append({
+                "type": "warning",
+                "icon": "🚚",
+                "message": f"كشف المندوب {report.report_number} ({agent_name}) جاهز للتنفيذ — {progress['total']} طلب",
+                "action": "/agents/pending-execution",
+                "decisions": [
+                    {"label": "فتح الطابور", "href": "/agents/pending-execution", "kind": "navigate"},
+                    {"label": "عرض الكشف", "href": f"/delivery/report/{report.id}", "kind": "navigate"},
+                ],
+            })
     except Exception as e:
         db.session.rollback()
         import traceback
@@ -1992,6 +2040,23 @@ def check_new_orders():
         ],
         "last_order_id": last_order.id,
         "timestamp": datetime.utcnow().isoformat()
+    })
+
+# =================================================
+# AGENT REPORTS PENDING EXECUTION
+# =================================================
+@index_bp.route("/api/index/agent-reports-pending")
+def agent_reports_pending():
+    from datetime import datetime
+    from utils.agent_report_helpers import get_pending_agent_reports_summary
+
+    summary = get_pending_agent_reports_summary()
+    ready_reports = [r for r in summary["reports"] if r["ready_for_execution"]]
+    return jsonify({
+        **summary,
+        "ready_reports": ready_reports,
+        "ready_report_ids": [r["id"] for r in ready_reports],
+        "timestamp": datetime.utcnow().isoformat(),
     })
 
 # =================================================
@@ -2134,6 +2199,17 @@ def add_expense():
             return jsonify({"success": False, "error": "المبلغ يجب أن يكون أكبر من صفر"}), 400
     except (ValueError, TypeError):
         return jsonify({"success": False, "error": "المبلغ غير صحيح"}), 400
+
+    from utils.treasury_helpers import resolve_treasury_account_id
+    from utils.treasury_calculations import assert_sufficient_balance, InsufficientTreasuryBalance
+    from utils.treasury_schema_guard import ensure_treasury_schema
+
+    ensure_treasury_schema()
+    treasury_account_id = resolve_treasury_account_id(data.get("treasury_account_id"))
+    try:
+        assert_sufficient_balance(treasury_account_id, amount)
+    except InsufficientTreasuryBalance as exc:
+        return jsonify({"success": False, "error": str(exc)}), 400
     
     try:
         if expense_date:
@@ -2158,7 +2234,8 @@ def add_expense():
         withdraw_tx = AccountTransaction(
             type="withdraw",
             amount=amount,
-            note=f"مصروف: {title} ({category})" + (f" - {note}" if note else "")
+            note=f"مصروف: {title} ({category})" + (f" - {note}" if note else ""),
+            treasury_account_id=treasury_account_id,
         )
         db.session.add(withdraw_tx)
         

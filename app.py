@@ -178,6 +178,14 @@ with app.app_context():
     db.create_all()
 
     try:
+        from utils.treasury_schema_guard import ensure_treasury_schema
+
+        ensure_treasury_schema()
+    except Exception as e:
+        db.session.rollback()
+        print(f"Treasury schema note: {e}")
+
+    try:
         from sqlalchemy import inspect, text
 
         inspector = inspect(db.engine)
@@ -248,6 +256,28 @@ with app.app_context():
                         if "last_active" not in employee_cols:
                             cur.execute(
                                 "ALTER TABLE employee ADD COLUMN last_active DATETIME"
+                            )
+                    treasury_tables = (
+                        "account_transaction",
+                        "supplier_payment",
+                        "shipping_payment",
+                        "purchase_payment",
+                    )
+                    for tbl in treasury_tables:
+                        if tbl not in existing_tables:
+                            continue
+                        cur.execute(f"PRAGMA table_info({tbl})")
+                        cols = {row[1] for row in cur.fetchall()}
+                        if "treasury_account_id" not in cols:
+                            cur.execute(
+                                f"ALTER TABLE {tbl} ADD COLUMN treasury_account_id INTEGER"
+                            )
+                    if "account_transaction" in existing_tables:
+                        cur.execute("PRAGMA table_info(account_transaction)")
+                        at_cols = {row[1] for row in cur.fetchall()}
+                        if "treasury_transfer_id" not in at_cols:
+                            cur.execute(
+                                "ALTER TABLE account_transaction ADD COLUMN treasury_transfer_id INTEGER"
                             )
                     conn.commit()
                     conn.close()

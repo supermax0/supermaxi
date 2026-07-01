@@ -1,9 +1,9 @@
-{% extends "base.html" %}
+{% extends "settings_base.html" %}
 
 {% block title %}إعدادات الفاتورة - Finora{% endblock %}
 
-{% block content %}
-<div class="settings-page">
+{% block settings_content %}
+<div class="invoice-settings-page">
   <div class="page-header">
     <h1 class="page-title">⚙️ إعدادات الفاتورة</h1>
     <div class="header-actions">
@@ -306,10 +306,12 @@
     </div>
   </div>
 </div>
+{% endblock %}
 
+{% block settings_extra_style %}
 <style>
-.settings-page {
-  padding: 20px;
+.invoice-settings-page {
+  padding: 0;
 }
 
 .page-header {
@@ -318,7 +320,7 @@
   align-items: center;
   margin-bottom: 30px;
   padding-bottom: 20px;
-  border-bottom: 2px solid #e5e7eb;
+  border-bottom: 2px solid var(--border-light, #e5e7eb);
   flex-wrap: wrap;
   gap: 15px;
 }
@@ -326,7 +328,7 @@
 .page-title {
   font-size: 24px;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--text, #1f2937);
 }
 
 .header-actions {
@@ -336,8 +338,8 @@
 }
 
 .template-selection-card {
-  background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
-  border: 1px solid #dbeafe;
+  background: var(--card, linear-gradient(135deg, rgba(17,24,39,0.95), rgba(11,18,32,0.95)));
+  border: 1px solid var(--border-light, #dbeafe);
   border-radius: 16px;
   padding: 22px;
   box-shadow: 0 10px 30px rgba(59, 130, 246, 0.08);
@@ -356,12 +358,12 @@
 .template-selection-title {
   font-size: 18px;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--text, #0f172a);
 }
 
 .template-selection-subtitle {
   font-size: 13px;
-  color: #64748b;
+  color: var(--text-muted, #64748b);
   margin-top: 6px;
 }
 
@@ -372,21 +374,21 @@
 }
 
 .selected-template-box {
-  border: 1px dashed #bfdbfe;
+  border: 1px dashed var(--border-light, #bfdbfe);
   border-radius: 14px;
   padding: 16px;
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--card-alt, rgba(15, 23, 42, 0.4));
 }
 
 .selected-template-name {
   font-size: 16px;
   font-weight: 800;
-  color: #1e293b;
+  color: var(--text, #1e293b);
 }
 
 .selected-template-meta {
   font-size: 13px;
-  color: #64748b;
+  color: var(--text-muted, #64748b);
   margin-top: 6px;
   line-height: 1.7;
 }
@@ -453,10 +455,11 @@
   width: min(1100px, 100%);
   max-height: 90vh;
   overflow: auto;
-  background: #fff;
+  background: var(--card, #fff);
   border-radius: 20px;
   padding: 22px;
   box-shadow: 0 30px 80px rgba(15, 23, 42, 0.25);
+  color: var(--text);
 }
 
 .template-modal-header {
@@ -470,12 +473,12 @@
 .template-modal-header h3 {
   margin: 0;
   font-size: 20px;
-  color: #0f172a;
+  color: var(--text, #0f172a);
 }
 
 .template-modal-header p {
   margin: 6px 0 0;
-  color: #64748b;
+  color: var(--text-muted, #64748b);
   font-size: 13px;
 }
 
@@ -496,12 +499,13 @@
 
 .template-option-card {
   text-align: right;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-light, #e5e7eb);
   border-radius: 16px;
-  background: #fff;
+  background: var(--card-alt, #fff);
   padding: 14px;
   cursor: pointer;
   transition: 0.25s ease;
+  color: var(--text);
 }
 
 .template-option-card:hover {
@@ -587,11 +591,11 @@
 }
 
 .settings-card {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  background: var(--card, #ffffff);
+  border: 1px solid var(--border-light, #e5e7eb);
+  border-radius: 12px;
   padding: 24px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.1));
 }
 
 .card-title {
@@ -896,7 +900,9 @@
   }
 }
 </style>
+{% endblock %}
 
+{% block settings_extra_script %}
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 <script>
 // تعريف المتغيرات العامة
@@ -1373,309 +1379,6 @@ function previewInvoice() {
     return;
   }
   window.open(url, '_blank');
-}
-
-// عرض رسالة للمستخدم
-function showToast(message, type = 'info') {
-  // البحث عن عنصر الإشعارات الموجود أو إنشاء واحد جديد
-  let toastContainer = document.getElementById('toast-container');
-  if (!toastContainer) {
-    toastContainer = document.createElement('div');
-    toastContainer.id = 'toast-container';
-    toastContainer.style.cssText = `
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      z-index: 9999;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    `;
-    document.body.appendChild(toastContainer);
-  }
-  
-  // تحديد لون الرسالة حسب النوع
-  let backgroundColor, icon;
-  switch(type) {
-    case 'success':
-      backgroundColor = '#10b981';
-      icon = 'fa-check-circle';
-      break;
-    case 'error':
-      backgroundColor = '#ef4444';
-      icon = 'fa-exclamation-circle';
-      break;
-    case 'warning':
-      backgroundColor = '#f59e0b';
-      icon = 'fa-exclamation-triangle';
-      break;
-    default:
-      backgroundColor = '#3b82f6';
-      icon = 'fa-info-circle';
-  }
-  
-  // إنشاء عنصر الرسالة
-  const toast = document.createElement('div');
-  toast.style.cssText = `
-    background-color: ${backgroundColor};
-    color: white;
-    padding: 12px 20px;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-width: 300px;
-    max-width: 400px;
-    animation: slideIn 0.3s ease-out;
-    font-family: 'Tajawal', sans-serif;
-  `;
-  
-  toast.innerHTML = `
-    <i class="fas ${icon}"></i>
-    <span>${message}</span>
-  `;
-  
-  toastContainer.appendChild(toast);
-  
-  // إزالة الرسالة بعد 5 ثواني
-  setTimeout(() => {
-    toast.style.animation = 'slideOut 0.3s ease-in';
-    setTimeout(() => {
-      if (toast.parentNode === toastContainer) {
-        toastContainer.removeChild(toast);
-      }
-    }, 300);
-  }, 5000);
-}
-
-// إضافة أنيميشن للرسائل
-const style = document.createElement('style');
-style.textContent = `
-  @keyframes slideIn {
-    from {
-      transform: translateX(100%);
-      opacity: 0;
-    }
-    to {
-      transform: translateX(0);
-      opacity: 1;
-    }
-  }
-  
-  @keyframes slideOut {
-    from {
-      transform: translateX(0);
-      opacity: 1;
-    }
-    to {
-      transform: translateX(100%);
-      opacity: 0;
-    }
-  }
-`;
-document.head.appendChild(style);
-
-// توليد HTML للفاتورة
-function generateInvoiceHTML(data) {
-  const s = data.settings;
-  const order = data.order || {
-    id: 'TEST-001',
-    created_at: new Date().toLocaleDateString('ar-SA'),
-    customer: {
-      name: 'زبون تجريبي',
-      address: 'عنوان تجريبي',
-      phone: '07700000000'
-    },
-    employee_name: 'موظف تجريبي'
-  };
-  
-  const items = data.items || [
-    { product_name: 'منتج تجريبي 1', quantity: 2, price: 10000, total: 20000 },
-    { product_name: 'منتج تجريبي 2', quantity: 1, price: 15000, total: 15000 },
-    { product_name: 'منتج تجريبي 3', quantity: 3, price: 5000, total: 15000 }
-  ];
-  
-  const total = data.total || 50000;
-  const due = data.due || 50000;
-  const primaryColor = s.primary_color || '#2563eb';
-  const secondaryColor = s.secondary_color || '#4a5568';
-  const customCss = String(s.custom_css || '').replace(/`/g, '\\`');
-  
-  const useLogo = s.use_logo_image && s.logo_path;
-  const logoCircleText = s.logo_circle_text || 'الشركة\nالتجارية';
-  
-  // إنشاء نص اللوجو الدائري
-  let logoCircleHTML = '';
-  if (useLogo) {
-    logoCircleHTML = '<div class="company-logo-circle" style="background-image: url(\'' + s.logo_path + '\');"></div>';
-  } else {
-    const lines = logoCircleText.split('\n').filter(function(line) { return line.trim(); });
-    logoCircleHTML = '<div class="company-logo-circle">' + lines.map(function(line) { return '<div>' + line + '</div>'; }).join('') + '</div>';
-  }
-  
-  // إنشاء صفوف المنتجات
-  let productsRows = '';
-  items.forEach((item, index) => {
-    let row = '<tr>';
-    row += '<td>' + (index + 1) + '</td>';
-    row += '<td>' + item.product_name + '</td>';
-    row += '<td>' + item.quantity + ' قطعة</td>';
-    row += '<td>' + item.price.toLocaleString() + ' د.ع</td>';
-    if (s.show_discount_column) {
-      row += '<td>0.00</td>';
-    }
-    if (s.show_tax_column) {
-      row += '<td>0.00</td>';
-    }
-    if (s.show_unit_price_with_tax) {
-      row += '<td>' + item.price.toLocaleString() + ' د.ع</td>';
-    }
-    row += '<td>' + item.total.toLocaleString() + ' د.ع</td>';
-    row += '</tr>';
-    productsRows += row;
-  });
-  
-  return `
-    <!DOCTYPE html>
-    <html lang="ar" dir="rtl">
-    <head>
-      <meta charset="UTF-8">
-      <title>معاينة الفاتورة</title>
-      <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
-      <style>
-        :root { --primary-color: ${primaryColor}; --secondary-color: ${secondaryColor}; }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Tajawal', sans-serif; padding: 20px; background: #f5f5f5; }
-        .invoice-container { max-width: 1000px; margin: 0 auto; background: #fff; padding: 30px; }
-        .invoice-top-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #000; }
-        .invoice-number-top { font-size: 16px; font-weight: bold; }
-        .company-name-header { flex: 1; text-align: center; font-size: 28px; font-weight: bold; color: var(--primary-color); }
-        .company-logo-circle { width: 100px; height: 100px; border-radius: 50%; border: 2px solid #000; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 12px; text-align: center; padding: 8px; line-height: 1.3; background-size: contain; background-position: center; background-repeat: no-repeat; }
-        .summary-customer-section { display: flex; gap: 20px; margin-bottom: 20px; }
-        .summary-box { flex: 0 0 280px; background: var(--secondary-color); color: #fff; padding: 20px; border: 2px solid #000; }
-        .summary-item { margin-bottom: 15px; }
-        .summary-label { font-weight: bold; margin-bottom: 5px; display: block; }
-        .summary-value { font-size: 18px; font-weight: bold; }
-        .summary-date { margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.3); font-size: 12px; }
-        .customer-info-box { flex: 1; border: 2px solid #000; padding: 15px; }
-        .customer-info-title { font-size: 18px; font-weight: bold; margin-bottom: 15px; padding-bottom: 8px; border-bottom: 2px solid #000; }
-        .customer-detail { margin-bottom: 10px; font-size: 14px; }
-        .returned-warning { background: #fff3cd; border: 2px solid #ffc107; padding: 10px; border-radius: 5px; margin-bottom: 10px; text-align: center; font-weight: bold; color: #856404; }
-        .products-table { width: 100%; border-collapse: collapse; border: 2px solid #000; }
-        .products-table thead { background: var(--secondary-color); color: #fff; }
-        .products-table th, .products-table td { padding: 10px 8px; text-align: center; font-size: 12px; border: 1px solid #000; }
-        .bottom-summary { display: flex; justify-content: space-between; margin-bottom: 20px; }
-        .total-box { background: var(--primary-color); color: #fff; padding: 15px 25px; border: 2px solid #000; font-size: 18px; font-weight: bold; }
-        .signature-box { border: 2px solid #000; padding: 15px 30px; min-width: 200px; }
-        .signature-label { font-size: 14px; font-weight: bold; margin-bottom: 40px; }
-        .signature-line { border-bottom: 2px solid #000; margin-top: 5px; }
-        .invoice-footer { border-top: 3px solid #000; padding-top: 15px; margin-top: 20px; }
-        .warranty-notes { margin-bottom: 15px; font-size: 12px; line-height: 1.8; }
-        .footer-contact { display: flex; justify-content: space-between; align-items: flex-end; }
-        .footer-address-phone { font-size: 14px; font-weight: bold; }
-        .footer-codes { display: flex; gap: 15px; }
-        ${customCss}
-      </style>
-    </head>
-    <body>
-      <div class="invoice-container">
-        <div class="invoice-top-header" data-section="header">
-          <div class="invoice-number-top">رقم الفاتوره ${order.id}</div>
-          <div class="company-name-header">
-            <div>${s.company_name}</div>
-            <div style="font-size:13px; font-weight:600; color:#64748b; margin-top:6px;">${s.company_subtitle || ''}</div>
-          </div>
-          ` + logoCircleHTML + `
-        </div>
-        
-        <div class="summary-customer-section" data-section="summary-customer">
-          <div class="summary-box">
-            <div class="summary-item">
-              <span class="summary-label">رقم الفاتوره</span>
-              <span class="summary-value">${order.id}</span>
-            </div>
-            <div class="summary-item">
-              <span class="summary-label">المجموع</span>
-              <span class="summary-value">${total.toLocaleString()} د.ع</span>
-            </div>
-            <div class="summary-item">
-              <span class="summary-label">المستحق</span>
-              <span class="summary-value">${due.toLocaleString()} د.ع</span>
-            </div>
-            <div class="summary-date">${order.created_at}</div>
-          </div>
-          <div class="customer-info-box">
-            <div class="customer-info-title">معلومات الزبون</div>
-            <div class="customer-detail"><strong>الاسم:</strong> ${order.customer.name}` + (function() {
-              var returnedCount = data.returned_count || 0;
-              var cancelledCount = data.cancelled_count || 0;
-              if (s.show_returned_count && (returnedCount > 0 || cancelledCount > 0)) {
-                var badgeText = '';
-                if (returnedCount > 0) {
-                  badgeText += '⚠️ ' + returnedCount + ' ' + (returnedCount == 1 ? 'مرتجع' : 'مرتجعات');
-                }
-                if (returnedCount > 0 && cancelledCount > 0) {
-                  badgeText += ' | ';
-                }
-                if (cancelledCount > 0) {
-                  badgeText += '❌ ' + cancelledCount + ' ' + (cancelledCount == 1 ? 'ملغي' : 'ملغيات');
-                }
-                return ' <span style="background: #fff3cd; border: 1px solid #ffc107; padding: 3px 8px; border-radius: 4px; font-size: 12px; color: #856404; margin-right: 8px;">' + badgeText + '</span>';
-              }
-              return '';
-            })() + `</div>
-            <div class="customer-detail"><strong>العنوان:</strong> ${order.customer.address}</div>
-            <div class="customer-detail"><strong>الموبايل:</strong> ${order.customer.phone}</div>
-            <div class="customer-detail"><strong>الموظف:</strong> ${order.employee_name}</div>
-          </div>
-        </div>
-        
-        <div class="products-section" data-section="products">
-          <table class="products-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>المنتج</th>
-                <th>العدد</th>
-                <th>سعر القطعه</th>` + (s.show_discount_column ? '<th>الخصم</th>' : '') + (s.show_tax_column ? '<th>الضريبه</th>' : '') + (s.show_unit_price_with_tax ? '<th>سعر القطعه (شامل. الضريبة)</th>' : '') + `
-                <th>المجموع</th>
-              </tr>
-            </thead>
-            <tbody>
-              ` + productsRows + `
-            </tbody>
-          </table>
-        </div>
-        
-        <div class="bottom-summary" data-section="total">
-          <div class="total-box">المجموع: ${total.toLocaleString()} د.ع</div>
-          <div class="signature-box">
-            <div class="signature-label">المفوض بالتوقيع</div>
-            <div class="signature-line"></div>
-            <div style="margin-top: 10px; font-size: 16px; font-weight: bold;">${total.toLocaleString()} د.ع</div>
-          </div>
-        </div>
-        
-        <div class="invoice-footer" data-section="footer">
-          <div class="warranty-notes">
-            ` + s.warranty_notes.split('\n').map(function(line) { return '<p>' + line + '</p>'; }).join('') + `
-          </div>
-          <div class="footer-contact">
-            <div class="footer-address-phone">
-              العنوان: ${s.company_address}<br>
-              هاتف الشركة: ${s.company_phone}
-            </div>
-            <div class="footer-codes">
-              ` + (s.show_barcode ? '<div><div style="font-size: 11px; margin-bottom: 5px;">باركود</div><svg id="preview_barcode"></svg></div>' : '') + `
-              ` + (s.show_qrcode ? '<div><div style="font-size: 11px; margin-bottom: 5px;">QR Code</div><div id="preview_qrcode"></div></div>' : '') + `
-            </div>
-          </div>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
 }
 
 // عرض المعاينة (القالب الحقيقي عبر iframe — يتبع اختيار القالب والألوان)
