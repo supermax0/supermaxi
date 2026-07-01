@@ -129,6 +129,10 @@ html, body {
   justify-content: flex-end;
 }
 
+.ws-toolbar-actions .ws-command-source {
+  display: none;
+}
+
 .ws-btn {
   border: 1px solid var(--ws-border);
   border-radius: 12px;
@@ -814,7 +818,7 @@ html, body {
   bottom: 22px;
   left: 50%;
   transform: translateX(-50%);
-  width: min(560px, 70%);
+  width: min(760px, 82%);
   z-index: 70;
   pointer-events: auto;
 }
@@ -829,6 +833,43 @@ html, body {
   border: 1px solid var(--ws-border-soft);
 }
 .ws-chatbar-inner .ico { color: var(--ws-muted); font-size: 17px; }
+.ws-command-select {
+  min-width: 210px;
+  max-width: 260px;
+  height: 42px;
+  border: 1px solid var(--ws-border-soft);
+  border-radius: 999px;
+  background: var(--ws-bg-soft);
+  color: var(--ws-text);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 0 14px;
+  outline: none;
+}
+.ws-command-select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.ws-command-run {
+  height: 42px;
+  border: none;
+  border-radius: 999px;
+  padding: 0 18px;
+  background: linear-gradient(135deg, var(--ws-accent), var(--ws-accent-2));
+  color: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(109,94,252,0.28);
+  flex-shrink: 0;
+}
+.ws-command-run:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+}
 .ws-chat-input {
   flex: 1;
   border: none;
@@ -939,4 +980,8 @@ html, body {
   .ws-stat-row { grid-template-columns: repeat(3, 1fr); }
   .ws-section-grid { grid-template-columns: 1fr; }
   .ws-profit-row { grid-template-columns: repeat(2, 1fr); }
+  .ws-chatbar { width: calc(100% - 24px); bottom: 12px; }
+  .ws-chatbar-inner { border-radius: 24px; flex-wrap: wrap; }
+  .ws-command-select { flex: 1 1 180px; max-width: none; }
+  .ws-chat-input { flex-basis: 100%; order: 3; }
 }

@@ -260,6 +260,17 @@ class WorkflowEngine:
             session.current_step_id = step_id
             session.status = step.get("status_after_step", "completed")
             if session.status == "completed":
+                if session.workflow_type == "mock_workspace":
+                    WindowOrchestrator.close_window_types(
+                        session,
+                        ["approval_panel", "assistant_notes", "workflow_selector"],
+                    )
+                    event_bus.emit_event(
+                        session.id,
+                        "window.updated",
+                        {"windows": session.get_windows()},
+                        user_id=user_id,
+                    )
                 event_bus.emit_event(
                     session.id,
                     "workflow.completed",

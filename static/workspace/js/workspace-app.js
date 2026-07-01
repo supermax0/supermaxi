@@ -27,6 +27,8 @@
   const btnNew = document.getElementById("btn-new-session");
   const btnRun = document.getElementById("btn-run-mock");
   const btnCancel = document.getElementById("btn-cancel");
+  const commandSelect = document.getElementById("ws-command-select");
+  const commandRun = document.getElementById("ws-command-run");
   const canvasEl = document.getElementById("ws-canvas");
   const windowsLayer = document.getElementById("ws-windows-layer");
   const avatarLayer = document.getElementById("ws-avatar-layer");
@@ -57,6 +59,7 @@
     btnIntelligence.disabled = busy || !hasActiveDocument();
     btnIntelligence.textContent = busy ? "جاري الفهم..." : "فهم المستند";
     btnIntelligence.classList.toggle("ws-btn-loading", busy);
+    syncCommandControls();
   }
 
   function hasActiveDocument() {
@@ -71,12 +74,14 @@
     if (!btnIntelligence) return;
     const busy = documentIntelligenceClient && documentIntelligenceClient.isBusy();
     btnIntelligence.disabled = busy || !hasActiveDocument();
+    syncCommandControls();
   }
 
   function updateCourierButton() {
     if (!btnCourierAnalysis) return;
     const busy = courierAnalysisClient && courierAnalysisClient.isBusy();
     btnCourierAnalysis.disabled = busy || !hasActiveDocument();
+    syncCommandControls();
   }
 
   function setCourierBusy(busy) {
@@ -84,6 +89,7 @@
     btnCourierAnalysis.disabled = busy || !hasActiveDocument();
     btnCourierAnalysis.textContent = busy ? "جاري التحليل..." : "تحليل كشف التسديد قراءة فقط";
     btnCourierAnalysis.classList.toggle("ws-btn-loading", busy);
+    syncCommandControls();
   }
 
   function setUploadBusy(busy) {
@@ -92,6 +98,36 @@
       btnUpload.textContent = busy ? "جاري الرفع..." : "رفع مستند";
       btnUpload.classList.toggle("ws-btn-loading", busy);
     }
+    syncCommandControls();
+  }
+
+  function commandTarget(value) {
+    return {
+      upload: btnUpload,
+      intelligence: btnIntelligence,
+      courier: btnCourierAnalysis,
+      workflow: btnWorkflow,
+      select_workflow: btnSelectWorkflow,
+      mock: btnRun,
+      cancel: btnCancel,
+    }[value];
+  }
+
+  function syncCommandControls() {
+    if (!commandSelect || !commandRun) return;
+    [...commandSelect.options].forEach((opt) => {
+      const target = commandTarget(opt.value);
+      opt.disabled = Boolean(target && target.disabled);
+    });
+    const selectedTarget = commandTarget(commandSelect.value);
+    commandRun.disabled = Boolean(selectedTarget && selectedTarget.disabled);
+  }
+
+  function runSelectedCommand() {
+    if (!commandSelect) return;
+    const target = commandTarget(commandSelect.value);
+    if (!target || target.disabled) return;
+    target.click();
   }
 
   function updateUrl(sessionId) {
@@ -178,6 +214,7 @@
     if (btnRun) {
       btnRun.disabled = session.status === "running" || session.status === "completed";
     }
+    syncCommandControls();
   }
 
   function onSessionUpdate(session) {
@@ -486,6 +523,8 @@
     store.subscribe(renderFromSession);
 
     if (btnUpload) btnUpload.addEventListener("click", () => uploadManager.openPicker());
+    if (commandSelect) commandSelect.addEventListener("change", syncCommandControls);
+    if (commandRun) commandRun.addEventListener("click", runSelectedCommand);
     window.addEventListener("ws:upload-request", () => uploadManager.openPicker());
     window.addEventListener("ws:show-issues-details", () => {
       const win = [...windowManager.windows.entries()].find(([, el]) => {

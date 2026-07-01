@@ -93,7 +93,37 @@ def test_approval_waiting():
         except WorkflowApprovalRequiredError:
             ws = SessionService.get_session(ws.id, 3, tenant)
             assert ws.status == "waiting_approval"
+            assert any(w.get("type") == "approval_panel" for w in ws.get_windows())
         print("test_approval_waiting ok")
+
+
+def test_mock_completion_cleans_demo_windows():
+    app, tenant = _setup("test_wf_mock_cleanup")
+    with app.app_context():
+        from flask import g
+
+        g.tenant = tenant
+        from modules.workspace.services.session_service import SessionService
+        from modules.workspace.services.workflow_engine import WorkflowEngine
+        from modules.workspace.services.workflow_errors import WorkflowApprovalRequiredError
+
+        ws = SessionService.create_session(user_id=33, tenant_slug=tenant)
+        WorkflowEngine.start_workflow(ws.id, "mock_workspace", 33, tenant)
+
+        for _ in range(6):
+            try:
+                WorkflowEngine.run_next_step(ws.id, user_id=33, tenant_slug=tenant)
+            except WorkflowApprovalRequiredError:
+                WorkflowEngine.submit_approval(ws.id, True, "ok", 33, tenant)
+
+        ws = SessionService.get_session(ws.id, 33, tenant)
+        types = {w.get("type") for w in ws.get_windows()}
+        assert ws.status == "completed"
+        assert "document_viewer" in types
+        assert "live_report" in types
+        assert "approval_panel" not in types
+        assert "assistant_notes" not in types
+        print("test_mock_completion_cleans_demo_windows ok")
 
 
 def test_cancel_workflow():
@@ -136,6 +166,7 @@ if __name__ == "__main__":
     test_start_mock_workspace()
     test_run_next_step_emits_events()
     test_approval_waiting()
+    test_mock_completion_cleans_demo_windows()
     test_cancel_workflow()
     test_invalid_workflow_type()
     print("all workflow engine tests passed")

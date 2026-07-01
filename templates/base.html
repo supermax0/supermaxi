@@ -1907,6 +1907,9 @@ or request.path.startswith('/superadmin') %}
         <a href="/inventory/audit" style="padding-right: 30px; font-size: 0.9em;"><i class="fa fa-barcode"></i> {{
           _('inventory_audit') }}</a>
         {% endif %}
+        {% if business_allows('maintenance') %}
+        <a href="/maintenance" class="{% if request.path.startswith('/maintenance') %}active{% endif %}" style="padding-right: 30px; font-size: 0.9em;"><i class="fa fa-wrench"></i> {{ _('maintenance') }}</a>
+        {% endif %}
         {% endif %}
         {% if (is_admin or (current_employee and can_manage_inventory)) and business_allows('purchases') %}
         {% if plan_has("purchases") %}

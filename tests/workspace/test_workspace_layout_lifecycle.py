@@ -65,6 +65,7 @@ def test_normalize_keeps_approval_for_mock():
         ensure_workspace_schema()
 
         ws = SessionService.create_session(user_id=1, tenant_slug=tenant)
+        ws.status = "waiting_approval"
         windows = ws.get_windows()
         windows.append({"id": "ap", "type": "approval_panel", "props": {}})
         ws.set_windows(windows)
@@ -76,7 +77,38 @@ def test_normalize_keeps_approval_for_mock():
         print("test_normalize_keeps_approval_for_mock ok")
 
 
+def test_normalize_drops_completed_mock_approval():
+    from app import app as flask_app
+
+    tenant = "test_ws_normalize_completed_mock"
+    with flask_app.app_context():
+        from flask import g
+
+        g.tenant = tenant
+        from extensions_tenant import init_tenant_db
+        from modules.workspace.services.schema_guard import ensure_workspace_schema
+        from modules.workspace.services.session_service import SessionService
+        from modules.workspace.services.window_orchestrator import WindowOrchestrator
+
+        init_tenant_db(tenant)
+        ensure_workspace_schema()
+
+        ws = SessionService.create_session(user_id=1, tenant_slug=tenant)
+        ws.workflow_type = "mock_workspace"
+        ws.status = "completed"
+        windows = ws.get_windows()
+        windows.append({"id": "ap", "type": "approval_panel", "props": {}})
+        ws.set_windows(windows)
+
+        WindowOrchestrator.normalize_windows(ws, "mock_workspace")
+        assert not any(
+            w["type"] == "approval_panel" for w in ws.get_windows()
+        ), "completed mock workflow must not restore stale approval panel"
+        print("test_normalize_drops_completed_mock_approval ok")
+
+
 if __name__ == "__main__":
     test_normalize_dedups_and_drops_stale_approval()
     test_normalize_keeps_approval_for_mock()
+    test_normalize_drops_completed_mock_approval()
     print("all layout lifecycle tests passed")

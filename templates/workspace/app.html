@@ -17,14 +17,14 @@
         <span id="ws-status-pill" class="ws-status-pill ws-status-idle">جاهز</span>
       </div>
       <div class="ws-toolbar-actions">
-        <button type="button" id="btn-upload" class="ws-btn ws-btn-upload">رفع مستند</button>
-        <button type="button" id="btn-intelligence" class="ws-btn ws-btn-primary" disabled>فهم المستند</button>
-        <button type="button" id="btn-courier-analysis" class="ws-btn ws-btn-ghost" disabled>تحليل كشف التسديد قراءة فقط</button>
-        <button type="button" id="btn-workflow" class="ws-btn ws-btn-primary">تشغيل Workflow</button>
-        <button type="button" id="btn-select-workflow" class="ws-btn ws-btn-ghost">اختيار نوع العمل</button>
-        <button type="button" id="btn-next-step" class="ws-btn ws-btn-ghost" hidden>الخطوة التالية</button>
-        <button type="button" id="btn-run-mock" class="ws-btn ws-btn-ghost">تشغيل تجربة</button>
-        <button type="button" id="btn-cancel" class="ws-btn ws-btn-danger">إلغاء</button>
+        <button type="button" id="btn-upload" class="ws-btn ws-btn-upload ws-command-source">رفع مستند</button>
+        <button type="button" id="btn-intelligence" class="ws-btn ws-btn-primary ws-command-source" disabled>فهم المستند</button>
+        <button type="button" id="btn-courier-analysis" class="ws-btn ws-btn-ghost ws-command-source" disabled>تحليل كشف التسديد قراءة فقط</button>
+        <button type="button" id="btn-workflow" class="ws-btn ws-btn-primary ws-command-source">تشغيل Workflow</button>
+        <button type="button" id="btn-select-workflow" class="ws-btn ws-btn-ghost ws-command-source">اختيار نوع العمل</button>
+        <button type="button" id="btn-next-step" class="ws-btn ws-btn-ghost ws-command-source" hidden>الخطوة التالية</button>
+        <button type="button" id="btn-run-mock" class="ws-btn ws-btn-ghost ws-command-source">تشغيل تجربة</button>
+        <button type="button" id="btn-cancel" class="ws-btn ws-btn-danger ws-command-source">إلغاء</button>
         <button type="button" id="btn-focus" class="ws-focus-pill" title="وضع التركيز"><span class="ws-focus-ico">◎</span> وضع التركيز</button>
         <button type="button" id="btn-new-session" class="ws-icon-btn" title="جلسة جديدة">+</button>
         <button type="button" id="btn-fullscreen" class="ws-icon-btn" title="ملء الشاشة">⤢</button>
@@ -38,6 +38,16 @@
       <div class="ws-chatbar">
         <div class="ws-chatbar-inner">
           <span class="ico">&#9000;</span>
+          <select id="ws-command-select" class="ws-command-select" title="اختيار إجراء">
+            <option value="upload">رفع مستند</option>
+            <option value="intelligence">فهم المستند</option>
+            <option value="courier">تحليل كشف التسديد قراءة فقط</option>
+            <option value="workflow">تشغيل Workflow</option>
+            <option value="select_workflow">اختيار نوع العمل</option>
+            <option value="mock">تشغيل تجربة</option>
+            <option value="cancel">إلغاء</option>
+          </select>
+          <button type="button" id="ws-command-run" class="ws-command-run" title="تنفيذ الإجراء">تنفيذ</button>
           <input id="ws-chat-input" class="ws-chat-input" type="text" placeholder="اسأل LEON أو أعطه أمراً..." autocomplete="off" />
           <button type="button" id="ws-chat-send" class="ws-chat-send" title="إرسال">&#127908;</button>
         </div>

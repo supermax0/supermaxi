@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import queue
 
-from flask import Blueprint, Response, current_app, g, jsonify, request, session
+from flask import Blueprint, Response, current_app, g, jsonify, request, session, stream_with_context
 
 from modules.workspace.services import event_bus
 from modules.workspace.services.session_service import SessionService
@@ -80,7 +80,7 @@ def stream_session(session_id):
             event_bus.unsubscribe(session_id, q)
 
     return Response(
-        generate(),
+        stream_with_context(generate()),
         mimetype="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

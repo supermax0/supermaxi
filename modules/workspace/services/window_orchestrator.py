@@ -257,14 +257,16 @@ class WindowOrchestrator:
   ) -> List[Dict[str, Any]]:
       """
       De-duplicate windows by identity (type + document/analysis id) and drop
-      a stale approval_panel when the current workflow is not the mock demo.
+      a stale approval_panel unless the current workflow is actively waiting
+      for the mock demo approval.
       Used on session restore so a refresh yields a clean layout.
       """
       wf = workflow_type or session.workflow_type
+      keep_mock_approval = wf == "mock_workspace" and session.status == "waiting_approval"
       seen: Dict[str, Dict[str, Any]] = {}
       order: List[str] = []
       for w in session.get_windows():
-          if w.get("type") == "approval_panel" and wf != "mock_workspace":
+          if w.get("type") == "approval_panel" and not keep_mock_approval:
               continue
           ident = _window_identity(w)
           if ident not in seen:

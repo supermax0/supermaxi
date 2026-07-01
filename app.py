@@ -64,6 +64,7 @@ from routes.invoice_store import invoice_store_bp
 from routes.storefront import storefront_bp
 from routes.quick_sale import quick_sale_bp
 from routes.beauty import beauty_bp
+from routes.maintenance import maintenance_bp
 from routes.whatsapp_webhook import whatsapp_webhook_bp
 from telegram_bot import telegram_bp
 from api_workflows import workflow_api
@@ -1195,6 +1196,7 @@ def inject_business_context():
                 "beauty_accounts",
                 "inventory",
                 "inventory_audit",
+                "maintenance",
                 "customers",
                 "beauty_clients",
                 "expenses",
@@ -1287,6 +1289,7 @@ app.register_blueprint(pos_bp)
 app.register_blueprint(employees_bp, url_prefix="/employees")
 app.register_blueprint(inventory_bp, url_prefix="/inventory")
 app.register_blueprint(purchases_bp, url_prefix="/purchases")
+app.register_blueprint(maintenance_bp)
 app.register_blueprint(inventory_ledger_bp, url_prefix="/inventory/ledger")
 app.register_blueprint(media_library_bp)
 app.register_blueprint(cash_bp, url_prefix="/cash")

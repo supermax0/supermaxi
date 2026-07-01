@@ -1,0 +1,290 @@
+{% extends "base.html" %}
+{% block title %}{{ _('maintenance') }}{% endblock %}
+{% block page_title %}{{ _('maintenance_page_title') }}{% endblock %}
+
+{% block content %}
+<div class="mnt-page">
+  <style>
+    .mnt-page { max-width: 1200px; margin: 0 auto; direction: rtl; }
+    .mnt-kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+    .mnt-kpi { background: var(--card); border: 1px solid var(--border-light); border-radius: 14px; padding: 14px; }
+    .mnt-kpi small { color: var(--text-muted); display: block; margin-bottom: 4px; }
+    .mnt-kpi strong { font-size: 22px; }
+    .mnt-card { background: var(--card); border: 1px solid var(--border-light); border-radius: 16px; padding: 16px; margin-bottom: 14px; }
+    .mnt-title { font-weight: 800; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+    .mnt-grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .mnt-grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    .mnt-field { display: flex; flex-direction: column; gap: 6px; }
+    .mnt-field label { font-size: 13px; color: var(--text-muted); font-weight: 700; }
+    .mnt-field input, .mnt-field select, .mnt-field textarea {
+      background: var(--card-alt); border: 1px solid var(--border-light); color: var(--text);
+      border-radius: 10px; padding: 10px 12px; font-size: 14px; width: 100%;
+    }
+    .mnt-btn { border: none; border-radius: 10px; padding: 10px 14px; font-weight: 700; cursor: pointer; }
+    .mnt-btn-primary { background: var(--primary); color: #fff; }
+    .mnt-btn-success { background: #16a34a; color: #fff; }
+    .mnt-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+    .mnt-tab-btn { background: var(--card-alt); color: var(--text); border: 1px solid var(--border-light); border-radius: 10px; padding: 8px 14px; cursor: pointer; font-weight: 700; }
+    .mnt-tab-btn.active { background: var(--primary); color: #fff; border-color: transparent; }
+    .mnt-tab-content { display: none; }
+    .mnt-tab-content.active { display: block; }
+    .mnt-table-wrap { border: 1px solid var(--border-light); border-radius: 12px; overflow: auto; }
+    table.mnt-table { width: 100%; border-collapse: collapse; min-width: 900px; }
+    table.mnt-table th, table.mnt-table td { border-bottom: 1px solid var(--border-light); padding: 10px; font-size: 13px; text-align: right; }
+    table.mnt-table th { background: var(--card-alt); color: var(--text-muted); }
+    .status-badge { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 700; }
+    .status-at { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
+    .status-done { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.4); }
+    .product-search-wrap { position: relative; }
+    .product-results { position: absolute; top: 100%; right: 0; left: 0; z-index: 20; background: var(--card); border: 1px solid var(--border-light); border-radius: 10px; max-height: 240px; overflow: auto; display: none; margin-top: 4px; }
+    .product-results.open { display: block; }
+    .product-result-item { padding: 10px 12px; cursor: pointer; border-bottom: 1px solid var(--border-light); }
+    .product-result-item:hover { background: var(--card-alt); }
+    .selected-product { background: var(--card-alt); border: 1px dashed var(--border-light); border-radius: 10px; padding: 10px 12px; margin-top: 8px; display: none; }
+    .selected-product.show { display: block; }
+    .complete-form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .complete-form input[type="date"] { max-width: 150px; }
+    .muted { color: var(--text-muted); font-size: 12px; }
+    @media (max-width: 900px) {
+      .mnt-grid-2, .mnt-grid-3, .mnt-kpis { grid-template-columns: 1fr; }
+    }
+  </style>
+
+  <div class="mnt-kpis">
+    <div class="mnt-kpi">
+      <small>{{ _('maintenance_kpi_at_shop') }}</small>
+      <strong>{{ at_maintenance_qty }}</strong>
+    </div>
+    <div class="mnt-kpi">
+      <small>{{ _('maintenance_kpi_completed_month') }}</small>
+      <strong>{{ completed_this_month }}</strong>
+    </div>
+  </div>
+
+  <div class="mnt-card">
+    <div class="mnt-title"><i class="fa fa-wrench"></i> {{ _('maintenance_form_title') }}</div>
+    <form method="post" action="{{ url_for('maintenance.maintenance_page') }}" id="maintenanceForm">
+      <input type="hidden" name="product_id" id="productId" value="">
+      <div class="mnt-grid-2">
+        <div class="mnt-field product-search-wrap">
+          <label>{{ _('maintenance_field_product') }}</label>
+          <input type="text" id="productSearch" placeholder="{{ _('maintenance_product_search_placeholder') }}" autocomplete="off">
+          <div class="product-results" id="productResults"></div>
+          <div class="selected-product" id="selectedProduct">
+            <strong id="selectedProductName"></strong>
+            <div class="muted">{{ _('maintenance_available_stock') }}: <span id="selectedProductStock">0</span></div>
+          </div>
+        </div>
+        <div class="mnt-field">
+          <label>{{ _('maintenance_field_quantity') }}</label>
+          <input type="number" name="quantity" id="quantity" min="1" value="1" required>
+        </div>
+      </div>
+      <div class="mnt-grid-3" style="margin-top: 10px;">
+        <div class="mnt-field">
+          <label>{{ _('maintenance_field_sent_date') }}</label>
+          <input type="date" name="sent_date" value="{{ today_iso }}" required>
+        </div>
+        <div class="mnt-field">
+          <label>{{ _('maintenance_field_workshop') }}</label>
+          <input type="text" name="workshop_name" placeholder="{{ _('maintenance_workshop_placeholder') }}" required>
+        </div>
+        <div class="mnt-field">
+          <label>{{ _('maintenance_field_notes') }}</label>
+          <input type="text" name="notes" placeholder="{{ _('maintenance_notes_placeholder') }}">
+        </div>
+      </div>
+      <div style="margin-top: 12px;">
+        <button type="submit" class="mnt-btn mnt-btn-primary" id="submitBtn" disabled>
+          <i class="fa fa-paper-plane"></i> {{ _('maintenance_btn_send') }}
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div class="mnt-tabs">
+    <button type="button" class="mnt-tab-btn active" data-tab="tabAt">{{ _('maintenance_tab_at_shop') }} ({{ at_maintenance|length }})</button>
+    <button type="button" class="mnt-tab-btn" data-tab="tabDone">{{ _('maintenance_tab_completed') }} ({{ completed|length }})</button>
+  </div>
+
+  <div class="mnt-tab-content active" id="tabAt">
+    <div class="mnt-card">
+      <div class="mnt-table-wrap">
+        <table class="mnt-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>{{ _('maintenance_col_product') }}</th>
+              <th>{{ _('maintenance_col_quantity') }}</th>
+              <th>{{ _('maintenance_col_sent_date') }}</th>
+              <th>{{ _('maintenance_col_workshop') }}</th>
+              <th>{{ _('maintenance_col_status') }}</th>
+              <th>{{ _('maintenance_col_notes') }}</th>
+              <th>{{ _('maintenance_col_action') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if at_maintenance %}
+              {% for r in at_maintenance %}
+              <tr>
+                <td>{{ r.id }}</td>
+                <td>{{ r.product.name if r.product else '—' }}</td>
+                <td>{{ r.quantity }}</td>
+                <td>{{ r.sent_date.strftime('%Y-%m-%d') if r.sent_date else '—' }}</td>
+                <td>{{ r.workshop_name }}</td>
+                <td><span class="status-badge status-at">{{ _('maintenance_status_at_shop') }}</span></td>
+                <td>{{ r.notes or '—' }}</td>
+                <td>
+                  <form method="post" action="{{ url_for('maintenance.complete_maintenance', record_id=r.id) }}" class="complete-form" onsubmit="return confirm('{{ _('maintenance_confirm_complete') }}');">
+                    <input type="date" name="return_date" value="{{ today_iso }}" required>
+                    <button type="submit" class="mnt-btn mnt-btn-success">
+                      <i class="fa fa-check"></i> {{ _('maintenance_btn_complete') }}
+                    </button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+            {% else %}
+              <tr><td colspan="8" class="muted" style="text-align:center;padding:24px;">{{ _('maintenance_empty_at_shop') }}</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="mnt-tab-content" id="tabDone">
+    <div class="mnt-card">
+      <div class="mnt-table-wrap">
+        <table class="mnt-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>{{ _('maintenance_col_product') }}</th>
+              <th>{{ _('maintenance_col_quantity') }}</th>
+              <th>{{ _('maintenance_col_sent_date') }}</th>
+              <th>{{ _('maintenance_col_workshop') }}</th>
+              <th>{{ _('maintenance_col_return_date') }}</th>
+              <th>{{ _('maintenance_col_status') }}</th>
+              <th>{{ _('maintenance_col_notes') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if completed %}
+              {% for r in completed %}
+              <tr>
+                <td>{{ r.id }}</td>
+                <td>{{ r.product.name if r.product else '—' }}</td>
+                <td>{{ r.quantity }}</td>
+                <td>{{ r.sent_date.strftime('%Y-%m-%d') if r.sent_date else '—' }}</td>
+                <td>{{ r.workshop_name }}</td>
+                <td>{{ r.return_date.strftime('%Y-%m-%d') if r.return_date else '—' }}</td>
+                <td><span class="status-badge status-done">{{ _('maintenance_status_completed') }}</span></td>
+                <td>{{ r.notes or '—' }}</td>
+              </tr>
+              {% endfor %}
+            {% else %}
+              <tr><td colspan="8" class="muted" style="text-align:center;padding:24px;">{{ _('maintenance_empty_completed') }}</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const searchInput = document.getElementById('productSearch');
+  const resultsBox = document.getElementById('productResults');
+  const productIdInput = document.getElementById('productId');
+  const selectedBox = document.getElementById('selectedProduct');
+  const selectedName = document.getElementById('selectedProductName');
+  const selectedStock = document.getElementById('selectedProductStock');
+  const quantityInput = document.getElementById('quantity');
+  const submitBtn = document.getElementById('submitBtn');
+  let searchTimer = null;
+
+  function selectProduct(p) {
+    productIdInput.value = p.id;
+    selectedName.textContent = p.name + (p.sku ? ' (' + p.sku + ')' : '');
+    selectedStock.textContent = p.stock;
+    selectedBox.classList.add('show');
+    resultsBox.classList.remove('open');
+    searchInput.value = p.name;
+    quantityInput.max = p.stock;
+    if (parseInt(quantityInput.value, 10) > p.stock) {
+      quantityInput.value = Math.max(1, p.stock);
+    }
+    submitBtn.disabled = false;
+  }
+
+  function renderResults(products) {
+    if (!products.length) {
+      resultsBox.innerHTML = '<div class="product-result-item muted">لا توجد نتائج</div>';
+    } else {
+      resultsBox.innerHTML = products.map(function (p) {
+        return '<div class="product-result-item" data-id="' + p.id + '" data-name="' + p.name.replace(/"/g, '&quot;') + '" data-sku="' + (p.sku || '') + '" data-stock="' + p.stock + '">' +
+          p.name + ' <span class="muted">(' + (p.sku || p.barcode || '-') + ') — مخزون: ' + p.stock + '</span></div>';
+      }).join('');
+    }
+    resultsBox.classList.add('open');
+    resultsBox.querySelectorAll('.product-result-item[data-id]').forEach(function (el) {
+      el.addEventListener('click', function () {
+        selectProduct({
+          id: el.dataset.id,
+          name: el.dataset.name,
+          sku: el.dataset.sku,
+          stock: parseInt(el.dataset.stock, 10) || 0
+        });
+      });
+    });
+  }
+
+  function fetchProducts(q) {
+    fetch('/maintenance/api/products?q=' + encodeURIComponent(q || ''))
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.success) renderResults(data.products || []);
+      })
+      .catch(function () {});
+  }
+
+  searchInput.addEventListener('input', function () {
+    clearTimeout(searchTimer);
+    productIdInput.value = '';
+    selectedBox.classList.remove('show');
+    submitBtn.disabled = true;
+    searchTimer = setTimeout(function () {
+      fetchProducts(searchInput.value.trim());
+    }, 250);
+  });
+
+  searchInput.addEventListener('focus', function () {
+    fetchProducts(searchInput.value.trim());
+  });
+
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest('.product-search-wrap')) {
+      resultsBox.classList.remove('open');
+    }
+  });
+
+  document.querySelectorAll('.mnt-tab-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.mnt-tab-btn').forEach(function (b) { b.classList.remove('active'); });
+      document.querySelectorAll('.mnt-tab-content').forEach(function (c) { c.classList.remove('active'); });
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  document.getElementById('maintenanceForm').addEventListener('submit', function (e) {
+    if (!productIdInput.value) {
+      e.preventDefault();
+      alert('اختر منتجاً من المخزون');
+    }
+  });
+})();
+</script>
+{% endblock %}
