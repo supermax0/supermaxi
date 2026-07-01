@@ -95,6 +95,14 @@ class WorkflowEngine:
         session.updated_at = datetime.utcnow()
         db.session.commit()
 
+        # Clear stale/transient windows from any previous workflow so the
+        # workspace does not accumulate overlapping cards or a leftover
+        # approval panel. Core windows (document viewer, live report) stay.
+        WindowOrchestrator.cleanup_for_workflow_start(
+            session, workflow_type, emit=True, user_id=user_id
+        )
+        db.session.commit()
+
         ev = event_bus.emit_event(
             session_id,
             "workflow.started",

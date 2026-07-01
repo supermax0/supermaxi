@@ -70,6 +70,19 @@ def get_session(session_id):
     )
     if not ws:
         return jsonify({"success": False, "error": "not_found"}), 404
+    # Normalize windows on restore: drop duplicates and any stale approval
+    # panel that doesn't belong to the current workflow, so a refresh yields
+    # a clean, non-overlapping layout.
+    try:
+        from modules.workspace.services.window_orchestrator import WindowOrchestrator
+        from extensions import db as _db
+
+        before = ws.get_windows()
+        after = WindowOrchestrator.normalize_windows(ws)
+        if len(after) != len(before):
+            _db.session.commit()
+    except Exception:
+        pass
     return jsonify({
         "success": True,
         "session": DocumentStorageService.enrich_session_dict(ws),

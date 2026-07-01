@@ -119,6 +119,9 @@
 
   function ensureTimelineWindow(session) {
     const windows = session.windows || [];
+    if (!IS_DEV) {
+      return windows.filter((w) => w.type !== "session_timeline");
+    }
     if (windows.some((w) => w.type === "session_timeline")) return windows;
     return [
       ...windows,
@@ -182,10 +185,15 @@
     renderFromSession(session);
   }
 
-  function connectStream(sessionId) {
+  function connectStream(sessionId, replayFromStart = false) {
     if (eventStream) eventStream.disconnect();
     LiveReportWindow.resetDedup();
     eventStream = new WorkspaceEventStream(sessionId);
+    if (replayFromStart) {
+      // Recovery: report is empty but the cursor is ahead — replay everything
+      // so the live report re-fills. Non-report replayed events are ignored.
+      eventStream.lastEventId = 0;
+    }
 
     eventStream.onAny((data) => {
       if (timelineStore.addFromEvent(data)) {
@@ -193,12 +201,21 @@
       }
       if (!data._fromReplay) {
         windowManager.applyEvent(data);
-      } else if (
-        data.type !== "report.appended" &&
-        !String(data.type || "").startsWith("workflow.")
-      ) {
+      } else if (data.type === "report.appended") {
+        // On replay we only re-hydrate the streaming report; window state is
+        // already authoritative from the session GET, so we do not re-apply
+        // replayed window/workflow events (which could resurrect stale cards).
         windowManager.applyEvent(data);
       }
+    });
+
+    eventStream.on("workflow.started", (data) => {
+      if (data._fromReplay) return;
+      const title = (data.payload && data.payload.title) || "";
+      windowManager.applyEvent({
+        type: "report.appended",
+        payload: { line: `— بدأ سير عمل جديد${title ? ": " + title : ""} —` },
+      });
     });
 
     eventStream.on("avatar.updated", (data) => {
@@ -324,6 +341,11 @@
     canvas = new WorkspaceCanvas(canvasEl);
     timelineStore = new SessionTimelineStore();
     windowManager = new WorkspaceWindowManager(windowsLayer);
+    if (window.WorkspaceLayoutDirector) {
+      windowManager.setLayoutDirector(
+        new WorkspaceLayoutDirector(() => canvas.getSize())
+      );
+    }
     avatar = new LeonAvatarAdapter(avatarLayer, canvas);
     if (window.WorkspaceProgressPanel) {
       progressPanel = new WorkspaceProgressPanel(canvasEl);
@@ -613,11 +635,16 @@
       }
     });
 
+    let _resizeTimer = null;
     window.addEventListener("resize", () => {
-      const session = store.getSession();
-      if (session && session.avatar_state) {
-        avatar.applyState(session.avatar_state);
-      }
+      if (windowManager) windowManager.relayout();
+      clearTimeout(_resizeTimer);
+      _resizeTimer = setTimeout(() => {
+        const session = store.getSession();
+        if (session && session.avatar_state) {
+          avatar.applyState(session.avatar_state);
+        }
+      }, 120);
     });
 
     const params = new URLSearchParams(window.location.search);
@@ -628,7 +655,9 @@
         const data = await api(`/sessions/${sessionId}`);
         store.setSession(data.session);
         renderFromSession(data.session);
-        connectStream(sessionId);
+        const reportWin = (data.session.windows || []).find((w) => w.type === "live_report");
+        const reportEmpty = !reportWin || !((reportWin.props || {}).lines || []).length;
+        connectStream(sessionId, reportEmpty);
       } else {
         await createSession();
       }

@@ -5,6 +5,9 @@ class WorkspaceWindowManager {
   constructor(layerEl) {
     this.layer = layerEl;
     this.windows = new Map();
+    this.layoutDirector = null;
+    this._layout = new Map();
+    this._lastSpecs = [];
     this.workflowHandlers = {};
     this.renderers = {
       document_viewer: DocumentViewerWindow,
@@ -31,12 +34,48 @@ class WorkspaceWindowManager {
     this.workflowHandlers = handlers || {};
   }
 
+  setLayoutDirector(director) {
+    this.layoutDirector = director;
+  }
+
+  _identity(spec) {
+    const p = spec.props || {};
+    const key = p.analysisId || p.documentId || "";
+    return `${spec.type}::${key}`;
+  }
+
+  /** Drop closed/hidden windows and de-duplicate by identity (singleton). */
+  _normalize(windowsList) {
+    const byIdentity = new Map();
+    (windowsList || []).forEach((spec) => {
+      if (!spec || !spec.type) return;
+      if ((spec.state || "open") === "closed" || spec.hidden) return;
+      byIdentity.set(this._identity(spec), spec);
+    });
+    return [...byIdentity.values()];
+  }
+
   renderWindows(windowsList) {
-    const ids = new Set((windowsList || []).map((w) => w.id));
+    const specs = this._normalize(windowsList);
+    this._lastSpecs = specs;
+    if (this.layoutDirector) {
+      this._layout = this.layoutDirector.computeLayout(specs);
+    }
+    const ids = new Set(specs.map((w) => w.id));
     this.windows.forEach((_, id) => {
       if (!ids.has(id)) this.closeWindow(id);
     });
-    (windowsList || []).forEach((spec) => this.openOrUpdateWindow(spec));
+    specs.forEach((spec) => this.openOrUpdateWindow(spec));
+  }
+
+  /** Recompute zones and reposition existing windows (e.g. on resize). */
+  relayout() {
+    if (!this.layoutDirector || !this._lastSpecs.length) return;
+    this._layout = this.layoutDirector.computeLayout(this._lastSpecs);
+    this._lastSpecs.forEach((spec) => {
+      const el = this.windows.get(spec.id);
+      if (el) this._applyPosition(el, spec);
+    });
   }
 
   openOrUpdateWindow(spec) {
@@ -52,7 +91,19 @@ class WorkspaceWindowManager {
   }
 
   openWindow(spec) {
+    if (!spec || (spec.state || "open") === "closed" || spec.hidden) return;
+    const idx = this._lastSpecs.findIndex((s) => s.id === spec.id);
+    if (idx >= 0) this._lastSpecs[idx] = spec;
+    else this._lastSpecs.push(spec);
+    this._lastSpecs = this._normalize(this._lastSpecs);
+    if (this.layoutDirector) {
+      this._layout = this.layoutDirector.computeLayout(this._lastSpecs);
+    }
     this.openOrUpdateWindow(spec);
+    this._lastSpecs.forEach((s) => {
+      const el = this.windows.get(s.id);
+      if (el) this._applyPosition(el, s);
+    });
   }
 
   updateWindow(windowId, patch) {
@@ -186,12 +237,13 @@ class WorkspaceWindowManager {
   }
 
   _applyPosition(el, spec) {
-    const pos = spec.position || {};
+    const zone = this._layout && this._layout.get(spec.id);
+    const pos = zone || spec.position || {};
     el.style.left = `${pos.x ?? 40}px`;
     el.style.top = `${pos.y ?? 80}px`;
     el.style.width = `${pos.width ?? 360}px`;
     el.style.height = `${pos.height ?? 400}px`;
-    el.style.zIndex = spec.z_index ?? 10;
+    el.style.zIndex = (zone && zone.z_index) ?? spec.z_index ?? 10;
   }
 
   _updateShell(el, spec) {

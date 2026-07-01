@@ -25,6 +25,29 @@ DOC_PREVIEW_KEYS = frozenset({
     "documentId", "fileName", "mimeType", "previewUrl", "fileSize", "status",
 })
 
+# Windows that stay open across workflow changes.
+CORE_WINDOW_TYPES = frozenset({"document_viewer", "live_report"})
+
+# Windows that belong to a specific workflow/analysis and must be cleared
+# when a new workflow starts, so the workspace never piles up stale cards.
+TRANSIENT_WINDOW_TYPES = frozenset({
+    "approval_panel",
+    "workflow_selector",
+    "document_intelligence",
+    "raw_table_preview",
+    "courier_settlement_analysis",
+    "courier_rows",
+    "courier_issues",
+    "financial_preview",
+    "assistant_notes",
+})
+
+
+def _window_identity(window: Dict[str, Any]) -> str:
+    props = window.get("props") or {}
+    key = props.get("analysisId") or props.get("documentId") or ""
+    return f"{window.get('type')}::{key}"
+
 
 class WindowOrchestrator:
   @staticmethod
@@ -186,6 +209,70 @@ class WindowOrchestrator:
       windows = [w for w in session.get_windows() if w.get("id") != window_id]
       session.set_windows(windows)
       event_bus.emit_event(session.id, "window.updated", {"windows": windows})
+
+  # ------------------------------------------------------------------
+  # Lifecycle helpers
+  # ------------------------------------------------------------------
+  @staticmethod
+  def close_window_types(session: WorkspaceSession, types) -> List[Dict[str, Any]]:
+      """Remove all windows whose type is in `types`. Returns remaining windows."""
+      types = set(types or [])
+      windows = [w for w in session.get_windows() if w.get("type") not in types]
+      session.set_windows(windows)
+      return windows
+
+  @staticmethod
+  def cleanup_for_workflow_start(
+      session: WorkspaceSession,
+      workflow_type: str,
+      emit: bool = True,
+      user_id: Optional[int] = None,
+  ) -> List[Dict[str, Any]]:
+      """
+      Preserve core windows (document_viewer, live_report) and remove every
+      transient window from a previous workflow (approval panels, selectors,
+      old analysis/preview windows). This is what stops overlapping stale
+      cards and prevents a demo approval panel from leaking into read-only
+      courier analysis.
+      """
+      to_remove = set(TRANSIENT_WINDOW_TYPES)
+      # For mock workspace we still clear old transient windows; its own steps
+      # re-open the demo approval panel when the approval step runs.
+      windows = [w for w in session.get_windows() if w.get("type") not in to_remove]
+      session.set_windows(windows)
+      if emit:
+          event_bus.emit_event(
+              session.id,
+              "window.updated",
+              {"windows": windows},
+              message="تنظيف نوافذ سير العمل السابق",
+              user_id=user_id,
+          )
+      return windows
+
+  @staticmethod
+  def normalize_windows(
+      session: WorkspaceSession,
+      workflow_type: Optional[str] = None,
+  ) -> List[Dict[str, Any]]:
+      """
+      De-duplicate windows by identity (type + document/analysis id) and drop
+      a stale approval_panel when the current workflow is not the mock demo.
+      Used on session restore so a refresh yields a clean layout.
+      """
+      wf = workflow_type or session.workflow_type
+      seen: Dict[str, Dict[str, Any]] = {}
+      order: List[str] = []
+      for w in session.get_windows():
+          if w.get("type") == "approval_panel" and wf != "mock_workspace":
+              continue
+          ident = _window_identity(w)
+          if ident not in seen:
+              order.append(ident)
+          seen[ident] = w  # keep latest for the identity
+      windows = [seen[i] for i in order]
+      session.set_windows(windows)
+      return windows
 
   @staticmethod
   def ensure_document_intelligence_window(

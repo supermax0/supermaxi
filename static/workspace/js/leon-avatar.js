@@ -36,10 +36,23 @@ class LeonAvatarAdapter {
     this.el.className = `ws-leon ws-leon-mode-${this.mode}`;
   }
 
+  _safeLane(relX, width) {
+    // Keep LEON inside the center gap between the left and right window
+    // columns so it never covers the document viewer or report.
+    if (width < 900) return 0.5;
+    const colW = Math.min(460, Math.round(width * 0.30));
+    const rightW = Math.min(540, Math.round(width * 0.36));
+    const minRel = (colW + 60) / width;
+    const maxRel = (width - rightW - 60) / width;
+    if (maxRel <= minRel) return 0.5;
+    return Math.min(maxRel, Math.max(minRel, relX ?? 0.5));
+  }
+
   moveTo(relX, relY, animate = true) {
     const { width, height } = this.canvas.getSize();
-    const x = (relX ?? 0.5) * width;
-    const y = (relY ?? 0.55) * height;
+    const safeX = this._safeLane(relX, width);
+    const x = safeX * width;
+    const y = Math.min(0.72, Math.max(0.3, relY ?? 0.5)) * height;
     if (!animate) {
       this.el.style.transition = "none";
     } else {

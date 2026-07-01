@@ -180,7 +180,32 @@ python tests/workspace/test_courier_financial_preview.py
 python tests/workspace/test_courier_readonly_analysis_service.py
 python tests/workspace/test_courier_analysis_api.py
 python tests/workspace/test_courier_workflow_readonly.py
+python tests/workspace/test_window_cleanup_on_workflow_start.py
+python tests/workspace/test_no_approval_in_readonly_courier.py
+python tests/workspace/test_workspace_layout_lifecycle.py
 ```
+
+---
+
+## تنسيق النوافذ ودورة حياتها (Workspace UX)
+
+- **Layout Director** (`static/workspace/js/workspace-layout-director.js`): يوزّع النوافذ على مناطق حتمية ومتجاوبة:
+  - العمود الأيسر: `courier_settlement_analysis` / `live_report` / `document_intelligence` / `courier_issues`
+  - العمود الأيمن: `document_viewer` / `assistant_notes`
+  - الشريط السفلي: `courier_rows` / `financial_preview` / `raw_table_preview`
+  - مركز (Modal فوق الكل): `workflow_selector` / `approval_panel`
+- النوافذ **مفردة (singleton)** حسب الهوية (`type + documentId/analysisId`)؛ لا تكرار.
+- بدء أي سير عمل يستدعي `WindowOrchestrator.cleanup_for_workflow_start` فيُبقي `document_viewer` و`live_report` ويغلق النوافذ الانتقالية القديمة (منها `approval_panel`).
+- تحليل كشف التسديد **قراءة فقط** لا يفتح `approval_panel` إطلاقاً؛ ويغلق أي لوحة موافقة قديمة عند البدء.
+- عند إعادة التحميل: `GET /sessions/<id>` يستدعي `normalize_windows` لإزالة المكررات ولوحة الموافقة القديمة، ويُعاد بثّ التقرير من الصفر إذا كان فارغاً.
+- LEON يبقى في الممر الأوسط بين العمودين ولا يغطّي أي نافذة، وطبقته أسفل النوافذ/المودال.
+
+### اختبار يدوي
+1. افتح `/workspace/` وارفع مستنداً → المعاينة يمين، التقرير يسار، LEON في الوسط لا يغطّي المعاينة.
+2. اضغط **فهم المستند** → تفتح نافذة الفهم بلا لوحة موافقة.
+3. اضغط **تشغيل تجربة** ثم وافق/تجاهل (لوحة الموافقة تظهر في التجربة فقط).
+4. اضغط **تحليل كشف التسديد قراءة فقط** → لا تظهر لوحة موافقة، وتُغلق نوافذ التجربة القديمة، وتفتح نوافذ الكشف في مناطقها.
+5. حدّث الصفحة مع `?session=<id>` → تخطيط نظيف بلا تكرار وبلا أسطر تقرير مكررة.
 
 ---
 

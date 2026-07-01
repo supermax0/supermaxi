@@ -221,9 +221,11 @@ html, body {
   opacity: 0.7;
 }
 
-.ws-windows-layer { position: absolute; inset: 0; pointer-events: none; }
+.ws-windows-layer { position: absolute; inset: 0; pointer-events: none; z-index: 50; }
 .ws-windows-layer > * { pointer-events: auto; }
 
+/* Avatar sits above the canvas grid but below windows/modals so it can
+   never cover the document viewer or an approval modal. */
 .ws-avatar-layer {
   position: absolute;
   inset: 0;

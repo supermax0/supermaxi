@@ -91,6 +91,20 @@ class CourierReadonlyAnalysisService:
                 message="بدأ تحليل كشف التسديد",
                 user_id=user_id,
             )
+            # Read-only analysis must never show an approval panel or leftover
+            # transient windows from a previous demo/workflow. Core windows and
+            # the courier windows we open below are preserved.
+            WindowOrchestrator.close_window_types(
+                session,
+                ["approval_panel", "workflow_selector", "document_intelligence", "raw_table_preview"],
+            )
+            db.session.commit()
+            event_bus.emit_event(
+                session_id,
+                "window.updated",
+                {"windows": session.get_windows()},
+                user_id=user_id,
+            )
             event_bus.emit_event(
                 session_id,
                 "report.appended",
