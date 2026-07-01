@@ -3542,7 +3542,9 @@
     av.style.setProperty('--avatar-bg', avatarGradientFor(call.peer_name));
     document.getElementById('incomingCallModal').classList.add('active');
     startRingtone();
-    if (navigator.vibrate) navigator.vibrate([400, 200, 400, 200, 400]);
+    try {
+      if (navigator.vibrate) navigator.vibrate([400, 200, 400, 200, 400]);
+    } catch (_) {}
   }
 
   function hideIncomingModal() {
