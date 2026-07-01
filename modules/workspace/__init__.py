@@ -16,10 +16,16 @@ workspace_bp = Blueprint(
 
 from modules.workspace.api.session_api import session_api_bp  # noqa: E402
 from modules.workspace.api.stream_api import stream_api_bp  # noqa: E402
+from modules.workspace.api.document_api import document_api_bp  # noqa: E402
+from modules.workspace.api.workflow_api import workflow_api_bp  # noqa: E402
+from modules.workspace.api.document_intelligence_api import document_intelligence_api_bp  # noqa: E402
 from modules.workspace.routes import workspace_html_bp  # noqa: E402
 
 workspace_bp.register_blueprint(session_api_bp, url_prefix="/api")
 workspace_bp.register_blueprint(stream_api_bp, url_prefix="/api")
+workspace_bp.register_blueprint(document_api_bp, url_prefix="/api")
+workspace_bp.register_blueprint(workflow_api_bp, url_prefix="/api")
+workspace_bp.register_blueprint(document_intelligence_api_bp, url_prefix="/api")
 workspace_bp.register_blueprint(workspace_html_bp)
 
 

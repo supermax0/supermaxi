@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from flask import Blueprint, g, jsonify, request, session
 
+from modules.workspace.services.document_storage_service import DocumentStorageService
 from modules.workspace.services.mock_workflow_service import MockWorkflowService
 from modules.workspace.services.session_service import SessionService
 
@@ -34,7 +35,10 @@ def create_session():
         tenant_slug=ctx["tenant_slug"],
         workflow_type=workflow_type,
     )
-    return jsonify({"success": True, "session": ws.to_dict()}), 201
+    return jsonify({
+        "success": True,
+        "session": DocumentStorageService.enrich_session_dict(ws),
+    }), 201
 
 
 @session_api_bp.route("/sessions", methods=["GET"])
@@ -66,7 +70,10 @@ def get_session(session_id):
     )
     if not ws:
         return jsonify({"success": False, "error": "not_found"}), 404
-    return jsonify({"success": True, "session": ws.to_dict()})
+    return jsonify({
+        "success": True,
+        "session": DocumentStorageService.enrich_session_dict(ws),
+    })
 
 
 @session_api_bp.route("/sessions/<session_id>/run-mock", methods=["POST"])
@@ -107,4 +114,7 @@ def cancel_session(session_id):
     )
     if not ws:
         return jsonify({"success": False, "error": "not_found"}), 404
-    return jsonify({"success": True, "session": ws.to_dict()})
+    return jsonify({
+        "success": True,
+        "session": DocumentStorageService.enrich_session_dict(ws),
+    })

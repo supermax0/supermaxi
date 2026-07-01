@@ -133,6 +133,21 @@ html, body {
   background: #fef2f2;
 }
 
+.ws-btn-upload {
+  background: #fff;
+  color: var(--ws-accent);
+  border-color: rgba(99, 102, 241, 0.35);
+}
+
+.ws-btn-upload:hover {
+  background: var(--ws-accent-soft);
+}
+
+.ws-btn-loading {
+  opacity: 0.75;
+  cursor: wait;
+}
+
 .ws-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -215,7 +230,126 @@ html, body {
   padding: 14px;
 }
 
-/* Document viewer */
+/* Document viewer — Phase 2 */
+.ws-doc-viewer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+  min-height: 280px;
+}
+
+.ws-doc-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 2px;
+}
+
+.ws-doc-meta-empty {
+  color: var(--ws-muted);
+  font-size: 13px;
+}
+
+.ws-doc-meta-name {
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ws-doc-meta-details {
+  display: flex;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--ws-muted);
+  flex-wrap: wrap;
+}
+
+.ws-doc-paper-has-preview {
+  flex: 1;
+  min-height: 240px;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.ws-doc-preview-frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 300px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.ws-doc-pdf-frame {
+  width: 100%;
+  height: 100%;
+  min-height: 300px;
+  border: 0;
+  background: #fff;
+}
+
+.ws-doc-image-frame {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8fafc;
+}
+
+.ws-doc-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.ws-doc-loading {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--ws-muted);
+}
+
+.ws-doc-skeleton {
+  height: 200px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: ws-skeleton 1.2s ease infinite;
+  margin-bottom: 12px;
+}
+
+@keyframes ws-skeleton {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+.ws-doc-error {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 13px;
+}
+
+.ws-doc-hint {
+  margin-top: 16px;
+  color: var(--ws-muted);
+  font-size: 13px;
+}
+
+.ws-doc-scan-hint {
+  font-size: 12px;
+  color: #6366f1;
+  margin-top: 8px;
+}
+
+/* Document viewer — placeholder */
 .ws-doc-paper {
   position: relative;
   background: #fff;
@@ -442,6 +576,238 @@ html, body {
 .ws-leon-mode-reading_document .ws-leon-core,
 .ws-leon-mode-writing_report .ws-leon-core {
   background: linear-gradient(145deg, #c4b5fd, #8b5cf6);
+}
+
+.ws-leon-mode-reading_document .ws-leon-core,
+.ws-leon-mode-writing_report .ws-leon-core {
+  background: linear-gradient(145deg, #c4b5fd, #8b5cf6);
+}
+
+.ws-leon-mode-matching .ws-leon-core {
+  background: linear-gradient(145deg, #fde68a, #f59e0b);
+}
+
+.ws-leon-mode-waiting_approval .ws-leon-core {
+  background: linear-gradient(145deg, #fbcfe8, #ec4899);
+}
+
+.ws-leon-mode-warning .ws-leon-core {
+  background: linear-gradient(145deg, #fed7aa, #ea580c);
+}
+
+.ws-leon-mode-error .ws-leon-core {
+  background: linear-gradient(145deg, #fecaca, #dc2626);
+}
+
+/* Approval panel */
+.ws-approval-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ws-approval-message {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.ws-approval-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ws-muted);
+}
+
+.ws-approval-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* Workflow selector */
+.ws-workflow-selector-hint {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--ws-muted);
+}
+
+.ws-workflow-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ws-workflow-option {
+  border: 1px solid var(--ws-border);
+  background: #fff;
+  border-radius: 10px;
+  padding: 10px 12px;
+  text-align: right;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.ws-workflow-option:hover {
+  background: var(--ws-accent-soft);
+  border-color: rgba(99, 102, 241, 0.35);
+}
+
+/* Timeline */
+.ws-timeline-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 160px;
+  overflow: auto;
+  font-size: 11px;
+}
+
+.ws-timeline-list li {
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--ws-border);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ws-timeline-type {
+  color: var(--ws-accent);
+  font-weight: 600;
+}
+
+.ws-timeline-msg {
+  color: var(--ws-muted);
+}
+
+/* Document intelligence — Phase 4 */
+.ws-doc-intel-disclaimer {
+  font-size: 11px;
+  color: #b45309;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin: 0 0 10px;
+  line-height: 1.4;
+}
+
+.ws-doc-intel-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--ws-border);
+  font-size: 13px;
+}
+
+.ws-doc-intel-label {
+  color: var(--ws-muted);
+  font-weight: 600;
+}
+
+.ws-doc-intel-value {
+  font-weight: 600;
+}
+
+.ws-doc-intel-section {
+  margin-top: 10px;
+}
+
+.ws-doc-intel-section h4 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: var(--ws-accent);
+}
+
+.ws-doc-intel-signals {
+  margin: 0;
+  padding-right: 18px;
+  font-size: 12px;
+  color: var(--ws-text);
+}
+
+.ws-doc-intel-sample {
+  background: #f1f5f9;
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 11px;
+  max-height: 120px;
+  overflow: auto;
+  white-space: pre-wrap;
+  margin: 0 0 6px;
+}
+
+.ws-doc-intel-copy {
+  font-size: 11px;
+  padding: 4px 10px;
+}
+
+.ws-doc-intel-warnings {
+  color: #b91c1c;
+}
+
+.ws-confidence-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ws-confidence-high {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.ws-confidence-mid {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.ws-confidence-low {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.ws-raw-table-preview {
+  font-size: 12px;
+}
+
+.ws-raw-table-meta {
+  color: var(--ws-muted);
+  margin: 0 0 6px;
+}
+
+.ws-raw-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 12px;
+}
+
+.ws-raw-table td {
+  border: 1px solid var(--ws-border);
+  padding: 4px 6px;
+  font-size: 11px;
+}
+
+.ws-raw-table-more {
+  font-size: 11px;
+  color: var(--ws-muted);
+}
+
+.ws-workflow-recommended {
+  font-size: 12px;
+  color: var(--ws-accent);
+  margin: 0 0 8px;
+}
+
+.ws-workflow-option-recommended {
+  border-color: var(--ws-accent) !important;
+  background: var(--ws-accent-soft) !important;
+  font-weight: 700;
 }
 
 @media (max-width: 900px) {

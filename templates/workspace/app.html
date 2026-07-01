@@ -15,8 +15,13 @@
         <span id="ws-status-pill" class="ws-status-pill ws-status-idle">جاهز</span>
       </div>
       <div class="ws-toolbar-actions">
+        <button type="button" id="btn-upload" class="ws-btn ws-btn-upload">رفع مستند</button>
+        <button type="button" id="btn-intelligence" class="ws-btn ws-btn-primary" disabled>فهم المستند</button>
+        <button type="button" id="btn-workflow" class="ws-btn ws-btn-primary">تشغيل Workflow</button>
+        <button type="button" id="btn-select-workflow" class="ws-btn ws-btn-ghost">اختيار نوع العمل</button>
+        <button type="button" id="btn-next-step" class="ws-btn ws-btn-ghost" hidden>الخطوة التالية</button>
         <button type="button" id="btn-new-session" class="ws-btn ws-btn-ghost">جلسة جديدة</button>
-        <button type="button" id="btn-run-mock" class="ws-btn ws-btn-primary">تشغيل تجربة</button>
+        <button type="button" id="btn-run-mock" class="ws-btn ws-btn-ghost">تشغيل تجربة</button>
         <button type="button" id="btn-cancel" class="ws-btn ws-btn-danger">إلغاء</button>
       </div>
     </header>
@@ -33,8 +38,17 @@
   <script src="{{ url_for('static', filename='workspace/js/windows/live-report-window.js') }}"></script>
   <script src="{{ url_for('static', filename='workspace/js/windows/document-viewer-window.js') }}"></script>
   <script src="{{ url_for('static', filename='workspace/js/windows/assistant-notes-window.js') }}"></script>
+  <script src="{{ url_for('static', filename='workspace/js/windows/approval-panel-window.js') }}"></script>
+  <script src="{{ url_for('static', filename='workspace/js/windows/workflow-selector-window.js') }}"></script>
+  <script src="{{ url_for('static', filename='workspace/js/windows/session-timeline-window.js') }}"></script>
+  <script src="{{ url_for('static', filename='workspace/js/windows/document-intelligence-window.js') }}"></script>
+  <script src="{{ url_for('static', filename='workspace/js/windows/raw-table-preview-window.js') }}"></script>
   <script src="{{ url_for('static', filename='workspace/js/window-manager.js') }}"></script>
+  <script src="{{ url_for('static', filename='workspace/js/session-timeline.js') }}"></script>
+  <script src="{{ url_for('static', filename='workspace/js/workflow-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='workspace/js/document-intelligence-client.js') }}"></script>
   <script src="{{ url_for('static', filename='workspace/js/leon-avatar.js') }}"></script>
+  <script src="{{ url_for('static', filename='workspace/js/upload-manager.js') }}"></script>
   <script src="{{ url_for('static', filename='workspace/js/workspace-app.js') }}"></script>
 </body>
 </html>

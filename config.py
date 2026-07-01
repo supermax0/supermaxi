@@ -65,6 +65,10 @@ class Config:
     UPLOAD_VIDEO_ROOT = os.environ.get("UPLOAD_VIDEO_ROOT", "").strip()
     UPLOAD_THUMBNAIL_ROOT = os.environ.get("UPLOAD_THUMBNAIL_ROOT", "").strip()
 
+    # AI Workspace — رفع المستندات
+    WORKSPACE_UPLOAD_MAX_MB = int(os.environ.get("WORKSPACE_UPLOAD_MAX_MB", "20"))
+    WORKSPACE_UPLOAD_FOLDER = os.environ.get("WORKSPACE_UPLOAD_FOLDER", "static/uploads/workspace")
+
 
 class DevelopmentConfig(Config):
     """إعدادات بيئة التطوير."""

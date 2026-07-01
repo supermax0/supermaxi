@@ -31,7 +31,11 @@ def stream_session(session_id):
     if not ws:
         return jsonify({"success": False, "error": "not_found"}), 404
 
-    last_event_id = request.headers.get("Last-Event-ID") or request.args.get("after", "0")
+    last_event_id = (
+        request.headers.get("Last-Event-ID")
+        or request.args.get("since")
+        or request.args.get("after", "0")
+    )
     try:
         after_id = int(last_event_id)
     except (TypeError, ValueError):
@@ -52,7 +56,11 @@ def stream_session(session_id):
                     etype = item.get("type", "message")
                     data = json.dumps(item, ensure_ascii=False)
                     yield f"id: {eid}\nevent: {etype}\ndata: {data}\n\n"
-                    if etype in ("session.completed", "session.cancelled"):
+                    if etype in (
+                        "session.completed",
+                        "session.cancelled",
+                        "workflow.completed",
+                    ):
                         break
                 except queue.Empty:
                     heartbeat += 1

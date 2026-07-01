@@ -78,14 +78,15 @@ def test_run_mock_completes_session():
 
         from modules.workspace.services.session_service import SessionService
         from modules.workspace.services.mock_workflow_service import MockWorkflowService
+        from modules.workspace.services.workflow_engine import WorkflowEngine
         from modules.workspace.models.workspace_session import WorkspaceSession
 
         ws = SessionService.create_session(user_id=3, tenant_slug=tenant)
-        MockWorkflowService._run_mock(app, ws.id, 3, tenant)
+        WorkflowEngine.run_until_blocked(ws.id, "mock_workspace", 3, tenant, auto_approve=True)
 
         updated = WorkspaceSession.query.get(ws.id)
         assert updated.status == "completed"
-        assert updated.current_step_id == "mock_complete"
+        assert updated.current_step_id == "complete"
         print("test_run_mock_completes_session ok")
 
 

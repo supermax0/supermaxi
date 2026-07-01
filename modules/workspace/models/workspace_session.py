@@ -96,6 +96,7 @@ class WorkspaceSession(db.Model):
         self.metadata_json = json.dumps(data or {}, ensure_ascii=False)
 
     def to_dict(self):
+        meta = self.get_metadata()
         return {
             "id": self.id,
             "tenant_slug": self.tenant_slug,
@@ -105,7 +106,12 @@ class WorkspaceSession(db.Model):
             "current_step_id": self.current_step_id,
             "windows": self.get_windows(),
             "avatar_state": self.get_avatar_state(),
-            "metadata": self.get_metadata(),
+            "metadata": meta,
+            "workflow_state": {
+                "completed_steps": meta.get("completed_steps") or [],
+                "pending_actions": meta.get("pending_actions") or [],
+                "last_event_id": meta.get("last_event_id"),
+            },
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

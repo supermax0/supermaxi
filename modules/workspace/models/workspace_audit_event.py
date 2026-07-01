@@ -35,9 +35,10 @@ class WorkspaceAuditEvent(db.Model):
 
     def to_sse_dict(self):
         return {
+            "id": self.id,
             "type": self.event_type,
+            "event_id": self.id,
             "payload": self.get_payload(),
             "message": self.message,
-            "event_id": self.id,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }

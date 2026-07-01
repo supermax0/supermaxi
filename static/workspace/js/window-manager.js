@@ -5,11 +5,21 @@ class WorkspaceWindowManager {
   constructor(layerEl) {
     this.layer = layerEl;
     this.windows = new Map();
+    this.workflowHandlers = {};
     this.renderers = {
       document_viewer: DocumentViewerWindow,
       live_report: LiveReportWindow,
       assistant_notes: AssistantNotesWindow,
+      approval_panel: ApprovalPanelWindow,
+      workflow_selector: WorkflowSelectorWindow,
+      session_timeline: SessionTimelineWindow,
+      document_intelligence: DocumentIntelligenceWindow,
+      raw_table_preview: RawTablePreviewWindow,
     };
+  }
+
+  setWorkflowHandlers(handlers) {
+    this.workflowHandlers = handlers || {};
   }
 
   renderWindows(windowsList) {
@@ -44,6 +54,16 @@ class WorkspaceWindowManager {
     this.openOrUpdateWindow(merged);
   }
 
+  updateTimelineItems(items) {
+    const el = [...this.windows.entries()].find(([, node]) => {
+      const spec = JSON.parse(node.dataset.spec || "{}");
+      return spec.type === "session_timeline";
+    });
+    if (!el) return;
+    const body = el[1].querySelector(".ws-window-body");
+    SessionTimelineWindow.update(body, items);
+  }
+
   focusWindow(windowId) {
     this.windows.forEach((el, id) => {
       el.classList.toggle("ws-window-focused", id === windowId);
@@ -62,6 +82,7 @@ class WorkspaceWindowManager {
   applyEvent(event) {
     const type = event.type;
     const payload = event.payload || {};
+    const eventId = event.id || event.event_id;
 
     if (type === "window.opened" && payload.window) {
       this.openWindow(payload.window);
@@ -76,12 +97,14 @@ class WorkspaceWindowManager {
       });
       if (reportWin) {
         const body = reportWin[1].querySelector(".ws-window-body");
-        LiveReportWindow.appendLine(body, payload.line);
-        const spec = JSON.parse(reportWin[1].dataset.spec || "{}");
-        spec.props = spec.props || {};
-        spec.props.lines = spec.props.lines || [];
-        spec.props.lines.push(payload.line);
-        reportWin[1].dataset.spec = JSON.stringify(spec);
+        const added = LiveReportWindow.appendLine(body, payload.line, eventId);
+        if (added) {
+          const spec = JSON.parse(reportWin[1].dataset.spec || "{}");
+          spec.props = spec.props || {};
+          spec.props.lines = spec.props.lines || [];
+          spec.props.lines.push(payload.line);
+          reportWin[1].dataset.spec = JSON.stringify(spec);
+        }
       }
     }
     if (type === "document.scan.updated") {
@@ -92,6 +115,26 @@ class WorkspaceWindowManager {
       if (docWin) {
         const body = docWin[1].querySelector(".ws-window-body");
         DocumentViewerWindow.updateScan(body, payload);
+      }
+    }
+    if (type === "document.text.extracted" || type === "document.classified" || type === "document.intelligence.completed" || type === "document.intelligence.failed") {
+      const intelWin = [...this.windows.entries()].find(([, el]) => {
+        const spec = JSON.parse(el.dataset.spec || "{}");
+        return spec.type === "document_intelligence";
+      });
+      if (intelWin) {
+        const body = intelWin[1].querySelector(".ws-window-body");
+        DocumentIntelligenceWindow.patchFromEvent(body, payload);
+      }
+    }
+    if (type === "document.tables.extracted") {
+      const tblWin = [...this.windows.entries()].find(([, el]) => {
+        const spec = JSON.parse(el.dataset.spec || "{}");
+        return spec.type === "raw_table_preview";
+      });
+      if (tblWin) {
+        const body = tblWin[1].querySelector(".ws-window-body");
+        RawTablePreviewWindow.patchFromEvent(body, payload);
       }
     }
   }
@@ -130,8 +173,20 @@ class WorkspaceWindowManager {
   _renderBody(el, spec) {
     const body = el.querySelector(".ws-window-body");
     const renderer = this.renderers[spec.type];
+    const h = this.workflowHandlers;
     if (renderer && renderer.render) {
-      renderer.render(body, spec);
+      if (spec.type === "approval_panel") {
+        renderer.render(body, spec, {
+          onApprove: (stepId) => h.onApprove && h.onApprove(stepId),
+          onReject: (stepId) => h.onReject && h.onReject(stepId),
+        });
+      } else if (spec.type === "workflow_selector") {
+        renderer.render(body, spec, {
+          onSelect: (type) => h.onSelectWorkflow && h.onSelectWorkflow(type),
+        });
+      } else {
+        renderer.render(body, spec);
+      }
     } else {
       body.innerHTML = `<p style="color:#64748b;font-size:13px">نافذة: ${spec.type}</p>`;
     }
