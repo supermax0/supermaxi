@@ -626,7 +626,7 @@
             </td>
             <td data-label="{{ _('shipping_th_actions') }}">
               <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
-                <button type="button" class="btn btn-primary set-active-scan-btn" onclick="setActiveShippingForScan({{ c.id }}, {{ c.name|tojson }})"
+                <button type="button" class="btn btn-primary set-active-scan-btn" data-company-id="{{ c.id }}"
                   style="padding: 8px 16px; min-width: auto;">
                   <span>📡</span>
                   <span>تعيين للمسح</span>
@@ -686,12 +686,23 @@
     let currentCompany = null;
 
     function setActiveShippingForScan(id, name) {
+      if (!name) {
+        const row = document.querySelector('#companiesTable tr[data-company-id="' + id + '"]');
+        name = row ? row.getAttribute('data-company-name') || '' : '';
+      }
       if (window.FinoraBarcode) {
         FinoraBarcode.setActiveShippingCompany(id, name);
       }
       refreshActiveShippingUI();
       showToast("تم تعيين «" + name + "» كشركة نشطة للمسح", "success");
     }
+
+    document.addEventListener('click', function (e) {
+      const btn = e.target.closest('.set-active-scan-btn');
+      if (!btn) return;
+      const id = btn.getAttribute('data-company-id');
+      if (id) setActiveShippingForScan(id);
+    });
 
     function refreshActiveShippingUI() {
       var active = window.FinoraBarcode ? FinoraBarcode.getActiveShippingCompany() : null;

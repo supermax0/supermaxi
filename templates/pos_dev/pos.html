@@ -673,6 +673,39 @@
   <script src="{{ url_for('static', filename='js/notification-sound.js') }}"></script>
   <script src="{{ url_for('static', filename='js/pos-white-pro.js') }}"></script>
 
+  {% set is_admin = session.get("role") == "admin" or (current_employee and current_employee.role == "admin") %}
+  {% if (is_admin or (current_employee and can_see_messages)) and business_allows('messages') and plan_has("messages") %}
+  {% if employee and employee.shipping_company_id %}
+  <a href="/delivery/archive" class="pos-floating-archive-btn" title="أرشيف الكشوفات">📦</a>
+  {% endif %}
+  <a href="/messages" class="pos-floating-chat-btn" title="المراسلة">
+    <i class="fa fa-comments"></i>
+    <span class="pos-chat-badge hidden" id="posChatBadge">0</span>
+  </a>
+  <script>
+    (function () {
+      function updatePosChatBadge() {
+        fetch('/messages/unread-count')
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (data) {
+            if (!data) return;
+            var badge = document.getElementById('posChatBadge');
+            if (!badge) return;
+            if (data.unread_count > 0) {
+              badge.textContent = data.unread_count;
+              badge.classList.remove('hidden');
+            } else {
+              badge.classList.add('hidden');
+            }
+          })
+          .catch(function () {});
+      }
+      updatePosChatBadge();
+      setInterval(updatePosChatBadge, 10000);
+    })();
+  </script>
+  {% endif %}
+
 </body>
 
 </html>

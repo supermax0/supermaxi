@@ -1298,11 +1298,6 @@
       font-size: 15px;
     }
 
-    .floating-chat-btn,
-    .floating-archive-btn {
-      display: none !important;
-    }
-
     @media (max-width: 900px) {
       .pos {
         padding: 0;
@@ -2767,7 +2762,42 @@
       }
     })
 
+    function updateMessagesBadge() {
+      fetch('/messages/unread-count')
+        .then(function (r) {
+          if (!r.ok) throw new Error('Network response was not ok');
+          return r.json();
+        })
+        .then(function (data) {
+          var badge = document.getElementById('chatBadge');
+          if (!badge) return;
+          if (data.unread_count > 0) {
+            badge.textContent = data.unread_count;
+            badge.classList.remove('hidden');
+          } else {
+            badge.classList.add('hidden');
+          }
+        })
+        .catch(function () {});
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      updateMessagesBadge();
+      setInterval(updateMessagesBadge, 10000);
+    });
+
   </script>
+
+  {% set is_admin = session.get("role") == "admin" or (current_employee and current_employee.role == "admin") %}
+  {% if (is_admin or (current_employee and can_see_messages)) and business_allows('messages') and plan_has("messages") %}
+  {% if employee and employee.shipping_company_id %}
+  <a href="/delivery/archive" class="floating-archive-btn" title="أرشيف الكشوفات">📦</a>
+  {% endif %}
+  <a href="/messages" class="floating-chat-btn" title="المراسلة">
+    <i class="fa fa-comments"></i>
+    <span class="chat-badge hidden" id="chatBadge">0</span>
+  </a>
+  {% endif %}
 
 </body>
 

@@ -571,61 +571,85 @@
 ====================================================== */
     .profile-modal {
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.6);
-      backdrop-filter: blur(8px);
+      inset: 0;
+      background: rgba(2, 6, 23, 0.62);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
       display: none;
       align-items: center;
       justify-content: center;
       z-index: 1000;
-      animation: modalFadeIn 0.3s ease;
+      padding: 20px;
+      animation: modalFadeIn 0.22s ease;
     }
 
     @keyframes modalFadeIn {
-      from {
-        opacity: 0;
-      }
-
-      to {
-        opacity: 1;
-      }
+      from { opacity: 0; }
+      to { opacity: 1; }
     }
 
     .profile-card {
       background: var(--card);
-      width: 400px;
-      max-width: 90%;
-      border-radius: 24px;
-      padding: 32px;
+      width: 100%;
+      max-width: 440px;
+      max-height: 92vh;
+      overflow-y: auto;
+      border-radius: 22px;
+      padding: 0;
       border: 1px solid var(--border);
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      box-shadow: 0 28px 64px rgba(0, 0, 0, 0.45);
       position: relative;
-      animation: cardSlideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      animation: cardSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     @keyframes cardSlideUp {
-      from {
-        transform: translateY(20px) scale(0.95);
-      }
+      from { transform: translateY(16px) scale(0.98); opacity: 0; }
+      to { transform: translateY(0) scale(1); opacity: 1; }
+    }
 
-      to {
-        transform: translateY(0) scale(1);
-      }
+    .profile-close-btn {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-muted);
+      font-size: 18px;
+      line-height: 1;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+
+    :root[dir="ltr"] .profile-close-btn {
+      left: auto;
+      right: 14px;
+    }
+
+    .profile-close-btn:hover {
+      background: rgba(239, 68, 68, 0.12);
+      border-color: rgba(239, 68, 68, 0.3);
+      color: var(--danger);
     }
 
     .profile-header {
       text-align: center;
-      margin-bottom: 24px;
+      padding: 28px 24px 20px;
+      border-bottom: 1px solid var(--border-light);
+      background: linear-gradient(180deg, rgba(59, 130, 246, 0.06), transparent);
     }
 
     .profile-avatar-wrapper {
       position: relative;
-      width: 100px;
-      height: 100px;
-      margin: 0 auto 16px;
+      width: 88px;
+      height: 88px;
+      margin: 0 auto 14px;
     }
 
     .profile-avatar {
@@ -636,11 +660,12 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 36px;
+      font-size: 32px;
       font-weight: 800;
       color: white;
-      box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+      box-shadow: 0 8px 24px rgba(59, 130, 246, 0.28);
       overflow: hidden;
+      border: 3px solid rgba(255, 255, 255, 0.12);
     }
 
     .profile-avatar img {
@@ -653,70 +678,144 @@
       position: absolute;
       bottom: 0;
       right: 0;
-      width: 32px;
-      height: 32px;
+      width: 30px;
+      height: 30px;
       background: var(--primary);
       color: white;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      border: 3px solid var(--card);
+      border: 2px solid var(--card);
       cursor: pointer;
-      font-size: 14px;
+      font-size: 12px;
+      transition: transform 0.15s;
+    }
+
+    .avatar-edit-btn:hover {
+      transform: scale(1.06);
+    }
+
+    .profile-user-name {
+      margin: 0;
+      font-weight: 800;
+      font-size: 20px;
+      color: var(--text);
+      letter-spacing: -0.02em;
+    }
+
+    .profile-user-role {
+      color: var(--text-muted);
+      font-size: 12px;
+      margin: 4px 0 0;
+      font-weight: 600;
+      text-transform: lowercase;
+    }
+
+    .profile-body {
+      padding: 20px 24px 8px;
+    }
+
+    .profile-section {
+      margin-bottom: 20px;
+    }
+
+    .profile-section:last-child {
+      margin-bottom: 0;
     }
 
     .profile-section-title {
-      font-size: 14px;
-      font-weight: 700;
+      font-size: 11px;
+      font-weight: 800;
       color: var(--text-muted);
       text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 12px;
-      margin-top: 24px;
+      letter-spacing: 0.06em;
+      margin: 0 0 12px;
       display: block;
     }
 
+    .profile-field-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
     .profile-field {
-      margin-bottom: 16px;
+      margin-bottom: 0;
     }
 
     .profile-input {
       width: 100%;
-      background: rgba(255, 255, 255, 0.05);
+      background: rgba(255, 255, 255, 0.04);
       border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 12px 16px;
+      padding: 12px 14px;
       color: var(--text);
-      font-weight: 500;
+      font-weight: 600;
+      font-size: 14px;
       outline: none;
-      transition: all 0.3s;
+      transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+      box-sizing: border-box;
     }
 
     .profile-input:focus {
       border-color: var(--primary);
-      background: rgba(255, 255, 255, 0.08);
-      box-shadow: 0 0 0 4px var(--primary-glow);
+      background: rgba(255, 255, 255, 0.06);
+      box-shadow: 0 0 0 3px var(--primary-glow);
     }
 
-    .settings-grid {
+    .profile-subsection {
+      margin-bottom: 14px;
+    }
+
+    .profile-subsection:last-child {
+      margin-bottom: 0;
+    }
+
+    .profile-subsection-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .profile-option-row {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-bottom: 24px;
+      gap: 10px;
+    }
+
+    .profile-lang-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
     }
 
     .setting-item {
-      padding: 12px;
+      padding: 11px 12px;
+      min-height: 44px;
       background: rgba(255, 255, 255, 0.03);
       border: 1px solid var(--border);
-      border-radius: 14px;
+      border-radius: 12px;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 10px;
-      transition: all 0.2s;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.18s ease;
       font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+      text-align: center;
+      user-select: none;
+    }
+
+    .setting-item i {
+      font-size: 14px;
+      opacity: 0.85;
     }
 
     .setting-item:hover {
@@ -728,26 +827,67 @@
       background: var(--primary-glow);
       border-color: var(--primary);
       color: var(--primary);
+      box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.15);
     }
 
-    .modal-footer {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      margin-top: 32px;
-      padding-top: 24px;
+    .setting-item--toggle {
+      justify-content: flex-start;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .setting-item--toggle .toggle-status {
+      margin-inline-start: auto;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-muted);
+    }
+
+    .setting-item--toggle.active .toggle-status {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--success);
+    }
+
+    .profile-footer {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      padding: 16px 24px 20px;
       border-top: 1px solid var(--border-light);
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .profile-footer .btn {
+      min-height: 44px;
+      border-radius: 12px;
+      font-weight: 800;
+      font-size: 14px;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.15s, opacity 0.15s;
+    }
+
+    .profile-footer .btn:active {
+      transform: scale(0.98);
     }
 
     .btn-save {
-      flex: 1;
       background: var(--gradient-primary);
       color: white;
+      box-shadow: 0 4px 14px rgba(59, 130, 246, 0.3);
     }
 
     .btn-close {
-      background: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.06);
       color: var(--text);
+      border: 1px solid var(--border) !important;
+    }
+
+    .btn-close:hover {
+      background: rgba(255, 255, 255, 0.1);
     }
 
     .logout-btn-modal {
@@ -756,21 +896,64 @@
       justify-content: center;
       gap: 8px;
       padding: 12px;
-      width: 100%;
-      background: rgba(239, 68, 68, 0.1);
+      margin: 0 24px 20px;
+      background: rgba(239, 68, 68, 0.08);
       color: var(--danger);
-      border-radius: 14px;
+      border-radius: 12px;
       text-decoration: none;
       font-weight: 700;
-      margin-top: 16px;
-      transition: all 0.3s;
-      border: 1px solid rgba(239, 68, 68, 0.2);
+      font-size: 14px;
+      transition: all 0.2s;
+      border: 1px solid rgba(239, 68, 68, 0.18);
     }
 
     .logout-btn-modal:hover {
       background: var(--danger);
       color: white;
-      transform: translateY(-2px);
+      transform: translateY(-1px);
+    }
+
+    :root[data-theme="light"] .profile-card {
+      box-shadow: 0 24px 56px rgba(15, 23, 42, 0.14);
+    }
+
+    :root[data-theme="light"] .profile-header {
+      background: linear-gradient(180deg, rgba(59, 130, 246, 0.05), transparent);
+    }
+
+    :root[data-theme="light"] .profile-input {
+      background: #f8fafc;
+    }
+
+    :root[data-theme="light"] .profile-input:focus {
+      background: #fff;
+    }
+
+    :root[data-theme="light"] .setting-item {
+      background: #f8fafc;
+    }
+
+    :root[data-theme="light"] .setting-item:hover {
+      background: #f1f5f9;
+    }
+
+    :root[data-theme="light"] .profile-close-btn {
+      background: #fff;
+    }
+
+    :root[data-theme="light"] .profile-footer {
+      background: #f8fafc;
+    }
+
+    :root[data-theme="light"] .btn-close {
+      background: #fff;
+    }
+
+    @media (max-width: 480px) {
+      .profile-modal { padding: 12px; }
+      .profile-body,
+      .profile-footer { padding-left: 16px; padding-right: 16px; }
+      .logout-btn-modal { margin-left: 16px; margin-right: 16px; }
     }
 
     .logout-bar {
@@ -2228,6 +2411,8 @@ or request.path.startswith('/superadmin') %}
   {% if session.get("user_id") %}
   <div id="profileModal" class="profile-modal" onclick="if(event.target==this) closeProfileModal()">
     <div class="profile-card">
+      <button type="button" class="profile-close-btn" onclick="closeProfileModal()" aria-label="{{ _('cancel') }}">✕</button>
+
       <div class="profile-header">
         <div class="profile-avatar-wrapper">
           <div class="profile-avatar" id="modalAvatar">
@@ -2243,53 +2428,67 @@ or request.path.startswith('/superadmin') %}
           <input type="file" id="profilePicUpload" style="display:none" accept="image/*"
             onchange="uploadProfilePic(this)">
         </div>
-        <h3 id="modalUserNameTitle" style="margin:0;font-weight:800">{{ session.get("name") }}</h3>
-        <p style="color:var(--text-muted);font-size:12px;margin:5px 0">{{ current_employee.username if current_employee
-          else '' }}</p>
+        <h3 class="profile-user-name" id="modalUserNameTitle">{{ session.get("name") }}</h3>
+        <p class="profile-user-role">{{ current_employee.username if current_employee else '' }}</p>
       </div>
 
-      <span class="profile-section-title">{{ _('personal_info') }}</span>
-      <div class="profile-field">
-        <input type="text" id="profileNameInput" class="profile-input" value="{{ session.get('name') }}"
-          placeholder="{{ _('full_name') }}">
+      <div class="profile-body">
+        <div class="profile-section">
+          <span class="profile-section-title">{{ _('personal_info') }}</span>
+          <label class="profile-field-label" for="profileNameInput">{{ _('full_name') }}</label>
+          <div class="profile-field">
+            <input type="text" id="profileNameInput" class="profile-input" value="{{ session.get('name') }}"
+              placeholder="{{ _('full_name') }}">
+          </div>
+        </div>
+
+        <div class="profile-section">
+          <span class="profile-section-title">{{ _('system_preferences') }}</span>
+
+          <div class="profile-subsection">
+            <span class="profile-subsection-label">المظهر</span>
+            <div class="profile-option-row" data-setting-group="theme">
+              <div
+                class="setting-item {% if current_employee and current_employee.theme_preference == 'dark' %}active{% endif %}"
+                onclick="setProfileTheme('dark', this)">
+                <i class="fa fa-moon"></i> {{ _('theme_dark') }}
+              </div>
+              <div
+                class="setting-item {% if current_employee and current_employee.theme_preference == 'light' %}active{% endif %}"
+                onclick="setProfileTheme('light', this)">
+                <i class="fa fa-sun"></i> {{ _('theme_light') }}
+              </div>
+            </div>
+          </div>
+
+          <div class="profile-subsection">
+            <span class="profile-subsection-label">اللغة</span>
+            <div class="profile-lang-grid" data-setting-group="lang">
+              <div class="setting-item {% if current_employee and current_employee.language == 'ar' %}active{% endif %}"
+                onclick="setProfileLang('ar', this)">العربية</div>
+              <div class="setting-item {% if current_employee and current_employee.language == 'en' %}active{% endif %}"
+                onclick="setProfileLang('en', this)">English</div>
+              <div class="setting-item {% if current_employee and current_employee.language == 'ku' %}active{% endif %}"
+                onclick="setProfileLang('ku', this)">کوردی</div>
+              <div class="setting-item {% if current_employee and current_employee.language == 'tr' %}active{% endif %}"
+                onclick="setProfileLang('tr', this)">Türkçe</div>
+            </div>
+          </div>
+
+          <div class="profile-subsection">
+            <span class="profile-subsection-label">الإشعارات</span>
+            <div class="setting-item setting-item--toggle" id="notificationSoundToggle" onclick="toggleNotificationSound(this)">
+              <i class="fa fa-bell"></i>
+              <span id="notificationSoundLabel">صوت الإشعارات</span>
+              <span class="toggle-status" id="notificationSoundStatus">—</span>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <span class="profile-section-title">{{ _('system_preferences') }}</span>
-      <div class="settings-grid">
-        <div
-          class="setting-item {% if current_employee and current_employee.theme_preference == 'dark' %}active{% endif %}"
-          onclick="setProfileTheme('dark', this)">
-          <i class="fa fa-moon"></i> {{ _('theme_dark') }}
-        </div>
-        <div
-          class="setting-item {% if current_employee and current_employee.theme_preference == 'light' %}active{% endif %}"
-          onclick="setProfileTheme('light', this)">
-          <i class="fa fa-sun"></i> {{ _('theme_light') }}
-        </div>
-        <div class="setting-item {% if current_employee and current_employee.language == 'ar' %}active{% endif %}"
-          onclick="setProfileLang('ar', this)">
-          العربية
-        </div>
-        <div class="setting-item {% if current_employee and current_employee.language == 'en' %}active{% endif %}"
-          onclick="setProfileLang('en', this)">
-          English
-        </div>
-        <div class="setting-item {% if current_employee and current_employee.language == 'ku' %}active{% endif %}"
-          onclick="setProfileLang('ku', this)">
-          کوردی
-        </div>
-        <div class="setting-item {% if current_employee and current_employee.language == 'tr' %}active{% endif %}"
-          onclick="setProfileLang('tr', this)">
-          Türkçe
-        </div>
-        <div class="setting-item" id="notificationSoundToggle" onclick="toggleNotificationSound(this)">
-          <i class="fa fa-bell"></i> <span id="notificationSoundLabel">صوت الإشعارات</span>
-        </div>
-      </div>
-
-      <div class="modal-footer">
-        <button class="btn btn-close" onclick="closeProfileModal()">{{ _('cancel') }}</button>
-        <button class="btn btn-save" onclick="saveProfileChanges()">{{ _('save_changes') }}</button>
+      <div class="profile-footer">
+        <button type="button" class="btn btn-close" onclick="closeProfileModal()">{{ _('cancel') }}</button>
+        <button type="button" class="btn btn-save" onclick="saveProfileChanges()">{{ _('save_changes') }}</button>
       </div>
 
       <a href="/logout" class="logout-btn-modal">
@@ -2629,12 +2828,14 @@ or request.path.startswith('/superadmin') %}
     function syncNotificationSoundToggle() {
       var toggle = document.getElementById("notificationSoundToggle");
       var label = document.getElementById("notificationSoundLabel");
+      var status = document.getElementById("notificationSoundStatus");
       if (!toggle) return;
       var enabled = typeof window.finoraNotificationSoundEnabled === "function"
         ? window.finoraNotificationSoundEnabled()
         : true;
       toggle.classList.toggle("active", enabled);
-      if (label) label.textContent = enabled ? "صوت الإشعارات: مفعّل" : "صوت الإشعارات: متوقف";
+      if (label) label.textContent = "صوت الإشعارات";
+      if (status) status.textContent = enabled ? "مفعّل" : "متوقف";
     }
 
     window.toggleNotificationSound = function (el) {
@@ -2658,10 +2859,12 @@ or request.path.startswith('/superadmin') %}
     };
 
     window.setProfileTheme = function (theme, el) {
-      // Toggle UI
-      const items = el.parentElement.querySelectorAll('.setting-item');
-      items[0].classList.remove('active');
-      items[1].classList.remove('active');
+      const group = el.closest('[data-setting-group="theme"]');
+      if (group) {
+        group.querySelectorAll('.setting-item').forEach(function (item) {
+          item.classList.remove('active');
+        });
+      }
       el.classList.add('active');
 
       // Apply theme
@@ -2684,9 +2887,12 @@ or request.path.startswith('/superadmin') %}
     };
 
     window.setProfileLang = function (lang, el) {
-      // Toggle UI
-      const items = el.parentElement.querySelectorAll('.setting-item');
-      items.forEach(item => item.classList.remove('active'));
+      const group = el.closest('[data-setting-group="lang"]');
+      if (group) {
+        group.querySelectorAll('.setting-item').forEach(function (item) {
+          item.classList.remove('active');
+        });
+      }
       el.classList.add('active');
 
       // Save to DB

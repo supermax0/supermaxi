@@ -5,7 +5,7 @@
 {% block content %}
 <div class="purchases-page">
   <style>
-    .purchases-page { max-width: 1320px; margin: 0 auto; direction: rtl; }
+    .purchases-page { width: 100%; max-width: none; margin: 0; direction: rtl; }
     .pur-card { background: var(--card); border: 1px solid var(--border-light); border-radius: 16px; padding: 16px; margin-bottom: 14px; }
     .pur-grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
     .pur-grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
@@ -42,10 +42,22 @@
     .tab-btn.active { background: var(--primary); color:#fff; border-color: transparent; }
     .tab-content { display:none; }
     .tab-content.active { display:block; }
-    @media (max-width: 980px) {
+    @media (max-width: 1200px) {
+      .pur-grid-4 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .pur-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 900px) {
+      .pur-grid-4, .pur-grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .pur-grid-2, .pur-kpis { grid-template-columns: 1fr; }
+      .pur-card { padding: 14px; }
+      table.pur-table { min-width: 900px; }
+      .pur-table-scroll { overflow: auto; }
+    }
+    @media (max-width: 600px) {
       .pur-grid-4, .pur-grid-3, .pur-grid-2, .pur-kpis { grid-template-columns: 1fr; }
-      table.pur-table { min-width: 1000px; }
-      .pur-table-scroll { overflow:auto; }
+      .tabs { flex-direction: column; }
+      .tab-btn { width: 100%; text-align: center; }
+      table.pur-table { min-width: 760px; }
     }
   </style>
 

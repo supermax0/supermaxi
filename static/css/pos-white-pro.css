@@ -1371,3 +1371,76 @@ body.pos-white-pro {
   margin-bottom: 12px;
   text-align: center;
 }
+
+/* Floating messaging button */
+.pos-floating-chat-btn,
+.pos-floating-archive-btn {
+  position: fixed;
+  left: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  color: #fff;
+  border: none;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  z-index: 1200;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  text-decoration: none;
+}
+
+.pos-floating-chat-btn {
+  bottom: 24px;
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+}
+
+.pos-floating-archive-btn {
+  bottom: 92px;
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.pos-floating-chat-btn:hover,
+.pos-floating-archive-btn:hover {
+  transform: translateY(-3px) scale(1.04);
+  box-shadow: 0 14px 28px -6px rgba(0, 0, 0, 0.3);
+  color: #fff;
+}
+
+.pos-floating-chat-btn .pos-chat-badge {
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  background: #f43f5e;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #fff;
+}
+
+.pos-floating-chat-btn .pos-chat-badge.hidden {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .pos-floating-chat-btn,
+  .pos-floating-archive-btn {
+    width: 50px;
+    height: 50px;
+    left: 16px;
+    font-size: 20px;
+  }
+
+  .pos-floating-chat-btn { bottom: 16px; }
+  .pos-floating-archive-btn { bottom: 78px; }
+}

@@ -912,45 +912,446 @@
     box-shadow: none;
   }
 
-  /* Order details modal readability */
+  /* Order details modal */
+  .modal.od-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(2, 6, 23, 0.72);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9998;
+    overflow-y: auto;
+    padding: 20px;
+    animation: odFadeIn 0.22s ease-out;
+  }
+
+  @keyframes odFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes odSlideUp {
+    from { opacity: 0; transform: translateY(16px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
   .modal .od-modal-box {
+    max-width: 860px;
+    width: 100%;
+    max-height: 92vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    border-radius: 20px;
+    border: 1px solid rgba(59, 130, 246, 0.22);
+    background: linear-gradient(165deg, rgba(15, 23, 42, 0.99), rgba(30, 41, 59, 0.98));
     box-shadow: 0 28px 80px rgba(0, 0, 0, 0.55);
+    animation: odSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .modal .od-modal-header {
+    padding: 20px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    border-bottom: 1px solid rgba(59, 130, 246, 0.18);
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.85), rgba(15, 23, 42, 0.9));
+    flex-shrink: 0;
+  }
+
+  .modal .od-modal-header__main {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .modal .od-modal-title {
+    margin: 0 0 10px;
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--orders-text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    letter-spacing: -0.02em;
+  }
+
+  .modal .od-modal-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .modal .od-close-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--orders-muted);
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
+
+  .modal .od-close-btn:hover {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.35);
+    color: #fca5a5;
+  }
+
+  .modal .od-modal-body {
+    padding: 20px 24px 0;
+    overflow-y: auto;
+    flex: 1;
+  }
+
+  .modal .od-modal-footer {
+    padding: 16px 24px 20px;
+    border-top: 1px solid rgba(59, 130, 246, 0.14);
+    background: rgba(15, 23, 42, 0.55);
+    flex-shrink: 0;
+  }
+
+  .modal .od-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .modal .od-actions .btn {
+    min-width: 140px;
+    border-radius: 12px;
+    font-weight: 700;
+    padding: 10px 16px;
   }
 
   .modal .od-card {
-    background: rgba(17, 24, 39, 0.62) !important;
-    border-color: rgba(59, 130, 246, 0.22) !important;
+    background: rgba(17, 24, 39, 0.55) !important;
+    border: 1px solid rgba(59, 130, 246, 0.16) !important;
+    border-radius: 16px;
+    padding: 18px 20px;
+    margin-bottom: 16px;
   }
 
-  .modal .od-card strong {
-    color: rgba(226, 232, 240, 0.88) !important;
-    -webkit-text-fill-color: currentColor !important;
+  .modal .od-card--summary {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.08)) !important;
+    border-color: rgba(59, 130, 246, 0.28) !important;
   }
 
-  .modal .od-items-table th,
+  .modal .od-card__title {
+    margin: 0 0 14px;
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--orders-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    letter-spacing: -0.01em;
+  }
+
+  .modal .od-card__title-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+  }
+
+  .modal .od-card__title-icon--customer { background: rgba(139, 92, 246, 0.18); }
+  .modal .od-card__title-icon--order { background: rgba(245, 158, 11, 0.18); }
+  .modal .od-card__title-icon--items { background: rgba(59, 130, 246, 0.18); }
+  .modal .od-card__title-icon--summary { background: rgba(16, 185, 129, 0.18); }
+  .modal .od-card__title-icon--notes { background: rgba(148, 163, 184, 0.18); }
+
+  .modal .od-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px 20px;
+  }
+
+  .modal .od-field {
+    min-width: 0;
+  }
+
+  .modal .od-field--wide {
+    grid-column: 1 / -1;
+  }
+
+  .modal .od-field__label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--orders-muted);
+    margin-bottom: 4px;
+  }
+
+  .modal .od-field__value {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--orders-text);
+    line-height: 1.45;
+    word-break: break-word;
+  }
+
+  .modal .od-field__value--empty {
+    color: var(--orders-muted);
+    font-weight: 500;
+    font-style: italic;
+    opacity: 0.7;
+  }
+
+  .modal .od-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  .modal .od-pill--success { background: rgba(16, 185, 129, 0.18); color: #34d399; }
+  .modal .od-pill--warning { background: rgba(245, 158, 11, 0.18); color: #fbbf24; }
+  .modal .od-pill--danger { background: rgba(239, 68, 68, 0.18); color: #f87171; }
+  .modal .od-pill--info { background: rgba(59, 130, 246, 0.18); color: #60a5fa; }
+  .modal .od-pill--neutral { background: rgba(148, 163, 184, 0.16); color: #cbd5e1; }
+
+  .modal .od-table-wrap {
+    overflow: hidden;
+    border-radius: 12px;
+    border: 1px solid rgba(59, 130, 246, 0.14);
+  }
+
+  .modal .od-items-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .modal .od-items-table thead {
+    background: rgba(59, 130, 246, 0.1);
+  }
+
+  .modal .od-items-table th {
+    padding: 11px 14px;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--orders-muted) !important;
+    border-bottom: 1px solid rgba(59, 130, 246, 0.2);
+  }
+
+  .modal .od-items-table th:first-child { text-align: right; }
+  .modal .od-items-table th:nth-child(2) { text-align: center; }
+  .modal .od-items-table th:nth-child(3),
+  .modal .od-items-table th:nth-child(4) { text-align: left; }
+
   .modal .od-items-table td {
+    padding: 12px 14px;
     color: var(--orders-text) !important;
+    font-size: 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
   }
 
-  .modal .od-items-table tr {
-    border-bottom-color: rgba(255, 255, 255, 0.14) !important;
+  .modal .od-items-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  .modal .od-items-table tbody tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.025);
+  }
+
+  .modal .od-items-table tbody tr:hover {
+    background: rgba(59, 130, 246, 0.06);
+  }
+
+  .modal .od-items-table .od-qty {
+    text-align: center;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .modal .od-items-table .od-money {
+    text-align: left;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .modal .od-items-table .od-money--total {
+    font-weight: 800;
+    color: var(--orders-primary) !important;
+  }
+
+  .modal .od-summary-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .modal .od-summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 11px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .modal .od-summary-row:last-child {
+    border-bottom: none;
+    padding-top: 14px;
+    margin-top: 4px;
+    border-top: 2px dashed rgba(59, 130, 246, 0.25);
+  }
+
+  .modal .od-summary-row__label {
+    color: var(--orders-muted);
+    font-weight: 600;
+    font-size: 14px;
+  }
+
+  .modal .od-summary-row__value {
+    font-size: 17px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    color: var(--orders-text);
+  }
+
+  .modal .od-summary-row__value--paid { color: var(--orders-success); }
+  .modal .od-summary-row__value--due { color: var(--orders-danger); }
+  .modal .od-summary-row__value--settled { color: var(--orders-success); }
+
+  .modal .od-pay-progress {
+    margin-top: 12px;
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+  }
+
+  .modal .od-pay-progress__bar {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--orders-success), #34d399);
+    transition: width 0.4s ease;
+  }
+
+  .modal .od-note-text {
+    margin: 0;
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    color: var(--orders-text);
+    line-height: 1.65;
+    font-size: 14px;
+  }
+
+  :root[data-theme="light"] .modal.od-modal-overlay {
+    background: rgba(15, 23, 42, 0.45);
   }
 
   :root[data-theme="light"] .modal .od-modal-box {
-    border-color: rgba(2, 6, 23, 0.10) !important;
+    border-color: rgba(2, 6, 23, 0.1) !important;
+    background: linear-gradient(165deg, #ffffff, #f8fafc) !important;
+    box-shadow: 0 24px 64px rgba(15, 23, 42, 0.18);
+  }
+
+  :root[data-theme="light"] .modal .od-modal-header {
+    background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+    border-bottom-color: rgba(2, 6, 23, 0.08);
+  }
+
+  :root[data-theme="light"] .modal .od-modal-footer {
+    background: #f8fafc;
+    border-top-color: rgba(2, 6, 23, 0.08);
+  }
+
+  :root[data-theme="light"] .modal .od-close-btn {
+    background: #fff;
+    border-color: rgba(2, 6, 23, 0.1);
+    color: #64748b;
+  }
+
+  :root[data-theme="light"] .modal .od-close-btn:hover {
+    background: #fef2f2;
+    border-color: #fecaca;
+    color: #dc2626;
   }
 
   :root[data-theme="light"] .modal .od-card {
-    background: rgba(255, 255, 255, 0.94) !important;
+    background: #fff !important;
     border-color: rgba(2, 6, 23, 0.08) !important;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
   }
 
-  :root[data-theme="light"] .modal .od-card strong {
-    color: #334155 !important;
+  :root[data-theme="light"] .modal .od-card--summary {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.06), rgba(139, 92, 246, 0.04)) !important;
+    border-color: rgba(59, 130, 246, 0.18) !important;
   }
 
-  :root[data-theme="light"] .modal .od-items-table tr {
-    border-bottom-color: rgba(2, 6, 23, 0.10) !important;
+  :root[data-theme="light"] .modal .od-pill--success { background: #d1fae5; color: #047857; }
+  :root[data-theme="light"] .modal .od-pill--warning { background: #fef3c7; color: #b45309; }
+  :root[data-theme="light"] .modal .od-pill--danger { background: #fee2e2; color: #b91c1c; }
+  :root[data-theme="light"] .modal .od-pill--info { background: #dbeafe; color: #1d4ed8; }
+  :root[data-theme="light"] .modal .od-pill--neutral { background: #f1f5f9; color: #475569; }
+
+  :root[data-theme="light"] .modal .od-items-table thead {
+    background: #f1f5f9;
+  }
+
+  :root[data-theme="light"] .modal .od-items-table td {
+    border-bottom-color: rgba(2, 6, 23, 0.06) !important;
+  }
+
+  :root[data-theme="light"] .modal .od-items-table tbody tr:nth-child(even) {
+    background: #f8fafc;
+  }
+
+  :root[data-theme="light"] .modal .od-items-table tbody tr:hover {
+    background: #eff6ff;
+  }
+
+  :root[data-theme="light"] .modal .od-table-wrap {
+    border-color: rgba(2, 6, 23, 0.08);
+  }
+
+  :root[data-theme="light"] .modal .od-summary-row {
+    border-bottom-color: rgba(2, 6, 23, 0.08);
+  }
+
+  :root[data-theme="light"] .modal .od-note-text {
+    background: #f8fafc;
+    border-color: rgba(2, 6, 23, 0.08);
+  }
+
+  :root[data-theme="light"] .modal .od-pay-progress {
+    background: #e2e8f0;
+  }
+
+  @media (max-width: 640px) {
+    .modal.od-modal-overlay { padding: 12px; }
+    .modal .od-modal-header,
+    .modal .od-modal-body,
+    .modal .od-modal-footer { padding-left: 16px; padding-right: 16px; }
+    .modal .od-modal-title { font-size: 18px; }
+    .modal .od-fields { grid-template-columns: 1fr; }
+    .modal .od-actions .btn { min-width: 100%; }
   }
 
   .action-btn-small.pay-btn {
@@ -2280,24 +2681,24 @@
       : '';
 
     if (!video.has_video) {
-      return '<div class="od-card" style="background:rgba(15, 23, 42, 0.6);border-radius:16px;padding:20px;margin-bottom:20px;border:1px solid rgba(59, 130, 246, 0.2);">' +
-        '<h3 style="color:var(--orders-primary);margin:0 0 12px;font-size:18px;font-weight:700;">🎥 فيديو الطلب</h3>' +
+      return '<div class="od-card">' +
+        odCardTitle('od-card__title-icon--items', '🎥', 'فيديو الطلب') +
         '<p style="color:var(--orders-muted);margin:0 0 16px;line-height:1.6;">لا يوجد فيديو محفوظ لهذا الطلب حالياً.</p>' +
-        (videoActionButton ? '<div style="display:flex;gap:12px;flex-wrap:wrap;">' + videoActionButton + '</div>' : '') +
+        (videoActionButton ? '<div class="od-actions" style="justify-content:flex-start;">' + videoActionButton + '</div>' : '') +
         '</div>';
     }
 
     const durationLabel = video.duration_sec ? Math.round(video.duration_sec) + ' ثانية' : '—';
-    return '<div class="od-card" style="background:rgba(15, 23, 42, 0.6);border-radius:16px;padding:20px;margin-bottom:20px;border:1px solid rgba(59, 130, 246, 0.2);">' +
-      '<h3 style="color:var(--orders-primary);margin:0 0 16px;font-size:18px;font-weight:700;">🎥 فيديو الطلب</h3>' +
+    return '<div class="od-card">' +
+      odCardTitle('od-card__title-icon--items', '🎥', 'فيديو الطلب') +
       '<video controls preload="none" playsinline style="width:100%;max-height:360px;border-radius:14px;background:#020617;border:1px solid rgba(59,130,246,0.18);" src="' + escapeHtml(video.preview_url || '') + '"></video>' +
-      '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));gap:10px;margin-top:14px;color:var(--orders-text);font-size:13px;">' +
-      '<div><strong style="color:var(--orders-muted);">اسم الملف</strong><div>' + escapeHtml(video.filename || 'video') + '</div></div>' +
-      '<div><strong style="color:var(--orders-muted);">الحجم</strong><div>' + (video.size_mb ? String(video.size_mb) + ' MB' : '—') + '</div></div>' +
-      '<div><strong style="color:var(--orders-muted);">المدة</strong><div>' + durationLabel + '</div></div>' +
-      '<div><strong style="color:var(--orders-muted);">تاريخ التسجيل</strong><div>' + escapeHtml(video.recorded_at || '—') + '</div></div>' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));gap:10px;margin-top:14px;">' +
+      odField('اسم الملف', video.filename || 'video') +
+      odField('الحجم', video.size_mb ? String(video.size_mb) + ' MB' : '') +
+      odField('المدة', durationLabel) +
+      odField('تاريخ التسجيل', video.recorded_at || '') +
       '</div>' +
-      '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:16px;">' +
+      '<div class="od-actions" style="justify-content:flex-start;margin-top:16px;">' +
       videoActionButton +
       '<button class="btn btn-success" onclick="downloadOrderVideo(' + order.id + ')" style="min-width:150px;">' +
       '<span>⬇️</span><span>تنزيل</span></button>' +
@@ -2585,8 +2986,8 @@
       ? '<p style="color:var(--orders-muted);margin:0 0 12px;font-size:13px;">شركة المسح النشطة: <strong style="color:var(--orders-text);">' + escapeHtml(active.name) + '</strong></p>'
       : '';
 
-    return '<div class="od-card" id="shippingBarcodeCard" style="background:rgba(15, 23, 42, 0.6);border-radius:16px;padding:20px;margin-bottom:20px;border:1px solid rgba(34, 197, 94, 0.25);">' +
-      '<h3 style="color:#22c55e;margin:0 0 16px;font-size:18px;font-weight:700;">📦 باركود شركة النقل</h3>' +
+    return '<div class="od-card" id="shippingBarcodeCard" style="border-color:rgba(34,197,94,0.28)!important;">' +
+      '<h3 class="od-card__title" style="color:#22c55e;"><span class="od-card__title-icon" style="background:rgba(34,197,94,0.18);">📦</span><span>باركود شركة النقل</span></h3>' +
       warnHtml + activeHint +
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px;">' +
       '<div><label style="display:block;color:var(--orders-muted);margin-bottom:6px;font-size:13px;">شركة النقل</label>' +
@@ -2669,142 +3070,181 @@
     if (orderId) saveShippingBarcode(parseInt(orderId, 10), { closeOnSuccess: true });
   }
 
+  function odPillClass(kind) {
+    const map = { success: 'od-pill--success', warning: 'od-pill--warning', danger: 'od-pill--danger', info: 'od-pill--info', neutral: 'od-pill--neutral' };
+    return map[kind] || 'od-pill--neutral';
+  }
+
+  function odStatusKind(status) {
+    const s = String(status || '');
+    if (s === 'تم التوصيل') return 'success';
+    if (s === 'جاري الشحن' || s === 'قيد الشحن' || s === 'تم الطلب') return 'info';
+    if (s === 'ملغي' || s === 'راجع' || s === 'راجعة' || s === 'مرتجع') return 'danger';
+    return 'warning';
+  }
+
+  function odPaymentKind(payment) {
+    const p = String(payment || '');
+    if (p === 'مسدد') return 'success';
+    if (p === 'جزئي') return 'warning';
+    if (p === 'مرتجع') return 'danger';
+    return 'danger';
+  }
+
+  function odShippingKind(status) {
+    const s = String(status || '');
+    if (s === 'تم التوصيل' || s === 'مُسلَّم') return 'success';
+    if (s === 'قيد الشحن' || s === 'جاري الشحن') return 'info';
+    if (s === 'مرتجع' || s === 'ملغي') return 'danger';
+    return 'warning';
+  }
+
+  function odPill(text, kind) {
+    if (!text || text === '—') return '<span class="od-pill od-pill--neutral">—</span>';
+    return '<span class="od-pill ' + odPillClass(kind) + '">' + escapeHtml(text) + '</span>';
+  }
+
+  function odField(label, value, options) {
+    options = options || {};
+    const raw = value === null || value === undefined ? '' : String(value).trim();
+    const isEmpty = !raw || raw === '—' || raw === '-';
+    if (options.hideIfEmpty && isEmpty) return '';
+    const wide = options.wide ? ' od-field--wide' : '';
+    if (options.pill) {
+      return '<div class="od-field' + wide + '">' +
+        '<span class="od-field__label">' + escapeHtml(label) + '</span>' +
+        '<div>' + odPill(isEmpty ? '' : raw, options.pillKind || 'neutral') + '</div>' +
+        '</div>';
+    }
+    const display = isEmpty ? '—' : escapeHtml(raw);
+    const valueClass = isEmpty ? 'od-field__value od-field__value--empty' : 'od-field__value';
+    return '<div class="od-field' + wide + '">' +
+      '<span class="od-field__label">' + escapeHtml(label) + '</span>' +
+      '<div class="' + valueClass + '">' + display + '</div>' +
+      '</div>';
+  }
+
+  function odCardTitle(iconClass, emoji, title) {
+    return '<h3 class="od-card__title">' +
+      '<span class="od-card__title-icon ' + iconClass + '">' + emoji + '</span>' +
+      '<span>' + title + '</span>' +
+      '</h3>';
+  }
+
   function showOrderDetailsModal(data, options) {
     options = options || {};
     const order = data.order;
     const items = data.items || [];
 
     const modal = document.createElement('div');
-    modal.className = 'modal';
+    modal.className = 'modal od-modal-overlay';
     modal.dataset.orderDetails = '1';
     if (options.barcodeWorkflow) {
       modal.setAttribute('data-barcode-workflow', '1');
     }
     modal.setAttribute('data-order-id', String(order.id));
-    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9998;overflow-y:auto;padding:20px;';
 
     const totalItems = items.reduce((sum, item) => sum + (item.qty || 0), 0);
     const totalAmount = order.total || 0;
     const paidAmount = order.paid_amount || 0;
     const remaining = totalAmount - paidAmount;
+    const paidPercent = totalAmount > 0 ? Math.min(100, Math.round((paidAmount / totalAmount) * 100)) : 0;
+
+    const headerBadges =
+      odPill(order.status, odStatusKind(order.status)) +
+      odPill(order.payment, odPaymentKind(order.payment)) +
+      (order.shipping_status ? odPill(order.shipping_status, odShippingKind(order.shipping_status)) : '');
+
+    const itemsRows = items.map(function (item) {
+      return '<tr>' +
+        '<td>' + escapeHtml(item.name || '—') + '</td>' +
+        '<td class="od-qty">' + (item.qty || 0) + '</td>' +
+        '<td class="od-money">' + (item.price || 0).toLocaleString() + ' {{ _("orders_currency_iqd") }}</td>' +
+        '<td class="od-money od-money--total">' + (item.total || 0).toLocaleString() + ' {{ _("orders_currency_iqd") }}</td>' +
+        '</tr>';
+    }).join('');
+
+    const remainingClass = remaining > 0 ? 'od-summary-row__value--due' : 'od-summary-row__value--settled';
 
     modal.innerHTML =
-      '<div class="modal-box od-modal-box" style="max-width:800px;width:100%;background:linear-gradient(145deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.98));padding:0;border-radius:24px;border:2px solid rgba(59, 130, 246, 0.3);max-height:90vh;overflow-y:auto;">' +
-      '<div class="modal-header" style="padding:24px 32px;background:linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.8));border-bottom:2px solid rgba(59, 130, 246, 0.2);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10;">' +
-      '<h2 style="color:var(--orders-text);margin:0;font-size:24px;font-weight:700;">📋 {{ _("orders_details_title") }} #' + order.id + '</h2>' +
-      '<button class="close-btn" onclick="this.closest(\'.modal\').remove()" style="width:40px;height:40px;border-radius:50%;border:none;background:linear-gradient(135deg, var(--orders-danger), #dc2626);color:#fff;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>' +
+      '<div class="modal-box od-modal-box">' +
+      '<div class="od-modal-header">' +
+      '<div class="od-modal-header__main">' +
+      '<h2 class="od-modal-title"><span>📋</span><span>{{ _("orders_details_title") }} #' + order.id + '</span></h2>' +
+      '<div class="od-modal-badges">' + headerBadges + '</div>' +
+      '</div>' +
+      '<button type="button" class="od-close-btn" onclick="this.closest(\'.modal\').remove()" aria-label="إغلاق">✕</button>' +
       '</div>' +
 
-      '<div style="padding:32px;">' +
-      '<!-- معلومات الزبون -->' +
-      '<div class="od-card" style="background:rgba(15, 23, 42, 0.6);border-radius:16px;padding:20px;margin-bottom:20px;border:1px solid rgba(59, 130, 246, 0.2);">' +
-      '<h3 style="color:var(--orders-primary);margin:0 0 16px;font-size:18px;font-weight:700;">👤 {{ _("orders_details_customer_section") }}</h3>' +
-      '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:12px;">' +
-      '<div><strong style="color:var(--orders-muted);">{{ _("orders_details_customer_name") }}</strong> <span style="color:var(--orders-text);">' + (order.customer || '—') + '</span></div>' +
-      '<div><strong style="color:var(--orders-muted);">{{ _("orders_details_customer_phone") }}</strong> <span style="color:var(--orders-text);">' + (order.phone || '—') + '</span></div>' +
-      '<div><strong style="color:var(--orders-muted);">{{ _("orders_details_customer_phone2") }}</strong> <span style="color:var(--orders-text);">' + (order.phone2 || '—') + '</span></div>' +
-      '<div><strong style="color:var(--orders-muted);">{{ _("orders_details_customer_city") }}</strong> <span style="color:var(--orders-text);">' + (order.city || '—') + '</span></div>' +
-      '<div style="grid-column:1/-1;"><strong style="color:var(--orders-muted);">{{ _("orders_details_customer_address") }}</strong> <span style="color:var(--orders-text);">' + (order.address || '—') + '</span></div>' +
+      '<div class="od-modal-body">' +
+      '<div class="od-card">' +
+      odCardTitle('od-card__title-icon--customer', '👤', '{{ _("orders_details_customer_section") }}') +
+      '<div class="od-fields">' +
+      odField('{{ _("orders_details_customer_name") }}', order.customer) +
+      odField('{{ _("orders_details_customer_phone") }}', order.phone) +
+      odField('{{ _("orders_details_customer_phone2") }}', order.phone2, { hideIfEmpty: true }) +
+      odField('{{ _("orders_details_customer_city") }}', order.city) +
+      odField('{{ _("orders_details_customer_address") }}', order.address, { wide: true }) +
+      '</div></div>' +
+
+      '<div class="od-card">' +
+      odCardTitle('od-card__title-icon--order', '📦', '{{ _("orders_details_order_section") }}') +
+      '<div class="od-fields">' +
+      odField('{{ _("orders_details_order_date") }}', order.created_at) +
+      odField('{{ _("orders_details_order_status") }}', order.status, { pill: true, pillKind: odStatusKind(order.status) }) +
+      odField('{{ _("orders_details_payment_status") }}', order.payment, { pill: true, pillKind: odPaymentKind(order.payment) }) +
+      odField('{{ _("orders_details_employee") }}', order.employee) +
+      odField('{{ _("orders_details_shipping_company") }}', order.shipping_company, { hideIfEmpty: true }) +
+      odField('{{ _("orders_details_shipping_status") }}', order.shipping_status, { pill: true, pillKind: odShippingKind(order.shipping_status) }) +
+      (order.returned_count > 0
+        ? '<div class="od-field od-field--wide"><span class="od-field__label">{{ _("orders_details_return_count") }}</span><div class="od-field__value" style="color:var(--orders-danger);">' + order.returned_count + '</div></div>'
+        : '') +
+      '</div></div>' +
+
+      '<div class="od-card">' +
+      odCardTitle('od-card__title-icon--items', '🛍️', '{{ _("orders_details_items_section") }} (' + totalItems + ')') +
+      '<div class="od-table-wrap"><table class="od-items-table"><thead><tr>' +
+      '<th>{{ _("orders_details_col_product") }}</th>' +
+      '<th>{{ _("orders_details_col_qty") }}</th>' +
+      '<th>{{ _("orders_details_col_price") }}</th>' +
+      '<th>{{ _("orders_details_col_total") }}</th>' +
+      '</tr></thead><tbody>' + itemsRows + '</tbody></table></div></div>' +
+
+      '<div class="od-card od-card--summary">' +
+      odCardTitle('od-card__title-icon--summary', '💰', '{{ _("orders_details_summary_section") }}') +
+      '<div class="od-summary-rows">' +
+      '<div class="od-summary-row"><span class="od-summary-row__label">{{ _("orders_details_total") }}</span>' +
+      '<span class="od-summary-row__value">' + totalAmount.toLocaleString() + ' {{ _("orders_currency_iqd") }}</span></div>' +
+      '<div class="od-summary-row"><span class="od-summary-row__label">{{ _("orders_details_paid") }}</span>' +
+      '<span class="od-summary-row__value od-summary-row__value--paid">' + paidAmount.toLocaleString() + ' {{ _("orders_currency_iqd") }}</span></div>' +
+      '<div class="od-summary-row"><span class="od-summary-row__label">{{ _("orders_details_remaining") }}</span>' +
+      '<span class="od-summary-row__value ' + remainingClass + '">' + remaining.toLocaleString() + ' {{ _("orders_currency_iqd") }}</span></div>' +
       '</div>' +
+      (totalAmount > 0
+        ? '<div class="od-pay-progress" title="' + paidPercent + '%"><div class="od-pay-progress__bar" style="width:' + paidPercent + '%;"></div></div>'
+        : '') +
       '</div>' +
 
-      '<!-- معلومات الطلب -->' +
-      '<div class="od-card" style="background:rgba(15, 23, 42, 0.6);border-radius:16px;padding:20px;margin-bottom:20px;border:1px solid rgba(59, 130, 246, 0.2);">' +
-      '<h3 style="color:var(--orders-primary);margin:0 0 16px;font-size:18px;font-weight:700;">📦 {{ _("orders_details_order_section") }}</h3>' +
-      '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:12px;">' +
-      '<div><strong style="color:var(--orders-muted);">{{ _("orders_details_order_date") }}</strong> <span style="color:var(--orders-text);">' + (order.created_at || '—') + '</span></div>' +
-      '<div><strong style="color:var(--orders-muted);">{{ _("orders_details_order_status") }}</strong> <span style="color:var(--orders-text);">' + (order.status || '—') + '</span></div>' +
-      '<div><strong style="color:var(--orders-muted);">{{ _("orders_details_payment_status") }}</strong> <span style="color:var(--orders-text);">' + (order.payment || '—') + '</span></div>' +
-      '<div><strong style="color:var(--orders-muted);">{{ _("orders_details_employee") }}</strong> <span style="color:var(--orders-text);">' + (order.employee || '—') + '</span></div>' +
-      '<div><strong style="color:var(--orders-muted);">{{ _("orders_details_shipping_company") }}</strong> <span style="color:var(--orders-text);">' + (order.shipping_company || '—') + '</span></div>' +
-      '<div><strong style="color:var(--orders-muted);">{{ _("orders_details_shipping_status") }}</strong> <span style="color:var(--orders-text);">' + (order.shipping_status || '—') + '</span></div>' +
-      (order.returned_count > 0 ? '<div style="grid-column:1/-1;"><strong style="color:var(--orders-danger);">{{ _("orders_details_return_count") }}</strong> <span style="color:var(--orders-danger);">' + order.returned_count + '</span></div>' : '') +
-      '</div>' +
-      '</div>' +
-
-      '<!-- العناصر -->' +
-      '<div class="od-card" style="background:rgba(15, 23, 42, 0.6);border-radius:16px;padding:20px;margin-bottom:20px;border:1px solid rgba(59, 130, 246, 0.2);">' +
-      '<h3 style="color:var(--orders-primary);margin:0 0 16px;font-size:18px;font-weight:700;">🛍️ {{ _("orders_details_items_section") }} (' + totalItems + ')</h3>' +
-      '<div style="overflow-x:auto;">' +
-      '<table class="od-items-table" style="width:100%;border-collapse:collapse;">' +
-      '<thead>' +
-      '<tr style="background:rgba(59, 130, 246, 0.1);border-bottom:2px solid rgba(59, 130, 246, 0.3);">' +
-      '<th style="padding:12px;text-align:right;color:var(--orders-text);font-weight:700;">{{ _("orders_details_col_product") }}</th>' +
-      '<th style="padding:12px;text-align:center;color:var(--orders-text);font-weight:700;">{{ _("orders_details_col_qty") }}</th>' +
-      '<th style="padding:12px;text-align:left;color:var(--orders-text);font-weight:700;">{{ _("orders_details_col_price") }}</th>' +
-      '<th style="padding:12px;text-align:left;color:var(--orders-text);font-weight:700;">{{ _("orders_details_col_total") }}</th>' +
-      '</tr>' +
-      '</thead>' +
-      '<tbody>' +
-      items.map(function (item, idx) {
-        return '<tr style="border-bottom:1px solid rgba(255,255,255,0.1);' + (idx % 2 === 0 ? 'background:rgba(255,255,255,0.02);' : '') + '">' +
-          '<td style="padding:12px;color:var(--orders-text);">' + (item.name || '—') + '</td>' +
-          '<td style="padding:12px;text-align:center;color:var(--orders-text);">' + (item.qty || 0) + '</td>' +
-          '<td style="padding:12px;text-align:left;color:var(--orders-text);">' + (item.price || 0).toLocaleString() + ' {{ _("orders_currency_iqd") }}</td>' +
-          '<td style="padding:12px;text-align:left;color:var(--orders-text);font-weight:600;">' + (item.total || 0).toLocaleString() + ' {{ _("orders_currency_iqd") }}</td>' +
-          '</tr>';
-      }).join('') +
-      '</tbody>' +
-      '</table>' +
-      '</div>' +
-      '</div>' +
-
-      '<!-- الملخص المالي -->' +
-      '<div class="od-card od-card--summary" style="background:linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1));border-radius:16px;padding:20px;margin-bottom:20px;border:1px solid rgba(59, 130, 246, 0.3);">' +
-      '<h3 style="color:var(--orders-primary);margin:0 0 16px;font-size:18px;font-weight:700;">💰 {{ _("orders_details_summary_section") }}</h3>' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.1);">' +
-      '<span style="color:var(--orders-muted);font-weight:600;">{{ _("orders_details_total") }}</span>' +
-      '<span style="color:var(--orders-text);font-size:20px;font-weight:700;">' + totalAmount.toLocaleString() + ' {{ _("orders_currency_iqd") }}</span>' +
-      '</div>' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.1);">' +
-      '<span style="color:var(--orders-muted);font-weight:600;">{{ _("orders_details_paid") }}</span>' +
-      '<span style="color:var(--orders-success);font-size:18px;font-weight:700;">' + paidAmount.toLocaleString() + ' {{ _("orders_currency_iqd") }}</span>' +
-      '</div>' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;">' +
-      '<span style="color:var(--orders-muted);font-weight:600;">{{ _("orders_details_remaining") }}</span>' +
-      '<span style="color:' + (remaining > 0 ? 'var(--orders-danger)' : 'var(--orders-success)') + ';font-size:20px;font-weight:700;">' + remaining.toLocaleString() + ' {{ _("orders_currency_iqd") }}</span>' +
-      '</div>' +
-      '</div>' +
-
-      (order.note ?
-        '<div class="od-card" style="background:rgba(15, 23, 42, 0.6);border-radius:16px;padding:20px;margin-bottom:20px;border:1px solid rgba(59, 130, 246, 0.2);">' +
-        '<h3 style="color:var(--orders-primary);margin:0 0 12px;font-size:18px;font-weight:700;">📝 {{ _("orders_details_notes_section") }}</h3>' +
-        '<p style="color:var(--orders-text);margin:0;line-height:1.6;">' + order.note + '</p>' +
-        '</div>' : '') +
+      (order.note
+        ? '<div class="od-card"><h3 class="od-card__title"><span class="od-card__title-icon od-card__title-icon--notes">📝</span><span>{{ _("orders_details_notes_section") }}</span></h3>' +
+          '<p class="od-note-text">' + escapeHtml(order.note) + '</p></div>'
+        : '') +
       shippingBarcodeSectionHtml(order) +
       orderVideoSectionHtml(order) +
+      '</div>' +
 
-      '<!-- أزرار الإجراءات -->' +
-      '<div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:24px;">' +
-      '<button class="btn btn-primary" onclick="printInvoice(' + order.id + ')" style="min-width:150px;">' +
-      '<span>🖨️</span>' +
-      '<span>{{ _("orders_details_btn_print_invoice") }}</span>' +
-      '</button>' +
-      '<button class="btn btn-success" onclick="sendWhatsApp(' + order.id + ', \'' + (order.phone || '') + '\')" style="min-width:150px;">' +
-      '<span>📱</span>' +
-      '<span>{{ _("orders_details_btn_whatsapp") }}</span>' +
-      '</button>' +
-      (order.status !== 'تم التوصيل' && order.status !== 'مرتجع' && order.status !== 'ملغي' ?
-        '<button class="btn btn-warning" onclick="editOrder(' + order.id + ')" style="min-width:150px;background:linear-gradient(135deg, #f59e0b, #d97706);">' +
-        '<span>✏️</span>' +
-        '<span>{{ _("orders_details_btn_edit_order") }}</span>' +
-        '</button>' : '') +
-      (remaining > 0 && order.status !== 'تم التوصيل' && order.status !== 'مرتجع' && order.status !== 'ملغي' ?
-        '<button class="btn btn-warning" onclick="pay(' + order.id + '); this.closest(\'.modal\').remove();" style="min-width:150px;">' +
-        '<span>💰</span>' +
-        '<span>{{ _("orders_details_btn_full_pay") }}</span>' +
-        '</button>' +
-        '<button class="btn btn-success" onclick="payPartial(' + order.id + ', ' + remaining + '); this.closest(\'.modal\').remove();" style="min-width:150px;">' +
-        '<span>💵</span>' +
-        '<span>{{ _("orders_details_btn_partial_pay") }}</span>' +
-        '</button>' : '') +
-      '<button class="btn btn-secondary" onclick="window.location.href=\'/orders/invoice/' + order.id + '\'" style="min-width:150px;">' +
-      '<span>🔗</span>' +
-      '<span>{{ _("orders_details_btn_full_page") }}</span>' +
-      '</button>' +
-      '</div>' +
-      '</div>' +
-      '</div>';
+      '<div class="od-modal-footer"><div class="od-actions">' +
+      '<button class="btn btn-primary" onclick="printInvoice(' + order.id + ')"><span>🖨️</span><span>{{ _("orders_details_btn_print_invoice") }}</span></button>' +
+      '<button class="btn btn-success" onclick="sendWhatsApp(' + order.id + ', \'' + (order.phone || '') + '\')"><span>📱</span><span>{{ _("orders_details_btn_whatsapp") }}</span></button>' +
+      (order.status !== 'تم التوصيل' && order.status !== 'مرتجع' && order.status !== 'ملغي'
+        ? '<button class="btn btn-warning" onclick="editOrder(' + order.id + ')" style="background:linear-gradient(135deg, #f59e0b, #d97706);"><span>✏️</span><span>{{ _("orders_details_btn_edit_order") }}</span></button>'
+        : '') +
+      (remaining > 0 && order.status !== 'تم التوصيل' && order.status !== 'مرتجع' && order.status !== 'ملغي'
+        ? '<button class="btn btn-warning" onclick="pay(' + order.id + '); this.closest(\'.modal\').remove();"><span>💰</span><span>{{ _("orders_details_btn_full_pay") }}</span></button>' +
+          '<button class="btn btn-success" onclick="payPartial(' + order.id + ', ' + remaining + '); this.closest(\'.modal\').remove();"><span>💵</span><span>{{ _("orders_details_btn_partial_pay") }}</span></button>'
+        : '') +
+      '<button class="btn btn-secondary" onclick="window.location.href=\'/orders/invoice/' + order.id + '\'"><span>🔗</span><span>{{ _("orders_details_btn_full_page") }}</span></button>' +
+      '</div></div></div>';
 
     document.body.appendChild(modal);
     wireShippingBarcodeModal(order, options);
@@ -3172,7 +3612,6 @@
         headerName: "إجراءات",
         field: "actions",
         width: 200,
-        pinned: 'right',
         cellRenderer: ActionsRenderer,
         suppressMovable: true,
         sortable: false,
