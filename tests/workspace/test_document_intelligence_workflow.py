@@ -93,8 +93,6 @@ def test_courier_recipe_foundation_step():
         from modules.workspace.services.document_storage_service import DocumentStorageService
         from modules.workspace.services.session_service import SessionService
         from modules.workspace.services.workflow_engine import WorkflowEngine
-        from modules.workspace.services.workflow_errors import WorkflowApprovalRequiredError
-
         ws = SessionService.create_session(user_id=31, tenant_slug=tenant)
         DocumentStorageService.upload_to_session(
             ws, _FakeFile("settlement.pdf", _pdf_bytes(), "application/pdf"), 31
@@ -108,13 +106,15 @@ def test_courier_recipe_foundation_step():
         ):
             WorkflowEngine.start_workflow(ws.id, "courier_settlement", 31, tenant)
             WorkflowEngine.run_next_step(ws.id, user_id=31, tenant_slug=tenant)
-            try:
-                WorkflowEngine.run_next_step(ws.id, user_id=31, tenant_slug=tenant)
-            except WorkflowApprovalRequiredError:
-                pass
+            WorkflowEngine.run_next_step(ws.id, user_id=31, tenant_slug=tenant)
 
         ws = SessionService.get_session(ws.id, 31, tenant)
-        assert "read_statement_foundation" in (ws.get_metadata().get("completed_steps") or [])
+        completed = ws.get_metadata().get("completed_steps") or []
+        assert "start" in completed
+        assert "ensure_document_intelligence" in completed
+        assert ws.current_step_id == "run_readonly_courier_analysis"
+        assert ws.status == "running"
+        assert not any(w.get("type") == "approval_panel" for w in ws.get_windows())
         print("test_courier_recipe_foundation_step ok")
 
 
