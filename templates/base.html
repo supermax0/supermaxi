@@ -2177,6 +2177,7 @@ or request.path.startswith('/superadmin') %}
         current_employee.role == "cashier") %}
         {% if show_customers and business_allows('customers') %}
         <a href="/customers"><i class="fa fa-users"></i> {{ _('customers') }}</a>
+        <a href="/customers/credit" class="{% if request.path.startswith('/customers/credit') %}active{% endif %}"><i class="fa fa-hand-holding-usd"></i> {{ _('customer_credit_nav') }}</a>
         {% if is_beauty_center %}
         <a href="/beauty/clients" class="{% if request.path.startswith('/beauty/clients') %}active{% endif %}" style="padding-right: 30px; font-size: 0.9em;"><i class="fa fa-address-book"></i> سجل العملاء</a>
         {% endif %}
@@ -2273,6 +2274,9 @@ or request.path.startswith('/superadmin') %}
           _('permissions') }}
           <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
         {% endif %}
+        {% endif %}
+        {% if (is_admin or (current_employee and can_view_activity)) and business_allows('activity') %}
+        <a href="/activity"><i class="fa fa-history"></i> {{ _('activity') }}</a>
         {% endif %}
         {% if (is_admin or (current_employee and can_manage_settings)) and business_allows('settings') %}<a href="/settings"><i class="fa fa-cog"></i>
           {{ _('settings') }}</a>{% endif %}

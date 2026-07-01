@@ -9,7 +9,7 @@ from models.message import Message
 from models.employee import Employee
 from models.agent_message import AgentMessage
 from models.expense import Expense
-from sqlalchemy import or_, and_
+from sqlalchemy import or_, and_, func
 from datetime import datetime
 import json
 
@@ -18,7 +18,35 @@ from utils.payment_ledger import append_payment_ledger_delta
 
 delivery_agent_bp = Blueprint("delivery_agent", __name__, url_prefix="/delivery-agent")
 
-_AGENT_ACTIVE_STATUSES = ("تم الطلب", "جاري الشحن", "قيد الشحن")
+_AGENT_PENDING_STATUSES = ("تم الطلب", "جاري الشحن", "قيد الشحن")
+
+
+def _agent_pending_orders(agent_id):
+    """طلبات المندوب فقط — بدون ربط بكشف شركة الشحن."""
+    rows = (
+        Invoice.query.filter(
+            Invoice.delivery_agent_id == agent_id,
+            Invoice.status.in_(_AGENT_PENDING_STATUSES),
+        )
+        .order_by(Invoice.created_at.desc())
+        .all()
+    )
+    return [_serialize_agent_order(o) for o in rows]
+
+
+def _agent_order_stats(agent_id):
+    base = Invoice.query.filter(Invoice.delivery_agent_id == agent_id)
+    pending_q = base.filter(Invoice.status.in_(_AGENT_PENDING_STATUSES))
+    pending_count = pending_q.count()
+    pending_total = pending_q.with_entities(func.sum(Invoice.total)).scalar() or 0
+    delivered_count = base.filter(
+        Invoice.status.in_(("تم التوصيل", "مسدد"))
+    ).count()
+    return {
+        "pending_count": int(pending_count),
+        "pending_total": int(pending_total),
+        "delivered_count": int(delivered_count),
+    }
 
 
 def _serialize_agent_order(order):
@@ -97,7 +125,7 @@ def logout():
 # =====================================================
 @delivery_agent_bp.route("/dashboard")
 def dashboard():
-    """صفحة المندوب الرئيسية"""
+    """صفحة المندوب — طلباته المربوطة باسمه فقط."""
     if "agent_id" not in session:
         return redirect(url_for("delivery_agent.login_page"))
     
@@ -107,77 +135,20 @@ def dashboard():
         session.clear()
         return redirect(url_for("delivery_agent.login_page"))
 
-    direct_orders_raw = (
-        Invoice.query.filter(
-            Invoice.delivery_agent_id == agent_id,
-            Invoice.status.in_(_AGENT_ACTIVE_STATUSES),
-        )
-        .order_by(Invoice.created_at.desc())
-        .all()
-    )
-    direct_orders = [_serialize_agent_order(o) for o in direct_orders_raw]
-    direct_total = sum(int(o.get("total") or 0) for o in direct_orders)
-    
-    # جلب الكشوف التي تحتوي على طلبات هذا المندوب ولم يتم تنفيذها
-    all_reports = ShippingReport.query.filter_by(is_executed=False).order_by(ShippingReport.created_at.desc()).all()
-    agent_reports = []
-    
-    for report in all_reports:
-        if report.orders_data:
-            try:
-                orders_data = json.loads(report.orders_data)
-                report_has_agent_orders = False
-                report_orders = []
-                
-                for order_data in orders_data:
-                    order_id = order_data.get("id") or order_data.get("order_id")
-                    if order_id:
-                        order = Invoice.query.get(order_id)
-                        if order and order.delivery_agent_id == agent_id:
-                            report_has_agent_orders = True
-                            report_orders.append(_serialize_agent_order(order))
-                
-                if report_has_agent_orders:
-                    # جلب الحالات المحفوظة للكشف
-                    status_selections = {}
-                    if report.order_status_selections:
-                        try:
-                            status_selections = json.loads(report.order_status_selections)
-                        except:
-                            pass
-                    
-                    agent_reports.append({
-                        "report_id": report.id,
-                        "report_number": report.report_number,
-                        "created_at": report.created_at.strftime("%Y-%m-%d %H:%M") if report.created_at else "",
-                        "orders": report_orders,
-                        "status_selections": status_selections,
-                        "total_amount": sum(o["total"] for o in report_orders),
-                        "orders_count": len(report_orders)
-                    })
-            except Exception as e:
-                print(f"Error processing report {report.id}: {e}")
-    
-    # جلب الموظفين والمندوبين للـ chat
+    orders = _agent_pending_orders(agent_id)
+    stats = _agent_order_stats(agent_id)
+
     employees = Employee.query.filter_by(is_active=True).all()
     other_agents = DeliveryAgent.query.filter(DeliveryAgent.id != agent_id).filter(DeliveryAgent.username.isnot(None)).all()
     
     # التحقق من صلاحيات الأدmin (إذا كان مسجل دخول كأدمن)
     is_admin = session.get("role") == "admin" and "user_id" in session
 
-    report_order_ids = set()
-    for rep in agent_reports:
-        for o in rep.get("orders", []):
-            report_order_ids.add(o["id"])
-    direct_orders_display = [o for o in direct_orders if o["id"] not in report_order_ids]
-    direct_total_display = sum(int(o.get("total") or 0) for o in direct_orders_display)
-
     return render_template(
         "delivery_agent/dashboard.html",
         agent=agent,
-        direct_orders=direct_orders_display,
-        direct_total=direct_total_display,
-        reports=agent_reports,
+        orders=orders,
+        stats=stats,
         employees=employees,
         other_agents=other_agents,
         is_admin=is_admin,

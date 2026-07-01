@@ -10,6 +10,7 @@ from models.core.subscription_plan import SubscriptionPlan
 
 # Models (Tenant)
 from models.customer import Customer
+from models.customer_credit import CustomerCreditPlan, CustomerInstallment, CustomerCreditPayment
 from models.product import Product
 from models.message import Message
 from models.invoice import Invoice
@@ -45,6 +46,7 @@ from routes.inventory_ledger import inventory_ledger_bp
 from routes.media_library import media_library_bp
 from routes.cash import cash_bp
 from routes.customers import customers_bp
+from routes.customer_credit import customer_credit_bp
 from routes.orders import orders_bp
 from routes.shipping import shipping_bp
 from routes.reports import reports_bp
@@ -60,6 +62,7 @@ from routes.assistant import assistant_bp
 from routes.agents import agents_bp
 from routes.delivery_agent import delivery_agent_bp
 from routes.pages import pages_bp
+from routes.activity import activity_bp
 from routes.invoice_store import invoice_store_bp
 from routes.storefront import storefront_bp
 from routes.quick_sale import quick_sale_bp
@@ -169,6 +172,8 @@ with app.app_context():
     from models.beauty_service_product import BeautyServiceProduct  # noqa: F401
     from models.beauty_appointment import BeautyAppointment  # noqa: F401
     from models.beauty_session_note import BeautySessionNote  # noqa: F401
+    from models.customer_credit import CustomerCreditPlan, CustomerInstallment, CustomerCreditPayment  # noqa: F401
+    from models.activity_log import ActivityLog  # noqa: F401
 
     db.create_all()
 
@@ -229,6 +234,13 @@ with app.app_context():
                         if "opening_balance" not in supplier_cols:
                             cur.execute(
                                 "ALTER TABLE supplier ADD COLUMN opening_balance INTEGER DEFAULT 0"
+                            )
+                    if "shipping_company" in existing_tables:
+                        cur.execute("PRAGMA table_info(shipping_company)")
+                        shipping_cols = {row[1] for row in cur.fetchall()}
+                        if "opening_balance" not in shipping_cols:
+                            cur.execute(
+                                "ALTER TABLE shipping_company ADD COLUMN opening_balance INTEGER DEFAULT 0"
                             )
                     if "employee" in existing_tables:
                         cur.execute("PRAGMA table_info(employee)")
@@ -404,6 +416,8 @@ with app.app_context():
                 db.session.execute(text("ALTER TABLE shipping_company ADD COLUMN username VARCHAR(50)"))
             if 'password' not in shipping_columns:
                 db.session.execute(text("ALTER TABLE shipping_company ADD COLUMN password VARCHAR(200)"))
+            if 'opening_balance' not in shipping_columns:
+                db.session.execute(text("ALTER TABLE shipping_company ADD COLUMN opening_balance INTEGER DEFAULT 0"))
             # إنشاء tokens للشركات الموجودة
             companies = ShippingCompany.query.all()
             for company in companies:
@@ -428,7 +442,7 @@ with app.app_context():
                     CREATE TABLE shipping_report (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         report_number VARCHAR(50) NOT NULL UNIQUE,
-                        shipping_company_id INTEGER NOT NULL,
+                        shipping_company_id INTEGER,
                         shipping_company_name VARCHAR(150) NOT NULL,
                         orders_data TEXT,
                         total_amount INTEGER DEFAULT 0,
@@ -450,6 +464,43 @@ with app.app_context():
                 db.session.execute(text("ALTER TABLE shipping_report ADD COLUMN is_executed BOOLEAN DEFAULT 0"))
             if 'order_status_selections' not in shipping_report_columns:
                 db.session.execute(text("ALTER TABLE shipping_report ADD COLUMN order_status_selections TEXT"))
+            # السماح بـ NULL في shipping_company_id (كشوف المندوبين بدون شركة نقل)
+            sr_cols = {col['name']: col for col in inspector.get_columns('shipping_report')}
+            if 'shipping_company_id' in sr_cols and not sr_cols['shipping_company_id'].get('nullable', True):
+                dialect = db.engine.dialect.name
+                if dialect == 'postgresql':
+                    db.session.execute(text(
+                        "ALTER TABLE shipping_report ALTER COLUMN shipping_company_id DROP NOT NULL"
+                    ))
+                elif dialect == 'sqlite':
+                    with db.engine.connect() as conn:
+                        conn.execute(text("""
+                            CREATE TABLE shipping_report_new (
+                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                report_number VARCHAR(50) NOT NULL UNIQUE,
+                                shipping_company_id INTEGER,
+                                shipping_company_name VARCHAR(150) NOT NULL,
+                                orders_data TEXT,
+                                total_amount INTEGER DEFAULT 0,
+                                orders_count INTEGER DEFAULT 0,
+                                notes TEXT,
+                                created_at DATETIME,
+                                created_by VARCHAR(100),
+                                is_executed BOOLEAN DEFAULT 0,
+                                order_status_selections TEXT,
+                                FOREIGN KEY (shipping_company_id) REFERENCES shipping_company(id)
+                            )
+                        """))
+                        conn.execute(text("""
+                            INSERT INTO shipping_report_new
+                            SELECT id, report_number, shipping_company_id, shipping_company_name,
+                                   orders_data, total_amount, orders_count, notes, created_at,
+                                   created_by, is_executed, order_status_selections
+                            FROM shipping_report
+                        """))
+                        conn.execute(text("DROP TABLE shipping_report"))
+                        conn.execute(text("ALTER TABLE shipping_report_new RENAME TO shipping_report"))
+                        conn.commit()
             db.session.commit()
             print("Shipping report table already exists.")
     except Exception as e:
@@ -1014,6 +1065,7 @@ def inject_global_data():
         "can_manage_shipping": False,
         "can_manage_settings": False,
         "can_view_dashboard": False,
+        "can_view_activity": False,
         "_": lambda x: x,
         "current_lang": "ar"
     }
@@ -1074,6 +1126,7 @@ def inject_global_data():
             "can_manage_shipping": employee.has_permission("manage_shipping"),
             "can_manage_settings": employee.has_permission("manage_settings"),
             "can_view_dashboard": employee.has_permission("view_dashboard"),
+            "can_view_activity": employee.has_permission("view_activity"),
             "_": translate,
             "current_lang": final_lang,
         }
@@ -1254,6 +1307,7 @@ def inject_business_context():
                 "reports",
                 "settings",
                 "messages",
+                "activity",
             }
             return module in allowed_for_beauty
         return True
@@ -1342,6 +1396,7 @@ app.register_blueprint(inventory_ledger_bp, url_prefix="/inventory/ledger")
 app.register_blueprint(media_library_bp)
 app.register_blueprint(cash_bp, url_prefix="/cash")
 app.register_blueprint(customers_bp)
+app.register_blueprint(customer_credit_bp)
 app.register_blueprint(orders_bp, url_prefix="/orders")
 app.register_blueprint(shipping_bp, url_prefix="/shipping")
 app.register_blueprint(reports_bp, url_prefix="/reports")
@@ -1355,6 +1410,7 @@ app.register_blueprint(assistant_bp)
 app.register_blueprint(agents_bp)
 app.register_blueprint(delivery_agent_bp)
 app.register_blueprint(pages_bp)
+app.register_blueprint(activity_bp, url_prefix="/activity")
 from routes.permissions import permissions_bp
 app.register_blueprint(permissions_bp, url_prefix="/admin/permissions")
 
@@ -1445,6 +1501,9 @@ def add_headers(response):
     if app.config.get("SESSION_COOKIE_SECURE"):
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
+
+from utils.activity_middleware import register_activity_middleware
+register_activity_middleware(app)
 
 try:
     import importlib.util

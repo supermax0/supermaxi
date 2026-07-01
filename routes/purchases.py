@@ -23,6 +23,7 @@ from models.purchase_item import PurchaseItem
 from models.purchase_payment import PurchasePayment
 from models.supplier import Supplier
 from utils.permission_checks import check_permission
+from utils.activity_logger import log_activity
 
 purchases_bp = Blueprint("purchases", __name__, url_prefix="/purchases")
 
@@ -460,6 +461,18 @@ def purchases_create():
             return jsonify({"success": False, "error": err}), 400
         flash(f"❌ {err}", "danger")
         return redirect(url_for("purchases.purchases_new"))
+
+    try:
+        log_activity(
+            "create",
+            "purchases",
+            f"فاتورة شراء {purchase.invoice_no}",
+            entity_type="purchase",
+            entity_id=purchase.id,
+            payload={"invoice_no": purchase.invoice_no, "supplier_id": purchase.supplier_id, "total": purchase.total_amount},
+        )
+    except Exception:
+        pass
 
     msg = f"✅ تم حفظ فاتورة الشراء رقم {purchase.invoice_no} بنجاح"
     if request.is_json or request.form.get("payload"):

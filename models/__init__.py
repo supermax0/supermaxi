@@ -1,5 +1,6 @@
 from .product import Product
 from .customer import Customer
+from .customer_credit import CustomerCreditPlan, CustomerInstallment, CustomerCreditPayment
 from .account_transaction import AccountTransaction
 from .supplier import Supplier
 from .purchase import Purchase

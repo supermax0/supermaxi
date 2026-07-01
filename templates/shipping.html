@@ -569,6 +569,7 @@
     <div class="group-content">
       <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
         <input id="companyName" placeholder="{{ _('shipping_add_company_placeholder') }}" style="flex: 1; min-width: 250px;">
+        <input id="companyOpeningBalance" type="number" min="0" step="1" placeholder="{{ _('shipping_field_opening_balance') }}" style="width: 180px; padding: 16px 20px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(15, 23, 42, 0.6); color: var(--shipping-text);">
         <button class="btn btn-primary" onclick="addCompany()">
           <span>💾</span>
           <span>{{ _('shipping_add_company_button') }}</span>
@@ -601,6 +602,7 @@
           <tr>
             <th>🏢 {{ _('shipping_th_company_name') }}</th>
             <th>📦 {{ _('shipping_th_orders_count') }}</th>
+            <th>📊 {{ _('shipping_opening_balance') }}</th>
             <th>💰 {{ _('shipping_th_due') }}</th>
             <th>⚙️ {{ _('shipping_th_actions') }}</th>
           </tr>
@@ -608,7 +610,7 @@
         <tbody>
           {% if companies|length == 0 %}
           <tr>
-            <td colspan="4" style="padding: 60px; color: var(--shipping-muted);">
+            <td colspan="5" style="padding: 60px; color: var(--shipping-muted);">
               <div style="font-size: 40px; margin-bottom: 10px;">📭</div>
               {{ _('shipping_empty_state') }}
             </td>
@@ -618,11 +620,19 @@
           <tr data-company-id="{{ c.id }}" data-company-name="{{ c.name }}">
             <td data-label="{{ _('shipping_th_company_name') }}"><strong>{{ c.name }}</strong> <span class="active-scan-badge" style="display:none;margin-right:8px;padding:2px 8px;border-radius:999px;font-size:11px;background:rgba(34,197,94,0.2);color:#22c55e;">نشطة للمسح</span></td>
             <td data-label="{{ _('shipping_th_orders_count') }}">{{ c.orders_count }}</td>
+            <td data-label="{{ _('shipping_opening_balance') }}">
+              {% if c.opening_balance %}
+              <span style="color: var(--shipping-warning); font-weight: 700;">{{ "{:,.0f}".format(c.opening_balance) }} <small>{{ _('shipping_currency_iqd') }}</small></span>
+              {% else %}—{% endif %}
+            </td>
             <td data-label="{{ _('shipping_th_due') }}">
               <span
                 style="color: {% if c.due > 0 %}var(--shipping-danger){% else %}var(--shipping-success){% endif %}; font-weight: 700; font-size: 15px;">
-                {{ c.due }} <small>{{ _('shipping_currency_iqd') }}</small>
+                {{ "{:,.0f}".format(c.due) }} <small>{{ _('shipping_currency_iqd') }}</small>
               </span>
+              {% if c.opening_balance and c.orders_due %}
+              <div style="font-size:11px;color:var(--shipping-muted);margin-top:4px;">{{ _('shipping_due_breakdown') }}: {{ "{:,.0f}".format(c.orders_due) }} + {{ "{:,.0f}".format(c.opening_balance) }}</div>
+              {% endif %}
             </td>
             <td data-label="{{ _('shipping_th_actions') }}">
               <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
@@ -750,6 +760,7 @@
 
     function addCompany() {
       const name = document.getElementById("companyName").value.trim();
+      const openingBalance = document.getElementById("companyOpeningBalance")?.value || "0";
       if (!name) {
         showToast("{{ _('shipping_err_name_required') }}", "warning");
         return;
@@ -760,7 +771,7 @@
       fetch("/shipping/add", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name })
+        body: JSON.stringify({ name: name, opening_balance: openingBalance })
       })
         .then(response => response.json())
         .then(data => {
@@ -768,6 +779,9 @@
           if (data.success) {
             showToast("{{ _('shipping_toast_add_success') }}", "success");
             document.getElementById("companyName").value = "";
+            if (document.getElementById("companyOpeningBalance")) {
+              document.getElementById("companyOpeningBalance").value = "";
+            }
 
             // عرض بيانات تسجيل الدخول
             if (data.username && data.password) {

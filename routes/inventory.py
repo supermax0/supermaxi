@@ -23,6 +23,7 @@ from utils.inventory_movements import (
     validate_sale_quantity
 )
 from utils.permission_checks import check_permission
+from utils.activity_logger import PRODUCT_SNAPSHOT_FIELDS, log_activity, log_mutation, snapshot_attrs
 
 from utils.product_schema_guard import ensure_product_schema
 
@@ -364,6 +365,7 @@ def add_product_page():
                 ctx["product_specs_items"] = []
                 return render_template("inventory_add_product.html", **ctx), 404
 
+            before_product = snapshot_attrs(p, *PRODUCT_SNAPSHOT_FIELDS)
             old_buy_price = p.buy_price
             old_opening_stock = p.opening_stock or 0
 
@@ -416,6 +418,18 @@ def add_product_page():
 
             p.meta_json = json.dumps(meta, ensure_ascii=False) if meta else None
             db.session.commit()
+            try:
+                log_mutation(
+                    "update",
+                    "inventory",
+                    "product",
+                    p.id,
+                    before_product,
+                    snapshot_attrs(p, *PRODUCT_SNAPSHOT_FIELDS),
+                    f"تعديل منتج: {p.name}",
+                )
+            except Exception:
+                pass
 
             action = (request.form.get("submit_action") or "save").strip()
             if action == "add_another":
@@ -446,6 +460,17 @@ def add_product_page():
         )
         db.session.add(p)
         db.session.commit()
+        try:
+            log_activity(
+                "create",
+                "inventory",
+                f"إضافة منتج: {p.name}",
+                entity_type="product",
+                entity_id=p.id,
+                payload={"product": snapshot_attrs(p, *PRODUCT_SNAPSHOT_FIELDS)},
+            )
+        except Exception:
+            pass
 
         action = (request.form.get("submit_action") or "save").strip()
         if action == "add_another":
@@ -517,6 +542,15 @@ def save_audit():
                     db.session.add(account_tx)
                     
         db.session.commit()
+        try:
+            log_activity(
+                "update",
+                "inventory",
+                f"حفظ جرد مخزون — {len(items)} منتج",
+                payload={"items": items},
+            )
+        except Exception:
+            pass
         return jsonify({"success": True, "message": "تم حفظ تقرير الجرد بنجاح"})
         
     except Exception as e:

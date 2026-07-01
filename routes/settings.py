@@ -14,6 +14,7 @@ import json
 from datetime import datetime
 from types import SimpleNamespace
 from utils.permission_checks import guard_permission
+from utils.activity_logger import log_activity, log_mutation
 
 settings_bp = Blueprint("settings", __name__, url_prefix="/settings")
 
@@ -141,12 +142,25 @@ def update_employee_role():
         if not employee:
             return jsonify({"success": False, "error": "الموظف غير موجود"}), 404
         
+        old_role = employee.role
         # التحقق من أن الدور صحيح
         if new_role not in ["admin", "cashier"]:
             return jsonify({"success": False, "error": "دور غير صحيح"}), 400
         
         employee.role = new_role
         db.session.commit()
+        try:
+            log_mutation(
+                "update",
+                "settings",
+                "employee",
+                employee.id,
+                {"role": old_role},
+                {"role": employee.role},
+                f"تغيير دور الموظف {employee.name} إلى {new_role}",
+            )
+        except Exception:
+            pass
         
         return jsonify({"success": True, "message": "تم تحديث الصلاحية بنجاح"})
     except Exception as e:

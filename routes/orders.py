@@ -50,6 +50,7 @@ from utils.order_status import is_canceled, is_returned, is_completed
 from utils.cash_calculations import _effective_paid_amount
 from utils.payment_ledger import append_payment_ledger_delta
 from services.media_service import get_thumbnail_upload_root, get_video_upload_root, save_uploaded_file
+from utils.activity_logger import INVOICE_SNAPSHOT_FIELDS, log_mutation, snapshot_attrs
 
 orders_bp = Blueprint("orders", __name__, url_prefix="/orders")
 _ORDERS_PUBLIC_PREFIXES = ("/orders/p/o/", "/orders/invoice-video/")
@@ -881,6 +882,7 @@ def orders_cancelled():
 def update_order():
     data = request.json
     order = Invoice.query.get_or_404(int(data["id"]))
+    before = snapshot_attrs(order, *INVOICE_SNAPSHOT_FIELDS)
 
     if data.get("status"):
         order.status = data["status"]
@@ -889,6 +891,18 @@ def update_order():
         order.shipping_company_id = int(data["shipping"])
 
     db.session.commit()
+    try:
+        log_mutation(
+            "update",
+            "orders",
+            "invoice",
+            order.id,
+            before,
+            snapshot_attrs(order, *INVOICE_SNAPSHOT_FIELDS),
+            f"تعديل الطلب #{order.id}",
+        )
+    except Exception:
+        pass
     return jsonify({"success": True})
 
 
@@ -909,6 +923,7 @@ def payment():
         if not order:
             return jsonify({"success": False, "error": "الطلب غير موجود"}), 404
 
+        before_pay = snapshot_attrs(order, *INVOICE_SNAPSHOT_FIELDS)
         payment_status = data.get("payment")
         paid_amount = data.get("paid_amount", 0)
         video_cleanup_targets = None
@@ -937,6 +952,18 @@ def payment():
                 append_payment_ledger_delta(order.id, delta_pay)
                 db.session.commit()
                 _delete_order_video_cleanup_targets(video_cleanup_targets)
+                try:
+                    log_mutation(
+                        "update",
+                        "orders",
+                        "invoice",
+                        order.id,
+                        before_pay,
+                        snapshot_attrs(order, *INVOICE_SNAPSHOT_FIELDS),
+                        f"ترجيع الطلب #{order.id}",
+                    )
+                except Exception:
+                    pass
                 try:
                     from utils.customer_blacklist import maybe_auto_blacklist_after_return
 
@@ -979,6 +1006,18 @@ def payment():
         append_payment_ledger_delta(order.id, delta_pay)
         db.session.commit()
         _delete_order_video_cleanup_targets(video_cleanup_targets)
+        try:
+            log_mutation(
+                "update",
+                "orders",
+                "invoice",
+                order.id,
+                before_pay,
+                snapshot_attrs(order, *INVOICE_SNAPSHOT_FIELDS),
+                f"تسديد الطلب #{order.id} — {order.payment_status}",
+            )
+        except Exception:
+            pass
         return jsonify({"success": True})
     except Exception as e:
         db.session.rollback()
@@ -992,6 +1031,7 @@ def payment():
 def delete_order(order_id):
     _ensure_order_video_columns()
     order = Invoice.query.get_or_404(order_id)
+    before_del = snapshot_attrs(order, *INVOICE_SNAPSHOT_FIELDS)
 
     try:
         video_cleanup_targets = _collect_order_video_cleanup_targets(order)
@@ -1004,6 +1044,18 @@ def delete_order(order_id):
 
         db.session.delete(order)
         db.session.commit()
+        try:
+            log_mutation(
+                "delete",
+                "orders",
+                "invoice",
+                order_id,
+                before_del,
+                None,
+                f"حذف الطلب #{order_id}",
+            )
+        except Exception:
+            pass
         _delete_order_video_cleanup_targets(video_cleanup_targets)
         return jsonify({"success": True})
     except Exception as e:
@@ -1017,6 +1069,7 @@ def delete_order(order_id):
 def update_shipping():
     data = request.json
     order = Invoice.query.get_or_404(data["order_id"])
+    before = snapshot_attrs(order, *INVOICE_SNAPSHOT_FIELDS)
     
     shipping_id = data.get("shipping_id")
     # إذا كان shipping_id هو None أو "none" أو ""، نضبطه على None
@@ -1026,6 +1079,18 @@ def update_shipping():
         order.shipping_company_id = int(shipping_id)
     
     db.session.commit()
+    try:
+        log_mutation(
+            "update",
+            "orders",
+            "invoice",
+            order.id,
+            before,
+            snapshot_attrs(order, *INVOICE_SNAPSHOT_FIELDS),
+            f"تحديث شركة الشحن للطلب #{order.id}",
+        )
+    except Exception:
+        pass
 
     return jsonify({"success": True})
 
@@ -2077,19 +2142,6 @@ def create_agent_report_internal(order_ids, agent_id, save_to_db=True):
     if len(orders) != len(order_ids):
         return {"error": "بعض الطلبات غير موجودة"}
     
-    # البحث عن شركة نقل افتراضية "كشف مندوب" أو إنشاؤها
-    default_shipping = ShippingCompany.query.filter_by(name="كشف مندوب").first()
-    if not default_shipping:
-        # إنشاء شركة نقل افتراضية
-        default_shipping = ShippingCompany(
-            name="كشف مندوب",
-            phone="",
-            price=0,
-            notes="شركة افتراضية لكشوف المندوبين"
-        )
-        db.session.add(default_shipping)
-        db.session.commit()
-    
     # تحضير بيانات الطلبات
     orders_data = []
     total_amount = 0
@@ -2140,7 +2192,7 @@ def create_agent_report_internal(order_ids, agent_id, save_to_db=True):
         # إنشاء الكشف وحفظه
         report = ShippingReport(
             report_number=report_number,
-            shipping_company_id=default_shipping.id,
+            shipping_company_id=None,
             shipping_company_name=f"كشف المندوب: {agent.name}",
             orders_data=json.dumps(orders_data, ensure_ascii=False),
             total_amount=total_amount,

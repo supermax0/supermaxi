@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+{% block title %}{{ _('activity_page_title') }}{% endblock %}
+{% block page_title %}<i class="fas fa-history"></i> {{ _('activity_page_title') }}{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/team-admin.css') }}">
+
+<style>
+.activity-page { direction: rtl; max-width: 1400px; margin: 0 auto; }
+.activity-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.activity-filters label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+.activity-filters input, .activity-filters select {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border-light);
+  background: var(--card);
+  color: var(--text);
+}
+.activity-table-wrap { overflow-x: auto; border-radius: 16px; border: 1px solid var(--border-light); }
+.activity-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.activity-table th, .activity-table td { padding: 10px 12px; border-bottom: 1px solid var(--border-light); text-align: right; }
+.activity-table th { background: var(--card-alt); font-weight: 700; position: sticky; top: 0; }
+.activity-table tr:hover { background: rgba(59,130,246,0.06); }
+.badge-action { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+.badge-view { background: #dbeafe; color: #1d4ed8; }
+.badge-create { background: #dcfce7; color: #15803d; }
+.badge-update { background: #fef3c7; color: #b45309; }
+.badge-delete { background: #fee2e2; color: #b91c1c; }
+.badge-login { background: #ede9fe; color: #6d28d9; }
+.badge-logout { background: #f3e8ff; color: #7e22ce; }
+.badge-login_failed { background: #fecaca; color: #991b1b; }
+.btn-detail {
+  border: none; background: var(--primary); color: #fff; padding: 4px 10px;
+  border-radius: 8px; cursor: pointer; font-size: 12px;
+}
+.pagination-bar { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; flex-wrap: wrap; gap: 10px; }
+.pagination-bar button {
+  padding: 8px 14px; border-radius: 10px; border: 1px solid var(--border-light);
+  background: var(--card); cursor: pointer; color: var(--text);
+}
+.pagination-bar button:disabled { opacity: 0.4; cursor: not-allowed; }
+.modal-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 9999;
+  align-items: center; justify-content: center; padding: 20px;
+}
+.modal-overlay.open { display: flex; }
+.modal-box {
+  background: var(--card); border-radius: 18px; max-width: 900px; width: 100%;
+  max-height: 85vh; overflow: hidden; display: flex; flex-direction: column;
+  border: 1px solid var(--border-light);
+}
+.modal-header { padding: 16px 20px; border-bottom: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; }
+.modal-body { padding: 16px 20px; overflow: auto; }
+.modal-body pre {
+  background: var(--card-alt); padding: 14px; border-radius: 12px;
+  font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-break: break-word;
+  direction: ltr; text-align: left;
+}
+.modal-close { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--text-muted); }
+.empty-state { text-align: center; padding: 40px; color: var(--text-muted); }
+</style>
+
+<div class="team-admin-page activity-page">
+  <div class="admin-page-header">
+    <div class="admin-page-header__meta">
+      <p>{{ _('activity_page_subtitle') }}</p>
+    </div>
+  </div>
+
+  <div class="stats-grid" id="activityStats">
+    <div class="stat-card primary"><div class="stat-label">{{ _('activity_stat_total') }}</div><div class="stat-value" id="statTotal">—</div></div>
+    <div class="stat-card success"><div class="stat-label">{{ _('activity_stat_today') }}</div><div class="stat-value" id="statToday">—</div></div>
+    <div class="stat-card warning"><div class="stat-label">{{ _('activity_stat_logins') }}</div><div class="stat-value" id="statLogins">—</div></div>
+    <div class="stat-card primary"><div class="stat-label">{{ _('activity_stat_mutations') }}</div><div class="stat-value" id="statMutations">—</div></div>
+  </div>
+
+  <div class="admin-toolbar activity-filters">
+    <div><label>{{ _('activity_filter_date_from') }}</label><input type="date" id="filterDateFrom"></div>
+    <div><label>{{ _('activity_filter_date_to') }}</label><input type="date" id="filterDateTo"></div>
+    <div>
+      <label>{{ _('activity_filter_employee') }}</label>
+      <select id="filterEmployee">
+        <option value="">{{ _('activity_filter_all') }}</option>
+        {% for emp in employees %}
+        <option value="{{ emp.id }}">{{ emp.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>{{ _('activity_filter_action') }}</label>
+      <select id="filterAction">
+        <option value="">{{ _('activity_filter_all') }}</option>
+        {% for key, label in action_labels.items() %}
+        <option value="{{ key }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>{{ _('activity_filter_category') }}</label>
+      <select id="filterCategory">
+        <option value="">{{ _('activity_filter_all') }}</option>
+        {% for key, label in category_labels.items() %}
+        <option value="{{ key }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div><label>{{ _('activity_filter_search') }}</label><input type="text" id="filterSearch" placeholder="{{ _('activity_search_placeholder') }}"></div>
+    <div style="display:flex;align-items:flex-end;">
+      <button type="button" class="btn btn-primary" id="btnApplyFilters" style="width:100%;">{{ _('activity_apply_filters') }}</button>
+    </div>
+  </div>
+
+  <div class="activity-table-wrap">
+    <table class="activity-table admin-table">
+      <thead>
+        <tr>
+          <th>{{ _('activity_col_date') }}</th>
+          <th>{{ _('activity_col_employee') }}</th>
+          <th>{{ _('activity_col_category') }}</th>
+          <th>{{ _('activity_col_action') }}</th>
+          <th>{{ _('activity_col_summary') }}</th>
+          <th>{{ _('activity_col_details') }}</th>
+        </tr>
+      </thead>
+      <tbody id="activityTableBody">
+        <tr><td colspan="6" class="empty-state">{{ _('activity_loading') }}</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pagination-bar">
+    <span id="paginationInfo">—</span>
+    <div>
+      <button type="button" id="btnPrev">{{ _('activity_prev') }}</button>
+      <button type="button" id="btnNext">{{ _('activity_next') }}</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="detailModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <strong id="modalTitle">{{ _('activity_details_title') }}</strong>
+      <button type="button" class="modal-close" id="modalClose">&times;</button>
+    </div>
+    <div class="modal-body">
+      <pre id="modalPayload"></pre>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  let currentPage = 1;
+  let totalPages = 1;
+  let lastItems = [];
+
+  const badgeClass = (action) => 'badge-action badge-' + (action || 'view');
+
+  function fmtDate(iso) {
+    if (!iso) return '—';
+    try {
+      const d = new Date(iso);
+      return d.toLocaleString('ar-IQ', { dateStyle: 'short', timeStyle: 'short' });
+    } catch (e) { return iso; }
+  }
+
+  function loadStats() {
+    fetch('/activity/api/stats')
+      .then(r => r.json())
+      .then(data => {
+        document.getElementById('statTotal').textContent = data.total ?? 0;
+        document.getElementById('statToday').textContent = data.today ?? 0;
+        document.getElementById('statLogins').textContent = data.logins_today ?? 0;
+        document.getElementById('statMutations').textContent = data.mutations_today ?? 0;
+      })
+      .catch(() => {});
+  }
+
+  function buildQuery(page) {
+    const p = new URLSearchParams();
+    p.set('page', page);
+    p.set('per_page', 50);
+    const df = document.getElementById('filterDateFrom').value;
+    const dt = document.getElementById('filterDateTo').value;
+    const emp = document.getElementById('filterEmployee').value;
+    const act = document.getElementById('filterAction').value;
+    const cat = document.getElementById('filterCategory').value;
+    const q = document.getElementById('filterSearch').value.trim();
+    if (df) p.set('date_from', df);
+    if (dt) p.set('date_to', dt);
+    if (emp) p.set('employee_id', emp);
+    if (act) p.set('action', act);
+    if (cat) p.set('category', cat);
+    if (q) p.set('q', q);
+    return p.toString();
+  }
+
+  function loadList(page) {
+    currentPage = page;
+    const tbody = document.getElementById('activityTableBody');
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">{{ _("activity_loading") }}</td></tr>';
+    fetch('/activity/api/list?' + buildQuery(page))
+      .then(r => r.json())
+      .then(data => {
+        lastItems = data.items || [];
+        totalPages = data.pages || 1;
+        document.getElementById('paginationInfo').textContent =
+          'صفحة ' + data.page + ' من ' + totalPages + ' — ' + (data.total || 0) + ' سجل';
+        document.getElementById('btnPrev').disabled = data.page <= 1;
+        document.getElementById('btnNext').disabled = data.page >= totalPages;
+        if (!lastItems.length) {
+          tbody.innerHTML = '<tr><td colspan="6" class="empty-state">{{ _("activity_empty") }}</td></tr>';
+          return;
+        }
+        tbody.innerHTML = lastItems.map((row, idx) => `
+          <tr>
+            <td>${fmtDate(row.created_at)}</td>
+            <td>${row.employee_name || '—'}</td>
+            <td>${row.category_label || row.category}</td>
+            <td><span class="${badgeClass(row.action)}">${row.action_label || row.action}</span></td>
+            <td>${(row.summary || '').replace(/</g, '&lt;')}</td>
+            <td><button type="button" class="btn-detail" data-idx="${idx}">{{ _('activity_view_details') }}</button></td>
+          </tr>
+        `).join('');
+        tbody.querySelectorAll('.btn-detail').forEach(btn => {
+          btn.addEventListener('click', () => showDetail(parseInt(btn.dataset.idx, 10)));
+        });
+      })
+      .catch(() => {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">{{ _("activity_load_error") }}</td></tr>';
+      });
+  }
+
+  function showDetail(idx) {
+    const row = lastItems[idx];
+    if (!row) return;
+    document.getElementById('modalTitle').textContent = row.summary || '{{ _("activity_details_title") }}';
+    document.getElementById('modalPayload').textContent = JSON.stringify({
+      id: row.id,
+      employee: row.employee_name,
+      action: row.action,
+      category: row.category,
+      entity_type: row.entity_type,
+      entity_id: row.entity_id,
+      request_method: row.request_method,
+      request_path: row.request_path,
+      status_code: row.status_code,
+      ip_address: row.ip_address,
+      payload: row.payload
+    }, null, 2);
+    document.getElementById('detailModal').classList.add('open');
+  }
+
+  document.getElementById('btnApplyFilters').addEventListener('click', () => loadList(1));
+  document.getElementById('btnPrev').addEventListener('click', () => { if (currentPage > 1) loadList(currentPage - 1); });
+  document.getElementById('btnNext').addEventListener('click', () => { if (currentPage < totalPages) loadList(currentPage + 1); });
+  document.getElementById('modalClose').addEventListener('click', () => document.getElementById('detailModal').classList.remove('open'));
+  document.getElementById('detailModal').addEventListener('click', (e) => {
+    if (e.target.id === 'detailModal') document.getElementById('detailModal').classList.remove('open');
+  });
+  document.getElementById('filterSearch').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') loadList(1);
+  });
+
+  loadStats();
+  loadList(1);
+})();
+</script>
+{% endblock %}

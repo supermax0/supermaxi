@@ -14,6 +14,7 @@ from models.page import Page
 from utils.product_schema_guard import ensure_customer_blacklist_columns, ensure_product_schema
 from utils.customer_blacklist import is_phone_blacklisted_for_new_customer
 from utils.permission_checks import guard_permission
+from utils.activity_logger import INVOICE_SNAPSHOT_FIELDS, log_activity, snapshot_attrs
 
 pos_bp = Blueprint("pos", __name__, url_prefix="/pos")
 
@@ -576,6 +577,17 @@ def create_order():
 
     try:
         db.session.commit()
+        try:
+            log_activity(
+                "create",
+                "pos",
+                f"بيع جديد — فاتورة #{invoice.id} بمبلغ {total}",
+                entity_type="invoice",
+                entity_id=invoice.id,
+                payload={"invoice": snapshot_attrs(invoice, *INVOICE_SNAPSHOT_FIELDS), "items_count": len(items)},
+            )
+        except Exception:
+            pass
         return jsonify({
             "success": True,
             "invoice_id": invoice.id,

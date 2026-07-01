@@ -102,7 +102,7 @@
       </thead>
       <tbody id="agentsTableBody">
         {% for data in agents_data %}
-        <tr data-search="{{ data.agent.name }} {{ data.agent.phone or '' }}" data-agent-name="{{ data.agent.name }}">
+        <tr data-search="{{ data.agent.name|e }} {{ data.agent.phone|e }}" data-agent-name="{{ data.agent.name|e }}">
           <td>{{ loop.index }}</td>
           <td><strong>{{ data.agent.name }}</strong>{% if data.agent.is_active is defined and not data.agent.is_active %} <span class="admin-metric admin-metric--danger">معطّل</span>{% endif %}</td>
           <td>{{ data.agent.phone or '—' }}</td>
@@ -125,15 +125,15 @@
               </a>
               {% if can_manage_agents %}
               <button type="button" class="action-btn" title="بيانات الدخول"
-                onclick="setAgentCredentials({{ data.agent.id }}, {{ data.agent.name|tojson }}, {{ (data.agent.username or '')|tojson }})">
+                onclick='setAgentCredentials({{ data.agent.id }}, {{ data.agent.name|tojson }}, {{ (data.agent.username or "")|tojson }})'>
                 <i class="fas fa-key"></i>
               </button>
               <button type="button" class="action-btn" title="تعديل"
-                onclick="editAgent({{ data.agent.id }}, {{ data.agent.name|tojson }}, {{ (data.agent.phone or '')|tojson }}, {{ (data.agent.notes or '')|tojson }})">
+                onclick='editAgent({{ data.agent.id }}, {{ data.agent.name|tojson }}, {{ (data.agent.phone or "")|tojson }}, {{ (data.agent.notes or "")|tojson }})'>
                 <i class="fas fa-pen"></i>
               </button>
               <button type="button" class="action-btn danger" title="{{ _('agents_action_delete') if _('agents_action_delete') != 'agents_action_delete' else 'حذف' }}"
-                onclick="deleteAgent({{ data.agent.id }}, {{ data.agent.name|tojson }})">
+                onclick='deleteAgent({{ data.agent.id }}, {{ data.agent.name|tojson }})'>
                 <i class="fas fa-trash"></i>
               </button>
               {% endif %}
@@ -154,6 +154,9 @@
   </div>
 </div>
 
+{% endblock %}
+
+{% block scripts %}
 <script>
   window.AGENTS_I18N = {
     err_name: {{ _('agents_err_name_required')|tojson }},
@@ -166,7 +169,7 @@
     empty_filter: {{ _('agents_empty_filter_title')|tojson }},
     prompt_name: {{ (_('agents_field_name_label'))|tojson }},
     prompt_phone: {{ (_('agents_field_phone_label'))|tojson }},
-    prompt_notes: {{ '"ملاحظات"'|tojson }}
+    prompt_notes: {{ 'ملاحظات'|tojson }}
   };
 </script>
 <script src="{{ url_for('static', filename='js/agents-admin.js') }}"></script>

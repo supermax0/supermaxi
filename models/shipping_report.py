@@ -11,11 +11,11 @@ class ShippingReport(db.Model):
     # رقم الكشف (فريد)
     report_number = db.Column(db.String(50), unique=True, nullable=False)
     
-    # شركة النقل
+    # شركة النقل (اختياري — كشوف المندوبين لا ترتبط بشركة نقل)
     shipping_company_id = db.Column(
         db.Integer,
         db.ForeignKey("shipping_company.id"),
-        nullable=False
+        nullable=True
     )
     
     # اسم شركة النقل (للاحتفاظ بالاسم حتى لو تم حذف الشركة)

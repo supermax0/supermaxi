@@ -980,6 +980,13 @@
     letter-spacing: -0.02em;
   }
 
+  .modal .od-modal-subtitle {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--orders-muted);
+    margin: -4px 0 10px;
+  }
+
   .modal .od-modal-badges {
     display: flex;
     flex-wrap: wrap;
@@ -1345,13 +1352,166 @@
   }
 
   @media (max-width: 640px) {
-    .modal.od-modal-overlay { padding: 12px; }
-    .modal .od-modal-header,
-    .modal .od-modal-body,
-    .modal .od-modal-footer { padding-left: 16px; padding-right: 16px; }
-    .modal .od-modal-title { font-size: 18px; }
-    .modal .od-fields { grid-template-columns: 1fr; }
-    .modal .od-actions .btn { min-width: 100%; }
+    .modal.od-modal-overlay {
+      padding: 0;
+      align-items: flex-end;
+    }
+
+    .modal .od-modal-box {
+      max-width: 100%;
+      max-height: 92vh;
+      border-radius: 18px 18px 0 0;
+      border-bottom: none;
+    }
+
+    .modal .od-modal-header {
+      padding: 12px 14px 10px;
+      gap: 10px;
+    }
+
+    .modal .od-modal-body {
+      padding: 10px 14px 0;
+    }
+
+    .modal .od-modal-footer {
+      padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+    }
+
+    .modal .od-modal-subtitle {
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+
+    .modal .od-modal-title {
+      font-size: 15px;
+      margin-bottom: 2px;
+      gap: 6px;
+    }
+
+    .modal .od-modal-subtitle {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--orders-muted);
+      margin-bottom: 8px;
+    }
+
+    .modal .od-modal-badges {
+      gap: 5px;
+    }
+
+    .modal .od-pill {
+      font-size: 10px;
+      padding: 3px 8px;
+    }
+
+    .modal .od-close-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      font-size: 14px;
+    }
+
+    .modal .od-card {
+      padding: 12px 14px;
+      margin-bottom: 10px;
+      border-radius: 12px;
+    }
+
+    .modal .od-card__title {
+      font-size: 13px;
+      margin-bottom: 10px;
+    }
+
+    .modal .od-card__title-icon {
+      width: 24px;
+      height: 24px;
+      font-size: 12px;
+      border-radius: 8px;
+    }
+
+    .modal .od-fields {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px 12px;
+    }
+
+    .modal .od-field__label {
+      font-size: 10px;
+      margin-bottom: 2px;
+    }
+
+    .modal .od-field__value {
+      font-size: 13px;
+    }
+
+    .modal .od-items-table th,
+    .modal .od-items-table td {
+      padding: 8px 10px;
+      font-size: 12px;
+    }
+
+    .modal .od-summary-row {
+      padding: 8px 0;
+    }
+
+    .modal .od-summary-row__label {
+      font-size: 12px;
+    }
+
+    .modal .od-summary-row__value {
+      font-size: 14px;
+    }
+
+    .modal .od-actions {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 7px;
+      justify-content: stretch;
+    }
+
+    .modal .od-actions .btn {
+      min-width: 0;
+      width: 100%;
+      padding: 7px 4px;
+      font-size: 10px;
+      font-weight: 600;
+      border-radius: 10px;
+      flex-direction: column;
+      gap: 3px;
+      min-height: 50px;
+      line-height: 1.2;
+    }
+
+    .modal .od-actions .btn:hover {
+      transform: none;
+      box-shadow: none;
+    }
+
+    .modal .od-actions .btn > span:first-child {
+      font-size: 15px;
+      line-height: 1;
+    }
+
+    .modal .od-actions .btn > span:last-child {
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+      padding: 0 2px;
+    }
+
+    .modal .od-actions .btn.od-action-btn--wide {
+      grid-column: 1 / -1;
+      flex-direction: row;
+      min-height: 34px;
+      padding: 7px 12px;
+      font-size: 11px;
+      gap: 6px;
+    }
+
+    .modal .od-actions .btn.od-action-btn--wide > span:first-child {
+      font-size: 13px;
+    }
   }
 
   .action-btn-small.pay-btn {
@@ -3171,7 +3331,8 @@
       '<div class="modal-box od-modal-box">' +
       '<div class="od-modal-header">' +
       '<div class="od-modal-header__main">' +
-      '<h2 class="od-modal-title"><span>📋</span><span>{{ _("orders_details_title") }} #' + order.id + '</span></h2>' +
+      '<h2 class="od-modal-title"><span>📋</span><span>{{ _("orders_details_title") }}</span></h2>' +
+      '<div class="od-modal-subtitle">#' + order.id + '</div>' +
       '<div class="od-modal-badges">' + headerBadges + '</div>' +
       '</div>' +
       '<button type="button" class="od-close-btn" onclick="this.closest(\'.modal\').remove()" aria-label="إغلاق">✕</button>' +
@@ -3235,16 +3396,16 @@
       '</div>' +
 
       '<div class="od-modal-footer"><div class="od-actions">' +
-      '<button class="btn btn-primary" onclick="printInvoice(' + order.id + ')"><span>🖨️</span><span>{{ _("orders_details_btn_print_invoice") }}</span></button>' +
-      '<button class="btn btn-success" onclick="sendWhatsApp(' + order.id + ', \'' + (order.phone || '') + '\')"><span>📱</span><span>{{ _("orders_details_btn_whatsapp") }}</span></button>' +
+      '<button type="button" class="btn btn-primary od-action-btn" onclick="printInvoice(' + order.id + ')"><span>🖨️</span><span>{{ _("orders_details_btn_print_invoice") }}</span></button>' +
+      '<button type="button" class="btn btn-success od-action-btn" onclick="sendWhatsApp(' + order.id + ', \'' + (order.phone || '') + '\')"><span>📱</span><span>{{ _("orders_details_btn_whatsapp") }}</span></button>' +
       (order.status !== 'تم التوصيل' && order.status !== 'مرتجع' && order.status !== 'ملغي'
-        ? '<button class="btn btn-warning" onclick="editOrder(' + order.id + ')" style="background:linear-gradient(135deg, #f59e0b, #d97706);"><span>✏️</span><span>{{ _("orders_details_btn_edit_order") }}</span></button>'
+        ? '<button type="button" class="btn btn-warning od-action-btn" onclick="editOrder(' + order.id + ')"><span>✏️</span><span>{{ _("orders_details_btn_edit_order") }}</span></button>'
         : '') +
       (remaining > 0 && order.status !== 'تم التوصيل' && order.status !== 'مرتجع' && order.status !== 'ملغي'
-        ? '<button class="btn btn-warning" onclick="pay(' + order.id + '); this.closest(\'.modal\').remove();"><span>💰</span><span>{{ _("orders_details_btn_full_pay") }}</span></button>' +
-          '<button class="btn btn-success" onclick="payPartial(' + order.id + ', ' + remaining + '); this.closest(\'.modal\').remove();"><span>💵</span><span>{{ _("orders_details_btn_partial_pay") }}</span></button>'
+        ? '<button type="button" class="btn btn-warning od-action-btn" onclick="pay(' + order.id + '); this.closest(\'.modal\').remove();"><span>💰</span><span>{{ _("orders_details_btn_full_pay") }}</span></button>' +
+          '<button type="button" class="btn btn-success od-action-btn" onclick="payPartial(' + order.id + ', ' + remaining + '); this.closest(\'.modal\').remove();"><span>💵</span><span>{{ _("orders_details_btn_partial_pay") }}</span></button>'
         : '') +
-      '<button class="btn btn-secondary" onclick="window.location.href=\'/orders/invoice/' + order.id + '\'"><span>🔗</span><span>{{ _("orders_details_btn_full_page") }}</span></button>' +
+      '<button type="button" class="btn btn-secondary od-action-btn od-action-btn--wide" onclick="window.location.href=\'/orders/invoice/' + order.id + '\'"><span>🔗</span><span>{{ _("orders_details_btn_full_page") }}</span></button>' +
       '</div></div></div>';
 
     document.body.appendChild(modal);

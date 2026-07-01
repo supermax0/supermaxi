@@ -15,6 +15,7 @@ from utils.cash_calculations import (
     get_cash_summary
 )
 from utils.permission_checks import check_permission
+from utils.activity_logger import log_activity
 
 cash_bp = Blueprint("cash", __name__, url_prefix="/cash")
 
@@ -61,6 +62,16 @@ def cash():
         
         db.session.add(tx)
         db.session.commit()
+        try:
+            log_activity(
+                "create",
+                "finance",
+                f"حركة صندوق — {reason}: {amount}",
+                entity_type="account_transaction",
+                payload={"type": tx_type, "amount": amount, "note": cash_note},
+            )
+        except Exception:
+            pass
         
         flash(f"✅ تم تسجيل الحركة النقدية بنجاح - {reason}", "success")
         return redirect(url_for("cash.cash"))

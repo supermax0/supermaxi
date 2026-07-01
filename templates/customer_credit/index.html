@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+{% block title %}{{ _('customer_credit_title') }}{% endblock %}
+{% block page_title %}{{ _('customer_credit_page_title') }}{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/customer-credit.css') }}">
+
+<div class="cc-page">
+  <div class="cc-header">
+    <div>
+      <p style="color:var(--text-muted);font-size:0.9rem;margin:0;">{{ _('customer_credit_subtitle') }}</p>
+    </div>
+    <button type="button" class="cc-btn cc-btn-primary" onclick="openAddDebtModal()">
+      <i class="fas fa-plus"></i> {{ _('customer_credit_add_debt') }}
+    </button>
+  </div>
+
+  <div class="cc-stats">
+    <div class="cc-stat">
+      <div class="cc-stat-label">{{ _('customer_credit_stat_total_debt') }}</div>
+      <div class="cc-stat-value">{{ "{:,}".format(stats.total_debt) }} {{ _('reports_currency_iqd') }}</div>
+    </div>
+    <div class="cc-stat">
+      <div class="cc-stat-label">{{ _('customer_credit_stat_paid') }}</div>
+      <div class="cc-stat-value success">{{ "{:,}".format(stats.total_paid) }} {{ _('reports_currency_iqd') }}</div>
+    </div>
+    <div class="cc-stat">
+      <div class="cc-stat-label">{{ _('customer_credit_stat_remaining') }}</div>
+      <div class="cc-stat-value danger">{{ "{:,}".format(stats.remaining) }} {{ _('reports_currency_iqd') }}</div>
+    </div>
+    <div class="cc-stat">
+      <div class="cc-stat-label">{{ _('customer_credit_stat_overdue') }}</div>
+      <div class="cc-stat-value warning">{{ stats.overdue_count }}</div>
+    </div>
+  </div>
+
+  <div class="cc-panel">
+    <div class="cc-toolbar">
+      <h3 style="margin:0;font-weight:800;">{{ _('customer_credit_list_title') }}</h3>
+      <input type="search" id="ccSearch" placeholder="{{ _('customer_credit_search') }}" style="max-width:260px;padding:10px 12px;border-radius:10px;border:1px solid var(--border-light);background:var(--bg);color:var(--text);" oninput="filterCreditRows()">
+    </div>
+
+    {% if rows %}
+    <div class="cc-table-wrap">
+      <table class="cc-table" id="ccTable">
+        <thead>
+          <tr>
+            <th>{{ _('customer_credit_th_customer') }}</th>
+            <th>{{ _('customer_credit_th_phone') }}</th>
+            <th>{{ _('customer_credit_th_plans') }}</th>
+            <th>{{ _('customer_credit_th_debt') }}</th>
+            <th>{{ _('customer_credit_th_paid') }}</th>
+            <th>{{ _('customer_credit_th_remaining') }}</th>
+            <th>{{ _('customer_credit_th_next_due') }}</th>
+            <th>{{ _('customer_credit_th_overdue') }}</th>
+            <th>{{ _('customer_credit_th_actions') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+          <tr class="cc-row" data-search="{{ row.customer.name }} {{ row.customer.phone }}">
+            <td><strong>{{ row.customer.name }}</strong></td>
+            <td>{{ row.customer.phone }}</td>
+            <td>{{ row.summary.active_plans }}</td>
+            <td>{{ "{:,}".format(row.summary.total_debt) }}</td>
+            <td>{{ "{:,}".format(row.summary.total_paid) }}</td>
+            <td style="color:var(--danger);font-weight:700;">{{ "{:,}".format(row.summary.remaining) }}</td>
+            <td>
+              {% if row.next_due_amount %}
+              {{ row.next_due_date }}<br><small>{{ "{:,}".format(row.next_due_amount) }} {{ _('reports_currency_iqd') }}</small>
+              {% else %}—{% endif %}
+            </td>
+            <td>
+              {% if row.summary.overdue_count %}
+              <span class="cc-badge cc-badge-overdue">{{ row.summary.overdue_count }}</span>
+              {% else %}—{% endif %}
+            </td>
+            <td>
+              <a href="{{ url_for('customer_credit.detail', customer_id=row.customer.id) }}" class="cc-btn cc-btn-ghost" style="padding:8px 12px;">
+                <i class="fas fa-file-invoice"></i> {{ _('customer_credit_action_statement') }}
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="cc-empty">
+      <div style="font-size:2.5rem;margin-bottom:12px;">📋</div>
+      <h3>{{ _('customer_credit_empty_title') }}</h3>
+      <p>{{ _('customer_credit_empty_subtitle') }}</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div id="addDebtModal" class="cc-modal-overlay" onclick="if(event.target===this) closeAddDebtModal()">
+  <div class="cc-modal">
+    <div class="cc-modal-head">
+      <h3 style="margin:0;font-weight:800;">{{ _('customer_credit_add_debt') }}</h3>
+      <button type="button" class="cc-btn cc-btn-ghost" onclick="closeAddDebtModal()"><i class="fas fa-xmark"></i></button>
+    </div>
+
+    <div class="cc-tabs">
+      <button type="button" class="cc-tab active" data-tab="opening" onclick="switchDebtTab('opening')">{{ _('customer_credit_tab_opening') }}</button>
+      <button type="button" class="cc-tab" data-tab="products" onclick="switchDebtTab('products')">{{ _('customer_credit_tab_products') }}</button>
+      <button type="button" class="cc-tab" data-tab="manual" onclick="switchDebtTab('manual')">{{ _('customer_credit_tab_manual') }}</button>
+    </div>
+
+    <div class="cc-field">
+      <label>{{ _('customer_credit_field_customer') }}</label>
+      <input type="text" id="debtCustomerSearch" placeholder="{{ _('customer_credit_customer_search') }}" autocomplete="off" oninput="searchCustomersForDebt()">
+      <input type="hidden" id="debtCustomerId">
+      <div id="debtCustomerResults" class="cc-customer-results"></div>
+      <div id="debtCustomerSelected" style="margin-top:8px;font-size:0.85rem;color:var(--text-muted);"></div>
+    </div>
+
+    <div id="tab-opening" class="debt-tab-panel">
+      <div class="cc-field">
+        <label>{{ _('customer_credit_field_amount') }}</label>
+        <input type="number" id="openingAmount" min="0" step="1" placeholder="0">
+      </div>
+      <div class="cc-field">
+        <label>{{ _('customer_credit_field_description') }}</label>
+        <input type="text" id="openingDescription" placeholder="{{ _('customer_credit_opening_desc_placeholder') }}">
+      </div>
+    </div>
+
+    <div id="tab-manual" class="debt-tab-panel" style="display:none;">
+      <div class="cc-field">
+        <label>{{ _('customer_credit_field_amount') }}</label>
+        <input type="number" id="manualAmount" min="0" step="1" placeholder="0">
+      </div>
+      <div class="cc-field">
+        <label>{{ _('customer_credit_field_description') }}</label>
+        <input type="text" id="manualDescription" placeholder="{{ _('customer_credit_manual_desc_placeholder') }}">
+      </div>
+    </div>
+
+    <div id="tab-products" class="debt-tab-panel" style="display:none;">
+      <div class="cc-product-lines" id="productLines"></div>
+      <button type="button" class="cc-btn cc-btn-ghost" onclick="addProductLine()"><i class="fas fa-plus"></i> {{ _('customer_credit_add_product_line') }}</button>
+      <div class="cc-field" style="margin-top:12px;">
+        <label>{{ _('customer_credit_field_note') }}</label>
+        <input type="text" id="productsNote" placeholder="{{ _('customer_credit_products_note_placeholder') }}">
+      </div>
+    </div>
+
+    <div class="cc-grid-2" style="margin-top:12px;">
+      <div class="cc-field">
+        <label>{{ _('customer_credit_field_installments') }}</label>
+        <input type="number" id="debtInstallments" min="1" step="1" value="1">
+      </div>
+      <div class="cc-field">
+        <label>{{ _('customer_credit_field_first_due') }}</label>
+        <input type="date" id="debtFirstDue">
+      </div>
+    </div>
+    <div class="cc-field">
+      <label>{{ _('customer_credit_field_interval') }}</label>
+      <select id="debtInterval">
+        <option value="monthly">{{ _('customer_credit_interval_monthly') }}</option>
+        <option value="weekly">{{ _('customer_credit_interval_weekly') }}</option>
+      </select>
+    </div>
+
+    <div class="cc-modal-footer">
+      <button type="button" class="cc-btn cc-btn-ghost" onclick="closeAddDebtModal()">{{ _('cancel') }}</button>
+      <button type="button" class="cc-btn cc-btn-primary" onclick="submitDebtPlan()">{{ _('customer_credit_save_plan') }}</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let currentDebtTab = 'opening';
+  let productCatalog = [];
+
+  function filterCreditRows() {
+    var q = (document.getElementById('ccSearch').value || '').trim().toLowerCase();
+    document.querySelectorAll('.cc-row').forEach(function(row) {
+      var hay = (row.getAttribute('data-search') || '').toLowerCase();
+      row.style.display = !q || hay.indexOf(q) !== -1 ? '' : 'none';
+    });
+  }
+
+  function openAddDebtModal() {
+    document.getElementById('addDebtModal').style.display = 'block';
+    if (!document.getElementById('debtFirstDue').value) {
+      document.getElementById('debtFirstDue').value = new Date().toISOString().slice(0, 10);
+    }
+    loadProductCatalog();
+    if (!document.getElementById('productLines').children.length) addProductLine();
+  }
+
+  function closeAddDebtModal() {
+    document.getElementById('addDebtModal').style.display = 'none';
+  }
+
+  function switchDebtTab(tab) {
+    currentDebtTab = tab;
+    document.querySelectorAll('.cc-tab').forEach(function(t) {
+      t.classList.toggle('active', t.getAttribute('data-tab') === tab);
+    });
+    document.querySelectorAll('.debt-tab-panel').forEach(function(p) { p.style.display = 'none'; });
+    document.getElementById('tab-' + tab).style.display = 'block';
+  }
+
+  var searchTimer;
+  function searchCustomersForDebt() {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(function() {
+      var q = document.getElementById('debtCustomerSearch').value.trim();
+      var box = document.getElementById('debtCustomerResults');
+      if (q.length < 1) { box.classList.remove('show'); box.innerHTML = ''; return; }
+      fetch('/customers/credit/api/customers?q=' + encodeURIComponent(q))
+        .then(function(r) { return r.json(); })
+        .then(function(rows) {
+          box.innerHTML = '';
+          rows.forEach(function(c) {
+            var div = document.createElement('div');
+            div.className = 'cc-customer-item';
+            div.textContent = c.name + ' — ' + c.phone;
+            div.onclick = function() {
+              document.getElementById('debtCustomerId').value = c.id;
+              document.getElementById('debtCustomerSelected').textContent = '✓ ' + c.name + ' (' + c.phone + ')';
+              document.getElementById('debtCustomerSearch').value = c.name;
+              box.classList.remove('show');
+            };
+            box.appendChild(div);
+          });
+          box.classList.toggle('show', rows.length > 0);
+        });
+    }, 250);
+  }
+
+  function loadProductCatalog() {
+    if (productCatalog.length) return Promise.resolve(productCatalog);
+    return fetch('/customers/credit/api/products')
+      .then(function(r) { return r.json(); })
+      .then(function(rows) { productCatalog = rows; return rows; });
+  }
+
+  function addProductLine() {
+    loadProductCatalog().then(function(catalog) {
+      var wrap = document.getElementById('productLines');
+      var line = document.createElement('div');
+      line.className = 'cc-product-line';
+      var opts = catalog.map(function(p) {
+        return '<option value="' + p.id + '" data-price="' + p.sale_price + '">' + p.name + ' (' + p.quantity + ')</option>';
+      }).join('');
+      line.innerHTML =
+        '<select class="pl-product">' + opts + '</select>' +
+        '<input type="number" class="pl-qty" min="1" value="1" placeholder="كمية">' +
+        '<input type="number" class="pl-price" min="0" placeholder="سعر">' +
+        '<button type="button" class="cc-btn cc-btn-ghost" style="padding:6px 8px;" onclick="this.closest(\'.cc-product-line\').remove()"><i class="fas fa-trash"></i></button>';
+      wrap.appendChild(line);
+      var sel = line.querySelector('.pl-product');
+      var priceInput = line.querySelector('.pl-price');
+      if (sel.options.length) {
+        priceInput.value = sel.options[sel.selectedIndex].getAttribute('data-price') || '';
+      }
+      sel.addEventListener('change', function() {
+        priceInput.value = sel.options[sel.selectedIndex].getAttribute('data-price') || '';
+      });
+    });
+  }
+
+  function submitDebtPlan() {
+    var customerId = document.getElementById('debtCustomerId').value;
+    if (!customerId) {
+      if (typeof showToast === 'function') showToast('{{ _('customer_credit_err_customer')|tojson }}', 'warning');
+      else alert('{{ _('customer_credit_err_customer') }}');
+      return;
+    }
+    var payload = {
+      customer_id: parseInt(customerId, 10),
+      entry_type: currentDebtTab,
+      installments_count: parseInt(document.getElementById('debtInstallments').value || '1', 10),
+      first_due_date: document.getElementById('debtFirstDue').value,
+      interval: document.getElementById('debtInterval').value
+    };
+    if (currentDebtTab === 'opening') {
+      payload.amount = document.getElementById('openingAmount').value;
+      payload.description = document.getElementById('openingDescription').value;
+    } else if (currentDebtTab === 'manual') {
+      payload.amount = document.getElementById('manualAmount').value;
+      payload.description = document.getElementById('manualDescription').value;
+    } else {
+      payload.note = document.getElementById('productsNote').value;
+      payload.items = [];
+      document.querySelectorAll('#productLines .cc-product-line').forEach(function(line) {
+        var pid = line.querySelector('.pl-product').value;
+        var qty = line.querySelector('.pl-qty').value;
+        var price = line.querySelector('.pl-price').value;
+        if (pid) payload.items.push({ product_id: parseInt(pid, 10), qty: parseInt(qty || 1, 10), price: parseInt(price || 0, 10) });
+      });
+      if (!payload.items.length) {
+        if (typeof showToast === 'function') showToast('{{ _('customer_credit_err_products')|tojson }}', 'warning');
+        return;
+      }
+    }
+    fetch('/customers/credit/plans', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.success) {
+        if (typeof showToast === 'function') showToast('{{ _('customer_credit_toast_saved')|tojson }}', 'success');
+        window.location.href = data.redirect || '/customers/credit';
+      } else {
+        if (typeof showToast === 'function') showToast(data.error || 'خطأ', 'error');
+        else alert(data.error || 'خطأ');
+      }
+    })
+    .catch(function() {
+      if (typeof showToast === 'function') showToast('{{ _('customer_credit_err_generic')|tojson }}', 'error');
+    });
+  }
+</script>
+{% endblock %}

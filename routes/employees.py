@@ -12,6 +12,7 @@ from utils.agent_passwords import hash_agent_password
 from utils.decorators import permission_required
 from utils.permission_checks import employee_can, get_current_employee
 from utils.team_schema import build_employees_grid_rows, ensure_delivery_agent_schema
+from utils.activity_logger import EMPLOYEE_SNAPSHOT_FIELDS, log_activity, log_mutation, snapshot_attrs
 
 employees_bp = Blueprint("employees", __name__)
 
@@ -83,6 +84,17 @@ def employees():
         )
         db.session.add(emp)
         db.session.commit()
+        try:
+            log_activity(
+                "create",
+                "employees",
+                f"إضافة موظف: {emp.name}",
+                entity_type="employee",
+                entity_id=emp.id,
+                payload={"employee": snapshot_attrs(emp, *EMPLOYEE_SNAPSHOT_FIELDS)},
+            )
+        except Exception:
+            pass
         return redirect(url_for("employees.employees"))
 
     employees_list = Employee.query.all()
@@ -133,8 +145,21 @@ def employees():
 @permission_required("manage_employees")
 def toggle_employee(id):
     emp = Employee.query.get_or_404(id)
+    before = snapshot_attrs(emp, *EMPLOYEE_SNAPSHOT_FIELDS)
     emp.is_active = not emp.is_active
     db.session.commit()
+    try:
+        log_mutation(
+            "update",
+            "employees",
+            "employee",
+            emp.id,
+            before,
+            snapshot_attrs(emp, *EMPLOYEE_SNAPSHOT_FIELDS),
+            f"{'تفعيل' if emp.is_active else 'تعطيل'} الموظف {emp.name}",
+        )
+    except Exception:
+        pass
     return redirect(url_for("employees.employees"))
 
 
@@ -142,6 +167,7 @@ def toggle_employee(id):
 @permission_required("manage_employees")
 def update_employee(id):
     emp = Employee.query.get_or_404(id)
+    before = snapshot_attrs(emp, *EMPLOYEE_SNAPSHOT_FIELDS)
     data = request.get_json(silent=True) or request.form
     name = str(data.get("name") or "").strip()
     if name:
@@ -151,6 +177,18 @@ def update_employee(id):
     if "commission" in data or "commission_percent" in data:
         emp.commission_percent = int(data.get("commission") or data.get("commission_percent") or 0)
     db.session.commit()
+    try:
+        log_mutation(
+            "update",
+            "employees",
+            "employee",
+            emp.id,
+            before,
+            snapshot_attrs(emp, *EMPLOYEE_SNAPSHOT_FIELDS),
+            f"تحديث بيانات الموظف {emp.name}",
+        )
+    except Exception:
+        pass
     return jsonify({"success": True, "message": "تم تحديث بيانات الموظف"})
 
 

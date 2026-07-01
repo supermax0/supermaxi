@@ -32,6 +32,7 @@ LEGACY_TO_RBAC: dict[str, str] = {
     "can_manage_employees": "manage_employees",
     "can_manage_agents": "manage_agents",
     "can_manage_pages": "manage_pages",
+    "can_view_activity": "view_activity",
 }
 
 ORDER_STATUS_PERMISSIONS = (

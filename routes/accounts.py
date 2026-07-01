@@ -18,6 +18,7 @@ from utils.accounting_calculations import (
     calculate_net_profit           # صافي الربح (Accrual)
 )
 from utils.permission_checks import check_permission
+from utils.activity_logger import log_activity
 
 accounts_bp = Blueprint("accounts", __name__, url_prefix="/accounts")
 
@@ -100,6 +101,16 @@ def accounts():
         )
         db.session.add(tx)
         db.session.commit()
+        try:
+            log_activity(
+                "create",
+                "finance",
+                f"حركة حساب — {tx.type}: {tx.amount}",
+                entity_type="account_transaction",
+                payload={"type": tx.type, "amount": tx.amount, "note": tx.note},
+            )
+        except Exception:
+            pass
         return redirect(url_for("accounts.accounts"))
 
     transactions = AccountTransaction.query.order_by(
@@ -252,6 +263,16 @@ def add_capital_from_profit():
     )
     db.session.add(tx)
     db.session.commit()
+    try:
+        log_activity(
+            "create",
+            "finance",
+            f"إغلاق فترة — إضافة {net_profit} إلى رأس المال",
+            entity_type="account_transaction",
+            payload={"amount": int(net_profit), "note": tx.note},
+        )
+    except Exception:
+        pass
     
     return jsonify({
         "success": True,

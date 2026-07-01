@@ -3,6 +3,7 @@ from extensions import db
 from models.role import Role, Permission
 from models.employee import Employee
 from utils.decorators import admin_required
+from utils.activity_logger import log_activity
 
 permissions_bp = Blueprint("permissions", __name__)
 
@@ -33,6 +34,7 @@ DEFAULT_PERMISSIONS = [
     ("manage_employees", "إدارة الموظفين"),
     ("view_messages", "رؤية واجهة المراسلة"),
     ("manage_settings", "إعدادات النظام"),
+    ("view_activity", "رؤية سجل النشاط"),
 ]
 
 
@@ -75,6 +77,7 @@ def list_roles():
         ("finance", "الحسابات والتقارير المالية", ["view_expenses", "view_accounts", "view_financial", "view_reports"]),
         ("communication", "الصفحات والمراسلة والشحن", ["view_shipping", "manage_shipping", "view_agents", "view_pages", "view_messages"]),
         ("team", "إدارة الفريق والإعدادات", ["manage_employees", "manage_agents", "manage_pages", "manage_settings"]),
+        ("audit", "السجل والمراجعة", ["view_activity"]),
     ]
 
     used_names = set()
@@ -123,6 +126,17 @@ def edit_role(id):
     permission_ids = request.form.getlist("permissions")
     role.permissions = Permission.query.filter(Permission.id.in_(permission_ids)).all()
     db.session.commit()
+    try:
+        log_activity(
+            "update",
+            "settings",
+            f"تحديث صلاحيات الدور: {role.name}",
+            entity_type="role",
+            entity_id=role.id,
+            payload={"permission_ids": permission_ids},
+        )
+    except Exception:
+        pass
     flash("تم تحديث الدور بنجاح", "success")
     return redirect(url_for("permissions.list_roles"))
 
@@ -148,6 +162,17 @@ def employee_roles(id):
         role_ids = request.form.getlist("roles")
         employee.roles = Role.query.filter(Role.id.in_(role_ids)).all()
         db.session.commit()
+        try:
+            log_activity(
+                "update",
+                "settings",
+                f"تحديث أدوار الموظف {employee.name}",
+                entity_type="employee",
+                entity_id=employee.id,
+                payload={"role_ids": role_ids},
+            )
+        except Exception:
+            pass
         flash(f"تم تحديث أدوار الموظف {employee.name} بنجاح", "success")
         return redirect(url_for("employees.employees"))
 

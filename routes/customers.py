@@ -9,6 +9,7 @@ from models.customer import Customer
 from models.invoice import Invoice
 from utils.product_schema_guard import ensure_customer_blacklist_columns
 from utils.permission_checks import guard_permission
+from utils.activity_logger import CUSTOMER_SNAPSHOT_FIELDS, log_activity, log_mutation, snapshot_attrs
 
 customers_bp = Blueprint("customers", __name__, url_prefix="/customers")
 
@@ -164,6 +165,17 @@ def add_customer():
 
     db.session.add(customer)
     db.session.commit()
+    try:
+        log_activity(
+            "create",
+            "customers",
+            f"إضافة زبون: {customer.name}",
+            entity_type="customer",
+            entity_id=customer.id,
+            payload={"customer": snapshot_attrs(customer, *CUSTOMER_SNAPSHOT_FIELDS)},
+        )
+    except Exception:
+        pass
     
     # تعلم المحافظة والمنطقة من البيانات المدخلة
     from ai.learner import learn_city, learn_area
@@ -223,6 +235,7 @@ def add_customer():
 @customers_bp.route("/update/<int:id>", methods=["POST"])
 def update_customer(id):
     customer = Customer.query.get_or_404(id)
+    before = snapshot_attrs(customer, *CUSTOMER_SNAPSHOT_FIELDS)
     data = request.json
 
     customer.name = data.get("name")
@@ -233,6 +246,18 @@ def update_customer(id):
     customer.notes = data.get("notes")
 
     db.session.commit()
+    try:
+        log_mutation(
+            "update",
+            "customers",
+            "customer",
+            customer.id,
+            before,
+            snapshot_attrs(customer, *CUSTOMER_SNAPSHOT_FIELDS),
+            f"تحديث زبون: {customer.name}",
+        )
+    except Exception:
+        pass
     
     # تعلم المحافظة والمنطقة من البيانات المحدثة
     from ai.learner import learn_city, learn_area

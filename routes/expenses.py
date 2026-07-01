@@ -7,6 +7,7 @@ from sqlalchemy.sql import func
 from datetime import datetime, timedelta
 from utils.plan_guard import feature_required
 from utils.permission_checks import check_permission
+from utils.activity_logger import log_activity
 
 expenses_bp = Blueprint("expenses", __name__)
 
@@ -76,6 +77,21 @@ def expenses():
             db.session.add(withdraw_tx)
         
         db.session.commit()
+        try:
+            log_activity(
+                "create",
+                "finance",
+                f"مصروف: {expense_title} — {expense_amount}",
+                entity_type="expense",
+                payload={
+                    "title": expense_title,
+                    "category": expense_category,
+                    "amount": expense_amount,
+                    "repeat_count": repeat_count,
+                },
+            )
+        except Exception:
+            pass
         return redirect(url_for("expenses.expenses"))
 
     expenses = Expense.query.order_by(Expense.expense_date.desc()).all()
@@ -126,6 +142,7 @@ def delete_expense(id):
     if not check_permission("can_see_expenses"):
         return redirect("/pos"), 403
     e = Expense.query.get_or_404(id)
+    expense_snapshot = {"id": e.id, "title": e.title, "amount": e.amount, "category": e.category}
     
     # إرجاع المبلغ إلى رأس المال عند حذف المصروف
     # البحث عن حركة السحب المرتبطة بهذا المصروف
@@ -146,4 +163,15 @@ def delete_expense(id):
     
     db.session.delete(e)
     db.session.commit()
+    try:
+        log_activity(
+            "delete",
+            "finance",
+            f"حذف مصروف: {expense_snapshot.get('title')}",
+            entity_type="expense",
+            entity_id=expense_snapshot.get("id"),
+            payload={"expense": expense_snapshot},
+        )
+    except Exception:
+        pass
     return redirect(url_for("expenses.expenses"))

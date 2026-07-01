@@ -21,4 +21,29 @@
     flex-wrap: nowrap;
     justify-content: center;
   }
+
+  /* Order details modal — bottom sheet handle */
+  .modal.od-modal-overlay .od-modal-box::before {
+    content: "";
+    display: block;
+    width: 36px;
+    height: 4px;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.45);
+    margin: 8px auto 0;
+    flex-shrink: 0;
+  }
+
+  .modal .od-modal-header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+
+  .modal .od-modal-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.22);
+  }
 }

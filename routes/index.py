@@ -489,9 +489,19 @@ def login():
     emp = Employee.query.filter(db.func.lower(Employee.username) == username.lower()).first()
 
     if not emp or not check_password_hash(emp.password, password):
+        try:
+            from utils.activity_logger import log_auth
+            log_auth("login_failed", success=False, extra={"username": username, "tenant_slug": tenant_slug})
+        except Exception:
+            pass
         return render_template("login.html", error="بيانات الدخول غير صحيحة")
 
     if not emp.is_active:
+        try:
+            from utils.activity_logger import log_auth
+            log_auth("login_failed", employee=emp, success=False, extra={"reason": "inactive"})
+        except Exception:
+            pass
         return render_template("login.html", error="هذا الحساب معطل، يرجى التواصل مع الإدارة")
 
     # تسجيل الجلسة (استخدام slug من قاعدة البيانات لضمان التطابق)
@@ -509,6 +519,12 @@ def login():
         t = _Tenant.query.get(emp.tenant_id)
         if t:
             session["plan_key"] = t.plan_key
+
+    try:
+        from utils.activity_logger import log_auth
+        log_auth("login", employee=emp, success=True, extra={"tenant_slug": core_tenant.slug, "role": emp.role})
+    except Exception:
+        pass
 
     # التوجيه حسب الدور
     if emp.role == "admin":
@@ -561,6 +577,17 @@ def logout():
     })
     # #endregion
     tenant_slug = session.get("tenant_slug")
+    logout_emp = None
+    try:
+        if "user_id" in session:
+            logout_emp = Employee.query.get(session["user_id"])
+    except Exception:
+        pass
+    try:
+        from utils.activity_logger import log_auth
+        log_auth("logout", employee=logout_emp, success=True, extra={"tenant_slug": tenant_slug})
+    except Exception:
+        pass
     session.clear()
     target = f"/login?tenant={tenant_slug}" if tenant_slug else "/login"
     response = make_response(redirect(target))

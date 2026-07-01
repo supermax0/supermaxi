@@ -10,6 +10,7 @@ class ShippingCompany(db.Model):
     phone = db.Column(db.String(50))
     price = db.Column(db.Integer, default=0)  # سعر التوصيل
     notes = db.Column(db.Text)
+    opening_balance = db.Column(db.Integer, default=0)
     access_token = db.Column(db.String(64), unique=True, nullable=True)  # رابط خاص للوصول العام
     username = db.Column(db.String(50), unique=True, nullable=True)  # اسم المستخدم لتسجيل الدخول
     password = db.Column(db.String(200), nullable=True)  # كلمة المرور

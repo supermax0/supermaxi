@@ -10,6 +10,7 @@ import secrets
 
 from utils.payment_ledger import append_payment_ledger_delta
 from utils.permission_checks import guard_permission
+from utils.activity_logger import log_activity
 
 shipping_bp = Blueprint("shipping", __name__, url_prefix="/shipping")
 
@@ -37,6 +38,35 @@ from utils.order_status import is_canceled, is_returned, is_completed
 from utils.cash_calculations import _effective_paid_amount as _effective_paid_amount_inv
 
 
+def _ensure_shipping_opening_balance_column():
+    try:
+        from sqlalchemy import inspect, text
+
+        inspector = inspect(db.engine)
+        if "shipping_company" not in inspector.get_table_names():
+            return
+        cols = {col["name"] for col in inspector.get_columns("shipping_company")}
+        if "opening_balance" not in cols:
+            db.session.execute(
+                text("ALTER TABLE shipping_company ADD COLUMN opening_balance INTEGER DEFAULT 0")
+            )
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+
+def _parse_opening_balance(raw_value):
+    if raw_value is None:
+        return 0
+    cleaned = str(raw_value).strip().replace(",", "").replace(" ", "")
+    if not cleaned:
+        return 0
+    try:
+        return max(0, int(float(cleaned)))
+    except (TypeError, ValueError):
+        return 0
+
+
 def effective_paid_amount(order: Invoice) -> int:
     total = int(getattr(order, "total", 0) or 0)
     payment_status = getattr(order, "payment_status", None)
@@ -62,17 +92,16 @@ def remaining_amount(order: Invoice) -> int:
 # =====================================
 @shipping_bp.route("/")
 def shipping_page():
+    _ensure_shipping_opening_balance_column()
 
     companies = ShippingCompany.query.all()
     result = []
 
     for c in companies:
         orders = Invoice.query.filter_by(shipping_company_id=c.id).all()
+        opening_balance = int(getattr(c, "opening_balance", 0) or 0)
 
-        # المستحقات = الطلبات المستحقة الدفع فقط
-        # تصحيح محاسبي: دعم الدفع الجزئي (المستحق = المتبقي)
-        # استبعاد: الملغاة والمرتجعة
-        due = sum(
+        orders_due = sum(
             remaining_amount(o) for o in orders
             if o.payment_status != "مرتجع"
             and o.status not in (CANCELED_STATUSES + RETURN_STATUSES)
@@ -82,7 +111,9 @@ def shipping_page():
             "id": c.id,
             "name": c.name,
             "orders_count": len(orders),
-            "due": due,
+            "opening_balance": opening_balance,
+            "orders_due": orders_due,
+            "due": opening_balance + orders_due,
             "access_token": c.access_token,
             "public_url": f"/delivery/public/{c.access_token}" if c.access_token else None
         })
@@ -94,11 +125,14 @@ def shipping_page():
 # =====================================
 @shipping_bp.route("/add", methods=["POST"])
 def add_company():
+    _ensure_shipping_opening_balance_column()
     data = request.json
     name = data.get("name")
 
     if not name:
         return jsonify({"error": "name required"}), 400
+
+    opening_balance = _parse_opening_balance(data.get("opening_balance"))
 
     # إنشاء token فريد
     access_token = secrets.token_urlsafe(32)
@@ -116,13 +150,25 @@ def add_company():
         username = name.lower().replace(" ", "_") + "_" + str(datetime.now().timestamp())[:10]
 
     company = ShippingCompany(
-        name=name, 
+        name=name,
+        opening_balance=opening_balance,
         access_token=access_token,
         username=username,
         password=password
     )
     db.session.add(company)
     db.session.commit()
+    try:
+        log_activity(
+            "create",
+            "shipping",
+            f"إضافة شركة شحن: {company.name}",
+            entity_type="shipping_company",
+            entity_id=company.id,
+            payload={"name": company.name, "opening_balance": company.opening_balance},
+        )
+    except Exception:
+        pass
     
     return jsonify({
         "success": True,
@@ -139,6 +185,7 @@ def add_company():
 @shipping_bp.route("/delete/<int:id>")
 def delete_company(id):
     company = ShippingCompany.query.get_or_404(id)
+    company_name = company.name
 
     has_orders = Invoice.query.filter_by(shipping_company_id=id).first()
     if has_orders:
@@ -146,6 +193,16 @@ def delete_company(id):
 
     db.session.delete(company)
     db.session.commit()
+    try:
+        log_activity(
+            "delete",
+            "shipping",
+            f"حذف شركة شحن: {company_name}",
+            entity_type="shipping_company",
+            entity_id=id,
+        )
+    except Exception:
+        pass
     return jsonify({"success": True})
 
 # =====================================
