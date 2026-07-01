@@ -3,23 +3,28 @@
 {% block page_title %}👥 {{ _('employees_page_title') }}{% endblock %}
 
 {% block content %}
+<div class="team-admin-page employees-page">
 
-<!-- Toast Container -->
 <div class="toast-container" id="toastContainer"></div>
 <script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.js"></script>
 
-<!-- Loading Overlay -->
 <div class="loading-overlay" id="loadingOverlay">
   <div class="loading-spinner"></div>
 </div>
 
 <link rel="stylesheet" href="{{ url_for('static', filename='css/employees-admin.css') }}">
 
-<!-- ============ STATS CARDS ============ -->
 {% set total_employees = employees|length %}
 {% set active_employees = employees|selectattr("is_active")|list|length %}
 {% set total_orders = stats.values()|sum(attribute="orders") or 0 %}
 {% set total_sales = stats.values()|sum(attribute="sales") or 0 %}
+
+<div class="admin-page-header">
+  <div class="admin-page-header__meta"></div>
+  <div class="admin-page-header__actions">
+    <a href="/agents" class="nav-crosslink"><i class="fas fa-truck"></i> {{ _('delivery_agents') }}</a>
+  </div>
+</div>
 
 <div class="stats-grid">
   <div class="stat-card primary">
@@ -44,121 +49,70 @@
   </div>
 </div>
 
-<!-- ============ ADD EMPLOYEE ============ -->
-<div class="collapsible-group collapsed" id="groupAddEmployee"
-  style="background:var(--glass-bg); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border-radius:var(--radius-lg); margin-bottom:var(--spacing-lg); border:1px solid var(--glass-border); box-shadow:var(--shadow-md); overflow:hidden; transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position:relative;">
-  <div class="group-header" onclick="toggleSection('groupAddEmployee')"
-    style="padding:var(--spacing-lg); display:flex; justify-content:space-between; align-items:center; cursor:pointer; background:rgba(255,255,255,0.02); border-bottom:1px solid rgba(255,255,255,0.05); user-select:none;">
-    <h3
-      style="margin:0; font-size:18px; font-weight:700; color:var(--emp-text); display:flex; align-items:center; gap:var(--spacing-sm);">
-      <span
-        style="display:flex; align-items:center; justify-content:center; width:36px; height:36px; background:linear-gradient(135deg, rgba(99,102,241,0.2), rgba(139,92,246,0.2)); border-radius:10px; color:var(--emp-primary-light);">➕</span>
-      {{ _('employees_add_title') }}
-    </h3>
-    <button type="button" class="toggle-btn"
-      style="background:transparent; border:none; color:var(--emp-muted); cursor:pointer; font-size:14px; padding:8px; display:flex; align-items:center; justify-content:center; transition:transform 0.3s ease;">
-      <i class="fas fa-chevron-up"></i>
-    </button>
+<div class="collapsible-group collapsed" id="groupAddEmployee">
+  <div class="group-header" onclick="toggleSection('groupAddEmployee')">
+    <h3><span class="section-icon primary">➕</span>{{ _('employees_add_title') }}</h3>
+    <button type="button" class="toggle-btn" tabindex="-1"><i class="fas fa-chevron-up"></i></button>
   </div>
-  <div class="group-content" style="padding:var(--spacing-lg); transition:all 0.3s ease;">
-    <form method="post" id="employeeForm" onsubmit="handleEmployeeSubmit(event)"
-      style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--spacing-md);">
-      <input name="name" id="emp_name" placeholder="{{ _('employees_placeholder_name') }}" required
-        style="width:100%; padding:12px var(--spacing-md); border-radius:var(--radius-md); border:1px solid var(--glass-border); background:rgba(15, 23, 42, 0.6); color:var(--emp-text);">
-      <input name="username" id="emp_username" placeholder="{{ _('employees_placeholder_username') }}" required
-        style="width:100%; padding:12px var(--spacing-md); border-radius:var(--radius-md); border:1px solid var(--glass-border); background:rgba(15, 23, 42, 0.6); color:var(--emp-text);">
-      <input name="password" type="password" id="emp_password" placeholder="{{ _('employees_placeholder_password') }}" required
-        style="width:100%; padding:12px var(--spacing-md); border-radius:var(--radius-md); border:1px solid var(--glass-border); background:rgba(15, 23, 42, 0.6); color:var(--emp-text);">
-
-      <select name="role" id="emp_role"
-        style="width:100%; padding:12px var(--spacing-md); border-radius:var(--radius-md); border:1px solid var(--glass-border); background:rgba(15, 23, 42, 0.6); color:var(--emp-text);">
+  <div class="group-content">
+    <form method="post" id="employeeForm" class="emp-form-grid" onsubmit="handleEmployeeSubmit(event)">
+      <input name="name" id="emp_name" placeholder="{{ _('employees_placeholder_name') }}" required>
+      <input name="username" id="emp_username" placeholder="{{ _('employees_placeholder_username') }}" required>
+      <input name="password" type="password" id="emp_password" placeholder="{{ _('employees_placeholder_password') }}" required>
+      <select name="role" id="emp_role">
         <option value="cashier">{{ _('employees_role_cashier') }}</option>
         <option value="admin">{{ _('employees_role_admin') }}</option>
       </select>
-
-      <input name="salary" type="number" id="emp_salary" placeholder="{{ _('employees_placeholder_salary') }}" min="0"
-        style="width:100%; padding:12px var(--spacing-md); border-radius:var(--radius-md); border:1px solid var(--glass-border); background:rgba(15, 23, 42, 0.6); color:var(--emp-text);">
-      <input name="commission" type="number" id="emp_commission" placeholder="{{ _('employees_placeholder_commission') }}" min="0" max="100"
-        style="width:100%; padding:12px var(--spacing-md); border-radius:var(--radius-md); border:1px solid var(--glass-border); background:rgba(15, 23, 42, 0.6); color:var(--emp-text);">
-
-      <button type="submit" id="employeeSubmitBtn"
-        style="grid-column: 1 / -1; padding: var(--spacing-md); border: none; border-radius: var(--radius-md); background: linear-gradient(135deg, var(--emp-success), #059669); color: white; font-weight: 600; font-size: 15px; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: var(--spacing-sm); box-shadow: var(--shadow-sm);">
-        <span>💾</span>
-        <span>{{ _('employees_save_button') }}</span>
+      <input name="salary" type="number" id="emp_salary" placeholder="{{ _('employees_placeholder_salary') }}" min="0">
+      <input name="commission" type="number" id="emp_commission" placeholder="{{ _('employees_placeholder_commission') }}" min="0" max="100">
+      <button type="submit" id="employeeSubmitBtn" class="btn-submit-primary">
+        <span>💾</span><span>{{ _('employees_save_button') }}</span>
       </button>
     </form>
   </div>
 </div>
 
-<!-- ============ ADD DELIVERY AGENT ACCOUNT ============ -->
-{% if agents_without_login %}<div class="card" style="margin-bottom:12px;padding:12px;border:1px solid var(--warn,#f59e0b);color:var(--text);">⚠️ {{ agents_without_login|length }} مندوب بدون حساب دخول — <a href="/agents">إدارة المندوبين</a></div>{% endif %}
-<div class="collapsible-group collapsed" id="groupAddAgent"
-  style="background:var(--glass-bg); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border-radius:var(--radius-lg); margin-bottom:var(--spacing-lg); border:1px solid var(--glass-border); box-shadow:var(--shadow-md); overflow:hidden; transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position:relative;">
-  <div class="group-header" onclick="toggleSection('groupAddAgent')"
-    style="padding:var(--spacing-lg); display:flex; justify-content:space-between; align-items:center; cursor:pointer; background:rgba(255,255,255,0.02); border-bottom:1px solid rgba(255,255,255,0.05); user-select:none;">
-    <h3
-      style="margin:0; font-size:18px; font-weight:700; color:var(--emp-text); display:flex; align-items:center; gap:var(--spacing-sm);">
-      <span
-        style="display:flex; align-items:center; justify-content:center; width:36px; height:36px; background:linear-gradient(135deg, rgba(16,185,129,0.2), rgba(5,150,105,0.2)); border-radius:10px; color:var(--emp-success);">🚚</span>
-      {{ _('employees_add_agent_title') }}
-    </h3>
-    <button type="button" class="toggle-btn"
-      style="background:transparent; border:none; color:var(--emp-muted); cursor:pointer; font-size:14px; padding:8px; display:flex; align-items:center; justify-content:center; transition:transform 0.3s ease;">
-      <i class="fas fa-chevron-up"></i>
-    </button>
+{% if agents_without_login %}
+<div class="team-alert">⚠️ {{ agents_without_login|length }} مندوب بدون حساب دخول — <a href="/agents">إدارة المندوبين</a></div>
+{% endif %}
+
+<div class="collapsible-group collapsed" id="groupAddAgent">
+  <div class="group-header" onclick="toggleSection('groupAddAgent')">
+    <h3><span class="section-icon success">🚚</span>{{ _('employees_add_agent_title') }}</h3>
+    <button type="button" class="toggle-btn" tabindex="-1"><i class="fas fa-chevron-up"></i></button>
   </div>
-  <div class="group-content" style="padding:var(--spacing-lg); transition:all 0.3s ease;">
-    <form id="agentAccountForm" onsubmit="addAgentAccount(event)"
-      style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--spacing-md);">
-      <select name="agent_id" id="agent_id" required
-        style="width:100%; padding:12px var(--spacing-md); border-radius:var(--radius-md); border:1px solid var(--glass-border); background:rgba(15, 23, 42, 0.6); color:var(--emp-text);">
+  <div class="group-content">
+    <form id="agentAccountForm" class="emp-form-grid" onsubmit="addAgentAccount(event)">
+      <select name="agent_id" id="agent_id" required>
         <option value="">{{ _('employees_select_agent') }}</option>
         {% for agent in delivery_agents %}
         <option value="{{ agent.id }}">{{ agent.name }}</option>
         {% endfor %}
       </select>
-      <input type="text" id="agent_username" placeholder="{{ _('employees_placeholder_username') }}" required
-        style="width:100%; padding:12px var(--spacing-md); border-radius:var(--radius-md); border:1px solid var(--glass-border); background:rgba(15, 23, 42, 0.6); color:var(--emp-text);">
-      <input type="password" id="agent_password" placeholder="{{ _('employees_placeholder_password') }}" required
-        style="width:100%; padding:12px var(--spacing-md); border-radius:var(--radius-md); border:1px solid var(--glass-border); background:rgba(15, 23, 42, 0.6); color:var(--emp-text);">
-
-      <button type="submit" class="btn-premium"
-        style="grid-column: 1 / -1; padding: var(--spacing-md); border: none; border-radius: var(--radius-md); background: linear-gradient(135deg, var(--emp-success), #059669); color: white; font-weight: 600; font-size: 15px; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: var(--spacing-sm); box-shadow: var(--shadow-sm);">
-        <span>💾</span>
-        <span>{{ _('employees_save_account') }}</span>
+      <input type="text" id="agent_username" placeholder="{{ _('employees_placeholder_username') }}" required>
+      <input type="password" id="agent_password" placeholder="{{ _('employees_placeholder_password') }}" required>
+      <button type="submit" class="btn-submit-primary">
+        <span>💾</span><span>{{ _('employees_save_account') }}</span>
       </button>
     </form>
   </div>
 </div>
 
-<div class="collapsible-group" id="groupEmpFilters"
-  style="background:var(--glass-bg); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border-radius:var(--radius-lg); margin-bottom:var(--spacing-lg); border:1px solid var(--glass-border); box-shadow:var(--shadow-md); overflow:hidden; transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position:relative;">
-  <div class="group-header" onclick="toggleSection('groupEmpFilters')"
-    style="padding:var(--spacing-lg); display:flex; justify-content:space-between; align-items:center; cursor:pointer; background:rgba(255,255,255,0.02); border-bottom:1px solid rgba(255,255,255,0.05); user-select:none;">
-    <h3
-      style="margin:0; font-size:18px; font-weight:700; color:var(--emp-text); display:flex; align-items:center; gap:var(--spacing-sm);">
-      <span
-        style="display:flex; align-items:center; justify-content:center; width:36px; height:36px; background:linear-gradient(135deg, rgba(245,158,11,0.2), rgba(217,119,6,0.2)); border-radius:10px; color:var(--emp-warning);">🔍</span>
-      {{ _('employees_search_title') }}
-    </h3>
-    <button type="button" class="toggle-btn"
-      style="background:transparent; border:none; color:var(--emp-muted); cursor:pointer; font-size:14px; padding:8px; display:flex; align-items:center; justify-content:center; transition:transform 0.3s ease;">
-      <i class="fas fa-chevron-up"></i>
-    </button>
+<div class="collapsible-group" id="groupEmpFilters">
+  <div class="group-header" onclick="toggleSection('groupEmpFilters')">
+    <h3><span class="section-icon warning">🔍</span>{{ _('employees_search_title') }}</h3>
+    <button type="button" class="toggle-btn" tabindex="-1"><i class="fas fa-chevron-up"></i></button>
   </div>
-  <div class="group-content" style="padding:var(--spacing-lg); transition:all 0.3s ease;">
-    <div class="search-filters" style="margin-bottom:0; padding:0; border:none; background:transparent;">
-      <input type="text" id="searchInput" placeholder="{{ _('employees_search_placeholder') }}" onkeyup="updateSearch()"
-        style="width:100%; padding:12px var(--spacing-md); border-radius:var(--radius-md); border:1px solid var(--glass-border); background:rgba(15, 23, 42, 0.6); color:var(--emp-text);">
-      <select id="filterRole" onchange="updateRoleFilter()"
-        style="width:100%; padding:12px var(--spacing-md); border-radius:var(--radius-md); border:1px solid var(--glass-border); background:rgba(15, 23, 42, 0.6); color:var(--emp-text);">
+  <div class="group-content">
+    <div class="search-filters">
+      <input type="text" id="searchInput" placeholder="{{ _('employees_search_placeholder') }}" onkeyup="updateSearch()">
+      <select id="filterRole" onchange="updateRoleFilter()">
         <option value="">{{ _('employees_filter_all_roles') }}</option>
         <option value="cashier">{{ _('employees_role_cashier') }}</option>
         <option value="admin">{{ _('employees_role_admin') }}</option>
         <option value="delivery">{{ _('employees_role_delivery') }}</option>
       </select>
-      <select id="filterStatus" onchange="updateStatusFilter()"
-        style="width:100%; padding:12px var(--spacing-md); border-radius:var(--radius-md); border:1px solid var(--glass-border); background:rgba(15, 23, 42, 0.6); color:var(--emp-text);">
+      <select id="filterStatus" onchange="updateStatusFilter()">
         <option value="">{{ _('employees_filter_all_statuses') }}</option>
         <option value="active">{{ _('employees_status_active') }}</option>
         <option value="inactive">{{ _('employees_status_inactive') }}</option>
@@ -167,32 +121,27 @@
   </div>
 </div>
 
-<div class="card"
-  style="padding:0; overflow:hidden; border-radius:var(--radius-lg); background:var(--glass-bg); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border:1px solid var(--glass-border); box-shadow:var(--shadow-md);">
-  <div class="table-container"
-    style="margin-top:0; border:none; border-radius:0; height: calc(100vh - 350px); min-height: 400px;">
+<div class="team-table-card">
+  <div class="table-container">
     <div id="employeesTable" class="ag-theme-finora" style="height: 100%; width: 100%;"></div>
   </div>
 </div>
 
-
-<!-- Edit Employee Modal -->
-<div id="editEmployeeModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;align-items:center;justify-content:center;">
-  <div style="background:var(--card);padding:24px;border-radius:16px;max-width:420px;width:92%;border:1px solid var(--border-light);">
-    <h3 style="margin-top:0;">تعديل موظف</h3>
+<div id="editEmployeeModal" class="team-modal-overlay">
+  <div class="team-modal-box">
+    <h3>تعديل موظف</h3>
     <input type="hidden" id="editEmpId">
-    <div style="margin-bottom:10px;"><label>الاسم</label><input id="editEmpName" class="appearance-input" style="width:100%"></div>
-    <div style="margin-bottom:10px;"><label>الراتب</label><input id="editEmpSalary" type="number" min="0" class="appearance-input" style="width:100%"></div>
-    <div style="margin-bottom:10px;"><label>العمولة %</label><input id="editEmpCommission" type="number" min="0" class="appearance-input" style="width:100%"></div>
-    <div style="margin-bottom:10px;"><label>كلمة مرور جديدة (اختياري)</label><input id="editEmpPassword" type="password" class="appearance-input" style="width:100%"></div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;">
-      <button type="button" class="inv-btn" onclick="closeEditEmployeeModal()">إلغاء</button>
-      <button type="button" class="inv-btn" style="background:var(--primary);color:#fff;" onclick="saveEditEmployee()">حفظ</button>
+    <div class="team-modal-field"><label>الاسم</label><input id="editEmpName" type="text"></div>
+    <div class="team-modal-field"><label>الراتب</label><input id="editEmpSalary" type="number" min="0"></div>
+    <div class="team-modal-field"><label>العمولة %</label><input id="editEmpCommission" type="number" min="0"></div>
+    <div class="team-modal-field"><label>كلمة مرور جديدة (اختياري)</label><input id="editEmpPassword" type="password"></div>
+    <div class="team-modal-actions">
+      <button type="button" class="btn btn-light" onclick="closeEditEmployeeModal()">إلغاء</button>
+      <button type="button" class="btn btn-primary" onclick="saveEditEmployee()">حفظ</button>
     </div>
   </div>
 </div>
 
-<!-- ================= EMPLOYEES DATA (JSON) ================= -->
 <script type="application/json" id="employeesData">
 [
   {% for e in employees %}
@@ -217,7 +166,6 @@
     "is_delivery": false
   }{% if not loop.last or (delivery_agents | selectattr("username") | list) %},{% endif %}
   {% endfor %}
-
   {% for agent in delivery_agents %}
   {% if agent.username %}
   {% set s = agent_stats.get(agent.id, {"orders":0,"sales":0}) %}
@@ -290,3 +238,6 @@
   } catch (e) { console.warn(e); }
 </script>
 <script src="{{ url_for('static', filename='js/employees-admin.js') }}"></script>
+
+</div>
+{% endblock %}

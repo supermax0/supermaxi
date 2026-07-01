@@ -1,0 +1,38 @@
+@import url("team-admin.css");
+
+.team-admin-page.pages-page .inline-form-row input {
+  width: 100%;
+}
+
+.team-admin-page.pages-page .vis-checkbox {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.team-admin-page.pages-page .assign-list {
+  max-height: 280px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.team-admin-page.pages-page .assign-list label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+  cursor: pointer;
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.team-admin-page.pages-page .assign-list label:hover {
+  background: var(--surface-hover);
+}

@@ -1,0 +1,11 @@
+@import url("team-admin.css");
+
+.team-admin-page.permissions-page .roles-layout {
+  display: grid;
+  gap: var(--spacing-lg);
+}
+
+.team-admin-page.permissions-page .role-name-cell {
+  color: var(--primary);
+  font-weight: 800;
+}

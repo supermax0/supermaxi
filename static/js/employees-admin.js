@@ -148,10 +148,10 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
     document.getElementById('editEmpSalary').value = data.salary || 0;
     document.getElementById('editEmpCommission').value = data.commission || 0;
     document.getElementById('editEmpPassword').value = '';
-    document.getElementById('editEmployeeModal').style.display = 'flex';
+    document.getElementById('editEmployeeModal').classList.add('is-open');
   }
   function closeEditEmployeeModal() {
-    document.getElementById('editEmployeeModal').style.display = 'none';
+    document.getElementById('editEmployeeModal').classList.remove('is-open');
   }
   async function saveEditEmployee() {
     const id = document.getElementById('editEmpId').value;
@@ -263,8 +263,8 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
 
           if (e.is_delivery) {
             return `
-            <div class="emp-actions-grid" style="display: flex; gap: 8px; justify-content: center; align-items: center; height: 100%;">
-              <a href="/delivery-agent/login" target="_blank" class="action-btn" title=__t('employees_action_agent_page')>
+            <div class="admin-actions">
+              <a href="/delivery-agent/login" target="_blank" class="action-btn" title="${__t('employees_action_agent_page')}">
                 <i class="fas fa-truck"></i>
               </a>
             </div>
@@ -272,19 +272,21 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
           }
 
           const isActive = e.status === 'active';
+          const empActionDisable = __t('employees_action_disable');
+          const empActionEnable = __t('employees_action_enable');
           return `
-          <div class="emp-actions-grid" style="display: flex; gap: 8px; justify-content: center; align-items: center; height: 100%;">
+          <div class="admin-actions">
             <form method="post" action="/employees/toggle/${e.id}" style="display:inline;margin:0"><button type="submit" class="action-btn" onclick="return confirmToggle(event, '${nameEscaped}', ${isActive})" title="${isActive ? empActionDisable : empActionEnable}">
               <i class="fas ${isActive ? 'fa-user-slash' : 'fa-user-check'}"></i>
             </button></form>
             <button class="action-btn" onclick="openEditEmployeeModal(${e.id})" title="تعديل"><i class="fas fa-pen"></i></button>
-            <button class="action-btn" onclick="openPagesModal(${e.id}, '${nameEscaped}')" title=__t('employees_action_pages')>
+            <button class="action-btn" onclick="openPagesModal(${e.id}, '${nameEscaped}')" title="${__t('employees_action_pages')}">
               <i class="fas fa-file-invoice"></i>
             </button>
-            <a href="/admin/permissions/employee/${e.id}/roles" class="action-btn" title=__t('employees_action_roles')>
+            <a href="/admin/permissions/employee/${e.id}/roles" class="action-btn" title="${__t('employees_action_roles')}">
               <i class="fas fa-user-shield"></i>
             </a>
-            <button class="action-btn" onclick="viewEmployeeOrders(${e.id}, '${nameEscaped}')" title=__t('employees_action_view')>
+            <button class="action-btn" onclick="viewEmployeeOrders(${e.id}, '${nameEscaped}')" title="${__t('employees_action_view')}">
               <i class="fas fa-eye"></i>
             </button>
           </div>

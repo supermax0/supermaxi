@@ -253,6 +253,8 @@
 
   .acc-type--deposit { background: rgba(22, 163, 74, 0.12); color: var(--success); }
   .acc-type--withdraw { background: rgba(239, 68, 68, 0.12); color: var(--danger); }
+  .acc-type--expense { background: rgba(234, 88, 12, 0.12); color: #ea580c; }
+  .acc-type--expense_cancel { background: rgba(59, 130, 246, 0.12); color: #2563eb; }
 
   .acc-amount { font-weight: 800; font-variant-numeric: tabular-nums; }
   .acc-amount--green { color: var(--success); }
@@ -469,11 +471,14 @@
               {% for t in transactions %}
               <tr>
                 <td>
-                  <span class="acc-type acc-type--{{ t.type }}">
-                    {% if t.type == "deposit" %}{{ _('accounts_type_deposit_short') }}{% else %}{{ _('accounts_type_withdraw_short') }}{% endif %}
+                  <span class="acc-type acc-type--{{ t.display_category() }}">
+                    {% if t.display_category() == "deposit" %}{{ _('accounts_type_deposit_short') }}
+                    {% elif t.display_category() == "expense" %}{{ _('accounts_type_expense_short') }}
+                    {% elif t.display_category() == "expense_cancel" %}{{ _('accounts_type_expense_cancel_short') }}
+                    {% else %}{{ _('accounts_type_withdraw_short') }}{% endif %}
                   </span>
                 </td>
-                <td class="acc-amount acc-amount--{% if t.type=='deposit' %}green{% else %}red{% endif %}">
+                <td class="acc-amount acc-amount--{% if t.display_category() in ['deposit', 'expense_cancel'] %}green{% else %}red{% endif %}">
                   {{ "{:,.0f}".format(t.amount) }} {{ _('accounts_currency_iqd') }}
                 </td>
                 <td>{{ t.note or "—" }}</td>
@@ -492,10 +497,13 @@
           {% for t in transactions %}
           <div class="acc-tx-card">
             <div class="acc-tx-card-top">
-              <span class="acc-type acc-type--{{ t.type }}">
-                {% if t.type == "deposit" %}{{ _('accounts_type_deposit_short') }}{% else %}{{ _('accounts_type_withdraw_short') }}{% endif %}
+              <span class="acc-type acc-type--{{ t.display_category() }}">
+                {% if t.display_category() == "deposit" %}{{ _('accounts_type_deposit_short') }}
+                {% elif t.display_category() == "expense" %}{{ _('accounts_type_expense_short') }}
+                {% elif t.display_category() == "expense_cancel" %}{{ _('accounts_type_expense_cancel_short') }}
+                {% else %}{{ _('accounts_type_withdraw_short') }}{% endif %}
               </span>
-              <span class="acc-amount acc-amount--{% if t.type=='deposit' %}green{% else %}red{% endif %}">
+              <span class="acc-amount acc-amount--{% if t.display_category() in ['deposit', 'expense_cancel'] %}green{% else %}red{% endif %}">
                 {{ "{:,.0f}".format(t.amount) }} {{ _('accounts_currency_iqd') }}
               </span>
             </div>

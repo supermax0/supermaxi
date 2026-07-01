@@ -129,13 +129,13 @@ def accounts():
     # - صفحة الحسابات تُستخدم فقط لعرض الأرباح/الإيرادات/رأس المال
     # - لا تقوم صفحة الحسابات بحساب الرصيد النقدي (يُحسب من الصندوق فقط)
     # ==========================
-    # حساب الإيداعات والسحوبات من الحركات المالية (للعرض فقط - ليس للرصيد)
+    # حساب إيداعات وسحوبات رأس المال فقط (استبعاد المصاريف والحركات الآلية)
     total_deposit = sum(
-        t.amount for t in financial_transactions if t.type == "deposit"
+        t.amount for t in financial_transactions if t.is_owner_deposit()
     )
 
     total_withdraw = sum(
-        t.amount for t in financial_transactions if t.type == "withdraw"
+        t.amount for t in financial_transactions if t.is_owner_withdrawal()
     )
 
     # ==========================

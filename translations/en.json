@@ -750,6 +750,8 @@
     "accounts_type_withdraw": "Capital withdrawal",
     "accounts_type_deposit_short": "Deposit",
     "accounts_type_withdraw_short": "Withdraw",
+    "accounts_type_expense_short": "Expense",
+    "accounts_type_expense_cancel_short": "Expense cancel",
     "accounts_field_amount_placeholder": "Amount (IQD)",
     "accounts_field_note_placeholder": "Note (optional)",
     "accounts_save_button": "Save transaction",

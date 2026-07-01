@@ -36,17 +36,43 @@ def test_templates():
   tpl = (ROOT / "templates/employees.html").read_text(encoding="utf-8")
   assert "employees-admin.css" in tpl
   assert "employees-admin.js" in tpl
+  assert "team-admin-page" in tpl
+  assert "/agents" in tpl
   js = (ROOT / "static/js/employees-admin.js").read_text(encoding="utf-8")
   assert "/admin/permissions/employee/" in js
   assert 'method="post"' in js.lower() and "/employees/toggle/" in js
+  assert "admin-actions" in js
   er = (ROOT / "templates/admin/permissions/employee_roles.html").read_text(encoding="utf-8")
   assert "employees.employees" in er
+  assert "permissions-admin.css" in er
   roles = (ROOT / "templates/admin/permissions/roles.html").read_text(encoding="utf-8")
   assert "can_*" in roles or "RBAC" in roles or "الصلاحيات القديمة" in roles
+  assert "data-bs-toggle" not in roles
+  assert "permissions-admin.js" in roles
   pages = (ROOT / "templates/pages.html").read_text(encoding="utf-8")
   assert "update-visibility" in pages or "updateVisibility" in pages
+  assert "pages-admin.css" in pages
+  assert "pages-admin.js" in pages
+  assert "<style" not in pages
   agents_tpl = (ROOT / "templates/agents.html").read_text(encoding="utf-8")
   assert "/employees" in agents_tpl
+  assert "agents-admin.css" in agents_tpl
+  assert "<style" not in agents_tpl
+  for err in ("404.html", "500.html"):
+    err_tpl = (ROOT / f"templates/{err}").read_text(encoding="utf-8")
+    assert "error-pages.css" in err_tpl
+    assert "error_layout.html" in err_tpl
+    assert "bi bi-" not in err_tpl
+  partial = (ROOT / "templates/partials/error_layout.html").read_text(encoding="utf-8")
+  assert "error-page-card" in partial
+  for css in (
+    "team-admin.css", "pages-admin.css", "permissions-admin.css",
+    "agents-admin.css", "error-pages.css",
+  ):
+    assert (ROOT / f"static/css/{css}").is_file(), css
+  team_css = (ROOT / "static/css/team-admin.css").read_text(encoding="utf-8")
+  for cls in ("admin-page-header", "admin-table", "admin-actions", "permission-grid", "team-modal"):
+    assert cls in team_css, cls
   print("templates ok")
 
 

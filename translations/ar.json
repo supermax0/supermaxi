@@ -738,7 +738,7 @@
 
     "accounts_page_title": "إدارة الحسابات",
     "accounts_stat_deposits": "إجمالي الإيداعات",
-    "accounts_stat_withdrawals": "إجمالي السحوبات",
+    "accounts_stat_withdrawals": "مسحوبات المالك",
     "accounts_stat_balance": "الرصيد الحالي",
     "accounts_stat_net_profit": "صافي الأرباح",
     "accounts_alert_paid_sales": "المبيعات المسددة",
@@ -751,6 +751,8 @@
     "accounts_type_withdraw": "سحب رأس مال",
     "accounts_type_deposit_short": "إيداع",
     "accounts_type_withdraw_short": "سحب",
+    "accounts_type_expense_short": "مصروف",
+    "accounts_type_expense_cancel_short": "إلغاء مصروف",
     "accounts_field_amount_placeholder": "المبلغ (د.ع)",
     "accounts_field_note_placeholder": "ملاحظة (اختياري)",
     "accounts_save_button": "حفظ الحركة",

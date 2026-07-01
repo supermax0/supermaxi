@@ -1,0 +1,20 @@
+@import url("team-admin.css");
+
+.team-admin-page.agents-page .add-agent-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.team-admin-page.agents-page .add-agent-grid label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.team-admin-page.agents-page .total-cell {
+  font-weight: 800;
+  color: var(--success);
+}
