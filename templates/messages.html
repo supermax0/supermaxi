@@ -3329,6 +3329,7 @@
   };
   let pc = null;
   let localStream = null;
+  let remoteStream = null;
   let cachedIceServers = null;
   let lastSignalId = 0;
   let pendingRemoteCandidates = [];
@@ -3366,16 +3367,14 @@
     };
 
     conn.ontrack = (e) => {
-      const stream = e.streams && e.streams[0];
-      if (!stream) return;
-      const hasVideo = stream.getVideoTracks().length > 0;
-      if (hasVideo) {
-        const rv = document.getElementById('remoteVideo');
-        rv.srcObject = stream;
-      } else {
-        const ra = document.getElementById('remoteAudio');
-        ra.srcObject = stream;
+      // اجمع كل المسارات القادمة في تدفق واحد ثابت
+      if (!remoteStream) remoteStream = new MediaStream();
+      if (e.track) {
+        try { remoteStream.addTrack(e.track); } catch (_) {}
+      } else if (e.streams && e.streams[0]) {
+        e.streams[0].getTracks().forEach(t => { try { remoteStream.addTrack(t); } catch (_) {} });
       }
+      attachRemoteStream();
     };
 
     conn.onconnectionstatechange = () => {
@@ -3397,6 +3396,41 @@
       pc.addIceCandidate(new RTCIceCandidate(c)).catch(e => console.warn('ice add', e));
     });
     pendingRemoteCandidates = [];
+  }
+
+  function attachRemoteStream() {
+    if (!remoteStream) return;
+    const hasVideo = remoteStream.getVideoTracks().length > 0;
+    const rv = document.getElementById('remoteVideo');
+    const ra = document.getElementById('remoteAudio');
+
+    if (callState.type === 'video' && hasVideo) {
+      // الفيديو يشغّل الصوت والصورة معاً
+      if (rv.srcObject !== remoteStream) rv.srcObject = remoteStream;
+      ra.srcObject = null;
+      safePlay(rv);
+    } else {
+      // مكالمة صوتية (أو لم يصل فيديو بعد): شغّل الصوت عبر عنصر الصوت
+      if (ra.srcObject !== remoteStream) ra.srcObject = remoteStream;
+      safePlay(ra);
+      if (hasVideo) {
+        if (rv.srcObject !== remoteStream) rv.srcObject = remoteStream;
+        safePlay(rv);
+      }
+    }
+  }
+
+  function safePlay(el) {
+    if (!el) return;
+    const p = el.play();
+    if (p && typeof p.catch === 'function') {
+      p.catch(() => {
+        // في حال منع التشغيل التلقائي: أعد المحاولة عند أول لمسة
+        const retry = () => { el.play().catch(() => {}); document.removeEventListener('click', retry); document.removeEventListener('touchstart', retry); };
+        document.addEventListener('click', retry, { once: true });
+        document.addEventListener('touchstart', retry, { once: true });
+      });
+    }
   }
 
   // ---------- Outgoing ----------
@@ -3523,10 +3557,15 @@
       })
       .then(iceServers => {
         pc = buildPeerConnection(iceServers);
-        localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+        // اضبط الوصف البعيد (offer) أولاً ثم أضف المسارات لتجنّب اختلاف m-lines
         return pc.setRemoteDescription(new RTCSessionDescription(offerSdp));
       })
-      .then(() => { remoteDescSet = true; flushRemoteCandidates(); return pc.createAnswer(); })
+      .then(() => {
+        remoteDescSet = true;
+        flushRemoteCandidates();
+        localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+        return pc.createAnswer();
+      })
       .then(answer => pc.setLocalDescription(answer).then(() => answer))
       .then(answer => {
         return fetch(`/messages/call/${call.id}/answer`, {
@@ -3633,6 +3672,7 @@
 
     if (pc) { try { pc.close(); } catch (_) {} pc = null; }
     if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+    remoteStream = null;
 
     const rv = document.getElementById('remoteVideo');
     const lv = document.getElementById('localVideo');
