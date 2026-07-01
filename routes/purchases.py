@@ -9,7 +9,7 @@ import uuid
 from datetime import datetime, date
 
 from flask import Blueprint, current_app, flash, jsonify, make_response, redirect, render_template, request, session, url_for
-from sqlalchemy import inspect, text
+from sqlalchemy import inspect, or_, text
 from sqlalchemy.sql import func
 from werkzeug.utils import secure_filename
 
@@ -319,60 +319,8 @@ def _create_purchase_from_payload(payload, files):
     return purchase, None
 
 
-@purchases_bp.route("/", methods=["GET", "POST"])
-def purchases():
-    if not check_permission("can_manage_inventory"):
-        return redirect("/pos"), 403
-    try:
-        _ensure_purchase_schema()
-    except Exception:
-        db.session.rollback()
-        from flask import current_app
-        current_app.logger.exception("purchase schema migration failed")
-
-    if request.method == "POST":
-        payload = {}
-        files = []
-        if request.is_json:
-            payload = request.get_json(silent=True) or {}
-        elif request.form.get("payload"):
-            try:
-                payload = json.loads(request.form.get("payload") or "{}")
-            except Exception:
-                payload = {}
-            files = request.files.getlist("attachments")
-        elif request.form.get("form_type") == "purchase":
-            # legacy form compatibility
-            payload = {
-                "supplier_id": request.form.get("supplier_id"),
-                "purchase_date": request.form.get("purchase_date"),
-                "purchase_mode": request.form.get("payment_method", "credit"),
-                "status": "confirmed",
-                "items": [
-                    {
-                        "product_id": request.form.get("product_id"),
-                        "quantity": request.form.get("quantity"),
-                        "unit_cost": request.form.get("buy_price"),
-                    }
-                ],
-            }
-
-        purchase, err = _create_purchase_from_payload(payload, files)
-        if err:
-            if request.is_json or request.form.get("payload"):
-                return jsonify({"success": False, "error": err}), 400
-            flash(f"❌ {err}", "danger")
-            return redirect(url_for("purchases.purchases"))
-
-        msg = f"✅ تم حفظ فاتورة الشراء رقم {purchase.invoice_no} بنجاح"
-        if request.is_json or request.form.get("payload"):
-            return jsonify({"success": True, "message": msg, "purchase_id": purchase.id, "invoice_no": purchase.invoice_no})
-        flash(msg, "success")
-        return redirect(url_for("purchases.purchases"))
-
-    products = Product.query.filter_by(active=True).all()
+def _get_purchase_stats():
     suppliers = Supplier.query.order_by(Supplier.name.asc()).all()
-
     try:
         purchases_list = Purchase.query.order_by(Purchase.created_at.desc()).limit(500).all()
         total_purchases = sum(int(p.grand_total or p.total or 0) for p in purchases_list)
@@ -386,22 +334,165 @@ def purchases():
         suppliers_with_debt = len([s for s in suppliers if int(getattr(s, "total_debt", 0) or 0) > 0])
     except Exception:
         db.session.rollback()
-        from flask import current_app
-        current_app.logger.exception("purchases page query failed")
-        purchases_list = []
+        current_app.logger.exception("purchases stats query failed")
         total_purchases = purchases_count = monthly_total = total_supplier_debts = suppliers_with_debt = 0
+    return {
+        "total_purchases": total_purchases,
+        "purchases_count": purchases_count,
+        "monthly_total": monthly_total,
+        "total_supplier_debts": total_supplier_debts,
+        "suppliers_with_debt": suppliers_with_debt,
+    }
 
+
+def _product_search_row(product):
+    return {
+        "id": product.id,
+        "name": product.name,
+        "sku": product.sku or "",
+        "barcode": product.barcode or "",
+        "buy_price": int(product.buy_price or 0),
+        "quantity": int(product.quantity or 0),
+    }
+
+
+def _prepare_purchases_context():
+    try:
+        _ensure_purchase_schema()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("purchase schema migration failed")
+    suppliers = Supplier.query.order_by(Supplier.name.asc()).all()
+    stats = _get_purchase_stats()
+    return {"suppliers": suppliers, **stats}
+
+
+@purchases_bp.route("/", methods=["GET"])
+def purchases_index():
+    """سجل المشتريات — الصفحة الرئيسية."""
+    if not check_permission("can_manage_inventory"):
+        return redirect("/pos"), 403
+    ctx = _prepare_purchases_context()
+    return render_template("purchases_history.html", **ctx)
+
+
+@purchases_bp.route("/new", methods=["GET"])
+def purchases_new():
+    """فاتورة شراء جديدة."""
+    if not check_permission("can_manage_inventory"):
+        return redirect("/pos"), 403
+    ctx = _prepare_purchases_context()
+    products = Product.query.filter_by(active=True).order_by(Product.name.asc()).all()
     return render_template(
-        "purchases.html",
+        "purchases_form.html",
         products=products,
-        suppliers=suppliers,
-        purchases=purchases_list,
-        total_purchases=total_purchases,
-        purchases_count=purchases_count,
-        monthly_total=monthly_total,
-        total_supplier_debts=total_supplier_debts,
-        suppliers_with_debt=suppliers_with_debt,
+        edit_purchase=None,
+        form_mode="new",
+        **ctx,
     )
+
+
+@purchases_bp.route("/edit/<int:purchase_id>", methods=["GET"])
+def purchases_edit(purchase_id):
+    """تعديل فاتورة شراء (مسودة أو بعد فتحها للتحرير)."""
+    if not check_permission("can_manage_inventory"):
+        return redirect("/pos"), 403
+    _ensure_purchase_schema()
+    purchase = Purchase.query.get_or_404(purchase_id)
+    status = (purchase.status or "").strip().lower()
+    if status == "cancelled":
+        flash("لا يمكن تعديل فاتورة ملغية. أعد فتحها من السجل أولاً.", "warning")
+        return redirect(url_for("purchases.purchases_index"))
+    if status == "confirmed":
+        flash("الفاتورة المؤكدة مقفلة. افتحها للتحرير من سجل المشتريات أولاً.", "warning")
+        return redirect(url_for("purchases.purchases_index"))
+    ctx = _prepare_purchases_context()
+    products = Product.query.filter_by(active=True).order_by(Product.name.asc()).all()
+    return render_template(
+        "purchases_form.html",
+        products=products,
+        edit_purchase=purchase,
+        form_mode="edit",
+        **ctx,
+    )
+
+
+@purchases_bp.route("/", methods=["POST"])
+@purchases_bp.route("/create", methods=["POST"])
+def purchases_create():
+    """إنشاء فاتورة شراء (API / نموذج)."""
+    if not check_permission("can_manage_inventory"):
+        return redirect("/pos"), 403
+    try:
+        _ensure_purchase_schema()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("purchase schema migration failed")
+
+    payload = {}
+    files = []
+    if request.is_json:
+        payload = request.get_json(silent=True) or {}
+    elif request.form.get("payload"):
+        try:
+            payload = json.loads(request.form.get("payload") or "{}")
+        except Exception:
+            payload = {}
+        files = request.files.getlist("attachments")
+    elif request.form.get("form_type") == "purchase":
+        payload = {
+            "supplier_id": request.form.get("supplier_id"),
+            "purchase_date": request.form.get("purchase_date"),
+            "purchase_mode": request.form.get("payment_method", "credit"),
+            "status": "confirmed",
+            "items": [
+                {
+                    "product_id": request.form.get("product_id"),
+                    "quantity": request.form.get("quantity"),
+                    "unit_cost": request.form.get("buy_price"),
+                }
+            ],
+        }
+
+    purchase, err = _create_purchase_from_payload(payload, files)
+    if err:
+        if request.is_json or request.form.get("payload"):
+            return jsonify({"success": False, "error": err}), 400
+        flash(f"❌ {err}", "danger")
+        return redirect(url_for("purchases.purchases_new"))
+
+    msg = f"✅ تم حفظ فاتورة الشراء رقم {purchase.invoice_no} بنجاح"
+    if request.is_json or request.form.get("payload"):
+        return jsonify({"success": True, "message": msg, "purchase_id": purchase.id, "invoice_no": purchase.invoice_no})
+    flash(msg, "success")
+    return redirect(url_for("purchases.purchases_index"))
+
+
+@purchases_bp.route("/api/products/search")
+def search_products_for_purchase():
+    if not check_permission("can_manage_inventory"):
+        return jsonify([]), 403
+    q = (request.args.get("q") or "").strip()
+    if not q:
+        return jsonify([])
+    by_barcode = Product.query.filter(Product.active.is_(True), Product.barcode == q).first()
+    if by_barcode:
+        return jsonify([_product_search_row(by_barcode)])
+    like = f"%{q}%"
+    rows = (
+        Product.query.filter(
+            Product.active.is_(True),
+            or_(
+                Product.name.ilike(like),
+                Product.sku.ilike(like),
+                Product.barcode.ilike(like),
+            ),
+        )
+        .order_by(Product.name.asc())
+        .limit(15)
+        .all()
+    )
+    return jsonify([_product_search_row(p) for p in rows])
 
 
 @purchases_bp.route("/api/list")

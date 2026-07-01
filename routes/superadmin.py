@@ -841,7 +841,7 @@ PAGES_GUIDE = [
             ("/inventory/audit", "جرد المخزون", "inventory_audit.html"),
             ("/inventory/ledger", "دفتر المخزون", "inventory_ledger.html"),
             ("/inventory/report/<id>", "تقرير صنف", "inventory_report.html"),
-            ("/purchases", "المشتريات", "purchases.html"),
+            ("/purchases", "المشتريات", "purchases_history.html"),
             ("/suppliers", "الموردون", "suppliers.html"),
             ("/suppliers/<id>", "تفاصيل مورد", "supplier_details.html"),
         ],

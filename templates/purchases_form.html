@@ -1,0 +1,519 @@
+{% extends "base.html" %}
+{% block title %}{% if form_mode == 'edit' %}تعديل فاتورة شراء{% else %}فاتورة شراء جديدة{% endif %}{% endblock %}
+{% block page_title %}{% if form_mode == 'edit' %}تعديل فاتورة شراء{% else %}فاتورة شراء جديدة{% endif %}{% endblock %}
+
+{% block content %}
+<div class="purchases-page pur-form-page">
+  <style>
+    .purchases-page { width: 100%; max-width: 1100px; margin: 0 auto; direction: rtl; }
+    .pur-topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+    .pur-card { background: var(--card); border: 1px solid var(--border-light); border-radius: 16px; padding: 16px; margin-bottom: 14px; }
+    .pur-grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+    .pur-grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    .pur-grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .pur-field { display: flex; flex-direction: column; gap: 6px; position: relative; }
+    .pur-field label { font-size: 13px; color: var(--text-muted); font-weight: 700; }
+    .pur-field input, .pur-field select, .pur-field textarea {
+      background: var(--card-alt); border: 1px solid var(--border-light); color: var(--text);
+      border-radius: 10px; padding: 10px 12px; font-size: 14px; width: 100%;
+    }
+    .pur-btn { border: none; border-radius: 10px; padding: 10px 14px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
+    .pur-btn-primary { background: var(--primary); color: #fff; }
+    .pur-btn-danger { background: #dc2626; color: #fff; }
+    .pur-btn-muted { background: var(--card-alt); color: var(--text); border: 1px solid var(--border-light); }
+    .pur-title { font-weight: 800; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+    .pur-table-wrap { border: 1px solid var(--border-light); border-radius: 12px; overflow: auto; }
+    table.pur-table { width: 100%; border-collapse: collapse; min-width: 700px; }
+    table.pur-table th, table.pur-table td { border-bottom: 1px solid var(--border-light); padding: 8px; font-size: 13px; text-align: right; }
+    table.pur-table th { background: var(--card-alt); color: var(--text-muted); }
+    .pur-total-bar {
+      position: sticky; bottom: 0; z-index: 10;
+      background: var(--card); border: 1px solid var(--border-light); border-radius: 16px;
+      padding: 14px 16px; box-shadow: 0 -4px 24px rgba(0,0,0,0.15);
+      display: flex; gap: 12px; justify-content: space-between; align-items: center; flex-wrap: wrap;
+    }
+    .pur-totals { display: flex; gap: 20px; flex-wrap: wrap; }
+    .pur-totals > div small { color: var(--text-muted); display: block; font-size: 12px; }
+    .muted { color: var(--text-muted); font-size: 12px; }
+    .pay-mode-group { display: flex; gap: 8px; flex-wrap: wrap; }
+    .pay-mode-btn {
+      flex: 1; min-width: 100px; border: 2px solid var(--border-light); background: var(--card-alt);
+      color: var(--text); border-radius: 12px; padding: 12px; font-weight: 700; cursor: pointer; text-align: center;
+    }
+    .pay-mode-btn.active { border-color: var(--primary); background: rgba(99,102,241,0.12); color: var(--primary); }
+    .product-suggest {
+      position: absolute; top: 100%; right: 0; left: 0; z-index: 20;
+      background: var(--card); border: 1px solid var(--border-light); border-radius: 10px;
+      max-height: 240px; overflow: auto; display: none; box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    }
+    .product-suggest.open { display: block; }
+    .product-suggest button {
+      width: 100%; text-align: right; border: none; background: transparent; color: var(--text);
+      padding: 10px 12px; cursor: pointer; border-bottom: 1px solid var(--border-light);
+    }
+    .product-suggest button:hover { background: rgba(99,102,241,0.1); }
+    .product-suggest small { color: var(--text-muted); display: block; margin-top: 2px; }
+    .collapse-toggle {
+      width: 100%; background: var(--card-alt); border: 1px solid var(--border-light); color: var(--text);
+      border-radius: 10px; padding: 10px 14px; font-weight: 700; cursor: pointer; text-align: right;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .collapse-body { display: none; margin-top: 10px; }
+    .collapse-body.open { display: block; }
+  </style>
+
+  <div class="pur-topbar">
+    <a href="{{ url_for('purchases.purchases_index') }}" class="pur-btn pur-btn-muted">
+      <i class="fa fa-arrow-right"></i> العودة للسجل
+    </a>
+    <span class="muted">{% if form_mode == 'edit' %}تعديل مسودة أو فاتورة مفتوحة{% else %}أدخل البيانات الأساسية ثم أضف المنتجات{% endif %}</span>
+  </div>
+
+  <!-- الأساسيات -->
+  <div class="pur-card">
+    <div class="pur-title"><i class="fa fa-receipt"></i> البيانات الأساسية</div>
+    <div class="pur-grid-3">
+      <div class="pur-field">
+        <label>المورد *</label>
+        <select id="supplierId" required>
+          <option value="">اختر المورد</option>
+          {% for s in suppliers %}
+          <option value="{{ s.id }}">{{ s.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="pur-field"><label>تاريخ الشراء</label><input type="date" id="purchaseDate"></div>
+      <div class="pur-field">
+        <label>حالة الحفظ</label>
+        <select id="purchaseStatus">
+          <option value="draft">مسودة</option>
+          <option value="confirmed" selected>مؤكد</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin-top:14px;">
+      <label class="muted" style="display:block;margin-bottom:8px;font-weight:700;">طريقة الدفع</label>
+      <div class="pay-mode-group">
+        <button type="button" class="pay-mode-btn" data-mode="cash">نقدي كامل</button>
+        <button type="button" class="pay-mode-btn active" data-mode="credit">آجل (دين)</button>
+        <button type="button" class="pay-mode-btn" data-mode="mixed">دفعات جزئية</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- المنتجات -->
+  <div class="pur-card">
+    <div class="pur-title"><i class="fa fa-box-open"></i> إضافة منتجات</div>
+    <p class="muted" style="margin:-4px 0 10px;">ابحث بالاسم أو الباركود أو SKU — يُعبّأ سعر الشراء تلقائياً</p>
+    <div class="pur-grid-4">
+      <div class="pur-field" style="grid-column: span 2;">
+        <label>بحث منتج</label>
+        <input type="text" id="productSearch" placeholder="اسم المنتج / باركود / SKU" autocomplete="off">
+        <input type="hidden" id="selectedProductId" value="">
+        <div class="product-suggest" id="productSuggest"></div>
+      </div>
+      <div class="pur-field"><label>الكمية</label><input type="number" id="itemQty" min="1" value="1"></div>
+      <div class="pur-field"><label>تكلفة الوحدة</label><input type="number" id="itemUnitCost" min="0" value="0"></div>
+    </div>
+    <div class="pur-grid-3" style="margin-top:10px;">
+      <div class="pur-field"><label>خصم الوحدة (اختياري)</label><input type="number" id="itemDisc" min="0" value="0"></div>
+      <div class="pur-field" style="justify-content:flex-end;">
+        <label>&nbsp;</label>
+        <button class="pur-btn pur-btn-primary" type="button" id="addItemBtn" style="width:100%;">
+          <i class="fa fa-plus"></i> إضافة للفاتورة
+        </button>
+      </div>
+    </div>
+    <div class="pur-table-wrap" style="margin-top:12px;">
+      <table class="pur-table" id="itemsTable">
+        <thead>
+          <tr>
+            <th>#</th><th>المنتج</th><th>الكمية</th><th>التكلفة</th><th>خصم</th><th>الإجمالي</th><th></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div id="emptyItemsHint" class="muted" style="text-align:center;padding:16px;">لم تُضف منتجات بعد</div>
+  </div>
+
+  <!-- خصومات -->
+  <div class="pur-card">
+    <div class="pur-grid-2">
+      <div class="pur-field"><label>خصم إجمالي (د.ع)</label><input type="number" id="discountValue" min="0" value="0"></div>
+      <div class="pur-field"><label>تكلفة شحن إضافية (د.ع)</label><input type="number" id="shippingExtra" min="0" value="0"></div>
+    </div>
+  </div>
+
+  <!-- دفعات (للجزئي فقط) -->
+  <div class="pur-card" id="paymentsSection" style="display:none;">
+    <div class="pur-title"><i class="fa fa-money-check-dollar"></i> الدفعات</div>
+    <div class="pur-grid-4">
+      <div class="pur-field"><label>المبلغ</label><input type="number" id="payAmount" min="0" value="0"></div>
+      <div class="pur-field">
+        <label>طريقة</label>
+        <select id="payMethod"><option value="cash">نقدا</option><option value="bank">بنك</option><option value="credit">آجل</option></select>
+      </div>
+      <div class="pur-field"><label>الحساب</label><input type="text" id="payAccount"></div>
+      <div class="pur-field"><label>ملاحظة</label><input type="text" id="payNote"></div>
+    </div>
+    <div style="margin-top:10px;">
+      <button type="button" class="pur-btn pur-btn-muted" id="addPayBtn"><i class="fa fa-plus"></i> إضافة دفعة</button>
+    </div>
+    <div class="pur-table-wrap" style="margin-top:10px;">
+      <table class="pur-table" id="paymentsTable">
+        <thead><tr><th>#</th><th>المبلغ</th><th>الطريقة</th><th>الحساب</th><th>ملاحظة</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- تفاصيل إضافية (مطوية) -->
+  <div class="pur-card">
+    <button type="button" class="collapse-toggle" id="toggleAdvanced">
+      <span><i class="fa fa-sliders"></i> تفاصيل إضافية (اختياري)</span>
+      <i class="fa fa-chevron-down" id="toggleIcon"></i>
+    </button>
+    <div class="collapse-body" id="advancedBody">
+      <div class="pur-grid-4" style="margin-top:4px;">
+        <div class="pur-field"><label>رقم الفاتورة الداخلية</label><input type="text" id="invoiceNo" placeholder="يولّد تلقائياً"></div>
+        <div class="pur-field"><label>رقم فاتورة المورد</label><input type="text" id="supplierInvoiceNo"></div>
+        <div class="pur-field"><label>الفرع</label><input type="text" id="branchCode" placeholder="BL0001"></div>
+        <div class="pur-field"><label>الرقم المرجعي</label><input type="text" id="referenceNo"></div>
+      </div>
+      <div class="pur-grid-2" style="margin-top:10px;">
+        <div class="pur-field"><label>فترة الدفع</label><input type="text" id="paymentTerm"></div>
+        <div class="pur-field"><label>العنوان</label><input type="text" id="address"></div>
+      </div>
+      <div class="pur-grid-2" style="margin-top:10px;">
+        <div class="pur-field"><label>ملاحظات</label><textarea id="notes" rows="2"></textarea></div>
+        <div class="pur-field"><label>تفاصيل الشحن</label><input type="text" id="shippingDetails"></div>
+      </div>
+      <div class="pur-grid-2" style="margin-top:10px;">
+        <div class="pur-field"><label>ملاحظة التكلفة الإضافية</label><input type="text" id="extraCostNote"></div>
+        <div class="pur-field"><label>مرفقات</label><input type="file" id="attachments" multiple></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- شريط الحفظ -->
+  <div class="pur-total-bar">
+    <div class="pur-totals">
+      <div><small>الإجمالي</small><strong id="sumGrand">0 د.ع</strong></div>
+      <div><small>المدفوع</small><strong id="sumPaid">0 د.ع</strong></div>
+      <div><small>المتبقي</small><strong id="sumRemain">0 د.ع</strong></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="pur-btn pur-btn-muted" type="button" id="saveDraftBtn">حفظ مسودة</button>
+      <button class="pur-btn pur-btn-primary" type="button" id="saveConfirmedBtn"><i class="fa fa-save"></i> حفظ الفاتورة</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const items = [];
+  const payments = [];
+  let paymentMode = "credit";
+  let selectedProduct = null;
+  let searchTimer = null;
+  const currentEditingId = {{ edit_purchase.id if edit_purchase else 'null' }};
+  const fmt = n => `${(Number(n) || 0).toLocaleString('en-US')} د.ع`;
+  const byId = id => document.getElementById(id);
+
+  byId("purchaseDate").value = new Date().toISOString().slice(0, 10);
+
+  document.querySelectorAll(".pay-mode-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".pay-mode-btn").forEach(x => x.classList.remove("active"));
+      btn.classList.add("active");
+      paymentMode = btn.dataset.mode;
+      byId("paymentsSection").style.display = paymentMode === "mixed" ? "block" : "none";
+      if (paymentMode !== "mixed") payments.splice(0, payments.length);
+      renderPayments();
+      recalc();
+    });
+  });
+
+  byId("toggleAdvanced").addEventListener("click", () => {
+    const body = byId("advancedBody");
+    const open = body.classList.toggle("open");
+    byId("toggleIcon").className = open ? "fa fa-chevron-up" : "fa fa-chevron-down";
+  });
+
+  function recalc() {
+    const sub = items.reduce((a, b) => a + b.line_total, 0);
+    const discount = Number(byId("discountValue").value || 0);
+    const ship = Number(byId("shippingExtra").value || 0);
+    const grand = Math.max(sub - discount + ship, 0);
+    let paid = 0;
+    if (paymentMode === "cash") paid = grand;
+    else if (paymentMode === "mixed") paid = Math.min(payments.reduce((a, b) => a + b.amount, 0), grand);
+    const remain = Math.max(grand - paid, 0);
+    byId("sumGrand").textContent = fmt(grand);
+    byId("sumPaid").textContent = fmt(paid);
+    byId("sumRemain").textContent = fmt(remain);
+    return { sub, discount, ship, grand, paid, remain };
+  }
+
+  function renderItems() {
+    const tbody = byId("itemsTable").querySelector("tbody");
+    byId("emptyItemsHint").style.display = items.length ? "none" : "block";
+    tbody.innerHTML = "";
+    items.forEach((it, i) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${i + 1}</td>
+        <td>${it.product_name}</td>
+        <td>${it.quantity}</td>
+        <td>${fmt(it.final_unit_cost)}</td>
+        <td>${fmt(it.discount_value)}</td>
+        <td><strong>${fmt(it.line_total)}</strong></td>
+        <td><button class="pur-btn pur-btn-danger" type="button" data-del="${i}" style="padding:4px 8px;font-size:12px;">حذف</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+    tbody.querySelectorAll("[data-del]").forEach(btn => {
+      btn.addEventListener("click", () => { items.splice(Number(btn.dataset.del), 1); renderItems(); });
+    });
+    recalc();
+  }
+
+  function renderPayments() {
+    const tbody = byId("paymentsTable").querySelector("tbody");
+    tbody.innerHTML = "";
+    payments.forEach((p, i) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${i + 1}</td><td>${fmt(p.amount)}</td><td>${p.payment_method}</td>
+        <td>${p.account_name || "-"}</td><td>${p.note || "-"}</td>
+        <td><button class="pur-btn pur-btn-danger" type="button" data-del-pay="${i}" style="padding:4px 8px;font-size:12px;">حذف</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+    tbody.querySelectorAll("[data-del-pay]").forEach(btn => {
+      btn.addEventListener("click", () => { payments.splice(Number(btn.dataset.delPay), 1); renderPayments(); });
+    });
+    recalc();
+  }
+
+  function selectProduct(p) {
+    selectedProduct = p;
+    byId("selectedProductId").value = p.id;
+    byId("productSearch").value = p.name;
+    byId("itemUnitCost").value = p.buy_price || 0;
+    byId("productSuggest").classList.remove("open");
+    byId("itemQty").focus();
+    byId("itemQty").select();
+  }
+
+  async function runProductSearch(q) {
+    const box = byId("productSuggest");
+    if (!q || q.length < 1) { box.classList.remove("open"); return; }
+    const res = await fetch(`/purchases/api/products/search?q=${encodeURIComponent(q)}`);
+    const rows = await res.json();
+    if (!rows.length) {
+      box.innerHTML = `<div class="muted" style="padding:10px;">لا توجد نتائج</div>`;
+      box.classList.add("open");
+      return;
+    }
+    box.innerHTML = rows.map(p => `
+      <button type="button" data-pid="${p.id}">
+        ${p.name}
+        <small>${p.sku ? "SKU: " + p.sku + " · " : ""}${p.barcode ? "باركود: " + p.barcode + " · " : ""}سعر شراء: ${fmt(p.buy_price)} · مخزون: ${p.quantity}</small>
+      </button>
+    `).join("");
+    box.querySelectorAll("button[data-pid]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const row = rows.find(x => String(x.id) === btn.dataset.pid);
+        if (row) selectProduct(row);
+      });
+    });
+    box.classList.add("open");
+  }
+
+  byId("productSearch").addEventListener("input", () => {
+    selectedProduct = null;
+    byId("selectedProductId").value = "";
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => runProductSearch(byId("productSearch").value.trim()), 200);
+  });
+  byId("productSearch").addEventListener("keydown", e => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const first = byId("productSuggest").querySelector("button[data-pid]");
+      if (first) first.click();
+      else addCurrentItem();
+    }
+  });
+  document.addEventListener("click", e => {
+    if (!e.target.closest("#productSearch") && !e.target.closest("#productSuggest")) {
+      byId("productSuggest").classList.remove("open");
+    }
+  });
+
+  function addCurrentItem() {
+    const product_id = Number(byId("selectedProductId").value || 0);
+    const product_name = selectedProduct?.name || byId("productSearch").value.trim();
+    const quantity = Number(byId("itemQty").value || 0);
+    const unit_cost_before_discount = Number(byId("itemUnitCost").value || 0);
+    const discount_value = Number(byId("itemDisc").value || 0);
+    if (!product_id || quantity <= 0) {
+      alert("اختر منتجاً من نتائج البحث وأدخل كمية صحيحة.");
+      return;
+    }
+    const final_unit_cost = Math.max(unit_cost_before_discount - discount_value, 0);
+    const line_total = final_unit_cost * quantity;
+    items.push({ product_id, product_name, quantity, unit_cost_before_discount, discount_value, final_unit_cost, line_total });
+    byId("productSearch").value = "";
+    byId("selectedProductId").value = "";
+    selectedProduct = null;
+    byId("itemQty").value = "1";
+    byId("itemDisc").value = "0";
+    renderItems();
+    byId("productSearch").focus();
+  }
+
+  byId("addItemBtn").addEventListener("click", addCurrentItem);
+
+  byId("addPayBtn").addEventListener("click", () => {
+    const amount = Number(byId("payAmount").value || 0);
+    if (amount <= 0) { alert("أدخل مبلغ الدفعة."); return; }
+    payments.push({
+      amount,
+      payment_method: byId("payMethod").value || "cash",
+      account_name: byId("payAccount").value || "",
+      note: byId("payNote").value || "",
+      paid_at: new Date().toISOString()
+    });
+    byId("payAmount").value = "0";
+    renderPayments();
+  });
+
+  ["discountValue", "shippingExtra"].forEach(id => byId(id).addEventListener("input", recalc));
+
+  function buildPayload(status) {
+    const totals = recalc();
+    let mode = paymentMode;
+    let payList = [];
+    if (mode === "cash") {
+      mode = "cash";
+      payList = [];
+    } else if (mode === "mixed") {
+      payList = [...payments];
+    } else {
+      mode = "credit";
+      payList = [];
+    }
+    return {
+      supplier_id: byId("supplierId").value,
+      purchase_date: byId("purchaseDate").value,
+      invoice_no: byId("invoiceNo").value || "",
+      branch_code: byId("branchCode").value || "",
+      reference_no: byId("referenceNo").value || "",
+      supplier_invoice_no: byId("supplierInvoiceNo").value || "",
+      payment_term: byId("paymentTerm").value || "",
+      purchase_mode: mode,
+      address: byId("address").value || "",
+      notes: byId("notes").value || "",
+      shipping_details: byId("shippingDetails").value || "",
+      extra_cost_note: byId("extraCostNote").value || "",
+      discount_value: totals.discount,
+      shipping_extra: totals.ship,
+      status,
+      items,
+      payments: payList
+    };
+  }
+
+  async function savePurchase(status) {
+    if (!byId("supplierId").value) { alert("يرجى اختيار المورد."); return; }
+    if (!items.length) { alert("أضف منتجاً واحداً على الأقل."); return; }
+    const formData = new FormData();
+    formData.append("payload", JSON.stringify(buildPayload(status)));
+    const files = byId("attachments").files || [];
+    for (const f of files) formData.append("attachments", f);
+
+    const url = currentEditingId ? `/purchases/api/${currentEditingId}/update` : "/purchases/create";
+    const resp = await fetch(url, { method: "POST", body: formData });
+    const data = await resp.json();
+    if (!resp.ok || !data.success) { alert(data.error || "فشل الحفظ"); return; }
+    alert(data.message || "تم الحفظ بنجاح");
+    window.location.href = "/purchases/";
+  }
+
+  byId("saveDraftBtn").addEventListener("click", () => savePurchase("draft"));
+  byId("saveConfirmedBtn").addEventListener("click", () => savePurchase("confirmed"));
+
+  {% if edit_purchase %}
+  (function loadEditData() {
+    const p = {
+      supplier_id: {{ edit_purchase.supplier_id }},
+      date: "{{ edit_purchase.purchase_date.strftime('%Y-%m-%d') if edit_purchase.purchase_date else '' }}",
+      invoice_no: {{ (edit_purchase.invoice_no or '')|tojson }},
+      branch_code: {{ (edit_purchase.branch_code or '')|tojson }},
+      reference_no: {{ (edit_purchase.reference_no or '')|tojson }},
+      supplier_invoice_no: {{ (edit_purchase.supplier_invoice_no or '')|tojson }},
+      payment_term: {{ (edit_purchase.payment_term or '')|tojson }},
+      address: {{ (edit_purchase.address or '')|tojson }},
+      notes: {{ (edit_purchase.notes or '')|tojson }},
+      shipping_details: {{ (edit_purchase.shipping_details or '')|tojson }},
+      extra_cost_note: {{ (edit_purchase.extra_cost_note or '')|tojson }},
+      status: {{ (edit_purchase.status or 'draft')|tojson }},
+      discount_value: {{ edit_purchase.discount_value or 0 }},
+      shipping_extra: {{ edit_purchase.shipping_extra or 0 }},
+      purchase_mode: {{ (edit_purchase.purchase_mode or 'credit')|tojson }},
+      items: [
+        {% for it in edit_purchase.items %}
+        {
+          product_id: {{ it.product_id }},
+          product_name: {{ (it.product.name if it.product else '')|tojson }},
+          quantity: {{ it.quantity or 0 }},
+          unit_cost_before_discount: {{ it.unit_cost_before_discount or 0 }},
+          discount_value: {{ it.discount_value or 0 }},
+          final_unit_cost: {{ it.final_unit_cost or 0 }},
+          line_total: {{ it.line_total or 0 }}
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+      ],
+      payments: [
+        {% for pay in edit_purchase.payments %}
+        {
+          amount: {{ pay.amount or 0 }},
+          payment_method: {{ (pay.payment_method or 'cash')|tojson }},
+          account_name: {{ (pay.account_name or '')|tojson }},
+          note: {{ (pay.note or '')|tojson }},
+          paid_at: "{{ pay.paid_at.isoformat() if pay.paid_at else '' }}"
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+      ]
+    };
+    byId("supplierId").value = p.supplier_id || "";
+    byId("purchaseDate").value = p.date || "";
+    byId("invoiceNo").value = p.invoice_no || "";
+    byId("branchCode").value = p.branch_code || "";
+    byId("referenceNo").value = p.reference_no || "";
+    byId("supplierInvoiceNo").value = p.supplier_invoice_no || "";
+    byId("paymentTerm").value = p.payment_term || "";
+    byId("address").value = p.address || "";
+    byId("notes").value = p.notes || "";
+    byId("shippingDetails").value = p.shipping_details || "";
+    byId("extraCostNote").value = p.extra_cost_note || "";
+    byId("purchaseStatus").value = p.status || "draft";
+    byId("discountValue").value = p.discount_value || 0;
+    byId("shippingExtra").value = p.shipping_extra || 0;
+    items.push(...(p.items || []));
+    payments.push(...(p.payments || []));
+    const mode = (p.purchase_mode || "credit").toLowerCase();
+    paymentMode = mode === "cash" ? "cash" : (mode === "mixed" || (p.payments || []).length ? "mixed" : "credit");
+    document.querySelectorAll(".pay-mode-btn").forEach(btn => {
+      btn.classList.toggle("active", btn.dataset.mode === paymentMode);
+    });
+    byId("paymentsSection").style.display = paymentMode === "mixed" ? "block" : "none";
+    byId("advancedBody").classList.add("open");
+    byId("toggleIcon").className = "fa fa-chevron-up";
+    renderItems();
+    renderPayments();
+  })();
+  {% endif %}
+</script>
+{% endblock %}

@@ -32,7 +32,14 @@ class Message(db.Model):
     # حالة الرسالة
     is_read = db.Column(db.Boolean, default=False)
     is_edited = db.Column(db.Boolean, default=False)
-    
+
+    # الرد على رسالة (اقتباس)
+    reply_to_id = db.Column(
+        db.Integer,
+        db.ForeignKey("message.id"),
+        nullable=True
+    )
+
     # الوقت
     created_at = db.Column(
         db.DateTime,
@@ -51,11 +58,33 @@ class Message(db.Model):
         foreign_keys=[receiver_id],
         backref="received_messages"
     )
+
+    reply_to = db.relationship(
+        "Message",
+        remote_side=[id],
+        foreign_keys=[reply_to_id],
+        uselist=False
+    )
     
     def __repr__(self):
         return f"<Message {self.id} | {self.sender_id} -> {self.receiver_id}>"
     
     def to_dict(self):
+        reply_preview = None
+        if self.reply_to_id and self.reply_to:
+            r = self.reply_to
+            snippet = (r.content or "").strip()
+            if not snippet and r.file_type:
+                snippet = {
+                    "image": "📷 صورة",
+                    "video": "🎥 فيديو",
+                    "audio": "🎤 تسجيل صوتي",
+                }.get(r.file_type, "📎 ملف")
+            reply_preview = {
+                "id": r.id,
+                "sender_name": r.sender.name if r.sender else "",
+                "snippet": snippet[:120],
+            }
         return {
             "id": self.id,
             "sender_id": self.sender_id,
@@ -68,6 +97,8 @@ class Message(db.Model):
             "file_name": self.file_name,
             "is_read": self.is_read,
             "is_edited": self.is_edited,
+            "reply_to_id": self.reply_to_id,
+            "reply_to": reply_preview,
             "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S") if self.created_at else "",
             "time_ago": self.get_time_ago()
         }

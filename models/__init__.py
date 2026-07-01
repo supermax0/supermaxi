@@ -18,6 +18,8 @@ from .shipping_payment import ShippingPayment
 from .shipping_report import ShippingReport
 from .ai_memory import AIMemory
 from .message import Message
+from .channel import ChannelMessage, ChannelRead
+from .call import CallSession, CallSignal
 from .system_analytics import SystemAnalytics
 from .system_alert import SystemAlert
 from .assistant_memory import AssistantMemory

@@ -98,6 +98,9 @@ class Employee(db.Model):
     # =====================
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    # آخر نشاط (للحالة: متصل/آخر ظهور في المراسلة)
+    last_active = db.Column(db.DateTime, nullable=True)
+
     # =====================
     # Relationships
     # =====================

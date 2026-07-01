@@ -1304,6 +1304,694 @@
       min-width: 40px !important;
     }
   }
+
+  /* ================= DATE SEPARATOR ================= */
+  .date-separator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: var(--spacing-md) 0 var(--spacing-sm);
+    position: relative;
+    z-index: 1;
+  }
+
+  .date-separator span {
+    background: var(--emp-surface-hover);
+    color: var(--chat-muted);
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 5px 14px;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--shadow-sm);
+    letter-spacing: 0.2px;
+  }
+
+  /* ================= COLORED AVATARS ================= */
+  .message-avatar,
+  .chat-header-avatar,
+  .user-item-avatar {
+    background: var(--avatar-bg, linear-gradient(135deg, var(--chat-primary), var(--chat-primary-light)));
+  }
+
+  /* ================= MESSAGE GROUPING ================= */
+  .message.grouped {
+    margin-top: -6px;
+  }
+
+  .message.grouped .message-avatar {
+    visibility: hidden;
+  }
+
+  .message.grouped .message-sender {
+    display: none;
+  }
+
+  /* ================= REPLY / QUOTE ================= */
+  .message-reply-quote {
+    border-inline-start: 3px solid var(--chat-primary-light);
+    background: rgba(99, 102, 241, 0.08);
+    border-radius: 8px;
+    padding: 5px 10px;
+    margin-bottom: 6px;
+    font-size: 12.5px;
+    cursor: pointer;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .message.sent .message-reply-quote {
+    background: rgba(255, 255, 255, 0.15);
+    border-inline-start-color: rgba(255, 255, 255, 0.7);
+  }
+
+  .message-reply-quote .reply-name {
+    font-weight: 700;
+    color: var(--chat-primary-light);
+    display: block;
+    margin-bottom: 2px;
+    font-size: 11.5px;
+  }
+
+  .message.sent .message-reply-quote .reply-name {
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  .message-reply-quote .reply-snippet {
+    color: var(--chat-text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+  }
+
+  .message.sent .message-reply-quote .reply-snippet {
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  /* Reply preview bar above input */
+  .reply-preview-bar {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 14px;
+    margin-bottom: 6px;
+    background: var(--emp-surface-hover);
+    border: 1px solid var(--glass-border);
+    border-inline-start: 3px solid var(--chat-primary);
+    border-radius: var(--radius-md);
+    animation: fadeIn 0.2s ease;
+  }
+
+  .reply-preview-bar.active {
+    display: flex;
+  }
+
+  .reply-preview-bar .reply-preview-text {
+    flex: 1;
+    min-width: 0;
+    font-size: 13px;
+  }
+
+  .reply-preview-bar .reply-preview-name {
+    font-weight: 700;
+    color: var(--chat-primary);
+    font-size: 12px;
+    display: block;
+  }
+
+  .reply-preview-bar .reply-preview-snippet {
+    color: var(--chat-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+  }
+
+  .reply-preview-bar button {
+    background: none;
+    border: none;
+    color: var(--chat-danger);
+    cursor: pointer;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  /* ================= EMOJI PICKER ================= */
+  .emoji-btn,
+  .mic-btn {
+    background: transparent;
+    color: var(--emp-text-secondary);
+    border: none;
+    border-radius: var(--radius-full);
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .emoji-btn:hover,
+  .mic-btn:hover {
+    color: var(--emp-primary);
+    background: rgba(99, 102, 241, 0.1);
+    transform: scale(1.05);
+  }
+
+  .mic-btn.recording {
+    color: #fff;
+    background: var(--chat-danger);
+    animation: pulseRec 1s ease-in-out infinite;
+  }
+
+  @keyframes pulseRec {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
+    50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+  }
+
+  .emoji-panel {
+    position: absolute;
+    bottom: 70px;
+    inset-inline-end: 16px;
+    width: 300px;
+    max-width: calc(100% - 32px);
+    max-height: 240px;
+    overflow-y: auto;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    padding: 10px;
+    display: none;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 2px;
+    z-index: 200;
+  }
+
+  .emoji-panel.active {
+    display: grid;
+  }
+
+  .emoji-panel span {
+    font-size: 20px;
+    text-align: center;
+    padding: 4px;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background 0.15s ease;
+  }
+
+  .emoji-panel span:hover {
+    background: var(--glass-hover);
+  }
+
+  /* ================= RECORDING BAR ================= */
+  .recording-bar {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: var(--emp-surface-hover);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-xl);
+    width: 100%;
+  }
+
+  .recording-bar.active {
+    display: flex;
+  }
+
+  .recording-bar .rec-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--chat-danger);
+    animation: pulseRec 1s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+
+  .recording-bar .rec-time {
+    font-variant-numeric: tabular-nums;
+    color: var(--chat-text);
+    font-weight: 600;
+    flex: 1;
+  }
+
+  .recording-bar button {
+    border: none;
+    border-radius: var(--radius-full);
+    width: 40px;
+    height: 40px;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .recording-bar .rec-cancel {
+    background: var(--glass-hover);
+    color: var(--chat-danger);
+  }
+
+  .recording-bar .rec-send {
+    background: linear-gradient(135deg, var(--chat-primary), var(--chat-primary-light));
+    color: #fff;
+  }
+
+  /* ================= CHANNEL ITEM ================= */
+  .channel-item {
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--spacing-sm);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(99, 102, 241, 0.08));
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .channel-item:hover {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(99, 102, 241, 0.12));
+    transform: translateX(-4px);
+  }
+
+  .channel-item.active {
+    border-color: var(--chat-warning);
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.2);
+  }
+
+  .channel-item-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-full);
+    background: linear-gradient(135deg, #f59e0b, #f97316);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+    box-shadow: var(--shadow-md);
+  }
+
+  .channel-item-main {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .channel-item-name {
+    font-weight: 700;
+    color: var(--chat-text);
+    font-size: 15px;
+  }
+
+  .channel-item-desc {
+    font-size: 11.5px;
+    color: var(--chat-muted);
+  }
+
+  .channel-item-badge {
+    background: var(--chat-warning);
+    color: #fff;
+    border-radius: var(--radius-full);
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .channel-item-badge.hidden {
+    display: none;
+  }
+
+  /* Read-only channel bar */
+  .channel-readonly-bar {
+    padding: 14px var(--spacing-lg);
+    text-align: center;
+    color: var(--chat-muted);
+    font-size: 13px;
+    background: var(--glass-bg);
+    border-top: 1px solid var(--glass-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  /* Presence header status */
+  .chat-header-role .presence-online {
+    color: var(--chat-success);
+    font-weight: 600;
+  }
+
+  .chat-header-role .presence-typing {
+    color: var(--chat-primary-light);
+    font-weight: 600;
+    font-style: italic;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  /* ================= CALL HEADER BUTTONS ================= */
+  .chat-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    margin-inline-start: auto;
+  }
+
+  .call-hdr-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--glass-border);
+    background: var(--glass-hover);
+    color: var(--chat-primary);
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+
+  .call-hdr-btn:hover {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: var(--chat-primary);
+    transform: scale(1.05);
+  }
+
+  /* ================= CALL OVERLAY ================= */
+  .call-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 12000;
+    background: #0b1020;
+    display: none;
+    overflow: hidden;
+  }
+
+  .call-overlay.active {
+    display: block;
+  }
+
+  .call-remote-video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background: #0b1020;
+  }
+
+  /* Audio-only: hide remote video, show gradient bg */
+  .call-overlay.audio-only .call-remote-video {
+    display: none;
+  }
+
+  .call-overlay.audio-only {
+    background: radial-gradient(circle at 50% 30%, #1e293b, #0b1020 70%);
+  }
+
+  .call-gradient-top {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 220px;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.55), transparent);
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  .call-peer-info {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 48px;
+    color: #fff;
+    text-align: center;
+    pointer-events: none;
+  }
+
+  .call-overlay.audio-only .call-peer-info {
+    top: 50%;
+    transform: translateY(-55%);
+    padding-top: 0;
+  }
+
+  .call-peer-avatar {
+    width: 76px;
+    height: 76px;
+    border-radius: var(--radius-full);
+    background: var(--avatar-bg, linear-gradient(135deg, #6366f1, #818cf8));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 14px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+    border: 3px solid rgba(255, 255, 255, 0.15);
+  }
+
+  .call-overlay:not(.audio-only) .call-peer-avatar {
+    width: 56px;
+    height: 56px;
+    font-size: 24px;
+  }
+
+  .call-peer-name {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  }
+
+  .call-status-text {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.85);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  }
+
+  .call-timer {
+    font-size: 16px;
+    color: rgba(255, 255, 255, 0.95);
+    font-variant-numeric: tabular-nums;
+    margin-top: 6px;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  }
+
+  .call-local-video {
+    position: absolute;
+    top: 20px;
+    inset-inline-end: 20px;
+    width: 120px;
+    height: 160px;
+    object-fit: cover;
+    border-radius: var(--radius-lg);
+    background: #1e293b;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    z-index: 4;
+    transform: scaleX(-1);
+  }
+
+  .call-overlay.audio-only .call-local-video {
+    display: none;
+  }
+
+  .call-controls {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+    padding: 30px 20px calc(30px + env(safe-area-inset-bottom, 0px));
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.55), transparent);
+  }
+
+  .call-ctrl-btn {
+    width: 60px;
+    height: 60px;
+    border-radius: var(--radius-full);
+    border: none;
+    background: rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: #fff;
+    font-size: 22px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+
+  .call-ctrl-btn:hover {
+    background: rgba(255, 255, 255, 0.28);
+    transform: scale(1.05);
+  }
+
+  .call-ctrl-btn.muted {
+    background: #fff;
+    color: #0b1020;
+  }
+
+  .call-ctrl-btn.call-hangup {
+    background: var(--chat-danger);
+    transform: rotate(135deg);
+  }
+
+  .call-ctrl-btn.call-hangup:hover {
+    background: #dc2626;
+    transform: rotate(135deg) scale(1.05);
+  }
+
+  /* ================= INCOMING CALL MODAL ================= */
+  .incoming-call-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 13000;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .incoming-call-modal.active {
+    display: flex;
+  }
+
+  .incoming-call-card {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-xl);
+    padding: 32px 28px;
+    width: 100%;
+    max-width: 340px;
+    text-align: center;
+    box-shadow: var(--shadow-lg);
+    animation: slideInDown 0.3s ease-out;
+  }
+
+  .incoming-call-avatar {
+    width: 90px;
+    height: 90px;
+    border-radius: var(--radius-full);
+    background: var(--avatar-bg, linear-gradient(135deg, #6366f1, #818cf8));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 38px;
+    font-weight: 700;
+    margin: 0 auto 18px;
+    box-shadow: var(--shadow-md);
+    animation: pulseRing 1.4s ease-in-out infinite;
+  }
+
+  @keyframes pulseRing {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.5); }
+    50% { box-shadow: 0 0 0 16px rgba(99, 102, 241, 0); }
+  }
+
+  .incoming-call-name {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--chat-text);
+    margin-bottom: 6px;
+  }
+
+  .incoming-call-type {
+    font-size: 14px;
+    color: var(--chat-muted);
+    margin-bottom: 28px;
+  }
+
+  .incoming-call-actions {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+  }
+
+  .incoming-btn {
+    width: 64px;
+    height: 64px;
+    border-radius: var(--radius-full);
+    border: none;
+    color: #fff;
+    font-size: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease;
+  }
+
+  .incoming-btn:hover {
+    transform: scale(1.08);
+  }
+
+  .incoming-accept {
+    background: var(--chat-success);
+    animation: bounceAccept 1.2s ease-in-out infinite;
+  }
+
+  @keyframes bounceAccept {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+
+  .incoming-reject {
+    background: var(--chat-danger);
+    transform: rotate(135deg);
+  }
+
+  .incoming-reject:hover {
+    transform: rotate(135deg) scale(1.08);
+  }
+
+  @media (max-width: 600px) {
+    .call-local-video {
+      width: 96px;
+      height: 128px;
+    }
+
+    .call-ctrl-btn {
+      width: 54px;
+      height: 54px;
+      font-size: 20px;
+    }
+  }
 </style>
 
 <div class="messages-back-bar">
@@ -1328,6 +2016,14 @@
       <input type="text" id="usersSearch" placeholder="{{ _('messages_search_placeholder') }}" onkeyup="filterUsers()">
     </div>
     <div class="users-list-items" id="usersListItems">
+      <div class="channel-item" id="channelItem" onclick="selectChannel()">
+        <div class="channel-item-icon">📢</div>
+        <div class="channel-item-main">
+          <div class="channel-item-name">قناة الإعلانات</div>
+          <div class="channel-item-desc">إعلانات من الإدارة</div>
+        </div>
+        <div class="channel-item-badge hidden" id="channelBadge">0</div>
+      </div>
       {% for user in chat_users %}
       <div class="user-item" onclick="selectUser({{ user.id }}, '{{ user.name }}', '{{ user.role }}')"
         data-user-id="{{ user.id }}" data-user-name="{{ user.name|lower }}">
@@ -1358,6 +2054,14 @@
           <div class="chat-header-role" id="chatRole"></div>
         </div>
       </div>
+      <div class="chat-header-actions" id="chatHeaderActions" style="display:none">
+        <button class="call-hdr-btn" id="audioCallBtn" onclick="startCall('audio')" title="مكالمة صوتية">
+          <i class="fa fa-phone"></i>
+        </button>
+        <button class="call-hdr-btn" id="videoCallBtn" onclick="startCall('video')" title="مكالمة فيديو">
+          <i class="fa fa-video-camera"></i>
+        </button>
+      </div>
     </div>
 
     <div class="chat-messages" id="chatMessages">
@@ -1369,11 +2073,28 @@
 
     <div class="chat-input-area" id="chatInputArea" style="display:none">
       <div class="chat-input-actions" id="filePreviewContainer"></div>
+      <div class="reply-preview-bar" id="replyPreviewBar">
+        <div class="reply-preview-text">
+          <span class="reply-preview-name" id="replyPreviewName"></span>
+          <span class="reply-preview-snippet" id="replyPreviewSnippet"></span>
+        </div>
+        <button type="button" onclick="cancelReply()" title="إلغاء الرد"><i class="fa fa-times"></i></button>
+      </div>
       <div class="edit-mode-indicator" id="editModeIndicator">
         <div><i class="fa fa-pencil"></i> {{ _('messages_editing') }}</div>
         <button class="cancel-edit-btn" onclick="cancelEditMode()" title="{{ _('messages_cancel_edit') }}"><i
             class="fa fa-times"></i></button>
       </div>
+
+      <div class="recording-bar" id="recordingBar">
+        <span class="rec-dot"></span>
+        <span class="rec-time" id="recTime">0:00</span>
+        <button type="button" class="rec-cancel" onclick="cancelRecording()" title="إلغاء"><i class="fa fa-trash"></i></button>
+        <button type="button" class="rec-send" onclick="stopAndSendRecording()" title="إرسال"><i class="fa fa-paper-plane"></i></button>
+      </div>
+
+      <div class="emoji-panel" id="emojiPanel"></div>
+
       <form class="chat-input-form" id="messageForm" onsubmit="sendMessage(event)" enctype="multipart/form-data">
         <input type="file" id="fileInput" class="chat-file-input" accept="image/*,video/*,audio/*"
           onchange="handleFileSelect(event)">
@@ -1381,12 +2102,21 @@
           title="{{ _('messages_attach_file') }}">
           <i class="fa fa-paperclip"></i>
         </button>
+        <button type="button" class="emoji-btn" id="emojiBtn" onclick="toggleEmojiPanel(event)" title="إيموجي">😊</button>
         <textarea class="chat-input" id="messageInput" placeholder="{{ _('messages_input_placeholder') }}" rows="1"
-          onkeydown="handleKeyPress(event)"></textarea>
+          onkeydown="handleKeyPress(event)" oninput="notifyTyping()"></textarea>
+        <button type="button" class="mic-btn" id="micBtn" onclick="startRecording()" title="تسجيل صوتي">
+          <i class="fa fa-microphone"></i>
+        </button>
         <button type="submit" class="chat-send-btn">
           <i class="fa fa-paper-plane"></i> <span class="btn-text">{{ _('messages_send') }}</span>
         </button>
       </form>
+    </div>
+
+    <div class="channel-readonly-bar" id="channelReadonlyBar" style="display:none">
+      <i class="fa fa-bullhorn"></i>
+      <span>قناة للقراءة فقط — الإعلانات من الإدارة</span>
     </div>
   </div>
 </div>
@@ -1394,6 +2124,9 @@
 <!-- Context Menu Overlay -->
 <div class="message-context-overlay" id="contextOverlay" onclick="closeContextMenu()"></div>
 <div class="message-context-menu" id="contextMenu">
+  <div class="context-menu-item" id="menuReplyBtn" onclick="handleReplyContext()">
+    <i class="fa fa-reply" style="color: var(--chat-success)"></i> رد
+  </div>
   <div class="context-menu-item" id="menuCopyBtn" onclick="handleCopyContext()">
     <i class="fa fa-copy" style="color: var(--chat-primary-light)"></i> {{ _('messages_copy') }}
   </div>
@@ -1409,6 +2142,52 @@
 <div class="image-viewer" id="imageViewer" onclick="closeImageViewer()">
   <button class="image-viewer-close" onclick="closeImageViewer()">×</button>
   <img id="viewerImage" src="" alt="">
+</div>
+
+<!-- ================= CALL OVERLAY ================= -->
+<div class="call-overlay" id="callOverlay">
+  <video class="call-remote-video" id="remoteVideo" autoplay playsinline></video>
+  <audio id="remoteAudio" autoplay></audio>
+
+  <div class="call-gradient-top"></div>
+
+  <div class="call-peer-info" id="callPeerInfo">
+    <div class="call-peer-avatar" id="callPeerAvatar">?</div>
+    <div class="call-peer-name" id="callPeerName"></div>
+    <div class="call-status-text" id="callStatusText">جارٍ الاتصال…</div>
+    <div class="call-timer" id="callTimer" style="display:none">0:00</div>
+  </div>
+
+  <video class="call-local-video" id="localVideo" autoplay playsinline muted></video>
+
+  <div class="call-controls" id="callControls">
+    <button class="call-ctrl-btn" id="btnToggleMic" onclick="toggleMic()" title="كتم">
+      <i class="fa fa-microphone"></i>
+    </button>
+    <button class="call-ctrl-btn" id="btnToggleCam" onclick="toggleCam()" title="الكاميرا">
+      <i class="fa fa-video-camera"></i>
+    </button>
+    <button class="call-ctrl-btn call-hangup" onclick="hangupCall()" title="إنهاء">
+      <i class="fa fa-phone"></i>
+    </button>
+  </div>
+</div>
+
+<!-- ================= INCOMING CALL MODAL ================= -->
+<div class="incoming-call-modal" id="incomingCallModal">
+  <div class="incoming-call-card">
+    <div class="incoming-call-avatar" id="incomingAvatar">?</div>
+    <div class="incoming-call-name" id="incomingName"></div>
+    <div class="incoming-call-type" id="incomingType">مكالمة واردة…</div>
+    <div class="incoming-call-actions">
+      <button class="incoming-btn incoming-reject" onclick="rejectIncoming()" title="رفض">
+        <i class="fa fa-phone"></i>
+      </button>
+      <button class="incoming-btn incoming-accept" onclick="acceptIncoming()" title="قبول">
+        <i class="fa fa-phone"></i>
+      </button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -1527,6 +2306,25 @@
   let lastMessageId = 0;
   let editingMessageId = null;
 
+  // Channel state
+  let inChannel = false;
+  let channelInterval = null;
+  let lastChannelId = 0;
+
+  // Reply state
+  let replyToId = null;
+
+  // Presence / typing
+  let presenceInterval = null;
+  let heartbeatInterval = null;
+  let lastTypingSent = 0;
+
+  // Voice recording
+  let mediaRecorder = null;
+  let recordedChunks = [];
+  let recTimerInterval = null;
+  let recSeconds = 0;
+
   // Long press variables
   let pressTimer;
   let isDragging = false;
@@ -1535,20 +2333,70 @@
   let contextMenuTargetIsSent = false;
 
   const loggedInUserId = {{ current_user_id }};
+  const isAdmin = {{ 'true' if is_admin else 'false' }};
+
+  // ==================== AVATAR COLORS ====================
+  const AVATAR_COLORS = [
+    ['#6366f1', '#818cf8'], ['#10b981', '#34d399'], ['#f59e0b', '#fbbf24'],
+    ['#ef4444', '#f87171'], ['#8b5cf6', '#a78bfa'], ['#ec4899', '#f472b6'],
+    ['#06b6d4', '#22d3ee'], ['#14b8a6', '#2dd4bf'], ['#f97316', '#fb923c'],
+    ['#3b82f6', '#60a5fa']
+  ];
+
+  function avatarGradientFor(name) {
+    const key = String(name || '?');
+    let hash = 0;
+    for (let i = 0; i < key.length; i++) {
+      hash = key.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const pair = AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+    return `linear-gradient(135deg, ${pair[0]}, ${pair[1]})`;
+  }
+
+  // ==================== DATE HELPERS ====================
+  function dateKey(dateString) {
+    if (!dateString) return '';
+    const d = new Date(dateString);
+    return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+  }
+
+  function formatDateSeparator(dateString) {
+    if (!dateString) return '';
+    const d = new Date(dateString);
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+    if (dateKey(dateString) === dateKey(today)) return 'اليوم';
+    if (dateKey(dateString) === dateKey(yesterday)) return 'أمس';
+    return d.toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
+  }
 
   // ==================== UI FUNCTIONS ====================
+  let currentChatUserRole = '';
+
   function selectUser(userId, userName, userRole) {
+    inChannel = false;
+    stopChannelPolling();
+    cancelReply();
+    cancelEditMode();
+
     currentChatUserId = userId;
     currentChatUserName = userName;
+    currentChatUserRole = userRole || '';
 
     // Update UI
     document.getElementById('chatHeader').style.display = 'flex';
     document.getElementById('chatInputArea').style.display = 'block';
+    document.getElementById('channelReadonlyBar').style.display = 'none';
+    document.getElementById('chatHeaderActions').style.display = 'flex';
     document.getElementById('chatName').textContent = userName;
     document.getElementById('chatRole').textContent = userRole;
-    document.getElementById('chatAvatar').textContent = userName.charAt(0);
+    const av = document.getElementById('chatAvatar');
+    av.textContent = userName.charAt(0);
+    av.style.setProperty('--avatar-bg', avatarGradientFor(userName));
 
     // Update active user
+    document.getElementById('channelItem').classList.remove('active');
     document.querySelectorAll('.user-item').forEach(item => {
       item.classList.remove('active');
       if (parseInt(item.dataset.userId) === userId) {
@@ -1556,14 +2404,10 @@
       }
     });
 
-    // Hide users list on mobile
-    if (window.innerWidth <= 900) {
-      updateMobileUI();
-    }
-
     updateMobileUI();
     lastMessageId = 0;
     loadMessages();
+    startPresence();
 
     if (messagesInterval) {
       clearInterval(messagesInterval);
@@ -1575,6 +2419,10 @@
 
   function toggleUsersList() {
     currentChatUserId = null;
+    inChannel = false;
+    stopDmPolling();
+    stopChannelPolling();
+    stopPresence();
     updateMobileUI();
   }
 
@@ -1628,7 +2476,132 @@
     });
   }
 
-  // ==================== MESSAGE FUNCTIONS ====================
+  // ==================== UNIFIED MESSAGE BUILDER ====================
+  function buildFileContent(msg) {
+    if (!msg.file_path) return '';
+    if (msg.file_type === 'image') {
+      return `<div class="message-media"><div class="message-file-image"><img src="${msg.file_path}" alt="" onclick="openImageViewer('${msg.file_path}')" loading="lazy"></div></div>`;
+    } else if (msg.file_type === 'video') {
+      return `<div class="message-media"><div class="message-file-video"><video controls onclick="event.stopPropagation()"><source src="${msg.file_path}"></video></div></div>`;
+    } else if (msg.file_type === 'audio') {
+      return `<div class="message-file-audio"><audio controls><source src="${msg.file_path}"></audio></div>`;
+    }
+    return `<div class="message-file-download"><a href="${msg.file_path}" download="${escapeHtml(msg.file_name || '')}"><i class="fa fa-download"></i> ${escapeHtml(msg.file_name || msgsFileLabel)}</a></div>`;
+  }
+
+  function buildDateSeparator(dateString) {
+    return `<div class="date-separator"><span>${formatDateSeparator(dateString)}</span></div>`;
+  }
+
+  // canControl: whether current user can edit/delete (own msg in DM, or admin in channel)
+  function buildMessageHtml(msg, prevMsg) {
+    const isSent = parseInt(msg.sender_id) === parseInt(loggedInUserId);
+    const readStatus = msg.is_read ? 'read' : '';
+    const statusIcon = (isSent && !inChannel) ? (msg.is_read ? '✓✓' : '✓') : '';
+    const senderName = msg.sender_name || '';
+    const senderInitial = senderName ? senderName.charAt(0).toUpperCase() : '';
+
+    // Grouping: consecutive messages from same sender within same day
+    const grouped = prevMsg
+      && parseInt(prevMsg.sender_id) === parseInt(msg.sender_id)
+      && dateKey(prevMsg.created_at) === dateKey(msg.created_at);
+
+    // Reply quote
+    let replyHtml = '';
+    if (msg.reply_to) {
+      replyHtml = `<div class="message-reply-quote" onclick="scrollToMessage(${msg.reply_to.id})">
+        <span class="reply-name">${escapeHtml(msg.reply_to.sender_name || '')}</span>
+        <span class="reply-snippet">${escapeHtml(msg.reply_to.snippet || '')}</span>
+      </div>`;
+    }
+
+    const fileContent = buildFileContent(msg);
+    const showAvatar = !isSent;
+    const avatarStyle = `style="--avatar-bg:${avatarGradientFor(senderName)}"`;
+
+    // Action buttons: DM -> own messages; Channel -> admin only
+    const canControl = inChannel ? isAdmin : isSent;
+    let actionsHtml = '';
+    if (canControl) {
+      const delFn = inChannel ? `deleteChannelMessage(${msg.id})` : `deleteMessage(${msg.id})`;
+      actionsHtml = `<button class="message-action-btn" onclick="${delFn}" title="${msgsDeleteTitle}"><i class="fa fa-trash"></i></button>`;
+    }
+
+    const dsep = (!prevMsg || dateKey(prevMsg.created_at) !== dateKey(msg.created_at))
+      ? buildDateSeparator(msg.created_at) : '';
+
+    return `${dsep}
+      <div class="message ${isSent ? 'sent' : 'received'}${grouped ? ' grouped' : ''}"
+           data-message-id="${msg.id}"
+           data-content="${escapeHtml(msg.content || '')}"
+           data-sender-name="${escapeHtml(senderName)}"
+           data-is-sent="${isSent}"
+           style="animation: fadeInUp 0.3s ease-out"
+           onmousedown="handleTouchStart(event, ${msg.id})"
+           onmouseup="handleTouchEnd(event)"
+           onmouseleave="handleTouchEnd(event)"
+           ontouchstart="handleTouchStart(event, ${msg.id})"
+           ontouchend="handleTouchEnd(event)"
+           ontouchcancel="handleTouchEnd(event)">
+        ${showAvatar ? `<div class="message-avatar" ${avatarStyle}>${senderInitial}</div>` : ''}
+        <div class="message-wrapper">
+          <div class="message-actions">${actionsHtml}</div>
+          <div class="message-content">
+            ${showAvatar ? `<div class="message-sender">${escapeHtml(senderName)}</div>` : ''}
+            ${replyHtml}
+            ${fileContent}
+            ${msg.content ? `<div class="message-text-content">${escapeHtml(msg.content)}</div>` : ''}
+            <div class="message-timestamp-wrapper">
+              <div class="message-time">
+                ${msg.is_edited ? '<span class="message-edited-badge">' + msgsEditedBadge + '</span>' : ''}
+                ${statusIcon ? `<span class="message-status ${readStatus}">${statusIcon}</span>` : ''}
+                <span>${formatMessageTime(msg.created_at)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function renderMessagesList(messages) {
+    const container = document.getElementById('chatMessages');
+    if (!container) return;
+
+    if (!messages || messages.length === 0) {
+      container.innerHTML = `
+      <div class="empty-chat">
+        <div class="empty-chat-icon">💬</div>
+        <div class="empty-chat-text">${msgsEmptyStart}</div>
+      </div>`;
+      return;
+    }
+
+    let html = '';
+    for (let i = 0; i < messages.length; i++) {
+      html += buildMessageHtml(messages[i], i > 0 ? messages[i - 1] : null);
+    }
+    container.innerHTML = html;
+
+    setTimeout(() => container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' }), 100);
+  }
+
+  function appendMessages(container, newMessages) {
+    const emptyState = container.querySelector('.empty-chat');
+    if (emptyState) emptyState.remove();
+
+    const hasExisting = container.querySelectorAll('.message').length > 0;
+
+    newMessages.forEach((msg, idx) => {
+      // When appending to a non-empty list, force a date separator only if needed;
+      // buildMessageHtml handles it based on prev message within this batch.
+      const prev = idx > 0 ? newMessages[idx - 1] : (hasExisting ? { created_at: msg.created_at, sender_id: -999 } : null);
+      container.insertAdjacentHTML('beforeend', buildMessageHtml(msg, prev));
+    });
+
+    setTimeout(() => container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' }), 100);
+  }
+
+  // ==================== DM MESSAGE FUNCTIONS ====================
   function loadMessages() {
     if (!currentChatUserId) return;
 
@@ -1641,216 +2614,53 @@
       .then(data => {
         hideLoading();
         if (data.success && data.messages) {
-          renderMessages(data.messages);
+          renderMessagesList(data.messages);
+          if (data.messages.length > 0) {
+            lastMessageId = Math.max(...data.messages.map(m => m.id));
+          }
           updateUnreadCount();
         } else {
-          renderMessages([]);
+          renderMessagesList([]);
         }
       })
       .catch(error => {
         hideLoading();
         console.error('Error loading messages:', error);
-        renderMessages([]);
+        renderMessagesList([]);
         showToast(msgsErrLoad, 'error');
       });
   }
 
-  function renderMessages(messages) {
-    const container = document.getElementById('chatMessages');
-    if (!container) return;
-
-    if (!messages || messages.length === 0) {
-      container.innerHTML = `
-      <div class="empty-chat">
-        <div class="empty-chat-icon">💬</div>
-        <div class="empty-chat-text">${msgsEmptyStart}</div>
-      </div>
-    `;
-      return;
-    }
-
-    const currentMessages = Array.from(container.querySelectorAll('.message')).map(m => parseInt(m.dataset.messageId));
-    const newMessageIds = messages.map(m => m.id);
-    const hasNewMessages = JSON.stringify(currentMessages) !== JSON.stringify(newMessageIds);
-
-    if (!hasNewMessages && messages.length > 0) {
-      return;
-    }
-
-    container.innerHTML = messages.map(msg => {
-      const isSent = parseInt(msg.sender_id) === parseInt(loggedInUserId);
-      const readStatus = msg.is_read ? 'read' : '';
-      const statusIcon = isSent ? (msg.is_read ? '✓✓' : '✓') : '';
-      const senderInitial = !isSent && msg.sender_name ? msg.sender_name.charAt(0).toUpperCase() : '';
-
-      let fileContent = '';
-      if (msg.file_path) {
-        if (msg.file_type === 'image') {
-          fileContent = `<div class="message-file-image"><img src="${msg.file_path}" alt="" onclick="openImageViewer('${msg.file_path}')" loading="lazy"></div>`;
-          fileContent = `<div class="message-media">${fileContent}</div>`;
-        } else if (msg.file_type === 'video') {
-          fileContent = `<div class="message-file-video"><video controls onclick="event.stopPropagation()"><source src="${msg.file_path}"></video></div>`;
-          fileContent = `<div class="message-media">${fileContent}</div>`;
-        } else if (msg.file_type === 'audio') {
-          fileContent = `<div class="message-file-audio"><audio controls><source src="${msg.file_path}"></audio></div>`;
-        } else {
-          fileContent = `<div class="message-file-download"><a href="${msg.file_path}" download="${escapeHtml(msg.file_name || '')}"><i class="fa fa-download"></i> ${escapeHtml(msg.file_name || msgsFileLabel)}</a></div>`;
-        }
-      }
-
-      return `
-      <div class="message ${isSent ? 'sent' : 'received'}" data-message-id="${msg.id}">
-        ${!isSent ? `<div class="message-avatar">${senderInitial}</div>` : ''}
-        <div class="message-wrapper">
-          <div class="message-actions">
-            ${isSent ? `<button class="message-action-btn" onclick="deleteMessage(${msg.id})" title="${msgsDeleteTitle}"><i class="fa fa-trash"></i></button>` : ''}
-          </div>
-          <div class="message-content">
-            ${!isSent ? `<div class="message-sender">${escapeHtml(msg.sender_name || '')}</div>` : ''}
-            ${fileContent}
-            ${msg.content ? `<div class="message-text-content">${escapeHtml(msg.content)}</div>` : ''}
-            <div class="message-timestamp-wrapper">
-              <div class="message-time">
-                ${msg.is_edited ? '<span class="message-edited-badge">' + msgsEditedBadge + '</span>' : ''}
-                ${statusIcon ? `<span class="message-status ${readStatus}">${statusIcon}</span>` : ''}
-                <span>${formatMessageTime(msg.created_at)}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-    }).join('');
-
-    setTimeout(() => {
-      container.scrollTo({
-        top: container.scrollHeight,
-        behavior: 'smooth'
-      });
-    }, 100);
-
-    if (messages.length > 0) {
-      lastMessageId = Math.max(...messages.map(m => m.id));
-    }
-  }
-
   function checkNewMessages() {
-    if (!currentChatUserId) return;
+    if (!currentChatUserId || inChannel) return;
 
-    fetch(`/messages/get/${currentChatUserId}`)
+    fetch(`/messages/get/${currentChatUserId}?after_id=${lastMessageId}`)
       .then(r => r.json())
       .then(data => {
         if (data.success && data.messages && data.messages.length > 0) {
-          const messages = data.messages;
-          const newMessages = messages.filter(m => m.id > lastMessageId);
+          const newMessages = data.messages;
+          const container = document.getElementById('chatMessages');
+          appendMessages(container, newMessages);
 
-          if (newMessages.length > 0) {
-            addNewMessages(newMessages);
-
-            const otherUserMessages = newMessages.filter(m => parseInt(m.sender_id) !== parseInt(loggedInUserId));
-            if (otherUserMessages.length > 0) {
-              otherUserMessages.forEach((_, idx) => {
-                setTimeout(() => playNotificationSound(), idx * 180);
+          const otherUserMessages = newMessages.filter(m => parseInt(m.sender_id) !== parseInt(loggedInUserId));
+          if (otherUserMessages.length > 0) {
+            otherUserMessages.forEach((_, idx) => setTimeout(() => playNotificationSound(), idx * 180));
+            updateUnreadCount();
+            if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
+              new Notification(msgsNewFrom + currentChatUserName, {
+                body: (otherUserMessages[0].content || '').substring(0, 50),
+                icon: '/static/favicon.ico'
               });
-              updateUnreadCount();
-              if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
-                new Notification(msgsNewFrom + currentChatUserName, {
-                  body: otherUserMessages[0].content.substring(0, 50),
-                  icon: '/static/favicon.ico'
-                });
-              }
             }
-
-            lastMessageId = Math.max(...messages.map(m => m.id));
           }
+          lastMessageId = Math.max(lastMessageId, ...newMessages.map(m => m.id));
         }
       })
-      .catch(error => {
-        console.error('Error checking new messages:', error);
-      });
-  }
-
-  function addNewMessages(newMessages) {
-    const container = document.getElementById('chatMessages');
-    if (!container) return;
-
-    const emptyState = container.querySelector('.empty-chat');
-    if (emptyState) {
-      emptyState.remove();
-    }
-
-    newMessages.forEach(msg => {
-      const isSent = parseInt(msg.sender_id) === parseInt(loggedInUserId);
-      const readStatus = msg.is_read ? 'read' : '';
-      const statusIcon = isSent ? (msg.is_read ? '✓✓' : '✓') : '';
-      const senderInitial = !isSent && msg.sender_name ? msg.sender_name.charAt(0).toUpperCase() : '';
-
-      let fileContent = '';
-      if (msg.file_path) {
-        if (msg.file_type === 'image') {
-          fileContent = `<div class="message-file-image"><img src="${msg.file_path}" alt="" onclick="openImageViewer('${msg.file_path}')" loading="lazy"></div>`;
-          fileContent = `<div class="message-media">${fileContent}</div>`;
-        } else if (msg.file_type === 'video') {
-          fileContent = `<div class="message-file-video"><video controls onclick="event.stopPropagation()"><source src="${msg.file_path}"></video></div>`;
-          fileContent = `<div class="message-media">${fileContent}</div>`;
-        } else if (msg.file_type === 'audio') {
-          fileContent = `<div class="message-file-audio"><audio controls><source src="${msg.file_path}"></audio></div>`;
-        } else {
-          fileContent = `<div class="message-file-download"><a href="${msg.file_path}" download="${escapeHtml(msg.file_name || '')}"><i class="fa fa-download"></i> ${escapeHtml(msg.file_name || msgsFileLabel)}</a></div>`;
-        }
-      }
-
-      const messageHtml = `
-      <div class="message ${isSent ? 'sent' : 'received'}" 
-           data-message-id="${msg.id}" 
-           data-content="${escapeHtml(msg.content)}"
-           data-is-sent="${isSent}"
-           style="animation: fadeInUp 0.3s ease-out"
-           onmousedown="handleTouchStart(event, ${msg.id})"
-           onmouseup="handleTouchEnd(event)"
-           onmouseleave="handleTouchEnd(event)"
-           ontouchstart="handleTouchStart(event, ${msg.id})"
-           ontouchend="handleTouchEnd(event)"
-           ontouchcancel="handleTouchEnd(event)">
-        ${!isSent ? `<div class="message-avatar">${senderInitial}</div>` : ''}
-        <div class="message-wrapper">
-          <div class="message-actions">
-            ${isSent ? `<button class="message-action-btn" onclick="deleteMessage(${msg.id})" title="${msgsDeleteTitle}"><i class="fa fa-trash"></i></button>` : ''}
-          </div>
-          <div class="message-content">
-            ${!isSent ? `<div class="message-sender">${escapeHtml(msg.sender_name || '')}</div>` : ''}
-            ${fileContent}
-            ${msg.content ? `<div class="message-text-content">${escapeHtml(msg.content)}</div>` : ''}
-            <div class="message-timestamp-wrapper">
-              <div class="message-time">
-                ${msg.is_edited ? '<span class="message-edited-badge">' + msgsEditedBadge + '</span>' : ''}
-                ${statusIcon ? `<span class="message-status ${readStatus}">${statusIcon}</span>` : ''}
-                <span>${formatMessageTime(msg.created_at)}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-
-      container.insertAdjacentHTML('beforeend', messageHtml);
-    });
-
-    setTimeout(() => {
-      container.scrollTo({
-        top: container.scrollHeight,
-        behavior: 'smooth'
-      });
-    }, 100);
+      .catch(error => console.error('Error checking new messages:', error));
   }
 
   function sendMessage(event) {
-    event.preventDefault();
-
-    if (!currentChatUserId) {
-      showToast(msgsPleaseSelectUser, 'warning');
-      return;
-    }
+    if (event) event.preventDefault();
 
     const input = document.getElementById('messageInput');
     const content = input.value.trim();
@@ -1860,10 +2670,53 @@
       return;
     }
 
+    // ===== Channel mode (admin only) =====
+    if (inChannel) {
+      if (!isAdmin) return;
+      showLoading();
+
+      if (editingMessageId) {
+        fetch(`/messages/channel/edit/${editingMessageId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: content })
+        })
+          .then(r => r.json())
+          .then(data => {
+            hideLoading();
+            if (data.success) { cancelEditMode(); setTimeout(loadChannel, 300); showToast(msgsEditSuccess, 'success'); }
+            else showToast(msgsErrorPrefix + (data.error || msgsEditFailed), 'error');
+          })
+          .catch(() => { hideLoading(); showToast(msgsEditError, 'error'); });
+        return;
+      }
+
+      const cfd = new FormData();
+      cfd.append('content', content || '');
+      if (selectedFile) cfd.append('file', selectedFile);
+      input.value = '';
+      clearFile();
+
+      fetch('/messages/channel/send', { method: 'POST', body: cfd })
+        .then(r => r.json())
+        .then(data => {
+          hideLoading();
+          if (data.success) { playNotificationSound(); setTimeout(loadChannel, 200); }
+          else showToast(msgsErrorPrefix + (data.error || msgsSendFailed), 'error');
+        })
+        .catch(() => { hideLoading(); showToast(msgsSendError, 'error'); });
+      return;
+    }
+
+    // ===== Direct message mode =====
+    if (!currentChatUserId) {
+      showToast(msgsPleaseSelectUser, 'warning');
+      return;
+    }
+
     showLoading();
 
     if (editingMessageId) {
-      // Editing Mode
       fetch(`/messages/edit/${editingMessageId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -1892,12 +2745,14 @@
     const formData = new FormData();
     formData.append('receiver_id', currentChatUserId);
     formData.append('content', content || '');
+    if (replyToId) formData.append('reply_to_id', replyToId);
     if (selectedFile) {
       formData.append('file', selectedFile);
     }
 
     input.value = '';
     clearFile();
+    cancelReply();
 
     fetch('/messages/send', {
       method: 'POST',
@@ -1908,7 +2763,7 @@
         hideLoading();
         if (data.success) {
           playNotificationSound();
-          setTimeout(loadMessages, 300);
+          setTimeout(() => checkNewMessages(), 200);
           showToast(msgsSendSuccess, 'success');
         } else {
           showToast(msgsErrorPrefix + (data.error || msgsSendFailed), 'error');
@@ -1919,6 +2774,298 @@
         console.error('Error sending message:', error);
         showToast(msgsSendError, 'error');
       });
+  }
+
+  // ==================== CHANNEL FUNCTIONS ====================
+  function selectChannel() {
+    inChannel = true;
+    currentChatUserId = null;
+    currentChatUserName = 'قناة الإعلانات';
+    lastChannelId = 0;
+    cancelReply();
+    cancelEditMode();
+
+    document.getElementById('chatHeader').style.display = 'flex';
+    document.getElementById('chatName').textContent = '📢 قناة الإعلانات';
+    document.getElementById('chatRole').textContent = 'إعلانات من الإدارة';
+    const av = document.getElementById('chatAvatar');
+    av.textContent = '📢';
+    av.style.setProperty('--avatar-bg', 'linear-gradient(135deg, #f59e0b, #f97316)');
+
+    // read-only for non-admin
+    document.getElementById('chatInputArea').style.display = isAdmin ? 'block' : 'none';
+    document.getElementById('channelReadonlyBar').style.display = isAdmin ? 'none' : 'flex';
+    document.getElementById('chatHeaderActions').style.display = 'none';
+
+    document.querySelectorAll('.user-item').forEach(i => i.classList.remove('active'));
+    document.getElementById('channelItem').classList.add('active');
+
+    updateMobileUI();
+    stopDmPolling();
+    stopPresence();
+    loadChannel();
+
+    if (channelInterval) clearInterval(channelInterval);
+    channelInterval = setInterval(checkNewChannel, 8000);
+  }
+
+  function loadChannel() {
+    showLoading();
+    fetch('/messages/channel')
+      .then(r => r.json())
+      .then(data => {
+        hideLoading();
+        if (data.success) {
+          renderMessagesList(data.messages);
+          if (data.messages.length > 0) lastChannelId = Math.max(...data.messages.map(m => m.id));
+          updateUnreadCount();
+        } else {
+          renderMessagesList([]);
+        }
+      })
+      .catch(() => { hideLoading(); renderMessagesList([]); showToast(msgsErrLoad, 'error'); });
+  }
+
+  function checkNewChannel() {
+    if (!inChannel) return;
+    fetch(`/messages/channel?after_id=${lastChannelId}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.success && data.messages && data.messages.length > 0) {
+          const container = document.getElementById('chatMessages');
+          appendMessages(container, data.messages);
+          const others = data.messages.filter(m => parseInt(m.sender_id) !== parseInt(loggedInUserId));
+          if (others.length) playNotificationSound();
+          lastChannelId = Math.max(lastChannelId, ...data.messages.map(m => m.id));
+          updateUnreadCount();
+        }
+      })
+      .catch(e => console.error('channel poll', e));
+  }
+
+  function deleteChannelMessage(messageId) {
+    if (!confirm(msgsConfirmDelete)) return;
+    showLoading();
+    fetch(`/messages/channel/delete/${messageId}`, { method: 'DELETE' })
+      .then(r => r.json())
+      .then(data => {
+        hideLoading();
+        if (data.success) { loadChannel(); showToast(msgsDeleteSuccess, 'success'); }
+        else showToast(msgsErrorPrefix + (data.error || msgsDeleteFailed), 'error');
+      })
+      .catch(() => { hideLoading(); showToast(msgsDeleteError, 'error'); });
+  }
+
+  function stopDmPolling() {
+    if (messagesInterval) { clearInterval(messagesInterval); messagesInterval = null; }
+  }
+
+  function stopChannelPolling() {
+    if (channelInterval) { clearInterval(channelInterval); channelInterval = null; }
+  }
+
+  // ==================== REPLY FUNCTIONS ====================
+  function startReply(messageId, senderName, content) {
+    replyToId = messageId;
+    document.getElementById('replyPreviewName').textContent = senderName || '';
+    document.getElementById('replyPreviewSnippet').textContent = (content || '📎 مرفق').substring(0, 100);
+    document.getElementById('replyPreviewBar').classList.add('active');
+    document.getElementById('messageInput').focus();
+  }
+
+  function cancelReply() {
+    replyToId = null;
+    const bar = document.getElementById('replyPreviewBar');
+    if (bar) bar.classList.remove('active');
+  }
+
+  function handleReplyContext() {
+    closeContextMenu();
+    if (contextMenuTargetId) {
+      const el = document.querySelector(`.message[data-message-id="${contextMenuTargetId}"]`);
+      const senderName = el ? (el.dataset.senderName || (contextMenuTargetIsSent ? 'أنت' : '')) : '';
+      startReply(contextMenuTargetId, senderName, contextMenuTargetContent);
+    }
+  }
+
+  function scrollToMessage(id) {
+    const el = document.querySelector(`.message[data-message-id="${id}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.style.transition = 'background 0.3s';
+      el.style.background = 'rgba(99,102,241,0.12)';
+      setTimeout(() => { el.style.background = ''; }, 900);
+    }
+  }
+
+  // ==================== EMOJI PICKER ====================
+  const EMOJIS = ['😀','😁','😂','🤣','😊','😍','😘','😎','🤩','🥳','😇','🙂','😉','😌','😅','😆','👍','👎','👏','🙏','💪','🤝','✌️','🤞','❤️','🧡','💛','💚','💙','💜','🖤','💔','🔥','⭐','✨','🎉','🎊','💯','✅','❌','❓','❗','⚠️','📢','📌','📎','📷','🎥','🎤','🎁','💰','💵','🛒','📦','🚀','😢','😭','😡','😱','🤔','🙄','😴','🤗'];
+
+  function buildEmojiPanel() {
+    const panel = document.getElementById('emojiPanel');
+    if (!panel || panel.dataset.built) return;
+    panel.innerHTML = EMOJIS.map(e => `<span onclick="insertEmoji('${e}')">${e}</span>`).join('');
+    panel.dataset.built = '1';
+  }
+
+  function toggleEmojiPanel(e) {
+    if (e) e.stopPropagation();
+    buildEmojiPanel();
+    document.getElementById('emojiPanel').classList.toggle('active');
+  }
+
+  function insertEmoji(emoji) {
+    const input = document.getElementById('messageInput');
+    const start = input.selectionStart || input.value.length;
+    input.value = input.value.slice(0, start) + emoji + input.value.slice(input.selectionEnd || start);
+    input.focus();
+    input.setSelectionRange(start + emoji.length, start + emoji.length);
+  }
+
+  document.addEventListener('click', function (e) {
+    const panel = document.getElementById('emojiPanel');
+    const btn = document.getElementById('emojiBtn');
+    if (panel && panel.classList.contains('active') && !panel.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
+      panel.classList.remove('active');
+    }
+  });
+
+  // ==================== VOICE RECORDING ====================
+  function startRecording() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      showToast('التسجيل الصوتي غير مدعوم في هذا المتصفح', 'error');
+      return;
+    }
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then(stream => {
+        recordedChunks = [];
+        mediaRecorder = new MediaRecorder(stream);
+        mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+        mediaRecorder.onstop = () => { stream.getTracks().forEach(t => t.stop()); };
+        mediaRecorder.start();
+
+        recSeconds = 0;
+        document.getElementById('recTime').textContent = '0:00';
+        document.getElementById('recordingBar').classList.add('active');
+        document.getElementById('messageForm').style.display = 'none';
+        recTimerInterval = setInterval(() => {
+          recSeconds++;
+          const m = Math.floor(recSeconds / 60);
+          const s = recSeconds % 60;
+          document.getElementById('recTime').textContent = `${m}:${s.toString().padStart(2, '0')}`;
+        }, 1000);
+      })
+      .catch(() => showToast('تعذّر الوصول إلى الميكروفون', 'error'));
+  }
+
+  function resetRecordingUI() {
+    if (recTimerInterval) { clearInterval(recTimerInterval); recTimerInterval = null; }
+    document.getElementById('recordingBar').classList.remove('active');
+    document.getElementById('messageForm').style.display = '';
+  }
+
+  function cancelRecording() {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.onstop = () => { mediaRecorder.stream.getTracks().forEach(t => t.stop()); };
+      mediaRecorder.stop();
+    }
+    recordedChunks = [];
+    resetRecordingUI();
+  }
+
+  function stopAndSendRecording() {
+    if (!mediaRecorder || mediaRecorder.state === 'inactive') { resetRecordingUI(); return; }
+    mediaRecorder.onstop = () => {
+      mediaRecorder.stream.getTracks().forEach(t => t.stop());
+      const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+      resetRecordingUI();
+      if (blob.size === 0) return;
+      const file = new File([blob], `voice_${Date.now()}.webm`, { type: 'audio/webm' });
+      sendVoiceFile(file);
+    };
+    mediaRecorder.stop();
+  }
+
+  function sendVoiceFile(file) {
+    showLoading();
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('content', '');
+    let url;
+    if (inChannel) {
+      if (!isAdmin) { hideLoading(); return; }
+      url = '/messages/channel/send';
+    } else {
+      if (!currentChatUserId) { hideLoading(); return; }
+      fd.append('receiver_id', currentChatUserId);
+      if (replyToId) fd.append('reply_to_id', replyToId);
+      url = '/messages/send';
+    }
+    fetch(url, { method: 'POST', body: fd })
+      .then(r => r.json())
+      .then(data => {
+        hideLoading();
+        if (data.success) { playNotificationSound(); cancelReply(); inChannel ? setTimeout(loadChannel, 200) : setTimeout(checkNewMessages, 200); }
+        else showToast(msgsErrorPrefix + (data.error || msgsSendFailed), 'error');
+      })
+      .catch(() => { hideLoading(); showToast(msgsSendError, 'error'); });
+  }
+
+  // ==================== PRESENCE / TYPING ====================
+  function startPresence() {
+    stopPresence();
+    updatePresence();
+    presenceInterval = setInterval(updatePresence, 8000);
+  }
+
+  function stopPresence() {
+    if (presenceInterval) { clearInterval(presenceInterval); presenceInterval = null; }
+  }
+
+  function updatePresence() {
+    if (!currentChatUserId || inChannel) return;
+    fetch(`/messages/presence/${currentChatUserId}`)
+      .then(r => r.json())
+      .then(data => {
+        const roleEl = document.getElementById('chatRole');
+        if (!roleEl || currentChatUserId == null) return;
+        if (data.typing) {
+          roleEl.innerHTML = '<span class="presence-typing">يكتب…</span>';
+        } else if (data.online) {
+          roleEl.innerHTML = '<span class="presence-online">● متصل الآن</span>';
+        } else if (data.last_seen) {
+          roleEl.innerHTML = 'آخر ظهور ' + formatLastSeen(data.last_seen);
+        } else {
+          roleEl.textContent = currentChatUserRole || '';
+        }
+      })
+      .catch(() => {});
+  }
+
+  function formatLastSeen(dateString) {
+    const d = new Date(dateString + 'Z');
+    const now = new Date();
+    const diff = Math.floor((now - d) / 1000);
+    if (diff < 60) return 'قبل لحظات';
+    if (diff < 3600) return `قبل ${Math.floor(diff / 60)} دقيقة`;
+    if (dateKey(d) === dateKey(now)) return 'اليوم ' + formatMessageTime(dateString);
+    return d.toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' }) + ' ' + formatMessageTime(dateString);
+  }
+
+  function notifyTyping() {
+    if (!currentChatUserId || inChannel) return;
+    const now = Date.now();
+    if (now - lastTypingSent < 3000) return;
+    lastTypingSent = now;
+    fetch('/messages/typing', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ receiver_id: currentChatUserId })
+    }).catch(() => {});
+  }
+
+  function sendHeartbeat() {
+    fetch('/messages/heartbeat', { method: 'POST' }).catch(() => {});
   }
 
   // ==================== LONG PRESS & CONTEXT MENU FUNCTIONS ====================
@@ -1964,15 +3111,15 @@
     // Setup menu options
     const editBtn = document.getElementById('menuEditBtn');
     const deleteBtn = document.getElementById('menuDeleteBtn');
+    const replyBtn = document.getElementById('menuReplyBtn');
 
-    // Only allow edit/delete for sent messages
-    if (contextMenuTargetIsSent) {
-      editBtn.style.display = 'flex';
-      deleteBtn.style.display = 'flex';
-    } else {
-      editBtn.style.display = 'none';
-      deleteBtn.style.display = 'none';
-    }
+    // Reply: allowed in DM only (not read-only channel)
+    replyBtn.style.display = inChannel ? 'none' : 'flex';
+
+    // Edit/Delete: own messages in DM, or admin in channel
+    const canControl = inChannel ? isAdmin : contextMenuTargetIsSent;
+    editBtn.style.display = canControl ? 'flex' : 'none';
+    deleteBtn.style.display = canControl ? 'flex' : 'none';
 
     document.getElementById('contextOverlay').classList.add('active');
     document.getElementById('contextMenu').classList.add('active');
@@ -1999,13 +3146,15 @@
   function handleDeleteContext() {
     closeContextMenu();
     if (contextMenuTargetId) {
-      deleteMessage(contextMenuTargetId);
+      if (inChannel) deleteChannelMessage(contextMenuTargetId);
+      else deleteMessage(contextMenuTargetId);
     }
   }
 
   function handleEditContext() {
     closeContextMenu();
-    if (contextMenuTargetId && contextMenuTargetIsSent) {
+    const canControl = inChannel ? isAdmin : contextMenuTargetIsSent;
+    if (contextMenuTargetId && canControl) {
       editingMessageId = contextMenuTargetId;
       document.getElementById('editModeIndicator').classList.add('active');
       const input = document.getElementById('messageInput');
@@ -2116,6 +3265,17 @@
             badge.style.display = 'none';
           }
         }
+
+        const chBadge = document.getElementById('channelBadge');
+        if (chBadge) {
+          const cc = data.channel_count || 0;
+          if (cc > 0 && !inChannel) {
+            chBadge.textContent = cc;
+            chBadge.classList.remove('hidden');
+          } else {
+            chBadge.classList.add('hidden');
+          }
+        }
       })
       .catch(error => {
         if (error.name !== 'TypeError' || !error.message.includes('fetch')) {
@@ -2156,9 +3316,475 @@
       });
   }
 
+  // ====================================================
+  // VOICE / VIDEO CALLS (WebRTC over HTTP polling)
+  // ====================================================
+  let callState = {
+    id: null,
+    type: 'audio',       // audio | video
+    isCaller: false,
+    peerId: null,
+    peerName: '',
+    active: false
+  };
+  let pc = null;
+  let localStream = null;
+  let cachedIceServers = null;
+  let lastSignalId = 0;
+  let pendingRemoteCandidates = [];
+  let remoteDescSet = false;
+
+  let signalPollInterval = null;
+  let statePollInterval = null;
+  let incomingPollInterval = null;
+  let callTimerInterval = null;
+  let callStartTime = null;
+
+  let currentIncoming = null;
+  let ringAudioCtx = null;
+  let ringOscTimer = null;
+
+  function getIceServers() {
+    if (cachedIceServers) return Promise.resolve(cachedIceServers);
+    return fetch('/messages/call/ice')
+      .then(r => r.json())
+      .then(d => { cachedIceServers = d.ice_servers || [{ urls: ['stun:stun.l.google.com:19302'] }]; return cachedIceServers; })
+      .catch(() => [{ urls: ['stun:stun.l.google.com:19302'] }]);
+  }
+
+  function buildPeerConnection(iceServers) {
+    const conn = new RTCPeerConnection({ iceServers: iceServers });
+
+    conn.onicecandidate = (e) => {
+      if (e.candidate && callState.id) {
+        fetch(`/messages/call/${callState.id}/signal`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ kind: 'ice', payload: e.candidate })
+        }).catch(() => {});
+      }
+    };
+
+    conn.ontrack = (e) => {
+      const stream = e.streams && e.streams[0];
+      if (!stream) return;
+      const hasVideo = stream.getVideoTracks().length > 0;
+      if (hasVideo) {
+        const rv = document.getElementById('remoteVideo');
+        rv.srcObject = stream;
+      } else {
+        const ra = document.getElementById('remoteAudio');
+        ra.srcObject = stream;
+      }
+    };
+
+    conn.onconnectionstatechange = () => {
+      if (!pc) return;
+      if (pc.connectionState === 'connected') {
+        setCallStatus('متصل');
+        startCallTimer();
+      } else if (pc.connectionState === 'failed') {
+        setCallStatus('فشل الاتصال');
+        setTimeout(endCallCleanup, 800);
+      }
+    };
+
+    return conn;
+  }
+
+  function flushRemoteCandidates() {
+    pendingRemoteCandidates.forEach(c => {
+      pc.addIceCandidate(new RTCIceCandidate(c)).catch(e => console.warn('ice add', e));
+    });
+    pendingRemoteCandidates = [];
+  }
+
+  // ---------- Outgoing ----------
+  function startCall(type) {
+    if (!currentChatUserId || inChannel) {
+      showToast(msgsPleaseSelectUser, 'warning');
+      return;
+    }
+    if (callState.active) return;
+
+    const wantVideo = type === 'video';
+    callState = {
+      id: null, type: type, isCaller: true,
+      peerId: currentChatUserId, peerName: currentChatUserName, active: true
+    };
+
+    openCallOverlay(type, currentChatUserName);
+    setCallStatus('جارٍ الاتصال…');
+
+    navigator.mediaDevices.getUserMedia({ audio: true, video: wantVideo })
+      .then(stream => {
+        localStream = stream;
+        attachLocalStream(stream, wantVideo);
+        return getIceServers();
+      })
+      .then(iceServers => {
+        pc = buildPeerConnection(iceServers);
+        localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+        return pc.createOffer();
+      })
+      .then(offer => pc.setLocalDescription(offer).then(() => offer))
+      .then(offer => {
+        return fetch('/messages/call/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ callee_id: callState.peerId, call_type: type, sdp: offer })
+        }).then(r => r.json());
+      })
+      .then(data => {
+        if (!data.success) { showToast(data.error || 'تعذّر بدء المكالمة', 'error'); endCallCleanup(); return; }
+        callState.id = data.call_id;
+        setCallStatus('يرن…');
+        lastSignalId = 0;
+        startSignalPolling();
+        startStatePolling();
+      })
+      .catch(err => {
+        console.error('startCall', err);
+        showToast('تعذّر الوصول إلى الكاميرا/المايك', 'error');
+        endCallCleanup();
+      });
+  }
+
+  // ---------- Incoming ----------
+  function checkIncomingCall() {
+    if (callState.active) return;
+    fetch('/messages/call/incoming')
+      .then(r => r.json())
+      .then(data => {
+        if (data.incoming && data.call) {
+          if (currentIncoming && currentIncoming.id === data.call.id) return;
+          currentIncoming = data.call;
+          showIncomingModal(data.call);
+        } else if (currentIncoming) {
+          // caller canceled
+          hideIncomingModal();
+          currentIncoming = null;
+        }
+      })
+      .catch(() => {});
+  }
+
+  function showIncomingModal(call) {
+    document.getElementById('incomingName').textContent = call.peer_name || 'مستخدم';
+    document.getElementById('incomingType').textContent = call.call_type === 'video' ? 'مكالمة فيديو واردة…' : 'مكالمة صوتية واردة…';
+    const av = document.getElementById('incomingAvatar');
+    av.textContent = (call.peer_name || '?').charAt(0).toUpperCase();
+    av.style.setProperty('--avatar-bg', avatarGradientFor(call.peer_name));
+    document.getElementById('incomingCallModal').classList.add('active');
+    startRingtone();
+    if (navigator.vibrate) navigator.vibrate([400, 200, 400, 200, 400]);
+  }
+
+  function hideIncomingModal() {
+    document.getElementById('incomingCallModal').classList.remove('active');
+    stopRingtone();
+  }
+
+  function rejectIncoming() {
+    if (!currentIncoming) return;
+    const id = currentIncoming.id;
+    fetch(`/messages/call/${id}/reject`, { method: 'POST' }).catch(() => {});
+    hideIncomingModal();
+    currentIncoming = null;
+  }
+
+  function acceptIncoming() {
+    if (!currentIncoming) return;
+    const call = currentIncoming;
+    hideIncomingModal();
+    currentIncoming = null;
+
+    const wantVideo = call.call_type === 'video';
+    callState = {
+      id: call.id, type: call.call_type, isCaller: false,
+      peerId: call.peer_id, peerName: call.peer_name, active: true
+    };
+
+    openCallOverlay(call.call_type, call.peer_name);
+    setCallStatus('جارٍ الاتصال…');
+
+    let offerSdp = null;
+    fetch(`/messages/call/${call.id}/offer`)
+      .then(r => r.json())
+      .then(d => {
+        if (!d.success || !d.offer) throw new Error('no offer');
+        offerSdp = d.offer;
+        return navigator.mediaDevices.getUserMedia({ audio: true, video: wantVideo });
+      })
+      .then(stream => {
+        localStream = stream;
+        attachLocalStream(stream, wantVideo);
+        return getIceServers();
+      })
+      .then(iceServers => {
+        pc = buildPeerConnection(iceServers);
+        localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+        return pc.setRemoteDescription(new RTCSessionDescription(offerSdp));
+      })
+      .then(() => { remoteDescSet = true; flushRemoteCandidates(); return pc.createAnswer(); })
+      .then(answer => pc.setLocalDescription(answer).then(() => answer))
+      .then(answer => {
+        return fetch(`/messages/call/${call.id}/answer`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sdp: answer })
+        });
+      })
+      .then(() => {
+        setCallStatus('متصل');
+        lastSignalId = 0;
+        startSignalPolling();
+        startStatePolling();
+      })
+      .catch(err => {
+        console.error('acceptIncoming', err);
+        showToast('تعذّر قبول المكالمة', 'error');
+        fetch(`/messages/call/${call.id}/end`, { method: 'POST' }).catch(() => {});
+        endCallCleanup();
+      });
+  }
+
+  // ---------- Signal / state polling ----------
+  function startSignalPolling() {
+    if (signalPollInterval) clearInterval(signalPollInterval);
+    signalPollInterval = setInterval(pollSignals, 1200);
+    pollSignals();
+  }
+
+  function pollSignals() {
+    if (!callState.id) return;
+    fetch(`/messages/call/${callState.id}/signals?after_id=${lastSignalId}`)
+      .then(r => r.json())
+      .then(data => {
+        if (!data.success) return;
+        (data.signals || []).forEach(sig => {
+          lastSignalId = Math.max(lastSignalId, sig.id);
+          handleSignal(sig);
+        });
+        if (['rejected', 'ended', 'missed', 'canceled'].includes(data.status)) {
+          onRemoteEnded(data.status);
+        }
+      })
+      .catch(() => {});
+  }
+
+  function handleSignal(sig) {
+    if (!pc) return;
+    if (sig.kind === 'answer' && callState.isCaller) {
+      pc.setRemoteDescription(new RTCSessionDescription(sig.payload))
+        .then(() => { remoteDescSet = true; setCallStatus('متصل'); flushRemoteCandidates(); })
+        .catch(e => console.warn('setRemote answer', e));
+    } else if (sig.kind === 'ice') {
+      if (remoteDescSet) {
+        pc.addIceCandidate(new RTCIceCandidate(sig.payload)).catch(e => console.warn('ice', e));
+      } else {
+        pendingRemoteCandidates.push(sig.payload);
+      }
+    } else if (sig.kind === 'bye') {
+      onRemoteEnded('ended');
+    }
+  }
+
+  function startStatePolling() {
+    if (statePollInterval) clearInterval(statePollInterval);
+    statePollInterval = setInterval(() => {
+      if (!callState.id) return;
+      fetch(`/messages/call/${callState.id}/state`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.success && data.call) {
+            const st = data.call.status;
+            if (callState.isCaller && st === 'accepted') setCallStatus('متصل');
+            if (['rejected', 'ended', 'missed', 'canceled'].includes(st)) onRemoteEnded(st);
+          }
+        })
+        .catch(() => {});
+    }, 3000);
+  }
+
+  function onRemoteEnded(status) {
+    if (!callState.active) return;
+    let msg = 'انتهت المكالمة';
+    if (status === 'rejected') msg = 'تم رفض المكالمة';
+    else if (status === 'missed' || status === 'canceled') msg = 'لا يوجد رد';
+    setCallStatus(msg);
+    showToast(msg, 'info');
+    setTimeout(endCallCleanup, 800);
+  }
+
+  // ---------- Hang up / cleanup ----------
+  function hangupCall() {
+    if (callState.id) {
+      fetch(`/messages/call/${callState.id}/end`, { method: 'POST' }).catch(() => {});
+    }
+    endCallCleanup();
+  }
+
+  function endCallCleanup() {
+    if (signalPollInterval) { clearInterval(signalPollInterval); signalPollInterval = null; }
+    if (statePollInterval) { clearInterval(statePollInterval); statePollInterval = null; }
+    stopCallTimer();
+    stopRingtone();
+
+    if (pc) { try { pc.close(); } catch (_) {} pc = null; }
+    if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+
+    const rv = document.getElementById('remoteVideo');
+    const lv = document.getElementById('localVideo');
+    const ra = document.getElementById('remoteAudio');
+    if (rv) rv.srcObject = null;
+    if (lv) lv.srcObject = null;
+    if (ra) ra.srcObject = null;
+
+    closeCallOverlay();
+    callState = { id: null, type: 'audio', isCaller: false, peerId: null, peerName: '', active: false };
+    lastSignalId = 0;
+    pendingRemoteCandidates = [];
+    remoteDescSet = false;
+  }
+
+  // ---------- Media controls ----------
+  function toggleMic() {
+    if (!localStream) return;
+    const track = localStream.getAudioTracks()[0];
+    if (!track) return;
+    track.enabled = !track.enabled;
+    const btn = document.getElementById('btnToggleMic');
+    btn.classList.toggle('muted', !track.enabled);
+    btn.querySelector('i').className = track.enabled ? 'fa fa-microphone' : 'fa fa-microphone-slash';
+  }
+
+  function toggleCam() {
+    if (!localStream) return;
+    const track = localStream.getVideoTracks()[0];
+    if (!track) return;
+    track.enabled = !track.enabled;
+    const btn = document.getElementById('btnToggleCam');
+    btn.classList.toggle('muted', !track.enabled);
+    btn.querySelector('i').className = track.enabled ? 'fa fa-video-camera' : 'fa fa-video-camera';
+    document.getElementById('localVideo').style.opacity = track.enabled ? '1' : '0.3';
+  }
+
+  // ---------- Overlay helpers ----------
+  function openCallOverlay(type, peerName) {
+    const overlay = document.getElementById('callOverlay');
+    overlay.classList.add('active');
+    overlay.classList.toggle('audio-only', type !== 'video');
+
+    document.getElementById('callPeerName').textContent = peerName || '';
+    const av = document.getElementById('callPeerAvatar');
+    av.textContent = (peerName || '?').charAt(0).toUpperCase();
+    av.style.setProperty('--avatar-bg', avatarGradientFor(peerName));
+
+    const camBtn = document.getElementById('btnToggleCam');
+    camBtn.style.display = type === 'video' ? 'flex' : 'none';
+    document.getElementById('btnToggleMic').classList.remove('muted');
+    document.getElementById('btnToggleMic').querySelector('i').className = 'fa fa-microphone';
+    document.getElementById('callTimer').style.display = 'none';
+  }
+
+  function closeCallOverlay() {
+    document.getElementById('callOverlay').classList.remove('active');
+  }
+
+  function attachLocalStream(stream, wantVideo) {
+    if (wantVideo) {
+      const lv = document.getElementById('localVideo');
+      lv.srcObject = stream;
+      lv.style.opacity = '1';
+    }
+  }
+
+  function setCallStatus(text) {
+    const el = document.getElementById('callStatusText');
+    if (el) el.textContent = text;
+  }
+
+  function startCallTimer() {
+    if (callTimerInterval) return;
+    callStartTime = Date.now();
+    const timerEl = document.getElementById('callTimer');
+    document.getElementById('callStatusText').style.display = 'none';
+    timerEl.style.display = 'block';
+    callTimerInterval = setInterval(() => {
+      const s = Math.floor((Date.now() - callStartTime) / 1000);
+      const m = Math.floor(s / 60);
+      timerEl.textContent = `${m}:${(s % 60).toString().padStart(2, '0')}`;
+    }, 1000);
+  }
+
+  function stopCallTimer() {
+    if (callTimerInterval) { clearInterval(callTimerInterval); callTimerInterval = null; }
+    const st = document.getElementById('callStatusText');
+    if (st) st.style.display = 'block';
+  }
+
+  // ---------- Ringtone (WebAudio) ----------
+  function startRingtone() {
+    stopRingtone();
+    try {
+      ringAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const playBeep = () => {
+        if (!ringAudioCtx) return;
+        const osc = ringAudioCtx.createOscillator();
+        const gain = ringAudioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = 480;
+        gain.gain.setValueAtTime(0.0001, ringAudioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.25, ringAudioCtx.currentTime + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ringAudioCtx.currentTime + 0.8);
+        osc.connect(gain);
+        gain.connect(ringAudioCtx.destination);
+        osc.start();
+        osc.stop(ringAudioCtx.currentTime + 0.85);
+      };
+      playBeep();
+      ringOscTimer = setInterval(playBeep, 2000);
+    } catch (_) {}
+  }
+
+  function stopRingtone() {
+    if (ringOscTimer) { clearInterval(ringOscTimer); ringOscTimer = null; }
+    if (ringAudioCtx) { try { ringAudioCtx.close(); } catch (_) {} ringAudioCtx = null; }
+  }
+
+  function startIncomingPolling() {
+    if (incomingPollInterval) return;
+    incomingPollInterval = setInterval(checkIncomingCall, 3000);
+    checkIncomingCall();
+  }
+
+  function stopIncomingPolling() {
+    if (incomingPollInterval) { clearInterval(incomingPollInterval); incomingPollInterval = null; }
+  }
+
+  window.addEventListener('beforeunload', function () {
+    if (callState.active && callState.id) {
+      navigator.sendBeacon(`/messages/call/${callState.id}/end`);
+    }
+  });
+
   // ==================== INITIALIZATION ====================
   if ('Notification' in window && Notification.permission === 'default') {
     Notification.requestPermission();
+  }
+
+  let unreadInterval = null;
+  let conversationsInterval = null;
+
+  function startBackgroundPolling() {
+    if (!unreadInterval) unreadInterval = setInterval(updateUnreadCount, 5000);
+    if (!conversationsInterval) conversationsInterval = setInterval(updateConversations, 10000);
+  }
+
+  function stopBackgroundPolling() {
+    if (unreadInterval) { clearInterval(unreadInterval); unreadInterval = null; }
+    if (conversationsInterval) { clearInterval(conversationsInterval); conversationsInterval = null; }
   }
 
   document.addEventListener('DOMContentLoaded', function () {
@@ -2166,11 +3792,45 @@
     updateUnreadCount();
     updateConversations();
 
-    setInterval(updateUnreadCount, 5000);
-    setInterval(updateConversations, 10000);
-    setInterval(checkNewMessages, 2000);
+    startBackgroundPolling();
+
+    // Presence heartbeat
+    sendHeartbeat();
+    heartbeatInterval = setInterval(sendHeartbeat, 20000);
+
+    // Incoming call listener
+    startIncomingPolling();
 
     window.addEventListener('resize', updateMobileUI);
+  });
+
+  // Pause polling when tab is hidden, resume when visible (performance)
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) {
+      stopDmPolling();
+      stopChannelPolling();
+      stopBackgroundPolling();
+      stopPresence();
+      if (heartbeatInterval) { clearInterval(heartbeatInterval); heartbeatInterval = null; }
+      // Keep incoming-call polling active if in a call; otherwise pause it
+      if (!callState.active) stopIncomingPolling();
+    } else {
+      startBackgroundPolling();
+      updateUnreadCount();
+      updateConversations();
+      sendHeartbeat();
+      if (!heartbeatInterval) heartbeatInterval = setInterval(sendHeartbeat, 20000);
+      startIncomingPolling();
+      // Resume the relevant conversation polling
+      if (inChannel) {
+        loadChannel();
+        if (!channelInterval) channelInterval = setInterval(checkNewChannel, 8000);
+      } else if (currentChatUserId) {
+        checkNewMessages();
+        if (!messagesInterval) messagesInterval = setInterval(checkNewMessages, 2000);
+        startPresence();
+      }
+    }
   });
 </script>
 

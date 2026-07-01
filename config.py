@@ -69,6 +69,20 @@ class Config:
     WORKSPACE_UPLOAD_MAX_MB = int(os.environ.get("WORKSPACE_UPLOAD_MAX_MB", "20"))
     WORKSPACE_UPLOAD_FOLDER = os.environ.get("WORKSPACE_UPLOAD_FOLDER", "static/uploads/workspace")
 
+    # =====================
+    # مكالمات الصوت/الفيديو (WebRTC ICE)
+    # =====================
+    # STUN مجاني افتراضياً (يعمل في معظم الشبكات). يمكن وضع أكثر من عنوان مفصولة بفواصل.
+    STUN_URLS = os.environ.get(
+        "STUN_URLS",
+        "stun:stun.l.google.com:19302,stun:stun1.l.google.com:19302"
+    ).strip()
+    # TURN للوصول لموثوقية 100% خلف NAT الصعب. اتركها فارغة = STUN فقط.
+    # تدعم الخدمات المُدارة (Metered/Twilio) أو coturn الذاتي.
+    TURN_URLS = os.environ.get("TURN_URLS", "").strip()          # مثال: turn:turn.example.com:3478,turns:turn.example.com:5349
+    TURN_USERNAME = os.environ.get("TURN_USERNAME", "").strip()
+    TURN_CREDENTIAL = os.environ.get("TURN_CREDENTIAL", "").strip()
+
 
 class DevelopmentConfig(Config):
     """إعدادات بيئة التطوير."""
