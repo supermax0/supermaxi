@@ -579,6 +579,11 @@
 
   <!-- Companies -->
   <div class="card">
+    <div id="activeShippingBanner" style="display:none;margin-bottom:16px;padding:12px 16px;border-radius:12px;background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.25);color:var(--shipping-text);font-size:14px;">
+      <span>📡 شركة المسح النشطة:</span>
+      <strong id="activeShippingBannerName"></strong>
+    </div>
+
     <div
       style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.08); flex-wrap: wrap; gap: 12px;">
       <h3 style="color: var(--shipping-text); margin: 0;">🚚 {{ _('shipping_companies_title') }}</h3>
@@ -610,8 +615,8 @@
           </tr>
           {% else %}
           {% for c in companies %}
-          <tr>
-            <td data-label="{{ _('shipping_th_company_name') }}"><strong>{{ c.name }}</strong></td>
+          <tr data-company-id="{{ c.id }}" data-company-name="{{ c.name }}">
+            <td data-label="{{ _('shipping_th_company_name') }}"><strong>{{ c.name }}</strong> <span class="active-scan-badge" style="display:none;margin-right:8px;padding:2px 8px;border-radius:999px;font-size:11px;background:rgba(34,197,94,0.2);color:#22c55e;">نشطة للمسح</span></td>
             <td data-label="{{ _('shipping_th_orders_count') }}">{{ c.orders_count }}</td>
             <td data-label="{{ _('shipping_th_due') }}">
               <span
@@ -620,7 +625,12 @@
               </span>
             </td>
             <td data-label="{{ _('shipping_th_actions') }}">
-              <div style="display:flex;gap:8px;justify-content:center;">
+              <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+                <button type="button" class="btn btn-primary set-active-scan-btn" onclick="setActiveShippingForScan({{ c.id }}, {{ c.name|tojson }})"
+                  style="padding: 8px 16px; min-width: auto;">
+                  <span>📡</span>
+                  <span>تعيين للمسح</span>
+                </button>
                 <a href="/delivery/archive?company_id={{ c.id }}" class="btn btn-success"
                   style="text-decoration:none; padding: 8px 16px; min-width: auto;">
                   <span>📋</span>
@@ -671,8 +681,40 @@
     </div>
   </div>
 
+  <script src="/static/js/barcode-scanner.js"></script>
   <script>
     let currentCompany = null;
+
+    function setActiveShippingForScan(id, name) {
+      if (window.FinoraBarcode) {
+        FinoraBarcode.setActiveShippingCompany(id, name);
+      }
+      refreshActiveShippingUI();
+      showToast("تم تعيين «" + name + "» كشركة نشطة للمسح", "success");
+    }
+
+    function refreshActiveShippingUI() {
+      var active = window.FinoraBarcode ? FinoraBarcode.getActiveShippingCompany() : null;
+      var banner = document.getElementById("activeShippingBanner");
+      var bannerName = document.getElementById("activeShippingBannerName");
+      document.querySelectorAll("#companiesTable tbody tr[data-company-id]").forEach(function (row) {
+        var isActive = active && String(row.getAttribute("data-company-id")) === String(active.id);
+        row.style.background = isActive ? "rgba(59, 130, 246, 0.08)" : "";
+        var badge = row.querySelector(".active-scan-badge");
+        if (badge) badge.style.display = isActive ? "inline" : "none";
+      });
+      if (banner && bannerName) {
+        if (active) {
+          banner.style.display = "block";
+          bannerName.textContent = active.name;
+        } else {
+          banner.style.display = "none";
+          bannerName.textContent = "";
+        }
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", refreshActiveShippingUI);
 
     // ==================== UI Collapsible & Filter ====================
     function toggleSection(sectionId) {

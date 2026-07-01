@@ -1097,6 +1097,8 @@ def details(order_id):
             "returned_count": returned_count,
             "created_at": order.created_at.strftime("%Y-%m-%d %H:%M:%S") if order.created_at else "",
             "shipping_company": order.shipping_company.name if order.shipping_company else None,
+            "shipping_company_id": order.shipping_company_id,
+            "shipping_barcode": order.shipping_barcode,
             "shipping_status": order.shipping_status,
             "note": order.note,
             "video": _order_video_payload(order),
@@ -1815,6 +1817,8 @@ def search_by_barcode():
         "invoice": {
             "id": invoice.id,
             "customer_name": invoice.customer_name,
+            "customer": invoice.customer_name,
+            "phone": invoice.customer.phone if invoice.customer else "",
             "total": invoice.total,
             "status": invoice.status,
             "payment_status": invoice.payment_status,
@@ -1844,13 +1848,29 @@ def update_shipping_barcode(invoice_id):
     data = request.get_json() or {}
     
     shipping_barcode = data.get("shipping_barcode", "").strip()
+    shipping_company_id = data.get("shipping_company_id")
+
+    if shipping_company_id is not None and shipping_company_id != "":
+        try:
+            shipping_company_id = int(shipping_company_id)
+        except (TypeError, ValueError):
+            return jsonify({"success": False, "error": "معرّف شركة النقل غير صالح"}), 400
+        shipping_company = ShippingCompany.query.get(shipping_company_id)
+        if not shipping_company:
+            return jsonify({"success": False, "error": "شركة النقل غير موجودة"}), 404
+        invoice.shipping_company_id = shipping_company_id
+    elif not invoice.shipping_company_id:
+        return jsonify({"success": False, "error": "اختر شركة النقل"}), 400
+
     invoice.shipping_barcode = shipping_barcode if shipping_barcode else None
     
     db.session.commit()
     
     return jsonify({
         "success": True,
-        "message": "تم حفظ باركود شركة النقل بنجاح"
+        "message": "تم حفظ باركود شركة النقل بنجاح",
+        "shipping_company_id": invoice.shipping_company_id,
+        "shipping_barcode": invoice.shipping_barcode,
     })
 
 @orders_bp.route("/get-selected-orders", methods=["POST"])

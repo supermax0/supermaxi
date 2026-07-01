@@ -2179,6 +2179,7 @@
       <div class="order-search-results">
         <div class="order-search-results__head">
           <span id="searchResultsCount">نتائج البحث (0)</span>
+          <span id="searchScanSessionCount" style="margin-right:12px;font-size:13px;color:var(--text-muted,#64748b);"></span>
         </div>
         <div class="order-search-results__table-wrap">
           <table class="order-results-table">
@@ -2637,6 +2638,7 @@
      JAVASCRIPT
 ======================= -->
 <script src="{{ url_for('static', filename='js/ai_message_format.js') }}"></script>
+<script src="/static/js/barcode-scanner.js"></script>
 <script>
   /* =======================
      Load Dashboard
@@ -2903,6 +2905,8 @@
   /* =======================
      Search
   ======================= */
+  var scannedBarcodesSession = [];
+
   function getSearchDataRowCount() {
     const rowsContainer = document.getElementById("rows");
     if (!rowsContainer) return 0;
@@ -2912,6 +2916,85 @@
   function updateSearchResultsCount() {
     const el = document.getElementById("searchResultsCount");
     if (el) el.textContent = `نتائج البحث (${getSearchDataRowCount()})`;
+    const scanEl = document.getElementById("searchScanSessionCount");
+    if (scanEl) {
+      scanEl.textContent = scannedBarcodesSession.length
+        ? `تم مسح ${scannedBarcodesSession.length} باركود`
+        : "";
+    }
+  }
+
+  function appendSearchOrderRow(o) {
+    const rowsContainer = document.getElementById("rows");
+    if (!rowsContainer || !o || !o.id) return false;
+    if (document.getElementById("r" + o.id)) return false;
+
+    const tr = document.createElement("tr");
+    tr.id = "r" + o.id;
+    tr.className = "row-ordered";
+    tr.innerHTML = `
+          <td class="order-td-id"><strong>#${o.id}</strong></td>
+          <td class="order-td-customer">
+            <span class="order-customer-name">${o.customer || o.customer_name || "—"}</span>
+          </td>
+          <td class="order-td-phone">${o.phone || "—"}</td>
+          <td class="order-td-status">
+            <select name="s${o.id}" class="order-status-badge search-status-select status-ordered" onchange="setRowColor(${o.id}, this.value)">
+              <option value="ordered" selected>{{ _('dashboard_th_ordered') }}</option>
+              <option value="delivered">{{ _('dashboard_th_delivered') }}</option>
+              <option value="returned">{{ _('dashboard_th_returned') }}</option>
+            </select>
+          </td>
+          <td class="order-td-amount">${formatNumber(o.total)} د.ع</td>
+          <td class="order-td-check"><input type="checkbox" class="row-checkbox" data-id="${o.id}"></td>
+          <td class="order-td-action"><button type="button" class="order-execute-btn" onclick="exec(${o.id})" title="تنفيذ">🚀<span class="order-execute-btn__label"> تنفيذ</span></button></td>
+        `;
+    rowsContainer.appendChild(tr);
+    syncStatusBadgeClass(tr.querySelector(".order-status-badge"));
+    syncSearchEmptyState();
+    return true;
+  }
+
+  function addOrderFromBarcodeScan(invoice, barcode) {
+    openSearch();
+    const added = appendSearchOrderRow({
+      id: invoice.id,
+      customer: invoice.customer_name || invoice.customer,
+      phone: invoice.phone,
+      total: invoice.total
+    });
+    if (barcode) scannedBarcodesSession.push(barcode);
+    updateSearchResultsCount();
+    if (added) {
+      showToast(`✅ تمت إضافة الطلب #${invoice.id}`, "success");
+    } else {
+      showToast(`ℹ️ الطلب #${invoice.id} موجود مسبقاً`, "info");
+    }
+    document.getElementById("selectAllCheckbox").checked = false;
+    updateSelectionCount();
+  }
+
+  function handleDashboardBarcodeScan(barcode) {
+    const trimmed = String(barcode || "").trim();
+    if (!trimmed) return;
+
+    fetch("/orders/search-by-barcode?barcode=" + encodeURIComponent(trimmed))
+      .then(function (r) {
+        return r.json().then(function (data) {
+          return { ok: r.ok, data: data };
+        });
+      })
+      .then(function (ref) {
+        if (ref.ok && ref.data.success && ref.data.invoice) {
+          addOrderFromBarcodeScan(ref.data.invoice, trimmed);
+          return;
+        }
+        openSearch();
+        showToast(ref.data.error || "⚠️ لم يتم العثور على الطلب", "warning");
+      })
+      .catch(function () {
+        showToast("❌ حدث خطأ أثناء البحث عن الباركود", "error");
+      });
   }
 
   function updateSelectionCount() {
@@ -2969,7 +3052,6 @@
       .then(r => r.json())
       .then(list => {
         hideLoading();
-        const rowsContainer = document.getElementById("rows");
         // لا نمسح النتائج السابقة - نضيف النتائج الجديدة فقط
 
         if (list.length === 0) {
@@ -2977,48 +3059,10 @@
           return;
         }
 
-        // حساب عدد الطلبات الجديدة (غير موجودة مسبقاً)
         let addedCount = 0;
-        const existingIds = new Set();
-        // جمع جميع IDs الموجودة حالياً
-        rowsContainer.querySelectorAll("tr").forEach(row => {
-          const id = row.id.replace("r", "");
-          if (id) existingIds.add(parseInt(id));
+        list.forEach(function (o) {
+          if (appendSearchOrderRow(o)) addedCount++;
         });
-
-        list.forEach(o => {
-          // التحقق إذا كان الطلب موجوداً مسبقاً
-          if (existingIds.has(o.id)) {
-            return; // تخطي الطلبات المكررة
-          }
-
-          let tr = document.createElement("tr");
-          tr.id = "r" + o.id;
-          tr.className = "row-ordered";
-
-          tr.innerHTML = `
-          <td class="order-td-id"><strong>#${o.id}</strong></td>
-          <td class="order-td-customer">
-            <span class="order-customer-name">${o.customer || "—"}</span>
-          </td>
-          <td class="order-td-phone">${o.phone || "—"}</td>
-          <td class="order-td-status">
-            <select name="s${o.id}" class="order-status-badge search-status-select status-ordered" onchange="setRowColor(${o.id}, this.value)">
-              <option value="ordered" selected>{{ _('dashboard_th_ordered') }}</option>
-              <option value="delivered">{{ _('dashboard_th_delivered') }}</option>
-              <option value="returned">{{ _('dashboard_th_returned') }}</option>
-            </select>
-          </td>
-          <td class="order-td-amount">${formatNumber(o.total)} د.ع</td>
-          <td class="order-td-check"><input type="checkbox" class="row-checkbox" data-id="${o.id}"></td>
-          <td class="order-td-action"><button type="button" class="order-execute-btn" onclick="exec(${o.id})" title="تنفيذ">🚀<span class="order-execute-btn__label"> تنفيذ</span></button></td>
-        `;
-          rowsContainer.appendChild(tr);
-          syncStatusBadgeClass(tr.querySelector(".order-status-badge"));
-          addedCount++;
-        });
-
-        syncSearchEmptyState();
 
         if (addedCount > 0) {
           showToast(`✅ تم إضافة ${addedCount} طلب جديد (إجمالي: ${getSearchDataRowCount()})`, "success");
@@ -3123,6 +3167,7 @@
 
     if (confirm(`⚠️ هل تريد مسح جميع النتائج (${count} طلب)؟`)) {
       dataRows.forEach(function (row) { row.remove(); });
+      scannedBarcodesSession = [];
       document.getElementById("selectAllCheckbox").checked = false;
       syncSearchEmptyState();
       showToast(`✅ تم مسح ${count} طلب`, "success");
@@ -3852,6 +3897,20 @@
       }
     }
   });
+
+  if (window.FinoraBarcode) {
+    FinoraBarcode.createBarcodeScanner({
+      ignoreWhen: function () {
+        const active = document.activeElement;
+        if (!active) return false;
+        const tag = active.tagName;
+        if (tag !== 'INPUT' && tag !== 'TEXTAREA') return false;
+        if (active.id === 'q' && !String(active.value || '').trim()) return false;
+        return true;
+      },
+      onScan: handleDashboardBarcodeScan
+    });
+  }
 
   document.getElementById('profitModal').addEventListener('click', function (e) {
     if (e.target.id === 'profitModal') {

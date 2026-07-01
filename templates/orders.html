@@ -21,6 +21,7 @@
 {% block content %}
 
 <script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.js"></script>
+<script src="/static/js/barcode-scanner.js"></script>
 
 <link rel="stylesheet" href="/static/css/global-improvements.css">
 <link rel="stylesheet" href="/static/css/orders-mobile.css">
@@ -105,6 +106,8 @@
 
       <input type="date" id="filterScheduledDate" placeholder="{{ _('orders_filter_scheduled_date') }}"
         class="date-filter">
+
+      <span id="activeShippingScanBadge" style="display:none;align-items:center;padding:10px 14px;border-radius:12px;font-size:13px;background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.25);color:var(--orders-text);white-space:nowrap;"></span>
     </div>
   </div>
 </div>
@@ -288,6 +291,15 @@
 [
   {% for agent in delivery_agents %}
   {"id": {{ agent.id }}, "name": {{ (agent.name or '')|tojson }}}{% if not loop.last %},{% endif %}
+  {% endfor %}
+]
+</script>
+
+<!-- ==================== Shipping Companies Data (JSON) ==================== -->
+<script type="application/json" id="shippingsData">
+[
+  {% for s in shippings %}
+  {"id": {{ s.id }}, "name": {{ (s.name or '')|tojson }}}{% if not loop.last %},{% endif %}
   {% endfor %}
 ]
 </script>
@@ -2166,7 +2178,8 @@
     window.location.href = `/pos?order_id=${orderId}`;
   }
 
-  function showDetails(orderId) {
+  function showDetails(orderId, options) {
+    options = options || {};
     // عرض نافذة تفاصيل الطلب
     showLoading();
     fetch(`/orders/details/${orderId}`)
@@ -2187,7 +2200,7 @@
       .then(data => {
         hideLoading();
         if (data.order) {
-          showOrderDetailsModal(data);
+          showOrderDetailsModal(data, options);
         } else {
           showToast({{ _('orders_err_not_found')|tojson }}, "error");
         }
@@ -2530,13 +2543,144 @@
     await openCamera();
   }
 
-  function showOrderDetailsModal(data) {
+  function getShippingsList() {
+    const el = document.getElementById('shippingsData');
+    if (!el) return [];
+    try { return JSON.parse(el.textContent || '[]'); } catch (_) { return []; }
+  }
+
+  function getDefaultShippingCompanyId(order) {
+    if (order && order.shipping_company_id) return order.shipping_company_id;
+    const active = window.FinoraBarcode && FinoraBarcode.getActiveShippingCompany();
+    return active ? active.id : null;
+  }
+
+  function updateActiveShippingBadge() {
+    const badge = document.getElementById('activeShippingScanBadge');
+    if (!badge) return;
+    const active = window.FinoraBarcode && FinoraBarcode.getActiveShippingCompany();
+    badge.style.display = 'inline-flex';
+    if (active) {
+      badge.textContent = 'شركة المسح: ' + active.name;
+      badge.style.borderColor = 'rgba(34, 197, 94, 0.35)';
+      badge.style.background = 'rgba(34, 197, 94, 0.12)';
+    } else {
+      badge.textContent = 'لم تُحدَّد شركة مسح — من صفحة شركات النقل';
+      badge.style.borderColor = 'rgba(245, 158, 11, 0.35)';
+      badge.style.background = 'rgba(245, 158, 11, 0.12)';
+    }
+  }
+
+  function shippingBarcodeSectionHtml(order) {
+    const shippings = getShippingsList();
+    const defaultId = getDefaultShippingCompanyId(order);
+    const options = shippings.map(function (s) {
+      return '<option value="' + s.id + '"' + (String(s.id) === String(defaultId) ? ' selected' : '') + '>' + escapeHtml(s.name) + '</option>';
+    }).join('');
+    const active = window.FinoraBarcode && FinoraBarcode.getActiveShippingCompany();
+    const warnHtml = !defaultId
+      ? '<p style="color:#f59e0b;margin:0 0 12px;font-size:13px;">⚠️ لم تُحدَّد شركة نقل — اختر من القائمة أو عيّن شركة نشطة من صفحة شركات النقل.</p>'
+      : '';
+    const activeHint = active
+      ? '<p style="color:var(--orders-muted);margin:0 0 12px;font-size:13px;">شركة المسح النشطة: <strong style="color:var(--orders-text);">' + escapeHtml(active.name) + '</strong></p>'
+      : '';
+
+    return '<div class="od-card" id="shippingBarcodeCard" style="background:rgba(15, 23, 42, 0.6);border-radius:16px;padding:20px;margin-bottom:20px;border:1px solid rgba(34, 197, 94, 0.25);">' +
+      '<h3 style="color:#22c55e;margin:0 0 16px;font-size:18px;font-weight:700;">📦 باركود شركة النقل</h3>' +
+      warnHtml + activeHint +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px;">' +
+      '<div><label style="display:block;color:var(--orders-muted);margin-bottom:6px;font-size:13px;">شركة النقل</label>' +
+      '<select id="shippingCompanySelect" style="width:100%;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(15,23,42,0.8);color:var(--orders-text);">' +
+      '<option value="">— اختر —</option>' + options + '</select></div>' +
+      '<div><label style="display:block;color:var(--orders-muted);margin-bottom:6px;font-size:13px;">باركود الشحن</label>' +
+      '<input type="text" id="shippingBarcodeInput" value="' + escapeHtml(order.shipping_barcode || '') + '" placeholder="امسح أو أدخل باركود شركة النقل" style="width:100%;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(15,23,42,0.8);color:var(--orders-text);direction:ltr;text-align:left;" autocomplete="off"></div>' +
+      '</div>' +
+      '<button type="button" class="btn btn-success" id="saveShippingBarcodeBtn" style="min-width:160px;"><span>💾</span><span>حفظ باركود الشحن</span></button>' +
+      '</div>';
+  }
+
+  function saveShippingBarcode(orderId, options) {
+    options = options || {};
+    const select = document.getElementById('shippingCompanySelect');
+    const input = document.getElementById('shippingBarcodeInput');
+    const companyId = select ? select.value : '';
+    const barcode = input ? String(input.value || '').trim() : '';
+    if (!companyId) {
+      showToast('⚠️ اختر شركة النقل', 'warning');
+      return Promise.resolve(false);
+    }
+    if (!barcode) {
+      showToast('⚠️ أدخل باركود الشحن', 'warning');
+      return Promise.resolve(false);
+    }
+    return fetch('/orders/update-shipping-barcode/' + orderId, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ shipping_barcode: barcode, shipping_company_id: parseInt(companyId, 10) })
+    }).then(function (r) { return r.json(); }).then(function (data) {
+      if (data.success) {
+        showToast(data.message || 'تم الحفظ', 'success');
+        if (options.closeOnSuccess) {
+          const modal = document.querySelector('.modal[data-order-details]');
+          if (modal) modal.remove();
+        }
+        return true;
+      }
+      showToast(data.error || 'فشل الحفظ', 'error');
+      return false;
+    }).catch(function () {
+      showToast('❌ حدث خطأ أثناء الحفظ', 'error');
+      return false;
+    });
+  }
+
+  function wireShippingBarcodeModal(order, options) {
+    options = options || {};
+    const btn = document.getElementById('saveShippingBarcodeBtn');
+    const input = document.getElementById('shippingBarcodeInput');
+    if (btn) {
+      btn.addEventListener('click', function () {
+        saveShippingBarcode(order.id, { closeOnSuccess: !!options.barcodeWorkflow });
+      });
+    }
+    if (input) {
+      input.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          saveShippingBarcode(order.id, { closeOnSuccess: !!options.barcodeWorkflow });
+        }
+      });
+      if (options.barcodeWorkflow) {
+        setTimeout(function () { input.focus(); input.select(); }, 80);
+      }
+    }
+  }
+
+  function isBarcodeWorkflowOpen() {
+    return !!document.querySelector('.modal[data-order-details][data-barcode-workflow="1"]');
+  }
+
+  function handleShippingBarcodeScanFromGlobal(code) {
+    const input = document.getElementById('shippingBarcodeInput');
+    const modal = document.querySelector('.modal[data-order-details][data-barcode-workflow="1"]');
+    if (!input || !modal) return;
+    input.value = code;
+    const orderId = modal.getAttribute('data-order-id');
+    if (orderId) saveShippingBarcode(parseInt(orderId, 10), { closeOnSuccess: true });
+  }
+
+  function showOrderDetailsModal(data, options) {
+    options = options || {};
     const order = data.order;
     const items = data.items || [];
 
     const modal = document.createElement('div');
     modal.className = 'modal';
     modal.dataset.orderDetails = '1';
+    if (options.barcodeWorkflow) {
+      modal.setAttribute('data-barcode-workflow', '1');
+    }
+    modal.setAttribute('data-order-id', String(order.id));
     modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9998;overflow-y:auto;padding:20px;';
 
     const totalItems = items.reduce((sum, item) => sum + (item.qty || 0), 0);
@@ -2627,6 +2771,7 @@
         '<h3 style="color:var(--orders-primary);margin:0 0 12px;font-size:18px;font-weight:700;">📝 {{ _("orders_details_notes_section") }}</h3>' +
         '<p style="color:var(--orders-text);margin:0;line-height:1.6;">' + order.note + '</p>' +
         '</div>' : '') +
+      shippingBarcodeSectionHtml(order) +
       orderVideoSectionHtml(order) +
 
       '<!-- أزرار الإجراءات -->' +
@@ -2662,6 +2807,7 @@
       '</div>';
 
     document.body.appendChild(modal);
+    wireShippingBarcodeModal(order, options);
 
     // إغلاق عند الضغط خارج النافذة
     modal.addEventListener('click', function (e) {
@@ -3306,7 +3452,7 @@
       if (!t) return;
       const local = findOrderFromBarcodeScan(t);
       if (local) {
-        showDetails(local.id);
+        showDetails(local.id, { barcodeWorkflow: true });
         return;
       }
       fetch("/orders/search-by-barcode?barcode=" + encodeURIComponent(t))
@@ -3319,7 +3465,7 @@
           var ok = _ref.ok;
           var data = _ref.data;
           if (ok && data.success && data.invoice && data.invoice.id) {
-            showDetails(data.invoice.id);
+            showDetails(data.invoice.id, { barcodeWorkflow: true });
             return;
           }
           showToast(data.error || "⚠️ لم يتم العثور على الطلب", "warning");
@@ -3330,23 +3476,40 @@
     }
 
     let barcodeBuffer = '', barcodeTimeout;
-    document.addEventListener('keydown', function (e) {
-      if (document.activeElement?.tagName === 'INPUT') return;
-
-      if (e.key === 'Enter' && barcodeBuffer) {
-        openOrderFromBarcodeScan(barcodeBuffer);
-        barcodeBuffer = '';
-      } else if (e.key.length === 1 && /[0-9a-zA-Z]/.test(e.key)) {
-        barcodeBuffer += e.key;
-        clearTimeout(barcodeTimeout);
-        barcodeTimeout = setTimeout(() => {
-          if (barcodeBuffer) {
-            openOrderFromBarcodeScan(barcodeBuffer);
+    updateActiveShippingBadge();
+    if (window.FinoraBarcode) {
+      FinoraBarcode.createBarcodeScanner({
+        ignoreWhen: function () {
+          const tag = document.activeElement && document.activeElement.tagName;
+          return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+        },
+        onScan: function (code) {
+          if (isBarcodeWorkflowOpen()) {
+            handleShippingBarcodeScanFromGlobal(code);
+            return;
           }
+          openOrderFromBarcodeScan(code);
+        }
+      });
+    } else {
+      document.addEventListener('keydown', function (e) {
+        if (document.activeElement?.tagName === 'INPUT') return;
+
+        if (e.key === 'Enter' && barcodeBuffer) {
+          openOrderFromBarcodeScan(barcodeBuffer);
           barcodeBuffer = '';
-        }, 300);
-      }
-    });
+        } else if (e.key.length === 1 && /[0-9a-zA-Z]/.test(e.key)) {
+          barcodeBuffer += e.key;
+          clearTimeout(barcodeTimeout);
+          barcodeTimeout = setTimeout(() => {
+            if (barcodeBuffer) {
+              openOrderFromBarcodeScan(barcodeBuffer);
+            }
+            barcodeBuffer = '';
+          }, 300);
+        }
+      });
+    }
   });
 
   // ============= Make functions globally available =============

@@ -1567,6 +1567,22 @@ def index_search():
             # البحث يبقى في صفحة البحث ولا ينتقل لبحث آخر
             orders = []
 
+    if not orders:
+        orders = db.session.query(
+            Invoice.id,
+            Invoice.total,
+            Invoice.status,
+            Customer.phone,
+            Customer.name.label("customer"),
+        ).join(Customer).filter(
+            or_(
+                Invoice.barcode == q,
+                Invoice.shipping_barcode == q,
+            )
+        ).order_by(
+            Invoice.id.desc()
+        ).limit(100).all()
+
     return jsonify([
         {
             "id": o.id,
