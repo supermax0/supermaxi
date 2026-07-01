@@ -1,6 +1,7 @@
 {
     "dashboard": "Dashboard",
     "inventory": "Inventory",
+    "open_store": "Open Store",
     "maintenance": "Maintenance",
     "maintenance_page_title": "Product Maintenance",
     "maintenance_kpi_at_shop": "Items at maintenance",

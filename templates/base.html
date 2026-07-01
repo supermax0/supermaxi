@@ -427,6 +427,38 @@
       font-size: 12px;
     }
 
+    .sidebar-footer {
+      margin-top: auto;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-light);
+    }
+
+    .sidebar-store-link {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 18px;
+      border-radius: 12px;
+      color: #67e8f9;
+      text-decoration: none;
+      font-weight: 600;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      background: rgba(6, 182, 212, 0.08);
+      border: 1px solid rgba(6, 182, 212, 0.22);
+    }
+
+    .sidebar-store-link i {
+      width: 20px;
+      text-align: center;
+      font-size: 18px;
+    }
+
+    .sidebar-store-link:hover {
+      background: rgba(6, 182, 212, 0.16);
+      color: #a5f3fc;
+      transform: translateX(-4px);
+    }
+
     /* ======================================================
    CONTENT
 ====================================================== */
@@ -1902,14 +1934,39 @@ or request.path.startswith('/superadmin') %}
         <a href="/quick-sale" class="{% if request.path.startswith('/quick-sale') %}active{% endif %}"><i class="fa fa-bolt"></i> بيع سريع</a>
         {% endif %}
         {% if (is_admin or (current_employee and can_manage_inventory)) and business_allows('inventory') %}
-        <a href="/inventory"><i class="fa fa-box"></i> {{ _('inventory') }}</a>
-        {% if business_allows('inventory_audit') %}
-        <a href="/inventory/audit" style="padding-right: 30px; font-size: 0.9em;"><i class="fa fa-barcode"></i> {{
-          _('inventory_audit') }}</a>
-        {% endif %}
-        {% if business_allows('maintenance') %}
-        <a href="/maintenance" class="{% if request.path.startswith('/maintenance') %}active{% endif %}" style="padding-right: 30px; font-size: 0.9em;"><i class="fa fa-wrench"></i> {{ _('maintenance') }}</a>
-        {% endif %}
+        <div class="menu-group {% if request.path.startswith('/inventory') or request.path.startswith('/maintenance') %}open{% endif %}">
+          <button type="button"
+            class="menu-group-header {% if request.path.startswith('/inventory') or request.path.startswith('/maintenance') %}active{% endif %}"
+            onclick="this.parentElement.classList.toggle('open')">
+            <i class="fa fa-box"></i>
+            {{ _('inventory') }}
+            <span class="menu-group-header-icon">
+              <i class="fa fa-chevron-down"></i>
+            </span>
+          </button>
+          <div class="menu-group-links">
+            <a href="/inventory"
+              class="{% if request.path == '/inventory' or request.path == '/inventory/' %}active{% endif %}">
+              <i class="fa fa-boxes-stacked"></i> {{ _('inventory_products_title') }}
+            </a>
+            <a href="/inventory/ledger"
+              class="{% if request.path.startswith('/inventory/ledger') %}active{% endif %}">
+              <i class="fa fa-list"></i> {{ _('inventory_movements_log') }}
+            </a>
+            {% if business_allows('inventory_audit') %}
+            <a href="/inventory/audit"
+              class="{% if request.path.startswith('/inventory/audit') %}active{% endif %}">
+              <i class="fa fa-barcode"></i> {{ _('inventory_audit') }}
+            </a>
+            {% endif %}
+            {% if business_allows('maintenance') %}
+            <a href="/maintenance"
+              class="{% if request.path.startswith('/maintenance') %}active{% endif %}">
+              <i class="fa fa-wrench"></i> {{ _('maintenance') }}
+            </a>
+            {% endif %}
+          </div>
+        </div>
         {% endif %}
         {% if (is_admin or (current_employee and can_manage_inventory)) and business_allows('purchases') %}
         {% if plan_has("purchases") %}
@@ -2067,6 +2124,17 @@ or request.path.startswith('/superadmin') %}
         {% else %}
         <span style="color:#10b981;font-size:12px;font-weight:700">✅ {{ _('highest_level') }}</span>
         {% endif %}
+      </div>
+      {% endif %}
+
+      {% set _store_tslug = session.get('tenant_slug') or config.get('STOREFRONT_DEFAULT_TENANT_SLUG', '') %}
+      {% if _store_tslug %}
+      <div class="sidebar-footer">
+        <a href="{{ url_for('storefront.store_index', tenant_slug=_store_tslug) }}" target="_blank" rel="noopener"
+          class="sidebar-store-link">
+          <i class="fa fa-store"></i>
+          <span>{{ _('open_store') }}</span>
+        </a>
       </div>
       {% endif %}
     </aside>

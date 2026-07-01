@@ -1,6 +1,7 @@
 {
     "dashboard": "لوحة التحكم",
     "inventory": "المخزون",
+    "open_store": "فتح المتجر",
     "maintenance": "صيانة",
     "maintenance_page_title": "صيانة المنتجات",
     "maintenance_kpi_at_shop": "قطع قيد الصيانة",

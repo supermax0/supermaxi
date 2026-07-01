@@ -197,34 +197,47 @@
       color: var(--text);
     }
 
-    /* ================= TOOLBAR ================= */
-    .inv-toolbar {
+    /* ================= PRODUCTS PANEL TOOLBAR ================= */
+    .inv-products-toolbar {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      padding: 16px 24px !important;
+      align-items: flex-start;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    .inv-products-toolbar-start {
+      display: flex;
+      flex-direction: column;
       gap: 12px;
-      flex-wrap: wrap;
+      flex: 1 1 280px;
+      min-width: 0;
     }
 
-    .inv-toolbar-left {
+    .inv-products-toolbar-end {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      flex: 1 1 320px;
+      justify-content: flex-end;
+    }
+
+    .inv-products-actions {
       display: flex;
       gap: 10px;
       flex-wrap: wrap;
       align-items: center;
-    }
-
-    .inv-toolbar-right {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      flex-wrap: wrap;
     }
 
     .inv-search-box {
       position: relative;
       display: flex;
       align-items: center;
+      flex: 1;
+      min-width: 180px;
+      max-width: 420px;
     }
 
     .inv-search-box input {
@@ -234,13 +247,12 @@
       background: rgba(15, 23, 42, 0.5) !important;
       color: var(--text) !important;
       font-size: 14px !important;
-      width: 200px;
+      width: 100% !important;
       transition: all 0.3s ease;
       margin: 0 !important;
     }
 
     .inv-search-box input:focus {
-      width: 260px;
       border-color: #3b82f6 !important;
       box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
     }
@@ -628,34 +640,31 @@
         font-size: 20px;
       }
 
-      .inv-toolbar {
+      .inv-products-toolbar {
         flex-direction: column;
         gap: 12px;
         align-items: stretch;
-        padding: 14px 16px !important;
       }
 
-      .inv-toolbar-left,
-      .inv-toolbar-right {
-        flex-wrap: wrap;
-        gap: 8px;
-      }
-
-      .inv-toolbar-right {
+      .inv-products-toolbar-end,
+      .inv-products-toolbar-start,
+      .inv-products-controls {
         width: 100%;
+      }
+
+      .inv-products-toolbar-end {
+        flex-direction: column;
+        align-items: stretch;
       }
 
       .inv-search-box {
-        width: 100%;
+        max-width: none;
       }
 
-      .inv-search-box input {
-        width: 100% !important;
-      }
-
-      .inv-btn {
-        padding: 10px 16px;
-        font-size: 13px;
+      .inv-products-actions .inv-btn {
+        flex: 1 1 calc(50% - 8px);
+        min-width: 140px;
+        justify-content: center;
       }
 
       .inventory-page form {
@@ -763,8 +772,7 @@
         font-size: 11px;
       }
 
-      .inv-toolbar {
-        padding: 14px 16px !important;
+      .inv-products-toolbar {
         gap: 10px;
       }
 
@@ -1081,14 +1089,14 @@
     }
 
     @media (max-width: 768px) {
-      .inventory-page .inv-toolbar-left .inv-btn {
+      .inventory-page .inv-products-actions .inv-btn {
         flex: 1 1 calc(50% - 8px);
         min-width: 140px;
         justify-content: center;
       }
 
-      .inventory-page .inv-toolbar-left,
-      .inventory-page .inv-toolbar-right,
+      .inventory-page .inv-products-toolbar-end,
+      .inventory-page .inv-products-toolbar-start,
       .inventory-page .inv-products-controls {
         width: 100%;
       }
@@ -1121,7 +1129,7 @@
     }
 
     @media (max-width: 480px) {
-      .inventory-page .inv-toolbar-left .inv-btn {
+      .inventory-page .inv-products-actions .inv-btn {
         flex-basis: 100%;
       }
 
@@ -1332,7 +1340,7 @@
     /* ================= PRINT STYLES ================= */
     @media print {
 
-      .inventory-page .inv-toolbar,
+      .inventory-page .inv-products-toolbar-end,
       .inventory-page form,
       .inventory-page td a {
         display: none !important;
@@ -1420,60 +1428,6 @@
   </div>
   {% endif %}
 
-  <!-- ================= TOOLBAR ================= -->
-  <div class="card inv-toolbar" style="margin-bottom: 24px;">
-    <div class="inv-toolbar-left">
-      <a href="{{ url_for('inventory.add_product_page') }}" class="inv-btn primary">
-        <i class="fas fa-plus"></i>
-        <span>{{ _('inventory_add_product') }}</span>
-      </a>
-      {% if is_beauty_center %}
-      <a href="{{ url_for('static', filename='downloads/beauty_product_template.xlsx') }}" class="inv-btn ghost" download="beauty_product_template.xlsx"
-        style="border:1px solid rgba(16,185,129,.45);background:rgba(15,23,42,.45);color:#6ee7b7;">
-        <i class="fas fa-file-excel" style="color:#107C41;"></i>
-        <span>تحميل قالب Excel</span>
-      </a>
-      {% endif %}
-      <button type="button" class="inv-btn ghost" onclick="toggleAdd()" style="border:1px solid var(--border-light);background:rgba(15,23,42,.45);color:var(--text);">
-        <i class="fas fa-bolt"></i>
-        <span>{{ _('inventory_quick_add') }}</span>
-      </button>
-      <a href="/inventory/ledger" class="inv-btn"
-        style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; box-shadow: 0 6px 16px rgba(139,92,246,0.3);">
-        <i class="fas fa-list"></i>
-        <span>{{ _('inventory_movements_log') }}</span>
-      </a>
-      <a href="/inventory/audit" class="inv-btn"
-        style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white; box-shadow: 0 6px 16px rgba(245,158,11,0.3);">
-        <i class="fas fa-barcode"></i>
-        <span>{{ _('inventory_audit') }}</span>
-      </a>
-      <a href="/inventory/videos" class="inv-btn"
-        style="background: linear-gradient(135deg, #06b6d4, #2563eb); color: white; box-shadow: 0 6px 16px rgba(37,99,235,0.28);">
-        <i class="fas fa-photo-film"></i>
-        <span>مخزن الفيديوهات</span>
-      </a>
-      {% if _store_tslug %}
-      <a href="{{ url_for('storefront.store_index', tenant_slug=_store_tslug) }}" target="_blank" rel="noopener" class="inv-btn"
-        style="background: linear-gradient(135deg, #06b6d4, #0284c7); color: white; box-shadow: 0 6px 16px rgba(6,182,212,0.28);">
-        <i class="fas fa-store"></i>
-        <span>فتح المتجر</span>
-      </a>
-      <a href="{{ url_for('storefront.store_index', tenant_slug=_store_tslug, dev=1) }}" target="_blank" rel="noopener" class="inv-btn"
-        style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; box-shadow: 0 6px 16px rgba(37,99,235,0.28);">
-        <i class="fas fa-wand-magic-sparkles"></i>
-        <span>معاينة التصميم الجديد</span>
-      </a>
-      {% endif %}
-    </div>
-    <div class="inv-toolbar-right">
-      <div class="inv-search-box">
-        <i class="fas fa-search search-icon"></i>
-        <input type="text" id="globalSearch" placeholder="{{ _('inventory_search_placeholder') }}" oninput="onGlobalSearch(this.value)">
-      </div>
-    </div>
-  </div>
-
   <!-- ================= ADD PRODUCT ================= -->
   <div class="card inv-hidden" id="addForm">
     <h3 style="margin-bottom: 20px; border-bottom: 1px solid var(--border-light); padding-bottom: 14px;">➕ {{ _('inventory_add_product_title') }}</h3>
@@ -1491,22 +1445,47 @@
 
   <!-- ================= PRODUCTS TABLE ================= -->
   <div class="card">
-    <div class="inv-products-header">
-      <h3 class="inv-products-title">📦 {{ _('inventory_products_title') }} <span style="font-size:16px; opacity: 0.6; font-weight:400;">({{
-          products|length }})</span></h3>
-      <div class="inv-products-controls">
-        <select id="filterStock" onchange="filterProducts()" class="inv-products-filter">
-          <option value="all">🗂️ {{ _('inventory_filter_stock_all') }}</option>
-          <option value="low">🔴 {{ _('inventory_filter_stock_low') }}</option>
-          <option value="medium">🟡 {{ _('inventory_filter_stock_medium') }}</option>
-          <option value="high">🟢 {{ _('inventory_filter_stock_high') }}</option>
-          <option value="zero">⬛ {{ _('inventory_filter_stock_zero') }}</option>
-        </select>
-        <select id="filterActive" onchange="filterProducts()" class="inv-products-filter">
-          <option value="all">{{ _('inventory_filter_active_all') }}</option>
-          <option value="active">✅ {{ _('inventory_filter_active_only') }}</option>
-          <option value="inactive">❌ {{ _('inventory_filter_inactive_only') }}</option>
-        </select>
+    <div class="inv-products-toolbar">
+      <div class="inv-products-toolbar-start">
+        <h3 class="inv-products-title">📦 {{ _('inventory_products_title') }} <span style="font-size:16px; opacity: 0.6; font-weight:400;">({{
+            products|length }})</span></h3>
+        <div class="inv-products-controls">
+          <select id="filterStock" onchange="filterProducts()" class="inv-products-filter">
+            <option value="all">🗂️ {{ _('inventory_filter_stock_all') }}</option>
+            <option value="low">🔴 {{ _('inventory_filter_stock_low') }}</option>
+            <option value="medium">🟡 {{ _('inventory_filter_stock_medium') }}</option>
+            <option value="high">🟢 {{ _('inventory_filter_stock_high') }}</option>
+            <option value="zero">⬛ {{ _('inventory_filter_stock_zero') }}</option>
+          </select>
+          <select id="filterActive" onchange="filterProducts()" class="inv-products-filter">
+            <option value="all">{{ _('inventory_filter_active_all') }}</option>
+            <option value="active">✅ {{ _('inventory_filter_active_only') }}</option>
+            <option value="inactive">❌ {{ _('inventory_filter_inactive_only') }}</option>
+          </select>
+        </div>
+      </div>
+      <div class="inv-products-toolbar-end">
+        <div class="inv-search-box">
+          <i class="fas fa-search search-icon"></i>
+          <input type="text" id="globalSearch" placeholder="{{ _('inventory_search_placeholder') }}" oninput="onGlobalSearch(this.value)">
+        </div>
+        <div class="inv-products-actions">
+          <a href="{{ url_for('inventory.add_product_page') }}" class="inv-btn primary">
+            <i class="fas fa-plus"></i>
+            <span>{{ _('inventory_add_product') }}</span>
+          </a>
+          <button type="button" class="inv-btn ghost" onclick="toggleAdd()" style="border:1px solid var(--border-light);background:rgba(15,23,42,.45);color:var(--text);">
+            <i class="fas fa-bolt"></i>
+            <span>{{ _('inventory_quick_add') }}</span>
+          </button>
+          {% if is_beauty_center %}
+          <a href="{{ url_for('static', filename='downloads/beauty_product_template.xlsx') }}" class="inv-btn ghost" download="beauty_product_template.xlsx"
+            style="border:1px solid rgba(16,185,129,.45);background:rgba(15,23,42,.45);color:#6ee7b7;">
+            <i class="fas fa-file-excel" style="color:#107C41;"></i>
+            <span>تحميل قالب Excel</span>
+          </a>
+          {% endif %}
+        </div>
       </div>
     </div>
     <div class="table-wrap inv-table-wrap-products" style="height: 600px; min-height: 380px; position: relative;">

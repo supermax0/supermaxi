@@ -219,48 +219,8 @@
 .orders-row-actions {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  min-height: 44px;
-}
-
-.orders-more {
-  position: relative;
-}
-
-.orders-more-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  z-index: 30;
-  min-width: 142px;
-  padding: 6px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-hover);
-  display: none;
-}
-
-.orders-more:focus-within .orders-more-menu,
-.orders-more:hover .orders-more-menu {
-  display: grid;
   gap: 4px;
-}
-
-.orders-more-menu .action-btn-small {
-  width: 100%;
-  justify-content: flex-start;
-  background: transparent !important;
-  border: 0 !important;
-  color: var(--text-main) !important;
-}
-
-.orders-more-menu .return-btn {
-  color: var(--warning) !important;
-}
-
-.orders-more-menu .cancel-btn {
-  color: var(--danger) !important;
+  min-height: 0;
 }
 
 /* Standalone POS */

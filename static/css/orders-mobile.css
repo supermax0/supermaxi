@@ -18,7 +18,7 @@
   }
 
   .orders-row-actions {
-    flex-wrap: wrap;
-    justify-content: flex-start;
+    flex-wrap: nowrap;
+    justify-content: center;
   }
 }

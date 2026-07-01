@@ -861,9 +861,43 @@
   /* Action Buttons */
   .orders-row-actions {
     display: flex;
-    gap: 6px;
+    gap: 4px;
     justify-content: center;
-    flex-wrap: wrap;
+    align-items: center;
+    flex-wrap: nowrap;
+    min-height: 0 !important;
+    height: 100%;
+    padding: 0 2px;
+  }
+
+  .orders-row-actions .action-btn-small {
+    padding: 2px 6px !important;
+    border-radius: 5px !important;
+    border: none;
+    cursor: pointer;
+    font-size: 10px !important;
+    font-weight: 700;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-width: 0 !important;
+    width: auto !important;
+    min-height: 22px !important;
+    height: 22px !important;
+    line-height: 1;
+    white-space: nowrap;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+  }
+
+  .orders-row-actions .action-btn-small.is-disabled,
+  .orders-row-actions .action-btn-small:disabled {
+    opacity: 0.32;
+    cursor: not-allowed;
+    pointer-events: none;
+    filter: grayscale(0.35);
+    box-shadow: none;
   }
 
   /* Order details modal readability */
@@ -907,36 +941,8 @@
     border-bottom-color: rgba(2, 6, 23, 0.10) !important;
   }
 
-  .action-btn-small {
-    padding: 1px 6px;
-    /* Super compact padding */
-    border-radius: 6px;
-    border: none;
-    cursor: pointer;
-    font-size: 10px;
-    /* Smaller font */
-    font-weight: 700;
-    transition: all 0.2s ease;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-    min-width: 42px;
-    /* Narrower */
-    height: 20px;
-    /* Very compact height */
-    line-height: 1;
-    white-space: nowrap;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-  }
-
   .action-btn-small.pay-btn {
     background: #10b981;
-    color: #ffffff;
-  }
-
-  .action-btn-small.cancel-btn {
-    background: #ef4444;
     color: #ffffff;
   }
 
@@ -945,14 +951,8 @@
     color: #ffffff;
   }
 
-  /* Added return style */
-  .action-btn-small.details-btn {
-    background: #3b82f6;
-    color: #ffffff;
-  }
-
   .action-btn-small.print-btn {
-    background: #8b5cf6;
+    background: #6366f1;
     color: #ffffff;
   }
 
@@ -961,29 +961,27 @@
     color: #ffffff;
   }
 
-  .action-btn-small:hover {
+  .orders-row-actions .action-btn-small:hover:not(:disabled):not(.is-disabled) {
     transform: translateY(-1px);
-    filter: brightness(1.1);
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+    filter: brightness(1.08);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
   }
 
-  /* Mobile Button Optimization - Ultra Compact (User Request) */
+  /* Mobile Button Optimization - Ultra Compact */
   @media (max-width: 768px) {
     .orders-row-actions {
-      gap: 1.5px;
+      gap: 2px;
       padding: 0;
     }
 
-    .action-btn-small {
-      min-width: 28px;
-      height: 16px;
-      font-size: 7px;
-      padding: 0 2px;
-      border-radius: 3px;
-      letter-spacing: -0.2px;
+    .orders-row-actions .action-btn-small {
+      min-height: 20px !important;
+      height: 20px !important;
+      font-size: 9px !important;
+      padding: 1px 4px !important;
+      border-radius: 4px !important;
     }
 
-    /* Ensure the column doesn't stack them */
     .ag-cell .orders-row-actions {
       flex-wrap: nowrap;
       height: 100%;
@@ -2898,23 +2896,22 @@
     const phoneRaw = row && row.phone && row.phone !== '—' ? String(row.phone) : "";
     const phoneEnc = encodeURIComponent(phoneRaw);
 
-    const isReturned = row && row.status === "مرتجع";
+    const isReturned = row && (row.status === "مرتجع" || row.status === "ملغي" || row.status === "راجع" || row.status === "راجعة");
     const isPaid = row && row.payment_status === "مسدد";
-    const canEdit = row && row.status !== 'تم التوصيل' && row.status !== 'مرتجع' && row.status !== 'ملغي';
+    const canPay = !!(row && row.can_pay);
+    const canReturn = !!(row && !isReturned && !isPaid);
+
+    function actionBtn(className, action, label, title, extraAttrs, disabled) {
+      const disClass = disabled ? ' is-disabled' : '';
+      const disAttr = disabled ? ' disabled' : '';
+      return '<button type="button" class="action-btn-small ' + className + disClass + '" data-action="' + action + '" data-order-id="' + id + '"' + (extraAttrs || '') + ' title="' + title + '"' + disAttr + '>' + label + '</button>';
+    }
 
     return '<div class="orders-row-actions">' +
-      '<button type="button" class="action-btn-small details-btn" data-action="details" data-order-id="' + id + '" title="عرض الطلب">عرض</button>' +
-      '<button type="button" class="action-btn-small print-btn" data-action="invoice" data-order-id="' + id + '" title="طباعة الفاتورة">فاتورة</button>' +
-      '<button type="button" class="action-btn-small whatsapp-btn" data-action="whatsapp" data-order-id="' + id + '" data-phone="' + phoneEnc + '" title="إرسال واتساب">واتساب</button>' +
-      (row && row.can_pay ? '<button type="button" class="action-btn-small pay-btn" data-action="pay" data-order-id="' + id + '" title="تسديد كامل">تسديد</button>' : '') +
-      '<div class="orders-more">' +
-      '<button type="button" class="action-btn-small" title="المزيد" aria-label="المزيد"><i class="fas fa-ellipsis-h"></i></button>' +
-      '<div class="orders-more-menu">' +
-      (canEdit ? '<button type="button" class="action-btn-small" data-action="edit" data-order-id="' + id + '" title="تعديل الطلب">تعديل</button>' : '') +
-      ((!isReturned && !isPaid) ? '<button type="button" class="action-btn-small return-btn" data-action="return" data-order-id="' + id + '" title="إرجاع الطلب">إرجاع</button>' : '') +
-      (row && row.can_cancel ? '<button type="button" class="action-btn-small cancel-btn" data-action="cancel" data-order-id="' + id + '" title="حذف الفاتورة">حذف</button>' : '') +
-      '</div>' +
-      '</div>' +
+      actionBtn('whatsapp-btn', 'whatsapp', 'واتساب', 'إرسال واتساب', ' data-phone="' + phoneEnc + '"', !phoneRaw) +
+      actionBtn('print-btn', 'invoice', 'طباعة', 'طباعة الفاتورة', '', false) +
+      actionBtn('pay-btn', 'pay', 'تسديد', 'تسديد الطلب', '', !canPay) +
+      actionBtn('return-btn', 'return', 'مرتجع', 'إرجاع الطلب', '', !canReturn) +
       '</div>';
   }
 
@@ -3028,7 +3025,8 @@
       {
         headerName: "إجراءات",
         field: "actions",
-        width: 300, // Significantly increased width
+        width: 200,
+        pinned: 'right',
         cellRenderer: ActionsRenderer,
         suppressMovable: true,
         sortable: false,
@@ -3082,7 +3080,7 @@
     const gridOptions = {
       columnDefs: columnDefs,
       rowData: allOrders,
-      rowHeight: 48, // Compact but enough for buttons
+      rowHeight: 40,
       headerHeight: 40,
       pagination: true,
 

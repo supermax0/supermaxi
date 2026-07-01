@@ -491,6 +491,10 @@
   gap: 10px;
 }
 
+.team-admin-page .team-modal-box--wide .permission-grid {
+  grid-template-columns: 1fr;
+}
+
 .team-admin-page .perm-checkbox-card {
   display: flex;
   align-items: flex-start;
@@ -502,6 +506,7 @@
   cursor: pointer;
   transition: border-color 180ms ease, background 180ms ease;
   min-height: 48px;
+  min-width: 0;
 }
 
 .team-admin-page .perm-checkbox-card:hover {
@@ -516,10 +521,13 @@
 }
 
 .team-admin-page .perm-checkbox-card span {
+  flex: 1;
+  min-width: 0;
   color: var(--text-main);
   font-size: 14px;
   font-weight: 600;
-  line-height: 1.4;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .team-admin-page .perm-group-title {
@@ -528,13 +536,12 @@
   font-size: 13px;
   font-weight: 800;
   color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 
 .team-admin-page .team-modal-box--wide {
-  max-width: 720px;
+  max-width: 560px;
   max-height: 90vh;
+  overflow-x: hidden;
   overflow-y: auto;
 }
 
