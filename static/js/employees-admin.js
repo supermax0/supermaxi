@@ -1,4 +1,30 @@
 function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
+
+  function getEmployeesModalRoot() {
+    return document.querySelector('.employees-page') || document.querySelector('.team-admin-page') || document.body;
+  }
+
+  function appendEmployeeModal(modal) {
+    getEmployeesModalRoot().appendChild(modal);
+    return modal;
+  }
+
+  function createActionButton({ icon, title, className, href, target, onClick }) {
+    const el = href ? document.createElement('a') : document.createElement('button');
+    if (!href) el.type = 'button';
+    el.className = 'action-btn' + (className ? ' ' + className : '');
+    el.title = title || '';
+    if (href) {
+      el.href = href;
+      if (target) el.target = target;
+    }
+    el.innerHTML = `<i class="fas ${icon}"></i>`;
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (onClick) onClick(e);
+    });
+    return el;
+  }
 // ==================== Toast Notifications ====================
   function showToast(message, type = 'info') {
     const container = document.getElementById('toastContainer');
@@ -126,6 +152,30 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
   const empConfirmDisable = __t('employees_confirm_disable');
   const empConfirmEnable = __t('employees_confirm_enable');
 
+  const empActionDelete = __t('employees_action_delete');
+  const empConfirmDelete = __t('employees_confirm_delete');
+
+  async function deleteEmployee(id, name) {
+    const msg = empConfirmDelete.replace('{name}', name);
+    if (!confirm(msg)) return;
+
+    showLoading();
+    try {
+      const response = await fetch(`/employees/delete/${id}`, { method: 'POST' });
+      const data = await response.json();
+      hideLoading();
+      if (response.ok && data.success) {
+        showToast(data.message || __t('employees_toast_delete_success'), 'success');
+        setTimeout(() => location.reload(), 700);
+      } else {
+        showToast(data.error || __t('employees_err_generic'), 'error');
+      }
+    } catch (error) {
+      hideLoading();
+      showToast(__t('employees_err_connection'), 'error');
+    }
+  }
+
   async function toggleEmployeeStatus(id, name, isActive) {
     const action = isActive ? empConfirmDisable : empConfirmEnable;
     if (!confirm(action.replace('{name}', name))) return;
@@ -252,7 +302,31 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
       },
       { headerName: __t('employees_col_username'), field: "username", width: 120 },
       { headerName: "الأدوار", field: "role_labels", width: 140, valueFormatter: p => (p.value || []).join(', ') || p.data.role_name },
-      { headerName: "البيجات", field: "pages_count", width: 90 },
+      {
+        headerName: "البيجات",
+        field: "pages_count",
+        width: 90,
+        sortable: false,
+        filter: false,
+        cellRenderer: params => {
+          if (params.data.is_delivery) return '—';
+          const btn = createActionButton({
+            icon: 'fa-file-invoice',
+            title: __t('employees_action_pages'),
+            onClick: () => openPagesModal(params.data.id, params.data.name),
+          });
+          const wrap = document.createElement('div');
+          wrap.style.display = 'flex';
+          wrap.style.alignItems = 'center';
+          wrap.style.justifyContent = 'center';
+          wrap.style.gap = '6px';
+          const count = document.createElement('span');
+          count.textContent = String(params.value ?? 0);
+          wrap.appendChild(count);
+          wrap.appendChild(btn);
+          return wrap;
+        }
+      },
       {
         headerName: __t('employees_col_role'),
         field: "role_name",
@@ -306,7 +380,7 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
       {
         headerName: __t('employees_col_actions'),
         field: "actions",
-        width: 220,
+        width: 260,
         sortable: false,
         filter: false,
         suppressMovable: true,
@@ -314,37 +388,57 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
         headerClass: 'actions-col',
         cellRenderer: params => {
           const e = params.data;
-          const nameEscaped = e.name.replace(/'/g, "\\'");
+          const wrap = document.createElement('div');
+          wrap.className = 'admin-actions';
 
           if (e.is_delivery) {
-            return `
-            <div class="admin-actions">
-              <button type="button" class="action-btn" onclick="event.stopPropagation(); openEditEmployeeModal('${e.grid_id}')" title="تعديل الراتب"><i class="fas fa-pen"></i></button>
-              <a href="/delivery-agent/login" target="_blank" class="action-btn" title="${__t('employees_action_agent_page')}" onclick="event.stopPropagation()">
-                <i class="fas fa-truck"></i>
-              </a>
-            </div>
-          `;
+            wrap.appendChild(createActionButton({
+              icon: 'fa-pen',
+              title: 'تعديل الراتب',
+              onClick: () => openEditEmployeeModal(e.grid_id),
+            }));
+            wrap.appendChild(createActionButton({
+              icon: 'fa-truck',
+              title: __t('employees_action_agent_page'),
+              href: '/delivery-agent/login',
+              target: '_blank',
+            }));
+            return wrap;
           }
 
           const isActive = e.status === 'active';
-          return `
-          <div class="admin-actions">
-            <button type="button" class="action-btn" onclick="event.stopPropagation(); toggleEmployeeStatus(${e.id}, '${nameEscaped}', ${isActive})" title="${isActive ? empActionDisable : empActionEnable}">
-              <i class="fas ${isActive ? 'fa-user-slash' : 'fa-user-check'}"></i>
-            </button>
-            <button type="button" class="action-btn" onclick="event.stopPropagation(); openEditEmployeeModal('${e.grid_id}')" title="تعديل"><i class="fas fa-pen"></i></button>
-            <button type="button" class="action-btn" onclick="event.stopPropagation(); openPagesModal(${e.id}, '${nameEscaped}')" title="${__t('employees_action_pages')}">
-              <i class="fas fa-file-invoice"></i>
-            </button>
-            <a href="/admin/permissions/employee/${e.id}/roles" class="action-btn" title="${__t('employees_action_roles')}" onclick="event.stopPropagation()">
-              <i class="fas fa-user-shield"></i>
-            </a>
-            <button type="button" class="action-btn" onclick="event.stopPropagation(); viewEmployeeOrders(${e.id}, '${nameEscaped}')" title="${__t('employees_action_view')}">
-              <i class="fas fa-eye"></i>
-            </button>
-          </div>
-        `;
+          wrap.appendChild(createActionButton({
+            icon: isActive ? 'fa-user-slash' : 'fa-user-check',
+            title: isActive ? empActionDisable : empActionEnable,
+            onClick: () => toggleEmployeeStatus(e.id, e.name, isActive),
+          }));
+          wrap.appendChild(createActionButton({
+            icon: 'fa-pen',
+            title: 'تعديل',
+            onClick: () => openEditEmployeeModal(e.grid_id),
+          }));
+          wrap.appendChild(createActionButton({
+            icon: 'fa-file-invoice',
+            title: __t('employees_action_pages'),
+            onClick: () => openPagesModal(e.id, e.name),
+          }));
+          wrap.appendChild(createActionButton({
+            icon: 'fa-user-shield',
+            title: __t('employees_action_roles'),
+            href: `/admin/permissions/employee/${e.id}/roles`,
+          }));
+          wrap.appendChild(createActionButton({
+            icon: 'fa-eye',
+            title: __t('employees_action_view'),
+            onClick: () => viewEmployeeOrders(e.id, e.name),
+          }));
+          wrap.appendChild(createActionButton({
+            icon: 'fa-trash',
+            title: empActionDelete,
+            className: 'action-btn-delete',
+            onClick: () => deleteEmployee(e.id, e.name),
+          }));
+          return wrap;
         }
       }
     ];
@@ -446,24 +540,22 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
               </label>
             `).join('')}
           </div>
-          <button onclick="saveEmployeePages(${employeeId})">${__t('employees_save_button')}</button>
+          <button type="button" class="emp-pages-save-btn">${__t('employees_save_button')}</button>
         </div>
       `;
-        document.body.appendChild(modal);
+        appendEmployeeModal(modal);
 
-        // Close on overlay click
         modal.addEventListener('click', function (e) {
           if (e.target === modal) {
             modal.remove();
           }
         });
 
-        window.currentModal = modal;
-        window.saveEmployeePages = function (empId) {
+        modal.querySelector('.emp-pages-save-btn')?.addEventListener('click', () => {
           const checkboxes = modal.querySelectorAll('input[type="checkbox"]:checked');
-          const pageIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+          const pageIds = Array.from(checkboxes).map(cb => parseInt(cb.value, 10));
 
-          fetch(`/employees/manage-pages/${empId}`, {
+          fetch(`/employees/manage-pages/${employeeId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ page_ids: pageIds })
@@ -478,10 +570,10 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
                 showToast(data.error || __t('employees_err_generic'), 'error');
               }
             })
-            .catch(err => {
+            .catch(() => {
               showToast(__t('employees_err_connection'), 'error');
             });
-        };
+        });
       })
       .catch(err => {
         showToast(__t('employees_err_fetch_data'), 'error');
@@ -540,17 +632,16 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
           <button onclick="this.closest('.modal-overlay').remove()">${empClose}</button>
         </div>
       `;
-        document.body.appendChild(modal);
+        appendEmployeeModal(modal);
 
-        // Close on overlay click
         modal.addEventListener('click', function (e) {
           if (e.target === modal) {
             modal.remove();
           }
         });
       })
-      .catch(err => {
-        showToast('حدث خطأ في جلب البيانات', 'error');
+      .catch(() => {
+        showToast(__t('employees_err_fetch_data'), 'error');
       });
   }
 

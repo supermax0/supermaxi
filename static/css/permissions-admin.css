@@ -10,6 +10,94 @@
   font-weight: 800;
 }
 
+/* ===== Employee roles picker ===== */
+.team-admin-page.permissions-page .employee-roles-panel {
+  padding: 24px;
+}
+
+.team-admin-page.permissions-page .employee-roles-intro {
+  color: var(--text-secondary);
+  margin: 0 0 20px;
+}
+
+.team-admin-page.permissions-page .employee-roles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: 14px;
+  width: 100%;
+}
+
+.team-admin-page.permissions-page .employee-role-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+  cursor: pointer;
+  transition: border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.team-admin-page.permissions-page .employee-role-card:hover {
+  border-color: var(--primary);
+  background: var(--surface-hover);
+}
+
+.team-admin-page.permissions-page .employee-role-card:has(input:checked) {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 22%, transparent);
+}
+
+.team-admin-page.permissions-page .employee-role-card input {
+  margin-top: 4px;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary);
+}
+
+.team-admin-page.permissions-page .employee-role-card__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.team-admin-page.permissions-page .employee-role-card__title {
+  display: block;
+  color: var(--text-main);
+  font-size: 15px;
+  font-weight: 800;
+  margin-bottom: 4px;
+  line-height: 1.4;
+  overflow-wrap: break-word;
+}
+
+.team-admin-page.permissions-page .employee-role-card__desc {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+
+.team-admin-page.permissions-page .employee-role-card__perms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.team-admin-page.permissions-page .effective-perms-banner {
+  margin-bottom: 16px;
+}
+
+.team-admin-page.permissions-page .effective-perms-banner .perm-badge {
+  margin-inline-end: 6px;
+  margin-bottom: 6px;
+}
+
 /* ===== Edit role modal — permissions table ===== */
 .team-admin-page.permissions-page .team-modal-box--permissions {
   max-width: 520px;

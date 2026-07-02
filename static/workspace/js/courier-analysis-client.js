@@ -71,6 +71,37 @@ class CourierAnalysisClient {
   async getFinancialPreview(analysisId) {
     return this._api(`/courier-analysis/${analysisId}/financial-preview`);
   }
+
+  async getPostingPreview(analysisId) {
+    return this._api(`/courier-analysis/${analysisId}/posting-preview`);
+  }
+
+  async preparePosting(analysisId) {
+    const data = await this._api(`/courier-analysis/${analysisId}/posting/prepare`, {
+      method: "POST",
+      body: "{}",
+    });
+    if (data.session) this.onSessionUpdate(data.session);
+    return data;
+  }
+
+  async cancelPosting(analysisId) {
+    const data = await this._api(`/courier-analysis/${analysisId}/posting/cancel`, {
+      method: "POST",
+      body: "{}",
+    });
+    if (data.session) this.onSessionUpdate(data.session);
+    return data;
+  }
+
+  async approvePosting(analysisId, payload = {}) {
+    const data = await this._api(`/courier-analysis/${analysisId}/posting/approve`, {
+      method: "POST",
+      body: JSON.stringify(payload || {}),
+    });
+    if (data.session) this.onSessionUpdate(data.session);
+    return data;
+  }
 }
 
 window.CourierAnalysisClient = CourierAnalysisClient;

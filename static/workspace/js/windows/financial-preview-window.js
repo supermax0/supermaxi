@@ -2,9 +2,12 @@ const FinancialPreviewWindow = {
   render(container, spec) {
     const p = spec.props || {};
     const preview = p.preview || {};
+    const posting = p.posting || {};
+    const postingPreview = preview.posting_preview || {};
+    const posted = posting.status === "posted" || postingPreview.status === "posted";
     container.innerHTML = `
       <div class="ws-financial-preview">
-        <p class="ws-doc-intel-disclaimer">هذه ليست عملية تسديد. هذه معاينة فقط.</p>
+        <p class="ws-doc-intel-disclaimer">${posted ? "تم تنفيذ الصفوف المطابقة السليمة فقط." : "هذه ليست عملية تسديد بعد. التنفيذ يحتاج موافقة صريحة."}</p>
         <div class="ws-courier-cards">
           ${this._card("إجمالي التحصيل", preview.total_collected_amount)}
           ${this._card("إجمالي أجور التوصيل", preview.total_delivery_fees)}
@@ -13,7 +16,7 @@ const FinancialPreviewWindow = {
           ${this._card("صفوف آمنة نظرياً", preview.safe_to_post_rows)}
           ${this._card("صفوف ممنوعة", preview.blocked_rows)}
         </div>
-        <p class="ws-financial-note">${(preview.posting_preview && preview.posting_preview.message) || ""}</p>
+        <p class="ws-financial-note">${(preview.posting_preview && preview.posting_preview.message) || (posting.message || "")}</p>
       </div>`;
   },
 

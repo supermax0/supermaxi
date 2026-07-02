@@ -903,6 +903,30 @@ html, body {
 .ws-approval-message { margin: 0; font-size: 14px; line-height: 1.6; }
 .ws-approval-hint { margin: 0; font-size: 12px; color: var(--ws-muted); }
 .ws-approval-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.ws-approval-preview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.ws-approval-preview div {
+  border: 1px solid var(--ws-border-soft);
+  border-radius: 8px;
+  background: #fff;
+  padding: 9px 10px;
+  min-width: 0;
+}
+.ws-approval-preview span {
+  display: block;
+  color: var(--ws-muted);
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+.ws-approval-preview strong {
+  display: block;
+  color: var(--ws-ink);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
 
 .ws-workflow-selector-hint { margin: 0 0 10px; font-size: 13px; color: var(--ws-muted); }
 .ws-workflow-options { display: flex; flex-direction: column; gap: 8px; }

@@ -3,6 +3,7 @@
 {% block page_title %}<i class="fas fa-user-lock"></i> أدوار الموظف{% endblock %}
 
 {% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/team-admin.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/permissions-admin.css') }}">
 
 <div class="team-admin-page permissions-page">
@@ -21,7 +22,7 @@
   </div>
 
   {% if effective_permissions %}
-  <div class="admin-banner info" style="margin-bottom:16px;">
+  <div class="admin-banner info effective-perms-banner">
     <strong>الصلاحيات الفعلية:</strong>
     {% for perm in effective_permissions %}
     <span class="perm-badge">{{ perm.description or perm.name }}</span>
@@ -30,21 +31,23 @@
   {% endif %}
 
   <div class="collapsible-group" style="margin-bottom:0;">
-    <div class="group-content" style="padding:24px;">
+    <div class="group-content employee-roles-panel">
       <form action="{{ url_for('permissions.employee_roles', id=employee.id) }}" method="POST">
-        <p style="color:var(--text-secondary);margin:0 0 20px;">اختر الأدوار الممنوحة لهذا الموظف:</p>
-        <div class="permission-grid">
+        <p class="employee-roles-intro">اختر الأدوار الممنوحة لهذا الموظف:</p>
+        <div class="employee-roles-grid">
           {% for role in roles %}
-          <label class="perm-checkbox-card" for="role_{{ role.id }}">
+          <label class="employee-role-card" for="role_{{ role.id }}">
             <input type="checkbox" name="roles" value="{{ role.id }}" id="role_{{ role.id }}"
               {% if role in employee.roles %}checked{% endif %}>
-            <span>
-              <strong style="display:block;color:var(--text-main);">{{ role.name }}</strong>
-              <small style="color:var(--text-secondary);">{{ role.description or '—' }}</small>
+            <span class="employee-role-card__body">
+              <strong class="employee-role-card__title">{{ role.name }}</strong>
+              <small class="employee-role-card__desc">{{ role.description or '—' }}</small>
               {% if role.permissions %}
-              <small style="display:block;margin-top:6px;color:var(--text-muted);font-size:12px;">
-                {% for perm in role.permissions %}{{ perm.description or perm.name }}{% if not loop.last %} • {% endif %}{% endfor %}
-              </small>
+              <span class="employee-role-card__perms">
+                {% for perm in role.permissions %}
+                <span class="perm-badge">{{ perm.description or perm.name }}</span>
+                {% endfor %}
+              </span>
               {% endif %}
             </span>
           </label>

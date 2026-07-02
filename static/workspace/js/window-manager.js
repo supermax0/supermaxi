@@ -259,8 +259,20 @@ class WorkspaceWindowManager {
     if (renderer && renderer.render) {
       if (spec.type === "approval_panel") {
         renderer.render(body, spec, {
-          onApprove: (stepId) => h.onApprove && h.onApprove(stepId),
-          onReject: (stepId) => h.onReject && h.onReject(stepId),
+          onApprove: (stepId) => {
+            if ((spec.props || {}).action === "courier_posting" && h.onCourierPostingApprove) {
+              h.onCourierPostingApprove(spec);
+              return;
+            }
+            if (h.onApprove) h.onApprove(stepId);
+          },
+          onReject: (stepId) => {
+            if ((spec.props || {}).action === "courier_posting" && h.onCourierPostingReject) {
+              h.onCourierPostingReject(spec);
+              return;
+            }
+            if (h.onReject) h.onReject(stepId);
+          },
         });
       } else if (spec.type === "workflow_selector") {
         renderer.render(body, spec, {
@@ -279,6 +291,7 @@ class WorkspaceWindowManager {
       } else if (spec.type === "courier_settlement_analysis") {
         renderer.render(body, spec, {
           onExport: (s) => this.courierHandlers.onExport && this.courierHandlers.onExport(s),
+          onSettle: (s) => this.courierHandlers.onSettle && this.courierHandlers.onSettle(s),
         });
         if (spec.props && spec.props.analysisId && !(spec.props.issues && spec.props.issues.length) && this.courierHandlers.loadReportIssues) {
           this.courierHandlers.loadReportIssues(spec.props.analysisId, body);

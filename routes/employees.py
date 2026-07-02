@@ -328,6 +328,47 @@ def view_employee_orders(employee_id):
     )
 
 
+@employees_bp.route("/delete/<int:id>", methods=["POST"])
+@permission_required("manage_employees")
+def delete_employee(id):
+    emp = Employee.query.get(id)
+    if not emp:
+        return jsonify({"error": "الموظف غير موجود"}), 404
+
+    current_id = session.get("user_id")
+    if current_id and int(current_id) == emp.id:
+        return jsonify({"error": "لا يمكنك حذف حسابك الحالي"}), 400
+
+    linked_orders = Invoice.query.filter_by(employee_id=emp.id).count()
+    if linked_orders:
+        return jsonify({
+            "error": f"لا يمكن الحذف: الموظف مرتبط بـ {linked_orders} طلب. عطّله بدلاً من ذلك."
+        }), 400
+
+    before = snapshot_attrs(emp, *EMPLOYEE_SNAPSHOT_FIELDS)
+    try:
+        emp.pages = []
+        emp.roles = []
+        db.session.delete(emp)
+        db.session.commit()
+        try:
+            log_mutation(
+                "delete",
+                "employees",
+                "employee",
+                id,
+                before,
+                None,
+                f"حذف الموظف {before.get('name', id)}",
+            )
+        except Exception:
+            pass
+        return jsonify({"success": True, "message": "تم حذف الموظف بنجاح"})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": f"حدث خطأ: {str(e)}"}), 500
+
+
 @employees_bp.route("/profile/update", methods=["POST"])
 def profile_update():
     if "user_id" not in session:

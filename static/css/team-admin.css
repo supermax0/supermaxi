@@ -487,8 +487,9 @@
 
 .team-admin-page .permission-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: 14px;
+  width: 100%;
 }
 
 .team-admin-page .team-modal-box--wide .permission-grid {
@@ -498,15 +499,23 @@
 .team-admin-page .perm-checkbox-card {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  padding: 12px;
+  gap: 12px;
+  padding: 14px 16px;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--surface-soft);
   cursor: pointer;
-  transition: border-color 180ms ease, background 180ms ease;
+  transition: border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
   min-height: 48px;
   min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.team-admin-page .perm-checkbox-card:has(input:checked) {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 25%, transparent);
 }
 
 .team-admin-page .perm-checkbox-card:hover {
@@ -515,9 +524,11 @@
 }
 
 .team-admin-page .perm-checkbox-card input {
-  margin-top: 3px;
+  margin-top: 4px;
   flex-shrink: 0;
   accent-color: var(--primary);
+  width: 18px;
+  height: 18px;
 }
 
 .team-admin-page .perm-checkbox-card span {
@@ -526,8 +537,9 @@
   color: var(--text-main);
   font-size: 14px;
   font-weight: 600;
-  line-height: 1.5;
-  overflow-wrap: anywhere;
+  line-height: 1.55;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 .team-admin-page .perm-group-title {

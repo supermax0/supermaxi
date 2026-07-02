@@ -14,6 +14,10 @@ const CourierSettlementAnalysisWindow = {
     const unmatched = s.unmatched_rows ?? p.unmatchedRows ?? 0;
     const collected = s.total_collected_amount ?? p.totalCollected ?? 0;
     const fees = s.total_delivery_fees ?? p.totalFees ?? 0;
+    const financialPreview = s.financial_preview || p.financial_preview || (s.summary && s.summary.financial_preview) || {};
+    const posting = p.posting || (s.summary && s.summary.posting) || {};
+    const safeToPost = financialPreview.safe_to_post_rows ?? p.safeToPostRows ?? matched;
+    const isPosted = posting.status === "posted" || s.status === "posted";
     const expectedFees = s.expected_delivery_fees ?? p.expectedFees ?? Math.round(fees * 0.8);
     const feeDiff = Math.abs(fees - expectedFees);
     const issues = p.issues || [];
@@ -77,16 +81,20 @@ const CourierSettlementAnalysisWindow = {
         </div>
 
         <div class="ws-report-actions">
-          <button type="button" class="ws-btn ws-btn-primary" data-act="settle" disabled title="\u0645\u064a\u0632\u0629 \u0645\u0631\u062d\u0644\u0629 \u0642\u0627\u062f\u0645\u0629">\u062a\u0633\u062f\u064a\u062f \u0627\u0644\u0637\u0644\u0628\u0627\u062a \u0627\u0644\u0633\u0644\u064a\u0645\u0629 (${matched})</button>
+          <button type="button" class="ws-btn ws-btn-primary" data-act="settle" ${safeToPost > 0 && !isPosted ? "" : "disabled"}>${isPosted ? "\u062a\u0645 \u0627\u0644\u062a\u0646\u0641\u064a\u0630" : "\u062a\u0646\u0641\u064a\u0630 \u0627\u0644\u0637\u0644\u0628\u0627\u062a \u0627\u0644\u0633\u0644\u064a\u0645\u0629"} (${safeToPost})</button>
           <button type="button" class="ws-btn ws-btn-ghost" data-act="export">\u062a\u0635\u062f\u064a\u0631 \u0627\u0644\u062a\u0642\u0631\u064a\u0631</button>
           <button type="button" class="ws-btn ws-btn-ghost" data-act="more">\u2807 \u0625\u062c\u0631\u0627\u0621\u0627\u062a \u0623\u062e\u0631\u0649</button>
         </div>
-        <p class="ws-readonly-note">\u0642\u0631\u0627\u0621\u0629 \u0641\u0642\u0637 \u2014 \u0644\u0627 \u064a\u0648\u062c\u062f \u062a\u0631\u062d\u064a\u0644. \u0632\u0631 \u0627\u0644\u062a\u0633\u062f\u064a\u062f \u064a\u064f\u0641\u0639\u0651\u0644 \u0641\u064a \u0645\u0631\u062d\u0644\u0629 \u0644\u0627\u062d\u0642\u0629.</p>
+        <p class="ws-readonly-note">${isPosted ? "\u062a\u0645 \u062a\u0646\u0641\u064a\u0630 \u0627\u0644\u0635\u0641\u0648\u0641 \u0627\u0644\u0645\u0637\u0627\u0628\u0642\u0629 \u0627\u0644\u0633\u0644\u064a\u0645\u0629 \u0641\u0642\u0637\u060c \u0648\u0628\u0642\u064a\u062a \u0628\u0627\u0642\u064a \u0627\u0644\u0635\u0641\u0648\u0641 \u0644\u0644\u0645\u0631\u0627\u062c\u0639\u0629." : "\u0627\u0644\u062a\u0646\u0641\u064a\u0630 \u064a\u0645\u0631 \u0639\u0628\u0631 \u0645\u0648\u0627\u0641\u0642\u0629 \u0635\u0631\u064a\u062d\u0629 \u0648\u064a\u0634\u0645\u0644 \u0627\u0644\u0635\u0641\u0648\u0641 \u0627\u0644\u0645\u0637\u0627\u0628\u0642\u0629 \u0628\u0644\u0627 \u0645\u0634\u0627\u0643\u0644 \u062d\u0631\u062c\u0629 \u0641\u0642\u0637."}</p>
       </div>`;
 
     const exportBtn = container.querySelector('[data-act="export"]');
     if (exportBtn && handlers.onExport) {
       exportBtn.addEventListener("click", () => handlers.onExport(spec));
+    }
+    const settleBtn = container.querySelector('[data-act="settle"]');
+    if (settleBtn && handlers.onSettle && !settleBtn.disabled) {
+      settleBtn.addEventListener("click", () => handlers.onSettle(spec));
     }
   },
 

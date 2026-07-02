@@ -333,6 +333,22 @@
       if (progressPanel) progressPanel.hide();
     });
 
+    eventStream.on("courier.posting.approval_required", () => {
+      avatar.setMode("waiting_approval");
+      avatar.speak("التنفيذ يحتاج موافقة صريحة.");
+    });
+
+    eventStream.on("courier.posting.started", () => {
+      avatar.setMode("matching");
+      avatar.speak("بدأ تنفيذ الصفوف المطابقة السليمة.");
+    });
+
+    eventStream.on("courier.posting.completed", () => {
+      avatar.setMode("success");
+      avatar.speak("اكتمل التنفيذ الآمن.");
+      refreshSession();
+    });
+
     eventStream.on("session.completed", () => {
       setStatus("completed");
       if (btnRun) btnRun.disabled = true;
@@ -412,6 +428,27 @@
       },
       onReject: async () => {
         await workflowClient.submitApproval(false);
+      },
+      onCourierPostingApprove: async (spec) => {
+        const analysisId = spec && spec.props && spec.props.analysisId;
+        if (!analysisId || !courierAnalysisClient) return;
+        try {
+          await courierAnalysisClient.approvePosting(analysisId);
+          avatar.setMode("success");
+          avatar.speak("تم تنفيذ الطلبات المطابقة السليمة فقط.");
+          await refreshSession();
+        } catch (e) {
+          alert(e.message || "فشل تنفيذ كشف التسديد");
+        }
+      },
+      onCourierPostingReject: async (spec) => {
+        const analysisId = spec && spec.props && spec.props.analysisId;
+        if (!analysisId || !courierAnalysisClient) return;
+        try {
+          await courierAnalysisClient.cancelPosting(analysisId);
+        } catch (e) {
+          alert(e.message || "تعذر إلغاء الموافقة");
+        }
       },
       onSelectWorkflow: async (type) => {
         try {
@@ -502,6 +539,17 @@
       },
       onExport: () => {
         window.print();
+      },
+      onSettle: async (spec) => {
+        const aid = spec && spec.props && spec.props.analysisId;
+        if (!aid) return;
+        try {
+          await courierAnalysisClient.preparePosting(aid);
+          avatar.setMode("waiting_approval");
+          avatar.speak("راجِع المعاينة ثم وافق على التنفيذ الآمن.");
+        } catch (e) {
+          alert(e.message || "تعذر تجهيز موافقة التنفيذ");
+        }
       },
       onFilter: async (spec, filter) => {
         const aid = (spec.props || {}).analysisId;
