@@ -1,9 +1,13 @@
 import json
 import os
+import posixpath
+import shlex
 import subprocess
+import tarfile
 import threading
 import time
 import queue
+import tempfile
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from pathlib import Path
@@ -40,6 +44,7 @@ SAFE_PUSH_EXCLUDED_FILES = {
     ".env.local",
     "database.db",
     "debug-180817.log",
+    "finora_deploy_config.json",
     "nexus-execution.log",
     "nexus-workflows.json",
     "supermaxi",
@@ -55,6 +60,7 @@ DEFAULT_CONFIG = {
     "gunicorn_bind": "127.0.0.1:8000",
     "gunicorn_workers": 3,
     "logs_command": "journalctl -u nginx -n 100 --no-pager",
+    "last_deployed_commit": "",
     # كلمة السر لا نحفظها في الملف لأسباب أمان، تبقى فارغة في كل تشغيل
 }
 
@@ -189,7 +195,7 @@ class FinoraDeployStudio(tk.Tk):
         self.push_btn = ttk.Button(btns, text="Push to GitHub", width=18, command=self.on_push_clicked)
         self.push_btn.pack(side=tk.LEFT, padx=4, pady=4)
 
-        self.deploy_btn = ttk.Button(btns, text="Deploy to Server", width=18, command=self.on_deploy_clicked)
+        self.deploy_btn = ttk.Button(btns, text="Smart Deploy", width=18, command=self.on_deploy_clicked)
         self.deploy_btn.pack(side=tk.LEFT, padx=4, pady=4)
 
         self.restart_btn = ttk.Button(btns, text="Restart Server", width=18, command=self.on_restart_clicked)
@@ -663,6 +669,12 @@ class FinoraDeployStudio(tk.Tk):
         except FileNotFoundError:
             return 1, "[ERROR] git command not found.\n"
 
+    def current_git_commit(self, cwd: Path) -> str:
+        rc, out = self.git_capture(["rev-parse", "HEAD"], cwd)
+        if rc != 0:
+            return ""
+        return (out or "").strip()
+
     def is_safe_push_path(self, path_text: str) -> bool:
         cleaned = path_text.strip().replace("\\", "/")
         if not cleaned:
@@ -723,6 +735,150 @@ class FinoraDeployStudio(tk.Tk):
                 self.append_log(f"  ... and {len(skipped_paths) - 30} more\n")
 
         return safe_paths, deleted
+
+    def collect_safe_changed_paths(
+        self,
+        cwd: Path,
+        since_commit: str = "",
+    ) -> tuple[list[str], list[str], list[str]]:
+        """Collect modified/added/untracked files for Smart Deploy; deletions are reported only."""
+        commands = [
+            ["diff", "--name-only", "--diff-filter=AM"],
+            ["diff", "--cached", "--name-only", "--diff-filter=AM"],
+            ["ls-files", "-o", "--exclude-standard"],
+        ]
+        if since_commit:
+            commands.append(["diff", "--name-only", "--diff-filter=AM", f"{since_commit}..HEAD"])
+        else:
+            commands.append(["diff-tree", "--no-commit-id", "--name-only", "--diff-filter=AM", "-r", "HEAD"])
+
+        candidates: list[str] = []
+        errors: list[str] = []
+        for args in commands:
+            rc, out = self.git_capture(args, cwd)
+            if rc != 0:
+                errors.append(out)
+                continue
+            for line in out.splitlines():
+                p = line.strip()
+                if p:
+                    candidates.append(p)
+
+        rc_deleted, deleted_out = self.git_capture(["ls-files", "-d"], cwd)
+        if rc_deleted != 0:
+            errors.append(deleted_out)
+        deleted = [line.strip() for line in deleted_out.splitlines() if line.strip()]
+
+        safe_paths: list[str] = []
+        skipped_paths: list[str] = []
+        seen: set[str] = set()
+        for p in candidates:
+            p = p.replace("\\", "/")
+            if p in seen:
+                continue
+            seen.add(p)
+            local_file = cwd / Path(p)
+            if not local_file.is_file():
+                skipped_paths.append(p)
+                continue
+            if self.is_safe_push_path(p):
+                safe_paths.append(p)
+            else:
+                skipped_paths.append(p)
+
+        if errors:
+            for err in errors:
+                self.append_log(err)
+        if deleted:
+            self.append_log(
+                f"[WARN] Smart Deploy ignored {len(deleted)} deleted tracked files. "
+                "It uploads changed/new files only and never deletes server files automatically.\n"
+            )
+        if skipped_paths:
+            self.append_log(f"[WARN] Smart Deploy skipped {len(skipped_paths)} unsafe/local paths.\n")
+            for p in skipped_paths[:30]:
+                self.append_log(f"  - {p}\n")
+            if len(skipped_paths) > 30:
+                self.append_log(f"  ... and {len(skipped_paths) - 30} more\n")
+
+        return safe_paths, skipped_paths, deleted
+
+    def make_changed_files_archive(self, cwd: Path, paths: list[str]) -> Path:
+        """Create a tar.gz with only selected safe relative paths."""
+        tmp = tempfile.NamedTemporaryFile(prefix="finora-smart-deploy-", suffix=".tar.gz", delete=False)
+        archive_path = Path(tmp.name)
+        tmp.close()
+        with tarfile.open(archive_path, "w:gz") as tar:
+            for rel in paths:
+                safe_rel = rel.replace("\\", "/").lstrip("/")
+                tar.add(cwd / Path(safe_rel), arcname=safe_rel, recursive=False)
+        return archive_path
+
+    def upload_file_to_server(self, local_file: Path, remote_file: str) -> int:
+        server = self.server_ssh_var.get().strip()
+        if not server:
+            self.append_log("[ERROR] Server SSH address is empty.\n")
+            return 1
+        password = self.server_password_var.get()
+
+        if not password:
+            full_cmd = ["scp", "-q", str(local_file), f"{server}:{remote_file}"]
+            self.append_log(f"$ scp {local_file.name} {server}:{remote_file}\n")
+            try:
+                proc = subprocess.Popen(
+                    full_cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1,
+                )
+                assert proc.stdout is not None
+                for line in proc.stdout:
+                    self.append_log(line)
+                proc.wait()
+                if proc.returncode != 0:
+                    self.append_log(f"[ERROR] scp failed with code {proc.returncode}\n")
+                return proc.returncode
+            except FileNotFoundError:
+                self.append_log("[ERROR] scp command not found. Make sure OpenSSH is installed and in PATH.\n")
+                return 1
+
+        try:
+            import paramiko  # type: ignore[import]
+        except ImportError:
+            self.append_log("[ERROR] paramiko غير مثبت. ثبّته بأمر: pip install paramiko\n")
+            return 1
+
+        host = server
+        username = None
+        if "@" in server:
+            username, host = server.split("@", 1)
+
+        self.append_log(f"[INFO] Uploading archive via SFTP to {server}…\n")
+        client = paramiko.SSHClient()
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        try:
+            client.connect(
+                hostname=host,
+                username=username,
+                password=password,
+                look_for_keys=False,
+                allow_agent=False,
+            )
+            sftp = client.open_sftp()
+            try:
+                sftp.put(str(local_file), remote_file)
+            finally:
+                sftp.close()
+            return 0
+        except Exception as e:
+            self.append_log(f"[ERROR] SFTP upload failed: {e}\n")
+            return 1
+        finally:
+            try:
+                client.close()
+            except Exception:
+                pass
 
     def run_ssh_script(self, script: str) -> int:
         server = self.server_ssh_var.get().strip()
@@ -866,8 +1022,15 @@ class FinoraDeployStudio(tk.Tk):
         thread.start()
 
     def _deploy_thread(self) -> None:
+        archive_path: Path | None = None
         try:
-            self.set_status("Deploying to server (upload script)…")
+            self.set_status("Smart Deploy: collecting changed files…")
+
+            local_path = Path(self.local_path_var.get().strip() or ".")
+            if not local_path.exists():
+                self.append_log(f"[ERROR] Local path does not exist: {local_path}\n")
+                self.set_status("Deploy failed (local path missing).")
+                return
 
             server_path = self.server_path_var.get().strip()
             if not server_path:
@@ -885,30 +1048,109 @@ class FinoraDeployStudio(tk.Tk):
             if ":" in bind:
                 port = bind.split(":")[-1] or "8000"
 
-            # سكربت الدبلوي كما في الملف الذي أرسلته (upload script)
+            current_commit = self.current_git_commit(local_path)
+            last_deployed_commit = (self.config_data.get("last_deployed_commit") or "").strip()
+            if last_deployed_commit and current_commit:
+                self.append_log(
+                    f"[INFO] Smart Deploy diff range: {last_deployed_commit[:8]}..{current_commit[:8]}\n"
+                )
+            elif current_commit:
+                self.append_log("[INFO] No previous deploy commit recorded; including latest commit changes once.\n")
+
+            changed_paths, _skipped, deleted = self.collect_safe_changed_paths(
+                local_path,
+                since_commit=last_deployed_commit if current_commit else "",
+            )
+            if not changed_paths:
+                self.append_log("[INFO] Smart Deploy found no safe modified/new files to upload.\n")
+                if deleted:
+                    self.append_log("[INFO] Deleted files were ignored; Smart Deploy does not delete server files.\n")
+                self.set_status("Nothing changed to deploy.")
+                return
+
+            self.append_log(f"[INFO] Smart Deploy will upload {len(changed_paths)} changed file(s):\n")
+            for p in changed_paths[:80]:
+                self.append_log(f"  + {p}\n")
+            if len(changed_paths) > 80:
+                self.append_log(f"  ... and {len(changed_paths) - 80} more\n")
+
+            archive_path = self.make_changed_files_archive(local_path, changed_paths)
+            remote_archive = posixpath.join("/tmp", archive_path.name)
+
+            self.set_status("Smart Deploy: uploading changed files…")
+            rc_upload = self.upload_file_to_server(archive_path, remote_archive)
+            if rc_upload != 0:
+                self.set_status("Deploy failed while uploading archive.")
+                return
+
+            needs_python_deps = any(p == "requirements.txt" for p in changed_paths)
+            needs_social_build = any(
+                p.startswith("static/ai_agent_frontend/")
+                and (
+                    p.endswith(".tsx")
+                    or p.endswith(".ts")
+                    or p.endswith(".js")
+                    or p.endswith(".css")
+                    or p.endswith("package.json")
+                    or p.endswith("package-lock.json")
+                    or p.endswith("vite.config.ts")
+                )
+                for p in changed_paths
+            )
+            needs_publisher_build = any(
+                p.startswith("static/publisher_frontend/")
+                and (
+                    p.endswith(".tsx")
+                    or p.endswith(".ts")
+                    or p.endswith(".js")
+                    or p.endswith(".css")
+                    or p.endswith("package.json")
+                    or p.endswith("package-lock.json")
+                    or p.endswith("vite.config.ts")
+                )
+                for p in changed_paths
+            )
+
+            safe_server_path = shlex.quote(server_path)
+            safe_archive = shlex.quote(remote_archive)
+            pip_step = (
+                "if [ -f requirements.txt ]; then pip install -r requirements.txt; fi"
+                if needs_python_deps
+                else "echo '[SKIP] requirements.txt unchanged'"
+            )
+            social_build_step = (
+                "(cd static/ai_agent_frontend && npm ci --no-audit --no-fund 2>/dev/null || npm install --no-audit --no-fund) && "
+                "(cd static/ai_agent_frontend && npm run build)"
+                if needs_social_build
+                else "echo '[SKIP] Social AI frontend unchanged'"
+            )
+            publisher_build_step = (
+                "(cd static/publisher_frontend && npm ci --no-audit --no-fund 2>/dev/null || npm install --no-audit --no-fund) && "
+                "(cd static/publisher_frontend && npm run build)"
+                if needs_publisher_build
+                else "echo '[SKIP] Publisher frontend unchanged'"
+            )
+
             script = f"""#!/bin/bash
 echo "=============================="
-echo "FINORA DEPLOY SCRIPT STARTING"
+echo "FINORA SMART DEPLOY STARTING"
 echo "=============================="
 
-PROJECT_DIR="{server_path}"
-SERVICE_NAME="{service_name}"
-NGINX_SERVICE="{nginx_service}"
-PORT="{port}"
+PROJECT_DIR={safe_server_path}
+ARCHIVE={safe_archive}
+SERVICE_NAME={shlex.quote(service_name)}
+NGINX_SERVICE={shlex.quote(nginx_service)}
+PORT={shlex.quote(port)}
 
 cd "$PROJECT_DIR" || exit
 
 echo ""
-echo "[1] Fix git safe directory..."
-git config --global --add safe.directory "$PROJECT_DIR"
+echo "[1] Extracting changed files only..."
+tar -xzf "$ARCHIVE" -C "$PROJECT_DIR"
+rm -f "$ARCHIVE"
 
 echo ""
-echo "[2] Updating code from GitHub..."
-git fetch origin
-git reset --hard origin/main
-
-echo ""
-echo "[3] Activating virtual environment..."
+echo "[2] Activating virtual environment..."
 if [ -d "venv" ]; then
     source venv/bin/activate
 else
@@ -916,30 +1158,21 @@ else
 fi
 
 echo ""
-echo "[4] Installing dependencies..."
-if [ -f "requirements.txt" ]; then
-    pip install -r requirements.txt
-fi
+echo "[3] Python dependencies..."
+{pip_step}
 
 echo ""
-echo "[5] Cleaning python cache..."
+echo "[4] Cleaning python cache..."
 find . -name "*.pyc" -delete
 find . -name "__pycache__" -type d -exec rm -rf {{}} +
 
 echo ""
-echo "[6] Cleaning static build..."
-rm -rf static/build 2>/dev/null
+echo "[5] Frontend builds if relevant..."
+{social_build_step}
+{publisher_build_step}
 
 echo ""
-echo "[6b] Building Social AI frontend (so /social-ai/ loads correctly)..."
-if [ -d "static/ai_agent_frontend" ]; then
-  (cd static/ai_agent_frontend && npm ci --no-audit --no-fund 2>/dev/null || npm install --no-audit --no-fund) && (cd static/ai_agent_frontend && npm run build) || echo "[WARN] Social AI frontend build failed; /social-ai/ may show white page until you run: cd static/ai_agent_frontend && npm run build"
-else
-  echo "[SKIP] static/ai_agent_frontend not found"
-fi
-
-echo ""
-echo "[7] Killing old gunicorn processes and freeing port..."
+echo "[6] Restarting application safely..."
 sudo pkill -9 gunicorn 2>/dev/null || true
 sudo fuser -k "$PORT"/tcp 2>/dev/null || true
 sleep 2
@@ -954,19 +1187,18 @@ if command -v lsof >/dev/null 2>&1; then
 fi
 
 echo ""
-echo "[8] Restarting application service..."
 systemctl restart "$SERVICE_NAME"
 
 echo ""
-echo "[9] Restarting nginx..."
+echo "[7] Restarting nginx..."
 systemctl restart "$NGINX_SERVICE"
 
 echo ""
-echo "[10] Checking service status..."
+echo "[8] Checking service status..."
 systemctl status "$SERVICE_NAME" --no-pager
 
 echo ""
-echo "[11] Checking open ports..."
+echo "[9] Checking open ports..."
 lsof -i :"$PORT"
 
 echo ""
@@ -975,7 +1207,7 @@ LISTEN_CHECK=$(lsof -i :"$PORT" 2>/dev/null | grep -c LISTEN || true)
 if [ "$LISTEN_CHECK" -lt 1 ]; then
   echo "[WARN] No process is listening on port $PORT. Gunicorn may have failed to start (e.g. Address already in use or app crash)."
   echo ""
-  echo "[12] Last 30 lines of service log (to see gunicorn error):"
+  echo "[10] Last 30 lines of service log (to see gunicorn error):"
   journalctl -u "$SERVICE_NAME" -n 30 --no-pager 2>/dev/null || true
   echo ""
   echo "Tip: On server run: sudo journalctl -u $SERVICE_NAME -f   to watch logs. Use http:// (not https://) if SSL is not configured."
@@ -983,18 +1215,27 @@ if [ "$LISTEN_CHECK" -lt 1 ]; then
 fi
 
 echo "=============================="
-echo "DEPLOYMENT COMPLETE"
+echo "SMART DEPLOY COMPLETE"
 echo "=============================="
 """
 
+            self.set_status("Smart Deploy: applying files on server…")
             rc = self.run_ssh_script(script)
             if rc == 0:
-                self.append_log("[INFO] Deploy completed successfully.\n")
-                self.set_status("Deploy completed.")
+                self.append_log("[INFO] Smart Deploy completed successfully.\n")
+                if current_commit:
+                    self.config_data["last_deployed_commit"] = current_commit
+                    self.save_config()
+                self.set_status(f"Smart Deploy completed ({len(changed_paths)} files).")
             else:
-                self.append_log("[WARN] Deploy script exited with code %s. Check log above: port in use or gunicorn crash. Try http:// (not https://) if you see ERR_SSL_PROTOCOL_ERROR.\n" % rc)
-                self.set_status("Deploy finished with errors (see log).")
+                self.append_log("[WARN] Smart Deploy script exited with code %s. Check log above: port in use or gunicorn crash.\n" % rc)
+                self.set_status("Smart Deploy finished with errors (see log).")
         finally:
+            if archive_path:
+                try:
+                    archive_path.unlink(missing_ok=True)
+                except Exception:
+                    pass
             self.set_busy(False)
 
     def on_restart_clicked(self) -> None:
