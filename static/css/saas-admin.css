@@ -312,8 +312,10 @@
 .inventory-page,
 .purchases-page,
 .expenses-page {
-  max-width: 1440px !important;
-  margin-inline: auto !important;
+  width: 100% !important;
+  max-width: none !important;
+  margin-inline: 0 !important;
+  box-sizing: border-box;
 }
 
 .inventory-page .inv-summary,
@@ -323,6 +325,16 @@
   grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
   gap: 12px !important;
   margin-bottom: 14px !important;
+}
+
+.inventory-page .inv-summary .inv-box--featured {
+  grid-column: span 2;
+}
+
+@media (max-width: 768px) {
+  .inventory-page .inv-summary .inv-box--featured {
+    grid-column: span 1;
+  }
 }
 
 .inventory-page .inv-summary .inv-box,
@@ -632,7 +644,7 @@
   border-color: var(--border);
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 768px) {
   .finora-summary-grid,
   .dashboard-order-grid,
   .inventory-page .inv-summary,

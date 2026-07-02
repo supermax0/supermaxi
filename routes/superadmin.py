@@ -553,6 +553,96 @@ def tenant_reset_db(slug):
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+def _schema_report_summary(report: dict) -> dict:
+    tables = report.get("tables_created") or []
+    columns = report.get("columns_added") or []
+    warnings = report.get("warnings") or []
+    errors = report.get("errors") or []
+    return {
+        "tables": len(tables),
+        "columns": len(columns),
+        "warnings": len(warnings),
+        "errors": len(errors),
+    }
+
+
+@superadmin_bp.route("/database-repair")
+def superadmin_database_repair():
+    tenants = Tenant.query.order_by(Tenant.name.asc()).all()
+    return render_template("superadmin_database_repair.html", tenants=tenants)
+
+
+@superadmin_bp.route("/database-repair/api", methods=["POST"])
+def superadmin_database_repair_api():
+    from flask import jsonify
+    from services.schema_repair import repair_tenant_schema
+
+    data = request.get_json(silent=True) or {}
+    dry_run = bool(data.get("dry_run", True))
+    scope = (data.get("scope") or "all").strip()
+    slug = (data.get("tenant_slug") or "").strip().lower()
+
+    q = Tenant.query.order_by(Tenant.name.asc())
+    if scope == "active":
+        q = q.filter_by(is_active=True)
+    elif scope == "one":
+        if not slug:
+            return jsonify({"success": False, "error": "اختر شركة أولاً."}), 400
+        q = q.filter(db.func.lower(Tenant.slug) == slug)
+
+    tenants = q.all()
+    if scope == "one" and not tenants:
+        return jsonify({"success": False, "error": "الشركة غير موجودة."}), 404
+
+    results = []
+    totals = {"tables": 0, "columns": 0, "warnings": 0, "errors": 0}
+
+    old_tenant = getattr(g, "tenant", None)
+    try:
+        for tenant in tenants:
+            item = {
+                "slug": tenant.slug,
+                "name": tenant.name,
+                "db_path": tenant.db_path,
+                "ok": True,
+                "report": None,
+                "summary": {"tables": 0, "columns": 0, "warnings": 0, "errors": 0},
+            }
+            try:
+                clear_tenant_engine(tenant.slug)
+                engine = get_tenant_engine(tenant.slug)
+                g.tenant = tenant.slug
+                report = repair_tenant_schema(engine, dry_run=dry_run)
+                item["report"] = report
+                item["summary"] = _schema_report_summary(report)
+                item["ok"] = not bool(report.get("errors"))
+                if not dry_run:
+                    clear_tenant_engine(tenant.slug)
+            except Exception as exc:
+                current_app.logger.exception("superadmin database repair failed for %s", tenant.slug)
+                item["ok"] = False
+                item["error"] = str(exc)
+                item["summary"]["errors"] = 1
+            finally:
+                for key in totals:
+                    totals[key] += item["summary"].get(key, 0)
+                results.append(item)
+                g.tenant = None
+    finally:
+        g.tenant = old_tenant
+
+    return jsonify(
+        {
+            "success": True,
+            "dry_run": dry_run,
+            "scope": scope,
+            "count": len(results),
+            "totals": totals,
+            "results": results,
+        }
+    )
+
+
 
 @superadmin_bp.route("/tenants/create", methods=["GET", "POST"])
 def tenants_create():

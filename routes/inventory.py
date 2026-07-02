@@ -635,9 +635,32 @@ def toggle_product(id):
 # ======================================
 @inventory_bp.route("/delete/<int:id>")
 def delete_product(id):
+    if not check_permission("can_manage_inventory"):
+        return redirect("/pos"), 403
+
     p = Product.query.get_or_404(id)
-    db.session.delete(p)
-    db.session.commit()
+    try:
+        from models.branch import BranchStock, StockTransferLine
+        from models.purchase_item import PurchaseItem
+
+        has_history = (
+            OrderItem.query.filter_by(product_id=p.id).first() is not None
+            or PurchaseItem.query.filter_by(product_id=p.id).first() is not None
+            or StockTransferLine.query.filter_by(product_id=p.id).first() is not None
+        )
+
+        if has_history:
+            p.active = False
+            flash("تم تعطيل المنتج بدلاً من حذفه لأنه مرتبط بسجلات سابقة.", "warning")
+        else:
+            BranchStock.query.filter_by(product_id=p.id).delete(synchronize_session=False)
+            db.session.delete(p)
+            flash("تم حذف المنتج بنجاح.", "success")
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        current_app.logger.exception("delete_product failed")
+        flash(f"تعذر حذف المنتج: {exc}", "error")
     return redirect(url_for("inventory.inventory"))
 
 

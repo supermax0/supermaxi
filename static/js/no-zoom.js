@@ -2,7 +2,7 @@
   "use strict";
 
   var VIEWPORT_NO_ZOOM =
-    "width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover";
+    "width=device-width, initial-scale=1.0, viewport-fit=cover";
 
   function ensureViewportMeta() {
     var meta = document.querySelector('meta[name="viewport"]');
@@ -11,7 +11,7 @@
       meta.name = "viewport";
       document.head.appendChild(meta);
     }
-    if (!meta.content || meta.content.indexOf("user-scalable=no") === -1) {
+    if (!meta.content || meta.content.indexOf("width=device-width") === -1) {
       meta.content = VIEWPORT_NO_ZOOM;
     }
   }

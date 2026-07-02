@@ -5,6 +5,8 @@ Core-only tables (hosted on the main app DB) are never created on tenant DBs.
 """
 from __future__ import annotations
 
+import importlib
+import pkgutil
 from typing import Any
 
 from sqlalchemy import inspect, text
@@ -29,21 +31,12 @@ _CORE_ONLY_TABLES: frozenset[str] = frozenset(
 
 def _register_models_for_metadata() -> None:
     """Import model modules so db.Model.metadata is populated for tenant features."""
-    import models  # noqa: F401
+    import models
 
-    import models.agent_message  # noqa: F401
-    import models.comment_log  # noqa: F401
-    import models.delivery_agent  # noqa: F401
-    import models.invoice_settings  # noqa: F401
-    import models.page  # noqa: F401
-    import models.pos_ai_log  # noqa: F401
-    import models.report  # noqa: F401
-    import models.social_account  # noqa: F401
-    import models.social_post  # noqa: F401
-    import models.social_post_platform  # noqa: F401
-    import models.supplier_invoice  # noqa: F401
-    import models.supplier_payment  # noqa: F401
-    import models.system_settings  # noqa: F401
+    for mod in pkgutil.iter_modules(models.__path__):
+        if mod.ispkg or mod.name == "__init__":
+            continue
+        importlib.import_module(f"models.{mod.name}")
 
 
 def _quote_ident(name: str) -> str:
