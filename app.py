@@ -1256,6 +1256,7 @@ def require_login():
     open_routes = [
         "/",
         "/pos",
+        "/pos/",
         "/pos/login",
         "/static",
         "/pricing",

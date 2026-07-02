@@ -104,7 +104,10 @@ def guard_permission(permission_name: str, *, json: bool | None = None):
         return None
     if _wants_json_response(json):
         return jsonify({"success": False, "error": "غير مصرح"}), 403
-    return redirect("/pos"), 403
+    # تجنب حلقة إعادة التوجيه: /pos/ ←→ /pos
+    if request.path.rstrip("/") == "/pos":
+        return redirect("/"), 403
+    return redirect("/pos/"), 403
 
 
 def allowed_order_statuses_for(employee: Employee | None) -> list[str]:

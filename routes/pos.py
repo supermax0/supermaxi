@@ -84,7 +84,7 @@ def pos_permission_guard():
 # =================================================
 # POS PAGE
 # =================================================
-@pos_bp.route("/")
+@pos_bp.route("/", strict_slashes=False)
 def pos():
     # إذا لم يكن هناك مستخدم مسجل دخول → رجوع إلى صفحة تسجيل دخول الشركات الموحدة
     if "user_id" not in session:

@@ -922,6 +922,7 @@ def inject_global_data():
 _OPEN_ROUTES = [
     "/",
     "/pos",
+    "/pos/",
     "/pos/login",
     "/static",
     "/pricing",
