@@ -1,6 +1,6 @@
 from contextlib import contextmanager
 
-from flask import Blueprint, render_template, request, jsonify, send_from_directory, session, g, redirect
+from flask import Blueprint, render_template, request, jsonify, send_from_directory, session, g, redirect, current_app
 from extensions import db
 from models.invoice_settings import InvoiceSettings
 from models.system_settings import SystemSettings
@@ -711,8 +711,12 @@ def branches_settings():
     from models.branch import Branch
     from utils.branch_migration import ensure_branch_schema
 
-    ensure_branch_schema()
-    branches = Branch.query.order_by(Branch.is_default.desc(), Branch.name.asc()).all()
+    try:
+        ensure_branch_schema()
+        branches = Branch.query.order_by(Branch.is_default.desc(), Branch.name.asc()).all()
+    except Exception:
+        current_app.logger.exception("failed loading branches settings page")
+        branches = []
     return render_template(
         "settings_branches.html",
         **_settings_ctx("branches", branches=branches),

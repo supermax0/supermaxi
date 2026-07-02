@@ -7,6 +7,7 @@ from models.branch import Branch
 from models.employee import Employee
 from models.fixed_asset import FixedAsset, ASSET_STATUSES, PAYMENT_METHODS
 from models.fixed_asset_category import FixedAssetCategory
+from models.fixed_asset_movement import FixedAssetMovement
 from models.fixed_asset_maintenance import FixedAssetMaintenance, MAINTENANCE_TYPES
 from models.fixed_asset_disposal import FixedAssetDisposal, DISPOSAL_TYPES
 from models.fixed_asset_attachment import ATTACHMENT_TYPES, FixedAssetAttachment
