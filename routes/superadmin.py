@@ -918,13 +918,14 @@ def settings():
         return redirect(url_for("superadmin.settings"))
 
     # GET Request - Load Settings
-    from utils.platform_branding import DEFAULT_LOGO_PATH, get_platform_logo_url
+    from utils.platform_branding import DEFAULT_LOGO_PATH, get_platform_logo_path, get_platform_logo_url
 
     openai_key = (GlobalSetting.get_setting("OPENAI_API_KEY", "") or "").strip()
+    logo_path = get_platform_logo_path()
     settings_data = {
         "app_name": GlobalSetting.get_setting("APP_NAME", "Finora System"),
         "app_logo_path": get_platform_logo_url(),
-        "has_custom_logo": get_platform_logo_url() != DEFAULT_LOGO_PATH,
+        "has_custom_logo": logo_path != DEFAULT_LOGO_PATH,
         "trial_days": GlobalSetting.get_setting("TRIAL_DAYS", "14"),
         "openai_api_key_present": bool(openai_key),
         "openai_api_key_masked": "●●●●●●●●●●" if openai_key else "",

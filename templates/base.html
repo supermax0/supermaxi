@@ -319,9 +319,10 @@
 
     .brand {
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 8px;
+      gap: 10px;
       text-align: center;
       margin-bottom: 32px;
       padding-bottom: 16px;
@@ -329,16 +330,23 @@
     }
 
     .brand-logo {
-      width: 26px;
-      height: 26px;
-      border-radius: 8px;
+      width: 56px;
+      height: 56px;
+      border-radius: 14px;
       object-fit: contain;
+      padding: 6px;
+      background: var(--surface);
+      border: 1px solid var(--border-light);
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
     }
 
     .brand-text {
-      font-size: 22px;
+      font-size: 15px;
       font-weight: 800;
-      letter-spacing: -0.5px;
+      line-height: 1.25;
+      letter-spacing: -0.2px;
+      max-width: 100%;
+      word-break: break-word;
       background: var(--gradient-primary);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;

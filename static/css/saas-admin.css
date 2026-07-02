@@ -149,15 +149,48 @@
 }
 
 .dashboard-order-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-  gap: 12px !important;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
 }
 
-.order-stat-card {
-  min-height: 118px !important;
+.order-stat-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.order-stat-link.finora-stat-card {
+  cursor: pointer;
+}
+
+.order-stat-link.finora-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
+  border-color: rgba(59, 130, 246, 0.22);
+}
+
+@media (max-width: 1280px) {
+  .dashboard-order-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .dashboard-order-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .dashboard-order-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .order-stat-value,
+.finora-stat-value,
 .metric-count,
 .dashboard-side-value,
 .dashboard-mini-stat-value,
@@ -648,7 +681,6 @@
 
 @media (max-width: 768px) {
   .finora-summary-grid,
-  .dashboard-order-grid,
   .inventory-page .inv-summary,
   .expenses-page .exp-summary,
   .purchases-page .pur-kpis,
@@ -661,7 +693,6 @@
 @media (max-width: 760px) {
   .finora-summary-grid,
   .finora-wide-grid,
-  .dashboard-order-grid,
   .charts-container {
     grid-template-columns: 1fr !important;
   }

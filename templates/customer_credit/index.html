@@ -7,10 +7,10 @@
 
 <div class="cc-page">
   <div class="cc-header">
-    <div>
-      <p style="color:var(--text-muted);font-size:0.9rem;margin:0;">{{ _('customer_credit_subtitle') }}</p>
+    <div class="cc-header__text">
+      <p class="cc-page-subtitle">{{ _('customer_credit_subtitle') }}</p>
     </div>
-    <button type="button" class="cc-btn cc-btn-primary" onclick="openAddDebtModal()">
+    <button type="button" class="cc-btn cc-btn-primary cc-header__action" onclick="openAddDebtModal()">
       <i class="fas fa-plus"></i> {{ _('customer_credit_add_debt') }}
     </button>
   </div>
@@ -36,7 +36,7 @@
 
   <div class="cc-panel">
     <div class="cc-toolbar">
-      <h3 style="margin:0;font-weight:800;">{{ _('customer_credit_list_title') }}</h3>
+      <h3 class="cc-toolbar-title">{{ _('customer_credit_list_title') }}</h3>
       <input type="search" id="ccSearch" class="cc-search-input" placeholder="{{ _('customer_credit_search') }}" oninput="filterCreditRows()">
     </div>
 

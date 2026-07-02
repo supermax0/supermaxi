@@ -15,26 +15,46 @@ ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp", "svg"}
 
 def _with_core_db(fn):
     from flask import g
+    from extensions import db
 
     old_tenant = getattr(g, "tenant", None)
     g.tenant = None
     try:
+        db.session.rollback()
         return fn()
+    except Exception:
+        db.session.rollback()
+        raise
     finally:
         g.tenant = old_tenant
 
 
-def get_platform_logo_url():
+def get_platform_logo_url(*, cache_bust=True):
     def _read():
         from models.core.global_setting import GlobalSetting
 
-        path = (GlobalSetting.get_setting(LOGO_SETTING_KEY, "") or "").strip()
-        return path if path else DEFAULT_LOGO_PATH
+        row = GlobalSetting.query.filter_by(key=LOGO_SETTING_KEY).first()
+        path = (row.value if row and row.value else "").strip()
+        path = path or DEFAULT_LOGO_PATH
+        version = ""
+        if cache_bust and path != DEFAULT_LOGO_PATH and row and row.updated_at:
+            version = str(int(row.updated_at.timestamp()))
+        return path, version
 
     try:
-        return _with_core_db(_read)
+        path, version = _with_core_db(_read)
     except Exception:
         return DEFAULT_LOGO_PATH
+
+    if version:
+        return f"{path}?v={version}"
+    return path
+
+
+def get_platform_logo_path():
+    """Raw stored logo path without cache-busting query."""
+    url = get_platform_logo_url(cache_bust=False)
+    return url.split("?", 1)[0]
 
 
 def get_platform_app_name():
