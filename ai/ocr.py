@@ -3,7 +3,27 @@ import numpy as np
 import pytesseract
 from PIL import Image
 import io
+import os
 import re
+import shutil
+
+
+def _configure_tesseract() -> None:
+    if getattr(_configure_tesseract, "_configured", False):
+        return
+    custom = (os.environ.get("TESSERACT_CMD") or os.environ.get("TESSERACT_PATH") or "").strip()
+    if custom and os.path.exists(custom):
+        pytesseract.pytesseract.tesseract_cmd = custom
+    elif shutil.which("tesseract"):
+        pass
+    elif os.path.exists(r"C:\Program Files\Tesseract-OCR\tesseract.exe"):
+        pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+    elif os.path.exists("/usr/bin/tesseract"):
+        pytesseract.pytesseract.tesseract_cmd = "/usr/bin/tesseract"
+    _configure_tesseract._configured = True
+
+
+_configure_tesseract()
 
 # إعدادات محسنة لاستخراج النص العربي مع الأرقام الإنجليزية
 # --oem 3: استخدام LSTM OCR Engine (الأفضل)

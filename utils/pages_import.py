@@ -19,6 +19,8 @@ HEADER_KEYWORDS = {
     "اسم البيج",
     "اسم بيج",
     "البيج",
+    "الصفحة",
+    "صفحة",
     "الموظفين",
     "الموظف",
     "الطلبات",
@@ -41,11 +43,29 @@ HEADER_KEYWORDS = {
     "returns",
 }
 
-VISION_PROMPT = """استخرج أسماء البيجات فقط من صورة جدول عربي.
-تجاهل عناوين الأعمدة والأرقام والإحصائيات وأعمدة الموظفين.
-أرجع JSON فقط بهذا الشكل:
+VISION_PROMPT = """هذه صورة لقائمة أسماء بيجات/صفحات عربية (عمود واحد أو جدول بسيط).
+استخرج أسماء البيجات فقط بدون أرقام التسلسل وبدون عنوان "الصفحة".
+مثال: من "1. الترا بريميوم" أرجع "الترا بريميوم" فقط.
+تجاهل الأرقام والإحصائيات وأعمدة الموظفين إن وجدت.
+أرجع JSON فقط:
 {"names": ["اسم 1", "اسم 2"]}
 لا تضف أي نص خارج JSON."""
+
+NUMBERED_PREFIX_RE = re.compile(
+    r"^[\|\-\—\s]*(?:\d+[\.\)\-:]?\s*)+",
+    re.UNICODE,
+)
+TRAILING_INDEX_RE = re.compile(r"[\s\.\|]*\d+\s*$", re.UNICODE)
+
+
+def _clean_list_line(line: str) -> str:
+    cleaned = re.sub(r"\s+", " ", (line or "").strip())
+    cleaned = NUMBERED_PREFIX_RE.sub("", cleaned).strip()
+    cleaned = re.sub(r"^[\|\-\—\s]+", "", cleaned).strip()
+    cleaned = TRAILING_INDEX_RE.sub("", cleaned).strip()
+    cleaned = re.sub(r"\s*[\.\|]+\s*$", "", cleaned).strip()
+    return cleaned
+
 
 
 def _normalize_key(name: str) -> str:
@@ -75,7 +95,7 @@ def _is_numeric_only(text: str) -> bool:
 
 
 def _pick_name_from_line(line: str) -> Optional[str]:
-    line = line.strip()
+    line = _clean_list_line(line)
     if not line or _is_header_line(line) or _is_numeric_only(line):
         return None
 
@@ -86,18 +106,21 @@ def _pick_name_from_line(line: str) -> Optional[str]:
 
     candidates = []
     for part in parts:
-        if _is_numeric_only(part) or _is_header_line(part):
+        part = _clean_list_line(part)
+        if not part or _is_numeric_only(part) or _is_header_line(part):
             continue
         if len(part) < 2:
             continue
         score = len(part)
         if _has_arabic(part):
             score += 50
+        if re.search(r"[A-Za-z]", part):
+            score += 10
         candidates.append((score, part))
 
     if not candidates:
-        only = parts[0]
-        if len(only) >= 2 and not _is_numeric_only(only):
+        only = _clean_list_line(parts[0])
+        if only and len(only) >= 2 and not _is_numeric_only(only):
             return only[:MAX_NAME_LEN]
         return None
 
@@ -132,13 +155,8 @@ def parse_page_names_loose(raw_text: str) -> List[str]:
     seen: Set[str] = set()
     names: List[str] = []
     for line in raw_text.splitlines():
-        cleaned = re.sub(r"\s+", " ", line.strip())
+        cleaned = _clean_list_line(line)
         if len(cleaned) < 2 or _is_header_line(cleaned) or _is_numeric_only(cleaned):
-            continue
-        # أزل أرقام وأعمدة شائعة من بداية/نهاية السطر
-        cleaned = re.sub(r"^[\d\s\-_|]+", "", cleaned).strip()
-        cleaned = re.sub(r"[\d\s\-_|]+$", "", cleaned).strip()
-        if len(cleaned) < 2 or _is_numeric_only(cleaned):
             continue
         key = _normalize_key(cleaned)
         if key in seen:
@@ -242,7 +260,7 @@ def extract_page_names_vision(image_bytes: bytes) -> Tuple[List[str], List[str]]
                     ],
                 }
             ],
-            max_tokens=1200,
+            max_tokens=2500,
             temperature=0.1,
         )
         content = ""
@@ -295,8 +313,8 @@ def extract_page_names_hybrid(
         names, raw_text, tesseract_warnings = extract_page_names_tesseract(image_bytes)
         warnings.extend(tesseract_warnings)
 
-    good_enough = len(names) >= MIN_GOOD_NAMES
-    if force_ai or not good_enough:
+    good_enough = len(names) >= MIN_GOOD_NAMES and bool(raw_text.strip())
+    if force_ai or not good_enough or (not names and not raw_text.strip()):
         ai_names, ai_warnings = extract_page_names_vision(image_bytes)
         warnings.extend(ai_warnings)
         if ai_names:
