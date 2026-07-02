@@ -36,3 +36,83 @@
 .team-admin-page.pages-page .assign-list label:hover {
   background: var(--surface-hover);
 }
+
+.team-admin-page.pages-page .pages-import-hint {
+  margin: 0 0 12px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.team-admin-page.pages-page .pages-import-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.team-admin-page.pages-page .pages-import-file {
+  flex: 1;
+  min-width: 220px;
+  min-height: 44px;
+}
+
+.team-admin-page.pages-page .pages-import-btn {
+  width: auto;
+  min-width: 180px;
+  min-height: 44px;
+  padding: 0 18px;
+}
+
+.team-admin-page.pages-page .pages-import-modal {
+  max-width: 640px;
+}
+
+.team-admin-page.pages-page .pages-import-meta {
+  margin: 0 0 12px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.team-admin-page.pages-page .pages-import-list {
+  max-height: 360px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.team-admin-page.pages-page .pages-import-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+}
+
+.team-admin-page.pages-page .pages-import-name-input {
+  width: 100%;
+  min-height: 40px;
+  box-sizing: border-box;
+}
+
+.team-admin-page.pages-page .pages-import-existing-badge {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--warning);
+  white-space: nowrap;
+}
+
+.team-admin-page.pages-page .pages-import-empty {
+  padding: 16px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.team-admin-page.pages-page .pages-import-actions {
+  flex-wrap: wrap;
+}

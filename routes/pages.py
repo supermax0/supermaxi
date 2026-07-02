@@ -9,6 +9,7 @@ from sqlalchemy import or_
 
 from utils.decorators import permission_required
 from utils.permission_checks import employee_can, get_current_employee
+from utils.pages_import import bulk_create_pages, extract_page_names_hybrid, MAX_IMAGE_BYTES
 
 pages_bp = Blueprint("pages", __name__, url_prefix="/pages")
 
@@ -135,6 +136,38 @@ def assign_page_employees(page_id):
             page.employees.append(emp)
     db.session.commit()
     return jsonify({"success": True, "message": "تم تحديث موظفي البيج"})
+
+
+@pages_bp.route("/import-from-image", methods=["POST"])
+@permission_required("manage_pages")
+def import_pages_from_image():
+    file = request.files.get("image")
+    if not file or not file.filename:
+        return jsonify({"success": False, "error": "لم يتم اختيار صورة."}), 400
+
+    image_bytes = file.read()
+    if not image_bytes:
+        return jsonify({"success": False, "error": "ملف الصورة فارغ."}), 400
+    if len(image_bytes) > MAX_IMAGE_BYTES:
+        return jsonify({"success": False, "error": "حجم الصورة كبير جداً (الحد الأقصى 8 ميغابايت)."}), 400
+
+    force_ai = str(request.form.get("force_ai") or "").strip().lower() in ("1", "true", "yes", "on")
+    result = extract_page_names_hybrid(image_bytes, force_ai=force_ai)
+    status = 200 if result.get("success") else 400
+    return jsonify(result), status
+
+
+@pages_bp.route("/bulk-create", methods=["POST"])
+@permission_required("manage_pages")
+def bulk_create_pages_route():
+    data = request.get_json(silent=True) or {}
+    names = data.get("names") or []
+    if not isinstance(names, list) or not names:
+        return jsonify({"success": False, "error": "لم يتم إرسال أسماء للإضافة."}), 400
+
+    result = bulk_create_pages(names)
+    status = 200 if result.get("success") else 400
+    return jsonify(result), status
 
 
 @pages_bp.route("/update-visibility/<int:page_id>", methods=["POST"])

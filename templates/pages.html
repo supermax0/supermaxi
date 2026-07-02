@@ -65,6 +65,24 @@
   </div>
   {% endif %}
 
+  {% if can_manage_pages %}
+  <div class="collapsible-group collapsed" id="groupImportPages">
+    <div class="group-header" onclick="toggleSection('groupImportPages')">
+      <h3><span class="section-icon success">🖼️</span>{{ _('pages_import_title') if _('pages_import_title') != 'pages_import_title' else 'استيراد من صورة' }}</h3>
+      <button type="button" class="toggle-btn" tabindex="-1"><i class="fas fa-chevron-up"></i></button>
+    </div>
+    <div class="group-content">
+      <p class="pages-import-hint">{{ _('pages_import_hint') if _('pages_import_hint') != 'pages_import_hint' else 'ارفع صورة واضحة لجدول يحتوي أسماء البيجات. يفضل أن يكون عمود الاسم واضحاً.' }}</p>
+      <div class="pages-import-row">
+        <input type="file" id="pagesImportImage" accept="image/*" class="pages-import-file">
+        <button type="button" class="btn-submit-primary pages-import-btn" id="pagesImportExtractBtn" onclick="uploadPagesImage()">
+          <i class="fas fa-magic"></i> {{ _('pages_import_extract_btn') if _('pages_import_extract_btn') != 'pages_import_extract_btn' else 'استخراج الأسماء' }}
+        </button>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   <div class="admin-table-wrap">
     <table class="admin-table">
       <thead>
@@ -150,6 +168,20 @@
       </div>
     </div>
   </div>
+
+  <div id="pagesImportModal" class="team-modal-overlay">
+    <div class="team-modal-box team-modal-box--wide pages-import-modal">
+      <button type="button" class="modal-close" onclick="closePagesImportModal()">&times;</button>
+      <h3 id="pagesImportModalTitle">{{ _('pages_import_preview_title') if _('pages_import_preview_title') != 'pages_import_preview_title' else 'معاينة أسماء البيجات' }}</h3>
+      <p id="pagesImportMeta" class="pages-import-meta"></p>
+      <div id="pagesImportList" class="pages-import-list"></div>
+      <div class="team-modal-actions pages-import-actions">
+        <button type="button" class="btn btn-light" onclick="retryPagesImportWithAI()">{{ _('pages_import_retry_ai') if _('pages_import_retry_ai') != 'pages_import_retry_ai' else 'إعادة بالذكاء الاصطناعي' }}</button>
+        <button type="button" class="btn btn-light" onclick="closePagesImportModal()">{{ _('cancel') }}</button>
+        <button type="button" class="btn btn-primary" onclick="confirmBulkPagesImport()">{{ _('pages_import_confirm_btn') if _('pages_import_confirm_btn') != 'pages_import_confirm_btn' else 'إضافة المحدد' }}</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script type="application/json" id="pagesEmployeesData">
@@ -173,7 +205,17 @@
     pages_err_connection: {{ _('pages_err_connection')|tojson }},
     pages_confirm_delete: {{ (_('pages_confirm_delete') if _('pages_confirm_delete') != 'pages_confirm_delete' else 'حذف هذا البيج؟')|tojson }},
     pages_toast_deleted: {{ (_('pages_toast_deleted') if _('pages_toast_deleted') != 'pages_toast_deleted' else 'تم الحذف')|tojson }},
-    pages_assign_title: {{ (_('pages_assign_title') if _('pages_assign_title') != 'pages_assign_title' else 'تعيين موظفين للبيج')|tojson }}
+    pages_assign_title: {{ (_('pages_assign_title') if _('pages_assign_title') != 'pages_assign_title' else 'تعيين موظفين للبيج')|tojson }},
+    pages_import_preview_title: {{ (_('pages_import_preview_title') if _('pages_import_preview_title') != 'pages_import_preview_title' else 'معاينة أسماء البيجات')|tojson }},
+    pages_import_confirm_btn: {{ (_('pages_import_confirm_btn') if _('pages_import_confirm_btn') != 'pages_import_confirm_btn' else 'إضافة المحدد')|tojson }},
+    pages_import_retry_ai: {{ (_('pages_import_retry_ai') if _('pages_import_retry_ai') != 'pages_import_retry_ai' else 'إعادة بالذكاء الاصطناعي')|tojson }},
+    pages_import_existing_badge: {{ (_('pages_import_existing_badge') if _('pages_import_existing_badge') != 'pages_import_existing_badge' else 'موجود')|tojson }},
+    pages_import_result_added: {{ (_('pages_import_result_added') if _('pages_import_result_added') != 'pages_import_result_added' else 'تمت إضافة {count} بيج')|tojson }},
+    pages_import_result_skipped: {{ (_('pages_import_result_skipped') if _('pages_import_result_skipped') != 'pages_import_result_skipped' else 'تم تخطي {count} مكرر')|tojson }},
+    pages_import_err_no_names: {{ (_('pages_import_err_no_names') if _('pages_import_err_no_names') != 'pages_import_err_no_names' else 'لم يُعثر على أسماء بيجات')|tojson }},
+    pages_import_err_image: {{ (_('pages_import_err_image') if _('pages_import_err_image') != 'pages_import_err_image' else 'يرجى اختيار صورة')|tojson }},
+    pages_import_source_tesseract: {{ (_('pages_import_source_tesseract') if _('pages_import_source_tesseract') != 'pages_import_source_tesseract' else 'مصدر الاستخراج: OCR')|tojson }},
+    pages_import_source_openai: {{ (_('pages_import_source_openai') if _('pages_import_source_openai') != 'pages_import_source_openai' else 'مصدر الاستخراج: ذكاء اصطناعي')|tojson }}
   };
 </script>
 <script src="{{ url_for('static', filename='js/pages-admin.js') }}"></script>

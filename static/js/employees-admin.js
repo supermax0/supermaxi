@@ -380,7 +380,7 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
       {
         headerName: __t('employees_col_actions'),
         field: "actions",
-        width: 260,
+        width: 220,
         sortable: false,
         filter: false,
         suppressMovable: true,
@@ -416,11 +416,6 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
             icon: 'fa-pen',
             title: 'تعديل',
             onClick: () => openEditEmployeeModal(e.grid_id),
-          }));
-          wrap.appendChild(createActionButton({
-            icon: 'fa-file-invoice',
-            title: __t('employees_action_pages'),
-            onClick: () => openPagesModal(e.id, e.name),
           }));
           wrap.appendChild(createActionButton({
             icon: 'fa-user-shield',
