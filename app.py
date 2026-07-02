@@ -953,6 +953,10 @@ with app.app_context():
                         conn.execute(text("ALTER TABLE employee ADD COLUMN last_active DATETIME"))
                     added = True
                     print("--> Added 'last_active'")
+                if 'branch_id' not in columns:
+                    conn.execute(text("ALTER TABLE employee ADD COLUMN branch_id INTEGER"))
+                    added = True
+                    print("--> Added 'branch_id'")
                 
                 if added:
                     conn.commit()

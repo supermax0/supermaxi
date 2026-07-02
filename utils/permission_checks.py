@@ -75,6 +75,8 @@ def employee_can(employee: Employee | None, permission_name: str) -> bool:
     if employee.role == "admin":
         return True
     rbac_name = LEGACY_TO_RBAC.get(permission_name, permission_name)
+    if rbac_name == "view_pos" and employee.role == "cashier" and not list(employee.roles or []):
+        return True
     return employee.has_permission(rbac_name)
 
 
@@ -104,10 +106,9 @@ def guard_permission(permission_name: str, *, json: bool | None = None):
         return None
     if _wants_json_response(json):
         return jsonify({"success": False, "error": "غير مصرح"}), 403
-    # تجنب حلقة إعادة التوجيه: /pos/ ←→ /pos
     if request.path.rstrip("/") == "/pos":
-        return redirect("/"), 403
-    return redirect("/pos/"), 403
+        return redirect("/pos/login")
+    return redirect("/pos/login")
 
 
 def allowed_order_statuses_for(employee: Employee | None) -> list[str]:

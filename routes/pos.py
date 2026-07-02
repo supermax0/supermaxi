@@ -72,7 +72,7 @@ def pos_use_tenant_db():
 
 @pos_bp.before_request
 def pos_permission_guard():
-    if request.endpoint in ("pos.login", "pos.logout"):
+    if request.endpoint in ("pos.pos_login", "pos.logout"):
         return None
     if "user_id" not in session:
         return None
@@ -88,7 +88,7 @@ def pos_permission_guard():
 def pos():
     # إذا لم يكن هناك مستخدم مسجل دخول → رجوع إلى صفحة تسجيل دخول الشركات الموحدة
     if "user_id" not in session:
-        return redirect("/login")
+        return redirect("/pos/login")
 
     ensure_product_schema()
     ensure_customer_blacklist_columns()
@@ -637,8 +637,11 @@ def last_orders():
         } for o in orders
     ])
 
-@pos_bp.route("/login", methods=["POST"])
+@pos_bp.route("/login", methods=["GET", "POST"])
 def pos_login():
+    if request.method == "GET":
+        return render_template("pos_login.html")
+
     data = request.get_json()
 
     username = data.get("username")
