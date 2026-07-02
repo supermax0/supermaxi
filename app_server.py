@@ -175,6 +175,8 @@ with app.app_context():
     from models.telegram_chat_profile import TelegramChatProfile  # noqa: F401
     from models.telegram_booking_session import TelegramBookingSession  # noqa: F401
     from models.customer_credit import CustomerCreditPlan, CustomerInstallment, CustomerCreditPayment  # noqa: F401
+    from models.core.platform_announcement import PlatformAnnouncement  # noqa: F401
+    from models.core.announcement_send_log import AnnouncementSendLog  # noqa: F401
 
     db.create_all()
 
@@ -924,6 +926,7 @@ _OPEN_ROUTES = [
     "/static",
     "/pricing",
     "/signup",
+    "/unsubscribe",
     "/privacy",
     "/terms",
     "/contact",
@@ -1291,6 +1294,57 @@ def _start_social_ai_scheduler():
         pass
 
 _start_social_ai_scheduler()
+
+# =====================================
+# Weekly Announcement Scheduler
+# =====================================
+def _start_weekly_announcement_scheduler():
+    import os
+    import sys
+
+    if os.environ.get("SERVER_SOFTWARE", "").startswith("gunicorn/") or "gunicorn" in (sys.argv[0] or ""):
+        return
+
+    try:
+        from apscheduler.schedulers.background import BackgroundScheduler  # type: ignore[import-untyped]
+        from apscheduler.triggers.cron import CronTrigger  # type: ignore[import-untyped]
+        from models.core.global_setting import GlobalSetting
+        from utils.announcement_service import run_weekly_announcement_job
+
+        def _run_weekly():
+            with app.app_context():
+                try:
+                    run_weekly_announcement_job()
+                except Exception:
+                    try:
+                        app.logger.exception("weekly announcement scheduler failed")
+                    except Exception:
+                        pass
+
+        def _schedule_job(scheduler):
+            with app.app_context():
+                day = (GlobalSetting.get_setting("WEEKLY_ANNOUNCEMENT_DAY", "mon") or "mon").lower()[:3]
+                try:
+                    hour = int(GlobalSetting.get_setting("WEEKLY_ANNOUNCEMENT_HOUR", "9") or 9)
+                except ValueError:
+                    hour = 9
+                hour = max(0, min(23, hour))
+                day_map = {"mon": 0, "tue": 1, "wed": 2, "thu": 3, "fri": 4, "sat": 5, "sun": 6}
+                dow = day_map.get(day, 0)
+                scheduler.add_job(
+                    _run_weekly,
+                    CronTrigger(day_of_week=dow, hour=hour, minute=0),
+                    id="weekly_announcement",
+                    replace_existing=True,
+                )
+
+        scheduler = BackgroundScheduler()
+        _schedule_job(scheduler)
+        scheduler.start()
+    except Exception:
+        pass
+
+_start_weekly_announcement_scheduler()
 
 # =====================================
 # AI Agent Workflows Scheduler

@@ -25,6 +25,11 @@
 </style>
 <div class="fa-page">
   {% include "fixed_assets/_nav.html" %}
+  {% if period_closed %}
+  <div class="fa-card" style="border-color:var(--danger);background:rgba(239,68,68,.08);">
+    <strong>الفترة {{ year }}-{{ '%02d'|format(month) }} مغلقة محاسبياً</strong> — لا يمكن ترحيل الاستهلاك لهذا الشهر.
+  </div>
+  {% endif %}
   <div class="fa-card">
     <form class="fa-filters" method="get">
       <div class="fa-field"><label>السنة</label><input type="number" name="year" value="{{ year }}" min="2000" max="2100"></div>
@@ -43,12 +48,14 @@
       <div><strong>إجمالي الاستهلاك:</strong> {{ "{:,}".format(preview.total_amount) }} د.ع</div>
     </div>
     {% if preview.eligible_count > 0 %}
+    {% if not period_closed %}
     <form method="post" style="margin-top:12px;" onsubmit="return confirm('ترحيل استهلاك {{ year }}-{{ '%02d'|format(month) }}؟');">
       <input type="hidden" name="action" value="post">
       <input type="hidden" name="year" value="{{ year }}">
       <input type="hidden" name="month" value="{{ month }}">
       <button type="submit" class="fa-btn fa-btn-success">ترحيل استهلاك الشهر</button>
     </form>
+    {% endif %}
     {% endif %}
   </div>
   <table class="fa-table">

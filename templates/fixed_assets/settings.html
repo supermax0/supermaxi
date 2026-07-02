@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}إعدادات الأصول{% endblock %}
+{% block page_title %}⚙️ إعدادات الأصول الثابتة{% endblock %}
+{% block content %}
+<style>
+.fa-page { max-width: 1000px; margin: 0 auto; direction: rtl; }
+.fa-nav { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
+.fa-nav a { padding: 8px 14px; border-radius: 10px; background: var(--card-alt); border: 1px solid var(--border-light); color: var(--text); text-decoration: none; font-size: 14px; }
+.fa-nav a.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.fa-card { background: var(--card); border: 1px solid var(--border-light); border-radius: 16px; padding: 20px; margin-bottom: 18px; }
+.fa-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.fa-field label { display: block; font-size: 13px; margin-bottom: 6px; color: var(--text-muted); }
+.fa-field input, .fa-field select, .fa-field textarea { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid var(--border-light); background: var(--card-alt); color: var(--text); }
+.fa-field textarea { min-height: 70px; }
+.fa-check { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.fa-btn { padding: 10px 16px; border-radius: 10px; border: none; background: var(--primary); color: #fff; cursor: pointer; font-weight: 700; }
+h3 { margin-top: 0; }
+</style>
+<div class="fa-page">
+  {% include "fixed_assets/_nav.html" %}
+  <form method="post">
+    <input type="hidden" name="form_action" value="settings">
+    <div class="fa-card">
+      <h3>إعدادات عامة</h3>
+      <div class="fa-grid">
+        <label class="fa-check"><input type="checkbox" name="enabled" {% if settings.enabled %}checked{% endif %}> تفعيل نظام الأصول</label>
+        <label class="fa-check"><input type="checkbox" name="auto_numbering" {% if settings.auto_numbering %}checked{% endif %}> ترقيم تلقائي للأصول</label>
+        <div class="fa-field"><label>بادئة كود الأصل</label><input name="code_prefix" value="{{ settings.code_prefix or 'FA' }}" maxlength="20"></div>
+        <label class="fa-check"><input type="checkbox" name="allow_code_edit" {% if settings.allow_code_edit %}checked{% endif %}> السماح بتعديل كود الأصل يدوياً</label>
+        <label class="fa-check"><input type="checkbox" name="prevent_delete_posted" {% if settings.prevent_delete_posted %}checked{% endif %}> منع حذف أصل مُرحّل</label>
+        <label class="fa-check"><input type="checkbox" name="allow_without_invoice" {% if settings.allow_without_invoice %}checked{% endif %}> السماح بإضافة أصل بدون فاتورة</label>
+        <label class="fa-check"><input type="checkbox" name="require_invoice_attachment" {% if settings.require_invoice_attachment %}checked{% endif %}> إجبار رقم فاتورة المورد</label>
+        <label class="fa-check"><input type="checkbox" name="require_location" {% if settings.require_location %}checked{% endif %}> إجبار تحديد موقع</label>
+        <label class="fa-check"><input type="checkbox" name="require_responsible" {% if settings.require_responsible %}checked{% endif %}> إجبار تحديد مسؤول</label>
+      </div>
+    </div>
+
+    <div class="fa-card">
+      <h3>إعدادات الاستهلاك</h3>
+      <div class="fa-grid">
+        <div class="fa-field">
+          <label>بداية الاستهلاك</label>
+          <select name="depreciation_start_mode">
+            {% for key, label in depreciation_start_modes.items() %}
+            <option value="{{ key }}" {% if settings.depreciation_start_mode == key %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <label class="fa-check"><input type="checkbox" name="allow_manual_depreciation" {% if settings.allow_manual_depreciation %}checked{% endif %}> السماح بالاستهلاك اليدوي</label>
+        <label class="fa-check"><input type="checkbox" name="allow_batch_depreciation" {% if settings.allow_batch_depreciation %}checked{% endif %}> السماح بترحيل الاستهلاك المجمع</label>
+        <label class="fa-check"><input type="checkbox" name="prevent_duplicate_depreciation" {% if settings.prevent_duplicate_depreciation %}checked{% endif %}> منع تكرار الاستهلاك لنفس الشهر</label>
+        <label class="fa-check"><input type="checkbox" name="require_disposal_approval" {% if settings.require_disposal_approval %}checked{% endif %}> إجبار موافقة المدير على البيع/الإتلاف</label>
+        <label class="fa-check"><input type="checkbox" name="enforce_period_close" {% if settings.enforce_period_close %}checked{% endif %}> منع الحركات في الفترات المغلقة محاسبياً</label>
+      </div>
+    </div>
+
+    <div class="fa-card">
+      <h3>حسابات القيود الافتراضية</h3>
+      <div class="fa-grid">
+        <div class="fa-field">
+          <label>حساب أرباح بيع الأصول</label>
+          <select name="gain_on_sale_account_id">
+            <option value="">— افتراضي النظام —</option>
+            {% for a in accounts %}<option value="{{ a.id }}" {% if settings.gain_on_sale_account_id == a.id %}selected{% endif %}>{{ a.code }} — {{ a.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="fa-field">
+          <label>حساب خسائر بيع الأصول</label>
+          <select name="loss_on_sale_account_id">
+            <option value="">— افتراضي النظام —</option>
+            {% for a in accounts %}<option value="{{ a.id }}" {% if settings.loss_on_sale_account_id == a.id %}selected{% endif %}>{{ a.code }} — {{ a.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="fa-field">
+          <label>حساب خسائر إتلاف الأصول</label>
+          <select name="loss_on_scrap_account_id">
+            <option value="">— افتراضي النظام —</option>
+            {% for a in accounts %}<option value="{{ a.id }}" {% if settings.loss_on_scrap_account_id == a.id %}selected{% endif %}>{{ a.code }} — {{ a.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="fa-field">
+          <label>حساب مصروف صيانة الأصول</label>
+          <select name="maintenance_expense_account_id">
+            <option value="">— افتراضي النظام —</option>
+            {% for a in accounts %}<option value="{{ a.id }}" {% if settings.maintenance_expense_account_id == a.id %}selected{% endif %}>{{ a.code }} — {{ a.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="fa-field" style="grid-column:1/-1;">
+          <label>وصف القيد الافتراضي (اختياري)</label>
+          <textarea name="default_journal_description">{{ settings.default_journal_description or '' }}</textarea>
+        </div>
+      </div>
+    </div>
+
+    <button type="submit" class="fa-btn">حفظ الإعدادات</button>
+  </form>
+
+  <div class="fa-card" style="margin-top:24px;">
+    <h3>الإغلاق المحاسبي الشهري</h3>
+    <p style="font-size:13px;color:var(--text-muted);">عند إغلاق شهر، لا يمكن ترحيل استهلاك أو شراء أو بيع أو صيانة بتاريخ داخل ذلك الشهر.</p>
+    <form method="post" style="display:flex;flex-wrap:wrap;gap:12px;align-items:end;margin-bottom:20px;">
+      <input type="hidden" name="form_action" value="close_period">
+      <div class="fa-field"><label>السنة</label><input type="number" name="period_year" value="{{ default_period_year }}" min="2000" max="2100"></div>
+      <div class="fa-field"><label>الشهر</label><input type="number" name="period_month" value="{{ default_period_month }}" min="1" max="12"></div>
+      <div class="fa-field" style="flex:1;min-width:200px;"><label>ملاحظات</label><input name="period_notes" placeholder="اختياري"></div>
+      <button type="submit" class="fa-btn" style="background:var(--warning);" onclick="return confirm('إغلاق هذه الفترة؟');">إغلاق الفترة</button>
+    </form>
+    <table class="fa-table" style="width:100%;border-collapse:collapse;font-size:14px;">
+      <thead><tr><th>الفترة</th><th>أُغلقت في</th><th>بواسطة</th><th>ملاحظات</th><th></th></tr></thead>
+      <tbody>
+        {% for p in closed_periods %}
+        <tr>
+          <td>{{ p.period_label() }}</td>
+          <td>{{ p.closed_at.strftime('%Y-%m-%d %H:%M') if p.closed_at else '—' }}</td>
+          <td>{{ p.closer.name if p.closer else '—' }}</td>
+          <td>{{ p.notes or '—' }}</td>
+          <td>
+            <form method="post" style="display:inline;" onsubmit="return confirm('إعادة فتح الفترة؟');">
+              <input type="hidden" name="form_action" value="reopen_period">
+              <input type="hidden" name="period_year" value="{{ p.period_year }}">
+              <input type="hidden" name="period_month" value="{{ p.period_month }}">
+              <button type="submit" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border-light);cursor:pointer;">إعادة فتح</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}<tr><td colspan="5">لا توجد فترات مغلقة.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

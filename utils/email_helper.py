@@ -1,6 +1,8 @@
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from typing import Optional
+
 from flask import current_app
 
 
@@ -54,7 +56,19 @@ def _smtp_settings():
         return None
 
 
-from typing import Optional
+def _email_notifications_enabled() -> bool:
+    try:
+        from flask import g
+        from models.core.global_setting import GlobalSetting
+
+        old_tenant = getattr(g, "tenant", None)
+        g.tenant = None
+        try:
+            return GlobalSetting.get_setting("NOTIFY_EMAIL_ENABLED", "0") == "1"
+        finally:
+            g.tenant = old_tenant
+    except Exception:
+        return True
 
 
 def send_email(*, to_email: str, subject: str, body: str, html_body: Optional[str] = None) -> bool:
@@ -120,6 +134,39 @@ def build_tenant_login_url(slug: str) -> str:
     return f"{_resolve_base_url()}/login/{slug_clean}"
 
 
+def build_unsubscribe_url(token: str) -> str:
+    token_clean = (token or "").strip()
+    return f"{_resolve_base_url()}/unsubscribe/{token_clean}"
+
+
+def _app_name() -> str:
+    return current_app.config.get("APP_NAME", "Finora")
+
+
+def _email_shell(*, title: str, body_html: str, footer_html: Optional[str] = None) -> str:
+    app_name = _app_name()
+    footer = footer_html or (
+        f'<p style="color:#98A2B3;font-size:12px;margin:0;text-align:center">'
+        f"© {app_name} — جميع الحقوق محفوظة</p>"
+    )
+    return f"""
+<div dir="rtl" style="background:#F0F4FF;padding:32px 16px;font-family:Tajawal,Cairo,Arial,sans-serif">
+  <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 32px rgba(16,24,40,.08)">
+    <div style="background:linear-gradient(135deg,#2563EB 0%,#1D4ED8 100%);padding:28px 32px;text-align:center">
+      <div style="font-size:28px;font-weight:900;color:#fff;letter-spacing:-.5px">{app_name}</div>
+      <div style="color:rgba(255,255,255,.85);font-size:14px;margin-top:6px">{title}</div>
+    </div>
+    <div style="padding:32px">
+      {body_html}
+    </div>
+    <div style="background:#F9FAFB;padding:20px 32px;border-top:1px solid #EAECF0">
+      {footer}
+    </div>
+  </div>
+</div>
+"""
+
+
 def send_welcome_account_email(
     *,
     to_email: str,
@@ -129,16 +176,18 @@ def send_welcome_account_email(
     username: str,
     password: str,
     plan_name: Optional[str] = None,
+    unsubscribe_url: Optional[str] = None,
 ) -> bool:
     """إرسال بيانات الحساب الجديد للعميل بعد التسجيل."""
-    app_name = current_app.config.get("APP_NAME", "Finora")
+    app_name = _app_name()
     login_url = build_tenant_login_url(slug)
     plan_line = f"\nالخطة: {plan_name}" if plan_name else ""
+    unsub_line = f"\n\nلإلغاء النشرة الأسبوعية: {unsubscribe_url}" if unsubscribe_url else ""
 
     subject = f"مرحباً بك في {app_name} — بيانات حسابك"
-    body = f"""مرحباً {contact_name or ""},
+    body = f"""أهلاً {contact_name or ""}،
 
-تم إنشاء حساب شركتك بنجاح في {app_name}.
+نحن سعداء بانضمامك إلى {app_name}! تم إنشاء حساب شركتك بنجاح.
 
 اسم الشركة: {company_name}
 معرف الشركة: {slug}
@@ -148,33 +197,50 @@ def send_welcome_account_email(
 رابط تسجيل الدخول:
 {login_url}
 
-احتفظ بهذه البيانات في مكان آمن. ننصحك بتغيير كلمة المرور بعد أول دخول.
+احتفظ بهذه البيانات في مكان آمن. ننصحك بتغيير كلمة المرور بعد أول دخول.{unsub_line}
 
 — فريق {app_name}
 """
-    plan_html = f'<tr><td style="padding:8px 0;color:#667085">الخطة</td><td style="padding:8px 0;font-weight:600;color:#101828">{plan_name}</td></tr>' if plan_name else ""
-    html = f"""
-<div dir="rtl" style="font-family:Tajawal,Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px">
-  <h2 style="color:#2563EB;margin-bottom:8px">مرحباً بك في {app_name}</h2>
-  <p style="color:#667085">مرحباً <strong>{contact_name or ""}</strong>، تم إنشاء حساب <strong>{company_name}</strong> بنجاح.</p>
-  <table style="width:100%;border-collapse:collapse;margin:20px 0;background:#F9FAFB;border-radius:12px;padding:4px 16px">
-    <tr><td style="padding:8px 0;color:#667085">معرف الشركة</td><td style="padding:8px 0;font-weight:700;color:#101828;direction:ltr;text-align:right">{slug}</td></tr>
-    <tr><td style="padding:8px 0;color:#667085">اسم المستخدم</td><td style="padding:8px 0;font-weight:600;color:#101828;direction:ltr;text-align:right">{username}</td></tr>
-    <tr><td style="padding:8px 0;color:#667085">كلمة المرور</td><td style="padding:8px 0;font-weight:600;color:#101828;direction:ltr;text-align:right">{password}</td></tr>
-    {plan_html}
-  </table>
-  <p style="text-align:center;margin:24px 0">
-    <a href="{login_url}" style="display:inline-block;background:#2563EB;color:#fff;text-decoration:none;padding:14px 28px;border-radius:10px;font-weight:700">تسجيل الدخول</a>
-  </p>
-  <p style="color:#667085;font-size:13px;word-break:break-all">أو افتح الرابط: <a href="{login_url}" style="color:#2563EB">{login_url}</a></p>
-  <p style="color:#98A2B3;font-size:12px;margin-top:20px">احتفظ بهذه البيانات في مكان آمن وغيّر كلمة المرور بعد أول دخول.</p>
-</div>
+    plan_row = (
+        f'<tr><td style="padding:10px 0;color:#667085;border-bottom:1px solid #F2F4F7">الخطة</td>'
+        f'<td style="padding:10px 0;font-weight:600;color:#101828;border-bottom:1px solid #F2F4F7;text-align:left;direction:ltr">{plan_name}</td></tr>'
+        if plan_name
+        else ""
+    )
+    body_html = f"""
+<p style="color:#344054;font-size:16px;line-height:1.7;margin:0 0 20px">
+  أهلاً <strong style="color:#101828">{contact_name or ""}</strong>،<br>
+  نحن سعداء بانضمامك إلى <strong>{app_name}</strong>! تم إنشاء حساب <strong>{company_name}</strong> بنجاح.
+</p>
+<table style="width:100%;border-collapse:collapse;margin:0 0 24px;background:#F9FAFB;border-radius:12px;border:1px solid #EAECF0">
+  <tr><td style="padding:10px 16px;color:#667085;border-bottom:1px solid #F2F4F7">معرف الشركة</td>
+      <td style="padding:10px 16px;font-weight:700;color:#2563EB;border-bottom:1px solid #F2F4F7;text-align:left;direction:ltr">{slug}</td></tr>
+  <tr><td style="padding:10px 16px;color:#667085;border-bottom:1px solid #F2F4F7">اسم المستخدم</td>
+      <td style="padding:10px 16px;font-weight:600;color:#101828;border-bottom:1px solid #F2F4F7;text-align:left;direction:ltr">{username}</td></tr>
+  <tr><td style="padding:10px 16px;color:#667085;border-bottom:1px solid #F2F4F7">كلمة المرور</td>
+      <td style="padding:10px 16px;font-weight:600;color:#101828;border-bottom:1px solid #F2F4F7;text-align:left;direction:ltr">{password}</td></tr>
+  {plan_row}
+</table>
+<p style="text-align:center;margin:0 0 16px">
+  <a href="{login_url}" style="display:inline-block;background:#2563EB;color:#fff;text-decoration:none;padding:14px 36px;border-radius:10px;font-weight:700;font-size:15px">ابدأ الآن — تسجيل الدخول</a>
+</p>
+<p style="color:#667085;font-size:13px;text-align:center;word-break:break-all;margin:0">
+  أو افتح: <a href="{login_url}" style="color:#2563EB">{login_url}</a>
+</p>
+<p style="color:#98A2B3;font-size:12px;margin:20px 0 0;text-align:center">احتفظ بهذه البيانات في مكان آمن وغيّر كلمة المرور بعد أول دخول.</p>
 """
+    footer = f'<p style="color:#98A2B3;font-size:12px;margin:0;text-align:center">© {app_name}</p>'
+    if unsubscribe_url:
+        footer = (
+            f'<p style="color:#98A2B3;font-size:12px;margin:0 0 8px;text-align:center">'
+            f'<a href="{unsubscribe_url}" style="color:#667085">إلغاء الاشتراك في النشرة الأسبوعية</a></p>' + footer
+        )
+    html = _email_shell(title="مرحباً بك!", body_html=body_html, footer_html=footer)
     return send_email(to_email=to_email, subject=subject, body=body, html_body=html)
 
 
 def send_signup_verification_email(to_email: str, code: str) -> bool:
-    app_name = current_app.config.get("APP_NAME", "Finora")
+    app_name = _app_name()
     subject = f"رمز التحقق — {app_name}"
     body = f"""مرحباً،
 
@@ -187,14 +253,49 @@ def send_signup_verification_email(to_email: str, code: str) -> bool:
 
 — فريق {app_name}
 """
-    html = f"""
-<div dir="rtl" style="font-family:Tajawal,Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px">
-  <h2 style="color:#2563EB;margin-bottom:8px">رمز التحقق</h2>
-  <p style="color:#667085">استخدم الرمز التالي لإكمال تسجيل حسابك في {app_name}:</p>
-  <div style="font-size:32px;font-weight:800;letter-spacing:8px;text-align:center;padding:20px;background:#EAF1FF;border-radius:12px;color:#101828;margin:20px 0">{code}</div>
-  <p style="color:#667085;font-size:14px">صالح لمدة <strong>10 دقائق</strong>. لا تشارك هذا الرمز مع أحد.</p>
-</div>
+    body_html = f"""
+<p style="color:#344054;font-size:15px;margin:0 0 16px">استخدم الرمز التالي لإكمال تسجيل حسابك في <strong>{app_name}</strong>:</p>
+<div style="font-size:36px;font-weight:900;letter-spacing:10px;text-align:center;padding:24px;background:#EAF1FF;border-radius:12px;color:#1D4ED8;margin:0 0 16px;border:2px dashed #93C5FD">{code}</div>
+<p style="color:#667085;font-size:14px;margin:0;text-align:center">صالح لمدة <strong>10 دقائق</strong>. لا تشارك هذا الرمز مع أحد.</p>
 """
+    html = _email_shell(title="رمز التحقق", body_html=body_html)
+    return send_email(to_email=to_email, subject=subject, body=body, html_body=html)
+
+
+def send_announcement_email(
+    *,
+    to_email: str,
+    contact_name: str,
+    subject: str,
+    body_html: str,
+    body_plain: str,
+    unsubscribe_url: Optional[str] = None,
+) -> bool:
+    """إرسال إعلان/نشرة تسويقية."""
+    if not _email_notifications_enabled():
+        return False
+
+    app_name = _app_name()
+    greeting = f"مرحباً {contact_name or ''},\n\n" if contact_name else ""
+    unsub_plain = f"\n\nلإلغاء الاشتراك: {unsubscribe_url}" if unsubscribe_url else ""
+    body = f"{greeting}{body_plain}{unsub_plain}\n\n— فريق {app_name}"
+
+    greeting_html = (
+        f'<p style="color:#344054;font-size:15px;margin:0 0 20px">مرحباً <strong>{contact_name}</strong>،</p>'
+        if contact_name
+        else ""
+    )
+    content_html = f"""
+{greeting_html}
+<div style="color:#344054;font-size:15px;line-height:1.8">{body_html}</div>
+"""
+    footer = f'<p style="color:#98A2B3;font-size:12px;margin:0;text-align:center">© {app_name}</p>'
+    if unsubscribe_url:
+        footer = (
+            f'<p style="color:#98A2B3;font-size:12px;margin:0 0 8px;text-align:center">'
+            f'<a href="{unsubscribe_url}" style="color:#667085">إلغاء الاشتراك في النشرة</a></p>' + footer
+        )
+    html = _email_shell(title=subject, body_html=content_html, footer_html=footer)
     return send_email(to_email=to_email, subject=subject, body=body, html_body=html)
 
 

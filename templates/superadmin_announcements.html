@@ -1,0 +1,104 @@
+{% extends "superadmin_base.html" %}
+
+{% block title %}الإعلانات والنشرة — Finora{% endblock %}
+{% block page_title %}الإعلانات والنشرة الأسبوعية{% endblock %}
+{% block breadcrumb_current %}الإعلانات{% endblock %}
+
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+    <div>
+        <p style="color:var(--text-muted);margin:0">المشتركون في النشرة: <strong>{{ recipient_count }}</strong> حساب</p>
+    </div>
+    <a href="{{ url_for('superadmin.announcements_create') }}" class="btn-save" style="text-decoration:none;display:inline-flex;align-items:center;gap:8px">
+        <i class="fas fa-plus"></i> إعلان جديد
+    </a>
+</div>
+
+<div class="premium-card" style="margin-bottom:32px">
+    <h3 style="margin:0 0 16px;font-size:18px">الإعلانات المحفوظة</h3>
+    {% if announcements %}
+    <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:14px">
+            <thead>
+                <tr style="border-bottom:2px solid var(--border)">
+                    <th style="text-align:right;padding:12px 8px">العنوان</th>
+                    <th style="text-align:right;padding:12px 8px">الحالة</th>
+                    <th style="text-align:right;padding:12px 8px">أسبوعي</th>
+                    <th style="text-align:right;padding:12px 8px">آخر إرسال</th>
+                    <th style="text-align:right;padding:12px 8px">العدد</th>
+                    <th style="text-align:right;padding:12px 8px">إجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ann in announcements %}
+                <tr style="border-bottom:1px solid var(--border)">
+                    <td style="padding:12px 8px;font-weight:700">{{ ann.subject }}</td>
+                    <td style="padding:12px 8px">{{ ann.status }}</td>
+                    <td style="padding:12px 8px">
+                        {% if ann.is_weekly_active %}
+                        <span style="color:#16A34A;font-weight:700">✓ نشط</span>
+                        {% else %}—{% endif %}
+                    </td>
+                    <td style="padding:12px 8px">{{ ann.last_sent_at.strftime('%Y-%m-%d %H:%M') if ann.last_sent_at else '—' }}</td>
+                    <td style="padding:12px 8px">{{ ann.send_count or 0 }}</td>
+                    <td style="padding:12px 8px">
+                        <div style="display:flex;flex-wrap:wrap;gap:6px">
+                            <form method="post" action="{{ url_for('superadmin.announcements_send_all', ann_id=ann.id) }}" onsubmit="return confirm('إرسال لجميع المشتركين؟')">
+                                <button type="submit" class="btn-save" style="padding:6px 12px;font-size:12px">إرسال للكل</button>
+                            </form>
+                            <form method="post" action="{{ url_for('superadmin.announcements_set_weekly', ann_id=ann.id) }}" style="display:inline">
+                                <button type="submit" class="btn-save" style="padding:6px 12px;font-size:12px;background:var(--surface-hover);color:var(--text-main)">تعيين أسبوعي</button>
+                            </form>
+                            <form method="post" action="{{ url_for('superadmin.announcements_send_one', ann_id=ann.id) }}" style="display:flex;gap:4px;align-items:center">
+                                <select name="tenant_slug" required style="padding:6px;border-radius:8px;border:1px solid var(--border);font-size:12px">
+                                    <option value="">شركة...</option>
+                                    {% for t in tenants %}
+                                    <option value="{{ t.slug }}">{{ t.name }} ({{ t.slug }})</option>
+                                    {% endfor %}
+                                </select>
+                                <button type="submit" class="btn-save" style="padding:6px 12px;font-size:12px">فردي</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color:var(--text-muted)">لا توجد إعلانات بعد. <a href="{{ url_for('superadmin.announcements_create') }}">أنشئ أول إعلان</a></p>
+    {% endif %}
+</div>
+
+<div class="premium-card">
+    <h3 style="margin:0 0 16px;font-size:18px">سجل الإرسال الأخير</h3>
+    {% if recent_logs %}
+    <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+            <thead>
+                <tr style="border-bottom:2px solid var(--border)">
+                    <th style="text-align:right;padding:10px 8px">الوقت</th>
+                    <th style="text-align:right;padding:10px 8px">الشركة</th>
+                    <th style="text-align:right;padding:10px 8px">البريد</th>
+                    <th style="text-align:right;padding:10px 8px">النتيجة</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in recent_logs %}
+                <tr style="border-bottom:1px solid var(--border)">
+                    <td style="padding:10px 8px">{{ log.sent_at.strftime('%Y-%m-%d %H:%M') if log.sent_at else '—' }}</td>
+                    <td style="padding:10px 8px">{{ log.tenant_slug }}</td>
+                    <td style="padding:10px 8px;direction:ltr;text-align:right">{{ log.email }}</td>
+                    <td style="padding:10px 8px;color:{% if log.success %}#16A34A{% else %}#DC2626{% endif %}">
+                        {{ 'نجاح' if log.success else (log.error_message or 'فشل') }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color:var(--text-muted)">لا يوجد سجل إرسال بعد.</p>
+    {% endif %}
+</div>
+{% endblock %}

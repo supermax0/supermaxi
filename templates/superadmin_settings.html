@@ -383,6 +383,37 @@
                             value="{{ settings.smtp_password or '' }}">
                     </div>
 
+                    <div style="margin-top: 32px;" class="section-header">
+                        <h2 class="section-title"><i class="fas fa-calendar-week"></i> النشرة الأسبوعية التلقائية</h2>
+                        <p class="section-desc">إرسال الإعلان المُعيَّن كأسبوعي لجميع المشتركين الموافقين.</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="toggle-container">
+                            <div class="toggle-switch">
+                                <input type="checkbox" name="WEEKLY_ANNOUNCEMENT_ENABLED" value="1" {% if settings.weekly_announcement_enabled %}checked{% endif %}>
+                                <span class="slider"></span>
+                            </div>
+                            <span style="font-weight: 800; color: var(--text-main); font-size: 14px;">تفعيل الإرسال الأسبوعي التلقائي</span>
+                        </label>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div class="form-group">
+                            <label>يوم الإرسال</label>
+                            <select name="WEEKLY_ANNOUNCEMENT_DAY" class="form-control">
+                                {% for d, label in [('mon','الاثنين'),('tue','الثلاثاء'),('wed','الأربعاء'),('thu','الخميس'),('fri','الجمعة'),('sat','السبت'),('sun','الأحد')] %}
+                                <option value="{{ d }}" {% if settings.weekly_announcement_day == d %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>الساعة (0–23)</label>
+                            <input type="number" name="WEEKLY_ANNOUNCEMENT_HOUR" class="form-control" min="0" max="23"
+                                value="{{ settings.weekly_announcement_hour or '9' }}">
+                        </div>
+                    </div>
+
                     <div style="margin-top: 40px;" class="section-header">
                         <h2 class="section-title"><i class="fas fa-comment-dots"></i> إعدادات SMS</h2>
                     </div>

@@ -9,6 +9,9 @@ from models.fixed_asset import FixedAsset, ASSET_STATUSES, PAYMENT_METHODS
 from models.fixed_asset_category import FixedAssetCategory
 from models.fixed_asset_maintenance import FixedAssetMaintenance, MAINTENANCE_TYPES
 from models.fixed_asset_disposal import FixedAssetDisposal, DISPOSAL_TYPES
+from models.fixed_asset_attachment import ATTACHMENT_TYPES, FixedAssetAttachment
+from models.fixed_asset_disposal_request import FixedAssetDisposalRequest
+from models.account import Account
 from models.journal_entry import JournalEntry
 from models.supplier import Supplier
 from utils.branch_context import init_branch_context
@@ -30,7 +33,18 @@ from utils.fixed_assets_service import (
     preview_monthly_depreciation,
     build_asset_reports,
     seed_default_categories,
+    get_fixed_asset_settings,
+    save_fixed_asset_settings,
+    submit_disposal_or_request,
+    approve_disposal_request,
+    reject_disposal_request,
+    list_pending_disposal_requests,
+    close_accounting_period,
+    reopen_accounting_period,
 )
+from utils.fixed_assets_audit import list_audit_logs, log_fixed_asset_audit
+from utils.fixed_assets_attachments import delete_asset_attachment, save_asset_attachment
+from utils.financial_period_guard import is_period_closed, list_closed_periods
 from utils.permission_checks import check_permission
 from utils.treasury_helpers import treasury_choices_for_form
 from utils.treasury_schema_guard import ensure_treasury_schema
@@ -59,6 +73,14 @@ def _can_view():
 
 def _can_manage():
     return check_permission("can_manage_fixed_assets") or check_permission("can_see_accounts")
+
+
+def _can_approve_disposal():
+    return (
+        check_permission("can_approve_fixed_asset_disposal")
+        or check_permission("can_manage_fixed_assets")
+        or check_permission("can_see_accounts")
+    )
 
 
 def _guard_view():
@@ -172,6 +194,7 @@ def depreciation():
         preview=preview,
         year=year,
         month=month,
+        period_closed=is_period_closed(year, month),
     )
 
 
@@ -261,13 +284,15 @@ def disposal():
     if request.method == "POST":
         action = (request.form.get("action") or "sale").strip()
         try:
-            if action == "scrap":
-                post_asset_scrap(request.form, user_id=session.get("user_id"))
+            result = submit_disposal_or_request(request.form, user_id=session.get("user_id"))
+            db.session.commit()
+            settings = get_fixed_asset_settings()
+            if settings.require_disposal_approval and isinstance(result, FixedAssetDisposalRequest):
+                flash("تم إرسال الطلب بانتظار موافقة المدير", "success")
+            elif action == "scrap":
                 flash("تم إتلاف الأصل وترحيل القيد", "success")
             else:
-                post_asset_sale(request.form, user_id=session.get("user_id"))
                 flash("تم بيع الأصل وترحيل القيد", "success")
-            db.session.commit()
             return redirect(url_for("fixed_assets.disposal"))
         except FixedAssetError as exc:
             db.session.rollback()
@@ -276,12 +301,17 @@ def disposal():
             db.session.rollback()
             flash(f"حدث خطأ: {exc}", "error")
 
+    pending_requests = list_pending_disposal_requests()
+    settings = get_fixed_asset_settings()
     return render_template(
         "fixed_assets/disposal.html",
         assets=assets,
         disposals=disposals,
         disposal_types=DISPOSAL_TYPES,
         form=request.form if request.method == "POST" else None,
+        pending_requests=pending_requests,
+        require_approval=settings.require_disposal_approval,
+        can_approve=_can_approve_disposal(),
         **ctx,
     )
 
@@ -383,6 +413,12 @@ def view_asset(asset_id):
         .all()
     )
     disposal = FixedAssetDisposal.query.filter_by(asset_id=asset.id).first()
+    audit_logs = list_audit_logs(asset_id=asset.id, limit=30)
+    attachments = (
+        FixedAssetAttachment.query.filter_by(asset_id=asset.id)
+        .order_by(FixedAssetAttachment.created_at.desc())
+        .all()
+    )
     return render_template(
         "fixed_assets/detail.html",
         asset=asset,
@@ -391,6 +427,9 @@ def view_asset(asset_id):
         depreciations=depreciations,
         maintenances=maintenances,
         disposal=disposal,
+        audit_logs=audit_logs,
+        attachments=attachments,
+        attachment_types=ATTACHMENT_TYPES,
     )
 
 
@@ -477,3 +516,207 @@ def api_preview_costs():
         "total_cost": total,
         "monthly_depreciation": monthly,
     }
+
+
+@fixed_assets_bp.route("/settings", methods=["GET", "POST"])
+def settings():
+    denied = _guard_manage()
+    if denied:
+        return denied
+
+    settings_row = get_fixed_asset_settings()
+    accounts = Account.query.order_by(Account.code).all()
+
+    if request.method == "POST":
+        form_action = (request.form.get("form_action") or "settings").strip()
+        try:
+            if form_action == "close_period":
+                close_accounting_period(
+                    _safe_int(request.form.get("period_year"), datetime.utcnow().year),
+                    _safe_int(request.form.get("period_month"), datetime.utcnow().month),
+                    user_id=session.get("user_id"),
+                    notes=request.form.get("period_notes"),
+                )
+                db.session.commit()
+                flash("تم إغلاق الفترة المحاسبية", "success")
+            elif form_action == "reopen_period":
+                reopen_accounting_period(
+                    _safe_int(request.form.get("period_year")),
+                    _safe_int(request.form.get("period_month")),
+                    user_id=session.get("user_id"),
+                )
+                db.session.commit()
+                flash("تم إعادة فتح الفترة", "success")
+            else:
+                save_fixed_asset_settings(request.form, user_id=session.get("user_id"))
+                db.session.commit()
+                flash("تم حفظ إعدادات الأصول", "success")
+            return redirect(url_for("fixed_assets.settings"))
+        except FixedAssetError as exc:
+            db.session.rollback()
+            flash(str(exc), "error")
+        except Exception as exc:
+            db.session.rollback()
+            flash(f"حدث خطأ: {exc}", "error")
+        settings_row = get_fixed_asset_settings()
+
+    from models.fixed_asset_settings import DEPRECIATION_START_MODES
+
+    today = datetime.utcnow()
+    return render_template(
+        "fixed_assets/settings.html",
+        settings=settings_row,
+        accounts=accounts,
+        depreciation_start_modes=DEPRECIATION_START_MODES,
+        closed_periods=list_closed_periods(),
+        default_period_year=today.year,
+        default_period_month=today.month,
+    )
+
+
+@fixed_assets_bp.route("/audit")
+def audit():
+    denied = _guard_view()
+    if denied:
+        return denied
+
+    asset_id = request.args.get("asset_id")
+    asset_id_int = int(asset_id) if asset_id and str(asset_id).isdigit() else None
+    logs = list_audit_logs(asset_id=asset_id_int, limit=200)
+    asset = FixedAsset.query.get(asset_id_int) if asset_id_int else None
+    return render_template(
+        "fixed_assets/audit.html",
+        logs=logs,
+        asset=asset,
+        assets=FixedAsset.query.order_by(FixedAsset.asset_code).limit(500).all(),
+        asset_id=asset_id_int,
+    )
+
+
+@fixed_assets_bp.route("/api/settings", methods=["GET"])
+def api_settings():
+    if not _can_view():
+        return {"success": False, "error": "غير مصرح"}, 403
+    return {"success": True, "settings": get_fixed_asset_settings().to_dict()}
+
+
+@fixed_assets_bp.route("/approvals", methods=["GET", "POST"])
+def approvals():
+    denied = _guard_view()
+    if denied:
+        return denied
+
+    if request.method == "POST":
+        if not _can_approve_disposal():
+            flash("ليس لديك صلاحية الموافقة على البيع/الإتلاف", "error")
+            return redirect(url_for("fixed_assets.approvals"))
+        req_id = _safe_int(request.form.get("request_id"))
+        action = (request.form.get("approval_action") or "").strip()
+        try:
+            if action == "approve":
+                approve_disposal_request(req_id, user_id=session.get("user_id"))
+                flash("تمت الموافقة وترحيل القيد", "success")
+            elif action == "reject":
+                reject_disposal_request(
+                    req_id,
+                    user_id=session.get("user_id"),
+                    reason=request.form.get("rejection_reason"),
+                )
+                flash("تم رفض الطلب", "warning")
+            db.session.commit()
+        except FixedAssetError as exc:
+            db.session.rollback()
+            flash(str(exc), "error")
+        except Exception as exc:
+            db.session.rollback()
+            flash(f"حدث خطأ: {exc}", "error")
+        return redirect(url_for("fixed_assets.approvals"))
+
+    pending = list_pending_disposal_requests()
+    recent = (
+        FixedAssetDisposalRequest.query.filter(
+            FixedAssetDisposalRequest.status.in_(["completed", "rejected"])
+        )
+        .order_by(FixedAssetDisposalRequest.updated_at.desc())
+        .limit(50)
+        .all()
+    )
+    return render_template(
+        "fixed_assets/approvals.html",
+        pending=pending,
+        recent=recent,
+        can_approve=_can_approve_disposal(),
+    )
+
+
+@fixed_assets_bp.route("/<int:asset_id>/card")
+def asset_card(asset_id):
+    denied = _guard_view()
+    if denied:
+        return denied
+    asset = FixedAsset.query.get_or_404(asset_id)
+    return render_template("fixed_assets/card.html", asset=asset)
+
+
+@fixed_assets_bp.route("/<int:asset_id>/attachments", methods=["POST"])
+def upload_attachment(asset_id):
+    denied = _guard_manage()
+    if denied:
+        return denied
+    asset = FixedAsset.query.get_or_404(asset_id)
+    file = request.files.get("file")
+    if not file or not file.filename:
+        flash("يرجى اختيار ملف", "error")
+        return redirect(url_for("fixed_assets.view_asset", asset_id=asset.id))
+    try:
+        att = save_asset_attachment(
+            file,
+            asset.id,
+            request.form.get("attachment_type") or "other",
+            user_id=session.get("user_id"),
+        )
+        log_fixed_asset_audit(
+            "attachment_upload",
+            "fixed_asset_attachment",
+            entity_id=att.id,
+            asset_id=asset.id,
+            new_values={"file": att.file_name, "type": att.attachment_type},
+            summary=f"رفع مرفق {att.file_name} للأصل {asset.asset_code}",
+            user_id=session.get("user_id"),
+        )
+        db.session.commit()
+        flash("تم رفع المرفق", "success")
+    except ValueError as exc:
+        db.session.rollback()
+        flash(str(exc), "error")
+    except Exception as exc:
+        db.session.rollback()
+        flash(f"حدث خطأ: {exc}", "error")
+    return redirect(url_for("fixed_assets.view_asset", asset_id=asset.id))
+
+
+@fixed_assets_bp.route("/<int:asset_id>/attachments/<int:attachment_id>/delete", methods=["POST"])
+def delete_attachment(asset_id, attachment_id):
+    denied = _guard_manage()
+    if denied:
+        return denied
+    att = FixedAssetAttachment.query.filter_by(id=attachment_id, asset_id=asset_id).first_or_404()
+    asset = FixedAsset.query.get_or_404(asset_id)
+    try:
+        name = att.file_name
+        delete_asset_attachment(att)
+        log_fixed_asset_audit(
+            "attachment_delete",
+            "fixed_asset_attachment",
+            entity_id=attachment_id,
+            asset_id=asset.id,
+            old_values={"file": name},
+            summary=f"حذف مرفق {name} من الأصل {asset.asset_code}",
+            user_id=session.get("user_id"),
+        )
+        db.session.commit()
+        flash("تم حذف المرفق", "success")
+    except Exception as exc:
+        db.session.rollback()
+        flash(f"حدث خطأ: {exc}", "error")
+    return redirect(url_for("fixed_assets.view_asset", asset_id=asset.id))

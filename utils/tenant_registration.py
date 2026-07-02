@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import os
+import uuid
 from datetime import datetime
 from typing import Optional
 
@@ -68,6 +69,14 @@ def save_tenant_registration(slug: str, data: dict, app_root: Optional[str] = No
     # عند المزامنة من القاعدة دون كلمة مرور جديدة — الإبقاء على المحفوظة سابقاً
     if not payload.get("password") and existing.get("password"):
         payload["password"] = existing["password"]
+
+    if not payload.get("unsubscribe_token"):
+        payload["unsubscribe_token"] = existing.get("unsubscribe_token") or str(uuid.uuid4())
+    if "marketing_opt_in" not in payload and "marketing_opt_in" not in (data or {}):
+        if "marketing_opt_in" in existing:
+            payload["marketing_opt_in"] = existing["marketing_opt_in"]
+        else:
+            payload["marketing_opt_in"] = True
 
     with open(path, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
@@ -195,6 +204,7 @@ def registration_payload_for_signup(
     billing: str,
     business_type: str = "general",
     source: str = "signup",
+    marketing_opt_in: bool = True,
 ) -> dict:
     return {
         "slug": slug,
@@ -209,5 +219,39 @@ def registration_payload_for_signup(
         "billing": billing,
         "business_type": business_type,
         "source": source,
+        "marketing_opt_in": bool(marketing_opt_in),
+        "unsubscribe_token": str(uuid.uuid4()),
         "registered_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
     }
+
+
+def unsubscribe_by_token(token: str) -> tuple[bool, str]:
+    """إلغاء اشتراك النشرة عبر الرمز."""
+    token_clean = (token or "").strip()
+    if not token_clean:
+        return False, "رمز غير صالح"
+
+    profiles_path = profiles_dir()
+    if not os.path.isdir(profiles_path):
+        return False, "لم يُعثر على بيانات الاشتراك"
+
+    for filename in os.listdir(profiles_path):
+        if not filename.endswith(".json"):
+            continue
+        path = os.path.join(profiles_path, filename)
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f) or {}
+        except (json.JSONDecodeError, OSError):
+            continue
+        if data.get("unsubscribe_token") != token_clean:
+            continue
+        data["marketing_opt_in"] = False
+        data["unsubscribed_at"] = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        data["updated_at"] = data["unsubscribed_at"]
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        company = data.get("company_name") or data.get("slug") or ""
+        return True, company
+
+    return False, "رمز غير صالح أو منتهي"

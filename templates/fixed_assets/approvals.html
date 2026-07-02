@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}موافقات البيع والإتلاف{% endblock %}
+{% block page_title %}✅ موافقات بيع / إتلاف الأصول{% endblock %}
+{% block content %}
+<style>
+.fa-page { max-width: 1100px; margin: 0 auto; direction: rtl; }
+.fa-nav a { padding: 8px 14px; border-radius: 10px; background: var(--card-alt); border: 1px solid var(--border-light); color: var(--text); text-decoration: none; font-size: 14px; display: inline-block; margin: 0 4px 8px 0; }
+.fa-card { background: var(--card); border: 1px solid var(--border-light); border-radius: 16px; padding: 20px; margin-bottom: 18px; }
+.fa-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.fa-table th, .fa-table td { padding: 10px; border: 1px solid var(--border-light); text-align: right; vertical-align: top; }
+.fa-btn { padding: 8px 14px; border-radius: 8px; border: none; cursor: pointer; font-weight: 700; margin-left: 6px; }
+.fa-btn-ok { background: var(--success); color: #fff; }
+.fa-btn-no { background: var(--danger); color: #fff; }
+.badge { padding: 4px 10px; border-radius: 999px; background: rgba(245,158,11,.15); color: #b45309; font-size: 12px; }
+</style>
+<div class="fa-page">
+  {% include "fixed_assets/_nav.html" %}
+  <div class="fa-card">
+    <h3 style="margin-top:0;">طلبات بانتظار الموافقة <span class="badge">{{ pending|length }}</span></h3>
+    {% if not can_approve %}<p style="color:var(--text-muted);">عرض فقط — ليس لديك صلاحية الموافقة.</p>{% endif %}
+    <table class="fa-table">
+      <thead>
+        <tr><th>التاريخ</th><th>النوع</th><th>الأصل</th><th>التفاصيل</th><th>مقدّم الطلب</th><th>إجراء</th></tr>
+      </thead>
+      <tbody>
+        {% for r in pending %}
+        <tr>
+          <td>{{ r.created_at.strftime('%Y-%m-%d %H:%M') if r.created_at else '—' }}</td>
+          <td>{{ r.type_label() }}</td>
+          <td>
+            {% if r.asset %}<a href="/assets/{{ r.asset.id }}">{{ r.asset.asset_code }}</a> — {{ r.asset.name }}{% else %}—{% endif %}
+          </td>
+          <td>
+            {% if r.disposal_type == 'sale' %}
+            بيع بمبلغ {{ '{:,}'.format(r.sale_amount or 0) }} — {{ r.disposal_date }}
+            {% else %}
+            إتلاف — {{ r.scrap_reason or '—' }}
+            {% endif %}
+          </td>
+          <td>{{ r.requester.name if r.requester else '—' }}</td>
+          <td>
+            {% if can_approve %}
+            <form method="post" style="display:inline;" onsubmit="return confirm('تأكيد الموافقة وترحيل القيد؟');">
+              <input type="hidden" name="request_id" value="{{ r.id }}">
+              <input type="hidden" name="approval_action" value="approve">
+              <button class="fa-btn fa-btn-ok" type="submit">موافقة</button>
+            </form>
+            <form method="post" style="display:inline;margin-top:6px;">
+              <input type="hidden" name="request_id" value="{{ r.id }}">
+              <input type="hidden" name="approval_action" value="reject">
+              <input name="rejection_reason" placeholder="سبب الرفض" style="padding:6px;border-radius:6px;border:1px solid var(--border-light);">
+              <button class="fa-btn fa-btn-no" type="submit">رفض</button>
+            </form>
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6">لا توجد طلبات معلّقة.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="fa-card">
+    <h3 style="margin-top:0;">آخر الطلبات المعالجة</h3>
+    <table class="fa-table">
+      <thead><tr><th>التاريخ</th><th>النوع</th><th>الأصل</th><th>الحالة</th><th>المعالج</th></tr></thead>
+      <tbody>
+        {% for r in recent %}
+        <tr>
+          <td>{{ r.updated_at.strftime('%Y-%m-%d %H:%M') if r.updated_at else '—' }}</td>
+          <td>{{ r.type_label() }}</td>
+          <td>{{ r.asset.asset_code if r.asset else '—' }}</td>
+          <td>{{ r.status_label() }}{% if r.rejection_reason %} — {{ r.rejection_reason }}{% endif %}</td>
+          <td>{{ r.approver.name if r.approver else '—' }}</td>
+        </tr>
+        {% else %}<tr><td colspan="5">لا يوجد سجل.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

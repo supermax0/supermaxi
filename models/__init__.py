@@ -18,6 +18,11 @@ from .fixed_asset_movement import FixedAssetMovement
 from .fixed_asset_depreciation import FixedAssetDepreciation
 from .fixed_asset_maintenance import FixedAssetMaintenance
 from .fixed_asset_disposal import FixedAssetDisposal
+from .fixed_asset_settings import FixedAssetSettings
+from .fixed_asset_audit_log import FixedAssetAuditLog
+from .fixed_asset_attachment import FixedAssetAttachment
+from .fixed_asset_disposal_request import FixedAssetDisposalRequest
+from .financial_period_close import FinancialPeriodClose
 from .employee import Employee
 from .invoice import Invoice
 from .invoice_payment_ledger import InvoicePaymentLedger
@@ -79,3 +84,5 @@ from .core.landing_content import (
     LandingSection,
     LandingTestimonial,
 )
+from .core.platform_announcement import PlatformAnnouncement
+from .core.announcement_send_log import AnnouncementSendLog

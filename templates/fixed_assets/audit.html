@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}سجل التدقيق — الأصول{% endblock %}
+{% block page_title %}📋 سجل تدقيق الأصول{% endblock %}
+{% block content %}
+<style>
+.fa-page { max-width: 1100px; margin: 0 auto; direction: rtl; }
+.fa-nav { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
+.fa-nav a { padding: 8px 14px; border-radius: 10px; background: var(--card-alt); border: 1px solid var(--border-light); color: var(--text); text-decoration: none; font-size: 14px; }
+.fa-card { background: var(--card); border: 1px solid var(--border-light); border-radius: 16px; padding: 20px; margin-bottom: 18px; }
+.fa-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.fa-table th, .fa-table td { padding: 10px; border: 1px solid var(--border-light); text-align: right; vertical-align: top; }
+.fa-filter { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; margin-bottom: 16px; }
+.fa-filter select, .fa-filter button { padding: 10px; border-radius: 10px; border: 1px solid var(--border-light); background: var(--card-alt); color: var(--text); }
+.fa-filter button { background: var(--primary); color: #fff; border: none; cursor: pointer; }
+.mono { font-family: monospace; font-size: 12px; color: var(--text-muted); }
+</style>
+<div class="fa-page">
+  {% include "fixed_assets/_nav.html" %}
+  <div class="fa-card">
+    <form class="fa-filter" method="get">
+      <div>
+        <label>فلترة حسب الأصل</label>
+        <select name="asset_id">
+          <option value="">كل الأصول</option>
+          {% for a in assets %}
+          <option value="{{ a.id }}" {% if asset_id == a.id %}selected{% endif %}>{{ a.asset_code }} — {{ a.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit">تطبيق</button>
+    </form>
+    {% if asset %}<p>عرض سجل الأصل: <strong>{{ asset.asset_code }}</strong></p>{% endif %}
+    <table class="fa-table">
+      <thead>
+        <tr><th>التاريخ</th><th>العملية</th><th>الملخص</th><th>المستخدم</th><th>قبل</th><th>بعد</th></tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+        <tr>
+          <td>{{ log.created_at.strftime('%Y-%m-%d %H:%M') if log.created_at else '—' }}</td>
+          <td>{{ log.action_label() }}</td>
+          <td>{{ log.summary }}</td>
+          <td>{{ log.user.name if log.user else '—' }}</td>
+          <td class="mono">{{ log.get_old_values() | tojson if log.get_old_values() else '—' }}</td>
+          <td class="mono">{{ log.get_new_values() | tojson if log.get_new_values() else '—' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6">لا توجد سجلات تدقيق.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -6,6 +6,7 @@
 """
 
 from datetime import date, timedelta
+from calendar import monthrange
 from sqlalchemy import func
 from extensions import db
 from models.invoice import Invoice
@@ -24,6 +25,44 @@ from utils.cash_calculations import calculate_cash_balance
 
 RETURN_STATUSES = ["مرتجع"]
 CANCELED_STATUSES = ["ملغي"]
+
+
+def _fixed_assets_financial_summary(date_from, date_to):
+    """ملخص الأصول الثابتة للتقرير المالي (يُتجاهل إن لم تُنشأ الجداول بعد)."""
+    defaults = {
+        "fixed_assets_book_value": 0,
+        "fixed_assets_cost": 0,
+        "fixed_assets_accumulated_depreciation": 0,
+        "fixed_assets_depreciation_period": 0,
+        "fixed_assets_active_count": 0,
+    }
+    try:
+        from models.fixed_asset import FixedAsset
+        from models.fixed_asset_depreciation import FixedAssetDepreciation
+
+        active_statuses = ("active", "under_installation", "fully_depreciated", "draft")
+        assets = FixedAsset.query.filter(FixedAsset.status.in_(active_statuses)).all()
+        book_value = sum(int(a.book_value or 0) for a in assets)
+        total_cost = sum(int(a.total_cost or 0) for a in assets)
+        accumulated = sum(int(a.accumulated_depreciation or 0) for a in assets)
+        active_count = sum(1 for a in assets if a.status == "active")
+
+        dep_period = 0
+        for row in FixedAssetDepreciation.query.filter_by(status="posted").all():
+            period_start = date(row.period_year, row.period_month, 1)
+            period_end = date(row.period_year, row.period_month, monthrange(row.period_year, row.period_month)[1])
+            if period_end >= date_from and period_start <= date_to:
+                dep_period += int(row.depreciation_amount or 0)
+
+        return {
+            "fixed_assets_book_value": int(book_value),
+            "fixed_assets_cost": int(total_cost),
+            "fixed_assets_accumulated_depreciation": int(accumulated),
+            "fixed_assets_depreciation_period": int(dep_period),
+            "fixed_assets_active_count": active_count,
+        }
+    except Exception:
+        return defaults
 
 
 def _effective_paid_amount(inv):
@@ -158,7 +197,12 @@ def get_financial_report_data(period_type="this_month", custom_date_from=None, c
     gross_margin_pct = round(gross_profit / total_revenue * 100, 1) if total_revenue else None
     profit_margin_pct = round(net_profit_period / total_revenue * 100, 1) if total_revenue else None
     expense_to_revenue_pct = round(expenses_period / total_revenue * 100, 1) if total_revenue else None
-    total_assets = int(cash_balance + inventory_value + accounts_receivable)
+
+    fa_summary = _fixed_assets_financial_summary(date_from, date_to)
+    fixed_assets_book_value = fa_summary["fixed_assets_book_value"]
+    fixed_assets_depreciation_period = fa_summary["fixed_assets_depreciation_period"]
+
+    total_assets = int(cash_balance + inventory_value + accounts_receivable + fixed_assets_book_value)
     total_liabilities = int(supplier_debts + shipping_due)
     liquidity_ratio = round(total_assets / total_liabilities, 2) if total_liabilities else None
 
@@ -314,4 +358,10 @@ def get_financial_report_data(period_type="this_month", custom_date_from=None, c
         "top_suppliers": top_suppliers,
         # رسوم بيانية
         "chart_series": chart_series,
+        # أصول ثابتة
+        "fixed_assets_book_value": fixed_assets_book_value,
+        "fixed_assets_cost": fa_summary["fixed_assets_cost"],
+        "fixed_assets_accumulated_depreciation": fa_summary["fixed_assets_accumulated_depreciation"],
+        "fixed_assets_depreciation_period": fixed_assets_depreciation_period,
+        "fixed_assets_active_count": fa_summary["fixed_assets_active_count"],
     }

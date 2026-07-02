@@ -106,18 +106,21 @@ def _ensure_landing_schema():
 
 
 def _repair_landing_defaults():
-    missing_default = "/static/image.png"
-    existing_default = "/static/finora-logo.png"
+    hero_image = "/static/image.png"
+    logo_image = "/static/finora-logo.png"
     changed = False
-    for section in LandingSection.query.filter(LandingSection.image_url == missing_default).all():
-        section.image_url = existing_default
+    for section in LandingSection.query.filter(
+        LandingSection.section_key == "hero",
+        LandingSection.image_url.in_([logo_image, ""]),
+    ).all():
+        section.image_url = hero_image
         changed = True
     for seo in LandingSEO.query.all():
-        if seo.og_image_url == missing_default:
-            seo.og_image_url = existing_default
+        if seo.og_image_url in ("", hero_image):
+            seo.og_image_url = logo_image
             changed = True
-        if seo.twitter_image_url == missing_default:
-            seo.twitter_image_url = existing_default
+        if seo.twitter_image_url in ("", hero_image):
+            seo.twitter_image_url = logo_image
             changed = True
     for scope in ("draft", "published"):
         has_header_trial = LandingCTA.query.filter_by(scope=scope, placement_key="header", cta_type="trial").first()
@@ -164,7 +167,7 @@ def _seed_scope(scope):
     db.session.add(settings)
 
     sections = [
-        ("hero", "hero", "فينورا — نظام إدارة ومحاسبة ذكي لشركتك", "مصمم للشركات والمتاجر العراقية", "تابع المبيعات، الطلبات، المخزون، شركات التوصيل، المصاريف، الأرباح، والتسويات من مكان واحد، مع مساعد ذكي يساعدك تكتشف الأخطاء قبل ما تتحول إلى خسائر.", {"stats": [{"value": "+1,200", "label": "طلب يومياً"}, {"value": "12+", "label": "ميزة تشغيلية"}, {"value": "99.9%", "label": "وقت تشغيل"}, {"value": "4", "label": "خطط مرنة"}]}, "/static/finora-logo.png", "", "جرّب مجاناً", "/signup?plan=free&billing=monthly", "احجز عرض مباشر", "#contact", 10),
+        ("hero", "hero", "فينورا — نظام إدارة ومحاسبة ذكي لشركتك", "مصمم للشركات والمتاجر العراقية", "تابع المبيعات، الطلبات، المخزون، شركات التوصيل، المصاريف، الأرباح، والتسويات من مكان واحد، مع مساعد ذكي يساعدك تكتشف الأخطاء قبل ما تتحول إلى خسائر.", {"stats": [{"value": "+1,200", "label": "طلب يومياً"}, {"value": "12+", "label": "ميزة تشغيلية"}, {"value": "99.9%", "label": "وقت تشغيل"}, {"value": "4", "label": "خطط مرنة"}]}, "/static/image.png", "", "جرّب مجاناً", "/signup?plan=free&billing=monthly", "احجز عرض مباشر", "#contact", 10),
         ("pain_points", "pain_points", "الفوضى الصغيرة تتحول إلى خسارة كبيرة", "مشاكل يومية يعرفها كل صاحب متجر", "طلبات غير محسوبة، تسويات توصيل معقدة، مخزون غير مضبوط، أرباح غير واضحة، ومصاريف لا تظهر في التقرير الصحيح.", {"items": ["طلبات غير محسوبة", "تسويات توصيل معقدة", "مخزون غير مضبوط", "أرباح غير واضحة", "مصاريف غير مرتبطة", "موظفون بلا متابعة دقيقة"]}, "", "", "", "", "", "", 20),
         ("solution", "solution", "فينورا يجمع عملياتك في لوحة واحدة", "من الطلب إلى الربح الحقيقي", "فينورا يحوّل شغل شركتك اليومي إلى أرقام واضحة، قرارات أسرع، وتقارير تفهم منها الربح الحقيقي.", {}, "", "", "شاهد طريقة العمل", "#workflow", "", "", 30),
         ("workflow", "workflow", "طريقة العمل", "طلب → تجهيز → شحن → تسليم → تسوية → ربح صافي", "كل خطوة مرتبطة بالأرقام التي تحتاجها لاتخاذ قرار أسرع.", {"steps": ["طلب", "تجهيز", "شحن", "تسليم", "تسوية", "ربح صافي"]}, "", "", "", "", "", "", 40),

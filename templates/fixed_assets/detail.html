@@ -28,6 +28,7 @@
         <button type="submit" class="fa-btn">ترحيل قيد الشراء</button>
       </form>
       {% endif %}
+      <a href="/assets/{{ asset.id }}/card" target="_blank" class="fa-btn" style="background:var(--primary);text-decoration:none;display:inline-block;">بطاقة / طباعة</a>
     </div>
     <div class="fa-grid">
       <div><strong>كود الأصل</strong>{{ asset.asset_code }}</div>
@@ -117,6 +118,56 @@
           <td>{{ "{:,}".format(j.amount or 0) }}</td>
         </tr>
         {% else %}<tr><td colspan="6">لا توجد قيود مرتبطة.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if audit_logs %}
+  <div class="fa-card">
+    <h3 style="margin-top:0;">سجل التدقيق <a href="/assets/audit?asset_id={{ asset.id }}" style="font-size:13px;">عرض الكل</a></h3>
+    <table class="fa-table">
+      <thead><tr><th>التاريخ</th><th>العملية</th><th>الملخص</th></tr></thead>
+      <tbody>
+        {% for log in audit_logs %}
+        <tr>
+          <td>{{ log.created_at.strftime('%Y-%m-%d %H:%M') if log.created_at else '—' }}</td>
+          <td>{{ log.action_label() }}</td>
+          <td>{{ log.summary }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+  <div class="fa-card">
+    <h3 style="margin-top:0;">المرفقات</h3>
+    <form method="post" action="/assets/{{ asset.id }}/attachments" enctype="multipart/form-data" style="display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin-bottom:16px;">
+      <div>
+        <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px;">نوع المرفق</label>
+        <select name="attachment_type" style="padding:8px;border-radius:8px;border:1px solid var(--border-light);">
+          {% for k,v in attachment_types.items() %}<option value="{{ k }}">{{ v }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px;">الملف</label>
+        <input type="file" name="file" required accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx">
+      </div>
+      <button type="submit" class="fa-btn" style="background:var(--primary);">رفع مرفق</button>
+    </form>
+    <table class="fa-table">
+      <thead><tr><th>النوع</th><th>الملف</th><th>التاريخ</th><th>إجراء</th></tr></thead>
+      <tbody>
+        {% for att in attachments %}
+        <tr>
+          <td>{{ att.type_label() }}</td>
+          <td><a href="/{{ att.file_path }}" target="_blank">{{ att.file_name }}</a></td>
+          <td>{{ att.created_at.strftime('%Y-%m-%d') if att.created_at else '—' }}</td>
+          <td>
+            <form method="post" action="/assets/{{ asset.id }}/attachments/{{ att.id }}/delete" onsubmit="return confirm('حذف المرفق؟');" style="display:inline;">
+              <button type="submit" style="background:var(--danger);color:#fff;border:none;padding:6px 10px;border-radius:6px;cursor:pointer;">حذف</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}<tr><td colspan="4">لا توجد مرفقات.</td></tr>{% endfor %}
       </tbody>
     </table>
   </div>

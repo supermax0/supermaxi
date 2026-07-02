@@ -17,7 +17,19 @@ from models.fixed_asset_movement import FixedAssetMovement
 from models.fixed_asset_depreciation import FixedAssetDepreciation
 from models.fixed_asset_maintenance import FixedAssetMaintenance
 from models.fixed_asset_disposal import FixedAssetDisposal
+from models.fixed_asset_settings import FixedAssetSettings, DEPRECIATION_START_MODES
+from models.fixed_asset_disposal_request import FixedAssetDisposalRequest
 from models.journal_entry import JournalEntry
+from utils.fixed_assets_audit import asset_snapshot, log_fixed_asset_audit
+from utils.financial_period_guard import (
+    PeriodClosedError,
+    assert_date_period_open,
+    assert_period_open,
+    close_financial_period,
+    is_period_closed,
+    list_closed_periods,
+    reopen_financial_period,
+)
 from models.supplier import Supplier
 from utils.accounting_logic import ACCOUNT_CODES, get_or_create_account, initialize_accounts
 from utils.fixed_assets_schema_guard import ensure_fixed_assets_schema
@@ -50,6 +62,26 @@ DEFAULT_CATEGORIES = [
 
 class FixedAssetError(Exception):
     pass
+
+
+def _enforce_period_date(operation_date, action_label: str):
+    settings = get_fixed_asset_settings()
+    if not settings.enforce_period_close:
+        return
+    try:
+        assert_date_period_open(operation_date, action_label)
+    except PeriodClosedError as exc:
+        raise FixedAssetError(str(exc)) from exc
+
+
+def _enforce_period_ym(year: int, month: int, action_label: str):
+    settings = get_fixed_asset_settings()
+    if not settings.enforce_period_close:
+        return
+    try:
+        assert_period_open(year, month, action_label)
+    except PeriodClosedError as exc:
+        raise FixedAssetError(str(exc)) from exc
 
 
 def _safe_int(value, default=0):
@@ -169,9 +201,94 @@ def seed_default_categories():
     db.session.commit()
 
 
+def get_fixed_asset_settings() -> FixedAssetSettings:
+    ensure_fixed_assets_schema()
+    row = FixedAssetSettings.query.first()
+    if not row:
+        row = FixedAssetSettings(id=1)
+        db.session.add(row)
+        db.session.commit()
+    return row
+
+
+def save_fixed_asset_settings(data, user_id=None) -> FixedAssetSettings:
+    settings = get_fixed_asset_settings()
+    old = settings.to_dict()
+
+    def _bool(key, default=None):
+        if key in data:
+            return str(data.get(key)).lower() in ("1", "true", "yes", "on")
+        return default if default is not None else getattr(settings, key)
+
+    settings.enabled = _bool("enabled")
+    settings.auto_numbering = _bool("auto_numbering")
+    settings.code_prefix = (data.get("code_prefix") or settings.code_prefix or "FA").strip()[:20] or "FA"
+    settings.allow_code_edit = _bool("allow_code_edit")
+    settings.prevent_delete_posted = _bool("prevent_delete_posted")
+    settings.allow_without_invoice = _bool("allow_without_invoice")
+    settings.require_invoice_attachment = _bool("require_invoice_attachment")
+    settings.require_location = _bool("require_location")
+    settings.require_responsible = _bool("require_responsible")
+    settings.default_depreciation_method = (
+        data.get("default_depreciation_method") or settings.default_depreciation_method or "straight_line"
+    )
+    mode = (data.get("depreciation_start_mode") or settings.depreciation_start_mode or "purchase").strip()
+    settings.depreciation_start_mode = mode if mode in DEPRECIATION_START_MODES else "purchase"
+    settings.allow_manual_depreciation = _bool("allow_manual_depreciation")
+    settings.allow_batch_depreciation = _bool("allow_batch_depreciation")
+    settings.prevent_duplicate_depreciation = _bool("prevent_duplicate_depreciation")
+    settings.require_disposal_approval = _bool("require_disposal_approval")
+    settings.enforce_period_close = _bool("enforce_period_close")
+    settings.gain_on_sale_account_id = _safe_int(data.get("gain_on_sale_account_id")) or None
+    settings.loss_on_sale_account_id = _safe_int(data.get("loss_on_sale_account_id")) or None
+    settings.loss_on_scrap_account_id = _safe_int(data.get("loss_on_scrap_account_id")) or None
+    settings.maintenance_expense_account_id = _safe_int(data.get("maintenance_expense_account_id")) or None
+    settings.default_journal_description = (data.get("default_journal_description") or "").strip() or None
+    settings.updated_at = datetime.utcnow()
+
+    log_fixed_asset_audit(
+        "settings_update",
+        "fixed_asset_settings",
+        entity_id=settings.id,
+        old_values=old,
+        new_values=settings.to_dict(),
+        summary="تحديث إعدادات الأصول الثابتة",
+        user_id=user_id,
+    )
+    return settings
+
+
+def _account_from_settings_or_code(settings_attr, code_key):
+    settings = get_fixed_asset_settings()
+    account_id = getattr(settings, settings_attr, None)
+    if account_id:
+        from models.account import Account
+
+        acc = Account.query.get(account_id)
+        if acc:
+            return acc
+    return Account.query.filter_by(code=FIXED_ASSET_GL[code_key]).first()
+
+
+def resolve_depreciation_start(mode, purchase_date, ready_date):
+    """تاريخ بداية الاستهلاك حسب الإعدادات (دالة خالصة للاختبار)."""
+    if mode == "ready":
+        return ready_date or purchase_date
+    if mode == "next_month":
+        base = ready_date or purchase_date
+        if base:
+            if base.month == 12:
+                return date(base.year + 1, 1, 1)
+            return date(base.year, base.month + 1, 1)
+        return None
+    return purchase_date
+
+
 def generate_asset_code():
+    settings = get_fixed_asset_settings()
+    prefix_base = (settings.code_prefix or "FA").strip().upper() or "FA"
     year = datetime.utcnow().year
-    prefix = f"FA-{year}-"
+    prefix = f"{prefix_base}-{year}-"
     last = (
         FixedAsset.query.filter(FixedAsset.asset_code.like(f"{prefix}%"))
         .order_by(FixedAsset.id.desc())
@@ -255,6 +372,9 @@ def _resolve_payment_accounts(payment_method, treasury_account_id=None):
 def build_asset_from_form(data, user_id=None, as_draft=True):
     ensure_fixed_assets_schema()
     seed_default_categories()
+    settings = get_fixed_asset_settings()
+    if not settings.enabled:
+        raise FixedAssetError("نظام الأصول الثابتة معطّل من الإعدادات")
 
     category_id = _safe_int(data.get("category_id"))
     category = FixedAssetCategory.query.get(category_id)
@@ -283,9 +403,20 @@ def build_asset_from_form(data, user_id=None, as_draft=True):
         else 0
     )
 
-    asset_code = (data.get("asset_code") or "").strip() or generate_asset_code()
+    asset_code = (data.get("asset_code") or "").strip()
+    if not settings.allow_code_edit or not asset_code:
+        asset_code = generate_asset_code()
     if FixedAsset.query.filter_by(asset_code=asset_code).first():
         raise FixedAssetError("كود الأصل مستخدم مسبقاً")
+
+    location_text = (data.get("location_text") or "").strip() or None
+    responsible_user_id = _safe_int(data.get("responsible_user_id")) or None
+    if settings.require_location and not location_text:
+        raise FixedAssetError("الموقع مطلوب حسب إعدادات الأصول")
+    if settings.require_responsible and not responsible_user_id:
+        raise FixedAssetError("المسؤول مطلوب حسب إعدادات الأصول")
+    if settings.require_invoice_attachment and not (data.get("supplier_invoice_no") or "").strip():
+        raise FixedAssetError("رقم فاتورة المورد مطلوب حسب الإعدادات")
 
     status = (data.get("status") or ("draft" if as_draft else "active")).strip()
     payment_method = (data.get("payment_method") or "cash").strip()
@@ -330,8 +461,8 @@ def build_asset_from_form(data, user_id=None, as_draft=True):
         accumulated_depreciation_account_id=category.accumulated_depreciation_account_id,
         depreciation_expense_account_id=category.depreciation_expense_account_id,
         branch_id=_safe_int(data.get("branch_id")) or None,
-        location_text=(data.get("location_text") or "").strip() or None,
-        responsible_user_id=_safe_int(data.get("responsible_user_id")) or None,
+        location_text=location_text,
+        responsible_user_id=responsible_user_id,
         status=status,
         payment_method=payment_method,
         treasury_account_id=_safe_int(data.get("treasury_account_id")) or None,
@@ -349,12 +480,22 @@ def build_asset_from_form(data, user_id=None, as_draft=True):
 
     db.session.add(asset)
     db.session.flush()
+    log_fixed_asset_audit(
+        "create",
+        "fixed_asset",
+        entity_id=asset.id,
+        asset_id=asset.id,
+        new_values=asset_snapshot(asset),
+        summary=f"إنشاء أصل {asset.asset_code} — {asset.name}",
+        user_id=user_id,
+    )
     return asset
 
 
 def post_asset_acquisition(asset: FixedAsset, user_id=None):
     if asset.status not in ("draft", "under_installation"):
         raise FixedAssetError("لا يمكن ترحيل هذا الأصل في حالته الحالية")
+    _enforce_period_date(asset.purchase_date or date.today(), "ترحيل شراء أصل")
     if asset.acquisition_journal_entry_id:
         raise FixedAssetError("تم ترحيل قيد شراء هذا الأصل مسبقاً")
     if asset.total_cost <= 0:
@@ -462,6 +603,16 @@ def post_asset_acquisition(asset: FixedAsset, user_id=None):
     asset.updated_by = user_id
     asset.updated_at = datetime.utcnow()
 
+    log_fixed_asset_audit(
+        "post_acquisition",
+        "fixed_asset",
+        entity_id=asset.id,
+        asset_id=asset.id,
+        old_values={"status": "draft"},
+        new_values=asset_snapshot(asset),
+        summary=f"ترحيل شراء الأصل {asset.asset_code}",
+        user_id=user_id,
+    )
     return first_entry
 
 
@@ -497,7 +648,12 @@ def dashboard_stats():
 # ─── المرحلة 2: الاستهلاك الشهري ───
 
 def _depreciation_start_date(asset: FixedAsset):
-    return asset.ready_date or asset.purchase_date
+    settings = get_fixed_asset_settings()
+    return resolve_depreciation_start(
+        settings.depreciation_start_mode or "purchase",
+        asset.purchase_date,
+        asset.ready_date,
+    )
 
 
 def _period_not_before_start(asset: FixedAsset, year: int, month: int) -> bool:
@@ -578,6 +734,10 @@ def preview_monthly_depreciation(year: int, month: int):
 
 
 def post_monthly_depreciation(year: int, month: int, user_id=None):
+    settings = get_fixed_asset_settings()
+    if not settings.allow_batch_depreciation:
+        raise FixedAssetError("ترحيل الاستهلاك المجمع معطّل من الإعدادات")
+    _enforce_period_ym(year, month, "ترحيل الاستهلاك")
     preview = preview_monthly_depreciation(year, month)
     eligible = [r for r in preview["rows"] if r["eligible"]]
     if not eligible:
@@ -662,6 +822,19 @@ def post_monthly_depreciation(year: int, month: int, user_id=None):
             )
         )
 
+    log_fixed_asset_audit(
+        "post_depreciation",
+        "fixed_asset_depreciation",
+        new_values={
+            "period": f"{year}-{month:02d}",
+            "posted_count": len(posted_records),
+            "total_amount": sum(r["amount"] for r in eligible),
+            "journal_count": len(journal_map),
+        },
+        summary=f"ترحيل استهلاك {len(posted_records)} أصل للفترة {year}-{month:02d}",
+        user_id=user_id,
+    )
+
     return {
         "posted_count": len(posted_records),
         "total_amount": sum(r["amount"] for r in eligible),
@@ -699,6 +872,7 @@ def post_asset_maintenance(data, user_id=None):
         raise FixedAssetError("المبلغ يجب أن يكون أكبر من صفر")
 
     maintenance_date = _parse_date(data.get("maintenance_date")) or date.today()
+    _enforce_period_date(maintenance_date, "تسجيل صيانة أصل")
     payment_method = (data.get("payment_method") or "cash").strip()
     treasury_id = resolve_treasury_account_id(data.get("treasury_account_id"))
     is_capitalized = mtype == "improvement"
@@ -742,10 +916,10 @@ def post_asset_maintenance(data, user_id=None):
         desc = f"تحسين رأسمالي — {asset.asset_code} - {asset.name}"
         movement_type = "improvement"
     else:
-        maint_acc = Account.query.filter_by(code=FIXED_ASSET_GL["MAINTENANCE_EXPENSE"]).first()
+        maint_acc = _account_from_settings_or_code("maintenance_expense_account_id", "MAINTENANCE_EXPENSE")
         if not maint_acc:
             ensure_fixed_asset_gl_accounts()
-            maint_acc = Account.query.filter_by(code=FIXED_ASSET_GL["MAINTENANCE_EXPENSE"]).first()
+            maint_acc = _account_from_settings_or_code("maintenance_expense_account_id", "MAINTENANCE_EXPENSE")
         debit_account_id = maint_acc.id if maint_acc else None
         if not debit_account_id:
             raise FixedAssetError("حساب مصروف الصيانة غير متوفر")
@@ -805,6 +979,16 @@ def post_asset_maintenance(data, user_id=None):
             created_by=user_id,
         )
     )
+    log_fixed_asset_audit(
+        "capital_improvement" if is_capitalized else "maintenance",
+        "fixed_asset_maintenance",
+        entity_id=record.id,
+        asset_id=asset.id,
+        old_values={"book_value": old_book},
+        new_values={"book_value": new_book, "amount": amount, "type": mtype},
+        summary=f"{'تحسين رأسمالي' if is_capitalized else 'صيانة'} — {asset.asset_code}",
+        user_id=user_id,
+    )
     return record
 
 
@@ -827,6 +1011,11 @@ def _validate_disposable_asset(asset: FixedAsset):
         raise FixedAssetError("يجب ترحيل قيد شراء الأصل أولاً")
     if FixedAssetDisposal.query.filter_by(asset_id=asset.id).first():
         raise FixedAssetError("تم تسجيل بيع/إتلاف لهذا الأصل مسبقاً")
+    pending = FixedAssetDisposalRequest.query.filter_by(
+        asset_id=asset.id, status="pending"
+    ).first()
+    if pending:
+        raise FixedAssetError("يوجد طلب بيع/إتلاف بانتظار الموافقة لهذا الأصل")
 
 
 def post_asset_sale(data, user_id=None):
@@ -843,6 +1032,7 @@ def post_asset_sale(data, user_id=None):
         raise FixedAssetError("سعر البيع غير صالح")
 
     disposal_date = _parse_date(data.get("disposal_date")) or date.today()
+    _enforce_period_date(disposal_date, "بيع أصل")
     payment_method = (data.get("payment_method") or "cash").strip()
     treasury_id = resolve_treasury_account_id(data.get("treasury_account_id"))
 
@@ -861,12 +1051,12 @@ def post_asset_sale(data, user_id=None):
     if sale_amount > 0 and not receipt_account_id:
         raise FixedAssetError("حساب القبض غير متوفر")
 
-    gain_acc = Account.query.filter_by(code=FIXED_ASSET_GL["GAIN_ON_SALE"]).first()
-    loss_acc = Account.query.filter_by(code=FIXED_ASSET_GL["LOSS_ON_SALE"]).first()
+    gain_acc = _account_from_settings_or_code("gain_on_sale_account_id", "GAIN_ON_SALE")
+    loss_acc = _account_from_settings_or_code("loss_on_sale_account_id", "LOSS_ON_SALE")
     if not gain_acc or not loss_acc:
         ensure_fixed_asset_gl_accounts()
-        gain_acc = Account.query.filter_by(code=FIXED_ASSET_GL["GAIN_ON_SALE"]).first()
-        loss_acc = Account.query.filter_by(code=FIXED_ASSET_GL["LOSS_ON_SALE"]).first()
+        gain_acc = _account_from_settings_or_code("gain_on_sale_account_id", "GAIN_ON_SALE")
+        loss_acc = _account_from_settings_or_code("loss_on_sale_account_id", "LOSS_ON_SALE")
 
     desc_base = f"بيع أصل {asset.asset_code} - {asset.name}"
     first_entry = None
@@ -969,6 +1159,7 @@ def post_asset_sale(data, user_id=None):
     db.session.add(disposal)
     db.session.flush()
 
+    old_status = asset.status
     asset.status = "sold"
     asset.book_value = 0
     asset.is_depreciable = False
@@ -990,6 +1181,16 @@ def post_asset_sale(data, user_id=None):
             created_by=user_id,
         )
     )
+    log_fixed_asset_audit(
+        "sale",
+        "fixed_asset_disposal",
+        entity_id=disposal.id,
+        asset_id=asset.id,
+        old_values={"status": old_status, "book_value": book_value},
+        new_values={"status": "sold", "sale_amount": sale_amount, "gain": gain, "loss": loss},
+        summary=f"بيع الأصل {asset.asset_code}",
+        user_id=user_id,
+    )
     return disposal
 
 
@@ -1003,6 +1204,7 @@ def post_asset_scrap(data, user_id=None):
     _validate_disposable_asset(asset)
 
     disposal_date = _parse_date(data.get("disposal_date")) or date.today()
+    _enforce_period_date(disposal_date, "إتلاف أصل")
     total_cost = _safe_int(asset.total_cost)
     accum = _safe_int(asset.accumulated_depreciation)
     book_value = _safe_int(asset.book_value)
@@ -1012,10 +1214,10 @@ def post_asset_scrap(data, user_id=None):
     if not asset_account_id:
         raise FixedAssetError("حساب الأصل غير محدد")
 
-    scrap_loss_acc = Account.query.filter_by(code=FIXED_ASSET_GL["LOSS_ON_SCRAP"]).first()
+    scrap_loss_acc = _account_from_settings_or_code("loss_on_scrap_account_id", "LOSS_ON_SCRAP")
     if not scrap_loss_acc:
         ensure_fixed_asset_gl_accounts()
-        scrap_loss_acc = Account.query.filter_by(code=FIXED_ASSET_GL["LOSS_ON_SCRAP"]).first()
+        scrap_loss_acc = _account_from_settings_or_code("loss_on_scrap_account_id", "LOSS_ON_SCRAP")
 
     desc = f"إتلاف أصل {asset.asset_code} - {asset.name}"
     first_entry = None
@@ -1062,6 +1264,7 @@ def post_asset_scrap(data, user_id=None):
     db.session.add(disposal)
     db.session.flush()
 
+    old_status = asset.status
     asset.status = "scrapped"
     asset.book_value = 0
     asset.is_depreciable = False
@@ -1083,6 +1286,16 @@ def post_asset_scrap(data, user_id=None):
             created_by=user_id,
         )
     )
+    log_fixed_asset_audit(
+        "scrap",
+        "fixed_asset_disposal",
+        entity_id=disposal.id,
+        asset_id=asset.id,
+        old_values={"status": old_status, "book_value": book_value},
+        new_values={"status": "scrapped", "loss": book_value},
+        summary=f"إتلاف الأصل {asset.asset_code}",
+        user_id=user_id,
+    )
     return disposal
 
 
@@ -1097,6 +1310,7 @@ def post_asset_transfer(data, user_id=None):
         raise FixedAssetError("لا يمكن نقل أصل في هذه الحالة")
 
     transfer_date = _parse_date(data.get("transfer_date")) or date.today()
+    _enforce_period_date(transfer_date, "نقل أصل")
     old_location = asset.location_text or "—"
     new_location = (data.get("new_location") or "").strip()
     new_branch_id = _safe_int(data.get("new_branch_id")) or None
@@ -1142,6 +1356,16 @@ def post_asset_transfer(data, user_id=None):
             notes=f"نقل من {old_location} إلى {new_location or '—'} — {(data.get('reason') or '')}",
             created_by=user_id,
         )
+    )
+    log_fixed_asset_audit(
+        "transfer",
+        "fixed_asset",
+        entity_id=asset.id,
+        asset_id=asset.id,
+        old_values={"location": old_location},
+        new_values={"location": new_location or asset.location_text, "branch_id": new_branch_id},
+        summary=f"نقل الأصل {asset.asset_code}",
+        user_id=user_id,
     )
     return asset
 
@@ -1299,4 +1523,178 @@ def build_asset_reports(report_type="register", year_from=None, month_from=None,
         return {"title": "أصول تحتاج مراجعة", "rows": issues}
 
     return {"title": "تقرير", "rows": []}
+
+
+# ─── طلبات موافقة البيع / الإتلاف ───
+
+def _disposal_form_to_dict(data) -> dict:
+    return {
+        "asset_id": _safe_int(data.get("asset_id")),
+        "disposal_date": (_parse_date(data.get("disposal_date")) or date.today()).isoformat(),
+        "sale_amount": _safe_int(data.get("sale_amount")),
+        "payment_method": (data.get("payment_method") or "cash").strip(),
+        "treasury_account_id": data.get("treasury_account_id"),
+        "buyer_name": (data.get("buyer_name") or "").strip() or None,
+        "scrap_reason": (data.get("scrap_reason") or "").strip() or None,
+        "notes": (data.get("notes") or "").strip() or None,
+    }
+
+
+def create_disposal_request(data, user_id=None, disposal_type="sale"):
+    ensure_fixed_assets_schema()
+    asset = FixedAsset.query.get(_safe_int(data.get("asset_id")))
+    if not asset:
+        raise FixedAssetError("الأصل غير موجود")
+    _validate_disposable_asset(asset)
+
+    disposal_date = _parse_date(data.get("disposal_date")) or date.today()
+    _enforce_period_date(disposal_date, "طلب بيع/إتلاف أصل")
+
+    if disposal_type == "scrap" and not (data.get("scrap_reason") or "").strip():
+        raise FixedAssetError("سبب الإتلاف مطلوب")
+
+    req = FixedAssetDisposalRequest(
+        asset_id=asset.id,
+        disposal_type=disposal_type,
+        status="pending",
+        disposal_date=disposal_date,
+        sale_amount=_safe_int(data.get("sale_amount")),
+        payment_method=(data.get("payment_method") or "cash").strip(),
+        treasury_account_id=_safe_int(data.get("treasury_account_id")) or None,
+        buyer_name=(data.get("buyer_name") or "").strip() or None,
+        scrap_reason=(data.get("scrap_reason") or "").strip() or None,
+        notes=(data.get("notes") or "").strip() or None,
+        requested_by=user_id,
+    )
+    db.session.add(req)
+    db.session.flush()
+    log_fixed_asset_audit(
+        "disposal_request",
+        "fixed_asset_disposal_request",
+        entity_id=req.id,
+        asset_id=asset.id,
+        new_values={"type": disposal_type, "status": "pending"},
+        summary=f"طلب {req.type_label()} للأصل {asset.asset_code} بانتظار الموافقة",
+        user_id=user_id,
+    )
+    return req
+
+
+def submit_disposal_or_request(data, user_id=None):
+    """يرسل طلب موافقة أو ينفّذ مباشرة حسب الإعدادات."""
+    action = (data.get("action") or "sale").strip()
+    disposal_type = "scrap" if action == "scrap" else "sale"
+    settings = get_fixed_asset_settings()
+    if settings.require_disposal_approval:
+        return create_disposal_request(data, user_id=user_id, disposal_type=disposal_type)
+    if disposal_type == "scrap":
+        return post_asset_scrap(data, user_id=user_id)
+    return post_asset_sale(data, user_id=user_id)
+
+
+def approve_disposal_request(request_id: int, user_id=None):
+    req = FixedAssetDisposalRequest.query.get(request_id)
+    if not req:
+        raise FixedAssetError("الطلب غير موجود")
+    if req.status != "pending":
+        raise FixedAssetError("الطلب ليس بانتظار الموافقة")
+
+    payload = {
+        "asset_id": req.asset_id,
+        "disposal_date": req.disposal_date.isoformat() if req.disposal_date else None,
+        "sale_amount": req.sale_amount,
+        "payment_method": req.payment_method,
+        "treasury_account_id": req.treasury_account_id,
+        "buyer_name": req.buyer_name,
+        "scrap_reason": req.scrap_reason,
+        "notes": req.notes,
+        "action": req.disposal_type,
+    }
+    if req.disposal_type == "scrap":
+        disposal = post_asset_scrap(payload, user_id=user_id)
+    else:
+        disposal = post_asset_sale(payload, user_id=user_id)
+
+    req.status = "completed"
+    req.approved_by = user_id
+    req.approved_at = datetime.utcnow()
+    req.completed_disposal_id = disposal.id
+    log_fixed_asset_audit(
+        "disposal_approved",
+        "fixed_asset_disposal_request",
+        entity_id=req.id,
+        asset_id=req.asset_id,
+        old_values={"status": "pending"},
+        new_values={"status": "completed", "disposal_id": disposal.id},
+        summary=f"موافقة على {req.type_label()} للأصل {req.asset.asset_code if req.asset else req.asset_id}",
+        user_id=user_id,
+    )
+    return disposal
+
+
+def reject_disposal_request(request_id: int, user_id=None, reason: str = ""):
+    req = FixedAssetDisposalRequest.query.get(request_id)
+    if not req:
+        raise FixedAssetError("الطلب غير موجود")
+    if req.status != "pending":
+        raise FixedAssetError("الطلب ليس بانتظار الموافقة")
+    req.status = "rejected"
+    req.approved_by = user_id
+    req.approved_at = datetime.utcnow()
+    req.rejection_reason = (reason or "").strip() or "مرفوض"
+    log_fixed_asset_audit(
+        "disposal_rejected",
+        "fixed_asset_disposal_request",
+        entity_id=req.id,
+        asset_id=req.asset_id,
+        old_values={"status": "pending"},
+        new_values={"status": "rejected", "reason": req.rejection_reason},
+        summary=f"رفض طلب {req.type_label()} للأصل {req.asset.asset_code if req.asset else req.asset_id}",
+        user_id=user_id,
+    )
+    return req
+
+
+def list_pending_disposal_requests():
+    return (
+        FixedAssetDisposalRequest.query.filter_by(status="pending")
+        .order_by(FixedAssetDisposalRequest.created_at.desc())
+        .all()
+    )
+
+
+# ─── إغلاق الفترات المحاسبية ───
+
+def close_accounting_period(year: int, month: int, user_id=None, notes: str | None = None):
+    settings = get_fixed_asset_settings()
+    if not settings.enforce_period_close:
+        raise FixedAssetError("التحقق من الإغلاق المحاسبي معطّل من الإعدادات")
+    try:
+        row = close_financial_period(year, month, user_id=user_id, notes=notes)
+    except PeriodClosedError as exc:
+        raise FixedAssetError(str(exc)) from exc
+    log_fixed_asset_audit(
+        "period_close",
+        "financial_period",
+        entity_id=row.id,
+        new_values={"year": year, "month": month},
+        summary=f"إغلاق الفترة المحاسبية {year}-{month:02d}",
+        user_id=user_id,
+    )
+    return row
+
+
+def reopen_accounting_period(year: int, month: int, user_id=None):
+    try:
+        reopen_financial_period(year, month)
+    except PeriodClosedError as exc:
+        raise FixedAssetError(str(exc)) from exc
+    log_fixed_asset_audit(
+        "period_reopen",
+        "financial_period",
+        new_values={"year": year, "month": month},
+        summary=f"إعادة فتح الفترة المحاسبية {year}-{month:02d}",
+        user_id=user_id,
+    )
+    return True
 

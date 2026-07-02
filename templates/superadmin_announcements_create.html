@@ -1,0 +1,29 @@
+{% extends "superadmin_base.html" %}
+
+{% block title %}إعلان جديد — Finora{% endblock %}
+{% block page_title %}كتابة إعلان جديد{% endblock %}
+{% block breadcrumb_current %}إعلان جديد{% endblock %}
+
+{% block content %}
+<div class="premium-card" style="max-width:720px">
+    <form method="post">
+        <div class="form-group">
+            <label>عنوان الإعلان</label>
+            <input type="text" name="subject" class="form-control" required placeholder="مثال: عروض الأسبوع من Finora">
+        </div>
+        <div class="form-group">
+            <label>محتوى الإعلان (نص)</label>
+            <textarea name="body_plain" class="form-control" rows="8" required placeholder="اكتب نص الإعلان هنا..."></textarea>
+            <small class="form-text">سيُرسل كبريد HTML مع تنسيق Finora. يمكنك إضافة HTML اختياري أدناه.</small>
+        </div>
+        <div class="form-group">
+            <label>محتوى HTML (اختياري)</label>
+            <textarea name="body_html" class="form-control" rows="6" placeholder="<p>نص منسّق...</p>"></textarea>
+        </div>
+        <div style="display:flex;gap:12px;margin-top:24px">
+            <button type="submit" class="btn-save"><i class="fas fa-save"></i> حفظ الإعلان</button>
+            <a href="{{ url_for('superadmin.announcements_list') }}" class="btn-save" style="background:var(--surface-hover);color:var(--text-main);text-decoration:none">إلغاء</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -244,6 +244,7 @@
       <li>صافي الربح/الخسارة: <strong class="{{ 'pos' if net_profit_period >= 0 else 'neg' }}">{{ money(net_profit_period) }} د.ع</strong>{% if net_profit_period < 0 %} (خسارة){% endif %}.</li>
       {% if growth_revenue_pct is not none %}<li>نسبة تغيّر الإيرادات مقارنة بـ {{ prev_label or 'الفترة السابقة' }}: <strong class="{{ 'pos' if growth_revenue_pct >= 0 else 'neg' }}">{{ growth_revenue_pct }}%</strong>.</li>{% endif %}
       {% if growth_profit_pct is not none %}<li>نسبة تغيّر الربح: <strong class="{{ 'pos' if growth_profit_pct >= 0 else 'neg' }}">{{ growth_profit_pct }}%</strong>.</li>{% endif %}
+      {% if fixed_assets_active_count %}<li>الأصول الثابتة النشطة: <strong>{{ fixed_assets_active_count }}</strong> — القيمة الدفترية: <strong>{{ money(fixed_assets_book_value) }} د.ع</strong>{% if fixed_assets_depreciation_period %} — استهلاك الفترة: <strong>{{ money(fixed_assets_depreciation_period) }} د.ع</strong>{% endif %}.</li>{% endif %}
     </ul>
     <p class="report-no-data">جميع الأرقام مستخرجة من سجلات النظام دون تخمين.</p>
   </section>
@@ -258,6 +259,9 @@
         <tr><td>تكلفة البضاعة المباعة (COGS)</td><td class="amount neg">({{ money(cogs_period) }})</td></tr>
         <tr class="total-row"><td>إجمالي الربح</td><td class="amount">{{ money(gross_profit) }}</td></tr>
         <tr><td>إجمالي المصاريف التشغيلية</td><td class="amount neg">({{ money(expenses_period) }})</td></tr>
+        {% if fixed_assets_depreciation_period %}
+        <tr><td>استهلاك الأصول الثابتة (الفترة)</td><td class="amount neg">({{ money(fixed_assets_depreciation_period) }})</td></tr>
+        {% endif %}
         <tr class="total-row"><td>صافي الربح / الخسارة</td><td class="amount {{ 'pos' if net_profit_period >= 0 else 'neg' }}">{{ money(net_profit_period) }}</td></tr>
       </tbody>
     </table>
@@ -306,6 +310,9 @@
         <tr><td>النقدية</td><td class="amount">{{ money(cash_balance) }}</td></tr>
         <tr><td>المخزون</td><td class="amount">{{ money(inventory_value) }}</td></tr>
         <tr><td>الذمم المدينة (ديون العملاء)</td><td class="amount">{{ money(accounts_receivable) }}</td></tr>
+        {% if fixed_assets_book_value %}
+        <tr><td>الأصول الثابتة (صافي القيمة الدفترية)</td><td class="amount">{{ money(fixed_assets_book_value) }}</td></tr>
+        {% endif %}
         <tr class="total-row"><td>إجمالي الأصول</td><td class="amount">{{ money(total_assets) }}</td></tr>
         <tr><td colspan="2"><strong>الالتزامات</strong></td></tr>
         <tr><td>ديون الموردين</td><td class="amount">{{ money(supplier_debts) }}</td></tr>

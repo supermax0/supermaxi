@@ -1,0 +1,81 @@
+{# نموذج تسجيل مدمج في قسم الهيرو #}
+{% set pd = landing_plans or {} %}
+<div class="l-hero-signup" id="hero-signup">
+  <div class="l-hero-signup-card">
+    <div class="l-hero-signup-head">
+      <strong><i class="fas fa-rocket"></i> أنشئ حسابك مجاناً</strong>
+      <span>ابدأ خلال دقائق — بدون بطاقة ائتمان</span>
+    </div>
+
+    <div class="l-signup-plans" id="lSignupPlans">
+      {% for key in ['free', 'basic', 'pro', 'enterprise'] %}
+      {% set p = pd.get(key, {}) %}
+      <button type="button" class="l-signup-plan {% if key == 'free' %}active{% endif %}" data-plan="{{ key }}" onclick="window.landingSelectPlan && landingSelectPlan('{{ key }}', this)">
+        <span>{{ p.get('name', key) }}</span>
+        <small>{{ "{:,.0f}".format(p.get('price_monthly', 0)) }} د.ع/شهر</small>
+      </button>
+      {% endfor %}
+    </div>
+
+    <div class="l-signup-billing">
+      <label><input type="radio" name="billing_ui" value="monthly" checked> شهري</label>
+      <label><input type="radio" name="billing_ui" value="yearly"> سنوي <span class="l-save-tag">وفّر 17%</span></label>
+    </div>
+
+    <form method="post" action="/signup" class="l-signup-form" onsubmit="return validateForm()" novalidate>
+      <input type="hidden" name="plan_key" id="plan_key_input" value="free">
+      <input type="hidden" name="billing" id="billing_input" value="monthly">
+
+      <div class="l-signup-email-block" id="emailVerifyBox">
+        <label>البريد الإلكتروني <span class="req">*</span></label>
+        <div class="l-signup-row">
+          <input type="email" id="email" name="email" placeholder="example@domain.com" required dir="ltr" autocomplete="email">
+          <button type="button" class="l-btn l-btn-ghost l-btn-sm" id="btnSendCode"><i class="fas fa-paper-plane"></i></button>
+        </div>
+        <div class="l-signup-row l-signup-code-row">
+          <input type="text" id="email_verify_code" inputmode="numeric" maxlength="6" placeholder="رمز التحقق" dir="ltr" autocomplete="one-time-code">
+          <button type="button" class="l-btn l-btn-primary l-btn-sm" id="btnVerifyCode">تحقق</button>
+        </div>
+        <div class="l-verify-status" id="verifyStatus"></div>
+      </div>
+
+      <div class="l-signup-grid">
+        <div class="l-signup-field">
+          <label for="company_name">اسم الشركة <span class="req">*</span></label>
+          <input type="text" id="company_name" name="company_name" placeholder="متجر النور" required oninput="liveCheck(this,1)">
+        </div>
+        <div class="l-signup-field">
+          <label for="contact_name">اسمك الكامل <span class="req">*</span></label>
+          <input type="text" id="contact_name" name="contact_name" placeholder="محمد أحمد" required oninput="liveCheck(this,1)">
+        </div>
+        <div class="l-signup-field">
+          <label for="phone">الهاتف</label>
+          <input type="text" id="phone" name="phone" placeholder="07xxxxxxxxx">
+        </div>
+        <div class="l-signup-field">
+          <label for="username">اسم المستخدم <span class="req">*</span></label>
+          <input type="text" id="username" name="username" placeholder="admin" required dir="ltr" oninput="liveCheck(this,3)">
+        </div>
+        <div class="l-signup-field">
+          <label for="password">كلمة المرور <span class="req">*</span></label>
+          <input type="password" id="password" name="password" required dir="ltr" oninput="liveCheck(this,6);checkMatch()">
+        </div>
+        <div class="l-signup-field">
+          <label for="password2">تأكيد كلمة المرور <span class="req">*</span></label>
+          <input type="password" id="password2" name="password2" required dir="ltr" oninput="checkMatch()">
+        </div>
+      </div>
+
+      <label class="l-signup-optin">
+        <input type="checkbox" name="marketing_opt_in" value="1" checked>
+        <span>أوافق على استلام نشرة Finora الأسبوعية والعروض</span>
+      </label>
+
+      <button type="submit" class="l-btn l-btn-primary l-btn-block" id="btnSignupSubmit" disabled>
+        <i class="fas fa-rocket"></i> إنشاء الحساب والدخول
+      </button>
+      <p class="l-signup-hint" id="signupHint">تحقق من بريدك الإلكتروني أولاً لتفعيل زر التسجيل</p>
+      <p class="l-signup-login-link">لديك حساب؟ <a href="/login">تسجيل الدخول</a></p>
+    </form>
+  </div>
+</div>

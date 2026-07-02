@@ -25,6 +25,12 @@
 </style>
 <div class="fa-page">
   {% include "fixed_assets/_nav.html" %}
+  {% if require_approval %}
+  <div class="fa-card" style="border-color:var(--warning);background:rgba(245,158,11,.06);">
+    <strong>وضع الموافقة مفعّل:</strong> طلبات البيع والإتلاف تُرسل للمدير للموافقة قبل ترحيل القيود.
+    <a href="/assets/approvals">عرض الطلبات المعلّقة ({{ pending_requests|length }})</a>
+  </div>
+  {% endif %}
   <div class="fa-card">
     <div class="tabs">
       <button type="button" class="tab active" data-tab="sale">بيع أصل</button>
@@ -54,7 +60,7 @@
           <div class="fa-field full"><label>ملاحظات</label><textarea name="notes" rows="2"></textarea></div>
         </div>
         <p style="font-size:13px;color:var(--text-muted);">يُحسب الربح/الخسارة تلقائياً = سعر البيع − القيمة الدفترية</p>
-        <button type="submit" class="fa-btn fa-btn-sale">ترحيل بيع الأصل</button>
+        <button type="submit" class="fa-btn fa-btn-sale">{% if require_approval %}إرسال طلب بيع{% else %}ترحيل بيع الأصل{% endif %}</button>
       </form>
     </div>
     <div id="panel-scrap" class="panel">
@@ -71,7 +77,7 @@
           <div class="fa-field full"><label>سبب الإتلاف</label><textarea name="scrap_reason" rows="2" required></textarea></div>
           <div class="fa-field full"><label>ملاحظات</label><textarea name="notes" rows="2"></textarea></div>
         </div>
-        <button type="submit" class="fa-btn fa-btn-scrap">ترحيل إتلاف الأصل</button>
+        <button type="submit" class="fa-btn fa-btn-scrap">{% if require_approval %}إرسال طلب إتلاف{% else %}ترحيل إتلاف الأصل{% endif %}</button>
       </form>
     </div>
   </div>

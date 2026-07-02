@@ -26,6 +26,7 @@ DEFAULT_PERMISSIONS = [
     ("view_financial", "رؤية التقرير المالي الشامل"),
     ("view_fixed_assets", "رؤية الأصول الثابتة"),
     ("manage_fixed_assets", "إدارة الأصول الثابتة"),
+    ("approve_fixed_asset_disposal", "الموافقة على بيع/إتلاف الأصول"),
     ("view_pos", "استخدام نقطة البيع"),
     ("view_shipping", "رؤية شركات الشحن"),
     ("manage_shipping", "إدارة شركات الشحن والتسويات"),

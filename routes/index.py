@@ -744,6 +744,23 @@ def signup_verify_email():
     return jsonify({"ok": ok, "message": message, "verified": ok}), (200 if ok else 400)
 
 
+@index_bp.route("/unsubscribe/<token>", methods=["GET", "POST"])
+def unsubscribe_marketing(token):
+    from utils.tenant_registration import unsubscribe_by_token
+
+    if request.method == "POST":
+        ok, company = unsubscribe_by_token(token)
+        return render_template(
+            "unsubscribe.html",
+            success=ok,
+            company_name=company if ok else None,
+            message=company if not ok else None,
+            done=True,
+        )
+
+    return render_template("unsubscribe.html", token=token, done=False)
+
+
 # =================================================
 # SaaS Signup (تسجيل شركة جديدة)
 # =================================================
@@ -775,6 +792,7 @@ def signup():
     password2    = request.form.get("password2", "").strip()
     plan_key     = request.form.get("plan_key", "free")
     billing      = request.form.get("billing", "monthly")
+    marketing_opt_in = request.form.get("marketing_opt_in") in ("1", "on", "true", "yes")
 
     plan = PLANS.get(plan_key, PLANS.get("free", PLANS.get("basic", FALLBACK_PLANS["basic"])))
 
@@ -892,27 +910,31 @@ def signup():
                 registration_payload_for_signup,
                 save_tenant_registration,
             )
-            save_tenant_registration(
-                slug,
-                registration_payload_for_signup(
-                    slug=slug,
-                    company_name=company_name,
-                    contact_name=contact_name,
-                    email=email,
-                    phone=phone,
-                    username=username,
-                    password=password,
-                    plan_key=plan.get("key") or plan_key,
-                    plan_name=plan.get("name") or "الخطة الأساسية",
-                    billing=billing,
-                    business_type=core_business_type,
-                ),
+            reg_payload = registration_payload_for_signup(
+                slug=slug,
+                company_name=company_name,
+                contact_name=contact_name,
+                email=email,
+                phone=phone,
+                username=username,
+                password=password,
+                plan_key=plan.get("key") or plan_key,
+                plan_name=plan.get("name") or "الخطة الأساسية",
+                billing=billing,
+                business_type=core_business_type,
+                marketing_opt_in=marketing_opt_in,
             )
+            if not marketing_opt_in:
+                reg_payload["marketing_opt_in"] = False
+            save_tenant_registration(slug, reg_payload)
 
             if email:
                 try:
-                    from utils.email_helper import send_welcome_account_email
+                    from utils.email_helper import build_unsubscribe_url, send_welcome_account_email
 
+                    unsub_url = None
+                    if marketing_opt_in and reg_payload.get("unsubscribe_token"):
+                        unsub_url = build_unsubscribe_url(reg_payload["unsubscribe_token"])
                     send_welcome_account_email(
                         to_email=email,
                         contact_name=contact_name,
@@ -921,6 +943,7 @@ def signup():
                         username=username,
                         password=password,
                         plan_name=plan.get("name") or "الخطة الأساسية",
+                        unsubscribe_url=unsub_url,
                     )
                 except Exception:
                     try:

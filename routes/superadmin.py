@@ -694,6 +694,85 @@ def tenants_create():
     )
 
 
+@superadmin_bp.route("/announcements")
+def announcements_list():
+    from models.core.platform_announcement import PlatformAnnouncement
+    from models.core.announcement_send_log import AnnouncementSendLog
+    from utils.tenant_emails import count_marketing_recipients
+
+    announcements = PlatformAnnouncement.query.order_by(PlatformAnnouncement.created_at.desc()).all()
+    recent_logs = AnnouncementSendLog.query.order_by(AnnouncementSendLog.sent_at.desc()).limit(50).all()
+    tenants = Tenant.query.order_by(Tenant.name).all()
+
+    return render_template(
+        "superadmin_announcements.html",
+        announcements=announcements,
+        recent_logs=recent_logs,
+        tenants=tenants,
+        recipient_count=count_marketing_recipients(),
+    )
+
+
+@superadmin_bp.route("/announcements/create", methods=["GET", "POST"])
+def announcements_create():
+    from models.core.platform_announcement import PlatformAnnouncement
+
+    if request.method == "POST":
+        subject = (request.form.get("subject") or "").strip()
+        body_plain = (request.form.get("body_plain") or "").strip()
+        body_html = (request.form.get("body_html") or "").strip() or f"<p>{body_plain.replace(chr(10), '</p><p>')}</p>"
+
+        if not subject or not body_plain:
+            flash("العنوان والمحتوى مطلوبان", "error")
+            return redirect(url_for("superadmin.announcements_create"))
+
+        ann = PlatformAnnouncement(
+            subject=subject,
+            body_plain=body_plain,
+            body_html=body_html,
+            status="draft",
+            created_by=session.get("superadmin_username") or "superadmin",
+        )
+        db.session.add(ann)
+        db.session.commit()
+        flash("تم حفظ الإعلان", "success")
+        return redirect(url_for("superadmin.announcements_list"))
+
+    return render_template("superadmin_announcements_create.html")
+
+
+@superadmin_bp.route("/announcements/<int:ann_id>/send-all", methods=["POST"])
+def announcements_send_all(ann_id):
+    from utils.announcement_service import send_announcement_to_all
+
+    success, failed, message = send_announcement_to_all(ann_id)
+    flash(message, "success" if success else "error")
+    return redirect(url_for("superadmin.announcements_list"))
+
+
+@superadmin_bp.route("/announcements/<int:ann_id>/send-one", methods=["POST"])
+def announcements_send_one(ann_id):
+    from utils.announcement_service import send_announcement_to_tenant
+
+    slug = (request.form.get("tenant_slug") or "").strip().lower()
+    if not slug:
+        flash("اختر شركة", "error")
+        return redirect(url_for("superadmin.announcements_list"))
+
+    ok, message = send_announcement_to_tenant(ann_id, slug)
+    flash(message, "success" if ok else "error")
+    return redirect(url_for("superadmin.announcements_list"))
+
+
+@superadmin_bp.route("/announcements/<int:ann_id>/set-weekly", methods=["POST"])
+def announcements_set_weekly(ann_id):
+    from utils.announcement_service import set_weekly_announcement
+
+    ok, message = set_weekly_announcement(ann_id)
+    flash(message, "success" if ok else "error")
+    return redirect(url_for("superadmin.announcements_list"))
+
+
 @superadmin_bp.route("/settings", methods=["GET", "POST"])
 def settings():
     from models.core.global_setting import GlobalSetting
@@ -728,6 +807,22 @@ def settings():
         GlobalSetting.set_setting("NOTIFY_SMS_ENABLED", "1" if request.form.get("NOTIFY_SMS_ENABLED") else "0", "تفعيل إشعارات SMS")
         GlobalSetting.set_setting("SMS_API_URL", request.form.get("SMS_API_URL", ""), "رابط أو مفتاح API للرسائل النصية")
         GlobalSetting.set_setting("SMS_SENDER", request.form.get("SMS_SENDER", ""), "اسم أو رقم مرسل SMS")
+
+        GlobalSetting.set_setting(
+            "WEEKLY_ANNOUNCEMENT_ENABLED",
+            "1" if request.form.get("WEEKLY_ANNOUNCEMENT_ENABLED") else "0",
+            "تفعيل الإرسال الأسبوعي التلقائي",
+        )
+        GlobalSetting.set_setting(
+            "WEEKLY_ANNOUNCEMENT_DAY",
+            request.form.get("WEEKLY_ANNOUNCEMENT_DAY", "mon"),
+            "يوم الإرسال الأسبوعي (mon/tue/...)",
+        )
+        GlobalSetting.set_setting(
+            "WEEKLY_ANNOUNCEMENT_HOUR",
+            request.form.get("WEEKLY_ANNOUNCEMENT_HOUR", "9"),
+            "ساعة الإرسال الأسبوعي (0-23)",
+        )
         
         flash("تم حفظ الإعدادات بنجاح!", "success")
         return redirect(url_for("superadmin.settings"))
@@ -751,6 +846,9 @@ def settings():
         "notify_sms_enabled": GlobalSetting.get_setting("NOTIFY_SMS_ENABLED", "0") == "1",
         "sms_api_url": GlobalSetting.get_setting("SMS_API_URL", ""),
         "sms_sender": GlobalSetting.get_setting("SMS_SENDER", ""),
+        "weekly_announcement_enabled": GlobalSetting.get_setting("WEEKLY_ANNOUNCEMENT_ENABLED", "1") == "1",
+        "weekly_announcement_day": GlobalSetting.get_setting("WEEKLY_ANNOUNCEMENT_DAY", "mon"),
+        "weekly_announcement_hour": GlobalSetting.get_setting("WEEKLY_ANNOUNCEMENT_HOUR", "9"),
     }
     
     return render_template("superadmin_settings.html", settings=settings_data)
