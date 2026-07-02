@@ -1640,7 +1640,7 @@
       </div>
 
       <div>
-        <label class="inv-modal-label">{{ _('inventory_adjust_label') }}</label>
+        <label class="inv-modal-label">{{ _('inventory_adjust_label') }}<span data-help="inventory.quantity"></span></label>
         <input type="number" id="adjustment" name="adjustment" placeholder="{{ _('inventory_adjust_placeholder') }}" required
           class="inv-modal-input">
         <small class="inv-modal-help">💡 المقدار النهائي: <span id="adjustPreview"
@@ -1648,7 +1648,7 @@
       </div>
 
       <div>
-        <label class="inv-modal-label">⚠️ {{ _('inventory_adjust_reason_label') }}</label>
+        <label class="inv-modal-label">⚠️ {{ _('inventory_adjust_reason_label') }}<span data-help="inventory.adjust_reason"></span></label>
         <textarea id="adjustReason" name="reason"
           placeholder="{{ _('inventory_adjust_reason_placeholder') }}" required rows="3"
           class="inv-modal-textarea"></textarea>
@@ -1675,28 +1675,28 @@
       <input type="hidden" id="editProductId" name="product_id">
 
       <div>
-        <label class="inv-modal-label">{{ _('inventory_field_name') }}</label>
+        <label class="inv-modal-label">{{ _('inventory_field_name') }}<span data-help="inventory.product_name"></span></label>
         <input type="text" id="editName" name="name" placeholder="{{ _('inventory_field_name') }}" required class="inv-modal-input">
       </div>
 
       <div>
-        <label class="inv-modal-label">{{ _('inventory_field_barcode') }}</label>
+        <label class="inv-modal-label">{{ _('inventory_field_barcode') }}<span data-help="inventory.barcode"></span></label>
         <input type="text" id="editBarcode" name="barcode" placeholder="{{ _('inventory_field_barcode_optional') }}" class="inv-modal-input">
       </div>
 
       <div>
-        <label class="inv-modal-label">SKU</label>
+        <label class="inv-modal-label">SKU<span data-help="inventory.sku"></span></label>
         <input type="text" id="editSku" name="sku" placeholder="SKU" class="inv-modal-input">
       </div>
 
       <div>
-        <label class="inv-modal-label">{{ _('inventory_field_buy_price') }}</label>
+        <label class="inv-modal-label">{{ _('inventory_field_buy_price') }}<span data-help="inventory.cost"></span></label>
         <input type="number" id="editBuyPrice" name="buy_price" placeholder="{{ _('inventory_field_buy_price') }}" required min="0"
           class="inv-modal-input">
       </div>
 
       <div>
-        <label class="inv-modal-label">{{ _('inventory_field_sale_price') }}</label>
+        <label class="inv-modal-label">{{ _('inventory_field_sale_price') }}<span data-help="inventory.price"></span></label>
         <input type="number" id="editSalePrice" name="sale_price" placeholder="{{ _('inventory_field_sale_price') }}" required min="0"
           class="inv-modal-input">
       </div>

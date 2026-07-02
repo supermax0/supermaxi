@@ -933,7 +933,7 @@
       <form method="post" class="form-grid">
         <input name="title" placeholder="{{ _('expenses_field_title_placeholder') }}" required>
 
-        <select name="category" required>
+        <select name="category" required data-help="expenses.category">
           <option value="">{{ _('expenses_field_category_placeholder') }}</option>
           <option value="rent">🏠 {{ _('expenses_cat_rent') }}</option>
           <option value="salary">💰 {{ _('expenses_cat_salary') }}</option>
@@ -944,15 +944,15 @@
           <option value="other">📦 {{ _('expenses_cat_other') }}</option>
         </select>
 
-        <select name="treasury_account_id" required>
+        <select name="treasury_account_id" required data-help="expenses.account">
           {% for acc in treasury_choices|default([]) %}
           <option value="{{ acc.id }}">{{ _('pay_from_account') }}: {{ acc.name }}</option>
           {% endfor %}
         </select>
 
-        <input name="amount" type="number" step="0.01" min="0" placeholder="{{ _('expenses_field_amount_placeholder') }}" required>
+        <input name="amount" type="number" step="0.01" min="0" placeholder="{{ _('expenses_field_amount_placeholder') }}" data-help="expenses.amount" required>
 
-        <input name="expense_date" type="date" value="{{ default_date }}" required>
+        <input name="expense_date" type="date" value="{{ default_date }}" data-help="expenses.date" required>
 
         <div class="exp-repeat-box" id="expenseRepeatBox">
           <div class="exp-repeat-toggle">

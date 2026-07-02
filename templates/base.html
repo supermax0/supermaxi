@@ -1,3 +1,4 @@
+{% from 'partials/_help_macros.html' import help_icon %}
 <!DOCTYPE html>
 <html lang="{{ current_lang }}" dir="{% if current_lang in ['ar', 'ku'] %}rtl{% else %}ltr{% endif %}">
 
@@ -2036,40 +2037,9 @@
       color: var(--primary);
     }
 
-    /* ======================================================
-   TOOLTIP
-====================================================== */
-    .tooltip {
-      position: relative;
-      cursor: help;
-    }
-
-    .tooltip::after {
-      content: attr(data-tooltip);
-      position: absolute;
-      bottom: 100%;
-      left: 50%;
-      transform: translateX(-50%) translateY(-8px);
-      background: var(--card);
-      color: var(--text);
-      padding: 8px 12px;
-      border-radius: 8px;
-      font-size: 12px;
-      white-space: nowrap;
-      opacity: 0;
-      pointer-events: none;
-      transition: all 0.3s;
-      border: 1px solid var(--border);
-      box-shadow: var(--shadow);
-      z-index: 1000;
-    }
-
-    .tooltip:hover::after {
-      opacity: 1;
-      transform: translateX(-50%) translateY(-4px);
-    }
   </style>
   <link rel="stylesheet" href="/static/css/design-refresh.css">
+  <link rel="stylesheet" href="/static/css/help-system.css">
   <link rel="stylesheet" href="/static/css/saas-admin.css">
 </head>
 
@@ -2346,7 +2316,7 @@ or request.path.startswith('/superadmin') %}
       <header class="topbar">
         <div class="topbar-left">
           <span class="toggle" onclick="toggleSidebar()">☰</span>
-          <div class="page-title">{% block page_title %}{{ _('dashboard') }}{% endblock %}</div>
+          <div class="page-title">{% block page_title %}{{ _('dashboard') }}{% endblock %}{% if page_help %}{{ help_icon(page_help.body, key=page_help.key) }}{% endif %}</div>
         </div>
 
         {% if not is_payment_flow %}
@@ -3066,6 +3036,8 @@ or request.path.startswith('/superadmin') %}
   {% include 'assistant/mini-widget.html' %}
   {% endif %}
 
+  <script id="finora-help-fields" type="application/json">{{ help_fields_json|safe }}</script>
+  <script src="/static/js/help-system.js" defer></script>
   {% block scripts %}{% endblock %}
 
 

@@ -1404,13 +1404,13 @@
       <!-- الزبون -->
       <section class="card pos-panel customer-panel">
         <div class="card-header">
-          <h3><i class="fas fa-user"></i> الزبون</h3>
+          <h3><i class="fas fa-user"></i> الزبون<span data-help="pos.customer"></span></h3>
         </div>
 
         <div class="customer-search-row">
           <div class="search-wrapper">
             <i class="fas fa-search"></i>
-            <input id="searchCustomer" placeholder="بحث عن زبون بالاسم أو الهاتف...">
+            <input id="searchCustomer" placeholder="بحث عن زبون بالاسم أو الهاتف..." data-help="pos.customer">
           </div>
           <button onclick="openCustomerModal()" class="btn-primary" type="button">
             <i class="fas fa-user-plus"></i> إضافة زبون
@@ -1424,12 +1424,12 @@
       <!-- إضافة سريع منتج -->
       <section class="card pos-panel product-panel">
         <div class="card-header">
-          <h3><i class="fas fa-box"></i> إضافة منتج</h3>
+          <h3><i class="fas fa-box"></i> إضافة منتج<span data-help="pos.product_search"></span></h3>
         </div>
         <div class="product-search-row">
           <div class="search-wrapper">
             <i class="fas fa-barcode"></i>
-            <input id="searchProduct" placeholder="البحث بالاسم أو الباركود...">
+            <input id="searchProduct" placeholder="البحث بالاسم أو الباركود..." data-help="pos.product_search">
           </div>
         </div>
         <div id="productResults" class="list" style="display:none"></div>

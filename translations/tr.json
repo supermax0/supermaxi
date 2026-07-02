@@ -32,32 +32,26 @@
     "financial_assistant": "Finansal Asistan",
     "search": "Ara",
     "toggle_theme": "Temayı Değiştir",
-
     "dashboard_welcome_title": "Sisteme hoş geldiniz",
     "dashboard_welcome_subtitle": "Kenar çubuğunu kullanarak erişiminiz olan sayfalar arasında gezinin.",
     "dashboard_welcome_pos": "Satış Noktası (POS)",
-
     "dashboard_pos": "POS",
     "dashboard_search": "Ara",
     "dashboard_profit_today": "Bugünkü Kâr",
     "dashboard_add_expense": "Gider",
     "dashboard_today": "Bugün",
-
     "dashboard_inventory_value_title": "Stok Değeri",
     "dashboard_inventory_value_note": "Mevcut stokların toplam değeri",
     "dashboard_liabilities_title": "Yükümlülükler",
     "dashboard_liabilities_note": "Tedarikçi borçları + nakliye borçları (toplam)",
-
     "dashboard_expenses_total_title": "Giderler (Toplam)",
     "dashboard_agent_dues_title": "Kurye Alacakları",
     "dashboard_agent_dues_note": "Teslimat acentelerinin toplam alacakları",
-
     "dashboard_orders_all": "Tüm Siparişler",
     "dashboard_orders_ordered": "Sipariş Verildi",
     "dashboard_orders_shipping": "Kargoda",
     "dashboard_orders_delivered": "Teslim Edildi",
     "dashboard_orders_returned": "İade / İptal",
-
     "dashboard_overdue_title": "Geciken siparişler",
     "dashboard_overdue_subtitle": "Hâlâ «Sipariş alındı» veya «Kargoda». Turuncu: 7–9 gün. Kırmızı: 10+ gün (önce listelenir).",
     "dashboard_overdue_legend_critical": "10+ gün — öncelik",
@@ -71,9 +65,7 @@
     "dashboard_overdue_open": "Faturayı aç",
     "dashboard_overdue_empty_title": "Geciken sipariş yok",
     "dashboard_overdue_empty_note": "Burada 7+ gündür «Sipariş alındı» veya «Kargoda» olanlar listelenir. Daha yeni veya tamamlananlar görünmez.",
-
     "dashboard_alerts_title": "Uyarılar",
-
     "dashboard_search_order_title": "Sipariş Ara",
     "dashboard_search_order_placeholder": "🔎 Fiş numarası veya telefon numarası",
     "dashboard_search_button": "Ara",
@@ -89,23 +81,18 @@
     "dashboard_th_returned": "İade",
     "dashboard_th_action": "İşlem",
     "dashboard_close": "Kapat",
-
     "dashboard_sales_chart_title": "Satışlar (Son 7 Gün)",
     "dashboard_profit_chart_title": "Kâr (Son 7 Gün)",
-
     "dashboard_cash_balance_title": "Güncel Nakit Bakiyesi",
     "dashboard_cash_balance_note": "Kasada mevcut gerçek nakit tutarı",
-
     "dashboard_total_sales_title": "Toplam Satış",
     "dashboard_for_selected_period": "Seçilen dönem için",
     "dashboard_cash_sales_title": "Nakit Satışlar",
     "dashboard_cash_sales_note": "Ödenmiş satışlar (nakit veya tahsil edilmiş)",
     "dashboard_credit_sales_title": "Vadeli Satışlar",
     "dashboard_credit_sales_note": "Ödenmemiş satışlar (alacaklar)",
-
     "dashboard_profit_title": "Seçilen dönem için kâr",
     "dashboard_profit_note": "Kâr = Ödenmiş satışlar - COGS - Giderler",
-
     "dashboard_add_expense_title": "Gider Ekle",
     "dashboard_expense_title_placeholder": "Gider başlığı",
     "dashboard_expense_category_placeholder": "Kategori seçin",
@@ -120,7 +107,6 @@
     "dashboard_expense_note_placeholder": "Not (isteğe bağlı)",
     "dashboard_cancel": "İptal",
     "dashboard_save": "Kaydet",
-
     "dashboard_period_modal_title": "Zaman aralığı seçin",
     "dashboard_period_last_30_days": "Son 30 gün",
     "dashboard_period_default_badge": "Varsayılan",
@@ -132,11 +118,9 @@
     "dashboard_period_last_year": "Geçen yıl",
     "dashboard_period_custom_range_title": "Özel aralık",
     "dashboard_period_apply_custom": "Özel aralığı uygula",
-
     "dashboard_chart_total_7_days": "Son 7 gün toplamı",
     "dashboard_chart_avg_daily": "Günlük ortalama",
     "dashboard_status_chart_title": "Faturaların güncel durumu",
-
     "dashboard_ai_title": "Akıllı Asistan – Finansal Analist",
     "dashboard_ai_desc": "Kâr, satış, stok analizi veya kısa bir yönetim raporu isteyin. Seçilen dönem için sistem verilerini kullanır.",
     "dashboard_ai_type_label": "Analiz türü",
@@ -150,9 +134,7 @@
     "dashboard_ai_message_label": "Mesajınız (isteğe bağlı)",
     "dashboard_ai_message_placeholder": "Örnek: Bu ayın kârını analiz et / Neden satışlar düştü? / Hangi ürün zarar ettiriyor?",
     "dashboard_ai_button": "Analiz Et",
-
     "inventory_page_title": "Envanter Yönetimi",
-
     "inventory_summary_products_title": "Ürün sayısı",
     "inventory_summary_active": "Aktif",
     "inventory_summary_inactive": "Pasif",
@@ -164,14 +146,11 @@
     "inventory_summary_profit_note": "Beklenen satışlardan",
     "inventory_summary_purchase_title": "Toplam alış",
     "inventory_summary_sale_title": "Toplam beklenen satış",
-
     "inventory_low_stock_alert": "Uyarı: Düşük stoklu ürünler",
-
     "inventory_add_product": "Ürün ekle",
     "inventory_quick_add": "Quick add",
     "inventory_movements_log": "Stok hareketleri",
     "inventory_search_placeholder": "Ürünlerde ara...",
-
     "inventory_add_product_title": "Yeni ürün ekle",
     "inventory_field_name": "Ürün adı",
     "inventory_field_barcode": "Barkod",
@@ -182,7 +161,6 @@
     "inventory_field_opening_stock_label": "Açılış stoğu (miktar)",
     "inventory_opening_stock_help": "Mevcut stok ve sermaye otomatik olarak güncellenecek.",
     "inventory_save_product": "Ürünü kaydet",
-
     "inventory_add_page_title": "Add product — full form",
     "inventory_back_to_list": "Back to inventory",
     "inventory_add_page_hint": "Advanced product entry with optional details.",
@@ -228,7 +206,6 @@
     "inventory_save_opening": "Save with opening stock",
     "inventory_save_group_prices": "Save and group selling prices",
     "inventory_save_actions_hint": "Extra actions return to the inventory list after save (except “Save and add another”).",
-
     "inventory_products_title": "Ürünler",
     "inventory_filter_stock_all": "Tüm stok",
     "inventory_filter_stock_low": "Düşük (≤ 5)",
@@ -238,7 +215,6 @@
     "inventory_filter_active_all": "Tümü",
     "inventory_filter_active_only": "Yalnızca aktif",
     "inventory_filter_inactive_only": "Yalnızca pasif",
-
     "inventory_adjust_stock_title": "Stok düzelt",
     "inventory_product_label": "Ürün",
     "inventory_current_stock_label": "Mevcut stok",
@@ -247,9 +223,7 @@
     "inventory_adjust_reason_label": "Düzeltme nedeni (zorunlu)",
     "inventory_adjust_reason_placeholder": "Örnek: sayım, hasar, giriş hatası, fazla miktar bulundu...",
     "inventory_adjust_reason_help": "Her stok hareketinin net bir nedeni olmalıdır.",
-
     "inventory_edit_product_title": "Ürünü düzenle",
-
     "inventory_col_actions": "İşlemler",
     "inventory_col_product": "Ürün",
     "inventory_inactive_short": "Pasif",
@@ -260,7 +234,6 @@
     "inventory_col_buy_price": "Alış",
     "inventory_col_sale_price": "Satış",
     "inventory_col_profit": "Kâr",
-
     "inventory_action_report": "Rapor",
     "inventory_action_movements": "Hareketler",
     "inventory_action_adjust_stock": "Stok düzelt",
@@ -268,20 +241,16 @@
     "inventory_action_toggle": "Aktif/Pasif",
     "inventory_action_delete": "Sil",
     "inventory_confirm_delete": "Bu ürünü silmek istediğinizden emin misiniz?",
-
     "inventory_no_products_title": "Envanterde ürün yok",
     "inventory_no_products_hint": "İlk ürününüzü eklemek için yukarıdaki “Ürün ekle” düğmesini kullanın.",
-
     "purchases_page_title": "Satın Almaları Yönet",
     "purchases_stat_total_amount": "Toplam satın almalar",
     "purchases_stat_count": "Satın alma işlemi sayısı",
     "purchases_stat_monthly": "Bu ayki satın almalar",
     "purchases_stat_supplier_debts": "Toplam tedarikçi borçları",
     "purchases_suppliers_word": "tedarikçi",
-
     "purchases_tab_add": "Yeni satın alma ekle",
     "purchases_tab_history": "Satın alma geçmişi",
-
     "purchases_add_title": "Yeni satın alma ekle",
     "purchases_select_supplier": "Tedarikçi seçin",
     "purchases_select_product": "Ürün seçin",
@@ -294,26 +263,21 @@
     "purchases_payment_method_label": "Ödeme yöntemi",
     "purchases_total_label": "Toplam",
     "purchases_submit_button": "Satın almaları kaydet",
-
     "purchases_history_title": "Satın alma geçmişi",
     "purchases_search_placeholder": "🔍 Ara (tedarikçi, ürün)",
     "purchases_filter_all_suppliers": "Tüm tedarikçiler",
     "purchases_export_csv": "CSV Dışa Aktar",
-
     "purchases_top_suppliers_title": "En çok satın alınan tedarikçiler",
     "purchases_top_products_title": "En çok satın alınan ürünler",
     "purchases_operations_word": "işlem",
     "purchases_pieces_word": "adet",
     "purchases_no_data": "Veri yok",
     "purchases_empty_state": "Kayıtlı satın alma yok",
-
     "purchases_card_supplier": "Tedarikçi",
     "purchases_card_unit_price": "Birim fiyat",
-
     "purchases_err_required": "⚠️ Lütfen tüm zorunlu alanları doldurun",
     "purchases_err_quantity": "⚠️ Miktar sıfırdan büyük olmalıdır",
     "purchases_err_price": "⚠️ Fiyat sıfırdan büyük olmalıdır",
-
     "purchases_col_date": "Tarih",
     "purchases_col_supplier": "Tedarikçi",
     "purchases_col_product": "Ürün",
@@ -321,31 +285,26 @@
     "purchases_col_price": "Fiyat",
     "purchases_col_total": "Toplam",
     "purchases_col_payment_method": "Ödeme yöntemi",
-
     "suppliers_page_title": "Tedarikçiler",
     "suppliers_add_title": "Yeni tedarikçi ekle",
     "suppliers_field_name": "Tedarikçi adı",
     "suppliers_field_phone": "Telefon numarası",
     "suppliers_field_address": "Adres",
     "suppliers_save_button": "Tedarikçiyi kaydet",
-
     "suppliers_list_title": "Tedarikçi listesi",
     "suppliers_empty_state": "Henüz kayıtlı tedarikçi yok",
-
     "suppliers_th_name": "Tedarikçi adı",
     "suppliers_th_total_debt": "Toplam borç",
     "suppliers_th_paid": "Ödenen",
     "suppliers_th_remaining": "Kalan",
     "suppliers_th_actions": "İşlemler",
     "suppliers_statement_link": "Hesap ekstresi",
-
     "customers_page_title": "Müşteri Yönetimi",
     "customers_stat_total": "Toplam müşteri",
     "customers_stat_active": "Aktif müşteriler",
     "customers_search_placeholder": "🔍 İsim veya telefonla ara...",
     "customers_all_cities": "Tüm şehirler",
     "customers_add_button": "Müşteri ekle",
-
     "customers_add_modal_title": "Yeni müşteri ekle",
     "customers_edit_modal_title": "Müşteri bilgilerini düzenle",
     "customers_field_full_name": "Tam ad",
@@ -354,17 +313,14 @@
     "customers_field_city": "Şehir",
     "customers_field_address": "Detaylı adres",
     "customers_field_notes": "Notlar",
-
     "customers_placeholder_full_name": "Örn: Ahmed Mohammed",
     "customers_placeholder_phone": "07XXXXXXXX",
     "customers_placeholder_optional": "İsteğe bağlı",
     "customers_placeholder_city": "Örn: Bağdat",
     "customers_placeholder_address": "Mahalle, sokak, ev no...",
     "customers_placeholder_notes": "Müşteri hakkında ek notlar...",
-
     "customers_save_customer": "Müşteriyi kaydet",
     "customers_update_customer": "Bilgileri güncelle",
-
     "customers_toast_add_success": "Müşteri başarıyla eklendi",
     "customers_toast_add_error": "Müşteri eklenirken bir hata oluştu",
     "customers_toast_update_success": "Müşteri başarıyla güncellendi",
@@ -372,9 +328,7 @@
     "customers_toast_delete_success": "Müşteri başarıyla silindi",
     "customers_toast_delete_error": "Müşteri silinemedi",
     "customers_toast_server_error": "Sunucuya bağlanırken hata oluştu",
-
     "customers_confirm_delete": "\"{name}\" isimli müşteriyi silmek istediğinizden emin misiniz?",
-
     "customers_no_orders": "Bu müşteri için önceki sipariş bulunmuyor",
     "customers_close": "Kapat",
     "customers_orders_title": "Müşteri sipariş geçmişi",
@@ -387,13 +341,11 @@
     "customers_orders_col_date": "Tarih",
     "customers_close_window": "Pencereyi kapat",
     "customers_toast_orders_error": "Sipariş verileri alınırken hata oluştu",
-
     "customers_col_name": "Ad",
     "customers_col_phone": "Telefon",
     "customers_col_city": "Şehir",
     "customers_col_address": "Adres",
     "customers_col_actions": "İşlemler",
-
     "customers_nav_blacklist": "Kara liste",
     "customers_blacklist_page_title": "Müşteri kara listesi",
     "customers_blacklist_back": "Müşterilere dön",
@@ -407,34 +359,27 @@
     "customers_blacklist_select_first": "En az bir müşteri seçin",
     "customers_blacklist_reason_prompt": "Sebep (isteğe bağlı)",
     "customers_blacklist_toast_added": "Kara liste güncellendi",
-
     "customers_action_view_orders": "Siparişleri görüntüle",
     "customers_action_orders": "Sipariş geçmişi",
     "customers_action_edit": "Düzenle",
     "customers_action_delete": "Sil",
-
     "customers_stats_show": "Gösterilen",
     "customers_stats_of": " / ",
     "customers_stats_customers_word": "müşteri",
-
     "orders_page_title": "Sipariş Yönetimi",
     "orders_title_ordered": "Verilen Siparişler",
     "orders_title_shipping": "Kargodaki Siparişler",
     "orders_title_cancelled": "İptal Edilen Siparişler",
-
     "orders_stat_total_orders": "Toplam sipariş",
     "orders_stat_total_sales": "Toplam satış",
     "orders_stat_pending": "Bekleyen siparişler",
     "orders_stat_returns": "İadeler",
-
     "orders_nav_all": "Tüm siparişler",
     "orders_nav_cancelled": "İptal edilen",
-
     "orders_status_ordered": "Sipariş verildi",
     "orders_status_shipping": "Kargoda",
     "orders_status_delivered": "Teslim edildi",
     "orders_status_returned": "İade",
-
     "orders_filters_title": "Arama ve Filtreler",
     "orders_filter_all_cities": "🌍 Tüm şehirler",
     "orders_filter_all_statuses": "📋 Tüm durumlar",
@@ -442,51 +387,41 @@
     "orders_filter_all_employees": "👤 Tüm personel",
     "orders_filter_all_shippings": "🚚 Tüm nakliye şirketleri",
     "orders_filter_scheduled_date": "📅 Planlanmış siparişler",
-
     "orders_bulk_title": "Toplu işlemler",
     "orders_bulk_change_status": "Durumu değiştir",
     "orders_bulk_apply": "Uygula",
     "orders_bulk_shipping": "Nakliye şirketi",
     "orders_bulk_agent": "Teslimat görevlisi",
     "orders_option_none": "— Hiçbiri —",
-
     "orders_reports_title": "Ekstreler ve Raporlar",
     "orders_reports_select_shipping": "Ekstre için nakliye şirketi seçin",
     "orders_reports_print_statement": "Ekstre yazdır",
-
     "orders_selected_actions_title": "Seçili sipariş işlemleri",
     "orders_selected_print_selected": "Seçileni yazdır",
     "orders_selected_print_statement": "Seçili ekstreyi yazdır",
     "orders_selected_print_agent": "Kurye ekstresi yazdır",
     "orders_selected_send_message": "Seçilene mesaj gönder",
-
     "orders_search_placeholder": "🔍 İsim / telefon / sipariş numarası ile ara...",
     "orders_list_title": "Sipariş listesi",
     "orders_columns_toggle_title": "Tablo sütunlarını göster veya gizle",
     "orders_columns_button": "Sütunlar",
     "orders_select_all": "Tümünü seç",
-
     "orders_columns_modal_title": "Sütunları Göster / Gizle",
     "orders_columns_modal_subtitle": "Tabloda görmek istediğiniz sütunları seçin. Tercihler tarayıcınızda yerel olarak saklanır.",
-
     "orders_currency_iqd": "IQD",
     "orders_table_stats_prefix": "(Gösterilen toplam:",
-
     "orders_toast_filters_cleared": "✅ Filtreler sıfırlandı",
     "orders_err_select_for_status": "⚠️ Durum uygulamak için lütfen sipariş seçin",
     "orders_err_choose_status": "⚠️ Lütfen bir durum seçin",
     "orders_confirm_bulk_status": "⚠️ {count} siparişin durumunu \"{status}\" olarak değiştirmek istediğinizden emin misiniz?",
     "orders_toast_bulk_updated": "✅ {count} sipariş başarıyla güncellendi",
     "orders_err_update": "❌ Güncelleme sırasında bir hata oluştu",
-
     "orders_err_select_for_shipping": "⚠️ Nakliye şirketi uygulamak için lütfen sipariş seçin",
     "orders_confirm_bulk_shipping_change": "⚠️ {count} sipariş için nakliye şirketini değiştirmek istediğinizden emin misiniz?",
     "orders_confirm_bulk_shipping_clear": "⚠️ {count} sipariş için nakliye şirketini kaldırmak istediğinizden emin misiniz?",
-
     "orders_err_select_for_agent": "⚠️ Teslimat görevlisi atamak için lütfen sipariş seçin",
     "orders_confirm_bulk_agent_change": "⚠️ {count} sipariş için teslimat görevlisini değiştirmek istediğinizden emin misiniz?",
     "orders_confirm_bulk_agent_clear": "⚠️ {count} sipariş için teslimat görevlisini kaldırmak istediğinizden emin misiniz?",
-
     "orders_err_choose_shipping": "⚠️ Lütfen bir nakliye şirketi seçin",
     "orders_err_select_for_report": "⚠️ Ekstre için lütfen sipariş seçin",
     "orders_err_select_for_print": "⚠️ Yazdırmak için lütfen sipariş seçin",
@@ -496,17 +431,14 @@
     "orders_err_choose_agent": "⚠️ Lütfen bir teslimat görevlisi seçin",
     "orders_toast_agent_report_saved": "✅ Ekstre {number} başarıyla kaydedildi",
     "orders_err_save_report": "❌ Ekstre kaydedilirken bir hata oluştu",
-
     "orders_err_select_for_whatsapp": "⚠️ WhatsApp mesajı göndermek için lütfen sipariş seçin",
     "orders_err_no_phones": "⚠️ Seçili siparişlerde kullanılabilir telefon numarası yok",
     "orders_confirm_whatsapp_many": "⚠️ {count} farklı telefon numarasına WhatsApp mesajı gönderilecek.\n\nDevam etmek istiyor musunuz?",
     "orders_toast_whatsapp_opened": "✅ {count} WhatsApp sohbeti açıldı",
-
     "orders_err_not_found": "❌ Sipariş bulunamadı",
     "orders_err_load_details": "❌ Sipariş ayrıntıları yüklenemedi. Lütfen tekrar deneyin.",
     "orders_err_phone_missing": "⚠️ Telefon numarası mevcut değil",
     "orders_whatsapp_message_template": "Merhaba, bu siparişinizin #{id} detaylarıdır",
-
     "orders_details_title": "Sipariş detayları",
     "orders_details_customer_section": "Müşteri bilgileri",
     "orders_details_customer_name": "Ad:",
@@ -514,7 +446,6 @@
     "orders_details_customer_phone2": "Telefon 2:",
     "orders_details_customer_city": "Şehir:",
     "orders_details_customer_address": "Adres:",
-
     "orders_details_order_section": "Sipariş bilgileri",
     "orders_details_order_date": "Tarih:",
     "orders_details_order_status": "Durum:",
@@ -523,32 +454,26 @@
     "orders_details_shipping_company": "Nakliye şirketi:",
     "orders_details_shipping_status": "Nakliye durumu:",
     "orders_details_return_count": "İade sayısı:",
-
     "orders_details_items_section": "Ürünler",
     "orders_details_col_product": "Ürün",
     "orders_details_col_qty": "Adet",
     "orders_details_col_price": "Fiyat",
     "orders_details_col_total": "Toplam",
-
     "orders_details_summary_section": "Finansal özet",
     "orders_details_total": "Toplam tutar:",
     "orders_details_paid": "Ödenen:",
     "orders_details_remaining": "Kalan:",
-
     "orders_details_notes_section": "Notlar",
-
     "orders_details_btn_print_invoice": "Fatura yazdır",
     "orders_details_btn_whatsapp": "WhatsApp gönder",
     "orders_details_btn_edit_order": "Siparişi düzenle",
     "orders_details_btn_full_pay": "Tam ödeme",
     "orders_details_btn_partial_pay": "Kısmi ödeme",
     "orders_details_btn_full_page": "Tam sayfayı aç",
-
     "orders_confirm_full_pay": "⚠️ Bu siparişi tamamen ödemek istediğinizden emin misiniz?",
     "orders_toast_pay_success": "✅ Ödeme başarıyla tamamlandı",
     "orders_err_generic": "❌ Bir hata oluştu",
     "orders_err_payment": "❌ Ödeme işlenirken bir hata oluştu",
-
     "orders_partial_title": "Kısmi ödeme",
     "orders_partial_due": "Kalan tutar:",
     "orders_partial_placeholder": "Ödenecek tutarı girin",
@@ -556,21 +481,17 @@
     "orders_partial_err_amount": "⚠️ Lütfen geçerli bir tutar girin",
     "orders_partial_err_max": "⚠️ Tutar {max} IQD değerini aşamaz",
     "orders_partial_success": "✅ {amount} IQD başarıyla ödendi",
-
     "orders_confirm_cancel": "⚠️ Bu siparişi iptal etmek istediğinizden emin misiniz?",
     "orders_toast_cancel_success": "✅ Sipariş başarıyla iptal edildi",
     "orders_err_cancel": "❌ Sipariş iptal edilirken bir hata oluştu",
-
     "shipping_page_title": "Nakliye Şirketleri Yönetimi",
     "shipping_stat_total_companies": "Toplam şirket",
     "shipping_stat_total_orders": "Toplam sipariş",
     "shipping_stat_total_due": "Toplam alacak",
     "shipping_currency_iqd": "IQD",
-
     "shipping_add_company_title": "Yeni nakliye şirketi ekle",
     "shipping_add_company_placeholder": "Nakliye şirketi adını girin...",
     "shipping_add_company_button": "Şirketi kaydet",
-
     "shipping_companies_title": "Mevcut nakliye şirketleri",
     "shipping_search_companies_placeholder": "🔍 Şirket ara...",
     "shipping_th_company_name": "Şirket adı",
@@ -578,28 +499,22 @@
     "shipping_th_due": "Alacak",
     "shipping_th_actions": "İşlemler",
     "shipping_empty_state": "Henüz nakliye şirketi yok. Yukarıdan yeni bir şirket ekleyin.",
-
     "shipping_action_statement": "Ekstre",
     "shipping_action_delete": "Sil",
-
     "shipping_modal_title": "Şirket siparişleri",
     "shipping_close": "Kapat",
     "shipping_modal_search_placeholder": "🔍 Siparişler içinde ara...",
     "shipping_modal_print_statement": "Ekstre yazdır",
-
     "shipping_err_name_required": "⚠️ Lütfen şirket adını girin",
     "shipping_toast_add_success": "✅ Şirket başarıyla eklendi",
     "shipping_err_add_generic": "❌ Eklerken bir hata oluştu",
-
     "shipping_new_company_message": "✅ Nakliye şirketi başarıyla oluşturuldu!\\n\\nKullanıcı adı: {username}\\nŞifre: {password}\\n\\nGiriş adresi: {login_url}\\n\\nGiriş bilgilerini kopyalamak ister misiniz?",
     "shipping_credentials_template": "Kullanıcı adı: {username}\\nŞifre: {password}\\nGiriş adresi: {login_url}",
     "shipping_toast_credentials_copied": "✅ Giriş bilgileri panoya kopyalandı",
-
     "shipping_confirm_delete_company": "⚠️ Bu şirketi silmek istediğinizden emin misiniz?\\n\\nNot: Siparişi olan bir şirketi silemezsiniz.",
     "shipping_toast_delete_success": "✅ Şirket başarıyla silindi",
     "shipping_err_delete_has_orders": "❌ Siparişi olan bir şirket silinemez",
     "shipping_err_delete_generic": "❌ Şirket silinirken bir hata oluştu",
-
     "shipping_orders_th_customer": "Müşteri adı",
     "shipping_orders_th_phone": "Telefon",
     "shipping_orders_th_amount": "Tutar",
@@ -607,68 +522,54 @@
     "shipping_orders_th_actions": "İşlemler",
     "shipping_orders_empty": "Bu şirket için sipariş yok",
     "shipping_orders_status_unknown": "Bilinmiyor",
-
     "shipping_orders_action_settle": "Tahsil et",
     "shipping_orders_action_return": "İade et",
     "shipping_orders_action_cancel": "İptal",
-
     "shipping_confirm_settle": "⚠️ Bu siparişi tahsil etmek istediğinizden emin misiniz?",
     "shipping_toast_settle_success": "✅ Sipariş başarıyla tahsil edildi – alacaklar güncellendi",
     "shipping_err_settle": "❌ Tahsilat sırasında bir hata oluştu",
-
     "shipping_confirm_return": "⚠️ Bu siparişi iade etmek istediğinizden emin misiniz?\\n\\nŞunlar yapılacak:\\n- Durum 'İade' olacak\\n- Miktar stoğa iade edilecek\\n- Alacak azaltılacak",
     "shipping_toast_return_success": "✅ Sipariş iade edildi ve miktar stoğa döndürüldü – alacaklar güncellendi",
     "shipping_err_return": "❌ İade edilirken bir hata oluştu",
-
     "shipping_confirm_cancel_order": "⚠️ Bu siparişi şirketten iptal etmek istediğinizden emin misiniz?\\n\\nNot: Bu, stoğa iade yapmayacak.",
     "shipping_toast_cancel_success": "✅ Sipariş başarıyla iptal edildi – alacaklar güncellendi",
     "shipping_err_cancel": "❌ Sipariş iptal edilirken bir hata oluştu",
-
     "delivery_agents_page_title": "Teslimat görevlileri",
     "agents_stat_total_agents": "Toplam görevli",
     "agents_stat_total_orders": "Toplam sipariş",
     "agents_stat_total_sales": "Toplam satış",
     "agents_stat_total_reports": "Toplam ekstre",
     "agents_currency_iqd": "IQD",
-
     "agents_add_title": "Yeni görevli ekle",
     "agents_field_name_label": "Görevli adı *",
     "agents_field_name_placeholder": "Görevli adını girin",
     "agents_field_phone_label": "Telefon numarası",
     "agents_field_phone_placeholder": "Telefon numarası",
     "agents_add_button": "Ekle",
-
     "agents_list_title": "Görevli listesi",
     "agents_search_placeholder": "🔍 Görevli ara...",
     "agents_filter_all_agents": "Tüm görevliler",
-
     "agents_th_name": "Görevli adı",
     "agents_th_phone": "Telefon",
     "agents_th_orders": "Sipariş sayısı",
     "agents_th_total_amount": "Toplam tutar",
     "agents_th_actions": "İşlemler",
-
     "agents_empty_title": "Kayıtlı teslimat görevlisi yok",
     "agents_empty_subtitle": "Yeni bir görevli ekleyerek başlayın",
-
     "agents_err_name_required": "⚠️ Lütfen görevli adını girin",
     "agents_toast_add_success": "✅ Görevli başarıyla eklendi",
     "agents_err_generic": "❌ Bir hata oluştu",
     "agents_err_add": "❌ Eklerken bir hata oluştu",
-
     "agents_confirm_delete": "⚠️ \"{name}\" adlı görevlileri silmek istediğinizden emin misiniz?\\n\\nBu görevliye ait tüm veriler silinecek.",
     "agents_toast_delete_success": "✅ Görevli başarıyla silindi",
     "agents_err_delete": "❌ Silme sırasında bir hata oluştu",
-
     "agents_empty_filter_title": "Sonuç bulunamadı",
     "agents_empty_filter_subtitle": "Filtreyi veya arama metnini değiştirmeyi deneyin",
-
     "expenses_page_title": "Gider Yönetimi",
     "expenses_stat_total": "Toplam gider",
     "expenses_stat_total_subtitle": "Tüm giderler",
     "expenses_stat_month": "Bu ayın giderleri",
     "expenses_stat_today": "Bugünkü giderler",
-
     "expenses_add_title": "Gider ekle",
     "expenses_field_title_placeholder": "Gider adı",
     "expenses_field_category_placeholder": "Kategori seçin",
@@ -682,14 +583,12 @@
     "expenses_field_amount_placeholder": "Tutar",
     "expenses_field_note_placeholder": "Not (isteğe bağlı)",
     "expenses_save_button": "Gideri kaydet",
-
     "expenses_table_title": "Gider kaydı",
     "expenses_filter_search_placeholder": "🔍 Başlık veya notta ara...",
     "expenses_filter_category_all": "Tüm kategoriler",
     "expenses_filter_date_from": "Başlangıç tarihi",
     "expenses_filter_date_to": "Bitiş tarihi",
     "expenses_filter_clear": "Temizle",
-
     "expenses_col_date": "Tarih",
     "expenses_col_category": "Kategori",
     "expenses_col_title": "Başlık",
@@ -700,41 +599,34 @@
     "expenses_currency_iqd": "IQD",
     "expenses_action_delete": "Sil",
     "expenses_confirm_delete": "Bu gideri silmek istediğinizden emin misiniz?",
-
     "cash_box_page_title": "Kasa (Cash)",
     "cash_balance_title": "Güncel nakit bakiye",
     "cash_balance_subtitle": "Bu, kasada mevcut olan gerçek nakit tutarıdır.",
     "cash_stat_total_in": "Toplam giriş",
     "cash_stat_total_out": "Toplam çıkış",
     "cash_stat_movements_count": "Hareket sayısı",
-
     "cash_type_in": "Giriş",
     "cash_type_out": "Çıkış",
     "cash_currency_iqd": "IQD",
-
     "cash_add_title": "Nakit hareketi ekle",
     "cash_field_reason_placeholder": "Sebep (nakit satış, gider, borç tahsili vb.)",
     "cash_field_amount_placeholder": "Tutar (IQD)",
     "cash_field_note_placeholder": "Not (isteğe bağlı)",
     "cash_save_button": "Hareketi kaydet",
-
     "cash_history_title": "Nakit hareket geçmişi",
     "cash_mobile_label_type": "Tür:",
     "cash_mobile_label_amount": "Tutar:",
     "cash_mobile_label_balance_after": "Sonraki bakiye:",
     "cash_mobile_label_description": "Açıklama:",
     "cash_empty_state": "Kayıtlı nakit hareketi yok",
-
     "cash_col_date": "Tarih",
     "cash_col_type": "Tür",
     "cash_col_reason": "Sebep",
     "cash_col_amount": "Tutar",
     "cash_col_balance_after": "Sonraki bakiye",
     "cash_col_description": "Açıklama",
-
     "cash_err_reason_required": "⚠️ Lütfen hareket için bir sebep girin (örn. nakit satış, gider, borç tahsili).",
     "cash_err_amount_required": "⚠️ Tutar sıfırdan büyük olmalıdır",
-
     "accounts_page_title": "Hesap Yönetimi",
     "accounts_stat_deposits": "Toplam yatırımlar",
     "accounts_stat_withdrawals": "Toplam çekimler",
@@ -759,7 +651,6 @@
     "accounts_col_note": "Not",
     "accounts_col_date": "Tarih ve saat",
     "accounts_empty_state": "Henüz mali hareket yok",
-
     "employees_page_title": "Çalışan Yönetimi",
     "employees_stat_total": "Toplam Çalışan",
     "employees_stat_active": "Aktif Çalışanlar",
@@ -817,7 +708,6 @@
     "employees_orders_order_count": "sipariş",
     "employees_orders_no_page": "Sayfasız",
     "employees_modal_close": "Kapat",
-
     "pages_page_title": "Sayfa yönetimi",
     "pages_add_title": "Yeni sayfa ekle",
     "pages_field_name_label": "Sayfa adı",
@@ -839,7 +729,6 @@
     "pages_toast_visibility_updated": "Görünürlük başarıyla güncellendi",
     "pages_err_generic": "Bir hata oluştu",
     "pages_err_connection": "Bağlantı hatası",
-
     "reports_page_title": "Raporlar",
     "reports_currency_iqd": "IQD",
     "reports_card_sales": "Toplam Satış",
@@ -867,7 +756,6 @@
     "reports_toast_err_load": "Rapor yükleme hatası",
     "reports_total_label": "Toplam:",
     "reports_total_remaining_debts": "Kalan toplam borç:",
-
     "roles_page_title": "Rol ve İzin Yönetimi",
     "roles_add_role": "Yeni Rol Ekle",
     "roles_th_name": "Rol Adı",
@@ -886,7 +774,6 @@
     "roles_field_description_label": "Açıklama (isteğe bağlı)",
     "roles_placeholder_description": "örn: Envanter Yöneticisi",
     "roles_add_role_button": "Rol Ekle",
-
     "settings_subtitle": "Tüm sistem ayarlarını yönetin",
     "settings_nav_menu": "Ayarlar menüsü",
     "settings_nav_section_main": "Bölümler",
@@ -914,11 +801,9 @@
     "settings_edit_invoice": "Fatura Ayarlarını Düzenle",
     "settings_preview_invoice": "Faturayı Önizle",
     "settings_view_orders": "Siparişleri Görüntüle",
-
     "settings_card_db_repair_title": "Veritabanı bakımı",
     "settings_card_db_repair_desc": "Şirket veritabanınızda eksik tabloları/sütunları tarayıp otomatik düzeltir; güncelleme sonrası 500 hatalarını azaltır.",
     "settings_card_db_repair_action": "Aracı aç",
-
     "db_repair_page_title": "Veritabanı bakımı",
     "db_repair_page_intro": "Bu araç kiracı veritabanı şemanızı uygulama modelleriyle karşılaştırır. Eksik tabloları oluşturabilir ve eksik sütunları ekleyebilir. Önce “Yalnızca tara”, gerekirse “Uygula”.",
     "db_repair_tenant_label": "Şirket:",
@@ -936,7 +821,6 @@
     "db_repair_summary_scan_found": "Tarama (değişiklik yok): önerilen yeni tablolar: {tables}, eksik sütunlar: {columns}. Ayrıntı için aşağıdaki JSON’a bakın.",
     "db_repair_summary_apply_done": "Uygulandı: oluşturulan tablolar: {tables}, eklenen sütunlar: {columns}. Ayrıntı için aşağıdaki JSON’a bakın.",
     "db_repair_summary_has_errors": "Çalıştırma sırasında hata oluştu ({n}). Aşağıdaki JSON’daki errors alanına bakın.",
-
     "messages_page_title": "Mesajlaşma",
     "messages_title_conversations": "Sohbetler",
     "messages_main_menu": "Ana menü",
@@ -975,7 +859,6 @@
     "messages_error_prefix": "Hata: ",
     "messages_time_am": "ÖÖ",
     "messages_time_pm": "ÖS",
-
     "supplier_statement_title": "Tedarikçi Ekstresi",
     "supplier_statement_page_title": "Tedarikçi Hesap Ekstresi",
     "supplier_statement_pay_section": "Ödeme Yap",
@@ -1003,5 +886,3182 @@
     "supplier_statement_note_label": "Not",
     "supplier_statement_total_purchases": "Toplam Alımlar",
     "supplier_statement_total_paid": "Toplam Ödenen",
-    "supplier_statement_remaining": "Kalan"
+    "supplier_statement_remaining": "Kalan",
+    "help_pages": {
+        "accounts.accounts": {
+            "title": "accounts",
+            "body": "صفحة accounts. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "index": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "accounts.add_capital_from_profit": {
+            "title": "add capital from profit",
+            "body": "صفحة add capital from profit. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "add-capital-from-profit": {
+            "title": "add capital from profit",
+            "body": "صفحة add capital from profit. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "accounts.add_bank": {
+            "title": "add bank",
+            "body": "صفحة add bank. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "add-bank": {
+            "title": "add bank",
+            "body": "صفحة add bank. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "accounts.treasury_transfer": {
+            "title": "treasury transfer",
+            "body": "صفحة treasury transfer. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "transfer": {
+            "title": "treasury transfer",
+            "body": "صفحة treasury transfer. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "activity.index": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.list": {
+            "title": "get purchases",
+            "body": "صفحة get purchases. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.stats": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "admin.system_update": {
+            "title": "system update",
+            "body": "صفحة system update. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "system-update": {
+            "title": "system update",
+            "body": "صفحة system update. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "agents.index": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "pending-execution": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "add": {
+            "title": "add company",
+            "body": "صفحة add company. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "edit.<int:agent_id>": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "toggle.<int:agent_id>": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "set-credentials.<int:agent_id>": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "delete.<int:agent_id>": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "<int:agent_id>.reports": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "<int:agent_id>.orders": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "ai.ocr_image": {
+            "title": "ocr image",
+            "body": "صفحة ocr image. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "ocr": {
+            "title": "ocr image",
+            "body": "صفحة ocr image. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "ai.ocr_confirm": {
+            "title": "ocr confirm",
+            "body": "صفحة ocr confirm. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "ocr.confirm": {
+            "title": "ocr confirm",
+            "body": "صفحة ocr confirm. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "ai.analyze_route": {
+            "title": "analyze route",
+            "body": "صفحة analyze route. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "analyze": {
+            "title": "run analysis",
+            "body": "صفحة run analysis. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "assistant.chat": {
+            "title": "chat",
+            "body": "صفحة chat. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "chat": {
+            "title": "chat",
+            "body": "صفحة chat. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "assistant.dashboard": {
+            "title": "لوحة التحكم",
+            "body": "صفحة لوحة التحكم. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "assistant.run_analysis": {
+            "title": "run analysis",
+            "body": "صفحة run analysis. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "assistant.audit_accounting": {
+            "title": "audit accounting",
+            "body": "صفحة audit accounting. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "audit.accounting": {
+            "title": "audit accounting",
+            "body": "صفحة audit accounting. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "assistant.get_analytics": {
+            "title": "get analytics",
+            "body": "صفحة get analytics. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "analytics": {
+            "title": "get analytics",
+            "body": "صفحة get analytics. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "assistant.resolve_analytics": {
+            "title": "resolve analytics",
+            "body": "صفحة resolve analytics. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "analytics.<int:analytics_id>.resolve": {
+            "title": "resolve analytics",
+            "body": "صفحة resolve analytics. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "assistant.dismiss_analytics": {
+            "title": "dismiss analytics",
+            "body": "صفحة dismiss analytics. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "analytics.<int:analytics_id>.dismiss": {
+            "title": "dismiss analytics",
+            "body": "صفحة dismiss analytics. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "assistant.get_alerts": {
+            "title": "get alerts",
+            "body": "صفحة get alerts. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "alerts": {
+            "title": "alerts",
+            "body": "صفحة alerts. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "assistant.mark_alert_read": {
+            "title": "mark alert read",
+            "body": "صفحة mark alert read. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "alerts.<int:alert_id>.read": {
+            "title": "mark alert read",
+            "body": "صفحة mark alert read. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "assistant.dismiss_alert": {
+            "title": "dismiss alert",
+            "body": "صفحة dismiss alert. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "alerts.<int:alert_id>.dismiss": {
+            "title": "dismiss alert",
+            "body": "صفحة dismiss alert. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "assistant.analyze_page": {
+            "title": "analyze page",
+            "body": "صفحة analyze page. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "analyze-page": {
+            "title": "analyze page",
+            "body": "صفحة analyze page. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "assistant.generate_report": {
+            "title": "generate report",
+            "body": "صفحة generate report. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "report": {
+            "title": "generate report",
+            "body": "صفحة generate report. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "assistant.auto_fix_errors": {
+            "title": "auto fix errors",
+            "body": "صفحة auto fix errors. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "auto-fix": {
+            "title": "auto fix errors",
+            "body": "صفحة auto fix errors. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "assistant.get_auto_fix_suggestions": {
+            "title": "get auto fix suggestions",
+            "body": "صفحة get auto fix suggestions. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "auto-fix-suggestions": {
+            "title": "get auto fix suggestions",
+            "body": "صفحة get auto fix suggestions. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "assistant.get_memory": {
+            "title": "get memory",
+            "body": "صفحة get memory. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "memory": {
+            "title": "get memory",
+            "body": "صفحة get memory. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "assistant.verify_memory": {
+            "title": "verify memory",
+            "body": "صفحة verify memory. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "memory.<int:memory_id>.verify": {
+            "title": "verify memory",
+            "body": "صفحة verify memory. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "assistant.get_suggestions": {
+            "title": "get suggestions",
+            "body": "صفحة get suggestions. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "suggestions": {
+            "title": "get suggestions",
+            "body": "صفحة get suggestions. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "beauty.dashboard": {
+            "title": "لوحة التحكم",
+            "body": "صفحة لوحة التحكم. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "beauty.accounts": {
+            "title": "accounts",
+            "body": "صفحة accounts. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "accounts": {
+            "title": "accounts",
+            "body": "صفحة accounts. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "beauty.services": {
+            "title": "services",
+            "body": "صفحة services. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "services": {
+            "title": "services",
+            "body": "صفحة services. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "beauty.delete_service": {
+            "title": "delete service",
+            "body": "صفحة delete service. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "services.<int:service_id>.delete": {
+            "title": "delete service",
+            "body": "صفحة delete service. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "beauty.appointments": {
+            "title": "appointments",
+            "body": "صفحة appointments. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "appointments": {
+            "title": "appointments",
+            "body": "صفحة appointments. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "beauty.update_appointment_status": {
+            "title": "update appointment status",
+            "body": "صفحة update appointment status. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "appointments.<int:appointment_id>.status": {
+            "title": "update appointment status",
+            "body": "صفحة update appointment status. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "beauty.appointment_receipt": {
+            "title": "appointment receipt",
+            "body": "صفحة appointment receipt. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "appointments.<int:appointment_id>.receipt": {
+            "title": "appointment receipt",
+            "body": "صفحة appointment receipt. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "beauty.sessions": {
+            "title": "sessions",
+            "body": "صفحة sessions. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "sessions": {
+            "title": "sessions",
+            "body": "صفحة sessions. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "beauty.clients": {
+            "title": "clients",
+            "body": "صفحة clients. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "clients": {
+            "title": "clients",
+            "body": "صفحة clients. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "beauty.client_history": {
+            "title": "client history",
+            "body": "صفحة client history. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "clients.<int:customer_id>": {
+            "title": "client history",
+            "body": "صفحة client history. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "beauty.alerts": {
+            "title": "alerts",
+            "body": "صفحة alerts. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "branch_api.list_branches": {
+            "title": "list branches",
+            "body": "صفحة list branches. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "list": {
+            "title": "list branches",
+            "body": "صفحة list branches. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "branch_api.switch_branch": {
+            "title": "switch branch",
+            "body": "صفحة switch branch. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "switch": {
+            "title": "switch branch",
+            "body": "صفحة switch branch. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "cash.cash": {
+            "title": "cash",
+            "body": "صفحة cash. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "cash.get_cash_movements_api": {
+            "title": "get cash movements api",
+            "body": "صفحة get cash movements api. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.movements": {
+            "title": "get cash movements api",
+            "body": "صفحة get cash movements api. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "customers.customers": {
+            "title": "customers",
+            "body": "صفحة customers. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "customers.add_customer": {
+            "title": "add customer",
+            "body": "صفحة add customer. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "customers.update_customer": {
+            "title": "update customer",
+            "body": "صفحة update customer. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "update.<int:id>": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "customers.delete_customer": {
+            "title": "delete customer",
+            "body": "صفحة delete customer. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "delete.<int:id>": {
+            "title": "delete company",
+            "body": "صفحة delete company. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "customers.customer_orders": {
+            "title": "customer orders",
+            "body": "صفحة customer orders. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "orders.<int:id>": {
+            "title": "company orders",
+            "body": "صفحة company orders. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "customers.export_customers": {
+            "title": "export customers",
+            "body": "صفحة export customers. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "export": {
+            "title": "export purchases",
+            "body": "صفحة export purchases. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "customers.import_customers": {
+            "title": "import customers",
+            "body": "صفحة import customers. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "import": {
+            "title": "import customers",
+            "body": "صفحة import customers. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "customers.customers_blacklist_page": {
+            "title": "customers blacklist page",
+            "body": "صفحة customers blacklist page. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "blacklist": {
+            "title": "customers blacklist page",
+            "body": "صفحة customers blacklist page. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "customers.customers_blacklist_add": {
+            "title": "customers blacklist add",
+            "body": "صفحة customers blacklist add. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "blacklist.add": {
+            "title": "customers blacklist add",
+            "body": "صفحة customers blacklist add. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "customers.customers_blacklist_remove": {
+            "title": "customers blacklist remove",
+            "body": "صفحة customers blacklist remove. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "blacklist.remove": {
+            "title": "customers blacklist remove",
+            "body": "صفحة customers blacklist remove. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "customer_credit.index": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "customer_credit.detail": {
+            "title": "detail",
+            "body": "صفحة detail. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "<int:customer_id>": {
+            "title": "detail",
+            "body": "صفحة detail. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "customer_credit.create_plan_route": {
+            "title": "create plan route",
+            "body": "صفحة create plan route. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "plans": {
+            "title": "plans list",
+            "body": "صفحة plans list. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "customer_credit.pay_customer": {
+            "title": "pay customer",
+            "body": "صفحة pay customer. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "pay.<int:customer_id>": {
+            "title": "pay customer",
+            "body": "صفحة pay customer. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "customer_credit.api_customers": {
+            "title": "api customers",
+            "body": "صفحة api customers. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.customers": {
+            "title": "api customers",
+            "body": "صفحة api customers. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "customer_credit.api_products": {
+            "title": "api products",
+            "body": "صفحة api products. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.products": {
+            "title": "api products",
+            "body": "صفحة api products. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "delivery.archive": {
+            "title": "archive",
+            "body": "صفحة archive. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "archive": {
+            "title": "archive",
+            "body": "صفحة archive. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "delivery.get_order_details": {
+            "title": "get order details",
+            "body": "صفحة get order details. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "order.<int:order_id>": {
+            "title": "get order details",
+            "body": "صفحة get order details. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "delivery.view_report": {
+            "title": "view report",
+            "body": "صفحة view report. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "report.<int:report_id>": {
+            "title": "get report",
+            "body": "صفحة get report. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "delivery.reports_archive": {
+            "title": "reports archive",
+            "body": "صفحة reports archive. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "reports": {
+            "title": "reports page",
+            "body": "صفحة reports page. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "delivery.shipping_login_page": {
+            "title": "shipping login page",
+            "body": "صفحة shipping login page. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "login": {
+            "title": "login",
+            "body": "صفحة login. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "delivery.shipping_logout": {
+            "title": "shipping logout",
+            "body": "صفحة shipping logout. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "logout": {
+            "title": "logout",
+            "body": "صفحة logout. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "delivery.shipping_dashboard": {
+            "title": "shipping dashboard",
+            "body": "صفحة shipping dashboard. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "dashboard": {
+            "title": "لوحة التحكم",
+            "body": "صفحة لوحة التحكم. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "delivery.update_report_statuses": {
+            "title": "update report statuses",
+            "body": "صفحة update report statuses. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "update-report-statuses.<int:report_id>": {
+            "title": "update report statuses",
+            "body": "صفحة update report statuses. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "delivery.get_delivered_amount": {
+            "title": "get delivered amount",
+            "body": "صفحة get delivered amount. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "get-delivered-amount.<int:report_id>": {
+            "title": "get delivered amount",
+            "body": "صفحة get delivered amount. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "delivery.execute_report": {
+            "title": "execute report",
+            "body": "صفحة execute report. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "execute-report.<int:report_id>": {
+            "title": "execute report",
+            "body": "صفحة execute report. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "delivery.public_access_redirect": {
+            "title": "public access redirect",
+            "body": "صفحة public access redirect. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "public.<token>": {
+            "title": "public access redirect",
+            "body": "صفحة public access redirect. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "delivery_agent.index": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "delivery_agent.login_page": {
+            "title": "login page",
+            "body": "صفحة login page. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "delivery_agent.logout": {
+            "title": "logout",
+            "body": "صفحة logout. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "delivery_agent.dashboard": {
+            "title": "لوحة التحكم",
+            "body": "صفحة لوحة التحكم. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "delivery_agent.update_order_status": {
+            "title": "update order status",
+            "body": "صفحة update order status. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "update-order-status": {
+            "title": "update order status",
+            "body": "صفحة update order status. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "delivery_agent.execute_report": {
+            "title": "execute report",
+            "body": "صفحة execute report. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "delivery_agent.get_chat_users": {
+            "title": "get chat users",
+            "body": "صفحة get chat users. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "chat.users": {
+            "title": "get chat users",
+            "body": "صفحة get chat users. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "delivery_agent.send_message": {
+            "title": "send message",
+            "body": "صفحة send message. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "chat.send": {
+            "title": "send message",
+            "body": "صفحة send message. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "delivery_agent.get_messages": {
+            "title": "get messages",
+            "body": "صفحة get messages. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "chat.messages": {
+            "title": "get messages",
+            "body": "صفحة get messages. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "employees.index": {
+            "title": "الموظفين",
+            "body": "إدارة حسابات الموظفين وصلاحياتهم. أضف موظفاً وحدد دوره في النظام."
+        },
+        "toggle.<int:id>": {
+            "title": "toggle product",
+            "body": "صفحة toggle product. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "reset-password.<int:id>": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "add-agent-account": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "manage-pages.<int:employee_id>": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "pages.<int:employee_id>": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "view-orders.<int:employee_id>": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "employees.profile_update": {
+            "title": "profile update",
+            "body": "صفحة profile update. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "profile.update": {
+            "title": "profile update",
+            "body": "صفحة profile update. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "employees.profile_settings": {
+            "title": "profile settings",
+            "body": "صفحة profile settings. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "profile.settings": {
+            "title": "profile settings",
+            "body": "صفحة profile settings. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "employees.profile_upload": {
+            "title": "profile upload",
+            "body": "صفحة profile upload. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "profile.upload": {
+            "title": "profile upload",
+            "body": "صفحة profile upload. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "expenses.index": {
+            "title": "المصاريف",
+            "body": "تسجيل مصاريف الشركة اليومية. صنّف المصروف واربطه بالحساب المحاسبي المناسب."
+        },
+        "expenses.delete_expense": {
+            "title": "delete expense",
+            "body": "صفحة delete expense. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "fixed_assets.dashboard": {
+            "title": "لوحة التحكم",
+            "body": "صفحة لوحة التحكم. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "fixed_assets.list_assets": {
+            "title": "list assets",
+            "body": "صفحة list assets. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "fixed_assets.depreciation": {
+            "title": "depreciation",
+            "body": "صفحة depreciation. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "depreciation": {
+            "title": "depreciation",
+            "body": "صفحة depreciation. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "fixed_assets.maintenance": {
+            "title": "maintenance",
+            "body": "صفحة maintenance. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "maintenance": {
+            "title": "maintenance",
+            "body": "صفحة maintenance. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "fixed_assets.transfers": {
+            "title": "transfers",
+            "body": "صفحة transfers. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "transfers": {
+            "title": "transfers",
+            "body": "صفحة transfers. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "fixed_assets.disposal": {
+            "title": "disposal",
+            "body": "صفحة disposal. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "disposal": {
+            "title": "disposal",
+            "body": "صفحة disposal. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "fixed_assets.reports": {
+            "title": "التقارير",
+            "body": "صفحة التقارير. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "fixed_assets.create_asset": {
+            "title": "create asset",
+            "body": "صفحة create asset. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "create": {
+            "title": "purchases create",
+            "body": "صفحة purchases create. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "fixed_assets.view_asset": {
+            "title": "view asset",
+            "body": "صفحة view asset. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "<int:asset_id>": {
+            "title": "view asset",
+            "body": "صفحة view asset. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "fixed_assets.post_asset": {
+            "title": "post asset",
+            "body": "صفحة post asset. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "<int:asset_id>.post": {
+            "title": "post asset",
+            "body": "صفحة post asset. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "fixed_assets.categories": {
+            "title": "categories",
+            "body": "صفحة categories. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "categories": {
+            "title": "categories",
+            "body": "صفحة categories. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "fixed_assets.api_preview_costs": {
+            "title": "api preview costs",
+            "body": "صفحة api preview costs. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.preview-costs": {
+            "title": "api preview costs",
+            "body": "صفحة api preview costs. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "fixed_assets.settings": {
+            "title": "الإعدادات",
+            "body": "صفحة الإعدادات. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "settings": {
+            "title": "الإعدادات",
+            "body": "صفحة الإعدادات. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "fixed_assets.audit": {
+            "title": "audit",
+            "body": "صفحة audit. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "audit": {
+            "title": "audit",
+            "body": "صفحة audit. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "fixed_assets.api_settings": {
+            "title": "api settings",
+            "body": "صفحة api settings. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.settings": {
+            "title": "api settings",
+            "body": "صفحة api settings. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "fixed_assets.approvals": {
+            "title": "approvals",
+            "body": "صفحة approvals. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "approvals": {
+            "title": "approvals",
+            "body": "صفحة approvals. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "fixed_assets.asset_card": {
+            "title": "asset card",
+            "body": "صفحة asset card. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "<int:asset_id>.card": {
+            "title": "asset card",
+            "body": "صفحة asset card. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "fixed_assets.upload_attachment": {
+            "title": "upload attachment",
+            "body": "صفحة upload attachment. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "<int:asset_id>.attachments": {
+            "title": "upload attachment",
+            "body": "صفحة upload attachment. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "fixed_assets.delete_attachment": {
+            "title": "delete attachment",
+            "body": "صفحة delete attachment. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "<int:asset_id>.attachments.<int:attachment_id>.delete": {
+            "title": "delete attachment",
+            "body": "صفحة delete attachment. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "index.index": {
+            "title": "لوحة التحكم",
+            "body": "نظرة عامة على أداء عملك: المبيعات، الطلبات، المخزون، والتنبيهات."
+        },
+        "index.landing": {
+            "title": "landing",
+            "body": "صفحة landing. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "landing": {
+            "title": "public landing",
+            "body": "صفحة public landing. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "index.privacy": {
+            "title": "privacy",
+            "body": "صفحة privacy. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "privacy": {
+            "title": "privacy",
+            "body": "صفحة privacy. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "index.terms": {
+            "title": "terms",
+            "body": "صفحة terms. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "terms": {
+            "title": "terms",
+            "body": "صفحة terms. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "index.data_deletion": {
+            "title": "data deletion",
+            "body": "صفحة data deletion. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "data-deletion": {
+            "title": "data deletion",
+            "body": "صفحة data deletion. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "index.contact": {
+            "title": "contact",
+            "body": "صفحة contact. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "contact": {
+            "title": "contact",
+            "body": "صفحة contact. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "index.landing_chat": {
+            "title": "landing chat",
+            "body": "صفحة landing chat. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.landing-chat": {
+            "title": "landing chat",
+            "body": "صفحة landing chat. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "index.upgrade": {
+            "title": "upgrade",
+            "body": "صفحة upgrade. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "upgrade": {
+            "title": "upgrade",
+            "body": "صفحة upgrade. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "index.login": {
+            "title": "login",
+            "body": "صفحة login. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "index.login_tenant": {
+            "title": "login tenant",
+            "body": "صفحة login tenant. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "login.<tenant_slug>": {
+            "title": "login tenant",
+            "body": "صفحة login tenant. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "index.logout": {
+            "title": "logout",
+            "body": "صفحة logout. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "index.pricing": {
+            "title": "pricing",
+            "body": "صفحة pricing. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "pricing": {
+            "title": "pricing",
+            "body": "صفحة pricing. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "index.payment": {
+            "title": "payment",
+            "body": "صفحة payment. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "payment": {
+            "title": "payment",
+            "body": "صفحة payment. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "index.payment_process": {
+            "title": "payment process",
+            "body": "صفحة payment process. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "payment.process": {
+            "title": "payment process",
+            "body": "صفحة payment process. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "index.payment_success": {
+            "title": "payment success",
+            "body": "صفحة payment success. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "payment.success": {
+            "title": "payment success",
+            "body": "صفحة payment success. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "index.signup_send_verification_code": {
+            "title": "signup send verification code",
+            "body": "صفحة signup send verification code. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "signup.send-verification-code": {
+            "title": "signup send verification code",
+            "body": "صفحة signup send verification code. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "index.signup_verify_email": {
+            "title": "signup verify email",
+            "body": "صفحة signup verify email. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "signup.verify-email": {
+            "title": "signup verify email",
+            "body": "صفحة signup verify email. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "index.unsubscribe_marketing": {
+            "title": "unsubscribe marketing",
+            "body": "صفحة unsubscribe marketing. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "unsubscribe.<token>": {
+            "title": "unsubscribe marketing",
+            "body": "صفحة unsubscribe marketing. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "index.signup": {
+            "title": "signup",
+            "body": "صفحة signup. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "signup": {
+            "title": "signup",
+            "body": "صفحة signup. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "executive-dashboard": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.executive_dashboard_data": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.index.executive-overview": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "index.index_reports": {
+            "title": "index reports",
+            "body": "صفحة index reports. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.index.reports": {
+            "title": "index reports",
+            "body": "صفحة index reports. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "index.index_orders_count": {
+            "title": "index orders count",
+            "body": "صفحة index orders count. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.index.orders-count": {
+            "title": "index orders count",
+            "body": "صفحة index orders count. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "index.index_today_profit": {
+            "title": "index today profit",
+            "body": "صفحة index today profit. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.index.today-profit": {
+            "title": "index today profit",
+            "body": "صفحة index today profit. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "index.index_search": {
+            "title": "index search",
+            "body": "صفحة index search. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.index.search": {
+            "title": "index search",
+            "body": "صفحة index search. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "index.index_execute": {
+            "title": "index execute",
+            "body": "صفحة index execute. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.index.execute": {
+            "title": "index execute",
+            "body": "صفحة index execute. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "index.index_execute_bulk": {
+            "title": "index execute bulk",
+            "body": "صفحة index execute bulk. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.index.execute-bulk": {
+            "title": "index execute bulk",
+            "body": "صفحة index execute bulk. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "index.index_charts": {
+            "title": "index charts",
+            "body": "صفحة index charts. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.index.charts": {
+            "title": "index charts",
+            "body": "صفحة index charts. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "index.index_alerts": {
+            "title": "index alerts",
+            "body": "صفحة index alerts. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.index.alerts": {
+            "title": "index alerts",
+            "body": "صفحة index alerts. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "index.check_new_orders": {
+            "title": "check new orders",
+            "body": "صفحة check new orders. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.index.new-orders": {
+            "title": "check new orders",
+            "body": "صفحة check new orders. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "index.agent_reports_pending": {
+            "title": "agent reports pending",
+            "body": "صفحة agent reports pending. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.index.agent-reports-pending": {
+            "title": "agent reports pending",
+            "body": "صفحة agent reports pending. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "index.agent_dues_details": {
+            "title": "agent dues details",
+            "body": "صفحة agent dues details. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.index.agent-dues-details": {
+            "title": "agent dues details",
+            "body": "صفحة agent dues details. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "index.delivered_paid_details": {
+            "title": "delivered paid details",
+            "body": "صفحة delivered paid details. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.index.delivered-paid-details": {
+            "title": "delivered paid details",
+            "body": "صفحة delivered paid details. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "index.add_expense": {
+            "title": "add expense",
+            "body": "صفحة add expense. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.index.add-expense": {
+            "title": "add expense",
+            "body": "صفحة add expense. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "inventory.inventory": {
+            "title": "inventory",
+            "body": "صفحة inventory. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "inventory.index": {
+            "title": "المخزون",
+            "body": "إدارة المنتجات والكميات. ابحث بالاسم أو الباركود، عدّل الكميات، واطبع تقارير الجرد."
+        },
+        "inventory.add_product_page": {
+            "title": "add product page",
+            "body": "صفحة add product page. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "inventory.audit": {
+            "title": "audit",
+            "body": "صفحة audit. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "inventory.save_audit": {
+            "title": "save audit",
+            "body": "صفحة save audit. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "save-audit": {
+            "title": "save audit",
+            "body": "صفحة save audit. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "inventory.add_supplier": {
+            "title": "add supplier",
+            "body": "صفحة add supplier. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "add-supplier": {
+            "title": "add supplier",
+            "body": "صفحة add supplier. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "inventory.toggle_product": {
+            "title": "toggle product",
+            "body": "صفحة toggle product. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "inventory.delete_product": {
+            "title": "delete product",
+            "body": "صفحة delete product. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "inventory.edit_product": {
+            "title": "edit product",
+            "body": "صفحة edit product. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "edit.<int:id>": {
+            "title": "edit product",
+            "body": "صفحة edit product. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "inventory.update_opening_stock": {
+            "title": "update opening stock",
+            "body": "صفحة update opening stock. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "update-opening-stock.<int:id>": {
+            "title": "update opening stock",
+            "body": "صفحة update opening stock. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "inventory.adjust_stock": {
+            "title": "adjust stock",
+            "body": "صفحة adjust stock. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "adjust-stock.<int:id>": {
+            "title": "adjust stock",
+            "body": "صفحة adjust stock. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "inventory.get_product_movements_api": {
+            "title": "get product movements api",
+            "body": "صفحة get product movements api. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.movements.<int:product_id>": {
+            "title": "get product movements api",
+            "body": "صفحة get product movements api. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "inventory.product_report": {
+            "title": "product report",
+            "body": "صفحة product report. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "report.<int:id>": {
+            "title": "product report",
+            "body": "صفحة product report. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "inventory_ledger.inventory_ledger": {
+            "title": "inventory ledger",
+            "body": "صفحة inventory ledger. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "inventory_ledger.get_product_movements": {
+            "title": "get product movements",
+            "body": "صفحة get product movements. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.product.<int:product_id>": {
+            "title": "get product movements",
+            "body": "صفحة get product movements. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "invoice_store.store_home": {
+            "title": "store home",
+            "body": "صفحة store home. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "admin.invoice-templates": {
+            "title": "store home",
+            "body": "صفحة store home. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "invoice_store.store_home_underscore_alias": {
+            "title": "store home underscore alias",
+            "body": "صفحة store home underscore alias. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "admin.invoice_templates": {
+            "title": "store home underscore alias",
+            "body": "صفحة store home underscore alias. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "invoice_store.preview_invoice_template": {
+            "title": "preview invoice template",
+            "body": "صفحة preview invoice template. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "admin.invoice-templates.preview.<int:template_id>": {
+            "title": "preview invoice template",
+            "body": "صفحة preview invoice template. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "invoice_store.customize_invoice_templates": {
+            "title": "customize invoice templates",
+            "body": "صفحة customize invoice templates. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "admin.invoice-templates.customize": {
+            "title": "customize invoice templates",
+            "body": "صفحة customize invoice templates. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "invoice_store.buy_template": {
+            "title": "buy template",
+            "body": "صفحة buy template. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "admin.invoice-templates.buy.<int:template_id>": {
+            "title": "buy template",
+            "body": "صفحة buy template. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "invoice_store.activate_template": {
+            "title": "activate template",
+            "body": "صفحة activate template. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "admin.invoice-templates.activate.<int:template_id>": {
+            "title": "activate template",
+            "body": "صفحة activate template. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "invoice_store.manage_purchases": {
+            "title": "manage purchases",
+            "body": "صفحة manage purchases. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "superadmin.invoice-purchases": {
+            "title": "manage purchases",
+            "body": "صفحة manage purchases. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "invoice_store.approve_purchase": {
+            "title": "approve purchase",
+            "body": "صفحة approve purchase. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "superadmin.invoice-purchases.approve.<int:purchase_id>": {
+            "title": "approve purchase",
+            "body": "صفحة approve purchase. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "invoice_store.reject_purchase": {
+            "title": "reject purchase",
+            "body": "صفحة reject purchase. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "superadmin.invoice-purchases.reject.<int:purchase_id>": {
+            "title": "reject purchase",
+            "body": "صفحة reject purchase. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "landing.public_landing": {
+            "title": "public landing",
+            "body": "صفحة public landing. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "landing.landing_preview": {
+            "title": "landing preview",
+            "body": "صفحة landing preview. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "landing.preview": {
+            "title": "landing preview",
+            "body": "صفحة landing preview. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "landing.super_admin_landing_alias": {
+            "title": "super admin landing alias",
+            "body": "صفحة super admin landing alias. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "super-admin.landing": {
+            "title": "super admin landing alias",
+            "body": "صفحة super admin landing alias. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "landing.api_landing_published": {
+            "title": "api landing published",
+            "body": "صفحة api landing published. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.landing.published": {
+            "title": "api landing published",
+            "body": "صفحة api landing published. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "landing.superadmin_landing_page": {
+            "title": "superadmin landing page",
+            "body": "صفحة superadmin landing page. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "superadmin.landing": {
+            "title": "superadmin landing page",
+            "body": "صفحة superadmin landing page. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "landing.index": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.superadmin.landing": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "landing.api_superadmin_landing": {
+            "title": "api superadmin landing",
+            "body": "صفحة api superadmin landing. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.super-admin.landing": {
+            "title": "api superadmin landing",
+            "body": "صفحة api superadmin landing. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.superadmin.landing.preview": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "landing.api_superadmin_landing_preview": {
+            "title": "api superadmin landing preview",
+            "body": "صفحة api superadmin landing preview. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.super-admin.landing.preview": {
+            "title": "api superadmin landing preview",
+            "body": "صفحة api superadmin landing preview. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.superadmin.landing.settings": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "landing.api_update_landing_settings": {
+            "title": "api update landing settings",
+            "body": "صفحة api update landing settings. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.super-admin.landing.settings": {
+            "title": "api update landing settings",
+            "body": "صفحة api update landing settings. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.superadmin.landing.seo": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "landing.api_update_landing_seo": {
+            "title": "api update landing seo",
+            "body": "صفحة api update landing seo. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.super-admin.landing.seo": {
+            "title": "api update landing seo",
+            "body": "صفحة api update landing seo. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.superadmin.landing.<collection>": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "landing.api_create_landing_item": {
+            "title": "api create landing item",
+            "body": "صفحة api create landing item. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.super-admin.landing.<collection>": {
+            "title": "api create landing item",
+            "body": "صفحة api create landing item. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.superadmin.landing.<collection>.<int:item_id>": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "landing.api_update_landing_item": {
+            "title": "api update landing item",
+            "body": "صفحة api update landing item. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.super-admin.landing.<collection>.<int:item_id>": {
+            "title": "api update landing item",
+            "body": "صفحة api update landing item. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.superadmin.landing.media.upload": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "landing.api_upload_landing_media": {
+            "title": "api upload landing media",
+            "body": "صفحة api upload landing media. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.super-admin.landing.media.upload": {
+            "title": "api upload landing media",
+            "body": "صفحة api upload landing media. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.superadmin.landing.publish": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "landing.api_publish_landing": {
+            "title": "api publish landing",
+            "body": "صفحة api publish landing. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.super-admin.landing.publish": {
+            "title": "api publish landing",
+            "body": "صفحة api publish landing. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.superadmin.landing.seed": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "landing.api_seed_landing": {
+            "title": "api seed landing",
+            "body": "صفحة api seed landing. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.super-admin.landing.seed": {
+            "title": "api seed landing",
+            "body": "صفحة api seed landing. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "maintenance.api_products": {
+            "title": "api products",
+            "body": "صفحة api products. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "maintenance.maintenance_page": {
+            "title": "maintenance page",
+            "body": "صفحة maintenance page. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "maintenance.complete_maintenance": {
+            "title": "complete maintenance",
+            "body": "صفحة complete maintenance. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "<int:record_id>.complete": {
+            "title": "complete maintenance",
+            "body": "صفحة complete maintenance. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "media_library.inventory_video_library": {
+            "title": "inventory video library",
+            "body": "صفحة inventory video library. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "inventory.videos": {
+            "title": "inventory video library",
+            "body": "صفحة inventory video library. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "media_library.upload_inventory_video": {
+            "title": "upload inventory video",
+            "body": "صفحة upload inventory video. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "inventory.videos.upload": {
+            "title": "upload inventory video",
+            "body": "صفحة upload inventory video. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "media_library.delete_inventory_video": {
+            "title": "delete inventory video",
+            "body": "صفحة delete inventory video. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "inventory.videos.<path:filename>": {
+            "title": "delete inventory video",
+            "body": "صفحة delete inventory video. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "media_library.serve_video": {
+            "title": "serve video",
+            "body": "صفحة serve video. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "autoposter.serve.video.<path:filename>": {
+            "title": "serve video",
+            "body": "صفحة serve video. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "media_library.serve_thumbnail": {
+            "title": "serve thumbnail",
+            "body": "صفحة serve thumbnail. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "autoposter.serve.thumbnail.<path:filename>": {
+            "title": "serve thumbnail",
+            "body": "صفحة serve thumbnail. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "messages.messages": {
+            "title": "messages",
+            "body": "صفحة messages. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "messages.get_messages": {
+            "title": "get messages",
+            "body": "صفحة get messages. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "get.<int:other_user_id>": {
+            "title": "get messages",
+            "body": "صفحة get messages. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "messages.send_message": {
+            "title": "send message",
+            "body": "صفحة send message. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "send": {
+            "title": "send message",
+            "body": "صفحة send message. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "messages.unread_count": {
+            "title": "unread count",
+            "body": "صفحة unread count. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "unread-count": {
+            "title": "unread count",
+            "body": "صفحة unread count. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "messages.delete_message": {
+            "title": "delete message",
+            "body": "صفحة delete message. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "delete.<int:message_id>": {
+            "title": "delete message",
+            "body": "صفحة delete message. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "messages.edit_message": {
+            "title": "edit message",
+            "body": "صفحة edit message. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "edit.<int:message_id>": {
+            "title": "edit message",
+            "body": "صفحة edit message. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "messages.clear_chat": {
+            "title": "clear chat",
+            "body": "صفحة clear chat. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "clear.<int:other_user_id>": {
+            "title": "clear chat",
+            "body": "صفحة clear chat. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "messages.get_conversations": {
+            "title": "get conversations",
+            "body": "صفحة get conversations. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "conversations": {
+            "title": "get conversations",
+            "body": "صفحة get conversations. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "messages.serve_file": {
+            "title": "serve file",
+            "body": "صفحة serve file. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "file.<path:filename>": {
+            "title": "serve file",
+            "body": "صفحة serve file. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "messages.get_channel": {
+            "title": "get channel",
+            "body": "صفحة get channel. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "channel": {
+            "title": "get channel",
+            "body": "صفحة get channel. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "messages.send_channel_message": {
+            "title": "send channel message",
+            "body": "صفحة send channel message. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "channel.send": {
+            "title": "send channel message",
+            "body": "صفحة send channel message. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "messages.edit_channel_message": {
+            "title": "edit channel message",
+            "body": "صفحة edit channel message. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "channel.edit.<int:message_id>": {
+            "title": "edit channel message",
+            "body": "صفحة edit channel message. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "messages.delete_channel_message": {
+            "title": "delete channel message",
+            "body": "صفحة delete channel message. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "channel.delete.<int:message_id>": {
+            "title": "delete channel message",
+            "body": "صفحة delete channel message. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "messages.channel_unread_count": {
+            "title": "channel unread count",
+            "body": "صفحة channel unread count. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "channel.unread-count": {
+            "title": "channel unread count",
+            "body": "صفحة channel unread count. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "messages.heartbeat": {
+            "title": "heartbeat",
+            "body": "صفحة heartbeat. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "heartbeat": {
+            "title": "heartbeat",
+            "body": "صفحة heartbeat. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "messages.presence": {
+            "title": "presence",
+            "body": "صفحة presence. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "presence.<int:other_user_id>": {
+            "title": "presence",
+            "body": "صفحة presence. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "messages.typing": {
+            "title": "typing",
+            "body": "صفحة typing. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "typing": {
+            "title": "typing",
+            "body": "صفحة typing. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "messages.call_ice": {
+            "title": "call ice",
+            "body": "صفحة call ice. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "call.ice": {
+            "title": "call ice",
+            "body": "صفحة call ice. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "messages.call_start": {
+            "title": "call start",
+            "body": "صفحة call start. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "call.start": {
+            "title": "call start",
+            "body": "صفحة call start. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "messages.call_incoming": {
+            "title": "call incoming",
+            "body": "صفحة call incoming. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "call.incoming": {
+            "title": "call incoming",
+            "body": "صفحة call incoming. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "messages.call_offer": {
+            "title": "call offer",
+            "body": "صفحة call offer. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "call.<int:call_id>.offer": {
+            "title": "call offer",
+            "body": "صفحة call offer. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "messages.call_answer": {
+            "title": "call answer",
+            "body": "صفحة call answer. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "call.<int:call_id>.answer": {
+            "title": "call answer",
+            "body": "صفحة call answer. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "messages.call_reject": {
+            "title": "call reject",
+            "body": "صفحة call reject. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "call.<int:call_id>.reject": {
+            "title": "call reject",
+            "body": "صفحة call reject. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "messages.call_end": {
+            "title": "call end",
+            "body": "صفحة call end. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "call.<int:call_id>.end": {
+            "title": "call end",
+            "body": "صفحة call end. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "messages.call_state": {
+            "title": "call state",
+            "body": "صفحة call state. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "call.<int:call_id>.state": {
+            "title": "call state",
+            "body": "صفحة call state. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "messages.call_signal": {
+            "title": "call signal",
+            "body": "صفحة call signal. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "call.<int:call_id>.signal": {
+            "title": "call signal",
+            "body": "صفحة call signal. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "messages.call_signals": {
+            "title": "call signals",
+            "body": "صفحة call signals. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "call.<int:call_id>.signals": {
+            "title": "call signals",
+            "body": "صفحة call signals. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "orders.orders": {
+            "title": "orders",
+            "body": "صفحة orders. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "orders.orders_ordered": {
+            "title": "orders ordered",
+            "body": "صفحة orders ordered. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "ordered": {
+            "title": "orders ordered",
+            "body": "صفحة orders ordered. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "orders.orders_shipping": {
+            "title": "orders shipping",
+            "body": "صفحة orders shipping. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "shipping": {
+            "title": "shipping report",
+            "body": "صفحة shipping report. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "orders.orders_delivered": {
+            "title": "orders delivered",
+            "body": "صفحة orders delivered. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "delivered": {
+            "title": "orders delivered",
+            "body": "صفحة orders delivered. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "orders.orders_returned": {
+            "title": "orders returned",
+            "body": "صفحة orders returned. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "returned": {
+            "title": "returned report",
+            "body": "صفحة returned report. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "orders.orders_cancelled": {
+            "title": "orders cancelled",
+            "body": "صفحة orders cancelled. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "cancelled": {
+            "title": "orders cancelled",
+            "body": "صفحة orders cancelled. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "orders.update_order": {
+            "title": "update order",
+            "body": "صفحة update order. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "update": {
+            "title": "update order",
+            "body": "صفحة update order. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "orders.payment": {
+            "title": "payment",
+            "body": "صفحة payment. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "orders.cancel_order": {
+            "title": "cancel order",
+            "body": "صفحة cancel order. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "cancel.<int:order_id>": {
+            "title": "cancel order",
+            "body": "صفحة cancel order. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "orders.delete_order": {
+            "title": "delete order",
+            "body": "صفحة delete order. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "delete.<int:order_id>": {
+            "title": "delete order",
+            "body": "صفحة delete order. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "orders.update_shipping": {
+            "title": "update shipping",
+            "body": "صفحة update shipping. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "update-shipping": {
+            "title": "update shipping",
+            "body": "صفحة update shipping. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "orders.update_delivery_agent": {
+            "title": "update delivery agent",
+            "body": "صفحة update delivery agent. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "update-delivery-agent": {
+            "title": "update delivery agent",
+            "body": "صفحة update delivery agent. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "orders.details": {
+            "title": "details",
+            "body": "صفحة details. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "details.<int:order_id>": {
+            "title": "details",
+            "body": "صفحة details. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "orders.order_page_shortcut": {
+            "title": "order page shortcut",
+            "body": "صفحة order page shortcut. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "<int:order_id>": {
+            "title": "order page shortcut",
+            "body": "صفحة order page shortcut. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "orders.upload_order_video": {
+            "title": "upload order video",
+            "body": "صفحة upload order video. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "<int:order_id>.video": {
+            "title": "upload order video",
+            "body": "صفحة upload order video. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "orders.download_order_video": {
+            "title": "download order video",
+            "body": "صفحة download order video. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "<int:order_id>.video.download": {
+            "title": "download order video",
+            "body": "صفحة download order video. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "orders.stream_invoice_video_guest": {
+            "title": "stream invoice video guest",
+            "body": "صفحة stream invoice video guest. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "invoice-video.<token>": {
+            "title": "stream invoice video guest",
+            "body": "صفحة stream invoice video guest. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "orders.public_order_view": {
+            "title": "public order view",
+            "body": "صفحة public order view. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "p.o.<token>": {
+            "title": "public order view",
+            "body": "صفحة public order view. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "orders.query_order": {
+            "title": "query order",
+            "body": "صفحة query order. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "query.<int:order_id>": {
+            "title": "query order",
+            "body": "صفحة query order. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "orders.invoice_page": {
+            "title": "invoice page",
+            "body": "صفحة invoice page. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "invoice.<int:order_id>": {
+            "title": "invoice page",
+            "body": "صفحة invoice page. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "orders.print_batch": {
+            "title": "print batch",
+            "body": "صفحة print batch. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "print-batch": {
+            "title": "print batch",
+            "body": "صفحة print batch. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "orders.export_excel": {
+            "title": "export excel",
+            "body": "صفحة export excel. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "orders.print_selected": {
+            "title": "print selected",
+            "body": "صفحة print selected. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "print-selected": {
+            "title": "print selected",
+            "body": "صفحة print selected. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "orders.print_report": {
+            "title": "print report",
+            "body": "صفحة print report. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "print-report": {
+            "title": "print report",
+            "body": "صفحة print report. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "orders.print_report_page": {
+            "title": "print report page",
+            "body": "صفحة print report page. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "print-report-page": {
+            "title": "print report page",
+            "body": "صفحة print report page. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "orders.print_items_report_page": {
+            "title": "print items report page",
+            "body": "صفحة print items report page. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "print-items-report-page": {
+            "title": "print items report page",
+            "body": "صفحة print items report page. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "orders.get_print_report_data": {
+            "title": "get print report data",
+            "body": "صفحة get print report data. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "get-print-report-data": {
+            "title": "get print report data",
+            "body": "صفحة get print report data. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "orders.save_report": {
+            "title": "save report",
+            "body": "صفحة save report. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "save-report": {
+            "title": "save report",
+            "body": "صفحة save report. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "orders.reports_page": {
+            "title": "reports page",
+            "body": "صفحة reports page. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "orders.search_by_barcode": {
+            "title": "search by barcode",
+            "body": "صفحة search by barcode. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "search-by-barcode": {
+            "title": "search by barcode",
+            "body": "صفحة search by barcode. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "orders.update_barcode": {
+            "title": "update barcode",
+            "body": "صفحة update barcode. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "update-barcode.<int:invoice_id>": {
+            "title": "update barcode",
+            "body": "صفحة update barcode. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "orders.update_shipping_barcode": {
+            "title": "update shipping barcode",
+            "body": "صفحة update shipping barcode. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "update-shipping-barcode.<int:invoice_id>": {
+            "title": "update shipping barcode",
+            "body": "صفحة update shipping barcode. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "orders.get_selected_orders": {
+            "title": "get selected orders",
+            "body": "صفحة get selected orders. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "get-selected-orders": {
+            "title": "get selected orders",
+            "body": "صفحة get selected orders. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "orders.get_report": {
+            "title": "get report",
+            "body": "صفحة get report. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "orders.migrate_barcode": {
+            "title": "migrate barcode",
+            "body": "صفحة migrate barcode. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "migrate-barcode": {
+            "title": "migrate barcode",
+            "body": "صفحة migrate barcode. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "orders.create_shipping_report": {
+            "title": "create shipping report",
+            "body": "صفحة create shipping report. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "create-shipping-report": {
+            "title": "create shipping report",
+            "body": "صفحة create shipping report. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "orders.create_agent_report": {
+            "title": "create agent report",
+            "body": "صفحة create agent report. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "create-agent-report": {
+            "title": "create agent report",
+            "body": "صفحة create agent report. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "pages.index": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "employee.<int:employee_id>": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "employee-orders.<int:employee_id>": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "assign-employees.<int:page_id>": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "update-visibility.<int:page_id>": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "payments.checkout": {
+            "title": "checkout",
+            "body": "صفحة checkout. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "checkout": {
+            "title": "checkout",
+            "body": "صفحة checkout. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "payments.zaincash_submit": {
+            "title": "zaincash submit",
+            "body": "صفحة zaincash submit. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "zaincash-submit": {
+            "title": "zaincash submit",
+            "body": "صفحة zaincash submit. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "payments.success": {
+            "title": "success",
+            "body": "صفحة success. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "success": {
+            "title": "success",
+            "body": "صفحة success. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "permissions.index": {
+            "title": "الصلاحيات",
+            "body": "تحكم بمن يرى ماذا في النظام. أنشئ أدواراً وخصص الصلاحيات لكل دور."
+        },
+        "roles": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "roles.add": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "roles.edit.<int:id>": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "roles.delete.<int:id>": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "employee.<int:id>.roles": {
+            "title": "الصفحة الرئيسية",
+            "body": "صفحة الصفحة الرئيسية. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "pos.pos": {
+            "title": "نقطة البيع",
+            "body": "واجهة البيع السريع. أضف المنتجات للسلة واختر طريقة الدفع."
+        },
+        "pos.search_customer": {
+            "title": "search customer",
+            "body": "صفحة search customer. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "search-customer": {
+            "title": "search customer",
+            "body": "صفحة search customer. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "pos.add_customer": {
+            "title": "add customer",
+            "body": "صفحة add customer. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "add-customer": {
+            "title": "add customer",
+            "body": "صفحة add customer. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "pos.search_product": {
+            "title": "search product",
+            "body": "صفحة search product. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "search-product": {
+            "title": "search product",
+            "body": "صفحة search product. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "pos.create_order": {
+            "title": "create order",
+            "body": "صفحة create order. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "create-order": {
+            "title": "create order",
+            "body": "صفحة create order. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "pos.last_orders": {
+            "title": "last orders",
+            "body": "صفحة last orders. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "last-orders": {
+            "title": "last orders",
+            "body": "صفحة last orders. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "pos.pos_login": {
+            "title": "pos login",
+            "body": "صفحة pos login. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "pos.logout": {
+            "title": "logout",
+            "body": "صفحة logout. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "pos.all_products": {
+            "title": "all products",
+            "body": "صفحة all products. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "all-products": {
+            "title": "all products",
+            "body": "صفحة all products. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "pos.update_product_price": {
+            "title": "update product price",
+            "body": "صفحة update product price. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "update-product-price": {
+            "title": "update product price",
+            "body": "صفحة update product price. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "purchases.purchases_index": {
+            "title": "purchases index",
+            "body": "صفحة purchases index. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "purchases.purchases_new": {
+            "title": "purchases new",
+            "body": "صفحة purchases new. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "new": {
+            "title": "transfers new",
+            "body": "صفحة transfers new. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "purchases.purchases_edit": {
+            "title": "purchases edit",
+            "body": "صفحة purchases edit. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "edit.<int:purchase_id>": {
+            "title": "purchases edit",
+            "body": "صفحة purchases edit. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "purchases.purchases_create": {
+            "title": "purchases create",
+            "body": "صفحة purchases create. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "purchases.search_products_for_purchase": {
+            "title": "search products for purchase",
+            "body": "صفحة search products for purchase. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.products.search": {
+            "title": "search products for purchase",
+            "body": "صفحة search products for purchase. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "purchases.get_purchases": {
+            "title": "get purchases",
+            "body": "صفحة get purchases. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "purchases.get_purchase_one": {
+            "title": "get purchase one",
+            "body": "صفحة get purchase one. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.<int:purchase_id>": {
+            "title": "get purchase one",
+            "body": "صفحة get purchase one. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "purchases.export_purchases": {
+            "title": "export purchases",
+            "body": "صفحة export purchases. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "purchases.update_purchase": {
+            "title": "update purchase",
+            "body": "صفحة update purchase. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.<int:purchase_id>.update": {
+            "title": "update purchase",
+            "body": "صفحة update purchase. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "purchases.cancel_purchase": {
+            "title": "cancel purchase",
+            "body": "صفحة cancel purchase. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.<int:purchase_id>.cancel": {
+            "title": "cancel purchase",
+            "body": "صفحة cancel purchase. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "purchases.delete_purchase": {
+            "title": "delete purchase",
+            "body": "صفحة delete purchase. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.<int:purchase_id>.delete": {
+            "title": "delete purchase",
+            "body": "صفحة delete purchase. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "purchases.reopen_purchase": {
+            "title": "reopen purchase",
+            "body": "صفحة reopen purchase. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.<int:purchase_id>.reopen": {
+            "title": "reopen purchase",
+            "body": "صفحة reopen purchase. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "purchases.unlock_purchase_for_edit": {
+            "title": "unlock purchase for edit",
+            "body": "صفحة unlock purchase for edit. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.<int:purchase_id>.unlock-edit": {
+            "title": "unlock purchase for edit",
+            "body": "صفحة unlock purchase for edit. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "purchases.clone_purchase": {
+            "title": "clone purchase",
+            "body": "صفحة clone purchase. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.<int:purchase_id>.clone": {
+            "title": "clone purchase",
+            "body": "صفحة clone purchase. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "purchases.print_purchase": {
+            "title": "print purchase",
+            "body": "صفحة print purchase. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "print.<int:purchase_id>": {
+            "title": "print purchase",
+            "body": "صفحة print purchase. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "quick_sale.page": {
+            "title": "page",
+            "body": "صفحة page. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "quick_sale.products": {
+            "title": "products",
+            "body": "صفحة products. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "products": {
+            "title": "products",
+            "body": "صفحة products. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "quick_sale.execute": {
+            "title": "execute",
+            "body": "صفحة execute. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "execute": {
+            "title": "execute",
+            "body": "صفحة execute. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "reports.reports_dashboard": {
+            "title": "reports dashboard",
+            "body": "صفحة reports dashboard. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "reports.financial_report": {
+            "title": "financial report",
+            "body": "صفحة financial report. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "financial": {
+            "title": "financial report",
+            "body": "صفحة financial report. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "reports.sales_report": {
+            "title": "sales report",
+            "body": "صفحة sales report. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "sales": {
+            "title": "sales report",
+            "body": "صفحة sales report. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "reports.profit_report": {
+            "title": "profit report",
+            "body": "صفحة profit report. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "profit": {
+            "title": "profit report",
+            "body": "صفحة profit report. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "reports.expenses_report": {
+            "title": "expenses report",
+            "body": "صفحة expenses report. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "expenses": {
+            "title": "expenses report",
+            "body": "صفحة expenses report. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "reports.inventory_report": {
+            "title": "inventory report",
+            "body": "صفحة inventory report. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "inventory": {
+            "title": "inventory report",
+            "body": "صفحة inventory report. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "reports.returned_report": {
+            "title": "returned report",
+            "body": "صفحة returned report. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "reports.shipping_report": {
+            "title": "shipping report",
+            "body": "صفحة shipping report. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "reports.suppliers_report": {
+            "title": "suppliers report",
+            "body": "صفحة suppliers report. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "suppliers": {
+            "title": "suppliers report",
+            "body": "صفحة suppliers report. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "settings.settings": {
+            "title": "الإعدادات",
+            "body": "صفحة الإعدادات. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "settings.system_settings": {
+            "title": "system settings",
+            "body": "صفحة system settings. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "system": {
+            "title": "system settings",
+            "body": "صفحة system settings. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "settings.update_employee_role": {
+            "title": "update employee role",
+            "body": "صفحة update employee role. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "system.update-role": {
+            "title": "update employee role",
+            "body": "صفحة update employee role. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "settings.update_employee_status": {
+            "title": "update employee status",
+            "body": "صفحة update employee status. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "system.update-status": {
+            "title": "update employee status",
+            "body": "صفحة update employee status. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "settings.update_employee_password": {
+            "title": "update employee password",
+            "body": "صفحة update employee password. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "system.update-password": {
+            "title": "update employee password",
+            "body": "صفحة update employee password. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "settings.update_employee_permissions": {
+            "title": "update employee permissions",
+            "body": "صفحة update employee permissions. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "system.update-permissions": {
+            "title": "update employee permissions",
+            "body": "صفحة update employee permissions. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "settings.get_employee_permissions": {
+            "title": "get employee permissions",
+            "body": "صفحة get employee permissions. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "system.get-permissions.<int:employee_id>": {
+            "title": "get employee permissions",
+            "body": "صفحة get employee permissions. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "settings.invoice_settings": {
+            "title": "invoice settings",
+            "body": "صفحة invoice settings. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "invoice": {
+            "title": "invoice settings",
+            "body": "صفحة invoice settings. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "settings.appearance_settings": {
+            "title": "appearance settings",
+            "body": "صفحة appearance settings. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "appearance": {
+            "title": "appearance settings",
+            "body": "صفحة appearance settings. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "settings.storefront_settings": {
+            "title": "storefront settings",
+            "body": "صفحة storefront settings. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "storefront": {
+            "title": "storefront settings",
+            "body": "صفحة storefront settings. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "settings.update_appearance_settings": {
+            "title": "update appearance settings",
+            "body": "صفحة update appearance settings. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "appearance.update": {
+            "title": "update appearance settings",
+            "body": "صفحة update appearance settings. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "settings.update_invoice_settings": {
+            "title": "update invoice settings",
+            "body": "صفحة update invoice settings. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "invoice.update": {
+            "title": "update invoice settings",
+            "body": "صفحة update invoice settings. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "settings.upload_logo": {
+            "title": "upload logo",
+            "body": "صفحة upload logo. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "invoice.upload-logo": {
+            "title": "upload logo",
+            "body": "صفحة upload logo. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "settings.upload_report_logo": {
+            "title": "upload report logo",
+            "body": "صفحة upload report logo. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "invoice.upload-report-logo": {
+            "title": "upload report logo",
+            "body": "صفحة upload report logo. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "settings.remove_report_logo": {
+            "title": "remove report logo",
+            "body": "صفحة remove report logo. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "invoice.remove-report-logo": {
+            "title": "remove report logo",
+            "body": "صفحة remove report logo. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "settings.preview_invoice": {
+            "title": "preview invoice",
+            "body": "صفحة preview invoice. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "invoice.preview": {
+            "title": "preview invoice",
+            "body": "صفحة preview invoice. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "settings.branches_settings": {
+            "title": "branches settings",
+            "body": "صفحة branches settings. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "branches": {
+            "title": "branches settings",
+            "body": "صفحة branches settings. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "settings.branches_save": {
+            "title": "branches save",
+            "body": "صفحة branches save. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "branches.save": {
+            "title": "branches save",
+            "body": "صفحة branches save. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "settings.update_employee_branch": {
+            "title": "update employee branch",
+            "body": "صفحة update employee branch. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "system.update-branch": {
+            "title": "update employee branch",
+            "body": "صفحة update employee branch. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "settings.database_repair_page": {
+            "title": "database repair page",
+            "body": "صفحة database repair page. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "database-repair": {
+            "title": "database repair page",
+            "body": "صفحة database repair page. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "settings.database_repair_api": {
+            "title": "database repair api",
+            "body": "صفحة database repair api. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "database-repair.api": {
+            "title": "database repair api",
+            "body": "صفحة database repair api. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "shipping.shipping_page": {
+            "title": "shipping page",
+            "body": "صفحة shipping page. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "shipping.add_company": {
+            "title": "add company",
+            "body": "صفحة add company. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "shipping.delete_company": {
+            "title": "delete company",
+            "body": "صفحة delete company. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "shipping.company_orders": {
+            "title": "company orders",
+            "body": "صفحة company orders. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "shipping.settle_order": {
+            "title": "settle order",
+            "body": "صفحة settle order. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "settle.<int:order_id>": {
+            "title": "settle order",
+            "body": "صفحة settle order. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "shipping.cancel_order": {
+            "title": "cancel order",
+            "body": "صفحة cancel order. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "shipping.return_order": {
+            "title": "return order",
+            "body": "صفحة return order. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "return.<int:order_id>": {
+            "title": "return order",
+            "body": "صفحة return order. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "shipping.shipping_history": {
+            "title": "shipping history",
+            "body": "صفحة shipping history. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "history.<int:id>": {
+            "title": "shipping history",
+            "body": "صفحة shipping history. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "social_ai.dashboard": {
+            "title": "لوحة التحكم",
+            "body": "صفحة لوحة التحكم. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "social_ai.ai_builder_assets": {
+            "title": "ai builder assets",
+            "body": "صفحة ai builder assets. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "assets.<path:filename>": {
+            "title": "ai builder assets",
+            "body": "صفحة ai builder assets. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "social_ai.api_accounts_list": {
+            "title": "api accounts list",
+            "body": "صفحة api accounts list. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.accounts": {
+            "title": "api accounts list",
+            "body": "صفحة api accounts list. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "social_ai.api_posts_list": {
+            "title": "api posts list",
+            "body": "صفحة api posts list. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.posts": {
+            "title": "api posts list",
+            "body": "صفحة api posts list. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "social_ai.api_comments_preview": {
+            "title": "api comments preview",
+            "body": "صفحة api comments preview. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.comments.preview": {
+            "title": "api comments preview",
+            "body": "صفحة api comments preview. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "social_ai.api_generate_post": {
+            "title": "api generate post",
+            "body": "صفحة api generate post. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.generate": {
+            "title": "api generate post",
+            "body": "صفحة api generate post. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "social_ai.api_knowledge_extract": {
+            "title": "api knowledge extract",
+            "body": "صفحة api knowledge extract. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.knowledge.extract": {
+            "title": "api knowledge extract",
+            "body": "صفحة api knowledge extract. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "social_ai.api_telegram_set_webhook": {
+            "title": "api telegram set webhook",
+            "body": "صفحة api telegram set webhook. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.telegram.set-webhook": {
+            "title": "api telegram set webhook",
+            "body": "صفحة api telegram set webhook. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "social_ai.api_telegram_delete_webhook": {
+            "title": "api telegram delete webhook",
+            "body": "صفحة api telegram delete webhook. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.telegram.delete-webhook": {
+            "title": "api telegram delete webhook",
+            "body": "صفحة api telegram delete webhook. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "social_ai.api_telegram_webhook_info": {
+            "title": "api telegram webhook info",
+            "body": "صفحة api telegram webhook info. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.telegram.webhook-info": {
+            "title": "api telegram webhook info",
+            "body": "صفحة api telegram webhook info. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "social_ai.api_schedule_post": {
+            "title": "api schedule post",
+            "body": "صفحة api schedule post. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.schedule": {
+            "title": "api schedule post",
+            "body": "صفحة api schedule post. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "social_ai.telegram_inbox_page": {
+            "title": "telegram inbox page",
+            "body": "صفحة telegram inbox page. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "telegram.inbox": {
+            "title": "telegram inbox page",
+            "body": "صفحة telegram inbox page. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "social_ai.whatsapp_inbox_page": {
+            "title": "whatsapp inbox page",
+            "body": "صفحة whatsapp inbox page. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "whatsapp.inbox": {
+            "title": "whatsapp inbox page",
+            "body": "صفحة whatsapp inbox page. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "social_ai.api_telegram_inbox_workflows": {
+            "title": "api telegram inbox workflows",
+            "body": "صفحة api telegram inbox workflows. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.telegram.inbox.workflows": {
+            "title": "api telegram inbox workflows",
+            "body": "صفحة api telegram inbox workflows. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "social_ai.api_whatsapp_inbox_workflows": {
+            "title": "api whatsapp inbox workflows",
+            "body": "صفحة api whatsapp inbox workflows. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.whatsapp.inbox.workflows": {
+            "title": "api whatsapp inbox workflows",
+            "body": "صفحة api whatsapp inbox workflows. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "social_ai.api_telegram_inbox_chats": {
+            "title": "api telegram inbox chats",
+            "body": "صفحة api telegram inbox chats. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.telegram.inbox.chats": {
+            "title": "api telegram inbox chats",
+            "body": "صفحة api telegram inbox chats. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "social_ai.api_whatsapp_inbox_chats": {
+            "title": "api whatsapp inbox chats",
+            "body": "صفحة api whatsapp inbox chats. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.whatsapp.inbox.chats": {
+            "title": "api whatsapp inbox chats",
+            "body": "صفحة api whatsapp inbox chats. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "social_ai.api_telegram_inbox_messages": {
+            "title": "api telegram inbox messages",
+            "body": "صفحة api telegram inbox messages. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.telegram.inbox.messages": {
+            "title": "api telegram inbox messages",
+            "body": "صفحة api telegram inbox messages. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "social_ai.api_whatsapp_inbox_messages": {
+            "title": "api whatsapp inbox messages",
+            "body": "صفحة api whatsapp inbox messages. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.whatsapp.inbox.messages": {
+            "title": "api whatsapp inbox messages",
+            "body": "صفحة api whatsapp inbox messages. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "social_ai.api_telegram_inbox_send": {
+            "title": "api telegram inbox send",
+            "body": "صفحة api telegram inbox send. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.telegram.inbox.send": {
+            "title": "api telegram inbox send",
+            "body": "صفحة api telegram inbox send. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "social_ai.api_whatsapp_inbox_send": {
+            "title": "api whatsapp inbox send",
+            "body": "صفحة api whatsapp inbox send. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "api.whatsapp.inbox.send": {
+            "title": "api whatsapp inbox send",
+            "body": "صفحة api whatsapp inbox send. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "stock_transfers.transfers_index": {
+            "title": "transfers index",
+            "body": "صفحة transfers index. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "stock_transfers.transfers_new": {
+            "title": "transfers new",
+            "body": "صفحة transfers new. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "stock_transfers.transfers_view": {
+            "title": "transfers view",
+            "body": "صفحة transfers view. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "<int:transfer_id>": {
+            "title": "transfers view",
+            "body": "صفحة transfers view. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "stock_transfers.transfers_send": {
+            "title": "transfers send",
+            "body": "صفحة transfers send. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "<int:transfer_id>.send": {
+            "title": "transfers send",
+            "body": "صفحة transfers send. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "stock_transfers.transfers_receive": {
+            "title": "transfers receive",
+            "body": "صفحة transfers receive. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "<int:transfer_id>.receive": {
+            "title": "transfers receive",
+            "body": "صفحة transfers receive. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "stock_transfers.transfers_cancel": {
+            "title": "transfers cancel",
+            "body": "صفحة transfers cancel. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "<int:transfer_id>.cancel": {
+            "title": "transfers cancel",
+            "body": "صفحة transfers cancel. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "storefront.product_detail_legacy": {
+            "title": "product detail legacy",
+            "body": "صفحة product detail legacy. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "product.<int:product_id>": {
+            "title": "product detail legacy",
+            "body": "صفحة product detail legacy. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "storefront.shop_root": {
+            "title": "shop root",
+            "body": "صفحة shop root. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "storefront.store_index": {
+            "title": "store index",
+            "body": "صفحة store index. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "<tenant_slug>": {
+            "title": "store index",
+            "body": "صفحة store index. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "storefront.product_detail": {
+            "title": "product detail",
+            "body": "صفحة product detail. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "<tenant_slug>.product.<int:product_id>": {
+            "title": "product detail",
+            "body": "صفحة product detail. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "storefront.cart_page": {
+            "title": "cart page",
+            "body": "صفحة cart page. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "<tenant_slug>.cart": {
+            "title": "cart page",
+            "body": "صفحة cart page. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "storefront.cart_coupon": {
+            "title": "cart coupon",
+            "body": "صفحة cart coupon. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "<tenant_slug>.cart.coupon": {
+            "title": "cart coupon",
+            "body": "صفحة cart coupon. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "storefront.cart_add": {
+            "title": "cart add",
+            "body": "صفحة cart add. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "<tenant_slug>.cart.add.<int:product_id>": {
+            "title": "cart add",
+            "body": "صفحة cart add. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "storefront.cart_update": {
+            "title": "cart update",
+            "body": "صفحة cart update. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "<tenant_slug>.cart.update": {
+            "title": "cart update",
+            "body": "صفحة cart update. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "storefront.cart_remove": {
+            "title": "cart remove",
+            "body": "صفحة cart remove. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "<tenant_slug>.cart.remove.<int:product_id>": {
+            "title": "cart remove",
+            "body": "صفحة cart remove. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "storefront.api_cart_summary": {
+            "title": "api cart summary",
+            "body": "صفحة api cart summary. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "<tenant_slug>.api.cart": {
+            "title": "api cart summary",
+            "body": "صفحة api cart summary. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "storefront.api_cart_add": {
+            "title": "api cart add",
+            "body": "صفحة api cart add. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "<tenant_slug>.api.cart.add": {
+            "title": "api cart add",
+            "body": "صفحة api cart add. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "storefront.api_cart_update": {
+            "title": "api cart update",
+            "body": "صفحة api cart update. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "<tenant_slug>.api.cart.update": {
+            "title": "api cart update",
+            "body": "صفحة api cart update. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "storefront.api_cart_coupon": {
+            "title": "api cart coupon",
+            "body": "صفحة api cart coupon. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "<tenant_slug>.api.coupon": {
+            "title": "api cart coupon",
+            "body": "صفحة api cart coupon. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "storefront.checkout_page": {
+            "title": "checkout page",
+            "body": "صفحة checkout page. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "<tenant_slug>.checkout": {
+            "title": "checkout page",
+            "body": "صفحة checkout page. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "storefront.order_success": {
+            "title": "order success",
+            "body": "صفحة order success. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "<tenant_slug>.order-success.<int:invoice_id>": {
+            "title": "order success",
+            "body": "صفحة order success. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "storefront.tracking_page": {
+            "title": "tracking page",
+            "body": "صفحة tracking page. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "<tenant_slug>.track": {
+            "title": "tracking page",
+            "body": "صفحة tracking page. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "superadmin.login": {
+            "title": "login",
+            "body": "صفحة login. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "superadmin.logout": {
+            "title": "logout",
+            "body": "صفحة logout. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "superadmin.dashboard": {
+            "title": "لوحة التحكم",
+            "body": "صفحة لوحة التحكم. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "superadmin.requests_list": {
+            "title": "requests list",
+            "body": "صفحة requests list. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "requests": {
+            "title": "requests list",
+            "body": "صفحة requests list. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "superadmin.approve_request": {
+            "title": "approve request",
+            "body": "صفحة approve request. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "requests.<int:req_id>.approve": {
+            "title": "approve request",
+            "body": "صفحة approve request. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "superadmin.reject_request": {
+            "title": "reject request",
+            "body": "صفحة reject request. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "requests.<int:req_id>.reject": {
+            "title": "reject request",
+            "body": "صفحة reject request. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "superadmin.tenants_list": {
+            "title": "tenants list",
+            "body": "صفحة tenants list. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "tenants": {
+            "title": "tenants list",
+            "body": "صفحة tenants list. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "superadmin.tenant_details": {
+            "title": "tenant details",
+            "body": "صفحة tenant details. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "tenants.details.<slug>": {
+            "title": "tenant details",
+            "body": "صفحة tenant details. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "superadmin.tenant_registration_view": {
+            "title": "tenant registration view",
+            "body": "صفحة tenant registration view. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "tenants.registration.<slug>": {
+            "title": "tenant registration view",
+            "body": "صفحة tenant registration view. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "superadmin.tenant_reset_password": {
+            "title": "tenant reset password",
+            "body": "صفحة tenant reset password. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "tenants.reset-password.<slug>": {
+            "title": "tenant reset password",
+            "body": "صفحة tenant reset password. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "superadmin.tenant_reset_db": {
+            "title": "tenant reset db",
+            "body": "صفحة tenant reset db. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "tenants.reset-db.<slug>": {
+            "title": "tenant reset db",
+            "body": "صفحة tenant reset db. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "superadmin.tenants_create": {
+            "title": "tenants create",
+            "body": "صفحة tenants create. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "tenants.create": {
+            "title": "tenants create",
+            "body": "صفحة tenants create. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "superadmin.announcements_list": {
+            "title": "announcements list",
+            "body": "صفحة announcements list. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "announcements": {
+            "title": "announcements list",
+            "body": "صفحة announcements list. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "superadmin.announcements_create": {
+            "title": "announcements create",
+            "body": "صفحة announcements create. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "announcements.create": {
+            "title": "announcements create",
+            "body": "صفحة announcements create. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "superadmin.announcements_send_all": {
+            "title": "announcements send all",
+            "body": "صفحة announcements send all. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "announcements.<int:ann_id>.send-all": {
+            "title": "announcements send all",
+            "body": "صفحة announcements send all. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "superadmin.announcements_send_one": {
+            "title": "announcements send one",
+            "body": "صفحة announcements send one. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "announcements.<int:ann_id>.send-one": {
+            "title": "announcements send one",
+            "body": "صفحة announcements send one. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "superadmin.announcements_set_weekly": {
+            "title": "announcements set weekly",
+            "body": "صفحة announcements set weekly. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "announcements.<int:ann_id>.set-weekly": {
+            "title": "announcements set weekly",
+            "body": "صفحة announcements set weekly. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "superadmin.settings": {
+            "title": "الإعدادات",
+            "body": "صفحة الإعدادات. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "superadmin.invoice_templates_manager": {
+            "title": "invoice templates manager",
+            "body": "صفحة invoice templates manager. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "invoice-templates": {
+            "title": "invoice templates manager",
+            "body": "صفحة invoice templates manager. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "superadmin.activate_invoice_template_for_tenant": {
+            "title": "activate invoice template for tenant",
+            "body": "صفحة activate invoice template for tenant. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "invoice-templates.activate": {
+            "title": "activate invoice template for tenant",
+            "body": "صفحة activate invoice template for tenant. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "superadmin.links_guide": {
+            "title": "links guide",
+            "body": "صفحة links guide. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "links": {
+            "title": "links guide",
+            "body": "صفحة links guide. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "superadmin.plans_list": {
+            "title": "plans list",
+            "body": "صفحة plans list. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "superadmin.edit_plan": {
+            "title": "edit plan",
+            "body": "صفحة edit plan. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "plans.edit.<int:plan_id>": {
+            "title": "edit plan",
+            "body": "صفحة edit plan. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "superadmin.seed_plans": {
+            "title": "seed plans",
+            "body": "صفحة seed plans. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "plans.seed": {
+            "title": "seed plans",
+            "body": "صفحة seed plans. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "superadmin.tenant_toggle_status": {
+            "title": "tenant toggle status",
+            "body": "صفحة tenant toggle status. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "tenants.toggle-status.<slug>": {
+            "title": "tenant toggle status",
+            "body": "صفحة tenant toggle status. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "superadmin.tenant_delete": {
+            "title": "tenant delete",
+            "body": "صفحة tenant delete. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "tenants.delete.<slug>": {
+            "title": "tenant delete",
+            "body": "صفحة tenant delete. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "superadmin.tenant_update_business_type": {
+            "title": "tenant update business type",
+            "body": "صفحة tenant update business type. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "tenants.update-business-type.<slug>": {
+            "title": "tenant update business type",
+            "body": "صفحة tenant update business type. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "superadmin.tenant_update_plan": {
+            "title": "tenant update plan",
+            "body": "صفحة tenant update plan. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "tenants.update-plan.<slug>": {
+            "title": "tenant update plan",
+            "body": "صفحة tenant update plan. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "suppliers.index": {
+            "title": "الموردين",
+            "body": "إدارة بيانات الموردين وأرصدتهم. يمكنك عرض كشف الحساب ومتابعة المستحقات."
+        },
+        "suppliers.supplier_details": {
+            "title": "supplier details",
+            "body": "صفحة supplier details. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "<int:id>": {
+            "title": "supplier details",
+            "body": "صفحة supplier details. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "suppliers.supplier_pay": {
+            "title": "supplier pay",
+            "body": "صفحة supplier pay. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "pay.<int:id>": {
+            "title": "supplier pay",
+            "body": "صفحة supplier pay. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "suppliers.supplier_statement_pdf": {
+            "title": "supplier statement pdf",
+            "body": "صفحة supplier statement pdf. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "statement.pdf.<int:id>": {
+            "title": "supplier statement pdf",
+            "body": "صفحة supplier statement pdf. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "suppliers.supplier_statement_print": {
+            "title": "supplier statement print",
+            "body": "صفحة supplier statement print. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "statement.print.<int:id>": {
+            "title": "supplier statement print",
+            "body": "صفحة supplier statement print. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "whatsapp_webhook.whatsapp_webhook": {
+            "title": "whatsapp webhook",
+            "body": "صفحة whatsapp webhook. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "webhook": {
+            "title": "whatsapp webhook",
+            "body": "صفحة whatsapp webhook. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "whatsapp_webhook.whatsapp_webhook_ui": {
+            "title": "whatsapp webhook ui",
+            "body": "صفحة whatsapp webhook ui. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "webhook-ui": {
+            "title": "whatsapp webhook ui",
+            "body": "صفحة whatsapp webhook ui. استخدم الأدوات والفلاتر المتاحة لإدارة بياناتك."
+        },
+        "index.dashboard": {
+            "title": "لوحة التحكم",
+            "body": "نظرة عامة على أداء عملك: المبيعات، الطلبات، المخزون، والتنبيهات. استخدم البطاقات والرسوم البيانية لمتابعة الأرقام اليومية."
+        },
+        "inventory.add_product": {
+            "title": "إضافة منتج",
+            "body": "أدخل بيانات المنتج الجديد: الاسم، السعر، الكمية، والباركود. يُحدَّث المخزون تلقائياً."
+        },
+        "orders.index": {
+            "title": "الطلبات",
+            "body": "متابعة طلبات العملاء من الإنشاء حتى التسليم. استخدم الفلاتر للبحث بالحالة أو التاريخ."
+        },
+        "pos.index": {
+            "title": "نقطة البيع",
+            "body": "بيع سريع من الكاشير. امسح الباركود أو ابحث عن المنتج، ثم أكمل الدفع واطبع الفاتورة."
+        },
+        "purchases.index": {
+            "title": "المشتريات",
+            "body": "تسجيل فواتير الشراء من الموردين. تُحدَّث الكميات والتكلفة في المخزون تلقائياً."
+        },
+        "customers.index": {
+            "title": "الزبائن",
+            "body": "قاعدة بيانات العملاء: الأسماء، الهواتف، والعناوين. تُستخدم عند إنشاء الطلبات والفواتير."
+        },
+        "shipping.index": {
+            "title": "الشحن",
+            "body": "إدارة شركات الشحن وتقارير التسليم. تتبع الطرود وحالة الشحنات."
+        },
+        "cash.index": {
+            "title": "الصندوق",
+            "body": "حركة النقدية: الإيرادات والمصروفات النقدية. راقب رصيد الصندوق لحظياً."
+        },
+        "accounts.index": {
+            "title": "الحسابات",
+            "body": "دليل الحسابات والقيود المحاسبية. تتبع الأرصدة والتقارير المالية."
+        },
+        "reports.index": {
+            "title": "التقارير",
+            "body": "تقارير المبيعات والمخزون والأرباح. اختر الفترة والفرع ثم صدّر النتائج."
+        },
+        "reports.financial": {
+            "title": "التقارير المالية",
+            "body": "ملخص مالي شامل: الإيرادات، المصاريف، وصافي الربح مع رسوم بيانية."
+        },
+        "settings.index": {
+            "title": "الإعدادات",
+            "body": "ضبط إعدادات الشركة: المظهر، الفروع، الفواتير، والمتجر الإلكتروني."
+        },
+        "fixed_assets.index": {
+            "title": "الأصول الثابتة",
+            "body": "إدارة الأصول والإهلاك والصيانة. تتبع قيمة الأصول عبر الزمن."
+        },
+        "maintenance.index": {
+            "title": "صيانة المنتجات",
+            "body": "تتبع المنتجات المرسلة للصيانة والورش. سجّل العودة للمخزون عند الاكتمال."
+        },
+        "superadmin.index": {
+            "title": "لوحة السوبر أدمن",
+            "body": "إدارة مركزية للشركات والاشتراكات وخطط النظام."
+        }
+    },
+    "help_fields": {
+        "dashboard.sales_today": "إجمالي مبيعات اليوم من جميع القنوات (POS والطلبات).",
+        "dashboard.orders_pending": "عدد الطلبات التي لم تُسلَّم بعد وتحتاج متابعة.",
+        "dashboard.low_stock": "منتجات وصلت لحد التنبيه وتحتاج إعادة توريد.",
+        "dashboard.branch_filter": "اختر فرعاً محدداً أو اعرض بيانات كل الفروع معاً.",
+        "inventory.product_name": "اسم المنتج كما يظهر في الفواتير والمتجر والتقارير.",
+        "inventory.sku": "رمز تعريف فريد للمنتج. يُستخدم في البحث والجرد.",
+        "inventory.barcode": "الباركود للمسح السريع في نقطة البيع والمخزون.",
+        "inventory.price": "سعر البيع للعميل. يُطبَّق تلقائياً في الفواتير.",
+        "inventory.cost": "تكلفة الشراء. تُستخدم لحساب الربح وهامش الربح.",
+        "inventory.quantity": "الكمية الحالية في المخزون. تتغير مع البيع والشراء والجرد.",
+        "inventory.opening_stock": "الرصيد الافتتاحي عند إضافة منتج جديد. يُحدَّث المخزون ورأس المال.",
+        "inventory.category": "تصنيف المنتج لتنظيم القائمة والتقارير.",
+        "inventory.min_stock": "عند وصول الكمية لهذا الحد يظهر تنبيه نقص المخزون.",
+        "inventory.adjust_reason": "كل حركة مخزون يجب أن تكون مرتبطة بسبب واضح للمراجعة.",
+        "inventory.search": "ابحث بالاسم أو SKU أو الباركود للوصول السريع للمنتج.",
+        "orders.status": "حالة الطلب: جديد، قيد التجهيز، شُحن، أو مُسلَّم.",
+        "orders.customer": "العميل صاحب الطلب. يُسحب بياناته تلقائياً للفاتورة.",
+        "orders.total": "المبلغ الإجمالي شامل الخصومات والشحن إن وُجد.",
+        "orders.shipping_company": "شركة الشحن المكلَّفة بتوصيل الطلب.",
+        "orders.tracking_number": "رقم التتبع من شركة الشحن لمتابعة الطرد.",
+        "orders.payment_method": "طريقة الدفع: نقدي، تحويل، أو عند الاستلام.",
+        "orders.notes": "ملاحظات داخلية للفريق لا تظهر للعميل.",
+        "orders.filter_date": "فلترة الطلبات حسب تاريخ الإنشاء أو التسليم.",
+        "pos.product_search": "ابحث بالاسم أو امسح الباركود لإضافة المنتج للسلة.",
+        "pos.quantity": "عدد الوحدات المباعة. يمكن تعديله قبل إتمام البيع.",
+        "pos.discount": "خصم على الفاتورة أو منتج محدد. يُخصم من الإجمالي.",
+        "pos.payment": "اختر طريقة الدفع: نقدي، بطاقة، أو آجل.",
+        "pos.customer": "ربط البيع بعميل مسجَّل (اختياري للمبيعات النقدية).",
+        "purchases.supplier": "المورد الذي اشتريت منه. يُحدَّث رصيده تلقائياً.",
+        "purchases.invoice_number": "رقم فاتورة المورد للمرجعية والمطابقة.",
+        "purchases.items": "المنتجات المشتراة مع الكمية وسعر الشراء لكل وحدة.",
+        "purchases.total": "إجمالي فاتورة الشراء. يُسجَّل كمصروف أو دين للمورد.",
+        "suppliers.name": "اسم المورد أو الشركة المورِّدة.",
+        "suppliers.phone": "رقم التواصل مع المورد.",
+        "suppliers.balance": "الرصيد المستحق للمورد (دين عليك).",
+        "customers.name": "اسم العميل كما يظهر في الطلبات والفواتير.",
+        "customers.phone": "رقم الهاتف للتواصل وتأكيد الطلبات.",
+        "customers.address": "عنوان التوصيل الافتراضي للعميل.",
+        "shipping.company": "شركة الشحن المسجَّلة في النظام.",
+        "shipping.rate": "تعرفة الشحن حسب المحافظة أو الوزن.",
+        "shipping.tracking": "رقم تتبع الشحنة من شركة النقل.",
+        "expenses.category": "تصنيف المصروف (إيجار، رواتب، مشتريات، إلخ).",
+        "expenses.amount": "مبلغ المصروف بالدينار العراقي.",
+        "expenses.date": "تاريخ حدوث المصروف للتقارير المالية.",
+        "expenses.account": "الحساب المحاسبي الذي يُخصم منه المبلغ.",
+        "expenses.recurring": "مصروف متكرر يُسجَّل تلقائياً كل فترة.",
+        "cash.balance": "الرصيد الحالي في الصندوق النقدي.",
+        "cash.income": "إيراد نقدي وارد للصندوق.",
+        "cash.expense": "مصروف نقدي صادر من الصندوق.",
+        "accounts.code": "رمز الحساب في دليل الحسابات.",
+        "accounts.name": "اسم الحساب (أصول، خصوم، إيرادات، مصاريف).",
+        "accounts.balance": "الرصيد الحالي للحساب.",
+        "accounts.journal": "قيد محاسبي يُسجَّل الحركة بين حسابين.",
+        "reports.date_from": "بداية الفترة الزمنية للتقرير.",
+        "reports.date_to": "نهاية الفترة الزمنية للتقرير.",
+        "reports.branch": "تصفية التقرير حسب فرع محدد.",
+        "reports.export": "تصدير النتائج إلى Excel أو PDF.",
+        "settings.theme": "مظهر الواجهة: فاتح أو داكن.",
+        "settings.font_size": "حجم النصوص في أغلب صفحات النظام.",
+        "settings.currency": "رمز العملة الافتراضي في التقارير والفواتير.",
+        "settings.company_name": "اسم الشركة الظاهر في الفواتير والتقارير.",
+        "settings.logo": "شعار الشركة على الفواتير والمتجر.",
+        "settings.branches": "فروع الشركة. كل فرع له مخزون ومبيعات منفصلة.",
+        "employees.name": "اسم الموظف في النظام.",
+        "employees.role": "دور الموظف يحدد صلاحياته (مدير، كاشير، إلخ).",
+        "employees.username": "اسم المستخدم لتسجيل الدخول.",
+        "permissions.role": "مجموعة صلاحيات تُعطى لعدة موظفين.",
+        "permissions.permission": "صلاحية محددة (عرض الطلبات، إدارة المخزون، إلخ).",
+        "fixed_assets.name": "اسم الأصل الثابت (معدات، مركبات، أثاث).",
+        "fixed_assets.value": "القيمة الأصلية عند الشراء.",
+        "fixed_assets.depreciation": "الإهلاك الشهري أو السنوي المخصوم من قيمة الأصل.",
+        "fixed_assets.disposal": "طلب استبعاد أو بيع أصل ثابت.",
+        "beauty.service": "خدمة صالون التجميل المقدَّمة للعميل.",
+        "beauty.appointment": "موعد حجز العميل لجلسة خدمة.",
+        "maintenance.product": "المنتج المرسل للصيانة من المخزون.",
+        "maintenance.workshop": "ورشة أو مركز الصيانة الخارجي.",
+        "maintenance.quantity": "عدد القطع المرسلة للصيانة.",
+        "superadmin.tenant": "شركة مسجَّلة في المنصة ولها قاعدة بيانات منفصلة.",
+        "superadmin.plan": "خطة الاشتراك تحدد الميزات المتاحة للشركة.",
+        "general.search": "ابحث في السجلات بالاسم أو الرقم أو التاريخ.",
+        "general.filter": "تصفية النتائج حسب معايير محددة.",
+        "general.export": "تصدير البيانات المعروضة إلى ملف.",
+        "general.print": "طباعة التقرير أو الفاتورة الحالية.",
+        "general.save": "حفظ التغييرات. تأكد من صحة البيانات قبل الحفظ.",
+        "general.delete": "حذف السجل نهائياً. لا يمكن التراجع عن هذا الإجراء."
+    }
 }

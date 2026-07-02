@@ -1,0 +1,110 @@
+/* Finora contextual help — tiny ? icon + hover tooltip */
+
+.finora-help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 11px;
+  height: 11px;
+  min-width: 11px;
+  min-height: 11px;
+  margin-inline-start: 4px;
+  vertical-align: middle;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--text-muted, #94a3b8) 55%, transparent);
+  background: color-mix(in srgb, var(--text-muted, #94a3b8) 8%, transparent);
+  color: color-mix(in srgb, var(--text-muted, #94a3b8) 75%, transparent);
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1;
+  font-family: inherit;
+  cursor: help;
+  user-select: none;
+  position: relative;
+  flex-shrink: 0;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.finora-help:hover,
+.finora-help.is-open {
+  color: var(--primary, #3b82f6);
+  border-color: color-mix(in srgb, var(--primary, #3b82f6) 45%, transparent);
+  background: color-mix(in srgb, var(--primary, #3b82f6) 10%, transparent);
+}
+
+.finora-help__tip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 280px;
+  padding: 8px 11px;
+  background: var(--card, #fff);
+  color: var(--text, #1e293b);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+  white-space: normal;
+  text-align: start;
+  direction: inherit;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  z-index: 9999;
+  transition: opacity 0.15s, visibility 0.15s, transform 0.15s;
+}
+
+.finora-help__tip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--card, #fff);
+  filter: drop-shadow(0 1px 0 var(--border, #e2e8f0));
+}
+
+.finora-help:hover .finora-help__tip,
+.finora-help.is-open .finora-help__tip {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Fixed-position tooltip (JS positions for overflow containers) */
+.finora-help__tip--fixed {
+  position: fixed;
+  bottom: auto;
+  left: auto;
+  transform: none;
+}
+
+.finora-help__tip--fixed::after {
+  display: none;
+}
+
+/* Page title inline help */
+.page-title .finora-help {
+  margin-inline-start: 6px;
+  transform: translateY(-1px);
+}
+
+/* Inside table headers — keep compact */
+th .finora-help,
+label .finora-help {
+  margin-inline-start: 3px;
+}
+
+@media (max-width: 640px) {
+  .finora-help {
+    width: 13px;
+    height: 13px;
+    min-width: 13px;
+    min-height: 13px;
+    font-size: 9px;
+  }
+}

@@ -1,10 +1,9 @@
 <section class="l-hero" id="hero-signup">
     <div class="l-hero-grid">
-        <div class="l-reveal">
+        <div class="l-reveal l-hero-copy">
             <div class="l-badge"><span class="dot"></span> نظام SaaS عراقي — متكامل ومتطور</div>
             <h1 class="l-title">أدِر كل عملك من<br><span class="hl">لوحة واحدة</span></h1>
             <p class="l-sub left">Finora يجمع الطلبات، المخزون، الحسابات، الموظفين، وتقارير الأرباح في منصة سحابية واحدة سريعة وآمنة.</p>
-            {% include 'landing/_hero_signup.html' %}
             <div class="l-stats">
                 <div><div class="l-stat-n">+1,200</div><div class="l-stat-l">طلب يومياً</div></div>
                 <div><div class="l-stat-n">12+</div><div class="l-stat-l">ميزة</div></div>
@@ -12,12 +11,8 @@
                 <div><div class="l-stat-n">4</div><div class="l-stat-l">خطط مرنة</div></div>
             </div>
         </div>
-        <div class="l-hero-visual l-reveal">
-            <img src="{{ url_for('static', filename='image.png') }}" alt="لوحة Finora" loading="eager">
-            <div class="l-hero-float">
-                <strong>+5,000</strong>
-                <span>عملية ناجحة يومياً</span>
-            </div>
+        <div class="l-hero-signup-col l-reveal">
+            {% include 'landing/_hero_signup.html' %}
         </div>
     </div>
 </section>

@@ -72,7 +72,7 @@
           <h3>{{ _('roles_edit_title') }}: <span style="color:var(--primary);">{{ role.name }}</span></h3>
           <div class="team-form-grid" style="margin-bottom:16px;">
             <div class="team-modal-field">
-              <label>{{ _('roles_th_name') }}</label>
+              <label>{{ _('roles_th_name') }}<span data-help="permissions.role"></span></label>
               <input type="text" name="name" value="{{ role.name }}" required {% if role.name in ['admin', 'cashier'] %}readonly{% endif %}>
             </div>
             <div class="team-modal-field">
@@ -132,7 +132,7 @@
       <h3>{{ _('roles_add_role') }}</h3>
       <form action="{{ url_for('permissions.add_role') }}" method="POST">
         <div class="team-modal-field">
-          <label>{{ _('roles_field_name_label') }}</label>
+          <label>{{ _('roles_field_name_label') }}<span data-help="permissions.role"></span></label>
           <input type="text" name="name" placeholder="{{ _('roles_placeholder_name') }}" required>
         </div>
         <div class="team-modal-field">

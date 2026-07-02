@@ -18,7 +18,7 @@
 
   <div class="settings-grid">
     <div class="settings-field">
-      <label class="settings-field-label" for="defaultTheme">الثيم الافتراضي</label>
+      <label class="settings-field-label" for="defaultTheme">الثيم الافتراضي<span data-help="settings.theme"></span></label>
       <select id="defaultTheme" class="settings-select">
         <option value="system" {% if settings.default_theme == 'system' %}selected{% endif %}>حسب إعدادات الجهاز</option>
         <option value="light" {% if settings.default_theme == 'light' %}selected{% endif %}>فاتح</option>
@@ -28,7 +28,7 @@
     </div>
 
     <div class="settings-field">
-      <label class="settings-field-label" for="fontScale">حجم الخط</label>
+      <label class="settings-field-label" for="fontScale">حجم الخط<span data-help="settings.font_size"></span></label>
       <select id="fontScale" class="settings-select">
         <option value="sm" {% if settings.font_scale == 'sm' %}selected{% endif %}>صغير</option>
         <option value="md" {% if settings.font_scale == 'md' %}selected{% endif %}>متوسط (افتراضي)</option>
@@ -38,7 +38,7 @@
     </div>
 
     <div class="settings-field">
-      <label class="settings-field-label" for="defaultCurrency">العملة الافتراضية</label>
+      <label class="settings-field-label" for="defaultCurrency">العملة الافتراضية<span data-help="settings.currency"></span></label>
       <input id="defaultCurrency" class="settings-input" type="text" value="{{ settings.default_currency or 'د.ع' }}">
       <div class="settings-field-help">يُستخدم في التقارير وبعض الشاشات كرمز عملة افتراضي.</div>
     </div>

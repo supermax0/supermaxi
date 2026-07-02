@@ -68,7 +68,7 @@
 <!-- ==================== Filters & Actions Sections ==================== -->
 <div class="collapsible-group" id="filtersSection">
   <div class="group-header" onclick="toggleSection('filtersSection')">
-    <h3 class="group-title">🔍 {{ _('orders_filters_title') }}</h3>
+    <h3 class="group-title">🔍 {{ _('orders_filters_title') }}<span data-help="orders.filter_date"></span></h3>
     <span class="toggle-icon">▼</span>
   </div>
   <div class="group-content">
@@ -78,7 +78,7 @@
         {% for c in cities %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
       </select>
 
-      <select id="filterStatus">
+      <select id="filterStatus" title="{{ _('orders_filter_all_statuses') }}" data-help="orders.status">
         <option value="">{{ _('orders_filter_all_statuses') }}</option>
         <option>{{ _('orders_status_ordered') }}</option>
         <option>{{ _('orders_status_shipping') }}</option>
@@ -86,7 +86,7 @@
         <option>{{ _('orders_status_returned') }}</option>
       </select>
 
-      <select id="filterPayment">
+      <select id="filterPayment" data-help="orders.payment_method">
         <option value="">{{ _('orders_filter_all_payments') }}</option>
         <option>{{ _('orders_payment_unpaid') }}</option>
         <option>{{ _('orders_payment_partial') }}</option>

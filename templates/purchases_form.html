@@ -74,7 +74,7 @@
     <div class="pur-title"><i class="fa fa-receipt"></i> البيانات الأساسية</div>
     <div class="pur-grid-3">
       <div class="pur-field">
-        <label>المورد *</label>
+        <label>المورد *<span data-help="purchases.supplier"></span></label>
         <select id="supplierId" required>
           <option value="">اختر المورد</option>
           {% for s in suppliers %}
@@ -184,7 +184,7 @@
     <div class="collapse-body" id="advancedBody">
       <div class="pur-grid-4" style="margin-top:4px;">
         <div class="pur-field"><label>رقم الفاتورة الداخلية</label><input type="text" id="invoiceNo" placeholder="يولّد تلقائياً"></div>
-        <div class="pur-field"><label>رقم فاتورة المورد</label><input type="text" id="supplierInvoiceNo"></div>
+        <div class="pur-field"><label>رقم فاتورة المورد<span data-help="purchases.invoice_number"></span></label><input type="text" id="supplierInvoiceNo"></div>
         <div class="pur-field"><label>الفرع</label>
           <select id="branchId">
             <option value="">— اختر الفرع —</option>

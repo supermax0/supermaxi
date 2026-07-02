@@ -536,7 +536,7 @@
 
   <!-- ================= Cash Balance Card ================= -->
   <div class="cash-card cash-balance-card">
-    <span class="cash-balance-label">💰 {{ _('cash_balance_title') }}</span>
+    <span class="cash-balance-label">💰 {{ _('cash_balance_title') }}<span data-help="cash.balance"></span></span>
     <div class="cash-balance-value">{{ "{:,.0f}".format(cash_balance) }} {{ _('cash_currency_iqd') }}</div>
     <span class="cash-balance-subtitle">{{ _('cash_balance_subtitle') }} · <a href="/accounts" style="color:#60a5fa;text-decoration:none;">{{ _('treasury_manage_link') }}</a></span>
   </div>
@@ -588,7 +588,7 @@
     <form method="post" class="cash-form" id="cashTransactionForm" onsubmit="return validateCashForm(event)">
       <input type="hidden" name="form_type" value="cash_transaction">
 
-      <select name="transaction_type" id="transaction_type" required>
+      <select name="transaction_type" id="transaction_type" required data-help="cash.income">
         <option value="cash_in">💰 {{ _('cash_type_in') }}</option>
         <option value="cash_out">💸 {{ _('cash_type_out') }}</option>
       </select>

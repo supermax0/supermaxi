@@ -337,8 +337,8 @@
 <div class="card">
   <h3>➕ {{ _('suppliers_add_title') }}</h3>
   <form method="post">
-    <input name="name" placeholder="{{ _('suppliers_field_name') }}" required>
-    <input name="phone" placeholder="{{ _('suppliers_field_phone') }}">
+    <input name="name" placeholder="{{ _('suppliers_field_name') }}" data-help="suppliers.name" required>
+    <input name="phone" placeholder="{{ _('suppliers_field_phone') }}" data-help="suppliers.phone">
     <input name="address" placeholder="{{ _('suppliers_field_address') }}">
     <input name="opening_balance" type="number" min="0" step="1" placeholder="{{ _('suppliers_field_opening_balance') }}">
     <button type="submit">💾 {{ _('suppliers_save_button') }}</button>

@@ -1314,11 +1314,11 @@
         <form id="customerForm" onsubmit="submitCustomer(event)">
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
             <div>
-              <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--cust-muted);">{{ _('customers_field_full_name') }}</label>
+              <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--cust-muted);">{{ _('customers_field_full_name') }}<span data-help="customers.name"></span></label>
               <input type="text" id="cust_name" name="name" required placeholder="{{ _('customers_placeholder_full_name') }}">
             </div>
             <div>
-              <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--cust-muted);">{{ _('customers_field_phone') }}</label>
+              <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--cust-muted);">{{ _('customers_field_phone') }}<span data-help="customers.phone"></span></label>
               <input type="text" id="cust_phone" name="phone" required placeholder="{{ _('customers_placeholder_phone') }}">
             </div>
           </div>
@@ -1337,7 +1337,7 @@
             </div>
           </div>
 
-          <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--cust-muted);">{{ _('customers_field_address') }}</label>
+          <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--cust-muted);">{{ _('customers_field_address') }}<span data-help="customers.address"></span></label>
           <input type="text" id="cust_address" name="address" placeholder="{{ _('customers_placeholder_address') }}">
 
           <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--cust-muted);">{{ _('customers_field_notes') }}</label>
@@ -1386,11 +1386,11 @@
         <form id="editForm" onsubmit="updateCustomer(event, ${id})">
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
             <div>
-              <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--cust-muted);">{{ _('customers_field_full_name') }}</label>
+              <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--cust-muted);">{{ _('customers_field_full_name') }}<span data-help="customers.name"></span></label>
               <input type="text" name="name" value="${name}" required>
             </div>
             <div>
-              <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--cust-muted);">{{ _('customers_field_phone') }}</label>
+              <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--cust-muted);">{{ _('customers_field_phone') }}<span data-help="customers.phone"></span></label>
               <input type="text" name="phone" value="${phone}" required>
             </div>
           </div>
@@ -1406,7 +1406,7 @@
             </div>
           </div>
 
-          <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--cust-muted);">{{ _('customers_field_address') }}</label>
+          <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--cust-muted);">{{ _('customers_field_address') }}<span data-help="customers.address"></span></label>
           <input type="text" name="address" value="${address}">
 
           <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--cust-muted);">{{ _('customers_field_notes') }}</label>

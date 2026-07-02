@@ -56,10 +56,10 @@
   </div>
   <div class="group-content">
     <form method="post" id="employeeForm" class="emp-form-grid" onsubmit="handleEmployeeSubmit(event)">
-      <input name="name" id="emp_name" placeholder="{{ _('employees_placeholder_name') }}" required>
-      <input name="username" id="emp_username" placeholder="{{ _('employees_placeholder_username') }}" required>
+      <input name="name" id="emp_name" placeholder="{{ _('employees_placeholder_name') }}" data-help="employees.name" required>
+      <input name="username" id="emp_username" placeholder="{{ _('employees_placeholder_username') }}" data-help="employees.username" required>
       <input name="password" type="password" id="emp_password" placeholder="{{ _('employees_placeholder_password') }}" required>
-      <select name="role" id="emp_role">
+      <select name="role" id="emp_role" data-help="employees.role">
         <option value="cashier">{{ _('employees_role_cashier') }}</option>
         <option value="admin">{{ _('employees_role_admin') }}</option>
       </select>

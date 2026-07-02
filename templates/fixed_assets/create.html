@@ -26,7 +26,7 @@
     <div class="fa-card">
       <h3>معلومات الأصل</h3>
       <div class="fa-grid">
-        <div class="fa-field"><label>اسم الأصل *</label><input name="name" required value="{{ form.name if form else '' }}"></div>
+        <div class="fa-field"><label>اسم الأصل *<span data-help="fixed_assets.name"></span></label><input name="name" required value="{{ form.name if form else '' }}"></div>
         <div class="fa-field"><label>كود الأصل</label><input name="asset_code" placeholder="يُولّد تلقائياً" value="{{ form.asset_code if form else '' }}"></div>
         <div class="fa-field"><label>التصنيف *</label>
           <select name="category_id" required id="categorySelect">

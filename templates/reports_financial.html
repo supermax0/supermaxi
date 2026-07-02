@@ -444,14 +444,14 @@
     <span class="report-sep">|</span>
     <form class="custom-range" method="get" action="/reports/financial">
       <input type="hidden" name="period_type" value="custom">
-      <input type="date" name="date_from" value="{{ date_from.strftime('%Y-%m-%d') if date_from else '' }}">
-      <input type="date" name="date_to" value="{{ date_to.strftime('%Y-%m-%d') if date_to else '' }}">
+      <input type="date" name="date_from" data-help="reports.date_from" value="{{ date_from.strftime('%Y-%m-%d') if date_from else '' }}">
+      <input type="date" name="date_to" data-help="reports.date_to" value="{{ date_to.strftime('%Y-%m-%d') if date_to else '' }}">
       <button type="submit" class="report-btn report-btn-apply"><i class="fas fa-filter"></i> تطبيق</button>
     </form>
     <span class="report-sep">|</span>
     <a href="/reports" class="report-btn report-btn-back"><i class="fas fa-arrow-right"></i> العودة</a>
     <button type="button" class="report-btn report-btn-print" onclick="window.print()"><i class="fas fa-print"></i> طباعة</button>
-    <button type="button" class="report-btn report-btn-pdf" id="exportPdfBtn"><i class="fas fa-file-pdf"></i> تصدير PDF</button>
+    <button type="button" class="report-btn report-btn-pdf" id="exportPdfBtn" data-help="reports.export"><i class="fas fa-file-pdf"></i> تصدير PDF</button>
   </div>
 
   <footer class="report-print-foot">

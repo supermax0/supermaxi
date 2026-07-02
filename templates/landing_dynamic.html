@@ -83,23 +83,18 @@
     {% if hero.is_visible is not sameas false %}
     <section class="l-hero cms-hero" id="hero-signup">
         <div class="l-hero-grid">
-            <div class="l-reveal">
+            <div class="l-reveal l-hero-copy">
                 <div class="l-badge"><span class="dot"></span>{{ hero.subtitle or 'مصمم للشركات والمتاجر العراقية' }}</div>
                 <h1 class="l-title">{{ hero.title or settings.page_title or 'فينورا — نظام إدارة ومحاسبة ذكي لشركتك' }}</h1>
                 <p class="l-sub left">{{ hero.description or settings.page_subtitle }}</p>
-                {% include 'landing/_hero_signup.html' %}
                 <div class="l-stats">
                     {% for stat in hero.content.stats or [] %}
                     <div><div class="l-stat-n">{{ stat.value }}</div><div class="l-stat-l">{{ stat.label }}</div></div>
                     {% endfor %}
                 </div>
             </div>
-            <div class="l-hero-visual l-reveal">
-                <img src="{{ hero.image_url or '/static/image.png' }}" alt="{{ hero.title or 'لوحة Finora' }}" loading="eager">
-                <div class="l-hero-float">
-                    <strong>LEON AI</strong>
-                    <span>تحليل وتنبيه داخل النظام</span>
-                </div>
+            <div class="l-hero-signup-col l-reveal">
+                {% include 'landing/_hero_signup.html' %}
             </div>
         </div>
     </section>

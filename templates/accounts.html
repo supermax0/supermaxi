@@ -531,14 +531,14 @@
             </select>
           </div>
           <div class="acc-field">
-            <label for="accType">{{ _('accounts_col_type') }}</label>
+            <label for="accType">{{ _('accounts_col_type') }}<span data-help="accounts.journal"></span></label>
             <select name="type" id="accType" required>
               <option value="deposit">{{ _('accounts_type_deposit') }}</option>
               <option value="withdraw">{{ _('accounts_type_withdraw') }}</option>
             </select>
           </div>
           <div class="acc-field">
-            <label for="accAmount">{{ _('accounts_col_amount') }}</label>
+            <label for="accAmount">{{ _('accounts_col_amount') }}<span data-help="accounts.balance"></span></label>
             <input name="amount" id="accAmount" type="number" placeholder="{{ _('accounts_field_amount_placeholder') }}" required min="1" inputmode="numeric">
           </div>
           <div class="acc-field">

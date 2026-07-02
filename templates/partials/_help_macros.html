@@ -1,0 +1,5 @@
+{% macro help_icon(text, key='') %}
+{% if text %}
+<span class="finora-help"{% if key %} data-help-key="{{ key }}"{% endif %} role="button" tabindex="0" aria-label="مساعدة">?<span class="finora-help__tip">{{ text }}</span></span>
+{% endif %}
+{% endmacro %}

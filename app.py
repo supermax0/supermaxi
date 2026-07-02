@@ -1479,6 +1479,30 @@ def inject_plan_context():
         return _fallback
 
 
+@app.context_processor
+def inject_help_context():
+    """Contextual help: page-level and field-level tooltips."""
+    from utils.help_registry import get_page_help, get_field_help, help_fields_json
+
+    lang = session.get("language", "ar")
+    if "user_id" in session:
+        try:
+            emp = db.session.get(Employee, session["user_id"])
+            if emp and emp.language:
+                lang = emp.language
+        except Exception:
+            pass
+
+    endpoint = request.endpoint if request else None
+    path = request.path if request else ""
+
+    return {
+        "page_help": get_page_help(endpoint, path, lang),
+        "help_field": lambda key: get_field_help(key, lang),
+        "help_fields_json": help_fields_json(lang),
+    }
+
+
 # =====================================
 # Register Blueprints
 # =====================================
