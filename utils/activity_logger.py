@@ -121,9 +121,23 @@ def log_activity(
 
         clean = _truncate_payload(sanitize_payload(merged))
 
+        branch_id = None
+        if has_request_context():
+            try:
+                from flask import g
+
+                branch = getattr(g, "branch", None)
+                if branch:
+                    branch_id = branch.id
+                elif session.get("branch_id"):
+                    branch_id = session.get("branch_id")
+            except Exception:
+                pass
+
         entry = ActivityLog(
             employee_id=getattr(emp, "id", None),
             employee_name=getattr(emp, "name", None) or session.get("name") if has_request_context() else None,
+            branch_id=branch_id,
             action=(action or "unknown")[:30],
             category=(category or "system")[:50],
             entity_type=(entity_type or "")[:50] or None,

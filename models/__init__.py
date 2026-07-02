@@ -9,6 +9,7 @@ from .purchase import Purchase
 from .purchase_item import PurchaseItem
 from .purchase_payment import PurchasePayment
 from .purchase_attachment import PurchaseAttachment
+from .branch import Branch, BranchStock, StockTransfer, StockTransferLine
 from .expense import Expense
 from .maintenance_record import MaintenanceRecord
 from .employee import Employee
@@ -55,3 +56,19 @@ from .payment_log import PaymentLog
 # Invoice Templates (قوالب الفواتير)
 # ======================================================
 from .invoice_template import InvoiceTemplate, TenantTemplatePurchase, TenantTemplateSettings
+
+# ======================================================
+# Landing Page CMS (Core DB)
+# ======================================================
+from .core.landing_content import (
+    LandingCTA,
+    LandingFAQ,
+    LandingFeature,
+    LandingMedia,
+    LandingModule,
+    LandingPageSettings,
+    LandingPricingPlan,
+    LandingSEO,
+    LandingSection,
+    LandingTestimonial,
+)

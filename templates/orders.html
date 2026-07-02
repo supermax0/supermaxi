@@ -873,31 +873,31 @@
   /* Action Buttons */
   .orders-row-actions {
     display: flex;
-    gap: 4px;
+    gap: 2px;
     justify-content: center;
     align-items: center;
     flex-wrap: nowrap;
     min-height: 0 !important;
     height: 100%;
-    padding: 0 2px;
+    padding: 0 1px;
   }
 
   .orders-row-actions .action-btn-small {
-    padding: 2px 6px !important;
-    border-radius: 5px !important;
+    padding: 1px 3px !important;
+    border-radius: 3px !important;
     border: none;
     cursor: pointer;
-    font-size: 10px !important;
+    font-size: 7px !important;
     font-weight: 700;
     transition: all 0.2s ease;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 2px;
+    gap: 1px;
     min-width: 0 !important;
     width: auto !important;
-    min-height: 22px !important;
-    height: 22px !important;
+    min-height: 11px !important;
+    height: 11px !important;
     line-height: 1;
     white-space: nowrap;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
@@ -1548,16 +1548,16 @@
   /* Mobile Button Optimization - Ultra Compact */
   @media (max-width: 768px) {
     .orders-row-actions {
-      gap: 2px;
+      gap: 1px;
       padding: 0;
     }
 
     .orders-row-actions .action-btn-small {
-      min-height: 20px !important;
-      height: 20px !important;
-      font-size: 9px !important;
-      padding: 1px 4px !important;
-      border-radius: 4px !important;
+      min-height: 10px !important;
+      height: 10px !important;
+      font-size: 7px !important;
+      padding: 1px 2px !important;
+      border-radius: 2px !important;
     }
 
     .ag-cell .orders-row-actions {
@@ -3426,6 +3426,7 @@
 
   function pay(orderId) {
     showConfirm({{ _('orders_confirm_full_pay')|tojson }}, function () {
+      collapseRowActions(orderId);
       showLoading();
       fetch(`/orders/payment`, {
         method: "POST",
@@ -3457,10 +3458,12 @@
                 const rowData = rowNode.data;
                 rowData.can_pay = false;
                 rowData.can_cancel = false;
+                rowData.actions_collapsed = true;
                 rowData.status = "تم التوصيل";
                 rowData.paid_amount = rowData.total;
                 rowData.remaining = 0;
                 gridApi.applyTransaction({ update: [rowData] });
+                gridApi.refreshCells({ rowNodes: [rowNode], columns: ['actions'], force: true });
               } else {
                 // FALLBACK: If row node not found by ID, reload or find by iteration
                 gridApi.forEachNode(node => {
@@ -3468,10 +3471,12 @@
                     const rd = node.data;
                     rd.can_pay = false;
                     rd.can_cancel = false;
+                    rd.actions_collapsed = true;
                     rd.status = "تم التوصيل";
                     rd.paid_amount = rd.total;
                     rd.remaining = 0;
                     gridApi.applyTransaction({ update: [rd] });
+                    gridApi.refreshCells({ rowNodes: [node], columns: ['actions'], force: true });
                   }
                 });
               }
@@ -3605,6 +3610,7 @@
   }
 
   function cancelOrder(orderId) {
+    collapseRowActions(orderId);
     showLoading();
     fetch(`/orders/cancel/${orderId}`, {
       method: "POST",
@@ -3631,7 +3637,9 @@
                 rd.payment_status = "ملغي";
                 rd.can_pay = false;
                 rd.can_cancel = false;
+                rd.actions_collapsed = true;
                 gridApi.applyTransaction({ update: [rd] });
+                gridApi.refreshCells({ rowNodes: [node], columns: ['actions'], force: true });
               }
             });
           }
@@ -3647,6 +3655,22 @@
   }
 
   // ============= Row Actions (Buttons) =============
+  function collapseRowActions(orderId) {
+    if (!gridApi) return;
+    gridApi.forEachNode(function (node) {
+      if (node.data && node.data.id === orderId) {
+        node.data.can_pay = false;
+        node.data.can_cancel = false;
+        node.data.actions_collapsed = true;
+        gridApi.refreshCells({
+          rowNodes: [node],
+          columns: ['actions'],
+          force: true
+        });
+      }
+    });
+  }
+
   function renderRowActions(row) {
     const id = row && row.id;
     const phoneRaw = row && row.phone && row.phone !== '—' ? String(row.phone) : "";
@@ -3654,9 +3678,10 @@
 
     const isReturned = row && (row.status === "مرتجع" || row.status === "ملغي" || row.status === "راجع" || row.status === "راجعة");
     const isPaid = row && row.payment_status === "مسدد";
-    const canPay = !!(ORDERS_USER_CAN_MANAGE && row && row.can_pay);
-    const canReturn = !!(ORDERS_USER_CAN_MANAGE && row && !isReturned && !isPaid);
-    const canCancel = !!(ORDERS_USER_CAN_MANAGE && row && row.can_cancel);
+    const collapsed = !!(row && row.actions_collapsed);
+    const canPay = !collapsed && !!(ORDERS_USER_CAN_MANAGE && row && row.can_pay);
+    const canReturn = !collapsed && !!(ORDERS_USER_CAN_MANAGE && row && !isReturned && !isPaid);
+    const canCancel = !collapsed && !!(ORDERS_USER_CAN_MANAGE && row && row.can_cancel);
 
     function actionBtn(className, action, label, title, extraAttrs, disabled) {
       const disClass = disabled ? ' is-disabled' : '';
@@ -3664,13 +3689,20 @@
       return '<button type="button" class="action-btn-small ' + className + disClass + '" data-action="' + action + '" data-order-id="' + id + '"' + (extraAttrs || '') + ' title="' + title + '"' + disAttr + '>' + label + '</button>';
     }
 
-    return '<div class="orders-row-actions">' +
+    let html = '<div class="orders-row-actions">' +
       actionBtn('whatsapp-btn', 'whatsapp', 'واتساب', 'إرسال واتساب', ' data-phone="' + phoneEnc + '"', !phoneRaw) +
-      actionBtn('print-btn', 'invoice', 'طباعة', 'طباعة الفاتورة', '', false) +
-      actionBtn('pay-btn', 'pay', 'تسديد', 'تسديد الطلب', '', !canPay) +
-      actionBtn('return-btn', 'return', 'مرتجع', 'إرجاع الطلب', '', !canReturn) +
-      actionBtn('cancel-btn', 'cancel', 'إلغاء', 'إلغاء الطلب', '', !canCancel) +
-      '</div>';
+      actionBtn('print-btn', 'invoice', 'طباعة', 'طباعة الفاتورة', '', false);
+    if (canPay) {
+      html += actionBtn('pay-btn', 'pay', 'تسديد', 'تسديد الطلب', '', false);
+    }
+    if (canReturn) {
+      html += actionBtn('return-btn', 'return', 'مرتجع', 'إرجاع الطلب', '', false);
+    }
+    if (canCancel) {
+      html += actionBtn('cancel-btn', 'cancel', 'إلغاء', 'إلغاء الطلب', '', false);
+    }
+    html += '</div>';
+    return html;
   }
 
   document.addEventListener('click', (e) => {
@@ -3731,7 +3763,9 @@
                 rd.payment_status = "مرتجع";
                 rd.can_pay = false;
                 rd.can_cancel = false;
+                rd.actions_collapsed = true;
                 gridApi.applyTransaction({ update: [rd] });
+                gridApi.refreshCells({ rowNodes: [node], columns: ['actions'], force: true });
               }
             });
           }
@@ -3756,6 +3790,7 @@
   }
 
   function returnOrder(orderId) {
+    collapseRowActions(orderId);
     const modal = document.createElement('div');
     modal.className = 'modal';
     modal.setAttribute('data-return-barcode-modal', '1');

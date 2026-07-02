@@ -67,6 +67,12 @@ class Employee(db.Model):
         nullable=True
     )  # ربط المندوب بشركة النقل
 
+    branch_id = db.Column(
+        db.Integer,
+        db.ForeignKey("branch.id"),
+        nullable=True,
+    )
+
     # =====================
     # Financial (Future Use)
     # =====================

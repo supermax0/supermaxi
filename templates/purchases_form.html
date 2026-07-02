@@ -185,7 +185,14 @@
       <div class="pur-grid-4" style="margin-top:4px;">
         <div class="pur-field"><label>رقم الفاتورة الداخلية</label><input type="text" id="invoiceNo" placeholder="يولّد تلقائياً"></div>
         <div class="pur-field"><label>رقم فاتورة المورد</label><input type="text" id="supplierInvoiceNo"></div>
-        <div class="pur-field"><label>الفرع</label><input type="text" id="branchCode" placeholder="BL0001"></div>
+        <div class="pur-field"><label>الفرع</label>
+          <select id="branchId">
+            <option value="">— اختر الفرع —</option>
+            {% for b in branches %}
+            <option value="{{ b.id }}">{{ b.name }} ({{ b.code }})</option>
+            {% endfor %}
+          </select>
+        </div>
         <div class="pur-field"><label>الرقم المرجعي</label><input type="text" id="referenceNo"></div>
       </div>
       <div class="pur-grid-2" style="margin-top:10px;">
@@ -439,7 +446,8 @@
       supplier_id: byId("supplierId").value,
       purchase_date: byId("purchaseDate").value,
       invoice_no: byId("invoiceNo").value || "",
-      branch_code: byId("branchCode").value || "",
+      branch_id: byId("branchId").value || null,
+      branch_code: "",
       reference_no: byId("referenceNo").value || "",
       supplier_invoice_no: byId("supplierInvoiceNo").value || "",
       payment_term: byId("paymentTerm").value || "",
@@ -481,7 +489,7 @@
       supplier_id: {{ edit_purchase.supplier_id }},
       date: "{{ edit_purchase.purchase_date.strftime('%Y-%m-%d') if edit_purchase.purchase_date else '' }}",
       invoice_no: {{ (edit_purchase.invoice_no or '')|tojson }},
-      branch_code: {{ (edit_purchase.branch_code or '')|tojson }},
+      branch_id: {{ (edit_purchase.branch_id or 'null')|tojson }},
       reference_no: {{ (edit_purchase.reference_no or '')|tojson }},
       supplier_invoice_no: {{ (edit_purchase.supplier_invoice_no or '')|tojson }},
       payment_term: {{ (edit_purchase.payment_term or '')|tojson }},
@@ -521,7 +529,7 @@
     byId("supplierId").value = p.supplier_id || "";
     byId("purchaseDate").value = p.date || "";
     byId("invoiceNo").value = p.invoice_no || "";
-    byId("branchCode").value = p.branch_code || "";
+    if (byId("branchId") && p.branch_id) byId("branchId").value = String(p.branch_id);
     byId("referenceNo").value = p.reference_no || "";
     byId("supplierInvoiceNo").value = p.supplier_invoice_no || "";
     byId("paymentTerm").value = p.payment_term || "";

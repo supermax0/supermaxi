@@ -1071,7 +1071,12 @@ def delete_order(order_id):
         for item in items:
             product = Product.query.get(item.product_id)
             if product:
-                product.quantity += int(item.quantity or 0)
+                branch_id = item.fulfillment_branch_id or order.branch_id
+                if branch_id:
+                    from utils.branch_stock_service import receive_stock
+                    receive_stock(branch_id, product.id, int(item.quantity or 0))
+                else:
+                    product.quantity += int(item.quantity or 0)
 
         db.session.delete(order)
         db.session.commit()

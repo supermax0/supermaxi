@@ -74,6 +74,9 @@ def init_tenant_db(tenant_slug):
             ('manage_agents', 'إدارة المندوبين'),
             ('manage_pages', 'إدارة البيجات'),
             ('manage_settings', 'إعدادات النظام'),
+            ('manage_branches', 'إدارة الفروع'),
+            ('manage_transfers', 'نقل المخزون بين الفروع'),
+            ('view_all_branches', 'عرض كل الفروع'),
         ]
 
         for name, desc in default_perms:

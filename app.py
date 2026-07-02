@@ -69,6 +69,7 @@ from routes.quick_sale import quick_sale_bp
 from routes.beauty import beauty_bp
 from routes.maintenance import maintenance_bp
 from routes.whatsapp_webhook import whatsapp_webhook_bp
+from routes.landing import landing_bp
 from telegram_bot import telegram_bp
 from api_workflows import workflow_api
 from models.ai_agent import AgentWorkflow, AgentExecution
@@ -164,6 +165,18 @@ with app.app_context():
     from models.core.payment_request import PaymentRequest
     from models.core.global_setting import GlobalSetting
     from models.core.landing_visit import LandingVisit
+    from models.core.landing_content import (  # noqa: F401
+        LandingCTA,
+        LandingFAQ,
+        LandingFeature,
+        LandingMedia,
+        LandingModule,
+        LandingPageSettings,
+        LandingPricingPlan,
+        LandingSEO,
+        LandingSection,
+        LandingTestimonial,
+    )
     from models.user import User  # جدول users مطلوب لـ tenant_template_purchases / tenant_template_settings
     from models.telegram_inbox_message import TelegramInboxMessage  # noqa: F401
     from models.telegram_chat_profile import TelegramChatProfile  # noqa: F401
@@ -176,6 +189,14 @@ with app.app_context():
     from models.activity_log import ActivityLog  # noqa: F401
 
     db.create_all()
+
+    try:
+        from utils.landing_content import ensure_landing_seed
+
+        ensure_landing_seed()
+    except Exception as e:
+        db.session.rollback()
+        print(f"Landing content seed note: {e}")
 
     try:
         from utils.treasury_schema_guard import ensure_treasury_schema
@@ -279,6 +300,20 @@ with app.app_context():
                             cur.execute(
                                 "ALTER TABLE account_transaction ADD COLUMN treasury_transfer_id INTEGER"
                             )
+                    if "invoice_settings" in existing_tables:
+                        cur.execute("PRAGMA table_info(invoice_settings)")
+                        is_cols = {row[1] for row in cur.fetchall()}
+                        report_additions = {
+                            "report_company_name": "ALTER TABLE invoice_settings ADD COLUMN report_company_name VARCHAR(200)",
+                            "report_logo_path": "ALTER TABLE invoice_settings ADD COLUMN report_logo_path VARCHAR(500)",
+                            "report_address": "ALTER TABLE invoice_settings ADD COLUMN report_address TEXT",
+                            "report_phone": "ALTER TABLE invoice_settings ADD COLUMN report_phone VARCHAR(50)",
+                            "report_footer_text": "ALTER TABLE invoice_settings ADD COLUMN report_footer_text TEXT",
+                            "report_show_logo": "ALTER TABLE invoice_settings ADD COLUMN report_show_logo BOOLEAN DEFAULT 1",
+                        }
+                        for col, stmt in report_additions.items():
+                            if col not in is_cols:
+                                cur.execute(stmt)
                     conn.commit()
                     conn.close()
                 except Exception as _tenant_err:
@@ -334,6 +369,28 @@ with app.app_context():
             db.session.commit()
     except Exception as e:
         print(f"Migration note: {e}")
+
+    # Migration: Add financial report settings columns to invoice_settings (single-DB fallback)
+    try:
+        from sqlalchemy import inspect, text
+        inspector = inspect(db.engine)
+        if 'invoice_settings' in inspector.get_table_names():
+            is_columns = {col['name'] for col in inspector.get_columns('invoice_settings')}
+            report_additions = {
+                "report_company_name": "ALTER TABLE invoice_settings ADD COLUMN report_company_name VARCHAR(200)",
+                "report_logo_path": "ALTER TABLE invoice_settings ADD COLUMN report_logo_path VARCHAR(500)",
+                "report_address": "ALTER TABLE invoice_settings ADD COLUMN report_address TEXT",
+                "report_phone": "ALTER TABLE invoice_settings ADD COLUMN report_phone VARCHAR(50)",
+                "report_footer_text": "ALTER TABLE invoice_settings ADD COLUMN report_footer_text TEXT",
+                "report_show_logo": "ALTER TABLE invoice_settings ADD COLUMN report_show_logo BOOLEAN DEFAULT 1",
+            }
+            for col, stmt in report_additions.items():
+                if col not in is_columns:
+                    db.session.execute(text(stmt))
+            db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        print(f"Migration note (invoice_settings report columns): {e}")
 
     # Migration: Telegram booking memory columns/tables
     try:
@@ -1196,6 +1253,7 @@ def require_login():
         "/privacy",
         "/terms",
         "/contact",
+        "/landing",
         "/payment",
         "/login",
         "/payment/success",
@@ -1205,7 +1263,9 @@ def require_login():
         "/payments/simulate",
         "/upgrade",
         "/superadmin",
+        "/api/superadmin/landing",  # API إدارة صفحة الهبوط محمي بجلسة Super Admin داخل blueprint
         "/messages/unread-count",  # واجهة للشارة — تُرجع JSON بدون إعادة توجيه
+        "/api/landing",  # محتوى صفحة الهبوط المنشور
         "/api/landing-chat",  # مساعد الذكاء الاصطناعي لصفحة الهبوط
         "/telegram",  # بوت تيليجرام: webhook و setup و test — بدون تسجيل (ليستقبل التحديثات من Telegram)
         "/delivery-agent",  # بوابة مندوب التوصيل
@@ -1441,6 +1501,7 @@ app.register_blueprint(agents_bp)
 app.register_blueprint(delivery_agent_bp)
 app.register_blueprint(pages_bp)
 app.register_blueprint(activity_bp, url_prefix="/activity")
+app.register_blueprint(landing_bp)
 from routes.permissions import permissions_bp
 app.register_blueprint(permissions_bp, url_prefix="/admin/permissions")
 

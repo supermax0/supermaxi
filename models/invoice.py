@@ -43,6 +43,12 @@ class Invoice(db.Model):
         nullable=True
     )
 
+    branch_id = db.Column(
+        db.Integer,
+        db.ForeignKey("branch.id"),
+        nullable=True,
+    )
+
     # =====================
     # Invoice Status
     # =====================

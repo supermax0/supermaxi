@@ -267,6 +267,7 @@
       <thead>
         <tr>
           <th>الموظف</th>
+          <th>الفرع</th>
           <th>الدور</th>
           <th>الحالة</th>
           <th>الإجراءات</th>
@@ -285,6 +286,14 @@
                 <div style="font-size:12px;color:var(--text-muted);">@{{ employee.username }}</div>
               </div>
             </div>
+          </td>
+          <td>
+            <select onchange="updateEmployeeBranch({{ employee.id }}, this.value)" style="padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--card-alt);color:var(--text);">
+              <option value="">—</option>
+              {% for branch in branches %}
+              <option value="{{ branch.id }}" {% if employee.branch_id == branch.id %}selected{% endif %}>{{ branch.name }}</option>
+              {% endfor %}
+            </select>
           </td>
           <td>
             <span class="role-badge role-{{ employee.role }}">
@@ -464,6 +473,20 @@ function savePassword() {
       }
     })
     .catch(() => { hideLoading(); showToast("حدث خطأ في الاتصال", "error"); });
+}
+
+function updateEmployeeBranch(employeeId, branchId) {
+  fetch("/settings/system/update-branch", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ employee_id: employeeId, branch_id: branchId || null })
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) showToast("تم تحديث فرع الموظف", "success");
+      else showToast(data.error || "حدث خطأ", "error");
+    })
+    .catch(() => showToast("حدث خطأ في الاتصال", "error"));
 }
 
 document.addEventListener("click", function (e) {

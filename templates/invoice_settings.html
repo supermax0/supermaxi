@@ -123,6 +123,54 @@
         </div>
       </div>
 
+      <!-- Financial Report Settings -->
+      <div class="settings-card">
+        <h3 class="card-title"><i class="fas fa-chart-line"></i> إعدادات التقرير المالي الشامل</h3>
+        <p style="color:var(--text-muted,#64748b);font-size:13px;margin:-4px 0 14px;">تُستخدم في ترويسة التقرير المالي فقط. اتركها فارغة لاستخدام بيانات الفاتورة تلقائياً.</p>
+        <div class="form-group">
+          <label>اسم الشركة في التقرير</label>
+          <input type="text" id="report_company_name" value="{{ settings.report_company_name or '' }}" class="form-input" placeholder="{{ settings.company_name }}">
+        </div>
+        <div class="form-group">
+          <label>عنوان التقرير</label>
+          <textarea id="report_address" class="form-textarea" rows="2" placeholder="{{ settings.company_address }}">{{ settings.report_address or '' }}</textarea>
+        </div>
+        <div class="form-group">
+          <label>هاتف التقرير</label>
+          <input type="text" id="report_phone" value="{{ settings.report_phone or '' }}" class="form-input" placeholder="{{ settings.company_phone }}">
+        </div>
+        <div class="form-group">
+          <label>نص تذييل التقرير</label>
+          <input type="text" id="report_footer_text" value="{{ settings.report_footer_text or '' }}" class="form-input" placeholder="نظام المحاسبة - تقرير رسمي">
+        </div>
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="report_show_logo" {% if settings.report_show_logo %}checked{% endif %}>
+            <span>إظهار اللوجو في ترويسة التقرير</span>
+          </label>
+        </div>
+        <div class="form-group">
+          <label>لوجو التقرير</label>
+          <div class="logo-upload">
+            <input type="file" id="report_logo_file" accept="image/*" onchange="uploadReportLogo()" style="display:none">
+            <button type="button" class="btn btn-secondary" onclick="document.getElementById('report_logo_file').click()">
+              <i class="fas fa-upload"></i> اختر ملف
+            </button>
+            <button type="button" class="btn btn-danger" onclick="removeReportLogo()" id="remove_report_logo_btn" {% if not settings.report_logo_path %}style="display:none"{% endif %}>
+              <i class="fas fa-trash"></i> حذف
+            </button>
+            {% if settings.report_logo_path %}
+            <img id="report_logo_preview" src="{{ settings.report_logo_path }}" alt="Report Logo" class="logo-preview">
+            {% else %}
+            <div id="report_logo_preview" class="logo-preview-placeholder">
+              <i class="fas fa-image"></i> لا يوجد لوجو للتقرير
+            </div>
+            {% endif %}
+          </div>
+          <small style="color:var(--text-muted,#64748b);">إذا لم ترفع لوجو خاصاً بالتقرير، سيُستخدم لوجو الفاتورة.</small>
+        </div>
+      </div>
+
       <!-- Theme & Style -->
       <div class="settings-card">
         <h3 class="card-title">تخصيص شكل القالب</h3>
@@ -1116,6 +1164,62 @@ function removeLogo() {
   }
 }
 
+// رفع لوجو التقرير
+function uploadReportLogo() {
+  const fileInput = document.getElementById('report_logo_file');
+  const file = fileInput.files[0];
+  if (!file) return;
+  if (!file.type.match('image.*')) {
+    showToast('يرجى اختيار صورة فقط', 'error');
+    return;
+  }
+  const formData = new FormData();
+  formData.append('logo', file);
+  showToast('جاري رفع لوجو التقرير...', 'info');
+  fetch('/settings/invoice/upload-report-logo', { method: 'POST', body: formData })
+    .then(response => { if (!response.ok) throw new Error('Network error'); return response.json(); })
+    .then(data => {
+      if (data.success) {
+        const preview = document.getElementById('report_logo_preview');
+        const container = preview.parentNode;
+        const newLogo = document.createElement('img');
+        newLogo.id = 'report_logo_preview';
+        newLogo.src = data.logo_path + '?t=' + Date.now();
+        newLogo.alt = 'Report Logo';
+        newLogo.className = 'logo-preview';
+        container.replaceChild(newLogo, preview);
+        document.getElementById('remove_report_logo_btn').style.display = 'inline-block';
+        showToast('تم رفع لوجو التقرير بنجاح', 'success');
+      } else {
+        showToast('حدث خطأ: ' + (data.error || 'غير معروف'), 'error');
+      }
+    })
+    .catch(error => { console.error('Error uploading report logo:', error); showToast('حدث خطأ أثناء رفع اللوجو', 'error'); });
+}
+
+// حذف لوجو التقرير
+function removeReportLogo() {
+  if (!confirm('هل أنت متأكد من حذف لوجو التقرير؟')) return;
+  fetch('/settings/invoice/remove-report-logo', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        const preview = document.getElementById('report_logo_preview');
+        const container = preview.parentNode;
+        const placeholder = document.createElement('div');
+        placeholder.id = 'report_logo_preview';
+        placeholder.className = 'logo-preview-placeholder';
+        placeholder.innerHTML = '<i class="fas fa-image"></i> لا يوجد لوجو للتقرير';
+        container.replaceChild(placeholder, preview);
+        document.getElementById('remove_report_logo_btn').style.display = 'none';
+        showToast('تم حذف لوجو التقرير', 'success');
+      } else {
+        showToast('حدث خطأ: ' + (data.error || 'غير معروف'), 'error');
+      }
+    })
+    .catch(error => { console.error('Error removing report logo:', error); showToast('حدث خطأ أثناء حذف اللوجو', 'error'); });
+}
+
 // حفظ الإعدادات
 function saveSettings() {
   const settings = {
@@ -1126,6 +1230,11 @@ function saveSettings() {
     warranty_notes: document.getElementById('warranty_notes').value,
     logo_circle_text: document.getElementById('logo_circle_text').value,
     use_logo_image: document.getElementById('use_logo_image').checked,
+    report_company_name: document.getElementById('report_company_name').value,
+    report_address: document.getElementById('report_address').value,
+    report_phone: document.getElementById('report_phone').value,
+    report_footer_text: document.getElementById('report_footer_text').value,
+    report_show_logo: document.getElementById('report_show_logo').checked,
     show_returned_count: document.getElementById('show_returned_count').checked,
     show_barcode: document.getElementById('show_barcode').checked,
     show_qrcode: document.getElementById('show_qrcode').checked,

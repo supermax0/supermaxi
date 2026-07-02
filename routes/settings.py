@@ -129,10 +129,15 @@ def settings():
 def system_settings():
     """صفحة إعدادات النظام"""
     from models.employee import Employee
+    from models.branch import Branch
+    from utils.branch_migration import ensure_branch_schema
+
+    ensure_branch_schema()
     employees = Employee.query.order_by(Employee.created_at.desc()).all()
+    branches = Branch.query.filter_by(is_active=True).order_by(Branch.name.asc()).all()
     return render_template(
         "system_settings.html",
-        **_settings_ctx("system", employees=employees),
+        **_settings_ctx("system", employees=employees, branches=branches),
     )
 
 @settings_bp.route("/system/update-role", methods=["POST"])
@@ -406,6 +411,18 @@ def update_invoice_settings():
         if 'logo_circle_text' in data:
             settings.logo_circle_text = data.get('logo_circle_text', '')
 
+        # إعدادات التقرير المالي (تُخزّن None عند الفراغ لتفعيل fallback لبيانات الفاتورة)
+        if 'report_company_name' in data:
+            settings.report_company_name = (data.get('report_company_name') or '').strip() or None
+        if 'report_address' in data:
+            settings.report_address = (data.get('report_address') or '').strip() or None
+        if 'report_phone' in data:
+            settings.report_phone = (data.get('report_phone') or '').strip() or None
+        if 'report_footer_text' in data:
+            settings.report_footer_text = (data.get('report_footer_text') or '').strip() or None
+        if 'report_show_logo' in data:
+            settings.report_show_logo = data.get('report_show_logo') == 'true'
+
         settings.show_discount_column = data.get('show_discount_column') == 'true'
         settings.show_tax_column = data.get('show_tax_column') == 'true'
         settings.show_unit_price_with_tax = data.get('show_unit_price_with_tax') == 'true'
@@ -489,6 +506,53 @@ def upload_logo():
         else:
             return jsonify({"success": False, "error": "نوع الملف غير مدعوم"}), 400
     except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
+@settings_bp.route("/invoice/upload-report-logo", methods=["POST"])
+def upload_report_logo():
+    """رفع لوجو خاص بالتقرير المالي"""
+    try:
+        if 'logo' not in request.files:
+            return jsonify({"success": False, "error": "لم يتم اختيار ملف"}), 400
+
+        file = request.files['logo']
+        if file.filename == '':
+            return jsonify({"success": False, "error": "لم يتم اختيار ملف"}), 400
+
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            filename = f"report_logo_{timestamp}_{filename}"
+            filepath = os.path.join(UPLOAD_FOLDER, filename)
+            file.save(filepath)
+
+            settings = InvoiceSettings.get_settings()
+            settings.report_logo_path = f"/static/uploads/logos/{filename}"
+            settings.updated_at = datetime.utcnow()
+            db.session.commit()
+
+            return jsonify({
+                "success": True,
+                "message": "تم رفع لوجو التقرير بنجاح",
+                "logo_path": settings.report_logo_path
+            })
+        else:
+            return jsonify({"success": False, "error": "نوع الملف غير مدعوم"}), 400
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
+
+@settings_bp.route("/invoice/remove-report-logo", methods=["POST"])
+def remove_report_logo():
+    """حذف لوجو التقرير المالي"""
+    try:
+        settings = InvoiceSettings.get_settings()
+        settings.report_logo_path = None
+        settings.updated_at = datetime.utcnow()
+        db.session.commit()
+        return jsonify({"success": True, "message": "تم حذف لوجو التقرير"})
+    except Exception as e:
+        db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 400
 
 @settings_bp.route("/invoice/preview", methods=["POST"])
@@ -640,6 +704,106 @@ def _require_active_admin():
     if not emp or not emp.is_active or emp.role != "admin":
         return None
     return emp
+
+
+@settings_bp.route("/branches")
+def branches_settings():
+    from models.branch import Branch
+    from utils.branch_migration import ensure_branch_schema
+
+    ensure_branch_schema()
+    branches = Branch.query.order_by(Branch.is_default.desc(), Branch.name.asc()).all()
+    return render_template(
+        "settings_branches.html",
+        **_settings_ctx("branches", branches=branches),
+    )
+
+
+@settings_bp.route("/branches/save", methods=["POST"])
+def branches_save():
+    from models.branch import Branch
+    from utils.branch_migration import ensure_branch_schema
+
+    ensure_branch_schema()
+    data = request.get_json(silent=True) or {}
+    branch_id = data.get("id")
+    code = (data.get("code") or "").strip().upper()
+    name = (data.get("name") or "").strip()
+    address = (data.get("address") or "").strip() or None
+    phone = (data.get("phone") or "").strip() or None
+    is_active = bool(data.get("is_active", True))
+    is_default = bool(data.get("is_default", False))
+
+    if not code or not name:
+        return jsonify({"success": False, "error": "الكود والاسم مطلوبان"}), 400
+
+    if branch_id:
+        branch = Branch.query.get(branch_id)
+        if not branch:
+            return jsonify({"success": False, "error": "الفرع غير موجود"}), 404
+        before = branch.to_dict()
+        dup = Branch.query.filter(Branch.code == code, Branch.id != branch.id).first()
+        if dup:
+            return jsonify({"success": False, "error": "كود الفرع مستخدم"}), 400
+        branch.code = code
+        branch.name = name
+        branch.address = address
+        branch.phone = phone
+        branch.is_active = is_active
+        if is_default:
+            for b in Branch.query.all():
+                b.is_default = False
+            branch.is_default = True
+        db.session.commit()
+        log_mutation("update", "branch", "branch", branch.id, before, branch.to_dict(), f"تحديث فرع {branch.name}")
+        return jsonify({"success": True, "branch": branch.to_dict()})
+
+    dup = Branch.query.filter_by(code=code).first()
+    if dup:
+        return jsonify({"success": False, "error": "كود الفرع مستخدم"}), 400
+    if is_default:
+        for b in Branch.query.all():
+            b.is_default = False
+    branch = Branch(code=code, name=name, address=address, phone=phone, is_active=is_active, is_default=is_default)
+    db.session.add(branch)
+    db.session.commit()
+    log_mutation("create", "branch", "branch", branch.id, None, branch.to_dict(), f"إضافة فرع {branch.name}")
+    return jsonify({"success": True, "branch": branch.to_dict()})
+
+
+@settings_bp.route("/system/update-branch", methods=["POST"])
+def update_employee_branch():
+    try:
+        from models.branch import Branch
+        from models.employee import Employee
+
+        data = request.get_json(silent=True) or {}
+        employee_id = data.get("employee_id")
+        branch_id = data.get("branch_id")
+        if not employee_id:
+            return jsonify({"success": False, "error": "معرف الموظف مطلوب"}), 400
+        employee = Employee.query.get(employee_id)
+        if not employee:
+            return jsonify({"success": False, "error": "الموظف غير موجود"}), 404
+        if branch_id:
+            branch = Branch.query.get(branch_id)
+            if not branch:
+                return jsonify({"success": False, "error": "الفرع غير موجود"}), 404
+        old_branch = employee.branch_id
+        employee.branch_id = int(branch_id) if branch_id else None
+        db.session.commit()
+        log_mutation(
+            "update",
+            "employee",
+            "employee",
+            employee.id,
+            {"branch_id": old_branch},
+            {"branch_id": employee.branch_id},
+            f"تعيين فرع للموظف {employee.name}",
+        )
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
 
 
 @settings_bp.route("/database-repair")

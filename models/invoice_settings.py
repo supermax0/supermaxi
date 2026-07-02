@@ -42,7 +42,15 @@ AL ATWANI""")
     
     # Returned Count Settings
     show_returned_count = db.Column(db.Boolean, default=True)  # عرض عداد الرواجع
-    
+
+    # Financial Report Settings (خاصة بالتقرير المالي الشامل — منفصلة عن الفاتورة)
+    report_company_name = db.Column(db.String(200))   # اسم الشركة في التقرير (fallback: company_name)
+    report_logo_path = db.Column(db.String(500))      # لوجو خاص بالتقرير
+    report_address = db.Column(db.Text)               # عنوان في ترويسة التقرير (fallback: company_address)
+    report_phone = db.Column(db.String(50))           # هاتف في ترويسة التقرير (fallback: company_phone)
+    report_footer_text = db.Column(db.Text)           # نص تذييل التقرير
+    report_show_logo = db.Column(db.Boolean, default=True)  # إظهار اللوجو في التقرير
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

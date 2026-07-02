@@ -1,0 +1,255 @@
+.landing-preview-bar {
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  padding: 10px 16px;
+  background: #111827;
+  color: #fff;
+  text-align: center;
+  font-weight: 800;
+}
+
+.cms-hero .l-title { max-width: 760px; }
+.l-hero-acts.center { justify-content: center; }
+
+.cms-chip-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.cms-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 64px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  font-weight: 800;
+}
+
+.cms-chip i { color: #ef4444; }
+
+.cms-split-inner,
+.cms-ai-inner,
+.cms-video {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+  gap: clamp(20px, 5vw, 48px);
+  align-items: center;
+}
+
+.cms-solution-panel {
+  min-height: 260px;
+  padding: 34px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: linear-gradient(135deg, #ffffff, #eef6ff);
+  box-shadow: var(--shadow-lg);
+}
+
+.cms-solution-panel i {
+  width: 62px;
+  height: 62px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 20px;
+  border-radius: 16px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 26px;
+}
+
+.cms-solution-panel strong {
+  display: block;
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+
+.cms-solution-panel span { color: var(--muted); }
+
+.cms-workflow {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+  position: relative;
+}
+
+.cms-step {
+  position: relative;
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  min-height: 118px;
+  padding: 20px 10px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+
+.cms-step span {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 900;
+}
+
+.cms-module-grid,
+.cms-testimonials {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.cms-module,
+.cms-testimonial {
+  min-height: 170px;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+
+.cms-module i {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 16px;
+  border-radius: 14px;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.cms-module h3,
+.cms-testimonial strong {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 900;
+}
+
+.cms-module p,
+.cms-testimonial span,
+.cms-testimonial p { color: var(--muted); }
+
+.cms-ai { background: #0f172a; color: #fff; }
+.cms-ai .l-sub,
+.cms-ai .l-title { color: #fff; }
+.cms-ai .l-badge { background: rgba(255,255,255,0.08); color: #fff; }
+
+.cms-ai-chat {
+  display: grid;
+  gap: 12px;
+}
+
+.cms-ai-msg {
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.14);
+}
+
+.cms-video {
+  padding: 32px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+
+.cms-muted { color: var(--muted); font-weight: 700; }
+.cms-pricing-grid { align-items: stretch; }
+.cms-stars { color: #f59e0b; margin-bottom: 12px; letter-spacing: 2px; }
+
+.cms-final {
+  background: linear-gradient(135deg, #eef6ff, #f8fafc);
+}
+
+.cms-footer {
+  padding: 34px clamp(16px, 4%, 48px);
+  border-top: 1px solid var(--border);
+  background: #fff;
+}
+
+.cms-footer-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.cms-footer strong {
+  display: block;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.cms-footer p { color: var(--muted); margin-top: 4px; }
+.cms-footer-links { display: flex; flex-wrap: wrap; gap: 14px; }
+.cms-footer-links a { color: var(--muted); text-decoration: none; font-weight: 700; }
+.cms-footer-links a:hover { color: var(--primary); }
+
+.cms-video-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.82);
+}
+
+.cms-video-modal[hidden] { display: none; }
+
+.cms-video-modal button {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 12px;
+  background: #fff;
+  cursor: pointer;
+}
+
+#videoHost {
+  width: min(920px, 96vw);
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+#videoHost iframe,
+#videoHost video {
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+@media (max-width: 900px) {
+  .cms-chip-grid,
+  .cms-module-grid,
+  .cms-testimonials,
+  .cms-workflow,
+  .cms-split-inner,
+  .cms-ai-inner,
+  .cms-video {
+    grid-template-columns: 1fr;
+  }
+
+  .cms-footer-inner {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

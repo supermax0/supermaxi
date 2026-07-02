@@ -8,6 +8,9 @@ from models.maintenance_record import MaintenanceRecord
 from models.product import Product
 from utils.permission_checks import check_permission
 from utils.product_schema_guard import ensure_product_schema
+from utils.branch_migration import ensure_branch_schema, get_default_branch
+from utils.branch_context import current_branch_id, init_branch_context
+from utils.branch_stock_service import deduct_stock, get_branch_stock, receive_stock, BranchStockError
 
 maintenance_bp = Blueprint("maintenance", __name__, url_prefix="/maintenance")
 
@@ -20,6 +23,8 @@ def maintenance_use_tenant_db():
     if tenant_slug:
         g.tenant = tenant_slug
         ensure_product_schema()
+        ensure_branch_schema()
+        init_branch_context()
         _ensure_maintenance_schema()
 
 
@@ -44,12 +49,14 @@ def _parse_date(value, fallback=None):
 
 
 def _product_payload(product: Product) -> dict:
+    branch_id = current_branch_id() or (get_default_branch().id if get_default_branch() else None)
+    stock = get_branch_stock(branch_id, product.id) if branch_id else int(product.quantity or 0)
     return {
         "id": product.id,
         "name": product.name,
         "sku": product.sku or "",
         "barcode": product.barcode or "",
-        "stock": int(product.quantity or 0),
+        "stock": stock,
     }
 
 
@@ -101,8 +108,10 @@ def maintenance_page():
             flash("المنتج غير موجود أو غير نشط", "error")
             return redirect(url_for("maintenance.maintenance_page"))
 
-        if int(product.quantity or 0) < quantity:
-            flash(f"المخزون غير كافٍ. المتاح: {product.quantity or 0}", "error")
+        branch_id = current_branch_id() or (get_default_branch().id if get_default_branch() else None)
+        available = get_branch_stock(branch_id, product.id) if branch_id else int(product.quantity or 0)
+        if available < quantity:
+            flash(f"المخزون غير كافٍ. المتاح: {available}", "error")
             return redirect(url_for("maintenance.maintenance_page"))
 
         record = MaintenanceRecord(
@@ -114,7 +123,11 @@ def maintenance_page():
             notes=notes,
             created_by_employee_id=session.get("user_id"),
         )
-        product.quantity = int(product.quantity or 0) - quantity
+        try:
+            deduct_stock(branch_id, product.id, quantity)
+        except BranchStockError as exc:
+            flash(str(exc), "error")
+            return redirect(url_for("maintenance.maintenance_page"))
         db.session.add(record)
         db.session.commit()
         flash("تم تسجيل الإرسال للصيانة وخصم الكمية من المخزون", "success")
@@ -173,7 +186,12 @@ def complete_maintenance(record_id):
         flash("المنتج المرتبط غير موجود", "error")
         return redirect(url_for("maintenance.maintenance_page"))
 
-    product.quantity = int(product.quantity or 0) + int(record.quantity or 0)
+    branch_id = current_branch_id() or (get_default_branch().id if get_default_branch() else None)
+    try:
+        receive_stock(branch_id, product.id, int(record.quantity or 0))
+    except BranchStockError as exc:
+        flash(str(exc), "error")
+        return redirect(url_for("maintenance.maintenance_page"))
     record.status = "completed"
     record.return_date = return_date
     record.completed_at = datetime.utcnow()

@@ -11,7 +11,7 @@ import secrets
 from utils.payment_ledger import append_payment_ledger_delta
 from utils.permission_checks import guard_permission
 from utils.activity_logger import log_activity
-from utils.treasury_helpers import resolve_treasury_account_id, treasury_choices_for_form
+from utils.treasury_helpers import resolve_treasury_account_id
 from utils.treasury_calculations import assert_sufficient_balance, InsufficientTreasuryBalance
 from utils.treasury_schema_guard import ensure_treasury_schema
 
@@ -122,7 +122,7 @@ def shipping_page():
             "public_url": f"/delivery/public/{c.access_token}" if c.access_token else None
         })
 
-    return render_template("shipping.html", companies=result, treasury_choices=treasury_choices_for_form())
+    return render_template("shipping.html", companies=result)
 
 # =====================================
 # Add Shipping Company

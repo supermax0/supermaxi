@@ -12,6 +12,7 @@ from models.invoice import Invoice
 from models.order_item import OrderItem
 from models.expense import Expense
 from models.product import Product
+from models.supplier import Supplier
 from utils.date_periods import get_period_dates, get_period_label
 from utils.accounting_calculations import (
     calculate_inventory_value,
@@ -67,6 +68,7 @@ def get_financial_report_data(period_type="this_month", custom_date_from=None, c
             ratios[int(inv.id)] = min(max(paid / total, 0.0), 1.0)
 
     cogs_period = 0
+    cogs_by_invoice = {}
     if ratios:
         rows = db.session.query(
             OrderItem.invoice_id,
@@ -74,7 +76,9 @@ def get_financial_report_data(period_type="this_month", custom_date_from=None, c
         ).filter(OrderItem.invoice_id.in_(list(ratios.keys()))).group_by(OrderItem.invoice_id).all()
         for invoice_id, cogs_sum in rows:
             if cogs_sum:
-                cogs_period += int(round(float(cogs_sum) * ratios.get(int(invoice_id), 0.0)))
+                inv_cogs = int(round(float(cogs_sum) * ratios.get(int(invoice_id), 0.0)))
+                cogs_by_invoice[int(invoice_id)] = inv_cogs
+                cogs_period += inv_cogs
 
     expenses_period_raw = db.session.query(
         Expense.category,
@@ -151,11 +155,117 @@ def get_financial_report_data(period_type="this_month", custom_date_from=None, c
 
     # ─── تحليل مالي بسيط ───
     gross_profit = int(total_revenue - cogs_period)
+    gross_margin_pct = round(gross_profit / total_revenue * 100, 1) if total_revenue else None
     profit_margin_pct = round(net_profit_period / total_revenue * 100, 1) if total_revenue else None
     expense_to_revenue_pct = round(expenses_period / total_revenue * 100, 1) if total_revenue else None
     total_assets = int(cash_balance + inventory_value + accounts_receivable)
     total_liabilities = int(supplier_debts + shipping_due)
     liquidity_ratio = round(total_assets / total_liabilities, 2) if total_liabilities else None
+
+    # ─── حقوق الملكية وموازنة الميزانية (الأصول = الالتزامات + حقوق الملكية) ───
+    equity = int(total_assets - total_liabilities)
+
+    # ─── التدفق النقدي الحقيقي للفترة (مقبوضات فعلية − مصاريف الفترة) ───
+    cash_inflow = int(cash_sales)
+    cash_outflow = int(expenses_period)
+    net_cash_flow = int(cash_inflow - cash_outflow)
+
+    # ─── الأفضل مبيعاً (Top Products) ───
+    tp_rows = db.session.query(
+        OrderItem.product_name,
+        func.sum(OrderItem.quantity).label("qty"),
+        func.sum(OrderItem.total).label("revenue"),
+        func.sum(OrderItem.cost * OrderItem.quantity).label("cogs"),
+    ).join(Invoice, Invoice.id == OrderItem.invoice_id).filter(
+        func.date(Invoice.created_at) >= date_from,
+        func.date(Invoice.created_at) <= date_to,
+        Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
+        Invoice.payment_status != "مرتجع",
+    ).group_by(OrderItem.product_name).order_by(func.sum(OrderItem.total).desc()).limit(10).all()
+    top_products = [{
+        "name": r.product_name or "غير محدد",
+        "qty": int(r.qty or 0),
+        "revenue": int(r.revenue or 0),
+        "profit": int((r.revenue or 0) - (r.cogs or 0)),
+    } for r in tp_rows]
+
+    # ─── أفضل العملاء (Top Customers) ───
+    tc_rows = db.session.query(
+        Invoice.customer_name,
+        func.count(Invoice.id).label("cnt"),
+        func.sum(Invoice.total).label("total"),
+    ).filter(
+        func.date(Invoice.created_at) >= date_from,
+        func.date(Invoice.created_at) <= date_to,
+        Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
+        Invoice.payment_status != "مرتجع",
+    ).group_by(Invoice.customer_name).order_by(func.sum(Invoice.total).desc()).limit(10).all()
+    top_customers = [{
+        "name": r.customer_name or "غير محدد",
+        "count": int(r.cnt or 0),
+        "total": int(r.total or 0),
+    } for r in tc_rows]
+
+    # ─── الموردون (أعلى الأرصدة المستحقة) ───
+    ts_rows = Supplier.query.order_by(
+        (Supplier.total_debt - Supplier.total_paid).desc()
+    ).limit(10).all()
+    top_suppliers = []
+    for s in ts_rows:
+        remaining = int((s.total_debt or 0) - (s.total_paid or 0))
+        if remaining <= 0:
+            continue
+        top_suppliers.append({
+            "name": s.name or "غير محدد",
+            "total_debt": int(s.total_debt or 0),
+            "total_paid": int(s.total_paid or 0),
+            "remaining": remaining,
+        })
+
+    # ─── سلسلة زمنية للرسوم البيانية (يومية إذا الفترة قصيرة، شهرية إن طالت) ───
+    span_days = (date_to - date_from).days
+    bucket_by_month = span_days > 62
+
+    def _bucket_key(d):
+        return d.strftime("%Y-%m") if bucket_by_month else d.strftime("%Y-%m-%d")
+
+    buckets = {}
+    for inv in period_invoices:
+        created = getattr(inv, "created_at", None)
+        if created is None:
+            continue
+        d = created.date() if hasattr(created, "date") else created
+        key = _bucket_key(d)
+        b = buckets.setdefault(key, {"revenue": 0, "cogs": 0, "expenses": 0})
+        b["revenue"] += int(inv.total or 0)
+        b["cogs"] += int(cogs_by_invoice.get(int(inv.id), 0))
+
+    exp_rows = db.session.query(
+        Expense.expense_date,
+        func.sum(Expense.amount).label("total"),
+    ).filter(
+        func.date(Expense.expense_date) >= date_from,
+        func.date(Expense.expense_date) <= date_to,
+    ).group_by(Expense.expense_date).all()
+    for r in exp_rows:
+        if not r.expense_date:
+            continue
+        d = r.expense_date.date() if hasattr(r.expense_date, "date") else r.expense_date
+        key = _bucket_key(d)
+        b = buckets.setdefault(key, {"revenue": 0, "cogs": 0, "expenses": 0})
+        b["expenses"] += int(r.total or 0)
+
+    chart_series = []
+    for key in sorted(buckets.keys()):
+        b = buckets[key]
+        gp = b["revenue"] - b["cogs"]
+        chart_series.append({
+            "label": key,
+            "revenue": b["revenue"],
+            "gross_profit": gp,
+            "expenses": b["expenses"],
+            "net_profit": gp - b["expenses"],
+        })
 
     return {
         "period_label": period_label,
@@ -180,7 +290,12 @@ def get_financial_report_data(period_type="this_month", custom_date_from=None, c
         "shipping_due": int(shipping_due),
         "total_assets": total_assets,
         "total_liabilities": total_liabilities,
-        "equity_note": "محسوب من رصيد النشاط (الأصول − الالتزامات) إن وُجدت بيانات قيود",  # للنظام الحالي
+        "equity": equity,
+        "equity_note": "حقوق الملكية = إجمالي الأصول − إجمالي الالتزامات (محسوبة من أرصدة النظام)",
+        # تدفق نقدي
+        "cash_inflow": cash_inflow,
+        "cash_outflow": cash_outflow,
+        "net_cash_flow": net_cash_flow,
         # مخزون
         "low_stock_count": low_stock_count,
         "zero_stock_count": zero_stock_count,
@@ -189,7 +304,14 @@ def get_financial_report_data(period_type="this_month", custom_date_from=None, c
         "growth_revenue_pct": growth_revenue_pct,
         "growth_profit_pct": growth_profit_pct,
         # نسب
+        "gross_margin_pct": gross_margin_pct,
         "profit_margin_pct": profit_margin_pct,
         "expense_to_revenue_pct": expense_to_revenue_pct,
         "liquidity_ratio": liquidity_ratio,
+        # جداول تفصيلية
+        "top_products": top_products,
+        "top_customers": top_customers,
+        "top_suppliers": top_suppliers,
+        # رسوم بيانية
+        "chart_series": chart_series,
     }

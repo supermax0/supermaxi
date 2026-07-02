@@ -34,6 +34,7 @@ class Purchase(db.Model):
     invoice_no = db.Column(db.String(60), nullable=True, index=True)
     status = db.Column(db.String(30), default="draft")  # draft / confirmed
     branch_code = db.Column(db.String(60), nullable=True)
+    branch_id = db.Column(db.Integer, db.ForeignKey("branch.id"), nullable=True)
     reference_no = db.Column(db.String(120), nullable=True)
     supplier_invoice_no = db.Column(db.String(120), nullable=True)
     address = db.Column(db.String(255), nullable=True)

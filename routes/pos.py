@@ -15,6 +15,9 @@ from utils.product_schema_guard import ensure_customer_blacklist_columns, ensure
 from utils.customer_blacklist import is_phone_blacklisted_for_new_customer
 from utils.permission_checks import guard_permission
 from utils.activity_logger import INVOICE_SNAPSHOT_FIELDS, log_activity, snapshot_attrs
+from utils.branch_migration import ensure_branch_schema, get_default_branch
+from utils.branch_context import current_branch_id, init_branch_context
+from utils.branch_stock_service import deduct_stock, get_branch_stock, get_total_stock, BranchStockError
 
 pos_bp = Blueprint("pos", __name__, url_prefix="/pos")
 
@@ -36,13 +39,16 @@ def _parse_product_meta(product):
 
 def _product_bootstrap_dict(product):
     meta = _parse_product_meta(product)
+    branch_id = current_branch_id()
+    display_qty = get_branch_stock(branch_id, product.id) if branch_id else (product.quantity or 0)
     return {
         "id": product.id,
         "name": product.name,
         "sku": product.sku or "",
         "barcode": product.barcode or "",
         "sale_price": product.sale_price or 0,
-        "quantity": product.quantity or 0,
+        "quantity": display_qty,
+        "total_quantity": product.quantity or 0,
         "image_url": product.image_url or "",
         "low_stock_threshold": product.low_stock_threshold or 5,
         "category": (meta.get("category") or "").strip(),
@@ -60,6 +66,8 @@ def pos_use_tenant_db():
         g.tenant = tenant_slug  # جعل الاستعلامات تستهدف قاعدة بيانات الشركة
         ensure_product_schema()
         ensure_customer_blacklist_columns()
+        ensure_branch_schema()
+        init_branch_context()
 
 
 @pos_bp.before_request
@@ -184,11 +192,17 @@ def pos():
         pass
 
     bootstrap_products = [_product_bootstrap_dict(p) for p in products]
+    from models.branch import Branch
+
+    branches = Branch.query.filter_by(is_active=True).order_by(Branch.name).all()
+    default_branch_id = current_branch_id() or (get_default_branch().id if get_default_branch() else None)
 
     ctx = dict(
         products=products,
         bootstrap_products=bootstrap_products,
         customers=customers,
+        branches=branches,
+        default_branch_id=default_branch_id,
         cashier_name=session.get("name"),
         role=session.get("role"),
         employee=employee,
@@ -498,6 +512,7 @@ def create_order():
         customer_name=customer_name,
         employee_id=employee.id,
         employee_name=employee.name,
+        branch_id=current_branch_id() or (get_default_branch().id if get_default_branch() else None),
         total=0,
         status="تم الطلب",
         payment_status="غير مسدد",
@@ -524,15 +539,13 @@ def create_order():
             return jsonify({"error": "منتج غير موجود"}), 400
 
         qty = i.get("qty", 0)
+        fulfillment_branch_id = i.get("fulfillment_branch_id") or current_branch_id()
+        if not fulfillment_branch_id and get_default_branch():
+            fulfillment_branch_id = get_default_branch().id
         
-        # ===============================
-        # التحقق من توفر الكمية (Validation)
-        # ===============================
-        # السبب المحاسبي: منع بيع كمية أكبر من المتوفر
-        # هذا يضمن دقة المخزون ومنع الكميات السالبة
         from utils.inventory_movements import validate_sale_quantity
         
-        validation = validate_sale_quantity(product.id, qty)
+        validation = validate_sale_quantity(product.id, qty, fulfillment_branch_id)
         if not validation["valid"]:
             db.session.rollback()
             return jsonify({
@@ -540,10 +553,11 @@ def create_order():
                 "available": validation["available"]
             }), 400
         
-        if product.quantity < qty:
+        available = get_branch_stock(fulfillment_branch_id, product.id) if fulfillment_branch_id else (product.quantity or 0)
+        if available < qty:
             db.session.rollback()
             return jsonify({
-                "error": f"الكمية المتوفرة ({product.quantity}) أقل من المطلوب ({qty}) - المنتج: {product.name}"
+                "error": f"الكمية المتوفرة ({available}) أقل من المطلوب ({qty}) - المنتج: {product.name}"
             }), 400
 
         # استخدام السعر المعدل من الواجهة إذا كان موجوداً، وإلا استخدم السعر الافتراضي
@@ -562,10 +576,15 @@ def create_order():
             quantity=qty,
             price=item_price,  # استخدام السعر المعدل
             cost=product.buy_price,
-            total=item_total
+            total=item_total,
+            fulfillment_branch_id=fulfillment_branch_id,
         )
 
-        product.quantity -= qty
+        try:
+            deduct_stock(fulfillment_branch_id, product.id, qty)
+        except BranchStockError as exc:
+            db.session.rollback()
+            return jsonify({"error": str(exc)}), 400
         total += item_total
 
         db.session.add(order_item)

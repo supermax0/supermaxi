@@ -12,6 +12,7 @@ class ActivityLog(db.Model):
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     employee_id = db.Column(db.Integer, db.ForeignKey("employee.id"), nullable=True, index=True)
+    branch_id = db.Column(db.Integer, db.ForeignKey("branch.id"), nullable=True, index=True)
     employee_name = db.Column(db.String(150), nullable=True)
     action = db.Column(db.String(30), nullable=False, index=True)
     category = db.Column(db.String(50), nullable=False, index=True)
@@ -55,5 +56,6 @@ class ActivityLog(db.Model):
             "status_code": self.status_code,
             "ip_address": self.ip_address,
             "user_agent": self.user_agent,
+            "branch_id": self.branch_id,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }

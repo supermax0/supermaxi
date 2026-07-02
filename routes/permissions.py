@@ -35,6 +35,9 @@ DEFAULT_PERMISSIONS = [
     ("view_messages", "رؤية واجهة المراسلة"),
     ("manage_settings", "إعدادات النظام"),
     ("view_activity", "رؤية سجل النشاط"),
+    ("manage_branches", "إدارة الفروع"),
+    ("manage_transfers", "نقل المخزون بين الفروع"),
+    ("view_all_branches", "عرض كل الفروع"),
 ]
 
 

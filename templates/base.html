@@ -2347,6 +2347,20 @@ or request.path.startswith('/superadmin') %}
 
         {% if not is_payment_flow %}
         <div class="topbar-actions">
+          {% if session.get("user_id") and branches %}
+          <div class="branch-picker-wrap" style="margin-inline-end:12px;">
+            {% if can_switch_branch %}
+            <select id="globalBranchSelect" title="الفرع الحالي" style="padding:8px 12px;border-radius:10px;border:1px solid var(--border);background:var(--card);color:var(--text);min-width:140px;">
+              <option value="all" {% if view_all_branches %}selected{% endif %}>كل الفروع</option>
+              {% for b in branches %}
+              <option value="{{ b.id }}" {% if current_branch and current_branch.id == b.id and not view_all_branches %}selected{% endif %}>{{ b.name }}</option>
+              {% endfor %}
+            </select>
+            {% elif current_branch %}
+            <span style="font-size:13px;color:var(--text-muted);"><i class="fas fa-code-branch"></i> {{ current_branch.name }}</span>
+            {% endif %}
+          </div>
+          {% endif %}
           {% block topbar_actions %}
           {% if session.get("user_id") %}
           <div class="dashboard-top-quick-actions">
@@ -3190,6 +3204,25 @@ or request.path.startswith('/superadmin') %}
         window.location.href = "/?quick=" + encodeURIComponent(action);
       },
     };
+  </script>
+
+  <script>
+    (function () {
+      const sel = document.getElementById("globalBranchSelect");
+      if (!sel) return;
+      sel.addEventListener("change", async function () {
+        const val = sel.value;
+        const payload = val === "all" ? { view_all: true } : { branch_id: parseInt(val, 10) };
+        const res = await fetch("/api/branch/switch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (data.ok) location.reload();
+        else alert(data.error || "فشل تبديل الفرع");
+      });
+    })();
   </script>
 
 </body>

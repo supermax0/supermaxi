@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}نقل المخزون بين الفروع{% endblock %}
+{% block page_title %}نقل المخزون{% endblock %}
+
+{% block content %}
+<style>
+  .tr-wrap { max-width: 1100px; margin: 0 auto; padding: 16px; }
+  .tr-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; margin-bottom: 16px; }
+  .tr-table { width: 100%; border-collapse: collapse; }
+  .tr-table th, .tr-table td { padding: 12px; border-bottom: 1px solid var(--border); text-align: right; }
+  .tr-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 10px; border: none; cursor: pointer; font-weight: 700; }
+  .tr-btn.primary { background: var(--primary); color: #fff; text-decoration: none; }
+  .status-pill { padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+  .status-draft { background: rgba(148,163,184,.2); color: #94a3b8; }
+  .status-sent { background: rgba(59,130,246,.15); color: #3b82f6; }
+  .status-received { background: rgba(16,185,129,.15); color: #10b981; }
+  .status-cancelled { background: rgba(239,68,68,.15); color: #ef4444; }
+</style>
+
+<div class="tr-wrap">
+  <div class="tr-card" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+    <div>
+      <h2 style="margin:0;"><i class="fas fa-truck-loading"></i> نقل المخزون بين الفروع</h2>
+      <p style="margin:6px 0 0;color:var(--text-muted);">إنشاء وإرسال واستلام طلبات نقل المنتجات.</p>
+    </div>
+    <a href="{{ url_for('stock_transfers.transfers_new') }}" class="tr-btn primary"><i class="fas fa-plus"></i> نقل جديد</a>
+  </div>
+
+  <div class="tr-card">
+    <table class="tr-table">
+      <thead>
+        <tr>
+          <th>رقم النقل</th>
+          <th>من</th>
+          <th>إلى</th>
+          <th>الحالة</th>
+          <th>التاريخ</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in transfers %}
+        <tr>
+          <td>{{ t.transfer_no or ('#' ~ t.id) }}</td>
+          <td>{{ t.from_branch.name if t.from_branch else t.from_branch_id }}</td>
+          <td>{{ t.to_branch.name if t.to_branch else t.to_branch_id }}</td>
+          <td><span class="status-pill status-{{ t.status }}">{{ t.status }}</span></td>
+          <td>{{ t.created_at.strftime('%Y-%m-%d %H:%M') if t.created_at else '-' }}</td>
+          <td><a href="{{ url_for('stock_transfers.transfers_view', transfer_id=t.id) }}">عرض</a></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" style="text-align:center;color:var(--text-muted);">لا توجد عمليات نقل بعد.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

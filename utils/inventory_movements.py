@@ -17,7 +17,7 @@ from models.invoice import Invoice
 from extensions import db
 
 
-def get_product_inventory_movements(product_id):
+def get_product_inventory_movements(product_id, branch_id=None):
     """
     حساب سجل حركات المخزون لمنتج محدد
     
@@ -140,6 +140,55 @@ def get_product_inventory_movements(product_id):
                 "reference_id": invoice.id,
                 "description": f"مرتجع بيع - فاتورة #{invoice.id} - {item.quantity} قطعة"
             })
+
+    if branch_id:
+        from models.branch import StockTransfer
+
+        transfers = (
+            StockTransfer.query.filter(
+                db.or_(
+                    StockTransfer.from_branch_id == branch_id,
+                    StockTransfer.to_branch_id == branch_id,
+                ),
+                StockTransfer.status.in_(["sent", "received"]),
+            )
+            .order_by(StockTransfer.created_at)
+            .all()
+        )
+        for transfer in transfers:
+            for line in transfer.lines:
+                if line.product_id != product_id:
+                    continue
+                if transfer.from_branch_id == branch_id and transfer.status in ("sent", "received"):
+                    current_balance -= line.quantity
+                    movements.append({
+                        "date": (transfer.sent_at or transfer.created_at).date() if (transfer.sent_at or transfer.created_at) else date.today(),
+                        "type": "transfer_out",
+                        "type_ar": "نقل صادر",
+                        "quantity_in": 0,
+                        "quantity_out": line.quantity,
+                        "balance_after": current_balance,
+                        "cost_per_unit": product.buy_price,
+                        "total_cost": line.quantity * product.buy_price,
+                        "reference_type": "stock_transfer",
+                        "reference_id": transfer.id,
+                        "description": f"نقل إلى فرع #{transfer.to_branch_id}",
+                    })
+                if transfer.to_branch_id == branch_id and transfer.status == "received":
+                    current_balance += line.quantity
+                    movements.append({
+                        "date": (transfer.received_at or transfer.created_at).date() if (transfer.received_at or transfer.created_at) else date.today(),
+                        "type": "transfer_in",
+                        "type_ar": "نقل وارد",
+                        "quantity_in": line.quantity,
+                        "quantity_out": 0,
+                        "balance_after": current_balance,
+                        "cost_per_unit": product.buy_price,
+                        "total_cost": line.quantity * product.buy_price,
+                        "reference_type": "stock_transfer",
+                        "reference_id": transfer.id,
+                        "description": f"نقل من فرع #{transfer.from_branch_id}",
+                    })
     
     # ترتيب الحركات حسب التاريخ
     movements.sort(key=lambda x: (x["date"], x["reference_id"]))
@@ -194,13 +243,14 @@ def get_all_products_movements_summary():
     return summaries
 
 
-def validate_sale_quantity(product_id, requested_quantity):
+def validate_sale_quantity(product_id, requested_quantity, branch_id=None):
     """
     التحقق من توفر الكمية قبل البيع
     
     Args:
         product_id: معرف المنتج
         requested_quantity: الكمية المطلوبة للبيع
+        branch_id: فرع محدد (اختياري)
         
     Returns:
         dict: {
@@ -224,8 +274,12 @@ def validate_sale_quantity(product_id, requested_quantity):
             "available": product.quantity,
             "message": "المنتج غير نشط"
         }
-    
-    available = product.quantity
+
+    if branch_id:
+        from utils.branch_stock_service import get_branch_stock
+        available = get_branch_stock(branch_id, product_id)
+    else:
+        available = product.quantity
     
     if available < requested_quantity:
         return {

@@ -60,6 +60,9 @@ from routes.pages import pages_bp
 from routes.invoice_store import invoice_store_bp
 from routes.storefront import storefront_bp
 from routes.maintenance import maintenance_bp
+from routes.branch_api import branch_api_bp
+from routes.stock_transfers import stock_transfers_bp
+from routes.landing import landing_bp
 from telegram_bot import telegram_bp
 from api_workflows import workflow_api
 from models.ai_agent import AgentWorkflow, AgentExecution
@@ -154,6 +157,18 @@ with app.app_context():
     from models.core.payment_request import PaymentRequest
     from models.core.global_setting import GlobalSetting
     from models.core.landing_visit import LandingVisit
+    from models.core.landing_content import (  # noqa: F401
+        LandingCTA,
+        LandingFAQ,
+        LandingFeature,
+        LandingMedia,
+        LandingModule,
+        LandingPageSettings,
+        LandingPricingPlan,
+        LandingSEO,
+        LandingSection,
+        LandingTestimonial,
+    )
     from models.user import User  # جدول users مطلوب لـ tenant_template_purchases / tenant_template_settings
     from models.telegram_inbox_message import TelegramInboxMessage  # noqa: F401
     from models.telegram_chat_profile import TelegramChatProfile  # noqa: F401
@@ -161,6 +176,14 @@ with app.app_context():
     from models.customer_credit import CustomerCreditPlan, CustomerInstallment, CustomerCreditPayment  # noqa: F401
 
     db.create_all()
+
+    try:
+        from utils.landing_content import ensure_landing_seed
+
+        ensure_landing_seed()
+    except Exception as e:
+        db.session.rollback()
+        print(f"Landing content seed note: {e}")
 
     # Database health check on startup
     try:
@@ -903,6 +926,7 @@ _OPEN_ROUTES = [
     "/privacy",
     "/terms",
     "/contact",
+    "/landing",
     "/payment",
     "/login",
     "/payment/success",
@@ -911,7 +935,9 @@ _OPEN_ROUTES = [
     "/payments/simulate",
     "/upgrade",
     "/superadmin",
+    "/api/superadmin/landing",  # API إدارة صفحة الهبوط محمي بجلسة Super Admin داخل blueprint
     "/messages/unread-count",  # واجهة للشارة — تُرجع JSON بدون إعادة توجيه
+    "/api/landing",  # محتوى صفحة الهبوط المنشور
     "/api/landing-chat",  # مساعد الذكاء الاصطناعي لصفحة الهبوط
     "/telegram",  # بوت تيليجرام: webhook و setup و test — بدون تسجيل (ليستقبل التحديثات من Telegram)
     "/delivery-agent",  # بوابة مندوب التوصيل
@@ -992,6 +1018,16 @@ def require_login():
         print(f"Error checking tenant subscription: {e}")
         pass
 
+    try:
+        if session.get("user_id") and getattr(g, "tenant", None):
+            from utils.branch_migration import ensure_branch_schema
+            from utils.branch_context import init_branch_context
+
+            ensure_branch_schema()
+            init_branch_context()
+    except Exception as e:
+        print(f"Error initializing branch context: {e}")
+
 
 
 @app.context_processor
@@ -1065,6 +1101,29 @@ def inject_plan_context():
         return _fallback
 
 
+@app.context_processor
+def inject_branch_context():
+    if request.path.startswith("/superadmin"):
+        return {}
+    try:
+        from utils.branch_context import can_switch_branch
+
+        branch = getattr(g, "branch", None)
+        return {
+            "current_branch": branch,
+            "view_all_branches": getattr(g, "view_all_branches", False),
+            "branches": getattr(g, "branches", []),
+            "can_switch_branch": can_switch_branch() if session.get("user_id") else False,
+        }
+    except Exception:
+        return {
+            "current_branch": None,
+            "view_all_branches": False,
+            "branches": [],
+            "can_switch_branch": False,
+        }
+
+
 # =====================================
 # Register Blueprints
 # =====================================
@@ -1077,6 +1136,8 @@ app.register_blueprint(workflow_api)
 app.register_blueprint(pos_bp)
 app.register_blueprint(employees_bp, url_prefix="/employees")
 app.register_blueprint(inventory_bp, url_prefix="/inventory")
+app.register_blueprint(stock_transfers_bp)
+app.register_blueprint(branch_api_bp)
 app.register_blueprint(purchases_bp, url_prefix="/purchases")
 app.register_blueprint(maintenance_bp)
 app.register_blueprint(inventory_ledger_bp, url_prefix="/inventory/ledger")
@@ -1096,6 +1157,7 @@ app.register_blueprint(assistant_bp)
 app.register_blueprint(agents_bp)
 app.register_blueprint(delivery_agent_bp)
 app.register_blueprint(pages_bp)
+app.register_blueprint(landing_bp)
 from routes.permissions import permissions_bp
 app.register_blueprint(permissions_bp, url_prefix="/admin/permissions")
 

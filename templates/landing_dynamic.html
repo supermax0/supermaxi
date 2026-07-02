@@ -1,0 +1,336 @@
+{% set settings = landing.settings or {} %}
+{% set seo = landing.seo or {} %}
+{% set sm = landing.section_map or {} %}
+{% set hero = sm.get('hero', {}) %}
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>{{ seo.meta_title or settings.page_title or 'Finora Cloud' }}</title>
+    <meta name="description" content="{{ seo.meta_description or settings.page_subtitle or '' }}">
+    <meta name="keywords" content="{{ seo.meta_keywords or '' }}">
+    <meta name="robots" content="{{ seo.robots or 'index,follow' }}">
+    {% if seo.canonical_url %}<link rel="canonical" href="{{ seo.canonical_url }}">{% endif %}
+    <meta property="og:title" content="{{ seo.og_title or seo.meta_title or settings.page_title or 'Finora Cloud' }}">
+    <meta property="og:description" content="{{ seo.og_description or seo.meta_description or settings.page_subtitle or '' }}">
+    {% if seo.og_image_url %}<meta property="og:image" content="{{ seo.og_image_url }}">{% endif %}
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ seo.twitter_title or seo.og_title or settings.page_title or 'Finora Cloud' }}">
+    <meta name="twitter:description" content="{{ seo.twitter_description or seo.og_description or settings.page_subtitle or '' }}">
+    {% if seo.twitter_image_url %}<meta name="twitter:image" content="{{ seo.twitter_image_url }}">{% endif %}
+    <link rel="icon" href="{{ settings.favicon_url or '/static/IMG_0200.png' }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/landing_cms.css') }}">
+    <style>
+        :root {
+            --primary: {{ settings.primary_color or '#2563eb' }};
+            --secondary: {{ settings.secondary_color or '#0f766e' }};
+            --purple: {{ settings.accent_color or '#7c3aed' }};
+            --bg: {{ settings.background_color or '#f7f9fc' }};
+            --text: {{ settings.text_color or '#101828' }};
+        }
+    </style>
+    {% if seo.schema %}<script type="application/ld+json">{{ seo.schema|tojson }}</script>{% endif %}
+</head>
+<body class="landing">
+{% if preview_mode %}
+<div class="landing-preview-bar">وضع المعاينة: هذه النسخة Draft ولا تظهر للزوار حتى تضغط نشر من لوحة الإدارة.</div>
+{% endif %}
+<div class="l-wrap">
+    <nav class="l-nav" id="lNav">
+        <a href="/" class="l-logo">
+            <img src="{{ settings.logo_url or '/static/IMG_0200.png' }}" alt="{{ settings.site_name or 'Finora' }}">
+            <div>
+                <strong>{{ settings.site_name or 'Finora Cloud' }}</strong>
+                <span>{{ settings.page_subtitle or 'منصة إدارة الأعمال' }}</span>
+            </div>
+        </a>
+        <div class="l-nav-links">
+            <a href="#features">المميزات</a>
+            <a href="#workflow">طريقة العمل</a>
+            <a href="#pricing">الأسعار</a>
+            <a href="#faq">الأسئلة</a>
+            <a href="#contact">تواصل</a>
+        </div>
+        <div class="l-nav-actions">
+            <a href="{{ settings.login_url or '/login' }}" class="l-btn l-btn-ghost">تسجيل الدخول</a>
+            <a href="{{ settings.trial_url or '/signup?plan=free&billing=monthly' }}" class="l-btn l-btn-primary">جرّب مجاناً</a>
+            <button type="button" class="l-menu-btn" id="lMenuBtn" aria-label="القائمة"><i class="fas fa-bars"></i></button>
+        </div>
+    </nav>
+    <div class="l-mobile-nav" id="lMobileNav">
+        <a href="#features">المميزات</a>
+        <a href="#workflow">طريقة العمل</a>
+        <a href="#pricing">الأسعار</a>
+        <a href="#faq">الأسئلة</a>
+        <a href="{{ settings.login_url or '/login' }}">تسجيل الدخول</a>
+        <a href="{{ settings.trial_url or '/signup?plan=free&billing=monthly' }}">جرّب مجاناً</a>
+    </div>
+
+    {% if hero.is_visible is not sameas false %}
+    <section class="l-hero cms-hero">
+        <div class="l-hero-grid">
+            <div class="l-reveal">
+                <div class="l-badge"><span class="dot"></span>{{ hero.subtitle or 'مصمم للشركات والمتاجر العراقية' }}</div>
+                <h1 class="l-title">{{ hero.title or settings.page_title or 'فينورا — نظام إدارة ومحاسبة ذكي لشركتك' }}</h1>
+                <p class="l-sub left">{{ hero.description or settings.page_subtitle }}</p>
+                <div class="l-hero-acts">
+                    <a href="{{ hero.button_primary_url or settings.trial_url or '#' }}" class="l-btn l-btn-primary"><i class="fas fa-rocket"></i>{{ hero.button_primary_text or 'جرّب مجاناً' }}</a>
+                    <a href="{{ hero.button_secondary_url or settings.demo_booking_url or '#contact' }}" class="l-btn l-btn-ghost"><i class="fas fa-calendar-check"></i>{{ hero.button_secondary_text or 'احجز عرض مباشر' }}</a>
+                </div>
+                <div class="l-stats">
+                    {% for stat in hero.content.stats or [] %}
+                    <div><div class="l-stat-n">{{ stat.value }}</div><div class="l-stat-l">{{ stat.label }}</div></div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="l-hero-visual l-reveal">
+                <img src="{{ hero.image_url or '/static/image.png' }}" alt="{{ hero.title or 'لوحة Finora' }}" loading="eager">
+                <div class="l-hero-float">
+                    <strong>LEON AI</strong>
+                    <span>تحليل وتنبيه داخل النظام</span>
+                </div>
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
+    {% set pain = sm.get('pain_points', {}) %}
+    {% if pain.is_visible is not sameas false %}
+    <section class="l-section l-section-soft">
+        <div class="l-container l-center l-reveal">
+            <span class="l-badge">قبل فينورا</span>
+            <h2 class="l-title">{{ pain.title }}</h2>
+            <p class="l-sub">{{ pain.description }}</p>
+        </div>
+        <div class="l-container cms-chip-grid">
+            {% for item in pain.content['items'] or [] %}
+            <div class="cms-chip l-reveal"><i class="fas fa-triangle-exclamation"></i>{{ item }}</div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    {% set solution = sm.get('solution', {}) %}
+    {% if solution.is_visible is not sameas false %}
+    <section class="l-section cms-split">
+        <div class="l-container cms-split-inner l-reveal">
+            <div>
+                <span class="l-badge">الحل</span>
+                <h2 class="l-title">{{ solution.title }}</h2>
+                <p class="l-sub left">{{ solution.description }}</p>
+            </div>
+            <div class="cms-solution-panel">
+                <i class="fas fa-chart-simple"></i>
+                <strong>أرقام واضحة</strong>
+                <span>قرارات أسرع وتقارير تفهم منها الربح الحقيقي.</span>
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
+    {% set workflow = sm.get('workflow', {}) %}
+    {% if workflow.is_visible is not sameas false %}
+    <section id="workflow" class="l-section l-section-soft">
+        <div class="l-container l-center l-reveal">
+            <span class="l-badge">Workflow</span>
+            <h2 class="l-title">{{ workflow.title }}</h2>
+            <p class="l-sub">{{ workflow.description }}</p>
+        </div>
+        <div class="l-container cms-workflow l-reveal">
+            {% for step in workflow.content.steps or [] %}
+            <div class="cms-step"><span>{{ loop.index }}</span><strong>{{ step }}</strong></div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    {% set features_section = sm.get('features', {}) %}
+    {% if features_section.is_visible is not sameas false %}
+    <section id="features" class="l-section">
+        <div class="l-container l-center l-reveal">
+            <span class="l-badge">المميزات</span>
+            <h2 class="l-title">{{ features_section.title }}</h2>
+            <p class="l-sub">{{ features_section.description }}</p>
+        </div>
+        <div class="l-container l-bento">
+            {% for feature in landing.features %}
+            <article class="l-bento-card l-reveal {% if loop.index <= 2 %}span2{% endif %}">
+                <div class="l-bento-icon"><i class="{{ feature.icon }}"></i></div>
+                <h3>{{ feature.title }}</h3>
+                <p>{{ feature.description }}</p>
+            </article>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    {% set modules_section = sm.get('modules', {}) %}
+    {% if modules_section.is_visible is not sameas false %}
+    <section class="l-section l-section-soft">
+        <div class="l-container l-center l-reveal">
+            <span class="l-badge">Modules</span>
+            <h2 class="l-title">{{ modules_section.title }}</h2>
+            <p class="l-sub">{{ modules_section.description }}</p>
+        </div>
+        <div class="l-container cms-module-grid">
+            {% for module in landing.modules %}
+            <article class="cms-module l-reveal">
+                <i class="{{ module.icon }}"></i>
+                <h3>{{ module.name }}</h3>
+                <p>{{ module.short_description }}</p>
+            </article>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    {% set ai = sm.get('ai_assistant', {}) %}
+    {% if ai.is_visible is not sameas false %}
+    <section class="l-section cms-ai">
+        <div class="l-container cms-ai-inner">
+            <div class="l-reveal">
+                <span class="l-badge">LEON AI</span>
+                <h2 class="l-title">{{ ai.title }}</h2>
+                <p class="l-sub left">{{ ai.description }}</p>
+            </div>
+            <div class="cms-ai-chat l-reveal">
+                {% for msg in ai.content.messages or [] %}
+                <div class="cms-ai-msg">{{ msg }}</div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
+    {% set video = sm.get('demo_video', {}) %}
+    {% if video.is_visible is not sameas false %}
+    <section class="l-section l-section-soft">
+        <div class="l-container cms-video l-reveal">
+            <div>
+                <span class="l-badge">Demo</span>
+                <h2 class="l-title">{{ video.title }}</h2>
+                <p class="l-sub left">{{ video.description }}</p>
+            </div>
+            {% if video.video_url %}
+            <button type="button" class="l-btn l-btn-primary" data-video-open data-video-url="{{ video.video_url }}"><i class="fas fa-play"></i>{{ video.button_primary_text or 'شاهد الفيديو' }}</button>
+            {% else %}
+            <span class="cms-muted">لم يتم إضافة رابط فيديو بعد.</span>
+            {% endif %}
+        </div>
+    </section>
+    {% endif %}
+
+    {% set pricing_section = sm.get('pricing', {}) %}
+    {% if pricing_section.is_visible is not sameas false %}
+    <section id="pricing" class="l-section">
+        <div class="l-container l-center l-reveal">
+            <span class="l-badge">الأسعار</span>
+            <h2 class="l-title">{{ pricing_section.title }}</h2>
+            <p class="l-sub">{{ pricing_section.description }}</p>
+        </div>
+        <div class="l-container l-pricing-grid cms-pricing-grid">
+            {% for plan in landing.pricing %}
+            <div class="l-plan l-reveal {% if plan.is_popular %}featured{% endif %}">
+                {% if plan.badge_text %}<div class="l-plan-badge">{{ plan.badge_text }}</div>{% endif %}
+                <div class="l-plan-name">{{ plan.name }}</div>
+                <div class="l-plan-desc">{{ plan.description }}</div>
+                <div class="l-plan-price">{{ "{:,.0f}".format(plan.price or 0) }} <small>{{ plan.currency }} / {{ plan.billing_period }}</small></div>
+                <div class="l-plan-divider"></div>
+                <ul class="l-plan-features">
+                    {% for item in plan.features %}
+                    <li><i class="fas fa-check-circle ck"></i>{{ item }}</li>
+                    {% endfor %}
+                </ul>
+                <a href="{{ plan.cta_url }}" class="l-plan-cta {% if plan.is_popular %}solid{% else %}outline{% endif %}">{{ plan.cta_text }}</a>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    {% set testimonials_section = sm.get('testimonials', {}) %}
+    {% if testimonials_section.is_visible is not sameas false and landing.testimonials %}
+    <section class="l-section l-section-soft">
+        <div class="l-container l-center l-reveal">
+            <span class="l-badge">آراء العملاء</span>
+            <h2 class="l-title">{{ testimonials_section.title }}</h2>
+            <p class="l-sub">{{ testimonials_section.description }}</p>
+        </div>
+        <div class="l-container cms-testimonials">
+            {% for item in landing.testimonials %}
+            <article class="cms-testimonial l-reveal">
+                <div class="cms-stars">{{ '★' * (item.rating or 5) }}</div>
+                <p>{{ item.quote }}</p>
+                <strong>{{ item.customer_name }}</strong>
+                <span>{{ item.customer_title }} — {{ item.company_name }}</span>
+            </article>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    {% set faq_section = sm.get('faq', {}) %}
+    {% if faq_section.is_visible is not sameas false %}
+    <section id="faq" class="l-section">
+        <div class="l-container l-center l-reveal">
+            <span class="l-badge">FAQ</span>
+            <h2 class="l-title">{{ faq_section.title }}</h2>
+            <p class="l-sub">{{ faq_section.subtitle }}</p>
+        </div>
+        <div class="l-container l-faq l-reveal">
+            {% for item in landing.faqs %}
+            <div class="l-faq-item">
+                <button type="button" class="l-faq-q">{{ item.question }}<i class="fas fa-plus"></i></button>
+                <div class="l-faq-a">{{ item.answer }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    {% set cta = sm.get('final_cta', {}) %}
+    {% if cta.is_visible is not sameas false %}
+    <section id="contact" class="l-section cms-final">
+        <div class="l-container l-center l-reveal">
+            <span class="l-badge">ابدأ الآن</span>
+            <h2 class="l-title">{{ cta.title }}</h2>
+            <p class="l-sub">{{ cta.description }}</p>
+            <div class="l-hero-acts center">
+                <a href="{{ cta.button_primary_url or settings.trial_url }}" class="l-btn l-btn-primary">{{ cta.button_primary_text or 'جرّب مجاناً' }}</a>
+                <a href="{{ cta.button_secondary_url or '#' }}" class="l-btn l-btn-ghost">{{ cta.button_secondary_text or 'تواصل واتساب' }}</a>
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
+    {% set footer = sm.get('footer', {}) %}
+    <footer class="cms-footer">
+        <div class="l-container cms-footer-inner">
+            <div>
+                <strong>{{ footer.title or settings.site_name or 'Finora Cloud' }}</strong>
+                <p>{{ footer.description or settings.page_subtitle }}</p>
+            </div>
+            <div class="cms-footer-links">
+                {% for link in footer.content.links or [] %}
+                <a href="{{ link.url }}">{{ link.label }}</a>
+                {% endfor %}
+                {% if settings.contact_email %}<a href="mailto:{{ settings.contact_email }}">{{ settings.contact_email }}</a>{% endif %}
+            </div>
+        </div>
+    </footer>
+</div>
+
+<div class="cms-video-modal" id="videoModal" hidden>
+    <button type="button" id="videoClose" aria-label="إغلاق"><i class="fas fa-times"></i></button>
+    <div id="videoHost"></div>
+</div>
+{% include 'landing/_chat_widget.html' %}
+{% include 'landing/_scripts.html' %}
+<script src="{{ url_for('static', filename='js/landing_cms.js') }}"></script>
+</body>
+</html>

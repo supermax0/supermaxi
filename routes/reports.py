@@ -112,8 +112,41 @@ def financial_report():
 
     data = get_financial_report_data(period_type, custom_date_from, custom_date_to)
     settings = InvoiceSettings.query.first()
-    company_name = (settings.company_name or "الشركة") if settings else "الشركة"
-    data["company_name"] = company_name
+
+    def _pick(*vals):
+        for v in vals:
+            if v is not None and str(v).strip() != "":
+                return v
+        return None
+
+    if settings:
+        data["company_name"] = _pick(
+            getattr(settings, "report_company_name", None),
+            settings.company_name,
+        ) or "الشركة"
+        show_logo = getattr(settings, "report_show_logo", True)
+        data["report_logo"] = _pick(
+            getattr(settings, "report_logo_path", None),
+            settings.logo_path,
+        ) if show_logo else None
+        data["report_address"] = _pick(
+            getattr(settings, "report_address", None),
+            settings.company_address,
+        )
+        data["report_phone"] = _pick(
+            getattr(settings, "report_phone", None),
+            settings.company_phone,
+        )
+        data["report_footer"] = _pick(
+            getattr(settings, "report_footer_text", None),
+        ) or "نظام المحاسبة - تقرير رسمي للطباعة"
+    else:
+        data["company_name"] = "الشركة"
+        data["report_logo"] = None
+        data["report_address"] = None
+        data["report_phone"] = None
+        data["report_footer"] = "نظام المحاسبة - تقرير رسمي للطباعة"
+
     data["report_generated_at"] = datetime.utcnow()
 
     return render_template("reports_financial.html", **data)
@@ -130,10 +163,12 @@ def sales_report():
     # حد أقصى للنتائج (افتراضي 1000)
     limit = request.args.get("limit", 1000, type=int)
     limit = min(limit, 5000)  # حد أقصى مطلق 5000
+    branch_id = request.args.get("branch_id", type=int)
     
-    orders = Invoice.query.filter(
-        Invoice.status != "ملغي"
-    ).order_by(Invoice.created_at.desc()).limit(limit).all()
+    query = Invoice.query.filter(Invoice.status != "ملغي")
+    if branch_id:
+        query = query.filter(Invoice.branch_id == branch_id)
+    orders = query.order_by(Invoice.created_at.desc()).limit(limit).all()
 
     return jsonify([
         {

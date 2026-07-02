@@ -27,6 +27,9 @@ from utils.activity_logger import log_activity
 from utils.treasury_helpers import resolve_treasury_account_id, get_default_cash_account, treasury_choices_for_form
 from utils.treasury_calculations import assert_sufficient_balance, InsufficientTreasuryBalance
 from utils.treasury_schema_guard import ensure_treasury_schema
+from utils.branch_migration import ensure_branch_schema, get_default_branch
+from utils.branch_context import current_branch_id, resolve_branch_id
+from utils.branch_stock_service import receive_stock
 
 purchases_bp = Blueprint("purchases", __name__, url_prefix="/purchases")
 
@@ -221,6 +224,16 @@ def _create_purchase_from_payload(payload, files):
     payment_term = (payload.get("payment_term") or "").strip() or None
     purchase_mode = (payload.get("purchase_mode") or "").strip() or "credit"
     branch_code = (payload.get("branch_code") or "").strip() or None
+    branch_id = payload.get("branch_id")
+    if branch_id:
+        branch_id = int(branch_id)
+    elif branch_code:
+        from models.branch import Branch
+
+        match = Branch.query.filter(db.func.upper(Branch.code) == branch_code.upper()).first()
+        branch_id = match.id if match else None
+    if not branch_id:
+        branch_id = resolve_branch_id() or (get_default_branch().id if get_default_branch() else None)
     reference_no = (payload.get("reference_no") or "").strip() or None
     supplier_invoice_no = (payload.get("supplier_invoice_no") or "").strip() or None
     address = (payload.get("address") or "").strip() or None
@@ -305,6 +318,7 @@ def _create_purchase_from_payload(payload, files):
         invoice_no=(payload.get("invoice_no") or "").strip() or _next_invoice_no(),
         status=status,
         branch_code=branch_code,
+        branch_id=branch_id,
         reference_no=reference_no,
         supplier_invoice_no=supplier_invoice_no,
         address=address,
@@ -338,7 +352,10 @@ def _create_purchase_from_payload(payload, files):
             )
         )
         # stock update
-        product.quantity = int(product.quantity or 0) + qty
+        if branch_id:
+            receive_stock(branch_id, product.id, qty)
+        else:
+            product.quantity = int(product.quantity or 0) + qty
         product.buy_price = final_unit
 
     for pay in parsed_payments:
@@ -407,12 +424,21 @@ def _product_search_row(product):
 def _prepare_purchases_context():
     try:
         _ensure_purchase_schema()
+        ensure_branch_schema()
     except Exception:
         db.session.rollback()
         current_app.logger.exception("purchase schema migration failed")
+    from models.branch import Branch
+
     suppliers = Supplier.query.order_by(Supplier.name.asc()).all()
+    branches = Branch.query.filter_by(is_active=True).order_by(Branch.name.asc()).all()
     stats = _get_purchase_stats()
-    return {"suppliers": suppliers, "treasury_choices": treasury_choices_for_form(), **stats}
+    return {
+        "suppliers": suppliers,
+        "branches": branches,
+        "treasury_choices": treasury_choices_for_form(),
+        **stats,
+    }
 
 
 @purchases_bp.route("/", methods=["GET"])

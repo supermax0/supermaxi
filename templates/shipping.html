@@ -580,20 +580,6 @@
 
   <!-- Companies -->
   <div class="card">
-    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px;padding:12px 14px;border-radius:12px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);">
-      <label for="shippingTreasuryAccount" style="font-size:13px;font-weight:700;color:var(--shipping-text);">{{ _('pay_from_account') }}:</label>
-      <select id="shippingTreasuryAccount" style="min-width:220px;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:rgba(15,23,42,0.6);color:var(--shipping-text);">
-        {% for acc in treasury_choices|default([]) %}
-        <option value="{{ acc.id }}">{{ acc.name }}</option>
-        {% endfor %}
-      </select>
-      <a href="/accounts" style="font-size:12px;color:var(--shipping-primary);text-decoration:none;">{{ _('treasury_manage_link') }}</a>
-    </div>
-    <div id="activeShippingBanner" style="display:none;margin-bottom:16px;padding:12px 16px;border-radius:12px;background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.25);color:var(--shipping-text);font-size:14px;">
-      <span>📡 شركة المسح النشطة:</span>
-      <strong id="activeShippingBannerName"></strong>
-    </div>
-
     <div
       style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.08); flex-wrap: wrap; gap: 12px;">
       <h3 style="color: var(--shipping-text); margin: 0;">🚚 {{ _('shipping_companies_title') }}</h3>
@@ -627,7 +613,7 @@
           {% else %}
           {% for c in companies %}
           <tr data-company-id="{{ c.id }}" data-company-name="{{ c.name }}">
-            <td data-label="{{ _('shipping_th_company_name') }}"><strong>{{ c.name }}</strong> <span class="active-scan-badge" style="display:none;margin-right:8px;padding:2px 8px;border-radius:999px;font-size:11px;background:rgba(34,197,94,0.2);color:#22c55e;">نشطة للمسح</span></td>
+            <td data-label="{{ _('shipping_th_company_name') }}"><strong>{{ c.name }}</strong></td>
             <td data-label="{{ _('shipping_th_orders_count') }}">{{ c.orders_count }}</td>
             <td data-label="{{ _('shipping_opening_balance') }}">
               {% if c.opening_balance %}
@@ -645,11 +631,6 @@
             </td>
             <td data-label="{{ _('shipping_th_actions') }}">
               <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
-                <button type="button" class="btn btn-primary set-active-scan-btn" data-company-id="{{ c.id }}"
-                  style="padding: 8px 16px; min-width: auto;">
-                  <span>📡</span>
-                  <span>تعيين للمسح</span>
-                </button>
                 <a href="/delivery/archive?company_id={{ c.id }}" class="btn btn-success"
                   style="text-decoration:none; padding: 8px 16px; min-width: auto;">
                   <span>📋</span>
@@ -700,51 +681,8 @@
     </div>
   </div>
 
-  <script src="/static/js/barcode-scanner.js"></script>
   <script>
     let currentCompany = null;
-
-    function setActiveShippingForScan(id, name) {
-      if (!name) {
-        const row = document.querySelector('#companiesTable tr[data-company-id="' + id + '"]');
-        name = row ? row.getAttribute('data-company-name') || '' : '';
-      }
-      if (window.FinoraBarcode) {
-        FinoraBarcode.setActiveShippingCompany(id, name);
-      }
-      refreshActiveShippingUI();
-      showToast("تم تعيين «" + name + "» كشركة نشطة للمسح", "success");
-    }
-
-    document.addEventListener('click', function (e) {
-      const btn = e.target.closest('.set-active-scan-btn');
-      if (!btn) return;
-      const id = btn.getAttribute('data-company-id');
-      if (id) setActiveShippingForScan(id);
-    });
-
-    function refreshActiveShippingUI() {
-      var active = window.FinoraBarcode ? FinoraBarcode.getActiveShippingCompany() : null;
-      var banner = document.getElementById("activeShippingBanner");
-      var bannerName = document.getElementById("activeShippingBannerName");
-      document.querySelectorAll("#companiesTable tbody tr[data-company-id]").forEach(function (row) {
-        var isActive = active && String(row.getAttribute("data-company-id")) === String(active.id);
-        row.style.background = isActive ? "rgba(59, 130, 246, 0.08)" : "";
-        var badge = row.querySelector(".active-scan-badge");
-        if (badge) badge.style.display = isActive ? "inline" : "none";
-      });
-      if (banner && bannerName) {
-        if (active) {
-          banner.style.display = "block";
-          bannerName.textContent = active.name;
-        } else {
-          banner.style.display = "none";
-          bannerName.textContent = "";
-        }
-      }
-    }
-
-    document.addEventListener("DOMContentLoaded", refreshActiveShippingUI);
 
     // ==================== UI Collapsible & Filter ====================
     function toggleSection(sectionId) {
@@ -1001,9 +939,7 @@
       fetch("/shipping/settle/" + id, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          treasury_account_id: document.getElementById("shippingTreasuryAccount").value
-        })
+        body: JSON.stringify({})
       })
         .then(r => r.json())
         .then(data => {

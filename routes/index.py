@@ -219,9 +219,17 @@ def index():
     if "user_id" not in session:
         _increment_landing_visits()
         landing_plans = get_public_plans() or FALLBACK_PLANS
+        try:
+            from utils.landing_content import get_landing_payload
+            landing_payload = get_landing_payload("published")
+        except Exception as e:
+            current_app.logger.exception("failed loading dynamic landing content: %s", e)
+            landing_payload = None
         # #region agent log
         _debug_log("180817", "H4", "index.index:serve_landing", "serving landing", {})
         # #endregion
+        if landing_payload:
+            return render_template("landing_dynamic.html", landing=landing_payload, landing_plans=landing_plans)
         return render_template("index.html", landing_plans=landing_plans)
 
     from utils.permission_checks import check_permission
@@ -285,7 +293,12 @@ def index():
 @index_bp.route("/landing")
 def landing():
     _increment_landing_visits()
-    return redirect("/")
+    try:
+        from utils.landing_content import get_landing_payload
+        return render_template("landing_dynamic.html", landing=get_landing_payload("published"), landing_plans=get_public_plans() or FALLBACK_PLANS)
+    except Exception as e:
+        current_app.logger.exception("failed loading /landing: %s", e)
+        return redirect("/")
 
 
 # =================================================

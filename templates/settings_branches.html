@@ -1,0 +1,133 @@
+{% extends "settings_base.html" %}
+
+{% block title %}إدارة الفروع{% endblock %}
+
+{% block settings_extra_style %}
+<style>
+  .branch-grid { display: grid; gap: 16px; }
+  .branch-card {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px;
+    background: var(--card);
+  }
+  .branch-card.is-default { border-color: rgba(16,185,129,.45); }
+  .branch-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-top: 12px;
+  }
+  .branch-form-grid label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+  .branch-form-grid input, .branch-form-grid select {
+    width: 100%; padding: 10px 12px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--card-alt); color: var(--text);
+  }
+  .branch-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .branch-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 700;
+    background: rgba(16,185,129,.15); color: #10b981;
+  }
+</style>
+{% endblock %}
+
+{% block settings_content %}
+<div class="settings-page-header">
+  <h1><i class="fas fa-code-branch"></i> إدارة الفروع</h1>
+  <p>أضف فروع الشركة، حدّد الفرع الافتراضي، واربط الموظفين بفروعهم من صفحة فريق العمل.</p>
+</div>
+
+<div class="settings-section-card">
+  <div class="settings-section-header">
+    <h2><i class="fas fa-plus-circle"></i> فرع جديد</h2>
+  </div>
+  <div class="branch-form-grid" id="newBranchForm">
+    <div><label>كود الفرع</label><input id="newCode" placeholder="BR001"></div>
+    <div><label>اسم الفرع</label><input id="newName" placeholder="فرع بغداد"></div>
+    <div><label>العنوان</label><input id="newAddress"></div>
+    <div><label>الهاتف</label><input id="newPhone"></div>
+  </div>
+  <div class="branch-actions">
+    <label><input type="checkbox" id="newDefault"> فرع افتراضي</label>
+    <button type="button" class="btn-action" onclick="saveBranch()"><i class="fas fa-save"></i> حفظ الفرع</button>
+  </div>
+</div>
+
+<div class="settings-section-card">
+  <div class="settings-section-header">
+    <h2><i class="fas fa-list"></i> الفروع الحالية</h2>
+  </div>
+  <div class="branch-grid">
+    {% for branch in branches %}
+    <div class="branch-card{% if branch.is_default %} is-default{% endif %}" data-branch-id="{{ branch.id }}">
+      <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+        <div>
+          <strong>{{ branch.name }}</strong>
+          <div style="font-size:12px;color:var(--text-muted);">كود: {{ branch.code }}</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          {% if branch.is_default %}<span class="branch-badge">افتراضي</span>{% endif %}
+          <span class="status-badge status-{% if branch.is_active %}active{% else %}inactive{% endif %}">
+            {{ 'نشط' if branch.is_active else 'معطل' }}
+          </span>
+        </div>
+      </div>
+      <div class="branch-form-grid">
+        <div><label>الكود</label><input class="b-code" value="{{ branch.code }}"></div>
+        <div><label>الاسم</label><input class="b-name" value="{{ branch.name }}"></div>
+        <div><label>العنوان</label><input class="b-address" value="{{ branch.address or '' }}"></div>
+        <div><label>الهاتف</label><input class="b-phone" value="{{ branch.phone or '' }}"></div>
+      </div>
+      <div class="branch-actions">
+        <label><input type="checkbox" class="b-default" {% if branch.is_default %}checked{% endif %}> افتراضي</label>
+        <label><input type="checkbox" class="b-active" {% if branch.is_active %}checked{% endif %}> نشط</label>
+        <button type="button" class="btn-action" onclick="saveBranch({{ branch.id }})"><i class="fas fa-save"></i> تحديث</button>
+      </div>
+    </div>
+    {% else %}
+    <div class="empty-state"><i class="fas fa-code-branch"></i><p>لا توجد فروع بعد.</p></div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
+
+{% block settings_extra_script %}
+<script>
+async function saveBranch(id) {
+  let payload;
+  if (id) {
+    const card = document.querySelector(`[data-branch-id="${id}"]`);
+    payload = {
+      id,
+      code: card.querySelector('.b-code').value,
+      name: card.querySelector('.b-name').value,
+      address: card.querySelector('.b-address').value,
+      phone: card.querySelector('.b-phone').value,
+      is_default: card.querySelector('.b-default').checked,
+      is_active: card.querySelector('.b-active').checked,
+    };
+  } else {
+    payload = {
+      code: document.getElementById('newCode').value,
+      name: document.getElementById('newName').value,
+      address: document.getElementById('newAddress').value,
+      phone: document.getElementById('newPhone').value,
+      is_default: document.getElementById('newDefault').checked,
+      is_active: true,
+    };
+  }
+  const res = await fetch('/settings/branches/save', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!data.success) {
+    alert(data.error || 'فشل الحفظ');
+    return;
+  }
+  location.reload();
+}
+</script>
+{% endblock %}

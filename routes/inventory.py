@@ -1,7 +1,7 @@
 import json
 import os
 
-from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify, current_app, g
 from werkzeug.utils import secure_filename
 from extensions import db
 from models.product import Product
@@ -26,8 +26,39 @@ from utils.permission_checks import check_permission
 from utils.activity_logger import PRODUCT_SNAPSHOT_FIELDS, log_activity, log_mutation, snapshot_attrs
 
 from utils.product_schema_guard import ensure_product_schema
+from utils.branch_migration import ensure_branch_schema, get_default_branch
+from utils.branch_context import current_branch_id, init_branch_context
+from utils.branch_stock_service import (
+    adjust_branch_stock,
+    branch_stock_map,
+    get_branch_stock,
+    set_branch_stock,
+    set_opening_branch_stock,
+    BranchStockError,
+)
 
 inventory_bp = Blueprint("inventory", __name__)
+
+
+@inventory_bp.before_request
+def _inventory_branch_setup():
+    if "user_id" not in session or not getattr(g, "tenant", None):
+        return
+    ensure_branch_schema()
+    init_branch_context()
+
+
+def _inventory_branch_id():
+    if getattr(g, "view_all_branches", False):
+        default = get_default_branch()
+        return default.id if default else None
+    return current_branch_id() or (get_default_branch().id if get_default_branch() else None)
+
+
+def _product_display_qty(product, stock_map, view_all):
+    if view_all:
+        return product.quantity or 0
+    return stock_map.get(product.id, 0)
 
 
 def _load_product_meta(product) -> dict:
@@ -216,9 +247,13 @@ def inventory():
             active=True
         )
         db.session.add(p)
+        db.session.flush()
+        branch_id = _inventory_branch_id()
+        if branch_id:
+            set_opening_branch_stock(branch_id, p.id, opening_stock)
         
         # ==========================
-        # تصحيح محاسبي: المخزون الافتتاحي لا يُسجل كحركة مالية
+        # تصحيح محاسبي: المخزون الافتtاحي لا يُسجل كحركة مالية
         # السبب المحاسبي:
         # - المخزون الافتتاحي يُعتبر قيمة مخزون فقط (Asset)
         # - لا يؤثر على الرصيد المالي (Cash/Balance)
@@ -240,26 +275,30 @@ def inventory():
     # DISPLAY DATA
     # ==============================
     products = Product.query.all()
-    # تم نقل منطق المشتريات إلى صفحة purchases منفصلة
+    view_all = getattr(g, "view_all_branches", False)
+    branch_id = _inventory_branch_id()
+    stock_map = branch_stock_map(None if view_all else branch_id)
+    branch_scope_label = "كل الفروع" if view_all else (g.branch.name if getattr(g, "branch", None) else "—")
 
     # إحصائيات محسّنة (معالجة آمنة لـ None)
     def _val(v, default=0):
         return default if v is None else v
-    total_purchase = sum(_val(p.buy_price) * _val(p.quantity) for p in products)
-    total_sale = sum(_val(p.sale_price) * _val(p.quantity) for p in products)
+
+    def _qty(p):
+        return _product_display_qty(p, stock_map, view_all)
+
+    total_purchase = sum(_val(p.buy_price) * _qty(p) for p in products)
+    total_sale = sum(_val(p.sale_price) * _qty(p) for p in products)
     total_profit = total_sale - total_purchase
 
-    # قيمة المخزون الحالية (الكمية × سعر الشراء فقط)
-    current_inventory_value = sum(_val(p.buy_price) * _val(p.quantity) for p in products)
+    current_inventory_value = sum(_val(p.buy_price) * _qty(p) for p in products)
 
-    # الربح المتوقع من المخزون الحالي
     expected_profit_from_stock = sum(
-        (_val(p.sale_price) - _val(p.buy_price)) * _val(p.quantity)
+        (_val(p.sale_price) - _val(p.buy_price)) * _qty(p)
         for p in products
     )
     
-    # المنتجات منخفضة المخزون بناءً على حد التنبيه المخصص لكل منتج
-    low_stock_products = [p for p in products if _val(p.quantity) <= _val(p.low_stock_threshold, 5)]
+    low_stock_products = [p for p in products if _qty(p) <= _val(p.low_stock_threshold, 5)]
     low_stock_count = len(low_stock_products)
     
     # المنتجات غير المباعة (quantity > 0 لكن لم تُباع)
@@ -267,7 +306,7 @@ def inventory():
     from models.order_item import OrderItem
     sold_products = db.session.query(OrderItem.product_id).distinct().all()
     products_with_sales = {p[0] for p in sold_products}
-    unsold_products = [p for p in products if _val(p.quantity) > 0 and p.id not in products_with_sales]
+    unsold_products = [p for p in products if _qty(p) > 0 and p.id not in products_with_sales]
     unsold_count = len(unsold_products)
     
     # المنتجات النشطة وغير النشطة
@@ -287,7 +326,10 @@ def inventory():
         unsold_count=unsold_count,
         unsold_products=unsold_products[:10],  # أول 10 منتجات غير مباعة
         active_count=active_count,
-        inactive_count=inactive_count
+        inactive_count=inactive_count,
+        branch_scope_label=branch_scope_label,
+        branch_stock_map=stock_map,
+        view_all_branches=view_all,
     )
 
 
@@ -459,6 +501,10 @@ def add_product_page():
             meta_json=json.dumps(meta, ensure_ascii=False) if meta else None,
         )
         db.session.add(p)
+        db.session.flush()
+        branch_id = _inventory_branch_id()
+        if branch_id:
+            set_opening_branch_stock(branch_id, p.id, opening_stock)
         db.session.commit()
         try:
             log_activity(
@@ -514,16 +560,19 @@ def save_audit():
     items = data.get("items", [])
     
     try:
+        branch_id = _inventory_branch_id()
         for item in items:
             product = Product.query.get(item["id"])
             if product:
-                expected_qty = product.quantity
+                expected_qty = get_branch_stock(branch_id, product.id) if branch_id else product.quantity
                 actual_qty = item["actual_qty"]
                 difference = actual_qty - expected_qty
                 
                 if difference != 0:
-                    # Update stock automatically
-                    product.quantity = actual_qty
+                    if branch_id:
+                        set_branch_stock(branch_id, product.id, actual_qty)
+                    else:
+                        product.quantity = actual_qty
                     
                     # Record the adjustment linearly
                     adjustment_value = difference * product.buy_price
@@ -741,21 +790,27 @@ def adjust_stock(id):
                 flash("يجب إدخال سبب التعديل", "error")
                 return redirect(url_for("inventory.inventory"))
         
-        # التحقق من أن التعديل لن يجعل المخزون سالباً
-        if product.quantity + adjustment < 0:
+        branch_id = _inventory_branch_id()
+        current_qty = get_branch_stock(branch_id, product.id) if branch_id else (product.quantity or 0)
+        if current_qty + adjustment < 0:
             if request.is_json:
                 return jsonify({
                     "success": False, 
-                    "error": f"المخزون لا يمكن أن يكون سالباً. المخزون الحالي: {product.quantity}"
+                    "error": f"المخزون لا يمكن أن يكون سالباً. المخزون الحالي: {current_qty}"
                 }), 400
             else:
                 from flask import flash
-                flash(f"المخزون لا يمكن أن يكون سالباً. المخزون الحالي: {product.quantity}", "error")
+                flash(f"المخزون لا يمكن أن يكون سالباً. المخزون الحالي: {current_qty}", "error")
                 return redirect(url_for("inventory.inventory"))
         
         # تطبيق التعديل
-        old_quantity = product.quantity
-        product.quantity += adjustment
+        old_quantity = current_qty
+        if branch_id:
+            adjust_branch_stock(branch_id, product.id, adjustment)
+            new_quantity = get_branch_stock(branch_id, product.id)
+        else:
+            product.quantity += adjustment
+            new_quantity = product.quantity
         
         db.session.commit()
         
@@ -767,7 +822,7 @@ def adjust_stock(id):
                 "success": True, 
                 "message": f"تم تعديل المخزون بنجاح. السبب: {reason}",
                 "old_quantity": old_quantity,
-                "new_quantity": product.quantity,
+                "new_quantity": new_quantity,
                 "adjustment": adjustment
             })
         else:

@@ -1546,8 +1546,12 @@
   <!-- ================= PRODUCTS TABLE ================= -->
   <div class="card">
     <div class="inv-products-header">
-      <h3 class="inv-products-title">📦 {{ _('inventory_products_title') }} <span style="font-size:15px; opacity: 0.55; font-weight:500;">({{ products|length }})</span></h3>
+      <h3 class="inv-products-title">📦 {{ _('inventory_products_title') }} <span style="font-size:15px; opacity: 0.55; font-weight:500;">({{ products|length }}) — {{ branch_scope_label }}</span></h3>
       <div class="inv-products-actions">
+        <a href="{{ url_for('stock_transfers.transfers_index') }}" class="inv-btn secondary">
+          <i class="fas fa-truck-loading"></i>
+          <span>نقل بين الفروع</span>
+        </a>
         <a href="{{ url_for('inventory.add_product_page') }}" class="inv-btn primary">
           <i class="fas fa-plus"></i>
           <span>{{ _('inventory_add_product') }}</span>
@@ -1597,7 +1601,7 @@
       "sku": {{ (p.sku or '---')|tojson }},
       "barcode": {{ (p.barcode or '---')|tojson }},
       "opening_stock": {{ p.opening_stock or 0 }},
-      "quantity": {{ p.quantity if p.quantity is not none else 0 }},
+      "quantity": {{ (branch_stock_map.get(p.id, p.quantity or 0) if not view_all_branches else (p.quantity or 0)) }},
       "low_stock_threshold": {{ p.low_stock_threshold or 5 }},
       "active": {{ 'true' if p.active else 'false' }},
       "product_url": {{ (url_for('storefront.product_detail', tenant_slug=_store_tslug, product_id=p.id) if _store_tslug else '')|tojson }},
@@ -1606,7 +1610,7 @@
       "meta_json": {{ (p.meta_json or '{}')|tojson }},
       "buy_price": {{ p.buy_price or 0 }},
       "sale_price": {{ p.sale_price or 0 }},
-      "inventory_value": {{ (p.buy_price or 0) * (p.quantity or 0) }},
+      "inventory_value": {{ (p.buy_price or 0) * ((branch_stock_map.get(p.id, p.quantity or 0) if not view_all_branches else (p.quantity or 0))) }},
       "profit": {{ (p.sale_price or 0) - (p.buy_price or 0) }}
     }{% if not loop.last %},{% endif %}
     {% endfor %}

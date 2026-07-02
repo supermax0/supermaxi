@@ -19,6 +19,12 @@ class OrderItem(db.Model):
         nullable=False
     )
 
+    fulfillment_branch_id = db.Column(
+        db.Integer,
+        db.ForeignKey("branch.id"),
+        nullable=True,
+    )
+
     # =====================
     # Relations
     # =====================

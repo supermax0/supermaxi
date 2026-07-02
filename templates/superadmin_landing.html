@@ -1,0 +1,139 @@
+{% extends "superadmin_base.html" %}
+{% block title %}إدارة صفحة الهبوط — Finora Superadmin{% endblock %}
+{% block page_title %}إدارة صفحة الهبوط{% endblock %}
+{% block breadcrumb_current %}إدارة صفحة الهبوط{% endblock %}
+
+{% block extra_style %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin_landing.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="landing-admin-shell">
+    <div class="landing-admin-hero">
+        <div>
+            <span>Mini CMS</span>
+            <h2>تحكم بمحتوى صفحة Finora Cloud بدون تعديل الكود</h2>
+            <p>كل تعديل يحفظ كمسودة. اضغط معاينة قبل النشر، ثم انشر لتظهر التغييرات للزوار.</p>
+        </div>
+        <div class="landing-admin-actions">
+            <a href="/landing/preview" target="_blank" class="btn-secondary"><i class="fas fa-eye"></i>معاينة</a>
+            <a href="/landing" target="_blank" class="btn-secondary"><i class="fas fa-globe"></i>الصفحة العامة</a>
+            <button type="button" id="publishLandingBtn" class="btn-primary"><i class="fas fa-paper-plane"></i>نشر التغييرات</button>
+        </div>
+    </div>
+
+    <div id="landingAdminAlert" class="landing-admin-alert" hidden></div>
+
+    <div class="landing-admin-layout">
+        <aside class="landing-admin-tabs" aria-label="أقسام إدارة صفحة الهبوط">
+            <button data-tab="overview" class="active"><i class="fas fa-gauge"></i>نظرة عامة</button>
+            <button data-tab="settings"><i class="fas fa-sliders"></i>معلومات الصفحة</button>
+            <button data-tab="sections"><i class="fas fa-layer-group"></i>الأقسام</button>
+            <button data-tab="features"><i class="fas fa-stars"></i>المميزات</button>
+            <button data-tab="modules"><i class="fas fa-table-cells-large"></i>الموديلات</button>
+            <button data-tab="pricing"><i class="fas fa-tags"></i>الخطط والأسعار</button>
+            <button data-tab="faqs"><i class="fas fa-circle-question"></i>FAQ</button>
+            <button data-tab="testimonials"><i class="fas fa-comment-dots"></i>آراء العملاء</button>
+            <button data-tab="ctas"><i class="fas fa-bullhorn"></i>الأزرار</button>
+            <button data-tab="media"><i class="fas fa-photo-film"></i>الوسائط</button>
+            <button data-tab="seo"><i class="fas fa-magnifying-glass-chart"></i>SEO</button>
+            <button data-tab="theme"><i class="fas fa-palette"></i>الثيم</button>
+        </aside>
+
+        <main class="landing-admin-panels">
+            <section data-panel="overview" class="landing-panel active">
+                <div class="landing-metrics" id="landingMetrics"></div>
+                <div class="landing-help-card">
+                    <h3>مسار العمل</h3>
+                    <p>عدّل أي قسم، احفظ المسودة، افتح المعاينة، ثم انشر. الصفحة العامة لا تتغير إلا بعد النشر.</p>
+                </div>
+            </section>
+
+            <section data-panel="settings" class="landing-panel">
+                <form id="settingsForm" class="landing-form-grid"></form>
+            </section>
+
+            <section data-panel="sections" class="landing-panel">
+                <div class="panel-toolbar">
+                    <h3>أقسام الصفحة</h3>
+                    <button type="button" class="btn-secondary" data-add="sections"><i class="fas fa-plus"></i>إضافة قسم</button>
+                </div>
+                <div id="sectionsList" class="landing-edit-list"></div>
+            </section>
+
+            <section data-panel="features" class="landing-panel">
+                <div class="panel-toolbar">
+                    <h3>المميزات</h3>
+                    <button type="button" class="btn-secondary" data-add="features"><i class="fas fa-plus"></i>إضافة ميزة</button>
+                </div>
+                <div id="featuresList" class="landing-edit-list"></div>
+            </section>
+
+            <section data-panel="modules" class="landing-panel">
+                <div class="panel-toolbar">
+                    <h3>الموديلات</h3>
+                    <button type="button" class="btn-secondary" data-add="modules"><i class="fas fa-plus"></i>إضافة موديل</button>
+                </div>
+                <div id="modulesList" class="landing-edit-list"></div>
+            </section>
+
+            <section data-panel="pricing" class="landing-panel">
+                <div class="panel-toolbar">
+                    <h3>الخطط والأسعار</h3>
+                    <button type="button" class="btn-secondary" data-add="pricing"><i class="fas fa-plus"></i>إضافة خطة</button>
+                </div>
+                <div id="pricingList" class="landing-edit-list"></div>
+            </section>
+
+            <section data-panel="faqs" class="landing-panel">
+                <div class="panel-toolbar">
+                    <h3>الأسئلة الشائعة</h3>
+                    <button type="button" class="btn-secondary" data-add="faqs"><i class="fas fa-plus"></i>إضافة سؤال</button>
+                </div>
+                <div id="faqsList" class="landing-edit-list"></div>
+            </section>
+
+            <section data-panel="testimonials" class="landing-panel">
+                <div class="panel-toolbar">
+                    <h3>آراء العملاء</h3>
+                    <button type="button" class="btn-secondary" data-add="testimonials"><i class="fas fa-plus"></i>إضافة رأي</button>
+                </div>
+                <div id="testimonialsList" class="landing-edit-list"></div>
+            </section>
+
+            <section data-panel="ctas" class="landing-panel">
+                <div class="panel-toolbar">
+                    <h3>الأزرار والروابط</h3>
+                    <button type="button" class="btn-secondary" data-add="ctas"><i class="fas fa-plus"></i>إضافة زر</button>
+                </div>
+                <div id="ctasList" class="landing-edit-list"></div>
+            </section>
+
+            <section data-panel="media" class="landing-panel">
+                <div class="panel-toolbar">
+                    <h3>مكتبة الوسائط</h3>
+                </div>
+                <form id="mediaUploadForm" class="media-upload-box">
+                    <input type="file" name="file" accept=".jpg,.jpeg,.png,.webp,.svg,.mp4" required>
+                    <input type="text" name="title" placeholder="عنوان الوسيط">
+                    <input type="text" name="alt_text" placeholder="Alt text">
+                    <button type="submit" class="btn-primary"><i class="fas fa-upload"></i>رفع</button>
+                </form>
+                <div id="mediaList" class="landing-media-grid"></div>
+            </section>
+
+            <section data-panel="seo" class="landing-panel">
+                <form id="seoForm" class="landing-form-grid"></form>
+            </section>
+
+            <section data-panel="theme" class="landing-panel">
+                <form id="themeForm" class="landing-form-grid"></form>
+            </section>
+        </main>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/superadmin_landing.js') }}"></script>
+{% endblock %}

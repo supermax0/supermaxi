@@ -11,6 +11,9 @@ from models.invoice import Invoice
 from models.order_item import OrderItem
 from models.product import Product
 from utils.inventory_movements import validate_sale_quantity
+from utils.branch_migration import ensure_branch_schema, get_default_branch
+from utils.branch_context import current_branch_id, init_branch_context
+from utils.branch_stock_service import deduct_stock, get_branch_stock, BranchStockError
 from utils.payment_ledger import append_payment_ledger_delta
 from utils.product_schema_guard import ensure_customer_blacklist_columns, ensure_product_schema
 
@@ -27,6 +30,8 @@ def quick_sale_use_tenant_db():
         g.tenant = tenant_slug
         ensure_product_schema()
         ensure_customer_blacklist_columns()
+        ensure_branch_schema()
+        init_branch_context()
 
 
 def _current_employee():
@@ -122,7 +127,8 @@ def execute():
         product = Product.query.get(product_id)
         if not product or not product.active:
             return jsonify({"success": False, "error": "منتج غير موجود أو غير فعال"}), 400
-        validation = validate_sale_quantity(product.id, qty)
+        branch_id = current_branch_id() or (get_default_branch().id if get_default_branch() else None)
+        validation = validate_sale_quantity(product.id, qty, branch_id)
         if not validation.get("valid"):
             return jsonify({"success": False, "error": validation.get("message") or "الكمية غير متوفرة"}), 400
         clean_items.append({"product": product, "qty": qty})
@@ -149,6 +155,7 @@ def execute():
         customer_name=customer.name,
         employee_id=employee.id if employee else None,
         employee_name=employee.name if employee else None,
+        branch_id=current_branch_id() or (get_default_branch().id if get_default_branch() else None),
         total=0,
         paid_amount=0,
         status="تم الطلب",
@@ -160,11 +167,13 @@ def execute():
     db.session.flush()
 
     total = 0
+    sale_branch_id = current_branch_id() or (get_default_branch().id if get_default_branch() else None)
     for row in clean_items:
         product = row["product"]
         qty = int(row["qty"])
         line_total = int(product.sale_price or 0) * qty
         total += line_total
+        fulfillment_branch_id = sale_branch_id
         db.session.add(
             OrderItem(
                 invoice_id=invoice.id,
@@ -174,9 +183,14 @@ def execute():
                 price=int(product.sale_price or 0),
                 cost=int(product.buy_price or 0),
                 total=line_total,
+                fulfillment_branch_id=fulfillment_branch_id,
             )
         )
-        product.quantity = int(product.quantity or 0) - qty
+        try:
+            deduct_stock(fulfillment_branch_id, product.id, qty)
+        except BranchStockError as exc:
+            db.session.rollback()
+            return jsonify({"success": False, "error": str(exc)}), 400
 
     invoice.total = total
     invoice.paid_amount = total
