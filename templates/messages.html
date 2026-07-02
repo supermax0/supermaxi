@@ -2684,7 +2684,7 @@
             if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
               new Notification(msgsNewFrom + currentChatUserName, {
                 body: (otherUserMessages[0].content || '').substring(0, 50),
-                icon: '/static/favicon.ico'
+                icon: '/static/favicon.png'
               });
             }
           }

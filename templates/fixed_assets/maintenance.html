@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}صيانة الأصول{% endblock %}
+{% block page_title %}🔧 صيانة وتحسين الأصول{% endblock %}
+{% block content %}
+<style>
+.fa-page { max-width: 1100px; margin: 0 auto; direction: rtl; }
+.fa-nav { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
+.fa-nav a { padding: 8px 14px; border-radius: 10px; background: var(--card-alt); border: 1px solid var(--border-light); color: var(--text); text-decoration: none; font-size: 14px; }
+.fa-nav a.active { background: var(--primary); color: #fff; }
+.fa-card { background: var(--card); border: 1px solid var(--border-light); border-radius: 16px; padding: 20px; margin-bottom: 18px; }
+.fa-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.fa-grid .full { grid-column: 1 / -1; }
+.fa-field label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 6px; }
+.fa-field input, .fa-field select, .fa-field textarea { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid var(--border-light); background: var(--card-alt); color: var(--text); }
+.fa-btn { padding: 10px 18px; border-radius: 10px; border: none; background: var(--primary); color: #fff; cursor: pointer; font-weight: 700; }
+.fa-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.fa-table th, .fa-table td { padding: 10px; border: 1px solid var(--border-light); text-align: right; }
+@media (max-width: 720px) { .fa-grid { grid-template-columns: 1fr; } }
+</style>
+<div class="fa-page">
+  {% include "fixed_assets/_nav.html" %}
+  <div class="fa-card">
+    <h3 style="margin-top:0;">إضافة صيانة / تحسين</h3>
+    <form method="post">
+      <div class="fa-grid">
+        <div class="fa-field"><label>الأصل *</label>
+          <select name="asset_id" required>
+            <option value="">— اختر —</option>
+            {% for a in assets %}
+            <option value="{{ a.id }}" {% if form and form.asset_id|string == a.id|string %}selected{% endif %}>{{ a.asset_code }} — {{ a.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="fa-field"><label>النوع *</label>
+          <select name="maintenance_type" required>
+            {% for key, label in maintenance_types.items() %}
+            <option value="{{ key }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="fa-field"><label>التاريخ</label><input type="date" name="maintenance_date"></div>
+        <div class="fa-field"><label>المبلغ *</label><input type="number" name="amount" min="1" required></div>
+        <div class="fa-field"><label>المورد</label>
+          <select name="supplier_id"><option value="">—</option>{% for s in suppliers %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}</select>
+        </div>
+        <div class="fa-field"><label>طريقة الدفع</label>
+          <select name="payment_method">{% for key, label in payment_methods.items() if key != 'mixed' %}<option value="{{ key }}">{{ label }}</option>{% endfor %}</select>
+        </div>
+        <div class="fa-field"><label>حساب الدفع</label>
+          <select name="treasury_account_id">{% for t in treasury_choices %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}</select>
+        </div>
+        <div class="fa-field full"><label>الوصف</label><textarea name="description" rows="2"></textarea></div>
+      </div>
+      <p style="font-size:13px;color:var(--text-muted);margin:12px 0;">الصيانة العادية تُسجّل كمصروف. التحسين الرأسمالي يزيد تكلفة الأصل ويُعاد حساب الاستهلاك.</p>
+      <button type="submit" class="fa-btn">حفظ وترحيل القيد</button>
+    </form>
+  </div>
+  <h3>آخر العمليات</h3>
+  <table class="fa-table">
+    <thead><tr><th>التاريخ</th><th>الأصل</th><th>النوع</th><th>المبلغ</th><th>رأسمالي؟</th><th>الوصف</th></tr></thead>
+    <tbody>
+      {% for r in records %}
+      <tr>
+        <td>{{ r.maintenance_date }}</td>
+        <td><a href="/assets/{{ r.asset_id }}">{{ r.asset.asset_code if r.asset else r.asset_id }}</a></td>
+        <td>{{ r.type_label() }}</td>
+        <td>{{ "{:,}".format(r.amount or 0) }}</td>
+        <td>{{ 'نعم' if r.is_capitalized else 'لا' }}</td>
+        <td>{{ r.description or '—' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6">لا توجد عمليات صيانة بعد.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

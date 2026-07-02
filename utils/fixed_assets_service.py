@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+from typing import Optional
 import uuid
 
 from extensions import db
@@ -15,6 +16,7 @@ from models.fixed_asset_category import FixedAssetCategory
 from models.fixed_asset_movement import FixedAssetMovement
 from models.fixed_asset_depreciation import FixedAssetDepreciation
 from models.fixed_asset_maintenance import FixedAssetMaintenance
+from models.fixed_asset_disposal import FixedAssetDisposal
 from models.journal_entry import JournalEntry
 from models.supplier import Supplier
 from utils.accounting_logic import ACCOUNT_CODES, get_or_create_account, initialize_accounts
@@ -27,6 +29,9 @@ FIXED_ASSET_GL = {
     "ACCUMULATED_DEPRECIATION": "1302",
     "DEPRECIATION_EXPENSE": "6101",
     "MAINTENANCE_EXPENSE": "6102",
+    "GAIN_ON_SALE": "4202",
+    "LOSS_ON_SALE": "6202",
+    "LOSS_ON_SCRAP": "6203",
     "BANK": "1002",
 }
 
@@ -96,6 +101,24 @@ def ensure_fixed_asset_gl_accounts():
         "مصروف صيانة الأصول",
         "expense",
         "مصروف صيانة الأصول الثابتة",
+    )
+    get_or_create_account(
+        FIXED_ASSET_GL["GAIN_ON_SALE"],
+        "أرباح بيع الأصول",
+        "revenue",
+        "إيراد أرباح بيع الأصول الثابتة",
+    )
+    get_or_create_account(
+        FIXED_ASSET_GL["LOSS_ON_SALE"],
+        "خسائر بيع الأصول",
+        "expense",
+        "مصروف خسائر بيع الأصول الثابتة",
+    )
+    get_or_create_account(
+        FIXED_ASSET_GL["LOSS_ON_SCRAP"],
+        "خسائر إتلاف الأصول",
+        "expense",
+        "مصروف خسائر إتلاف الأصول الثابتة",
     )
     db.session.commit()
 
@@ -490,7 +513,7 @@ def _already_depreciated(asset: FixedAsset, year: int, month: int) -> bool:
     ).first() is not None
 
 
-def _depreciation_skip_reason(asset: FixedAsset, year: int, month: int) -> str | None:
+def _depreciation_skip_reason(asset: FixedAsset, year: int, month: int) -> Optional[str]:
     if asset.status in ("sold", "scrapped", "under_installation", "draft"):
         return f"الحالة: {asset.status_label()}"
     if not asset.is_depreciable:
@@ -680,11 +703,7 @@ def post_asset_maintenance(data, user_id=None):
     treasury_id = resolve_treasury_account_id(data.get("treasury_account_id"))
     is_capitalized = mtype == "improvement"
 
-    pay_account_id = _resolve_payment_accounts(payment_method, treasury_id)
-    if not pay_account_id:
-        raise FixedAssetError("حساب الدفع غير متوفر")
-
-    if payment_method in ("cash", "bank", "mixed"):
+    if payment_method in ("cash", "bank"):
         try:
             assert_sufficient_balance(treasury_id, amount)
         except InsufficientTreasuryBalance as exc:
@@ -697,6 +716,23 @@ def post_asset_maintenance(data, user_id=None):
                 treasury_account_id=treasury_id,
             )
         )
+        pay_account_id = _resolve_payment_accounts(payment_method, treasury_id)
+    elif payment_method == "credit":
+        ap_account = Account.query.filter_by(code=ACCOUNT_CODES["ACCOUNTS_PAYABLE"]).first()
+        if not ap_account:
+            initialize_accounts()
+            ap_account = Account.query.filter_by(code=ACCOUNT_CODES["ACCOUNTS_PAYABLE"]).first()
+        pay_account_id = ap_account.id if ap_account else None
+        supplier_id = _safe_int(data.get("supplier_id"))
+        if supplier_id:
+            supplier = Supplier.query.get(supplier_id)
+            if supplier:
+                supplier.total_debt = _safe_int(supplier.total_debt) + amount
+    else:
+        pay_account_id = _resolve_payment_accounts(payment_method, treasury_id)
+
+    if not pay_account_id:
+        raise FixedAssetError("حساب الدفع غير متوفر")
 
     old_book = _safe_int(asset.book_value)
     if is_capitalized:
@@ -770,4 +806,497 @@ def post_asset_maintenance(data, user_id=None):
         )
     )
     return record
+
+
+# ─── المرحلة 4: بيع / إتلاف ───
+
+def _get_receipt_account_id(payment_method, treasury_id=None):
+    if payment_method == "credit":
+        ap = Account.query.filter_by(code=ACCOUNT_CODES["ACCOUNTS_RECEIVABLE"]).first()
+        if not ap:
+            initialize_accounts()
+            ap = Account.query.filter_by(code=ACCOUNT_CODES["ACCOUNTS_RECEIVABLE"]).first()
+        return ap.id if ap else None
+    return _resolve_payment_accounts(payment_method, treasury_id)
+
+
+def _validate_disposable_asset(asset: FixedAsset):
+    if asset.status in ("sold", "scrapped", "draft"):
+        raise FixedAssetError("لا يمكن بيع أو إتلاف أصل في هذه الحالة")
+    if not asset.acquisition_journal_entry_id:
+        raise FixedAssetError("يجب ترحيل قيد شراء الأصل أولاً")
+    if FixedAssetDisposal.query.filter_by(asset_id=asset.id).first():
+        raise FixedAssetError("تم تسجيل بيع/إتلاف لهذا الأصل مسبقاً")
+
+
+def post_asset_sale(data, user_id=None):
+    ensure_fixed_assets_schema()
+    ensure_fixed_asset_gl_accounts()
+
+    asset = FixedAsset.query.get(_safe_int(data.get("asset_id")))
+    if not asset:
+        raise FixedAssetError("الأصل غير موجود")
+    _validate_disposable_asset(asset)
+
+    sale_amount = _safe_int(data.get("sale_amount"))
+    if sale_amount < 0:
+        raise FixedAssetError("سعر البيع غير صالح")
+
+    disposal_date = _parse_date(data.get("disposal_date")) or date.today()
+    payment_method = (data.get("payment_method") or "cash").strip()
+    treasury_id = resolve_treasury_account_id(data.get("treasury_account_id"))
+
+    total_cost = _safe_int(asset.total_cost)
+    accum = _safe_int(asset.accumulated_depreciation)
+    book_value = _safe_int(asset.book_value)
+    gain = max(sale_amount - book_value, 0)
+    loss = max(book_value - sale_amount, 0)
+
+    asset_account_id = asset.asset_account_id
+    accum_account_id = asset.accumulated_depreciation_account_id
+    if not asset_account_id or not accum_account_id:
+        raise FixedAssetError("حسابات الأصل أو مجمع الاستهلاك غير مكتملة")
+
+    receipt_account_id = _get_receipt_account_id(payment_method, treasury_id)
+    if sale_amount > 0 and not receipt_account_id:
+        raise FixedAssetError("حساب القبض غير متوفر")
+
+    gain_acc = Account.query.filter_by(code=FIXED_ASSET_GL["GAIN_ON_SALE"]).first()
+    loss_acc = Account.query.filter_by(code=FIXED_ASSET_GL["LOSS_ON_SALE"]).first()
+    if not gain_acc or not loss_acc:
+        ensure_fixed_asset_gl_accounts()
+        gain_acc = Account.query.filter_by(code=FIXED_ASSET_GL["GAIN_ON_SALE"]).first()
+        loss_acc = Account.query.filter_by(code=FIXED_ASSET_GL["LOSS_ON_SALE"]).first()
+
+    desc_base = f"بيع أصل {asset.asset_code} - {asset.name}"
+    first_entry = None
+
+    if accum > 0:
+        e1 = _journal_by_ids(
+            accum_account_id,
+            asset_account_id,
+            accum,
+            f"{desc_base} — إقفال مجمع الاستهلاك",
+            reference_type="fixed_asset_sale",
+            reference_id=asset.id,
+            created_by=user_id,
+        )
+        first_entry = first_entry or e1
+
+    if gain > 0:
+        if book_value > 0:
+            e2 = _journal_by_ids(
+                receipt_account_id,
+                asset_account_id,
+                book_value,
+                f"{desc_base} — مقبوضات مقابل القيمة الدفترية",
+                reference_type="fixed_asset_sale",
+                reference_id=asset.id,
+                created_by=user_id,
+            )
+            first_entry = first_entry or e2
+        e3 = _journal_by_ids(
+            receipt_account_id,
+            gain_acc.id,
+            gain,
+            f"{desc_base} — ربح البيع",
+            reference_type="fixed_asset_sale",
+            reference_id=asset.id,
+            created_by=user_id,
+        )
+        first_entry = first_entry or e3
+    elif loss > 0:
+        if sale_amount > 0:
+            e2 = _journal_by_ids(
+                receipt_account_id,
+                asset_account_id,
+                sale_amount,
+                f"{desc_base} — مقبوضات البيع",
+                reference_type="fixed_asset_sale",
+                reference_id=asset.id,
+                created_by=user_id,
+            )
+            first_entry = first_entry or e2
+        e4 = _journal_by_ids(
+            loss_acc.id,
+            asset_account_id,
+            loss,
+            f"{desc_base} — خسارة البيع",
+            reference_type="fixed_asset_sale",
+            reference_id=asset.id,
+            created_by=user_id,
+        )
+        first_entry = first_entry or e4
+    elif book_value > 0 and sale_amount > 0:
+        e2 = _journal_by_ids(
+            receipt_account_id,
+            asset_account_id,
+            book_value,
+            f"{desc_base} — بيع بسعر القيمة الدفترية",
+            reference_type="fixed_asset_sale",
+            reference_id=asset.id,
+            created_by=user_id,
+        )
+        first_entry = first_entry or e2
+
+    if sale_amount > 0 and payment_method in ("cash", "bank"):
+        db.session.add(
+            AccountTransaction(
+                type="deposit",
+                amount=sale_amount,
+                note=f"بيع أصل: {asset.asset_code}",
+                treasury_account_id=treasury_id,
+            )
+        )
+
+    disposal = FixedAssetDisposal(
+        asset_id=asset.id,
+        disposal_type="sale",
+        disposal_date=disposal_date,
+        sale_amount=sale_amount,
+        payment_method=payment_method,
+        treasury_account_id=treasury_id,
+        buyer_name=(data.get("buyer_name") or "").strip() or None,
+        cost_amount=total_cost,
+        accumulated_depreciation_amount=accum,
+        book_value=book_value,
+        gain_amount=gain,
+        loss_amount=loss,
+        journal_entry_id=first_entry.id if first_entry else None,
+        notes=(data.get("notes") or "").strip() or None,
+        created_by=user_id,
+    )
+    db.session.add(disposal)
+    db.session.flush()
+
+    asset.status = "sold"
+    asset.book_value = 0
+    asset.is_depreciable = False
+    asset.updated_by = user_id
+    asset.updated_at = datetime.utcnow()
+
+    db.session.add(
+        FixedAssetMovement(
+            asset_id=asset.id,
+            movement_type="disposal",
+            movement_date=disposal_date,
+            amount=sale_amount,
+            old_book_value=book_value,
+            new_book_value=0,
+            journal_entry_id=first_entry.id if first_entry else None,
+            source_type="fixed_asset_disposal",
+            source_id=disposal.id,
+            notes=f"بيع — ربح {gain:,} / خسارة {loss:,}",
+            created_by=user_id,
+        )
+    )
+    return disposal
+
+
+def post_asset_scrap(data, user_id=None):
+    ensure_fixed_assets_schema()
+    ensure_fixed_asset_gl_accounts()
+
+    asset = FixedAsset.query.get(_safe_int(data.get("asset_id")))
+    if not asset:
+        raise FixedAssetError("الأصل غير موجود")
+    _validate_disposable_asset(asset)
+
+    disposal_date = _parse_date(data.get("disposal_date")) or date.today()
+    total_cost = _safe_int(asset.total_cost)
+    accum = _safe_int(asset.accumulated_depreciation)
+    book_value = _safe_int(asset.book_value)
+
+    asset_account_id = asset.asset_account_id
+    accum_account_id = asset.accumulated_depreciation_account_id
+    if not asset_account_id:
+        raise FixedAssetError("حساب الأصل غير محدد")
+
+    scrap_loss_acc = Account.query.filter_by(code=FIXED_ASSET_GL["LOSS_ON_SCRAP"]).first()
+    if not scrap_loss_acc:
+        ensure_fixed_asset_gl_accounts()
+        scrap_loss_acc = Account.query.filter_by(code=FIXED_ASSET_GL["LOSS_ON_SCRAP"]).first()
+
+    desc = f"إتلاف أصل {asset.asset_code} - {asset.name}"
+    first_entry = None
+
+    if accum > 0 and accum_account_id:
+        e1 = _journal_by_ids(
+            accum_account_id,
+            asset_account_id,
+            accum,
+            f"{desc} — إقفال مجمع الاستهلاك",
+            reference_type="fixed_asset_scrap",
+            reference_id=asset.id,
+            created_by=user_id,
+        )
+        first_entry = first_entry or e1
+
+    if book_value > 0:
+        e2 = _journal_by_ids(
+            scrap_loss_acc.id,
+            asset_account_id,
+            book_value,
+            f"{desc} — خسارة الإتلاف",
+            reference_type="fixed_asset_scrap",
+            reference_id=asset.id,
+            created_by=user_id,
+        )
+        first_entry = first_entry or e2
+
+    disposal = FixedAssetDisposal(
+        asset_id=asset.id,
+        disposal_type="scrap",
+        disposal_date=disposal_date,
+        sale_amount=0,
+        cost_amount=total_cost,
+        accumulated_depreciation_amount=accum,
+        book_value=book_value,
+        gain_amount=0,
+        loss_amount=book_value,
+        journal_entry_id=first_entry.id if first_entry else None,
+        scrap_reason=(data.get("scrap_reason") or "").strip() or None,
+        notes=(data.get("notes") or "").strip() or None,
+        created_by=user_id,
+    )
+    db.session.add(disposal)
+    db.session.flush()
+
+    asset.status = "scrapped"
+    asset.book_value = 0
+    asset.is_depreciable = False
+    asset.updated_by = user_id
+    asset.updated_at = datetime.utcnow()
+
+    db.session.add(
+        FixedAssetMovement(
+            asset_id=asset.id,
+            movement_type="scrap",
+            movement_date=disposal_date,
+            amount=book_value,
+            old_book_value=book_value,
+            new_book_value=0,
+            journal_entry_id=first_entry.id if first_entry else None,
+            source_type="fixed_asset_disposal",
+            source_id=disposal.id,
+            notes=disposal.scrap_reason or "إتلاف الأصل",
+            created_by=user_id,
+        )
+    )
+    return disposal
+
+
+# ─── نقل الأصول (بدون قيد إلا عند وجود تكلفة) ───
+
+def post_asset_transfer(data, user_id=None):
+    ensure_fixed_assets_schema()
+    asset = FixedAsset.query.get(_safe_int(data.get("asset_id")))
+    if not asset:
+        raise FixedAssetError("الأصل غير موجود")
+    if asset.status in ("sold", "scrapped", "draft"):
+        raise FixedAssetError("لا يمكن نقل أصل في هذه الحالة")
+
+    transfer_date = _parse_date(data.get("transfer_date")) or date.today()
+    old_location = asset.location_text or "—"
+    new_location = (data.get("new_location") or "").strip()
+    new_branch_id = _safe_int(data.get("new_branch_id")) or None
+    new_responsible_id = _safe_int(data.get("new_responsible_user_id")) or None
+    transfer_cost = _safe_int(data.get("transfer_cost"))
+
+    if new_location:
+        asset.location_text = new_location
+    if new_branch_id:
+        asset.branch_id = new_branch_id
+    if new_responsible_id:
+        asset.responsible_user_id = new_responsible_id
+    asset.updated_by = user_id
+    asset.updated_at = datetime.utcnow()
+
+    entry = None
+    if transfer_cost > 0:
+        maint = post_asset_maintenance(
+            {
+                "asset_id": asset.id,
+                "maintenance_type": "regular",
+                "maintenance_date": transfer_date.isoformat(),
+                "amount": transfer_cost,
+                "payment_method": data.get("payment_method") or "cash",
+                "treasury_account_id": data.get("treasury_account_id"),
+                "description": f"أجور نقل أصل {asset.asset_code}",
+            },
+            user_id=user_id,
+        )
+        entry = maint.journal_entry
+
+    db.session.add(
+        FixedAssetMovement(
+            asset_id=asset.id,
+            movement_type="transfer",
+            movement_date=transfer_date,
+            amount=transfer_cost,
+            old_book_value=_safe_int(asset.book_value),
+            new_book_value=_safe_int(asset.book_value),
+            journal_entry_id=entry.id if entry else None,
+            source_type="fixed_asset_transfer",
+            source_id=asset.id,
+            notes=f"نقل من {old_location} إلى {new_location or '—'} — {(data.get('reason') or '')}",
+            created_by=user_id,
+        )
+    )
+    return asset
+
+
+# ─── المرحلة 5: تقارير الأصول ───
+
+def build_asset_reports(report_type="register", year_from=None, month_from=None, year_to=None, month_to=None):
+    assets = FixedAsset.query.order_by(FixedAsset.asset_code).all()
+
+    if report_type == "register":
+        return {
+            "title": "سجل الأصول",
+            "rows": [
+                {
+                    "code": a.asset_code,
+                    "name": a.name,
+                    "category": a.category.name if a.category else "—",
+                    "total_cost": _safe_int(a.total_cost),
+                    "accumulated": _safe_int(a.accumulated_depreciation),
+                    "book_value": _safe_int(a.book_value),
+                    "status": a.status_label(),
+                    "location": a.location_text or "—",
+                    "responsible": a.responsible_user.name if a.responsible_user else "—",
+                }
+                for a in assets
+            ],
+        }
+
+    if report_type == "by_category":
+        from collections import defaultdict
+        groups = defaultdict(lambda: {"count": 0, "cost": 0, "accum": 0, "book": 0, "name": ""})
+        for a in assets:
+            if a.status in ("sold", "scrapped"):
+                continue
+            key = a.category_id or 0
+            g = groups[key]
+            g["name"] = a.category.name if a.category else "غير مصنف"
+            g["count"] += 1
+            g["cost"] += _safe_int(a.total_cost)
+            g["accum"] += _safe_int(a.accumulated_depreciation)
+            g["book"] += _safe_int(a.book_value)
+        return {"title": "الأصول حسب التصنيف", "rows": list(groups.values())}
+
+    if report_type == "by_location":
+        from collections import defaultdict
+        groups = defaultdict(lambda: {"count": 0, "cost": 0, "book": 0, "location": ""})
+        for a in assets:
+            if a.status in ("sold", "scrapped"):
+                continue
+            loc = a.location_text or "بدون موقع"
+            g = groups[loc]
+            g["location"] = loc
+            g["count"] += 1
+            g["cost"] += _safe_int(a.total_cost)
+            g["book"] += _safe_int(a.book_value)
+        return {"title": "الأصول حسب الموقع", "rows": list(groups.values())}
+
+    if report_type == "sold":
+        disposals = FixedAssetDisposal.query.filter_by(disposal_type="sale").order_by(
+            FixedAssetDisposal.disposal_date.desc()
+        ).all()
+        return {
+            "title": "الأصول المباعة",
+            "rows": [
+                {
+                    "asset": d.asset.asset_code if d.asset else d.asset_id,
+                    "name": d.asset.name if d.asset else "—",
+                    "date": d.disposal_date,
+                    "sale_amount": d.sale_amount,
+                    "book_value": d.book_value,
+                    "gain": d.gain_amount,
+                    "loss": d.loss_amount,
+                }
+                for d in disposals
+            ],
+        }
+
+    if report_type == "scrapped":
+        disposals = FixedAssetDisposal.query.filter_by(disposal_type="scrap").order_by(
+            FixedAssetDisposal.disposal_date.desc()
+        ).all()
+        return {
+            "title": "الأصول التالفة",
+            "rows": [
+                {
+                    "asset": d.asset.asset_code if d.asset else d.asset_id,
+                    "name": d.asset.name if d.asset else "—",
+                    "date": d.disposal_date,
+                    "cost": d.cost_amount,
+                    "accumulated": d.accumulated_depreciation_amount,
+                    "loss": d.loss_amount,
+                    "reason": d.scrap_reason or "—",
+                }
+                for d in disposals
+            ],
+        }
+
+    if report_type == "depreciation":
+        q = FixedAssetDepreciation.query
+        if year_from and month_from:
+            q = q.filter(
+                db.or_(
+                    FixedAssetDepreciation.period_year > year_from,
+                    db.and_(
+                        FixedAssetDepreciation.period_year == year_from,
+                        FixedAssetDepreciation.period_month >= month_from,
+                    ),
+                )
+            )
+        if year_to and month_to:
+            q = q.filter(
+                db.or_(
+                    FixedAssetDepreciation.period_year < year_to,
+                    db.and_(
+                        FixedAssetDepreciation.period_year == year_to,
+                        FixedAssetDepreciation.period_month <= month_to,
+                    ),
+                )
+            )
+        deps = q.order_by(
+            FixedAssetDepreciation.period_year.desc(),
+            FixedAssetDepreciation.period_month.desc(),
+        ).all()
+        return {
+            "title": "تقرير الاستهلاك",
+            "rows": [
+                {
+                    "period": f"{d.period_year}-{d.period_month:02d}",
+                    "asset": d.asset.asset_code if d.asset else d.asset_id,
+                    "name": d.asset.name if d.asset else "—",
+                    "amount": d.depreciation_amount,
+                    "journal_id": d.journal_entry_id,
+                }
+                for d in deps
+            ],
+        }
+
+    if report_type == "review":
+        issues = []
+        for a in assets:
+            if a.status in ("sold", "scrapped"):
+                continue
+            if not a.asset_account_id:
+                issues.append({"asset": a.asset_code, "issue": "بدون حساب أصل"})
+            if a.is_depreciable and not a.accumulated_depreciation_account_id:
+                issues.append({"asset": a.asset_code, "issue": "بدون حساب مجمع استهلاك"})
+            if not a.location_text:
+                issues.append({"asset": a.asset_code, "issue": "بدون موقع"})
+            if not a.responsible_user_id:
+                issues.append({"asset": a.asset_code, "issue": "بدون مسؤول"})
+            if a.total_cost <= 0 and a.status != "draft":
+                issues.append({"asset": a.asset_code, "issue": "تكلفة صفر"})
+            if _safe_int(a.accumulated_depreciation) > _safe_int(a.total_cost):
+                issues.append({"asset": a.asset_code, "issue": "مجمع استهلاك أكبر من التكلفة"})
+        return {"title": "أصول تحتاج مراجعة", "rows": issues}
+
+    return {"title": "تقرير", "rows": []}
 

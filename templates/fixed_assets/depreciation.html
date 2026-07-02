@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}الاستهلاك الشهري{% endblock %}
+{% block page_title %}📉 استهلاك الأصول الشهري{% endblock %}
+{% block content %}
+<style>
+.fa-page { max-width: 1200px; margin:  auto; direction: rtl; }
+.fa-nav { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
+.fa-nav a { padding: 8px 14px; border-radius: 10px; background: var(--card-alt); border: 1px solid var(--border-light); color: var(--text); text-decoration: none; font-size: 14px; }
+.fa-nav a.active { background: var(--primary); color: #fff; }
+.fa-card { background: var(--card); border: 1px solid var(--border-light); border-radius: 16px; padding: 20px; margin-bottom: 18px; }
+.fa-filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+.fa-field label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 6px; }
+.fa-field input, .fa-field select { padding: 10px; border-radius: 10px; border: 1px solid var(--border-light); background: var(--card-alt); color: var(--text); }
+.fa-btn { padding: 10px 18px; border-radius: 10px; border: none; cursor: pointer; font-weight: 700; }
+.fa-btn-primary { background: var(--primary); color: #fff; }
+.fa-btn-success { background: var(--success); color: #fff; }
+.fa-summary { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 16px; font-size: 14px; }
+.fa-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.fa-table th, .fa-table td { padding: 10px; border: 1px solid var(--border-light); text-align: right; }
+.fa-table th { background: rgba(99,102,241,0.12); }
+.fa-table tr.eligible { background: rgba(16,185,129,0.08); }
+.fa-table tr.skipped { opacity: 0.75; }
+.badge-ok { color: var(--success); font-weight: 700; }
+.badge-skip { color: var(--text-muted); font-size: 12px; }
+</style>
+<div class="fa-page">
+  {% include "fixed_assets/_nav.html" %}
+  <div class="fa-card">
+    <form class="fa-filters" method="get">
+      <div class="fa-field"><label>السنة</label><input type="number" name="year" value="{{ year }}" min="2000" max="2100"></div>
+      <div class="fa-field"><label>الشهر</label>
+        <select name="month">
+          {% for m in range(1, 13) %}
+          <option value="{{ m }}" {% if month == m %}selected{% endif %}>{{ m }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="fa-btn fa-btn-primary">فحص الأصول الجاهزة</button>
+    </form>
+    <div class="fa-summary" style="margin-top:16px;">
+      <div><strong>الفترة:</strong> {{ year }}-{{ '%02d'|format(month) }}</div>
+      <div><strong>أصول جاهزة:</strong> {{ preview.eligible_count }}</div>
+      <div><strong>إجمالي الاستهلاك:</strong> {{ "{:,}".format(preview.total_amount) }} د.ع</div>
+    </div>
+    {% if preview.eligible_count > 0 %}
+    <form method="post" style="margin-top:12px;" onsubmit="return confirm('ترحيل استهلاك {{ year }}-{{ '%02d'|format(month) }}؟');">
+      <input type="hidden" name="action" value="post">
+      <input type="hidden" name="year" value="{{ year }}">
+      <input type="hidden" name="month" value="{{ month }}">
+      <button type="submit" class="fa-btn fa-btn-success">ترحيل استهلاك الشهر</button>
+    </form>
+    {% endif %}
+  </div>
+  <table class="fa-table">
+    <thead>
+      <tr>
+        <th>الكود</th><th>الاسم</th><th>التصنيف</th><th>التكلفة</th>
+        <th>مجمع الاستهلاك</th><th>ق.د.</th><th>الخردة</th>
+        <th>استهلاك الشهر</th><th>بعد الاستهلاك</th><th>آخر شهر</th><th>الحالة</th><th>ملاحظات</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in preview.rows %}
+      <tr class="{{ 'eligible' if row.eligible else 'skipped' }}">
+        <td>{{ row.asset.asset_code }}</td>
+        <td><a href="/assets/{{ row.asset.id }}">{{ row.asset.name }}</a></td>
+        <td>{{ row.asset.category.name if row.asset.category else '—' }}</td>
+        <td>{{ "{:,}".format(row.asset.total_cost or 0) }}</td>
+        <td>{{ "{:,}".format(row.asset.accumulated_depreciation or 0) }}</td>
+        <td>{{ "{:,}".format(row.asset.book_value or 0) }}</td>
+        <td>{{ "{:,}".format(row.asset.salvage_value or 0) }}</td>
+        <td>{% if row.eligible %}<span class="badge-ok">{{ "{:,}".format(row.amount) }}</span>{% else %}—{% endif %}</td>
+        <td>{% if row.eligible %}{{ "{:,}".format(row.book_after) }}{% else %}—{% endif %}</td>
+        <td>{{ row.last_period }}</td>
+        <td>{{ row.asset.status_label() }}</td>
+        <td>{% if row.skip_reason %}<span class="badge-skip">{{ row.skip_reason }}</span>{% else %}جاهز{% endif %}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="12">لا توجد أصول.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

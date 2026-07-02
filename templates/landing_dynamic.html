@@ -28,7 +28,7 @@
     <meta name="twitter:title" content="{{ seo.twitter_title or seo.og_title or settings.page_title or 'Finora Cloud' }}">
     <meta name="twitter:description" content="{{ seo.twitter_description or seo.og_description or settings.page_subtitle or '' }}">
     {% if seo.twitter_image_url %}<meta name="twitter:image" content="{{ seo.twitter_image_url }}">{% endif %}
-    <link rel="icon" href="{{ settings.favicon_url or '/static/IMG_0200.png' }}">
+    <link rel="icon" href="{{ settings.favicon_url or '/static/finora-logo.png' }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -52,7 +52,7 @@
 <div class="l-wrap">
     <nav class="l-nav" id="lNav">
         <a href="/" class="l-logo">
-            <img src="{{ settings.logo_url or '/static/IMG_0200.png' }}" alt="{{ settings.site_name or 'Finora' }}">
+            <img src="{{ settings.logo_url or '/static/finora-logo.png' }}" alt="{{ settings.site_name or 'Finora' }}">
             <div>
                 <strong>{{ settings.site_name or 'Finora Cloud' }}</strong>
                 <span>{{ settings.page_subtitle or 'منصة إدارة الأعمال' }}</span>

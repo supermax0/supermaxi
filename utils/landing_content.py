@@ -107,7 +107,7 @@ def _ensure_landing_schema():
 
 def _repair_landing_defaults():
     missing_default = "/static/image.png"
-    existing_default = "/static/IMG_0200.png"
+    existing_default = "/static/finora-logo.png"
     changed = False
     for section in LandingSection.query.filter(LandingSection.image_url == missing_default).all():
         section.image_url = existing_default
@@ -145,8 +145,8 @@ def _seed_scope(scope):
         site_name="Finora Cloud",
         page_title="Finora Cloud — نظام إدارة ومحاسبة ذكي",
         page_subtitle="منصة SaaS تجمع الطلبات والمخزون والحسابات والتسويات في مكان واحد.",
-        logo_url="/static/IMG_0200.png",
-        favicon_url="/static/IMG_0200.png",
+        logo_url="/static/finora-logo.png",
+        favicon_url="/static/finora-logo.png",
         primary_color="#2563eb",
         secondary_color="#0f766e",
         accent_color="#7c3aed",
@@ -164,7 +164,7 @@ def _seed_scope(scope):
     db.session.add(settings)
 
     sections = [
-        ("hero", "hero", "فينورا — نظام إدارة ومحاسبة ذكي لشركتك", "مصمم للشركات والمتاجر العراقية", "تابع المبيعات، الطلبات، المخزون، شركات التوصيل، المصاريف، الأرباح، والتسويات من مكان واحد، مع مساعد ذكي يساعدك تكتشف الأخطاء قبل ما تتحول إلى خسائر.", {"stats": [{"value": "+1,200", "label": "طلب يومياً"}, {"value": "12+", "label": "ميزة تشغيلية"}, {"value": "99.9%", "label": "وقت تشغيل"}, {"value": "4", "label": "خطط مرنة"}]}, "/static/IMG_0200.png", "", "جرّب مجاناً", "/signup?plan=free&billing=monthly", "احجز عرض مباشر", "#contact", 10),
+        ("hero", "hero", "فينورا — نظام إدارة ومحاسبة ذكي لشركتك", "مصمم للشركات والمتاجر العراقية", "تابع المبيعات، الطلبات، المخزون، شركات التوصيل، المصاريف، الأرباح، والتسويات من مكان واحد، مع مساعد ذكي يساعدك تكتشف الأخطاء قبل ما تتحول إلى خسائر.", {"stats": [{"value": "+1,200", "label": "طلب يومياً"}, {"value": "12+", "label": "ميزة تشغيلية"}, {"value": "99.9%", "label": "وقت تشغيل"}, {"value": "4", "label": "خطط مرنة"}]}, "/static/finora-logo.png", "", "جرّب مجاناً", "/signup?plan=free&billing=monthly", "احجز عرض مباشر", "#contact", 10),
         ("pain_points", "pain_points", "الفوضى الصغيرة تتحول إلى خسارة كبيرة", "مشاكل يومية يعرفها كل صاحب متجر", "طلبات غير محسوبة، تسويات توصيل معقدة، مخزون غير مضبوط، أرباح غير واضحة، ومصاريف لا تظهر في التقرير الصحيح.", {"items": ["طلبات غير محسوبة", "تسويات توصيل معقدة", "مخزون غير مضبوط", "أرباح غير واضحة", "مصاريف غير مرتبطة", "موظفون بلا متابعة دقيقة"]}, "", "", "", "", "", "", 20),
         ("solution", "solution", "فينورا يجمع عملياتك في لوحة واحدة", "من الطلب إلى الربح الحقيقي", "فينورا يحوّل شغل شركتك اليومي إلى أرقام واضحة، قرارات أسرع، وتقارير تفهم منها الربح الحقيقي.", {}, "", "", "شاهد طريقة العمل", "#workflow", "", "", 30),
         ("workflow", "workflow", "طريقة العمل", "طلب → تجهيز → شحن → تسليم → تسوية → ربح صافي", "كل خطوة مرتبطة بالأرقام التي تحتاجها لاتخاذ قرار أسرع.", {"steps": ["طلب", "تجهيز", "شحن", "تسليم", "تسوية", "ربح صافي"]}, "", "", "", "", "", "", 40),
@@ -272,10 +272,10 @@ def _seed_scope(scope):
             meta_keywords="Finora, محاسبة, إدارة متجر, SaaS, POS, مخزون, شركات التوصيل",
             og_title="Finora Cloud",
             og_description="كل عمليات شركتك من الطلب إلى التسوية والربح الحقيقي في مكان واحد.",
-            og_image_url="/static/IMG_0200.png",
+            og_image_url="/static/finora-logo.png",
             twitter_title="Finora Cloud",
             twitter_description="نظام إدارة ومحاسبة ذكي للشركات والمتاجر.",
-            twitter_image_url="/static/IMG_0200.png",
+            twitter_image_url="/static/finora-logo.png",
             canonical_url="",
             robots="index,follow",
             schema_json=_as_json({"@context": "https://schema.org", "@type": "SoftwareApplication", "name": "Finora Cloud", "applicationCategory": "BusinessApplication"}),

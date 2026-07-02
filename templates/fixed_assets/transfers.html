@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}نقل الأصول{% endblock %}
+{% block page_title %}🚚 نقل الأصول{% endblock %}
+{% block content %}
+<style>
+.fa-page { max-width: 900px; margin: 0 auto; direction: rtl; }
+.fa-nav a { padding: 8px 14px; border-radius: 10px; background: var(--card-alt); border: 1px solid var(--border-light); color: var(--text); text-decoration: none; font-size: 14px; display: inline-block; margin: 0 4px 8px 0; }
+.fa-card { background: var(--card); border: 1px solid var(--border-light); border-radius: 16px; padding: 20px; }
+.fa-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.fa-grid .full { grid-column: 1 / -1; }
+.fa-field label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 6px; }
+.fa-field input, .fa-field select, .fa-field textarea { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid var(--border-light); background: var(--card-alt); color: var(--text); }
+.fa-btn { padding: 10px 18px; border-radius: 10px; border: none; background: var(--primary); color: #fff; cursor: pointer; font-weight: 700; }
+</style>
+<div class="fa-page">
+  {% include "fixed_assets/_nav.html" %}
+  <div class="fa-card">
+    <form method="post">
+      <div class="fa-grid">
+        <div class="fa-field"><label>الأصل *</label>
+          <select name="asset_id" required>
+            <option value="">— اختر —</option>
+            {% for a in assets %}
+            <option value="{{ a.id }}">{{ a.asset_code }} — {{ a.name }} ({{ a.location_text or 'بدون موقع' }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="fa-field"><label>تاريخ النقل</label><input type="date" name="transfer_date"></div>
+        <div class="fa-field"><label>الموقع الجديد</label><input name="new_location"></div>
+        <div class="fa-field"><label>الفرع الجديد</label>
+          <select name="new_branch_id"><option value="">—</option>{% for b in branches %}<option value="{{ b.id }}">{{ b.name }}</option>{% endfor %}</select>
+        </div>
+        <div class="fa-field"><label>المسؤول الجديد</label>
+          <select name="new_responsible_user_id"><option value="">—</option>{% for e in employees %}<option value="{{ e.id }}">{{ e.name }}</option>{% endfor %}</select>
+        </div>
+        <div class="fa-field"><label>أجور النقل (اختياري)</label><input type="number" name="transfer_cost" min="0" value="0"></div>
+        <div class="fa-field full"><label>سبب النقل</label><input name="reason"></div>
+        <div class="fa-field full"><label>ملاحظات</label><textarea name="notes" rows="2"></textarea></div>
+      </div>
+      <p style="font-size:13px;color:var(--text-muted);margin:12px 0;">النقل الداخلي لا يولّد قيداً. أجور النقل تُسجّل كمصروف صيانة.</p>
+      <button type="submit" class="fa-btn">تسجيل النقل</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}تقارير الأصول{% endblock %}
+{% block page_title %}📊 تقارير الأصول{% endblock %}
+{% block content %}
+<style>
+.fa-page { max-width: 1200px; margin: 0 auto; direction: rtl; }
+.fa-nav a { padding: 8px 14px; border-radius: 10px; background: var(--card-alt); border: 1px solid var(--border-light); color: var(--text); text-decoration: none; font-size: 14px; display: inline-block; margin: 0 4px 8px 0; }
+.fa-nav a.active { background: var(--primary); color: #fff; }
+.fa-card { background: var(--card); border: 1px solid var(--border-light); border-radius: 16px; padding: 20px; margin-bottom: 18px; }
+.fa-filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+.fa-field label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+.fa-field select, .fa-field input { padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-light); background: var(--card-alt); color: var(--text); }
+.fa-btn { padding: 8px 16px; border-radius: 10px; border: none; background: var(--primary); color: #fff; cursor: pointer; }
+.fa-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.fa-table th, .fa-table td { padding: 10px; border: 1px solid var(--border-light); text-align: right; }
+.fa-table th { background: rgba(99,102,241,0.12); }
+.report-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.report-tabs a { padding: 8px 12px; border-radius: 8px; text-decoration: none; font-size: 13px; border: 1px solid var(--border-light); color: var(--text); background: var(--card-alt); }
+.report-tabs a.active { background: var(--primary); color: #fff; }
+</style>
+<div class="fa-page">
+  {% include "fixed_assets/_nav.html" %}
+  <div class="report-tabs">
+    {% for key, label in report_types.items() %}
+    <a href="/assets/reports?type={{ key }}" class="{% if report_type == key %}active{% endif %}">{{ label }}</a>
+    {% endfor %}
+  </div>
+  {% if report_type == 'depreciation' %}
+  <div class="fa-card">
+    <form class="fa-filters" method="get">
+      <input type="hidden" name="type" value="depreciation">
+      <div class="fa-field"><label>من سنة</label><input type="number" name="year_from" value="{{ year_from or '' }}"></div>
+      <div class="fa-field"><label>من شهر</label><input type="number" name="month_from" min="1" max="12" value="{{ month_from or '' }}"></div>
+      <div class="fa-field"><label>إلى سنة</label><input type="number" name="year_to" value="{{ year_to or '' }}"></div>
+      <div class="fa-field"><label>إلى شهر</label><input type="number" name="month_to" min="1" max="12" value="{{ month_to or '' }}"></div>
+      <button type="submit" class="fa-btn">تطبيق</button>
+    </form>
+  </div>
+  {% endif %}
+  <h3>{{ data.title }}</h3>
+  <table class="fa-table">
+    {% if report_type == 'register' %}
+    <thead><tr><th>الكود</th><th>الاسم</th><th>التصنيف</th><th>التكلفة</th><th>مجمع الاستهلاك</th><th>ق.د.</th><th>الحالة</th><th>الموقع</th><th>المسؤول</th></tr></thead>
+    <tbody>{% for r in data.rows %}<tr>
+      <td>{{ r.code }}</td><td>{{ r.name }}</td><td>{{ r.category }}</td>
+      <td>{{ "{:,}".format(r.total_cost) }}</td><td>{{ "{:,}".format(r.accumulated) }}</td><td>{{ "{:,}".format(r.book_value) }}</td>
+      <td>{{ r.status }}</td><td>{{ r.location }}</td><td>{{ r.responsible }}</td>
+    </tr>{% endfor %}</tbody>
+    {% elif report_type == 'by_category' %}
+    <thead><tr><th>التصنيف</th><th>العدد</th><th>إجمالي التكلفة</th><th>مجمع الاستهلاك</th><th>صافي القيمة</th></tr></thead>
+    <tbody>{% for r in data.rows %}<tr>
+      <td>{{ r.name }}</td><td>{{ r.count }}</td><td>{{ "{:,}".format(r.cost) }}</td><td>{{ "{:,}".format(r.accum) }}</td><td>{{ "{:,}".format(r.book) }}</td>
+    </tr>{% endfor %}</tbody>
+    {% elif report_type == 'by_location' %}
+    <thead><tr><th>الموقع</th><th>العدد</th><th>إجمالي التكلفة</th><th>صافي القيمة</th></tr></thead>
+    <tbody>{% for r in data.rows %}<tr>
+      <td>{{ r.location }}</td><td>{{ r.count }}</td><td>{{ "{:,}".format(r.cost) }}</td><td>{{ "{:,}".format(r.book) }}</td>
+    </tr>{% endfor %}</tbody>
+    {% elif report_type == 'sold' %}
+    <thead><tr><th>الأصل</th><th>الاسم</th><th>التاريخ</th><th>سعر البيع</th><th>ق.د.</th><th>ربح</th><th>خسارة</th></tr></thead>
+    <tbody>{% for r in data.rows %}<tr>
+      <td>{{ r.asset }}</td><td>{{ r.name }}</td><td>{{ r.date }}</td>
+      <td>{{ "{:,}".format(r.sale_amount) }}</td><td>{{ "{:,}".format(r.book_value) }}</td>
+      <td>{{ "{:,}".format(r.gain) }}</td><td>{{ "{:,}".format(r.loss) }}</td>
+    </tr>{% endfor %}</tbody>
+    {% elif report_type == 'scrapped' %}
+    <thead><tr><th>الأصل</th><th>الاسم</th><th>التاريخ</th><th>التكلفة</th><th>مجمع الاستهلاك</th><th>خسارة</th><th>السبب</th></tr></thead>
+    <tbody>{% for r in data.rows %}<tr>
+      <td>{{ r.asset }}</td><td>{{ r.name }}</td><td>{{ r.date }}</td>
+      <td>{{ "{:,}".format(r.cost) }}</td><td>{{ "{:,}".format(r.accumulated) }}</td><td>{{ "{:,}".format(r.loss) }}</td><td>{{ r.reason }}</td>
+    </tr>{% endfor %}</tbody>
+    {% elif report_type == 'depreciation' %}
+    <thead><tr><th>الفترة</th><th>الأصل</th><th>الاسم</th><th>مبلغ الاستهلاك</th><th>رقم القيد</th></tr></thead>
+    <tbody>{% for r in data.rows %}<tr>
+      <td>{{ r.period }}</td><td>{{ r.asset }}</td><td>{{ r.name }}</td>
+      <td>{{ "{:,}".format(r.amount) }}</td><td>{{ r.journal_id or '—' }}</td>
+    </tr>{% endfor %}</tbody>
+    {% elif report_type == 'review' %}
+    <thead><tr><th>الأصل</th><th>المشكلة</th></tr></thead>
+    <tbody>{% for r in data.rows %}<tr><td>{{ r.asset }}</td><td>{{ r.issue }}</td></tr>{% else %}<tr><td colspan="2">لا توجد مشاكل — ممتاز!</td></tr>{% endfor %}</tbody>
+    {% endif %}
+  </table>
+</div>
+{% endblock %}

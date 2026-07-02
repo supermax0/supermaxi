@@ -8,7 +8,7 @@ from models.employee import Employee
 from models.fixed_asset import FixedAsset, ASSET_STATUSES, PAYMENT_METHODS
 from models.fixed_asset_category import FixedAssetCategory
 from models.fixed_asset_maintenance import FixedAssetMaintenance, MAINTENANCE_TYPES
-from models.fixed_asset_depreciation import FixedAssetDepreciation
+from models.fixed_asset_disposal import FixedAssetDisposal, DISPOSAL_TYPES
 from models.journal_entry import JournalEntry
 from models.supplier import Supplier
 from utils.branch_context import init_branch_context
@@ -23,8 +23,12 @@ from utils.fixed_assets_service import (
     get_asset_depreciation_schedule,
     post_asset_acquisition,
     post_asset_maintenance,
+    post_asset_scrap,
+    post_asset_sale,
+    post_asset_transfer,
     post_monthly_depreciation,
     preview_monthly_depreciation,
+    build_asset_reports,
     seed_default_categories,
 )
 from utils.permission_checks import check_permission
@@ -133,6 +137,196 @@ def list_assets():
     )
 
 
+@fixed_assets_bp.route("/depreciation", methods=["GET", "POST"])
+def depreciation():
+    denied = _guard_manage()
+    if denied:
+        return denied
+
+    today = datetime.utcnow()
+    year = _safe_int(request.values.get("year"), today.year)
+    month = _safe_int(request.values.get("month"), today.month)
+    if month < 1 or month > 12:
+        month = today.month
+
+    if request.method == "POST" and request.form.get("action") == "post":
+        try:
+            result = post_monthly_depreciation(year, month, user_id=session.get("user_id"))
+            db.session.commit()
+            flash(
+                f"تم ترحيل استهلاك {result['posted_count']} أصل بمجموع "
+                f"{result['total_amount']:,} د.ع ({result['journal_count']} قيد)",
+                "success",
+            )
+        except FixedAssetError as exc:
+            db.session.rollback()
+            flash(str(exc), "error")
+        except Exception as exc:
+            db.session.rollback()
+            flash(f"حدث خطأ: {exc}", "error")
+        return redirect(url_for("fixed_assets.depreciation", year=year, month=month))
+
+    preview = preview_monthly_depreciation(year, month)
+    return render_template(
+        "fixed_assets/depreciation.html",
+        preview=preview,
+        year=year,
+        month=month,
+    )
+
+
+@fixed_assets_bp.route("/maintenance", methods=["GET", "POST"])
+def maintenance():
+    denied = _guard_manage()
+    if denied:
+        return denied
+
+    ctx = _form_context()
+    records = (
+        FixedAssetMaintenance.query.order_by(FixedAssetMaintenance.maintenance_date.desc())
+        .limit(100)
+        .all()
+    )
+
+    if request.method == "POST":
+        try:
+            post_asset_maintenance(request.form, user_id=session.get("user_id"))
+            db.session.commit()
+            flash("تم تسجيل الصيانة/التحسين وترحيل القيد", "success")
+            return redirect(url_for("fixed_assets.maintenance"))
+        except FixedAssetError as exc:
+            db.session.rollback()
+            flash(str(exc), "error")
+        except Exception as exc:
+            db.session.rollback()
+            flash(f"حدث خطأ: {exc}", "error")
+
+    assets = FixedAsset.query.filter(
+        FixedAsset.status.in_(["active", "fully_depreciated", "under_installation"])
+    ).order_by(FixedAsset.name).all()
+    return render_template(
+        "fixed_assets/maintenance.html",
+        records=records,
+        assets=assets,
+        maintenance_types=MAINTENANCE_TYPES,
+        form=request.form if request.method == "POST" else None,
+        **ctx,
+    )
+
+
+@fixed_assets_bp.route("/transfers", methods=["GET", "POST"])
+def transfers():
+    denied = _guard_manage()
+    if denied:
+        return denied
+
+    ctx = _form_context()
+    assets = FixedAsset.query.filter(
+        FixedAsset.status.in_(["active", "fully_depreciated", "under_installation"])
+    ).order_by(FixedAsset.name).all()
+
+    if request.method == "POST":
+        try:
+            post_asset_transfer(request.form, user_id=session.get("user_id"))
+            db.session.commit()
+            flash("تم نقل الأصل بنجاح", "success")
+            return redirect(url_for("fixed_assets.transfers"))
+        except FixedAssetError as exc:
+            db.session.rollback()
+            flash(str(exc), "error")
+        except Exception as exc:
+            db.session.rollback()
+            flash(f"حدث خطأ: {exc}", "error")
+
+    return render_template(
+        "fixed_assets/transfers.html",
+        assets=assets,
+        form=request.form if request.method == "POST" else None,
+        **ctx,
+    )
+
+
+@fixed_assets_bp.route("/disposal", methods=["GET", "POST"])
+def disposal():
+    denied = _guard_manage()
+    if denied:
+        return denied
+
+    ctx = _form_context()
+    assets = FixedAsset.query.filter(
+        FixedAsset.status.in_(["active", "fully_depreciated"])
+    ).order_by(FixedAsset.name).all()
+    disposals = FixedAssetDisposal.query.order_by(FixedAssetDisposal.disposal_date.desc()).limit(50).all()
+
+    if request.method == "POST":
+        action = (request.form.get("action") or "sale").strip()
+        try:
+            if action == "scrap":
+                post_asset_scrap(request.form, user_id=session.get("user_id"))
+                flash("تم إتلاف الأصل وترحيل القيد", "success")
+            else:
+                post_asset_sale(request.form, user_id=session.get("user_id"))
+                flash("تم بيع الأصل وترحيل القيد", "success")
+            db.session.commit()
+            return redirect(url_for("fixed_assets.disposal"))
+        except FixedAssetError as exc:
+            db.session.rollback()
+            flash(str(exc), "error")
+        except Exception as exc:
+            db.session.rollback()
+            flash(f"حدث خطأ: {exc}", "error")
+
+    return render_template(
+        "fixed_assets/disposal.html",
+        assets=assets,
+        disposals=disposals,
+        disposal_types=DISPOSAL_TYPES,
+        form=request.form if request.method == "POST" else None,
+        **ctx,
+    )
+
+
+@fixed_assets_bp.route("/reports")
+def reports():
+    denied = _guard_view()
+    if denied:
+        return denied
+
+    report_type = request.args.get("type", "register")
+    year_from = _safe_int(request.args.get("year_from")) or None
+    month_from = _safe_int(request.args.get("month_from")) or None
+    year_to = _safe_int(request.args.get("year_to")) or None
+    month_to = _safe_int(request.args.get("month_to")) or None
+
+    data = build_asset_reports(report_type, year_from, month_from, year_to, month_to)
+    report_types = {
+        "register": "سجل الأصول",
+        "by_category": "حسب التصنيف",
+        "by_location": "حسب الموقع",
+        "depreciation": "الاستهلاك",
+        "sold": "المباعة",
+        "scrapped": "التالفة",
+        "review": "تحتاج مراجعة",
+    }
+    return render_template(
+        "fixed_assets/reports.html",
+        data=data,
+        report_type=report_type,
+        report_types=report_types,
+        year_from=year_from,
+        month_from=month_from,
+        year_to=year_to,
+        month_to=month_to,
+    )
+
+
+def _safe_int(value, default=0):
+    try:
+        return int(float(value or 0))
+    except (TypeError, ValueError):
+        return default
+
+
 @fixed_assets_bp.route("/create", methods=["GET", "POST"])
 def create_asset():
     denied = _guard_manage()
@@ -182,11 +376,21 @@ def view_asset(asset_id):
         if journal_ids
         else []
     )
+    depreciations = get_asset_depreciation_schedule(asset.id)
+    maintenances = (
+        FixedAssetMaintenance.query.filter_by(asset_id=asset.id)
+        .order_by(FixedAssetMaintenance.maintenance_date.desc())
+        .all()
+    )
+    disposal = FixedAssetDisposal.query.filter_by(asset_id=asset.id).first()
     return render_template(
         "fixed_assets/detail.html",
         asset=asset,
         movements=movements,
         journals=journals,
+        depreciations=depreciations,
+        maintenances=maintenances,
+        disposal=disposal,
     )
 
 

@@ -6,6 +6,7 @@ from models.fixed_asset import FixedAsset
 from models.fixed_asset_movement import FixedAssetMovement
 from models.fixed_asset_depreciation import FixedAssetDepreciation
 from models.fixed_asset_maintenance import FixedAssetMaintenance
+from models.fixed_asset_disposal import FixedAssetDisposal
 
 
 def ensure_fixed_assets_schema():
@@ -15,3 +16,4 @@ def ensure_fixed_assets_schema():
     FixedAssetMovement.__table__.create(bind=bind, checkfirst=True)
     FixedAssetDepreciation.__table__.create(bind=bind, checkfirst=True)
     FixedAssetMaintenance.__table__.create(bind=bind, checkfirst=True)
+    FixedAssetDisposal.__table__.create(bind=bind, checkfirst=True)

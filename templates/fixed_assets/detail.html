@@ -20,8 +20,11 @@
   <div class="fa-card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
       <span class="badge">{{ asset.status_label() }}</span>
+      {% if asset.status in ['active','fully_depreciated'] and not disposal %}
+      <a href="/assets/disposal" class="fa-btn" style="background:var(--warning);text-decoration:none;display:inline-block;">بيع / إتلاف</a>
+      {% endif %}
       {% if asset.status == 'draft' and not asset.acquisition_journal_entry_id %}
-      <form method="post" action="/assets/{{ asset.id }}/post" onsubmit="return confirm('ترحيل قيد شراء الأصل؟');">
+      <form method="post" action="/assets/{{ asset.id }}/post" onsubmit="return confirm('ترحيل قيد شراء الأصل؟');" style="display:inline;">
         <button type="submit" class="fa-btn">ترحيل قيد الشراء</button>
       </form>
       {% endif %}
@@ -56,6 +59,46 @@
           <td>{{ m.notes or '—' }}</td>
         </tr>
         {% else %}<tr><td colspan="6">لا توجد حركات.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if disposal %}
+  <div class="fa-card">
+    <h3 style="margin-top:0;">{{ disposal.type_label() }}</h3>
+    <p>التاريخ: {{ disposal.disposal_date }} — ربح: {{ "{:,}".format(disposal.gain_amount or 0) }} — خسارة: {{ "{:,}".format(disposal.loss_amount or 0) }}</p>
+  </div>
+  {% endif %}
+  <div class="fa-card">
+    <h3 style="margin-top:0;">جدول الاستهلاك</h3>
+    <table class="fa-table">
+      <thead><tr><th>السنة</th><th>الشهر</th><th>مبلغ الاستهلاك</th><th>مجمع قبل</th><th>مجمع بعد</th><th>ق.د. بعد</th><th>الحالة</th></tr></thead>
+      <tbody>
+        {% for d in depreciations %}
+        <tr>
+          <td>{{ d.period_year }}</td><td>{{ d.period_month }}</td>
+          <td>{{ "{:,}".format(d.depreciation_amount or 0) }}</td>
+          <td>{{ "{:,}".format(d.accumulated_before or 0) }}</td>
+          <td>{{ "{:,}".format(d.accumulated_after or 0) }}</td>
+          <td>{{ "{:,}".format(d.book_value_after or 0) }}</td>
+          <td>{{ d.status }}</td>
+        </tr>
+        {% else %}<tr><td colspan="7">لا يوجد استهلاك مرحّل بعد.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="fa-card">
+    <h3 style="margin-top:0;">الصيانة والتحسينات</h3>
+    <table class="fa-table">
+      <thead><tr><th>التاريخ</th><th>النوع</th><th>المبلغ</th><th>رأسمالي</th><th>الوصف</th></tr></thead>
+      <tbody>
+        {% for m in maintenances %}
+        <tr>
+          <td>{{ m.maintenance_date }}</td><td>{{ m.type_label() }}</td>
+          <td>{{ "{:,}".format(m.amount or 0) }}</td>
+          <td>{{ 'نعم' if m.is_capitalized else 'لا' }}</td>
+          <td>{{ m.description or '—' }}</td>
+        </tr>
+        {% else %}<tr><td colspan="5">لا توجد صيانة.</td></tr>{% endfor %}
       </tbody>
     </table>
   </div>

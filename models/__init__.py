@@ -17,6 +17,7 @@ from .fixed_asset import FixedAsset
 from .fixed_asset_movement import FixedAssetMovement
 from .fixed_asset_depreciation import FixedAssetDepreciation
 from .fixed_asset_maintenance import FixedAssetMaintenance
+from .fixed_asset_disposal import FixedAssetDisposal
 from .employee import Employee
 from .invoice import Invoice
 from .invoice_payment_ledger import InvoicePaymentLedger

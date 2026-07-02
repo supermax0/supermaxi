@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}بيع / إتلاف أصل{% endblock %}
+{% block page_title %}📤 بيع أو إتلاف أصل{% endblock %}
+{% block content %}
+<style>
+.fa-page { max-width: 1100px; margin: 0 auto; direction: rtl; }
+.fa-nav a { padding: 8px 14px; border-radius: 10px; background: var(--card-alt); border: 1px solid var(--border-light); color: var(--text); text-decoration: none; font-size: 14px; display: inline-block; margin: 0 4px 8px 0; }
+.fa-nav a.active { background: var(--primary); color: #fff; }
+.fa-card { background: var(--card); border: 1px solid var(--border-light); border-radius: 16px; padding: 20px; margin-bottom: 18px; }
+.fa-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.fa-grid .full { grid-column: 1 / -1; }
+.fa-field label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 6px; }
+.fa-field input, .fa-field select, .fa-field textarea { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid var(--border-light); background: var(--card-alt); color: var(--text); }
+.fa-btn { padding: 10px 18px; border-radius: 10px; border: none; cursor: pointer; font-weight: 700; margin-left: 8px; }
+.fa-btn-sale { background: var(--success); color: #fff; }
+.fa-btn-scrap { background: var(--danger); color: #fff; }
+.fa-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.fa-table th, .fa-table td { padding: 10px; border: 1px solid var(--border-light); text-align: right; }
+.tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+.tab { padding: 8px 16px; border-radius: 10px; border: 1px solid var(--border-light); cursor: pointer; background: var(--card-alt); }
+.tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.panel { display: none; }
+.panel.active { display: block; }
+@media (max-width: 720px) { .fa-grid { grid-template-columns: 1fr; } }
+</style>
+<div class="fa-page">
+  {% include "fixed_assets/_nav.html" %}
+  <div class="fa-card">
+    <div class="tabs">
+      <button type="button" class="tab active" data-tab="sale">بيع أصل</button>
+      <button type="button" class="tab" data-tab="scrap">إتلاف / شطب</button>
+    </div>
+    <div id="panel-sale" class="panel active">
+      <form method="post">
+        <input type="hidden" name="action" value="sale">
+        <div class="fa-grid">
+          <div class="fa-field"><label>الأصل *</label>
+            <select name="asset_id" required>
+              <option value="">— اختر —</option>
+              {% for a in assets %}
+              <option value="{{ a.id }}" data-book="{{ a.book_value or 0 }}">{{ a.asset_code }} — {{ a.name }} (ق.د. {{ '{:,}'.format(a.book_value or 0) }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="fa-field"><label>تاريخ البيع</label><input type="date" name="disposal_date"></div>
+          <div class="fa-field"><label>سعر البيع *</label><input type="number" name="sale_amount" min="0" required id="saleAmount"></div>
+          <div class="fa-field"><label>طريقة القبض</label>
+            <select name="payment_method">{% for k,v in payment_methods.items() if k != 'mixed' %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select>
+          </div>
+          <div class="fa-field"><label>حساب القبض</label>
+            <select name="treasury_account_id">{% for t in treasury_choices %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}</select>
+          </div>
+          <div class="fa-field"><label>المشتري</label><input name="buyer_name"></div>
+          <div class="fa-field full"><label>ملاحظات</label><textarea name="notes" rows="2"></textarea></div>
+        </div>
+        <p style="font-size:13px;color:var(--text-muted);">يُحسب الربح/الخسارة تلقائياً = سعر البيع − القيمة الدفترية</p>
+        <button type="submit" class="fa-btn fa-btn-sale">ترحيل بيع الأصل</button>
+      </form>
+    </div>
+    <div id="panel-scrap" class="panel">
+      <form method="post" onsubmit="return confirm('تأكيد إتلاف الأصل؟');">
+        <input type="hidden" name="action" value="scrap">
+        <div class="fa-grid">
+          <div class="fa-field"><label>الأصل *</label>
+            <select name="asset_id" required>
+              <option value="">— اختر —</option>
+              {% for a in assets %}<option value="{{ a.id }}">{{ a.asset_code }} — {{ a.name }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="fa-field"><label>تاريخ الإتلاف</label><input type="date" name="disposal_date"></div>
+          <div class="fa-field full"><label>سبب الإتلاف</label><textarea name="scrap_reason" rows="2" required></textarea></div>
+          <div class="fa-field full"><label>ملاحظات</label><textarea name="notes" rows="2"></textarea></div>
+        </div>
+        <button type="submit" class="fa-btn fa-btn-scrap">ترحيل إتلاف الأصل</button>
+      </form>
+    </div>
+  </div>
+  <h3>آخر عمليات البيع والإتلاف</h3>
+  <table class="fa-table">
+    <thead><tr><th>النوع</th><th>الأصل</th><th>التاريخ</th><th>المبلغ</th><th>ق.د.</th><th>ربح</th><th>خسارة</th></tr></thead>
+    <tbody>
+      {% for d in disposals %}
+      <tr>
+        <td>{{ d.type_label() }}</td>
+        <td>{{ d.asset.asset_code if d.asset else d.asset_id }}</td>
+        <td>{{ d.disposal_date }}</td>
+        <td>{{ "{:,}".format(d.sale_amount or 0) }}</td>
+        <td>{{ "{:,}".format(d.book_value or 0) }}</td>
+        <td>{{ "{:,}".format(d.gain_amount or 0) }}</td>
+        <td>{{ "{:,}".format(d.loss_amount or 0) }}</td>
+      </tr>
+      {% else %}<tr><td colspan="7">لا توجد عمليات بعد.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+<script>
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', function(){
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+  this.classList.add('active');
+  document.getElementById('panel-' + this.dataset.tab).classList.add('active');
+}));
+</script>
+{% endblock %}

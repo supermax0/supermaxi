@@ -1,4 +1,4 @@
-from flask import Flask, redirect, session, url_for, request, g, jsonify, render_template, flash
+from flask import Flask, redirect, session, url_for, request, g, jsonify, render_template, flash, send_from_directory
 from flask_login import current_user
 print("=== FINORA APP STARTING - V1.1 (i18n check) ===")
 from extensions import db
@@ -1758,6 +1758,12 @@ def _start_ai_agent_scheduler():
 
 
 _start_ai_agent_scheduler()
+
+# Favicon for browser tabs (/favicon.ico)
+@app.route("/favicon.ico")
+def favicon():
+    return send_from_directory(app.static_folder, "favicon.png", mimetype="image/png")
+
 
 # Backward-compatible alias for typoed social-ai route
 @app.route("/social-i")

@@ -5,219 +5,358 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <script src="/static/js/no-zoom.js"></script>
   <title>تسجيل دخول المندوب</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon.png">
+  <link rel="shortcut icon" href="/static/favicon.png">
+  <link rel="apple-touch-icon" href="/static/finora-logo.png">
   <script>
-    (function() {
+    (function () {
       try {
         var saved = localStorage.getItem("theme");
         var theme = saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
         document.documentElement.setAttribute("data-theme", theme);
       } catch (e) {
-        document.documentElement.setAttribute("data-theme", "dark");
+        document.documentElement.setAttribute("data-theme", "light");
       }
     })();
   </script>
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-  <link rel="stylesheet" href="/static/css/saas-admin.css">
+  <link rel="stylesheet" href="/static/css/design-refresh.css">
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
     body {
       font-family: 'Tajawal', sans-serif;
-      background:
-        radial-gradient(900px 420px at 120% -10%, rgba(59, 130, 246, 0.18), transparent 60%),
-        radial-gradient(760px 360px at -20% 0%, rgba(139, 92, 246, 0.14), transparent 56%),
-        var(--bg);
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 20px;
-      color: var(--text);
+      padding: 24px 16px;
+      color: var(--text-main);
+      background:
+        radial-gradient(900px 480px at 100% -5%, rgba(37, 99, 235, 0.10), transparent 58%),
+        radial-gradient(700px 400px at -10% 100%, rgba(124, 58, 237, 0.08), transparent 55%),
+        var(--bg-page);
     }
-    
-    .login-container {
-      background: linear-gradient(145deg, var(--card), var(--card-alt));
-      border-radius: 24px;
-      padding: 48px;
-      max-width: 450px;
+
+    .agent-login-page {
       width: 100%;
-      box-shadow: var(--shadow-2);
-      border: 1px solid var(--border-light);
+      max-width: 420px;
     }
-    
-    .login-header {
+
+    .agent-login-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-card);
+      padding: 32px 28px 28px;
+    }
+
+    .agent-login-brand {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
       text-align: center;
-      margin-bottom: 32px;
+      margin-bottom: 28px;
     }
-    
-    .login-header h1 {
-      color: #f1f5f9;
-      font-size: 28px;
+
+    .agent-login-icon {
+      width: 72px;
+      height: 72px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, var(--primary-soft), #dbeafe);
+      color: var(--primary);
+      font-size: 30px;
+      margin-bottom: 16px;
+      border: 1px solid rgba(37, 99, 235, 0.15);
+    }
+
+    .agent-login-brand h1 {
+      font-size: 22px;
       font-weight: 800;
-      margin-bottom: 8px;
+      color: var(--text-main);
+      margin-bottom: 6px;
+      line-height: 1.35;
     }
-    
-    .login-header p {
-      color: #94a3b8;
+
+    .agent-login-brand p {
       font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      max-width: 280px;
     }
-    
-    .form-group {
-      margin-bottom: 24px;
-    }
-    
-    .form-group label {
-      display: block;
-      color: #94a3b8;
-      font-size: 14px;
-      margin-bottom: 8px;
+
+    .agent-login-error {
+      display: none;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: var(--radius-md);
+      background: var(--danger-soft);
+      border: 1px solid rgba(220, 38, 38, 0.18);
+      color: var(--danger);
+      font-size: 13px;
       font-weight: 600;
+      margin-bottom: 18px;
+      line-height: 1.5;
     }
-    
-    .form-group input {
-      width: 100%;
-      padding: 16px 20px;
-      border-radius: 14px;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      background: rgba(15, 23, 42, 0.6);
-      color: #f1f5f9;
-      font-size: 16px;
-      font-family: 'Tajawal', sans-serif;
-      transition: all 0.3s ease;
+
+    .agent-login-error.is-visible { display: flex; }
+
+    .agent-login-error i {
+      margin-top: 2px;
+      flex-shrink: 0;
     }
-    
-    .form-group input:focus {
-      outline: none;
-      border-color: #3b82f6;
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-      background: rgba(15, 23, 42, 0.8);
+
+    .agent-field {
+      margin-bottom: 16px;
     }
-    
-    .form-group input::placeholder {
-      color: #64748b;
-    }
-    
-    .login-btn {
-      width: 100%;
-      padding: 16px;
-      border: none;
-      border-radius: 14px;
-      background: linear-gradient(135deg, #3b82f6, #2563eb);
-      color: white;
+
+    .agent-field label {
+      display: block;
+      font-size: 13px;
       font-weight: 700;
-      font-size: 16px;
+      color: var(--text-main);
+      margin-bottom: 8px;
+    }
+
+    .agent-input-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .agent-input-wrap > i.field-icon {
+      position: absolute;
+      right: 14px;
+      color: var(--text-muted);
+      font-size: 15px;
+      pointer-events: none;
+    }
+
+    .agent-input-wrap input {
+      width: 100%;
+      padding: 13px 44px 13px 44px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+      background: var(--surface-soft);
+      color: var(--text-main);
+      font-size: 15px;
+      font-family: inherit;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+
+    .agent-input-wrap input:focus {
+      outline: none;
+      border-color: var(--primary);
+      background: var(--surface);
+      box-shadow: 0 0 0 3px var(--primary-glow);
+    }
+
+    .agent-input-wrap input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .agent-toggle-password {
+      position: absolute;
+      left: 10px;
+      width: 34px;
+      height: 34px;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--text-muted);
       cursor: pointer;
-      transition: all 0.3s ease;
-      font-family: 'Tajawal', sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.2s ease, background 0.2s ease;
+    }
+
+    .agent-toggle-password:hover {
+      color: var(--primary);
+      background: var(--primary-soft);
+    }
+
+    .agent-login-btn {
+      width: 100%;
       margin-top: 8px;
+      padding: 14px 18px;
+      border: none;
+      border-radius: var(--radius-md);
+      background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+      color: #fff;
+      font-size: 15px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+      box-shadow: 0 8px 22px rgba(37, 99, 235, 0.22);
     }
-    
-    .login-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 10px 30px rgba(59, 130, 246, 0.4);
+
+    .agent-login-btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 28px rgba(37, 99, 235, 0.28);
     }
-    
-    .login-btn:active {
+
+    .agent-login-btn:active:not(:disabled) {
       transform: translateY(0);
     }
-    
-    .error-message {
-      background: rgba(239, 68, 68, 0.1);
-      color: #ef4444;
-      padding: 12px 16px;
-      border-radius: 12px;
-      margin-bottom: 20px;
-      font-size: 14px;
-      display: none;
+
+    .agent-login-btn:disabled {
+      opacity: 0.72;
+      cursor: wait;
     }
-    
-    .icon-wrapper {
+
+    .agent-login-footer {
+      margin-top: 20px;
       text-align: center;
-      margin-bottom: 24px;
+      font-size: 12px;
+      color: var(--text-muted);
     }
-    
-    .icon-wrapper i {
-      font-size: 64px;
-      color: #3b82f6;
-      opacity: 0.8;
+
+    .agent-login-footer strong {
+      color: var(--text-secondary);
+      font-weight: 700;
+    }
+
+    @media (max-width: 480px) {
+      .agent-login-card {
+        padding: 24px 18px 20px;
+        border-radius: var(--radius-lg);
+      }
+
+      .agent-login-brand h1 {
+        font-size: 20px;
+      }
+
+      .agent-login-icon {
+        width: 64px;
+        height: 64px;
+        font-size: 26px;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="login-container">
-    <div class="icon-wrapper">
-      <i class="fas fa-user-tie"></i>
-    </div>
-    
-    <div class="login-header">
-      <h1>🚚 تسجيل دخول المندوب</h1>
-      <p>أدخل بياناتك للدخول إلى حسابك</p>
-    </div>
-    
-    <div class="error-message" id="errorMessage"></div>
-    
-    <form id="loginForm" onsubmit="handleLogin(event)">
-      <div class="form-group">
-        <label>اسم المستخدم</label>
-        <input type="text" id="username" placeholder="أدخل اسم المستخدم" required autocomplete="username">
+  <div class="agent-login-page">
+    <div class="agent-login-card">
+      <div class="agent-login-brand">
+        <div class="agent-login-icon" aria-hidden="true">
+          <i class="fas fa-truck-fast"></i>
+        </div>
+        <h1>تسجيل دخول المندوب</h1>
+        <p>أدخل اسم المستخدم وكلمة المرور للوصول إلى لوحة التوصيل</p>
       </div>
-      
-      <div class="form-group">
-        <label>كلمة المرور</label>
-        <input type="password" id="password" placeholder="أدخل كلمة المرور" required autocomplete="current-password">
+
+      <div class="agent-login-error" id="errorMessage" role="alert">
+        <i class="fas fa-circle-exclamation"></i>
+        <span id="errorText"></span>
       </div>
-      
-      <button type="submit" class="login-btn">
-        <span>🔐</span>
-        <span>تسجيل الدخول</span>
-      </button>
-    </form>
+
+      <form id="loginForm" novalidate>
+        <div class="agent-field">
+          <label for="username">اسم المستخدم</label>
+          <div class="agent-input-wrap">
+            <i class="fas fa-user field-icon"></i>
+            <input type="text" id="username" name="username" placeholder="مثال: agent01" required autocomplete="username">
+          </div>
+        </div>
+
+        <div class="agent-field">
+          <label for="password">كلمة المرور</label>
+          <div class="agent-input-wrap">
+            <i class="fas fa-lock field-icon"></i>
+            <input type="password" id="password" name="password" placeholder="••••••••" required autocomplete="current-password">
+            <button type="button" class="agent-toggle-password" id="togglePassword" aria-label="إظهار كلمة المرور">
+              <i class="fas fa-eye"></i>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="agent-login-btn" id="loginBtn">
+          <i class="fas fa-right-to-bracket"></i>
+          <span>تسجيل الدخول</span>
+        </button>
+      </form>
+
+      <div class="agent-login-footer">
+        بوابة مندوبي التوصيل — <strong>Finora</strong>
+      </div>
+    </div>
   </div>
 
   <script>
+    const errorBox = document.getElementById('errorMessage');
+    const errorText = document.getElementById('errorText');
+    const loginForm = document.getElementById('loginForm');
+    const loginBtn = document.getElementById('loginBtn');
+    const passwordInput = document.getElementById('password');
+    const togglePasswordBtn = document.getElementById('togglePassword');
+
     function showError(message) {
-      const errorEl = document.getElementById('errorMessage');
-      errorEl.textContent = message;
-      errorEl.style.display = 'block';
-      setTimeout(() => {
-        errorEl.style.display = 'none';
-      }, 5000);
+      errorText.textContent = message;
+      errorBox.classList.add('is-visible');
     }
-    
-    function handleLogin(event) {
+
+    function hideError() {
+      errorBox.classList.remove('is-visible');
+      errorText.textContent = '';
+    }
+
+    togglePasswordBtn.addEventListener('click', function () {
+      const isPassword = passwordInput.type === 'password';
+      passwordInput.type = isPassword ? 'text' : 'password';
+      togglePasswordBtn.innerHTML = isPassword
+        ? '<i class="fas fa-eye-slash"></i>'
+        : '<i class="fas fa-eye"></i>';
+      togglePasswordBtn.setAttribute('aria-label', isPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور');
+    });
+
+    loginForm.addEventListener('submit', function (event) {
       event.preventDefault();
-      
+      hideError();
+
       const username = document.getElementById('username').value.trim();
-      const password = document.getElementById('password').value.trim();
-      
+      const password = passwordInput.value.trim();
+
       if (!username || !password) {
-        showError('⚠️ يرجى إدخال اسم المستخدم وكلمة المرور');
+        showError('يرجى إدخال اسم المستخدم وكلمة المرور');
         return;
       }
-      
+
+      loginBtn.disabled = true;
+      loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>جاري الدخول...</span>';
+
       fetch('/delivery-agent/login', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({username: username, password: password})
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username, password: password })
       })
-      .then(r => r.json())
-      .then(data => {
-        if (data.success) {
-          window.location.href = data.redirect || '/delivery-agent/dashboard';
-        } else {
-          showError('❌ ' + (data.error || 'فشل تسجيل الدخول'));
-        }
-      })
-      .catch(error => {
-        showError('❌ حدث خطأ أثناء تسجيل الدخول');
-        console.error(error);
-      });
-    }
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data.success) {
+            window.location.href = data.redirect || '/delivery-agent/dashboard';
+            return;
+          }
+          showError(data.error || 'فشل تسجيل الدخول');
+        })
+        .catch(function (error) {
+          console.error(error);
+          showError('حدث خطأ أثناء تسجيل الدخول. حاول مرة أخرى.');
+        })
+        .finally(function () {
+          loginBtn.disabled = false;
+          loginBtn.innerHTML = '<i class="fas fa-right-to-bracket"></i><span>تسجيل الدخول</span>';
+        });
+    });
   </script>
 </body>
 </html>
