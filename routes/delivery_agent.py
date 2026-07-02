@@ -13,8 +13,10 @@ from datetime import datetime
 import json
 
 from utils.agent_report_helpers import (
+    STATUS_TO_AR,
     find_open_agent_report_for_order,
     get_order_applied_status,
+    get_report_order_ids,
     get_report_progress,
     is_agent_report,
     notify_agent_report_ready,
@@ -74,6 +76,79 @@ def _serialize_agent_order(order):
         "applied_status": applied_status,
         "pending_accountant": bool(applied_status),
     }
+
+
+def _build_executed_report_meta(agent_id):
+    """order_id -> {final_status, executed_at, report_number} من كشوف AGT المنفّذة."""
+    reports = (
+        ShippingReport.query.filter(
+            ShippingReport.is_executed.is_(True),
+            ShippingReport.report_number.like(f"AGT-{agent_id}-%"),
+        )
+        .order_by(ShippingReport.created_at.desc())
+        .all()
+    )
+    meta = {}
+    for report in reports:
+        try:
+            selections = json.loads(report.order_status_selections or "{}")
+        except Exception:
+            selections = {}
+        exec_at = report.created_at.strftime("%Y-%m-%d %H:%M") if report.created_at else ""
+        for oid in get_report_order_ids(report):
+            if oid in meta:
+                continue
+            raw = selections.get(str(oid))
+            final_status = STATUS_TO_AR.get(raw, raw) if raw else None
+            meta[oid] = {
+                "final_status": final_status,
+                "executed_at": exec_at,
+                "report_number": report.report_number,
+            }
+    return meta
+
+
+def _serialize_completed_order(order, meta):
+    base = _serialize_agent_order(order)
+    base.update({
+        "final_status": meta.get("final_status") or order.status,
+        "invoice_status": order.status,
+        "executed_at": meta.get("executed_at") or base["created_at"],
+        "report_number": meta.get("report_number") or "—",
+    })
+    return base
+
+
+def _agent_completed_orders(agent_id, limit=100):
+    """طلبات خرجت من قائمة العمل — حالات نهائية أو وردت في كشف AGT منفّذ."""
+    report_meta = _build_executed_report_meta(agent_id)
+
+    non_pending = (
+        Invoice.query.filter(
+            Invoice.delivery_agent_id == agent_id,
+            ~Invoice.status.in_(_AGENT_PENDING_STATUSES),
+        )
+        .order_by(Invoice.created_at.desc())
+        .all()
+    )
+
+    order_map = {o.id: o for o in non_pending}
+
+    for oid in report_meta:
+        if oid in order_map:
+            continue
+        inv = Invoice.query.get(oid)
+        if inv and inv.delivery_agent_id == agent_id:
+            order_map[oid] = inv
+
+    def sort_key(order):
+        m = report_meta.get(order.id, {})
+        return m.get("executed_at") or (
+            order.created_at.strftime("%Y-%m-%d %H:%M") if order.created_at else ""
+        )
+
+    orders = sorted(order_map.values(), key=sort_key, reverse=True)[:limit]
+    return [_serialize_completed_order(o, report_meta.get(o.id, {})) for o in orders]
 
 
 @delivery_agent_bp.route("/")
@@ -145,6 +220,7 @@ def dashboard():
         return redirect(url_for("delivery_agent.login_page"))
 
     orders = _agent_pending_orders(agent_id)
+    completed_orders = _agent_completed_orders(agent_id)
     stats = _agent_order_stats(agent_id)
 
     employees = Employee.query.filter_by(is_active=True).all()
@@ -157,6 +233,7 @@ def dashboard():
         "delivery_agent/dashboard.html",
         agent=agent,
         orders=orders,
+        completed_orders=completed_orders,
         stats=stats,
         employees=employees,
         other_agents=other_agents,

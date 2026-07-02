@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>كشف نقل مخزون {{ transfer.transfer_no or transfer.id }}</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: Tahoma, Arial, sans-serif;
+      margin: 20px;
+      color: #111;
+      background: #fff;
+    }
+    .head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 18px;
+      border-bottom: 3px solid #111;
+      padding-bottom: 14px;
+    }
+    .head h1 {
+      margin: 0 0 6px;
+      font-size: 24px;
+    }
+    .muted { color: #555; font-size: 13px; line-height: 1.7; }
+    .box {
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 14px;
+    }
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .meta-item strong { display: block; font-size: 12px; color: #666; margin-bottom: 3px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 7px 8px;
+      text-align: right;
+      font-size: 12px;
+    }
+    th { background: #f3f4f6; font-weight: 700; }
+    tfoot td { font-weight: 700; background: #f9fafb; }
+    .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .signatures {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 24px;
+      margin-top: 28px;
+    }
+    .signature-box {
+      border: 2px solid #111;
+      border-radius: 8px;
+      padding: 16px 18px;
+      min-height: 150px;
+    }
+    .signature-title {
+      font-size: 15px;
+      font-weight: 800;
+      margin-bottom: 50px;
+    }
+    .signature-line {
+      border-bottom: 2px solid #111;
+      margin: 18px 0 10px;
+      height: 1px;
+    }
+    .signature-field {
+      font-size: 13px;
+      margin-top: 8px;
+      color: #333;
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border: 1px solid #999;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    @media print {
+      .no-print { display: none !important; }
+      body { margin: 8mm; }
+    }
+    @media (max-width: 700px) {
+      .meta-grid, .signatures { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="head">
+    <div>
+      <h1>كشف نقل مخزون بين الفروع</h1>
+      <div class="muted">
+        {% if system_settings and system_settings.company_name %}
+        <strong>{{ system_settings.company_name }}</strong><br>
+        {% endif %}
+        رقم النقل: <strong>{{ transfer.transfer_no or ('#' ~ transfer.id) }}</strong><br>
+        التاريخ: {{ transfer.created_at.strftime('%Y-%m-%d %H:%M') if transfer.created_at else '—' }}<br>
+        الحالة: <span class="status-badge">{{ status_label }}</span>
+      </div>
+    </div>
+    <button class="no-print" onclick="window.print()" style="padding:10px 18px;border-radius:8px;border:1px solid #111;background:#111;color:#fff;cursor:pointer;font-weight:700;">طباعة</button>
+  </div>
+
+  <div class="box">
+    <div class="meta-grid">
+      <div class="meta-item">
+        <strong>من فرع</strong>
+        {{ transfer.from_branch.name if transfer.from_branch else transfer.from_branch_id }}
+      </div>
+      <div class="meta-item">
+        <strong>إلى فرع</strong>
+        {{ transfer.to_branch.name if transfer.to_branch else transfer.to_branch_id }}
+      </div>
+      <div class="meta-item">
+        <strong>أنشأ الطلب</strong>
+        {{ transfer.created_by.name if transfer.created_by else '—' }}
+      </div>
+      {% if transfer.sent_at %}
+      <div class="meta-item">
+        <strong>تاريخ الترحيل</strong>
+        {{ transfer.sent_at.strftime('%Y-%m-%d %H:%M') }}
+      </div>
+      {% endif %}
+      {% if transfer.received_at %}
+      <div class="meta-item">
+        <strong>تاريخ الاستلام</strong>
+        {{ transfer.received_at.strftime('%Y-%m-%d %H:%M') }}
+      </div>
+      {% endif %}
+    </div>
+    {% if transfer.note %}
+    <div style="margin-top:10px;"><strong>ملاحظات:</strong> {{ transfer.note }}</div>
+    {% endif %}
+  </div>
+
+  <div class="box">
+    <strong>بنود النقل</strong>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>المنتج</th>
+          <th>SKU</th>
+          <th>باركود</th>
+          <th>سعر الشراء</th>
+          <th>سعر البيع</th>
+          <th>المتوفر بالمصدر</th>
+          <th>الكمية</th>
+          <th>قيمة الشراء</th>
+          <th>المستلمة</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for line in lines %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td>{{ line.product_name }}</td>
+          <td>{{ line.sku or '—' }}</td>
+          <td>{{ line.barcode or '—' }}</td>
+          <td class="num">{{ "{:,}".format(line.buy_price) }}</td>
+          <td class="num">{{ "{:,}".format(line.sale_price) }}</td>
+          <td class="num">{{ line.available }}</td>
+          <td class="num">{{ line.quantity }}</td>
+          <td class="num">{{ "{:,}".format(line.line_cost) }}</td>
+          <td class="num">{{ line.quantity_received if line.quantity_received is not none else '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="7">الإجماليات ({{ totals.items_count }} صنف)</td>
+          <td class="num">{{ totals.total_qty }}</td>
+          <td class="num">{{ "{:,}".format(totals.total_cost) }} د.ع</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <div class="signatures">
+    <div class="signature-box">
+      <div class="signature-title">توقيع المجهز</div>
+      <div class="signature-line"></div>
+      <div class="signature-field">الاسم: ..............................................</div>
+      <div class="signature-field">التاريخ: ..........................................</div>
+    </div>
+    <div class="signature-box">
+      <div class="signature-title">توقيع المدير</div>
+      <div class="signature-line"></div>
+      <div class="signature-field">الاسم: ..............................................</div>
+      <div class="signature-field">التاريخ: ..........................................</div>
+    </div>
+  </div>
+</body>
+</html>

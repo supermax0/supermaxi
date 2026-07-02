@@ -114,6 +114,10 @@ def settings():
     app_downloads = {
         "webview": os.environ.get("APP_WEBVIEW_APK_URL", "/static/downloads/finora-pos-webview.apk"),
         "native": os.environ.get("APP_NATIVE_APK_URL", "/static/downloads/finora-pos-native.apk"),
+        "delivery_agent": os.environ.get(
+            "APP_DELIVERY_AGENT_APK_URL",
+            "/static/downloads/finora-delivery-agent.apk",
+        ),
     }
     return render_template(
         "settings.html",

@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#2563eb">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <script src="/static/js/no-zoom.js"></script>
   <title>بوابة المندوب — {{ agent.name }}</title>
   <script>
@@ -31,7 +34,7 @@
       color: var(--text);
       min-height: 100vh;
       padding: 16px;
-      padding-bottom: 32px;
+      padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
     }
 
     .da-page { max-width: 1100px; margin: 0 auto; }
@@ -278,7 +281,101 @@
     .da-badge-shipping { background: rgba(245,158,11,0.15); color: #d97706; }
     .da-badge-delay { background: rgba(139,92,246,0.15); color: #8b5cf6; }
     .da-badge-applied { background: rgba(16,185,129,0.15); color: #059669; }
+    .da-badge-delivered { background: rgba(16,185,129,0.15); color: #059669; }
+    .da-badge-canceled { background: rgba(239,68,68,0.15); color: #dc2626; }
     .da-apply-btn.is-applied { opacity: 0.65; cursor: default; }
+
+    .da-tab-panel { display: none; }
+    .da-tab-panel.is-active { display: block; }
+
+    .da-desktop-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .da-desktop-tab {
+      border: 1px solid var(--border-light);
+      background: var(--bg);
+      color: var(--muted);
+      border-radius: 12px;
+      padding: 10px 18px;
+      font-family: inherit;
+      font-weight: 700;
+      font-size: 0.875rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .da-desktop-tab.is-active {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      color: #fff;
+      border-color: transparent;
+    }
+
+    .da-bottom-nav {
+      display: none;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 900;
+      background: linear-gradient(145deg, var(--card), var(--card-alt));
+      border-top: 1px solid var(--border-light);
+      padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px));
+      box-shadow: 0 -4px 24px rgba(0,0,0,0.12);
+    }
+
+    .da-bottom-nav-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+
+    .da-bottom-nav-btn {
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-family: inherit;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 8px 4px;
+      border-radius: 12px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .da-bottom-nav-btn i { font-size: 1.15rem; }
+
+    .da-bottom-nav-btn.is-active {
+      color: #3b82f6;
+      background: rgba(59,130,246,0.1);
+    }
+
+    @media (max-width: 768px) {
+      .da-bottom-nav { display: block; }
+      .da-topbar .da-btn-primary { display: none; }
+      .da-desktop-tabs { display: none; }
+    }
+
+    @media (min-width: 769px) {
+      body { padding-bottom: 32px; }
+    }
+
+    .da-table-completed { min-width: 920px; }
+
+    .da-report-num {
+      font-family: ui-monospace, monospace;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
 
     .da-status-row {
       display: flex;
@@ -513,6 +610,17 @@
       </article>
     </section>
 
+    <nav class="da-desktop-tabs" aria-label="تبويبات الطلبات">
+      <button type="button" class="da-desktop-tab is-active" data-tab="active" onclick="switchTab('active')">
+        <i class="fa-solid fa-clipboard-list"></i> الطلبات النشطة
+      </button>
+      <button type="button" class="da-desktop-tab" data-tab="completed" onclick="switchTab('completed')">
+        <i class="fa-solid fa-circle-check"></i> الطلبات المنفذة
+        {% if completed_orders %}<span>({{ completed_orders|length }})</span>{% endif %}
+      </button>
+    </nav>
+
+    <div id="tab-active" class="da-tab-panel is-active">
     <section class="da-panel">
       <div class="da-panel-head">
         <div>
@@ -545,7 +653,7 @@
           </thead>
           <tbody id="ordersTableBody">
             {% for order in orders %}
-            <tr class="da-order-row" data-search="{{ order.customer_name }} {{ order.id }} {{ order.phone }} {{ order.city }}">
+            <tr class="da-order-row da-order-row-active" data-search="{{ order.customer_name }} {{ order.id }} {{ order.phone }} {{ order.city }}">
               <td>{{ loop.index }}</td>
               <td><span class="da-order-id">#{{ order.id }}</span><br><small style="color:var(--muted);">{{ order.created_at }}</small></td>
               <td><strong>{{ order.customer_name }}</strong>{% if order.address %}<br><small style="color:var(--muted);">{{ order.address[:40] }}{% if order.address|length > 40 %}...{% endif %}</small>{% endif %}</td>
@@ -592,7 +700,7 @@
 
       <div class="da-cards" id="ordersCards">
         {% for order in orders %}
-        <article class="da-order-row da-card" data-search="{{ order.customer_name }} {{ order.id }} {{ order.phone }} {{ order.city }}">
+        <article class="da-order-row da-order-row-active da-card" data-search="{{ order.customer_name }} {{ order.id }} {{ order.phone }} {{ order.city }}">
           <div class="da-card-top">
             <div>
               <span class="da-order-id">#{{ order.id }}</span>
@@ -639,7 +747,125 @@
       </div>
       {% endif %}
     </section>
+    </div>
+
+    <div id="tab-completed" class="da-tab-panel">
+    <section class="da-panel">
+      <div class="da-panel-head">
+        <div>
+          <h2><i class="fa-solid fa-circle-check"></i> الطلبات المنفذة</h2>
+          <p>سجل الطلبات التي خرجت من قائمة العمل — لا تختفي بعد التنفيذ</p>
+        </div>
+        {% if completed_orders %}
+        <div class="da-search-wrap">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="search" class="da-search" id="completedSearch" placeholder="بحث في المنفذة..." oninput="filterCompletedOrders(this.value)">
+        </div>
+        {% endif %}
+      </div>
+
+      {% if completed_orders %}
+      <div class="da-table-wrap da-table-desktop">
+        <table class="da-table da-table-completed">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>الطلب</th>
+              <th>الزبون</th>
+              <th>الهاتف</th>
+              <th>المحافظة</th>
+              <th>المبلغ</th>
+              <th>نتيجة المندوب</th>
+              <th>الحالة الحالية</th>
+              <th>تاريخ التنفيذ</th>
+              <th>رقم الكشف</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for order in completed_orders %}
+            <tr class="da-completed-row" data-search="{{ order.customer_name }} {{ order.id }} {{ order.phone }} {{ order.city }} {{ order.report_number }}">
+              <td>{{ loop.index }}</td>
+              <td><span class="da-order-id">#{{ order.id }}</span></td>
+              <td><strong>{{ order.customer_name }}</strong></td>
+              <td>{% if order.phone %}<a class="da-phone-link" href="tel:{{ order.phone }}">{{ order.phone }}</a>{% else %}—{% endif %}</td>
+              <td>{{ order.city or '—' }}</td>
+              <td class="da-amount">{{ "{:,}".format(order.total|int) }} د.ع</td>
+              <td>
+                {% if order.final_status == 'واصل' %}
+                <span class="da-badge da-badge-delivered"><i class="fa-solid fa-check"></i> واصل</span>
+                {% elif order.final_status == 'ملغي' %}
+                <span class="da-badge da-badge-canceled"><i class="fa-solid fa-xmark"></i> ملغي</span>
+                {% elif order.final_status == 'مؤجل' %}
+                <span class="da-badge da-badge-delay"><i class="fa-solid fa-clock"></i> مؤجل</span>
+                {% else %}
+                <span class="da-badge da-badge-pending">{{ order.final_status }}</span>
+                {% endif %}
+              </td>
+              <td>{{ order.invoice_status }}</td>
+              <td>{{ order.executed_at }}</td>
+              <td><span class="da-report-num">{{ order.report_number }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="da-cards" id="completedCards">
+        {% for order in completed_orders %}
+        <article class="da-completed-row da-card" data-search="{{ order.customer_name }} {{ order.id }} {{ order.phone }} {{ order.city }} {{ order.report_number }}">
+          <div class="da-card-top">
+            <div>
+              <span class="da-order-id">#{{ order.id }}</span>
+              <strong style="display:block;margin-top:4px;">{{ order.customer_name }}</strong>
+            </div>
+            <span class="da-amount">{{ "{:,}".format(order.total|int) }} د.ع</span>
+          </div>
+          <div class="da-card-meta">
+            <div><span>الهاتف</span>{% if order.phone %}<a class="da-phone-link" href="tel:{{ order.phone }}">{{ order.phone }}</a>{% else %}—{% endif %}</div>
+            <div><span>المحافظة</span>{{ order.city or '—' }}</div>
+            <div><span>نتيجة المندوب</span>
+              {% if order.final_status == 'واصل' %}
+              <span class="da-badge da-badge-delivered">واصل</span>
+              {% elif order.final_status == 'ملغي' %}
+              <span class="da-badge da-badge-canceled">ملغي</span>
+              {% elif order.final_status == 'مؤجل' %}
+              <span class="da-badge da-badge-delay">مؤجل</span>
+              {% else %}{{ order.final_status }}{% endif %}
+            </div>
+            <div><span>الحالة الحالية</span>{{ order.invoice_status }}</div>
+            <div><span>تاريخ التنفيذ</span>{{ order.executed_at }}</div>
+            <div><span>رقم الكشف</span><span class="da-report-num">{{ order.report_number }}</span></div>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="da-empty">
+        <i class="fa-solid fa-clock-rotate-left"></i>
+        <h3>لا توجد طلبات منفذة بعد</h3>
+        <p>ستظهر هنا الطلبات بعد تنفيذ المحاسب للكشف.</p>
+      </div>
+      {% endif %}
+    </section>
+    </div>
   </div>
+
+  <nav class="da-bottom-nav" aria-label="التنقل السفلي">
+    <div class="da-bottom-nav-inner">
+      <button type="button" class="da-bottom-nav-btn is-active" data-tab="active" onclick="switchTab('active')">
+        <i class="fa-solid fa-clipboard-list"></i>
+        <span>نشطة</span>
+      </button>
+      <button type="button" class="da-bottom-nav-btn" data-tab="completed" onclick="switchTab('completed')">
+        <i class="fa-solid fa-circle-check"></i>
+        <span>منفذة</span>
+      </button>
+      <button type="button" class="da-bottom-nav-btn" data-tab="chat" onclick="switchTab('chat')">
+        <i class="fa-solid fa-comments"></i>
+        <span>محادثة</span>
+      </button>
+    </div>
+  </nav>
 
   <div id="chatModal" class="da-modal-overlay">
     <div class="da-modal">
@@ -684,11 +910,48 @@
 
     function filterOrders(q) {
       q = (q || '').trim().toLowerCase();
-      document.querySelectorAll('.da-order-row').forEach(function(row) {
+      document.querySelectorAll('.da-order-row-active').forEach(function(row) {
         var hay = (row.getAttribute('data-search') || '').toLowerCase();
         row.style.display = !q || hay.indexOf(q) !== -1 ? '' : 'none';
       });
     }
+
+    function filterCompletedOrders(q) {
+      q = (q || '').trim().toLowerCase();
+      document.querySelectorAll('.da-completed-row').forEach(function(row) {
+        var hay = (row.getAttribute('data-search') || '').toLowerCase();
+        row.style.display = !q || hay.indexOf(q) !== -1 ? '' : 'none';
+      });
+    }
+
+    function switchTab(tab) {
+      document.querySelectorAll('.da-tab-panel').forEach(function(panel) {
+        panel.classList.remove('is-active');
+      });
+      var panel = document.getElementById('tab-' + tab);
+      if (panel) panel.classList.add('is-active');
+
+      document.querySelectorAll('.da-desktop-tab, .da-bottom-nav-btn').forEach(function(btn) {
+        btn.classList.toggle('is-active', btn.getAttribute('data-tab') === tab);
+      });
+
+      if (tab === 'chat') {
+        openChat();
+      } else {
+        closeChat();
+      }
+    }
+
+    var pullStartY = 0;
+    document.addEventListener('touchstart', function(e) {
+      if (window.scrollY <= 0) pullStartY = e.touches[0].clientY;
+    }, { passive: true });
+    document.addEventListener('touchend', function(e) {
+      if (pullStartY && e.changedTouches[0].clientY - pullStartY > 90 && window.scrollY <= 0) {
+        location.reload();
+      }
+      pullStartY = 0;
+    }, { passive: true });
 
     function markOrderApplied(orderId, status, allComplete) {
       syncStatusSelects(orderId, status);

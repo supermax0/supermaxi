@@ -4,52 +4,294 @@
 
 {% block content %}
 <style>
-  .trf-wrap { max-width: 960px; margin: 0 auto; padding: 16px; }
-  .trf-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; margin-bottom: 16px; }
-  .trf-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
-  .trf-grid label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
-  .trf-grid select, .trf-grid input, .trf-grid textarea {
-    width: 100%; padding: 10px 12px; border-radius: 10px;
-    border: 1px solid var(--border); background: var(--card-alt); color: var(--text);
+  .trf-wrap {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0 0 24px;
+    box-sizing: border-box;
   }
-  .line-row { display: grid; grid-template-columns: 2fr 1fr auto; gap: 8px; margin-bottom: 8px; }
-  .trf-btn { padding: 10px 16px; border-radius: 10px; border: none; cursor: pointer; font-weight: 700; }
+  .trf-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .trf-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+  }
+  .trf-grid label,
+  .trf-field label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+    font-weight: 700;
+  }
+  .trf-grid select,
+  .trf-grid input,
+  .trf-grid textarea,
+  .trf-field select,
+  .trf-field input {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--card-alt, var(--surface-soft));
+    color: var(--text);
+    font: inherit;
+    box-sizing: border-box;
+  }
+  .trf-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    font-weight: 700;
+    text-decoration: none;
+    font: inherit;
+  }
   .trf-btn.primary { background: var(--primary); color: #fff; }
   .trf-btn.secondary { background: rgba(59,130,246,.15); color: var(--primary); }
+  .trf-btn.danger { background: rgba(239,68,68,.12); color: #ef4444; }
+  .trf-btn.sm { padding: 7px 12px; font-size: 13px; }
+  .trf-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+  .trf-meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .trf-meta-item {
+    background: var(--surface-soft, rgba(148,163,184,.08));
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+  }
+  .trf-meta-item span {
+    display: block;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+  .trf-meta-item strong { font-size: 15px; }
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 800;
+  }
+  .status-draft { background: rgba(148,163,184,.2); color: #64748b; }
+  .status-sent { background: rgba(59,130,246,.15); color: #2563eb; }
+  .status-received { background: rgba(16,185,129,.15); color: #059669; }
+  .status-cancelled { background: rgba(239,68,68,.15); color: #dc2626; }
+  .trf-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-top: 12px;
+  }
+  .trf-lines-table {
+    width: 100%;
+    min-width: 980px;
+    border-collapse: collapse;
+  }
+  .trf-lines-table th,
+  .trf-lines-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    text-align: right;
+    font-size: 13px;
+    vertical-align: middle;
+  }
+  .trf-lines-table th {
+    background: var(--surface-soft, rgba(148,163,184,.08));
+    color: var(--text-muted);
+    font-weight: 800;
+    white-space: nowrap;
+  }
+  .trf-lines-table tbody tr:hover { background: rgba(59,130,246,.04); }
+  .trf-lines-table tfoot td {
+    font-weight: 800;
+    background: var(--surface-soft, rgba(148,163,184,.06));
+  }
+  .trf-add-bar {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    margin-top: 16px;
+  }
+  .trf-add-bar .trf-field { flex: 1 1 280px; min-width: 0; }
+  .trf-qty-input {
+    width: 90px !important;
+    min-width: 90px;
+    text-align: center;
+  }
+  .trf-empty {
+    text-align: center;
+    color: var(--text-muted);
+    padding: 28px 12px;
+  }
+  .trf-num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  @media (max-width: 768px) {
+    .trf-wrap { padding: 0 0 16px; }
+    .trf-card { padding: 14px; }
+    .trf-lines-table { min-width: 860px; }
+  }
 </style>
 
 <div class="trf-wrap">
   <div class="trf-card">
-    <a href="{{ url_for('stock_transfers.transfers_index') }}" style="color:var(--text-muted);">← العودة للقائمة</a>
-    <h2 style="margin:12px 0 0;">{% if readonly %}عرض نقل{% else %}نقل مخزون جديد{% endif %}</h2>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+      <div>
+        <a href="{{ url_for('stock_transfers.transfers_index') }}" style="color:var(--text-muted);text-decoration:none;">← العودة للقائمة</a>
+        <h2 style="margin:12px 0 0;">
+          {% if readonly and transfer %}
+            عرض نقل #{{ transfer.transfer_no or transfer.id }}
+          {% else %}
+            نقل مخزون جديد
+          {% endif %}
+        </h2>
+      </div>
+      {% if readonly and transfer %}
+      <a href="{{ url_for('stock_transfers.transfers_print', transfer_id=transfer.id) }}" target="_blank" rel="noopener" class="trf-btn secondary">
+        <i class="fas fa-print"></i> طباعة الكشف
+      </a>
+      {% endif %}
+    </div>
   </div>
 
   {% if readonly and transfer %}
   <div class="trf-card">
-    <p><strong>الحالة:</strong> {{ transfer.status }}</p>
-    <p><strong>من:</strong> {{ transfer.from_branch.name }} → <strong>إلى:</strong> {{ transfer.to_branch.name }}</p>
-    <table style="width:100%;border-collapse:collapse;margin-top:12px;">
-      <thead><tr><th style="text-align:right;padding:8px;">المنتج</th><th>الكمية</th><th>المستلمة</th></tr></thead>
-      <tbody>
-        {% for line in lines %}
-        <tr><td style="padding:8px;">{{ line.product_name }}</td><td>{{ line.quantity }}</td><td>{{ line.quantity_received or '-' }}</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">
-      {% if transfer.status == 'draft' %}
-      <button class="trf-btn primary" onclick="transferAction('send')">إرسال</button>
+    <div class="trf-meta">
+      <div class="trf-meta-item">
+        <span>الحالة</span>
+        <strong><span class="status-pill status-{{ transfer.status }}">{{ status_labels.get(transfer.status, transfer.status) }}</span></strong>
+      </div>
+      <div class="trf-meta-item">
+        <span>من فرع</span>
+        <strong>{{ transfer.from_branch.name if transfer.from_branch else transfer.from_branch_id }}</strong>
+      </div>
+      <div class="trf-meta-item">
+        <span>إلى فرع</span>
+        <strong>{{ transfer.to_branch.name if transfer.to_branch else transfer.to_branch_id }}</strong>
+      </div>
+      <div class="trf-meta-item">
+        <span>تاريخ الإنشاء</span>
+        <strong>{{ transfer.created_at.strftime('%Y-%m-%d %H:%M') if transfer.created_at else '—' }}</strong>
+      </div>
+      <div class="trf-meta-item">
+        <span>أنشأه</span>
+        <strong>{{ transfer.created_by.name if transfer.created_by else '—' }}</strong>
+      </div>
+      {% if transfer.sent_at %}
+      <div class="trf-meta-item">
+        <span>تاريخ الترحيل</span>
+        <strong>{{ transfer.sent_at.strftime('%Y-%m-%d %H:%M') }}</strong>
+      </div>
+      {% endif %}
+      {% if transfer.received_at %}
+      <div class="trf-meta-item">
+        <span>تاريخ الاستلام</span>
+        <strong>{{ transfer.received_at.strftime('%Y-%m-%d %H:%M') }}</strong>
+      </div>
+      {% endif %}
+    </div>
+    {% if transfer.note %}
+    <div class="trf-meta-item" style="margin-bottom:16px;">
+      <span>ملاحظات</span>
+      <strong style="font-weight:500;white-space:pre-wrap;">{{ transfer.note }}</strong>
+    </div>
+    {% endif %}
+
+    <h3 style="margin:0 0 8px;font-size:16px;">بنود النقل</h3>
+    <div class="trf-table-wrap">
+      <table class="trf-lines-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>المنتج</th>
+            <th>SKU</th>
+            <th>باركود</th>
+            <th>سعر الشراء</th>
+            <th>سعر البيع</th>
+            <th>المتوفر بالمصدر</th>
+            <th>الكمية</th>
+            <th>قيمة الشراء</th>
+            <th>المستلمة</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for line in lines %}
+          <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ line.product_name }}</td>
+            <td>{{ line.sku or '—' }}</td>
+            <td>{{ line.barcode or '—' }}</td>
+            <td class="trf-num">{{ "{:,}".format(line.buy_price) }}</td>
+            <td class="trf-num">{{ "{:,}".format(line.sale_price) }}</td>
+            <td class="trf-num">{{ line.available }}</td>
+            <td class="trf-num">{{ line.quantity }}</td>
+            <td class="trf-num">{{ "{:,}".format(line.line_cost) }}</td>
+            <td class="trf-num">{{ line.quantity_received if line.quantity_received is not none else '—' }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="10" class="trf-empty">لا توجد بنود.</td></tr>
+          {% endfor %}
+        </tbody>
+        {% if lines %}
+        <tfoot>
+          <tr>
+            <td colspan="7">الإجماليات</td>
+            <td class="trf-num">{{ totals.total_qty }}</td>
+            <td class="trf-num">{{ "{:,}".format(totals.total_cost) }} د.ع</td>
+            <td></td>
+          </tr>
+        </tfoot>
+        {% endif %}
+      </table>
+    </div>
+
+    <div class="trf-actions">
+      {% if transfer.status == 'draft' and is_admin %}
+      <button type="button" class="trf-btn primary" onclick="transferAction('send')">
+        <i class="fas fa-truck-loading"></i> تم التجهيز والترحيل
+      </button>
+      {% elif transfer.status == 'draft' and not is_admin %}
+      <span style="color:var(--text-muted);font-size:13px;">بانتظار موافقة المدير للتجهيز والترحيل</span>
       {% endif %}
       {% if transfer.status == 'sent' %}
-      <button class="trf-btn primary" onclick="transferAction('receive')">استلام</button>
+      <button type="button" class="trf-btn primary" onclick="transferAction('receive')">
+        <i class="fas fa-check"></i> استلام
+      </button>
       {% endif %}
       {% if transfer.status in ['draft', 'sent'] %}
-      <button class="trf-btn secondary" onclick="transferAction('cancel')">إلغاء</button>
+      <button type="button" class="trf-btn danger" onclick="transferAction('cancel')">
+        <i class="fas fa-times"></i> إلغاء
+      </button>
       {% endif %}
     </div>
   </div>
   <script>
   async function transferAction(action) {
+    const labels = { send: 'تأكيد التجهيز والترحيل؟ سيتم خصم الكميات من الفرع المرسل.', receive: 'تأكيد استلام البضاعة في الفرع المستلم؟', cancel: 'تأكيد إلغاء النقل؟' };
+    if (!confirm(labels[action] || 'متابعة؟')) return;
     const res = await fetch(`/inventory/transfers/{{ transfer.id }}/${action}`, { method: 'POST' });
     const data = await res.json();
     if (!data.ok) { alert(data.error || 'فشل'); return; }
@@ -57,52 +299,248 @@
   }
   </script>
   {% else %}
-  <form method="post" class="trf-card">
+  <form method="post" class="trf-card" id="transferForm">
     <div class="trf-grid">
       <div>
-        <label>من فرع</label>
-        <select name="from_branch_id" required>
+        <label for="from_branch_id">من فرع</label>
+        <select name="from_branch_id" id="from_branch_id" required>
           <option value="">—</option>
           {% for b in branches %}<option value="{{ b.id }}">{{ b.name }}</option>{% endfor %}
         </select>
       </div>
       <div>
-        <label>إلى فرع</label>
-        <select name="to_branch_id" required>
+        <label for="to_branch_id">إلى فرع</label>
+        <select name="to_branch_id" id="to_branch_id" required>
           <option value="">—</option>
           {% for b in branches %}<option value="{{ b.id }}">{{ b.name }}</option>{% endfor %}
         </select>
       </div>
     </div>
     <div style="margin-top:12px;">
-      <label>ملاحظات</label>
-      <textarea name="note" rows="2"></textarea>
+      <label for="note">ملاحظات</label>
+      <textarea name="note" id="note" rows="2"></textarea>
     </div>
 
-    <div style="margin-top:16px;">
-      <label>البنود</label>
-      <div id="lines">
-        <div class="line-row">
-          <select name="product_id" required>
-            <option value="">اختر منتج</option>
-            {% for p in products %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}
-          </select>
-          <input type="number" name="quantity" min="1" value="1" required>
-          <button type="button" class="trf-btn secondary" onclick="addLine()">+</button>
-        </div>
+    <div class="trf-add-bar">
+      <div class="trf-field">
+        <label for="productPicker">إضافة منتج</label>
+        <select id="productPicker">
+          <option value="">اختر منتجاً...</option>
+          {% for p in products %}
+          <option value="{{ p.id }}">{{ p.name }}{% if p.sku %} — {{ p.sku }}{% endif %}</option>
+          {% endfor %}
+        </select>
       </div>
+      <div class="trf-field" style="flex:0 0 120px;">
+        <label for="addQty">الكمية</label>
+        <input type="number" id="addQty" min="1" value="1">
+      </div>
+      <button type="button" class="trf-btn secondary" id="addLineBtn">
+        <i class="fas fa-plus"></i> إضافة للجدول
+      </button>
     </div>
 
-    <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">
-      <button type="submit" name="action" value="draft" class="trf-btn secondary">حفظ مسودة</button>
-      <button type="submit" name="action" value="send" class="trf-btn primary">إرسال مباشرة</button>
+    <div class="trf-table-wrap">
+      <table class="trf-lines-table" id="linesTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>المنتج</th>
+            <th>SKU</th>
+            <th>باركود</th>
+            <th>سعر الشراء</th>
+            <th>سعر البيع</th>
+            <th>المتوفر بالمصدر</th>
+            <th>الكمية</th>
+            <th>قيمة الشراء</th>
+            <th>حذف</th>
+          </tr>
+        </thead>
+        <tbody id="linesBody">
+          <tr id="emptyRow"><td colspan="10" class="trf-empty">لم تُضف بنود بعد. اختر منتجاً وأضفه للجدول.</td></tr>
+        </tbody>
+        <tfoot id="linesFoot" style="display:none;">
+          <tr>
+            <td colspan="7">الإجماليات (<span id="itemsCount">0</span> صنف)</td>
+            <td class="trf-num" id="totalQty">0</td>
+            <td class="trf-num" id="totalCost">0</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    <div id="hiddenInputs"></div>
+
+    <div class="trf-actions">
+      <button type="submit" name="action" value="draft" class="trf-btn primary">
+        <i class="fas fa-save"></i> حفظ مسودة
+      </button>
+      <p style="margin:0;color:var(--text-muted);font-size:13px;align-self:center;">
+        لن يُخصم المخزون إلا بعد موافقة المدير عبر «تم التجهيز والترحيل».
+      </p>
     </div>
   </form>
+
   <script>
-  function addLine() {
-    const tpl = document.querySelector('#lines .line-row');
-    document.getElementById('lines').appendChild(tpl.cloneNode(true));
-  }
+  (function () {
+    const PRODUCTS = {{ products_json|safe }};
+    const BRANCH_STOCKS = {{ branch_stocks_json|safe }};
+    const productMap = Object.fromEntries(PRODUCTS.map(p => [String(p.id), p]));
+    const lines = [];
+    const linesBody = document.getElementById('linesBody');
+    const emptyRow = document.getElementById('emptyRow');
+    const linesFoot = document.getElementById('linesFoot');
+    const hiddenInputs = document.getElementById('hiddenInputs');
+    const fromBranch = document.getElementById('from_branch_id');
+
+    function fmt(n) {
+      return Number(n || 0).toLocaleString('en-US');
+    }
+
+    function getAvailable(productId) {
+      const branchId = fromBranch.value;
+      if (!branchId) return 0;
+      const stocks = BRANCH_STOCKS[branchId] || {};
+      return Number(stocks[String(productId)] || stocks[productId] || 0);
+    }
+
+    function syncHiddenInputs() {
+      hiddenInputs.innerHTML = lines.map(line =>
+        `<input type="hidden" name="product_id" value="${line.product_id}">` +
+        `<input type="hidden" name="quantity" value="${line.quantity}">`
+      ).join('');
+    }
+
+    function render() {
+      if (!lines.length) {
+        linesBody.innerHTML = '';
+        linesBody.appendChild(emptyRow);
+        emptyRow.style.display = '';
+        linesFoot.style.display = 'none';
+        syncHiddenInputs();
+        return;
+      }
+      emptyRow.style.display = 'none';
+      let totalQty = 0;
+      let totalCost = 0;
+      linesBody.innerHTML = lines.map((line, idx) => {
+        const available = getAvailable(line.product_id);
+        totalQty += line.quantity;
+        totalCost += line.buy_price * line.quantity;
+        return `<tr data-idx="${idx}">
+          <td>${idx + 1}</td>
+          <td>${line.name}</td>
+          <td>${line.sku || '—'}</td>
+          <td>${line.barcode || '—'}</td>
+          <td class="trf-num">${fmt(line.buy_price)}</td>
+          <td class="trf-num">${fmt(line.sale_price)}</td>
+          <td class="trf-num available-cell">${available}</td>
+          <td><input type="number" class="trf-qty-input qty-input" min="1" max="${available || 999999}" value="${line.quantity}" data-idx="${idx}"></td>
+          <td class="trf-num line-cost">${fmt(line.buy_price * line.quantity)}</td>
+          <td><button type="button" class="trf-btn danger sm remove-btn" data-idx="${idx}"><i class="fas fa-trash"></i></button></td>
+        </tr>`;
+      }).join('');
+      document.getElementById('itemsCount').textContent = lines.length;
+      document.getElementById('totalQty').textContent = totalQty;
+      document.getElementById('totalCost').textContent = fmt(totalCost) + ' د.ع';
+      linesFoot.style.display = '';
+      syncHiddenInputs();
+    }
+
+    function addProduct() {
+      const picker = document.getElementById('productPicker');
+      const qtyInput = document.getElementById('addQty');
+      const productId = Number(picker.value || 0);
+      const qty = Math.max(1, Number(qtyInput.value || 1));
+      if (!fromBranch.value) {
+        alert('اختر فرع المصدر أولاً.');
+        return;
+      }
+      if (!productId || !productMap[String(productId)]) {
+        alert('اختر منتجاً صالحاً.');
+        return;
+      }
+      if (lines.some(l => l.product_id === productId)) {
+        alert('هذا المنتج مضاف مسبقاً. عدّل الكمية من الجدول.');
+        return;
+      }
+      const available = getAvailable(productId);
+      if (qty > available) {
+        alert(`الكمية المطلوبة (${qty}) أكبر من المتوفر (${available}).`);
+        return;
+      }
+      const p = productMap[String(productId)];
+      lines.push({
+        product_id: productId,
+        name: p.name,
+        sku: p.sku,
+        barcode: p.barcode,
+        buy_price: p.buy_price,
+        sale_price: p.sale_price,
+        quantity: qty,
+      });
+      picker.value = '';
+      qtyInput.value = '1';
+      render();
+    }
+
+    document.getElementById('addLineBtn').addEventListener('click', addProduct);
+
+    linesBody.addEventListener('click', function (e) {
+      const btn = e.target.closest('.remove-btn');
+      if (!btn) return;
+      lines.splice(Number(btn.dataset.idx), 1);
+      render();
+    });
+
+    linesBody.addEventListener('input', function (e) {
+      const input = e.target.closest('.qty-input');
+      if (!input) return;
+      const idx = Number(input.dataset.idx);
+      let qty = Math.max(1, Number(input.value || 1));
+      const available = getAvailable(lines[idx].product_id);
+      if (qty > available) {
+        qty = available;
+        input.value = qty;
+        alert(`الحد الأقصى المتوفر: ${available}`);
+      }
+      lines[idx].quantity = qty;
+      const row = input.closest('tr');
+      row.querySelector('.line-cost').textContent = fmt(lines[idx].buy_price * qty);
+      let totalQty = 0, totalCost = 0;
+      lines.forEach(l => { totalQty += l.quantity; totalCost += l.buy_price * l.quantity; });
+      document.getElementById('totalQty').textContent = totalQty;
+      document.getElementById('totalCost').textContent = fmt(totalCost) + ' د.ع';
+      syncHiddenInputs();
+    });
+
+    fromBranch.addEventListener('change', function () {
+      lines.forEach(line => {
+        const available = getAvailable(line.product_id);
+        if (line.quantity > available) line.quantity = Math.max(1, available);
+      });
+      render();
+    });
+
+    document.getElementById('transferForm').addEventListener('submit', function (e) {
+      if (!lines.length) {
+        e.preventDefault();
+        alert('أضف منتجاً واحداً على الأقل.');
+        return;
+      }
+      if (!fromBranch.value || !document.getElementById('to_branch_id').value) {
+        e.preventDefault();
+        alert('اختر فرع المصدر والوجهة.');
+        return;
+      }
+      if (fromBranch.value === document.getElementById('to_branch_id').value) {
+        e.preventDefault();
+        alert('فرع المصدر والوجهة يجب أن يكونا مختلفين.');
+        return;
+      }
+      syncHiddenInputs();
+    });
+  })();
   </script>
   {% endif %}
 </div>

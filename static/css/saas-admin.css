@@ -311,7 +311,9 @@
 /* Inventory, purchases, and expenses surfaces */
 .inventory-page,
 .purchases-page,
-.expenses-page {
+.expenses-page,
+.trf-wrap,
+.tr-wrap {
   width: 100% !important;
   max-width: none !important;
   margin-inline: 0 !important;

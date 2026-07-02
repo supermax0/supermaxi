@@ -1,0 +1,284 @@
+{% extends "superadmin_base.html" %}
+
+{% block title %}إصلاح قواعد البيانات — Superadmin{% endblock %}
+{% block page_title %}إصلاح قواعد البيانات{% endblock %}
+{% block breadcrumb_current %}إصلاح قواعد البيانات{% endblock %}
+
+{% block extra_style %}
+<style>
+  .dbx-toolbar {
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr) auto auto;
+    gap: 12px;
+    align-items: end;
+    margin-bottom: 18px;
+  }
+  .dbx-field label {
+    display: block;
+    color: var(--text-muted);
+    font-size: 13px;
+    margin-bottom: 8px;
+    font-weight: 800;
+  }
+  .dbx-field select {
+    width: 100%;
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    background: rgba(15, 23, 42, 0.72);
+    color: var(--text);
+    border-radius: 10px;
+    padding: 12px 14px;
+    outline: none;
+  }
+  .dbx-btn {
+    border: 0;
+    border-radius: 10px;
+    padding: 12px 18px;
+    min-height: 45px;
+    color: #fff;
+    font-weight: 900;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .dbx-btn:disabled { opacity: .55; cursor: wait; }
+  .dbx-btn.scan { background: linear-gradient(135deg, #2563eb, #38bdf8); }
+  .dbx-btn.apply { background: linear-gradient(135deg, #16a34a, #22c55e); }
+  .dbx-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+  .dbx-stat {
+    background: rgba(15, 23, 42, 0.58);
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: 14px;
+    padding: 16px;
+  }
+  .dbx-stat span {
+    display: block;
+    color: var(--text-muted);
+    font-size: 12px;
+    margin-bottom: 8px;
+  }
+  .dbx-stat strong {
+    display: block;
+    color: var(--text);
+    font-size: 26px;
+    line-height: 1;
+  }
+  .dbx-results {
+    display: grid;
+    gap: 10px;
+  }
+  .dbx-card {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .dbx-card-head {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 14px 16px;
+    cursor: pointer;
+  }
+  .dbx-company strong { display: block; font-size: 15px; }
+  .dbx-company small { color: var(--text-muted); direction: ltr; unicode-bidi: plaintext; }
+  .dbx-badges { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+  .dbx-badge {
+    border-radius: 999px;
+    padding: 5px 9px;
+    font-size: 12px;
+    font-weight: 800;
+    background: rgba(59, 130, 246, 0.14);
+    color: #93c5fd;
+  }
+  .dbx-badge.err { background: rgba(239, 68, 68, 0.14); color: #fca5a5; }
+  .dbx-badge.warn { background: rgba(245, 158, 11, 0.14); color: #fcd34d; }
+  .dbx-card-body {
+    display: none;
+    border-top: 1px solid rgba(148, 163, 184, 0.14);
+    padding: 14px 16px 16px;
+  }
+  .dbx-card.open .dbx-card-body { display: block; }
+  .dbx-json {
+    margin: 0;
+    direction: ltr;
+    text-align: left;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 360px;
+    overflow: auto;
+    background: rgba(2, 6, 23, 0.72);
+    color: #dbeafe;
+    border-radius: 10px;
+    padding: 14px;
+    font-size: 12px;
+  }
+  .dbx-empty {
+    padding: 22px;
+    text-align: center;
+    color: var(--text-muted);
+    border: 1px dashed rgba(148, 163, 184, 0.25);
+    border-radius: 14px;
+  }
+  @media (max-width: 900px) {
+    .dbx-toolbar { grid-template-columns: 1fr; }
+    .dbx-summary { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="premium-card" style="margin-bottom:18px;">
+  <h2 style="margin:0 0 8px;">فحص وإصلاح متقدم لكل الشركات</h2>
+  <p style="margin:0;color:var(--text-muted);line-height:1.8;">
+    هذه الصفحة تقارن قواعد بيانات الشركات مع موديلات النظام الحالية، ثم تنشئ الجداول الناقصة وتضيف الأعمدة الجديدة عند تطبيق الإصلاح. الفحص لا يغير البيانات.
+  </p>
+</div>
+
+<div class="premium-card">
+  <div class="dbx-toolbar">
+    <div class="dbx-field">
+      <label>النطاق</label>
+      <select id="scopeSelect">
+        <option value="all">كل الشركات</option>
+        <option value="active">الشركات النشطة فقط</option>
+        <option value="one">شركة محددة</option>
+      </select>
+    </div>
+    <div class="dbx-field">
+      <label>الشركة المحددة</label>
+      <select id="tenantSelect">
+        {% for tenant in tenants %}
+        <option value="{{ tenant.slug }}">{{ tenant.name }} — {{ tenant.slug }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="button" class="dbx-btn scan" id="scanBtn"><i class="fas fa-search"></i> فحص فقط</button>
+    <button type="button" class="dbx-btn apply" id="applyBtn"><i class="fas fa-wrench"></i> تطبيق الإصلاح</button>
+  </div>
+
+  <div class="dbx-summary" id="summary">
+    <div class="dbx-stat"><span>الشركات</span><strong>0</strong></div>
+    <div class="dbx-stat"><span>جداول ناقصة</span><strong>0</strong></div>
+    <div class="dbx-stat"><span>أعمدة ناقصة</span><strong>0</strong></div>
+    <div class="dbx-stat"><span>أخطاء</span><strong>0</strong></div>
+  </div>
+
+  <div id="results" class="dbx-results">
+    <div class="dbx-empty">اضغط “فحص فقط” لاستكشاف قواعد بيانات الشركات.</div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const scopeSelect = document.getElementById('scopeSelect');
+  const tenantSelect = document.getElementById('tenantSelect');
+  const scanBtn = document.getElementById('scanBtn');
+  const applyBtn = document.getElementById('applyBtn');
+  const results = document.getElementById('results');
+  const summary = document.getElementById('summary');
+
+  function setBusy(busy) {
+    scanBtn.disabled = busy;
+    applyBtn.disabled = busy;
+  }
+
+  function updateSummary(data) {
+    const totals = data.totals || {};
+    summary.innerHTML = `
+      <div class="dbx-stat"><span>الشركات</span><strong>${data.count || 0}</strong></div>
+      <div class="dbx-stat"><span>جداول ناقصة</span><strong>${totals.tables || 0}</strong></div>
+      <div class="dbx-stat"><span>أعمدة ناقصة</span><strong>${totals.columns || 0}</strong></div>
+      <div class="dbx-stat"><span>أخطاء</span><strong>${totals.errors || 0}</strong></div>
+    `;
+  }
+
+  function badge(text, cls = '') {
+    return `<span class="dbx-badge ${cls}">${text}</span>`;
+  }
+
+  function render(data) {
+    updateSummary(data);
+    const rows = data.results || [];
+    if (!rows.length) {
+      results.innerHTML = '<div class="dbx-empty">لا توجد شركات ضمن هذا النطاق.</div>';
+      return;
+    }
+    results.innerHTML = rows.map((row) => {
+      const s = row.summary || {};
+      const cls = row.ok ? '' : ' err';
+      const badges = [
+        badge(`جداول ${s.tables || 0}`),
+        badge(`أعمدة ${s.columns || 0}`),
+        badge(`تحذيرات ${s.warnings || 0}`, (s.warnings || 0) ? 'warn' : ''),
+        badge(`أخطاء ${s.errors || 0}`, (s.errors || 0) ? 'err' : ''),
+      ].join('');
+      return `
+        <div class="dbx-card${cls}">
+          <div class="dbx-card-head">
+            <div class="dbx-company">
+              <strong>${row.name || row.slug}</strong>
+              <small>${row.slug || ''} · ${row.db_path || ''}</small>
+            </div>
+            <div class="dbx-badges">${badges}</div>
+          </div>
+          <div class="dbx-card-body">
+            <pre class="dbx-json">${escapeHtml(JSON.stringify(row.report || row.error || {}, null, 2))}</pre>
+          </div>
+        </div>
+      `;
+    }).join('');
+    results.querySelectorAll('.dbx-card-head').forEach((head) => {
+      head.addEventListener('click', () => head.parentElement.classList.toggle('open'));
+    });
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, (ch) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[ch]));
+  }
+
+  async function run(dryRun) {
+    if (!dryRun && !confirm('تطبيق الإصلاح سيضيف الجداول والأعمدة الناقصة لكل الشركات المحددة. يفضل أخذ نسخة احتياطية قبل المتابعة. هل تريد الاستمرار؟')) {
+      return;
+    }
+    setBusy(true);
+    results.innerHTML = `<div class="dbx-empty">${dryRun ? 'جاري الفحص...' : 'جاري تطبيق الإصلاح...'}</div>`;
+    try {
+      const res = await fetch('/superadmin/database-repair/api', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dry_run: dryRun,
+          scope: scopeSelect.value,
+          tenant_slug: tenantSelect.value
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        results.innerHTML = `<div class="dbx-empty">${escapeHtml(data.error || ('HTTP ' + res.status))}</div>`;
+        return;
+      }
+      render(data);
+    } catch (err) {
+      results.innerHTML = `<div class="dbx-empty">${escapeHtml(err)}</div>`;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  scanBtn.addEventListener('click', () => run(true));
+  applyBtn.addEventListener('click', () => run(false));
+})();
+</script>
+{% endblock %}

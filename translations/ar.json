@@ -918,6 +918,8 @@
     "settings_overview_title": "نظرة عامة على الإعدادات",
     "settings_overview_desc": "ملخص سريع لإعدادات الشركة والإجراءات الشائعة.",
     "settings_app_downloads_title": "تحميل تطبيقات الهاتف",
+    "settings_delivery_agent_apk_title": "تطبيق بوابة المندوب",
+    "settings_delivery_agent_apk_desc": "تطبيق Android لمندوبي التوصيل — يعرض بوابة المندوب مباشرة على الهاتف.",
     "settings_card_invoice_title": "إعدادات الفاتورة",
     "settings_card_invoice_desc": "إعدادات اسم الشركة، العنوان، الهاتف، ملاحظات الضمان، وإعدادات تصميم الفاتورة",
     "settings_edit_settings": "تعديل الإعدادات",

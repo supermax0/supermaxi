@@ -1031,6 +1031,7 @@ PAGES_GUIDE = [
             ("/superadmin/tenants/create", "إنشاء شركة جديدة", "superadmin_create_tenant.html"),
             ("/superadmin/invoice-templates", "تفعيل قوالب الفواتير للشركات", "superadmin_invoice_templates.html"),
             ("/superadmin/settings", "إعدادات النظام", "superadmin_settings.html"),
+            ("/superadmin/database-repair", "إصلاح قواعد بيانات الشركات", "superadmin_database_repair.html"),
             ("/superadmin/links", "دليل الصفحات — كل الروابط", "superadmin_links.html"),
             ("/superadmin/login", "تسجيل دخول المدير", "superadmin_login.html"),
         ],

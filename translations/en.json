@@ -909,6 +909,8 @@
     "settings_overview_title": "Settings overview",
     "settings_overview_desc": "Quick summary of company settings and common actions.",
     "settings_app_downloads_title": "Mobile app downloads",
+    "settings_delivery_agent_apk_title": "Delivery agent portal app",
+    "settings_delivery_agent_apk_desc": "Android app for delivery agents — opens the agent portal on mobile.",
     "settings_card_invoice_title": "Invoice Settings",
     "settings_card_invoice_desc": "Company name, address, phone, warranty notes, and invoice design settings",
     "settings_edit_settings": "Edit Settings",
