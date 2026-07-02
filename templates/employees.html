@@ -56,22 +56,36 @@
   </div>
   <div class="group-content">
     <form method="post" id="employeeForm" class="emp-form-grid" onsubmit="handleEmployeeSubmit(event)">
-      <input name="name" id="emp_name" placeholder="{{ _('employees_placeholder_name') }}" data-help="employees.name" required>
-      <input name="username" id="emp_username" placeholder="{{ _('employees_placeholder_username') }}" data-help="employees.username" required>
-      <input name="password" type="password" id="emp_password" placeholder="{{ _('employees_placeholder_password') }}" required>
-      <select name="role" id="emp_role" data-help="employees.role">
-        <option value="cashier">{{ _('employees_role_cashier') }}</option>
-        <option value="admin">{{ _('employees_role_admin') }}</option>
-      </select>
-      <input name="salary" type="number" id="emp_salary" placeholder="{{ _('employees_placeholder_salary') }}" min="0">
-      <div class="fixed-commission-field">
-        <label for="fixedCommissionPercent">{{ _('employees_fixed_commission_label') }}</label>
-        <div class="fixed-commission-row">
-          <input type="number" id="fixedCommissionPercent" value="{{ fixed_commission_percent }}" min="0" max="100">
-          <span>%</span>
-          <button type="button" class="btn-fixed-commission" onclick="saveFixedCommission()">{{ _('employees_fixed_commission_save') }}</button>
+      <div class="emp-form-fields">
+        <div class="emp-field">
+          <input name="name" id="emp_name" placeholder="{{ _('employees_placeholder_name') }}" data-help="employees.name" required>
         </div>
-        <small>{{ _('employees_fixed_commission_hint') }}</small>
+        <div class="emp-field">
+          <input name="username" id="emp_username" placeholder="{{ _('employees_placeholder_username') }}" data-help="employees.username" required>
+        </div>
+        <div class="emp-field">
+          <input name="password" type="password" id="emp_password" placeholder="{{ _('employees_placeholder_password') }}" required>
+        </div>
+        <div class="emp-field">
+          <select name="role" id="emp_role" data-help="employees.role">
+            <option value="cashier">{{ _('employees_role_cashier') }}</option>
+            <option value="admin">{{ _('employees_role_admin') }}</option>
+          </select>
+        </div>
+      </div>
+      <div class="emp-form-row-secondary">
+        <div class="emp-field emp-field--salary">
+          <input name="salary" type="number" id="emp_salary" placeholder="{{ _('employees_placeholder_salary') }}" min="0">
+        </div>
+        <div class="fixed-commission-field">
+          <label for="fixedCommissionPercent">{{ _('employees_fixed_commission_label') }}</label>
+          <div class="fixed-commission-row">
+            <input type="number" id="fixedCommissionPercent" value="{{ fixed_commission_percent }}" min="0" max="100">
+            <span>%</span>
+            <button type="button" class="btn-fixed-commission" onclick="saveFixedCommission()">{{ _('employees_fixed_commission_save') }}</button>
+          </div>
+          <small>{{ _('employees_fixed_commission_hint') }}</small>
+        </div>
       </div>
       <button type="submit" id="employeeSubmitBtn" class="btn-submit-primary">
         <span>💾</span><span>{{ _('employees_save_button') }}</span>
@@ -91,14 +105,22 @@
   </div>
   <div class="group-content">
     <form id="agentAccountForm" class="emp-form-grid" onsubmit="addAgentAccount(event)">
-      <select name="agent_id" id="agent_id" required>
-        <option value="">{{ _('employees_select_agent') }}</option>
-        {% for agent in delivery_agents %}
-        <option value="{{ agent.id }}">{{ agent.name }}</option>
-        {% endfor %}
-      </select>
-      <input type="text" id="agent_username" placeholder="{{ _('employees_placeholder_username') }}" required>
-      <input type="password" id="agent_password" placeholder="{{ _('employees_placeholder_password') }}" required>
+      <div class="emp-form-fields emp-form-fields--3">
+        <div class="emp-field">
+          <select name="agent_id" id="agent_id" required>
+            <option value="">{{ _('employees_select_agent') }}</option>
+            {% for agent in delivery_agents %}
+            <option value="{{ agent.id }}">{{ agent.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="emp-field">
+          <input type="text" id="agent_username" placeholder="{{ _('employees_placeholder_username') }}" required>
+        </div>
+        <div class="emp-field">
+          <input type="password" id="agent_password" placeholder="{{ _('employees_placeholder_password') }}" required>
+        </div>
+      </div>
       <button type="submit" class="btn-submit-primary">
         <span>💾</span><span>{{ _('employees_save_account') }}</span>
       </button>

@@ -47,6 +47,84 @@
   direction: rtl;
 }
 
+/* Add-employee form layout */
+.team-admin-page .emp-form-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.team-admin-page .emp-form-grid > .btn-submit-primary {
+  width: 100%;
+}
+
+.team-admin-page .emp-form-fields {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--spacing-md);
+}
+
+.team-admin-page .emp-form-fields--3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.team-admin-page .emp-form-row-secondary {
+  display: grid;
+  grid-template-columns: minmax(160px, 220px) minmax(0, 1fr);
+  gap: var(--spacing-md);
+  align-items: start;
+}
+
+.team-admin-page .emp-field {
+  position: relative;
+  min-width: 0;
+}
+
+.team-admin-page .emp-field input,
+.team-admin-page .emp-field select {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 44px;
+}
+
+.team-admin-page .emp-field:has(.finora-help) input,
+.team-admin-page .emp-field:has(.finora-help) select {
+  padding-inline-start: 28px;
+}
+
+.team-admin-page .emp-field > .finora-help {
+  position: absolute;
+  top: 10px;
+  inset-inline-start: 10px;
+  margin: 0;
+  z-index: 2;
+}
+
+.team-admin-page .fixed-commission-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+}
+
+@media (max-width: 992px) {
+  .team-admin-page .emp-form-fields,
+  .team-admin-page .emp-form-fields--3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .team-admin-page .emp-form-fields,
+  .team-admin-page .emp-form-fields--3,
+  .team-admin-page .emp-form-row-secondary {
+    grid-template-columns: 1fr;
+  }
+}
+
 .team-admin-page .button-loading {
   position: relative;
   color: transparent !important;
@@ -163,12 +241,6 @@
   cursor: pointer;
   width: 100%;
   margin-top: 12px;
-}
-
-.team-admin-page .fixed-commission-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
 }
 
 .team-admin-page .fixed-commission-field label {
