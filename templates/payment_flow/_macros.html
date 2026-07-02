@@ -1,7 +1,7 @@
 {% macro pf_topbar(back_href='/', back_label='العودة للرئيسية') %}
 <div class="pf-topbar">
   <a href="/" class="pf-logo">
-    <img src="{{ platform_logo_url }}" alt="{{ platform_app_name }}">
+    <img src="{{ platform_logo_url }}" alt="{{ platform_app_name }}" onerror="this.onerror=null;this.src='/static/finora-logo.png';">
     <strong>{{ platform_app_name }}</strong>
   </a>
   <a href="{{ back_href }}" class="pf-topbar-link"><i class="fas fa-arrow-right"></i> {{ back_label }}</a>

@@ -197,6 +197,29 @@ with app.app_context():
     db.create_all()
 
     try:
+        from sqlalchemy import inspect, text
+
+        inspector = inspect(db.engine)
+        if "system_settings" in inspector.get_table_names():
+            settings_cols = {col["name"] for col in inspector.get_columns("system_settings")}
+            settings_additions = {
+                "facebook_app_id": "ALTER TABLE system_settings ADD COLUMN facebook_app_id VARCHAR(100)",
+                "facebook_app_secret": "ALTER TABLE system_settings ADD COLUMN facebook_app_secret VARCHAR(255)",
+            }
+            with db.engine.connect() as conn:
+                added = False
+                for col, stmt in settings_additions.items():
+                    if col not in settings_cols:
+                        conn.execute(text(stmt))
+                        added = True
+                        print(f"Added {col} column to system_settings table.")
+                if added:
+                    conn.commit()
+    except Exception as e:
+        db.session.rollback()
+        print(f"Migration note (system_settings columns): {e}")
+
+    try:
         from utils.landing_content import ensure_landing_seed
 
         ensure_landing_seed()
@@ -249,6 +272,13 @@ with app.app_context():
                         tenant_cols = {row[1] for row in cur.fetchall()}
                         if "business_type" not in tenant_cols:
                             cur.execute("ALTER TABLE tenant ADD COLUMN business_type TEXT DEFAULT 'general'")
+                    if "system_settings" in existing_tables:
+                        cur.execute("PRAGMA table_info(system_settings)")
+                        system_settings_cols = {row[1] for row in cur.fetchall()}
+                        if "facebook_app_id" not in system_settings_cols:
+                            cur.execute("ALTER TABLE system_settings ADD COLUMN facebook_app_id TEXT")
+                        if "facebook_app_secret" not in system_settings_cols:
+                            cur.execute("ALTER TABLE system_settings ADD COLUMN facebook_app_secret TEXT")
                     if "product" in existing_tables:
                         cur.execute("PRAGMA table_info(product)")
                         product_cols = {row[1] for row in cur.fetchall()}
@@ -1294,6 +1324,39 @@ def require_login():
         "/webhook-ui",  # صفحة اختبار webhook
     ]
 
+    agent_allowed_paths = ("/delivery-agent", "/messages", "/static")
+
+    def restore_staff_session_from_agent() -> bool:
+        if not (session.get("agent_portal") and session.get("agent_id") and session.get("staff_user_id")):
+            return False
+        staff_keys = (
+            "user_id",
+            "user_name",
+            "name",
+            "role",
+            "tenant_slug",
+            "tenant_id",
+            "plan_key",
+            "business_type",
+            "language",
+            "theme",
+        )
+        for key in ("user_id", "user_name", "role", "tenant_slug", "agent_portal", "agent_employee_id"):
+            session.pop(key, None)
+        for key in staff_keys:
+            staff_key = f"staff_{key}"
+            if staff_key in session:
+                session[key] = session.pop(staff_key)
+        tenant_slug = session.get("tenant_slug")
+        if tenant_slug:
+            g.tenant = tenant_slug
+        return True
+
+    if session.get("agent_portal") and session.get("agent_id") and not any(
+        request.path.startswith(p) for p in agent_allowed_paths
+    ):
+        restore_staff_session_from_agent()
+
     # السماح للمسارات المفتوحة: "/" تطابق تامة، الباقي يبدأ بـ المسار
     if request.path == "/" or any(request.path.startswith(p) for p in open_routes if p != "/"):
         # لوحة التحكم "/" معفاة من require_login لكن تحتاج g.tenant للجلسات النشطة
@@ -1324,10 +1387,13 @@ def require_login():
             return jsonify({"success": False, "message": "Unauthorized"}), 401
         return redirect("/login")
 
-    # جلسة بوابة المندوب: السماح بالمراسلة وبوابة المندوب فقط
+    # جلسة بوابة المندوب: السماح بالمراسلة وبوابة المندوب فقط.
+    # إذا كان المستخدم فتح بوابة المندوب من حساب موظف في نفس المتصفح، نرجع جلسة
+    # الموظف الأصلية عند العودة للنظام الإداري بدلاً من إرساله لتسجيل الدخول.
     if session.get("agent_portal") and session.get("agent_id"):
-        allowed_agent_paths = ("/delivery-agent", "/messages", "/static")
-        if not any(request.path.startswith(p) for p in allowed_agent_paths):
+        if not any(request.path.startswith(p) for p in agent_allowed_paths):
+            if restore_staff_session_from_agent():
+                return
             return redirect("/delivery-agent/dashboard")
 
     # التحقق من صلاحية الاشتراك (SaaS)

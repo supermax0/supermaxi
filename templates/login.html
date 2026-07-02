@@ -5,13 +5,326 @@
 
 {% block content %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/payment-flow.css') }}">
-<div class="pf-page">
+<style>
+  .login-page {
+    min-height: 100vh;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(247, 249, 252, 0.96)),
+      linear-gradient(90deg, rgba(226, 232, 240, 0.38) 1px, transparent 1px),
+      linear-gradient(0deg, rgba(226, 232, 240, 0.38) 1px, transparent 1px);
+    background-size: auto, 42px 42px, 42px 42px;
+    color: #101828;
+  }
+
+  .login-shell {
+    width: min(1040px, calc(100vw - 32px));
+    margin: 34px auto 0;
+    display: grid;
+    grid-template-columns: minmax(0, 0.95fr) minmax(360px, 480px);
+    gap: 28px;
+    align-items: stretch;
+  }
+
+  .login-brand-panel,
+  .login-card {
+    background: rgba(255, 255, 255, 0.94);
+    border: 1px solid #e4eaf2;
+    border-radius: 8px;
+    box-shadow: 0 18px 50px rgba(16, 24, 40, 0.08);
+  }
+
+  .login-brand-panel {
+    padding: 30px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .login-brand-panel::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(135deg, rgba(37, 99, 235, 0.09), transparent 42%),
+      linear-gradient(315deg, rgba(22, 163, 74, 0.08), transparent 42%);
+    pointer-events: none;
+  }
+
+  .login-brand-main,
+  .login-brand-footer {
+    position: relative;
+    z-index: 1;
+  }
+
+  .login-brand-mark {
+    width: 58px;
+    height: 58px;
+    border-radius: 8px;
+    object-fit: cover;
+    box-shadow: 0 8px 24px rgba(37, 99, 235, 0.16);
+    margin-bottom: 20px;
+  }
+
+  .login-brand-panel h2 {
+    font-size: 30px;
+    line-height: 1.35;
+    margin: 0 0 12px;
+    font-weight: 900;
+  }
+
+  .login-brand-panel p {
+    margin: 0;
+    color: #667085;
+    line-height: 1.8;
+    max-width: 430px;
+  }
+
+  .login-brand-list {
+    display: grid;
+    gap: 10px;
+    margin-top: 26px;
+  }
+
+  .login-brand-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #344054;
+    font-weight: 700;
+  }
+
+  .login-brand-item i {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #eef4ff;
+    color: #2563eb;
+  }
+
+  .login-brand-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-top: 24px;
+  }
+
+  .login-pill {
+    border: 1px solid #dbe4f0;
+    background: #fff;
+    color: #475467;
+    border-radius: 999px;
+    padding: 7px 12px;
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  .login-card {
+    padding: 30px;
+  }
+
+  .login-header {
+    text-align: right;
+    margin-bottom: 24px;
+  }
+
+  .login-icon {
+    width: 54px;
+    height: 54px;
+    border-radius: 8px;
+    background: #eef4ff;
+    color: #2563eb;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 23px;
+    margin-bottom: 14px;
+  }
+
+  .login-header h1 {
+    font-size: 28px;
+    font-weight: 900;
+    margin: 0 0 6px;
+  }
+
+  .login-header p {
+    color: #667085;
+    margin: 0;
+    line-height: 1.7;
+  }
+
+  .login-form {
+    display: grid;
+    gap: 15px;
+  }
+
+  .login-field {
+    display: grid;
+    gap: 7px;
+  }
+
+  .login-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .login-field label {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 900;
+    color: #101828;
+  }
+
+  .login-hint {
+    color: #667085;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .login-input-wrap {
+    position: relative;
+  }
+
+  .login-input-wrap > i {
+    position: absolute;
+    inset-inline-start: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #98a2b3;
+    pointer-events: none;
+  }
+
+  .login-input {
+    width: 100%;
+    min-height: 48px;
+    border: 1px solid #d9e2ef;
+    border-radius: 8px;
+    background: #fff;
+    color: #101828;
+    padding: 12px 44px;
+    font: inherit;
+    direction: ltr;
+    text-align: left;
+    transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+  }
+
+  .login-input:focus {
+    outline: none;
+    border-color: #2563eb;
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.13);
+  }
+
+  .login-toggle-password {
+    position: absolute;
+    inset-inline-end: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 34px;
+    height: 34px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #667085;
+    cursor: pointer;
+  }
+
+  .login-toggle-password:hover {
+    background: #f2f4f7;
+    color: #2563eb;
+  }
+
+  .login-submit {
+    min-height: 50px;
+    margin-top: 5px;
+    border-radius: 8px;
+    box-shadow: 0 12px 24px rgba(37, 99, 235, 0.22);
+  }
+
+  .login-footer {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+    color: #667085;
+    font-size: 14px;
+  }
+
+  .login-footer a {
+    color: #2563eb;
+    font-weight: 900;
+    text-decoration: none;
+  }
+
+  .login-footer a:hover {
+    text-decoration: underline;
+  }
+
+  @media (max-width: 900px) {
+    .login-shell {
+      grid-template-columns: 1fr;
+      margin-top: 18px;
+    }
+
+    .login-brand-panel {
+      min-height: 260px;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .login-page {
+      padding: 16px 12px 28px;
+    }
+
+    .login-shell {
+      width: 100%;
+      gap: 14px;
+    }
+
+    .login-card,
+    .login-brand-panel {
+      padding: 22px;
+    }
+
+    .login-brand-panel h2,
+    .login-header h1 {
+      font-size: 24px;
+    }
+  }
+</style>
+
+<div class="pf-page login-page">
   {{ pf_topbar('/', 'العودة للرئيسية') }}
 
-  <div class="pf-wrap-narrow">
-    <div class="pf-card">
-      <div class="pf-header">
-        <div style="width:56px;height:56px;margin:0 auto 16px;background:var(--pf-primary-soft);border-radius:14px;display:flex;align-items:center;justify-content:center;color:var(--pf-primary);font-size:24px">
+  <div class="login-shell">
+    <section class="login-brand-panel" aria-label="Finora">
+      <div class="login-brand-main">
+        <img class="login-brand-mark" src="{{ platform_logo_url }}" alt="{{ platform_app_name }}" onerror="this.onerror=null;this.src='/static/finora-logo.png';">
+        <h2>{{ platform_app_name }} لإدارة شركتك من مكان واحد</h2>
+        <p>تابع الطلبات، المخزون، نقطة البيع، والحسابات بحساب موحد وآمن لكل فريقك.</p>
+        <div class="login-brand-list">
+          <div class="login-brand-item"><i class="fas fa-cash-register"></i><span>نقطة بيع ومخزون مباشر</span></div>
+          <div class="login-brand-item"><i class="fas fa-chart-line"></i><span>تقارير وربح يومي</span></div>
+          <div class="login-brand-item"><i class="fas fa-users-gear"></i><span>صلاحيات حسب دور المستخدم</span></div>
+        </div>
+      </div>
+      <div class="login-brand-footer" aria-hidden="true">
+        <span class="login-pill">آمن</span>
+        <span class="login-pill">سريع</span>
+        <span class="login-pill">جاهز للشركات</span>
+      </div>
+    </section>
+
+    <main class="login-card">
+      <div class="login-header">
+        <div class="login-icon" aria-hidden="true">
           <i class="fas fa-shield-alt"></i>
         </div>
         <h1>مرحباً بعودتك</h1>
@@ -19,40 +332,93 @@
       </div>
 
       {% if error %}
-      <div class="pf-alert-error"><i class="fas fa-exclamation-triangle"></i> {{ error }}</div>
+      <div class="pf-alert-error" role="alert"><i class="fas fa-exclamation-triangle"></i> {{ error }}</div>
       {% endif %}
 
-      <form method="post" action="{{ url_for('index.login_tenant', tenant_slug=fixed_tenant_slug) if fixed_tenant_slug else '/login' }}">
+      <form class="login-form" method="post" action="{{ url_for('index.login_tenant', tenant_slug=fixed_tenant_slug) if fixed_tenant_slug else '/login' }}" autocomplete="off" novalidate>
         {% if fixed_tenant_slug %}
         <input type="hidden" id="tenant_slug" name="tenant_slug" value="{{ fixed_tenant_slug }}">
         {% else %}
-        <div class="pf-field" style="margin-bottom:16px">
-          <label for="tenant_slug">معرف الشركة (Company ID)</label>
-          <input type="text" id="tenant_slug" name="tenant_slug" placeholder="مثال: alnoor" value="{{ request.args.get('tenant', '') }}" required dir="ltr" autofocus autocomplete="off">
-          <div class="pf-hint">بدون مسافات، أحرف إنجليزية</div>
+        <div class="login-field">
+          <div class="login-label-row">
+            <label for="tenant_slug">معرف الشركة</label>
+            <span class="login-hint">Company ID</span>
+          </div>
+          <div class="login-input-wrap">
+            <i class="fas fa-building"></i>
+            <input class="login-input" type="text" id="tenant_slug" name="tenant_slug" placeholder="super" value="{{ request.args.get('tenant', '') }}" required inputmode="latin" autofocus autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true">
+          </div>
+          <div class="login-hint">بدون مسافات أو رموز، أحرف إنجليزية وأرقام فقط</div>
         </div>
         {% endif %}
 
-        <div class="pf-field" style="margin-bottom:16px">
+        <div class="login-field">
           <label for="username">اسم المستخدم</label>
-          <input type="text" id="username" name="username" placeholder="مثال: admin" required dir="ltr" autocomplete="username">
+          <div class="login-input-wrap">
+            <i class="fas fa-user"></i>
+            <input class="login-input" type="text" id="username" name="username" placeholder="admin" required autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" readonly {% if fixed_tenant_slug %}autofocus{% endif %}>
+          </div>
         </div>
 
-        <div class="pf-field" style="margin-bottom:20px">
+        <div class="login-field">
           <label for="password">كلمة المرور</label>
-          <input type="password" id="password" name="password" placeholder="أدخل كلمة المرور" required dir="ltr" autocomplete="current-password">
+          <div class="login-input-wrap">
+            <i class="fas fa-lock"></i>
+            <input class="login-input" type="password" id="password" name="password" placeholder="••••••••" required autocomplete="new-password" autocapitalize="none" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" readonly>
+            <button class="login-toggle-password" type="button" id="togglePassword" aria-label="إظهار كلمة المرور">
+              <i class="fas fa-eye"></i>
+            </button>
+          </div>
         </div>
 
-        <button type="submit" class="pf-btn pf-btn-primary pf-btn-block">
+        <button type="submit" class="pf-btn pf-btn-primary pf-btn-block login-submit">
           <span>دخول للنظام</span>
           <i class="fas fa-sign-in-alt"></i>
         </button>
       </form>
 
-      <p class="pf-footer-links">
-        ليس لديك حساب؟ <a href="/signup">ابدأ تجربتك المجانية</a>
-      </p>
-    </div>
+      <div class="login-footer">
+        <span>ليس لديك حساب؟</span>
+        <a href="/signup">ابدأ تجربتك المجانية</a>
+      </div>
+    </main>
   </div>
 </div>
+<script>
+  (function () {
+    const tenantInput = document.getElementById('tenant_slug');
+    const usernameInput = document.getElementById('username');
+    const passwordInput = document.getElementById('password');
+    const togglePassword = document.getElementById('togglePassword');
+
+    function unlockManualInput(input) {
+      if (!input) return;
+      const unlock = function () {
+        input.removeAttribute('readonly');
+      };
+      input.addEventListener('focus', unlock, { once: true });
+      input.addEventListener('pointerdown', unlock, { once: true });
+      input.addEventListener('keydown', unlock, { once: true });
+    }
+
+    if (tenantInput) {
+      tenantInput.addEventListener('input', function () {
+        this.value = this.value.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+      });
+    }
+
+    unlockManualInput(usernameInput);
+    unlockManualInput(passwordInput);
+
+    if (passwordInput && togglePassword) {
+      togglePassword.addEventListener('click', function () {
+        const isPassword = passwordInput.type === 'password';
+        passwordInput.type = isPassword ? 'text' : 'password';
+        this.setAttribute('aria-label', isPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور');
+        this.innerHTML = isPassword ? '<i class="fas fa-eye-slash"></i>' : '<i class="fas fa-eye"></i>';
+        passwordInput.focus();
+      });
+    }
+  })();
+</script>
 {% endblock %}
