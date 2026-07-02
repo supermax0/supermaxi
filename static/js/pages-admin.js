@@ -336,4 +336,16 @@ function confirmBulkPagesImport() {
 
 document.addEventListener('DOMContentLoaded', () => {
   restoreSectionStates();
+
+  document.getElementById('pagesImportExtractBtn')?.addEventListener('click', () => uploadPagesImage());
+  document.getElementById('pagesImportRetryBtn')?.addEventListener('click', () => retryPagesImportWithAI());
+  document.getElementById('pagesImportConfirmBtn')?.addEventListener('click', () => confirmBulkPagesImport());
+  document.getElementById('pagesImportCancelBtn')?.addEventListener('click', () => closePagesImportModal());
+  document.getElementById('pagesImportCloseBtn')?.addEventListener('click', () => closePagesImportModal());
 });
+
+window.uploadPagesImage = uploadPagesImage;
+window.retryPagesImportWithAI = retryPagesImportWithAI;
+window.openPagesImportModal = openPagesImportModal;
+window.closePagesImportModal = closePagesImportModal;
+window.confirmBulkPagesImport = confirmBulkPagesImport;

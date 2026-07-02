@@ -75,7 +75,7 @@
       <p class="pages-import-hint">{{ _('pages_import_hint') if _('pages_import_hint') != 'pages_import_hint' else 'ارفع صورة واضحة لجدول يحتوي أسماء البيجات. يفضل أن يكون عمود الاسم واضحاً.' }}</p>
       <div class="pages-import-row">
         <input type="file" id="pagesImportImage" accept="image/*" class="pages-import-file">
-        <button type="button" class="btn-submit-primary pages-import-btn" id="pagesImportExtractBtn" onclick="uploadPagesImage()">
+        <button type="button" class="btn-submit-primary pages-import-btn" id="pagesImportExtractBtn">
           <i class="fas fa-magic"></i> {{ _('pages_import_extract_btn') if _('pages_import_extract_btn') != 'pages_import_extract_btn' else 'استخراج الأسماء' }}
         </button>
       </div>
@@ -171,14 +171,14 @@
 
   <div id="pagesImportModal" class="team-modal-overlay">
     <div class="team-modal-box team-modal-box--wide pages-import-modal">
-      <button type="button" class="modal-close" onclick="closePagesImportModal()">&times;</button>
+      <button type="button" class="modal-close" id="pagesImportCloseBtn">&times;</button>
       <h3 id="pagesImportModalTitle">{{ _('pages_import_preview_title') if _('pages_import_preview_title') != 'pages_import_preview_title' else 'معاينة أسماء البيجات' }}</h3>
       <p id="pagesImportMeta" class="pages-import-meta"></p>
       <div id="pagesImportList" class="pages-import-list"></div>
       <div class="team-modal-actions pages-import-actions">
-        <button type="button" class="btn btn-light" onclick="retryPagesImportWithAI()">{{ _('pages_import_retry_ai') if _('pages_import_retry_ai') != 'pages_import_retry_ai' else 'إعادة بالذكاء الاصطناعي' }}</button>
-        <button type="button" class="btn btn-light" onclick="closePagesImportModal()">{{ _('cancel') }}</button>
-        <button type="button" class="btn btn-primary" onclick="confirmBulkPagesImport()">{{ _('pages_import_confirm_btn') if _('pages_import_confirm_btn') != 'pages_import_confirm_btn' else 'إضافة المحدد' }}</button>
+        <button type="button" class="btn btn-light" id="pagesImportRetryBtn">{{ _('pages_import_retry_ai') if _('pages_import_retry_ai') != 'pages_import_retry_ai' else 'إعادة بالذكاء الاصطناعي' }}</button>
+        <button type="button" class="btn btn-light" id="pagesImportCancelBtn">{{ _('cancel') }}</button>
+        <button type="button" class="btn btn-primary" id="pagesImportConfirmBtn">{{ _('pages_import_confirm_btn') if _('pages_import_confirm_btn') != 'pages_import_confirm_btn' else 'إضافة المحدد' }}</button>
       </div>
     </div>
   </div>
@@ -218,5 +218,5 @@
     pages_import_source_openai: {{ (_('pages_import_source_openai') if _('pages_import_source_openai') != 'pages_import_source_openai' else 'مصدر الاستخراج: ذكاء اصطناعي')|tojson }}
   };
 </script>
-<script src="{{ url_for('static', filename='js/pages-admin.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pages-admin.js') }}?v=20260702"></script>
 {% endblock %}
