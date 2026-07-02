@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from sqlalchemy import inspect, text
+from flask import current_app
 
 from extensions import db
 
@@ -31,28 +32,36 @@ def _add_column_if_missing(table: str, column: str, ddl: str) -> None:
 
 def ensure_branch_schema() -> None:
     """Create branch tables/columns and migrate existing tenant data once."""
-    from models.branch import Branch, BranchStock, StockTransfer, StockTransferLine
+    try:
+        from models.branch import Branch, BranchStock, StockTransfer, StockTransferLine
 
-    Branch.__table__.create(bind=db.engine, checkfirst=True)
-    BranchStock.__table__.create(bind=db.engine, checkfirst=True)
-    StockTransfer.__table__.create(bind=db.engine, checkfirst=True)
-    StockTransferLine.__table__.create(bind=db.engine, checkfirst=True)
+        Branch.__table__.create(bind=db.engine, checkfirst=True)
+        BranchStock.__table__.create(bind=db.engine, checkfirst=True)
+        StockTransfer.__table__.create(bind=db.engine, checkfirst=True)
+        StockTransferLine.__table__.create(bind=db.engine, checkfirst=True)
 
-    _add_column_if_missing("employee", "branch_id", "ALTER TABLE employee ADD COLUMN branch_id INTEGER")
-    _add_column_if_missing("invoice", "branch_id", "ALTER TABLE invoice ADD COLUMN branch_id INTEGER")
-    _add_column_if_missing(
-        "order_item",
-        "fulfillment_branch_id",
-        "ALTER TABLE order_item ADD COLUMN fulfillment_branch_id INTEGER",
-    )
-    _add_column_if_missing("purchase", "branch_id", "ALTER TABLE purchase ADD COLUMN branch_id INTEGER")
-    _add_column_if_missing("activity_log", "branch_id", "ALTER TABLE activity_log ADD COLUMN branch_id INTEGER")
+        _add_column_if_missing("employee", "branch_id", "ALTER TABLE employee ADD COLUMN branch_id INTEGER")
+        _add_column_if_missing("invoice", "branch_id", "ALTER TABLE invoice ADD COLUMN branch_id INTEGER")
+        _add_column_if_missing(
+            "order_item",
+            "fulfillment_branch_id",
+            "ALTER TABLE order_item ADD COLUMN fulfillment_branch_id INTEGER",
+        )
+        _add_column_if_missing("purchase", "branch_id", "ALTER TABLE purchase ADD COLUMN branch_id INTEGER")
+        _add_column_if_missing("activity_log", "branch_id", "ALTER TABLE activity_log ADD COLUMN branch_id INTEGER")
 
-    if _migration_data_done():
-        return
+        if _migration_data_done():
+            return
 
-    _run_data_migration()
-    _mark_migration_done()
+        _run_data_migration()
+        _mark_migration_done()
+    except Exception:
+        # Guard route rendering from hard 500 when tenant schema is partially migrated.
+        db.session.rollback()
+        try:
+            current_app.logger.exception("ensure_branch_schema failed")
+        except Exception:
+            pass
 
 
 def _migration_data_done() -> bool:
