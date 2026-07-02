@@ -223,7 +223,7 @@ class FinoraDeployStudio(tk.Tk):
 
         self.run_migrations_btn = ttk.Button(
             btns,
-            text="Run DB create_all",
+            text="Add DB Columns",
             width=18,
             command=self.on_run_db_create_all_clicked,
         )
@@ -1091,7 +1091,7 @@ systemctl reload {nginx_service}
             self.set_busy(False)
 
     def on_run_db_create_all_clicked(self) -> None:
-        """تشغيل db.create_all() على السيرفر داخل app context."""
+        """إضافة الأعمدة الناقصة مباشرة من موديلات SQLAlchemy على السيرفر."""
         self.save_config()
         thread = threading.Thread(target=self._run_db_create_all_thread, daemon=True)
         self.set_busy(True)
@@ -1099,11 +1099,11 @@ systemctl reload {nginx_service}
 
     def _run_db_create_all_thread(self) -> None:
         try:
-            self.set_status("Running db.create_all() on server…")
+            self.set_status("Adding missing DB columns on server…")
             server_path = self.server_path_var.get().strip()
             if not server_path:
                 self.append_log("[ERROR] Server project path is empty.\n")
-                self.set_status("DB create_all failed (server path empty).")
+                self.set_status("Add DB columns failed (server path empty).")
                 return
 
             script = f"""
@@ -1112,93 +1112,148 @@ if [ -d "venv" ]; then
   source venv/bin/activate
 fi
 python - << 'PY'
-from app import app, db
+import importlib
+import pkgutil
+from pathlib import Path
+
+from flask import Flask, g
+from sqlalchemy import create_engine, inspect
+from sqlalchemy.schema import CreateColumn
+
+from config import Config
+from extensions import db
+
+app = Flask(__name__, root_path=str(Path.cwd()))
+app.config.from_object(Config)
+db.init_app(app)
+
+
+def load_all_models():
+    import models
+
+    for mod in pkgutil.iter_modules(models.__path__):
+        if not mod.ispkg and mod.name != "__init__":
+            try:
+                importlib.import_module("models." + mod.name)
+            except Exception as exc:
+                print(f"[WARN] model import skipped: models.{{mod.name}}: {{exc}}")
+    try:
+        import models.core  # noqa: F401
+        for mod in pkgutil.iter_modules(models.core.__path__):
+            if not mod.ispkg and mod.name != "__init__":
+                try:
+                    importlib.import_module("models.core." + mod.name)
+                except Exception as exc:
+                    print(f"[WARN] model import skipped: models.core.{{mod.name}}: {{exc}}")
+    except Exception as exc:
+        print("[WARN] core model import skipped:", exc)
+
+
+def column_sql(column, dialect):
+    raw = str(CreateColumn(column).compile(dialect=dialect)).strip()
+    # Keep ADD COLUMN safe for existing data. Database defaults/nullable columns
+    # are fine; hard NOT NULL can fail when rows already exist.
+    if not column.primary_key and not column.server_default and not column.default:
+        raw = raw.replace(" NOT NULL", "")
+    return raw
+
+
+def add_missing_columns(engine, label):
+    inspector = inspect(engine)
+    existing_tables = set(inspector.get_table_names())
+    added = 0
+    skipped = 0
+    errors = 0
+
+    for table in sorted(db.Model.metadata.sorted_tables, key=lambda t: t.name):
+        if table.name not in existing_tables:
+            print(f"[SKIP] {{label}}.{{table.name}}: table missing; use app startup/create_all for new table")
+            skipped += 1
+            continue
+
+        existing_cols = {{col["name"] for col in inspector.get_columns(table.name)}}
+        for column in table.columns:
+            if column.name in existing_cols:
+                continue
+            if column.primary_key:
+                print(f"[SKIP] {{label}}.{{table.name}}.{{column.name}}: primary key column")
+                skipped += 1
+                continue
+            table_name = engine.dialect.identifier_preparer.quote(table.name)
+            ddl = f"ALTER TABLE {{table_name}} ADD COLUMN {{column_sql(column, engine.dialect)}}"
+            try:
+                with engine.begin() as conn:
+                    conn.exec_driver_sql(ddl)
+                print(f"[ADD] {{label}}.{{table.name}}.{{column.name}}")
+                added += 1
+            except Exception as exc:
+                msg = str(exc)
+                if "duplicate column" in msg.lower() or "already exists" in msg.lower():
+                    print(f"[OK] {{label}}.{{table.name}}.{{column.name}} already exists")
+                else:
+                    print(f"[ERROR] {{label}}.{{table.name}}.{{column.name}}: {{exc}}")
+                    errors += 1
+
+    print(f"[SUMMARY] {{label}}: added={{added}}, skipped={{skipped}}, errors={{errors}}")
+    return errors
+
+
+def run_explicit_guards():
+    # Keep local hand-written guards available for columns that are not fully
+    # represented by model metadata yet.
+    from utils.product_schema_guard import ensure_product_schema, ensure_customer_blacklist_columns
+    from utils.branch_migration import ensure_branch_schema
+    from utils.treasury_schema_guard import ensure_treasury_schema
+    from utils.beauty_schema_guard import ensure_beauty_schema
+
+    for guard in (
+        ensure_product_schema,
+        ensure_customer_blacklist_columns,
+        ensure_branch_schema,
+        ensure_treasury_schema,
+        ensure_beauty_schema,
+    ):
+        try:
+            guard()
+            print(f"[GUARD] {{guard.__name__}} OK")
+        except Exception as exc:
+            db.session.rollback()
+            print(f"[WARN] {{guard.__name__}} failed: {{exc}}")
+
+
 with app.app_context():
-    # يجب استيراد النماذج قبل create_all() وإلا لا يُنشأ الجدول في Metadata
-    from models.telegram_inbox_message import TelegramInboxMessage  # noqa: F401
-    from models.telegram_chat_profile import TelegramChatProfile  # noqa: F401
-    db.create_all()
-    from sqlalchemy import inspect, text
-    inspector = inspect(db.engine)
-    if "customer" in inspector.get_table_names():
-        cols = [c.get("name") for c in inspector.get_columns("customer")]
-        if "tg_chat_id" not in cols:
-            db.session.execute(text("ALTER TABLE customer ADD COLUMN tg_chat_id VARCHAR(64)"))
-            db.session.commit()
-            print("customer.tg_chat_id: added")
-        else:
-            print("customer.tg_chat_id: exists")
-    if "invoice" in inspector.get_table_names():
-        cols = [c.get("name") for c in inspector.get_columns("invoice")]
-        if "order_video_path" not in cols:
-            db.session.execute(text("ALTER TABLE invoice ADD COLUMN order_video_path VARCHAR(255)"))
-        if "order_video_original_name" not in cols:
-            db.session.execute(text("ALTER TABLE invoice ADD COLUMN order_video_original_name VARCHAR(255)"))
-        if "order_video_thumbnail_path" not in cols:
-            db.session.execute(text("ALTER TABLE invoice ADD COLUMN order_video_thumbnail_path VARCHAR(255)"))
-        if "order_video_size_mb" not in cols:
-            db.session.execute(text("ALTER TABLE invoice ADD COLUMN order_video_size_mb FLOAT"))
-        if "order_video_duration_sec" not in cols:
-            db.session.execute(text("ALTER TABLE invoice ADD COLUMN order_video_duration_sec FLOAT"))
-        if "order_video_recorded_at" not in cols:
-            db.session.execute(text("ALTER TABLE invoice ADD COLUMN order_video_recorded_at DATETIME"))
-        db.session.commit()
-        print("invoice order video columns: ensured")
-    TelegramChatProfile.__table__.create(bind=db.engine, checkfirst=True)
-    print("telegram_chat_profiles: ensured")
-    # tenant db files
-    from pathlib import Path
-    import sqlite3
+    load_all_models()
+    core_errors = add_missing_columns(db.engine, "core")
+    run_explicit_guards()
+
     tenants_dir = Path(app.root_path) / "tenants"
+    tenant_errors = 0
     if tenants_dir.is_dir():
         for dbf in sorted(tenants_dir.glob("*.db")):
-            conn = sqlite3.connect(str(dbf.resolve()))
-            cur = conn.cursor()
-            cur.execute("PRAGMA table_info(customer)")
-            cols = [r[1] for r in cur.fetchall()]
-            if "tg_chat_id" not in cols:
-                cur.execute("ALTER TABLE customer ADD COLUMN tg_chat_id TEXT")
-            cur.execute(
-                \"\"\"
-                CREATE TABLE IF NOT EXISTS telegram_chat_profiles (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    tenant_slug VARCHAR(100),
-                    workflow_id INTEGER NOT NULL,
-                    chat_id VARCHAR(64) NOT NULL,
-                    customer_name VARCHAR(150),
-                    phone VARCHAR(30),
-                    address VARCHAR(255),
-                    city VARCHAR(100),
-                    booking_items_json TEXT,
-                    created_at DATETIME,
-                    updated_at DATETIME
-                )
-                \"\"\"
-            )
-            cur.execute(
-                "CREATE UNIQUE INDEX IF NOT EXISTS uq_tg_chat_profile_workflow_chat "
-                "ON telegram_chat_profiles (workflow_id, chat_id)"
-            )
-            conn.commit()
-            conn.close()
-            print("tenant", dbf.stem + ": tg_chat_id + telegram_chat_profiles OK")
-    print("db.create_all() completed successfully.")
-    try:
-        from sqlalchemy import inspect
-        if inspect(db.engine).has_table("telegram_inbox_messages"):
-            print("telegram_inbox_messages: OK")
-        else:
-            print("WARNING: telegram_inbox_messages table not listed after create_all")
-    except Exception as _e:
-        print("inspect:", _e)
+            engine = create_engine("sqlite:///" + str(dbf.resolve()))
+            tenant_errors += add_missing_columns(engine, "tenant:" + dbf.stem)
+            old_tenant = getattr(g, "tenant", None)
+            g.tenant = dbf.stem
+            try:
+                run_explicit_guards()
+            finally:
+                g.tenant = old_tenant
+            engine.dispose()
+
+    total_errors = core_errors + tenant_errors
+    if total_errors:
+        print(f"[WARN] DB column sync completed with {{total_errors}} non-fatal column error(s).")
+        print("[WARN] Columns that could be added were applied. Review [ERROR] lines above for unsupported columns.")
+    else:
+        print("DB column sync completed successfully.")
 PY
 """
             rc = self.run_ssh_script(script)
             if rc == 0:
-                self.append_log("[INFO] db.create_all() executed successfully.\n")
-                self.set_status("DB create_all completed.")
+                self.append_log("[INFO] Missing DB columns sync finished.\n")
+                self.set_status("DB columns synced.")
             else:
-                self.set_status("DB create_all finished with errors (see log).")
+                self.set_status("DB column sync finished with errors (see log).")
         finally:
             self.set_busy(False)
 
