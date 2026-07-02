@@ -1,8 +1,8 @@
 """Schema migration and data backfill for multi-branch support."""
 from __future__ import annotations
 
+from flask import current_app, g
 from sqlalchemy import inspect, text
-from flask import current_app
 
 from extensions import db
 
@@ -10,45 +10,59 @@ from extensions import db
 _MIGRATION_FLAG = "branch_migration_v1_done"
 
 
-def _table_exists(name: str) -> bool:
-    return name in inspect(db.engine).get_table_names()
+def _branch_schema_engine():
+    """Use the same database bind as tenant-scoped model queries."""
+    tenant_slug = getattr(g, "tenant", None)
+    if tenant_slug:
+        from extensions_tenant import get_tenant_engine
+
+        return get_tenant_engine(tenant_slug)
+    bind = db.session.get_bind()
+    return bind if bind is not None else db.engine
 
 
-def _column_exists(table: str, column: str) -> bool:
-    if not _table_exists(table):
+def _table_exists(engine, name: str) -> bool:
+    return name in inspect(engine).get_table_names()
+
+
+def _column_exists(engine, table: str, column: str) -> bool:
+    if not _table_exists(engine, table):
         return False
-    cols = {c["name"] for c in inspect(db.engine).get_columns(table)}
+    cols = {c["name"] for c in inspect(engine).get_columns(table)}
     return column in cols
 
 
-def _add_column_if_missing(table: str, column: str, ddl: str) -> None:
-    if not _table_exists(table):
+def _add_column_if_missing(engine, table: str, column: str, ddl: str) -> None:
+    if not _table_exists(engine, table):
         return
-    if _column_exists(table, column):
+    if _column_exists(engine, table, column):
         return
-    db.session.execute(text(ddl))
-    db.session.commit()
+    with engine.begin() as conn:
+        conn.execute(text(ddl))
 
 
 def ensure_branch_schema() -> None:
     """Create branch tables/columns and migrate existing tenant data once."""
     try:
+        engine = _branch_schema_engine()
+
         from models.branch import Branch, BranchStock, StockTransfer, StockTransferLine
 
-        Branch.__table__.create(bind=db.engine, checkfirst=True)
-        BranchStock.__table__.create(bind=db.engine, checkfirst=True)
-        StockTransfer.__table__.create(bind=db.engine, checkfirst=True)
-        StockTransferLine.__table__.create(bind=db.engine, checkfirst=True)
+        Branch.__table__.create(bind=engine, checkfirst=True)
+        BranchStock.__table__.create(bind=engine, checkfirst=True)
+        StockTransfer.__table__.create(bind=engine, checkfirst=True)
+        StockTransferLine.__table__.create(bind=engine, checkfirst=True)
 
-        _add_column_if_missing("employee", "branch_id", "ALTER TABLE employee ADD COLUMN branch_id INTEGER")
-        _add_column_if_missing("invoice", "branch_id", "ALTER TABLE invoice ADD COLUMN branch_id INTEGER")
+        _add_column_if_missing(engine, "employee", "branch_id", "ALTER TABLE employee ADD COLUMN branch_id INTEGER")
+        _add_column_if_missing(engine, "invoice", "branch_id", "ALTER TABLE invoice ADD COLUMN branch_id INTEGER")
         _add_column_if_missing(
+            engine,
             "order_item",
             "fulfillment_branch_id",
             "ALTER TABLE order_item ADD COLUMN fulfillment_branch_id INTEGER",
         )
-        _add_column_if_missing("purchase", "branch_id", "ALTER TABLE purchase ADD COLUMN branch_id INTEGER")
-        _add_column_if_missing("activity_log", "branch_id", "ALTER TABLE activity_log ADD COLUMN branch_id INTEGER")
+        _add_column_if_missing(engine, "purchase", "branch_id", "ALTER TABLE purchase ADD COLUMN branch_id INTEGER")
+        _add_column_if_missing(engine, "activity_log", "branch_id", "ALTER TABLE activity_log ADD COLUMN branch_id INTEGER")
 
         if _migration_data_done():
             return
