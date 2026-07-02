@@ -159,8 +159,9 @@
 
 <div id="editEmployeeModal" class="team-modal-overlay">
   <div class="team-modal-box">
-    <h3>تعديل موظف</h3>
+    <h3 id="editEmployeeModalTitle">تعديل موظف</h3>
     <input type="hidden" id="editEmpId">
+    <input type="hidden" id="editEmpIsDelivery" value="0">
     <div class="team-modal-field"><label>الاسم</label><input id="editEmpName" type="text"></div>
     <div class="team-modal-field"><label>الراتب</label><input id="editEmpSalary" type="number" min="0"></div>
     <div class="team-modal-field"><label>كلمة مرور جديدة (اختياري)</label><input id="editEmpPassword" type="password"></div>

@@ -14,6 +14,8 @@ class DeliveryAgent(db.Model):
     password = db.Column(db.String(200), nullable=True)
     notes = db.Column(db.Text, nullable=True)
     is_active = db.Column(db.Boolean, default=True)
+    employee_id = db.Column(db.Integer, db.ForeignKey("employee.id"), nullable=True)
+    salary = db.Column(db.Integer, default=0)
     total_orders = db.Column(db.Integer, default=0)
     total_amount = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

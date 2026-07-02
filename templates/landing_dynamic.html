@@ -28,7 +28,7 @@
     <meta name="twitter:title" content="{{ seo.twitter_title or seo.og_title or settings.page_title or 'Finora Cloud' }}">
     <meta name="twitter:description" content="{{ seo.twitter_description or seo.og_description or settings.page_subtitle or '' }}">
     {% if seo.twitter_image_url %}<meta name="twitter:image" content="{{ seo.twitter_image_url }}">{% endif %}
-    <link rel="icon" href="{{ settings.favicon_url or '/static/finora-logo.png' }}">
+    <link rel="icon" href="{{ settings.favicon_url or platform_logo_url }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -52,7 +52,7 @@
 <div class="l-wrap">
     <nav class="l-nav" id="lNav">
         <a href="/" class="l-logo">
-            <img src="{{ settings.logo_url or '/static/finora-logo.png' }}" alt="{{ settings.site_name or 'Finora' }}">
+            <img src="{{ settings.logo_url or platform_logo_url }}" alt="{{ settings.site_name or platform_app_name }}" onerror="this.onerror=null;this.src='/static/finora-logo.png';">
             <div>
                 <strong>{{ settings.site_name or 'Finora Cloud' }}</strong>
                 <span>{{ settings.page_subtitle or 'منصة إدارة الأعمال' }}</span>
@@ -83,7 +83,7 @@
     {% if hero.is_visible is not sameas false %}
     <section class="l-hero cms-hero">
         <div class="l-hero-grid">
-            <div class="l-reveal">
+            <div class="l-reveal cms-hero-copy">
                 <div class="l-badge"><span class="dot"></span>{{ hero.subtitle or 'مصمم للشركات والمتاجر العراقية' }}</div>
                 <h1 class="l-title">{{ hero.title or settings.page_title or 'فينورا — نظام إدارة ومحاسبة ذكي لشركتك' }}</h1>
                 <p class="l-sub left">{{ hero.description or settings.page_subtitle }}</p>
@@ -97,11 +97,37 @@
                     {% endfor %}
                 </div>
             </div>
-            <div class="l-hero-visual l-reveal">
-                <img src="{{ hero.image_url or '/static/finora-logo.png' }}" alt="{{ hero.title or 'لوحة Finora' }}" loading="eager">
-                <div class="l-hero-float">
-                    <strong>LEON AI</strong>
-                    <span>تحليل وتنبيه داخل النظام</span>
+            <div class="l-hero-visual cms-hero-visual l-reveal">
+                <div class="cms-hero-panel" aria-label="معاينة Finora Cloud">
+                    <div class="cms-panel-top">
+                        <span></span><span></span><span></span>
+                        <strong>Finora Workspace</strong>
+                    </div>
+                    <div class="cms-panel-body">
+                        <div class="cms-panel-main">
+                            <div class="cms-kpi-row">
+                                <div><strong>1,200+</strong><span>طلب يومياً</span></div>
+                                <div><strong>99.9%</strong><span>وقت تشغيل</span></div>
+                            </div>
+                            <div class="cms-chart-bars" aria-hidden="true">
+                                <span style="height:42%"></span>
+                                <span style="height:68%"></span>
+                                <span style="height:54%"></span>
+                                <span style="height:82%"></span>
+                                <span style="height:63%"></span>
+                            </div>
+                            <div class="cms-panel-list">
+                                <span><i class="fas fa-check"></i> طلبات ومخزون</span>
+                                <span><i class="fas fa-check"></i> أرباح ومصاريف</span>
+                                <span><i class="fas fa-check"></i> تنبيهات ذكية</span>
+                            </div>
+                        </div>
+                        <div class="cms-leon-card">
+                            <img src="{{ hero.image_url or settings.logo_url or platform_logo_url }}" alt="LEON AI" loading="eager" onerror="this.onerror=null;this.src='/static/finora-logo.png';">
+                            <strong>LEON AI</strong>
+                            <span>يراقب الحسابات وينبهك قبل الأخطاء.</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

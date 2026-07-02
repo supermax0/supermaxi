@@ -241,6 +241,64 @@
             transform: translateY(0);
         }
     }
+
+    .logo-upload-box {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 20px;
+        padding: 20px;
+        border: 1px dashed var(--border-color);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    .logo-preview-wrap {
+        width: 88px;
+        height: 88px;
+        border-radius: 18px;
+        border: 1px solid var(--border-color);
+        background: var(--surface);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+
+    .logo-preview-wrap img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        padding: 8px;
+    }
+
+    .logo-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .btn-logo {
+        border: 1px solid var(--border-color);
+        background: var(--surface);
+        color: var(--text-main);
+        padding: 12px 18px;
+        border-radius: 12px;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+
+    .btn-logo:hover {
+        background: var(--surface-hover);
+    }
+
+    .btn-logo-danger {
+        border-color: rgba(239, 68, 68, 0.35);
+        color: #f87171;
+    }
 </style>
 {% endblock %}
 
@@ -280,6 +338,30 @@
                         <input type="text" id="appName" name="APP_NAME" class="form-control"
                             value="{{ settings.app_name }}" required>
                         <small class="form-text">سيتم استخدام هذا الاسم في التقارير والرسائل الصادرة من النظام.</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>شعار المنصة (Logo)</label>
+                        <div class="logo-upload-box">
+                            <div class="logo-preview-wrap" id="platformLogoPreviewWrap">
+                                <img id="platformLogoPreview" src="{{ settings.app_logo_path }}" alt="شعار المنصة">
+                            </div>
+                            <div>
+                                <div class="logo-actions">
+                                    <input type="file" id="platformLogoFile" accept="image/*" style="display:none">
+                                    <button type="button" class="btn-logo" onclick="document.getElementById('platformLogoFile').click()">
+                                        <i class="fas fa-upload"></i> رفع شعار جديد
+                                    </button>
+                                    <button type="button" class="btn-logo btn-logo-danger" id="removePlatformLogoBtn"
+                                        onclick="removePlatformLogo()" {% if not settings.has_custom_logo %}style="display:none"{% endif %}>
+                                        <i class="fas fa-trash"></i> حذف الشعار
+                                    </button>
+                                </div>
+                                <small class="form-text" style="margin-top:12px">
+                                    يظهر في القائمة الجانبية، صفحات الدخول، صفحة الهبوط، وروابط الدفع. الحجم المقترح: 256×256 بكسل.
+                                </small>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="form-group">
@@ -467,6 +549,53 @@
                 document.getElementById(targetId).style.animation = null;
             });
         });
+
+        const logoInput = document.getElementById('platformLogoFile');
+        if (logoInput) {
+            logoInput.addEventListener('change', uploadPlatformLogo);
+        }
     });
+
+    function uploadPlatformLogo() {
+        const fileInput = document.getElementById('platformLogoFile');
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('logo', file);
+
+        fetch('{{ url_for("superadmin.upload_platform_logo") }}', {
+            method: 'POST',
+            body: formData
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) throw new Error(data.error || 'فشل رفع الشعار');
+                const preview = document.getElementById('platformLogoPreview');
+                preview.src = data.logo_path + '?t=' + Date.now();
+                document.getElementById('removePlatformLogoBtn').style.display = 'inline-flex';
+                fileInput.value = '';
+                alert('تم رفع الشعار بنجاح');
+            })
+            .catch(err => alert(err.message || 'حدث خطأ أثناء رفع الشعار'));
+    }
+
+    function removePlatformLogo() {
+        if (!confirm('هل تريد حذف الشعار الحالي والعودة للشعار الافتراضي؟')) return;
+
+        fetch('{{ url_for("superadmin.remove_platform_logo_route") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) throw new Error(data.error || 'فشل حذف الشعار');
+                const preview = document.getElementById('platformLogoPreview');
+                preview.src = '/static/finora-logo.png?t=' + Date.now();
+                document.getElementById('removePlatformLogoBtn').style.display = 'none';
+                alert('تم حذف الشعار');
+            })
+            .catch(err => alert(err.message || 'حدث خطأ أثناء حذف الشعار'));
+    }
 </script>
 {% endblock %}

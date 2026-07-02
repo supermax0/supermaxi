@@ -9,7 +9,215 @@
   font-weight: 800;
 }
 
-.cms-hero .l-title { max-width: 760px; }
+.cms-hero {
+  min-height: calc(100vh - var(--nav-h));
+  display: grid;
+  align-items: center;
+  padding-top: clamp(28px, 4vw, 52px);
+  padding-bottom: clamp(40px, 5vw, 64px);
+}
+
+.cms-hero .l-hero-grid {
+  grid-template-columns: minmax(420px, 0.95fr) minmax(460px, 1.05fr);
+  gap: clamp(36px, 6vw, 82px);
+  align-items: center;
+}
+
+.cms-hero-copy {
+  max-width: 660px;
+  justify-self: start;
+}
+
+.cms-hero .l-title {
+  max-width: 680px;
+  font-size: clamp(38px, 5vw, 64px);
+  line-height: 1.08;
+  letter-spacing: 0;
+  margin-bottom: 20px;
+}
+
+.cms-hero .l-sub {
+  max-width: 620px;
+  font-size: clamp(17px, 1.8vw, 22px);
+  line-height: 1.9;
+  margin-bottom: 30px;
+}
+
+.cms-hero .l-hero-acts {
+  gap: 14px;
+  margin-bottom: 34px;
+}
+
+.cms-hero .l-btn {
+  min-height: 56px;
+  padding-inline: 26px;
+  border-radius: 14px;
+  font-size: 16px;
+}
+
+.cms-hero .l-stats {
+  max-width: 660px;
+  padding: 22px 0 0;
+  gap: 0;
+}
+
+.cms-hero .l-stats > div {
+  padding: 0 18px;
+  border-inline-start: 1px solid var(--border);
+}
+
+.cms-hero .l-stats > div:last-child {
+  border-inline-start: 0;
+}
+
+.cms-hero .l-stat-n {
+  font-size: 28px;
+}
+
+.cms-hero-visual {
+  justify-self: stretch;
+}
+
+.cms-hero-panel {
+  position: relative;
+  overflow: hidden;
+  min-height: 430px;
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  background: #fff;
+  box-shadow: 0 28px 80px rgba(16, 24, 40, 0.12);
+}
+
+.cms-panel-top {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--border);
+  background: #f8fafc;
+}
+
+.cms-panel-top span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #cbd5e1;
+}
+
+.cms-panel-top span:first-child { background: #22c55e; }
+.cms-panel-top strong {
+  margin-inline-start: auto;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.cms-panel-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 190px;
+  gap: 18px;
+  padding: 24px;
+  min-height: 374px;
+}
+
+.cms-panel-main {
+  display: grid;
+  gap: 18px;
+}
+
+.cms-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+.cms-kpi-row div,
+.cms-leon-card,
+.cms-panel-list {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: #f8fafc;
+}
+
+.cms-kpi-row div {
+  padding: 18px;
+}
+
+.cms-kpi-row strong {
+  display: block;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.cms-kpi-row span,
+.cms-leon-card span,
+.cms-panel-list span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.cms-chart-bars {
+  height: 156px;
+  display: flex;
+  align-items: end;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+}
+
+.cms-chart-bars span {
+  flex: 1;
+  min-width: 22px;
+  border-radius: 12px 12px 4px 4px;
+  background: linear-gradient(180deg, var(--primary), #60a5fa);
+}
+
+.cms-panel-list {
+  display: grid;
+  gap: 10px;
+  padding: 16px 18px;
+}
+
+.cms-panel-list span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+}
+
+.cms-panel-list i {
+  color: #16a34a;
+}
+
+.cms-leon-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 10px;
+  padding: 20px;
+  background: #fff;
+}
+
+.cms-leon-card img {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  border-radius: 18px;
+  background: #f8fafc;
+  border: 0;
+  box-shadow: none;
+}
+
+.cms-leon-card strong {
+  font-size: 24px;
+  color: #16a34a;
+}
+
 .l-hero-acts.center { justify-content: center; }
 
 .cms-chip-grid {
@@ -260,6 +468,46 @@
 }
 
 @media (max-width: 900px) {
+  .cms-hero {
+    min-height: auto;
+  }
+
+  .cms-hero .l-hero-grid {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+
+  .cms-hero-copy {
+    justify-self: stretch;
+    text-align: center;
+  }
+
+  .cms-hero .l-sub.left {
+    text-align: center;
+    margin-inline: auto;
+  }
+
+  .cms-hero .l-hero-acts {
+    justify-content: center;
+  }
+
+  .cms-hero .l-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .cms-hero .l-stats > div {
+    border-inline-start: 0;
+    padding: 10px;
+  }
+
+  .cms-panel-body {
+    grid-template-columns: 1fr;
+  }
+
+  .cms-hero-panel {
+    min-height: 0;
+  }
+
   .cms-chip-grid,
   .cms-module-grid,
   .cms-testimonials,

@@ -43,6 +43,12 @@ def ensure_delivery_agent_schema() -> None:
                     text(f"ALTER TABLE delivery_agent ADD COLUMN is_active BOOLEAN DEFAULT {bool_default}")
                 )
                 changed = True
+            if "salary" not in columns:
+                conn.execute(text("ALTER TABLE delivery_agent ADD COLUMN salary INTEGER DEFAULT 0"))
+                changed = True
+            if "employee_id" not in columns:
+                conn.execute(text("ALTER TABLE delivery_agent ADD COLUMN employee_id INTEGER"))
+                changed = True
             if changed:
                 conn.commit()
     except Exception as e:
@@ -71,6 +77,7 @@ def build_employees_grid_rows(employees_list, stats_map, delivery_agents, agent_
         rows.append(
             {
                 "id": e.id,
+                "grid_id": f"emp-{e.id}",
                 "name": e.name,
                 "username": e.username,
                 "role": e.role,
@@ -91,21 +98,23 @@ def build_employees_grid_rows(employees_list, stats_map, delivery_agents, agent_
         if not agent.username:
             continue
         s = agent_stats_map.get(agent.id, {"orders": 0, "sales": 0})
+        agent_salary = int(getattr(agent, "salary", 0) or 0)
         rows.append(
             {
                 "id": agent.id,
+                "grid_id": f"agent-{agent.id}",
                 "name": f"🚚 {agent.name}",
                 "username": agent.username,
                 "role": "delivery",
                 "role_name": "مندوب توصيل",
                 "role_labels": [],
                 "pages_count": 0,
-                "status": "active",
+                "status": "active" if agent.is_active else "inactive",
                 "orders": int(s.get("orders") or 0),
                 "sales": int(s.get("sales") or 0),
-                "salary": 0,
+                "salary": agent_salary,
                 "commission": 0,
-                "total_due": 0,
+                "total_due": agent_salary,
                 "is_delivery": True,
             }
         )

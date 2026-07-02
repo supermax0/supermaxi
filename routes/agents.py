@@ -16,6 +16,8 @@ from utils.agent_report_helpers import (
 from utils.decorators import permission_required
 from utils.permission_checks import employee_can, get_current_employee
 from utils.team_schema import ensure_delivery_agent_schema
+from utils.agent_employee_link import ensure_agent_employee
+from utils.agent_passwords import hash_agent_password
 
 agents_bp = Blueprint("agents", __name__, url_prefix="/agents")
 
@@ -107,6 +109,8 @@ def add_agent():
     try:
         db.session.add(agent)
         db.session.commit()
+        if username and password:
+            ensure_agent_employee(agent)
         return jsonify({"success": True, "message": "تم إضافة المندوب بنجاح", "agent_id": agent.id})
     except Exception as e:
         db.session.rollback()
@@ -127,7 +131,11 @@ def edit_agent(agent_id):
         agent.phone = str(data.get("phone") or "").strip() or None
     if "notes" in data:
         agent.notes = str(data.get("notes") or "").strip() or None
+    if "salary" in data:
+        agent.salary = int(data.get("salary") or 0)
     db.session.commit()
+    if agent.username:
+        ensure_agent_employee(agent)
     return jsonify({"success": True, "message": "تم تحديث بيانات المندوب"})
 
 
@@ -139,6 +147,8 @@ def toggle_agent(agent_id):
         return jsonify({"error": "المندوب غير موجود"}), 404
     agent.is_active = not bool(agent.is_active)
     db.session.commit()
+    if agent.username:
+        ensure_agent_employee(agent)
     return jsonify({"success": True, "is_active": agent.is_active})
 
 
@@ -159,6 +169,7 @@ def set_agent_credentials(agent_id):
     agent.username = username
     agent.password = hash_agent_password(password)
     db.session.commit()
+    ensure_agent_employee(agent)
     return jsonify({"success": True, "message": "تم تحديث بيانات الدخول"})
 
 

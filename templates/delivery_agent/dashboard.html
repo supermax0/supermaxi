@@ -520,59 +520,25 @@
       border-bottom: 1px solid var(--border-light);
     }
 
-    .da-chat-box {
-      height: 320px;
-      overflow-y: auto;
-      padding: 12px;
-      border-radius: 12px;
-      background: var(--bg);
-      border: 1px solid var(--border-light);
-      margin-bottom: 12px;
+    .da-nav-badge {
+      position: absolute;
+      top: 2px;
+      left: 50%;
+      transform: translateX(8px);
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      border-radius: 999px;
+      background: #ef4444;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 18px;
+      text-align: center;
+      display: none;
     }
 
-    .da-message {
-      margin-bottom: 10px;
-      padding: 10px 12px;
-      border-radius: 12px;
-      max-width: 85%;
-      font-size: 0.9rem;
-    }
-
-    .da-message.sent {
-      background: rgba(59,130,246,0.15);
-      margin-right: auto;
-      margin-left: 0;
-    }
-
-    .da-message.received {
-      background: var(--card);
-      border: 1px solid var(--border-light);
-      margin-left: auto;
-      margin-right: 0;
-    }
-
-    .da-chat-input-row {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 8px;
-    }
-
-    .da-chat-input-row select,
-    .da-chat-input-row input {
-      padding: 10px 12px;
-      border-radius: 10px;
-      border: 1px solid var(--border-light);
-      background: var(--bg);
-      color: var(--text);
-      font-family: inherit;
-    }
-
-    .da-chat-send-row {
-      display: flex;
-      gap: 8px;
-    }
-
-    .da-chat-send-row input { flex: 1; }
+    .da-bottom-nav-btn { position: relative; }
   </style>
 </head>
 <body>
@@ -586,9 +552,9 @@
         </div>
       </div>
       <div class="da-actions">
-        <button type="button" class="da-btn da-btn-primary" onclick="openChat()">
+        <a href="/delivery-agent/messages" class="da-btn da-btn-primary">
           <i class="fa-solid fa-comments"></i> محادثة
-        </button>
+        </a>
         <a href="/delivery-agent/logout" class="da-btn da-btn-danger">
           <i class="fa-solid fa-right-from-bracket"></i> خروج
         </a>
@@ -860,35 +826,15 @@
         <i class="fa-solid fa-circle-check"></i>
         <span>منفذة</span>
       </button>
-      <button type="button" class="da-bottom-nav-btn" data-tab="chat" onclick="switchTab('chat')">
+      <button type="button" class="da-bottom-nav-btn" data-tab="chat" onclick="openAgentMessages()">
         <i class="fa-solid fa-comments"></i>
         <span>محادثة</span>
+        <span class="da-nav-badge" id="chatUnreadBadge"></span>
       </button>
     </div>
   </nav>
 
-  <div id="chatModal" class="da-modal-overlay">
-    <div class="da-modal">
-      <div class="da-modal-head">
-        <h2><i class="fa-solid fa-comments"></i> المحادثة</h2>
-        <button type="button" class="da-btn da-btn-danger" onclick="closeChat()"><i class="fa-solid fa-xmark"></i></button>
-      </div>
-      <div class="da-chat-box" id="chatMessages"></div>
-      <div class="da-chat-input-row">
-        <select id="chatReceiver">
-          <option value="">اختر المستقبل</option>
-        </select>
-        <div class="da-chat-send-row">
-          <input type="text" id="chatInput" placeholder="اكتب رسالتك..." onkeypress="if(event.key==='Enter') sendMessage()">
-          <button type="button" class="da-btn da-btn-primary" onclick="sendMessage()">إرسال</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <script>
-    let chatInterval = null;
-
     function showToast(msg) {
       const el = document.createElement('div');
       el.className = 'da-toast';
@@ -934,12 +880,27 @@
       document.querySelectorAll('.da-desktop-tab, .da-bottom-nav-btn').forEach(function(btn) {
         btn.classList.toggle('is-active', btn.getAttribute('data-tab') === tab);
       });
+    }
 
-      if (tab === 'chat') {
-        openChat();
-      } else {
-        closeChat();
-      }
+    function openAgentMessages() {
+      window.location.href = '/delivery-agent/messages';
+    }
+
+    function updateChatUnreadBadge() {
+      fetch('/messages/unread-count')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          var badge = document.getElementById('chatUnreadBadge');
+          if (!badge) return;
+          var count = parseInt(data.unread_count || 0, 10);
+          if (count > 0) {
+            badge.textContent = count > 99 ? '99+' : String(count);
+            badge.style.display = 'block';
+          } else {
+            badge.style.display = 'none';
+          }
+        })
+        .catch(function() {});
     }
 
     var pullStartY = 0;
@@ -1065,74 +1026,8 @@
       });
     });
 
-    function openChat() {
-      document.getElementById('chatModal').style.display = 'block';
-      loadChatUsers();
-      loadMessages();
-      if (chatInterval) clearInterval(chatInterval);
-      chatInterval = setInterval(loadMessages, 5000);
-    }
-
-    function closeChat() {
-      document.getElementById('chatModal').style.display = 'none';
-      if (chatInterval) { clearInterval(chatInterval); chatInterval = null; }
-    }
-
-    function loadChatUsers() {
-      fetch('/delivery-agent/chat/users')
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-          var select = document.getElementById('chatReceiver');
-          select.innerHTML = '<option value="">اختر المستقبل</option>';
-          (data.users || []).forEach(function(user) {
-            var opt = document.createElement('option');
-            opt.value = user.id + '|' + user.type;
-            opt.textContent = user.name + ' (' + (user.type === 'employee' ? 'موظف' : 'مندوب') + ')';
-            select.appendChild(opt);
-          });
-        });
-    }
-
-    function loadMessages() {
-      fetch('/delivery-agent/chat/messages')
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-          var container = document.getElementById('chatMessages');
-          if (!container) return;
-          container.innerHTML = '';
-          (data.messages || []).forEach(function(msg) {
-            var div = document.createElement('div');
-            div.className = 'da-message ' + (msg.is_sent ? 'sent' : 'received');
-            div.innerHTML = '<strong>' + msg.sender_name + ':</strong> ' + msg.content + '<br><small style="color:var(--muted);">' + msg.time_ago + '</small>';
-            container.appendChild(div);
-          });
-          container.scrollTop = container.scrollHeight;
-        });
-    }
-
-    function sendMessage() {
-      var receiver = document.getElementById('chatReceiver').value;
-      var content = document.getElementById('chatInput').value.trim();
-      if (!receiver || !content) {
-        alert('يرجى اختيار المستقبل وإدخال الرسالة');
-        return;
-      }
-      var parts = receiver.split('|');
-      fetch('/delivery-agent/chat/send', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ receiver_id: parts[0], receiver_type: parts[1], content: content })
-      })
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        if (data.success) {
-          document.getElementById('chatInput').value = '';
-          loadMessages();
-        } else {
-          alert(data.error || 'فشل إرسال الرسالة');
-        }
-      });
-    }
+    updateChatUnreadBadge();
+    setInterval(updateChatUnreadBadge, 15000);
   </script>
 </body>
 </html>

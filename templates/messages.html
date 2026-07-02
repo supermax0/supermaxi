@@ -2010,7 +2010,39 @@
       font-size: 20px;
     }
   }
+
+  {% if agent_portal %}
+  .agent-messages-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    margin: 12px 12px 0;
+    border-radius: 10px;
+    border: 1px solid var(--glass-border);
+    background: rgba(59, 130, 246, 0.12);
+    color: var(--chat-primary);
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 14px;
+  }
+
+  .agent-messages-back:hover {
+    background: rgba(59, 130, 246, 0.2);
+  }
+
+  .users-list .sidebar-toggle-btn {
+    display: none !important;
+  }
+  {% endif %}
 </style>
+
+{% if agent_portal %}
+<a href="/delivery-agent/dashboard" class="agent-messages-back">
+  <i class="fa fa-arrow-right"></i>
+  <span>العودة لبوابة المندوب</span>
+</a>
+{% endif %}
 
 <div class="messages-container">
   <!-- Users List -->

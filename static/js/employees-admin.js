@@ -146,14 +146,17 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
   }
 
 
-  function openEditEmployeeModal(id) {
-    const row = (gridApi ? gridApi.getRowNode(String(id)) : null);
+  function openEditEmployeeModal(gridId) {
+    const row = (gridApi ? gridApi.getRowNode(String(gridId)) : null);
     const data = row ? row.data : null;
-    if (!data || data.is_delivery) return;
-    document.getElementById('editEmpId').value = id;
-    document.getElementById('editEmpName').value = data.name || '';
+    if (!data) return;
+    const cleanName = String(data.name || '').replace(/^🚚\s*/, '');
+    document.getElementById('editEmpId').value = data.id;
+    document.getElementById('editEmpIsDelivery').value = data.is_delivery ? '1' : '0';
+    document.getElementById('editEmpName').value = cleanName;
     document.getElementById('editEmpSalary').value = data.salary || 0;
     document.getElementById('editEmpPassword').value = '';
+    document.getElementById('editEmployeeModalTitle').textContent = data.is_delivery ? 'تعديل مندوب' : 'تعديل موظف';
     document.getElementById('editEmployeeModal').classList.add('is-open');
   }
   function closeEditEmployeeModal() {
@@ -161,16 +164,19 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
   }
   async function saveEditEmployee() {
     const id = document.getElementById('editEmpId').value;
+    const isDelivery = document.getElementById('editEmpIsDelivery').value === '1';
     const body = {
       name: document.getElementById('editEmpName').value,
       salary: document.getElementById('editEmpSalary').value,
     };
     const pwd = document.getElementById('editEmpPassword').value.trim();
+    if (pwd) body.password = pwd;
     showLoading();
-    const r1 = await fetch(`/employees/update/${id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const updateUrl = isDelivery ? `/employees/update-agent/${id}` : `/employees/update/${id}`;
+    const r1 = await fetch(updateUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     const d1 = await r1.json();
     if (!d1.success) { hideLoading(); showToast(d1.error || 'فشل التحديث', 'error'); return; }
-    if (pwd) {
+    if (!isDelivery && pwd) {
       const r2 = await fetch(`/employees/reset-password/${id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pwd }) });
       const d2 = await r2.json();
       if (!d2.success) { hideLoading(); showToast(d2.error || 'فشل كلمة المرور', 'error'); return; }
@@ -281,7 +287,7 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
         field: "salary",
         width: 110,
         type: 'numericColumn',
-        cellRenderer: params => params.data.is_delivery ? '—' : `${params.value.toLocaleString()} ${__t('employees_currency_iqd')}`
+        cellRenderer: params => `${params.value.toLocaleString()} ${__t('employees_currency_iqd')}`
       },
       {
         headerName: __t('employees_col_commission'),
@@ -295,7 +301,7 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
         field: "total_due",
         width: 120,
         type: 'numericColumn',
-        cellRenderer: params => params.data.is_delivery ? '—' : `<span style="color:var(--emp-warning);font-weight:700">${params.value.toLocaleString()} ${__t('employees_currency_iqd')}</span>`
+        cellRenderer: params => `<span style="color:var(--emp-warning);font-weight:700">${params.value.toLocaleString()} ${__t('employees_currency_iqd')}</span>`
       },
       {
         headerName: __t('employees_col_actions'),
@@ -313,7 +319,8 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
           if (e.is_delivery) {
             return `
             <div class="admin-actions">
-              <a href="/delivery-agent/login" target="_blank" class="action-btn" title="${__t('employees_action_agent_page')}">
+              <button type="button" class="action-btn" onclick="event.stopPropagation(); openEditEmployeeModal('${e.grid_id}')" title="تعديل الراتب"><i class="fas fa-pen"></i></button>
+              <a href="/delivery-agent/login" target="_blank" class="action-btn" title="${__t('employees_action_agent_page')}" onclick="event.stopPropagation()">
                 <i class="fas fa-truck"></i>
               </a>
             </div>
@@ -326,7 +333,7 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
             <button type="button" class="action-btn" onclick="event.stopPropagation(); toggleEmployeeStatus(${e.id}, '${nameEscaped}', ${isActive})" title="${isActive ? empActionDisable : empActionEnable}">
               <i class="fas ${isActive ? 'fa-user-slash' : 'fa-user-check'}"></i>
             </button>
-            <button type="button" class="action-btn" onclick="event.stopPropagation(); openEditEmployeeModal(${e.id})" title="تعديل"><i class="fas fa-pen"></i></button>
+            <button type="button" class="action-btn" onclick="event.stopPropagation(); openEditEmployeeModal('${e.grid_id}')" title="تعديل"><i class="fas fa-pen"></i></button>
             <button type="button" class="action-btn" onclick="event.stopPropagation(); openPagesModal(${e.id}, '${nameEscaped}')" title="${__t('employees_action_pages')}">
               <i class="fas fa-file-invoice"></i>
             </button>
@@ -363,7 +370,7 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
         previous: 'السابق',
         pageSizeSelectorLabel: 'حجم الصفحة:',
       },
-      getRowId: (params) => String(params.data.id),
+      getRowId: (params) => String(params.data.grid_id || params.data.id),
       defaultColDef: {
         sortable: true,
         filter: true,

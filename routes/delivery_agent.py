@@ -1,13 +1,11 @@
 # routes/delivery_agent.py
-from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for
+from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, g
 from extensions import db
 from models.delivery_agent import DeliveryAgent
 from models.invoice import Invoice
 from models.order_item import OrderItem
 from models.shipping_report import ShippingReport
-from models.message import Message
 from models.employee import Employee
-from models.agent_message import AgentMessage
 from sqlalchemy import or_, and_, func
 from datetime import datetime
 import json
@@ -22,7 +20,13 @@ from utils.agent_report_helpers import (
     notify_agent_report_ready,
     save_selection_to_report,
 )
+from utils.agent_employee_link import (
+    bind_agent_messaging_session,
+    clear_agent_messaging_session,
+    ensure_agent_employee,
+)
 from utils.shipping_report_execute import execute_shipping_report
+from utils.team_schema import ensure_delivery_agent_schema
 
 delivery_agent_bp = Blueprint("delivery_agent", __name__, url_prefix="/delivery-agent")
 
@@ -72,11 +76,23 @@ def _activate_tenant_slug(slug):
 
 @delivery_agent_bp.before_request
 def _bind_delivery_agent_tenant():
+    ensure_delivery_agent_schema()
     slug = _resolve_request_tenant_slug()
     if slug:
         _activate_tenant_slug(slug)
     elif session.get("agent_tenant_slug"):
         g.tenant = session.get("agent_tenant_slug")
+
+
+@delivery_agent_bp.before_request
+def _ensure_agent_messaging_session():
+    if "agent_id" not in session or session.get("user_id"):
+        return None
+    agent = DeliveryAgent.query.get(session["agent_id"])
+    tenant_slug = session.get("agent_tenant_slug")
+    if agent and tenant_slug:
+        bind_agent_messaging_session(session, agent, tenant_slug)
+    return None
 
 
 def _agent_login_redirect(tenant_slug=None):
@@ -266,6 +282,7 @@ def _perform_agent_login(username, password, tenant_slug=None):
     session["agent_name"] = agent.name
     session["agent_role"] = "delivery_agent"
     session["agent_tenant_slug"] = core_tenant.slug
+    bind_agent_messaging_session(session, agent, core_tenant.slug)
     return agent, None
 
 
@@ -295,6 +312,7 @@ def login(tenant_slug=None):
 def logout():
     """تسجيل خروج المندوب"""
     tenant_slug = session.get("agent_tenant_slug")
+    clear_agent_messaging_session(session)
     session.pop("agent_id", None)
     session.pop("agent_name", None)
     session.pop("agent_role", None)
@@ -325,6 +343,8 @@ def dashboard():
 
     employees = Employee.query.filter_by(is_active=True).all()
     other_agents = DeliveryAgent.query.filter(DeliveryAgent.id != agent_id).filter(DeliveryAgent.username.isnot(None)).all()
+
+    ensure_agent_employee(agent)
     
     # التحقق من صلاحيات الأدmin (إذا كان مسجل دخول كأدمن)
     is_admin = session.get("role") == "admin" and "user_id" in session
@@ -441,130 +461,41 @@ def execute_report(report_id):
     return jsonify(result)
 
 # =====================================================
-# Chat System
+# Unified Messages (نفس نظام المراسلة للموظفين)
 # =====================================================
+@delivery_agent_bp.route("/messages")
+def agent_messages():
+    """فتح واجهة المراسلة الكاملة للمندوب."""
+    if "agent_id" not in session:
+        return redirect(_agent_login_redirect(session.get("agent_tenant_slug")))
+
+    agent = DeliveryAgent.query.get(session["agent_id"])
+    if not agent:
+        return redirect(_agent_login_redirect(session.get("agent_tenant_slug")))
+
+    tenant_slug = session.get("agent_tenant_slug")
+    if not tenant_slug:
+        return redirect(_agent_login_redirect())
+
+    if not bind_agent_messaging_session(session, agent, tenant_slug):
+        return redirect(url_for("delivery_agent.dashboard"))
+
+    return redirect(url_for("messages.messages"))
+
+
 @delivery_agent_bp.route("/chat/users")
 def get_chat_users():
-    """جلب قائمة المستخدمين للمحادثة"""
-    if "agent_id" not in session:
-        return jsonify({"error": "غير مصرح"}), 403
-    
-    users = []
-    
-    # جلب الموظفين
-    employees = Employee.query.filter_by(is_active=True).all()
-    for emp in employees:
-        users.append({
-            "id": emp.id,
-            "name": emp.name,
-            "type": "employee"
-        })
-    
-    # جلب المندوبين الآخرين
-    agent_id = session["agent_id"]
-    other_agents = DeliveryAgent.query.filter(DeliveryAgent.id != agent_id).filter(DeliveryAgent.username.isnot(None)).all()
-    for agent in other_agents:
-        users.append({
-            "id": agent.id,
-            "name": agent.name,
-            "type": "agent"
-        })
-    
-    return jsonify({"success": True, "users": users})
+    """توافق قديم — استخدم /delivery-agent/messages."""
+    return jsonify({"error": "تم تحديث نظام المحادثة. افتح تبويب المحادثة من جديد."}), 410
+
 
 @delivery_agent_bp.route("/chat/send", methods=["POST"])
 def send_message():
-    """إرسال رسالة من المندوب"""
-    if "agent_id" not in session:
-        return jsonify({"error": "غير مصرح"}), 403
-    
-    data = request.json
-    receiver_id = data.get("receiver_id")
-    receiver_type = data.get("receiver_type", "employee")  # employee أو agent
-    content = data.get("content", "").strip()
-    
-    if not content or not receiver_id:
-        return jsonify({"error": "بيانات غير كاملة"}), 400
-    
-    agent_id = session["agent_id"]
-    
-    # استخدام نظام الرسائل الحالي - سنستخدم employee_id=0 للمندوبين
-    # أو إنشاء نظام موحد لاحقاً
-    # للبساطة، سنستخدم AgentMessage منفصل
-    
-    try:
-        # جلب أسماء المرسل والمستقبل
-        agent = DeliveryAgent.query.get(agent_id)
-        sender_name = agent.name if agent else "مندوب"
-        
-        receiver_name = ""
-        if receiver_type == "employee":
-            emp = Employee.query.get(int(receiver_id))
-            receiver_name = emp.name if emp else ""
-        elif receiver_type == "agent":
-            rec_agent = DeliveryAgent.query.get(int(receiver_id))
-            receiver_name = rec_agent.name if rec_agent else ""
-        
-        message = AgentMessage(
-            sender_id=agent_id,
-            sender_type="agent",
-            sender_name=sender_name,
-            receiver_id=int(receiver_id),
-            receiver_type=receiver_type,
-            receiver_name=receiver_name,
-            content=content
-        )
-        db.session.add(message)
-        db.session.commit()
-        return jsonify({"success": True, "message": "تم إرسال الرسالة"})
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": f"حدث خطأ: {str(e)}"}), 500
+    """توافق قديم — استخدم /messages/send."""
+    return jsonify({"error": "تم تحديث نظام المحادثة. افتح تبويب المحادثة من جديد."}), 410
+
 
 @delivery_agent_bp.route("/chat/messages")
 def get_messages():
-    """جلب الرسائل للمندوب"""
-    if "agent_id" not in session:
-        return jsonify({"error": "غير مصرح"}), 403
-    
-    agent_id = session["agent_id"]
-    
-    messages = []
-    
-    try:
-        # جلب الرسائل المرسلة والمستقبلة
-        sent_msgs = AgentMessage.query.filter_by(sender_id=agent_id, sender_type="agent").order_by(AgentMessage.created_at.desc()).limit(50).all()
-        received_msgs = AgentMessage.query.filter_by(receiver_id=agent_id, receiver_type="agent").order_by(AgentMessage.created_at.desc()).limit(50).all()
-        
-        all_msgs = []
-        for msg in sent_msgs:
-            all_msgs.append({
-                "id": msg.id,
-                "sender_id": msg.sender_id,
-                "sender_name": msg.sender_name or "أنت",
-                "receiver_id": msg.receiver_id,
-                "receiver_name": msg.receiver_name or "",
-                "content": msg.content,
-                "is_sent": True,
-                "time_ago": msg.get_time_ago()
-            })
-        
-        for msg in received_msgs:
-            all_msgs.append({
-                "id": msg.id,
-                "sender_id": msg.sender_id,
-                "sender_name": msg.sender_name or "",
-                "receiver_id": msg.receiver_id,
-                "receiver_name": msg.receiver_name or "أنت",
-                "content": msg.content,
-                "is_sent": False,
-                "time_ago": msg.get_time_ago()
-            })
-        
-        # ترتيب حسب التاريخ
-        all_msgs.sort(key=lambda x: x.get("id", 0))
-        messages = all_msgs[-50:] if len(all_msgs) > 50 else all_msgs
-    except Exception as e:
-        print(f"Error loading messages: {e}")
-    
-    return jsonify({"success": True, "messages": messages})
+    """توافق قديم — استخدم /messages/get/<user_id>."""
+    return jsonify({"error": "تم تحديث نظام المحادثة. افتح تبويب المحادثة من جديد."}), 410

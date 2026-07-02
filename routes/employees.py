@@ -207,6 +207,25 @@ def update_employee(id):
     return jsonify({"success": True, "message": "تم تحديث بيانات الموظف"})
 
 
+@employees_bp.route("/update-agent/<int:id>", methods=["POST"])
+@permission_required("manage_employees")
+def update_delivery_agent(id):
+    agent = DeliveryAgent.query.get_or_404(id)
+    data = request.get_json(silent=True) or {}
+    name = str(data.get("name") or "").strip()
+    if name:
+        agent.name = name.replace("🚚", "").strip()
+    if "salary" in data:
+        agent.salary = int(data.get("salary") or 0)
+    password = str(data.get("password") or "").strip()
+    if password:
+        if len(password) < 4:
+            return jsonify({"error": "كلمة المرور قصيرة جداً"}), 400
+        agent.password = hash_agent_password(password)
+    db.session.commit()
+    return jsonify({"success": True, "message": "تم تحديث بيانات المندوب"})
+
+
 @employees_bp.route("/reset-password/<int:id>", methods=["POST"])
 @permission_required("manage_employees")
 def reset_employee_password(id):

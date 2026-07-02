@@ -916,11 +916,15 @@ def settings():
         
         flash("تم حفظ الإعدادات بنجاح!", "success")
         return redirect(url_for("superadmin.settings"))
-        
+
     # GET Request - Load Settings
+    from utils.platform_branding import DEFAULT_LOGO_PATH, get_platform_logo_url
+
     openai_key = (GlobalSetting.get_setting("OPENAI_API_KEY", "") or "").strip()
     settings_data = {
         "app_name": GlobalSetting.get_setting("APP_NAME", "Finora System"),
+        "app_logo_path": get_platform_logo_url(),
+        "has_custom_logo": get_platform_logo_url() != DEFAULT_LOGO_PATH,
         "trial_days": GlobalSetting.get_setting("TRIAL_DAYS", "14"),
         "openai_api_key_present": bool(openai_key),
         "openai_api_key_masked": "●●●●●●●●●●" if openai_key else "",
@@ -942,6 +946,42 @@ def settings():
     }
     
     return render_template("superadmin_settings.html", settings=settings_data)
+
+
+@superadmin_bp.route("/settings/upload-logo", methods=["POST"])
+def upload_platform_logo():
+    from flask import jsonify
+    from utils.platform_branding import save_platform_logo
+
+    try:
+        if "logo" not in request.files:
+            return jsonify({"success": False, "error": "لم يتم اختيار ملف"}), 400
+
+        file = request.files["logo"]
+        logo_path = save_platform_logo(file, current_app.root_path)
+        return jsonify({
+            "success": True,
+            "message": "تم رفع الشعار بنجاح",
+            "logo_path": logo_path,
+        })
+    except ValueError as exc:
+        return jsonify({"success": False, "error": str(exc)}), 400
+    except Exception as exc:
+        current_app.logger.exception("platform logo upload failed")
+        return jsonify({"success": False, "error": str(exc)}), 500
+
+
+@superadmin_bp.route("/settings/remove-logo", methods=["POST"])
+def remove_platform_logo_route():
+    from flask import jsonify
+    from utils.platform_branding import remove_platform_logo
+
+    try:
+        remove_platform_logo(current_app.root_path)
+        return jsonify({"success": True, "message": "تم حذف الشعار"})
+    except Exception as exc:
+        current_app.logger.exception("platform logo remove failed")
+        return jsonify({"success": False, "error": str(exc)}), 500
 
 
 @superadmin_bp.route("/invoice-templates")

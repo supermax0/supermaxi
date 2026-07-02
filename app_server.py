@@ -1049,12 +1049,22 @@ def inject_system_settings():
     return {"system_settings": settings}
 
 
-# تفضيل آمن عند فشل تحميل خطط الاشتراك (يتجنب 500)
-_SAFE_PLAN = {
-    "key": "basic",
-    "name": "الخطة الأساسية",
-    "features": {},
-}
+@app.context_processor
+def inject_platform_branding():
+    """شعار واسم المنصة من إعدادات السوبر أدمن (Core DB)."""
+    try:
+        from utils.platform_branding import get_platform_app_name, get_platform_logo_url
+
+        return {
+            "platform_logo_url": get_platform_logo_url(),
+            "platform_app_name": get_platform_app_name(),
+        }
+    except Exception:
+        return {
+            "platform_logo_url": "/static/finora-logo.png",
+            "platform_app_name": "Finora",
+        }
+
 
 @app.context_processor
 def inject_plan_context():

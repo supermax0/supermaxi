@@ -172,7 +172,8 @@ def messages():
         chat_users=[{"id": u.id, "name": u.name, "role": u.role} for u in chat_users],
         current_user_id=current_user_id,
         current_user_name=current_user.name,
-        is_admin=(current_user.role == "admin")
+        is_admin=(current_user.role == "admin"),
+        agent_portal=bool(session.get("agent_portal") and session.get("agent_id")),
     )
 
 # =====================================================

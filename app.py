@@ -1319,6 +1319,12 @@ def require_login():
             return jsonify({"success": False, "message": "Unauthorized"}), 401
         return redirect("/login")
 
+    # جلسة بوابة المندوب: السماح بالمراسلة وبوابة المندوب فقط
+    if session.get("agent_portal") and session.get("agent_id"):
+        allowed_agent_paths = ("/delivery-agent", "/messages", "/static")
+        if not any(request.path.startswith(p) for p in allowed_agent_paths):
+            return redirect("/delivery-agent/dashboard")
+
     # التحقق من صلاحية الاشتراك (SaaS)
     try:
         tenant_slug = session.get("tenant_slug")
@@ -1362,6 +1368,23 @@ def inject_system_settings():
     finally:
         g.tenant = prev_tenant
     return {"system_settings": settings}
+
+
+@app.context_processor
+def inject_platform_branding():
+    """شعار واسم المنصة من إعدادات السوبر أدمن (Core DB)."""
+    try:
+        from utils.platform_branding import get_platform_app_name, get_platform_logo_url
+
+        return {
+            "platform_logo_url": get_platform_logo_url(),
+            "platform_app_name": get_platform_app_name(),
+        }
+    except Exception:
+        return {
+            "platform_logo_url": "/static/finora-logo.png",
+            "platform_app_name": "Finora",
+        }
 
 
 @app.context_processor
