@@ -6,6 +6,9 @@
   <script src="/static/js/no-zoom.js"></script>
   <title>{% block title %}{{ store_design.store_name }}{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='storefront/css/store.css') }}">
+  {% if store_design.ai_assistant_enabled %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='storefront/css/ai-chat.css') }}">
+  {% endif %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/help-system.css') }}">
   <style>
     :root {
@@ -66,16 +69,29 @@
 
   <div class="sf-toast-wrap" id="sfToastWrap"></div>
 
+  {% if store_design.ai_assistant_enabled %}
+  {% include "storefront/partials/ai_chat_widget.html" %}
+  {% endif %}
+
   <script>
     window.STOREFRONT_CONFIG = {
       tenantSlug: {{ shop_tenant_slug|tojson }},
       dev: {{ (request.args.get('dev') == '1')|tojson }},
-      useAjaxCoupon: true
+      useAjaxCoupon: true,
+      aiChatEnabled: {{ store_design.ai_assistant_enabled|tojson }},
+      aiChatUrl: {{ url_for('storefront.api_ai_chat', tenant_slug=shop_tenant_slug)|tojson }},
+      aiTrackUrl: {{ url_for('storefront.api_ai_chat_track', tenant_slug=shop_tenant_slug)|tojson }},
+      assistantName: {{ store_design.ai_assistant_name|tojson }},
+      aiGreeting: {{ store_design.ai_assistant_greeting|tojson }},
+      aiSuggestions: {{ store_design.ai_assistant_suggestions|tojson }}
     };
   </script>
   <script id="finora-help-fields" type="application/json">{{ help_fields_json|safe }}</script>
   <script src="{{ url_for('static', filename='js/help-system.js') }}" defer></script>
   <script src="{{ url_for('static', filename='storefront/js/store.js') }}"></script>
+  {% if store_design.ai_assistant_enabled %}
+  <script src="{{ url_for('static', filename='storefront/js/ai-chat.js') }}"></script>
+  {% endif %}
   {% block scripts %}{% endblock %}
 </body>
 </html>

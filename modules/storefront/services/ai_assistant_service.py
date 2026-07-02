@@ -17,6 +17,9 @@ from modules.storefront.services.tracking_service import lookup_order
 
 
 from modules.storefront.constants import DEFAULT_GREETING, DEFAULT_SUGGESTIONS
+
+
+def _has_openai_key() -> bool:
     if os.environ.get("OPENAI_API_KEY", "").strip():
         return True
     try:
