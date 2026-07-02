@@ -1,8 +1,9 @@
 """Session and request context for active branch."""
 from __future__ import annotations
 
-from flask import g, jsonify, request, session
+from flask import current_app, g, jsonify, request, session
 
+from extensions import db
 from models.employee import Employee
 from utils.branch_migration import ensure_branch_schema, get_default_branch
 
@@ -24,50 +25,60 @@ def init_branch_context() -> None:
     if "user_id" not in session:
         return
 
-    ensure_branch_schema()
+    try:
+        ensure_branch_schema()
 
-    from models.branch import Branch
+        from models.branch import Branch
 
-    employee = Employee.query.get(session.get("user_id"))
-    active_branches = Branch.query.filter_by(is_active=True).order_by(Branch.is_default.desc(), Branch.id).all()
-    g.branches = active_branches
+        employee = Employee.query.get(session.get("user_id"))
+        active_branches = Branch.query.filter_by(is_active=True).order_by(Branch.is_default.desc(), Branch.id).all()
+        g.branches = active_branches
 
-    default_branch = get_default_branch()
-    admin = _is_admin(employee)
+        default_branch = get_default_branch()
+        admin = _is_admin(employee)
 
-    if admin:
-        view_all = session.get("view_all_branches")
-        if view_all is None:
-            view_all = True
-            session["view_all_branches"] = True
-        g.view_all_branches = bool(view_all)
+        if admin:
+            view_all = session.get("view_all_branches")
+            if view_all is None:
+                view_all = True
+                session["view_all_branches"] = True
+            g.view_all_branches = bool(view_all)
 
-        branch_id = session.get("branch_id")
+            branch_id = session.get("branch_id")
+            if branch_id:
+                branch = Branch.query.filter_by(id=branch_id, is_active=True).first()
+                if branch:
+                    g.branch = branch
+                    return
+            if default_branch and not g.view_all_branches:
+                g.branch = default_branch
+                session["branch_id"] = default_branch.id
+            return
+
+        branch_id = employee.branch_id if employee else None
         if branch_id:
             branch = Branch.query.filter_by(id=branch_id, is_active=True).first()
             if branch:
                 g.branch = branch
+                session["branch_id"] = branch.id
+                session["view_all_branches"] = False
                 return
-        if default_branch and not g.view_all_branches:
+
+        if default_branch:
             g.branch = default_branch
             session["branch_id"] = default_branch.id
-        return
-
-    branch_id = employee.branch_id if employee else None
-    if branch_id:
-        branch = Branch.query.filter_by(id=branch_id, is_active=True).first()
-        if branch:
-            g.branch = branch
-            session["branch_id"] = branch.id
             session["view_all_branches"] = False
-            return
-
-    if default_branch:
-        g.branch = default_branch
-        session["branch_id"] = default_branch.id
-        session["view_all_branches"] = False
-        if employee and not employee.branch_id:
-            employee.branch_id = default_branch.id
+            if employee and not employee.branch_id:
+                employee.branch_id = default_branch.id
+    except Exception:
+        db.session.rollback()
+        try:
+            current_app.logger.exception("init_branch_context failed")
+        except Exception:
+            pass
+        g.branch = None
+        g.view_all_branches = False
+        g.branches = []
 
 
 def current_branch_id() -> int | None:
