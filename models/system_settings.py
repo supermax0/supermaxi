@@ -44,6 +44,8 @@ class SystemSettings(db.Model):
     @staticmethod
     def get_settings():
         """Get or create the single SystemSettings row."""
+        from utils.dashboard_ui_defaults import get_default_dashboard_ui_flags
+
         try:
             settings = SystemSettings.query.options(
                 load_only(
@@ -60,9 +62,12 @@ class SystemSettings(db.Model):
             ).first()
         except Exception:
             db.session.rollback()
-            return SystemSettings(ui_flags="{}")
+            settings = SystemSettings()
+            settings.set_ui_flags(get_default_dashboard_ui_flags())
+            return settings
         if not settings:
             settings = SystemSettings()
+            settings.set_ui_flags(get_default_dashboard_ui_flags())
             db.session.add(settings)
             db.session.commit()
         return settings

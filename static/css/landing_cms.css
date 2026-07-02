@@ -222,6 +222,28 @@
   cursor: pointer;
 }
 
+.cms-whatsapp-float {
+  position: fixed;
+  left: 18px;
+  bottom: 18px;
+  z-index: 120;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: #16a34a;
+  color: #fff;
+  text-decoration: none;
+  font-weight: 900;
+  box-shadow: 0 12px 30px rgba(22, 163, 74, 0.28);
+}
+
+.cms-whatsapp-float i {
+  font-size: 20px;
+}
+
 #videoHost {
   width: min(920px, 96vw);
   aspect-ratio: 16 / 9;

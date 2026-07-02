@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}قائمة الأصول{% endblock %}
+{% block page_title %}🏢 الأصول الثابتة{% endblock %}
+{% block content %}
+<style>
+.fa-page { max-width: 1200px; margin: 0 auto; direction: rtl; }
+.fa-nav { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
+.fa-nav a { padding: 8px 14px; border-radius: 10px; background: var(--card-alt); border: 1px solid var(--border-light); color: var(--text); text-decoration: none; font-size: 14px; }
+.fa-nav a:hover, .fa-nav a.active { background: var(--primary); color: #fff; }
+.fa-filters { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; align-items: center; }
+.fa-filters input, .fa-filters select { padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-light); background: var(--card-alt); color: var(--text); }
+.fa-btn { padding: 8px 16px; border-radius: 10px; border: none; background: var(--primary); color: #fff; cursor: pointer; text-decoration: none; display: inline-block; }
+.fa-table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: 12px; overflow: hidden; font-size: 14px; }
+.fa-table th, .fa-table td { padding: 10px 12px; border: 1px solid var(--border-light); text-align: right; }
+.fa-table th { background: rgba(99,102,241,0.12); }
+.fa-table tbody tr:hover { background: rgba(99,102,241,0.06); }
+.badge { padding: 3px 8px; border-radius: 999px; font-size: 12px; background: rgba(99,102,241,0.15); }
+</style>
+<div class="fa-page">
+  {% include "fixed_assets/_nav.html" %}
+  <form class="fa-filters" method="get">
+    <input type="text" name="q" value="{{ filters.q }}" placeholder="بحث بالاسم / الكود / التسلسلي">
+    <select name="status">
+      <option value="">كل الحالات</option>
+      {% for key, label in statuses.items() %}
+      <option value="{{ key }}" {% if filters.status == key %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <select name="category_id">
+      <option value="">كل التصنيفات</option>
+      {% for c in categories %}
+      <option value="{{ c.id }}" {% if filters.category_id|string == c.id|string %}selected{% endif %}>{{ c.name }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="fa-btn">تصفية</button>
+    <a href="/assets/create" class="fa-btn">+ إضافة أصل</a>
+  </form>
+  <table class="fa-table">
+    <thead>
+      <tr>
+        <th>الكود</th><th>الاسم</th><th>التصنيف</th><th>تاريخ الشراء</th>
+        <th>التكلفة</th><th>مجمع الاستهلاك</th><th>القيمة الدفترية</th><th>الحالة</th><th>إجراءات</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for a in assets %}
+      <tr>
+        <td>{{ a.asset_code }}</td>
+        <td>{{ a.name }}</td>
+        <td>{{ a.category.name if a.category else '—' }}</td>
+        <td>{{ a.purchase_date or '—' }}</td>
+        <td>{{ "{:,}".format(a.total_cost or 0) }}</td>
+        <td>{{ "{:,}".format(a.accumulated_depreciation or 0) }}</td>
+        <td>{{ "{:,}".format(a.book_value or 0) }}</td>
+        <td><span class="badge">{{ a.status_label() }}</span></td>
+        <td><a href="/assets/{{ a.id }}">عرض</a></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="9">لا توجد أصول. <a href="/assets/create">أضف أول أصل</a></td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

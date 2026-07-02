@@ -908,6 +908,25 @@ def signup():
                     business_type=core_business_type,
                 ),
             )
+
+            if email:
+                try:
+                    from utils.email_helper import send_welcome_account_email
+
+                    send_welcome_account_email(
+                        to_email=email,
+                        contact_name=contact_name,
+                        company_name=company_name,
+                        slug=slug,
+                        username=username,
+                        password=password,
+                        plan_name=plan.get("name") or "الخطة الأساسية",
+                    )
+                except Exception:
+                    try:
+                        current_app.logger.exception("welcome account email failed for %s", slug)
+                    except Exception:
+                        pass
         finally:
             g.tenant = old_tenant
 

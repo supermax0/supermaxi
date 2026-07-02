@@ -94,6 +94,85 @@ def send_email(*, to_email: str, subject: str, body: str, html_body: Optional[st
         return False
 
 
+def _resolve_base_url() -> str:
+    """عنوان المنصة العام (لروابط تسجيل الدخول في البريد)."""
+    from flask import has_request_context, request
+
+    base_cfg = (current_app.config.get("BASE_URL") or "").strip().rstrip("/")
+    if has_request_context():
+        try:
+            proto = (request.headers.get("X-Forwarded-Proto") or request.scheme or "https").split(",")[0].strip()
+            host = (
+                request.headers.get("X-Forwarded-Host")
+                or request.headers.get("Host")
+                or (getattr(request, "host", None) or "")
+            )
+            host = (host or "").split(",")[0].strip()
+            if host and not host.startswith(("127.", "localhost", "192.168.", "10.")):
+                return f"{proto}://{host}".rstrip("/")
+        except Exception:
+            pass
+    return base_cfg or "https://finora.company"
+
+
+def build_tenant_login_url(slug: str) -> str:
+    slug_clean = (slug or "").strip().lower()
+    return f"{_resolve_base_url()}/login/{slug_clean}"
+
+
+def send_welcome_account_email(
+    *,
+    to_email: str,
+    contact_name: str,
+    company_name: str,
+    slug: str,
+    username: str,
+    password: str,
+    plan_name: Optional[str] = None,
+) -> bool:
+    """إرسال بيانات الحساب الجديد للعميل بعد التسجيل."""
+    app_name = current_app.config.get("APP_NAME", "Finora")
+    login_url = build_tenant_login_url(slug)
+    plan_line = f"\nالخطة: {plan_name}" if plan_name else ""
+
+    subject = f"مرحباً بك في {app_name} — بيانات حسابك"
+    body = f"""مرحباً {contact_name or ""},
+
+تم إنشاء حساب شركتك بنجاح في {app_name}.
+
+اسم الشركة: {company_name}
+معرف الشركة: {slug}
+اسم المستخدم: {username}
+كلمة المرور: {password}{plan_line}
+
+رابط تسجيل الدخول:
+{login_url}
+
+احتفظ بهذه البيانات في مكان آمن. ننصحك بتغيير كلمة المرور بعد أول دخول.
+
+— فريق {app_name}
+"""
+    plan_html = f'<tr><td style="padding:8px 0;color:#667085">الخطة</td><td style="padding:8px 0;font-weight:600;color:#101828">{plan_name}</td></tr>' if plan_name else ""
+    html = f"""
+<div dir="rtl" style="font-family:Tajawal,Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px">
+  <h2 style="color:#2563EB;margin-bottom:8px">مرحباً بك في {app_name}</h2>
+  <p style="color:#667085">مرحباً <strong>{contact_name or ""}</strong>، تم إنشاء حساب <strong>{company_name}</strong> بنجاح.</p>
+  <table style="width:100%;border-collapse:collapse;margin:20px 0;background:#F9FAFB;border-radius:12px;padding:4px 16px">
+    <tr><td style="padding:8px 0;color:#667085">معرف الشركة</td><td style="padding:8px 0;font-weight:700;color:#101828;direction:ltr;text-align:right">{slug}</td></tr>
+    <tr><td style="padding:8px 0;color:#667085">اسم المستخدم</td><td style="padding:8px 0;font-weight:600;color:#101828;direction:ltr;text-align:right">{username}</td></tr>
+    <tr><td style="padding:8px 0;color:#667085">كلمة المرور</td><td style="padding:8px 0;font-weight:600;color:#101828;direction:ltr;text-align:right">{password}</td></tr>
+    {plan_html}
+  </table>
+  <p style="text-align:center;margin:24px 0">
+    <a href="{login_url}" style="display:inline-block;background:#2563EB;color:#fff;text-decoration:none;padding:14px 28px;border-radius:10px;font-weight:700">تسجيل الدخول</a>
+  </p>
+  <p style="color:#667085;font-size:13px;word-break:break-all">أو افتح الرابط: <a href="{login_url}" style="color:#2563EB">{login_url}</a></p>
+  <p style="color:#98A2B3;font-size:12px;margin-top:20px">احتفظ بهذه البيانات في مكان آمن وغيّر كلمة المرور بعد أول دخول.</p>
+</div>
+"""
+    return send_email(to_email=to_email, subject=subject, body=body, html_body=html)
+
+
 def send_signup_verification_email(to_email: str, code: str) -> bool:
     app_name = current_app.config.get("APP_NAME", "Finora")
     subject = f"رمز التحقق — {app_name}"

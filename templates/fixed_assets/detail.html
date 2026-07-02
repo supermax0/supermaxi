@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}{{ asset.name }}{% endblock %}
+{% block page_title %}🏢 {{ asset.asset_code }} — {{ asset.name }}{% endblock %}
+{% block content %}
+<style>
+.fa-page { max-width: 1000px; margin: 0 auto; direction: rtl; }
+.fa-nav { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
+.fa-nav a { padding: 8px 14px; border-radius: 10px; background: var(--card-alt); border: 1px solid var(--border-light); color: var(--text); text-decoration: none; font-size: 14px; }
+.fa-card { background: var(--card); border: 1px solid var(--border-light); border-radius: 16px; padding: 20px; margin-bottom: 18px; }
+.fa-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 20px; }
+.fa-grid div { font-size: 14px; }
+.fa-grid strong { color: var(--text-muted); display: block; font-size: 12px; margin-bottom: 4px; }
+.fa-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.fa-table th, .fa-table td { padding: 10px; border: 1px solid var(--border-light); text-align: right; }
+.fa-btn { padding: 10px 16px; border-radius: 10px; border: none; background: var(--success); color: #fff; cursor: pointer; font-weight: 700; }
+.badge { padding: 4px 10px; border-radius: 999px; background: rgba(99,102,241,0.15); }
+</style>
+<div class="fa-page">
+  {% include "fixed_assets/_nav.html" %}
+  <div class="fa-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <span class="badge">{{ asset.status_label() }}</span>
+      {% if asset.status == 'draft' and not asset.acquisition_journal_entry_id %}
+      <form method="post" action="/assets/{{ asset.id }}/post" onsubmit="return confirm('ترحيل قيد شراء الأصل؟');">
+        <button type="submit" class="fa-btn">ترحيل قيد الشراء</button>
+      </form>
+      {% endif %}
+    </div>
+    <div class="fa-grid">
+      <div><strong>كود الأصل</strong>{{ asset.asset_code }}</div>
+      <div><strong>التصنيف</strong>{{ asset.category.name if asset.category else '—' }}</div>
+      <div><strong>تاريخ الشراء</strong>{{ asset.purchase_date or '—' }}</div>
+      <div><strong>تاريخ الجاهزية</strong>{{ asset.ready_date or '—' }}</div>
+      <div><strong>تكلفة الأصل</strong>{{ "{:,}".format(asset.total_cost or 0) }} د.ع</div>
+      <div><strong>مجمع الاستهلاك</strong>{{ "{:,}".format(asset.accumulated_depreciation or 0) }} د.ع</div>
+      <div><strong>القيمة الدفترية</strong>{{ "{:,}".format(asset.book_value or 0) }} د.ع</div>
+      <div><strong>الاستهلاك الشهري</strong>{{ "{:,}".format(asset.monthly_depreciation or 0) }} د.ع</div>
+      <div><strong>طريقة الدفع</strong>{{ asset.payment_method_label() }}</div>
+      <div><strong>المورد</strong>{{ asset.supplier.name if asset.supplier else '—' }}</div>
+      <div><strong>الموقع</strong>{{ asset.location_text or '—' }}</div>
+      <div><strong>قابل للاستهلاك</strong>{{ 'نعم' if asset.is_depreciable else 'لا' }}</div>
+    </div>
+    {% if asset.description %}<p style="margin-top:14px;color:var(--text-muted);">{{ asset.description }}</p>{% endif %}
+  </div>
+  <div class="fa-card">
+    <h3 style="margin-top:0;">الحركات</h3>
+    <table class="fa-table">
+      <thead><tr><th>التاريخ</th><th>النوع</th><th>المبلغ</th><th>ق.د. قبل</th><th>ق.د. بعد</th><th>ملاحظات</th></tr></thead>
+      <tbody>
+        {% for m in movements %}
+        <tr>
+          <td>{{ m.movement_date }}</td><td>{{ m.type_label() }}</td>
+          <td>{{ "{:,}".format(m.amount or 0) }}</td>
+          <td>{{ "{:,}".format(m.old_book_value or 0) }}</td>
+          <td>{{ "{:,}".format(m.new_book_value or 0) }}</td>
+          <td>{{ m.notes or '—' }}</td>
+        </tr>
+        {% else %}<tr><td colspan="6">لا توجد حركات.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="fa-card">
+    <h3 style="margin-top:0;">القيود المحاسبية</h3>
+    <table class="fa-table">
+      <thead><tr><th>رقم القيد</th><th>التاريخ</th><th>الوصف</th><th>مدين</th><th>دائن</th><th>المبلغ</th></tr></thead>
+      <tbody>
+        {% for j in journals %}
+        <tr>
+          <td>{{ j.entry_number }}</td>
+          <td>{{ j.entry_date.strftime('%Y-%m-%d') if j.entry_date else '—' }}</td>
+          <td>{{ j.description }}</td>
+          <td>{{ j.debit_account.name if j.debit_account else j.debit_account_id }}</td>
+          <td>{{ j.credit_account.name if j.credit_account else j.credit_account_id }}</td>
+          <td>{{ "{:,}".format(j.amount or 0) }}</td>
+        </tr>
+        {% else %}<tr><td colspan="6">لا توجد قيود مرتبطة.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -68,6 +68,7 @@ from routes.storefront import storefront_bp
 from routes.quick_sale import quick_sale_bp
 from routes.beauty import beauty_bp
 from routes.maintenance import maintenance_bp
+from routes.fixed_assets import fixed_assets_bp
 from routes.whatsapp_webhook import whatsapp_webhook_bp
 from routes.landing import landing_bp
 from telegram_bot import telegram_bp
@@ -167,6 +168,7 @@ with app.app_context():
     from models.core.landing_visit import LandingVisit
     from models.core.landing_content import (  # noqa: F401
         LandingCTA,
+        LandingAuditLog,
         LandingFAQ,
         LandingFeature,
         LandingMedia,
@@ -309,7 +311,7 @@ with app.app_context():
                             "report_address": "ALTER TABLE invoice_settings ADD COLUMN report_address TEXT",
                             "report_phone": "ALTER TABLE invoice_settings ADD COLUMN report_phone VARCHAR(50)",
                             "report_footer_text": "ALTER TABLE invoice_settings ADD COLUMN report_footer_text TEXT",
-                            "report_show_logo": "ALTER TABLE invoice_settings ADD COLUMN report_show_logo BOOLEAN DEFAULT 1",
+                            "report_show_logo": "ALTER TABLE invoice_settings ADD COLUMN report_show_logo BOOLEAN DEFAULT TRUE",
                         }
                         for col, stmt in report_additions.items():
                             if col not in is_cols:
@@ -382,7 +384,7 @@ with app.app_context():
                 "report_address": "ALTER TABLE invoice_settings ADD COLUMN report_address TEXT",
                 "report_phone": "ALTER TABLE invoice_settings ADD COLUMN report_phone VARCHAR(50)",
                 "report_footer_text": "ALTER TABLE invoice_settings ADD COLUMN report_footer_text TEXT",
-                "report_show_logo": "ALTER TABLE invoice_settings ADD COLUMN report_show_logo BOOLEAN DEFAULT 1",
+                "report_show_logo": "ALTER TABLE invoice_settings ADD COLUMN report_show_logo BOOLEAN DEFAULT TRUE",
             }
             for col, stmt in report_additions.items():
                 if col not in is_columns:
@@ -1138,6 +1140,8 @@ def inject_global_data():
         "can_manage_customers": False,
         "can_see_accounts": False,
         "can_see_financial": False,
+        "can_see_fixed_assets": False,
+        "can_manage_fixed_assets": False,
         # صلاحيات ظهور الروابط في القائمة الجانبية
         "can_use_pos": False,
         "can_see_shipping": False,
@@ -1199,6 +1203,8 @@ def inject_global_data():
             "can_manage_customers": employee.has_permission("manage_customers"),
             "can_see_accounts": employee.has_permission("view_accounts"),
             "can_see_financial": employee.has_permission("view_financial"),
+            "can_see_fixed_assets": employee.has_permission("view_fixed_assets"),
+            "can_manage_fixed_assets": employee.has_permission("manage_fixed_assets"),
             # ربط أعلام القائمة الجانبية بصلاحيات الـ RBAC
             "can_use_pos": employee.has_permission("view_pos"),
             "can_see_shipping": employee.has_permission("view_shipping"),
@@ -1263,7 +1269,9 @@ def require_login():
         "/payments/simulate",
         "/upgrade",
         "/superadmin",
+        "/super-admin",
         "/api/superadmin/landing",  # API إدارة صفحة الهبوط محمي بجلسة Super Admin داخل blueprint
+        "/api/super-admin/landing",  # alias مطابق للمواصفة
         "/messages/unread-count",  # واجهة للشارة — تُرجع JSON بدون إعادة توجيه
         "/api/landing",  # محتوى صفحة الهبوط المنشور
         "/api/landing-chat",  # مساعد الذكاء الاصطناعي لصفحة الهبوط
@@ -1482,6 +1490,7 @@ app.register_blueprint(employees_bp, url_prefix="/employees")
 app.register_blueprint(inventory_bp, url_prefix="/inventory")
 app.register_blueprint(purchases_bp, url_prefix="/purchases")
 app.register_blueprint(maintenance_bp)
+app.register_blueprint(fixed_assets_bp)
 app.register_blueprint(inventory_ledger_bp, url_prefix="/inventory/ledger")
 app.register_blueprint(media_library_bp)
 app.register_blueprint(cash_bp, url_prefix="/cash")
@@ -1535,6 +1544,16 @@ try:
     print("Workspace module loaded.")
 except Exception as _ws_ex:
     print(f"Workspace module load warning: {_ws_ex}")
+
+
+@app.cli.command("seed_landing_page")
+def seed_landing_page_command():
+    """Seed Finora Cloud landing page draft/published content."""
+    with app.app_context():
+        from utils.landing_content import ensure_landing_seed
+
+        created = ensure_landing_seed()
+        print("Landing page seed created." if created else "Landing page seed already exists.")
 
 # =====================================
 # Logging

@@ -12,6 +12,11 @@ from .purchase_attachment import PurchaseAttachment
 from .branch import Branch, BranchStock, StockTransfer, StockTransferLine
 from .expense import Expense
 from .maintenance_record import MaintenanceRecord
+from .fixed_asset_category import FixedAssetCategory
+from .fixed_asset import FixedAsset
+from .fixed_asset_movement import FixedAssetMovement
+from .fixed_asset_depreciation import FixedAssetDepreciation
+from .fixed_asset_maintenance import FixedAssetMaintenance
 from .employee import Employee
 from .invoice import Invoice
 from .invoice_payment_ledger import InvoicePaymentLedger
@@ -62,6 +67,7 @@ from .invoice_template import InvoiceTemplate, TenantTemplatePurchase, TenantTem
 # ======================================================
 from .core.landing_content import (
     LandingCTA,
+    LandingAuditLog,
     LandingFAQ,
     LandingFeature,
     LandingMedia,

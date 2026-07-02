@@ -19,6 +19,8 @@
     text_color: 'لون النص',
     font_family: 'الخط',
     whatsapp_number: 'رقم واتساب',
+    whatsapp_enabled: 'إظهار زر واتساب',
+    whatsapp_message: 'رسالة واتساب الافتراضية',
     contact_email: 'البريد',
     login_url: 'رابط الدخول',
     trial_url: 'رابط التجربة',
@@ -83,7 +85,7 @@
   };
 
   var fields = {
-    settings: ['site_name', 'page_title', 'page_subtitle', 'logo_url', 'favicon_url', 'whatsapp_number', 'contact_email', 'login_url', 'trial_url', 'demo_booking_url'],
+    settings: ['site_name', 'page_title', 'page_subtitle', 'logo_url', 'favicon_url', 'whatsapp_number', 'whatsapp_enabled', 'whatsapp_message', 'contact_email', 'login_url', 'trial_url', 'demo_booking_url'],
     theme: ['primary_color', 'secondary_color', 'accent_color', 'background_color', 'text_color', 'font_family'],
     seo: ['meta_title', 'meta_description', 'meta_keywords', 'og_title', 'og_description', 'og_image_url', 'twitter_title', 'twitter_description', 'twitter_image_url', 'canonical_url', 'robots', 'schema'],
     sections: ['section_key', 'section_type', 'title', 'subtitle', 'description', 'content', 'image_url', 'video_url', 'button_primary_text', 'button_primary_url', 'button_secondary_text', 'button_secondary_url', 'sort_order', 'is_visible', 'animation_type', 'background_style'],
@@ -135,7 +137,7 @@
   function fieldHtml(field, value) {
     var full = ['description', 'page_subtitle', 'content', 'features', 'limits', 'schema', 'answer', 'quote', 'long_description', 'meta_description', 'og_description', 'twitter_description'].indexOf(field) !== -1;
     var label = labels[field] || field;
-    if (['is_visible', 'is_popular'].indexOf(field) !== -1) {
+    if (['is_visible', 'is_popular', 'whatsapp_enabled'].indexOf(field) !== -1) {
       return '<label class="landing-field"><span>' + label + '</span><select name="' + field + '"><option value="true"' + (value ? ' selected' : '') + '>نعم</option><option value="false"' + (!value ? ' selected' : '') + '>لا</option></select></label>';
     }
     if (full) {
@@ -158,7 +160,7 @@
       if (['content', 'features', 'limits', 'schema'].indexOf(key) !== -1) {
         try { data[key] = JSON.parse(value || (key === 'features' ? '[]' : '{}')); }
         catch (e) { data[key] = key === 'features' ? [] : {}; }
-      } else if (['is_visible', 'is_popular'].indexOf(key) !== -1) {
+      } else if (['is_visible', 'is_popular', 'whatsapp_enabled'].indexOf(key) !== -1) {
         data[key] = value === 'true';
       } else {
         data[key] = value;

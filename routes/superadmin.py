@@ -64,6 +64,37 @@ def _clean_business_type(value):
     return value if value in BUSINESS_TYPES else "general"
 
 
+def _try_send_welcome_email(
+    *,
+    email: str,
+    contact_name: str,
+    company_name: str,
+    slug: str,
+    username: str,
+    password: str,
+    plan_name: str | None = None,
+) -> None:
+    """إرسال بيانات الحساب للعميل (لا يوقف العملية عند الفشل)."""
+    to_email = (email or "").strip()
+    if not to_email:
+        return
+    try:
+        from utils.email_helper import send_welcome_account_email
+
+        if not send_welcome_account_email(
+            to_email=to_email,
+            contact_name=contact_name,
+            company_name=company_name,
+            slug=slug,
+            username=username,
+            password=password,
+            plan_name=plan_name,
+        ):
+            current_app.logger.warning("welcome email not sent for tenant %s", slug)
+    except Exception:
+        current_app.logger.exception("welcome email failed for tenant %s", slug)
+
+
 def _ensure_tenant_business_type_column(engine):
     from sqlalchemy import inspect, text
 
@@ -273,6 +304,16 @@ def approve_request(req_id):
                 "source": "payment_approval",
                 "registered_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
             },
+        )
+
+        _try_send_welcome_email(
+            email=payment_req.email,
+            contact_name=payment_req.owner_name,
+            company_name=payment_req.tenant_name.upper(),
+            slug=payment_req.tenant_name,
+            username="admin",
+            password=default_password,
+            plan_name=plan["name"],
         )
         
         flash(f"تم تفعيل الشركة بنجاح مع اسم مستخدم admin وكلمة مرور: {default_password}")
@@ -616,6 +657,16 @@ def tenants_create():
                     "source": "superadmin_create",
                     "registered_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
                 },
+            )
+
+            _try_send_welcome_email(
+                email=owner_email,
+                contact_name=admin_display_name,
+                company_name=name.upper(),
+                slug=slug,
+                username="admin",
+                password=default_password,
+                plan_name=plan["name"],
             )
             
             flash(

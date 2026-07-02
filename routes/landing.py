@@ -1,8 +1,9 @@
 import json
 import os
+import re
 from uuid import uuid4
 
-from flask import Blueprint, current_app, jsonify, render_template, request, session
+from flask import Blueprint, current_app, jsonify, redirect, render_template, request, session
 from werkzeug.utils import secure_filename
 
 from extensions import db
@@ -19,6 +20,7 @@ from models.core.landing_content import (
     LandingTestimonial,
 )
 from utils.landing_content import ensure_landing_seed, get_landing_payload, publish_landing
+from utils.landing_content import log_landing_audit
 
 
 landing_bp = Blueprint("landing", __name__)
@@ -34,6 +36,14 @@ COLLECTIONS = {
     "ctas": LandingCTA,
     "media": LandingMedia,
 }
+COLLECTION_ALIASES = {"faq": "faqs"}
+URL_FIELDS = {
+    "logo_url", "favicon_url", "login_url", "trial_url", "demo_booking_url", "image_url",
+    "video_url", "button_primary_url", "button_secondary_url", "screenshot_url", "cta_url",
+    "url", "avatar_url", "og_image_url", "twitter_image_url", "canonical_url", "file_url",
+    "thumbnail_url",
+}
+VIDEO_HOST_RE = re.compile(r"^(https?://|/).+", re.IGNORECASE)
 
 
 def _is_superadmin():
@@ -51,6 +61,10 @@ def _payload():
     if isinstance(data, dict):
         return data
     return request.form.to_dict()
+
+
+def _as_dict(row):
+    return row.to_dict() if row and hasattr(row, "to_dict") else {}
 
 
 def _json_text(value, default):
@@ -85,12 +99,62 @@ def _number(value, default=0, cast=float):
         return default
 
 
+def _looks_like_url(value):
+    if not value:
+        return True
+    value = str(value).strip()
+    return value.startswith(("#", "/", "mailto:", "tel:", "https://", "http://"))
+
+
+def _validate_data(model, data, creating=False):
+    errors = []
+    title_field = None
+    if model in {LandingSection, LandingFeature}:
+        title_field = "title"
+    elif model is LandingModule:
+        title_field = "name"
+    elif model is LandingPricingPlan:
+        title_field = "name"
+    elif model is LandingFAQ:
+        title_field = "question"
+    elif model is LandingTestimonial:
+        title_field = "customer_name"
+    elif model is LandingCTA:
+        title_field = "label"
+
+    if title_field and creating and not str(data.get(title_field, "")).strip():
+        errors.append("العنوان/الاسم لا يمكن أن يكون فارغاً")
+
+    if model is LandingPricingPlan and "price" in data:
+        try:
+            float(data.get("price") or 0)
+        except Exception:
+            errors.append("السعر يجب أن يكون رقماً")
+
+    if "sort_order" in data:
+        try:
+            int(data.get("sort_order") or 0)
+        except Exception:
+            errors.append("sort_order يجب أن يكون رقماً")
+
+    for field in URL_FIELDS:
+        if field in data and not _looks_like_url(data.get(field)):
+            errors.append(f"الرابط غير صالح: {field}")
+
+    if "video_url" in data and data.get("video_url") and not VIDEO_HOST_RE.match(str(data.get("video_url")).strip()):
+        errors.append("رابط الفيديو غير صالح")
+
+    if errors:
+        return errors
+    return []
+
+
 def _apply_fields(row, data):
     editable = {
         LandingPageSettings: [
             "site_name", "page_title", "page_subtitle", "default_language", "logo_url", "favicon_url",
             "primary_color", "secondary_color", "accent_color", "background_color", "text_color",
-            "font_family", "whatsapp_number", "contact_email", "login_url", "trial_url",
+            "font_family", "whatsapp_number", "whatsapp_enabled", "whatsapp_message", "contact_email", "login_url", "trial_url",
             "demo_booking_url", "is_active",
         ],
         LandingSEO: [
@@ -146,10 +210,27 @@ def _apply_fields(row, data):
 
 
 def _model_for_collection(name):
+    name = COLLECTION_ALIASES.get(name, name)
     model = COLLECTIONS.get(name)
     if not model:
         return None
     return model
+
+
+def _collection_name(name):
+    return COLLECTION_ALIASES.get(name, name)
+
+
+def _audit(action, entity_type, row=None, old_value=None, new_value=None):
+    log_landing_audit(
+        action,
+        entity_type,
+        getattr(row, "id", None),
+        old_value=old_value,
+        new_value=new_value,
+        admin_id=session.get("superadmin_id"),
+        ip_address=request.remote_addr or "",
+    )
 
 
 @landing_bp.route("/landing")
@@ -162,6 +243,11 @@ def landing_preview():
     if not _is_superadmin():
         return render_template("superadmin_login.html"), 403
     return render_template("landing_dynamic.html", landing=get_landing_payload("draft", include_hidden=True), preview_mode=True)
+
+
+@landing_bp.route("/super-admin/landing")
+def super_admin_landing_alias():
+    return redirect("/superadmin/landing", code=302)
 
 
 @landing_bp.route("/api/landing/published")
@@ -178,6 +264,7 @@ def superadmin_landing_page():
 
 
 @landing_bp.route("/api/superadmin/landing", methods=["GET"])
+@landing_bp.route("/api/super-admin/landing", methods=["GET"])
 def api_superadmin_landing():
     denied = _require_superadmin_json()
     if denied:
@@ -185,85 +272,162 @@ def api_superadmin_landing():
     return jsonify({"success": True, "data": get_landing_payload("draft", include_hidden=True)})
 
 
+@landing_bp.route("/api/superadmin/landing/preview", methods=["GET"])
+@landing_bp.route("/api/super-admin/landing/preview", methods=["GET"])
+def api_superadmin_landing_preview():
+    denied = _require_superadmin_json()
+    if denied:
+        return denied
+    return jsonify({"success": True, "data": get_landing_payload("draft", include_hidden=True)})
+
+
 @landing_bp.route("/api/superadmin/landing/settings", methods=["PUT"])
+@landing_bp.route("/api/super-admin/landing/settings", methods=["GET", "PUT"])
 def api_update_landing_settings():
     denied = _require_superadmin_json()
     if denied:
         return denied
+    if request.method == "GET":
+        row = LandingPageSettings.query.filter_by(scope="draft").first()
+        if not row:
+            ensure_landing_seed()
+            row = LandingPageSettings.query.filter_by(scope="draft").first()
+        return jsonify({"success": True, "item": row.to_dict()})
     data = _payload()
+    errors = _validate_data(LandingPageSettings, data)
+    if errors:
+        return jsonify({"success": False, "errors": errors}), 400
     row = LandingPageSettings.query.filter_by(scope="draft").first()
     if not row:
         ensure_landing_seed()
         row = LandingPageSettings.query.filter_by(scope="draft").first()
+    old_value = _as_dict(row)
     _apply_fields(row, data)
+    new_value = _as_dict(row)
+    _audit("update_settings", "settings", row, old_value, new_value)
     db.session.commit()
     return jsonify({"success": True, "item": row.to_dict()})
 
 
 @landing_bp.route("/api/superadmin/landing/seo", methods=["PUT"])
+@landing_bp.route("/api/super-admin/landing/seo", methods=["GET", "PUT"])
 def api_update_landing_seo():
     denied = _require_superadmin_json()
     if denied:
         return denied
+    if request.method == "GET":
+        row = LandingSEO.query.filter_by(scope="draft").first()
+        if not row:
+            ensure_landing_seed()
+            row = LandingSEO.query.filter_by(scope="draft").first()
+        return jsonify({"success": True, "item": row.to_dict()})
     data = _payload()
+    errors = _validate_data(LandingSEO, data)
+    if errors:
+        return jsonify({"success": False, "errors": errors}), 400
     row = LandingSEO.query.filter_by(scope="draft").first()
     if not row:
         ensure_landing_seed()
         row = LandingSEO.query.filter_by(scope="draft").first()
+    old_value = _as_dict(row)
     _apply_fields(row, data)
+    new_value = _as_dict(row)
+    _audit("update_seo", "seo", row, old_value, new_value)
     db.session.commit()
     return jsonify({"success": True, "item": row.to_dict()})
 
 
 @landing_bp.route("/api/superadmin/landing/<collection>", methods=["POST"])
+@landing_bp.route("/api/superadmin/landing/<collection>", methods=["GET"])
+@landing_bp.route("/api/super-admin/landing/<collection>", methods=["GET", "POST"])
 def api_create_landing_item(collection):
     denied = _require_superadmin_json()
     if denied:
         return denied
     model = _model_for_collection(collection)
-    if model is None or model is LandingMedia:
+    collection = _collection_name(collection)
+    if model is None:
         return jsonify({"success": False, "error": "مجموعة غير مدعومة"}), 404
+    if request.method == "GET":
+        if model is LandingMedia:
+            rows = model.query.filter_by(is_active=True).order_by(model.id.desc()).all()
+        else:
+            rows = model.query.filter_by(scope="draft").order_by(model.sort_order.asc(), model.id.asc()).all()
+        return jsonify({"success": True, "items": [row.to_dict() for row in rows]})
+    if model is LandingMedia:
+        data = _payload()
+        errors = _validate_data(LandingMedia, data, creating=True)
+        if errors:
+            return jsonify({"success": False, "errors": errors}), 400
+        if not data.get("file_url"):
+            return jsonify({"success": False, "error": "رابط الوسيط مطلوب"}), 400
+        row = LandingMedia()
+        _apply_fields(row, data)
+        db.session.add(row)
+        db.session.flush()
+        _audit("create_media", "media", row, {}, row.to_dict())
+        db.session.commit()
+        return jsonify({"success": True, "item": row.to_dict()})
     data = _payload()
+    errors = _validate_data(model, data, creating=True)
+    if errors:
+        return jsonify({"success": False, "errors": errors}), 400
     row = model(scope="draft")
     _apply_fields(row, data)
     db.session.add(row)
+    db.session.flush()
+    _audit(f"create_{collection}", collection, row, {}, row.to_dict())
     db.session.commit()
     return jsonify({"success": True, "item": row.to_dict()})
 
 
 @landing_bp.route("/api/superadmin/landing/<collection>/<int:item_id>", methods=["PUT"])
+@landing_bp.route("/api/super-admin/landing/<collection>/<int:item_id>", methods=["PUT"])
 def api_update_landing_item(collection, item_id):
     denied = _require_superadmin_json()
     if denied:
         return denied
     model = _model_for_collection(collection)
+    collection = _collection_name(collection)
     if model is None:
         return jsonify({"success": False, "error": "مجموعة غير مدعومة"}), 404
     row = db.session.get(model, item_id)
     if not row or (hasattr(row, "scope") and row.scope != "draft"):
         return jsonify({"success": False, "error": "العنصر غير موجود"}), 404
-    _apply_fields(row, _payload())
+    data = _payload()
+    errors = _validate_data(model, data)
+    if errors:
+        return jsonify({"success": False, "errors": errors}), 400
+    old_value = _as_dict(row)
+    _apply_fields(row, data)
+    new_value = _as_dict(row)
+    _audit(f"update_{collection}", collection, row, old_value, new_value)
     db.session.commit()
     return jsonify({"success": True, "item": row.to_dict()})
 
 
 @landing_bp.route("/api/superadmin/landing/<collection>/<int:item_id>", methods=["DELETE"])
+@landing_bp.route("/api/super-admin/landing/<collection>/<int:item_id>", methods=["DELETE"])
 def api_delete_landing_item(collection, item_id):
     denied = _require_superadmin_json()
     if denied:
         return denied
     model = _model_for_collection(collection)
+    collection = _collection_name(collection)
     if model is None or model in {LandingPageSettings, LandingSEO}:
         return jsonify({"success": False, "error": "مجموعة غير مدعومة"}), 404
     row = db.session.get(model, item_id)
     if not row or (hasattr(row, "scope") and row.scope != "draft"):
         return jsonify({"success": False, "error": "العنصر غير موجود"}), 404
+    old_value = _as_dict(row)
+    _audit(f"delete_{collection}", collection, row, old_value, {})
     db.session.delete(row)
     db.session.commit()
     return jsonify({"success": True})
 
 
 @landing_bp.route("/api/superadmin/landing/media/upload", methods=["POST"])
+@landing_bp.route("/api/super-admin/landing/media/upload", methods=["POST"])
 def api_upload_landing_media():
     denied = _require_superadmin_json()
     if denied:
@@ -295,20 +459,26 @@ def api_upload_landing_media():
         is_active=True,
     )
     db.session.add(row)
+    db.session.flush()
+    _audit("upload_media", "media", row, {}, row.to_dict())
     db.session.commit()
     return jsonify({"success": True, "item": row.to_dict()})
 
 
 @landing_bp.route("/api/superadmin/landing/publish", methods=["POST"])
+@landing_bp.route("/api/super-admin/landing/publish", methods=["POST"])
 def api_publish_landing():
     denied = _require_superadmin_json()
     if denied:
         return denied
+    _audit("publish_landing_page", "landing_page", None, {}, {"status": "publishing"})
+    db.session.commit()
     data = publish_landing(session.get("superadmin_id"))
     return jsonify({"success": True, "data": data})
 
 
 @landing_bp.route("/api/superadmin/landing/seed", methods=["POST"])
+@landing_bp.route("/api/super-admin/landing/seed", methods=["POST"])
 def api_seed_landing():
     denied = _require_superadmin_json()
     if denied:

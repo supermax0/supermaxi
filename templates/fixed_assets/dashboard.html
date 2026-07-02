@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}لوحة الأصول{% endblock %}
+{% block page_title %}🏢 لوحة الأصول الثابتة{% endblock %}
+{% block content %}
+<style>
+.fa-page { max-width: 1200px; margin: 0 auto; direction: rtl; }
+.fa-nav { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
+.fa-nav a { padding: 8px 14px; border-radius: 10px; background: var(--card-alt); border: 1px solid var(--border-light); color: var(--text); text-decoration: none; font-size: 14px; }
+.fa-nav a:hover, .fa-nav a.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.fa-kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 24px; }
+.fa-kpi { background: var(--card); border: 1px solid var(--border-light); border-radius: 14px; padding: 16px; }
+.fa-kpi .label { color: var(--text-muted); font-size: 13px; margin-bottom: 6px; }
+.fa-kpi .value { font-size: 22px; font-weight: 800; }
+.fa-table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: 12px; overflow: hidden; }
+.fa-table th, .fa-table td { padding: 10px 12px; border: 1px solid var(--border-light); text-align: right; font-size: 14px; }
+.fa-table th { background: rgba(99,102,241,0.12); }
+</style>
+<div class="fa-page">
+  {% include "fixed_assets/_nav.html" %}
+  <div class="fa-kpi-grid">
+    <div class="fa-kpi"><div class="label">إجمالي تكلفة الأصول</div><div class="value">{{ "{:,}".format(stats.total_cost) }} د.ع</div></div>
+    <div class="fa-kpi"><div class="label">مجمع الاستهلاك</div><div class="value">{{ "{:,}".format(stats.accumulated_depreciation) }} د.ع</div></div>
+    <div class="fa-kpi"><div class="label">صافي القيمة الدفترية</div><div class="value">{{ "{:,}".format(stats.book_value) }} د.ع</div></div>
+    <div class="fa-kpi"><div class="label">أصول نشطة</div><div class="value">{{ stats.active_count }}</div></div>
+    <div class="fa-kpi"><div class="label">تحت التركيب</div><div class="value">{{ stats.under_installation_count }}</div></div>
+    <div class="fa-kpi"><div class="label">مسودات</div><div class="value">{{ stats.draft_count }}</div></div>
+    <div class="fa-kpi"><div class="label">مباعة / تالفة</div><div class="value">{{ stats.sold_count }} / {{ stats.scrapped_count }}</div></div>
+  </div>
+  <h3 style="margin: 0 0 12px;">آخر الحركات</h3>
+  <table class="fa-table">
+    <thead><tr><th>التاريخ</th><th>الأصل</th><th>نوع الحركة</th><th>المبلغ</th><th>ملاحظات</th></tr></thead>
+    <tbody>
+      {% for m in recent_movements %}
+      <tr>
+        <td>{{ m.movement_date }}</td>
+        <td><a href="/assets/{{ m.asset_id }}">{{ m.asset.asset_code if m.asset else m.asset_id }}</a></td>
+        <td>{{ m.type_label() }}</td>
+        <td>{{ "{:,}".format(m.amount or 0) }}</td>
+        <td>{{ m.notes or '—' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5">لا توجد حركات بعد.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -2,9 +2,11 @@ from datetime import datetime
 import json
 
 from flask import g
+from sqlalchemy import inspect, text
 
 from extensions import db
 from models.core.landing_content import (
+    LandingAuditLog,
     LandingCTA,
     LandingFAQ,
     LandingFeature,
@@ -29,6 +31,8 @@ SCOPED_MODELS = [
     LandingCTA,
     LandingSEO,
 ]
+
+_PAYLOAD_CACHE = {}
 
 
 def _as_json(value):
@@ -57,6 +61,84 @@ def _copy_public_columns(src, dest):
         setattr(dest, column.name, getattr(src, column.name))
 
 
+def clear_landing_cache():
+    _PAYLOAD_CACHE.clear()
+
+
+def log_landing_audit(action, entity_type, entity_id=None, old_value=None, new_value=None, admin_id=None, ip_address=""):
+    row = LandingAuditLog(
+        admin_id=admin_id,
+        action=action,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        old_value_json=json.dumps(old_value or {}, ensure_ascii=False),
+        new_value_json=json.dumps(new_value or {}, ensure_ascii=False),
+        ip_address=ip_address or "",
+    )
+    db.session.add(row)
+    return row
+
+
+def _ensure_landing_schema():
+    LandingPageSettings.__table__.create(bind=db.engine, checkfirst=True)
+    LandingSection.__table__.create(bind=db.engine, checkfirst=True)
+    LandingMedia.__table__.create(bind=db.engine, checkfirst=True)
+    LandingFeature.__table__.create(bind=db.engine, checkfirst=True)
+    LandingModule.__table__.create(bind=db.engine, checkfirst=True)
+    LandingPricingPlan.__table__.create(bind=db.engine, checkfirst=True)
+    LandingFAQ.__table__.create(bind=db.engine, checkfirst=True)
+    LandingTestimonial.__table__.create(bind=db.engine, checkfirst=True)
+    LandingCTA.__table__.create(bind=db.engine, checkfirst=True)
+    LandingSEO.__table__.create(bind=db.engine, checkfirst=True)
+    LandingAuditLog.__table__.create(bind=db.engine, checkfirst=True)
+
+    inspector = inspect(db.engine)
+    if "landing_page_settings" in inspector.get_table_names():
+        columns = {col["name"] for col in inspector.get_columns("landing_page_settings")}
+        additions = {
+            "whatsapp_enabled": "ALTER TABLE landing_page_settings ADD COLUMN whatsapp_enabled BOOLEAN DEFAULT TRUE",
+            "whatsapp_message": "ALTER TABLE landing_page_settings ADD COLUMN whatsapp_message VARCHAR(255)",
+        }
+        for col, stmt in additions.items():
+            if col not in columns:
+                db.session.execute(text(stmt))
+        db.session.commit()
+
+
+def _repair_landing_defaults():
+    missing_default = "/static/image.png"
+    existing_default = "/static/IMG_0200.png"
+    changed = False
+    for section in LandingSection.query.filter(LandingSection.image_url == missing_default).all():
+        section.image_url = existing_default
+        changed = True
+    for seo in LandingSEO.query.all():
+        if seo.og_image_url == missing_default:
+            seo.og_image_url = existing_default
+            changed = True
+        if seo.twitter_image_url == missing_default:
+            seo.twitter_image_url = existing_default
+            changed = True
+    for scope in ("draft", "published"):
+        has_header_trial = LandingCTA.query.filter_by(scope=scope, placement_key="header", cta_type="trial").first()
+        if not has_header_trial:
+            db.session.add(
+                LandingCTA(
+                    scope=scope,
+                    label="جرّب مجاناً",
+                    url="/signup?plan=free&billing=monthly",
+                    cta_type="trial",
+                    placement_key="header",
+                    sort_order=20,
+                    is_visible=True,
+                )
+            )
+            changed = True
+    if changed:
+        db.session.commit()
+        clear_landing_cache()
+
+
 def _seed_scope(scope):
     settings = LandingPageSettings(
         scope=scope,
@@ -71,6 +153,8 @@ def _seed_scope(scope):
         background_color="#f7f9fc",
         text_color="#101828",
         whatsapp_number="+9647700000000",
+        whatsapp_enabled=True,
+        whatsapp_message="مرحبا، أريد أعرف أكثر عن نظام فينورا.",
         contact_email="hello@finora.cloud",
         login_url="/login",
         trial_url="/signup?plan=free&billing=monthly",
@@ -80,7 +164,7 @@ def _seed_scope(scope):
     db.session.add(settings)
 
     sections = [
-        ("hero", "hero", "فينورا — نظام إدارة ومحاسبة ذكي لشركتك", "مصمم للشركات والمتاجر العراقية", "تابع المبيعات، الطلبات، المخزون، شركات التوصيل، المصاريف، الأرباح، والتسويات من مكان واحد، مع مساعد ذكي يساعدك تكتشف الأخطاء قبل ما تتحول إلى خسائر.", {"stats": [{"value": "+1,200", "label": "طلب يومياً"}, {"value": "12+", "label": "ميزة تشغيلية"}, {"value": "99.9%", "label": "وقت تشغيل"}, {"value": "4", "label": "خطط مرنة"}]}, "/static/image.png", "", "جرّب مجاناً", "/signup?plan=free&billing=monthly", "احجز عرض مباشر", "#contact", 10),
+        ("hero", "hero", "فينورا — نظام إدارة ومحاسبة ذكي لشركتك", "مصمم للشركات والمتاجر العراقية", "تابع المبيعات، الطلبات، المخزون، شركات التوصيل، المصاريف، الأرباح، والتسويات من مكان واحد، مع مساعد ذكي يساعدك تكتشف الأخطاء قبل ما تتحول إلى خسائر.", {"stats": [{"value": "+1,200", "label": "طلب يومياً"}, {"value": "12+", "label": "ميزة تشغيلية"}, {"value": "99.9%", "label": "وقت تشغيل"}, {"value": "4", "label": "خطط مرنة"}]}, "/static/IMG_0200.png", "", "جرّب مجاناً", "/signup?plan=free&billing=monthly", "احجز عرض مباشر", "#contact", 10),
         ("pain_points", "pain_points", "الفوضى الصغيرة تتحول إلى خسارة كبيرة", "مشاكل يومية يعرفها كل صاحب متجر", "طلبات غير محسوبة، تسويات توصيل معقدة، مخزون غير مضبوط، أرباح غير واضحة، ومصاريف لا تظهر في التقرير الصحيح.", {"items": ["طلبات غير محسوبة", "تسويات توصيل معقدة", "مخزون غير مضبوط", "أرباح غير واضحة", "مصاريف غير مرتبطة", "موظفون بلا متابعة دقيقة"]}, "", "", "", "", "", "", 20),
         ("solution", "solution", "فينورا يجمع عملياتك في لوحة واحدة", "من الطلب إلى الربح الحقيقي", "فينورا يحوّل شغل شركتك اليومي إلى أرقام واضحة، قرارات أسرع، وتقارير تفهم منها الربح الحقيقي.", {}, "", "", "شاهد طريقة العمل", "#workflow", "", "", 30),
         ("workflow", "workflow", "طريقة العمل", "طلب → تجهيز → شحن → تسليم → تسوية → ربح صافي", "كل خطوة مرتبطة بالأرقام التي تحتاجها لاتخاذ قرار أسرع.", {"steps": ["طلب", "تجهيز", "شحن", "تسليم", "تسوية", "ربح صافي"]}, "", "", "", "", "", "", 40),
@@ -175,6 +259,7 @@ def _seed_scope(scope):
         ("احجز عرض مباشر", "#contact", "demo", "hero", 20),
         ("تواصل واتساب", "https://wa.me/9647700000000", "whatsapp", "final_cta", 10),
         ("تسجيل الدخول", "/login", "login", "header", 10),
+        ("جرّب مجاناً", "/signup?plan=free&billing=monthly", "trial", "header", 20),
     ]
     for label, url, cta_type, placement, order in ctas:
         db.session.add(LandingCTA(scope=scope, label=label, url=url, cta_type=cta_type, placement_key=placement, sort_order=order, is_visible=True))
@@ -187,10 +272,10 @@ def _seed_scope(scope):
             meta_keywords="Finora, محاسبة, إدارة متجر, SaaS, POS, مخزون, شركات التوصيل",
             og_title="Finora Cloud",
             og_description="كل عمليات شركتك من الطلب إلى التسوية والربح الحقيقي في مكان واحد.",
-            og_image_url="/static/image.png",
+            og_image_url="/static/IMG_0200.png",
             twitter_title="Finora Cloud",
             twitter_description="نظام إدارة ومحاسبة ذكي للشركات والمتاجر.",
-            twitter_image_url="/static/image.png",
+            twitter_image_url="/static/IMG_0200.png",
             canonical_url="",
             robots="index,follow",
             schema_json=_as_json({"@context": "https://schema.org", "@type": "SoftwareApplication", "name": "Finora Cloud", "applicationCategory": "BusinessApplication"}),
@@ -201,16 +286,8 @@ def _seed_scope(scope):
 def ensure_landing_seed():
     old_tenant = _core_guard()
     try:
-        LandingPageSettings.__table__.create(bind=db.engine, checkfirst=True)
-        LandingSection.__table__.create(bind=db.engine, checkfirst=True)
-        LandingMedia.__table__.create(bind=db.engine, checkfirst=True)
-        LandingFeature.__table__.create(bind=db.engine, checkfirst=True)
-        LandingModule.__table__.create(bind=db.engine, checkfirst=True)
-        LandingPricingPlan.__table__.create(bind=db.engine, checkfirst=True)
-        LandingFAQ.__table__.create(bind=db.engine, checkfirst=True)
-        LandingTestimonial.__table__.create(bind=db.engine, checkfirst=True)
-        LandingCTA.__table__.create(bind=db.engine, checkfirst=True)
-        LandingSEO.__table__.create(bind=db.engine, checkfirst=True)
+        _ensure_landing_schema()
+        _repair_landing_defaults()
         if LandingPageSettings.query.filter_by(scope="draft").first():
             return False
         _seed_scope("draft")
@@ -220,6 +297,7 @@ def ensure_landing_seed():
             for row in model.query.filter_by(scope="published").all():
                 row.published_at = now
         db.session.commit()
+        clear_landing_cache()
         return True
     except Exception:
         db.session.rollback()
@@ -230,6 +308,9 @@ def ensure_landing_seed():
 
 def get_landing_payload(scope="published", include_hidden=False):
     ensure_landing_seed()
+    cache_key = (scope, bool(include_hidden))
+    if scope == "published" and not include_hidden and cache_key in _PAYLOAD_CACHE:
+        return _PAYLOAD_CACHE[cache_key]
     old_tenant = _core_guard()
     try:
         settings = LandingPageSettings.query.filter_by(scope=scope).first() or LandingPageSettings.query.filter_by(scope="published").first()
@@ -247,7 +328,7 @@ def get_landing_payload(scope="published", include_hidden=False):
         ctas = visible(LandingCTA.query.filter_by(scope=scope)).order_by(LandingCTA.sort_order.asc(), LandingCTA.id.asc()).all()
         media = LandingMedia.query.filter_by(is_active=True).order_by(LandingMedia.id.desc()).all()
         section_map = {s.section_key: s.to_dict() for s in sections}
-        return {
+        payload = {
             "settings": settings.to_dict() if settings else {},
             "seo": seo.to_dict() if seo else {},
             "sections": [s.to_dict() for s in sections],
@@ -261,6 +342,9 @@ def get_landing_payload(scope="published", include_hidden=False):
             "media": [x.to_dict() for x in media],
             "scope": scope,
         }
+        if scope == "published" and not include_hidden:
+            _PAYLOAD_CACHE[cache_key] = payload
+        return payload
     finally:
         _restore_tenant(old_tenant)
 
@@ -279,6 +363,7 @@ def publish_landing(superadmin_id=None):
                 clone.last_edited_by = getattr(draft, "last_edited_by", None)
                 db.session.add(clone)
         db.session.commit()
+        clear_landing_cache()
         return get_landing_payload("published")
     except Exception:
         db.session.rollback()

@@ -2,6 +2,15 @@
 {% set seo = landing.seo or {} %}
 {% set sm = landing.section_map or {} %}
 {% set hero = sm.get('hero', {}) %}
+{% set nav = namespace(login_label='تسجيل الدخول', trial_label='جرّب مجاناً') %}
+{% for cta_item in landing.ctas or [] %}
+    {% if cta_item.placement_key == 'header' and cta_item.cta_type == 'login' %}
+        {% set nav.login_label = cta_item.label %}
+    {% endif %}
+    {% if cta_item.placement_key == 'header' and cta_item.cta_type == 'trial' %}
+        {% set nav.trial_label = cta_item.label %}
+    {% endif %}
+{% endfor %}
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -50,25 +59,25 @@
             </div>
         </a>
         <div class="l-nav-links">
-            <a href="#features">المميزات</a>
-            <a href="#workflow">طريقة العمل</a>
-            <a href="#pricing">الأسعار</a>
-            <a href="#faq">الأسئلة</a>
-            <a href="#contact">تواصل</a>
+            <a href="#features">{{ sm.get('features', {}).title or 'المميزات' }}</a>
+            <a href="#workflow">{{ sm.get('workflow', {}).title or 'طريقة العمل' }}</a>
+            <a href="#pricing">{{ sm.get('pricing', {}).title or 'الأسعار' }}</a>
+            <a href="#faq">{{ sm.get('faq', {}).title or 'الأسئلة' }}</a>
+            <a href="#contact">{{ sm.get('final_cta', {}).button_secondary_text or 'تواصل' }}</a>
         </div>
         <div class="l-nav-actions">
-            <a href="{{ settings.login_url or '/login' }}" class="l-btn l-btn-ghost">تسجيل الدخول</a>
-            <a href="{{ settings.trial_url or '/signup?plan=free&billing=monthly' }}" class="l-btn l-btn-primary">جرّب مجاناً</a>
+            <a href="{{ settings.login_url or '/login' }}" class="l-btn l-btn-ghost">{{ nav.login_label }}</a>
+            <a href="{{ settings.trial_url or '/signup?plan=free&billing=monthly' }}" class="l-btn l-btn-primary">{{ nav.trial_label }}</a>
             <button type="button" class="l-menu-btn" id="lMenuBtn" aria-label="القائمة"><i class="fas fa-bars"></i></button>
         </div>
     </nav>
     <div class="l-mobile-nav" id="lMobileNav">
-        <a href="#features">المميزات</a>
-        <a href="#workflow">طريقة العمل</a>
-        <a href="#pricing">الأسعار</a>
-        <a href="#faq">الأسئلة</a>
-        <a href="{{ settings.login_url or '/login' }}">تسجيل الدخول</a>
-        <a href="{{ settings.trial_url or '/signup?plan=free&billing=monthly' }}">جرّب مجاناً</a>
+        <a href="#features">{{ sm.get('features', {}).title or 'المميزات' }}</a>
+        <a href="#workflow">{{ sm.get('workflow', {}).title or 'طريقة العمل' }}</a>
+        <a href="#pricing">{{ sm.get('pricing', {}).title or 'الأسعار' }}</a>
+        <a href="#faq">{{ sm.get('faq', {}).title or 'الأسئلة' }}</a>
+        <a href="{{ settings.login_url or '/login' }}">{{ nav.login_label }}</a>
+        <a href="{{ settings.trial_url or '/signup?plan=free&billing=monthly' }}">{{ nav.trial_label }}</a>
     </div>
 
     {% if hero.is_visible is not sameas false %}
@@ -103,7 +112,7 @@
     {% if pain.is_visible is not sameas false %}
     <section class="l-section l-section-soft">
         <div class="l-container l-center l-reveal">
-            <span class="l-badge">قبل فينورا</span>
+            <span class="l-badge">{{ pain.subtitle or 'قبل فينورا' }}</span>
             <h2 class="l-title">{{ pain.title }}</h2>
             <p class="l-sub">{{ pain.description }}</p>
         </div>
@@ -120,7 +129,7 @@
     <section class="l-section cms-split">
         <div class="l-container cms-split-inner l-reveal">
             <div>
-                <span class="l-badge">الحل</span>
+                <span class="l-badge">{{ solution.subtitle or 'الحل' }}</span>
                 <h2 class="l-title">{{ solution.title }}</h2>
                 <p class="l-sub left">{{ solution.description }}</p>
             </div>
@@ -137,7 +146,7 @@
     {% if workflow.is_visible is not sameas false %}
     <section id="workflow" class="l-section l-section-soft">
         <div class="l-container l-center l-reveal">
-            <span class="l-badge">Workflow</span>
+            <span class="l-badge">{{ workflow.subtitle or 'Workflow' }}</span>
             <h2 class="l-title">{{ workflow.title }}</h2>
             <p class="l-sub">{{ workflow.description }}</p>
         </div>
@@ -153,7 +162,7 @@
     {% if features_section.is_visible is not sameas false %}
     <section id="features" class="l-section">
         <div class="l-container l-center l-reveal">
-            <span class="l-badge">المميزات</span>
+            <span class="l-badge">{{ features_section.subtitle or 'المميزات' }}</span>
             <h2 class="l-title">{{ features_section.title }}</h2>
             <p class="l-sub">{{ features_section.description }}</p>
         </div>
@@ -173,7 +182,7 @@
     {% if modules_section.is_visible is not sameas false %}
     <section class="l-section l-section-soft">
         <div class="l-container l-center l-reveal">
-            <span class="l-badge">Modules</span>
+            <span class="l-badge">{{ modules_section.subtitle or 'Modules' }}</span>
             <h2 class="l-title">{{ modules_section.title }}</h2>
             <p class="l-sub">{{ modules_section.description }}</p>
         </div>
@@ -212,7 +221,7 @@
     <section class="l-section l-section-soft">
         <div class="l-container cms-video l-reveal">
             <div>
-                <span class="l-badge">Demo</span>
+                <span class="l-badge">{{ video.subtitle or 'Demo' }}</span>
                 <h2 class="l-title">{{ video.title }}</h2>
                 <p class="l-sub left">{{ video.description }}</p>
             </div>
@@ -229,7 +238,7 @@
     {% if pricing_section.is_visible is not sameas false %}
     <section id="pricing" class="l-section">
         <div class="l-container l-center l-reveal">
-            <span class="l-badge">الأسعار</span>
+            <span class="l-badge">{{ pricing_section.subtitle or 'الأسعار' }}</span>
             <h2 class="l-title">{{ pricing_section.title }}</h2>
             <p class="l-sub">{{ pricing_section.description }}</p>
         </div>
@@ -257,7 +266,7 @@
     {% if testimonials_section.is_visible is not sameas false and landing.testimonials %}
     <section class="l-section l-section-soft">
         <div class="l-container l-center l-reveal">
-            <span class="l-badge">آراء العملاء</span>
+            <span class="l-badge">{{ testimonials_section.subtitle or 'آراء العملاء' }}</span>
             <h2 class="l-title">{{ testimonials_section.title }}</h2>
             <p class="l-sub">{{ testimonials_section.description }}</p>
         </div>
@@ -278,7 +287,7 @@
     {% if faq_section.is_visible is not sameas false %}
     <section id="faq" class="l-section">
         <div class="l-container l-center l-reveal">
-            <span class="l-badge">FAQ</span>
+            <span class="l-badge">{{ faq_section.subtitle or 'FAQ' }}</span>
             <h2 class="l-title">{{ faq_section.title }}</h2>
             <p class="l-sub">{{ faq_section.subtitle }}</p>
         </div>
@@ -297,7 +306,7 @@
     {% if cta.is_visible is not sameas false %}
     <section id="contact" class="l-section cms-final">
         <div class="l-container l-center l-reveal">
-            <span class="l-badge">ابدأ الآن</span>
+            <span class="l-badge">{{ cta.subtitle or 'ابدأ الآن' }}</span>
             <h2 class="l-title">{{ cta.title }}</h2>
             <p class="l-sub">{{ cta.description }}</p>
             <div class="l-hero-acts center">
@@ -324,6 +333,14 @@
         </div>
     </footer>
 </div>
+
+{% if settings.whatsapp_enabled and settings.whatsapp_number %}
+{% set wa_number = settings.whatsapp_number|replace('+', '')|replace(' ', '')|replace('-', '') %}
+<a class="cms-whatsapp-float" href="https://wa.me/{{ wa_number }}?text={{ (settings.whatsapp_message or 'مرحبا، أريد أعرف أكثر عن نظام فينورا.')|urlencode }}" target="_blank" rel="noopener" aria-label="تواصل واتساب">
+    <i class="fab fa-whatsapp"></i>
+    <span>واتساب</span>
+</a>
+{% endif %}
 
 <div class="cms-video-modal" id="videoModal" hidden>
     <button type="button" id="videoClose" aria-label="إغلاق"><i class="fas fa-times"></i></button>

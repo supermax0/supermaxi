@@ -1,0 +1,6 @@
+<nav class="fa-nav">
+  <a href="/assets/dashboard" class="{% if request.path == '/assets/dashboard' %}active{% endif %}">لوحة الأصول</a>
+  <a href="/assets" class="{% if request.path == '/assets/' or request.path == '/assets' %}active{% endif %}">قائمة الأصول</a>
+  <a href="/assets/create">إضافة أصل</a>
+  <a href="/assets/categories" class="{% if request.path.startswith('/assets/categories') %}active{% endif %}">تصنيفات الأصول</a>
+</nav>

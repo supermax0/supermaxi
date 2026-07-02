@@ -115,6 +115,19 @@ def init_tenant_db(tenant_slug):
         except Exception as treasury_err:
             session.rollback()
             print(f"Treasury init note ({tenant_slug}): {treasury_err}")
+
+        try:
+            from models.system_settings import SystemSettings
+            from utils.dashboard_ui_defaults import get_default_dashboard_ui_flags
+
+            if not session.query(SystemSettings).first():
+                settings = SystemSettings()
+                settings.set_ui_flags(get_default_dashboard_ui_flags())
+                session.add(settings)
+                session.commit()
+        except Exception as settings_err:
+            session.rollback()
+            print(f"SystemSettings init note ({tenant_slug}): {settings_err}")
     except Exception as e:
         session.rollback()
         print(f"Error initializing tenant defaults {tenant_slug}: {e}")

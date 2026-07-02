@@ -2255,6 +2255,9 @@ or request.path.startswith('/superadmin') %}
           _('accounts') }} <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
         {% endif %}
         {% endif %}
+        {% if is_admin or (current_employee and (can_see_fixed_assets or can_see_accounts)) %}
+        <a href="/assets/dashboard" class="{% if request.path.startswith('/assets') %}active{% endif %}"><i class="fa fa-building"></i> الأصول</a>
+        {% endif %}
         {% if (is_admin or (current_employee and can_manage_employees)) and business_allows('employees') %}<a href="/employees"><i class="fa fa-user-tie"></i> {{ _('employees') }}</a>{% endif %}
         {% if (is_admin or (current_employee and can_see_pages)) and business_allows('pages') %}
         <a href="/pages"><i class="fa fa-file-alt"></i> {{ _('pages') }}</a>

@@ -159,6 +159,7 @@ with app.app_context():
     from models.core.landing_visit import LandingVisit
     from models.core.landing_content import (  # noqa: F401
         LandingCTA,
+        LandingAuditLog,
         LandingFAQ,
         LandingFeature,
         LandingMedia,
@@ -935,7 +936,9 @@ _OPEN_ROUTES = [
     "/payments/simulate",
     "/upgrade",
     "/superadmin",
+    "/super-admin",
     "/api/superadmin/landing",  # API إدارة صفحة الهبوط محمي بجلسة Super Admin داخل blueprint
+    "/api/super-admin/landing",  # alias مطابق للمواصفة
     "/messages/unread-count",  # واجهة للشارة — تُرجع JSON بدون إعادة توجيه
     "/api/landing",  # محتوى صفحة الهبوط المنشور
     "/api/landing-chat",  # مساعد الذكاء الاصطناعي لصفحة الهبوط
@@ -1170,6 +1173,16 @@ app.register_blueprint(admin_bp)
 app.register_blueprint(invoice_store_bp)
 app.register_blueprint(storefront_bp)
 app.register_blueprint(telegram_bp)
+
+
+@app.cli.command("seed_landing_page")
+def seed_landing_page_command():
+    """Seed Finora Cloud landing page draft/published content."""
+    with app.app_context():
+        from utils.landing_content import ensure_landing_seed
+
+        created = ensure_landing_seed()
+        print("Landing page seed created." if created else "Landing page seed already exists.")
 
 # =====================================
 # Logging

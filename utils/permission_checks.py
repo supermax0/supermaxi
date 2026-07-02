@@ -19,6 +19,8 @@ LEGACY_TO_RBAC: dict[str, str] = {
     "can_manage_customers": "manage_customers",
     "can_see_accounts": "view_accounts",
     "can_see_financial": "view_financial",
+    "can_see_fixed_assets": "view_fixed_assets",
+    "can_manage_fixed_assets": "manage_fixed_assets",
     "can_edit_price": "edit_price",
     "can_manage_orders": "manage_orders",
     "can_manage_shipping": "manage_shipping",

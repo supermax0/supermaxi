@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}إضافة أصل{% endblock %}
+{% block page_title %}➕ إضافة أصل ثابت{% endblock %}
+{% block content %}
+<style>
+.fa-page { max-width: 960px; margin: 0 auto; direction: rtl; }
+.fa-nav { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
+.fa-nav a { padding: 8px 14px; border-radius: 10px; background: var(--card-alt); border: 1px solid var(--border-light); color: var(--text); text-decoration: none; font-size: 14px; }
+.fa-card { background: var(--card); border: 1px solid var(--border-light); border-radius: 16px; padding: 20px; margin-bottom: 18px; }
+.fa-card h3 { margin: 0 0 14px; border-bottom: 1px solid var(--border-light); padding-bottom: 8px; }
+.fa-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.fa-grid .full { grid-column: 1 / -1; }
+.fa-field label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 6px; }
+.fa-field input, .fa-field select, .fa-field textarea { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid var(--border-light); background: var(--card-alt); color: var(--text); }
+.fa-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+.fa-btn { padding: 10px 18px; border-radius: 10px; border: none; cursor: pointer; font-weight: 700; }
+.fa-btn-primary { background: var(--primary); color: #fff; }
+.fa-btn-secondary { background: var(--card-alt); color: var(--text); border: 1px solid var(--border-light); }
+.fa-btn-success { background: var(--success); color: #fff; }
+.fa-readonly { background: rgba(99,102,241,0.08); font-weight: 700; }
+@media (max-width: 720px) { .fa-grid { grid-template-columns: 1fr; } }
+</style>
+<div class="fa-page">
+  {% include "fixed_assets/_nav.html" %}
+  <form method="post" id="assetForm">
+    <div class="fa-card">
+      <h3>معلومات الأصل</h3>
+      <div class="fa-grid">
+        <div class="fa-field"><label>اسم الأصل *</label><input name="name" required value="{{ form.name if form else '' }}"></div>
+        <div class="fa-field"><label>كود الأصل</label><input name="asset_code" placeholder="يُولّد تلقائياً" value="{{ form.asset_code if form else '' }}"></div>
+        <div class="fa-field"><label>التصنيف *</label>
+          <select name="category_id" required id="categorySelect">
+            <option value="">— اختر —</option>
+            {% for c in categories %}
+            <option value="{{ c.id }}" data-life="{{ c.default_useful_life_months }}" data-salvage="{{ c.default_salvage_value }}" data-dep="{{ '1' if c.is_depreciable else '0' }}"
+              {% if form and form.category_id|string == c.id|string %}selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="fa-field"><label>الحالة</label>
+          <select name="status">
+            {% for key, label in statuses.items() if key in ['draft','active','under_installation'] %}
+            <option value="{{ key }}" {% if form and form.status == key %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="fa-field"><label>الرقم التسلسلي</label><input name="serial_number" value="{{ form.serial_number if form else '' }}"></div>
+        <div class="fa-field"><label>الموقع / الفرع</label><input name="location_text" value="{{ form.location_text if form else '' }}"></div>
+        <div class="fa-field full"><label>الوصف</label><textarea name="description" rows="2">{{ form.description if form else '' }}</textarea></div>
+        <div class="fa-field"><label><input type="checkbox" name="is_depreciable" id="isDepreciable" checked> قابل للاستهلاك</label></div>
+      </div>
+    </div>
+    <div class="fa-card">
+      <h3>معلومات الشراء</h3>
+      <div class="fa-grid">
+        <div class="fa-field"><label>المورد</label>
+          <select name="supplier_id"><option value="">—</option>{% for s in suppliers %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}</select>
+        </div>
+        <div class="fa-field"><label>رقم فاتورة المورد</label><input name="supplier_invoice_no"></div>
+        <div class="fa-field"><label>تاريخ الشراء</label><input type="date" name="purchase_date"></div>
+        <div class="fa-field"><label>تاريخ الجاهزية</label><input type="date" name="ready_date"></div>
+        <div class="fa-field"><label>سعر الشراء</label><input type="number" name="purchase_price" id="purchasePrice" min="0" value="0"></div>
+        <div class="fa-field"><label>أجور النقل</label><input type="number" name="shipping_cost" id="shippingCost" min="0" value="0"></div>
+        <div class="fa-field"><label>أجور التركيب</label><input type="number" name="installation_cost" id="installationCost" min="0" value="0"></div>
+        <div class="fa-field"><label>رسوم أخرى</label><input type="number" name="other_cost" id="otherCost" min="0" value="0"></div>
+        <div class="fa-field"><label>خصم</label><input type="number" name="discount_amount" id="discountAmount" min="0" value="0"></div>
+        <div class="fa-field"><label>إجمالي تكلفة الأصل</label><input id="totalCost" class="fa-readonly" readonly value="0"></div>
+        <div class="fa-field"><label>طريقة الدفع</label>
+          <select name="payment_method" id="paymentMethod">
+            {% for key, label in payment_methods.items() %}
+            <option value="{{ key }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="fa-field"><label>حساب الدفع (صندوق/بنك)</label>
+          <select name="treasury_account_id">{% for t in treasury_choices %}<option value="{{ t.id }}">{{ t.name }}{% if t.account_type %} ({{ t.account_type }}){% endif %}</option>{% endfor %}</select>
+        </div>
+        <div class="fa-field mixed-only" style="display:none"><label>المبلغ المدفوع</label><input type="number" name="paid_amount" id="paidAmount" min="0" value="0"></div>
+        <div class="fa-field mixed-only" style="display:none"><label>المبلغ الآجل</label><input type="number" name="credit_amount" id="creditAmount" min="0" value="0"></div>
+      </div>
+    </div>
+    <div class="fa-card">
+      <h3>الاستهلاك</h3>
+      <div class="fa-grid">
+        <div class="fa-field"><label>العمر الإنتاجي (أشهر)</label><input type="number" name="useful_life_months" id="usefulLife" min="0" value="60"></div>
+        <div class="fa-field"><label>قيمة الخردة</label><input type="number" name="salvage_value" id="salvageValue" min="0" value="0"></div>
+        <div class="fa-field"><label>الاستهلاك الشهري (محسوب)</label><input id="monthlyDep" class="fa-readonly" readonly value="0"></div>
+      </div>
+    </div>
+    <div class="fa-actions">
+      <button type="submit" name="action" value="draft" class="fa-btn fa-btn-secondary">حفظ كمسودة</button>
+      <button type="submit" name="action" value="post" class="fa-btn fa-btn-success">حفظ وترحيل قيد الشراء</button>
+      <a href="/assets" class="fa-btn fa-btn-secondary">إلغاء</a>
+    </div>
+  </form>
+</div>
+<script>
+(function(){
+  const costFields = ['purchasePrice','shippingCost','installationCost','otherCost','discountAmount'];
+  const pm = document.getElementById('paymentMethod');
+  function recalc(){
+    const body = {};
+    costFields.forEach(id => { body[id.replace(/([A-Z])/g,'_$1').toLowerCase().replace('_','')] = document.getElementById(id).value; });
+    const payload = {
+      purchase_price: document.getElementById('purchasePrice').value,
+      shipping_cost: document.getElementById('shippingCost').value,
+      installation_cost: document.getElementById('installationCost').value,
+      other_cost: document.getElementById('otherCost').value,
+      discount_amount: document.getElementById('discountAmount').value,
+      salvage_value: document.getElementById('salvageValue').value,
+      useful_life_months: document.getElementById('usefulLife').value,
+    };
+    fetch('/assets/api/preview-costs', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) })
+      .then(r => r.json()).then(d => {
+        if (d.success) {
+          document.getElementById('totalCost').value = d.total_cost.toLocaleString('en-US');
+          document.getElementById('monthlyDep').value = d.monthly_depreciation.toLocaleString('en-US');
+        }
+      }).catch(()=>{});
+  }
+  costFields.concat(['salvageValue','usefulLife']).forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', recalc);
+  });
+  document.getElementById('categorySelect').addEventListener('change', function(){
+    const opt = this.selectedOptions[0];
+    if (!opt) return;
+    document.getElementById('usefulLife').value = opt.dataset.life || 0;
+    document.getElementById('salvageValue').value = opt.dataset.salvage || 0;
+    document.getElementById('isDepreciable').checked = opt.dataset.dep === '1';
+    recalc();
+  });
+  pm.addEventListener('change', function(){
+    document.querySelectorAll('.mixed-only').forEach(el => el.style.display = pm.value === 'mixed' ? '' : 'none');
+  });
+  recalc();
+})();
+</script>
+{% endblock %}

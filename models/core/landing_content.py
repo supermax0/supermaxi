@@ -47,6 +47,8 @@ class LandingPageSettings(LandingMixin, db.Model):
     text_color = db.Column(db.String(20), default="#101828")
     font_family = db.Column(db.String(120), default="Tajawal")
     whatsapp_number = db.Column(db.String(60), default="")
+    whatsapp_enabled = db.Column(db.Boolean, default=True)
+    whatsapp_message = db.Column(db.String(255), default="مرحبا، أريد أعرف أكثر عن نظام فينورا.")
     contact_email = db.Column(db.String(160), default="")
     login_url = db.Column(db.String(500), default="/login")
     trial_url = db.Column(db.String(500), default="/signup?plan=free&billing=monthly")
@@ -70,6 +72,8 @@ class LandingPageSettings(LandingMixin, db.Model):
             "text_color": self.text_color,
             "font_family": self.font_family,
             "whatsapp_number": self.whatsapp_number,
+            "whatsapp_enabled": bool(self.whatsapp_enabled),
+            "whatsapp_message": self.whatsapp_message,
             "contact_email": self.contact_email,
             "login_url": self.login_url,
             "trial_url": self.trial_url,
@@ -346,4 +350,31 @@ class LandingSEO(LandingMixin, db.Model):
             "canonical_url": self.canonical_url,
             "robots": self.robots,
             "schema": _json_loads(self.schema_json, {}),
+        }
+
+
+class LandingAuditLog(db.Model):
+    __tablename__ = "landing_audit_logs"
+
+    id = db.Column(db.Integer, primary_key=True)
+    admin_id = db.Column(db.Integer, nullable=True)
+    action = db.Column(db.String(80), nullable=False)
+    entity_type = db.Column(db.String(80), nullable=False)
+    entity_id = db.Column(db.Integer, nullable=True)
+    old_value_json = db.Column(db.Text, default="{}")
+    new_value_json = db.Column(db.Text, default="{}")
+    ip_address = db.Column(db.String(80), default="")
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "admin_id": self.admin_id,
+            "action": self.action,
+            "entity_type": self.entity_type,
+            "entity_id": self.entity_id,
+            "old_value": _json_loads(self.old_value_json, {}),
+            "new_value": _json_loads(self.new_value_json, {}),
+            "ip_address": self.ip_address,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
         }
