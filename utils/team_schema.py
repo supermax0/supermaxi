@@ -5,7 +5,7 @@ from __future__ import annotations
 from sqlalchemy import inspect, text
 
 from extensions import db
-from utils.employee_commission import get_fixed_employee_commission_percent
+from utils.employee_commission import get_fixed_employee_commission_amount
 
 
 def _resolve_engine():
@@ -64,8 +64,8 @@ def build_employees_grid_rows(employees_list, stats_map, delivery_agents, agent_
         s = stats_map.get(e.id, {"orders": 0, "sales": 0})
         sales = int(s.get("sales") or 0)
         orders = int(s.get("orders") or 0)
-        fixed_commission = get_fixed_employee_commission_percent()
-        commission_value = int(sales * fixed_commission / 100)
+        fixed_commission = get_fixed_employee_commission_amount()
+        commission_value = fixed_commission
         try:
             role_labels = [r.name for r in (e.roles or [])]
         except Exception:

@@ -16,9 +16,30 @@
     color: #101828;
   }
 
+  .login-topbar {
+    width: min(1040px, calc(100vw - 32px));
+    margin: 0 auto 20px;
+    display: flex;
+    justify-content: flex-start;
+  }
+
+  .login-back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #667085;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 800;
+  }
+
+  .login-back-link:hover {
+    color: #2563eb;
+  }
+
   .login-shell {
     width: min(1040px, calc(100vw - 32px));
-    margin: 34px auto 0;
+    margin: 0 auto;
     display: grid;
     grid-template-columns: minmax(0, 0.95fr) minmax(360px, 480px);
     gap: 28px;
@@ -301,7 +322,9 @@
 </style>
 
 <div class="pf-page login-page">
-  {{ pf_topbar('/', 'العودة للرئيسية') }}
+  <div class="login-topbar">
+    <a href="/" class="login-back-link"><i class="fas fa-arrow-right"></i> العودة للرئيسية</a>
+  </div>
 
   <div class="login-shell">
     <section class="login-brand-panel" aria-label="Finora">

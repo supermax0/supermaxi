@@ -19,6 +19,9 @@
 {% set storefront_logo_url = ui_flags.get('storefront_logo_url', '') %}
 {% set storefront_whatsapp = ui_flags.get('storefront_whatsapp', '') %}
 {% set storefront_theme_mode = ui_flags.get('storefront_theme_mode', 'light') %}
+{% set storefront_ai_enabled = ui_flags.get('storefront_ai_assistant_enabled', true) %}
+{% set storefront_ai_name = ui_flags.get('storefront_ai_assistant_name', 'مساعد المتجر') %}
+{% set storefront_ai_greeting = ui_flags.get('storefront_ai_assistant_greeting', 'مرحباً! أنا مساعد المتجر الذكي. اسألني عن المنتجات، السلة، الشحن، أو تتبع طلبك وسأساعدك فوراً.') %}
 {% set _store_tslug = session.get('tenant_slug') or config.get('STOREFRONT_DEFAULT_TENANT_SLUG', '') %}
 {% set storefront_cities = ['بغداد', 'البصرة', 'نينوى', 'أربيل', 'النجف', 'كربلاء', 'ذي قار', 'السليمانية', 'دهوك', 'كركوك', 'ديالى', 'الأنبار', 'صلاح الدين', 'واسط', 'بابل', 'القادسية', 'ميسان', 'المثنى'] %}
 
@@ -96,6 +99,28 @@
         <option value="dark" {% if storefront_theme_mode == 'dark' %}selected{% endif %}>داكن</option>
         <option value="auto" {% if storefront_theme_mode == 'auto' %}selected{% endif %}>تلقائي</option>
       </select>
+    </div>
+  </div>
+
+  <div class="settings-section-header" style="margin-top:18px;">
+    <h2><i class="fas fa-robot"></i> مساعد المتجر الذكي</h2>
+    <p>زر عائم في واجهة المتجر يساعد الزوار في البحث عن المنتجات، السلة، الشحن، وتتبع الطلب.</p>
+  </div>
+  <div class="settings-grid" style="margin-bottom:14px;">
+    <div class="settings-field">
+      <label class="settings-field-label" for="storefrontAiEnabled">تفعيل المساعد الذكي</label>
+      <select id="storefrontAiEnabled" class="settings-select">
+        <option value="1" {% if storefront_ai_enabled %}selected{% endif %}>مفعّل</option>
+        <option value="0" {% if not storefront_ai_enabled %}selected{% endif %}>معطّل</option>
+      </select>
+    </div>
+    <div class="settings-field">
+      <label class="settings-field-label" for="storefrontAiName">اسم المساعد</label>
+      <input id="storefrontAiName" class="settings-input" type="text" value="{{ storefront_ai_name }}">
+    </div>
+    <div class="settings-field" style="grid-column:1/-1;">
+      <label class="settings-field-label" for="storefrontAiGreeting">رسالة الترحيب</label>
+      <textarea id="storefrontAiGreeting" class="settings-input" rows="3">{{ storefront_ai_greeting }}</textarea>
     </div>
   </div>
 
@@ -252,7 +277,10 @@ document.getElementById("saveStorefrontBtn").addEventListener("click", function 
     storefront_store_name: (document.getElementById("storefrontStoreName").value || "").trim() || "متجر المنتجات",
     storefront_logo_url: (document.getElementById("storefrontLogoUrl").value || "").trim(),
     storefront_whatsapp: (document.getElementById("storefrontWhatsapp").value || "").trim(),
-    storefront_theme_mode: document.getElementById("storefrontThemeMode").value || "light"
+    storefront_theme_mode: document.getElementById("storefrontThemeMode").value || "light",
+    storefront_ai_assistant_enabled: document.getElementById("storefrontAiEnabled").value === "1",
+    storefront_ai_assistant_name: (document.getElementById("storefrontAiName").value || "").trim() || "مساعد المتجر",
+    storefront_ai_assistant_greeting: (document.getElementById("storefrontAiGreeting").value || "").trim()
   };
 
   const preset = ui_flags.storefront_theme_preset;

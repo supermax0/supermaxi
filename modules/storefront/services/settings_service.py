@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import os
 import re
 
 from flask import current_app
 
-from models.system_settings import SystemSettings
+from modules.storefront.constants import DEFAULT_GREETING, DEFAULT_SUGGESTIONS
 
 DEFAULT_SHIPPING_BY_CITY = {
     "بغداد": 5000,
@@ -59,6 +60,12 @@ class StorefrontSettingsService:
         if theme_mode not in {"light", "dark", "auto"}:
             theme_mode = defaults["theme_mode"]
 
+        ai_enabled_raw = flags.get("storefront_ai_assistant_enabled")
+        if ai_enabled_raw is None:
+            ai_assistant_enabled = self._default_ai_enabled()
+        else:
+            ai_assistant_enabled = bool(ai_enabled_raw)
+
         return {
             "primary_color": safe_hex_color(flags.get("storefront_primary_color"), defaults["primary_color"]),
             "shipping_color": safe_hex_color(flags.get("storefront_shipping_color"), defaults["shipping_color"]),
@@ -73,7 +80,28 @@ class StorefrontSettingsService:
             "store_name": str(flags.get("storefront_store_name") or "متجر المنتجات").strip(),
             "logo_url": str(flags.get("storefront_logo_url") or "").strip(),
             "whatsapp": str(flags.get("storefront_whatsapp") or "").strip(),
+            "ai_assistant_enabled": ai_assistant_enabled,
+            "ai_assistant_name": str(flags.get("storefront_ai_assistant_name") or "مساعد المتجر").strip(),
+            "ai_assistant_greeting": str(flags.get("storefront_ai_assistant_greeting") or DEFAULT_GREETING).strip(),
+            "ai_assistant_suggestions": list(DEFAULT_SUGGESTIONS),
         }
+
+    @staticmethod
+    def _default_ai_enabled() -> bool:
+        if os.environ.get("OPENAI_API_KEY", "").strip():
+            return True
+        try:
+            from flask import g
+
+            old_tenant = getattr(g, "tenant", None)
+            g.tenant = None
+            from models.core.global_setting import GlobalSetting
+
+            key = (GlobalSetting.get_setting("OPENAI_API_KEY", "") or "").strip()
+            g.tenant = old_tenant
+            return bool(key)
+        except Exception:
+            return True
 
     def coupon_config(self) -> dict:
         flags = self._flags()

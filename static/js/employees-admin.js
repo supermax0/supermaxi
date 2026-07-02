@@ -187,10 +187,10 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
   }
 
   async function saveFixedCommission() {
-    const input = document.getElementById('fixedCommissionPercent');
-    const percent = parseInt(input.value, 10);
-    if (Number.isNaN(percent) || percent < 0 || percent > 100) {
-      showToast('أدخل نسبة بين 0 و 100', 'warning');
+    const input = document.getElementById('fixedCommissionAmount');
+    const amount = parseInt(input.value, 10);
+    if (Number.isNaN(amount) || amount < 0) {
+      showToast('أدخل مبلغاً صالحاً', 'warning');
       return;
     }
     showLoading();
@@ -198,7 +198,7 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
       const r = await fetch('/employees/fixed-commission', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ percent }),
+        body: JSON.stringify({ amount }),
       });
       const data = await r.json();
       hideLoading();
@@ -292,9 +292,9 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
       {
         headerName: __t('employees_col_commission'),
         field: "commission",
-        width: 80,
+        width: 120,
         type: 'numericColumn',
-        cellRenderer: params => params.data.is_delivery ? '—' : `${params.value}%`
+        cellRenderer: params => params.data.is_delivery ? '—' : `${params.value.toLocaleString()} ${__t('employees_currency_iqd')}`
       },
       {
         headerName: __t('employees_col_total_due'),

@@ -6,11 +6,13 @@ from flask import Blueprint, abort, current_app, g, jsonify, redirect, render_te
 
 from models.invoice import Invoice
 from models.product import Product
+from modules.storefront.services.ai_assistant_service import StorefrontAIAssistantService
 from modules.storefront.services.cart_service import StorefrontCartService
 from modules.storefront.services.catalog_service import StorefrontCatalogService
 from modules.storefront.services.checkout_service import StorefrontCheckoutService
 from modules.storefront.services.product_presenter import product_card
 from modules.storefront.services.settings_service import StorefrontSettingsService, safe_int
+from modules.storefront.services.tracking_service import build_tracking_steps, lookup_order
 from modules.storefront.template_utils import storefront_template
 from routes.orders import build_public_order_view_token
 from utils.product_schema_guard import ensure_product_schema
@@ -20,6 +22,7 @@ storefront_bp = Blueprint("storefront", __name__, url_prefix="/shop")
 _settings = StorefrontSettingsService()
 _catalog = StorefrontCatalogService()
 _checkout = StorefrontCheckoutService()
+_ai_assistant = StorefrontAIAssistantService()
 
 
 @storefront_bp.before_request
@@ -77,43 +80,81 @@ def _run_product_detail(product_id: int, shop_slug: str):
     )
 
 
-def build_tracking_steps(invoice: Invoice | None) -> list[dict]:
-    status = str(getattr(invoice, "status", "") or "").strip()
-    shipping_status = str(getattr(invoice, "shipping_status", "") or "").strip()
-    cancelled = any(word in status for word in ("ملغي", "إلغاء", "مرتجع"))
-    delivered = any(word in f"{status} {shipping_status}" for word in ("تم التوصيل", "مكتمل", "مسلم"))
-    shipping = any(word in f"{status} {shipping_status}" for word in ("شحن", "توصيل", "قيد"))
-    if cancelled:
-        return [
-            {"label": "تم استلام الطلب", "hint": "وصلنا طلبك", "done": True, "active": False},
-            {"label": "تم إلغاء الطلب", "hint": status or "الطلب ملغي", "done": True, "active": True},
-        ]
-    return [
+@storefront_bp.route("/<tenant_slug>/api/ai-chat", methods=["POST"])
+def api_ai_chat(tenant_slug: str):
+    slug = _resolved_shop_slug(tenant_slug)
+    try:
+        from ai import ai_utils
+
+        ip = request.remote_addr or "anon"
+        ok, err = ai_utils.check_rate_limit(f"storefront_ai_chat:{ip}")
+        if not ok:
+            return jsonify({"success": False, "error": err}), 429
+    except Exception:
+        pass
+
+    data = request.get_json(silent=True) or {}
+    message = str(data.get("message") or "").strip()
+    history = data.get("history") or []
+    track = data.get("track") if isinstance(data.get("track"), dict) else None
+    if not message:
+        return jsonify({"success": False, "error": "الرسالة فارغة."}), 400
+
+    cart = _cart(slug)
+    store_design = _settings.design_settings()
+    if not store_design.get("ai_assistant_enabled"):
+        return jsonify({"success": False, "error": "مساعد المتجر غير مفعّل."}), 403
+
+    result = _ai_assistant.chat(
+        message=message,
+        history=history if isinstance(history, list) else [],
+        shop_slug=slug,
+        cart=cart,
+        store_design=store_design,
+        track=track,
+    )
+    status = 200 if result.get("success") else 400
+    return jsonify(result), status
+
+
+@storefront_bp.route("/<tenant_slug>/api/ai-chat/track", methods=["POST"])
+def api_ai_chat_track(tenant_slug: str):
+    slug = _resolved_shop_slug(tenant_slug)
+    try:
+        from ai import ai_utils
+
+        ip = request.remote_addr or "anon"
+        ok, err = ai_utils.check_rate_limit(f"storefront_ai_chat:{ip}")
+        if not ok:
+            return jsonify({"success": False, "error": err}), 429
+    except Exception:
+        pass
+
+    store_design = _settings.design_settings()
+    if not store_design.get("ai_assistant_enabled"):
+        return jsonify({"success": False, "error": "مساعد المتجر غير مفعّل."}), 403
+
+    data = request.get_json(silent=True) or {}
+    invoice_id = str(data.get("invoice_id") or "").strip()
+    phone = str(data.get("phone") or "").strip()
+    track = lookup_order(invoice_id, phone)
+    reply = ""
+    if track.get("found"):
+        reply = (
+            f"تم العثور على طلبك رقم {track.get('invoice_id')}. "
+            f"الحالة الحالية: {track.get('status')}."
+        )
+    else:
+        reply = str(track.get("error") or "لم يتم العثور على الطلب.")
+
+    return jsonify(
         {
-            "label": "تم استلام الطلب",
-            "hint": "وصلنا طلبك بنجاح",
-            "done": bool(invoice),
-            "active": bool(invoice) and not shipping and not delivered and not cancelled,
-        },
-        {
-            "label": "قيد التجهيز",
-            "hint": "يتم مراجعة الطلب وتجهيزه",
-            "done": shipping or delivered,
-            "active": shipping and not delivered and not cancelled,
-        },
-        {
-            "label": "قيد التوصيل",
-            "hint": shipping_status or "بانتظار شركة التوصيل",
-            "done": delivered,
-            "active": shipping and not delivered and not cancelled,
-        },
-        {
-            "label": "تم التوصيل",
-            "hint": "اكتمل الطلب",
-            "done": delivered,
-            "active": delivered and not cancelled,
-        },
-    ]
+            "success": True,
+            "reply": reply,
+            "track": track,
+            "cart": _cart(slug).summary(),
+        }
+    )
 
 
 @storefront_bp.route("/product/<int:product_id>", methods=["GET", "POST"])

@@ -70,39 +70,15 @@
 
 .team-admin-page .emp-form-row-secondary {
   display: grid;
-  grid-template-columns: minmax(160px, 220px) minmax(0, 1fr);
+  grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
   gap: var(--spacing-md);
-  align-items: start;
-}
-
-.team-admin-page .emp-field {
-  position: relative;
-  min-width: 0;
-}
-
-.team-admin-page .emp-field input,
-.team-admin-page .emp-field select {
-  width: 100%;
-  box-sizing: border-box;
-  min-height: 44px;
-}
-
-.team-admin-page .emp-field:has(.finora-help) input,
-.team-admin-page .emp-field:has(.finora-help) select {
-  padding-inline-start: 28px;
-}
-
-.team-admin-page .emp-field > .finora-help {
-  position: absolute;
-  top: 10px;
-  inset-inline-start: 10px;
-  margin: 0;
-  z-index: 2;
+  align-items: stretch;
 }
 
 .team-admin-page .fixed-commission-field {
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: 8px;
   padding: 12px 14px;
   border: 1px solid var(--border);
@@ -123,6 +99,31 @@
   .team-admin-page .emp-form-row-secondary {
     grid-template-columns: 1fr;
   }
+}
+
+.team-admin-page .emp-field {
+  position: relative;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.team-admin-page .emp-field-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  line-height: 1.3;
+}
+
+.team-admin-page .emp-field input,
+.team-admin-page .emp-field select {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 44px;
 }
 
 .team-admin-page .button-loading {
@@ -243,7 +244,7 @@
   margin-top: 12px;
 }
 
-.team-admin-page .fixed-commission-field label {
+.team-admin-page .fixed-commission-label {
   font-size: 13px;
   font-weight: 700;
   color: var(--text-muted);
@@ -253,15 +254,18 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .team-admin-page .fixed-commission-row input {
-  width: 80px;
+  width: min(140px, 100%);
+  min-height: 44px;
 }
 
-.team-admin-page .fixed-commission-row span {
+.team-admin-page .fixed-commission-currency {
   font-weight: 700;
   color: var(--text-muted);
+  white-space: nowrap;
 }
 
 .team-admin-page .btn-fixed-commission {
