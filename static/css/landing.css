@@ -268,23 +268,10 @@ body.landing::before {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 48px;
-  align-items: start;
+  align-items: center;
   max-width: var(--max);
   margin: 0 auto;
   padding: 0 clamp(16px, 4%, 48px);
-}
-
-.l-hero-copy .l-stats {
-  margin-top: 28px;
-}
-
-.l-hero-signup-col {
-  position: sticky;
-  top: calc(var(--nav-h) + 16px);
-}
-
-.l-hero-signup-col .l-hero-signup {
-  margin-top: 0;
 }
 
 .l-hero-acts {
@@ -1174,8 +1161,6 @@ body.landing::before {
   .l-about-grid,
   .l-showcase-panel.active,
   .l-contact-grid { grid-template-columns: 1fr; }
-
-  .l-hero-signup-col { position: static; }
 
   .l-bento { grid-template-columns: repeat(2, 1fr); }
   .l-bento-card.span4 { grid-column: span 2; }

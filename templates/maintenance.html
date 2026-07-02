@@ -67,7 +67,7 @@
       <input type="hidden" name="product_id" id="productId" value="">
       <div class="mnt-grid-2">
         <div class="mnt-field product-search-wrap">
-          <label>{{ _('maintenance_field_product') }}</label>
+          <label>{{ _('maintenance_field_product') }}<span data-help="maintenance.product"></span></label>
           <input type="text" id="productSearch" placeholder="{{ _('maintenance_product_search_placeholder') }}" autocomplete="off">
           <div class="product-results" id="productResults"></div>
           <div class="selected-product" id="selectedProduct">
@@ -76,7 +76,7 @@
           </div>
         </div>
         <div class="mnt-field">
-          <label>{{ _('maintenance_field_quantity') }}</label>
+          <label>{{ _('maintenance_field_quantity') }}<span data-help="maintenance.quantity"></span></label>
           <input type="number" name="quantity" id="quantity" min="1" value="1" required>
         </div>
       </div>
@@ -86,7 +86,7 @@
           <input type="date" name="sent_date" value="{{ today_iso }}" required>
         </div>
         <div class="mnt-field">
-          <label>{{ _('maintenance_field_workshop') }}</label>
+          <label>{{ _('maintenance_field_workshop') }}<span data-help="maintenance.workshop"></span></label>
           <input type="text" name="workshop_name" placeholder="{{ _('maintenance_workshop_placeholder') }}" required>
         </div>
         <div class="mnt-field">

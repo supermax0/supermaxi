@@ -6,6 +6,7 @@
   <script src="/static/js/no-zoom.js"></script>
   <title>{% block title %}{{ store_design.store_name }}{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='storefront/css/store.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/help-system.css') }}">
   <style>
     :root {
       --brand: {{ store_design.primary_color }};
@@ -72,6 +73,8 @@
       useAjaxCoupon: true
     };
   </script>
+  <script id="finora-help-fields" type="application/json">{{ help_fields_json|safe }}</script>
+  <script src="{{ url_for('static', filename='js/help-system.js') }}" defer></script>
   <script src="{{ url_for('static', filename='storefront/js/store.js') }}"></script>
   {% block scripts %}{% endblock %}
 </body>

@@ -2,20 +2,34 @@
 from __future__ import annotations
 
 import json
+import os
+from functools import lru_cache
 from typing import Any
 
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-def _lang_data(lang: str) -> dict:
-    try:
-        from app import app_translations
-    except ImportError:
+
+@lru_cache(maxsize=8)
+def _load_lang_file(lang: str) -> dict[str, Any]:
+    path = os.path.join(_ROOT, "translations", f"{lang}.json")
+    if not os.path.isfile(path):
         return {}
-    return app_translations.get(lang) or app_translations.get("ar") or {}
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def _lang_data(lang: str) -> dict[str, Any]:
+    data = _load_lang_file(lang)
+    if data:
+        return data
+    return _load_lang_file("ar")
 
 
 def get_help_fields(lang: str = "ar") -> dict[str, str]:
-    data = _lang_data(lang)
-    fields = data.get("help_fields") or {}
+    fields = (_lang_data(lang).get("help_fields") or {})
     return {k: v for k, v in fields.items() if isinstance(v, str)}
 
 

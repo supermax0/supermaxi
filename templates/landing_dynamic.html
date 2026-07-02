@@ -67,7 +67,7 @@
         </div>
         <div class="l-nav-actions">
             <a href="{{ settings.login_url or '/login' }}" class="l-btn l-btn-ghost">{{ nav.login_label }}</a>
-            <a href="#hero-signup" class="l-btn l-btn-primary">{{ nav.trial_label }}</a>
+            <a href="{{ settings.trial_url or '/signup?plan=free&billing=monthly' }}" class="l-btn l-btn-primary">{{ nav.trial_label }}</a>
             <button type="button" class="l-menu-btn" id="lMenuBtn" aria-label="القائمة"><i class="fas fa-bars"></i></button>
         </div>
     </nav>
@@ -77,24 +77,32 @@
         <a href="#pricing">{{ sm.get('pricing', {}).title or 'الأسعار' }}</a>
         <a href="#faq">{{ sm.get('faq', {}).title or 'الأسئلة' }}</a>
         <a href="{{ settings.login_url or '/login' }}">{{ nav.login_label }}</a>
-        <a href="#hero-signup">{{ nav.trial_label }}</a>
+        <a href="{{ settings.trial_url or '/signup?plan=free&billing=monthly' }}">{{ nav.trial_label }}</a>
     </div>
 
     {% if hero.is_visible is not sameas false %}
-    <section class="l-hero cms-hero" id="hero-signup">
+    <section class="l-hero cms-hero">
         <div class="l-hero-grid">
-            <div class="l-reveal l-hero-copy">
+            <div class="l-reveal">
                 <div class="l-badge"><span class="dot"></span>{{ hero.subtitle or 'مصمم للشركات والمتاجر العراقية' }}</div>
                 <h1 class="l-title">{{ hero.title or settings.page_title or 'فينورا — نظام إدارة ومحاسبة ذكي لشركتك' }}</h1>
                 <p class="l-sub left">{{ hero.description or settings.page_subtitle }}</p>
+                <div class="l-hero-acts">
+                    <a href="{{ hero.button_primary_url or settings.trial_url or '/signup?plan=free&billing=monthly' }}" class="l-btn l-btn-primary"><i class="fas fa-rocket"></i>{{ hero.button_primary_text or 'جرّب مجاناً' }}</a>
+                    <a href="{{ hero.button_secondary_url or settings.demo_booking_url or '#contact' }}" class="l-btn l-btn-ghost"><i class="fas fa-calendar-check"></i>{{ hero.button_secondary_text or 'احجز عرض مباشر' }}</a>
+                </div>
                 <div class="l-stats">
                     {% for stat in hero.content.stats or [] %}
                     <div><div class="l-stat-n">{{ stat.value }}</div><div class="l-stat-l">{{ stat.label }}</div></div>
                     {% endfor %}
                 </div>
             </div>
-            <div class="l-hero-signup-col l-reveal">
-                {% include 'landing/_hero_signup.html' %}
+            <div class="l-hero-visual l-reveal">
+                <img src="{{ hero.image_url or '/static/finora-logo.png' }}" alt="{{ hero.title or 'لوحة Finora' }}" loading="eager">
+                <div class="l-hero-float">
+                    <strong>LEON AI</strong>
+                    <span>تحليل وتنبيه داخل النظام</span>
+                </div>
             </div>
         </div>
     </section>

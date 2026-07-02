@@ -64,7 +64,7 @@
         <div class="fa-field"><label>أجور التركيب</label><input type="number" name="installation_cost" id="installationCost" min="0" value="0"></div>
         <div class="fa-field"><label>رسوم أخرى</label><input type="number" name="other_cost" id="otherCost" min="0" value="0"></div>
         <div class="fa-field"><label>خصم</label><input type="number" name="discount_amount" id="discountAmount" min="0" value="0"></div>
-        <div class="fa-field"><label>إجمالي تكلفة الأصل</label><input id="totalCost" class="fa-readonly" readonly value="0"></div>
+        <div class="fa-field"><label>إجمالي تكلفة الأصل<span data-help="fixed_assets.value"></span></label><input id="totalCost" class="fa-readonly" readonly value="0"></div>
         <div class="fa-field"><label>طريقة الدفع</label>
           <select name="payment_method" id="paymentMethod">
             {% for key, label in payment_methods.items() %}

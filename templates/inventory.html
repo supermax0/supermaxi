@@ -1571,7 +1571,7 @@
     <div class="inv-products-filters-bar">
       <div class="inv-search-box">
         <i class="fas fa-search search-icon"></i>
-        <input type="text" id="globalSearch" placeholder="{{ _('inventory_search_placeholder') }}" oninput="onGlobalSearch(this.value)">
+        <input type="text" id="globalSearch" placeholder="{{ _('inventory_search_placeholder') }}" data-help="inventory.search" oninput="onGlobalSearch(this.value)">
       </div>
       <select id="filterStock" onchange="filterProducts()" class="inv-products-filter" title="{{ _('inventory_filter_stock_all') }}">
         <option value="all">🗂️ {{ _('inventory_filter_stock_all') }}</option>
