@@ -1457,8 +1457,8 @@
           <input id="phone" placeholder="رقم الهاتف" class="modal-input">
           <input id="phone2" placeholder="رقم آخر" class="modal-input">
           <select id="city" class="modal-input">
-            <option>بغداد</option>
-            <option>محافظات</option>
+            <option>{{ primary_province }}</option>
+            <option>{{ provinces_group_label }}</option>
           </select>
           <input id="address" placeholder="العنوان" class="modal-input">
         </div>
@@ -1473,24 +1473,8 @@
           </div>
           <input id="ocrAddress" placeholder="العنوان" class="modal-input">
           <select id="ocrCity" class="modal-input">
-            <option value="بغداد">بغداد</option>
-            <option value="البصرة">البصرة</option>
-            <option value="الموصل">الموصل</option>
-            <option value="أربيل">أربيل</option>
-            <option value="السليمانية">السليمانية</option>
-            <option value="كربلاء">كربلاء</option>
-            <option value="النجف">النجف</option>
-            <option value="بابل">بابل</option>
-            <option value="ديالى">ديالى</option>
-            <option value="واسط">واسط</option>
-            <option value="ميسان">ميسان</option>
-            <option value="ذي قار">ذي قار</option>
-            <option value="المثنى">المثنى</option>
-            <option value="صلاح الدين">صلاح الدين</option>
-            <option value="دهوك">دهوك</option>
-            <option value="كركوك">كركوك</option>
-            <option value="الأنبار">الأنبار</option>
-            <option value="محافظات">محافظات</option>
+            <option value="{{ primary_province }}">{{ primary_province }}</option>
+            <option value="{{ provinces_group_label }}">{{ provinces_group_label }}</option>
           </select>
           <div class="grid">
             <button class="btn-success" onclick="confirmOCR()">✔ حفظ OCR</button>

@@ -24,6 +24,7 @@ from .fixed_asset_attachment import FixedAssetAttachment
 from .fixed_asset_disposal_request import FixedAssetDisposalRequest
 from .financial_period_close import FinancialPeriodClose
 from .employee import Employee
+from .employee_commission_settlement import EmployeeCommissionSettlement
 from .invoice import Invoice
 from .invoice_payment_ledger import InvoicePaymentLedger
 from .order_item import OrderItem

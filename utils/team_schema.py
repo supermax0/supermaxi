@@ -5,7 +5,7 @@ from __future__ import annotations
 from sqlalchemy import inspect, text
 
 from extensions import db
-from utils.employee_commission import get_fixed_employee_commission_amount
+from utils.employee_commission import get_employee_commission_amount
 
 
 def _resolve_engine():
@@ -61,11 +61,12 @@ def build_employees_grid_rows(employees_list, stats_map, delivery_agents, agent_
     """Serialize employee + delivery-agent rows for the AG Grid script."""
     rows = []
     for e in employees_list:
-        s = stats_map.get(e.id, {"orders": 0, "sales": 0})
+        s = stats_map.get(e.id, {"orders": 0, "sales": 0, "commission": 0, "total_due": 0})
         sales = int(s.get("sales") or 0)
         orders = int(s.get("orders") or 0)
-        fixed_commission = get_fixed_employee_commission_amount()
-        commission_value = fixed_commission
+        commission_value = int(s.get("commission") or 0)
+        total_due = int(s.get("total_due") or 0)
+        commission_rate = int(s.get("commission_rate") if s.get("commission_rate") is not None else get_employee_commission_amount(e))
         try:
             role_labels = [r.name for r in (e.roles or [])]
         except Exception:
@@ -88,8 +89,9 @@ def build_employees_grid_rows(employees_list, stats_map, delivery_agents, agent_
                 "orders": orders,
                 "sales": sales,
                 "salary": int(e.salary or 0),
-                "commission": fixed_commission,
-                "total_due": int(e.salary or 0) + commission_value,
+                "commission": commission_value,
+                "commission_rate": commission_rate,
+                "total_due": total_due,
                 "is_delivery": False,
             }
         )

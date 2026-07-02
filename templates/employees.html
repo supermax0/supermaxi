@@ -3,16 +3,16 @@
 {% block page_title %}👥 {{ _('employees_page_title') }}{% endblock %}
 
 {% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/team-admin.css') }}?v=20260702g">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/employees-admin.css') }}?v=20260702g">
+
 <div class="team-admin-page employees-page">
 
 <div class="toast-container" id="toastContainer"></div>
-<script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.js"></script>
 
 <div class="loading-overlay" id="loadingOverlay">
   <div class="loading-spinner"></div>
 </div>
-
-<link rel="stylesheet" href="{{ url_for('static', filename='css/employees-admin.css') }}">
 
 {% set total_employees = employees|length %}
 {% set active_employees = employees|selectattr("is_active")|list|length %}
@@ -85,9 +85,8 @@
         <div class="fixed-commission-field">
           <label class="fixed-commission-label" for="fixedCommissionAmount">{{ _('employees_fixed_commission_label') }}</label>
           <div class="fixed-commission-row">
-            <input type="number" id="fixedCommissionAmount" value="{{ fixed_commission_amount }}" min="0" step="1" placeholder="0">
+            <input type="number" id="fixedCommissionAmount" value="{{ fixed_commission_amount }}" min="0" step="1" placeholder="0" readonly>
             <span class="fixed-commission-currency">{{ _('employees_currency_iqd') }}</span>
-            <button type="button" class="btn-fixed-commission" onclick="saveFixedCommission()">{{ _('employees_fixed_commission_save') }}</button>
           </div>
           <small>{{ _('employees_fixed_commission_hint') }}</small>
         </div>
@@ -133,6 +132,40 @@
   </div>
 </div>
 
+<div class="collapsible-group collapsed" id="groupCommissionStatement">
+  <div class="group-header" onclick="toggleSection('groupCommissionStatement')">
+    <h3><span class="section-icon success">📋</span>{{ _('employees_commission_statement_title') }}</h3>
+    <button type="button" class="toggle-btn" tabindex="-1"><i class="fas fa-chevron-up"></i></button>
+  </div>
+  <div class="group-content">
+    <div class="commission-statement-toolbar">
+      <div class="emp-field">
+        <label class="emp-field-label" for="commissionStmtMonth">{{ _('employees_commission_statement_month') }}</label>
+        <input type="month" id="commissionStmtMonth">
+      </div>
+      <button type="button" class="btn-fixed-commission" onclick="loadCommissionStatement()">{{ _('employees_commission_statement_load') }}</button>
+    </div>
+    <div class="commission-statement-summary" id="commissionStatementSummary"></div>
+    <div class="commission-statement-table-wrap">
+      <table class="commission-statement-table" id="commissionStatementTable">
+        <thead>
+          <tr>
+            <th>{{ _('employees_commission_statement_col_name') }}</th>
+            <th>{{ _('employees_commission_statement_col_orders') }}</th>
+            <th>{{ _('employees_commission_statement_col_amount') }}</th>
+            <th>{{ _('employees_commission_statement_col_action') }}</th>
+          </tr>
+        </thead>
+        <tbody id="commissionStatementBody">
+          <tr class="commission-statement-empty">
+            <td colspan="4">{{ _('employees_commission_statement_empty') }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <div class="collapsible-group" id="groupEmpFilters">
   <div class="group-header" onclick="toggleSection('groupEmpFilters')">
     <h3><span class="section-icon warning">🔍</span>{{ _('employees_search_title') }}</h3>
@@ -169,6 +202,7 @@
     <input type="hidden" id="editEmpIsDelivery" value="0">
     <div class="team-modal-field"><label>الاسم</label><input id="editEmpName" type="text"></div>
     <div class="team-modal-field"><label>الراتب</label><input id="editEmpSalary" type="number" min="0"></div>
+    <div class="team-modal-field" id="editEmpCommissionField"><label>{{ _('employees_edit_commission_label') }}</label><input id="editEmpCommission" type="number" min="0" step="1" placeholder="0"><small>{{ _('employees_edit_commission_hint') }}</small></div>
     <div class="team-modal-field"><label>كلمة مرور جديدة (اختياري)</label><input id="editEmpPassword" type="password"></div>
     <div class="team-modal-actions">
       <button type="button" class="btn btn-light" onclick="closeEditEmployeeModal()">إلغاء</button>
@@ -225,7 +259,23 @@
   "employees_orders_total_orders": _("employees_orders_total_orders"),
   "employees_save_button": _("employees_save_button"),
   "employees_toast_add_success": _("employees_toast_add_success"),
-  "employees_toast_pages_updated": _("employees_toast_pages_updated")
+  "employees_toast_pages_updated": _("employees_toast_pages_updated"),
+  "employees_commission_statement_title": _("employees_commission_statement_title"),
+  "employees_commission_statement_month": _("employees_commission_statement_month"),
+  "employees_commission_statement_load": _("employees_commission_statement_load"),
+  "employees_commission_statement_col_name": _("employees_commission_statement_col_name"),
+  "employees_commission_statement_col_orders": _("employees_commission_statement_col_orders"),
+  "employees_commission_statement_col_amount": _("employees_commission_statement_col_amount"),
+  "employees_commission_statement_col_action": _("employees_commission_statement_col_action"),
+  "employees_commission_statement_empty": _("employees_commission_statement_empty"),
+  "employees_commission_statement_no_due": _("employees_commission_statement_no_due"),
+  "employees_commission_statement_settle": _("employees_commission_statement_settle"),
+  "employees_commission_statement_settled": _("employees_commission_statement_settled"),
+  "employees_commission_statement_confirm": _("employees_commission_statement_confirm"),
+  "employees_commission_statement_total": _("employees_commission_statement_total"),
+  "employees_toast_settle_success": _("employees_toast_settle_success"),
+  "employees_edit_commission_label": _("employees_edit_commission_label"),
+  "employees_edit_commission_hint": _("employees_edit_commission_hint")
 } %}
 <script type="application/json" id="empI18nData">{{ emp_i18n|tojson }}</script>
 <script>
@@ -235,7 +285,8 @@
     if (_d) window.EMP_I18N = JSON.parse(_d.textContent);
   } catch (e) { console.warn(e); }
 </script>
-<script src="{{ url_for('static', filename='js/employees-admin.js') }}"></script>
+<script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.js"></script>
+<script src="{{ url_for('static', filename='js/employees-admin.js') }}?v=20260702g"></script>
 
 </div>
 {% endblock %}

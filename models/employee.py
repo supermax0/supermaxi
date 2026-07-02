@@ -131,12 +131,10 @@ class Employee(db.Model):
         self.total_sales += order_total
 
     def calculate_commission(self):
-        """
-        حساب العمولة حسب المبلغ الثابت للنظام
-        """
-        from utils.employee_commission import get_fixed_employee_commission_amount
+        """Per-order commission amount for this employee."""
+        from utils.employee_commission import get_employee_commission_amount
 
-        return get_fixed_employee_commission_amount()
+        return get_employee_commission_amount(self)
 
     def has_permission(self, permission_name):
         """التحقق مما إذا كان الموظف لديه صلاحية معينة عبر أدواره"""

@@ -436,11 +436,8 @@
         <input id="phone2" class="pos-input" placeholder="رقم آخر">
 
         <select id="city" class="pos-select">
-
-          <option>بغداد</option>
-
-          <option>محافظات</option>
-
+          <option>{{ primary_province }}</option>
+          <option>{{ provinces_group_label }}</option>
         </select>
 
         <input id="address" class="pos-input" placeholder="العنوان">
@@ -459,7 +456,7 @@
 
           <input id="ocrAddress" class="pos-input" placeholder="العنوان">
 
-          <select id="ocrCity" class="pos-select"><option value="بغداد">بغداد</option><option value="محافظات">محافظات</option></select>
+          <select id="ocrCity" class="pos-select"><option value="{{ primary_province }}">{{ primary_province }}</option><option value="{{ provinces_group_label }}">{{ provinces_group_label }}</option></select>
 
         </div>
 

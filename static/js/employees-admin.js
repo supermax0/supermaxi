@@ -205,6 +205,12 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
     document.getElementById('editEmpIsDelivery').value = data.is_delivery ? '1' : '0';
     document.getElementById('editEmpName').value = cleanName;
     document.getElementById('editEmpSalary').value = data.salary || 0;
+    const commissionField = document.getElementById('editEmpCommissionField');
+    const commissionInput = document.getElementById('editEmpCommission');
+    if (commissionField && commissionInput) {
+      commissionField.style.display = data.is_delivery ? 'none' : '';
+      commissionInput.value = data.commission_rate ?? data.commission ?? 0;
+    }
     document.getElementById('editEmpPassword').value = '';
     document.getElementById('editEmployeeModalTitle').textContent = data.is_delivery ? 'تعديل مندوب' : 'تعديل موظف';
     document.getElementById('editEmployeeModal').classList.add('is-open');
@@ -219,6 +225,12 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
       name: document.getElementById('editEmpName').value,
       salary: document.getElementById('editEmpSalary').value,
     };
+    if (!isDelivery) {
+      const commissionInput = document.getElementById('editEmpCommission');
+      if (commissionInput) {
+        body.commission = commissionInput.value;
+      }
+    }
     const pwd = document.getElementById('editEmpPassword').value.trim();
     if (pwd) body.password = pwd;
     showLoading();
@@ -234,34 +246,6 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
     hideLoading();
     showToast('تم الحفظ', 'success');
     setTimeout(() => location.reload(), 700);
-  }
-
-  async function saveFixedCommission() {
-    const input = document.getElementById('fixedCommissionAmount');
-    const amount = parseInt(input.value, 10);
-    if (Number.isNaN(amount) || amount < 0) {
-      showToast('أدخل مبلغاً صالحاً', 'warning');
-      return;
-    }
-    showLoading();
-    try {
-      const r = await fetch('/employees/fixed-commission', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount }),
-      });
-      const data = await r.json();
-      hideLoading();
-      if (data.success) {
-        showToast(data.message || 'تم الحفظ', 'success');
-        setTimeout(() => location.reload(), 700);
-      } else {
-        showToast(data.error || __t('employees_err_generic'), 'error');
-      }
-    } catch (e) {
-      hideLoading();
-      showToast(__t('employees_err_connection'), 'error');
-    }
   }
 
   let gridApi;
@@ -640,6 +624,144 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
       });
   }
 
+  // ==================== Commission Monthly Statement ====================
+  let commissionStatementPeriod = { year: null, month: null };
+
+  function initCommissionStatementMonth() {
+    const input = document.getElementById('commissionStmtMonth');
+    if (!input) return;
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    input.value = `${y}-${m}`;
+  }
+
+  function getCommissionStatementPeriod() {
+    const input = document.getElementById('commissionStmtMonth');
+    if (!input || !input.value) {
+      const now = new Date();
+      return { year: now.getFullYear(), month: now.getMonth() + 1 };
+    }
+    const [year, month] = input.value.split('-').map(v => parseInt(v, 10));
+    return { year, month };
+  }
+
+  function renderCommissionStatement(data) {
+    const tbody = document.getElementById('commissionStatementBody');
+    const summary = document.getElementById('commissionStatementSummary');
+    if (!tbody) return;
+
+    commissionStatementPeriod = { year: data.year, month: data.month };
+    const currency = __t('employees_currency_iqd');
+
+    if (summary) {
+      if ((data.rows || []).length === 0) {
+        summary.textContent = __t('employees_commission_statement_no_due');
+      } else {
+        summary.textContent = __t('employees_commission_statement_total')
+          .replace('{orders}', String(data.total_orders || 0))
+          .replace('{amount}', (data.total_amount || 0).toLocaleString());
+      }
+    }
+
+    if (!data.rows || data.rows.length === 0) {
+      tbody.innerHTML = `<tr class="commission-statement-empty"><td colspan="4">${__t('employees_commission_statement_no_due')}</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = data.rows.map(row => `
+      <tr>
+        <td><strong>${row.employee_name}</strong></td>
+        <td>${row.orders}</td>
+        <td>${row.amount.toLocaleString()} ${currency}</td>
+        <td>
+          <button type="button" class="btn-settle-commission" data-employee-id="${row.employee_id}" data-name="${row.employee_name}" data-orders="${row.orders}" data-amount="${row.amount}">
+            ${__t('employees_commission_statement_settle')}
+          </button>
+        </td>
+      </tr>
+    `).join('');
+
+    tbody.querySelectorAll('.btn-settle-commission').forEach(btn => {
+      btn.addEventListener('click', () => {
+        settleEmployeeCommission(
+          parseInt(btn.dataset.employeeId, 10),
+          btn.dataset.name,
+          parseInt(btn.dataset.orders, 10),
+          parseInt(btn.dataset.amount, 10)
+        );
+      });
+    });
+  }
+
+  function loadCommissionStatement() {
+    const { year, month } = getCommissionStatementPeriod();
+    showLoading();
+    fetch(`/employees/commission-statement?year=${year}&month=${month}`)
+      .then(r => r.json())
+      .then(data => {
+        hideLoading();
+        if (!data.success) {
+          showToast(data.error || __t('employees_err_fetch_data'), 'error');
+          return;
+        }
+        renderCommissionStatement(data);
+      })
+      .catch(() => {
+        hideLoading();
+        showToast(__t('employees_err_connection'), 'error');
+      });
+  }
+
+  function updateEmployeeGridRow(employeeId, orders, commission) {
+    if (!gridApi) return;
+    gridApi.forEachNode(node => {
+      if (!node.data || node.data.is_delivery || node.data.id !== employeeId) return;
+      node.setData({
+        ...node.data,
+        orders,
+        commission,
+        total_due: commission,
+      });
+    });
+  }
+
+  function settleEmployeeCommission(employeeId, employeeName, orders, amount) {
+    const { year, month } = commissionStatementPeriod.year
+      ? commissionStatementPeriod
+      : getCommissionStatementPeriod();
+
+    const confirmMsg = __t('employees_commission_statement_confirm')
+      .replace('{name}', employeeName)
+      .replace('{amount}', amount.toLocaleString())
+      .replace('{orders}', String(orders));
+
+    if (!window.confirm(confirmMsg)) return;
+
+    showLoading();
+    fetch('/employees/commission-settle', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ employee_id: employeeId, year, month }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        hideLoading();
+        if (!data.success) {
+          showToast(data.error || __t('employees_err_generic'), 'error');
+          return;
+        }
+        showToast(__t('employees_toast_settle_success'), 'success');
+        loadCommissionStatement();
+        updateEmployeeGridRow(employeeId, 0, 0);
+        setTimeout(() => location.reload(), 800);
+      })
+      .catch(() => {
+        hideLoading();
+        showToast(__t('employees_err_connection'), 'error');
+      });
+  }
+
   // ==================== Collapsible Sections Logic ====================
   function toggleSection(sectionId) {
     const section = document.getElementById(sectionId);
@@ -678,6 +800,7 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
   // Initialize on page load
   document.addEventListener('DOMContentLoaded', function () {
     restoreSectionStates();
+    initCommissionStatementMonth();
     if (document.getElementById('employeesTable')) {
       initAgGrid();
     }

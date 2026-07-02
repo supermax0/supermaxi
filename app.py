@@ -1516,6 +1516,31 @@ def inject_business_context():
     }
 
 
+@app.context_processor
+def inject_provinces_context():
+    if request.path.startswith("/superadmin"):
+        return {}
+    try:
+        from utils.tenant_provinces import get_provinces_context
+        return get_provinces_context()
+    except Exception:
+        from utils.tenant_provinces import (
+            DEFAULT_GROUP_LABEL,
+            DEFAULT_PRIMARY,
+            DEFAULT_PROVINCES,
+            FILTER_GROUP,
+            FILTER_PRIMARY,
+        )
+        return {
+            "primary_province": DEFAULT_PRIMARY,
+            "provinces_group_label": DEFAULT_GROUP_LABEL,
+            "tenant_provinces_list": list(DEFAULT_PROVINCES),
+            "tenant_group_provinces": [n for n in DEFAULT_PROVINCES if n != DEFAULT_PRIMARY],
+            "province_filter_primary": FILTER_PRIMARY,
+            "province_filter_group": FILTER_GROUP,
+        }
+
+
 # تفضيل آمن عند فشل تحميل خطط الاشتراك (يتجنب 500)
 _SAFE_PLAN = {
     "key": "basic",

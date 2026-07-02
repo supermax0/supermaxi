@@ -8,7 +8,7 @@ from typing import Optional, Tuple
 
 from models.order_item import OrderItem
 from models.product import Product
-from utils.order_status import is_canceled, is_returned, normalize_status
+from utils.order_status import is_canceled, is_returned, normalize_status, RETURN_STATUS
 
 
 class OrderLifecycleError(Exception):
@@ -71,14 +71,14 @@ def process_order_return(order, scanned_barcode: Optional[str]) -> Tuple[bool, s
         raise OrderLifecycleError("لا يمكن ترجيع طلب ملغي")
 
     if is_returned(order.status, order.payment_status):
-        return True, "الطلب مرتجع مسبقاً"
+        return True, "الطلب راجع مسبقاً"
 
     if not verify_order_barcode(order, scanned_barcode):
         raise OrderLifecycleError("الباركود لا يطابق الطلب")
 
     restore_order_stock_once(order)
-    order.status = "مرتجع"
-    order.payment_status = "مرتجع"
+    order.status = RETURN_STATUS
+    order.payment_status = RETURN_STATUS
     order.paid_amount = 0
     clear_order_barcodes(order)
     return False, "تم ترجيع الطلب وإرجاع الكمية للمخزون"

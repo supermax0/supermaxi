@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, jsonify, session
+from datetime import datetime
 from werkzeug.security import generate_password_hash
 from extensions import db
 from models.employee import Employee
@@ -12,6 +13,12 @@ from utils.agent_passwords import hash_agent_password
 from utils.decorators import permission_required
 from utils.permission_checks import employee_can, get_current_employee
 from utils.employee_commission import get_fixed_employee_commission_amount, set_fixed_employee_commission_amount
+from utils.employee_commission_service import (
+    backfill_invoice_employee_ids,
+    build_employee_commission_stats_map,
+    build_monthly_statement,
+    settle_employee_commission,
+)
 from utils.team_schema import build_employees_grid_rows, ensure_delivery_agent_schema
 from utils.activity_logger import EMPLOYEE_SNAPSHOT_FIELDS, log_activity, log_mutation, snapshot_attrs
 
@@ -60,10 +67,53 @@ def _require_manage_employees():
     return None
 
 
+def _ensure_commission_schema():
+    from flask import g
+
+    try:
+        if getattr(g, "tenant", None):
+            from extensions_tenant import get_tenant_engine
+
+            engine = get_tenant_engine(g.tenant)
+        else:
+            engine = db.engine
+
+        inspector = inspect(engine)
+        tables = set(inspector.get_table_names())
+
+        with engine.connect() as conn:
+            changed = False
+            if "invoice" in tables:
+                columns = {col["name"] for col in inspector.get_columns("invoice")}
+                if "employee_commission_settled_at" not in columns:
+                    dialect = engine.dialect.name
+                    col_type = "TIMESTAMP" if dialect == "postgresql" else "DATETIME"
+                    conn.execute(
+                        text(f"ALTER TABLE invoice ADD COLUMN employee_commission_settled_at {col_type}")
+                    )
+                    changed = True
+
+            if changed:
+                conn.commit()
+
+        from models.employee_commission_settlement import EmployeeCommissionSettlement
+
+        EmployeeCommissionSettlement.__table__.create(engine, checkfirst=True)
+    except Exception as e:
+        msg = str(e).lower()
+        if "duplicate column" not in msg and "already exists" not in msg:
+            print(f"[employees] commission schema ensure failed: {e}")
+
+
 @employees_bp.before_request
 def ensure_employee_schema():
     _ensure_employee_profile_schema()
     ensure_delivery_agent_schema()
+    _ensure_commission_schema()
+    try:
+        backfill_invoice_employee_ids()
+    except Exception as e:
+        print(f"[employees] commission backfill failed: {e}")
 
 
 @employees_bp.route("/", methods=["GET", "POST"])
@@ -99,16 +149,7 @@ def employees():
         return redirect(url_for("employees.employees"))
 
     employees_list = Employee.query.all()
-    stats = (
-        db.session.query(
-            Invoice.employee_id,
-            func.count(Invoice.id).label("orders"),
-            func.sum(Invoice.total).label("sales"),
-        )
-        .group_by(Invoice.employee_id)
-        .all()
-    )
-    stats_map = {s.employee_id: {"orders": s.orders, "sales": s.sales or 0} for s in stats}
+    stats_map = build_employee_commission_stats_map(unsettled_only=True)
 
     delivery_agents = DeliveryAgent.query.order_by(DeliveryAgent.name).all()
     agent_stats = (
@@ -157,6 +198,77 @@ def update_fixed_commission():
     return jsonify({"success": True, "amount": value, "message": "تم حفظ مبلغ العمولة الثابتة"})
 
 
+@employees_bp.route("/commission-statement")
+@permission_required("manage_employees")
+def commission_statement():
+    try:
+        year = int(request.args.get("year") or datetime.utcnow().year)
+        month = int(request.args.get("month") or datetime.utcnow().month)
+    except (TypeError, ValueError):
+        return jsonify({"error": "فترة غير صالحة"}), 400
+
+    if month < 1 or month > 12:
+        return jsonify({"error": "الشهر غير صالح"}), 400
+
+    rows = build_monthly_statement(year, month)
+    fixed_amount = get_fixed_employee_commission_amount()
+    total_orders = sum(r["orders"] for r in rows)
+    total_amount = sum(r["amount"] for r in rows)
+
+    return jsonify(
+        {
+            "success": True,
+            "year": year,
+            "month": month,
+            "fixed_commission_amount": fixed_amount,
+            "rows": rows,
+            "total_orders": total_orders,
+            "total_amount": total_amount,
+        }
+    )
+
+
+@employees_bp.route("/commission-settle", methods=["POST"])
+@permission_required("manage_employees")
+def commission_settle():
+    data = request.get_json(silent=True) or {}
+    try:
+        employee_id = int(data.get("employee_id"))
+        year = int(data.get("year"))
+        month = int(data.get("month"))
+    except (TypeError, ValueError):
+        return jsonify({"error": "بيانات غير صالحة"}), 400
+
+    if month < 1 or month > 12:
+        return jsonify({"error": "الشهر غير صالح"}), 400
+
+    current = get_current_employee()
+    settled_by = current.id if current else None
+
+    try:
+        result = settle_employee_commission(employee_id, year, month, settled_by=settled_by)
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": f"حدث خطأ: {str(e)}"}), 500
+
+    if not result.get("ok"):
+        return jsonify({"error": result.get("error", "فشل السداد")}), 400
+
+    try:
+        log_activity(
+            "update",
+            "employees",
+            f"سداد عمولة الموظف {result['employee_name']} — {result['order_count']} طلب — {result['amount']} د.ع ({year}-{month:02d})",
+            entity_type="employee",
+            entity_id=employee_id,
+            payload=result,
+        )
+    except Exception:
+        pass
+
+    return jsonify({"success": True, **result, "message": "تم تسجيل السداد بنجاح"})
+
+
 @employees_bp.route("/toggle/<int:id>", methods=["POST"])
 @permission_required("manage_employees")
 def toggle_employee(id):
@@ -190,7 +302,8 @@ def update_employee(id):
         emp.name = name
     if "salary" in data:
         emp.salary = int(data.get("salary") or 0)
-    emp.commission_percent = get_fixed_employee_commission_amount()
+    if "commission" in data:
+        emp.commission_percent = max(0, int(data.get("commission") or 0))
     db.session.commit()
     try:
         log_mutation(
@@ -279,7 +392,8 @@ def manage_employee_pages(employee_id):
     data = request.json or {}
     page_ids = data.get("page_ids", [])
     try:
-        employee.pages = []
+        for page in employee.pages.all():
+            employee.pages.remove(page)
         for page_id in page_ids:
             page = Page.query.get(page_id)
             if page:

@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% block title %}{{ _('provinces_page_title') }}{% endblock %}
+{% block page_title %}🗺️ {{ _('provinces_page_title') }}{% endblock %}
+
+{% block content %}
+<style>
+  .prov-wrap { max-width: 1200px; margin: 0 auto; padding: 20px; }
+  .prov-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .prov-head a { color: var(--primary); text-decoration: none; }
+  .prov-note { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px; line-height: 1.6; }
+  .prov-add { display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
+  .prov-add input {
+    flex: 1; min-width: 200px; padding: 10px 14px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--card); color: var(--text);
+  }
+  .prov-btn {
+    border: none; border-radius: 10px; padding: 10px 16px; cursor: pointer; font-weight: 600;
+  }
+  .prov-btn-primary { background: var(--primary); color: #fff; }
+  .prov-btn-danger { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.35); }
+  .prov-btn-muted { background: rgba(148, 163, 184, 0.12); color: var(--text); border: 1px solid var(--border); }
+  .prov-table-wrap { overflow: auto; border: 1px solid var(--border); border-radius: 12px; }
+  .prov-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .prov-table th, .prov-table td { padding: 12px 14px; text-align: right; border-bottom: 1px solid var(--border); }
+  .prov-table th { background: var(--card-alt); font-weight: 600; }
+  .prov-table tr:hover { background: rgba(59, 130, 246, 0.06); }
+  .prov-amount { font-weight: 700; color: #34d399; white-space: nowrap; }
+  .prov-returns { font-weight: 700; color: #f87171; }
+  .prov-badge {
+    display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700;
+    background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3);
+  }
+  .prov-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .prov-toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    padding: 12px 20px; border-radius: 12px; font-weight: 600; z-index: 9999; display: none;
+  }
+  .prov-toast.ok { background: rgba(16, 185, 129, 0.9); color: #fff; }
+  .prov-toast.err { background: rgba(239, 68, 68, 0.9); color: #fff; }
+</style>
+
+<div class="prov-wrap">
+  <div class="prov-head">
+    <a href="/customers">← {{ _('customers') }}</a>
+  </div>
+  <p class="prov-note">{{ _('provinces_intro') }}</p>
+  <p class="prov-note">
+    {{ _('provinces_filter_hint') }}
+    <strong>{{ primary_province }}</strong> /
+    <strong>{{ provinces_group_label }}</strong>
+  </p>
+
+  <div class="prov-add">
+    <input type="text" id="newProvinceName" placeholder="{{ _('provinces_add_placeholder') }}" maxlength="100">
+    <button type="button" class="prov-btn prov-btn-primary" onclick="addProvince()">
+      {{ _('provinces_add') }}
+    </button>
+  </div>
+
+  <div class="prov-table-wrap">
+    <table class="prov-table">
+      <thead>
+        <tr>
+          <th>{{ _('provinces_col_name') }}</th>
+          <th>{{ _('provinces_col_customers') }}</th>
+          <th>{{ _('provinces_col_orders') }}</th>
+          <th>{{ _('provinces_col_returns') }}</th>
+          <th>{{ _('provinces_col_amount') }}</th>
+          <th>{{ _('provinces_col_role') }}</th>
+          <th>{{ _('customers_col_actions') }}</th>
+        </tr>
+      </thead>
+      <tbody id="provincesTableBody">
+        {% for p in provinces %}
+        <tr data-name="{{ p.name }}">
+          <td>{{ p.name }}</td>
+          <td><span class="prov-count">{{ p.count }}</span></td>
+          <td><span class="prov-count">{{ p.orders_count }}</span></td>
+          <td><span class="prov-returns">{{ p.returns_count }}</span></td>
+          <td><span class="prov-amount">{{ "{:,.0f}".format(p.total_amount) }} {{ _('customers_currency_iqd') }}</span></td>
+          <td>
+            {% if p.is_primary %}
+            <span class="prov-badge">{{ _('provinces_primary_badge') }}</span>
+            {% else %}
+            {{ provinces_group_label }}
+            {% endif %}
+          </td>
+          <td>
+            <div class="prov-actions">
+              {% if not p.is_primary %}
+              <button type="button" class="prov-btn prov-btn-muted" onclick="setPrimary('{{ p.name|e }}')">
+                {{ _('provinces_set_primary') }}
+              </button>
+              <button type="button" class="prov-btn prov-btn-danger" onclick="removeProvince('{{ p.name|e }}')">
+                {{ _('provinces_delete') }}
+              </button>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div id="provToast" class="prov-toast"></div>
+
+<script>
+function showProvToast(msg, ok) {
+  const el = document.getElementById('provToast');
+  el.textContent = msg;
+  el.className = 'prov-toast ' + (ok ? 'ok' : 'err');
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 2800);
+}
+
+async function provApi(url, body) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body || {}),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.success) {
+    throw new Error(data.error || '{{ _("provinces_err_generic") }}');
+  }
+  return data;
+}
+
+  const currencyLabel = {{ _('customers_currency_iqd')|tojson }};
+
+  function formatProvAmount(n) {
+    return (Number(n) || 0).toLocaleString('ar-IQ') + ' ' + currencyLabel;
+  }
+
+  async function reloadProvinces() {
+  const res = await fetch('/customers/provinces/api');
+  const data = await res.json();
+  if (!data.success) return;
+  const tbody = document.getElementById('provincesTableBody');
+  const groupLabel = {{ provinces_group_label|tojson }};
+  const primaryBadge = {{ _('provinces_primary_badge')|tojson }};
+  const setPrimaryLabel = {{ _('provinces_set_primary')|tojson }};
+  const deleteLabel = {{ _('provinces_delete')|tojson }};
+  tbody.innerHTML = (data.provinces || []).map(p => {
+    const actions = p.is_primary ? '' : `
+      <button type="button" class="prov-btn prov-btn-muted" onclick="setPrimary(${JSON.stringify(p.name)})">${setPrimaryLabel}</button>
+      <button type="button" class="prov-btn prov-btn-danger" onclick="removeProvince(${JSON.stringify(p.name)})">${deleteLabel}</button>`;
+    const role = p.is_primary
+      ? `<span class="prov-badge">${primaryBadge}</span>`
+      : groupLabel;
+    return `<tr data-name="${p.name}">
+      <td>${p.name}</td>
+      <td><span class="prov-count">${p.count}</span></td>
+      <td><span class="prov-count">${p.orders_count || 0}</span></td>
+      <td><span class="prov-returns">${p.returns_count || 0}</span></td>
+      <td><span class="prov-amount">${formatProvAmount(p.total_amount)}</span></td>
+      <td>${role}</td>
+      <td><div class="prov-actions">${actions}</div></td>
+    </tr>`;
+  }).join('');
+}
+
+async function addProvince() {
+  const input = document.getElementById('newProvinceName');
+  const name = (input.value || '').trim();
+  if (!name) return;
+  try {
+    await provApi('/customers/provinces/add', { name });
+    input.value = '';
+    showProvToast({{ _('provinces_toast_added')|tojson }}, true);
+    await reloadProvinces();
+  } catch (e) {
+    showProvToast(e.message, false);
+  }
+}
+
+async function removeProvince(name) {
+  if (!confirm({{ _('provinces_confirm_delete')|tojson }})) return;
+  try {
+    await provApi('/customers/provinces/remove', { name });
+    showProvToast({{ _('provinces_toast_removed')|tojson }}, true);
+    await reloadProvinces();
+  } catch (e) {
+    showProvToast(e.message, false);
+  }
+}
+
+async function setPrimary(name) {
+  try {
+    await provApi('/customers/provinces/set-primary', { name });
+    showProvToast({{ _('provinces_toast_primary_set')|tojson }}, true);
+    await reloadProvinces();
+  } catch (e) {
+    showProvToast(e.message, false);
+  }
+}
+
+document.getElementById('newProvinceName')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') addProvince();
+});
+</script>
+{% endblock %}

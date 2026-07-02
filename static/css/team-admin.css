@@ -143,7 +143,6 @@
 
 .team-admin-page .group-content { padding: var(--spacing-lg); }
 
-.team-admin-page .emp-form-grid,
 .team-admin-page .team-form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));

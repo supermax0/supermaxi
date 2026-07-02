@@ -1,4 +1,75 @@
-@import url("team-admin.css");
+/* Employees page — extends team-admin (team-admin.css linked from template) */
+
+.team-admin-page.employees-page .stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 1100px) {
+  .team-admin-page.employees-page .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .team-admin-page.employees-page .stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.team-admin-page.employees-page .stat-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  gap: 2px 14px;
+  align-items: center;
+  padding: 16px 18px;
+  min-height: 0;
+  direction: rtl;
+}
+
+.team-admin-page.employees-page .stat-icon {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  margin-bottom: 0;
+  font-size: 24px;
+  line-height: 1;
+  width: 46px;
+  height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: var(--surface-soft);
+}
+
+.team-admin-page.employees-page .stat-card.primary .stat-icon {
+  background: var(--primary-soft);
+}
+
+.team-admin-page.employees-page .stat-card.success .stat-icon {
+  background: var(--success-soft);
+}
+
+.team-admin-page.employees-page .stat-card.warning .stat-icon {
+  background: var(--warning-soft);
+}
+
+.team-admin-page.employees-page .stat-label {
+  grid-column: 1;
+  grid-row: 1;
+  margin-bottom: 0;
+  text-align: right;
+}
+
+.team-admin-page.employees-page .stat-value {
+  grid-column: 1;
+  grid-row: 2;
+  font-size: 22px;
+  text-align: right;
+}
 
 /* Employees page — extends team-admin */
 .team-admin-page .ag-theme-finora .ag-row {
@@ -48,14 +119,34 @@
 }
 
 /* Add-employee form layout */
+.team-admin-page.employees-page .emp-form-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .team-admin-page .emp-form-grid {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
 }
 
+.team-admin-page.employees-page .emp-form-grid > .btn-submit-primary {
+  width: auto;
+  min-width: 200px;
+  max-width: 280px;
+  align-self: flex-start;
+  grid-column: auto;
+}
+
 .team-admin-page .emp-form-grid > .btn-submit-primary {
   width: 100%;
+}
+
+.team-admin-page.employees-page .emp-form-fields {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
 }
 
 .team-admin-page .emp-form-fields {
@@ -66,6 +157,13 @@
 
 .team-admin-page .emp-form-fields--3 {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.team-admin-page.employees-page .emp-form-row-secondary {
+  display: grid;
+  grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
 }
 
 .team-admin-page .emp-form-row-secondary {
@@ -86,16 +184,40 @@
   background: var(--surface-soft);
 }
 
+.team-admin-page.employees-page .fixed-commission-field {
+  min-height: 0;
+}
+
+.team-admin-page.employees-page .group-content {
+  padding: 20px;
+}
+
+.team-admin-page.employees-page .search-filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
 @media (max-width: 992px) {
+  .team-admin-page.employees-page .emp-form-fields,
+  .team-admin-page.employees-page .search-filters,
   .team-admin-page .emp-form-fields,
   .team-admin-page .emp-form-fields--3 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .team-admin-page.employees-page .emp-form-row-secondary,
+  .team-admin-page .emp-form-row-secondary {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 560px) {
+  .team-admin-page.employees-page .emp-form-fields,
+  .team-admin-page.employees-page .search-filters,
   .team-admin-page .emp-form-fields,
   .team-admin-page .emp-form-fields--3,
+  .team-admin-page.employees-page .emp-form-row-secondary,
   .team-admin-page .emp-form-row-secondary {
     grid-template-columns: 1fr;
   }
@@ -124,6 +246,11 @@
   width: 100%;
   box-sizing: border-box;
   min-height: 44px;
+}
+
+.team-admin-page.employees-page .emp-field input,
+.team-admin-page.employees-page .emp-field select {
+  margin-bottom: 0 !important;
 }
 
 .team-admin-page .button-loading {
@@ -314,4 +441,61 @@
 .team-admin-page .fixed-commission-field small {
   color: var(--text-muted);
   font-size: 12px;
+}
+
+.team-admin-page .commission-statement-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.team-admin-page .commission-statement-summary {
+  margin-bottom: 12px;
+  color: var(--emp-warning);
+  font-weight: 600;
+}
+
+.team-admin-page .commission-statement-table-wrap {
+  overflow-x: auto;
+}
+
+.team-admin-page .commission-statement-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.team-admin-page .commission-statement-table th,
+.team-admin-page .commission-statement-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-light);
+  text-align: right;
+}
+
+.team-admin-page .commission-statement-table th {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.team-admin-page .commission-statement-empty td {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 24px;
+}
+
+.team-admin-page .btn-settle-commission {
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--emp-success);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.team-admin-page .btn-settle-commission:hover {
+  background: rgba(16, 185, 129, 0.25);
 }

@@ -46,7 +46,15 @@ import json
 from sqlalchemy import or_, and_
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 
-from utils.order_status import is_canceled, is_returned, is_completed
+from utils.order_status import (
+    is_canceled,
+    is_returned,
+    is_completed,
+    ensure_return_status_unified,
+    RETURN_STATUS,
+    invoice_returned_condition,
+    is_return_status_value,
+)
 from utils.order_lifecycle import OrderLifecycleError, process_order_cancel, process_order_return
 from utils.cash_calculations import _effective_paid_amount
 from utils.payment_ledger import append_payment_ledger_delta
@@ -59,6 +67,11 @@ _ORDERS_PUBLIC_PREFIXES = ("/orders/p/o/", "/orders/invoice-video/")
 
 @orders_bp.before_request
 def _orders_mutations_guard():
+    if "user_id" in session:
+        try:
+            ensure_return_status_unified()
+        except Exception:
+            pass
     path = request.path or ""
     if any(path.startswith(prefix) for prefix in _ORDERS_PUBLIC_PREFIXES):
         return None
@@ -740,9 +753,9 @@ def orders_returned():
         joinedload(Invoice.delivery_agent)
     ).join(Customer).filter(
         or_(
-            Invoice.status == "راجع",
+            invoice_returned_condition(Invoice),
             Invoice.status == "ملغي",
-            Invoice.payment_status == "مرتجع"
+            Invoice.payment_status == "ملغي",
         )
     )
 
@@ -924,18 +937,21 @@ def payment():
         if not order:
             return jsonify({"success": False, "error": "الطلب غير موجود"}), 404
 
+        from utils.employee_commission_service import attach_session_employee_to_invoice
+
+        attach_session_employee_to_invoice(order)
+
         before_pay = snapshot_attrs(order, *INVOICE_SNAPSHOT_FIELDS)
         payment_status = data.get("payment")
         paid_amount = data.get("paid_amount", 0)
         video_cleanup_targets = None
         prev_effective_paid = _effective_paid_amount(order)
 
-        if payment_status in ["غير مسدد", "جزئي", "مسدد", "مرتجع"]:
-            # إذا تم اختيار "مرتجع" من شاشة الدفع: نفّذ منطق ترجيع آمن (مرة واحدة)
-            if payment_status == "مرتجع":
+        if payment_status in ["غير مسدد", "جزئي", "مسدد", RETURN_STATUS, "مرتجع"]:
+            if is_return_status_value(payment_status):
                 scanned_barcode = (data.get("barcode") or "").strip()
                 if not scanned_barcode:
-                    return jsonify({"success": False, "error": "يجب مسح باركود الطلب لتأكيد المرتجع"}), 400
+                    return jsonify({"success": False, "error": "يجب مسح باركود الطلب لتأكيد الراجع"}), 400
 
                 try:
                     already_returned, _msg = process_order_return(order, scanned_barcode)
@@ -993,7 +1009,7 @@ def payment():
                 order.paid_amount = 0
             
             # إذا تم التسديد (كامل أو جزئي وصل للكامل)، تحديث الحالة إلى "تم التوصيل"
-            if payment_status == "مسدد" and order.status not in ["تم التوصيل", "مرتجع"]:
+            if payment_status == "مسدد" and order.status not in ["تم التوصيل", RETURN_STATUS]:
                 order.status = "تم التوصيل"
         else:
             return jsonify({"success": False, "error": "حالة الدفع غير صحيحة"}), 400
@@ -1191,8 +1207,7 @@ def details(order_id):
     returned_count = Invoice.query.filter(
         Invoice.customer_id.in_(customer_ids),
         or_(
-            Invoice.status == "راجع",
-            Invoice.payment_status == "مرتجع"
+            invoice_returned_condition(Invoice),
         )
     ).count()
 
@@ -1468,8 +1483,7 @@ def invoice_page(order_id):
     returned_count = Invoice.query.filter(
         Invoice.customer_id.in_(customer_ids),
         or_(
-            Invoice.status == "راجع",
-            Invoice.payment_status == "مرتجع"
+            invoice_returned_condition(Invoice),
         )
     ).count()
     
@@ -1548,7 +1562,7 @@ def print_batch():
         if customer_phones:
             returned_count = Invoice.query.join(Customer).filter(
                 or_(Customer.phone.in_(customer_phones), Customer.phone2.in_(customer_phones)),
-                or_(Invoice.status == "راجع", Invoice.payment_status == "مرتجع")
+                invoice_returned_condition(Invoice)
             ).count()
             cancelled_count = Invoice.query.join(Customer).filter(
                 or_(Customer.phone.in_(customer_phones), Customer.phone2.in_(customer_phones)),
@@ -1646,8 +1660,7 @@ def print_selected():
             returned_count = Invoice.query.filter(
                 Invoice.customer_id.in_(customer_ids),
                 or_(
-                    Invoice.status == "راجع",
-                    Invoice.payment_status == "مرتجع"
+                    invoice_returned_condition(Invoice),
                 )
             ).count()
             

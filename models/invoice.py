@@ -155,6 +155,14 @@ class Invoice(db.Model):
     )
 
     # =====================
+    # Employee commission settlement
+    # =====================
+    employee_commission_settled_at = db.Column(
+        db.DateTime,
+        nullable=True,
+    )
+
+    # =====================
     # Time
     # =====================
     created_at = db.Column(

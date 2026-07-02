@@ -4,9 +4,11 @@ import xml.etree.ElementTree as ET
 
 import pandas as pd
 from flask import Blueprint, render_template, request, jsonify, send_file
+from sqlalchemy import case, func, or_
 from extensions import db
 from models.customer import Customer
 from models.invoice import Invoice
+from utils.order_status import invoice_returned_condition
 from utils.product_schema_guard import ensure_customer_blacklist_columns
 from utils.permission_checks import guard_permission
 from utils.activity_logger import CUSTOMER_SNAPSHOT_FIELDS, log_activity, log_mutation, snapshot_attrs
@@ -476,6 +478,133 @@ def import_customers():
         "imported": imported,
         "skipped": skipped,
     })
+
+
+# ==================================================
+# المحافظات
+# ==================================================
+from utils.tenant_provinces import (
+    add_province,
+    get_tenant_provinces_config,
+    remove_province,
+    set_primary,
+)
+
+
+def _province_customer_counts():
+    return dict(
+        db.session.query(Customer.city, db.func.count(Customer.id))
+        .filter(Customer.city.isnot(None), Customer.city != "")
+        .group_by(Customer.city)
+        .all()
+    )
+
+
+def _province_order_stats():
+    """عدد الطلبات، الراجع، ومجموع المبالغ لكل محافظة (حسب city للزبون)."""
+    returned_cond = invoice_returned_condition(Invoice)
+    rows = (
+        db.session.query(
+            Customer.city,
+            func.count(Invoice.id),
+            func.sum(case((returned_cond, 1), else_=0)),
+            func.coalesce(func.sum(Invoice.total), 0),
+        )
+        .join(Customer, Invoice.customer_id == Customer.id)
+        .filter(Customer.city.isnot(None), Customer.city != "")
+        .group_by(Customer.city)
+        .all()
+    )
+    stats = {}
+    for city, orders_count, returns_count, total_amount in rows:
+        stats[city] = {
+            "orders_count": int(orders_count or 0),
+            "returns_count": int(returns_count or 0),
+            "total_amount": float(total_amount or 0),
+        }
+    return stats
+
+
+def _provinces_rows():
+    cfg = get_tenant_provinces_config()
+    counts = _province_customer_counts()
+    order_stats = _province_order_stats()
+    rows = []
+    for name in cfg["list"]:
+        o = order_stats.get(name, {})
+        rows.append({
+            "name": name,
+            "count": counts.get(name, 0),
+            "orders_count": o.get("orders_count", 0),
+            "returns_count": o.get("returns_count", 0),
+            "total_amount": o.get("total_amount", 0),
+            "is_primary": name == cfg["primary"],
+        })
+    return rows, cfg
+
+
+@customers_bp.route("/provinces")
+def customers_provinces_page():
+    rows, cfg = _provinces_rows()
+    return render_template(
+        "provinces.html",
+        provinces=rows,
+        primary_province=cfg["primary"],
+        provinces_group_label=cfg.get("group_label") or "محافظات",
+    )
+
+
+@customers_bp.route("/provinces/api")
+def customers_provinces_api():
+    rows, cfg = _provinces_rows()
+    return jsonify({
+        "success": True,
+        "primary": cfg["primary"],
+        "group_label": cfg.get("group_label") or "محافظات",
+        "provinces": rows,
+    })
+
+
+@customers_bp.route("/provinces/add", methods=["POST"])
+def customers_provinces_add():
+    data = request.get_json() or {}
+    name = (data.get("name") or "").strip()
+    try:
+        cfg = add_province(name)
+        return jsonify({"success": True, "message": "تمت إضافة المحافظة", "config": cfg})
+    except ValueError as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@customers_bp.route("/provinces/remove", methods=["POST"])
+def customers_provinces_remove():
+    data = request.get_json() or {}
+    name = (data.get("name") or "").strip()
+    try:
+        cfg = remove_province(name)
+        return jsonify({"success": True, "message": "تم حذف المحافظة", "config": cfg})
+    except ValueError as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@customers_bp.route("/provinces/set-primary", methods=["POST"])
+def customers_provinces_set_primary():
+    data = request.get_json() or {}
+    name = (data.get("name") or "").strip()
+    try:
+        cfg = set_primary(name)
+        return jsonify({"success": True, "message": "تم تعيين المحافظة الأساسية", "config": cfg})
+    except ValueError as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 # ==================================================

@@ -1,33 +1,45 @@
 """
-توحيد حالات الطلب/الدفع (Status Standardization) بدون تغيير بنية قاعدة البيانات.
-
-الهدف:
-- توحيد منطق التعامل مع الحالات المتكررة (راجع/راجعة/راجعه/مرتجع/ملغي...).
-- توفير دوال مساعدة آمنة للاستخدام داخل routes والـ utils.
+توحيد حالات الطلب/الدفع — حالة الراجع الموحّدة: «راجع» فقط.
 """
 
 from __future__ import annotations
 
+import logging
 from typing import Optional, Iterable
 
+_log = logging.getLogger(__name__)
 
-# حالات الإلغاء والمرتجع (تم توحيدها حسب طلب المستخدم)
+# الحالة الموحّدة للراجع (كتابة وعرض)
+RETURN_STATUS = "راجع"
+
+# قيم قديمة تُعامل كراجع عند القراءة ثم تُحوَّل تلقائياً
+RETURN_STATUS_LEGACY: set[str] = {"مرتجع", "راجعة", "راجعه"}
+
+# كل القيم التي تُعد «راجع» عند البحث في قاعدة البيانات
+RETURN_STATUSES: set[str] = {RETURN_STATUS} | RETURN_STATUS_LEGACY
+
 CANCELED_STATUSES: set[str] = {"ملغي"}
-RETURN_STATUSES: set[str] = {"مرتجع", "راجع", "راجعة"}
-
-# حالات الطلب “غير مكتمل”
 PENDING_STATUSES: set[str] = {"تم الطلب", "جاري الشحن"}
-
-# حالات الإكمال (حسب النظام الحالي)
 COMPLETED_STATUSES: set[str] = {"تم التوصيل", "مسدد"}
+
+_RETURN_STATUS_UNIFIED_BINDS: set[str] = set()
 
 
 def normalize_status(value: Optional[str]) -> str:
-    """Normalize Arabic status strings: trim and collapse spaces."""
     if not value:
         return ""
-    # توحيد الفراغات
     return " ".join(str(value).strip().split())
+
+
+def is_return_status_value(value: Optional[str]) -> bool:
+    return normalize_status(value) in RETURN_STATUSES
+
+
+def display_return_status(value: Optional[str]) -> str:
+    """عرض موحّد: أي قيمة راجع قديمة تُعرض كـ «راجع»."""
+    if is_return_status_value(value):
+        return RETURN_STATUS
+    return normalize_status(value)
 
 
 def is_canceled(status: Optional[str] = None, payment_status: Optional[str] = None) -> bool:
@@ -37,22 +49,18 @@ def is_canceled(status: Optional[str] = None, payment_status: Optional[str] = No
 
 
 def is_returned(status: Optional[str] = None, payment_status: Optional[str] = None) -> bool:
-    s = normalize_status(status)
-    p = normalize_status(payment_status)
-    return (p == "مرتجع") or (s in RETURN_STATUSES)
+    return is_return_status_value(status) or is_return_status_value(payment_status)
 
 
 def is_completed(status: Optional[str] = None, payment_status: Optional[str] = None) -> bool:
     s = normalize_status(status)
     p = normalize_status(payment_status)
-    # في النظام الحالي: مسدد = مكتمل، وأحياناً تم التوصيل + مسدد
     if p == "مسدد":
         return True
     return s in COMPLETED_STATUSES
 
 
 def allowed_for_financials(status: Optional[str] = None, payment_status: Optional[str] = None) -> bool:
-    """هل يدخل في حسابات الإيراد/الربح؟ نستبعد الملغي والمرتجع."""
     if is_canceled(status, payment_status):
         return False
     if is_returned(status, payment_status):
@@ -64,3 +72,49 @@ def any_in(value: Optional[str], candidates: Iterable[str]) -> bool:
     v = normalize_status(value)
     return v in set(candidates)
 
+
+def invoice_returned_condition(invoice_model):
+    """شرط SQLAlchemy: الطلب راجع (يشمل القيم القديمة)."""
+    from sqlalchemy import or_
+
+    legacy = list(RETURN_STATUSES)
+    return or_(
+        invoice_model.status.in_(legacy),
+        invoice_model.payment_status.in_(legacy),
+    )
+
+
+def ensure_return_status_unified() -> None:
+    """تحويل القيم القديمة (مرتجع/راجعة) إلى «راجع» مرة واحدة لكل قاعدة."""
+    bind_key = "default"
+    try:
+        from flask import g
+
+        bind_key = str(getattr(g, "tenant", None) or "core")
+    except Exception:
+        pass
+
+    if bind_key in _RETURN_STATUS_UNIFIED_BINDS:
+        return
+
+    try:
+        from extensions import db
+        from models.invoice import Invoice
+
+        legacy = list(RETURN_STATUS_LEGACY)
+        if legacy:
+            db.session.query(Invoice).filter(Invoice.status.in_(legacy)).update(
+                {"status": RETURN_STATUS}, synchronize_session=False
+            )
+            db.session.query(Invoice).filter(Invoice.payment_status.in_(legacy)).update(
+                {"payment_status": RETURN_STATUS}, synchronize_session=False
+            )
+            db.session.commit()
+        _RETURN_STATUS_UNIFIED_BINDS.add(bind_key)
+    except Exception:
+        _log.exception("ensure_return_status_unified failed")
+        try:
+            from extensions import db
+            db.session.rollback()
+        except Exception:
+            pass

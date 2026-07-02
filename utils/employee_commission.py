@@ -26,3 +26,13 @@ def set_fixed_employee_commission_amount(amount: int) -> int:
     flags["employee_commission_amount"] = value
     settings.set_ui_flags(flags)
     return value
+
+
+def get_employee_commission_amount(employee) -> int:
+    """Per-order commission stored on the employee record."""
+    if employee is None:
+        return get_fixed_employee_commission_amount()
+    try:
+        return max(0, int(getattr(employee, "commission_percent", 0) or 0))
+    except (TypeError, ValueError):
+        return 0

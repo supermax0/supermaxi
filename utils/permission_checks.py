@@ -5,6 +5,7 @@ from __future__ import annotations
 from flask import jsonify, redirect, request, session
 
 from models.employee import Employee
+from utils.order_status import RETURN_STATUS
 
 LEGACY_TO_RBAC: dict[str, str] = {
     "can_see_orders": "view_orders",
@@ -120,7 +121,7 @@ def allowed_order_statuses_for(employee: Employee | None) -> list[str]:
     if employee_can(employee, "view_orders_delivered"):
         allowed.extend(["واصل", "واصلة", "تم التوصيل"])
     if employee_can(employee, "view_orders_returned"):
-        allowed.extend(["مرتجع", "راجع", "راجعة", "ملغي"])
+        allowed.extend([RETURN_STATUS, "ملغي"])
     if employee_can(employee, "view_orders_shipped"):
         allowed.extend(["مشحون", "مشحونة", "جاري الشحن"])
     return allowed

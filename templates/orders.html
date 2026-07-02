@@ -75,7 +75,8 @@
     <div class="filters-grid">
       <select id="filterCity">
         <option value="">{{ _('orders_filter_all_cities') }}</option>
-        {% for c in cities %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+        <option value="{{ province_filter_primary }}">{{ primary_province }}</option>
+        <option value="{{ province_filter_group }}">{{ provinces_group_label }}</option>
       </select>
 
       <select id="filterStatus" title="{{ _('orders_filter_all_statuses') }}" data-help="orders.status">
@@ -279,7 +280,7 @@
     "shipping_company": {{ (o.shipping_company.name if o.shipping_company else '—')|tojson }},
     "delivery_agent": {% if o.delivery_agent_id and o.delivery_agent %}{{ o.delivery_agent.name|tojson }}{% else %}"—"{% endif %},
     "note": {{ (o.note or '')|tojson }},
-    "can_pay": {% if (o.total or 0) > (o.paid_amount or 0) and o.status not in ['تم التوصيل', 'مرتجع', 'راجع', 'ملغي'] %}true{% else %}false{% endif %},
+    "can_pay": {% if (o.total or 0) > (o.paid_amount or 0) and o.status not in ['تم التوصيل', 'راجع', 'مرتجع', 'راجعة', 'ملغي'] %}true{% else %}false{% endif %},
     "can_cancel": {% if o.status == 'تم الطلب' %}true{% else %}false{% endif %}
   }{% if not loop.last %},{% endif %}
   {% endfor %}
@@ -2116,6 +2117,17 @@
   let gridApi;
   const ORDERS_USER_CAN_MANAGE = {{ 'true' if can_manage_orders else 'false' }};
   let allOrders = [];
+  const RETURN_STATUS = {{ _('orders_status_returned')|tojson }};
+  const RETURN_STATUS_VALUES = new Set(['راجع', 'مرتجع', 'راجعة', 'راجعه']);
+
+  function isReturnedStatus(value) {
+    return RETURN_STATUS_VALUES.has((value || '').trim());
+  }
+
+  function displayOrderStatus(status) {
+    if (status === 'ملغي' || isReturnedStatus(status)) return RETURN_STATUS;
+    return status;
+  }
 
   // Actions Renderer for AG Grid
   class ActionsRenderer {
@@ -2148,12 +2160,12 @@
     update(params) {
       const status = params.value;
       if (!status) return;
-      const displayStatus = (status === "ملغي" || status === "راجع" || status === "راجعة" || status === "مرتجع") ? "مرتجع" : status;
+      const displayStatus = displayOrderStatus(status);
 
       let color = "#f59e0b", bg = "rgba(245,158,11,0.2)";
       if (status === "تم التوصيل") { color = "#10b981"; bg = "rgba(16,185,129,0.2)"; }
       else if (status === "جاري الشحن") { color = "#3b82f6"; bg = "rgba(59,130,246,0.2)"; }
-      else if (displayStatus === "مرتجع") { color = "#ef4444"; bg = "rgba(239,68,68,0.2)"; }
+      else if (displayStatus === RETURN_STATUS) { color = "#ef4444"; bg = "rgba(239,68,68,0.2)"; }
       this.eGui.className = 'status-badge';
       this.eGui.style.cssText = `background:${bg};color:${color};padding:6px 12px;border-radius:20px;font-size:13px;font-weight:600;display:inline-block;`;
       this.eGui.textContent = displayStatus;
@@ -2377,10 +2389,28 @@
 
 
   // ============= Filter Functions =============
+  const ORDERS_PRIMARY_PROVINCE = {{ primary_province|tojson }};
+  const ORDERS_GROUP_LABEL = {{ provinces_group_label|tojson }};
+  const ORDERS_GROUP_PROVINCES = {{ tenant_group_provinces|tojson }};
+  const ORDERS_FILTER_PRIMARY = {{ province_filter_primary|tojson }};
+  const ORDERS_FILTER_GROUP = {{ province_filter_group|tojson }};
+
+  function passesOrdersCityFilter(city) {
+    const mode = document.getElementById("filterCity")?.value || "";
+    if (!mode) return true;
+    const c = (city || "").trim();
+    if (mode === ORDERS_FILTER_PRIMARY) return c === ORDERS_PRIMARY_PROVINCE;
+    if (mode === ORDERS_FILTER_GROUP) {
+      return c === ORDERS_GROUP_LABEL || ORDERS_GROUP_PROVINCES.includes(c);
+    }
+    return true;
+  }
+
   function applyFilters() {
     if (!gridApi) return;
     const searchQuery = document.getElementById("searchInput")?.value || "";
     gridApi.setGridOption('quickFilterText', searchQuery);
+    gridApi.onFilterChanged();
     updateStats();
   }
 
@@ -2402,7 +2432,7 @@
       if (order.status === "تم الطلب" || order.status === "جاري الشحن") {
         pendingCount++;
       }
-      if (order.status === "مرتجع" || order.status === "ملغي" || order.status === "راجع" || order.status === "راجعة") {
+      if (isReturnedStatus(order.status) || order.status === "ملغي") {
         returnsCount++;
       }
     });
@@ -2432,6 +2462,7 @@
     if (gridApi) {
       gridApi.setFilterModel(null);
       gridApi.setGridOption('quickFilterText', '');
+      gridApi.onFilterChanged();
     }
 
     showToast({{ _('orders_toast_filters_cleared')|tojson }}, "success");
@@ -2838,7 +2869,7 @@
 
   function orderVideoSectionHtml(order) {
     const video = order.video || {};
-    const canRecordVideo = !['تم التوصيل', 'مرتجع', 'ملغي'].includes(order.status || '') && !['مسدد', 'مرتجع'].includes(order.payment || '');
+    const canRecordVideo = !['تم التوصيل', RETURN_STATUS, 'ملغي'].includes(order.status || '') && !['مسدد', RETURN_STATUS].includes(order.payment || '') && !isReturnedStatus(order.payment || '');
     const videoActionButton = canRecordVideo
       ? '<button class="btn btn-primary" onclick="openOrderVideoRecorder(' + order.id + ')" style="min-width:160px;">' +
           '<span>' + (video.has_video ? '🔁' : '🎥') + '</span>' +
@@ -3245,7 +3276,7 @@
     const s = String(status || '');
     if (s === 'تم التوصيل') return 'success';
     if (s === 'جاري الشحن' || s === 'قيد الشحن' || s === 'تم الطلب') return 'info';
-    if (s === 'ملغي' || s === 'راجع' || s === 'راجعة' || s === 'مرتجع') return 'danger';
+    if (s === 'ملغي' || isReturnedStatus(s)) return 'danger';
     return 'warning';
   }
 
@@ -3253,7 +3284,7 @@
     const p = String(payment || '');
     if (p === 'مسدد') return 'success';
     if (p === 'جزئي') return 'warning';
-    if (p === 'مرتجع') return 'danger';
+    if (isReturnedStatus(p)) return 'danger';
     return 'danger';
   }
 
@@ -3261,7 +3292,7 @@
     const s = String(status || '');
     if (s === 'تم التوصيل' || s === 'مُسلَّم') return 'success';
     if (s === 'قيد الشحن' || s === 'جاري الشحن') return 'info';
-    if (s === 'مرتجع' || s === 'ملغي') return 'danger';
+    if (isReturnedStatus(s) || s === 'ملغي') return 'danger';
     return 'warning';
   }
 
@@ -3403,10 +3434,10 @@
       '<div class="od-modal-footer"><div class="od-actions">' +
       '<button type="button" class="btn btn-primary od-action-btn" onclick="printInvoice(' + order.id + ')"><span>🖨️</span><span>{{ _("orders_details_btn_print_invoice") }}</span></button>' +
       '<button type="button" class="btn btn-success od-action-btn" onclick="sendWhatsApp(' + order.id + ', \'' + (order.phone || '') + '\')"><span>📱</span><span>{{ _("orders_details_btn_whatsapp") }}</span></button>' +
-      (order.status !== 'تم التوصيل' && order.status !== 'مرتجع' && order.status !== 'ملغي'
+      (order.status !== 'تم التوصيل' && !isReturnedStatus(order.status) && order.status !== 'ملغي'
         ? '<button type="button" class="btn btn-warning od-action-btn" onclick="editOrder(' + order.id + ')"><span>✏️</span><span>{{ _("orders_details_btn_edit_order") }}</span></button>'
         : '') +
-      (remaining > 0 && order.status !== 'تم التوصيل' && order.status !== 'مرتجع' && order.status !== 'ملغي'
+      (remaining > 0 && order.status !== 'تم التوصيل' && !isReturnedStatus(order.status) && order.status !== 'ملغي'
         ? '<button type="button" class="btn btn-warning od-action-btn" onclick="pay(' + order.id + '); this.closest(\'.modal\').remove();"><span>💰</span><span>{{ _("orders_details_btn_full_pay") }}</span></button>' +
           '<button type="button" class="btn btn-success od-action-btn" onclick="payPartial(' + order.id + ', ' + remaining + '); this.closest(\'.modal\').remove();"><span>💵</span><span>{{ _("orders_details_btn_partial_pay") }}</span></button>'
         : '') +
@@ -3676,7 +3707,7 @@
     const phoneRaw = row && row.phone && row.phone !== '—' ? String(row.phone) : "";
     const phoneEnc = encodeURIComponent(phoneRaw);
 
-    const isReturned = row && (row.status === "مرتجع" || row.status === "ملغي" || row.status === "راجع" || row.status === "راجعة");
+    const isReturned = row && (isReturnedStatus(row.status) || row.status === "ملغي");
     const isPaid = row && row.payment_status === "مسدد";
     const collapsed = !!(row && row.actions_collapsed);
     const canPay = !collapsed && !!(ORDERS_USER_CAN_MANAGE && row && row.can_pay);
@@ -3696,7 +3727,7 @@
       html += actionBtn('pay-btn', 'pay', 'تسديد', 'تسديد الطلب', '', false);
     }
     if (canReturn) {
-      html += actionBtn('return-btn', 'return', 'مرتجع', 'إرجاع الطلب', '', false);
+      html += actionBtn('return-btn', 'return', RETURN_STATUS, 'إرجاع الطلب', '', false);
     }
     if (canCancel) {
       html += actionBtn('cancel-btn', 'cancel', 'إلغاء', 'إلغاء الطلب', '', false);
@@ -3745,7 +3776,7 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         id: orderId,
-        payment: 'مرتجع',
+        payment: RETURN_STATUS,
         barcode: barcode
       })
     })
@@ -3759,8 +3790,8 @@
             gridApi.forEachNode(function (node) {
               if (node.data.id === orderId) {
                 const rd = node.data;
-                rd.status = "مرتجع";
-                rd.payment_status = "مرتجع";
+                rd.status = RETURN_STATUS;
+                rd.payment_status = RETURN_STATUS;
                 rd.can_pay = false;
                 rd.can_cancel = false;
                 rd.actions_collapsed = true;
@@ -3979,6 +4010,12 @@
       },
       onFilterChanged: () => {
         updateStats();
+      },
+      isExternalFilterPresent: () => {
+        return !!(document.getElementById("filterCity")?.value);
+      },
+      doesExternalFilterPass: (node) => {
+        return passesOrdersCityFilter(node.data?.city);
       },
       onRowDoubleClicked: (event) => {
         showDetails(event.data.id);

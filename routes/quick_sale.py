@@ -158,7 +158,7 @@ def execute():
         branch_id=current_branch_id() or (get_default_branch().id if get_default_branch() else None),
         total=0,
         paid_amount=0,
-        status="تم الطلب",
+        status="تم التوصيل",
         payment_status="مسدد",
         note="بيع سريع - تم التسديد والطباعة مباشرة",
         created_at=datetime.utcnow(),

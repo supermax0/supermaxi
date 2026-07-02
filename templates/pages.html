@@ -3,7 +3,7 @@
 {% block page_title %}📄 {{ _('pages_page_title') }}{% endblock %}
 {% block content %}
 
-<link rel="stylesheet" href="{{ url_for('static', filename='css/pages-admin.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages-admin.css') }}?v=20260702f">
 
 <div class="team-admin-page pages-page">
   <div class="toast-container" id="toastContainer"></div>
@@ -65,24 +65,6 @@
   </div>
   {% endif %}
 
-  {% if can_manage_pages %}
-  <div class="collapsible-group collapsed" id="groupImportPages">
-    <div class="group-header" onclick="toggleSection('groupImportPages')">
-      <h3><span class="section-icon success">🖼️</span>{{ _('pages_import_title') if _('pages_import_title') != 'pages_import_title' else 'استيراد من صورة' }}</h3>
-      <button type="button" class="toggle-btn" tabindex="-1"><i class="fas fa-chevron-up"></i></button>
-    </div>
-    <div class="group-content">
-      <p class="pages-import-hint">{{ _('pages_import_hint') if _('pages_import_hint') != 'pages_import_hint' else 'ارفع صورة واضحة لجدول يحتوي أسماء البيجات. يفضل أن يكون عمود الاسم واضحاً.' }}</p>
-      <div class="pages-import-row">
-        <input type="file" id="pagesImportImage" accept="image/*" class="pages-import-file">
-        <button type="button" class="btn-submit-primary pages-import-btn" id="pagesImportExtractBtn">
-          <i class="fas fa-magic"></i> {{ _('pages_import_extract_btn') if _('pages_import_extract_btn') != 'pages_import_extract_btn' else 'استخراج الأسماء' }}
-        </button>
-      </div>
-    </div>
-  </div>
-  {% endif %}
-
   <div class="admin-table-wrap">
     <table class="admin-table">
       <thead>
@@ -114,8 +96,7 @@
           <td>
             {% if can_manage_pages %}
             <input type="checkbox" class="vis-checkbox" data-page-id="{{ data.page.id }}" data-type="cashier"
-              {% if data.page.visible_to_cashier %}checked{% endif %}
-              onchange="updateVisibility({{ data.page.id }}, 'cashier', this.checked)">
+              {% if data.page.visible_to_cashier %}checked{% endif %}>
             {% else %}
             {{ '✓' if data.page.visible_to_cashier else '—' }}
             {% endif %}
@@ -123,8 +104,7 @@
           <td>
             {% if can_manage_pages %}
             <input type="checkbox" class="vis-checkbox" data-page-id="{{ data.page.id }}" data-type="admin"
-              {% if data.page.visible_to_admin %}checked{% endif %}
-              onchange="updateVisibility({{ data.page.id }}, 'admin', this.checked)">
+              {% if data.page.visible_to_admin %}checked{% endif %}>
             {% else %}
             {{ '✓' if data.page.visible_to_admin else '—' }}
             {% endif %}
@@ -132,12 +112,12 @@
           {% if can_manage_pages %}
           <td>
             <div class="admin-actions">
-              <button type="button" class="action-btn success" title="{{ _('pages_assign_employees') if _('pages_assign_employees') != 'pages_assign_employees' else 'تعيين موظفين' }}"
-                onclick="openAssignEmployees({{ data.page.id }}, {{ data.page.name|tojson }})">
+              <button type="button" class="action-btn success js-assign-employees-btn" title="{{ _('pages_assign_employees') if _('pages_assign_employees') != 'pages_assign_employees' else 'تعيين موظفين' }}"
+                data-page-id="{{ data.page.id }}" data-page-name="{{ data.page.name|e }}">
                 <i class="fas fa-users"></i>
               </button>
-              <button type="button" class="action-btn danger" title="{{ _('pages_delete') if _('pages_delete') != 'pages_delete' else 'حذف' }}"
-                onclick="deletePage({{ data.page.id }})">
+              <button type="button" class="action-btn danger js-delete-page-btn" title="{{ _('pages_delete') if _('pages_delete') != 'pages_delete' else 'حذف' }}"
+                data-page-id="{{ data.page.id }}">
                 <i class="fas fa-trash"></i>
               </button>
             </div>
@@ -158,32 +138,23 @@
   </div>
 
   <div id="assignModal" class="team-modal-overlay">
-    <div class="team-modal-box team-modal-box--wide">
-      <button type="button" class="modal-close" onclick="closeAssignModal()">&times;</button>
-      <h3 id="assignModalTitle">{{ _('pages_assign_title') if _('pages_assign_title') != 'pages_assign_title' else 'تعيين موظفين' }}</h3>
+    <div class="team-modal-box team-modal-box--wide assign-employees-modal">
+      <div class="assign-modal-header">
+        <button type="button" class="modal-close" id="assignModalCloseBtn" aria-label="{{ _('cancel') }}">&times;</button>
+        <div class="assign-modal-header__text">
+          <h3 id="assignModalTitle">{{ _('pages_assign_title') if _('pages_assign_title') != 'pages_assign_title' else 'تعيين موظفين' }}</h3>
+          <p id="assignModalSubtitle" class="assign-modal-subtitle"></p>
+        </div>
+        <div class="assign-modal-icon" aria-hidden="true"><i class="fas fa-users"></i></div>
+      </div>
+      <div class="assign-modal-toolbar">
+        <input type="search" id="assignEmployeeSearch" class="assign-search-input" placeholder="بحث عن موظف..." autocomplete="off">
+        <span id="assignSelectedCount" class="assign-selected-count">0 محدد</span>
+      </div>
       <div id="assignEmployeeList" class="assign-list"></div>
-      <div class="team-modal-actions">
-        <button type="button" class="btn btn-light" onclick="closeAssignModal()">{{ _('cancel') }}</button>
-        <button type="button" class="btn btn-primary" onclick="saveAssignEmployees()">{{ _('employees_save_button') }}</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="pagesImportModal" class="team-modal-overlay">
-    <div class="team-modal-box team-modal-box--wide pages-import-modal">
-      <button type="button" class="modal-close" id="pagesImportCloseBtn">&times;</button>
-      <h3 id="pagesImportModalTitle">{{ _('pages_import_preview_title') if _('pages_import_preview_title') != 'pages_import_preview_title' else 'معاينة أسماء البيجات' }}</h3>
-      <p id="pagesImportMeta" class="pages-import-meta"></p>
-      <div id="pagesImportList" class="pages-import-list"></div>
-      <div id="pagesImportManualWrap" class="pages-import-manual" style="display:none;">
-        <label for="pagesImportManualText">أدخل أسماء البيجات (سطر لكل اسم):</label>
-        <textarea id="pagesImportManualText" class="pages-import-manual-text" rows="6" placeholder="بيج 1&#10;بيج 2&#10;بيج 3"></textarea>
-        <button type="button" class="btn btn-light pages-import-manual-btn" id="pagesImportManualApplyBtn">تحويل النص إلى قائمة</button>
-      </div>
-      <div class="team-modal-actions pages-import-actions">
-        <button type="button" class="btn btn-light" id="pagesImportRetryBtn">{{ _('pages_import_retry_ai') if _('pages_import_retry_ai') != 'pages_import_retry_ai' else 'إعادة بالذكاء الاصطناعي' }}</button>
-        <button type="button" class="btn btn-light" id="pagesImportCancelBtn">{{ _('cancel') }}</button>
-        <button type="button" class="btn btn-primary" id="pagesImportConfirmBtn">{{ _('pages_import_confirm_btn') if _('pages_import_confirm_btn') != 'pages_import_confirm_btn' else 'إضافة المحدد' }}</button>
+      <div class="team-modal-actions assign-modal-actions">
+        <button type="button" class="btn btn-primary" id="assignModalSaveBtn">{{ _('employees_save_button') }}</button>
+        <button type="button" class="btn btn-light" id="assignModalCancelBtn">{{ _('cancel') }}</button>
       </div>
     </div>
   </div>
@@ -210,18 +181,8 @@
     pages_err_connection: {{ _('pages_err_connection')|tojson }},
     pages_confirm_delete: {{ (_('pages_confirm_delete') if _('pages_confirm_delete') != 'pages_confirm_delete' else 'حذف هذا البيج؟')|tojson }},
     pages_toast_deleted: {{ (_('pages_toast_deleted') if _('pages_toast_deleted') != 'pages_toast_deleted' else 'تم الحذف')|tojson }},
-    pages_assign_title: {{ (_('pages_assign_title') if _('pages_assign_title') != 'pages_assign_title' else 'تعيين موظفين للبيج')|tojson }},
-    pages_import_preview_title: {{ (_('pages_import_preview_title') if _('pages_import_preview_title') != 'pages_import_preview_title' else 'معاينة أسماء البيجات')|tojson }},
-    pages_import_confirm_btn: {{ (_('pages_import_confirm_btn') if _('pages_import_confirm_btn') != 'pages_import_confirm_btn' else 'إضافة المحدد')|tojson }},
-    pages_import_retry_ai: {{ (_('pages_import_retry_ai') if _('pages_import_retry_ai') != 'pages_import_retry_ai' else 'إعادة بالذكاء الاصطناعي')|tojson }},
-    pages_import_existing_badge: {{ (_('pages_import_existing_badge') if _('pages_import_existing_badge') != 'pages_import_existing_badge' else 'موجود')|tojson }},
-    pages_import_result_added: {{ (_('pages_import_result_added') if _('pages_import_result_added') != 'pages_import_result_added' else 'تمت إضافة {count} بيج')|tojson }},
-    pages_import_result_skipped: {{ (_('pages_import_result_skipped') if _('pages_import_result_skipped') != 'pages_import_result_skipped' else 'تم تخطي {count} مكرر')|tojson }},
-    pages_import_err_no_names: {{ (_('pages_import_err_no_names') if _('pages_import_err_no_names') != 'pages_import_err_no_names' else 'لم يُعثر على أسماء بيجات')|tojson }},
-    pages_import_err_image: {{ (_('pages_import_err_image') if _('pages_import_err_image') != 'pages_import_err_image' else 'يرجى اختيار صورة')|tojson }},
-    pages_import_source_tesseract: {{ (_('pages_import_source_tesseract') if _('pages_import_source_tesseract') != 'pages_import_source_tesseract' else 'مصدر الاستخراج: OCR')|tojson }},
-    pages_import_source_openai: {{ (_('pages_import_source_openai') if _('pages_import_source_openai') != 'pages_import_source_openai' else 'مصدر الاستخراج: ذكاء اصطناعي')|tojson }}
+    pages_assign_title: {{ (_('pages_assign_title') if _('pages_assign_title') != 'pages_assign_title' else 'تعيين موظفين للبيج')|tojson }}
   };
 </script>
-<script src="{{ url_for('static', filename='js/pages-admin.js') }}?v=20260702c"></script>
+<script src="{{ url_for('static', filename='js/pages-admin.js') }}?v=20260702f"></script>
 {% endblock %}

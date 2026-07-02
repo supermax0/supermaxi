@@ -2189,16 +2189,80 @@ or request.path.startswith('/superadmin') %}
         {% endif %}
         {% set show_customers = is_admin or not current_employee or can_manage_customers or (current_employee and
         current_employee.role == "cashier") %}
-        {% if show_customers and business_allows('customers') %}
-        <a href="/customers"><i class="fa fa-users"></i> {{ _('customers') }}</a>
-        <a href="/customers/credit" class="{% if request.path.startswith('/customers/credit') %}active{% endif %}"><i class="fa fa-hand-holding-usd"></i> {{ _('customer_credit_nav') }}</a>
-        {% if is_beauty_center %}
-        <a href="/beauty/clients" class="{% if request.path.startswith('/beauty/clients') %}active{% endif %}" style="padding-right: 30px; font-size: 0.9em;"><i class="fa fa-address-book"></i> سجل العملاء</a>
-        {% endif %}
-        {% if business_allows('customer_blacklist') %}
-        <a href="/customers/blacklist" title="{{ _('customers_nav_blacklist') }}"><i class="fa fa-ban"></i> {{
-          _('customers_nav_blacklist') }}</a>
-        {% endif %}
+        {% set show_contacts_customers = show_customers and business_allows('customers') %}
+        {% set show_contacts_agents = (is_admin or (current_employee and can_see_agents)) and business_allows('agents') %}
+        {% set show_contacts_employees = (is_admin or (current_employee and can_manage_employees)) and business_allows('employees') %}
+        {% set show_contacts_pages = (is_admin or (current_employee and can_see_pages)) and business_allows('pages') %}
+        {% set show_contacts = show_contacts_customers or show_contacts_agents or show_contacts_employees or show_contacts_pages %}
+        {% if show_contacts %}
+        <div class="menu-group {% if request.path.startswith('/customers') or request.path.startswith('/agents') or request.path.startswith('/employees') or request.path.startswith('/pages') or request.path.startswith('/beauty/clients') %}open{% endif %}">
+          <button type="button"
+            class="menu-group-header {% if request.path.startswith('/customers') or request.path.startswith('/agents') or request.path.startswith('/employees') or request.path.startswith('/pages') or request.path.startswith('/beauty/clients') %}active{% endif %}"
+            onclick="this.parentElement.classList.toggle('open')">
+            <i class="fa fa-address-book"></i>
+            {{ _('nav_contacts') }}
+            <span class="menu-group-header-icon">
+              <i class="fa fa-chevron-down"></i>
+            </span>
+          </button>
+          <div class="menu-group-links">
+            {% if show_contacts_customers %}
+            <a href="/customers"
+              class="{% if request.path == '/customers' or request.path == '/customers/' %}active{% endif %}">
+              <i class="fa fa-users"></i> {{ _('customers') }}
+            </a>
+            {% if business_allows('customer_blacklist') %}
+            <a href="/customers/blacklist"
+              class="{% if request.path.startswith('/customers/blacklist') %}active{% endif %}"
+              title="{{ _('customers_nav_blacklist') }}">
+              <i class="fa fa-ban"></i> {{ _('customers_nav_blacklist') }}
+            </a>
+            {% endif %}
+            <a href="/customers/provinces"
+              class="{% if request.path.startswith('/customers/provinces') %}active{% endif %}">
+              <i class="fa fa-map-marker-alt"></i> {{ _('nav_provinces') }}
+            </a>
+            <a href="/customers/credit"
+              class="{% if request.path.startswith('/customers/credit') %}active{% endif %}">
+              <i class="fa fa-hand-holding-usd"></i> {{ _('customer_credit_nav') }}
+            </a>
+            {% if is_beauty_center %}
+            <a href="/beauty/clients"
+              class="{% if request.path.startswith('/beauty/clients') %}active{% endif %}">
+              <i class="fa fa-address-book"></i> سجل العملاء
+            </a>
+            {% endif %}
+            {% endif %}
+            {% if show_contacts_agents %}
+            {% if plan_has("agents") %}
+            <a href="/agents"
+              class="{% if request.path.startswith('/agents') and not request.path.startswith('/agents/pending-execution') %}active{% endif %}">
+              <i class="fa fa-motorcycle"></i> {{ _('delivery_agents') }}
+            </a>
+            <a href="/agents/pending-execution"
+              class="{% if request.path.startswith('/agents/pending-execution') %}active{% endif %}">
+              <i class="fa fa-clipboard-check"></i> تنفيذ كشوف المندوب
+            </a>
+            {% else %}
+            <a href="/upgrade" style="opacity:.55" title="{{ _('upgrade_plan') }}">
+              <i class="fa fa-motorcycle"></i> {{ _('delivery_agents') }}
+              <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i>
+            </a>
+            {% endif %}
+            {% endif %}
+            {% if show_contacts_employees %}
+            <a href="/employees"
+              class="{% if request.path.startswith('/employees') %}active{% endif %}">
+              <i class="fa fa-user-tie"></i> {{ _('employees') }}
+            </a>
+            {% endif %}
+            {% if show_contacts_pages %}
+            <a href="/pages" class="{% if request.path.startswith('/pages') %}active{% endif %}">
+              <i class="fa fa-file-alt"></i> {{ _('pages') }}
+            </a>
+            {% endif %}
+          </div>
+        </div>
         {% endif %}
         {% set show_orders = is_admin or not current_employee or can_see_orders or (current_employee and
         current_employee.role == "cashier") %}
@@ -2239,15 +2303,6 @@ or request.path.startswith('/superadmin') %}
           _('shipping') }} <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
         {% endif %}
         {% endif %}
-        {% if (is_admin or (current_employee and can_see_agents)) and business_allows('agents') %}
-        {% if plan_has("agents") %}
-        <a href="/agents"><i class="fa fa-user-tie"></i> {{ _('delivery_agents') }}</a>
-        <a href="/agents/pending-execution"><i class="fa fa-clipboard-check"></i> تنفيذ كشوف المندوب</a>
-        {% else %}
-        <a href="/upgrade" style="opacity:.55" title="{{ _('upgrade_plan') }}"><i class="fa fa-user-tie"></i> {{
-          _('delivery_agents') }} <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
-        {% endif %}
-        {% endif %}
         {% if (is_admin or (current_employee and can_see_expenses)) and business_allows('expenses') %}
         {% if plan_has("expenses") %}
         <a href="/expenses"><i class="fa fa-money-bill-wave"></i> {{ _('expenses') }}</a>
@@ -2271,10 +2326,6 @@ or request.path.startswith('/superadmin') %}
         {% endif %}
         {% if is_admin or (current_employee and (can_see_fixed_assets or can_see_accounts)) %}
         <a href="/assets/dashboard" class="{% if request.path.startswith('/assets') %}active{% endif %}"><i class="fa fa-building"></i> الأصول</a>
-        {% endif %}
-        {% if (is_admin or (current_employee and can_manage_employees)) and business_allows('employees') %}<a href="/employees"><i class="fa fa-user-tie"></i> {{ _('employees') }}</a>{% endif %}
-        {% if (is_admin or (current_employee and can_see_pages)) and business_allows('pages') %}
-        <a href="/pages"><i class="fa fa-file-alt"></i> {{ _('pages') }}</a>
         {% endif %}
         {% if (is_admin or (current_employee and can_see_reports)) and business_allows('reports') %}
         {% if plan_has("reports_adv") %}

@@ -1133,9 +1133,8 @@
     <input id="searchInput" placeholder="{{ _('customers_search_placeholder') }}" onkeyup="updateSearch()">
     <select id="cityFilter" onchange="updateSearch()">
       <option value="">{{ _('customers_all_cities') }}</option>
-      {% for city in cities %}
-      <option value="{{ city }}">{{ city }}</option>
-      {% endfor %}
+      <option value="{{ province_filter_primary }}">{{ primary_province }}</option>
+      <option value="{{ province_filter_group }}">{{ provinces_group_label }}</option>
     </select>
     <button class="btn btn-muted" type="button" onclick="exportCustomers()">
       <span>📤</span>
@@ -1330,10 +1329,10 @@
             </div>
             <div>
               <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--cust-muted);">{{ _('customers_field_city') }}</label>
-              <input type="text" id="cust_city" name="city" list="citiesList" placeholder="{{ _('customers_placeholder_city') }}">
-              <datalist id="citiesList">
-                {% for city in cities %}<option value="{{ city }}">{% endfor %}
-              </datalist>
+              <select id="cust_city" name="city">
+                <option value="{{ primary_province }}">{{ primary_province }}</option>
+                <option value="{{ provinces_group_label }}">{{ provinces_group_label }}</option>
+              </select>
             </div>
           </div>
 
@@ -1379,6 +1378,8 @@
   }
 
   function editCustomer(id, name, phone, phone2, city, address, notes) {
+    const primaryCity = {{ primary_province|tojson }};
+    const groupCity = {{ provinces_group_label|tojson }};
     const content = `
       <div style="position: relative;">
         <button class="modal-close" onclick="closeModal()">×</button>
@@ -1402,7 +1403,10 @@
             </div>
             <div>
               <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--cust-muted);">{{ _('customers_field_city') }}</label>
-              <input type="text" name="city" value="${city}" list="citiesList">
+              <select name="city">
+                <option value="${primaryCity}" ${(!city || city === primaryCity) ? 'selected' : ''}>${primaryCity}</option>
+                <option value="${groupCity}" ${(city && city !== primaryCity) ? 'selected' : ''}>${groupCity}</option>
+              </select>
             </div>
           </div>
 
@@ -1676,7 +1680,16 @@
       },
       doesExternalFilterPass: (node) => {
         const cityFilter = document.getElementById('cityFilter').value;
-        return node.data.city === cityFilter;
+        if (!cityFilter) return true;
+        const city = (node.data.city || '').trim();
+        const primary = {{ primary_province|tojson }};
+        const groupLabel = {{ provinces_group_label|tojson }};
+        const groupProvinces = {{ tenant_group_provinces|tojson }};
+        if (cityFilter === {{ province_filter_primary|tojson }}) return city === primary;
+        if (cityFilter === {{ province_filter_group|tojson }}) {
+          return city === groupLabel || groupProvinces.includes(city);
+        }
+        return city === cityFilter;
       }
     };
 

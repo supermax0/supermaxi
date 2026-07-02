@@ -113,28 +113,89 @@ function deletePage(id) {
 
 let assignPageId = null;
 
+function updateAssignSelectedCount() {
+  const list = document.getElementById('assignEmployeeList');
+  const counter = document.getElementById('assignSelectedCount');
+  if (!list || !counter) return;
+  const count = list.querySelectorAll('.assign-employee-checkbox:checked').length;
+  counter.textContent = `${count} محدد`;
+}
+
+function filterAssignEmployees(query) {
+  const list = document.getElementById('assignEmployeeList');
+  if (!list) return;
+  const q = String(query || '').trim().toLowerCase();
+  list.querySelectorAll('.assign-employee-row').forEach((row) => {
+    const name = row.querySelector('.assign-employee-name')?.textContent?.toLowerCase() || '';
+    row.style.display = !q || name.includes(q) ? '' : 'none';
+  });
+}
+
 function openAssignEmployees(pageId, pageName) {
   assignPageId = pageId;
   const title = document.getElementById('assignModalTitle');
+  const subtitle = document.getElementById('assignModalSubtitle');
   const list = document.getElementById('assignEmployeeList');
+  const search = document.getElementById('assignEmployeeSearch');
   if (!title || !list) return;
-  title.textContent = `${pagesT('pages_assign_title')}: ${pageName}`;
+
+  title.textContent = pagesT('pages_assign_title');
+  if (subtitle) subtitle.textContent = pageName ? `البيج: ${pageName}` : '';
+
   const assigned = new Set(
-    (window.PAGES_ASSIGN_MAP && window.PAGES_ASSIGN_MAP[String(pageId)]) || []
+    ((window.PAGES_ASSIGN_MAP && window.PAGES_ASSIGN_MAP[String(pageId)]) || []).map((id) =>
+      parseInt(id, 10)
+    )
   );
+
   list.innerHTML = '';
   const employees = window.PAGES_EMPLOYEES || [];
-  employees.forEach((emp) => {
-    const label = document.createElement('label');
-    const cb = document.createElement('input');
-    cb.type = 'checkbox';
-    cb.value = emp.id;
-    if (assigned.has(emp.id)) cb.checked = true;
-    label.appendChild(cb);
-    label.appendChild(document.createTextNode(emp.name));
-    list.appendChild(label);
-  });
-  document.getElementById('assignModal').classList.add('is-open');
+
+  if (!employees.length) {
+    const empty = document.createElement('div');
+    empty.className = 'assign-list-empty';
+    empty.textContent = 'لا يوجد موظفين نشطين';
+    list.appendChild(empty);
+  } else {
+    employees.forEach((emp) => {
+      const row = document.createElement('label');
+      row.className = 'assign-employee-row';
+      const isSelected = assigned.has(emp.id);
+      if (isSelected) row.classList.add('is-selected');
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.className = 'assign-employee-checkbox';
+      checkbox.value = emp.id;
+      checkbox.checked = isSelected;
+      checkbox.addEventListener('change', () => {
+        row.classList.toggle('is-selected', checkbox.checked);
+        updateAssignSelectedCount();
+      });
+
+      const avatar = document.createElement('span');
+      avatar.className = 'assign-employee-avatar';
+      avatar.textContent = (emp.name || '?').trim().charAt(0) || '?';
+
+      const name = document.createElement('span');
+      name.className = 'assign-employee-name';
+      name.textContent = emp.name;
+
+      row.appendChild(checkbox);
+      row.appendChild(avatar);
+      row.appendChild(name);
+      list.appendChild(row);
+    });
+  }
+
+  if (search) {
+    search.value = '';
+    search.oninput = () => filterAssignEmployees(search.value);
+  }
+
+  updateAssignSelectedCount();
+  document.getElementById('assignModal')?.classList.add('is-open');
+  search?.focus();
 }
 
 function closeAssignModal() {
@@ -145,7 +206,7 @@ function closeAssignModal() {
 function saveAssignEmployees() {
   if (!assignPageId) return;
   const list = document.getElementById('assignEmployeeList');
-  const employee_ids = Array.from(list.querySelectorAll('input:checked')).map((el) =>
+  const employee_ids = Array.from(list.querySelectorAll('.assign-employee-checkbox:checked')).map((el) =>
     parseInt(el.value, 10)
   );
   showLoading();
@@ -177,212 +238,44 @@ function openAddPageSection() {
   }
 }
 
-let pagesImportFile = null;
-let pagesImportExisting = new Set();
-
-function normalizePageName(name) {
-  return String(name || '').trim().replace(/\s+/g, ' ').toLowerCase();
-}
-
-function uploadPagesImage(forceAi = false) {
-  const input = document.getElementById('pagesImportImage');
-  const file = input?.files?.[0];
-  if (!file) {
-    showToast(pagesT('pages_import_err_image'), 'warning');
-    return;
-  }
-  pagesImportFile = file;
-
-  const formData = new FormData();
-  formData.append('image', file);
-  if (forceAi) formData.append('force_ai', '1');
-
-  showLoading();
-  fetch('/pages/import-from-image', { method: 'POST', body: formData })
-    .then((r) => r.json().then((data) => ({ ok: r.ok, data })))
-    .then(({ ok, data }) => {
-      hideLoading();
-      if (!ok) {
-        showToast(data.error || pagesT('pages_err_generic'), 'error');
-        return;
-      }
-      if (data.needs_review || !data.names?.length) {
-        showToast(data.error || pagesT('pages_import_err_no_names'), 'warning');
-      }
-      openPagesImportModal(data);
-    })
-    .catch(() => {
-      hideLoading();
-      showToast(pagesT('pages_err_connection'), 'error');
-    });
-}
-
-function retryPagesImportWithAI() {
-  if (!pagesImportFile) {
-    showToast(pagesT('pages_import_err_image'), 'warning');
-    return;
-  }
-  uploadPagesImage(true);
-}
-
-function applyManualImportText() {
-  const textarea = document.getElementById('pagesImportManualText');
-  if (!textarea) return;
-  const names = textarea.value
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => line.length >= 2);
-  if (!names.length) {
-    showToast(pagesT('pages_import_err_no_names'), 'warning');
-    return;
-  }
-  openPagesImportModal({
-    success: true,
-    names,
-    existing: [],
-    source: 'manual',
-    warnings: [],
-    needs_review: false,
-  });
-}
-
-function openPagesImportModal(data) {
-  const modal = document.getElementById('pagesImportModal');
-  const list = document.getElementById('pagesImportList');
-  const meta = document.getElementById('pagesImportMeta');
-  const manualWrap = document.getElementById('pagesImportManualWrap');
-  const manualText = document.getElementById('pagesImportManualText');
-  if (!modal || !list || !meta) return;
-
-  const names = Array.isArray(data.names) ? data.names : [];
-  pagesImportExisting = new Set(
-    (data.existing || []).map((n) => normalizePageName(n))
-  );
-
-  const sourceLabel = data.source === 'openai'
-    ? pagesT('pages_import_source_openai')
-    : data.source === 'manual'
-      ? 'مصدر: إدخال يدوي'
-      : pagesT('pages_import_source_tesseract');
-  const warnings = [data.error, ...(data.warnings || [])].filter(Boolean);
-  meta.textContent = [sourceLabel, warnings.join(' · ')].filter(Boolean).join(' — ');
-
-  if (manualWrap) manualWrap.style.display = (data.needs_review || !names.length) ? 'block' : 'none';
-  if (manualText && data.raw_text && !names.length) {
-    manualText.value = data.raw_text;
-  }
-
-  list.innerHTML = '';
-  if (!names.length) {
-    const empty = document.createElement('div');
-    empty.className = 'pages-import-empty';
-    empty.textContent = pagesT('pages_import_err_no_names');
-    list.appendChild(empty);
-  } else {
-    names.forEach((name, index) => {
-      const row = document.createElement('label');
-      row.className = 'pages-import-item';
-      const exists = pagesImportExisting.has(normalizePageName(name));
-      const checkbox = document.createElement('input');
-      checkbox.type = 'checkbox';
-      checkbox.checked = !exists;
-      checkbox.disabled = exists;
-      checkbox.dataset.index = String(index);
-
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.className = 'pages-import-name-input';
-      input.value = name;
-      input.disabled = exists;
-
-      row.appendChild(checkbox);
-      row.appendChild(input);
-      if (exists) {
-        const badge = document.createElement('span');
-        badge.className = 'pages-import-existing-badge';
-        badge.textContent = pagesT('pages_import_existing_badge');
-        row.appendChild(badge);
-      }
-      list.appendChild(row);
-    });
-  }
-
-  modal.classList.add('is-open');
-}
-
-function closePagesImportModal() {
-  document.getElementById('pagesImportModal')?.classList.remove('is-open');
-}
-
-function collectSelectedImportNames() {
-  const list = document.getElementById('pagesImportList');
-  if (!list) return [];
-  const names = [];
-  list.querySelectorAll('.pages-import-item').forEach((row) => {
-    const checkbox = row.querySelector('input[type="checkbox"]');
-    const input = row.querySelector('.pages-import-name-input');
-    if (!checkbox || !input || checkbox.disabled || !checkbox.checked) return;
-    const value = input.value.trim();
-    if (value.length >= 2) names.push(value);
-  });
-  if (!names.length) {
-    const manual = document.getElementById('pagesImportManualText');
-    if (manual && manual.value.trim()) {
-      return manual.value
-        .split(/\r?\n/)
-        .map((line) => line.trim())
-        .filter((line) => line.length >= 2);
-    }
-  }
-  return names;
-}
-
-function confirmBulkPagesImport() {
-  const names = collectSelectedImportNames();
-  if (!names.length) {
-    showToast(pagesT('pages_import_err_no_names'), 'warning');
-    return;
-  }
-
-  showLoading();
-  fetch('/pages/bulk-create', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ names }),
-  })
-    .then((r) => r.json())
-    .then((data) => {
-      hideLoading();
-      if (!data.success) {
-        showToast(data.error || pagesT('pages_err_generic'), 'error');
-        return;
-      }
-      const addedMsg = pagesT('pages_import_result_added').replace('{count}', data.added || 0);
-      const skippedMsg = pagesT('pages_import_result_skipped').replace('{count}', (data.skipped || []).length);
-      showToast(`${addedMsg} — ${skippedMsg}`, 'success');
-      closePagesImportModal();
-      setTimeout(() => location.reload(), 700);
-    })
-    .catch(() => {
-      hideLoading();
-      showToast(pagesT('pages_err_connection'), 'error');
-    });
-}
-
 document.addEventListener('DOMContentLoaded', () => {
   restoreSectionStates();
 
-  document.getElementById('pagesImportExtractBtn')?.addEventListener('click', () => uploadPagesImage());
-  document.getElementById('pagesImportRetryBtn')?.addEventListener('click', () => retryPagesImportWithAI());
-  document.getElementById('pagesImportConfirmBtn')?.addEventListener('click', () => confirmBulkPagesImport());
-  document.getElementById('pagesImportCancelBtn')?.addEventListener('click', () => closePagesImportModal());
-  document.getElementById('pagesImportCloseBtn')?.addEventListener('click', () => closePagesImportModal());
-  document.getElementById('pagesImportManualApplyBtn')?.addEventListener('click', () => applyManualImportText());
+  document.querySelectorAll('.js-assign-employees-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const pageId = parseInt(btn.dataset.pageId, 10);
+      const pageName = btn.dataset.pageName || btn.closest('tr')?.querySelector('td strong')?.textContent?.trim() || '';
+      openAssignEmployees(pageId, pageName);
+    });
+  });
+
+  document.querySelectorAll('.js-delete-page-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const pageId = parseInt(btn.dataset.pageId, 10);
+      if (pageId) deletePage(pageId);
+    });
+  });
+
+  document.querySelectorAll('.vis-checkbox').forEach((cb) => {
+    cb.addEventListener('change', () => {
+      const pageId = parseInt(cb.dataset.pageId, 10);
+      const type = cb.dataset.type;
+      if (pageId && type) updateVisibility(pageId, type, cb.checked);
+    });
+  });
+
+  document.getElementById('assignModalCloseBtn')?.addEventListener('click', closeAssignModal);
+  document.getElementById('assignModalCancelBtn')?.addEventListener('click', closeAssignModal);
+  document.getElementById('assignModalSaveBtn')?.addEventListener('click', saveAssignEmployees);
 });
 
-window.uploadPagesImage = uploadPagesImage;
-window.retryPagesImportWithAI = retryPagesImportWithAI;
-window.applyManualImportText = applyManualImportText;
-window.openPagesImportModal = openPagesImportModal;
-window.closePagesImportModal = closePagesImportModal;
-window.confirmBulkPagesImport = confirmBulkPagesImport;
+window.pagesT = pagesT;
+window.showToast = showToast;
+window.toggleSection = toggleSection;
+window.handleAddPage = handleAddPage;
+window.updateVisibility = updateVisibility;
+window.deletePage = deletePage;
+window.openAssignEmployees = openAssignEmployees;
+window.closeAssignModal = closeAssignModal;
+window.saveAssignEmployees = saveAssignEmployees;
+window.openAddPageSection = openAddPageSection;
