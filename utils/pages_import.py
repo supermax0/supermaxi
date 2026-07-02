@@ -12,7 +12,7 @@ from models.page import Page
 
 MAX_IMAGE_BYTES = 8 * 1024 * 1024
 MAX_BULK_NAMES = 200
-MIN_GOOD_NAMES = 3
+MIN_GOOD_NAMES = 1
 MAX_NAME_LEN = 150
 
 HEADER_KEYWORDS = {
@@ -124,6 +124,42 @@ def parse_page_names_from_text(raw_text: str) -> List[str]:
     return names
 
 
+def parse_page_names_loose(raw_text: str) -> List[str]:
+    """استخراج أسماء بشكل أوسع من النص الخام عند فشل التحليل الدقيق."""
+    if not raw_text:
+        return []
+
+    seen: Set[str] = set()
+    names: List[str] = []
+    for line in raw_text.splitlines():
+        cleaned = re.sub(r"\s+", " ", line.strip())
+        if len(cleaned) < 2 or _is_header_line(cleaned) or _is_numeric_only(cleaned):
+            continue
+        # أزل أرقام وأعمدة شائعة من بداية/نهاية السطر
+        cleaned = re.sub(r"^[\d\s\-_|]+", "", cleaned).strip()
+        cleaned = re.sub(r"[\d\s\-_|]+$", "", cleaned).strip()
+        if len(cleaned) < 2 or _is_numeric_only(cleaned):
+            continue
+        key = _normalize_key(cleaned)
+        if key in seen:
+            continue
+        seen.add(key)
+        names.append(cleaned[:MAX_NAME_LEN])
+    return names
+
+
+def _guess_image_mime(image_bytes: bytes) -> str:
+    if image_bytes[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if image_bytes[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+    if image_bytes[:6] in (b"GIF87a", b"GIF89a"):
+        return "image/gif"
+    if image_bytes[:4] == b"RIFF" and image_bytes[8:12] == b"WEBP":
+        return "image/webp"
+    return "image/jpeg"
+
+
 def extract_page_names_tesseract(image_bytes: bytes) -> Tuple[List[str], str, List[str]]:
     warnings: List[str] = []
     raw_text = ""
@@ -193,7 +229,8 @@ def extract_page_names_vision(image_bytes: bytes) -> Tuple[List[str], List[str]]
     try:
         client = get_client()
         b64 = base64.b64encode(image_bytes).decode("ascii")
-        data_url = f"data:image/jpeg;base64,{b64}"
+        mime = _guess_image_mime(image_bytes)
+        data_url = f"data:{mime};base64,{b64}"
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -271,10 +308,21 @@ def extract_page_names_hybrid(
     existing_list, existing_keys = get_existing_page_names()
     existing_matches = mark_existing_names(names, existing_keys)
 
+    if not names and raw_text:
+        names = parse_page_names_loose(raw_text)
+        if names:
+            warnings.append("تم استخدام تحليل أوسع للنص المستخرج.")
+            existing_matches = mark_existing_names(names, existing_keys)
+
+    needs_review = not names
+    if not names and raw_text:
+        needs_review = True
+
     if not names:
         return {
-            "success": False,
-            "error": "لم يُعثر على أسماء بيجات في الصورة.",
+            "success": True,
+            "needs_review": needs_review,
+            "error": "لم يُعثر على أسماء بيجات في الصورة. يمكنك إدخالها يدوياً من النص أدناه.",
             "names": [],
             "existing": existing_matches,
             "source": source,
@@ -284,6 +332,7 @@ def extract_page_names_hybrid(
 
     return {
         "success": True,
+        "needs_review": False,
         "names": names,
         "existing": existing_matches,
         "source": source,

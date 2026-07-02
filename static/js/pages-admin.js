@@ -202,16 +202,12 @@ function uploadPagesImage(forceAi = false) {
     .then((r) => r.json().then((data) => ({ ok: r.ok, data })))
     .then(({ ok, data }) => {
       hideLoading();
-      if (!ok && !data.names?.length) {
-        showToast(data.error || pagesT('pages_import_err_no_names'), 'error');
-        if (data.raw_text) {
-          openPagesImportModal({
-            ...data,
-            names: data.names || [],
-            success: true,
-          });
-        }
+      if (!ok) {
+        showToast(data.error || pagesT('pages_err_generic'), 'error');
         return;
+      }
+      if (data.needs_review || !data.names?.length) {
+        showToast(data.error || pagesT('pages_import_err_no_names'), 'warning');
       }
       openPagesImportModal(data);
     })
@@ -229,10 +225,33 @@ function retryPagesImportWithAI() {
   uploadPagesImage(true);
 }
 
+function applyManualImportText() {
+  const textarea = document.getElementById('pagesImportManualText');
+  if (!textarea) return;
+  const names = textarea.value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length >= 2);
+  if (!names.length) {
+    showToast(pagesT('pages_import_err_no_names'), 'warning');
+    return;
+  }
+  openPagesImportModal({
+    success: true,
+    names,
+    existing: [],
+    source: 'manual',
+    warnings: [],
+    needs_review: false,
+  });
+}
+
 function openPagesImportModal(data) {
   const modal = document.getElementById('pagesImportModal');
   const list = document.getElementById('pagesImportList');
   const meta = document.getElementById('pagesImportMeta');
+  const manualWrap = document.getElementById('pagesImportManualWrap');
+  const manualText = document.getElementById('pagesImportManualText');
   if (!modal || !list || !meta) return;
 
   const names = Array.isArray(data.names) ? data.names : [];
@@ -242,9 +261,16 @@ function openPagesImportModal(data) {
 
   const sourceLabel = data.source === 'openai'
     ? pagesT('pages_import_source_openai')
-    : pagesT('pages_import_source_tesseract');
-  const warnings = (data.warnings || []).filter(Boolean);
+    : data.source === 'manual'
+      ? 'مصدر: إدخال يدوي'
+      : pagesT('pages_import_source_tesseract');
+  const warnings = [data.error, ...(data.warnings || [])].filter(Boolean);
   meta.textContent = [sourceLabel, warnings.join(' · ')].filter(Boolean).join(' — ');
+
+  if (manualWrap) manualWrap.style.display = (data.needs_review || !names.length) ? 'block' : 'none';
+  if (manualText && data.raw_text && !names.length) {
+    manualText.value = data.raw_text;
+  }
 
   list.innerHTML = '';
   if (!names.length) {
@@ -299,6 +325,15 @@ function collectSelectedImportNames() {
     const value = input.value.trim();
     if (value.length >= 2) names.push(value);
   });
+  if (!names.length) {
+    const manual = document.getElementById('pagesImportManualText');
+    if (manual && manual.value.trim()) {
+      return manual.value
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line.length >= 2);
+    }
+  }
   return names;
 }
 
@@ -342,10 +377,12 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('pagesImportConfirmBtn')?.addEventListener('click', () => confirmBulkPagesImport());
   document.getElementById('pagesImportCancelBtn')?.addEventListener('click', () => closePagesImportModal());
   document.getElementById('pagesImportCloseBtn')?.addEventListener('click', () => closePagesImportModal());
+  document.getElementById('pagesImportManualApplyBtn')?.addEventListener('click', () => applyManualImportText());
 });
 
 window.uploadPagesImage = uploadPagesImage;
 window.retryPagesImportWithAI = retryPagesImportWithAI;
+window.applyManualImportText = applyManualImportText;
 window.openPagesImportModal = openPagesImportModal;
 window.closePagesImportModal = closePagesImportModal;
 window.confirmBulkPagesImport = confirmBulkPagesImport;

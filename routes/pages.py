@@ -153,8 +153,7 @@ def import_pages_from_image():
 
     force_ai = str(request.form.get("force_ai") or "").strip().lower() in ("1", "true", "yes", "on")
     result = extract_page_names_hybrid(image_bytes, force_ai=force_ai)
-    status = 200 if result.get("success") else 400
-    return jsonify(result), status
+    return jsonify(result)
 
 
 @pages_bp.route("/bulk-create", methods=["POST"])

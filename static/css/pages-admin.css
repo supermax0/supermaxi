@@ -116,3 +116,33 @@
 .team-admin-page.pages-page .pages-import-actions {
   flex-wrap: wrap;
 }
+
+.team-admin-page.pages-page .pages-import-manual {
+  margin-bottom: 12px;
+}
+
+.team-admin-page.pages-page .pages-import-manual label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.team-admin-page.pages-page .pages-import-manual-text {
+  width: 100%;
+  min-height: 120px;
+  box-sizing: border-box;
+  margin-bottom: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+  color: var(--text-main);
+  font-family: inherit;
+  resize: vertical;
+}
+
+.team-admin-page.pages-page .pages-import-manual-btn {
+  width: auto;
+}

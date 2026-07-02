@@ -175,6 +175,11 @@
       <h3 id="pagesImportModalTitle">{{ _('pages_import_preview_title') if _('pages_import_preview_title') != 'pages_import_preview_title' else 'معاينة أسماء البيجات' }}</h3>
       <p id="pagesImportMeta" class="pages-import-meta"></p>
       <div id="pagesImportList" class="pages-import-list"></div>
+      <div id="pagesImportManualWrap" class="pages-import-manual" style="display:none;">
+        <label for="pagesImportManualText">أدخل أسماء البيجات (سطر لكل اسم):</label>
+        <textarea id="pagesImportManualText" class="pages-import-manual-text" rows="6" placeholder="بيج 1&#10;بيج 2&#10;بيج 3"></textarea>
+        <button type="button" class="btn btn-light pages-import-manual-btn" id="pagesImportManualApplyBtn">تحويل النص إلى قائمة</button>
+      </div>
       <div class="team-modal-actions pages-import-actions">
         <button type="button" class="btn btn-light" id="pagesImportRetryBtn">{{ _('pages_import_retry_ai') if _('pages_import_retry_ai') != 'pages_import_retry_ai' else 'إعادة بالذكاء الاصطناعي' }}</button>
         <button type="button" class="btn btn-light" id="pagesImportCancelBtn">{{ _('cancel') }}</button>
@@ -218,5 +223,5 @@
     pages_import_source_openai: {{ (_('pages_import_source_openai') if _('pages_import_source_openai') != 'pages_import_source_openai' else 'مصدر الاستخراج: ذكاء اصطناعي')|tojson }}
   };
 </script>
-<script src="{{ url_for('static', filename='js/pages-admin.js') }}?v=20260702"></script>
+<script src="{{ url_for('static', filename='js/pages-admin.js') }}?v=20260702b"></script>
 {% endblock %}
