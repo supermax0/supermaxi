@@ -119,6 +119,11 @@ def settings():
             "/static/downloads/finora-delivery-agent.apk",
         ),
     }
+    tenant_slug = _session_tenant_slug()
+    portal_base = request.host_url.rstrip("/")
+    delivery_agent_portal_url = (
+        f"{portal_base}/delivery-agent/login/{tenant_slug}" if tenant_slug else f"{portal_base}/delivery-agent/login"
+    )
     return render_template(
         "settings.html",
         **_settings_ctx(
@@ -126,6 +131,8 @@ def settings():
             invoice_settings=invoice_settings,
             first_order=first_order,
             app_downloads=app_downloads,
+            delivery_agent_portal_url=delivery_agent_portal_url,
+            tenant_slug=tenant_slug,
         ),
     )
 

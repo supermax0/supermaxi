@@ -29,6 +29,62 @@ delivery_agent_bp = Blueprint("delivery_agent", __name__, url_prefix="/delivery-
 _AGENT_PENDING_STATUSES = ("تم الطلب", "جاري الشحن", "قيد الشحن")
 
 
+def _normalize_tenant_slug(raw):
+    return (raw or "").strip().lower()
+
+
+def _resolve_request_tenant_slug():
+    view_args = request.view_args or {}
+    if view_args.get("tenant_slug"):
+        return _normalize_tenant_slug(view_args["tenant_slug"])
+    if request.args.get("tenant"):
+        return _normalize_tenant_slug(request.args.get("tenant"))
+    if request.method == "POST":
+        data = request.get_json(silent=True) if request.is_json else None
+        if isinstance(data, dict) and data.get("tenant_slug"):
+            return _normalize_tenant_slug(data.get("tenant_slug"))
+        if request.form.get("tenant_slug"):
+            return _normalize_tenant_slug(request.form.get("tenant_slug"))
+    if session.get("agent_tenant_slug"):
+        return _normalize_tenant_slug(session.get("agent_tenant_slug"))
+    return None
+
+
+def _activate_tenant_slug(slug):
+    from models.core.tenant import Tenant as CoreTenant
+
+    if not slug:
+        return None, "يرجى إدخال معرف الشركة"
+    prev = getattr(g, "tenant", None)
+    g.tenant = None
+    try:
+        core_tenant = CoreTenant.query.filter(db.func.lower(CoreTenant.slug) == slug).first()
+    finally:
+        if not getattr(g, "tenant", None):
+            g.tenant = prev
+    if not core_tenant:
+        return None, "الشركة غير موجودة. تأكد من معرف الشركة."
+    if not core_tenant.is_active:
+        return None, "اشتراك هذه الشركة غير مفعّل أو تم إيقافه."
+    g.tenant = core_tenant.slug
+    return core_tenant, None
+
+
+@delivery_agent_bp.before_request
+def _bind_delivery_agent_tenant():
+    slug = _resolve_request_tenant_slug()
+    if slug:
+        _activate_tenant_slug(slug)
+    elif session.get("agent_tenant_slug"):
+        g.tenant = session.get("agent_tenant_slug")
+
+
+def _agent_login_redirect(tenant_slug=None):
+    if tenant_slug:
+        return url_for("delivery_agent.login_page_tenant", tenant_slug=tenant_slug)
+    return url_for("delivery_agent.login_page")
+
+
 def _agent_pending_orders(agent_id):
     """طلبات المندوب فقط — بدون ربط بكشف شركة الشحن."""
     rows = (
@@ -155,7 +211,7 @@ def _agent_completed_orders(agent_id, limit=100):
 def index():
     if "agent_id" in session:
         return redirect(url_for("delivery_agent.dashboard"))
-    return redirect(url_for("delivery_agent.login_page"))
+    return redirect(_agent_login_redirect(session.get("agent_tenant_slug")))
 
 
 # =====================================================
@@ -166,43 +222,84 @@ def login_page():
     """صفحة تسجيل دخول المندوب"""
     if "agent_id" in session:
         return redirect(url_for("delivery_agent.dashboard"))
-    return render_template("delivery_agent/login.html")
+    tenant_slug = _normalize_tenant_slug(session.get("tenant_slug"))
+    return render_template("delivery_agent/login.html", fixed_tenant_slug=tenant_slug or None)
 
-@delivery_agent_bp.route("/login", methods=["POST"])
-def login():
-    """تسجيل دخول المندوب"""
-    data = request.json
-    username = data.get("username", "").strip()
-    password = data.get("password", "").strip()
-    
-    if not username or not password:
-        return jsonify({"error": "يرجى إدخال اسم المستخدم وكلمة المرور"}), 400
-    
+
+@delivery_agent_bp.route("/login/<tenant_slug>")
+def login_page_tenant(tenant_slug):
+    """تسجيل دخول مندوب لشركة محددة عبر الرابط."""
+    if "agent_id" in session:
+        return redirect(url_for("delivery_agent.dashboard"))
+    slug = _normalize_tenant_slug(tenant_slug)
+    core_tenant, err = _activate_tenant_slug(slug)
+    if err:
+        return render_template("delivery_agent/login.html", fixed_tenant_slug=slug, tenant_error=err)
+    return render_template(
+        "delivery_agent/login.html",
+        fixed_tenant_slug=slug,
+        tenant_name=core_tenant.name if core_tenant else slug,
+    )
+
+
+def _perform_agent_login(username, password, tenant_slug=None):
+    slug = _normalize_tenant_slug(tenant_slug) or _resolve_request_tenant_slug()
+    if not slug:
+        return None, ("يرجى إدخال معرف الشركة", 400)
+
+    core_tenant, err = _activate_tenant_slug(slug)
+    if err:
+        return None, (err, 400)
+
     from utils.agent_passwords import needs_password_rehash, verify_agent_password, hash_agent_password
 
-    agent = DeliveryAgent.query.filter_by(username=username).first()
+    agent = DeliveryAgent.query.filter(db.func.lower(DeliveryAgent.username) == username.lower()).first()
     if not agent or not verify_agent_password(agent.password, password):
-        return jsonify({"error": "اسم المستخدم أو كلمة المرور غير صحيحة"}), 401
+        return None, ("اسم المستخدم أو كلمة المرور غير صحيحة", 401)
     if not getattr(agent, "is_active", True):
-        return jsonify({"error": "حساب المندوب معطّل"}), 403
+        return None, ("حساب المندوب معطّل", 403)
     if needs_password_rehash(agent.password):
         agent.password = hash_agent_password(password)
         db.session.commit()
-    
-    # حفظ معلومات المندوب في الجلسة
+
     session["agent_id"] = agent.id
     session["agent_name"] = agent.name
     session["agent_role"] = "delivery_agent"
-    
-    return jsonify({"success": True, "message": "تم تسجيل الدخول بنجاح", "redirect": url_for("delivery_agent.dashboard")})
+    session["agent_tenant_slug"] = core_tenant.slug
+    return agent, None
+
+
+@delivery_agent_bp.route("/login", methods=["POST"])
+@delivery_agent_bp.route("/login/<tenant_slug>", methods=["POST"])
+def login(tenant_slug=None):
+    """تسجيل دخول المندوب"""
+    data = request.json or {}
+    username = data.get("username", "").strip()
+    password = data.get("password", "").strip()
+    req_tenant = data.get("tenant_slug") or tenant_slug
+
+    if not username or not password:
+        return jsonify({"error": "يرجى إدخال اسم المستخدم وكلمة المرور"}), 400
+
+    agent, err = _perform_agent_login(username, password, req_tenant)
+    if err:
+        return jsonify({"error": err[0]}), err[1]
+
+    return jsonify({
+        "success": True,
+        "message": "تم تسجيل الدخول بنجاح",
+        "redirect": url_for("delivery_agent.dashboard"),
+    })
 
 @delivery_agent_bp.route("/logout")
 def logout():
     """تسجيل خروج المندوب"""
+    tenant_slug = session.get("agent_tenant_slug")
     session.pop("agent_id", None)
     session.pop("agent_name", None)
     session.pop("agent_role", None)
-    return redirect(url_for("delivery_agent.login_page"))
+    session.pop("agent_tenant_slug", None)
+    return redirect(_agent_login_redirect(tenant_slug))
 
 # =====================================================
 # Delivery Agent Dashboard
@@ -211,13 +308,16 @@ def logout():
 def dashboard():
     """صفحة المندوب — طلباته المربوطة باسمه فقط."""
     if "agent_id" not in session:
-        return redirect(url_for("delivery_agent.login_page"))
+        return redirect(_agent_login_redirect(session.get("agent_tenant_slug")))
     
     agent_id = session["agent_id"]
     agent = DeliveryAgent.query.get(agent_id)
     if not agent:
-        session.clear()
-        return redirect(url_for("delivery_agent.login_page"))
+        tenant_slug = session.get("agent_tenant_slug")
+        session.pop("agent_id", None)
+        session.pop("agent_name", None)
+        session.pop("agent_role", None)
+        return redirect(_agent_login_redirect(tenant_slug))
 
     orders = _agent_pending_orders(agent_id)
     completed_orders = _agent_completed_orders(agent_id)

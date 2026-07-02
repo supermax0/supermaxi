@@ -253,8 +253,15 @@
           <i class="fas fa-truck-fast"></i>
         </div>
         <h1>تسجيل دخول المندوب</h1>
-        <p>أدخل اسم المستخدم وكلمة المرور للوصول إلى لوحة التوصيل</p>
+        <p>{% if tenant_name %}شركة <strong>{{ tenant_name }}</strong> — {% endif %}أدخل اسم المستخدم وكلمة المرور للوصول إلى لوحة التوصيل</p>
       </div>
+
+      {% if tenant_error %}
+      <div class="agent-login-error is-visible" role="alert">
+        <i class="fas fa-circle-exclamation"></i>
+        <span>{{ tenant_error }}</span>
+      </div>
+      {% endif %}
 
       <div class="agent-login-error" id="errorMessage" role="alert">
         <i class="fas fa-circle-exclamation"></i>
@@ -262,6 +269,18 @@
       </div>
 
       <form id="loginForm" novalidate>
+        {% if fixed_tenant_slug %}
+        <input type="hidden" id="tenant_slug" name="tenant_slug" value="{{ fixed_tenant_slug }}">
+        {% else %}
+        <div class="agent-field">
+          <label for="tenant_slug">معرف الشركة</label>
+          <div class="agent-input-wrap">
+            <i class="fas fa-building field-icon"></i>
+            <input type="text" id="tenant_slug" name="tenant_slug" placeholder="مثال: super" required autocomplete="organization" value="{{ request.args.get('tenant', '') }}">
+          </div>
+        </div>
+        {% endif %}
+
         <div class="agent-field">
           <label for="username">اسم المستخدم</label>
           <div class="agent-input-wrap">
@@ -326,6 +345,13 @@
 
       const username = document.getElementById('username').value.trim();
       const password = passwordInput.value.trim();
+      const tenantInput = document.getElementById('tenant_slug');
+      const tenantSlug = tenantInput ? tenantInput.value.trim().toLowerCase() : '';
+
+      if (!tenantSlug) {
+        showError('يرجى إدخال معرف الشركة');
+        return;
+      }
 
       if (!username || !password) {
         showError('يرجى إدخال اسم المستخدم وكلمة المرور');
@@ -335,10 +361,14 @@
       loginBtn.disabled = true;
       loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>جاري الدخول...</span>';
 
-      fetch('/delivery-agent/login', {
+      const loginUrl = tenantSlug
+        ? '/delivery-agent/login/' + encodeURIComponent(tenantSlug)
+        : '/delivery-agent/login';
+
+      fetch(loginUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: username, password: password })
+        body: JSON.stringify({ username: username, password: password, tenant_slug: tenantSlug })
       })
         .then(function (r) { return r.json(); })
         .then(function (data) {

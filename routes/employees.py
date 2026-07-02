@@ -11,6 +11,7 @@ from sqlalchemy import inspect, text
 from utils.agent_passwords import hash_agent_password
 from utils.decorators import permission_required
 from utils.permission_checks import employee_can, get_current_employee
+from utils.employee_commission import get_fixed_employee_commission_percent, set_fixed_employee_commission_percent
 from utils.team_schema import build_employees_grid_rows, ensure_delivery_agent_schema
 from utils.activity_logger import EMPLOYEE_SNAPSHOT_FIELDS, log_activity, log_mutation, snapshot_attrs
 
@@ -80,7 +81,7 @@ def employees():
             password=generate_password_hash(request.form["password"]),
             role=request.form.get("role", "cashier"),
             salary=int(request.form.get("salary", 0)),
-            commission_percent=int(request.form.get("commission", 0)),
+            commission_percent=get_fixed_employee_commission_percent(),
         )
         db.session.add(emp)
         db.session.commit()
@@ -138,7 +139,22 @@ def employees():
         agent_stats=agent_stats_map,
         pages=pages_list,
         agents_without_login=agents_without_login,
+        fixed_commission_percent=get_fixed_employee_commission_percent(),
     )
+
+
+@employees_bp.route("/fixed-commission", methods=["POST"])
+@permission_required("manage_employees")
+def update_fixed_commission():
+    data = request.get_json(silent=True) or {}
+    try:
+        percent = int(data.get("percent", 0))
+    except (TypeError, ValueError):
+        return jsonify({"error": "نسبة غير صالحة"}), 400
+    value = set_fixed_employee_commission_percent(percent)
+    Employee.query.update({"commission_percent": value}, synchronize_session=False)
+    db.session.commit()
+    return jsonify({"success": True, "percent": value, "message": "تم حفظ نسبة العمولة الثابتة"})
 
 
 @employees_bp.route("/toggle/<int:id>", methods=["POST"])
@@ -174,8 +190,7 @@ def update_employee(id):
         emp.name = name
     if "salary" in data:
         emp.salary = int(data.get("salary") or 0)
-    if "commission" in data or "commission_percent" in data:
-        emp.commission_percent = int(data.get("commission") or data.get("commission_percent") or 0)
+    emp.commission_percent = get_fixed_employee_commission_percent()
     db.session.commit()
     try:
         log_mutation(

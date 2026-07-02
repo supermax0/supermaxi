@@ -11,9 +11,9 @@ android {
         applicationId = "iq.finora.deliveryagent"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
-        buildConfigField("String", "PORTAL_URL", "\"https://www.finora.company/delivery-agent/login\"")
+        versionCode = 2
+        versionName = "1.1.0"
+        buildConfigField("String", "DEFAULT_BASE_URL", "\"https://www.finora.company\"")
     }
 
     buildTypes {

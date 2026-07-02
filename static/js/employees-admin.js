@@ -120,22 +120,29 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
       });
   }
 
-  // ==================== Confirm Toggle ====================
+  // ==================== Toggle Employee Status ====================
   const empActionDisable = __t('employees_action_disable');
   const empActionEnable = __t('employees_action_enable');
   const empConfirmDisable = __t('employees_confirm_disable');
   const empConfirmEnable = __t('employees_confirm_enable');
-  function confirmToggle(event, name, isActive) {
-    event.preventDefault();
-    const action = isActive ? empConfirmDisable : empConfirmEnable;
 
-    if (confirm(action.replace('{name}', name))) {
-      showLoading();
-      const form = event.target.closest('form');
-      if (form) form.submit();
-      return true;
+  async function toggleEmployeeStatus(id, name, isActive) {
+    const action = isActive ? empConfirmDisable : empConfirmEnable;
+    if (!confirm(action.replace('{name}', name))) return;
+
+    showLoading();
+    try {
+      const response = await fetch(`/employees/toggle/${id}`, { method: 'POST' });
+      if (response.ok) {
+        showToast(isActive ? 'تم التعطيل' : 'تم التفعيل', 'success');
+        setTimeout(() => location.reload(), 700);
+      } else {
+        throw new Error(__t('employees_err_generic'));
+      }
+    } catch (error) {
+      hideLoading();
+      showToast(error.message || __t('employees_err_generic'), 'error');
     }
-    return false;
   }
 
 
@@ -146,7 +153,6 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
     document.getElementById('editEmpId').value = id;
     document.getElementById('editEmpName').value = data.name || '';
     document.getElementById('editEmpSalary').value = data.salary || 0;
-    document.getElementById('editEmpCommission').value = data.commission || 0;
     document.getElementById('editEmpPassword').value = '';
     document.getElementById('editEmployeeModal').classList.add('is-open');
   }
@@ -158,7 +164,6 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
     const body = {
       name: document.getElementById('editEmpName').value,
       salary: document.getElementById('editEmpSalary').value,
-      commission_percent: document.getElementById('editEmpCommission').value,
     };
     const pwd = document.getElementById('editEmpPassword').value.trim();
     showLoading();
@@ -175,7 +180,34 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
     setTimeout(() => location.reload(), 700);
   }
 
-  // ==================== AG Grid Initialization ====================
+  async function saveFixedCommission() {
+    const input = document.getElementById('fixedCommissionPercent');
+    const percent = parseInt(input.value, 10);
+    if (Number.isNaN(percent) || percent < 0 || percent > 100) {
+      showToast('أدخل نسبة بين 0 و 100', 'warning');
+      return;
+    }
+    showLoading();
+    try {
+      const r = await fetch('/employees/fixed-commission', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ percent }),
+      });
+      const data = await r.json();
+      hideLoading();
+      if (data.success) {
+        showToast(data.message || 'تم الحفظ', 'success');
+        setTimeout(() => location.reload(), 700);
+      } else {
+        showToast(data.error || __t('employees_err_generic'), 'error');
+      }
+    } catch (e) {
+      hideLoading();
+      showToast(__t('employees_err_connection'), 'error');
+    }
+  }
+
   let gridApi;
 
   function initAgGrid() {
@@ -268,9 +300,12 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
       {
         headerName: __t('employees_col_actions'),
         field: "actions",
-        width: 320,
+        width: 220,
         sortable: false,
         filter: false,
+        suppressMovable: true,
+        cellClass: 'actions-col',
+        headerClass: 'actions-col',
         cellRenderer: params => {
           const e = params.data;
           const nameEscaped = e.name.replace(/'/g, "\\'");
@@ -288,17 +323,17 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
           const isActive = e.status === 'active';
           return `
           <div class="admin-actions">
-            <form method="post" action="/employees/toggle/${e.id}" style="display:inline;margin:0"><button type="submit" class="action-btn" onclick="return confirmToggle(event, '${nameEscaped}', ${isActive})" title="${isActive ? empActionDisable : empActionEnable}">
+            <button type="button" class="action-btn" onclick="event.stopPropagation(); toggleEmployeeStatus(${e.id}, '${nameEscaped}', ${isActive})" title="${isActive ? empActionDisable : empActionEnable}">
               <i class="fas ${isActive ? 'fa-user-slash' : 'fa-user-check'}"></i>
-            </button></form>
-            <button class="action-btn" onclick="openEditEmployeeModal(${e.id})" title="تعديل"><i class="fas fa-pen"></i></button>
-            <button class="action-btn" onclick="openPagesModal(${e.id}, '${nameEscaped}')" title="${__t('employees_action_pages')}">
+            </button>
+            <button type="button" class="action-btn" onclick="event.stopPropagation(); openEditEmployeeModal(${e.id})" title="تعديل"><i class="fas fa-pen"></i></button>
+            <button type="button" class="action-btn" onclick="event.stopPropagation(); openPagesModal(${e.id}, '${nameEscaped}')" title="${__t('employees_action_pages')}">
               <i class="fas fa-file-invoice"></i>
             </button>
-            <a href="/admin/permissions/employee/${e.id}/roles" class="action-btn" title="${__t('employees_action_roles')}">
+            <a href="/admin/permissions/employee/${e.id}/roles" class="action-btn" title="${__t('employees_action_roles')}" onclick="event.stopPropagation()">
               <i class="fas fa-user-shield"></i>
             </a>
-            <button class="action-btn" onclick="viewEmployeeOrders(${e.id}, '${nameEscaped}')" title="${__t('employees_action_view')}">
+            <button type="button" class="action-btn" onclick="event.stopPropagation(); viewEmployeeOrders(${e.id}, '${nameEscaped}')" title="${__t('employees_action_view')}">
               <i class="fas fa-eye"></i>
             </button>
           </div>
@@ -312,11 +347,23 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
       rowData: rowData,
       rowHeight: 60,
       headerHeight: 48,
+      suppressRowClickSelection: true,
       pagination: true,
       paginationPageSize: 20,
       paginationPageSizeSelector: [10, 20, 50, 100],
       enableRtl: true,
       animateRows: true,
+      localeText: {
+        page: 'صفحة',
+        to: 'إلى',
+        of: 'من',
+        next: 'التالي',
+        last: 'الأخيرة',
+        first: 'الأولى',
+        previous: 'السابق',
+        pageSizeSelectorLabel: 'حجم الصفحة:',
+      },
+      getRowId: (params) => String(params.data.id),
       defaultColDef: {
         sortable: true,
         filter: true,

@@ -132,11 +132,14 @@ class Employee(db.Model):
 
     def calculate_commission(self):
         """
-        حساب العمولة حسب النسبة
+        حساب العمولة حسب النسبة الثابتة للنظام
         """
-        if self.commission_percent <= 0:
+        from utils.employee_commission import get_fixed_employee_commission_percent
+
+        percent = get_fixed_employee_commission_percent()
+        if percent <= 0:
             return 0
-        return int(self.total_sales * self.commission_percent / 100)
+        return int(self.total_sales * percent / 100)
 
     def has_permission(self, permission_name):
         """التحقق مما إذا كان الموظف لديه صلاحية معينة عبر أدواره"""

@@ -37,6 +37,16 @@
         <i class="fas fa-download"></i>
         تحميل APK
       </a>
+      {% if delivery_agent_portal_url %}
+      <div class="download-card-extra" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border-light);">
+        <p style="font-size:0.85rem;color:var(--muted);margin-bottom:8px;">{{ _('settings_delivery_agent_portal_hint') }}</p>
+        <code style="display:block;word-break:break-all;font-size:0.78rem;padding:8px 10px;border-radius:8px;background:var(--bg);border:1px solid var(--border-light);">{{ delivery_agent_portal_url }}</code>
+        <a href="{{ delivery_agent_portal_url }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;font-weight:700;">
+          <i class="fas fa-external-link-alt"></i>
+          {{ _('settings_delivery_agent_open_portal') }}
+        </a>
+      </div>
+      {% endif %}
     </div>
   </div>
 </div>

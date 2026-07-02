@@ -2,16 +2,49 @@
 
 /* Employees page — extends team-admin */
 .team-admin-page .ag-theme-finora .ag-row {
-  cursor: pointer;
+  cursor: default;
 }
 
-.team-admin-page .emp-actions-grid {
-  display: flex;
-  gap: 6px;
+.team-admin-page .ag-theme-finora .ag-header-cell.actions-col .ag-header-cell-label {
   justify-content: center;
+}
+
+.team-admin-page .ag-theme-finora .ag-cell.actions-col {
+  display: flex;
   align-items: center;
-  height: 100%;
-  flex-wrap: wrap;
+  justify-content: center;
+  padding-inline: 4px !important;
+  overflow: visible;
+}
+
+.team-admin-page .ag-theme-finora .ag-cell.actions-col .admin-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.team-admin-page .admin-actions .action-btn {
+  min-height: 36px;
+  min-width: 36px;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  flex-shrink: 0;
+  outline: none !important;
+  box-sizing: border-box;
+}
+
+.team-admin-page .admin-actions .action-btn:focus,
+.team-admin-page .admin-actions .action-btn:focus-visible {
+  outline: none !important;
+  box-shadow: 0 0 0 2px var(--primary-soft);
+}
+
+.team-admin-page .ag-theme-finora .ag-paging-panel {
+  direction: rtl;
 }
 
 .team-admin-page .button-loading {
@@ -130,4 +163,46 @@
   cursor: pointer;
   width: 100%;
   margin-top: 12px;
+}
+
+.team-admin-page .fixed-commission-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.team-admin-page .fixed-commission-field label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.team-admin-page .fixed-commission-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.team-admin-page .fixed-commission-row input {
+  width: 80px;
+}
+
+.team-admin-page .fixed-commission-row span {
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.team-admin-page .btn-fixed-commission {
+  border: 1px solid var(--border-light);
+  background: var(--card-alt);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.team-admin-page .fixed-commission-field small {
+  color: var(--text-muted);
+  font-size: 12px;
 }
