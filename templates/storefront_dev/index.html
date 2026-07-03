@@ -2,13 +2,10 @@
 {% block title %}{{ store_design.store_name }} — المتجر{% endblock %}
 {% block content %}
 <section class="sf-hero">
-  <div class="sf-card sf-hero-main">
-    <h1>{{ store_design.hero_title }}</h1>
-    <p>{{ store_design.hero_subtitle }}</p>
-  </div>
-  <div class="sf-stats">
-    <div class="sf-card sf-stat"><b>{{ products|length }}</b><span>منتج معروض</span></div>
-    <div class="sf-card sf-stat"><b>{{ products|selectattr('is_available')|list|length }}</b><span>متوفر الآن</span></div>
+  <div class="sf-card sf-company-ad-banner" aria-label="إعلانات الشركة">
+    <span>إعلانات الشركة</span>
+    <b>مساحة إعلان الشركة</b>
+    <small>ضع هنا صورة العرض أو إعلان الموسم أو أي حملة تسويقية.</small>
   </div>
 </section>
 

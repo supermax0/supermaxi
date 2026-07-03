@@ -1456,15 +1456,15 @@
       <div class="inv-box-icon">📦</div>
       <div class="inv-box-content">
         <h4>{{ _('inventory_summary_products_title') }}</h4>
-        <b>{{ products|length }}</b>
-        <small class="inv-small-note">{{ _('inventory_summary_active') }}: {{ active_count }} | {{ _('inventory_summary_inactive') }}: {{ inactive_count }}</small>
+        <b id="invSummaryProducts">{{ products|length }}</b>
+        <small class="inv-small-note" id="invSummaryActive">{{ _('inventory_summary_active') }}: {{ active_count }} | {{ _('inventory_summary_inactive') }}: {{ inactive_count }}</small>
       </div>
     </div>
     <div class="inv-box">
       <div class="inv-box-icon">💰</div>
       <div class="inv-box-content">
         <h4>{{ _('inventory_summary_value_title') }}</h4>
-        <b>{{ "{:,.0f}".format(current_inventory_value) }} <span style="font-size:14px;opacity:0.6">د.ع</span></b>
+        <b><span id="invSummaryValue">{{ "{:,.0f}".format(current_inventory_value) }}</span> <span style="font-size:14px;opacity:0.6">د.ع</span></b>
         <small class="inv-small-note">{{ _('inventory_summary_value_note') }}</small>
       </div>
     </div>
@@ -1472,7 +1472,7 @@
       <div class="inv-box-icon">⚠️</div>
       <div class="inv-box-content">
         <h4>{{ _('inventory_summary_low_title') }}</h4>
-        <b class="{% if low_stock_count > 0 %}inv-box-number-danger{% endif %}">{{ low_stock_count }}</b>
+        <b id="invSummaryLow" class="{% if low_stock_count > 0 %}inv-box-number-danger{% endif %}">{{ low_stock_count }}</b>
         <small class="inv-small-note">{{ _('inventory_summary_low_note') }}</small>
       </div>
     </div>
@@ -1480,7 +1480,7 @@
       <div class="inv-box-icon">📈</div>
       <div class="inv-box-content">
         <h4>{{ _('inventory_summary_profit_title') }}</h4>
-        <b class="inv-box-number-success">{{ "{:,.0f}".format(expected_profit_from_stock) }} <span
+        <b class="inv-box-number-success"><span id="invSummaryProfit">{{ "{:,.0f}".format(expected_profit_from_stock) }}</span> <span
             style="font-size:14px;opacity:0.6">د.ع</span></b>
         <small class="inv-small-note">{{ _('inventory_summary_profit_note') }}</small>
       </div>
@@ -1489,32 +1489,31 @@
       <div class="inv-box-icon">🛒</div>
       <div class="inv-box-content">
         <h4>{{ _('inventory_summary_purchase_title') }}</h4>
-        <b>{{ "{:,.0f}".format(total_purchase) }} <span style="font-size:14px;opacity:0.6">د.ع</span></b>
+        <b><span id="invSummaryPurchase">{{ "{:,.0f}".format(total_purchase) }}</span> <span style="font-size:14px;opacity:0.6">د.ع</span></b>
       </div>
     </div>
     <div class="inv-box inv-box--featured">
       <div class="inv-box-icon">🏷️</div>
       <div class="inv-box-content">
         <h4>{{ _('inventory_summary_sale_title') }}</h4>
-        <b>{{ "{:,.0f}".format(total_sale) }} <span style="font-size:14px;opacity:0.6">د.ع</span></b>
+        <b><span id="invSummarySale">{{ "{:,.0f}".format(total_sale) }}</span> <span style="font-size:14px;opacity:0.6">د.ع</span></b>
       </div>
     </div>
   </div>
 
-  {% if low_stock_products %}
   <!-- ================= LOW STOCK ALERT ================= -->
-  <div class="card inv-low-stock-card">
+  <div class="card inv-low-stock-card" id="invLowStockCard" {% if not low_stock_products %}hidden{% endif %}>
     <div class="inv-low-stock-header">
       <h3 class="inv-low-stock-title">
         <span>⚠️</span>
-        <span>{{ _('inventory_low_stock_alert') }} ({{ low_stock_count }})</span>
+        <span id="invLowStockTitle">{{ _('inventory_low_stock_alert') }} ({{ low_stock_count }})</span>
       </h3>
       <button type="button" class="inv-btn secondary sm inv-low-stock-filter-btn" onclick="applyLowStockFilter()">
         <i class="fas fa-filter"></i>
         <span>عرض في الجدول</span>
       </button>
     </div>
-    <div class="inv-low-stock-list">
+    <div class="inv-low-stock-list" id="invLowStockList">
       {% for p in low_stock_products[:10] %}
       <span class="inv-low-stock-chip">
         {{ p.name }} ({{ p.quantity }})
@@ -1527,7 +1526,6 @@
       {% endif %}
     </div>
   </div>
-  {% endif %}
 
   <!-- ================= ADD PRODUCT ================= -->
   <div class="card inv-hidden" id="addForm">
@@ -1547,7 +1545,7 @@
   <!-- ================= PRODUCTS TABLE ================= -->
   <div class="card">
     <div class="inv-products-header">
-      <h3 class="inv-products-title">📦 {{ _('inventory_products_title') }} <span style="font-size:15px; opacity: 0.55; font-weight:500;">({{ products|length }}) — {{ branch_scope_label }}</span></h3>
+      <h3 class="inv-products-title">📦 {{ _('inventory_products_title') }} <span id="invProductsScope" style="font-size:15px; opacity: 0.55; font-weight:500;">({{ products|length }}) — {{ branch_scope_label }}</span></h3>
       <div class="inv-products-actions">
         <a href="{{ url_for('stock_transfers.transfers_index') }}" class="inv-btn secondary">
           <i class="fas fa-truck-loading"></i>
@@ -1611,6 +1609,7 @@
       "barcode": {{ (p.barcode or '---')|tojson }},
       "branch_id": {{ pb.get('branch_id')|tojson }},
       "branch_name": {{ (pb.get('branch_name') or '—')|tojson }},
+      "branch_stocks": {{ product_branch_stock_map.get(p.id, {})|tojson }},
       "opening_stock": {{ p.opening_stock or 0 }},
       "quantity": {{ (branch_stock_map.get(p.id, p.quantity or 0) if not view_all_branches else (p.quantity or 0)) }},
       "low_stock_threshold": {{ p.low_stock_threshold or 5 }},
@@ -1643,6 +1642,16 @@
       <div class="inv-modal-info-box">
         <label class="inv-modal-info-label">📦 {{ _('inventory_product_label') }}</label>
         <div class="inv-modal-info-value" id="adjustProductName">—</div>
+      </div>
+
+      <div>
+        <label class="inv-modal-label">🏢 الفرع</label>
+        <select id="adjustBranchId" name="branch_id" class="inv-modal-input" required>
+          {% for b in company_branches or [] %}
+          <option value="{{ b.id }}">{{ b.name }}{% if b.code %} ({{ b.code }}){% endif %}</option>
+          {% endfor %}
+        </select>
+        <small class="inv-modal-help">يتم تسجيل الزيادة أو النقصان على الفرع المختار فقط.</small>
       </div>
 
       <div class="inv-modal-info-box">
@@ -1786,6 +1795,96 @@
 
   function isInventoryMobile() {
     return window.matchMedia && window.matchMedia('(max-width: 700px)').matches;
+  }
+
+  function getSelectedBranchOption() {
+    const branchFilter = document.getElementById('filterBranch');
+    if (!branchFilter || branchFilter.value === 'all' || branchFilter.value === 'none') return null;
+    return branchFilter.options[branchFilter.selectedIndex] || null;
+  }
+
+  function getProductBranchQuantity(product, branchId) {
+    if (!product || !branchId) return 0;
+    const stocks = product.branch_stocks || {};
+    const value = stocks[String(branchId)] ?? stocks[Number(branchId)] ?? 0;
+    return parseInt(value, 10) || 0;
+  }
+
+  function productsForSelectedBranch() {
+    const branchFilter = document.getElementById('filterBranch');
+    if (!branchFilter || branchFilter.value === 'all') return allProducts;
+
+    if (branchFilter.value === 'none') {
+      return allProducts.filter(product => !product.branch_id);
+    }
+
+    const selectedBranch = branchFilter.options[branchFilter.selectedIndex] || null;
+    if (!selectedBranch) return allProducts;
+    const branchId = selectedBranch.value;
+    const branchName = selectedBranch.textContent.trim();
+    return allProducts.map(product => {
+      const branchQuantity = getProductBranchQuantity(product, branchId);
+      return {
+        ...product,
+        branch_id: Number(branchId),
+        branch_name: branchName,
+        quantity: branchQuantity,
+        inventory_value: (parseInt(product.buy_price, 10) || 0) * branchQuantity
+      };
+    });
+  }
+
+  function formatInventoryNumber(value) {
+    return (Number(value) || 0).toLocaleString('en-US');
+  }
+
+  function currentInventoryScopeLabel(rows) {
+    const branchFilter = document.getElementById('filterBranch');
+    if (!branchFilter || branchFilter.value === 'all') return `(${rows.length}) — كل الفروع`;
+    const label = branchFilter.options[branchFilter.selectedIndex]?.textContent.trim() || '—';
+    return `(${rows.length}) — ${label}`;
+  }
+
+  function updateInventoryBranchSummary(rows) {
+    const scopedRows = Array.isArray(rows) ? rows : productsForSelectedBranch();
+    const activeCount = scopedRows.filter(product => product.active).length;
+    const inactiveCount = scopedRows.length - activeCount;
+    const totalPurchase = scopedRows.reduce((sum, product) => sum + ((Number(product.buy_price) || 0) * (Number(product.quantity) || 0)), 0);
+    const totalSale = scopedRows.reduce((sum, product) => sum + ((Number(product.sale_price) || 0) * (Number(product.quantity) || 0)), 0);
+    const totalProfit = totalSale - totalPurchase;
+    const lowStockRows = scopedRows.filter(product => (Number(product.quantity) || 0) <= (Number(product.low_stock_threshold) || 5));
+
+    const setText = (id, value) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = value;
+    };
+
+    setText('invSummaryProducts', formatInventoryNumber(scopedRows.length));
+    setText('invSummaryActive', `نشط: ${formatInventoryNumber(activeCount)} | غير نشط: ${formatInventoryNumber(inactiveCount)}`);
+    setText('invSummaryValue', formatInventoryNumber(totalPurchase));
+    setText('invSummaryLow', formatInventoryNumber(lowStockRows.length));
+    setText('invSummaryProfit', formatInventoryNumber(totalProfit));
+    setText('invSummaryPurchase', formatInventoryNumber(totalPurchase));
+    setText('invSummarySale', formatInventoryNumber(totalSale));
+    setText('invProductsScope', currentInventoryScopeLabel(scopedRows));
+
+    const lowCountEl = document.getElementById('invSummaryLow');
+    if (lowCountEl) lowCountEl.classList.toggle('inv-box-number-danger', lowStockRows.length > 0);
+
+    const lowCard = document.getElementById('invLowStockCard');
+    const lowTitle = document.getElementById('invLowStockTitle');
+    const lowList = document.getElementById('invLowStockList');
+    if (!lowCard || !lowTitle || !lowList) return;
+
+    lowCard.hidden = lowStockRows.length === 0;
+    lowTitle.textContent = `تنبيه: منتجات منخفضة المخزون (${lowStockRows.length})`;
+    const visibleRows = lowStockRows.slice(0, 10);
+    lowList.innerHTML = visibleRows.map(product => (
+      `<span class="inv-low-stock-chip">${escapeHtml(product.name)} (${Number(product.quantity) || 0})</span>`
+    )).join('');
+    if (lowStockRows.length > visibleRows.length) {
+      lowList.insertAdjacentHTML('beforeend', `<span class="inv-low-stock-chip">+${lowStockRows.length - visibleRows.length} أكثر</span>`);
+    }
   }
 
   function initAgGrid() {
@@ -1994,7 +2093,7 @@
 
     const gridOptions = {
       columnDefs: effectiveColumnDefs,
-      rowData: allProducts,
+      rowData: productsForSelectedBranch(),
       rowHeight: isInventoryMobile() ? 58 : 52,
       headerHeight: isInventoryMobile() ? 44 : 48,
       pagination: true,
@@ -2011,18 +2110,16 @@
       },
       onGridReady: (params) => {
         gridApi = params.api;
+        updateInventoryBranchSummary(productsForSelectedBranch());
       },
       isExternalFilterPresent: () => {
         const stockFilter = document.getElementById('filterStock').value;
         const activeFilter = document.getElementById('filterActive').value;
-        const branchFilter = document.getElementById('filterBranch')?.value || 'all';
-        return stockFilter !== 'all' || activeFilter !== 'all' || branchFilter !== 'all';
+        return stockFilter !== 'all' || activeFilter !== 'all';
       },
       doesExternalFilterPass: (node) => {
         const stockFilter = document.getElementById('filterStock').value;
         const activeFilter = document.getElementById('filterActive').value;
-        const branchFilter = document.getElementById('filterBranch')?.value || 'all';
-
         const qty = node.data.quantity;
         const threshold = node.data.low_stock_threshold || 5;
         const isActive = node.data.active;
@@ -2037,14 +2134,7 @@
         if (activeFilter === 'active') matchesActive = isActive;
         else if (activeFilter === 'inactive') matchesActive = !isActive;
 
-        let matchesBranch = true;
-        if (branchFilter === 'none') {
-          matchesBranch = !node.data.branch_id;
-        } else if (branchFilter !== 'all') {
-          matchesBranch = String(node.data.branch_id || '') === String(branchFilter);
-        }
-
-        return matchesStock && matchesActive && matchesBranch;
+        return matchesStock && matchesActive;
       }
     };
 
@@ -2069,7 +2159,11 @@
   });
 
   function filterProducts() {
-    if (gridApi) gridApi.onFilterChanged();
+    if (!gridApi) return;
+    const scopedRows = productsForSelectedBranch();
+    gridApi.setGridOption('rowData', scopedRows);
+    updateInventoryBranchSummary(scopedRows);
+    gridApi.onFilterChanged();
   }
 
   function applyLowStockFilter() {
@@ -2208,13 +2302,45 @@
     window.location.href = `/inventory/ledger?product_id=${productId}`;
   }
 
+  function updateAdjustPreview() {
+    const current = parseInt(document.getElementById('adjustCurrentQuantity').textContent) || 0;
+    const adjustment = parseInt(document.getElementById('adjustment').value) || 0;
+    const preview = current + adjustment;
+    const previewEl = document.getElementById('adjustPreview');
+    if (previewEl) {
+      previewEl.textContent = preview >= 0 ? preview : '❌ غير صحيح';
+      previewEl.style.color = preview >= 0 ? '#3b82f6' : '#ef4444';
+    }
+  }
+
+  function setAdjustCurrentQuantity(product, branchId) {
+    const currentQuantity = getProductBranchQuantity(product, branchId);
+    document.getElementById('adjustCurrentQuantity').textContent = currentQuantity;
+    document.getElementById('adjustPreview').textContent = currentQuantity;
+    updateAdjustPreview();
+  }
+
   function openAdjustModal(productId, productName, currentQuantity) {
+    const product = allProducts.find(item => Number(item.id) === Number(productId));
+    const branchSelect = document.getElementById('adjustBranchId');
+    const filterBranch = document.getElementById('filterBranch');
+    const preferredBranch = (
+      product?.branch_id ||
+      ((filterBranch && filterBranch.value !== 'all' && filterBranch.value !== 'none') ? filterBranch.value : '') ||
+      (branchSelect && branchSelect.options.length ? branchSelect.options[0].value : '')
+    );
+
     document.getElementById('adjustForm').action = `/inventory/adjust-stock/${productId}`;
     document.getElementById('adjustProductName').textContent = productName;
-    document.getElementById('adjustCurrentQuantity').textContent = currentQuantity;
     document.getElementById('adjustment').value = '';
     document.getElementById('adjustReason').value = '';
-    document.getElementById('adjustPreview').textContent = currentQuantity;
+    if (branchSelect) {
+      branchSelect.value = String(preferredBranch || '');
+      setAdjustCurrentQuantity(product, branchSelect.value);
+    } else {
+      document.getElementById('adjustCurrentQuantity').textContent = currentQuantity;
+      document.getElementById('adjustPreview').textContent = currentQuantity;
+    }
     document.getElementById('adjustModal').style.display = 'flex';
   }
 
@@ -2225,15 +2351,16 @@
   document.addEventListener('DOMContentLoaded', function () {
     const adjustmentInput = document.getElementById('adjustment');
     if (adjustmentInput) {
-      adjustmentInput.addEventListener('input', function () {
-        const current = parseInt(document.getElementById('adjustCurrentQuantity').textContent) || 0;
-        const adjustment = parseInt(this.value) || 0;
-        const preview = current + adjustment;
-        const previewEl = document.getElementById('adjustPreview');
-        if (previewEl) {
-          previewEl.textContent = preview >= 0 ? preview : '❌ غير صحيح';
-          previewEl.style.color = preview >= 0 ? '#3b82f6' : '#ef4444';
-        }
+      adjustmentInput.addEventListener('input', updateAdjustPreview);
+    }
+
+    const branchSelect = document.getElementById('adjustBranchId');
+    if (branchSelect) {
+      branchSelect.addEventListener('change', function () {
+        const action = document.getElementById('adjustForm').getAttribute('action') || '';
+        const productId = Number(action.split('/').filter(Boolean).pop() || 0);
+        const product = allProducts.find(item => Number(item.id) === productId);
+        setAdjustCurrentQuantity(product, this.value);
       });
     }
 

@@ -20,7 +20,7 @@
   let shippingValue = 0;
   let isSubmitting = false;
   let currentPage = 1;
-  let pageSize = 12;
+  let pageSize = 20;
 
   const initialOrderData = bootstrap.orderData ?? null;
   if (initialOrderData) {
@@ -308,8 +308,7 @@
     }
     if (empty) empty.style.display = "none";
 
-    const startIdx = (currentPage - 1) * pageSize;
-    const pageList = list.slice(startIdx, startIdx + pageSize);
+    const pageList = list;
 
     grid.innerHTML = pageList.map((p) => {
       const qty = p.quantity || 0;
@@ -1002,12 +1001,26 @@
     });
   }
 
+  function initHorizontalProductWheel() {
+    const grid = $("productGrid");
+    if (!grid) return;
+    grid.addEventListener("wheel", (e) => {
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+      const maxScroll = grid.scrollWidth - grid.clientWidth;
+      if (maxScroll <= 0) return;
+
+      e.preventDefault();
+      grid.scrollLeft += e.deltaY;
+    }, { passive: false });
+  }
+
   function init() {
     buildCategoryTabs();
     bindStockPills();
     initSearch();
     initDiscountShipping();
     initKeyboard();
+    initHorizontalProductWheel();
 
     $("cameraInput")?.addEventListener("change", (e) => {
       if (e.target.files?.[0]) sendToOCR(e.target.files[0]);

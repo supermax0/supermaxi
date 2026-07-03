@@ -478,23 +478,137 @@
 
 @media (max-width: 760px) {
   .sf-ai-fab {
-    bottom: 88px;
-    left: 14px;
-    width: 54px;
-    height: 54px;
+    bottom: 82px;
+    left: 12px;
+    width: 52px;
+    height: 52px;
+    box-shadow: 0 12px 26px rgba(0, 0, 0, 0.22);
+  }
+
+  .sf-ai-overlay {
+    background: rgba(15, 23, 42, 0.42);
+    backdrop-filter: blur(2px);
   }
 
   .sf-ai-panel {
-    left: 0;
-    right: 0;
-    bottom: 0;
-    width: 100%;
-    max-height: 85vh;
-    border-radius: 18px 18px 0 0;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    width: auto;
+    height: min(82dvh, 620px);
+    max-height: calc(100dvh - 16px);
+    border-radius: 22px;
+    border: 1px solid color-mix(in srgb, var(--sf-text, #111) 10%, transparent);
+    box-shadow: 0 18px 46px rgba(15, 23, 42, 0.28);
+  }
+
+  .sf-ai-header {
+    padding: 12px 14px;
+    min-height: 62px;
+    border-radius: 22px 22px 0 0;
+  }
+
+  .sf-ai-avatar {
+    width: 34px;
+    height: 34px;
+  }
+
+  .sf-ai-header h3 {
+    font-size: 0.95rem;
+  }
+
+  .sf-ai-header small {
+    font-size: 0.74rem;
+  }
+
+  .sf-ai-close {
+    width: 36px;
+    height: 36px;
+  }
+
+  .sf-ai-messages {
+    padding: 12px 10px;
+    gap: 8px;
+  }
+
+  .sf-ai-msg {
+    max-width: 88%;
+    padding: 9px 11px;
+    border-radius: 13px;
+    font-size: 0.9rem;
+    line-height: 1.55;
+  }
+
+  .sf-ai-msg.assistant {
+    margin-inline-end: auto;
+  }
+
+  .sf-ai-msg.user {
+    margin-inline-start: auto;
+  }
+
+  .sf-ai-suggestions {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 9px 10px 7px;
+    gap: 7px;
+    scrollbar-width: none;
+  }
+
+  .sf-ai-suggestions::-webkit-scrollbar {
+    display: none;
+  }
+
+  .sf-ai-chip-btn {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    padding: 7px 11px;
+    font-size: 0.78rem;
+  }
+
+  .sf-ai-form {
+    gap: 8px;
+    padding: 10px 10px calc(10px + env(safe-area-inset-bottom));
+  }
+
+  .sf-ai-input {
+    min-height: 44px;
+    max-height: 96px;
+    border-radius: 14px;
+    padding: 11px 12px;
+    font-size: 0.92rem;
+  }
+
+  .sf-ai-send {
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
   }
 
   .sf-ai-track-fields {
     grid-template-columns: 1fr;
+  }
+
+  .sf-ai-track-form {
+    padding: 10px 10px 0;
+  }
+
+  .sf-ai-product-media img {
+    height: 132px;
+  }
+
+  .sf-ai-product-body {
+    padding: 9px 10px 10px;
+  }
+
+  .sf-ai-product-actions {
+    gap: 6px;
+  }
+
+  .sf-ai-product-actions a,
+  .sf-ai-product-actions button {
+    padding: 7px 10px;
+    font-size: 0.78rem;
   }
 }
 

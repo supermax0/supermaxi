@@ -213,9 +213,58 @@ button, input, select, textarea { font: inherit; }
 
 .sf-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
+  grid-template-columns: 1fr;
   gap: 16px;
   margin-bottom: 18px;
+}
+.sf-company-ad-banner {
+  min-height: clamp(190px, 24vw, 330px);
+  padding: clamp(22px, 4vw, 46px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--brand) 90%, #0f172a), color-mix(in srgb, var(--brand) 48%, #111827));
+  box-shadow: var(--shadow);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 10px;
+  overflow: hidden;
+  position: relative;
+}
+.sf-company-ad-banner::after {
+  content: "";
+  position: absolute;
+  inset: auto -90px -120px auto;
+  width: 330px;
+  height: 330px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+}
+.sf-company-ad-banner span,
+.sf-company-ad-banner b,
+.sf-company-ad-banner small {
+  position: relative;
+  z-index: 1;
+}
+.sf-company-ad-banner span {
+  width: fit-content;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+.sf-company-ad-banner b {
+  font-size: clamp(2rem, 4vw, 4rem);
+  line-height: 1.05;
+}
+.sf-company-ad-banner small {
+  max-width: 720px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: clamp(0.95rem, 1.4vw, 1.15rem);
+  line-height: 1.7;
 }
 .sf-hero-main,
 .sf-hero-panel {
@@ -262,6 +311,68 @@ button, input, select, textarea { font: inherit; }
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
+}
+.sf-company-ads {
+  align-content: stretch;
+}
+.sf-ad-card {
+  min-height: 108px;
+  padding: 16px;
+  border-radius: var(--radius);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--brand) 10%, var(--surface-soft)), var(--surface-soft));
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 5px;
+  overflow: hidden;
+  position: relative;
+}
+.sf-ad-card::after {
+  content: "";
+  position: absolute;
+  inset: auto -34px -42px auto;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--brand) 18%, transparent);
+}
+.sf-ad-main {
+  grid-column: 1 / -1;
+  min-height: 142px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--brand) 88%, #0f172a), color-mix(in srgb, var(--brand) 58%, #111827));
+  color: #fff;
+}
+.sf-ad-card span,
+.sf-ad-card small,
+.sf-ad-card b {
+  position: relative;
+  z-index: 1;
+}
+.sf-ad-card span {
+  width: fit-content;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+.sf-ad-card b {
+  display: block;
+  font-size: 1.05rem;
+  line-height: 1.25;
+}
+.sf-ad-main b {
+  font-size: 1.45rem;
+}
+.sf-ad-card small {
+  color: var(--muted);
+  line-height: 1.5;
+}
+.sf-ad-main small {
+  color: rgba(255, 255, 255, 0.78);
 }
 .sf-stat {
   min-height: 108px;

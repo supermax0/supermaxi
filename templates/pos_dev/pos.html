@@ -17,7 +17,7 @@
 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/pos-white-pro.css') }}?v=20260702i">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/pos-white-pro.css') }}?v=20260703-summary-discount">
 
 </head>
 
@@ -179,53 +179,20 @@
 
 
 
-            <div class="pos-form-grid pos-desktop-only">
-
-              <div>
-
-                <label class="pos-field-label">نوع الخصم</label>
-
-                <select id="discountType" class="pos-select">
-
-                  <option value="amount">مبلغ</option>
-
-                  <option value="percent">نسبة</option>
-
-                </select>
-
-              </div>
-
-              <div>
-
-                <label class="pos-field-label">قيمة الخصم</label>
-
-                <input type="number" id="discountValue" class="pos-input" min="0" value="0" placeholder="0">
-
-              </div>
-
-              <div>
-
-                <label class="pos-field-label">الشحن</label>
-
-                <input type="number" id="shippingValue" class="pos-input" min="0" value="0" placeholder="0">
-
-              </div>
-
-              <div>
-
-                <label class="pos-field-label">ملاحظات</label>
-
-                <input type="text" id="invoiceNotes" class="pos-input" placeholder="ملاحظات الفاتورة">
-
-              </div>
-
-            </div>
+            <select id="discountType" hidden>
+              <option value="amount" selected>مبلغ</option>
+            </select>
+            <input type="hidden" id="discountValue" value="0">
+            <input type="hidden" id="shippingValue" value="0">
+            <input type="hidden" id="invoiceNotes" value="">
 
 
 
             <div class="pos-summary pos-desktop-only">
               <div class="pos-summary-row"><span>المجموع الفرعي</span><span id="summarySubtotal">0 د.ع</span></div>
-              <div class="pos-summary-row"><span>الخصم</span><span id="summaryDiscount">0 د.ع</span></div>
+              <button type="button" class="pos-summary-row pos-summary-row-btn" onclick="PosWP.openDiscountModal()">
+                <span><i class="fas fa-tag"></i> الخصم</span><span id="summaryDiscount">0 د.ع</span>
+              </button>
               <div class="pos-summary-row"><span>الشحن</span><span id="summaryShipping">0 د.ع</span></div>
               <div class="pos-summary-row total"><span>الإجمالي النهائي</span><span id="summaryTotal">0 د.ع</span></div>
               <span id="totalPrice" style="display:none">0</span>
@@ -737,7 +704,7 @@
   }</script>
 
   <script src="{{ url_for('static', filename='js/notification-sound.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/pos-white-pro.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/pos-white-pro.js') }}?v=20260703-summary-discount"></script>
   <script>
     function openPosProfileModal() {
       document.getElementById('posProfileModal')?.classList.add('show');

@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <script src="/static/js/no-zoom.js"></script>
   <title>{% block title %}{{ store_design.store_name }}{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='storefront/css/store.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='storefront/css/store.css') }}?v=20260703-full-ad-banner">
   {% if store_design.ai_assistant_enabled %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='storefront/css/ai-chat.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='storefront/css/ai-chat.css') }}?v=20260703-mobile-chat">
   {% endif %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/help-system.css') }}">
   <style>

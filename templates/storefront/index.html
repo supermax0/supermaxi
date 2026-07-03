@@ -2,19 +2,10 @@
 {% block title %}{{ store_design.store_name }} - المتجر{% endblock %}
 {% block content %}
 <section class="sf-hero">
-  <div class="sf-hero-main">
-    <span class="sf-eyebrow">متجر إلكتروني مرتبط بالمخزون</span>
-    <h1>{{ store_design.hero_title }}</h1>
-    <p>{{ store_design.hero_subtitle }}</p>
-    <div class="sf-hero-actions">
-      <a class="sf-btn primary" href="#sfProducts">تصفح المنتجات</a>
-      <a class="sf-btn ghost" href="{{ url_for('storefront.tracking_page', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.tracking_page', tenant_slug=shop_tenant_slug) }}">تتبع طلبك</a>
-    </div>
-  </div>
-  <div class="sf-hero-panel">
-    <div class="sf-stat"><b>{{ products|length }}</b><span>منتج معروض</span></div>
-    <div class="sf-stat"><b>{{ products|selectattr('is_available')|list|length }}</b><span>متوفر الآن</span></div>
-    <div class="sf-stat wide"><b>COD</b><span>الدفع عند الاستلام</span></div>
+  <div class="sf-company-ad-banner" aria-label="إعلانات الشركة">
+    <span>إعلانات الشركة</span>
+    <b>مساحة إعلان الشركة</b>
+    <small>ضع هنا صورة العرض أو إعلان الموسم أو أي حملة تسويقية.</small>
   </div>
 </section>
 

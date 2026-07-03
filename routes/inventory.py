@@ -11,6 +11,7 @@ from models.supplier import Supplier
 # من models.purchase تم نقله إلى purchases.py
 from models.employee import Employee
 from models.account_transaction import AccountTransaction
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.sql import func
 from datetime import datetime
 
@@ -312,6 +313,20 @@ def _product_branch_map(products, branches) -> dict[int, dict]:
     return {p.id: _product_branch_info(p, branch_by_id) for p in products}
 
 
+def _product_branch_stock_map(products) -> dict[int, dict[int, int]]:
+    from models.branch import BranchStock
+
+    product_ids = [p.id for p in (products or [])]
+    if not product_ids:
+        return {}
+
+    rows = BranchStock.query.filter(BranchStock.product_id.in_(product_ids)).all()
+    stock_by_product: dict[int, dict[int, int]] = {pid: {} for pid in product_ids}
+    for row in rows:
+        stock_by_product.setdefault(row.product_id, {})[row.branch_id] = int(row.quantity or 0)
+    return stock_by_product
+
+
 def _delivery_fees_context(product=None, meta: dict | None = None) -> dict:
     def _fee_int(value) -> int:
         try:
@@ -436,6 +451,7 @@ def inventory():
     inactive_count = len(products) - active_count
     company_branches = _company_branches_for_form()
     product_branch_map = _product_branch_map(products, company_branches)
+    product_branch_stock_map = _product_branch_stock_map(products)
 
     return render_template(
         "inventory.html",
@@ -456,6 +472,7 @@ def inventory():
         view_all_branches=view_all,
         company_branches=company_branches,
         product_branch_map=product_branch_map,
+        product_branch_stock_map=product_branch_stock_map,
     )
 
 
@@ -772,25 +789,65 @@ def delete_product(id):
     if not check_permission("can_manage_inventory"):
         return redirect("/pos"), 403
 
-    p = Product.query.get_or_404(id)
+    p = Product.query.get(id)
+    if not p:
+        flash("المنتج غير موجود أو تم حذفه مسبقاً.", "warning")
+        return redirect(url_for("inventory.inventory"))
+
     try:
         from models.branch import BranchStock, StockTransferLine
+        from models.beauty_service_product import BeautyServiceProduct
+        from models.maintenance_record import MaintenanceRecord
+        from models.purchase import Purchase
         from models.purchase_item import PurchaseItem
 
-        has_history = (
-            OrderItem.query.filter_by(product_id=p.id).first() is not None
-            or PurchaseItem.query.filter_by(product_id=p.id).first() is not None
-            or StockTransferLine.query.filter_by(product_id=p.id).first() is not None
+        product_id = p.id
+
+        def has_product_link(model):
+            try:
+                return (
+                    db.session.query(model.id)
+                    .filter(model.product_id == product_id)
+                    .first()
+                    is not None
+                )
+            except SQLAlchemyError:
+                db.session.rollback()
+                current_app.logger.warning(
+                    "Skipping product link check for %s",
+                    getattr(model, "__tablename__", model.__name__),
+                    exc_info=True,
+                )
+                return False
+
+        linked_models = (
+            OrderItem,
+            Purchase,
+            PurchaseItem,
+            StockTransferLine,
+            MaintenanceRecord,
+            BeautyServiceProduct,
         )
+        has_history = any(has_product_link(model) for model in linked_models)
 
         if has_history:
             p.active = False
-            flash("تم تعطيل المنتج بدلاً من حذفه لأنه مرتبط بسجلات سابقة.", "warning")
+            flash_message = "تم إخفاء المنتج من البيع والمتجر بدلاً من حذفه لأنه مرتبط بسجلات سابقة."
+            flash_category = "warning"
         else:
-            BranchStock.query.filter_by(product_id=p.id).delete(synchronize_session=False)
+            BranchStock.query.filter_by(product_id=product_id).delete(synchronize_session=False)
             db.session.delete(p)
-            flash("تم حذف المنتج بنجاح.", "success")
-        db.session.commit()
+            flash_message = "تم حذف المنتج بنجاح."
+            flash_category = "success"
+        try:
+            db.session.commit()
+            flash(flash_message, flash_category)
+        except IntegrityError:
+            db.session.rollback()
+            p = Product.query.get_or_404(id)
+            p.active = False
+            db.session.commit()
+            flash("تم إخفاء المنتج من البيع والمتجر لأنه مرتبط بسجلات أخرى.", "warning")
     except Exception as exc:
         db.session.rollback()
         current_app.logger.exception("delete_product failed")
@@ -933,6 +990,16 @@ def adjust_stock(id):
     try:
         adjustment = int(data.get("adjustment", 0))  # يمكن أن يكون موجب أو سالب
         reason = data.get("reason", "").strip()
+        branch_id = None
+        branch_id_raw = str(data.get("branch_id") or "").strip()
+        if branch_id_raw.isdigit():
+            from models.branch import Branch
+
+            branch = Branch.query.filter_by(id=int(branch_id_raw), is_active=True).first()
+            if branch:
+                branch_id = branch.id
+        if not branch_id:
+            branch_id = _inventory_branch_id()
         
         # التحقق من وجود السبب
         if not reason:
@@ -947,7 +1014,6 @@ def adjust_stock(id):
                 flash("يجب إدخال سبب التعديل", "error")
                 return redirect(url_for("inventory.inventory"))
         
-        branch_id = _inventory_branch_id()
         current_qty = get_branch_stock(branch_id, product.id) if branch_id else (product.quantity or 0)
         if current_qty + adjustment < 0:
             if request.is_json:
