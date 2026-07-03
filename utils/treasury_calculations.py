@@ -68,7 +68,11 @@ def _sum_withdrawals(account_id: int, default_cash_id: int) -> int:
     match = account_matches_treasury(col, account_id, default_cash_id)
     value = (
         db.session.query(func.sum(AccountTransaction.amount))
-        .filter(AccountTransaction.type == "withdraw", match)
+        .filter(
+            AccountTransaction.type == "withdraw",
+            match,
+            _cash_affecting_note_filter(AccountTransaction.note),
+        )
         .scalar()
         or 0
     )
@@ -355,7 +359,9 @@ def get_treasury_movements(account_id: int | None = None):
 
     withdrawals = (
         AccountTransaction.query.filter(
-            AccountTransaction.type == "withdraw", match
+            AccountTransaction.type == "withdraw",
+            match,
+            _cash_affecting_note_filter(AccountTransaction.note),
         )
         .order_by(AccountTransaction.created_at)
         .all()

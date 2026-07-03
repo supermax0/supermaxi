@@ -51,10 +51,12 @@ def _cash_affecting_note_filter(column):
     """
     فلتر SQLAlchemy لاستبعاد الحركات غير النقدية من AccountTransaction.
     - نستثني "مخزون افتتاحي" لأنه ليس حركة كاش.
+    - نستثني "تسوية جرد" لأنها تعديل مخزون وليس حركة نقدية.
     - نستثني أي حركة تحتوي "غير نقدي" لأنها قيد محاسبي/تصنيف فقط.
     """
     return and_(
         or_(column.is_(None), ~column.like("%مخزون افتتاحي%")),
+        or_(column.is_(None), ~column.like("%تسوية جرد%")),
         or_(column.is_(None), ~column.like("%غير نقدي%")),
     )
 

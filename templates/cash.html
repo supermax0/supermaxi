@@ -578,6 +578,25 @@
     </div>
   </div>
 
+  {% if inventory_non_cash_count|default(0) > 0 %}
+  <div class="cash-card">
+    <h3 class="cash-section-header">
+      <span>🧹</span>
+      <span>تنظيف حركات مخزون غير نقدية</span>
+    </h3>
+    <p style="color:#94a3b8;margin:0 0 16px;">
+      توجد {{ inventory_non_cash_count }} حركة مخزون محفوظة كسجل نقدي قديم. حذفها لا يغير المنتجات أو كميات المخزون.
+    </p>
+    <form method="post" action="{{ url_for('cash.cleanup_inventory_noncash') }}"
+      onsubmit="return confirm('حذف حركات المخزون غير النقدية من سجل الصندوق؟');">
+      <button type="submit" class="cash-btn cash-btn-primary">
+        <span>🧹</span>
+        <span>حذف حركات المخزون غير النقدية</span>
+      </button>
+    </form>
+  </div>
+  {% endif %}
+
   <!-- ================= Add Cash Transaction ================= -->
   <div class="cash-card">
     <h3 class="cash-section-header">

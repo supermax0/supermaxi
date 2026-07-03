@@ -580,9 +580,6 @@ def add_product_page():
 
             if "opening_stock" in request.form:
                 new_opening_stock = int(request.form.get("opening_stock") or 0)
-                old_value = old_opening_stock * old_buy_price
-                new_value = new_opening_stock * p.buy_price
-                difference = new_value - old_value
                 p.opening_stock = new_opening_stock
                 stock_difference = new_opening_stock - old_opening_stock
                 stock_branch_id = _branch_id_for_product_stock(request.form, meta)
@@ -592,20 +589,6 @@ def add_product_page():
                     p.quantity = (p.quantity or 0) + stock_difference
                     if p.quantity < 0:
                         p.quantity = 0
-                if difference != 0:
-                    if difference > 0:
-                        capital_transaction = AccountTransaction(
-                            type="deposit",
-                            amount=difference,
-                            note=f"تحديث مخزون افتتاحي - {p.name} ({stock_difference:+d} قطعة)",
-                        )
-                    else:
-                        capital_transaction = AccountTransaction(
-                            type="withdraw",
-                            amount=abs(difference),
-                            note=f"تحديث مخزون افتتاحي - {p.name} ({stock_difference:+d} قطعة)",
-                        )
-                    db.session.add(capital_transaction)
 
             p.meta_json = json.dumps(meta, ensure_ascii=False) if meta else None
             db.session.commit()
@@ -905,10 +888,6 @@ def edit_product(id):
     # تحديث المخزون الافتتاحي إذا تم توفيره
     if "opening_stock" in request.form:
         new_opening_stock = int(request.form["opening_stock"]) if request.form["opening_stock"] else 0
-        old_value = old_opening_stock * old_buy_price  # استخدام السعر القديم
-        new_value = new_opening_stock * p.buy_price  # استخدام السعر الجديد
-        difference = new_value - old_value
-        
         # تحديث المخزون الافتتاحي
         p.opening_stock = new_opening_stock
         
@@ -919,24 +898,6 @@ def edit_product(id):
         if p.quantity < 0:
             p.quantity = 0
         
-        # تحديث رأس المال بناءً على الفرق
-        if difference != 0:
-            if difference > 0:
-                # زيادة في رأس المال
-                capital_transaction = AccountTransaction(
-                    type="deposit",
-                    amount=difference,
-                    note=f"تحديث مخزون افتتاحي - {p.name} ({stock_difference:+d} قطعة)"
-                )
-            else:
-                # نقص في رأس المال
-                capital_transaction = AccountTransaction(
-                    type="withdraw",
-                    amount=abs(difference),
-                    note=f"تحديث مخزون افتتاحي - {p.name} ({stock_difference:+d} قطعة)"
-                )
-            db.session.add(capital_transaction)
-
     db.session.commit()
     return redirect(url_for("inventory.inventory"))
 
