@@ -1457,8 +1457,11 @@
           <input id="phone" placeholder="رقم الهاتف" class="modal-input">
           <input id="phone2" placeholder="رقم آخر" class="modal-input">
           <select id="city" class="modal-input">
-            <option>{{ primary_province }}</option>
-            <option>{{ provinces_group_label }}</option>
+            <option value="{{ primary_province }}">{{ primary_province }}</option>
+            {% for p in tenant_group_provinces %}
+            <option value="{{ p }}">{{ p }}</option>
+            {% endfor %}
+            <option value="{{ provinces_group_label }}">{{ provinces_group_label }}</option>
           </select>
           <input id="address" placeholder="العنوان" class="modal-input">
         </div>
@@ -1474,6 +1477,9 @@
           <input id="ocrAddress" placeholder="العنوان" class="modal-input">
           <select id="ocrCity" class="modal-input">
             <option value="{{ primary_province }}">{{ primary_province }}</option>
+            {% for p in tenant_group_provinces %}
+            <option value="{{ p }}">{{ p }}</option>
+            {% endfor %}
             <option value="{{ provinces_group_label }}">{{ provinces_group_label }}</option>
           </select>
           <div class="grid">

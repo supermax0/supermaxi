@@ -199,6 +199,21 @@
     }
 
     .inv-hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+    .inv-delivery-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px 14px;
+      margin-top: 12px;
+    }
+    @media (max-width: 900px) {
+      .inv-delivery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 560px) {
+      .inv-delivery-grid { grid-template-columns: 1fr; }
+    }
+    .inv-delivery-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0; }
+    .inv-delivery-actions .inv-btn { padding: 8px 14px; font-size: 13px; }
     .inv-specs-box {
       display: grid;
       gap: 12px;
@@ -338,7 +353,18 @@
         </div>
         <div class="inv-field inv-span-2">
           <label>{{ _('inventory_field_branch_note') }}</label>
-          <input name="branch_note" placeholder="{{ _('inventory_field_branch_note') }}" value="{{ m.get('branch_note', '') }}">
+          <select name="branch_id">
+            <option value="">{{ _('inventory_select_placeholder') }}</option>
+            {% set selected_branch_id = m.get('branch_id', '') %}
+            {% for b in company_branches or [] %}
+            <option value="{{ b.id }}"
+              {% if selected_branch_id|string == b.id|string %}selected
+              {% elif not selected_branch_id and m.get('branch_note') == b.name %}selected{% endif %}>
+              {{ b.name }}{% if b.code %} ({{ b.code }}){% endif %}
+            </option>
+            {% endfor %}
+          </select>
+          <p class="inv-hint">يُضاف المخزون الافتتاحي للفرع المختار. تُدار الفروع من إعدادات النظام.</p>
         </div>
         {% endif %}
       </div>
@@ -638,6 +664,34 @@
       </div>
     </div>
 
+    <!-- قسم رسوم التوصيل -->
+    <div class="inv-add-card">
+      <h3><span>🚚</span> رسوم التوصيل حسب المحافظة</h3>
+      <p class="inv-hint">حدّد أجرة توصيل هذا المنتج لكل محافظة. إذا تُركت المحافظة فارغة يُستخدم السعر الافتراضي أو إعدادات المتجر العامة.</p>
+      <div class="inv-form-grid" style="margin-top:12px;">
+        <div class="inv-field">
+          <label for="deliveryDefaultFee">أجرة التوصيل الافتراضية للمنتج</label>
+          <input id="deliveryDefaultFee" name="delivery_default_fee" type="number" min="0" placeholder="0"
+            value="{{ delivery_default_fee if delivery_default_fee else '' }}">
+          <p class="inv-hint">تُستخدم للمحافظات التي لم تُحدَّد لها أجرة خاصة.</p>
+        </div>
+      </div>
+      <div class="inv-delivery-actions">
+        <button type="button" class="inv-btn ghost" id="copyDeliveryDefaultBtn">نسخ الافتراضي للكل</button>
+        <button type="button" class="inv-btn ghost" id="clearDeliveryFeesBtn">مسح الكل</button>
+      </div>
+      <div class="inv-delivery-grid">
+        {% for province in tenant_provinces_list %}
+        <div class="inv-field">
+          <label>{{ province }}</label>
+          <input type="hidden" name="delivery_province_name" value="{{ province }}">
+          <input class="delivery-province-fee" name="delivery_province_fee" type="number" min="0" placeholder="—"
+            value="{% if province in delivery_by_province %}{{ delivery_by_province[province] }}{% elif delivery_default_fee %}{{ delivery_default_fee }}{% endif %}">
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
     <div class="inv-add-card">
       <div class="inv-actions">
         <button type="submit" class="inv-btn save" name="submit_action" value="save"><i class="fas fa-save"></i> {{ _('inventory_save') }}</button>
@@ -707,6 +761,24 @@
   {% if edit_product %}
   syncMarginFromSale();
   {% endif %}
+
+  var deliveryDefault = document.getElementById('deliveryDefaultFee');
+  var copyDeliveryBtn = document.getElementById('copyDeliveryDefaultBtn');
+  var clearDeliveryBtn = document.getElementById('clearDeliveryFeesBtn');
+  var provinceFeeInputs = document.querySelectorAll('.delivery-province-fee');
+
+  if (copyDeliveryBtn) {
+    copyDeliveryBtn.addEventListener('click', function () {
+      var value = deliveryDefault ? deliveryDefault.value : '';
+      provinceFeeInputs.forEach(function (input) { input.value = value; });
+    });
+  }
+  if (clearDeliveryBtn) {
+    clearDeliveryBtn.addEventListener('click', function () {
+      if (deliveryDefault) deliveryDefault.value = '';
+      provinceFeeInputs.forEach(function (input) { input.value = ''; });
+    });
+  }
 })();
 </script>
 {% endblock %}

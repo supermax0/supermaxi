@@ -43,6 +43,16 @@ def _as_json_list(value):
     return json.dumps(value or [], ensure_ascii=False)
 
 
+def _without_leon(value):
+    if not isinstance(value, str) or "LEON" not in value:
+        return value
+    return (
+        value.replace("مساعد LEON الذكي", "المساعد الذكي")
+        .replace("LEON AI", "المساعد الذكي")
+        .replace("LEON", "المساعد الذكي")
+    )
+
+
 def _core_guard():
     old_tenant = getattr(g, "tenant", None)
     g.tenant = None
@@ -109,6 +119,24 @@ def _repair_landing_defaults():
     hero_image = "/static/image.png"
     logo_image = "/static/finora-logo.png"
     changed = False
+    scrub_fields = {
+        LandingSEO: ("meta_title", "meta_description", "og_title", "og_description", "twitter_title", "twitter_description"),
+        LandingSection: ("title", "subtitle", "description", "content_json"),
+        LandingFeature: ("title", "description"),
+        LandingModule: ("name", "short_description", "long_description"),
+        LandingPricingPlan: ("name", "description", "features_json", "limits_json", "badge_text"),
+        LandingFAQ: ("question", "answer"),
+        LandingTestimonial: ("customer_title", "company_name", "quote"),
+        LandingCTA: ("label",),
+    }
+    for model, fields in scrub_fields.items():
+        for row in model.query.all():
+            for field in fields:
+                current = getattr(row, field, None)
+                cleaned = _without_leon(current)
+                if cleaned != current:
+                    setattr(row, field, cleaned)
+                    changed = True
     for section in LandingSection.query.filter(
         LandingSection.section_key == "hero",
         LandingSection.image_url.in_([logo_image, ""]),
@@ -173,7 +201,7 @@ def _seed_scope(scope):
         ("workflow", "workflow", "طريقة العمل", "طلب → تجهيز → شحن → تسليم → تسوية → ربح صافي", "كل خطوة مرتبطة بالأرقام التي تحتاجها لاتخاذ قرار أسرع.", {"steps": ["طلب", "تجهيز", "شحن", "تسليم", "تسوية", "ربح صافي"]}, "", "", "", "", "", "", 40),
         ("features", "features", "كل ما تحتاجه لإدارة شركتك", "مميزات تشغيلية ومحاسبية في نظام واحد", "من أول طلب حتى آخر تقرير مالي، Finora يغطي كل خطوة.", {}, "", "", "", "", "", "", 50),
         ("modules", "modules", "موديلات النظام", "نوافذ واضحة لكل فريق", "اعرض ما يهم كل قسم داخل شركتك بدون تشتيت.", {}, "", "", "", "", "", "", 60),
-        ("ai_assistant", "ai_assistant", "LEON AI — مساعدك الذكي داخل فينورا", "يراجع الأرقام وينبهك قبل الخسارة", "LEON يكتشف الأخطاء، يحلل التسويات، ينبهك للطلبات المتأخرة، ويجاوبك على أسئلة الربح والمخزون والتحصيل.", {"messages": ["عندك 3 طلبات تم تسليمها ولم تدخل بالتسوية.", "المصاريف زادت 18% مقارنة بالأسبوع السابق.", "هذا المنتج مبيعاته عالية والمخزون قرب يخلص.", "كشف شركة التوصيل يحتوي فرق 25,000 دينار."]}, "", "", "", "", "", "", 70),
+        ("ai_assistant", "ai_assistant", "المساعد الذكي داخل فينورا", "يراجع الأرقام وينبهك قبل الخسارة", "المساعد الذكي يكتشف الأخطاء، يحلل التسويات، ينبهك للطلبات المتأخرة، ويجاوبك على أسئلة الربح والمخزون والتحصيل.", {"messages": ["عندك 3 طلبات تم تسليمها ولم تدخل بالتسوية.", "المصاريف زادت 18% مقارنة بالأسبوع السابق.", "هذا المنتج مبيعاته عالية والمخزون قرب يخلص.", "كشف شركة التوصيل يحتوي فرق 25,000 دينار."]}, "", "", "", "", "", "", 70),
         ("demo_video", "demo_video", "شاهد فينورا خلال دقيقتين", "فيديو تعريفي سريع", "افتح الفيديو داخل نافذة خفيفة بدون تحميل إجباري.", {}, "", "", "شاهد الفيديو", "", "", "", 80),
         ("pricing", "pricing", "خطط واضحة بلا مفاجآت", "اختر الخطة التي تناسب حجم عملك", "يمكن تعديل الخطط والأسعار والعملة من لوحة التحكم.", {}, "", "", "", "", "", "", 90),
         ("testimonials", "testimonials", "آراء العملاء", "ثقة أصحاب المتاجر والشركات", "يمكن إخفاء هذا القسم إذا لم تضف آراء بعد.", {}, "", "", "", "", "", "", 100),
@@ -211,7 +239,7 @@ def _seed_scope(scope):
         ("تسويات شركات التوصيل", "مطابقة كشوفات التوصيل مع الطلبات والفروقات.", "fa-solid fa-truck"),
         ("تقارير الأرباح", "إيرادات ومصاريف وربح صافي وقيمة مخزون.", "fa-solid fa-chart-line"),
         ("صلاحيات الموظفين", "أدوار وصلاحيات دقيقة حسب مسؤولية كل موظف.", "fa-solid fa-user-shield"),
-        ("LEON AI", "مساعد ذكي يراجع الأرقام وينبهك للأخطاء.", "fa-solid fa-brain"),
+        ("المساعد الذكي", "مساعد ذكي يراجع الأرقام وينبهك للأخطاء.", "fa-solid fa-brain"),
     ]
     for idx, (title, desc, icon) in enumerate(features, start=1):
         db.session.add(LandingFeature(scope=scope, title=title, description=desc, icon=icon, feature_key=f"feature_{idx}", sort_order=idx * 10, is_visible=True))
@@ -226,15 +254,15 @@ def _seed_scope(scope):
         ("Courier Settlement", "تسويات شركات التوصيل", "fa-solid fa-route"),
         ("Reports", "تقارير ذكية للإدارة", "fa-solid fa-chart-pie"),
         ("Employees", "موظفون وأدوار وصلاحيات", "fa-solid fa-users-gear"),
-        ("LEON AI", "مساعد تحليل وتنبيه", "fa-solid fa-brain"),
+        ("المساعد الذكي", "مساعد تحليل وتنبيه", "fa-solid fa-brain"),
     ]
     for idx, (name, desc, icon) in enumerate(modules, start=1):
         db.session.add(LandingModule(scope=scope, name=name, short_description=desc, long_description=desc, icon=icon, sort_order=idx * 10, is_visible=True))
 
     plans = [
-        ("Starter", "starter", 20, "$", "شهري", "مناسب للمتاجر الصغيرة.", ["أساسيات فينورا", "POS وطلبات ومخزون", "بدون LEON كامل"], "", False),
-        ("Business", "business", 49, "$", "شهري", "مناسب للشركات النامية.", ["كل مميزات فينورا", "تقارير وتسويات", "LEON بنصف الإمكانيات"], "الأكثر شيوعاً", True),
-        ("Pro AI", "pro-ai", 99, "$", "شهري", "للشركات التي تريد ذكاء وتحليل كامل.", ["Finora كامل", "LEON كامل", "تحليل وتسويات وتنبيهات ذكية"], "ذكاء كامل", False),
+        ("Starter", "starter", 20, "$", "شهري", "مناسب للمتاجر الصغيرة.", ["أساسيات فينورا", "POS وطلبات ومخزون", "بدون المساعد الكامل"], "", False),
+        ("Business", "business", 49, "$", "شهري", "مناسب للشركات النامية.", ["كل مميزات فينورا", "تقارير وتسويات", "مساعد ذكي بإمكانيات محدودة"], "الأكثر شيوعاً", True),
+        ("Pro AI", "pro-ai", 99, "$", "شهري", "للشركات التي تريد ذكاء وتحليل كامل.", ["Finora كامل", "المساعد الذكي الكامل", "تحليل وتسويات وتنبيهات ذكية"], "ذكاء كامل", False),
     ]
     for idx, (name, slug, price, currency, period, desc, feats, badge, popular) in enumerate(plans, start=1):
         db.session.add(LandingPricingPlan(scope=scope, name=name, slug=slug, price=price, currency=currency, billing_period=period, description=desc, features_json=_as_json_list(feats), cta_text="ابدأ الآن", cta_url=f"/signup?plan={slug}", badge_text=badge, is_popular=popular, is_visible=True, sort_order=idx * 10))
@@ -271,7 +299,7 @@ def _seed_scope(scope):
         LandingSEO(
             scope=scope,
             meta_title="Finora Cloud — نظام إدارة ومحاسبة ذكي للشركات والمتاجر",
-            meta_description="منصة SaaS عراقية لإدارة الطلبات والمخزون والحسابات وشركات التوصيل والتسويات مع مساعد LEON الذكي.",
+            meta_description="منصة SaaS عراقية لإدارة الطلبات والمخزون والحسابات وشركات التوصيل والتسويات مع المساعد الذكي.",
             meta_keywords="Finora, محاسبة, إدارة متجر, SaaS, POS, مخزون, شركات التوصيل",
             og_title="Finora Cloud",
             og_description="كل عمليات شركتك من الطلب إلى التسوية والربح الحقيقي في مكان واحد.",

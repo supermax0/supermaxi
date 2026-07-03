@@ -12,6 +12,7 @@ from models.product import Product
 from utils.inventory_movements import validate_sale_quantity
 from utils.branch_migration import get_default_branch
 from utils.branch_stock_service import deduct_stock, BranchStockError
+from utils.order_shipping import add_shipping_line_item
 
 SERVICE_SHIPPING_BARCODE = "__SF_SHIPPING__"
 SERVICE_DISCOUNT_BARCODE = "__SF_DISCOUNT__"
@@ -185,18 +186,7 @@ class StorefrontCheckoutService:
             )
 
         if shipping_fee > 0:
-            shipping_product = _get_or_create_service_product("رسوم الشحن", SERVICE_SHIPPING_BARCODE, tenant_id)
-            db.session.add(
-                OrderItem(
-                    invoice_id=invoice.id,
-                    product_id=shipping_product.id,
-                    product_name="رسوم الشحن",
-                    quantity=1,
-                    price=shipping_fee,
-                    cost=0,
-                    total=shipping_fee,
-                )
-            )
+            add_shipping_line_item(invoice, shipping_fee, tenant_id)
 
         db.session.commit()
 

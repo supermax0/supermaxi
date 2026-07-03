@@ -26,6 +26,12 @@ from utils.permission_checks import check_permission
 from utils.activity_logger import PRODUCT_SNAPSHOT_FIELDS, log_activity, log_mutation, snapshot_attrs
 
 from utils.product_schema_guard import ensure_product_schema
+from utils.product_delivery_fees import (
+    apply_delivery_fees_to_meta,
+    delivery_fees_from_form,
+    product_delivery_config,
+)
+from utils.tenant_provinces import get_tenant_provinces_config
 from utils.branch_migration import ensure_branch_schema, get_default_branch
 from utils.branch_context import current_branch_id, init_branch_context
 from utils.branch_stock_service import (
@@ -53,6 +59,35 @@ def _inventory_branch_id():
         default = get_default_branch()
         return default.id if default else None
     return current_branch_id() or (get_default_branch().id if get_default_branch() else None)
+
+
+def _branch_id_for_product_stock(form=None, meta: dict | None = None) -> int | None:
+    """Use the product's selected branch for stock; fallback to current inventory branch."""
+    from models.branch import Branch
+
+    candidates: list[int] = []
+    if form is not None:
+        raw = (form.get("branch_id") or "").strip()
+        if raw.isdigit():
+            candidates.append(int(raw))
+    if meta is not None:
+        raw = meta.get("branch_id")
+        if raw is not None:
+            try:
+                candidates.append(int(raw))
+            except (TypeError, ValueError):
+                pass
+
+    seen: set[int] = set()
+    for branch_id in candidates:
+        if branch_id <= 0 or branch_id in seen:
+            continue
+        seen.add(branch_id)
+        branch = Branch.query.filter_by(id=branch_id, is_active=True).first()
+        if branch:
+            return branch.id
+
+    return _inventory_branch_id()
 
 
 def _product_display_qty(product, stock_map, view_all):
@@ -150,7 +185,6 @@ def _meta_from_inventory_add_form(form) -> dict:
         "brand",
         "category",
         "subcategory",
-        "branch_note",
         "warranty",
         "tax_applied",
         "sales_tax_type",
@@ -177,6 +211,22 @@ def _meta_from_inventory_add_form(form) -> dict:
         v = (form.get(k) or "").strip()
         if v:
             meta[k] = v
+
+    branch_id_raw = (form.get("branch_id") or "").strip()
+    if branch_id_raw.isdigit():
+        from models.branch import Branch
+
+        branch_id = int(branch_id_raw)
+        branch = Branch.query.filter_by(id=branch_id, is_active=True).first()
+        if branch:
+            meta["branch_id"] = branch.id
+            meta["branch_name"] = branch.name
+            meta["branch_note"] = branch.name
+    else:
+        meta.pop("branch_id", None)
+        meta.pop("branch_name", None)
+        meta.pop("branch_note", None)
+
     if form.get("enable_imei"):
         meta["enable_imei"] = True
     if bool(form.get("not_for_sale")):
@@ -193,7 +243,23 @@ def _meta_from_inventory_add_form(form) -> dict:
     store_badge = (form.get("store_badge") or "").strip()
     if store_badge:
         meta["store_badge"] = store_badge
+    by_province, default_fee = delivery_fees_from_form(
+        form,
+        get_tenant_provinces_config().get("list") or [],
+    )
+    meta = apply_delivery_fees_to_meta(meta, by_province, default_fee)
     return meta
+
+
+def _company_branches_for_form():
+    ensure_branch_schema()
+    from models.branch import Branch
+
+    return (
+        Branch.query.filter_by(is_active=True)
+        .order_by(Branch.is_default.desc(), Branch.name.asc())
+        .all()
+    )
 
 
 def _inventory_add_summary():
@@ -205,12 +271,68 @@ def _inventory_add_summary():
 
     current_inventory_value = sum(_val(p.buy_price) * _val(p.quantity) for p in products)
     expected_profit_from_stock = sum(
-        (_val(p.sale_price) - _val(p.buy_price)) * _val(p.quantity) for p in products
+        (
+            _val(p.sale_price)
+            - _val(p.buy_price)
+            - _val(p.shipping_cost)
+            - _val(p.marketing_cost)
+        )
+        * _val(p.quantity)
+        for p in products
     )
     return {
         "products_count": len(products),
         "current_inventory_value": current_inventory_value,
         "expected_profit_from_stock": expected_profit_from_stock,
+        "company_branches": _company_branches_for_form(),
+    }
+
+
+def _product_branch_info(product, branch_by_id: dict | None = None) -> dict:
+    meta = _load_product_meta(product)
+    branch_id = meta.get("branch_id")
+    label = (meta.get("branch_name") or meta.get("branch_note") or "").strip()
+    parsed_id = None
+    if branch_id is not None and str(branch_id).strip() != "":
+        try:
+            parsed_id = int(branch_id)
+        except (TypeError, ValueError):
+            parsed_id = None
+    if parsed_id and branch_by_id:
+        branch = branch_by_id.get(parsed_id)
+        if branch:
+            label = branch.name
+    if not label:
+        label = "—"
+    return {"branch_id": parsed_id, "branch_name": label}
+
+
+def _product_branch_map(products, branches) -> dict[int, dict]:
+    branch_by_id = {b.id: b for b in (branches or [])}
+    return {p.id: _product_branch_info(p, branch_by_id) for p in products}
+
+
+def _delivery_fees_context(product=None, meta: dict | None = None) -> dict:
+    def _fee_int(value) -> int:
+        try:
+            return max(0, int(value or 0))
+        except (TypeError, ValueError):
+            return 0
+
+    cfg = product_delivery_config(product) if product else {"delivery_by_province": {}, "delivery_default_fee": 0}
+    if meta:
+        by_province = meta.get("delivery_by_province")
+        if isinstance(by_province, dict):
+            cfg["delivery_by_province"] = {
+                str(k).strip(): _fee_int(v)
+                for k, v in by_province.items()
+                if str(k).strip()
+            }
+        if meta.get("delivery_default_fee") is not None:
+            cfg["delivery_default_fee"] = _fee_int(meta.get("delivery_default_fee"))
+    return {
+        "delivery_by_province": cfg.get("delivery_by_province") or {},
+        "delivery_default_fee": cfg.get("delivery_default_fee") or 0,
     }
 
 
@@ -312,6 +434,8 @@ def inventory():
     # المنتجات النشطة وغير النشطة
     active_count = sum(1 for p in products if p.active)
     inactive_count = len(products) - active_count
+    company_branches = _company_branches_for_form()
+    product_branch_map = _product_branch_map(products, company_branches)
 
     return render_template(
         "inventory.html",
@@ -330,6 +454,8 @@ def inventory():
         branch_scope_label=branch_scope_label,
         branch_stock_map=stock_map,
         view_all_branches=view_all,
+        company_branches=company_branches,
+        product_branch_map=product_branch_map,
     )
 
 
@@ -352,6 +478,8 @@ def add_product_page():
             ctx["edit_product"] = None
             ctx["product_meta"] = {}
             ctx["product_specs_items"] = []
+            by_prov, def_fee = delivery_fees_from_form(request.form)
+            ctx.update({"delivery_by_province": by_prov, "delivery_default_fee": def_fee})
             eid = (request.form.get("edit_product_id") or "").strip()
             if eid.isdigit():
                 ep = Product.query.get(int(eid))
@@ -424,7 +552,7 @@ def add_product_page():
             p.expiry_date = expiry_date
             p.opened_date = opened_date
             p.batch_number = batch_number
-            p.shipping_cost = 0
+            p.shipping_cost = max(0, int(meta.get("delivery_default_fee") or 0))
             p.marketing_cost = 0
             p.active = not not_for_sale_flag
 
@@ -440,9 +568,13 @@ def add_product_page():
                 difference = new_value - old_value
                 p.opening_stock = new_opening_stock
                 stock_difference = new_opening_stock - old_opening_stock
-                p.quantity = (p.quantity or 0) + stock_difference
-                if p.quantity < 0:
-                    p.quantity = 0
+                stock_branch_id = _branch_id_for_product_stock(request.form, meta)
+                if stock_branch_id:
+                    set_opening_branch_stock(stock_branch_id, p.id, new_opening_stock)
+                else:
+                    p.quantity = (p.quantity or 0) + stock_difference
+                    if p.quantity < 0:
+                        p.quantity = 0
                 if difference != 0:
                     if difference > 0:
                         capital_transaction = AccountTransaction(
@@ -484,7 +616,7 @@ def add_product_page():
             barcode=barcode,
             buy_price=buy_price,
             sale_price=sale_price,
-            shipping_cost=0,
+            shipping_cost=max(0, int(meta.get("delivery_default_fee") or 0)),
             marketing_cost=0,
             opening_stock=opening_stock,
             quantity=opening_stock,
@@ -502,9 +634,9 @@ def add_product_page():
         )
         db.session.add(p)
         db.session.flush()
-        branch_id = _inventory_branch_id()
-        if branch_id:
-            set_opening_branch_stock(branch_id, p.id, opening_stock)
+        stock_branch_id = _branch_id_for_product_stock(request.form, meta)
+        if stock_branch_id:
+            set_opening_branch_stock(stock_branch_id, p.id, opening_stock)
         db.session.commit()
         try:
             log_activity(
@@ -528,6 +660,7 @@ def add_product_page():
     ctx["edit_product"] = None
     ctx["product_meta"] = {}
     ctx["product_specs_items"] = []
+    ctx.update(_delivery_fees_context())
     edit_arg = request.args.get("edit", type=int)
     if edit_arg:
         ep = Product.query.get(edit_arg)
@@ -535,6 +668,7 @@ def add_product_page():
             ctx["edit_product"] = ep
             ctx["product_meta"] = _load_product_meta(ep)
             ctx["product_specs_items"] = _extract_specs_items(ctx["product_meta"])
+            ctx.update(_delivery_fees_context(ep, ctx["product_meta"]))
         else:
             ctx["error"] = "المنتج غير موجود."
     return render_template("inventory_add_product.html", **ctx)

@@ -60,6 +60,57 @@ class WorkspaceLayoutDirector {
       (w) => w && w.type && (w.state || "open") !== "closed" && !w.hidden
     );
 
+    const docWindow = visible.find((w) => w.type === "document_viewer");
+    const reportWindow =
+      visible.find((w) => w.type === "courier_settlement_analysis") ||
+      visible.find((w) => w.type === "live_report");
+    const flowMode = docWindow && reportWindow;
+
+    if (!narrow && flowMode) {
+      const sidePad = 24;
+      const top = 24;
+      const bottomReserve = 128;
+      let reportW = Math.min(600, Math.max(420, Math.round(W * 0.32)));
+      let docW = Math.min(660, Math.max(460, Math.round(W * 0.36)));
+      const minCenterGap = 250;
+      const total = sidePad * 2 + reportW + docW + minCenterGap;
+      if (total > W) {
+        const scale = (W - sidePad * 2 - minCenterGap) / (reportW + docW);
+        reportW = Math.max(340, Math.round(reportW * scale));
+        docW = Math.max(360, Math.round(docW * scale));
+      }
+      const h = Math.max(360, Math.min(650, H - top - bottomReserve));
+      result.set(reportWindow.id, {
+        x: sidePad,
+        y: top,
+        width: reportW,
+        height: h,
+        z_index: 12,
+      });
+      result.set(docWindow.id, {
+        x: W - docW - sidePad,
+        y: top,
+        width: docW,
+        height: h,
+        z_index: 12,
+      });
+      const aux = visible.filter((w) => w.id !== docWindow.id && w.id !== reportWindow.id);
+      const auxW = Math.min(460, Math.max(340, Math.round(W * 0.24)));
+      const auxH = Math.min(300, Math.max(220, Math.round(H * 0.32)));
+      const auxX = Math.round(W / 2 - auxW / 2);
+      const auxY = Math.max(top + 56, Math.round(H / 2 - auxH / 2));
+      aux.forEach((w, i) => {
+        result.set(w.id, {
+          x: auxX + i * 18,
+          y: auxY + i * 22,
+          width: auxW,
+          height: auxH,
+          z_index: 80 + i,
+        });
+      });
+      return result;
+    }
+
     const groups = { left: [], right: [], bottom: [], modal: [] };
     visible.forEach((w) => {
       const cfg = this._cfg(w.type);

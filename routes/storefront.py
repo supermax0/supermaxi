@@ -341,6 +341,18 @@ def api_cart_update(tenant_slug: str):
     return jsonify({"success": True, "message": msg, "cart": cart.summary()})
 
 
+@storefront_bp.route("/<tenant_slug>/api/shipping-quote", methods=["POST"])
+def api_shipping_quote(tenant_slug: str):
+    slug = _resolved_shop_slug(tenant_slug)
+    cart = _cart(slug)
+    data = request.get_json(silent=True) or {}
+    city = str(data.get("city") or "").strip()
+    if not city:
+        return jsonify({"success": False, "error": "المحافظة مطلوبة"}), 400
+    fee, breakdown = _settings.shipping_fee_for_cart(city, cart.items())
+    return jsonify({"success": True, "fee": fee, "breakdown": breakdown, "city": city})
+
+
 @storefront_bp.route("/<tenant_slug>/api/coupon", methods=["POST"])
 def api_cart_coupon(tenant_slug: str):
     slug = _resolved_shop_slug(tenant_slug)
@@ -378,7 +390,7 @@ def checkout_page(tenant_slug: str):
             "notes": str(request.form.get("notes") or "").strip(),
         }
         items = cart.items()
-        shipping_fee, _ = _settings.shipping_fee_for_city(checkout_form["city"])
+        shipping_fee, _ = _settings.shipping_fee_for_cart(checkout_form["city"], items)
         discount_amount, _ = cart.discount_for_subtotal(sum(int(i["line_total"]) for i in items))
         ok, msg, payload = _checkout.create_invoice_from_cart(items, checkout_form, shipping_fee, discount_amount)
         if ok:
@@ -399,6 +411,8 @@ def checkout_page(tenant_slug: str):
         checkout_error = msg
 
     if checkout_form["city"]:
+        shipping_fee, _ = _settings.shipping_fee_for_cart(checkout_form["city"], cart.items())
+    else:
         shipping_fee, _ = _settings.shipping_fee_for_city(checkout_form["city"])
     totals = cart.totals(shipping_fee)
 

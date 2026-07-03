@@ -228,6 +228,112 @@ html, body {
 .ws-windows-layer { position: absolute; inset: 0; pointer-events: none; z-index: 50; }
 .ws-windows-layer > * { pointer-events: auto; }
 
+.ws-window-tray {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 75;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(720px, calc(100% - 48px));
+  padding: 7px 9px;
+  border: 1px solid var(--ws-border-soft);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: var(--ws-shadow);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  pointer-events: auto;
+}
+
+.ws-window-tray[hidden] {
+  display: none;
+}
+
+.ws-window-tray-title {
+  flex-shrink: 0;
+  padding: 0 8px;
+  color: var(--ws-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.ws-window-tray-list {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.ws-window-tray-list::-webkit-scrollbar {
+  display: none;
+}
+
+.ws-window-tray-btn {
+  flex: 0 0 auto;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--ws-border-soft);
+  border-radius: 999px;
+  background: var(--ws-bg-soft);
+  color: var(--ws-text);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.ws-window-tray-btn:hover,
+.ws-window-tray-btn.active {
+  border-color: rgba(109, 94, 252, 0.35);
+  background: var(--ws-accent-soft);
+  color: var(--ws-accent);
+}
+
+.ws-flow-links {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 38;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.ws-flow-links-hidden {
+  display: none;
+}
+
+.ws-flow-links marker path {
+  fill: rgba(109, 94, 252, 0.88);
+}
+
+.ws-flow-path {
+  fill: none;
+  stroke: rgba(109, 94, 252, 0.78);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 10 9;
+  marker-end: url(#ws-flow-arrow);
+  filter: drop-shadow(0 6px 12px rgba(109, 94, 252, 0.2));
+  animation: ws-flow-dash 1.8s linear infinite;
+}
+
+.ws-flow-path-report {
+  stroke: rgba(34, 181, 115, 0.76);
+}
+
+@keyframes ws-flow-dash {
+  to { stroke-dashoffset: -38; }
+}
+
+.ws-flow-mode .ws-leon-bubble {
+  display: none;
+}
+
 /* Avatar sits above the canvas grid but below windows/modals so it can
    never cover the document viewer or an approval modal. */
 .ws-avatar-layer {
@@ -285,6 +391,30 @@ html, body {
   background: var(--ws-bg-soft);
   padding: 3px 10px;
   border-radius: 999px;
+}
+
+.ws-window-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.ws-window-hide {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--ws-border-soft);
+  background: var(--ws-bg-soft);
+  color: var(--ws-muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.ws-window-hide:hover {
+  background: var(--ws-red-soft);
+  color: var(--ws-red);
 }
 
 .ws-window-body {
@@ -607,13 +737,44 @@ html, body {
 @keyframes ws-skeleton { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
 
 .ws-doc-error { background: var(--ws-red-soft); color: var(--ws-red); border: 1px solid var(--ws-red-soft); border-radius: 12px; padding: 12px; font-size: 13px; }
-.ws-doc-hint { margin-top: 16px; color: var(--ws-muted); font-size: 13px; }
+.ws-doc-hint { margin: 16px 0 0; color: var(--ws-text); font-size: 14px; font-weight: 800; }
+.ws-doc-subhint { margin: 6px auto 0; color: var(--ws-muted); font-size: 12px; max-width: 280px; line-height: 1.6; }
 .ws-doc-scan-hint { font-size: 12px; color: var(--ws-accent); margin-top: 8px; }
 
 .ws-doc-paper { position: relative; background: #fff; border: 1px solid var(--ws-border-soft); border-radius: 14px; min-height: 280px; padding: 20px; overflow: hidden; }
 .ws-doc-placeholder { color: var(--ws-muted); text-align: center; padding: 40px 16px; font-size: 14px; line-height: 1.8; }
 .ws-doc-lines { opacity: 0.35; }
 .ws-doc-line { height: 8px; background: #e2e8f0; border-radius: 4px; margin-bottom: 10px; }
+.ws-doc-upload-zone {
+  cursor: pointer;
+  border-style: dashed;
+  border-color: rgba(109, 94, 252, 0.32);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, transform 0.18s ease;
+}
+.ws-doc-upload-zone:hover,
+.ws-doc-upload-zone:focus-visible,
+.ws-doc-upload-zone.ws-doc-dragover {
+  border-color: var(--ws-accent);
+  background: linear-gradient(180deg, #fff, var(--ws-accent-soft));
+  box-shadow: inset 0 0 0 1px rgba(109, 94, 252, 0.18), 0 12px 28px rgba(109, 94, 252, 0.12);
+  outline: none;
+}
+.ws-doc-upload-zone.ws-doc-dragover {
+  transform: translateY(-1px);
+}
+.ws-doc-upload-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--ws-accent), var(--ws-accent-2));
+  box-shadow: 0 10px 22px rgba(109, 94, 252, 0.28);
+  font-size: 20px;
+}
 
 /* thumbnails strip */
 .ws-doc-thumbs { display: flex; gap: 10px; align-items: stretch; }
@@ -1008,4 +1169,12 @@ html, body {
   .ws-chatbar-inner { border-radius: 24px; flex-wrap: wrap; }
   .ws-command-select { flex: 1 1 180px; max-width: none; }
   .ws-chat-input { flex-basis: 100%; order: 3; }
+  .ws-window-tray {
+    top: 8px;
+    max-width: calc(100% - 24px);
+    border-radius: 18px;
+  }
+  .ws-window-tray-title {
+    display: none;
+  }
 }

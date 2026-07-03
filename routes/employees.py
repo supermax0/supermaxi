@@ -131,7 +131,10 @@ def employees():
             password=generate_password_hash(request.form["password"]),
             role=request.form.get("role", "cashier"),
             salary=int(request.form.get("salary", 0)),
-            commission_percent=get_fixed_employee_commission_amount(),
+            commission_percent=max(
+                0,
+                int(request.form.get("commission", get_fixed_employee_commission_amount()) or 0),
+            ),
         )
         db.session.add(emp)
         db.session.commit()

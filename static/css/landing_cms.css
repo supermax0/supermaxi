@@ -114,7 +114,7 @@
 
 .cms-panel-body {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 190px;
+  grid-template-columns: 1fr;
   gap: 18px;
   padding: 24px;
   min-height: 374px;
@@ -132,7 +132,6 @@
 }
 
 .cms-kpi-row div,
-.cms-leon-card,
 .cms-panel-list {
   border: 1px solid var(--border);
   border-radius: 18px;
@@ -150,7 +149,6 @@
 }
 
 .cms-kpi-row span,
-.cms-leon-card span,
 .cms-panel-list span {
   color: var(--muted);
   font-size: 13px;
@@ -189,32 +187,6 @@
 }
 
 .cms-panel-list i {
-  color: #16a34a;
-}
-
-.cms-leon-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  gap: 10px;
-  padding: 20px;
-  background: #fff;
-}
-
-.cms-leon-card img {
-  width: 72px;
-  height: 72px;
-  object-fit: contain;
-  border-radius: 18px;
-  background: #f8fafc;
-  border: 0;
-  box-shadow: none;
-}
-
-.cms-leon-card strong {
-  font-size: 24px;
   color: #16a34a;
 }
 
@@ -433,7 +405,7 @@
 .cms-whatsapp-float {
   position: fixed;
   left: 18px;
-  bottom: 18px;
+  bottom: 94px;
   z-index: 120;
   display: inline-flex;
   align-items: center;
@@ -450,6 +422,10 @@
 
 .cms-whatsapp-float i {
   font-size: 20px;
+}
+
+.landing-chat-btn {
+  z-index: 130;
 }
 
 #videoHost {

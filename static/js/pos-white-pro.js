@@ -10,6 +10,7 @@
   let items = [];
   let selectedCustomerId = null;
   let selectedCustomerName = "";
+  let selectedCustomerCity = "";
   let editingOrderId = null;
   let currentPriceEditIndex = -1;
   let activeCategory = "all";
@@ -103,10 +104,37 @@
 
   function updateCustomerDisplay(c) {
     if (c?.name) selectedCustomerName = c.name;
+    if (c?.city) selectedCustomerCity = c.city;
+    quoteDeliveryFee();
   }
 
   function clearCustomerDisplay() {
     selectedCustomerName = "";
+    selectedCustomerCity = "";
+    shippingValue = 0;
+    const shipInput = $("shippingValue");
+    if (shipInput) shipInput.value = "";
+  }
+
+  function quoteDeliveryFee() {
+    if (!selectedCustomerId || !selectedCustomerCity || !items.length) return;
+    fetch("/api/delivery-fee/quote", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        city: selectedCustomerCity,
+        items: items.map(({ product_id, qty }) => ({ product_id, qty })),
+      }),
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (!d.ok) return;
+        shippingValue = Number(d.fee) || 0;
+        const shipInput = $("shippingValue");
+        if (shipInput) shipInput.value = shippingValue;
+        updateSummary();
+      })
+      .catch(() => { /* ignore */ });
   }
 
   function updateStats() {
@@ -210,6 +238,7 @@
     }
 
     updateSummary();
+    quoteDeliveryFee();
   }
 
   function filteredProducts() {
@@ -434,6 +463,7 @@
     }
     selectedCustomerId = c.id;
     selectedCustomerName = c.name || "";
+    selectedCustomerCity = c.city || "";
     updateCustomerDisplay(c);
     $("customerResults")?.classList.remove("open");
     const sc = $("searchCustomer");
@@ -547,6 +577,7 @@
         scheduled_date: null,
         page_id: pageId || null,
         page_name: pageName || null,
+        shipping_fee: Number(shippingValue) || 0,
       }),
     })
       .then((r) => r.json())
@@ -625,6 +656,7 @@
         note: notes || null,
         scheduled_date: scheduleDate,
         page_id: pageSelect?.value && pageSelect.value !== "no_page" ? pageSelect.value : null,
+        shipping_fee: Number(shippingValue) || 0,
       }),
     })
       .then((r) => r.json())

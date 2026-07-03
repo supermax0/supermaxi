@@ -198,6 +198,7 @@
       margin-bottom: 32px;
       padding-bottom: 16px;
       border-bottom: 1px solid var(--border-light);
+      direction: rtl;
     }
 
     .sidebar-mobile-header .brand {
@@ -205,7 +206,8 @@
       padding-bottom: 0;
       border-bottom: none;
       flex: 1;
-      text-align: right;
+      min-width: 0;
+      text-align: center;
     }
 
     .sidebar-close-btn {
@@ -235,34 +237,9 @@
     .sidebar-header-end {
       display: flex;
       align-items: center;
-      justify-content: flex-end;
-      gap: 0;
-      min-width: 44px;
-    }
-
-    @media (min-width: 901px) {
-      .sidebar-mobile-header {
-        display: grid;
-        grid-template-columns: 44px minmax(0, 1fr) 44px;
-        align-items: center;
-        gap: 8px;
-      }
-
-      .sidebar-mobile-header .brand {
-        flex: none;
-        text-align: center;
-        justify-self: center;
-        grid-column: 2;
-      }
-
-      .sidebar-mobile-header .sidebar-hide-desktop-btn {
-        grid-column: 1;
-      }
-
-      .sidebar-mobile-header .sidebar-header-end {
-        grid-column: 3;
-        justify-self: end;
-      }
+      justify-content: flex-start;
+      gap: 8px;
+      flex-shrink: 0;
     }
 
     /* طي القائمة على الشاشات الواسعة */
@@ -281,8 +258,6 @@
       font-size: 18px;
       transition: background 0.2s, color 0.2s, transform 0.2s;
       -webkit-tap-highlight-color: transparent;
-      grid-column: 1;
-      justify-self: start;
     }
 
     .sidebar-hide-desktop-btn:hover {
@@ -1441,6 +1416,18 @@
       color: var(--text);
       transition: all 0.3s;
       z-index: 1001;
+      align-items: center;
+      justify-content: center;
+    }
+
+    @media (min-width: 901px) {
+      .topbar .toggle {
+        display: none !important;
+      }
+
+      .app.sidebar-desktop-hidden .topbar .toggle {
+        display: inline-flex !important;
+      }
     }
 
     .toggle:hover {
@@ -2102,15 +2089,15 @@ or request.path.startswith('/superadmin') %}
     {% if session.get("user_id") and not is_payment_flow and not is_agent_portal %}
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-mobile-header">
-        <button type="button" class="sidebar-hide-desktop-btn" onclick="collapseDesktopSidebar()"
-          title="إخفاء القائمة" aria-label="إخفاء القائمة الجانبية">
-          <i class="fa fa-outdent"></i>
-        </button>
         <div class="brand">
           <img src="{{ platform_logo_url }}" alt="{{ platform_app_name }}" class="brand-logo">
           <span class="brand-text">{{ platform_app_name }}</span>
         </div>
         <div class="sidebar-header-end">
+          <button type="button" class="sidebar-hide-desktop-btn" onclick="collapseDesktopSidebar()"
+            title="طي القائمة" aria-label="طي القائمة الجانبية">
+            <i class="fa fa-outdent"></i>
+          </button>
           <button type="button" class="sidebar-close-btn" onclick="closeSidebar()" aria-label="إغلاق القائمة"><i
               class="fa fa-times"></i></button>
         </div>

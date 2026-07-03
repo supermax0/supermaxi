@@ -16,7 +16,12 @@
   let courierAnalysisClient = null;
   let timelineStore = null;
   let progressPanel = null;
+  let flowLinksSvg = null;
+  let windowTrayEl = null;
+  let lastWorkspaceWindows = [];
+  const openAuxWindowIds = new Set();
 
+  const rootEl = document.getElementById("workspace-root");
   const statusPill = document.getElementById("ws-status-pill");
   const btnUpload = document.getElementById("btn-upload");
   const btnIntelligence = document.getElementById("btn-intelligence");
@@ -130,6 +135,203 @@
     target.click();
   }
 
+  function selectMainReportWindow(windows) {
+    const list = windows || [];
+    return (
+      list.find((w) => w.type === "courier_settlement_analysis") ||
+      list.find((w) => w.type === "live_report") ||
+      null
+    );
+  }
+
+  function isMainWorkspaceWindow(windowSpec, reportWindow, docWindow) {
+    if (!windowSpec) return false;
+    return Boolean(
+      (reportWindow && windowSpec.id === reportWindow.id) ||
+      (docWindow && windowSpec.id === docWindow.id)
+    );
+  }
+
+  function windowLabel(windowSpec) {
+    const labels = {
+      assistant_notes: "ملاحظات LEON",
+      courier_rows: "الصفوف",
+      courier_issues: "المشاكل",
+      financial_preview: "مالية",
+      document_intelligence: "فهم المستند",
+      raw_table_preview: "الجداول",
+      workflow_selector: "نوع العمل",
+      approval_panel: "الموافقة",
+      session_timeline: "الأحداث",
+    };
+    return labels[windowSpec.type] || windowSpec.title || windowSpec.type || "نافذة";
+  }
+
+  function escHtml(text) {
+    const div = document.createElement("div");
+    div.textContent = text || "";
+    return div.innerHTML;
+  }
+
+  function mergeWindowList(existing, nextWindow) {
+    const list = [...(existing || [])];
+    const idx = list.findIndex((w) => w.id === nextWindow.id);
+    if (idx >= 0) list[idx] = nextWindow;
+    else list.push(nextWindow);
+    return list;
+  }
+
+  function normalizeWorkspaceWindows(windows) {
+    const list = windows || [];
+    const doc = list.find((w) => w.type === "document_viewer");
+    const report = selectMainReportWindow(list);
+    const auxiliary = list
+      .filter((w) => !isMainWorkspaceWindow(w, report, doc))
+      .filter((w) => openAuxWindowIds.has(w.id))
+      .map((w) => ({ ...w, ui_auxiliary: true }));
+    return [report, doc, ...auxiliary].filter(Boolean);
+  }
+
+  function ensureWindowTray() {
+    if (windowTrayEl || !canvasEl) return windowTrayEl;
+    windowTrayEl = document.createElement("div");
+    windowTrayEl.id = "ws-window-tray";
+    windowTrayEl.className = "ws-window-tray";
+    canvasEl.appendChild(windowTrayEl);
+    windowTrayEl.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-window-id]");
+      if (!button) return;
+      const id = button.dataset.windowId;
+      if (!id) return;
+      if (openAuxWindowIds.has(id)) {
+        openAuxWindowIds.delete(id);
+      } else {
+        openAuxWindowIds.add(id);
+      }
+      renderWorkspaceWindows(lastWorkspaceWindows);
+    });
+    return windowTrayEl;
+  }
+
+  function renderWindowTray(windows) {
+    const tray = ensureWindowTray();
+    if (!tray) return;
+    const list = windows || [];
+    const doc = list.find((w) => w.type === "document_viewer");
+    const report = selectMainReportWindow(list);
+    const auxiliary = list.filter((w) => !isMainWorkspaceWindow(w, report, doc));
+    if (!auxiliary.length) {
+      tray.hidden = true;
+      tray.innerHTML = "";
+      return;
+    }
+
+    tray.hidden = false;
+    tray.innerHTML = `
+      <span class="ws-window-tray-title">النوافذ</span>
+      <div class="ws-window-tray-list">
+        ${auxiliary
+          .map((w) => {
+            const active = openAuxWindowIds.has(w.id);
+            return `<button type="button" class="ws-window-tray-btn ${active ? "active" : ""}" data-window-id="${escHtml(w.id)}">${escHtml(windowLabel(w))}</button>`;
+          })
+          .join("")}
+      </div>
+    `;
+  }
+
+  function ensureFlowLinksSvg() {
+    if (flowLinksSvg || !canvasEl) return flowLinksSvg;
+    flowLinksSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    flowLinksSvg.setAttribute("id", "ws-flow-links");
+    flowLinksSvg.setAttribute("class", "ws-flow-links");
+    flowLinksSvg.setAttribute("aria-hidden", "true");
+    flowLinksSvg.innerHTML = `
+      <defs>
+        <marker id="ws-flow-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z"></path>
+        </marker>
+      </defs>
+      <path class="ws-flow-path ws-flow-path-preview" data-flow-path="preview"></path>
+      <path class="ws-flow-path ws-flow-path-report" data-flow-path="report"></path>
+    `;
+    canvasEl.insertBefore(flowLinksSvg, canvasEl.firstChild);
+    return flowLinksSvg;
+  }
+
+  function setFlowPath(name, start, end) {
+    const svg = ensureFlowLinksSvg();
+    const path = svg && svg.querySelector(`[data-flow-path="${name}"]`);
+    if (!path || !start || !end) return;
+    const midX = (start.x + end.x) / 2;
+    path.setAttribute("d", `M ${start.x} ${start.y} C ${midX} ${start.y}, ${midX} ${end.y}, ${end.x} ${end.y}`);
+  }
+
+  function syncFlowScene() {
+    if (!canvasEl || !windowManager || !avatar) return;
+    rootEl?.classList.add("ws-flow-mode");
+    avatar.moveTo(0.5, 0.52);
+
+    const svg = ensureFlowLinksSvg();
+    const canvasRect = canvasEl.getBoundingClientRect();
+    svg.setAttribute("viewBox", `0 0 ${canvasRect.width} ${canvasRect.height}`);
+
+    const docEntry = [...windowManager.windows.entries()].find(([, el]) => {
+      const spec = JSON.parse(el.dataset.spec || "{}");
+      return spec.type === "document_viewer";
+    });
+    const reportEntry = [...windowManager.windows.entries()].find(([, el]) => {
+      const spec = JSON.parse(el.dataset.spec || "{}");
+      return spec.type === "courier_settlement_analysis" || spec.type === "live_report";
+    });
+    const avatarCore = avatar.el && avatar.el.querySelector(".ws-leon-core");
+    if (!docEntry || !reportEntry || !avatarCore) {
+      svg.classList.add("ws-flow-links-hidden");
+      return;
+    }
+
+    svg.classList.remove("ws-flow-links-hidden");
+    const docRect = docEntry[1].getBoundingClientRect();
+    const reportRect = reportEntry[1].getBoundingClientRect();
+    const avatarRect = avatarCore.getBoundingClientRect();
+    const circle = {
+      x: avatarRect.left + avatarRect.width / 2 - canvasRect.left,
+      y: avatarRect.top + avatarRect.height / 2 - canvasRect.top,
+    };
+    setFlowPath(
+      "preview",
+      { x: docRect.left - canvasRect.left, y: docRect.top + docRect.height / 2 - canvasRect.top },
+      circle
+    );
+    setFlowPath(
+      "report",
+      circle,
+      { x: reportRect.right - canvasRect.left, y: reportRect.top + reportRect.height / 2 - canvasRect.top }
+    );
+  }
+
+  function renderWorkspaceWindows(windows) {
+    lastWorkspaceWindows = windows || [];
+    const visible = normalizeWorkspaceWindows(windows);
+    renderWindowTray(windows);
+    windowManager.renderWindows(visible);
+    requestAnimationFrame(syncFlowScene);
+  }
+
+  function applyWorkspaceEvent(data) {
+    if (!data || !windowManager) return;
+    if (data.type === "window.opened" && data.payload && data.payload.window) {
+      renderWorkspaceWindows(mergeWindowList(lastWorkspaceWindows, data.payload.window));
+      return;
+    }
+    if (data.type === "window.updated" && data.payload && data.payload.windows) {
+      renderWorkspaceWindows(data.payload.windows);
+      return;
+    }
+    windowManager.applyEvent(data);
+    requestAnimationFrame(syncFlowScene);
+  }
+
   function updateUrl(sessionId) {
     const url = new URL(window.location.href);
     url.searchParams.set("session", sessionId);
@@ -186,7 +388,7 @@
         props: { ...(w.props || {}), loading },
       };
     });
-    windowManager.renderWindows(windows);
+    renderWorkspaceWindows(windows);
   }
 
   function showDocumentViewerError(message) {
@@ -200,15 +402,16 @@
         props: { ...(w.props || {}), loading: false, error: message },
       };
     });
-    windowManager.renderWindows(windows);
+    renderWorkspaceWindows(windows);
   }
 
   function renderFromSession(session) {
     if (!session) return;
     setStatus(session.status);
     const windows = ensureTimelineWindow(session);
-    windowManager.renderWindows(windows);
+    renderWorkspaceWindows(windows);
     avatar.applyState(session.avatar_state || {});
+    avatar.moveTo(0.5, 0.52);
     updateIntelligenceButton();
     updateCourierButton();
     if (btnRun) {
@@ -237,12 +440,12 @@
         windowManager.updateTimelineItems(timelineStore.items);
       }
       if (!data._fromReplay) {
-        windowManager.applyEvent(data);
+        applyWorkspaceEvent(data);
       } else if (data.type === "report.appended") {
         // On replay we only re-hydrate the streaming report; window state is
         // already authoritative from the session GET, so we do not re-apply
         // replayed window/workflow events (which could resurrect stale cards).
-        windowManager.applyEvent(data);
+        applyWorkspaceEvent(data);
       }
     });
 
@@ -265,8 +468,8 @@
     eventStream.on("window.updated", (data) => {
       if (data.payload && data.payload.windows) {
         const withTimeline = ensureTimelineWindow({ windows: data.payload.windows });
-        windowManager.renderWindows(withTimeline);
-        store.patchSession({ windows: withTimeline });
+        renderWorkspaceWindows(withTimeline);
+        store.patchSession({ windows: data.payload.windows });
       }
     });
 
@@ -574,6 +777,16 @@
     if (commandSelect) commandSelect.addEventListener("change", syncCommandControls);
     if (commandRun) commandRun.addEventListener("click", runSelectedCommand);
     window.addEventListener("ws:upload-request", () => uploadManager.openPicker());
+    window.addEventListener("ws:upload-files", (event) => {
+      const files = event.detail && event.detail.files ? event.detail.files : [];
+      uploadManager.uploadCurrentSessionFiles(files);
+    });
+    window.addEventListener("ws:hide-window", (event) => {
+      const id = event.detail && event.detail.windowId;
+      if (!id) return;
+      openAuxWindowIds.delete(id);
+      renderWorkspaceWindows(lastWorkspaceWindows);
+    });
     window.addEventListener("ws:show-issues-details", () => {
       const win = [...windowManager.windows.entries()].find(([, el]) => {
         const s = JSON.parse(el.dataset.spec || "{}");
@@ -727,10 +940,8 @@
       if (windowManager) windowManager.relayout();
       clearTimeout(_resizeTimer);
       _resizeTimer = setTimeout(() => {
-        const session = store.getSession();
-        if (session && session.avatar_state) {
-          avatar.applyState(session.avatar_state);
-        }
+        if (avatar) avatar.moveTo(0.5, 0.52);
+        syncFlowScene();
       }, 120);
     });
 

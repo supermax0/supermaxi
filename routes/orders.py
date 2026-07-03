@@ -57,6 +57,7 @@ from utils.order_status import (
 )
 from utils.order_lifecycle import OrderLifecycleError, process_order_cancel, process_order_return
 from utils.cash_calculations import _effective_paid_amount
+from utils.delivery_expense_service import sync_delivery_expense_for_invoice
 from utils.payment_ledger import append_payment_ledger_delta
 from services.media_service import get_thumbnail_upload_root, get_video_upload_root, save_uploaded_file
 from utils.activity_logger import INVOICE_SNAPSHOT_FIELDS, log_mutation, snapshot_attrs
@@ -965,6 +966,7 @@ def payment():
                 _clear_order_video_fields(order)
                 delta_pay = _effective_paid_amount(order) - prev_effective_paid
                 append_payment_ledger_delta(order.id, delta_pay)
+                sync_delivery_expense_for_invoice(order)
                 db.session.commit()
                 _delete_order_video_cleanup_targets(video_cleanup_targets)
                 try:
@@ -1019,6 +1021,7 @@ def payment():
             _clear_order_video_fields(order)
         delta_pay = _effective_paid_amount(order) - prev_effective_paid
         append_payment_ledger_delta(order.id, delta_pay)
+        sync_delivery_expense_for_invoice(order)
         db.session.commit()
         _delete_order_video_cleanup_targets(video_cleanup_targets)
         try:

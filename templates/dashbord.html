@@ -1883,6 +1883,16 @@
       </div>
       <div class="finora-stat-note">ذمم العملاء للفترة</div>
     </div>
+    <div class="finora-stat-card">
+      <div class="finora-stat-top">
+        <div>
+          <div class="finora-stat-label">قيمة المخزون</div>
+          <div id="finoraInventoryValue" class="finora-stat-value">0 د.ع</div>
+        </div>
+        <span class="finora-stat-icon info"><i class="fas fa-boxes-stacked"></i></span>
+      </div>
+      <div class="finora-stat-note">إجمالي كلفة المنتجات المتوفرة</div>
+    </div>
   </section>
 
   <section class="finora-wide-grid" aria-label="ملخص المصروفات والمرتجعات">
@@ -3020,7 +3030,7 @@
 
         // الصف الرابع: المخزون والالتزامات
         const inventoryText = formatNumber(d.inventory || 0) + " د.ع";
-        setTextForIds(["inventory", "quickInventory"], inventoryText);
+        setTextForIds(["inventory", "quickInventory", "finoraInventoryValue"], inventoryText);
         const liabilities = (d.debts || 0) + (d.shipping || 0);
         setText("liabilities", formatNumber(liabilities) + " د.ع");
 

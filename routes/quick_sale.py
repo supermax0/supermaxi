@@ -14,6 +14,9 @@ from utils.inventory_movements import validate_sale_quantity
 from utils.branch_migration import ensure_branch_schema, get_default_branch
 from utils.branch_context import current_branch_id, init_branch_context
 from utils.branch_stock_service import deduct_stock, get_branch_stock, BranchStockError
+from utils.delivery_expense_service import sync_delivery_expense_for_invoice
+from utils.order_shipping import add_shipping_line_item
+from utils.product_delivery_fees import fee_for_cart_items
 from utils.payment_ledger import append_payment_ledger_delta
 from utils.product_schema_guard import ensure_customer_blacklist_columns, ensure_product_schema
 
@@ -193,8 +196,23 @@ def execute():
             return jsonify({"success": False, "error": str(exc)}), 400
 
     invoice.total = total
+    shipping_fee = data.get("shipping_fee")
+    if shipping_fee is None:
+        shipping_fee, _ = fee_for_cart_items(
+            [{"product_id": row["product"].id, "qty": row["qty"]} for row in clean_items],
+            city,
+        )
+    else:
+        shipping_fee = max(0, _safe_int(shipping_fee, 0))
+    if shipping_fee > 0:
+        tenant_id = getattr(customer, "tenant_id", None)
+        add_shipping_line_item(invoice, shipping_fee, tenant_id)
+        total += shipping_fee
+        invoice.total = total
+
     invoice.paid_amount = total
     append_payment_ledger_delta(invoice.id, total)
+    sync_delivery_expense_for_invoice(invoice)
 
     try:
         db.session.commit()

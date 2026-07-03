@@ -228,7 +228,10 @@ class WorkspaceWindowManager {
     el.innerHTML = `
       <div class="ws-window-header">
         <h3 class="ws-window-title"></h3>
-        <span class="ws-window-status"></span>
+        <div class="ws-window-header-actions">
+          <span class="ws-window-status"></span>
+          <button type="button" class="ws-window-hide" title="إخفاء النافذة" hidden>&times;</button>
+        </div>
       </div>
       <div class="ws-window-body"></div>
     `;
@@ -250,6 +253,16 @@ class WorkspaceWindowManager {
     el.dataset.spec = JSON.stringify(spec);
     el.querySelector(".ws-window-title").textContent = spec.title || "";
     el.querySelector(".ws-window-status").textContent = spec.status || "";
+    const hideButton = el.querySelector(".ws-window-hide");
+    if (hideButton) {
+      hideButton.hidden = !spec.ui_auxiliary;
+      hideButton.onclick = (event) => {
+        event.stopPropagation();
+        window.dispatchEvent(
+          new CustomEvent("ws:hide-window", { detail: { windowId: spec.id } })
+        );
+      };
+    }
   }
 
   _renderBody(el, spec) {

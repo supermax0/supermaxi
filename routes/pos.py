@@ -18,6 +18,9 @@ from utils.activity_logger import INVOICE_SNAPSHOT_FIELDS, log_activity, snapsho
 from utils.branch_migration import ensure_branch_schema, get_default_branch
 from utils.branch_context import current_branch_id, init_branch_context
 from utils.branch_stock_service import deduct_stock, get_branch_stock, get_total_stock, BranchStockError
+from utils.inventory_movements import validate_sale_quantity
+from utils.order_shipping import add_shipping_line_item
+from utils.product_delivery_fees import fee_for_cart_items
 
 pos_bp = Blueprint("pos", __name__, url_prefix="/pos")
 
@@ -543,8 +546,6 @@ def create_order():
         if not fulfillment_branch_id and get_default_branch():
             fulfillment_branch_id = get_default_branch().id
         
-        from utils.inventory_movements import validate_sale_quantity
-        
         validation = validate_sale_quantity(product.id, qty, fulfillment_branch_id)
         if not validation["valid"]:
             db.session.rollback()
@@ -590,8 +591,26 @@ def create_order():
         db.session.add(order_item)
 
     # ===============================
-    # تحديث الإجمالي
+    # تحديث الإجمالي + رسوم التوصيل
     # ===============================
+    province = (getattr(customer, "city", None) or "").strip()
+    shipping_fee = data.get("shipping_fee")
+    if shipping_fee is None:
+        shipping_fee, _ = fee_for_cart_items(
+            [{"product_id": i.get("product_id"), "qty": i.get("qty", 0)} for i in items],
+            province,
+        )
+    else:
+        try:
+            shipping_fee = max(0, int(shipping_fee))
+        except (TypeError, ValueError):
+            shipping_fee = 0
+
+    tenant_id = getattr(customer, "tenant_id", None)
+    if shipping_fee > 0:
+        add_shipping_line_item(invoice, shipping_fee, tenant_id)
+        total += shipping_fee
+
     invoice.total = total
 
     try:

@@ -19,12 +19,13 @@ const DocumentViewerWindow = {
     if (props.previewUrl && (props.documentId || props.fileName)) {
       container.innerHTML = this._previewHtml(props);
       this._applyScanState(container, props);
-      this._wireAdd(container);
+      this._wireUpload(container);
       return;
     }
 
     container.innerHTML = this._placeholderHtml(props);
     this._applyScanState(container, props);
+    this._wireUpload(container);
   },
 
   _placeholderHtml(props) {
@@ -35,14 +36,16 @@ const DocumentViewerWindow = {
         <div class="ws-doc-meta ws-doc-meta-empty">
           <span>لم يُرفع مستند بعد</span>
         </div>
-        <div class="ws-doc-paper">
+        <div class="ws-doc-paper ws-doc-upload-zone" data-upload-trigger tabindex="0" role="button" aria-label="رفع مستند">
           <div class="ws-doc-placeholder">
+            <div class="ws-doc-upload-icon">&#8681;</div>
             <div class="ws-doc-lines">
               <div class="ws-doc-line" style="width:90%"></div>
               <div class="ws-doc-line" style="width:75%"></div>
               <div class="ws-doc-line" style="width:85%"></div>
             </div>
-            <p class="ws-doc-hint">ارفع PDF أو صورة من شريط الأدوات</p>
+            <p class="ws-doc-hint">انقر للرفع أو اسحب PDF/صورة هنا</p>
+            <p class="ws-doc-subhint">يدعم PDF و PNG و JPG و WEBP. يمكنك أيضاً لصق صورة من الحافظة.</p>
             ${scanActive ? `<p class="ws-doc-scan-hint">جاري المسح... ${progress}%</p>` : ""}
           </div>
           ${this._scanOverlayHtml(scanActive, progress)}
@@ -106,20 +109,45 @@ const DocumentViewerWindow = {
     `;
   },
 
-  _wireAdd(container) {
-    const btn = container.querySelector("#ws-doc-add-more");
-    if (btn) {
-      btn.addEventListener("click", () => {
+  _wireUpload(container) {
+    container.querySelectorAll("[data-upload-trigger]").forEach((trigger) => {
+      trigger.addEventListener("click", () => {
         window.dispatchEvent(new CustomEvent("ws:upload-request"));
       });
-    }
+      trigger.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          window.dispatchEvent(new CustomEvent("ws:upload-request"));
+        }
+      });
+      trigger.addEventListener("dragenter", (event) => {
+        event.preventDefault();
+        trigger.classList.add("ws-doc-dragover");
+      });
+      trigger.addEventListener("dragover", (event) => {
+        event.preventDefault();
+        if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+        trigger.classList.add("ws-doc-dragover");
+      });
+      trigger.addEventListener("dragleave", () => {
+        trigger.classList.remove("ws-doc-dragover");
+      });
+      trigger.addEventListener("drop", (event) => {
+        event.preventDefault();
+        trigger.classList.remove("ws-doc-dragover");
+        const files = event.dataTransfer ? [...event.dataTransfer.files] : [];
+        if (files.length) {
+          window.dispatchEvent(new CustomEvent("ws:upload-files", { detail: { files } }));
+        }
+      });
+    });
   },
 
   _thumbsHtml(props) {
     const thumb = props.previewUrl
       ? `<div class="ws-doc-thumb active"><img src="${props.previewUrl}" alt="صفحة" onerror="this.style.display='none'"/></div>`
       : `<div class="ws-doc-thumb active"></div>`;
-    const addBtn = `<button type="button" class="ws-doc-add" id="ws-doc-add-more"><span style="font-size:18px">&#8681;</span>إضافة ملفات أخرى</button>`;
+    const addBtn = `<button type="button" class="ws-doc-add" data-upload-trigger><span style="font-size:18px">&#8681;</span>إضافة ملفات أخرى</button>`;
     return `<div class="ws-doc-thumbs">${thumb}${addBtn}</div>`;
   },
 

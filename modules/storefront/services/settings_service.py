@@ -138,3 +138,20 @@ class StorefrontSettingsService:
             if self.normalized_city(name) == normalized:
                 return fee, city_fees
         return default_fee, city_fees
+
+    def shipping_fee_for_cart(self, city: str, cart_items: list[dict]) -> tuple[int, list[dict]]:
+        from utils.product_delivery_fees import fee_for_cart_items
+
+        items = []
+        for row in cart_items or []:
+            if not isinstance(row, dict):
+                continue
+            product_id = safe_int(row.get("product_id") or row.get("id"), 0)
+            qty = max(1, safe_int(row.get("quantity") or row.get("qty"), 1))
+            if product_id > 0:
+                items.append({"product_id": product_id, "qty": qty})
+        if not items:
+            fee, city_fees = self.shipping_fee_for_city(city)
+            return fee, []
+        fee, breakdown = fee_for_cart_items(items, city)
+        return fee, breakdown

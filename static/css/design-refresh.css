@@ -161,12 +161,27 @@ body {
   border: 1px solid var(--border) !important;
   background: var(--surface) !important;
   color: var(--text-main) !important;
-  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   transition: all 180ms ease !important;
   text-decoration: none;
+}
+
+@media (max-width: 900px) {
+  .topbar .toggle {
+    display: inline-flex;
+  }
+}
+
+@media (min-width: 901px) {
+  .topbar .toggle {
+    display: none !important;
+  }
+
+  .app.sidebar-desktop-hidden .topbar .toggle {
+    display: inline-flex !important;
+  }
 }
 
 .assistant-quick-btn:hover,

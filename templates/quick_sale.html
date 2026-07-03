@@ -118,7 +118,13 @@
         </div>
         <div class="quick-field">
           <label>المحافظة</label>
-          <input id="customerCity" type="text" value="بغداد">
+          <select id="customerCity">
+            <option value="{{ primary_province }}" selected>{{ primary_province }}</option>
+            {% for province in tenant_group_provinces %}
+            <option value="{{ province }}">{{ province }}</option>
+            {% endfor %}
+            <option value="{{ provinces_group_label }}">{{ provinces_group_label }}</option>
+          </select>
         </div>
         <div class="quick-field">
           <label>اسم الزبون (اختياري)</label>
@@ -136,6 +142,7 @@
       </div>
       <div class="cart-summary" id="cartSummary" style="display:none;">
         <div class="cart-summary-row"><span>عدد القطع</span><strong id="cartPiecesCount">0</strong></div>
+        <div class="cart-summary-row"><span>أجور التوصيل</span><strong id="cartShippingFee">0 د.ع</strong></div>
         <div class="cart-summary-row"><span>الإجمالي</span><strong id="cartSummaryTotal">0 د.ع</strong></div>
       </div>
       <button class="quick-btn success" id="executeSaleBtn" type="button">تنفيذ البيع وطباعة الفاتورة</button>
@@ -156,6 +163,51 @@
 <script>
 const cart = new Map();
 const money = (v) => `${Number(v || 0).toLocaleString("en-US")} د.ع`;
+let shippingFee = 0;
+let quoteTimer = null;
+
+async function quoteShippingFee() {
+  const city = document.getElementById("customerCity").value.trim();
+  const rows = Array.from(cart.values());
+  if (!city || !rows.length) {
+    shippingFee = 0;
+    return 0;
+  }
+  try {
+    const res = await fetch("/api/delivery-fee/quote", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        city,
+        items: rows.map(item => ({ product_id: item.id, qty: item.qty })),
+      }),
+    });
+    const data = await res.json();
+    shippingFee = data.ok ? Number(data.fee || 0) : 0;
+  } catch (err) {
+    shippingFee = 0;
+  }
+  return shippingFee;
+}
+
+function scheduleShippingQuote() {
+  if (quoteTimer) clearTimeout(quoteTimer);
+  quoteTimer = setTimeout(refreshShippingQuote, 180);
+}
+
+async function refreshShippingQuote() {
+  const rows = Array.from(cart.values());
+  if (!rows.length) {
+    shippingFee = 0;
+    return;
+  }
+  await quoteShippingFee();
+  let subtotal = 0;
+  rows.forEach(item => { subtotal += item.price * item.qty; });
+  document.getElementById("quickTotal").textContent = money(subtotal + shippingFee);
+  document.getElementById("cartShippingFee").textContent = money(shippingFee);
+  document.getElementById("cartSummaryTotal").textContent = money(subtotal + shippingFee);
+}
 
 function showQuickMessage(text) {
   const box = document.getElementById("quickMessage");
@@ -171,6 +223,7 @@ function renderCart() {
     document.getElementById("quickTotal").textContent = money(0);
     document.getElementById("cartItemsCount").textContent = "0 منتج";
     document.getElementById("cartSummary").style.display = "none";
+    shippingFee = 0;
     return;
   }
   let total = 0;
@@ -202,11 +255,13 @@ function renderCart() {
       </div>
     `;
   }).join("");
-  document.getElementById("quickTotal").textContent = money(total);
+  document.getElementById("quickTotal").textContent = money(total + shippingFee);
   document.getElementById("cartItemsCount").textContent = `${rows.length} منتج / ${pieces} قطعة`;
   document.getElementById("cartPiecesCount").textContent = pieces;
-  document.getElementById("cartSummaryTotal").textContent = money(total);
+  document.getElementById("cartShippingFee").textContent = money(shippingFee);
+  document.getElementById("cartSummaryTotal").textContent = money(total + shippingFee);
   document.getElementById("cartSummary").style.display = "grid";
+  scheduleShippingQuote();
 }
 
 function addToCart(product) {
@@ -291,12 +346,14 @@ async function executeSale() {
   btn.disabled = true;
   btn.textContent = "جاري التنفيذ...";
   try {
+    await quoteShippingFee();
     const res = await fetch("/quick-sale/execute", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         customer: { phone, city, name },
-        items: Array.from(cart.values()).map(item => ({ product_id: item.id, qty: item.qty }))
+        items: Array.from(cart.values()).map(item => ({ product_id: item.id, qty: item.qty })),
+        shipping_fee: shippingFee,
       })
     });
     const data = await res.json();
@@ -325,6 +382,7 @@ document.getElementById("executeSaleBtn").addEventListener("click", executeSale)
 document.getElementById("customerPhone").addEventListener("input", (event) => {
   event.target.value = event.target.value.replace(/\D/g, "").slice(0, 11);
 });
+document.getElementById("customerCity").addEventListener("change", scheduleShippingQuote);
 searchProducts();
 </script>
 {% endblock %}

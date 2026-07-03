@@ -45,6 +45,7 @@ def ensure_branch_schema() -> None:
     """Create branch tables/columns and migrate existing tenant data once."""
     try:
         engine = _branch_schema_engine()
+        datetime_type = "TIMESTAMP" if engine.dialect.name == "postgresql" else "DATETIME"
 
         from models.branch import Branch, BranchStock, StockTransfer, StockTransferLine
 
@@ -55,6 +56,12 @@ def ensure_branch_schema() -> None:
 
         _add_column_if_missing(engine, "employee", "branch_id", "ALTER TABLE employee ADD COLUMN branch_id INTEGER")
         _add_column_if_missing(engine, "invoice", "branch_id", "ALTER TABLE invoice ADD COLUMN branch_id INTEGER")
+        _add_column_if_missing(
+            engine,
+            "invoice",
+            "employee_commission_settled_at",
+            f"ALTER TABLE invoice ADD COLUMN employee_commission_settled_at {datetime_type}",
+        )
         _add_column_if_missing(
             engine,
             "order_item",
@@ -107,8 +114,8 @@ def _run_data_migration() -> None:
     from models.invoice import Invoice
     from models.order_item import OrderItem
     from models.product import Product
-    from models.purchase import Purchase
 
+    engine = _branch_schema_engine()
     default_branch = Branch.query.filter_by(is_default=True).first()
     if not default_branch:
         default_branch = Branch.query.filter_by(code="MAIN").first()
@@ -151,10 +158,21 @@ def _run_data_migration() -> None:
             branch_id = item.invoice.branch_id
         item.fulfillment_branch_id = branch_id or default_branch.id
 
-    for purchase in Purchase.query.filter(Purchase.branch_id.is_(None)).all():
-        code = (purchase.branch_code or "").strip().upper()
-        branch = branch_by_code.get(code) if code else None
-        purchase.branch_id = (branch or default_branch).id
+    if _table_exists(engine, "purchase") and _column_exists(engine, "purchase", "branch_id"):
+        branch_code_select = "branch_code" if _column_exists(engine, "purchase", "branch_code") else "NULL AS branch_code"
+        purchases = db.session.execute(
+            text(f"SELECT id, {branch_code_select} FROM purchase WHERE branch_id IS NULL")
+        ).mappings()
+        for purchase in purchases:
+            code = (purchase.get("branch_code") or "").strip().upper()
+            branch = branch_by_code.get(code) if code else None
+            db.session.execute(
+                text("UPDATE purchase SET branch_id = :branch_id WHERE id = :purchase_id"),
+                {
+                    "branch_id": (branch or default_branch).id,
+                    "purchase_id": purchase["id"],
+                },
+            )
 
     db.session.commit()
 
@@ -166,7 +184,7 @@ def _run_data_migration() -> None:
         )
         product.quantity = int(total or 0)
 
-
+    db.session.commit()
 def get_default_branch():
     from models.branch import Branch
 

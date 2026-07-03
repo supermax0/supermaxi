@@ -1581,6 +1581,13 @@
         <option value="high">🟢 {{ _('inventory_filter_stock_high') }}</option>
         <option value="zero">⬛ {{ _('inventory_filter_stock_zero') }}</option>
       </select>
+      <select id="filterBranch" onchange="filterProducts()" class="inv-products-filter" title="{{ _('inventory_col_branch') }}">
+        <option value="all">🏢 {{ _('inventory_filter_branch_all') }}</option>
+        {% for b in company_branches or [] %}
+        <option value="{{ b.id }}">{{ b.name }}{% if b.code %} ({{ b.code }}){% endif %}</option>
+        {% endfor %}
+        <option value="none">— {{ _('inventory_filter_branch_none') }} —</option>
+      </select>
       <select id="filterActive" onchange="filterProducts()" class="inv-products-filter" title="{{ _('inventory_filter_active_all') }}">
         <option value="all">{{ _('inventory_filter_active_all') }}</option>
         <option value="active">✅ {{ _('inventory_filter_active_only') }}</option>
@@ -1596,11 +1603,14 @@
   <script type="application/json" id="productsData">
   [
     {% for p in products %}
+    {% set pb = product_branch_map.get(p.id, {}) %}
     {
       "id": {{ p.id }},
       "name": {{ p.name|tojson }},
       "sku": {{ (p.sku or '---')|tojson }},
       "barcode": {{ (p.barcode or '---')|tojson }},
+      "branch_id": {{ pb.get('branch_id')|tojson }},
+      "branch_name": {{ (pb.get('branch_name') or '—')|tojson }},
       "opening_stock": {{ p.opening_stock or 0 }},
       "quantity": {{ (branch_stock_map.get(p.id, p.quantity or 0) if not view_all_branches else (p.quantity or 0)) }},
       "low_stock_threshold": {{ p.low_stock_threshold or 5 }},
@@ -1858,6 +1868,12 @@
         }
       },
       {
+        headerName: "{{ _('inventory_col_branch') }}",
+        field: "branch_name",
+        width: 170,
+        valueGetter: params => params.data.branch_name || '—',
+      },
+      {
         headerName: "الضمان",
         width: 110,
         valueGetter: params => {
@@ -1999,11 +2015,13 @@
       isExternalFilterPresent: () => {
         const stockFilter = document.getElementById('filterStock').value;
         const activeFilter = document.getElementById('filterActive').value;
-        return stockFilter !== 'all' || activeFilter !== 'all';
+        const branchFilter = document.getElementById('filterBranch')?.value || 'all';
+        return stockFilter !== 'all' || activeFilter !== 'all' || branchFilter !== 'all';
       },
       doesExternalFilterPass: (node) => {
         const stockFilter = document.getElementById('filterStock').value;
         const activeFilter = document.getElementById('filterActive').value;
+        const branchFilter = document.getElementById('filterBranch')?.value || 'all';
 
         const qty = node.data.quantity;
         const threshold = node.data.low_stock_threshold || 5;
@@ -2019,7 +2037,14 @@
         if (activeFilter === 'active') matchesActive = isActive;
         else if (activeFilter === 'inactive') matchesActive = !isActive;
 
-        return matchesStock && matchesActive;
+        let matchesBranch = true;
+        if (branchFilter === 'none') {
+          matchesBranch = !node.data.branch_id;
+        } else if (branchFilter !== 'all') {
+          matchesBranch = String(node.data.branch_id || '') === String(branchFilter);
+        }
+
+        return matchesStock && matchesActive && matchesBranch;
       }
     };
 

@@ -1756,6 +1756,7 @@ def index_execute():
 
     elif action == "paid":
         from utils.payment_ledger import append_payment_ledger_delta
+        from utils.delivery_expense_service import sync_delivery_expense_for_invoice
 
         prev_eff = _effective_paid_amount(invoice)
         invoice.status = "مسدد"
@@ -1763,6 +1764,7 @@ def index_execute():
         invoice.paid_amount = int(invoice.total or 0)
         invoice.shipping_status = "تم التسديد"
         append_payment_ledger_delta(invoice.id, _effective_paid_amount(invoice) - prev_eff)
+        sync_delivery_expense_for_invoice(invoice)
 
     elif action == "returned":
         invoice.status = "راجع"
@@ -1813,6 +1815,7 @@ def index_execute_bulk():
                 # تصحيح محاسبي: الطلب الواصل يتم تسديده بشكل صحيح
                 # ==========================
                 from utils.payment_ledger import append_payment_ledger_delta
+                from utils.delivery_expense_service import sync_delivery_expense_for_invoice
 
                 prev_eff = _effective_paid_amount(invoice)
                 invoice.status = "مسدد"
@@ -1820,6 +1823,7 @@ def index_execute_bulk():
                 invoice.paid_amount = int(invoice.total or 0)
                 invoice.shipping_status = "تم التسديد"
                 append_payment_ledger_delta(invoice.id, _effective_paid_amount(invoice) - prev_eff)
+                sync_delivery_expense_for_invoice(invoice)
             elif action == "returned":
                 invoice.status = "راجع"
             else:

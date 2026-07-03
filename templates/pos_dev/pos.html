@@ -17,7 +17,7 @@
 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/pos-white-pro.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/pos-white-pro.css') }}?v=20260702i">
 
 </head>
 
@@ -43,7 +43,11 @@
 
       <div class="pos-header-start">
 
-        <a href="/" class="pos-btn-icon" title="الرئيسية"><i class="fas fa-home"></i></a>
+        <button type="button" class="pos-btn-icon" title="الملف الشخصي" onclick="openPosProfileModal()" aria-label="الملف الشخصي">
+
+          <i class="fas fa-user-circle"></i>
+
+        </button>
 
         <div class="pos-header-title-wrap">
 
@@ -69,7 +73,9 @@
 
         </button>
 
-        <a href="/pos?legacy=1" class="pos-btn-icon" title="الواجهة القديمة"><i class="fas fa-layer-group"></i></a>
+        {% if session.get("role") == "admin" or can_view_dashboard %}
+        <a href="/" class="pos-btn-icon" title="رجوع" aria-label="رجوع"><i class="fas fa-arrow-right"></i></a>
+        {% endif %}
 
       </div>
 
@@ -436,8 +442,11 @@
         <input id="phone2" class="pos-input" placeholder="رقم آخر">
 
         <select id="city" class="pos-select">
-          <option>{{ primary_province }}</option>
-          <option>{{ provinces_group_label }}</option>
+          <option value="{{ primary_province }}">{{ primary_province }}</option>
+          {% for p in tenant_group_provinces %}
+          <option value="{{ p }}">{{ p }}</option>
+          {% endfor %}
+          <option value="{{ provinces_group_label }}">{{ provinces_group_label }}</option>
         </select>
 
         <input id="address" class="pos-input" placeholder="العنوان">
@@ -456,7 +465,13 @@
 
           <input id="ocrAddress" class="pos-input" placeholder="العنوان">
 
-          <select id="ocrCity" class="pos-select"><option value="{{ primary_province }}">{{ primary_province }}</option><option value="{{ provinces_group_label }}">{{ provinces_group_label }}</option></select>
+          <select id="ocrCity" class="pos-select">
+            <option value="{{ primary_province }}">{{ primary_province }}</option>
+            {% for p in tenant_group_provinces %}
+            <option value="{{ p }}">{{ p }}</option>
+            {% endfor %}
+            <option value="{{ provinces_group_label }}">{{ provinces_group_label }}</option>
+          </select>
 
         </div>
 
@@ -656,6 +671,59 @@
 
 
 
+  <div id="posProfileModal" class="pos-modal" onclick="if(event.target===this) closePosProfileModal()">
+    <div class="pos-modal-content pos-profile-modal">
+      <div class="pos-modal-header">
+        <span>الملف الشخصي</span>
+        <button type="button" class="pos-modal-close" onclick="closePosProfileModal()" aria-label="إغلاق">&times;</button>
+      </div>
+      <div class="pos-profile-body">
+        <div class="pos-profile-avatar">
+          {% if employee and employee.profile_pic %}
+          <img src="/{{ employee.profile_pic }}" alt="">
+          {% else %}
+          {{ (cashier_name or 'م')[0] }}
+          {% endif %}
+        </div>
+        <h3 class="pos-profile-name">{{ cashier_name or 'موظف' }}</h3>
+        <p class="pos-profile-role">
+          {% if role == 'admin' %}مدير{% elif role == 'cashier' %}كاشير{% else %}{{ role or 'موظف' }}{% endif %}
+        </p>
+        <dl class="pos-profile-info">
+          <div>
+            <dt>اسم المستخدم</dt>
+            <dd>{{ employee.username if employee else '—' }}</dd>
+          </div>
+          {% if company_name %}
+          <div>
+            <dt>الشركة</dt>
+            <dd>{{ company_name }}</dd>
+          </div>
+          {% endif %}
+          {% if employee and employee.salary is not none %}
+          <div>
+            <dt>الراتب</dt>
+            <dd>{{ "{:,.0f}".format(employee.salary or 0) }} د.ع</dd>
+          </div>
+          {% endif %}
+          {% if employee %}
+          <div>
+            <dt>العمولة لكل طلب</dt>
+            <dd>{{ "{:,.0f}".format(employee.commission_percent or 0) }} د.ع</dd>
+          </div>
+          {% endif %}
+        </dl>
+      </div>
+      <div class="pos-modal-actions pos-profile-actions">
+        <a href="/logout" class="pos-btn-danger pos-btn-block">
+          <i class="fas fa-sign-out-alt"></i> تسجيل خروج
+        </a>
+      </div>
+    </div>
+  </div>
+
+
+
   <script type="application/json" id="posBootstrapData">{
 
     "canEditPrice": {{ can_edit_price|tojson }},
@@ -670,6 +738,17 @@
 
   <script src="{{ url_for('static', filename='js/notification-sound.js') }}"></script>
   <script src="{{ url_for('static', filename='js/pos-white-pro.js') }}"></script>
+  <script>
+    function openPosProfileModal() {
+      document.getElementById('posProfileModal')?.classList.add('show');
+    }
+    function closePosProfileModal() {
+      document.getElementById('posProfileModal')?.classList.remove('show');
+    }
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closePosProfileModal();
+    });
+  </script>
 
   {% set is_admin = session.get("role") == "admin" or (current_employee and current_employee.role == "admin") %}
   {% if (is_admin or (current_employee and can_see_messages)) and business_allows('messages') and plan_has("messages") %}

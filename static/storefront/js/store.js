@@ -92,9 +92,28 @@
 
   function refreshCheckoutTotals() {
     if (!cityInput) return;
-    const fee = shippingForCity(cityInput.value);
-    if (shippingText) shippingText.textContent = formatMoney(fee);
-    if (grandTotalText) grandTotalText.textContent = formatMoney(netSubtotal + fee);
+    const city = cityInput.value;
+    if (!city) {
+      if (shippingText) shippingText.textContent = formatMoney(0);
+      if (grandTotalText) grandTotalText.textContent = formatMoney(netSubtotal);
+      return;
+    }
+    fetch(apiUrl("shipping-quote"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
+      body: JSON.stringify({ city }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        const fee = data.success ? Number(data.fee) || 0 : shippingForCity(city);
+        if (shippingText) shippingText.textContent = formatMoney(fee);
+        if (grandTotalText) grandTotalText.textContent = formatMoney(netSubtotal + fee);
+      })
+      .catch(() => {
+        const fee = shippingForCity(city);
+        if (shippingText) shippingText.textContent = formatMoney(fee);
+        if (grandTotalText) grandTotalText.textContent = formatMoney(netSubtotal + fee);
+      });
   }
 
   if (cityInput) {

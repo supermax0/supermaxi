@@ -42,6 +42,7 @@ from routes.pos import pos_bp
 from routes.employees import employees_bp
 from routes.inventory import inventory_bp
 from routes.branch_api import branch_api_bp
+from routes.delivery_fee_api import delivery_fee_api_bp
 from routes.stock_transfers import stock_transfers_bp
 from routes.purchases import purchases_bp
 from routes.inventory_ledger import inventory_ledger_bp
@@ -1638,6 +1639,7 @@ app.register_blueprint(employees_bp, url_prefix="/employees")
 app.register_blueprint(inventory_bp, url_prefix="/inventory")
 app.register_blueprint(stock_transfers_bp)
 app.register_blueprint(branch_api_bp)
+app.register_blueprint(delivery_fee_api_bp)
 app.register_blueprint(purchases_bp, url_prefix="/purchases")
 app.register_blueprint(maintenance_bp)
 app.register_blueprint(fixed_assets_bp)

@@ -4,7 +4,7 @@
 
 {% block content %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/team-admin.css') }}?v=20260702g">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/employees-admin.css') }}?v=20260702g">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/employees-admin.css') }}?v=20260702k">
 
 <div class="team-admin-page employees-page">
 
@@ -82,13 +82,13 @@
           <label class="emp-field-label" for="emp_salary">{{ _('employees_placeholder_salary') }}</label>
           <input name="salary" type="number" id="emp_salary" placeholder="0" min="0">
         </div>
-        <div class="fixed-commission-field">
-          <label class="fixed-commission-label" for="fixedCommissionAmount">{{ _('employees_fixed_commission_label') }}</label>
+        <div class="emp-field emp-field--commission">
+          <label class="emp-field-label" for="emp_commission">{{ _('employees_edit_commission_label') if _('employees_edit_commission_label') != 'employees_edit_commission_label' else 'مبلغ العمولة (لكل طلب)' }}</label>
           <div class="fixed-commission-row">
-            <input type="number" id="fixedCommissionAmount" value="{{ fixed_commission_amount }}" min="0" step="1" placeholder="0" readonly>
+            <input name="commission" type="number" id="emp_commission" value="{{ fixed_commission_amount }}" min="0" step="1" placeholder="0">
             <span class="fixed-commission-currency">{{ _('employees_currency_iqd') }}</span>
           </div>
-          <small>{{ _('employees_fixed_commission_hint') }}</small>
+          <small>{{ _('employees_edit_commission_hint') if _('employees_edit_commission_hint') != 'employees_edit_commission_hint' else 'مبلغ العمولة لكل طلب واصل ومسدد' }}</small>
         </div>
       </div>
       <button type="submit" id="employeeSubmitBtn" class="btn-submit-primary">
@@ -286,7 +286,7 @@
   } catch (e) { console.warn(e); }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.js"></script>
-<script src="{{ url_for('static', filename='js/employees-admin.js') }}?v=20260702g"></script>
+<script src="{{ url_for('static', filename='js/employees-admin.js') }}?v=20260702j"></script>
 
 </div>
 {% endblock %}

@@ -72,8 +72,10 @@ class InvoiceSnapshotAdapter:
 
     @staticmethod
     def get_delivery_fee(invoice) -> Optional[int]:
-        # Invoice model has no delivery_fee column — not available read-only
-        return None
+        from utils.order_shipping import get_shipping_fee_from_invoice
+
+        fee = get_shipping_fee_from_invoice(invoice)
+        return fee if fee > 0 else None
 
     @staticmethod
     def get_created_at(invoice) -> Optional[str]:

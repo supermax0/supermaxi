@@ -499,36 +499,102 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
     }
   }
 
+  function updateEmpPagesSelectedCount(modal) {
+    const list = modal.querySelector('#empPagesList');
+    const counter = modal.querySelector('#empPagesSelectedCount');
+    if (!list || !counter) return;
+    const count = list.querySelectorAll('.emp-page-checkbox:checked').length;
+    counter.textContent = `${count} محدد`;
+  }
+
+  function filterEmpPages(modal, query) {
+    const list = modal.querySelector('#empPagesList');
+    if (!list) return;
+    const q = String(query || '').trim().toLowerCase();
+    list.querySelectorAll('.emp-page-row').forEach((row) => {
+      const name = row.querySelector('.emp-page-name')?.textContent?.toLowerCase() || '';
+      row.style.display = !q || name.includes(q) ? '' : 'none';
+    });
+  }
+
   function openPagesModal(employeeId, employeeName) {
     fetch(`/employees/pages/${employeeId}`)
       .then(r => r.json())
       .then(data => {
         const currentPages = data.pages.map(p => p.id);
+        const pagesTitle = __t('employees_modal_pages_title') || 'إدارة البيجات';
+        const cancelLabel = __t('employees_modal_close') || 'إغلاق';
 
         const modal = document.createElement('div');
         modal.className = 'modal-overlay show';
         modal.innerHTML = `
-        <div class="modal-content">
-          <button class="close-btn" onclick="this.closest('.modal-overlay').remove()">×</button>
-          <h3>${__t('employees_modal_pages_title')} - ${employeeName}</h3>
-          <div id="pagesList">
-            ${allAvailablePages.map(p => `
-              <label>
-                <input type="checkbox" value="${p.id}" ${currentPages.includes(p.id) ? 'checked' : ''}>
-                <span>${p.name}</span>
-              </label>
-            `).join('')}
+        <div class="modal-content emp-pages-modal">
+          <div class="emp-pages-modal-header">
+            <button type="button" class="modal-close emp-pages-close" aria-label="${cancelLabel}">&times;</button>
+            <div class="emp-pages-modal-header__text">
+              <h3>${pagesTitle}</h3>
+              <p class="emp-pages-modal-subtitle">${employeeName ? `الموظف: ${employeeName}` : ''}</p>
+            </div>
+            <span class="emp-pages-modal-icon" aria-hidden="true"><i class="fas fa-layer-group"></i></span>
           </div>
-          <button type="button" class="emp-pages-save-btn">${__t('employees_save_button')}</button>
+          <div class="emp-pages-toolbar">
+            <input type="search" class="emp-pages-search" placeholder="بحث عن بيج..." aria-label="بحث عن بيج">
+            <span class="emp-pages-selected-count" id="empPagesSelectedCount">0 محدد</span>
+          </div>
+          <div class="emp-pages-list" id="empPagesList"></div>
+          <div class="emp-pages-modal-actions">
+            <button type="button" class="btn btn-primary emp-pages-save-btn">حفظ</button>
+            <button type="button" class="btn btn-light emp-pages-cancel-btn">${cancelLabel}</button>
+          </div>
         </div>
       `;
+
+        const list = modal.querySelector('#empPagesList');
+        if (!allAvailablePages.length) {
+          list.innerHTML = '<div class="emp-pages-list-empty">لا توجد بيجات متاحة</div>';
+        } else {
+          allAvailablePages.forEach((p) => {
+            const isSelected = currentPages.includes(p.id);
+            const row = document.createElement('label');
+            row.className = 'emp-page-row' + (isSelected ? ' is-selected' : '');
+
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'emp-page-checkbox';
+            checkbox.value = p.id;
+            checkbox.checked = isSelected;
+            checkbox.addEventListener('change', () => {
+              row.classList.toggle('is-selected', checkbox.checked);
+              updateEmpPagesSelectedCount(modal);
+            });
+
+            const icon = document.createElement('span');
+            icon.className = 'emp-page-icon';
+            icon.textContent = (p.name || 'ب').trim().charAt(0) || 'ب';
+
+            const name = document.createElement('span');
+            name.className = 'emp-page-name';
+            name.textContent = p.name;
+
+            row.appendChild(checkbox);
+            row.appendChild(icon);
+            row.appendChild(name);
+            list.appendChild(row);
+          });
+        }
+
         appendEmployeeModal(modal);
 
+        modal.querySelector('.emp-pages-close')?.addEventListener('click', () => modal.remove());
+        modal.querySelector('.emp-pages-cancel-btn')?.addEventListener('click', () => modal.remove());
         modal.addEventListener('click', function (e) {
-          if (e.target === modal) {
-            modal.remove();
-          }
+          if (e.target === modal) modal.remove();
         });
+
+        const search = modal.querySelector('.emp-pages-search');
+        search?.addEventListener('input', () => filterEmpPages(modal, search.value));
+        updateEmpPagesSelectedCount(modal);
+        search?.focus();
 
         modal.querySelector('.emp-pages-save-btn')?.addEventListener('click', () => {
           const checkboxes = modal.querySelectorAll('input[type="checkbox"]:checked');

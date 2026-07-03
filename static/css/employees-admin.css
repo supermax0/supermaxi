@@ -184,8 +184,10 @@
   background: var(--surface-soft);
 }
 
-.team-admin-page.employees-page .fixed-commission-field {
-  min-height: 0;
+.team-admin-page.employees-page .emp-field--commission small {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-top: 4px;
 }
 
 .team-admin-page.employees-page .group-content {
@@ -360,11 +362,248 @@
   font-weight: 800;
 }
 
-.team-admin-page .modal-content #pagesList {
+.team-admin-page .emp-pages-modal {
+  max-width: 480px;
+  padding: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: 12px;
+}
+
+.team-admin-page .emp-pages-modal-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--surface-soft) 0%, var(--surface) 100%);
+  direction: rtl;
+}
+
+.team-admin-page .emp-pages-modal-header .modal-close {
+  position: static;
+  flex-shrink: 0;
+  margin-inline-end: auto;
+  width: 32px !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  margin-top: 0 !important;
+  border: none;
+  border-radius: 999px;
+  background: var(--surface-soft) !important;
+  color: var(--text-muted) !important;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.team-admin-page .emp-pages-modal-header .modal-close:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.team-admin-page .emp-pages-modal-header__text {
+  flex: 1;
+  min-width: 0;
+  text-align: right;
+}
+
+.team-admin-page .emp-pages-modal-header h3 {
+  margin: 0 0 4px;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--text-main);
+  line-height: 1.4;
+}
+
+.team-admin-page .emp-pages-modal-subtitle {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.team-admin-page .emp-pages-modal-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.team-admin-page .emp-pages-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  direction: rtl;
+}
+
+.team-admin-page .emp-pages-search {
+  flex: 1;
+  min-width: 0;
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+  color: var(--text-main);
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.team-admin-page .emp-pages-search:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+.team-admin-page .emp-pages-selected-count {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--primary);
+  background: var(--primary-soft);
+  padding: 6px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.team-admin-page .emp-pages-list {
+  max-height: 320px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 12px 20px;
+  direction: rtl;
+}
+
+.team-admin-page .emp-page-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+  cursor: pointer;
+  color: var(--text-main);
+  font-weight: 600;
+  transition: background 160ms ease, border-color 160ms ease;
+  user-select: none;
+}
+
+.team-admin-page .emp-page-row:hover {
+  background: var(--surface-hover);
+  border-color: color-mix(in srgb, var(--primary) 25%, var(--border));
+}
+
+.team-admin-page .emp-page-row.is-selected {
+  background: var(--primary-soft);
+  border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
+  border-inline-start: 3px solid var(--primary);
+}
+
+.team-admin-page .emp-page-checkbox {
+  width: 18px !important;
+  height: 18px !important;
+  min-height: 18px !important;
+  margin: 0;
+  flex-shrink: 0;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.team-admin-page .emp-page-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--primary);
+  font-size: 14px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.team-admin-page .emp-page-row.is-selected .emp-page-icon {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.team-admin-page .emp-page-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  text-align: right;
+  line-height: 1.4;
+}
+
+.team-admin-page .emp-pages-list-empty {
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+}
+
+.team-admin-page .emp-pages-modal-actions {
+  display: flex;
+  align-items: center;
+  padding: 14px 20px 18px;
+  margin: 0;
+  border-top: 1px solid var(--border);
+  background: var(--surface-soft);
+  direction: rtl;
+  justify-content: flex-start;
+  gap: 10px;
+}
+
+.team-admin-page .emp-pages-modal-actions .btn {
+  min-width: 110px;
+  min-height: 40px;
+  width: auto !important;
+  margin-top: 0 !important;
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.team-admin-page .emp-pages-modal-actions .btn-primary {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+.team-admin-page .emp-pages-modal-actions .btn-primary:hover {
+  filter: brightness(0.95);
+}
+
+.team-admin-page .emp-pages-modal-actions .btn-light {
+  background: var(--surface);
+  color: var(--text-main);
+  border-color: var(--border);
+}
+
+.team-admin-page .emp-pages-modal-actions .btn-light:hover {
+  background: var(--surface-hover);
 }
 
 .team-admin-page .admin-actions .action-btn.action-btn-delete {
@@ -391,8 +630,8 @@
   cursor: pointer;
 }
 
-.team-admin-page .modal-content button[type="button"],
-.team-admin-page .modal-content > button {
+.team-admin-page .modal-content:not(.emp-pages-modal) button[type="button"],
+.team-admin-page .modal-content:not(.emp-pages-modal) > button {
   min-height: 44px;
   border: none;
   border-radius: var(--radius-md);
