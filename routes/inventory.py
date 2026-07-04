@@ -714,13 +714,13 @@ def save_audit():
                         account_tx = AccountTransaction(
                             type="deposit",
                             amount=adjustment_value,
-                            note=f"تسوية جرد بزيادة - {product.name} ({difference:+d} وحدة)"
+                            note=f"تسوية جرد غير نقدي بزيادة - {product.name} ({difference:+d} وحدة)"
                         )
                     else:
                         account_tx = AccountTransaction(
                             type="withdraw",
                             amount=abs(adjustment_value),
-                            note=f"تسوية جرد בעجز - {product.name} ({difference:+d} وحدة)"
+                            note=f"تسوية جرد غير نقدي بعجز - {product.name} ({difference:+d} وحدة)"
                         )
                     db.session.add(account_tx)
                     

@@ -34,6 +34,7 @@ def _inventory_non_cash_transaction_filter():
     return or_(
         AccountTransaction.note.like("%مخزون افتتاحي%"),
         AccountTransaction.note.like("%تسوية جرد%"),
+        AccountTransaction.note.like("%غير نقدي%"),
     )
 
 

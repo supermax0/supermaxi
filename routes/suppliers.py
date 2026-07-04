@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session
+from flask import Blueprint, flash, render_template, request, redirect, url_for, session
 from extensions import db
 from flask import send_file
 from reportlab.lib.pagesizes import A4
@@ -119,14 +119,24 @@ def supplier_pay(id):
         return redirect("/pos"), 403
     supplier = Supplier.query.get_or_404(id)
 
-    amount = int(request.form["amount"])
+    try:
+        amount = int(float(str(request.form.get("amount", "0")).replace(",", "")))
+    except (TypeError, ValueError):
+        amount = 0
     note = request.form.get("note", "")
+    remaining = int(supplier.remaining or 0)
+    if amount <= 0:
+        flash("أدخل مبلغ دفع صحيح أكبر من صفر.", "error")
+        return redirect(url_for("suppliers.supplier_details", id=id))
+    if amount > remaining:
+        flash("مبلغ الدفع أكبر من المتبقي على المورد.", "error")
+        return redirect(url_for("suppliers.supplier_details", id=id))
+
     ensure_treasury_schema()
     treasury_account_id = resolve_treasury_account_id(request.form.get("treasury_account_id"))
     try:
         assert_sufficient_balance(treasury_account_id, amount)
     except InsufficientTreasuryBalance as exc:
-        from flask import flash
         flash(str(exc), "error")
         return redirect(url_for("suppliers.supplier_details", id=id))
 
@@ -137,7 +147,7 @@ def supplier_pay(id):
         treasury_account_id=treasury_account_id,
     )
 
-    supplier.total_paid += amount
+    supplier.total_paid = int(supplier.total_paid or 0) + amount
 
     db.session.add(payment)
     db.session.commit()

@@ -12,6 +12,8 @@ from extensions import db
 from models.invoice import Invoice
 from models.order_item import OrderItem
 from models.expense import Expense
+from utils.order_status import CANCELED_STATUSES as ORDER_CANCELED_STATUSES
+from utils.order_status import RETURN_STATUSES as ORDER_RETURN_STATUSES
 from models.product import Product
 from models.supplier import Supplier
 from utils.date_periods import get_period_dates, get_period_label
@@ -23,8 +25,8 @@ from utils.accounting_calculations import (
 )
 from utils.cash_calculations import calculate_cash_balance
 
-RETURN_STATUSES = ["مرتجع"]
-CANCELED_STATUSES = ["ملغي"]
+RETURN_STATUSES = list(ORDER_RETURN_STATUSES)
+CANCELED_STATUSES = list(ORDER_CANCELED_STATUSES)
 
 
 def _fixed_assets_financial_summary(date_from, date_to):
@@ -92,30 +94,24 @@ def get_financial_report_data(period_type="this_month", custom_date_from=None, c
         func.date(Invoice.created_at) >= date_from,
         func.date(Invoice.created_at) <= date_to,
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
-        Invoice.payment_status != "مرتجع",
+        Invoice.payment_status.notin_(RETURN_STATUSES),
     ).all()
 
     total_revenue = sum(int(inv.total or 0) for inv in period_invoices)
     cash_sales = sum(_effective_paid_amount(inv) for inv in period_invoices)
     credit_sales = max(0, total_revenue - cash_sales)
 
-    ratios = {}
-    for inv in period_invoices:
-        total = int(inv.total or 0)
-        paid = _effective_paid_amount(inv)
-        if total > 0 and paid > 0:
-            ratios[int(inv.id)] = min(max(paid / total, 0.0), 1.0)
-
     cogs_period = 0
     cogs_by_invoice = {}
-    if ratios:
+    period_invoice_ids = [int(inv.id) for inv in period_invoices]
+    if period_invoice_ids:
         rows = db.session.query(
             OrderItem.invoice_id,
             func.sum(OrderItem.cost * OrderItem.quantity).label("cogs_sum"),
-        ).filter(OrderItem.invoice_id.in_(list(ratios.keys()))).group_by(OrderItem.invoice_id).all()
+        ).filter(OrderItem.invoice_id.in_(period_invoice_ids)).group_by(OrderItem.invoice_id).all()
         for invoice_id, cogs_sum in rows:
             if cogs_sum:
-                inv_cogs = int(round(float(cogs_sum) * ratios.get(int(invoice_id), 0.0)))
+                inv_cogs = int(cogs_sum or 0)
                 cogs_by_invoice[int(invoice_id)] = inv_cogs
                 cogs_period += inv_cogs
 
@@ -164,24 +160,19 @@ def get_financial_report_data(period_type="this_month", custom_date_from=None, c
             func.date(Invoice.created_at) >= prev_start,
             func.date(Invoice.created_at) <= prev_end,
             Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
-            Invoice.payment_status != "مرتجع",
+            Invoice.payment_status.notin_(RETURN_STATUSES),
         ).all()
         prev_revenue = sum(int(inv.total or 0) for inv in prev_invoices)
-        prev_ratios = {}
-        for inv in prev_invoices:
-            t = int(inv.total or 0)
-            p = _effective_paid_amount(inv)
-            if t > 0 and p > 0:
-                prev_ratios[int(inv.id)] = min(max(p / t, 0.0), 1.0)
         prev_cogs = 0
-        if prev_ratios:
+        prev_invoice_ids = [int(inv.id) for inv in prev_invoices]
+        if prev_invoice_ids:
             prev_rows = db.session.query(
                 OrderItem.invoice_id,
                 func.sum(OrderItem.cost * OrderItem.quantity).label("cogs_sum"),
-            ).filter(OrderItem.invoice_id.in_(list(prev_ratios.keys()))).group_by(OrderItem.invoice_id).all()
+            ).filter(OrderItem.invoice_id.in_(prev_invoice_ids)).group_by(OrderItem.invoice_id).all()
             for invoice_id, cogs_sum in prev_rows:
                 if cogs_sum:
-                    prev_cogs += int(round(float(cogs_sum) * prev_ratios.get(int(invoice_id), 0.0)))
+                    prev_cogs += int(cogs_sum or 0)
         prev_expenses = db.session.query(func.sum(Expense.amount)).filter(
             func.date(Expense.expense_date) >= prev_start,
             func.date(Expense.expense_date) <= prev_end,
@@ -224,7 +215,7 @@ def get_financial_report_data(period_type="this_month", custom_date_from=None, c
         func.date(Invoice.created_at) >= date_from,
         func.date(Invoice.created_at) <= date_to,
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
-        Invoice.payment_status != "مرتجع",
+        Invoice.payment_status.notin_(RETURN_STATUSES),
     ).group_by(OrderItem.product_name).order_by(func.sum(OrderItem.total).desc()).limit(10).all()
     top_products = [{
         "name": r.product_name or "غير محدد",
@@ -242,7 +233,7 @@ def get_financial_report_data(period_type="this_month", custom_date_from=None, c
         func.date(Invoice.created_at) >= date_from,
         func.date(Invoice.created_at) <= date_to,
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
-        Invoice.payment_status != "مرتجع",
+        Invoice.payment_status.notin_(RETURN_STATUSES),
     ).group_by(Invoice.customer_name).order_by(func.sum(Invoice.total).desc()).limit(10).all()
     top_customers = [{
         "name": r.customer_name or "غير محدد",

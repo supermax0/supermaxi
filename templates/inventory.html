@@ -233,11 +233,19 @@
     }
 
     .inv-products-filters-bar {
-      display: flex;
+      display: grid;
+      grid-template-columns: minmax(260px, 1fr) repeat(3, minmax(130px, 170px));
       align-items: center;
       gap: 10px;
-      flex-wrap: wrap;
       margin-bottom: 16px;
+      padding: 10px;
+      border: 1px solid var(--border-light);
+      border-radius: 14px;
+      background: rgba(248, 250, 252, 0.62);
+    }
+
+    :root[data-theme="dark"] .inv-products-filters-bar {
+      background: rgba(15, 23, 42, 0.35);
     }
 
     .inv-products-actions {
@@ -251,21 +259,20 @@
       position: relative;
       display: flex;
       align-items: center;
-      flex: 1 1 220px;
-      min-width: 180px;
+      min-width: 0;
     }
 
     .inv-search-box input {
-      padding: 10px 40px 10px 14px !important;
+      padding: 9px 38px 9px 12px !important;
       border-radius: 10px !important;
       border: 1px solid var(--border) !important;
       background: var(--surface, #fff) !important;
       color: var(--text) !important;
-      font-size: 14px !important;
+      font-size: 13px !important;
       width: 100% !important;
       transition: border-color 0.2s ease, box-shadow 0.2s ease;
       margin: 0 !important;
-      min-height: 42px;
+      min-height: 38px;
     }
 
     .inv-search-box input:focus {
@@ -275,10 +282,10 @@
 
     .inv-search-box .search-icon {
       position: absolute;
-      right: 14px;
+      right: 13px;
       left: auto;
       color: var(--text-muted);
-      font-size: 14px;
+      font-size: 13px;
       pointer-events: none;
     }
 
@@ -342,6 +349,13 @@
       padding: 0 12px;
       font-size: 13px;
       border-radius: 8px;
+    }
+
+    .inv-btn.compact {
+      min-height: 38px;
+      padding: 0 14px;
+      font-size: 13px;
+      border-radius: 10px;
     }
 
     /* ================= FORMS ================= */
@@ -531,13 +545,14 @@
     }
 
     .inv-products-filter {
-      padding: 0 12px !important;
-      min-height: 42px;
+      padding: 0 10px !important;
+      min-height: 38px;
       border-radius: 10px !important;
       border: 1px solid var(--border) !important;
       background: var(--surface, #fff) !important;
       color: var(--text) !important;
-      min-width: 150px;
+      width: 100%;
+      min-width: 0;
       font-size: 13px !important;
       cursor: pointer;
     }
@@ -691,13 +706,12 @@
       }
 
       .inv-products-filters-bar {
-        flex-direction: column;
+        grid-template-columns: 1fr;
         align-items: stretch;
       }
 
       .inv-search-box {
         max-width: none;
-        flex-basis: 100%;
       }
 
       .inv-products-actions {
@@ -757,6 +771,7 @@
       }
 
       #filterStock,
+      #filterBranch,
       #filterActive {
         padding: 10px 12px !important;
         font-size: 13px !important;
@@ -775,8 +790,7 @@
       }
 
       .inv-products-filter {
-        flex: 1;
-        min-width: 130px;
+        min-width: 0;
       }
     }
 
@@ -1431,20 +1445,150 @@
       animation: slideIn 0.3s ease-out;
     }
 
-    /* ================= PRINT STYLES ================= */
-    @media print {
+    /* ================= PRINT REPORT ================= */
+    .inventory-print-report {
+      display: none;
+    }
 
-      .inventory-page .inv-products-filters-bar,
-      .inventory-page .inv-products-actions,
-      .inventory-page form,
-      .inventory-page td a {
-        display: none !important;
+    .ipr-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      border-bottom: 2px solid #111827;
+      padding-bottom: 12px;
+      margin-bottom: 12px;
+    }
+
+    .ipr-brand {
+      display: grid;
+      gap: 4px;
+    }
+
+    .ipr-brand h1 {
+      margin: 0;
+      color: #111827;
+      font-size: 24px;
+      font-weight: 800;
+    }
+
+    .ipr-brand p,
+    .ipr-meta p {
+      margin: 0;
+      color: #4b5563;
+      font-size: 12px;
+    }
+
+    .ipr-meta {
+      text-align: left;
+      display: grid;
+      gap: 3px;
+      min-width: 210px;
+    }
+
+    .ipr-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin: 12px 0;
+    }
+
+    .ipr-stat {
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      padding: 8px 10px;
+      background: #f8fafc;
+    }
+
+    .ipr-stat span {
+      display: block;
+      color: #6b7280;
+      font-size: 11px;
+      margin-bottom: 3px;
+    }
+
+    .ipr-stat strong {
+      color: #111827;
+      font-size: 15px;
+    }
+
+    .ipr-table {
+      width: 100%;
+      border-collapse: collapse;
+      direction: rtl;
+      table-layout: fixed;
+      font-size: 10.5px;
+    }
+
+    .ipr-table th,
+    .ipr-table td {
+      border: 1px solid #d1d5db;
+      padding: 6px 5px;
+      color: #111827;
+      vertical-align: middle;
+      word-break: break-word;
+    }
+
+    .ipr-table th {
+      background: #e5e7eb;
+      font-weight: 800;
+    }
+
+    .ipr-table tbody tr:nth-child(even) td {
+      background: #f9fafb;
+    }
+
+    .ipr-footer {
+      margin-top: 12px;
+      padding-top: 8px;
+      border-top: 1px solid #d1d5db;
+      color: #6b7280;
+      font-size: 11px;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    @media print {
+      @page {
+        size: A4 landscape;
+        margin: 10mm;
       }
 
-      .inventory-page .card {
-        box-shadow: none !important;
-        border: 1px solid #000 !important;
-        page-break-inside: avoid;
+      body * {
+        visibility: hidden !important;
+      }
+
+      .inventory-print-report,
+      .inventory-print-report * {
+        visibility: visible !important;
+      }
+
+      .inventory-print-report {
+        display: block !important;
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        padding: 0;
+        background: #fff;
+        color: #111827;
+        direction: rtl;
+        font-family: "Tahoma", "Arial", sans-serif;
+      }
+
+      .ipr-header,
+      .ipr-stats,
+      .ipr-table,
+      .ipr-footer {
+        break-inside: avoid;
+      }
+
+      .ipr-table thead {
+        display: table-header-group;
+      }
+
+      .ipr-table tr {
+        break-inside: avoid;
       }
     }
   </style>
@@ -1547,20 +1691,24 @@
     <div class="inv-products-header">
       <h3 class="inv-products-title">📦 {{ _('inventory_products_title') }} <span id="invProductsScope" style="font-size:15px; opacity: 0.55; font-weight:500;">({{ products|length }}) — {{ branch_scope_label }}</span></h3>
       <div class="inv-products-actions">
-        <a href="{{ url_for('stock_transfers.transfers_index') }}" class="inv-btn secondary">
+        <button type="button" class="inv-btn secondary compact" onclick="printInventoryReport()">
+          <i class="fas fa-print"></i>
+          <span>طباعة</span>
+        </button>
+        <a href="{{ url_for('stock_transfers.transfers_index') }}" class="inv-btn secondary compact">
           <i class="fas fa-truck-loading"></i>
           <span>نقل بين الفروع</span>
         </a>
-        <a href="{{ url_for('inventory.add_product_page') }}" class="inv-btn primary">
+        <a href="{{ url_for('inventory.add_product_page') }}" class="inv-btn primary compact">
           <i class="fas fa-plus"></i>
           <span>{{ _('inventory_add_product') }}</span>
         </a>
-        <button type="button" class="inv-btn secondary" onclick="toggleAdd()">
+        <button type="button" class="inv-btn secondary compact" onclick="toggleAdd()">
           <i class="fas fa-bolt"></i>
           <span>{{ _('inventory_quick_add') }}</span>
         </button>
         {% if is_beauty_center %}
-        <a href="{{ url_for('static', filename='downloads/beauty_product_template.xlsx') }}" class="inv-btn secondary" download="beauty_product_template.xlsx">
+        <a href="{{ url_for('static', filename='downloads/beauty_product_template.xlsx') }}" class="inv-btn secondary compact" download="beauty_product_template.xlsx">
           <i class="fas fa-file-excel" style="color:#107C41;"></i>
           <span>قالب Excel</span>
         </a>
@@ -1596,6 +1744,52 @@
       <div id="productsTable" class="ag-theme-finora" style="height: 100%; width: 100%;"></div>
     </div>
   </div>
+
+  <section id="inventoryPrintReport" class="inventory-print-report" aria-hidden="true">
+    <header class="ipr-header">
+      <div class="ipr-brand">
+        <h1>تقرير المخزون</h1>
+        <p>Finora System</p>
+        <p id="iprScope">كل الفروع</p>
+      </div>
+      <div class="ipr-meta">
+        <p><strong>تاريخ الطباعة:</strong> <span id="iprGeneratedAt">—</span></p>
+        <p><strong>عدد المنتجات:</strong> <span id="iprRowsCount">0</span></p>
+        <p><strong>التصفية:</strong> <span id="iprFilters">—</span></p>
+      </div>
+    </header>
+
+    <div class="ipr-stats">
+      <div class="ipr-stat"><span>إجمالي الكمية</span><strong id="iprTotalQty">0</strong></div>
+      <div class="ipr-stat"><span>قيمة المخزون</span><strong id="iprInventoryValue">0 د.ع</strong></div>
+      <div class="ipr-stat"><span>إجمالي البيع المتوقع</span><strong id="iprExpectedSale">0 د.ع</strong></div>
+      <div class="ipr-stat"><span>الربح المتوقع</span><strong id="iprExpectedProfit">0 د.ع</strong></div>
+    </div>
+
+    <table class="ipr-table">
+      <thead>
+        <tr>
+          <th style="width:34px;">#</th>
+          <th style="width:18%;">المنتج</th>
+          <th>الباركود</th>
+          <th>SKU</th>
+          <th>الفرع</th>
+          <th>الكمية</th>
+          <th>سعر الشراء</th>
+          <th>سعر البيع</th>
+          <th>قيمة المخزون</th>
+          <th>الربح</th>
+          <th>الحالة</th>
+        </tr>
+      </thead>
+      <tbody id="iprBody"></tbody>
+    </table>
+
+    <footer class="ipr-footer">
+      <span>تم توليد التقرير من صفحة إدارة المخزون حسب التصفية الحالية.</span>
+      <span>Finora System</span>
+    </footer>
+  </section>
 
   <!-- ================= PRODUCTS DATA (JSON) ================= -->
   <script type="application/json" id="productsData">
@@ -2179,6 +2373,92 @@
 
   function onGlobalSearch(value) {
     if (gridApi) gridApi.setGridOption('quickFilterText', value);
+  }
+
+  function getFilteredInventoryRowsForPrint() {
+    const rows = [];
+    if (gridApi && typeof gridApi.forEachNodeAfterFilterAndSort === 'function') {
+      gridApi.forEachNodeAfterFilterAndSort(node => {
+        if (node && node.data) rows.push(node.data);
+      });
+      return rows;
+    }
+    return productsForSelectedBranch();
+  }
+
+  function getSelectedOptionText(id) {
+    const element = document.getElementById(id);
+    if (!element) return '—';
+    return (element.options[element.selectedIndex]?.textContent || '—').trim();
+  }
+
+  function inventoryMoney(value) {
+    return `${formatInventoryNumber(value)} د.ع`;
+  }
+
+  function printInventoryReport() {
+    const rows = getFilteredInventoryRowsForPrint();
+    const scopeText = document.getElementById('invProductsScope')?.textContent?.trim() || 'كل الفروع';
+    const searchText = document.getElementById('globalSearch')?.value?.trim();
+    const filters = [
+      `المخزون: ${getSelectedOptionText('filterStock')}`,
+      `الفرع: ${getSelectedOptionText('filterBranch')}`,
+      `الحالة: ${getSelectedOptionText('filterActive')}`,
+      searchText ? `بحث: ${searchText}` : null
+    ].filter(Boolean).join(' | ');
+
+    const totals = rows.reduce((acc, product) => {
+      const qty = Number(product.quantity) || 0;
+      const buy = Number(product.buy_price) || 0;
+      const sale = Number(product.sale_price) || 0;
+      acc.qty += qty;
+      acc.purchase += buy * qty;
+      acc.sale += sale * qty;
+      acc.profit += (sale - buy) * qty;
+      return acc;
+    }, { qty: 0, purchase: 0, sale: 0, profit: 0 });
+
+    const body = document.getElementById('iprBody');
+    if (body) {
+      body.innerHTML = rows.length ? rows.map((product, index) => {
+        const qty = Number(product.quantity) || 0;
+        const buy = Number(product.buy_price) || 0;
+        const sale = Number(product.sale_price) || 0;
+        const threshold = Number(product.low_stock_threshold) || 5;
+        const status = !product.active ? 'غير نشط' : (qty === 0 ? 'نافذ' : (qty <= threshold ? 'منخفض' : 'متوفر'));
+        return `
+          <tr>
+            <td>${index + 1}</td>
+            <td>${escapeHtml(product.name || '—')}</td>
+            <td>${escapeHtml(product.barcode || '—')}</td>
+            <td>${escapeHtml(product.sku || '—')}</td>
+            <td>${escapeHtml(product.branch_name || '—')}</td>
+            <td>${formatInventoryNumber(qty)}</td>
+            <td>${inventoryMoney(buy)}</td>
+            <td>${inventoryMoney(sale)}</td>
+            <td>${inventoryMoney(buy * qty)}</td>
+            <td>${inventoryMoney((sale - buy) * qty)}</td>
+            <td>${status}</td>
+          </tr>
+        `;
+      }).join('') : '<tr><td colspan="11" style="text-align:center; padding:18px;">لا توجد منتجات ضمن التصفية الحالية</td></tr>';
+    }
+
+    const setText = (id, value) => {
+      const element = document.getElementById(id);
+      if (element) element.textContent = value;
+    };
+
+    setText('iprScope', scopeText);
+    setText('iprGeneratedAt', new Date().toLocaleString('ar-IQ'));
+    setText('iprRowsCount', formatInventoryNumber(rows.length));
+    setText('iprFilters', filters || 'بدون تصفية');
+    setText('iprTotalQty', formatInventoryNumber(totals.qty));
+    setText('iprInventoryValue', inventoryMoney(totals.purchase));
+    setText('iprExpectedSale', inventoryMoney(totals.sale));
+    setText('iprExpectedProfit', inventoryMoney(totals.profit));
+
+    requestAnimationFrame(() => window.print());
   }
 
   document.addEventListener("DOMContentLoaded", initAgGrid);

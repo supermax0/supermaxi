@@ -11,6 +11,7 @@ from models.invoice import Invoice
 from models.order_item import OrderItem
 
 from utils.cash_calculations import _effective_paid_amount as _effective_paid_amount_inv
+from utils.branch_stock_service import receive_stock
 from utils.payment_ledger import append_payment_ledger_delta
 
 
@@ -80,7 +81,12 @@ def execute_shipping_report(report, expense_amount: int = 0) -> dict:
                     items = OrderItem.query.filter_by(invoice_id=order.id).all()
                     for item in items:
                         if item.product:
-                            item.product.quantity += int(item.quantity or 0)
+                            branch_id = item.fulfillment_branch_id or getattr(order, "branch_id", None)
+                            qty = int(item.quantity or 0)
+                            if branch_id:
+                                receive_stock(branch_id, item.product.id, qty)
+                            else:
+                                item.product.quantity += qty
             elif selected_status in ("مؤجل", "Delayed"):
                 order.status = "تم الطلب"
                 order.payment_status = "غير مسدد"

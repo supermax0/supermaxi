@@ -67,7 +67,7 @@ def _invoices_for_range(date_from: date, date_to: date):
         func.date(Invoice.created_at) >= date_from,
         func.date(Invoice.created_at) <= date_to,
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
-        Invoice.payment_status != "مرتجع",
+        Invoice.payment_status.notin_(RETURN_STATUSES),
     ).all()
 
 

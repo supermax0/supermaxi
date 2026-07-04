@@ -11,6 +11,8 @@
   let selectedCustomerId = null;
   let selectedCustomerName = "";
   let selectedCustomerCity = "";
+  let selectedCustomerPhone = "";
+  let customerSearchCache = Object.create(null);
   let editingOrderId = null;
   let currentPriceEditIndex = -1;
   let activeCategory = "all";
@@ -102,18 +104,69 @@
     return `<span class="pos-cart-thumb pos-cart-thumb--placeholder"><i class="fas fa-box"></i></span>`;
   }
 
+  function escapeHtml(s) {
+    return String(s ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function customerLabel(c) {
+    const name = (c && c.name) || selectedCustomerName || "";
+    const phone = (c && c.phone) || selectedCustomerPhone || "";
+    if (name && phone) return name + " — " + phone;
+    return name || phone || "";
+  }
+
   function updateCustomerDisplay(c) {
     if (c?.name) selectedCustomerName = c.name;
     if (c?.city) selectedCustomerCity = c.city;
+    if (c?.phone) selectedCustomerPhone = c.phone;
+
+    const label = customerLabel(c);
+    const badge = $("selectedCustomer");
+    if (badge) {
+      if (selectedCustomerId && label) {
+        badge.textContent = label;
+        badge.classList.add("is-selected");
+        badge.hidden = false;
+      } else {
+        badge.textContent = "لم يتم اختيار زبون";
+        badge.classList.remove("is-selected");
+      }
+    }
+
+    const sc = $("searchCustomer");
+    if (sc) {
+      if (selectedCustomerId && label) {
+        sc.value = label;
+        sc.classList.add("pos-input--selected");
+      } else {
+        sc.classList.remove("pos-input--selected");
+      }
+    }
+
     quoteDeliveryFee();
   }
 
   function clearCustomerDisplay() {
     selectedCustomerName = "";
     selectedCustomerCity = "";
+    selectedCustomerPhone = "";
     shippingValue = 0;
     const shipInput = $("shippingValue");
     if (shipInput) shipInput.value = "";
+    const badge = $("selectedCustomer");
+    if (badge) {
+      badge.textContent = "لم يتم اختيار زبون";
+      badge.classList.remove("is-selected");
+    }
+    const sc = $("searchCustomer");
+    if (sc) {
+      sc.value = "";
+      sc.classList.remove("pos-input--selected");
+    }
   }
 
   function quoteDeliveryFee() {
@@ -456,23 +509,36 @@
   }
 
   function selectCustomer(c) {
-    if (c && c.blacklisted) {
+    if (!c || c.id == null || c.id === "") {
+      toast("تعذر اختيار الزبون");
+      return;
+    }
+    if (c.blacklisted) {
       toast(c.blacklist_message || "هذا الزبون في القائمة السوداء");
       return;
     }
     selectedCustomerId = c.id;
     selectedCustomerName = c.name || "";
     selectedCustomerCity = c.city || "";
+    selectedCustomerPhone = c.phone || "";
     updateCustomerDisplay(c);
     $("customerResults")?.classList.remove("open");
-    const sc = $("searchCustomer");
-    if (sc) sc.value = "";
+    toast("تم اختيار الزبون: " + (c.name || ""));
   }
 
-  function pickCustomerFromSearch(enc) {
+  function pickCustomerFromSearch(id) {
+    const c = customerSearchCache[id] || customerSearchCache[String(id)] || customerSearchCache[Number(id)];
+    if (c) {
+      selectCustomer(c);
+      return;
+    }
+    // توافق مع النسخة القديمة التي كانت تمرّر JSON مرمّز
     try {
-      selectCustomer(JSON.parse(decodeURIComponent(enc)));
-    } catch (e) { /* ignore */ }
+      const parsed = JSON.parse(decodeURIComponent(String(id)));
+      if (parsed && parsed.id != null) selectCustomer(parsed);
+    } catch (e) {
+      toast("تعذر اختيار الزبون");
+    }
   }
 
   function openCustomerModal() {
@@ -491,6 +557,10 @@
     if (!name) { toast("يرجى إدخال اسم الزبون"); return; }
     if (!phone) { toast("يرجى إدخال رقم الهاتف"); return; }
 
+    const saveBtn = document.querySelector("#customerModal .pos-btn-primary");
+    if (saveBtn?.dataset.busy === "1") return;
+    if (saveBtn) saveBtn.dataset.busy = "1";
+
     fetch("/pos/add-customer", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -502,23 +572,32 @@
         address: ($("address")?.value || "").trim(),
       }),
     })
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.blacklisted || (d.status === "fail" && d.msg)) {
-          toast(d.msg || "لا يُسمح بهذا الرقم");
+      .then(async (r) => {
+        let d = {};
+        try { d = await r.json(); } catch (_) { /* non-json body */ }
+        if (!r.ok || d.blacklisted || d.status === "fail") {
+          toast(d.msg || "فشل حفظ الزبون");
           return;
         }
         if (d.status === "success" && d.id) {
           selectedCustomerId = d.id;
-          selectedCustomerName = d.name;
-          updateCustomerDisplay({ id: d.id, name: d.name, phone: d.phone, city: $("city")?.value || "" });
+          selectedCustomerName = d.name || name;
+          selectedCustomerPhone = d.phone || phone;
+          selectedCustomerCity = ($("city")?.value || "").trim();
+          updateCustomerDisplay({
+            id: d.id,
+            name: selectedCustomerName,
+            phone: selectedCustomerPhone,
+            city: selectedCustomerCity,
+          });
           toast("تم حفظ الزبون بنجاح");
           closeCustomerModal();
         } else {
           toast(d.msg || "فشل حفظ الزبون");
         }
       })
-      .catch(() => toast("حدث خطأ في الاتصال"));
+      .catch(() => toast("حدث خطأ في الاتصال"))
+      .finally(() => { if (saveBtn) saveBtn.dataset.busy = "0"; });
   }
 
   function openOrderNotesModal() {
@@ -850,8 +929,15 @@
       .then((d) => {
         if (d.status === "success" || d.status === "exists") {
           selectedCustomerId = d.id;
-          selectedCustomerName = d.name;
-          updateCustomerDisplay({ id: d.id, name: d.name, phone: d.phone, city: $("ocrCity")?.value || "" });
+          selectedCustomerName = d.name || "";
+          selectedCustomerPhone = d.phone || "";
+          selectedCustomerCity = ($("ocrCity")?.value || "").trim();
+          updateCustomerDisplay({
+            id: d.id,
+            name: selectedCustomerName,
+            phone: selectedCustomerPhone,
+            city: selectedCustomerCity,
+          });
           closeOCR();
           toast("تم حفظ بيانات OCR");
         }
@@ -861,6 +947,19 @@
   function initSearch() {
     const searchCustomer = $("searchCustomer");
     const customerResults = $("customerResults");
+    if (customerResults && !customerResults.dataset.bound) {
+      customerResults.dataset.bound = "1";
+      customerResults.addEventListener("click", (e) => {
+        const row = e.target.closest("[data-customer-id]");
+        if (!row || !customerResults.contains(row)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const id = row.getAttribute("data-customer-id");
+        const c = customerSearchCache[id] || customerSearchCache[Number(id)];
+        if (c) selectCustomer(c);
+        else toast("تعذر اختيار الزبون");
+      });
+    }
     if (searchCustomer) {
       searchCustomer.addEventListener("input", debounce(() => {
         const val = searchCustomer.value.trim();
@@ -868,18 +967,32 @@
           customerResults?.classList.remove("open");
           return;
         }
+        // إذا كان النص هو الزبون المختار حالياً فلا نعيد البحث
+        if (selectedCustomerId && val === customerLabel()) return;
         fetch("/pos/search-customer?q=" + encodeURIComponent(val))
           .then((r) => r.json())
           .then((d) => {
             if (!customerResults) return;
+            if (!Array.isArray(d) || !d.length) {
+              customerResults.innerHTML = '<div class="pos-dropdown-empty">لا توجد نتائج</div>';
+              customerResults.classList.add("open");
+              return;
+            }
             customerResults.innerHTML = d.map((c) => {
-              const enc = encodeURIComponent(JSON.stringify(c));
-              const bl = c.blacklisted ? ' class="pos-cust-bl"' : "";
-              return `<div${bl} onclick="PosWP.pickCustomerFromSearch('${enc}')">${c.name} — ${c.phone}</div>`;
+              customerSearchCache[c.id] = c;
+              customerSearchCache[String(c.id)] = c;
+              const bl = c.blacklisted ? " pos-cust-bl" : "";
+              return `<div class="pos-customer-result${bl}" data-customer-id="${escapeHtml(c.id)}">${escapeHtml(c.name)} — ${escapeHtml(c.phone)}</div>`;
             }).join("");
             customerResults.classList.add("open");
-          });
+          })
+          .catch(() => toast("فشل البحث عن الزبون"));
       }, 250));
+      searchCustomer.addEventListener("focus", () => {
+        if (selectedCustomerId && searchCustomer.classList.contains("pos-input--selected")) {
+          searchCustomer.select();
+        }
+      });
     }
 
     const searchProduct = $("searchProduct");
@@ -1030,8 +1143,17 @@
     });
 
     if (initialOrderData) {
-      if (initialOrderData.customer_name) {
-        updateCustomerDisplay({ name: initialOrderData.customer_name });
+      if (initialOrderData.customer_id || initialOrderData.customer_name) {
+        selectedCustomerId = initialOrderData.customer_id ?? selectedCustomerId;
+        selectedCustomerName = initialOrderData.customer_name || selectedCustomerName;
+        selectedCustomerPhone = initialOrderData.customer_phone || selectedCustomerPhone;
+        selectedCustomerCity = initialOrderData.customer_city || selectedCustomerCity;
+        updateCustomerDisplay({
+          id: selectedCustomerId,
+          name: selectedCustomerName,
+          phone: selectedCustomerPhone,
+          city: selectedCustomerCity,
+        });
       }
       if (initialOrderData.note && $("invoiceNotes")) {
         $("invoiceNotes").value = initialOrderData.note;

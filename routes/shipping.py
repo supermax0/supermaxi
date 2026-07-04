@@ -12,7 +12,6 @@ from utils.payment_ledger import append_payment_ledger_delta
 from utils.permission_checks import guard_permission
 from utils.activity_logger import log_activity
 from utils.treasury_helpers import resolve_treasury_account_id
-from utils.treasury_calculations import assert_sufficient_balance, InsufficientTreasuryBalance
 from utils.treasury_schema_guard import ensure_treasury_schema
 
 shipping_bp = Blueprint("shipping", __name__, url_prefix="/shipping")
@@ -21,6 +20,7 @@ _SHIPPING_WRITE_ENDPOINTS = {
     "shipping.add_company",
     "shipping.delete_company",
     "shipping.settle_order",
+    "shipping.collect_company_balance",
     "shipping.cancel_order",
     "shipping.return_order",
 }
@@ -100,6 +100,8 @@ def shipping_page():
 
     companies = ShippingCompany.query.all()
     result = []
+    total_orders = 0
+    total_due = 0
 
     for c in companies:
         orders = Invoice.query.filter_by(shipping_company_id=c.id).all()
@@ -110,6 +112,9 @@ def shipping_page():
             if o.payment_status != "مرتجع"
             and o.status not in (CANCELED_STATUSES + RETURN_STATUSES)
         )
+        due = opening_balance + orders_due
+        total_orders += len(orders)
+        total_due += due
 
         result.append({
             "id": c.id,
@@ -117,12 +122,17 @@ def shipping_page():
             "orders_count": len(orders),
             "opening_balance": opening_balance,
             "orders_due": orders_due,
-            "due": opening_balance + orders_due,
+            "due": due,
             "access_token": c.access_token,
             "public_url": f"/delivery/public/{c.access_token}" if c.access_token else None
         })
 
-    return render_template("shipping.html", companies=result)
+    return render_template(
+        "shipping.html",
+        companies=result,
+        shipping_total_orders=total_orders,
+        shipping_total_due=total_due,
+    )
 
 # =====================================
 # Add Shipping Company
@@ -244,11 +254,9 @@ def settle_order(order_id):
     ensure_treasury_schema()
     treasury_account_id = resolve_treasury_account_id(data.get("treasury_account_id"))
 
-    amount = int(order.total or 0)
-    try:
-        assert_sufficient_balance(treasury_account_id, amount)
-    except InsufficientTreasuryBalance as exc:
-        return jsonify({"success": False, "error": str(exc)}), 400
+    amount = remaining_amount(order)
+    if amount <= 0:
+        return jsonify({"success": True, "message": "الطلب مسدد مسبقاً"})
 
     prev_eff = _effective_paid_amount_inv(order)
     order.payment_status = "مسدد"
@@ -258,8 +266,9 @@ def settle_order(order_id):
         ShippingPayment(
             shipping_company_id=order.shipping_company_id,
             invoice_id=order.id,
-            amount=order.total,
+            amount=amount,
             action="تسديد",
+            note=f"قبض من شركة الشحن عن الطلب #{order.id}",
             treasury_account_id=treasury_account_id,
         )
     )
@@ -267,6 +276,56 @@ def settle_order(order_id):
     append_payment_ledger_delta(order.id, _effective_paid_amount_inv(order) - prev_eff)
     db.session.commit()
     return jsonify({"success": True})
+
+
+@shipping_bp.route("/collect/<int:id>", methods=["POST"])
+def collect_company_balance(id):
+    _ensure_shipping_opening_balance_column()
+    company = ShippingCompany.query.get_or_404(id)
+    data = request.get_json(silent=True) or {}
+    ensure_treasury_schema()
+
+    amount = _parse_opening_balance(data.get("amount"))
+    opening_balance = int(getattr(company, "opening_balance", 0) or 0)
+    if amount <= 0:
+        return jsonify({"success": False, "error": "أدخل مبلغ قبض صحيح"}), 400
+    if opening_balance <= 0:
+        return jsonify({"success": False, "error": "لا يوجد رصيد افتتاحي مستحق على هذه الشركة"}), 400
+    if amount > opening_balance:
+        return jsonify({
+            "success": False,
+            "error": f"المبلغ أكبر من الرصيد الافتتاحي المتبقي ({opening_balance:,} د.ع)"
+        }), 400
+
+    treasury_account_id = resolve_treasury_account_id(data.get("treasury_account_id"))
+    company.opening_balance = opening_balance - amount
+    db.session.add(
+        ShippingPayment(
+            shipping_company_id=company.id,
+            invoice_id=None,
+            amount=amount,
+            action="قبض",
+            note=(data.get("note") or "قبض من الرصيد الافتتاحي لشركة الشحن").strip(),
+            treasury_account_id=treasury_account_id,
+        )
+    )
+    db.session.commit()
+    try:
+        log_activity(
+            "collect",
+            "shipping",
+            f"قبض من شركة شحن: {company.name} بمبلغ {amount:,} د.ع",
+            entity_type="shipping_company",
+            entity_id=company.id,
+            payload={"amount": amount, "remaining_opening_balance": company.opening_balance},
+        )
+    except Exception:
+        pass
+    return jsonify({
+        "success": True,
+        "remaining_opening_balance": company.opening_balance,
+        "message": "تم تسجيل القبض وتحديث الرصيد الافتتاحي"
+    })
 
 # =====================================
 # Cancel Order (with history)

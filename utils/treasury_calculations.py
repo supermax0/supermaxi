@@ -88,12 +88,16 @@ def _sum_supplier_payments(account_id: int, default_cash_id: int) -> int:
     return int(value)
 
 
-def _sum_shipping_payments(account_id: int, default_cash_id: int) -> int:
+def _sum_shipping_collections(account_id: int, default_cash_id: int) -> int:
     col = ShippingPayment.treasury_account_id
     match = account_matches_treasury(col, account_id, default_cash_id)
     value = (
         db.session.query(func.sum(ShippingPayment.amount))
-        .filter(ShippingPayment.action == "تسديد", match)
+        .filter(
+            ShippingPayment.invoice_id.is_(None),
+            ShippingPayment.action.in_(["قبض", "استلام"]),
+            match,
+        )
         .scalar()
         or 0
     )
@@ -111,7 +115,7 @@ def _paid_sales_for_default_cash() -> int:
         )
         .filter(
             Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
-            Invoice.payment_status != "مرتجع",
+            Invoice.payment_status.notin_(RETURN_STATUSES),
             or_(
                 Invoice.payment_status.in_(["مسدد", "جزئي"]),
                 Invoice.status == "مسدد",
@@ -141,7 +145,7 @@ def calculate_treasury_balance(account_id: int | None = None) -> int:
     balance += _sum_account_transactions(account_id, "deposit", default_cash_id)
     balance -= _sum_withdrawals(account_id, default_cash_id)
     balance -= _sum_supplier_payments(account_id, default_cash_id)
-    balance -= _sum_shipping_payments(account_id, default_cash_id)
+    balance += _sum_shipping_collections(account_id, default_cash_id)
 
     return int(balance)
 
@@ -240,7 +244,7 @@ def get_treasury_movements(account_id: int | None = None):
             )
             .filter(
                 Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
-                Invoice.payment_status != "مرتجع",
+                Invoice.payment_status.notin_(RETURN_STATUSES),
                 or_(
                     Invoice.payment_status.in_(["مسدد", "جزئي"]),
                     Invoice.status == "مسدد",
@@ -333,25 +337,27 @@ def get_treasury_movements(account_id: int | None = None):
     sh_match = account_matches_treasury(sh_col, account_id, default_cash_id)
     shipping_payments = (
         ShippingPayment.query.filter(
-            ShippingPayment.action == "تسديد", sh_match
+            ShippingPayment.invoice_id.is_(None),
+            ShippingPayment.action.in_(["قبض", "استلام"]),
+            sh_match,
         )
         .order_by(ShippingPayment.created_at)
         .all()
     )
     for payment in shipping_payments:
-        current_balance -= payment.amount
+        current_balance += payment.amount
         movements.append(
             {
                 "date": payment.created_at.date() if payment.created_at else date.today(),
-                "type": "cash_out",
-                "type_ar": "صرف",
-                "reason": "دفع شركة نقل",
+                "type": "cash_in",
+                "type_ar": "قبض",
+                "reason": "قبض من شركة نقل",
                 "amount": payment.amount,
                 "balance_after": current_balance,
                 "reference_type": "shipping_payment",
                 "reference_id": payment.id,
                 "description": (
-                    f"دفع شركة نقل #{payment.shipping_company_id} - "
+                    f"قبض من شركة نقل #{payment.shipping_company_id} - "
                     f"{payment.amount:,} د.ع - {payment.note or ''}"
                 ),
             }
@@ -394,5 +400,13 @@ def get_treasury_movements(account_id: int | None = None):
             }
         )
 
-    movements.sort(key=lambda x: (x["date"], x.get("reference_id", 0)))
+    movements.sort(key=lambda x: (x["date"], x.get("reference_type", ""), x.get("reference_id", 0)))
+    running_balance = 0
+    for movement in movements:
+        amount = int(movement.get("amount") or 0)
+        if movement.get("type") == "cash_in":
+            running_balance += amount
+        else:
+            running_balance -= amount
+        movement["balance_after"] = running_balance
     return movements

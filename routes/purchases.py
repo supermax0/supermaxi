@@ -29,7 +29,7 @@ from utils.treasury_calculations import assert_sufficient_balance, InsufficientT
 from utils.treasury_schema_guard import ensure_treasury_schema
 from utils.branch_migration import ensure_branch_schema, get_default_branch
 from utils.branch_context import current_branch_id, resolve_branch_id
-from utils.branch_stock_service import receive_stock
+from utils.branch_stock_service import deduct_stock, receive_stock
 
 purchases_bp = Blueprint("purchases", __name__, url_prefix="/purchases")
 
@@ -45,7 +45,8 @@ def _is_admin_user():
 
 def _ensure_purchase_schema():
     """Adds new purchase header fields and creates child tables if missing."""
-    insp = inspect(db.engine)
+    bind = db.session.get_bind()
+    insp = inspect(bind)
     tables = set(insp.get_table_names())
     if "purchase" in tables:
         cols = {c["name"] for c in insp.get_columns("purchase")}
@@ -54,6 +55,7 @@ def _ensure_purchase_schema():
             "invoice_no": "ALTER TABLE purchase ADD COLUMN invoice_no VARCHAR(60)",
             "status": "ALTER TABLE purchase ADD COLUMN status VARCHAR(30) DEFAULT 'draft'",
             "branch_code": "ALTER TABLE purchase ADD COLUMN branch_code VARCHAR(60)",
+            "branch_id": "ALTER TABLE purchase ADD COLUMN branch_id INTEGER",
             "reference_no": "ALTER TABLE purchase ADD COLUMN reference_no VARCHAR(120)",
             "supplier_invoice_no": "ALTER TABLE purchase ADD COLUMN supplier_invoice_no VARCHAR(120)",
             "address": "ALTER TABLE purchase ADD COLUMN address VARCHAR(255)",
@@ -78,9 +80,9 @@ def _ensure_purchase_schema():
         if stmts:
             db.session.commit()
 
-    PurchaseItem.__table__.create(bind=db.engine, checkfirst=True)
-    PurchasePayment.__table__.create(bind=db.engine, checkfirst=True)
-    PurchaseAttachment.__table__.create(bind=db.engine, checkfirst=True)
+    PurchaseItem.__table__.create(bind=bind, checkfirst=True)
+    PurchasePayment.__table__.create(bind=bind, checkfirst=True)
+    PurchaseAttachment.__table__.create(bind=bind, checkfirst=True)
 
 
 def _fmt_iq(num):
@@ -170,16 +172,53 @@ def _safe_int(v, default=0):
         return default
 
 
+def _resolve_purchase_branch_id(payload: dict, branch_code: str | None = None) -> int | None:
+    branch_id = payload.get("branch_id") if payload else None
+    if branch_id:
+        try:
+            return int(branch_id)
+        except (TypeError, ValueError):
+            pass
+
+    code = (branch_code or (payload.get("branch_code") if payload else "") or "").strip()
+    if code:
+        from models.branch import Branch
+
+        match = Branch.query.filter(db.func.upper(Branch.code) == code.upper()).first()
+        if match:
+            return match.id
+
+    default = get_default_branch()
+    return default.id if default else None
+
+
 def _reverse_purchase_effects(purchase, reason):
     # Reverse stock
-    for it in (purchase.items or []):
-        if it.product:
-            it.product.quantity = max(_safe_int(it.product.quantity, 0) - _safe_int(it.quantity, 0), 0)
+    branch_id = getattr(purchase, "branch_id", None) or _resolve_purchase_branch_id({}, getattr(purchase, "branch_code", None))
+    items = list(purchase.items or [])
+    if not items and getattr(purchase, "product", None):
+        items = [purchase]
+
+    for it in items:
+        if not it.product:
+            continue
+        qty = _safe_int(it.quantity, 0)
+        if qty <= 0:
+            continue
+        if branch_id:
+            deduct_stock(branch_id, it.product.id, qty)
+        else:
+            current_qty = _safe_int(it.product.quantity, 0)
+            if current_qty < qty:
+                raise ValueError(
+                    f"لا يمكن عكس فاتورة الشراء لأن مخزون {it.product.name} أقل من كمية الفاتورة."
+                )
+            it.product.quantity = current_qty - qty
 
     # Reverse supplier ledgers
     if purchase.supplier:
         purchase.supplier.total_debt = max(
-            _safe_int(purchase.supplier.total_debt, 0) - _safe_int(purchase.remaining_total, 0),
+            _safe_int(purchase.supplier.total_debt, 0) - _safe_int(purchase.grand_total or purchase.total, 0),
             0,
         )
         purchase.supplier.total_paid = max(
@@ -367,8 +406,8 @@ def _create_purchase_from_payload(payload, files):
             db.session.rollback()
             return None, str(exc)
 
-    # supplier debt logic: increase by unpaid remaining only
-    supplier.total_debt = int(supplier.total_debt or 0) + remaining_total
+    # supplier ledger: debt is the gross obligation, paid is the actual payments.
+    supplier.total_debt = int(supplier.total_debt or 0) + grand_total
     supplier.total_paid = int(supplier.total_paid or 0) + paid_total
 
     # attachments
@@ -883,6 +922,8 @@ def update_purchase(purchase_id):
             )
 
         purchase_mode = (payload.get("purchase_mode") or "").strip() or "credit"
+        branch_code = (payload.get("branch_code") or "").strip() or None
+        branch_id = _resolve_purchase_branch_id(payload, branch_code)
         grand_total = max(sub_total - discount_value + shipping_extra, 0)
         paid_total = min(paid_total, grand_total)
         remaining_total = max(grand_total - paid_total, 0)
@@ -907,7 +948,8 @@ def update_purchase(purchase_id):
         purchase.total = grand_total
         purchase.invoice_no = (payload.get("invoice_no") or "").strip() or (purchase.invoice_no or _next_invoice_no())
         purchase.status = (payload.get("status") or "confirmed").strip()
-        purchase.branch_code = (payload.get("branch_code") or "").strip() or None
+        purchase.branch_code = branch_code
+        purchase.branch_id = branch_id
         purchase.reference_no = (payload.get("reference_no") or "").strip() or None
         purchase.supplier_invoice_no = (payload.get("supplier_invoice_no") or "").strip() or None
         purchase.address = (payload.get("address") or "").strip() or None
@@ -936,7 +978,10 @@ def update_purchase(purchase_id):
                     line_total=line_total,
                 )
             )
-            product.quantity = _safe_int(product.quantity, 0) + qty
+            if branch_id:
+                receive_stock(branch_id, product.id, qty)
+            else:
+                product.quantity = _safe_int(product.quantity, 0) + qty
             product.buy_price = final_unit
 
         for pay in parsed_payments:
@@ -947,7 +992,7 @@ def update_purchase(purchase_id):
                 db.session.rollback()
                 return jsonify({"success": False, "error": str(exc)}), 400
 
-        supplier.total_debt = _safe_int(supplier.total_debt, 0) + remaining_total
+        supplier.total_debt = _safe_int(supplier.total_debt, 0) + grand_total
         supplier.total_paid = _safe_int(supplier.total_paid, 0) + paid_total
 
         if files:
@@ -1064,6 +1109,7 @@ def clone_purchase(purchase_id):
             invoice_no=_next_invoice_no(),
             status="draft",
             branch_code=src.branch_code,
+            branch_id=src.branch_id,
             reference_no=src.reference_no,
             supplier_invoice_no=src.supplier_invoice_no,
             address=src.address,

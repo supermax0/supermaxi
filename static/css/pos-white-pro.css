@@ -654,6 +654,41 @@ body.pos-white-pro {
   margin-bottom: 8px;
 }
 
+.pos-selected-customer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px dashed var(--border);
+  background: var(--surface-soft);
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.pos-selected-customer.is-selected {
+  border-style: solid;
+  border-color: rgba(16, 185, 129, 0.45);
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--text);
+}
+
+.pos-selected-customer.is-selected::before {
+  content: "\f007";
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
+  color: #10b981;
+}
+
+.pos-input.pos-input--selected {
+  border-color: rgba(16, 185, 129, 0.45);
+  background: rgba(16, 185, 129, 0.08);
+  font-weight: 600;
+}
+
 .pos-form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

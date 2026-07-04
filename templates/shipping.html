@@ -541,9 +541,7 @@
       <div class="stat-content">
         <div class="stat-label">{{ _('shipping_stat_total_orders') }}</div>
         <div class="stat-value">
-          {% set total_orders = 0 %}
-          {% for c in companies %}{% set total_orders = total_orders + c.orders_count %}{% endfor %}
-          {{ total_orders }}
+          {{ shipping_total_orders or 0 }}
         </div>
       </div>
     </div>
@@ -552,9 +550,7 @@
       <div class="stat-content">
         <div class="stat-label">{{ _('shipping_stat_total_due') }}</div>
         <div class="stat-value">
-          {% set total_due = 0 %}
-          {% for c in companies %}{% set total_due = total_due + c.due %}{% endfor %}
-          {{ total_due }} <small style="font-size:12px; font-weight:500;">{{ _('shipping_currency_iqd') }}</small>
+          {{ "{:,.0f}".format(shipping_total_due or 0) }} <small style="font-size:12px; font-weight:500;">{{ _('shipping_currency_iqd') }}</small>
         </div>
       </div>
     </div>
@@ -636,6 +632,13 @@
                   <span>📋</span>
                   <span>{{ _('shipping_action_statement') }}</span>
                 </a>
+                {% if c.opening_balance and c.opening_balance > 0 %}
+                <button class="btn btn-primary" onclick="collectOpeningBalance({{ c.id }}, {{ c.opening_balance }}, {{ c.name|tojson }})"
+                  style="padding: 8px 16px; min-width: auto;">
+                  <span>💵</span>
+                  <span>استلام</span>
+                </button>
+                {% endif %}
                 <button class="btn btn-danger" onclick="deleteCompany({{ c.id }})"
                   style="padding: 8px 16px; min-width: auto; background: rgba(239, 68, 68, 0.15); color: #ef4444; box-shadow: none;">
                   <span>🗑️</span>
@@ -785,6 +788,47 @@
         .catch(error => {
           hideLoading();
           showToast("{{ _('shipping_err_delete_generic') }}", "error");
+          console.error(error);
+        });
+    }
+
+    function collectOpeningBalance(companyId, maxAmount, companyName) {
+      const formattedMax = Number(maxAmount || 0).toLocaleString("en-US");
+      const raw = prompt(`استلام من شركة ${companyName}\nالرصيد الافتتاحي المتبقي: ${formattedMax} د.ع\n\nأدخل مبلغ القبض:`, maxAmount || "");
+      if (raw === null) return;
+
+      const amount = Number(String(raw).replaceAll(",", "").trim());
+      if (!amount || amount <= 0) {
+        showToast("أدخل مبلغ قبض صحيح", "warning");
+        return;
+      }
+      if (amount > Number(maxAmount || 0)) {
+        showToast("المبلغ أكبر من الرصيد الافتتاحي المتبقي", "warning");
+        return;
+      }
+
+      showLoading();
+      fetch(`/shipping/collect/${companyId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount,
+          note: `قبض من الرصيد الافتتاحي - ${companyName}`
+        })
+      })
+        .then(r => r.json())
+        .then(data => {
+          hideLoading();
+          if (data.success) {
+            showToast(data.message || "تم تسجيل القبض", "success");
+            setTimeout(() => location.reload(), 900);
+          } else {
+            showToast(data.error || "تعذر تسجيل القبض", "error");
+          }
+        })
+        .catch(error => {
+          hideLoading();
+          showToast("تعذر تسجيل القبض", "error");
           console.error(error);
         });
     }

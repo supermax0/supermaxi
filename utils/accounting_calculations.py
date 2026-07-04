@@ -20,20 +20,21 @@ from models.order_item import OrderItem
 from models.product import Product
 from models.expense import Expense
 from models.supplier import Supplier
+from utils.order_status import CANCELED_STATUSES as ORDER_CANCELED_STATUSES
+from utils.order_status import RETURN_STATUSES as ORDER_RETURN_STATUSES
 
 # ======================================================
 # Shared status rules (توحيد حالات الملغي/المرتجع)
 # ======================================================
 
-# ملاحظة: في النظام يوجد أكثر من تسمية للمرتجع
-RETURN_STATUSES = ["مرتجع"]
-CANCELED_STATUSES = ["ملغي"]
+RETURN_STATUSES = list(ORDER_RETURN_STATUSES)
+CANCELED_STATUSES = list(ORDER_CANCELED_STATUSES)
 
 
 def _is_returned_invoice(invoice: Invoice) -> bool:
     """هل الفاتورة مرتجعة؟ (حسب status أو payment_status)"""
     try:
-        if getattr(invoice, "payment_status", None) == "مرتجع":
+        if getattr(invoice, "payment_status", None) in RETURN_STATUSES:
             return True
         if getattr(invoice, "status", None) in RETURN_STATUSES:
             return True
@@ -95,7 +96,7 @@ def calculate_total_revenue():
     # السبب المحاسبي: المرتجعات لا تُعتبر إيراداً
     revenue = db.session.query(func.sum(Invoice.total)).filter(
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
-        Invoice.payment_status != "مرتجع",
+        Invoice.payment_status.notin_(RETURN_STATUSES),
     ).scalar() or 0
 
     return int(revenue)
@@ -126,7 +127,7 @@ def calculate_total_cogs():
         Invoice, Invoice.id == OrderItem.invoice_id
     ).filter(
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
-        Invoice.payment_status != "مرتجع",
+        Invoice.payment_status.notin_(RETURN_STATUSES),
     ).scalar() or 0
 
     return int(total_cogs)
@@ -204,7 +205,7 @@ def calculate_total_returns():
     total_returns = db.session.query(func.sum(Invoice.total)).filter(
         or_(
             Invoice.status.in_(RETURN_STATUSES),
-            Invoice.payment_status == "مرتجع",
+            Invoice.payment_status.in_(RETURN_STATUSES),
         )
     ).scalar() or 0
 
@@ -228,7 +229,7 @@ def calculate_returns_cogs():
     ).filter(
         or_(
             Invoice.status.in_(RETURN_STATUSES),
-            Invoice.payment_status == "مرتجع",
+            Invoice.payment_status.in_(RETURN_STATUSES),
         )
     ).scalar() or 0
 
@@ -294,7 +295,7 @@ def calculate_paid_sales():
         Invoice.paid_amount,
     ).filter(
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
-        Invoice.payment_status != "مرتجع",
+        Invoice.payment_status.notin_(RETURN_STATUSES),
         or_(
             Invoice.payment_status.in_(["مسدد", "جزئي"]),
             Invoice.status == "مسدد",
@@ -336,7 +337,7 @@ def calculate_operational_profit():
         Invoice.paid_amount,
     ).filter(
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
-        Invoice.payment_status != "مرتجع",
+        Invoice.payment_status.notin_(RETURN_STATUSES),
         or_(
             Invoice.payment_status.in_(["مسدد", "جزئي"]),
             Invoice.status == "مسدد",
@@ -417,7 +418,7 @@ def calculate_shipping_due():
     ).filter(
         Invoice.shipping_company_id.isnot(None),
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
-        Invoice.payment_status != "مرتجع",
+        Invoice.payment_status.notin_(RETURN_STATUSES),
     ).all()
 
     shipping_due = 0
@@ -455,7 +456,7 @@ def calculate_accounts_receivable():
         Invoice.paid_amount,
     ).filter(
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
-        Invoice.payment_status != "مرتجع",
+        Invoice.payment_status.notin_(RETURN_STATUSES),
     ).all()
 
     accounts_receivable = 0
@@ -487,7 +488,7 @@ def calculate_total_sales_for_display():
         func.sum(Invoice.total)
     ).filter(
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
-        Invoice.payment_status != "مرتجع",
+        Invoice.payment_status.notin_(RETURN_STATUSES),
     ).scalar() or 0
     
     return int(total_sales)
@@ -513,7 +514,7 @@ def calculate_paid_cogs():
         Invoice.paid_amount,
     ).filter(
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
-        Invoice.payment_status != "مرتجع",
+        Invoice.payment_status.notin_(RETURN_STATUSES),
         or_(
             Invoice.payment_status.in_(["مسدد", "جزئي"]),
             Invoice.status == "مسدد",

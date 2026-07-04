@@ -18,10 +18,12 @@ from models.purchase import Purchase
 from models.supplier_payment import SupplierPayment
 from models.shipping_payment import ShippingPayment
 from datetime import datetime, date
+from utils.order_status import CANCELED_STATUSES as ORDER_CANCELED_STATUSES
+from utils.order_status import RETURN_STATUSES as ORDER_RETURN_STATUSES
 
 
-RETURN_STATUSES = ["مرتجع"]
-CANCELED_STATUSES = ["ملغي"]
+RETURN_STATUSES = list(ORDER_RETURN_STATUSES)
+CANCELED_STATUSES = list(ORDER_CANCELED_STATUSES)
 
 
 def _effective_paid_amount(invoice: Invoice) -> int:
