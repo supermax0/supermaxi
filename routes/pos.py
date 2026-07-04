@@ -613,9 +613,8 @@ def create_order():
 
     tenant_id = getattr(customer, "tenant_id", None)
     if shipping_fee > 0:
-        # تُخصم من أسعار المنتجات ولا تُضاف فوق الإجمالي ولا تظهر بالطباعة
-        applied = add_shipping_line_item(invoice, shipping_fee, tenant_id)
-        total = max(0, int(total) - int(applied or 0))
+        # تُحفظ داخلياً كمصروف توصيل عند التسديد ولا تؤثر على إجمالي الفاتورة
+        add_shipping_line_item(invoice, shipping_fee, tenant_id)
 
     invoice.total = total
 

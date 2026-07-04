@@ -1,7 +1,7 @@
 """Shared helpers for delivery fees on invoices.
 
-رسوم الشحن تُخصم من أسعار المنتجات (لا تُضاف فوقها)،
-وتُخفى من الطباعة مع الإبقاء على تتبعها داخلياً لمصروف التوصيل.
+رسوم الشحن تُحفظ داخلياً للتسوية كمصروف عند التسديد.
+لا تُضاف إلى إجمالي الفاتورة ولا تُخصم من أسعار المنتجات.
 """
 
 from __future__ import annotations
@@ -118,8 +118,8 @@ def _deduct_fee_from_product_items(product_items, fee: int) -> int:
 
 def add_shipping_line_item(invoice, shipping_fee: int, tenant_id: int | None = None) -> int:
     """
-    خصم رسوم الشحن من أسعار المنتجات وتسجيلها داخلياً بدون إضافتها للإجمالي.
-    يُرجع المبلغ المخصوم فعلياً.
+    تسجيل رسوم الشحن داخلياً بدون إضافتها للإجمالي وبدون خصمها من المنتجات.
+    يُرجع مبلغ رسوم الشحن المحفوظ للتسوية عند الدفع.
     """
     fee = max(0, _safe_int(shipping_fee, 0))
     if fee <= 0 or invoice is None:
@@ -132,12 +132,6 @@ def add_shipping_line_item(invoice, shipping_fee: int, tenant_id: int | None = N
             db.session.delete(item)
     db.session.flush()
 
-    items = OrderItem.query.filter_by(invoice_id=invoice.id).all()
-    product_items = _deductible_product_items(items)
-    applied = _deduct_fee_from_product_items(product_items, fee)
-    if applied <= 0:
-        return 0
-
     shipping_product = get_or_create_shipping_product(tenant_id)
     db.session.add(
         OrderItem(
@@ -146,12 +140,12 @@ def add_shipping_line_item(invoice, shipping_fee: int, tenant_id: int | None = N
             product_name=SHIPPING_PRODUCT_NAME,
             quantity=1,
             price=0,
-            cost=applied,
+            cost=fee,
             total=0,
         )
     )
     db.session.flush()
-    return applied
+    return fee
 
 
 def prepare_invoice_items_for_print(items):

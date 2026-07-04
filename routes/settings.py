@@ -276,7 +276,18 @@ def invoice_settings():
     owner_lookup_ids = _template_owner_lookup_ids(owner_uid)
     with _core_db():
         seed_templates()
-        templates = InvoiceTemplate.query.order_by(InvoiceTemplate.price.asc(), InvoiceTemplate.id.asc()).all()
+        template_rows = InvoiceTemplate.query.order_by(InvoiceTemplate.price.asc(), InvoiceTemplate.id.asc()).all()
+        templates = [
+            SimpleNamespace(
+                id=row.id,
+                name=row.name,
+                description=row.description,
+                html_file_name=row.html_file_name,
+                is_premium=row.is_premium,
+                price=row.price or 0,
+            )
+            for row in template_rows
+        ]
         tset = TenantTemplateSettings.query.filter_by(tenant_id=owner_uid).first() if owner_uid else None
         if not tset and len(owner_lookup_ids) > 1:
             tset = TenantTemplateSettings.query.filter(TenantTemplateSettings.tenant_id.in_(owner_lookup_ids)).first()

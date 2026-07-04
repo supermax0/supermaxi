@@ -967,6 +967,8 @@ def _is_public_path(path: str) -> bool:
 
 @app.before_request
 def require_login():
+    if session.get("user_id") or session.get("is_superadmin") or session.get("agent_id"):
+        session.permanent = True
     # #region agent log
     try:
         _debug_log_app(

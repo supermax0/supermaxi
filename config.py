@@ -27,6 +27,8 @@ class Config:
     ).strip()
     # مدة بقاء الجلسة (السوبر أدمن والعادي): 7 أيام بدل انتهائها عند إغلاق المتصفح أو بعد وقت قصير
     PERMANENT_SESSION_LIFETIME = timedelta(days=7)
+    # تجديد مدة الكوكي مع كل طلب للجلسات الدائمة
+    SESSION_REFRESH_EACH_REQUEST = True
 
     # Email Settings (SMTP)
     MAIL_SERVER = os.environ.get("MAIL_SERVER", "smtp.hostinger.com")

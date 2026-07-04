@@ -13,7 +13,7 @@ class InvoiceSettings(db.Model):
     logo_path = db.Column(db.String(500))  # مسار اللوجو
     
     # Contact Info
-    company_address = db.Column(db.Text, default="كراده خارج مجمع عبد الرسول علي قرب شارع العطار")
+    company_address = db.Column(db.Text, default="كراده خارج مجمع سوبر ماكس قرب شارع العطار")
     company_phone = db.Column(db.String(50), default="07711272744")
     
     # Warranty Notes
@@ -133,6 +133,11 @@ AL ATWANI""")
                     "ADD COLUMN warranty_card_background TEXT "
                     "DEFAULT 'linear-gradient(135deg, #031021 0%, #1f2e42 100%)'"
                 ))
+                db.session.commit()
+
+            row = InvoiceSettings.query.first()
+            if row and row.company_address and "عبد الرسول علي" in row.company_address:
+                row.company_address = row.company_address.replace("عبد الرسول علي", "سوبر ماكس")
                 db.session.commit()
         except Exception:
             db.session.rollback()

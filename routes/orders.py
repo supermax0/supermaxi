@@ -58,6 +58,7 @@ from utils.order_status import (
 from utils.order_lifecycle import OrderLifecycleError, process_order_cancel, process_order_return
 from utils.cash_calculations import _effective_paid_amount
 from utils.delivery_expense_service import sync_delivery_expense_for_invoice
+from utils.order_shipping import is_shipping_item
 from utils.payment_ledger import append_payment_ledger_delta
 from services.media_service import get_thumbnail_upload_root, get_video_upload_root, save_uploaded_file
 from utils.activity_logger import INVOICE_SNAPSHOT_FIELDS, log_mutation, snapshot_attrs
@@ -1112,6 +1113,8 @@ def delete_order(order_id):
         # إعادة المخزون قبل الحذف
         items = OrderItem.query.filter_by(invoice_id=order.id).all()
         for item in items:
+            if is_shipping_item(item):
+                continue
             product = Product.query.get(item.product_id)
             if product:
                 branch_id = item.fulfillment_branch_id or order.branch_id
@@ -1218,7 +1221,8 @@ def details(order_id):
     if denied:
         return denied
 
-    items = OrderItem.query.filter_by(invoice_id=order.id).all()
+    all_items = OrderItem.query.filter_by(invoice_id=order.id).all()
+    items = [item for item in all_items if not is_shipping_item(item)]
     
     # حساب عدد الرواجع بناءً على رقم الهاتف (phone أو phone2)
     customer_phone = order.customer.phone
@@ -1345,7 +1349,7 @@ def update_fulfillment_branch():
             "error": "لا يمكن تغيير فرع الخصم بعد اكتمال أو إلغاء الطلب",
         }), 400
 
-    items = OrderItem.query.filter_by(invoice_id=order.id).all()
+    items = [item for item in OrderItem.query.filter_by(invoice_id=order.id).all() if not is_shipping_item(item)]
     if item_id:
         items = [i for i in items if i.id == item_id]
         if not items:
@@ -1566,7 +1570,7 @@ def query_order(order_id):
     if denied:
         return denied
     
-    items = OrderItem.query.filter_by(invoice_id=order.id).all()
+    items = [item for item in OrderItem.query.filter_by(invoice_id=order.id).all() if not is_shipping_item(item)]
     
     return jsonify({
         "success": True,
@@ -1797,7 +1801,7 @@ def print_selected():
     for order_id in order_ids:
         order = Invoice.query.get(order_id)
         if order:
-            items = OrderItem.query.filter_by(invoice_id=order.id).all()
+            items = [item for item in OrderItem.query.filter_by(invoice_id=order.id).all() if not is_shipping_item(item)]
             # حساب عدد الرواجع بناءً على رقم الهاتف (phone أو phone2)
             customer_phone = order.customer.phone
             customers_with_same_phone = Customer.query.filter(
@@ -1860,7 +1864,7 @@ def print_report():
         order = Invoice.query.get(order_id)
         if order:
             # جلب تفاصيل المنتجات في الفاتورة لعرضها في كشف الطباعة
-            items = OrderItem.query.filter_by(invoice_id=order.id).all()
+            items = [item for item in OrderItem.query.filter_by(invoice_id=order.id).all() if not is_shipping_item(item)]
             items_count = sum((item.quantity or 0) for item in items) if items else 0
             products_list = []
             for item in items:
@@ -1965,7 +1969,7 @@ def get_print_report_data():
         order = Invoice.query.get(order_id)
         if order:
             # جلب تفاصيل المنتجات لكل فاتورة حتى تظهر في كشف الطباعة
-            items = OrderItem.query.filter_by(invoice_id=order.id).all()
+            items = [item for item in OrderItem.query.filter_by(invoice_id=order.id).all() if not is_shipping_item(item)]
             items_count = sum((item.quantity or 0) for item in items) if items else 0
             products_list = []
             for item in items:
@@ -2029,7 +2033,7 @@ def save_report():
     for order_id in order_ids:
         order = Invoice.query.get(order_id)
         if order:
-            items = OrderItem.query.filter_by(invoice_id=order.id).all()
+            items = [item for item in OrderItem.query.filter_by(invoice_id=order.id).all() if not is_shipping_item(item)]
             items_count = sum((item.quantity or 0) for item in items) if items else 0
             products_list = []
             for item in items:
@@ -2178,7 +2182,7 @@ def get_selected_orders():
     for order_id in order_ids:
         order = Invoice.query.get(order_id)
         if order:
-            items = OrderItem.query.filter_by(invoice_id=order.id).all()
+            items = [item for item in OrderItem.query.filter_by(invoice_id=order.id).all() if not is_shipping_item(item)]
             product_names = [item.product_name for item in items]
             
             orders_data.append({
@@ -2258,7 +2262,7 @@ def create_shipping_report():
     total_amount = 0
     
     for order in orders:
-        items = OrderItem.query.filter_by(invoice_id=order.id).all()
+        items = [item for item in OrderItem.query.filter_by(invoice_id=order.id).all() if not is_shipping_item(item)]
         order_info = {
             "id": order.id,
             "customer_name": order.customer.name if order.customer else order.customer_name,
@@ -2348,7 +2352,7 @@ def create_agent_report_internal(order_ids, agent_id, save_to_db=True):
     total_amount = 0
     
     for order in orders:
-        items = OrderItem.query.filter_by(invoice_id=order.id).all()
+        items = [item for item in OrderItem.query.filter_by(invoice_id=order.id).all() if not is_shipping_item(item)]
         order_info = {
             "id": order.id,
             "customer_name": order.customer.name if order.customer else order.customer_name,

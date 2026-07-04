@@ -12,6 +12,8 @@ from models.order_item import OrderItem
 
 from utils.cash_calculations import _effective_paid_amount as _effective_paid_amount_inv
 from utils.branch_stock_service import receive_stock
+from utils.delivery_expense_service import sync_delivery_expense_for_invoice
+from utils.order_shipping import is_shipping_item
 from utils.payment_ledger import append_payment_ledger_delta
 
 
@@ -68,6 +70,7 @@ def execute_shipping_report(report, expense_amount: int = 0) -> dict:
                     order.paid_amount = order.total
                 delta_pay = _effective_paid_amount_inv(order) - prev_eff
                 append_payment_ledger_delta(order.id, delta_pay)
+                sync_delivery_expense_for_invoice(order)
                 updated_count += 1
             elif selected_status in ("ملغي", "Canceled"):
                 from utils.order_status import is_canceled, is_returned
@@ -80,6 +83,8 @@ def execute_shipping_report(report, expense_amount: int = 0) -> dict:
                 if not already_canceled and not already_returned:
                     items = OrderItem.query.filter_by(invoice_id=order.id).all()
                     for item in items:
+                        if is_shipping_item(item):
+                            continue
                         if item.product:
                             branch_id = item.fulfillment_branch_id or getattr(order, "branch_id", None)
                             qty = int(item.quantity or 0)
@@ -87,10 +92,12 @@ def execute_shipping_report(report, expense_amount: int = 0) -> dict:
                                 receive_stock(branch_id, item.product.id, qty)
                             else:
                                 item.product.quantity += qty
+                sync_delivery_expense_for_invoice(order)
             elif selected_status in ("مؤجل", "Delayed"):
                 order.status = "تم الطلب"
                 order.payment_status = "غير مسدد"
                 order.note = order.note or "مؤجل"
+                sync_delivery_expense_for_invoice(order)
                 delayed_count += 1
 
         report.is_executed = True

@@ -348,6 +348,32 @@
             margin-bottom: 8px;
         }
 
+        .policy h4 + h4,
+        .policy .warranty-block {
+            margin-top: 16px;
+            padding-top: 14px;
+            border-top: 1px dashed var(--border-color);
+        }
+
+        .policy ul {
+            margin: 0;
+            padding-right: 18px;
+            list-style: disc;
+        }
+
+        .policy li {
+            margin-bottom: 6px;
+        }
+
+        .address-phone {
+            direction: ltr;
+            unicode-bidi: embed;
+            display: inline-block;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-top: 4px;
+        }
+
         .customer-note {
             margin-top: 12px;
             padding-top: 12px;
@@ -494,9 +520,10 @@
                 <div class="logo-area">
                     <h1>{{ settings.store_name if settings and settings.store_name else 'E-Store' }}</h1>
                     <p>{{ settings.company_subtitle if settings and settings.company_subtitle else 'واجهة طلبات احترافية وسريعة' }}</p>
-                    {% if settings and settings.company_address %}
-                    <div class="address">{{ settings.company_address }}</div>
-                    {% endif %}
+                    <div class="address">
+                        {% if settings and settings.company_address %}{{ settings.company_address }}<br>{% endif %}
+                        <span class="address-phone">07711272744</span>
+                    </div>
                 </div>
                 <div class="invoice-meta">
                     <div class="invoice-label">فاتورة طلب</div>
@@ -565,7 +592,19 @@
             <div class="summary-area">
                 <div class="policy">
                     <h4>سياسة الاسترجاع والاستبدال</h4>
-                    <p>{{ settings.invoice_note if settings and settings.invoice_note else 'يحق للعميل استرجاع أو استبدال المنتجات المشمولة خلال 3 أيام من تاريخ الاستلام بشرط أن تكون بحالتها الأصلية غير مستخدمة. للاسترجاع، يرجى التواصل معنا وتزويدنا برقم الطلب المبين أعلاه.' }}</p>
+                    <p>{{ settings.invoice_note if settings and settings.invoice_note else 'يحق للعميل استرجاع أو استبدال المنتجات خلال 3 أيام من تاريخ الاستلام بشرط أن تكون بحالتها الأصلية غير مستخدمة. للاسترجاع، يرجى التواصل معنا وتزويدنا برقم الطلب المبين أعلاه.' }}</p>
+
+                    <div class="warranty-block">
+                        <h4>الضمان والصيانة</h4>
+                        <ul>
+                            <li>مدة الضمان: سنة واحدة.</li>
+                            <li>الصيانة لا تشمل الكسر.</li>
+                            <li>يُرجى فحص الجهاز قبل مغادرة المندوب.</li>
+                            <li>عند مغادرة المندوب، أي خلل يُراجع عبر قسم الصيانة.</li>
+                            <li>الصيانة حصراً في بغداد — كراده خارج مجمع سوبر ماكس قرب شارع العطار.</li>
+                        </ul>
+                    </div>
+
                     {% if order.note %}
                     <div class="customer-note">
                         <strong>ملاحظة العميل:</strong> {{ order.note }}

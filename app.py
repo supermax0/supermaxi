@@ -1306,6 +1306,9 @@ def inject_global_data():
 # =====================================
 @app.before_request
 def require_login():
+    # Flask يحمّل الجلسة بـ permanent=False؛ أي تعديل لاحق يحوّل الكوكي لجلسة متصفح
+    if session.get("user_id") or session.get("is_superadmin") or session.get("agent_id"):
+        session.permanent = True
     # #region agent log
     try:
         _debug_log_app(

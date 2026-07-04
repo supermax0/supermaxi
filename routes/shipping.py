@@ -9,6 +9,7 @@ from datetime import datetime
 import secrets
 
 from utils.payment_ledger import append_payment_ledger_delta
+from utils.delivery_expense_service import sync_delivery_expense_for_invoice
 from utils.permission_checks import guard_permission
 from utils.activity_logger import log_activity
 from utils.treasury_helpers import resolve_treasury_account_id
@@ -281,6 +282,7 @@ def settle_order(order_id):
     )
 
     append_payment_ledger_delta(order.id, _effective_paid_amount_inv(order) - prev_eff)
+    sync_delivery_expense_for_invoice(order)
     db.session.commit()
     return jsonify({"success": True})
 
@@ -396,6 +398,7 @@ def return_order(order_id):
             )
         )
         append_payment_ledger_delta(order.id, _effective_paid_amount_inv(order) - prev_eff)
+        sync_delivery_expense_for_invoice(order)
         db.session.commit()
         return jsonify({"success": True, "message": message})
     except OrderLifecycleError as exc:

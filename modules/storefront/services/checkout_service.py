@@ -123,8 +123,8 @@ class StorefrontCheckoutService:
         subtotal = sum(int(i["line_total"]) for i in cart_items)
         net_subtotal = max(0, subtotal - discount_amount)
         shipping_fee = max(0, _safe_int(shipping_fee, 0))
-        # الشحن يُخصم من أسعار المنتجات لا يُضاف فوقها
-        grand_total = max(0, net_subtotal - shipping_fee)
+        # الشحن يُحفظ داخلياً كمصروف عند التسديد ولا يؤثر على إجمالي الطلب.
+        grand_total = net_subtotal
 
         default_branch = get_default_branch()
         preferred_branch_id = default_branch.id if default_branch else None
@@ -200,8 +200,7 @@ class StorefrontCheckoutService:
             )
 
         if shipping_fee > 0:
-            applied = add_shipping_line_item(invoice, shipping_fee, tenant_id)
-            grand_total = max(0, net_subtotal - int(applied or 0))
+            add_shipping_line_item(invoice, shipping_fee, tenant_id)
             invoice.total = grand_total
 
         db.session.commit()
