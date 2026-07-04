@@ -12,6 +12,21 @@ from models.user import User
 invoice_store_bp = Blueprint('invoice_store', __name__)
 
 
+class PreviewInvoiceSettings(SimpleNamespace):
+    """Minimal invoice settings object that supports all preview templates."""
+
+    def get_visibility_settings(self):
+        return {
+            "show_barcode": True,
+            "show_qrcode": True,
+        }
+
+    def get_layout_settings(self):
+        return {
+            "layout_order": ["header", "summary-customer", "products", "total", "footer"],
+        }
+
+
 def _session_tenant_slug():
     """معرّف الشركة في الرابط: من الجلسة أو من g.tenant (بعد تسجيل الدخول)."""
     slug = (session.get("tenant_slug") or "").strip().lower()
@@ -109,8 +124,7 @@ def store_home():
     if redir:
         return redir
     with _core_db():
-        if InvoiceTemplate.query.count() == 0:
-            seed_templates()
+        seed_templates()
 
         uid = _template_tenant_uid()
         lookup_ids = _template_lookup_owner_ids(uid)
@@ -154,13 +168,24 @@ def preview_invoice_template(template_id):
         catalog = InvoiceTemplate.query.get_or_404(template_id)
         html_name = catalog.html_file_name
 
-    inv_settings = SimpleNamespace(
+    inv_settings = PreviewInvoiceSettings(
+        company_name="متجر تجريبي",
         store_name="متجر تجريبي",
         company_subtitle="معاينة قالب الفاتورة",
         company_address="بغداد - عنوان تجريبي",
+        company_phone="07700000000",
         phone1="07700000000",
         phone2=None,
         invoice_note="شكراً لتسوقكم معنا! — هذه معاينة فقط.",
+        warranty_notes="شكراً لتسوقكم معنا! — هذه معاينة فقط.",
+        warranty_card_background="linear-gradient(135deg, #031021 0%, #1f2e42 100%)",
+        use_logo_image=False,
+        logo_path="",
+        logo_circle_text="متجر\nتجريبي",
+        show_returned_count=True,
+        show_discount_column=False,
+        show_tax_column=False,
+        show_unit_price_with_tax=False,
     )
     slug = session.get("tenant_slug")
     if slug:
@@ -170,13 +195,24 @@ def preview_invoice_template(template_id):
             from models.invoice_settings import InvoiceSettings
 
             s = InvoiceSettings.get_settings()
-            inv_settings = SimpleNamespace(
+            inv_settings = PreviewInvoiceSettings(
+                company_name=(s.company_name or "متجر تجريبي"),
                 store_name=(s.company_name or "متجر تجريبي"),
                 company_subtitle=(s.company_subtitle or "").strip() or "معاينة قالب الفاتورة",
                 company_address=(s.company_address or "").strip(),
+                company_phone=s.company_phone or "",
                 phone1=s.company_phone or "",
                 phone2=None,
                 invoice_note=(s.warranty_notes or "شكراً لتسوقكم معنا!")[:800],
+                warranty_notes=(s.warranty_notes or "شكراً لتسوقكم معنا!")[:800],
+                warranty_card_background=getattr(s, "warranty_card_background", "") or "linear-gradient(135deg, #031021 0%, #1f2e42 100%)",
+                use_logo_image=bool(getattr(s, "use_logo_image", False)),
+                logo_path=getattr(s, "logo_path", "") or "",
+                logo_circle_text=getattr(s, "logo_circle_text", "") or "متجر",
+                show_returned_count=bool(getattr(s, "show_returned_count", True)),
+                show_discount_column=bool(getattr(s, "show_discount_column", False)),
+                show_tax_column=bool(getattr(s, "show_tax_column", False)),
+                show_unit_price_with_tax=bool(getattr(s, "show_unit_price_with_tax", False)),
             )
         except Exception:
             pass
@@ -199,13 +235,19 @@ def preview_invoice_template(template_id):
             address="عنوان تجريبي",
         ),
     )
+    sample_product = SimpleNamespace(
+        name="منتج تجريبي أ",
+        sku="SM-WARRANTY",
+        barcode="SN100120260704",
+        meta_json='{"warranty":"1y"}',
+    )
     items = [
         SimpleNamespace(
             product_name="منتج تجريبي أ",
             price=15000,
             quantity=2,
             total=30000,
-            product=None,
+            product=sample_product,
         ),
         SimpleNamespace(
             product_name="منتج تجريبي ب",
@@ -240,6 +282,9 @@ def preview_invoice_template(template_id):
         template_styles["primary"] = qp
     if len(qs) == 7 and qs.startswith("#"):
         template_styles["secondary"] = qs
+    qbg = (request.args.get("warranty_bg") or "").strip()
+    if qbg:
+        inv_settings.warranty_card_background = qbg
 
     template_file = f"invoices/{html_name}"
     full_path = os.path.join(current_app.template_folder, template_file.replace("/", os.sep))
@@ -283,16 +328,24 @@ def seed_templates():
         {'name': 'المتجر الإلكتروني', 'description': 'يعرض شروط الاسترجاع بشكل واضح وبارز.', 'html_file_name': 'ecommerce.html', 'is_premium': True, 'price': 5000},
         {'name': 'الخط العربي الأصيل', 'description': 'زخرفة إسلامية وخط عربي أصيل.', 'html_file_name': 'arabic.html', 'is_premium': True, 'price': 10000},
         {'name': 'الفاخر (Luxury Gold)', 'description': 'ذهبي وأسود، فخامة مطلقة للعطور والمجوهرات.', 'html_file_name': 'luxury.html', 'is_premium': True, 'price': 15000},
+        {'name': 'سوبر ماكس الضريبي', 'description': 'قالب ضريبي فاخر بالأزرق الداكن والذهبي مع بطاقة ضمان مرفقة.', 'html_file_name': 'supermax_tax.html', 'is_premium': False, 'price': 0},
     ]
     for t in default_templates:
-        tmpl = InvoiceTemplate(
-            name=t['name'],
-            description=t['description'],
-            html_file_name=t['html_file_name'],
-            is_premium=t['is_premium'],
-            price=t['price'],
-        )
-        db.session.add(tmpl)
+        tmpl = InvoiceTemplate.query.filter_by(html_file_name=t['html_file_name']).first()
+        if tmpl:
+            tmpl.name = t['name']
+            tmpl.description = t['description']
+            tmpl.is_premium = t['is_premium']
+            tmpl.price = t['price']
+        else:
+            tmpl = InvoiceTemplate(
+                name=t['name'],
+                description=t['description'],
+                html_file_name=t['html_file_name'],
+                is_premium=t['is_premium'],
+                price=t['price'],
+            )
+            db.session.add(tmpl)
     db.session.commit()
 
 @invoice_store_bp.route('/admin/invoice-templates/buy/<int:template_id>', methods=['POST'])

@@ -4,6 +4,7 @@
 
 {% block content %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/customer-credit.css') }}">
+<script src="{{ url_for('static', filename='js/digits-enforcer.js') }}"></script>
 
 <div class="cc-page">
   <div class="cc-header">
@@ -90,10 +91,38 @@
 
     <div class="cc-field">
       <label>{{ _('customer_credit_field_customer') }}</label>
-      <input type="text" id="debtCustomerSearch" placeholder="{{ _('customer_credit_customer_search') }}" autocomplete="off" oninput="searchCustomersForDebt()">
+      <div class="cc-customer-pick">
+        <input type="text" id="debtCustomerSearch" placeholder="{{ _('customer_credit_customer_search') }}" autocomplete="off" oninput="searchCustomersForDebt()">
+        <button type="button" class="cc-btn cc-btn-ghost cc-customer-add-btn" onclick="toggleNewCustomerForm()" title="{{ _('customer_credit_add_customer') }}">
+          <i class="fas fa-user-plus"></i> {{ _('customer_credit_add_customer') }}
+        </button>
+      </div>
       <input type="hidden" id="debtCustomerId">
       <div id="debtCustomerResults" class="cc-customer-results"></div>
       <div id="debtCustomerSelected" style="margin-top:8px;font-size:0.85rem;color:var(--text-muted);"></div>
+
+      <div id="newCustomerForm" class="cc-new-customer" style="display:none;">
+        <div class="cc-grid-2">
+          <div class="cc-field" style="margin:0;">
+            <label>{{ _('customer_credit_new_name') }}</label>
+            <input type="text" id="newCustomerName" placeholder="{{ _('customer_credit_new_name') }}" autocomplete="name">
+          </div>
+          <div class="cc-field" style="margin:0;">
+            <label>{{ _('customer_credit_new_phone') }}</label>
+            <input type="tel" id="newCustomerPhone" placeholder="07xxxxxxxxx" autocomplete="tel" inputmode="numeric" pattern="[0-9]*" data-digits-en>
+          </div>
+        </div>
+        <div class="cc-field" style="margin-top:10px;margin-bottom:0;">
+          <label>{{ _('customer_credit_new_city') }}</label>
+          <input type="text" id="newCustomerCity" placeholder="{{ _('customer_credit_new_city_placeholder') }}">
+        </div>
+        <div class="cc-new-customer__actions">
+          <button type="button" class="cc-btn cc-btn-primary" onclick="createCustomerForDebt()">
+            <i class="fas fa-check"></i> {{ _('customer_credit_save_customer') }}
+          </button>
+          <button type="button" class="cc-btn cc-btn-ghost" onclick="toggleNewCustomerForm(false)">{{ _('cancel') }}</button>
+        </div>
+      </div>
     </div>
 
     <div id="tab-opening" class="debt-tab-panel">
@@ -187,6 +216,66 @@
   }
 
   var searchTimer;
+
+  function selectCustomerForDebt(c) {
+    document.getElementById('debtCustomerId').value = c.id;
+    document.getElementById('debtCustomerSelected').textContent = '✓ ' + c.name + ' (' + c.phone + ')';
+    document.getElementById('debtCustomerSearch').value = c.name;
+    document.getElementById('debtCustomerResults').classList.remove('show');
+    toggleNewCustomerForm(false);
+  }
+
+  function toggleNewCustomerForm(forceShow) {
+    var form = document.getElementById('newCustomerForm');
+    var show = forceShow === true || (forceShow !== false && form.style.display === 'none');
+    form.style.display = show ? 'block' : 'none';
+    if (show) {
+      var q = (document.getElementById('debtCustomerSearch').value || '').trim();
+      if (q && !document.getElementById('newCustomerName').value) {
+        if (/^\d/.test(q)) document.getElementById('newCustomerPhone').value = q;
+        else document.getElementById('newCustomerName').value = q;
+      }
+      document.getElementById('newCustomerName').focus();
+    }
+  }
+
+  function createCustomerForDebt() {
+    var name = (document.getElementById('newCustomerName').value || '').trim();
+    var phone = (document.getElementById('newCustomerPhone').value || '').trim();
+    var city = (document.getElementById('newCustomerCity').value || '').trim();
+    if (!name) {
+      if (typeof showToast === 'function') showToast('{{ _('customer_credit_err_new_name')|tojson }}', 'warning');
+      else alert('{{ _('customer_credit_err_new_name') }}');
+      return;
+    }
+    if (!phone) {
+      if (typeof showToast === 'function') showToast('{{ _('customer_credit_err_new_phone')|tojson }}', 'warning');
+      else alert('{{ _('customer_credit_err_new_phone') }}');
+      return;
+    }
+    fetch('/customers/credit/api/customers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name, phone: phone, city: city })
+    })
+    .then(function(r) { return r.json().then(function(data) { return { ok: r.ok, data: data }; }); })
+    .then(function(res) {
+      if (!res.data || !res.data.success) {
+        if (typeof showToast === 'function') showToast((res.data && res.data.error) || '{{ _('customer_credit_err_generic') }}', 'error');
+        else alert((res.data && res.data.error) || '{{ _('customer_credit_err_generic') }}');
+        return;
+      }
+      selectCustomerForDebt(res.data);
+      var msg = res.data.existing
+        ? '{{ _('customer_credit_toast_customer_exists') }}'
+        : '{{ _('customer_credit_toast_customer_created') }}';
+      if (typeof showToast === 'function') showToast(msg, 'success');
+    })
+    .catch(function() {
+      if (typeof showToast === 'function') showToast('{{ _('customer_credit_err_generic')|tojson }}', 'error');
+    });
+  }
+
   function searchCustomersForDebt() {
     clearTimeout(searchTimer);
     searchTimer = setTimeout(function() {
@@ -201,15 +290,15 @@
             var div = document.createElement('div');
             div.className = 'cc-customer-item';
             div.textContent = c.name + ' — ' + c.phone;
-            div.onclick = function() {
-              document.getElementById('debtCustomerId').value = c.id;
-              document.getElementById('debtCustomerSelected').textContent = '✓ ' + c.name + ' (' + c.phone + ')';
-              document.getElementById('debtCustomerSearch').value = c.name;
-              box.classList.remove('show');
-            };
+            div.onclick = function() { selectCustomerForDebt(c); };
             box.appendChild(div);
           });
-          box.classList.toggle('show', rows.length > 0);
+          var addRow = document.createElement('div');
+          addRow.className = 'cc-customer-item cc-customer-item--add';
+          addRow.innerHTML = '<i class="fas fa-user-plus"></i> {{ _('customer_credit_add_customer') }}';
+          addRow.onclick = function() { toggleNewCustomerForm(true); box.classList.remove('show'); };
+          box.appendChild(addRow);
+          box.classList.add('show');
         });
     }, 250);
   }

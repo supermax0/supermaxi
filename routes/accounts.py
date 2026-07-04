@@ -12,12 +12,12 @@ from models.treasury_account import TreasuryAccount
 # Accounting Calculations (الحسابات المحاسبية الصحيحة)
 # =======================
 from utils.accounting_calculations import (
-    calculate_paid_sales,        # المبيعات المسددة
-    calculate_paid_cogs,          # COGS المسدد
+    calculate_total_revenue,      # المبيعات المحتسبة محاسبياً
+    calculate_total_cogs,         # COGS للطلبات المحتسبة
     calculate_total_expenses,     # المصاريف
-    calculate_operational_profit,  # الربح التشغيلي
     calculate_net_profit           # صافي الربح (Accrual)
 )
+from utils.cash_calculations import _effective_paid_amount
 from utils.permission_checks import check_permission
 from utils.activity_logger import log_activity
 from utils.treasury_helpers import resolve_treasury_account_id, treasury_choices_for_form
@@ -72,7 +72,7 @@ def _build_order_accounting_impact(limit=12):
 
     for invoice in invoices:
         sale_value = int(invoice.total or 0)
-        paid_amount = int(invoice.paid_amount or 0)
+        paid_amount = _effective_paid_amount(invoice)
         impact_cost = cost_rows.get(invoice.id, {})
         total_cost = impact_cost.get("stock_cost", 0)
         items_count = impact_cost.get("items_count", 0)
@@ -181,19 +181,17 @@ def accounts():
     balance = calculate_cash_balance()  # الرصيد من الصندوق - المصدر الوحيد الموثوق
 
     # ===============================
-    # حساب صافي الأرباح (باستخدام الدوال المحاسبية الصحيحة)
-    # الصيغة المحاسبية الصحيحة:
-    # صافي الربح = (المبيعات المسددة - المرتجعات) - COGS المسدد - المصاريف
+    # حساب صافي الأرباح على أساس الطلبات المسجلة
+    # الصيغة المحاسبية:
+    # صافي الربح = المبيعات المحتسبة - COGS - المصاريف
+    #
+    # ملاحظة مهمة:
+    # - الربح يظهر عند إنشاء الطلب "تم الطلب".
+    # - التحصيل اللاحق يؤثر على الصندوق فقط، ولا يعيد احتساب ربح الطلب.
     # ===============================
-    # استخدام الدوال المحاسبية الصحيحة لفصل المفاهيم
-    # السبب المحاسبي: ضمان فصل الإيرادات عن COGS عن المصاريف
-    
-    # المبيعات المسددة
-    paid_sales = calculate_paid_sales()
-    
-    # COGS للطلبات المسددة
-    # السبب المحاسبي: عند البيع، يُخصم COGS من المخزون
-    total_cost = calculate_paid_cogs()
+
+    booked_sales = calculate_total_revenue()
+    total_cost = calculate_total_cogs()
     
     # المصاريف
     # السبب المحاسبي: المصاريف حساب مستقل، لا تؤثر على المخزون أو رأس المال مباشرة
@@ -201,7 +199,7 @@ def accounts():
     
     # حساب الربح قبل المصاريف (Gross Profit)
     # السبب المحاسبي: الربح الإجمالي = الإيرادات - COGS (قبل المصاريف)
-    gross_profit = paid_sales - total_cost
+    gross_profit = booked_sales - total_cost
     
     # صافي الربح (Net Profit)
     # الصيغة المحاسبية الصحيحة: الربح = الإيرادات - COGS - المصاريف
@@ -213,7 +211,7 @@ def accounts():
     # - لا يُضاف تلقائياً إلى رأس المال (يُضاف فقط في نهاية الفترة المالية)
     # - الحركات النقدية تُستخدم لتحديث الصندوق فقط، لا تؤثر على الأرباح
     # ==========================
-    net_profit = calculate_operational_profit()
+    net_profit = calculate_net_profit()
     
     # ==========================
     # تم إزالة منطق إضافة الربح تلقائياً إلى رأس المال
@@ -222,7 +220,7 @@ def accounts():
 
     # حساب نسب التحذير
     expense_ratio = (total_expenses / gross_profit * 100) if gross_profit > 0 else 0
-    profit_ratio = (net_profit / paid_sales * 100) if paid_sales > 0 else 0
+    profit_ratio = (net_profit / booked_sales * 100) if booked_sales > 0 else 0
     
     # تحديد نوع التنبيه
     alert_type = None
@@ -236,10 +234,10 @@ def accounts():
         # المصاريف مقاربة للربح (80% أو أكثر)
         alert_type = "warning"
         alert_message = f"⚠️ تحذير: المصاريف ({total_expenses:,} د.ع) تمثل {expense_ratio:.1f}% من الربح ({gross_profit:,} د.ع) - قريبة جداً من الخسارة!"
-    elif profit_ratio < 20 and paid_sales > 0:
+    elif profit_ratio < 20 and booked_sales > 0:
         # الربح قليل (أقل من 20% من المبيعات)
         alert_type = "info"
-        alert_message = f"💡 ملاحظة: الربح الصافي ({net_profit:,} د.ع) يمثل {profit_ratio:.1f}% فقط من المبيعات ({paid_sales:,} د.ع) - ربح قليل"
+        alert_message = f"💡 ملاحظة: الربح الصافي ({net_profit:,} د.ع) يمثل {profit_ratio:.1f}% فقط من المبيعات ({booked_sales:,} د.ع) - ربح قليل"
 
     ensure_treasury_schema()
     treasury_accounts = list_treasury_accounts()
@@ -261,7 +259,7 @@ def accounts():
         net_profit=net_profit,
         total_expenses=total_expenses,
         gross_profit=gross_profit,
-        paid_sales=paid_sales,
+        booked_sales=booked_sales,
         order_accounting_impact=_build_order_accounting_impact(),
         alert_type=alert_type,
         alert_message=alert_message,

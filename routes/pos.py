@@ -272,9 +272,12 @@ def add_customer():
         ensure_customer_blacklist_columns()
         data = request.get_json() or {}
 
+        from utils.digits import digits_only
+
         name = data.get("name", "").strip() if data.get("name") else ""
-        phone = data.get("phone", "").strip() if data.get("phone") else ""
-        phone2 = data.get("phone2", "").strip() if data.get("phone2") else None
+        phone = digits_only(data.get("phone", "").strip() if data.get("phone") else "")
+        phone2_raw = data.get("phone2", "").strip() if data.get("phone2") else None
+        phone2 = digits_only(phone2_raw) if phone2_raw else None
         city = data.get("city", "").strip() if data.get("city") else None
         address = data.get("address", "").strip() if data.get("address") else None
 
@@ -610,8 +613,9 @@ def create_order():
 
     tenant_id = getattr(customer, "tenant_id", None)
     if shipping_fee > 0:
-        add_shipping_line_item(invoice, shipping_fee, tenant_id)
-        total += shipping_fee
+        # تُخصم من أسعار المنتجات ولا تُضاف فوق الإجمالي ولا تظهر بالطباعة
+        applied = add_shipping_line_item(invoice, shipping_fee, tenant_id)
+        total = max(0, int(total) - int(applied or 0))
 
     invoice.total = total
 

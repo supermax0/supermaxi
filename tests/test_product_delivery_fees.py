@@ -156,10 +156,41 @@ def test_get_shipping_fee_from_invoice_reads_line_item():
                 product_name=SHIPPING_PRODUCT_NAME,
                 product=SimpleNamespace(barcode=SHIPPING_BARCODE),
                 total=7500,
+                cost=0,
             )
         ]
     )
     assert get_shipping_fee_from_invoice(invoice) == 7500
+
+
+def test_get_shipping_fee_from_invoice_reads_cost_when_total_zero():
+    from utils.order_shipping import SHIPPING_BARCODE, SHIPPING_PRODUCT_NAME, get_shipping_fee_from_invoice
+
+    invoice = SimpleNamespace(
+        order_items=[
+            SimpleNamespace(
+                product_name=SHIPPING_PRODUCT_NAME,
+                product=SimpleNamespace(barcode=SHIPPING_BARCODE),
+                total=0,
+                cost=15000,
+            )
+        ]
+    )
+    assert get_shipping_fee_from_invoice(invoice) == 15000
+
+
+def test_prepare_invoice_items_hides_shipping_and_deducts_legacy():
+    from utils.order_shipping import SHIPPING_PRODUCT_NAME, prepare_invoice_items_for_print
+
+    items = [
+        SimpleNamespace(product_name="غسالة", quantity=1, price=195000, total=195000, product=None),
+        SimpleNamespace(product_name=SHIPPING_PRODUCT_NAME, quantity=1, price=15000, total=15000, cost=0, product=None),
+    ]
+    printable, total = prepare_invoice_items_for_print(items)
+    assert len(printable) == 1
+    assert printable[0].total == 180000
+    assert printable[0].price == 180000
+    assert total == 180000
 
 
 if __name__ == "__main__":

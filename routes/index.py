@@ -35,12 +35,16 @@ from utils.date_periods import get_period_dates, get_period_label
 from utils.cash_calculations import calculate_cash_balance, get_cash_movements, _effective_paid_amount
 from utils.period_net_profit import net_profit_for_range as _net_profit_for_range
 from utils.period_net_profit import expenses_sum_for_range as _expenses_sum_for_range
+from utils.period_net_profit import (
+    net_profit_for_order_calendar_day,
+    net_profit_for_order_range,
+)
 from utils.payment_ledger import (
     append_payment_ledger_delta,
     business_today,
-    net_profit_for_collection_calendar_day,
 )
 from utils.order_status import PENDING_STATUSES
+from utils.order_lifecycle import OrderLifecycleError, process_order_return
 from utils.decorators import admin_required
 from utils.executive_dashboard_data import (
     get_treasury_summary,
@@ -1000,7 +1004,7 @@ def executive_dashboard():
 @admin_required
 def api_executive_dashboard_data():
     from models.purchase import Purchase
-    today = date.today()
+    today = business_today()
     yesterday = today - timedelta(days=1)
     month_start = today.replace(day=1)
 
@@ -1035,14 +1039,15 @@ def api_executive_dashboard_data():
     cash_balance = calculate_cash_balance()
     
     # 4. Net Profit Today
-    profit_today = _net_profit_for_range(today, today)
+    # Dashboard profit is order-basis: count the order once when it is created.
+    profit_today = net_profit_for_order_calendar_day(today)
     
     # 5. Total Sales Today
     sales_today_val = db.session.query(func.sum(Invoice.total)).filter(func.date(Invoice.created_at) == today, Invoice.status != 'ملغي').scalar() or 0
     sales_yesterday_val = db.session.query(func.sum(Invoice.total)).filter(func.date(Invoice.created_at) == yesterday, Invoice.status != 'ملغي').scalar() or 0
     expenses_today_val = _expenses_sum_for_range(today, today)
     expenses_yesterday_val = _expenses_sum_for_range(yesterday, yesterday)
-    profit_yesterday = _net_profit_for_range(yesterday, yesterday)
+    profit_yesterday = net_profit_for_order_calendar_day(yesterday)
     
     cash_movements = get_cash_movements()
     cash_by_date = {}
@@ -1078,7 +1083,7 @@ def api_executive_dashboard_data():
         d_orders = db.session.query(func.count(Invoice.id)).filter(func.date(Invoice.created_at) == d).scalar() or 0
         d_purchases = purchase_total_for_date(d)
         d_sales = db.session.query(func.sum(Invoice.total)).filter(func.date(Invoice.created_at) == d, Invoice.status != 'ملغي').scalar() or 0
-        d_profit = _net_profit_for_range(d, d)
+        d_profit = net_profit_for_order_calendar_day(d)
         d_expenses = _expenses_sum_for_range(d, d)
 
         while movement_dates and movement_dates[0] <= d:
@@ -1227,8 +1232,8 @@ def index_executive_overview():
     """
     بيانات موحّدة للبطاقات والرسوم.
 
-    - ربح اليوم والمنحنى اليومي: حسب لحظة التسديد (سجل التحصيل)، يُصفَّر تقويمياً عند منتصف الليل بتوقيت الخادم.
-    - الشهر/السنة: إنشاء الطلب ضمن الفترة (`net_profit_for_range`).
+    - ربح اليوم والمنحنى اليومي: حسب إنشاء الطلب، حتى يظهر ربح «تم الطلب» فوراً.
+    - الشهر/السنة: إنشاء الطلب ضمن الفترة.
     - النقدية: رصيد تراكمي، مقياس مختلف عن الربح.
     """
     today = business_today()
@@ -1306,16 +1311,16 @@ def index_executive_overview():
         )
 
     cash_balance = int(calculate_cash_balance())
-    profit_today = net_profit_for_collection_calendar_day(today)
-    profit_month = _net_profit_for_range(month_start, today)
-    profit_year = _net_profit_for_range(year_start, today)
+    profit_today = net_profit_for_order_calendar_day(today)
+    profit_month = net_profit_for_order_range(month_start, today)
+    profit_year = net_profit_for_order_range(year_start, today)
 
     daily_labels = []
     daily_profit = []
     for i in range(13, -1, -1):
         d = today - timedelta(days=i)
         daily_labels.append(d.strftime("%m/%d"))
-        daily_profit.append(net_profit_for_collection_calendar_day(d))
+        daily_profit.append(net_profit_for_order_calendar_day(d))
 
     month_names_ar = [
         "يناير",
@@ -1349,7 +1354,7 @@ def index_executive_overview():
         if d2 > today:
             d2 = today
         monthly_labels.append(month_names_ar[m - 1])
-        monthly_profit.append(_net_profit_for_range(d1, d2))
+        monthly_profit.append(net_profit_for_order_range(d1, d2))
         monthly_expenses.append(_expenses_sum_for_range(d1, d2))
 
     return jsonify(
@@ -1620,8 +1625,7 @@ def index_orders_count():
 def index_today_profit():
     """
     صافي ربح اليوم التقويمي — يتوافق مع بطاقة «ربح اليوم» في لوحة المدير:
-    تحصيل بلحظة التسديد (مع COGS المتناسب والمصاريف اليومية)؛
-    قبل وجود أي سجل تحصيل يُستخدم احتياطياً منطق طلبات اُنشئت اليوم.
+    يُحسب عند إنشاء الطلب «تم الطلب»، ولا يُعاد حسابه عند التحصيل.
     """
     today = business_today()
     if _is_beauty_center_session():
@@ -1634,9 +1638,9 @@ def index_today_profit():
             }
         )
     try:
-        return jsonify({"profit": int(net_profit_for_collection_calendar_day(today))})
+        return jsonify({"profit": int(net_profit_for_order_calendar_day(today))})
     except Exception:
-        current_app.logger.exception("today-profit failed; falling back to creation-date day profit")
+        current_app.logger.exception("today-profit failed; falling back to paid creation-date profit")
         return jsonify({"profit": int(_net_profit_for_range(today, today))})
 
 # =================================================
@@ -1778,7 +1782,19 @@ def index_execute():
         sync_delivery_expense_for_invoice(invoice)
 
     elif action == "returned":
-        invoice.status = "راجع"
+        from utils.delivery_expense_service import sync_delivery_expense_for_invoice
+
+        scanned_barcode = (data.get("barcode") or "").strip()
+        if not scanned_barcode:
+            return jsonify({"success": False, "error": "يجب مسح باركود الطلب لتأكيد الراجع"}), 400
+        prev_eff = _effective_paid_amount(invoice)
+        try:
+            already_returned, message = process_order_return(invoice, scanned_barcode)
+        except OrderLifecycleError as exc:
+            return jsonify({"success": False, "error": exc.message}), exc.status_code
+        if not already_returned:
+            append_payment_ledger_delta(invoice.id, _effective_paid_amount(invoice) - prev_eff)
+            sync_delivery_expense_for_invoice(invoice)
 
     else:
         return jsonify({"error": "INVALID_ACTION"}), 400
@@ -1798,6 +1814,7 @@ def index_execute_bulk():
         return jsonify({"success": False, "error": "لا توجد طلبات محددة"}), 400
     
     executed = 0
+    executed_ids = []
     errors = []
     
     for order_data in orders:
@@ -1842,12 +1859,23 @@ def index_execute_bulk():
                 append_payment_ledger_delta(invoice.id, _effective_paid_amount(invoice) - prev_eff)
                 sync_delivery_expense_for_invoice(invoice)
             elif action == "returned":
-                invoice.status = "راجع"
+                from utils.delivery_expense_service import sync_delivery_expense_for_invoice
+
+                scanned_barcode = (order_data.get("barcode") or "").strip()
+                if not scanned_barcode:
+                    errors.append(f"طلب {order_id}: يجب مسح باركود الطلب لتأكيد الراجع")
+                    continue
+                prev_eff = _effective_paid_amount(invoice)
+                already_returned, _message = process_order_return(invoice, scanned_barcode)
+                if not already_returned:
+                    append_payment_ledger_delta(invoice.id, _effective_paid_amount(invoice) - prev_eff)
+                    sync_delivery_expense_for_invoice(invoice)
             else:
                 errors.append(f"طلب {order_id}: إجراء غير صحيح")
                 continue
             
             executed += 1
+            executed_ids.append(int(order_id))
         except Exception as e:
             errors.append(f"طلب {order_id}: {str(e)}")
             continue
@@ -1855,8 +1883,10 @@ def index_execute_bulk():
     db.session.commit()
     
     return jsonify({
-        "success": True,
+        "success": executed > 0 and not errors,
+        "partial_success": executed > 0 and bool(errors),
         "executed": executed,
+        "executed_ids": executed_ids,
         "total": len(orders),
         "errors": errors if errors else None
     })
@@ -1918,11 +1948,11 @@ def index_charts():
             Invoice.payment_status != "مرتجع",
         ).all()
 
-        # المبيعات المحصّلة (مسدد / تم التوصيل / جزئي)
-        day_sales = sum(_effective_paid_amount(inv) for inv in day_invoices)
+        # مبيعات الطلبات المنشأة بذلك اليوم، حتى تظهر فور «تم الطلب».
+        day_sales = sum(int(inv.total or 0) for inv in day_invoices)
         sales.append(int(day_sales))
-        # نفس منطق بطاقة «ربح اليوم» (تحصيل + تكلفة + مصاريف اليوم)
-        profit.append(int(net_profit_for_collection_calendar_day(d)))
+        # نفس منطق بطاقة «ربح اليوم»: ربح الطلب عند إنشائه، بلا إعادة احتساب عند التحصيل.
+        profit.append(int(net_profit_for_order_calendar_day(d)))
 
     status_data = {
         "ordered": db.session.query(func.count(Invoice.id)).filter(Invoice.status == "تم الطلب").scalar() or 0,
@@ -1975,19 +2005,20 @@ def index_alerts():
             })
 
         # تنبيهات الربح والمصاريف
+        # تستخدم نفس منطق صفحة الحسابات حتى لا يظهر تحذير خسارة عند وجود ربح محاسبي فعلي.
         from utils.accounting_calculations import (
-            calculate_paid_sales,
-            calculate_paid_cogs,
+            calculate_total_revenue,
+            calculate_total_cogs,
             calculate_total_expenses,
-            calculate_operational_profit
+            calculate_net_profit,
         )
-        paid_sales = calculate_paid_sales()
-        total_cost = calculate_paid_cogs()
+        booked_sales = calculate_total_revenue()
+        total_cost = calculate_total_cogs()
         total_expenses = calculate_total_expenses()
-        gross_profit = paid_sales - total_cost
-        net_profit = calculate_operational_profit()
+        gross_profit = booked_sales - total_cost
+        net_profit = calculate_net_profit()
         expense_ratio = (total_expenses / gross_profit * 100) if gross_profit > 0 else 0
-        profit_ratio = (net_profit / paid_sales * 100) if paid_sales > 0 else 0
+        profit_ratio = (net_profit / booked_sales * 100) if booked_sales > 0 else 0
 
         if net_profit < 0:
             alerts.append({
@@ -2003,11 +2034,11 @@ def index_alerts():
                 "message": f"المصاريف ({total_expenses:,} د.ع) تمثل {expense_ratio:.1f}% من الربح ({gross_profit:,} د.ع) - قريبة جداً من الخسارة!",
                 "action": "/accounts"
             })
-        elif profit_ratio < 20 and paid_sales > 0:
+        elif profit_ratio < 20 and booked_sales > 0:
             alerts.append({
                 "type": "info",
                 "icon": "💡",
-                "message": f"الربح الصافي ({net_profit:,} د.ع) يمثل {profit_ratio:.1f}% فقط من المبيعات ({paid_sales:,} د.ع) - ربح قليل",
+                "message": f"الربح الصافي ({net_profit:,} د.ع) يمثل {profit_ratio:.1f}% فقط من المبيعات ({booked_sales:,} د.ع) - ربح قليل",
                 "action": "/accounts"
             })
 

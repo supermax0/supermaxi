@@ -3239,6 +3239,7 @@
      Search
   ======================= */
   var scannedBarcodesSession = [];
+  var scannedBarcodeByOrder = {};
 
   function getSearchDataRowCount() {
     const rowsContainer = document.getElementById("rows");
@@ -3265,6 +3266,7 @@
     const tr = document.createElement("tr");
     tr.id = "r" + o.id;
     tr.className = "row-ordered";
+    tr.dataset.barcode = o.scanned_barcode || o.barcode || o.shipping_barcode || "";
     tr.innerHTML = `
           <td class="order-td-id"><strong>#${o.id}</strong></td>
           <td class="order-td-customer">
@@ -3294,9 +3296,15 @@
       id: invoice.id,
       customer: invoice.customer_name || invoice.customer,
       phone: invoice.phone,
-      total: invoice.total
+      total: invoice.total,
+      scanned_barcode: barcode
     });
-    if (barcode) scannedBarcodesSession.push(barcode);
+    if (barcode) {
+      scannedBarcodesSession.push(barcode);
+      scannedBarcodeByOrder[invoice.id] = barcode;
+      const row = document.getElementById("r" + invoice.id);
+      if (row) row.dataset.barcode = barcode;
+    }
     updateSearchResultsCount();
     if (added) {
       showToast(`✅ تمت إضافة الطلب #${invoice.id}`, "success");
@@ -3438,12 +3446,18 @@
   ======================= */
   function exec(id) {
     const action = getOrderStatus(id);
+    const row = document.getElementById("r" + id);
+    const barcode = (scannedBarcodeByOrder[id] || (row && row.dataset ? row.dataset.barcode : "") || "").trim();
+    if (action === "returned" && !barcode) {
+      showToast("⚠️ يجب إضافة الطلب بالباركود قبل ترجيعه", "warning");
+      return;
+    }
 
     showLoading();
     fetch("/api/index/execute", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, action })
+      body: JSON.stringify({ id, action, barcode })
     })
       .then(r => r.json())
       .then(res => {
@@ -3454,7 +3468,7 @@
           showToast("✅ تم تنفيذ الطلب بنجاح", "success");
           load();
         } else {
-          showToast("❌ حدث خطأ أثناء التنفيذ", "error");
+          showToast(res.error || "❌ حدث خطأ أثناء التنفيذ", "error");
         }
       })
       .catch(error => {
@@ -3501,6 +3515,7 @@
     if (confirm(`⚠️ هل تريد مسح جميع النتائج (${count} طلب)؟`)) {
       dataRows.forEach(function (row) { row.remove(); });
       scannedBarcodesSession = [];
+      scannedBarcodeByOrder = {};
       document.getElementById("selectAllCheckbox").checked = false;
       syncSearchEmptyState();
       showToast(`✅ تم مسح ${count} طلب`, "success");
@@ -3525,10 +3540,26 @@
     showLoading();
 
     // الحصول على الإجراء المحدد لكل طلب
-    const orders = selected.map(id => ({
-      id,
-      action: getOrderStatus(id)
-    }));
+    const missingReturnBarcode = selected.filter(id => {
+      if (getOrderStatus(id) !== "returned") return false;
+      const row = document.getElementById("r" + id);
+      const barcode = (scannedBarcodeByOrder[id] || (row && row.dataset ? row.dataset.barcode : "") || "").trim();
+      return !barcode;
+    });
+    if (missingReturnBarcode.length) {
+      hideLoading();
+      showToast("⚠️ يجب إضافة الطلبات الراجعة بالباركود قبل التنفيذ", "warning");
+      return;
+    }
+
+    const orders = selected.map(id => {
+      const row = document.getElementById("r" + id);
+      return {
+        id,
+        action: getOrderStatus(id),
+        barcode: (scannedBarcodeByOrder[id] || (row && row.dataset ? row.dataset.barcode : "") || "").trim()
+      };
+    });
 
     fetch("/api/index/execute-bulk", {
       method: "POST",
@@ -3538,7 +3569,7 @@
       .then(r => r.json())
       .then(res => {
         hideLoading();
-        if (res.success) {
+        if (res.success || res.partial_success) {
           // ==========================
           // تشغيل الأصوات عند تنفيذ الطلبات
           // ==========================
@@ -3552,16 +3583,25 @@
             playCancelSound(); // صوت التحذير عند إلغاء الطلب
           }
 
-          showToast(`✅ تم تنفيذ ${res.executed || selected.length} طلب بنجاح`, "success");
+          if (res.partial_success) {
+            showToast(`⚠️ تم تنفيذ ${res.executed || 0} طلب، وفشلت طلبات أخرى`, "warning");
+            if (Array.isArray(res.errors) && res.errors.length) {
+              console.warn("Bulk execution errors:", res.errors);
+            }
+          } else {
+            showToast(`✅ تم تنفيذ ${res.executed || selected.length} طلب بنجاح`, "success");
+          }
           // إزالة الطلبات المنفذة
-          selected.forEach(id => {
+          const idsToRemove = Array.isArray(res.executed_ids) && res.executed_ids.length ? res.executed_ids : selected;
+          idsToRemove.forEach(id => {
             const row = document.getElementById("r" + id);
             if (row) row.remove();
           });
           syncSearchEmptyState();
           load(currentPeriod.type, currentPeriod.date_from, currentPeriod.date_to); // تحديث الداشبورد بالفترة الحالية (بدون إعادة تحميل)
         } else {
-          showToast(res.error || "❌ حدث خطأ أثناء التنفيذ الجماعي", "error");
+          const firstError = Array.isArray(res.errors) && res.errors.length ? res.errors[0] : null;
+          showToast(firstError || res.error || "❌ حدث خطأ أثناء التنفيذ الجماعي", "error");
         }
       })
       .catch(error => {

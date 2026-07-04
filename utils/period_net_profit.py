@@ -2,6 +2,7 @@
 """صافي الربح لفترة زمنية — إنشاء الطلب + تحصيل متناسب + مصاريف."""
 from datetime import date
 
+from sqlalchemy import or_
 from sqlalchemy.sql import func
 
 from extensions import db
@@ -68,6 +69,59 @@ def net_profit_for_range(date_from: date, date_to: date) -> int:
     ).scalar() or 0
 
     return int(sales_total - cogs_period - int(expenses_period or 0))
+
+
+def net_profit_for_order_range(date_from: date, date_to: date) -> int:
+    """
+    صافي الربح على أساس إنشاء الطلب.
+
+    يُستخدم لبطاقات الصفحة الرئيسية حتى يظهر ربح الطلب فور حالة «تم الطلب»،
+    ولا يتأثر لاحقاً بحركات التحصيل كي لا يُحسب نفس الطلب مرتين.
+    """
+    from models.order_item import OrderItem
+    from utils.payment_ledger import calendar_day_bounds_utc
+
+    RETURN_STATUSES = ["مرتجع", "راجع", "راجعة"]
+    CANCELED_STATUSES = ["ملغي"]
+    start_utc, _ = calendar_day_bounds_utc(date_from)
+    _, end_utc = calendar_day_bounds_utc(date_to)
+
+    period_invoices = db.session.query(
+        Invoice.id,
+        Invoice.total,
+    ).filter(
+        Invoice.created_at >= start_utc,
+        Invoice.created_at < end_utc,
+        Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
+        or_(
+            Invoice.payment_status.is_(None),
+            Invoice.payment_status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
+        ),
+    ).all()
+
+    invoice_ids = [int(inv.id) for inv in period_invoices]
+    sales_total = sum(int(inv.total or 0) for inv in period_invoices)
+
+    cogs_period = 0
+    if invoice_ids:
+        cogs_period = db.session.query(
+            func.sum(OrderItem.cost * OrderItem.quantity)
+        ).filter(
+            OrderItem.invoice_id.in_(invoice_ids)
+        ).scalar() or 0
+
+    expenses_period = db.session.query(func.sum(Expense.amount)).filter(
+        Expense.expense_date.isnot(None),
+        func.date(Expense.expense_date) >= date_from,
+        func.date(Expense.expense_date) <= date_to,
+    ).scalar() or 0
+
+    return int(sales_total - int(cogs_period or 0) - int(expenses_period or 0))
+
+
+def net_profit_for_order_calendar_day(day: date) -> int:
+    """صافي ربح يوم واحد على أساس إنشاء الطلب."""
+    return net_profit_for_order_range(day, day)
 
 
 def expenses_sum_for_range(date_from: date, date_to: date) -> int:

@@ -285,6 +285,22 @@
   .cc-grid-2 { grid-template-columns: 1fr; }
 }
 
+.cc-customer-pick {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.cc-customer-pick input {
+  flex: 1;
+  min-width: 0;
+}
+
+.cc-customer-add-btn {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 .cc-customer-results {
   max-height: 160px;
   overflow-y: auto;
@@ -305,6 +321,37 @@
 
 .cc-customer-item:hover {
   background: rgba(59,130,246,0.08);
+}
+
+.cc-customer-item--add {
+  color: var(--primary, #3b82f6);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: none;
+  background: rgba(59,130,246,0.06);
+}
+
+.cc-new-customer {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px dashed var(--border-light);
+  border-radius: 12px;
+  background: rgba(59,130,246,0.04);
+}
+
+.cc-new-customer__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+@media (max-width: 560px) {
+  .cc-customer-pick {
+    flex-direction: column;
+  }
 }
 
 .cc-product-lines {

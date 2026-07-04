@@ -6,6 +6,7 @@
   <title>POS</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <script src="/static/js/no-zoom.js"></script>
+  <script src="/static/js/digits-enforcer.js"></script>
   <meta name="format-detection" content="telephone=no">
   <!-- Favicon -->
   <link rel="icon" type="image/png" sizes="32x32" href="{{ platform_logo_url }}">
@@ -1454,8 +1455,8 @@
 
         <div class="grid">
           <input id="name" placeholder="الاسم" class="modal-input" autocomplete="name">
-          <input id="phone" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="رقم الهاتف" class="modal-input" autocomplete="tel">
-          <input id="phone2" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="رقم آخر" class="modal-input" autocomplete="tel">
+          <input id="phone" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="رقم الهاتف" class="modal-input" autocomplete="tel" data-digits-en>
+          <input id="phone2" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="رقم آخر" class="modal-input" autocomplete="tel" data-digits-en>
           <select id="city" class="modal-input">
             <option value="{{ primary_province }}">{{ primary_province }}</option>
             {% for p in tenant_group_provinces %}
@@ -1472,7 +1473,7 @@
           <textarea id="ocrText" style="height:100px" class="modal-input"></textarea>
           <div class="grid">
             <input id="ocrName" placeholder="الاسم" class="modal-input">
-            <input id="ocrPhone" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="رقم الهاتف" class="modal-input" autocomplete="tel">
+            <input id="ocrPhone" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="رقم الهاتف" class="modal-input" autocomplete="tel" data-digits-en>
           </div>
           <input id="ocrAddress" placeholder="العنوان" class="modal-input">
           <select id="ocrCity" class="modal-input">
@@ -1582,6 +1583,7 @@
         <div class="modal-header">تغيير سعر البيع</div>
         <div id="priceModalProductName" style="margin-bottom:8px;color:#6b7280;font-size:14px;"></div>
         <input type="number" id="priceModalInput" class="modal-input" placeholder="أدخل السعر الجديد" min="0"
+          data-digits-en="decimal"
           step="0.01">
         <div class="modal-actions">
           <button class="modal-btn modal-btn-secondary" onclick="closePriceModal()">إلغاء</button>

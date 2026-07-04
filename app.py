@@ -136,6 +136,39 @@ def to_locale_string(value):
     except (ValueError, TypeError):
         return value
 
+@app.template_filter("json_object")
+def json_object(value):
+    try:
+        if not value:
+            return {}
+        if isinstance(value, dict):
+            return value
+        parsed = json.loads(value)
+        return parsed if isinstance(parsed, dict) else {}
+    except Exception:
+        return {}
+
+@app.template_filter("warranty_label")
+def warranty_label(value):
+    raw = str(value or "").strip().lower()
+    labels = {
+        "none": "بدون ضمان",
+        "no": "بدون ضمان",
+        "0": "بدون ضمان",
+        "6m": "6 أشهر",
+        "1y": "12 شهر",
+        "2y": "24 شهر",
+    }
+    if raw in labels:
+        return labels[raw]
+    if raw.endswith("m") and raw[:-1].isdigit():
+        months = int(raw[:-1])
+        return f"{months} شهر" if months == 1 else f"{months} أشهر"
+    if raw.endswith("y") and raw[:-1].isdigit():
+        years = int(raw[:-1])
+        return f"{years * 12} شهر"
+    return value or "12 شهر"
+
 app.config["UPLOAD_FOLDER"] = "static/uploads/messages"
 # حد رفع الملفات (للرسائل، النشر التلقائي صورة/فيديو حتى 500 ميجا)
 app.config["MAX_CONTENT_LENGTH"] = 500 * 1024 * 1024  # 500MB
@@ -347,6 +380,7 @@ with app.app_context():
                             "report_phone": "ALTER TABLE invoice_settings ADD COLUMN report_phone VARCHAR(50)",
                             "report_footer_text": "ALTER TABLE invoice_settings ADD COLUMN report_footer_text TEXT",
                             "report_show_logo": "ALTER TABLE invoice_settings ADD COLUMN report_show_logo BOOLEAN DEFAULT TRUE",
+                            "warranty_card_background": "ALTER TABLE invoice_settings ADD COLUMN warranty_card_background TEXT DEFAULT 'linear-gradient(135deg, #031021 0%, #1f2e42 100%)'",
                         }
                         for col, stmt in report_additions.items():
                             if col not in is_cols:
@@ -420,6 +454,7 @@ with app.app_context():
                 "report_phone": "ALTER TABLE invoice_settings ADD COLUMN report_phone VARCHAR(50)",
                 "report_footer_text": "ALTER TABLE invoice_settings ADD COLUMN report_footer_text TEXT",
                 "report_show_logo": "ALTER TABLE invoice_settings ADD COLUMN report_show_logo BOOLEAN DEFAULT TRUE",
+                "warranty_card_background": "ALTER TABLE invoice_settings ADD COLUMN warranty_card_background TEXT DEFAULT 'linear-gradient(135deg, #031021 0%, #1f2e42 100%)'",
             }
             for col, stmt in report_additions.items():
                 if col not in is_columns:

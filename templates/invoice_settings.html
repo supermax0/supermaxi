@@ -198,6 +198,22 @@
           </div>
         </div>
         <div class="form-group">
+          <label>خلفية بطاقة الضمان</label>
+          <input
+            type="text"
+            id="warranty_card_background"
+            class="form-input"
+            value="{{ settings|attr('warranty_card_background')|default('linear-gradient(135deg, #031021 0%, #1f2e42 100%)', true) }}"
+            onchange="updatePreview()"
+            placeholder="مثال: #1f2e42 أو linear-gradient(135deg, #031021, #1f2e42)">
+          <small>يمكن استخدام لون، تدرج CSS، أو صورة مثل: url('/static/uploads/bg.jpg') center/cover no-repeat</small>
+          <div class="preset-row" style="margin-top:10px;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="applyWarrantyBackground('linear-gradient(135deg, #031021 0%, #1f2e42 100%)')">كحلي أصلي</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="applyWarrantyBackground('linear-gradient(135deg, #111827 0%, #374151 100%)')">رمادي فاخر</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="applyWarrantyBackground('linear-gradient(135deg, #172554 0%, #2563eb 100%)')">أزرق</button>
+          </div>
+        </div>
+        <div class="form-group">
           <label>CSS مخصص (اختياري)</label>
           <textarea id="custom_css" class="form-textarea" rows="5" onchange="updatePreview()" placeholder=".company-name-header { letter-spacing: 1px; }">{{ template_style.custom_css }}</textarea>
           <small>يُطبق على القالب النشط بعد الحفظ.</small>
@@ -969,6 +985,8 @@ function buildInvoicePreviewUrl() {
   const qs = new URLSearchParams();
   if (/^#[0-9a-fA-F]{6}$/.test(p)) qs.set('primary_color', p);
   if (/^#[0-9a-fA-F]{6}$/.test(s)) qs.set('secondary_color', s);
+  const bg = document.getElementById('warranty_card_background')?.value || '';
+  if (bg.trim()) qs.set('warranty_bg', bg.trim());
   qs.set('t', String(Date.now()));
   return `/admin/invoice-templates/preview/${id}?${qs.toString()}`;
 }
@@ -1228,6 +1246,7 @@ function saveSettings() {
     company_address: document.getElementById('company_address').value,
     company_phone: document.getElementById('company_phone').value,
     warranty_notes: document.getElementById('warranty_notes').value,
+    warranty_card_background: document.getElementById('warranty_card_background').value,
     logo_circle_text: document.getElementById('logo_circle_text').value,
     use_logo_image: document.getElementById('use_logo_image').checked,
     report_company_name: document.getElementById('report_company_name').value,
@@ -1391,6 +1410,12 @@ function applyColorPreset(primary, secondary) {
   updatePreview();
 }
 
+function applyWarrantyBackground(value) {
+  const bg = document.getElementById('warranty_card_background');
+  if (bg) bg.value = value;
+  updatePreview();
+}
+
 // تحميل معاينة الفاتورة
 function loadPreview() {
   fetch('/settings/invoice/preview', {
@@ -1464,6 +1489,7 @@ function updatePreview() {
   s.company_address = document.getElementById('company_address').value;
   s.company_phone = document.getElementById('company_phone').value;
   s.warranty_notes = document.getElementById('warranty_notes').value;
+  s.warranty_card_background = document.getElementById('warranty_card_background').value;
   s.logo_circle_text = document.getElementById('logo_circle_text').value;
   s.use_logo_image = document.getElementById('use_logo_image').checked;
   s.show_returned_count = document.getElementById('show_returned_count').checked;

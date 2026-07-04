@@ -241,6 +241,53 @@ def api_customers():
     ])
 
 
+@customer_credit_bp.route("/api/customers", methods=["POST"])
+def api_create_customer():
+    """إنشاء زبون جديد من نافذة إضافة الدين."""
+    data = request.get_json(silent=True) or {}
+    name = (data.get("name") or "").strip()
+    phone = (data.get("phone") or "").strip()
+    city = (data.get("city") or "").strip() or None
+    address = (data.get("address") or "").strip() or None
+
+    from utils.digits import digits_only
+
+    phone = digits_only(phone)
+
+    if not name:
+        return jsonify({"success": False, "error": "اسم الزبون مطلوب"}), 400
+    if not phone:
+        return jsonify({"success": False, "error": "رقم الهاتف مطلوب"}), 400
+
+    existing = Customer.query.filter_by(phone=phone).first()
+    if existing:
+        return jsonify({
+            "success": True,
+            "id": existing.id,
+            "name": existing.name,
+            "phone": existing.phone,
+            "city": existing.city or "",
+            "existing": True,
+        })
+
+    customer = Customer(
+        name=name,
+        phone=phone,
+        city=city,
+        address=address,
+    )
+    db.session.add(customer)
+    db.session.commit()
+    return jsonify({
+        "success": True,
+        "id": customer.id,
+        "name": customer.name,
+        "phone": customer.phone,
+        "city": customer.city or "",
+        "existing": False,
+    })
+
+
 @customer_credit_bp.route("/api/products")
 def api_products():
     q = (request.args.get("q") or "").strip()

@@ -20,6 +20,10 @@ class InvoiceSettings(db.Model):
     warranty_notes = db.Column(db.Text, default="""مدة الضمان سنه واحدة صيانه لا تشمل الكسر
 افحص الجهاز قبل مغادرة المندوب
 عند مغادرة المندوب اي خلل مراجعة الصيانه الصيانه حصرا بغداد كراده خارج""")
+    warranty_card_background = db.Column(
+        db.Text,
+        default="linear-gradient(135deg, #031021 0%, #1f2e42 100%)"
+    )
     
     # Layout Settings (JSON)
     layout_settings = db.Column(db.Text, default='{}')  # JSON string for drag & drop positions
@@ -104,10 +108,32 @@ AL ATWANI""")
     @staticmethod
     def get_settings():
         """Get or create default settings"""
+        InvoiceSettings.ensure_schema()
         settings = InvoiceSettings.query.first()
         if not settings:
             settings = InvoiceSettings()
             db.session.add(settings)
             db.session.commit()
         return settings
+
+    @staticmethod
+    def ensure_schema():
+        """Add optional invoice_settings columns for existing tenant databases."""
+        try:
+            from sqlalchemy import inspect, text
+
+            inspector = inspect(db.engine)
+            if "invoice_settings" not in inspector.get_table_names():
+                return
+
+            columns = {col["name"] for col in inspector.get_columns("invoice_settings")}
+            if "warranty_card_background" not in columns:
+                db.session.execute(text(
+                    "ALTER TABLE invoice_settings "
+                    "ADD COLUMN warranty_card_background TEXT "
+                    "DEFAULT 'linear-gradient(135deg, #031021 0%, #1f2e42 100%)'"
+                ))
+                db.session.commit()
+        except Exception:
+            db.session.rollback()
 

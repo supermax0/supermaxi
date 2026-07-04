@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    {% from 'partials/invoice_qrcode.html' import invoice_qr_block with context %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="/static/js/no-zoom.js"></script>
+    <title>فاتورة ضريبية #{{ order.id }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    {% set warranty_background = settings|attr('warranty_card_background')|default('linear-gradient(135deg, #031021 0%, #1f2e42 100%)', true) if settings else 'linear-gradient(135deg, #031021 0%, #1f2e42 100%)' %}
+    <style>
+        :root {
+            --ink: {{ template_styles.secondary if template_styles and template_styles.secondary else '#061b33' }};
+            --ink-2: #09223f;
+            --gold: {{ template_styles.primary if template_styles and template_styles.primary else '#c99432' }};
+            --gold-soft: #e5bd70;
+            --paper: #ffffff;
+            --line: #dde2ea;
+            --muted: #5f6877;
+            --soft: #f7f9fc;
+            --warranty-bg: {{ warranty_background | safe }};
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 28px 14px;
+            background: #f2f4f7;
+            color: #111827;
+            font-family: 'Tajawal', Arial, Tahoma, sans-serif;
+            line-height: 1.45;
+        }
+
+        .actions {
+            width: min(1120px, 100%);
+            margin: 0 auto 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 18px;
+            background: #fff;
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, .08);
+        }
+
+        .actions h1 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 900;
+            color: var(--ink);
+        }
+
+        .btn {
+            border: 0;
+            border-radius: 10px;
+            padding: 10px 16px;
+            font: inherit;
+            font-weight: 800;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-print {
+            background: var(--ink);
+            color: #fff;
+        }
+
+        .btn-back {
+            background: #eef2f7;
+            color: var(--ink);
+        }
+
+        .sheet,
+        .warranty-sheet {
+            width: min(1120px, 100%);
+            margin: 0 auto;
+            background: var(--paper);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 22px 60px rgba(15, 23, 42, .14);
+            position: relative;
+        }
+
+        .sheet {
+            padding-bottom: 22px;
+        }
+
+        .top {
+            display: grid;
+            grid-template-columns: 330px minmax(260px, 1fr) 300px;
+            min-height: 315px;
+            direction: ltr;
+        }
+
+        .brand-panel {
+            min-height: 315px;
+            padding: 30px 38px 30px;
+            color: #fff;
+            direction: rtl;
+            background:
+                radial-gradient(circle at 82% 18%, rgba(229, 189, 112, .12) 0 2px, transparent 3px) 0 0 / 18px 18px,
+                linear-gradient(145deg, #031021 0%, var(--ink) 68%, #020813 100%);
+            clip-path: polygon(0 0, 100% 0, 72% 100%, 0 100%);
+            position: relative;
+        }
+
+        .brand-panel::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 70%;
+            width: 10px;
+            height: 100%;
+            background: linear-gradient(180deg, #f5dc9b, var(--gold));
+            transform: skewX(-17deg);
+            transform-origin: top;
+        }
+
+        .mark {
+            width: 72px;
+            height: 72px;
+            margin: 0 auto 18px;
+            color: var(--gold-soft);
+            display: grid;
+            place-items: center;
+            position: relative;
+        }
+
+        .mark::before,
+        .mark::after {
+            content: "";
+            position: absolute;
+            inset: 9px;
+            border: 8px solid currentColor;
+            transform: rotate(30deg);
+        }
+
+        .mark::after {
+            inset: 22px;
+            border-width: 6px;
+            transform: rotate(30deg);
+            background: var(--ink);
+        }
+
+        .mark span {
+            position: relative;
+            z-index: 1;
+            font-weight: 900;
+            font-size: 24px;
+            color: currentColor;
+        }
+
+        .brand-name {
+            text-align: center;
+            color: var(--gold-soft);
+            font-size: 31px;
+            font-weight: 900;
+            letter-spacing: .04em;
+            line-height: 1;
+        }
+
+        .brand-sub {
+            text-align: center;
+            color: var(--gold-soft);
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: .08em;
+            margin-top: 6px;
+            text-transform: uppercase;
+        }
+
+        .brand-ar {
+            margin-top: 34px;
+            text-align: center;
+            font-weight: 800;
+            font-size: 16px;
+        }
+
+        .contact-panel {
+            padding: 90px 26px 18px 8px;
+            display: grid;
+            align-content: start;
+            gap: 15px;
+            direction: ltr;
+        }
+
+        .contact-row {
+            display: grid;
+            grid-template-columns: 28px 1fr;
+            gap: 10px;
+            align-items: center;
+            color: #172033;
+            font-size: 14px;
+        }
+
+        .contact-row i {
+            color: var(--ink);
+            text-align: center;
+            font-size: 15px;
+        }
+
+        .invoice-title {
+            padding: 38px 30px 20px 10px;
+            text-align: right;
+            direction: rtl;
+        }
+
+        .title-row {
+            display: grid;
+            grid-template-columns: 1fr 60px;
+            gap: 16px;
+            align-items: start;
+        }
+
+        .title-row h2 {
+            margin: 0;
+            color: var(--ink);
+            font-size: 36px;
+            font-weight: 900;
+            line-height: 1.1;
+        }
+
+        .tax-label {
+            display: block;
+            margin-top: 6px;
+            color: var(--gold);
+            font-weight: 800;
+            font-size: 16px;
+            letter-spacing: .28em;
+            direction: ltr;
+        }
+
+        .doc-icon {
+            width: 58px;
+            height: 58px;
+            border-radius: 12px;
+            background: var(--ink);
+            color: #fff;
+            display: grid;
+            place-items: center;
+            font-size: 28px;
+            box-shadow: inset 0 0 0 5px rgba(255, 255, 255, .08);
+        }
+
+        .invoice-meta {
+            margin-top: 34px;
+            display: grid;
+            gap: 18px;
+        }
+
+        .meta-row {
+            display: grid;
+            grid-template-columns: 48px 1fr;
+            gap: 12px;
+            align-items: center;
+            direction: ltr;
+        }
+
+        .meta-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 8px;
+            background: #e5e7eb;
+            color: var(--ink);
+            display: grid;
+            place-items: center;
+            font-size: 20px;
+        }
+
+        .meta-copy {
+            text-align: right;
+            direction: rtl;
+        }
+
+        .meta-copy small {
+            display: block;
+            color: #5b6473;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .meta-copy strong {
+            display: block;
+            margin-top: 2px;
+            color: #0f172a;
+            font-size: 16px;
+            font-weight: 900;
+            direction: ltr;
+        }
+
+        .content {
+            padding: 0 38px 0;
+        }
+
+        .cards-row {
+            display: grid;
+            grid-template-columns: 1fr 1.08fr;
+            gap: 42px;
+            margin-top: -2px;
+            direction: ltr;
+        }
+
+        .info-card {
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            background: #fff;
+            box-shadow: 0 7px 18px rgba(15, 23, 42, .05);
+            min-height: 142px;
+        }
+
+        .bill-card {
+            display: grid;
+            grid-template-columns: 150px 1px 1fr;
+            padding: 14px;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .divider {
+            width: 1px;
+            height: 112px;
+            background: var(--line);
+        }
+
+        .qr-wrap {
+            text-align: center;
+        }
+
+        .qr-wrap .invoice-qr-addon {
+            margin: 0 !important;
+        }
+
+        .qr-wrap .invoice-qr-addon > div:first-child {
+            display: none;
+        }
+
+        .qr-caption {
+            margin-top: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #475569;
+        }
+
+        .customer h3,
+        .notes-card h3 {
+            margin: 0 0 10px;
+            color: var(--ink);
+            font-size: 15px;
+            font-weight: 900;
+        }
+
+        .customer p {
+            margin: 5px 0;
+            color: #111827;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .customer .muted {
+            color: #4b5563;
+            font-weight: 600;
+        }
+
+        .terms-card {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            align-items: center;
+            padding: 22px 10px;
+            direction: rtl;
+        }
+
+        .term {
+            text-align: center;
+            min-height: 96px;
+            display: grid;
+            place-items: center;
+            border-left: 1px solid var(--line);
+        }
+
+        .term:last-child {
+            border-left: 0;
+        }
+
+        .term i {
+            color: #121a2b;
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .term b {
+            display: block;
+            font-size: 14px;
+            color: #172033;
+            font-weight: 900;
+        }
+
+        .term span {
+            display: block;
+            font-size: 14px;
+            color: #111827;
+            margin-top: 2px;
+            direction: ltr;
+        }
+
+        .items-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-top: 26px;
+            overflow: hidden;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            table-layout: fixed;
+        }
+
+        .items-table th {
+            background: linear-gradient(180deg, var(--ink-2), #03152a);
+            color: #fff;
+            padding: 13px 10px;
+            font-size: 15px;
+            font-weight: 900;
+        }
+
+        .items-table td {
+            border-left: 1px solid var(--line);
+            border-top: 1px solid var(--line);
+            padding: 10px 10px;
+            text-align: center;
+            font-size: 16px;
+            font-weight: 700;
+            height: 76px;
+        }
+
+        .items-table td:last-child,
+        .items-table th:last-child {
+            border-left: 0;
+        }
+
+        .col-index {
+            width: 70px;
+        }
+
+        .col-product {
+            width: 42%;
+        }
+
+        .product-cell {
+            display: block;
+            text-align: right;
+            direction: rtl;
+            min-height: 54px;
+            padding-inline: 12px;
+        }
+
+        .product-name {
+            display: block;
+            font-size: 15px;
+            font-weight: 900;
+            color: #111827;
+            line-height: 1.35;
+            white-space: normal;
+        }
+
+        .product-code {
+            display: block;
+            margin-top: 4px;
+            direction: ltr;
+            color: #475569;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .summary-row {
+            display: grid;
+            grid-template-columns: 260px 1fr 360px;
+            gap: 20px;
+            margin-top: 26px;
+            direction: ltr;
+        }
+
+        .amount-card {
+            min-height: 162px;
+            border-radius: 10px;
+            color: #fff;
+            background:
+                radial-gradient(circle at 12% 16%, rgba(229, 189, 112, .18), transparent 35%),
+                linear-gradient(145deg, #031021, var(--ink));
+            padding: 28px 22px;
+            text-align: center;
+            border-left: 4px solid var(--gold);
+        }
+
+        .amount-card span {
+            display: block;
+            font-size: 17px;
+            font-weight: 800;
+            color: #fff;
+        }
+
+        .amount-card strong {
+            display: block;
+            margin-top: 6px;
+            font-size: 35px;
+            font-weight: 900;
+            line-height: 1;
+            direction: ltr;
+        }
+
+        .amount-card em {
+            display: block;
+            margin-top: 12px;
+            color: var(--gold-soft);
+            font-style: normal;
+            font-size: 18px;
+            font-weight: 900;
+        }
+
+        .totals-card,
+        .notes-card {
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            background: #fff;
+            padding: 18px 28px;
+            min-height: 162px;
+            box-shadow: 0 6px 14px rgba(15, 23, 42, .04);
+        }
+
+        .total-line {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 16px;
+            margin-bottom: 12px;
+        }
+
+        .total-line span:last-child {
+            direction: ltr;
+            font-weight: 800;
+        }
+
+        .grand-line {
+            border-top: 1px solid #cbd5e1;
+            padding-top: 18px;
+            margin-top: 18px;
+            font-size: 19px;
+            font-weight: 900;
+        }
+
+        .grand-line span:last-child {
+            color: var(--gold);
+            font-size: 23px;
+        }
+
+        .notes-card {
+            position: relative;
+            text-align: center;
+            display: grid;
+            align-content: center;
+            overflow: hidden;
+        }
+
+        .notes-card::after {
+            content: "S";
+            position: absolute;
+            left: 28px;
+            bottom: -22px;
+            font-size: 118px;
+            font-weight: 900;
+            color: rgba(15, 23, 42, .04);
+        }
+
+        .notes-card h3 {
+            text-align: right;
+            align-self: start;
+            margin-bottom: 18px;
+        }
+
+        .notes-card p {
+            margin: 0;
+            color: #172033;
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .service-strip {
+            margin-top: 22px;
+            border-top: 1px solid var(--line);
+            border-bottom: 1px solid var(--line);
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            direction: ltr;
+        }
+
+        .service {
+            min-height: 86px;
+            display: grid;
+            grid-template-columns: 62px 1fr;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 24px;
+            border-left: 1px solid var(--line);
+            direction: rtl;
+        }
+
+        .service:last-child {
+            border-left: 0;
+        }
+
+        .service i {
+            width: 48px;
+            height: 48px;
+            border: 1px solid #cbd5e1;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            color: var(--ink);
+            font-size: 24px;
+        }
+
+        .service b {
+            display: block;
+            color: #111827;
+            font-size: 14px;
+            font-weight: 900;
+        }
+
+        .service span {
+            display: block;
+            color: #334155;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .brand-footer {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 24px;
+            margin-top: 14px;
+            color: #0f172a;
+            font-size: 14px;
+            font-weight: 800;
+            letter-spacing: .42em;
+            direction: ltr;
+        }
+
+        .brand-footer::before,
+        .brand-footer::after {
+            content: "";
+            width: 48px;
+            height: 1px;
+            background: var(--gold);
+        }
+
+        .warranty-sheet {
+            margin-top: 24px;
+            display: grid;
+            grid-template-columns: 42% 58%;
+            background: var(--warranty-bg);
+            color: #fff;
+            min-height: 360px;
+            direction: ltr;
+        }
+
+        .warranty-brand {
+            padding: 36px 46px 32px;
+            border-left: 2px dashed rgba(255, 255, 255, .7);
+            position: relative;
+            overflow: hidden;
+            direction: rtl;
+        }
+
+        .warranty-brand::after {
+            content: "";
+            position: absolute;
+            left: -20px;
+            top: 108px;
+            width: 145px;
+            height: 145px;
+            border: 18px solid var(--gold);
+            transform: rotate(45deg);
+            opacity: .88;
+        }
+
+        .warranty-brand::before {
+            content: "";
+            position: absolute;
+            left: -2px;
+            top: 122px;
+            width: 86px;
+            height: 146px;
+            background: #fff;
+            transform: skewX(-34deg);
+            opacity: .92;
+        }
+
+        .small-brand {
+            display: grid;
+            grid-template-columns: 64px 1fr;
+            gap: 12px;
+            align-items: center;
+            color: var(--gold-soft);
+            direction: ltr;
+            text-align: left;
+        }
+
+        .small-brand .mark {
+            width: 56px;
+            height: 56px;
+            margin: 0;
+        }
+
+        .small-brand .brand-name {
+            text-align: left;
+            font-size: 21px;
+        }
+
+        .small-brand .brand-sub {
+            text-align: left;
+            font-size: 9px;
+        }
+
+        .warranty-title {
+            margin-top: 30px;
+            color: #fff;
+            font-size: 35px;
+            font-weight: 900;
+        }
+
+        .warranty-subtitle {
+            color: var(--gold-soft);
+            font-weight: 800;
+            letter-spacing: .35em;
+            direction: ltr;
+            font-size: 17px;
+        }
+
+        .shield {
+            margin-top: 24px;
+            color: var(--gold-soft);
+            font-size: 84px;
+        }
+
+        .quality {
+            position: absolute;
+            right: 46px;
+            bottom: 34px;
+            font-weight: 900;
+            font-size: 16px;
+        }
+
+        .warranty-details {
+            padding: 28px 44px;
+            display: grid;
+            align-items: center;
+            direction: rtl;
+        }
+
+        .warranty-card {
+            background: #fff;
+            color: #111827;
+            border-radius: 16px;
+            min-height: 286px;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: minmax(210px, .92fr) 1px minmax(250px, 1.08fr);
+            gap: 24px;
+            align-items: stretch;
+            direction: rtl;
+        }
+
+        .warranty-lines {
+            display: grid;
+            grid-template-rows: repeat(7, 40px);
+            align-content: start;
+            min-width: 0;
+        }
+
+        .w-line {
+            display: grid;
+            grid-template-columns: 32px 1fr;
+            gap: 12px;
+            align-items: center;
+            border-bottom: 1px solid #e5e7eb;
+            height: 40px;
+            min-height: 0;
+            font-weight: 700;
+            direction: ltr;
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        .w-line i {
+            color: var(--ink);
+            text-align: center;
+        }
+
+        .w-line span {
+            direction: rtl;
+            text-align: right;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .warranty-sep {
+            background: #d1d5db;
+        }
+
+        .warranty-terms h3 {
+            margin: 0 0 12px;
+            color: var(--ink);
+            font-size: 16px;
+            font-weight: 900;
+        }
+
+        .warranty-terms ul {
+            margin: 0;
+            padding: 0 18px 0 0;
+            color: #111827;
+            font-size: 12px;
+            font-weight: 700;
+            line-height: 1.8;
+        }
+
+        .stamp {
+            margin-top: 16px;
+            display: grid;
+            grid-template-columns: 1fr 90px;
+            gap: 12px;
+            align-items: end;
+            font-weight: 900;
+        }
+
+        .stamp-circle {
+            width: 88px;
+            height: 88px;
+            border: 2px solid #2563eb;
+            border-radius: 50%;
+            color: #2563eb;
+            display: grid;
+            place-items: center;
+            font-weight: 900;
+            transform: rotate(-12deg);
+        }
+
+        {% if template_styles and template_styles.custom_css %}
+{{ template_styles.custom_css | safe }}
+        {% endif %}
+
+        @media (max-width: 920px) {
+            .top,
+            .cards-row,
+            .summary-row,
+            .service-strip,
+            .warranty-sheet,
+            .warranty-card {
+                grid-template-columns: 1fr;
+            }
+
+            .brand-panel {
+                clip-path: none;
+            }
+
+            .brand-panel::after,
+            .warranty-brand::after,
+            .divider,
+            .warranty-sep {
+                display: none;
+            }
+
+            .contact-panel {
+                padding: 24px 28px;
+            }
+
+            .invoice-title {
+                padding: 28px;
+            }
+
+            .content {
+                padding: 0 18px 18px;
+            }
+
+            .bill-card {
+                grid-template-columns: 1fr;
+            }
+
+            .term,
+            .service,
+            .warranty-brand {
+                border-left: 0;
+            }
+
+            .items-table {
+                font-size: 13px;
+            }
+
+            .product-cell {
+                text-align: center;
+            }
+        }
+
+        @media print {
+            @page {
+                size: A4;
+                margin: 8mm;
+            }
+
+            body {
+                background: #fff;
+                padding: 0;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .actions {
+                display: none !important;
+            }
+
+            .sheet,
+            .warranty-sheet {
+                width: 100%;
+                max-width: 100%;
+                box-shadow: none;
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+
+            .warranty-sheet {
+                margin-top: 8mm;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    {% set invoice_no = 'INV-' ~ (order.created_at.strftime('%Y') if order.created_at else '2025') ~ '-' ~ ('%06d'|format(order.id|int)) %}
+    {% set invoice_date = order.created_at.strftime('%d / %m / %Y') if order.created_at else '' %}
+    {% set invoice_time = order.created_at.strftime('%I:%M %p') if order.created_at else '' %}
+    {% set company_name = settings.store_name if settings and settings.store_name else 'SUPER MAX' %}
+    {% set subtitle = settings.company_subtitle if settings and settings.company_subtitle else 'ELECTRONICS TRADING' %}
+    {% set phone = settings.phone1 if settings and settings.phone1 else (settings.company_phone if settings and settings.company_phone else '') %}
+    {% set payment_text = order.payment_status or 'CASH' %}
+    {% set tax_amount = (due or 0) - (total or 0) if (due or 0) > (total or 0) else 0 %}
+    {% set warranty_item = items[0] if items else none %}
+    {% set warranty_product = warranty_item.product if warranty_item and warranty_item.product else none %}
+    {% set warranty_meta = warranty_product.meta_json|json_object if warranty_product and warranty_product.meta_json else {} %}
+    {% set warranty_duration = warranty_meta.get('warranty', '')|warranty_label %}
+    {% set warranty_product_name = warranty_item.product_name if warranty_item and warranty_item.product_name else (warranty_product.name if warranty_product and warranty_product.name else 'منتج') %}
+    {% set warranty_product_code = warranty_product.sku if warranty_product and warranty_product.sku else (warranty_product.barcode if warranty_product and warranty_product.barcode else 'SM-WARRANTY') %}
+    {% set warranty_serial = warranty_product.barcode if warranty_product and warranty_product.barcode else ('SN' ~ order.id ~ (order.created_at.strftime('%Y%m%d') if order.created_at else '')) %}
+
+    <div class="actions no-print">
+        <h1>قالب Super Max للفاتورة</h1>
+        <div>
+            <a href="/orders" class="btn btn-back"><i class="fas fa-arrow-right"></i> رجوع</a>
+            <button type="button" class="btn btn-print" onclick="window.print()"><i class="fas fa-print"></i> طباعة</button>
+        </div>
+    </div>
+
+    <main class="sheet">
+        <section class="top">
+            <aside class="brand-panel">
+                {% if settings and settings.use_logo_image and settings.logo_path %}
+                <img src="{{ settings.logo_path }}" alt="Logo" style="width:86px;height:86px;object-fit:contain;display:block;margin:0 auto 12px;">
+                {% else %}
+                <div class="mark"><span>S</span></div>
+                {% endif %}
+                <div class="brand-name">{{ company_name }}</div>
+                <div class="brand-sub">{{ subtitle }}</div>
+                <div class="brand-ar">{{ company_name }} للتجارة الإلكترونية</div>
+            </aside>
+
+            <section class="contact-panel">
+                <div class="contact-row"><i class="fas fa-location-dot"></i><span>{{ settings.company_address if settings and settings.company_address else 'بغداد - الكرادة - شارع الصناعة' }}</span></div>
+                {% if phone %}
+                <div class="contact-row"><i class="fas fa-phone"></i><span>{{ phone }}</span></div>
+                {% endif %}
+                {% if settings and settings.phone2 %}
+                <div class="contact-row"><i class="fas fa-phone"></i><span>{{ settings.phone2 }}</span></div>
+                {% endif %}
+                <div class="contact-row"><i class="far fa-envelope"></i><span>info@supermax.iq</span></div>
+                <div class="contact-row"><i class="fas fa-globe"></i><span>www.supermax.iq</span></div>
+            </section>
+
+            <section class="invoice-title">
+                <div class="title-row">
+                    <div>
+                        <h2>فاتورة ضريبية</h2>
+                        <span class="tax-label">TAX INVOICE</span>
+                    </div>
+                    <div class="doc-icon"><i class="far fa-file-lines"></i></div>
+                </div>
+                <div class="invoice-meta">
+                    <div class="meta-row">
+                        <div class="meta-icon">#</div>
+                        <div class="meta-copy"><small>رقم الفاتورة</small><strong>{{ invoice_no }}</strong></div>
+                    </div>
+                    <div class="meta-row">
+                        <div class="meta-icon"><i class="far fa-calendar-days"></i></div>
+                        <div class="meta-copy"><small>تاريخ الفاتورة</small><strong>{{ invoice_date }}</strong></div>
+                    </div>
+                    <div class="meta-row">
+                        <div class="meta-icon"><i class="far fa-clock"></i></div>
+                        <div class="meta-copy"><small>وقت الفاتورة</small><strong>{{ invoice_time }}</strong></div>
+                    </div>
+                </div>
+            </section>
+        </section>
+
+        <section class="content">
+            <div class="cards-row">
+                <div class="info-card bill-card">
+                    <div class="qr-wrap">
+                        {{ invoice_qr_block(settings, order, host_suffix='supermax', public_url=order_public_view_url) }}
+                        <div class="qr-caption">امسح للتحقق من الفاتورة</div>
+                    </div>
+                    <div class="divider"></div>
+                    <div class="customer">
+                        <h3>فاتورة إلى</h3>
+                        <p>{{ order.customer.name if order.customer else 'عميل' }}</p>
+                        <p class="muted">{{ order.customer.city if order.customer else '' }}{% if order.customer and order.customer.address %} - {{ order.customer.address }}{% endif %}</p>
+                        <p>{{ order.customer.phone if order.customer else '' }}{% if order.customer and order.customer.phone2 %} / {{ order.customer.phone2 }}{% endif %}</p>
+                        <p class="muted">الرقم الضريبي : {{ order.customer.id if order.customer else order.id }}</p>
+                    </div>
+                </div>
+
+                <div class="info-card terms-card">
+                    <div class="term">
+                        <div>
+                            <i class="far fa-credit-card"></i>
+                            <b>طريقة الدفع</b>
+                            <span>{{ payment_text }}</span>
+                        </div>
+                    </div>
+                    <div class="term">
+                        <div>
+                            <i class="fas fa-coins"></i>
+                            <b>العملة</b>
+                            <span>IQD</span>
+                        </div>
+                    </div>
+                    <div class="term">
+                        <div>
+                            <i class="far fa-calendar-check"></i>
+                            <b>تاريخ الاستحقاق</b>
+                            <span>{{ invoice_date }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% if (settings and settings.show_returned_count and (returned_count > 0 or cancelled_count > 0)) %}
+            <div style="margin-top:18px;border:1px solid #fecaca;background:#fff1f2;color:#991b1b;border-radius:10px;padding:10px 14px;text-align:center;font-weight:900;">
+                {% if returned_count > 0 %}لدى الزبون {{ returned_count }} طلب راجع{% endif %}
+                {% if returned_count > 0 and cancelled_count > 0 %} - {% endif %}
+                {% if cancelled_count > 0 %}لدى الزبون {{ cancelled_count }} طلب ملغي{% endif %}
+            </div>
+            {% endif %}
+
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th class="col-index">#</th>
+                        <th class="col-product">المنتج</th>
+                        <th>الكمية</th>
+                        <th>سعر الوحدة</th>
+                        <th>الإجمالي</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td>{{ '%02d'|format(loop.index) }}</td>
+                        <td>
+                            <div class="product-cell">
+                                <span class="product-name">{{ item.product_name or (item.product.name if item.product else 'منتج') }}</span>
+                                <span class="product-code">{{ item.product.sku if item.product and item.product.sku else (item.product.barcode if item.product and item.product.barcode else ('SM-' ~ ('%04d'|format(loop.index)))) }}</span>
+                            </div>
+                        </td>
+                        <td>{{ item.quantity }}</td>
+                        <td>{{ '{:,.0f}'.format(item.price or 0) }}</td>
+                        <td>{{ '{:,.0f}'.format(item.total or 0) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <div class="summary-row">
+                <div class="amount-card">
+                    <span>المبلغ الإجمالي</span>
+                    <strong>{{ '{:,.0f}'.format(due or total or 0) }}</strong>
+                    <em>IQD</em>
+                </div>
+                <div class="totals-card">
+                    <div class="total-line"><span>المجموع الفرعي</span><span>{{ '{:,.0f}'.format(total or 0) }}</span></div>
+                    <div class="total-line"><span>الضريبة {% if tax_amount %}(10%){% endif %}</span><span>{{ '{:,.0f}'.format(tax_amount) }}</span></div>
+                    <div class="total-line grand-line"><span>الإجمالي الكلي</span><span>{{ '{:,.0f}'.format(due or total or 0) }}</span></div>
+                </div>
+                <div class="notes-card">
+                    <h3>ملاحظات</h3>
+                    <p>{{ order.note if order.note else 'شكراً لتعاملكم معنا' }}</p>
+                    <p>تقبلوا فائق الاحترام والتقدير</p>
+                </div>
+            </div>
+
+            <div class="service-strip">
+                <div class="service">
+                    <i class="fas fa-shield-halved"></i>
+                    <div><b>ضمان معتمد</b><span>جميع منتجاتنا مضمونة بضمان رسمي</span></div>
+                </div>
+                <div class="service">
+                    <i class="fas fa-headset"></i>
+                    <div><b>خدمة العملاء</b><span>متوفرين لخدمتكم 24/7</span></div>
+                </div>
+                <div class="service">
+                    <i class="far fa-credit-card"></i>
+                    <div><b>الدفع</b><span>يمكنكم الدفع عن طريق نقداً أو تحويل مصرفي</span></div>
+                </div>
+            </div>
+
+            <div class="brand-footer">SUPER MAX ELECTRONICS TRADING</div>
+        </section>
+    </main>
+
+    <section class="warranty-sheet">
+        <div class="warranty-brand">
+            <div class="small-brand">
+                <div class="mark"><span>S</span></div>
+                <div>
+                    <div class="brand-name">{{ company_name }}</div>
+                    <div class="brand-sub">{{ subtitle }}</div>
+                </div>
+            </div>
+            <div class="warranty-title">بطاقة ضمان</div>
+            <div class="warranty-subtitle">WARRANTY CARD</div>
+            <div class="shield"><i class="fas fa-shield-halved"></i></div>
+            <div class="quality">جودة تثق بها ... ضمان يغطيك</div>
+        </div>
+        <div class="warranty-details">
+            <div class="warranty-card">
+                <div class="warranty-terms">
+                    <h3>الشروط والأحكام</h3>
+                    <ul>
+                        <li>سارية المفعول من تاريخ الشراء.</li>
+                        <li>تغطي عيوب الصناعة فقط.</li>
+                        <li>لا تغطي سوء الاستخدام أو الكسر أو التلف الناتج عن عوامل خارجية.</li>
+                        <li>يجب إبراز الفاتورة الأصلية مع بطاقة الضمان للاستفادة من الخدمة.</li>
+                    </ul>
+                    <div class="stamp">
+                        <span>ختم الشركة</span>
+                        <div class="stamp-circle">SUPER<br>MAX</div>
+                    </div>
+                </div>
+                <div class="warranty-sep"></div>
+                <div class="warranty-lines">
+                    <div class="w-line"><i class="fas fa-hashtag"></i><span>{{ invoice_no }}</span></div>
+                    <div class="w-line"><i class="far fa-calendar-days"></i><span>{{ invoice_date }}</span></div>
+                    <div class="w-line"><i class="fas fa-display"></i><span title="{{ warranty_product_name }}">{{ warranty_product_name }}</span></div>
+                    <div class="w-line"><i class="far fa-envelope"></i><span title="{{ warranty_product_code }}">{{ warranty_product_code }}</span></div>
+                    <div class="w-line"><i class="far fa-calendar-check"></i><span title="{{ warranty_serial }}">{{ warranty_serial }}</span></div>
+                    <div class="w-line"><i class="far fa-clock"></i><span>{{ warranty_duration }}</span></div>
+                    <div class="w-line"><i class="fas fa-phone"></i><span>{{ phone }}</span></div>
+                </div>
+            </div>
+        </div>
+    </section>
+</body>
+
+</html>

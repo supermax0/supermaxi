@@ -10,6 +10,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <script src="/static/js/no-zoom.js"></script>
+  <script src="/static/js/digits-enforcer.js"></script>
 
   <link rel="icon" type="image/png" href="{{ platform_logo_url }}">
 
@@ -406,9 +407,9 @@
 
         <input id="name" class="pos-input" placeholder="الاسم" autocomplete="name">
 
-        <input id="phone" class="pos-input" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="رقم الهاتف" autocomplete="tel">
+        <input id="phone" class="pos-input" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="رقم الهاتف" autocomplete="tel" data-digits-en>
 
-        <input id="phone2" class="pos-input" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="رقم آخر" autocomplete="tel">
+        <input id="phone2" class="pos-input" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="رقم آخر" autocomplete="tel" data-digits-en>
 
         <select id="city" class="pos-select">
           <option value="{{ primary_province }}">{{ primary_province }}</option>

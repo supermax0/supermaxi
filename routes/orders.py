@@ -598,6 +598,7 @@ def orders_ordered():
         pagination=pagination,
         employees=Employee.query.all(),
         shippings=ShippingCompany.query.all(),
+        delivery_agents=DeliveryAgent.query.all(),
         cities=cities,
         page_type="ordered"
     )
@@ -673,6 +674,7 @@ def orders_shipping():
         pagination=pagination,
         employees=Employee.query.all(),
         shippings=ShippingCompany.query.all(),
+        delivery_agents=DeliveryAgent.query.all(),
         cities=cities,
         page_type="shipping"
     )
@@ -752,6 +754,7 @@ def orders_delivered():
         pagination=pagination,
         employees=Employee.query.all(),
         shippings=ShippingCompany.query.all(),
+        delivery_agents=DeliveryAgent.query.all(),
         cities=cities,
         page_type="delivered"
     )
@@ -830,6 +833,7 @@ def orders_returned():
         pagination=pagination,
         employees=Employee.query.all(),
         shippings=ShippingCompany.query.all(),
+        delivery_agents=DeliveryAgent.query.all(),
         cities=cities,
         page_type="returned"
     )
@@ -905,6 +909,7 @@ def orders_cancelled():
         pagination=pagination,
         employees=Employee.query.all(),
         shippings=ShippingCompany.query.all(),
+        delivery_agents=DeliveryAgent.query.all(),
         cities=cities,
         page_type="cancelled"
     )
@@ -1513,8 +1518,11 @@ def public_order_view(token: str):
         joinedload(Invoice.customer),
         joinedload(Invoice.shipping_company),
     ).get_or_404(oid)
-    items = OrderItem.query.filter_by(invoice_id=order.id).all()
-    total = sum(int(it.total) for it in items) if items else order.total
+    from utils.order_shipping import prepare_invoice_items_for_print
+
+    raw_items = OrderItem.query.filter_by(invoice_id=order.id).all()
+    items, print_total = prepare_invoice_items_for_print(raw_items)
+    total = int(print_total) if items else int(order.total or 0)
     due = total
     settings = InvoiceSettings.get_settings()
     invoice_video_guest_url = None
@@ -1602,8 +1610,11 @@ def invoice_page(order_id):
     if denied:
         return denied
 
-    items = OrderItem.query.filter_by(invoice_id=order.id).all()
-    
+    from utils.order_shipping import prepare_invoice_items_for_print
+
+    raw_items = OrderItem.query.filter_by(invoice_id=order.id).all()
+    items, print_total = prepare_invoice_items_for_print(raw_items)
+
     # حساب عدد الرواجع بناءً على رقم الهاتف (phone أو phone2)
     # البحث عن جميع الزبائن بنفس رقم الهاتف
     customer_phone = order.customer.phone
@@ -1631,10 +1642,10 @@ def invoice_page(order_id):
         Invoice.status == "ملغي"
     ).count()
     
-    # حساب المبلغ الإجمالي
-    total = sum(int(item.total) for item in items) if items else order.total
+    # الإجمالي المعروض: منتجات بعد خصم الشحن وبدون بند الشحن
+    total = int(print_total) if items else int(order.total or 0)
     due = total
-    
+
     # Get invoice settings
     settings = InvoiceSettings.get_settings()
     
@@ -1682,10 +1693,13 @@ def print_batch():
     id_to_invoice = {inv.id: inv for inv in invoices}
     ordered_invoices = [id_to_invoice[i] for i in ids_list if i in id_to_invoice]
 
+    from utils.order_shipping import prepare_invoice_items_for_print
+
     settings = InvoiceSettings.get_settings()
     batch = []
     for order in ordered_invoices:
-        items = OrderItem.query.filter_by(invoice_id=order.id).all()
+        raw_items = OrderItem.query.filter_by(invoice_id=order.id).all()
+        items, print_total = prepare_invoice_items_for_print(raw_items)
 
         # حساب الرواجع والملغي لنفس الزبون
         customer_phones = []
@@ -1707,7 +1721,7 @@ def print_batch():
                 Invoice.status == "ملغي"
             ).count()
 
-        total = sum(int(it.total) for it in items) if items else order.total
+        total = int(print_total) if items else int(order.total or 0)
         due = total
 
         public_view_url = ""

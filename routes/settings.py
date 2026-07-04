@@ -4,7 +4,7 @@ from flask import Blueprint, render_template, request, jsonify, send_from_direct
 from extensions import db
 from models.invoice_settings import InvoiceSettings
 from models.system_settings import SystemSettings
-from routes.invoice_store import _session_tenant_slug
+from routes.invoice_store import _session_tenant_slug, seed_templates
 from models.invoice_template import InvoiceTemplate, TenantTemplateSettings, TenantTemplatePurchase
 from models.user import User
 from werkzeug.utils import secure_filename
@@ -275,6 +275,7 @@ def invoice_settings():
     owner_uid = _template_owner_uid()
     owner_lookup_ids = _template_owner_lookup_ids(owner_uid)
     with _core_db():
+        seed_templates()
         templates = InvoiceTemplate.query.order_by(InvoiceTemplate.price.asc(), InvoiceTemplate.id.asc()).all()
         tset = TenantTemplateSettings.query.filter_by(tenant_id=owner_uid).first() if owner_uid else None
         if not tset and len(owner_lookup_ids) > 1:
@@ -419,6 +420,11 @@ def update_invoice_settings():
             settings.company_phone = data.get('company_phone', '')
         if 'warranty_notes' in data:
             settings.warranty_notes = data.get('warranty_notes', '')
+        if 'warranty_card_background' in data:
+            settings.warranty_card_background = (
+                data.get('warranty_card_background')
+                or "linear-gradient(135deg, #031021 0%, #1f2e42 100%)"
+            ).strip()
         if 'logo_circle_text' in data:
             settings.logo_circle_text = data.get('logo_circle_text', '')
 
@@ -687,6 +693,7 @@ def preview_invoice():
                 "company_address": settings.company_address,
                 "company_phone": settings.company_phone,
                 "warranty_notes": settings.warranty_notes,
+                "warranty_card_background": getattr(settings, "warranty_card_background", "") or "linear-gradient(135deg, #031021 0%, #1f2e42 100%)",
                 "logo_circle_text": settings.logo_circle_text,
                 "show_discount_column": settings.show_discount_column,
                 "show_tax_column": settings.show_tax_column,

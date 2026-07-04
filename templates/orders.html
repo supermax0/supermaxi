@@ -105,6 +105,12 @@
         {% for s in shippings %}<option value="{{ s.name }}">{{ s.name }}</option>{% endfor %}
       </select>
 
+      <select id="filterDeliveryAgent" title="{{ _('orders_filter_all_agents') }}">
+        <option value="">{{ _('orders_filter_all_agents') }}</option>
+        <option value="none">{{ _('orders_option_none') }}</option>
+        {% for agent in delivery_agents or [] %}<option value="{{ agent.name }}">{{ agent.name }}</option>{% endfor %}
+      </select>
+
       <input type="date" id="filterScheduledDate" placeholder="{{ _('orders_filter_scheduled_date') }}"
         class="date-filter">
 
@@ -144,7 +150,7 @@
         <select id="bulkDeliveryAgent">
           <option value="">{{ _('orders_bulk_agent') }}</option>
           <option value="none">{{ _('orders_option_none') }}</option>
-          {% for agent in delivery_agents %}<option value="{{ agent.id }}">{{ agent.name }}</option>{% endfor %}
+          {% for agent in delivery_agents or [] %}<option value="{{ agent.id }}">{{ agent.name }}</option>{% endfor %}
         </select>
         <button class="btn btn-primary" onclick="applyDeliveryAgent()">{{ _('orders_bulk_apply') }}</button>
       </div>
@@ -278,6 +284,7 @@
     "city": {{ (o.customer.city if o.customer and o.customer.city else '—')|tojson }},
     "address": {{ (o.customer.address if o.customer and o.customer.address else '—')|tojson }},
     "shipping_company": {{ (o.shipping_company.name if o.shipping_company else '—')|tojson }},
+    "delivery_agent_id": {{ o.delivery_agent_id or 'null' }},
     "delivery_agent": {% if o.delivery_agent_id and o.delivery_agent %}{{ o.delivery_agent.name|tojson }}{% else %}"—"{% endif %},
     "note": {{ (o.note or '')|tojson }},
     "can_pay": {% if (o.total or 0) > (o.paid_amount or 0) and (o.payment_status or '') not in ['مسدد', 'مرتجع', 'ملغي'] and o.status not in ['راجع', 'مرتجع', 'راجعة', 'ملغي'] %}true{% else %}false{% endif %},
@@ -290,7 +297,7 @@
 <!-- ==================== Delivery Agents Data (JSON) ==================== -->
 <script type="application/json" id="deliveryAgentsData">
 [
-  {% for agent in delivery_agents %}
+  {% for agent in delivery_agents or [] %}
   {"id": {{ agent.id }}, "name": {{ (agent.name or '')|tojson }}}{% if not loop.last %},{% endif %}
   {% endfor %}
 ]
@@ -880,35 +887,59 @@
 
   /* Action Buttons */
   .orders-row-actions {
-    display: flex;
-    gap: 2px;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(42px, 1fr));
+    gap: 4px;
     justify-content: center;
     align-items: center;
-    flex-wrap: nowrap;
     min-height: 0 !important;
     height: 100%;
-    padding: 0 1px;
+    min-width: 252px;
+    padding: 5px 4px;
+  }
+
+  .orders-actions-cell {
+    display: flex;
+    align-items: center;
+    overflow: visible;
   }
 
   .orders-row-actions .action-btn-small {
-    padding: 1px 3px !important;
-    border-radius: 3px !important;
-    border: none;
+    --action-bg: rgba(100, 116, 139, 0.1);
+    --action-border: rgba(100, 116, 139, 0.22);
+    --action-color: #64748b;
+    padding: 0 6px !important;
+    border-radius: 7px !important;
+    border: 1px solid var(--action-border);
+    background: var(--action-bg);
+    color: var(--action-color);
     cursor: pointer;
-    font-size: 7px !important;
-    font-weight: 700;
+    font-size: 10px !important;
+    font-weight: 800;
     transition: all 0.2s ease;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 1px;
-    min-width: 0 !important;
-    width: auto !important;
-    min-height: 11px !important;
-    height: 11px !important;
+    gap: 4px;
+    min-width: 42px !important;
+    width: 100% !important;
+    min-height: 30px !important;
+    height: 30px !important;
     line-height: 1;
     white-space: nowrap;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+    box-shadow: none;
+  }
+
+  .orders-row-actions .action-btn-small i {
+    font-size: 11px;
+    line-height: 1;
+  }
+
+  .orders-row-actions .action-btn-small .action-label {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .orders-row-actions .action-btn-small.is-disabled,
@@ -1541,54 +1572,61 @@
   }
 
   .action-btn-small.pay-btn {
-    background: #10b981;
-    color: #ffffff;
+    --action-bg: rgba(16, 185, 129, 0.14);
+    --action-border: rgba(16, 185, 129, 0.32);
+    --action-color: #059669;
   }
 
   .action-btn-small.return-btn {
-    background: #f59e0b;
-    color: #ffffff;
+    --action-bg: rgba(245, 158, 11, 0.16);
+    --action-border: rgba(245, 158, 11, 0.36);
+    --action-color: #b45309;
   }
 
   .action-btn-small.cancel-btn {
-    background: #64748b;
-    color: #ffffff;
+    --action-bg: rgba(100, 116, 139, 0.13);
+    --action-border: rgba(100, 116, 139, 0.28);
+    --action-color: #475569;
   }
 
   .action-btn-small.print-btn {
-    background: #6366f1;
-    color: #ffffff;
+    --action-bg: rgba(99, 102, 241, 0.13);
+    --action-border: rgba(99, 102, 241, 0.3);
+    --action-color: #4f46e5;
   }
 
   .action-btn-small.whatsapp-btn {
-    background: #25d366;
-    color: #ffffff;
+    --action-bg: rgba(37, 211, 102, 0.13);
+    --action-border: rgba(37, 211, 102, 0.32);
+    --action-color: #128c4a;
   }
 
   .orders-row-actions .action-btn-small:hover:not(:disabled):not(.is-disabled) {
     transform: translateY(-1px);
-    filter: brightness(1.08);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+    background: var(--action-color);
+    color: #ffffff;
+    box-shadow: 0 5px 14px rgba(15, 23, 42, 0.14);
   }
 
   /* Mobile: larger tap targets for row action buttons */
   @media (max-width: 768px) {
     .orders-row-actions {
+      grid-template-columns: repeat(5, minmax(40px, 1fr));
       gap: 4px;
-      padding: 0 2px;
+      min-width: 240px;
+      padding: 6px 4px;
     }
 
     .orders-row-actions .action-btn-small {
-      min-height: 28px !important;
-      height: 28px !important;
-      font-size: 11px !important;
-      padding: 4px 8px !important;
+      min-height: 32px !important;
+      height: 32px !important;
+      font-size: 10px !important;
+      padding: 4px 6px !important;
       border-radius: 6px !important;
       letter-spacing: 0;
     }
 
     .ag-cell .orders-row-actions {
-      flex-wrap: nowrap;
       height: 100%;
       align-items: center;
     }
@@ -2432,6 +2470,52 @@
     return true;
   }
 
+  function isOrdersExternalFilterPresent() {
+    return !!(
+      document.getElementById("filterCity")?.value ||
+      document.getElementById("filterStatus")?.value ||
+      document.getElementById("filterPayment")?.value ||
+      document.getElementById("filterEmployee")?.value ||
+      document.getElementById("filterShipping")?.value ||
+      document.getElementById("filterDeliveryAgent")?.value ||
+      document.getElementById("filterScheduledDate")?.value
+    );
+  }
+
+  function doesOrdersExternalFilterPass(node) {
+    const d = node.data || {};
+
+    if (!passesOrdersCityFilter(d.city)) return false;
+
+    const status = document.getElementById("filterStatus")?.value || "";
+    if (status && (d.status || "") !== status) return false;
+
+    const payment = document.getElementById("filterPayment")?.value || "";
+    if (payment && (d.payment_status || "") !== payment) return false;
+
+    const employee = document.getElementById("filterEmployee")?.value || "";
+    if (employee && (d.employee || "") !== employee) return false;
+
+    const shipping = document.getElementById("filterShipping")?.value || "";
+    if (shipping && (d.shipping_company || "") !== shipping) return false;
+
+    const agent = document.getElementById("filterDeliveryAgent")?.value || "";
+    if (agent) {
+      const agentName = (d.delivery_agent || "").trim();
+      const hasAgent = !!(d.delivery_agent_id || (agentName && agentName !== "—"));
+      if (agent === "none") {
+        if (hasAgent) return false;
+      } else if (agentName !== agent) {
+        return false;
+      }
+    }
+
+    const scheduled = document.getElementById("filterScheduledDate")?.value || "";
+    if (scheduled && (d.scheduled_date || "") !== scheduled) return false;
+
+    return true;
+  }
+
   function applyFilters() {
     if (!gridApi) return;
     const searchQuery = document.getElementById("searchInput")?.value || "";
@@ -2480,7 +2564,7 @@
 
 
   function clearFilters() {
-    ['searchInput', 'filterCity', 'filterStatus', 'filterPayment', 'filterEmployee', 'filterShipping', 'filterScheduledDate'].forEach(id => {
+    ['searchInput', 'filterCity', 'filterStatus', 'filterPayment', 'filterEmployee', 'filterShipping', 'filterDeliveryAgent', 'filterScheduledDate'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = "";
     });
@@ -3909,23 +3993,26 @@
     const canReturn = !collapsed && !!(ORDERS_USER_CAN_MANAGE && row && !isReturned && !isPaid);
     const canCancel = !collapsed && !!(ORDERS_USER_CAN_MANAGE && row && row.can_cancel);
 
-    function actionBtn(className, action, label, title, extraAttrs, disabled) {
+    function actionBtn(className, action, iconClass, label, title, extraAttrs, disabled) {
       const disClass = disabled ? ' is-disabled' : '';
       const disAttr = disabled ? ' disabled' : '';
-      return '<button type="button" class="action-btn-small ' + className + disClass + '" data-action="' + action + '" data-order-id="' + id + '"' + (extraAttrs || '') + ' title="' + title + '"' + disAttr + '>' + label + '</button>';
+      return '<button type="button" class="action-btn-small ' + className + disClass + '" data-action="' + action + '" data-order-id="' + id + '"' + (extraAttrs || '') + ' title="' + title + '"' + disAttr + '>' +
+        '<i class="' + iconClass + '" aria-hidden="true"></i>' +
+        '<span class="action-label">' + label + '</span>' +
+        '</button>';
     }
 
     let html = '<div class="orders-row-actions">' +
-      actionBtn('whatsapp-btn', 'whatsapp', 'واتساب', 'إرسال واتساب', ' data-phone="' + phoneEnc + '"', !phoneRaw) +
-      actionBtn('print-btn', 'invoice', 'طباعة', 'طباعة الفاتورة', '', false);
+      actionBtn('whatsapp-btn', 'whatsapp', 'fa-brands fa-whatsapp', 'واتساب', 'إرسال واتساب', ' data-phone="' + phoneEnc + '"', !phoneRaw) +
+      actionBtn('print-btn', 'invoice', 'fa fa-print', 'طباعة', 'طباعة الفاتورة', '', false);
     if (canPay) {
-      html += actionBtn('pay-btn', 'pay', 'تسديد', 'تسديد الطلب', '', false);
+      html += actionBtn('pay-btn', 'pay', 'fa fa-wallet', 'تسديد', 'تسديد الطلب', '', false);
     }
     if (canReturn) {
-      html += actionBtn('return-btn', 'return', RETURN_STATUS, 'إرجاع الطلب', '', false);
+      html += actionBtn('return-btn', 'return', 'fa fa-rotate-left', RETURN_STATUS, 'إرجاع الطلب', '', false);
     }
     if (canCancel) {
-      html += actionBtn('cancel-btn', 'cancel', 'إلغاء', 'إلغاء الطلب', '', false);
+      html += actionBtn('cancel-btn', 'cancel', 'fa fa-ban', 'إلغاء', 'إلغاء الطلب', '', false);
     }
     html += '</div>';
     return html;
@@ -4111,7 +4198,10 @@
       {
         headerName: "إجراءات",
         field: "actions",
-        width: 200,
+        width: 285,
+        minWidth: 285,
+        maxWidth: 310,
+        cellClass: "orders-actions-cell",
         cellRenderer: ActionsRenderer,
         suppressMovable: true,
         sortable: false,
@@ -4165,7 +4255,7 @@
     const gridOptions = {
       columnDefs: columnDefs,
       rowData: allOrders,
-      rowHeight: window.matchMedia("(max-width: 768px)").matches ? 48 : 40,
+      rowHeight: window.matchMedia("(max-width: 768px)").matches ? 52 : 46,
       headerHeight: 40,
       pagination: true,
 
@@ -4206,12 +4296,8 @@
       onFilterChanged: () => {
         updateStats();
       },
-      isExternalFilterPresent: () => {
-        return !!(document.getElementById("filterCity")?.value);
-      },
-      doesExternalFilterPass: (node) => {
-        return passesOrdersCityFilter(node.data?.city);
-      },
+      isExternalFilterPresent: () => isOrdersExternalFilterPresent(),
+      doesExternalFilterPass: (node) => doesOrdersExternalFilterPass(node),
       onRowDoubleClicked: (event) => {
         showDetails(event.data.id);
       },
@@ -4377,7 +4463,7 @@
     }, 500);
 
     // Add event listeners
-    ['searchInput', 'filterCity', 'filterStatus', 'filterPayment', 'filterEmployee', 'filterShipping'].forEach(id => {
+    ['searchInput', 'filterCity', 'filterStatus', 'filterPayment', 'filterEmployee', 'filterShipping', 'filterDeliveryAgent', 'filterScheduledDate'].forEach(id => {
       document.getElementById(id)?.addEventListener("change", applyFilters);
     });
     document.getElementById("searchInput")?.addEventListener("keyup", applyFilters);

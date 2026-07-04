@@ -31,6 +31,14 @@ RETURN_STATUSES = list(ORDER_RETURN_STATUSES)
 CANCELED_STATUSES = list(ORDER_CANCELED_STATUSES)
 
 
+def _valid_revenue_payment_status_filter():
+    """Payment status filter for booked revenue: NULL/unknown is allowed, returns/cancels are not."""
+    return or_(
+        Invoice.payment_status.is_(None),
+        Invoice.payment_status.notin_(RETURN_STATUSES + CANCELED_STATUSES),
+    )
+
+
 def _is_returned_invoice(invoice: Invoice) -> bool:
     """هل الفاتورة مرتجعة؟ (حسب status أو payment_status)"""
     try:
@@ -101,7 +109,7 @@ def calculate_total_revenue():
     # السبب المحاسبي: المرتجعات لا تُعتبر إيراداً
     revenue = db.session.query(func.sum(Invoice.total)).filter(
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
-        Invoice.payment_status.notin_(RETURN_STATUSES),
+        _valid_revenue_payment_status_filter(),
     ).scalar() or 0
 
     return int(revenue)
@@ -132,7 +140,7 @@ def calculate_total_cogs():
         Invoice, Invoice.id == OrderItem.invoice_id
     ).filter(
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
-        Invoice.payment_status.notin_(RETURN_STATUSES),
+        _valid_revenue_payment_status_filter(),
     ).scalar() or 0
 
     return int(total_cogs)
@@ -493,7 +501,7 @@ def calculate_total_sales_for_display():
         func.sum(Invoice.total)
     ).filter(
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
-        Invoice.payment_status.notin_(RETURN_STATUSES),
+        _valid_revenue_payment_status_filter(),
     ).scalar() or 0
     
     return int(total_sales)

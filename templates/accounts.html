@@ -447,7 +447,7 @@
     <div class="acc-alert-metrics">
       <div>
         <span>{{ _('accounts_alert_paid_sales') }}</span>
-        <strong>{{ "{:,.0f}".format(paid_sales|default(0)) }} {{ _('accounts_currency_iqd') }}</strong>
+        <strong>{{ "{:,.0f}".format(booked_sales|default(0)) }} {{ _('accounts_currency_iqd') }}</strong>
       </div>
       <div>
         <span>{{ _('accounts_alert_gross_profit') }}</span>

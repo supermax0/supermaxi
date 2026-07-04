@@ -213,8 +213,9 @@ def execute():
         shipping_fee = max(0, _safe_int(shipping_fee, 0))
     if shipping_fee > 0:
         tenant_id = getattr(customer, "tenant_id", None)
-        add_shipping_line_item(invoice, shipping_fee, tenant_id)
-        total += shipping_fee
+        # تُخصم من أسعار المنتجات ولا تُضاف فوق الإجمالي ولا تظهر بالطباعة
+        applied = add_shipping_line_item(invoice, shipping_fee, tenant_id)
+        total = max(0, int(total) - int(applied or 0))
         invoice.total = total
 
     invoice.paid_amount = total
