@@ -29,15 +29,23 @@ CANCELED_STATUSES = list(ORDER_CANCELED_STATUSES)
 def _effective_paid_amount(invoice: Invoice) -> int:
     """
     المبلغ المسدد الفعلي للفاتورة:
-    - مسدد بالكامل: total
+    - مسدد / تم التوصيل / حالة مسدد: total
     - جزئي: paid_amount (مقيد بين 0..total)
     - غير ذلك: 0
+
+    ملاحظة: «تم التوصيل» يُعامل كتحصيل مكتمل لأن شاشات المبيعات
+    تحتسبه ضمن المبيعات، بينما الربح كان يتجاهله فيظهر صفراً.
     """
     total = int(getattr(invoice, "total", 0) or 0)
     payment_status = getattr(invoice, "payment_status", None)
     status = getattr(invoice, "status", None)
 
-    if payment_status == "مسدد" or status == "مسدد":
+    if payment_status in ("مرتجع", "ملغي", "راجع", "راجعة"):
+        return 0
+    if status in ("مرتجع", "ملغي", "راجع", "راجعة"):
+        return 0
+
+    if payment_status == "مسدد" or status in ("مسدد", "تم التوصيل"):
         return max(total, 0)
 
     if payment_status == "جزئي":

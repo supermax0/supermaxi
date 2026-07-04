@@ -10,10 +10,10 @@ from models.employee import Employee
 from models.invoice import Invoice
 from models.order_item import OrderItem
 from models.product import Product
-from utils.inventory_movements import validate_sale_quantity
 from utils.branch_migration import ensure_branch_schema, get_default_branch
 from utils.branch_context import current_branch_id, init_branch_context
-from utils.branch_stock_service import deduct_stock, get_branch_stock, BranchStockError
+from utils.branch_stock_service import deduct_stock, BranchStockError
+from utils.branch_sales import resolve_sale_fulfillment
 from utils.delivery_expense_service import sync_delivery_expense_for_invoice
 from utils.order_shipping import add_shipping_line_item
 from utils.product_delivery_fees import fee_for_cart_items
@@ -130,11 +130,19 @@ def execute():
         product = Product.query.get(product_id)
         if not product or not product.active:
             return jsonify({"success": False, "error": "منتج غير موجود أو غير فعال"}), 400
-        branch_id = current_branch_id() or (get_default_branch().id if get_default_branch() else None)
-        validation = validate_sale_quantity(product.id, qty, branch_id)
-        if not validation.get("valid"):
+        preferred = current_branch_id() or (get_default_branch().id if get_default_branch() else None)
+        fulfillment_branch_id, validation = resolve_sale_fulfillment(
+            product.id,
+            qty,
+            preferred_branch_id=preferred,
+        )
+        if not validation.get("valid") or not fulfillment_branch_id:
             return jsonify({"success": False, "error": validation.get("message") or "الكمية غير متوفرة"}), 400
-        clean_items.append({"product": product, "qty": qty})
+        clean_items.append({
+            "product": product,
+            "qty": qty,
+            "fulfillment_branch_id": fulfillment_branch_id,
+        })
 
     if not clean_items:
         return jsonify({"success": False, "error": "لا توجد منتجات صالحة"}), 400
@@ -170,13 +178,12 @@ def execute():
     db.session.flush()
 
     total = 0
-    sale_branch_id = current_branch_id() or (get_default_branch().id if get_default_branch() else None)
     for row in clean_items:
         product = row["product"]
         qty = int(row["qty"])
         line_total = int(product.sale_price or 0) * qty
         total += line_total
-        fulfillment_branch_id = sale_branch_id
+        fulfillment_branch_id = row["fulfillment_branch_id"]
         db.session.add(
             OrderItem(
                 invoice_id=invoice.id,

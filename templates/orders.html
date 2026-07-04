@@ -280,7 +280,7 @@
     "shipping_company": {{ (o.shipping_company.name if o.shipping_company else '—')|tojson }},
     "delivery_agent": {% if o.delivery_agent_id and o.delivery_agent %}{{ o.delivery_agent.name|tojson }}{% else %}"—"{% endif %},
     "note": {{ (o.note or '')|tojson }},
-    "can_pay": {% if (o.total or 0) > (o.paid_amount or 0) and o.status not in ['تم التوصيل', 'راجع', 'مرتجع', 'راجعة', 'ملغي'] %}true{% else %}false{% endif %},
+    "can_pay": {% if (o.total or 0) > (o.paid_amount or 0) and (o.payment_status or '') not in ['مسدد', 'مرتجع', 'ملغي'] and o.status not in ['راجع', 'مرتجع', 'راجعة', 'ملغي'] %}true{% else %}false{% endif %},
     "can_cancel": {% if o.status == 'تم الطلب' %}true{% else %}false{% endif %}
   }{% if not loop.last %},{% endif %}
   {% endfor %}
@@ -303,6 +303,13 @@
   {"id": {{ s.id }}, "name": {{ (s.name or '')|tojson }}}{% if not loop.last %},{% endif %}
   {% endfor %}
 ]
+</script>
+
+<script type="application/json" id="companyBranchesData">
+{{ (company_branches or [])|tojson }}
+</script>
+<script type="application/json" id="sellFromAllBranchesFlag">
+{{ 'true' if sell_from_all_branches else 'false' }}
 </script>
 
 <!-- ==================== Styles ==================== -->
@@ -1201,6 +1208,24 @@
     white-space: nowrap;
   }
 
+  .modal .od-branch-select {
+    width: 100%;
+    min-width: 140px;
+    max-width: 220px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(59, 130, 246, 0.35);
+    background: rgba(15, 23, 42, 0.65);
+    color: var(--orders-text);
+    font-size: 13px;
+  }
+  .modal .od-branch-label {
+    font-size: 13px;
+    color: var(--orders-text);
+  }
+  .modal .od-branch-cell {
+    min-width: 150px;
+  }
   .modal .od-items-table .od-money--total {
     font-weight: 800;
     color: var(--orders-primary) !important;
@@ -1546,19 +1571,20 @@
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
   }
 
-  /* Mobile Button Optimization - Ultra Compact */
+  /* Mobile: larger tap targets for row action buttons */
   @media (max-width: 768px) {
     .orders-row-actions {
-      gap: 1px;
-      padding: 0;
+      gap: 4px;
+      padding: 0 2px;
     }
 
     .orders-row-actions .action-btn-small {
-      min-height: 10px !important;
-      height: 10px !important;
-      font-size: 7px !important;
-      padding: 1px 2px !important;
-      border-radius: 2px !important;
+      min-height: 28px !important;
+      height: 28px !important;
+      font-size: 11px !important;
+      padding: 4px 8px !important;
+      border-radius: 6px !important;
+      letter-spacing: 0;
     }
 
     .ag-cell .orders-row-actions {
@@ -2643,7 +2669,7 @@
       agents = [];
     }
 
-    // عرض نافذة لاختيار المندوب
+    // عرض نافذة لاختيار المندوب (+ فرع الخصم عند تفعيل البيع لكل الفروع)
     const modal = document.createElement('div');
     modal.className = 'modal';
     modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9998;';
@@ -2654,6 +2680,19 @@
       agentsOptions += '<option value="' + a.id + '">' + escapeHtml(a.name) + '</option>';
     });
 
+    var branchFieldHtml = '';
+    if (isSellFromAllBranchesEnabled()) {
+      var branchOptions = '<option value="">— اترك الفرع الحالي لكل طلب —</option>';
+      getCompanyBranches().forEach(function (b) {
+        branchOptions += '<option value="' + b.id + '">' + escapeHtml(b.name) + '</option>';
+      });
+      branchFieldHtml =
+        '<label style="display:block;text-align:right;margin:0 0 8px;color:var(--orders-muted);font-size:13px;">فرع الخصم أثناء التجهيز</label>' +
+        '<select id="agentFulfillmentBranchSelect" style="width:100%;padding:14px 16px;border-radius:14px;border:1px solid rgba(255,255,255,0.1);background:rgba(15,23,42,0.6);color:var(--orders-text);font-size:15px;margin-bottom:20px;">' +
+        branchOptions +
+        '</select>';
+    }
+
     modal.innerHTML =
       '<div class="modal-box" style="max-width:500px;background:linear-gradient(145deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.98));padding:24px;border-radius:24px;border:2px solid rgba(59, 130, 246, 0.3);">' +
       '<div style="text-align:center;">' +
@@ -2662,6 +2701,7 @@
       '<select id="agentSelect" style="width:100%;padding:14px 16px;border-radius:14px;border:1px solid rgba(255,255,255,0.1);background:rgba(15,23,42,0.6);color:var(--orders-text);font-size:15px;margin-bottom:20px;">' +
       agentsOptions +
       '</select>' +
+      branchFieldHtml +
       '<div style="display:flex;gap:12px;justify-content:center;">' +
       '<button class="btn btn-success" onclick="confirmAgentPrint()">✅ طباعة</button>' +
       '<button class="btn btn-danger" onclick="this.closest(\'.modal\').remove()">❌ إلغاء</button>' +
@@ -2671,7 +2711,7 @@
 
     document.body.appendChild(modal);
 
-    window.confirmAgentPrint = function () {
+    window.confirmAgentPrint = async function () {
       var agentEl = document.getElementById("agentSelect");
       var agentId = agentEl ? agentEl.value : null;
       if (!agentId) {
@@ -2679,42 +2719,61 @@
         return;
       }
 
+      var branchEl = document.getElementById("agentFulfillmentBranchSelect");
+      var branchId = branchEl && branchEl.value ? parseInt(branchEl.value, 10) : null;
+
       modal.remove();
       delete window.confirmAgentPrint;
 
-      // حفظ الكشف تلقائياً قبل الطباعة
       showLoading();
-      fetch("/orders/create-agent-report", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          order_ids: selected.map(id => parseInt(id)),
-          agent_id: parseInt(agentId)
-        })
-      })
-        .then(r => r.json())
-        .then(data => {
-          hideLoading();
-          if (data.success) {
-            showToast({{ _('orders_toast_agent_report_saved')|tojson }}.replace('{number}', data.report_number || ''), "success");
-            // فتح صفحة الطباعة
-            const url = `/orders/print-report-page?ids=${encodeURIComponent(selected.join(","))}&agent_id=${agentId}&save=true`;
-            const printWindow = window.open(url, '_blank');
-            if (!printWindow) {
-              showToast("❌ تم منع النافذة المنبثقة. يرجى السماح بالنوافذ المنبثقة.", "error");
-              setTimeout(() => window.location.href = url, 1000);
+      try {
+        if (branchId) {
+          for (const orderId of selected) {
+            const res = await fetch('/orders/update-fulfillment-branch', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                order_id: parseInt(orderId, 10),
+                branch_id: branchId
+              })
+            });
+            const payload = await res.json();
+            if (!payload.success) {
+              hideLoading();
+              showToast(payload.error || ('فشل تحديث فرع الخصم للطلب #' + orderId), 'error');
               return;
             }
-            setTimeout(() => printWindow?.focus(), 500);
-          } else {
-            showToast(data.error || {{ _('orders_err_save_report')|tojson }}, "error");
           }
-        })
-        .catch(error => {
-          hideLoading();
-          showToast({{ _('orders_err_save_report')|tojson }}, "error");
-          console.error(error);
+        }
+
+        const reportRes = await fetch("/orders/create-agent-report", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            order_ids: selected.map(id => parseInt(id)),
+            agent_id: parseInt(agentId)
+          })
         });
+        const data = await reportRes.json();
+        hideLoading();
+        if (data.success) {
+          showToast({{ _('orders_toast_agent_report_saved')|tojson }}.replace('{number}', data.report_number || ''), "success");
+          const url = `/orders/print-report-page?ids=${encodeURIComponent(selected.join(","))}&agent_id=${agentId}&save=true`;
+          const printWindow = window.open(url, '_blank');
+          if (!printWindow) {
+            showToast("❌ تم منع النافذة المنبثقة. يرجى السماح بالنوافذ المنبثقة.", "error");
+            setTimeout(() => window.location.href = url, 1000);
+            return;
+          }
+          setTimeout(() => printWindow?.focus(), 500);
+        } else {
+          showToast(data.error || {{ _('orders_err_save_report')|tojson }}, "error");
+        }
+      } catch (error) {
+        hideLoading();
+        showToast({{ _('orders_err_save_report')|tojson }}, "error");
+        console.error(error);
+      }
     };
 
     modal.addEventListener('click', function (e) {
@@ -3328,10 +3387,120 @@
       '</h3>';
   }
 
+  function getCompanyBranches() {
+    try {
+      const el = document.getElementById('companyBranchesData');
+      return JSON.parse(el ? el.textContent : '[]') || [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function isSellFromAllBranchesEnabled() {
+    try {
+      const el = document.getElementById('sellFromAllBranchesFlag');
+      return String(el ? el.textContent : 'false').trim() === 'true';
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function buildFulfillmentBranchSelect(item, orderId, canEdit) {
+    const currentId = item.fulfillment_branch_id || '';
+    const currentName = item.fulfillment_branch_name || '—';
+    if (!canEdit) {
+      return '<span class="od-branch-label">' + escapeHtml(currentName) + '</span>';
+    }
+    const stocks = item.branch_stocks || [];
+    const options = stocks.map(function (b) {
+      const qty = parseInt(b.quantity, 10) || 0;
+      const selected = String(b.id) === String(currentId) ? ' selected' : '';
+      const disabled = qty < (item.qty || 0) && String(b.id) !== String(currentId) ? ' disabled' : '';
+      return '<option value="' + b.id + '"' + selected + disabled + '>' +
+        escapeHtml(b.name) + ' (' + qty + ')</option>';
+    }).join('');
+    return '<select class="od-branch-select" data-order-id="' + orderId + '" data-item-id="' + (item.id || '') + '" onchange="updateItemFulfillmentBranch(this)">' +
+      options +
+      '</select>';
+  }
+
+  function updateItemFulfillmentBranch(selectEl) {
+    if (!selectEl) return;
+    const orderId = selectEl.getAttribute('data-order-id');
+    const itemId = selectEl.getAttribute('data-item-id');
+    const branchId = selectEl.value;
+    if (!orderId || !branchId) return;
+
+    const previous = selectEl.getAttribute('data-prev') || selectEl.defaultValue;
+    selectEl.disabled = true;
+    fetch('/orders/update-fulfillment-branch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        order_id: parseInt(orderId, 10),
+        item_id: itemId ? parseInt(itemId, 10) : null,
+        branch_id: parseInt(branchId, 10)
+      })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        selectEl.disabled = false;
+        if (!data.success) {
+          selectEl.value = previous;
+          showToast(data.error || 'فشل تحديث فرع الخصم', 'error');
+          return;
+        }
+        selectEl.setAttribute('data-prev', branchId);
+        showToast(data.message || 'تم تحديث فرع الخصم', 'success');
+        const existing = document.querySelector('.modal[data-order-details="1"]');
+        if (existing) existing.remove();
+        showDetails(parseInt(orderId, 10));
+      })
+      .catch(function () {
+        selectEl.disabled = false;
+        selectEl.value = previous;
+        showToast('فشل تحديث فرع الخصم', 'error');
+      });
+  }
+
+  function applyOrderFulfillmentBranch(orderId, branchId) {
+    if (!orderId || !branchId) {
+      showToast('اختر الفرع أولاً', 'warning');
+      return;
+    }
+    showLoading();
+    fetch('/orders/update-fulfillment-branch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        order_id: parseInt(orderId, 10),
+        branch_id: parseInt(branchId, 10)
+      })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        hideLoading();
+        if (!data.success) {
+          showToast(data.error || 'فشل تحديث فرع الخصم', 'error');
+          return;
+        }
+        showToast(data.message || 'تم تحديث فرع الخصم لكل الأصناف', 'success');
+        const existing = document.querySelector('.modal[data-order-details="1"]');
+        if (existing) existing.remove();
+        showDetails(parseInt(orderId, 10));
+      })
+      .catch(function () {
+        hideLoading();
+        showToast('فشل تحديث فرع الخصم', 'error');
+      });
+  }
+
   function showOrderDetailsModal(data, options) {
     options = options || {};
     const order = data.order;
     const items = data.items || [];
+    const canEditFulfillment = !!(order.can_edit_fulfillment || (isSellFromAllBranchesEnabled() && order.status === 'تم الطلب'));
+    const showBranchCol = !!(order.sell_from_all_branches || isSellFromAllBranchesEnabled() || items.some(function (it) { return it.fulfillment_branch_id; }));
 
     const modal = document.createElement('div');
     modal.className = 'modal od-modal-overlay';
@@ -3356,10 +3525,31 @@
       return '<tr>' +
         '<td>' + escapeHtml(item.name || '—') + '</td>' +
         '<td class="od-qty">' + (item.qty || 0) + '</td>' +
+        (showBranchCol
+          ? '<td class="od-branch-cell">' + buildFulfillmentBranchSelect(item, order.id, canEditFulfillment) + '</td>'
+          : '') +
         '<td class="od-money">' + (item.price || 0).toLocaleString() + ' {{ _("orders_currency_iqd") }}</td>' +
         '<td class="od-money od-money--total">' + (item.total || 0).toLocaleString() + ' {{ _("orders_currency_iqd") }}</td>' +
         '</tr>';
     }).join('');
+
+    const companyBranches = getCompanyBranches();
+    const orderBranchOptions = companyBranches.map(function (b) {
+      const selected = String(b.id) === String(items[0] && items[0].fulfillment_branch_id || order.branch_id || '') ? ' selected' : '';
+      return '<option value="' + b.id + '"' + selected + '>' + escapeHtml(b.name) + '</option>';
+    }).join('');
+    const orderBranchPanel = (canEditFulfillment && companyBranches.length)
+      ? '<div class="od-field od-field--wide" style="margin-top:10px;">' +
+        '<span class="od-field__label">فرع الخصم (لكل الأصناف)</span>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">' +
+        '<select id="odOrderFulfillmentBranch" class="od-branch-select" style="min-width:220px;">' +
+        '<option value="">— اختر الفرع —</option>' + orderBranchOptions +
+        '</select>' +
+        '<button type="button" class="btn btn-primary" style="padding:8px 12px;" onclick="applyOrderFulfillmentBranch(' + order.id + ', document.getElementById(\'odOrderFulfillmentBranch\').value)">تطبيق على الطلب</button>' +
+        '</div>' +
+        '<div class="od-field__help" style="font-size:12px;color:var(--orders-muted);margin-top:6px;">يُستخدم أثناء تجهيز الطلب للمندوب لتحديد المخزن الذي تُخصم منه الكمية.</div>' +
+        '</div>'
+      : '';
 
     const remainingClass = remaining > 0 ? 'od-summary-row__value--due' : 'od-summary-row__value--settled';
 
@@ -3397,6 +3587,7 @@
       (order.returned_count > 0
         ? '<div class="od-field od-field--wide"><span class="od-field__label">{{ _("orders_details_return_count") }}</span><div class="od-field__value" style="color:var(--orders-danger);">' + order.returned_count + '</div></div>'
         : '') +
+      orderBranchPanel +
       '</div></div>' +
 
       '<div class="od-card">' +
@@ -3404,6 +3595,7 @@
       '<div class="od-table-wrap"><table class="od-items-table"><thead><tr>' +
       '<th>{{ _("orders_details_col_product") }}</th>' +
       '<th>{{ _("orders_details_col_qty") }}</th>' +
+      (showBranchCol ? '<th>فرع الخصم</th>' : '') +
       '<th>{{ _("orders_details_col_price") }}</th>' +
       '<th>{{ _("orders_details_col_total") }}</th>' +
       '</tr></thead><tbody>' + itemsRows + '</tbody></table></div></div>' +
@@ -3437,7 +3629,7 @@
       (order.status !== 'تم التوصيل' && !isReturnedStatus(order.status) && order.status !== 'ملغي'
         ? '<button type="button" class="btn btn-warning od-action-btn" onclick="editOrder(' + order.id + ')"><span>✏️</span><span>{{ _("orders_details_btn_edit_order") }}</span></button>'
         : '') +
-      (remaining > 0 && order.status !== 'تم التوصيل' && !isReturnedStatus(order.status) && order.status !== 'ملغي'
+      (remaining > 0 && order.payment !== 'مسدد' && !isReturnedStatus(order.status) && !isReturnedStatus(order.payment) && order.status !== 'ملغي'
         ? '<button type="button" class="btn btn-warning od-action-btn" onclick="pay(' + order.id + '); this.closest(\'.modal\').remove();"><span>💰</span><span>{{ _("orders_details_btn_full_pay") }}</span></button>' +
           '<button type="button" class="btn btn-success od-action-btn" onclick="payPartial(' + order.id + ', ' + remaining + '); this.closest(\'.modal\').remove();"><span>💵</span><span>{{ _("orders_details_btn_partial_pay") }}</span></button>'
         : '') +
@@ -3445,6 +3637,9 @@
       '</div></div></div>';
 
     document.body.appendChild(modal);
+    modal.querySelectorAll('.od-branch-select[data-item-id]').forEach(function (sel) {
+      sel.setAttribute('data-prev', sel.value);
+    });
     wireShippingBarcodeModal(order, options);
 
     // إغلاق عند الضغط خارج النافذة
@@ -3970,7 +4165,7 @@
     const gridOptions = {
       columnDefs: columnDefs,
       rowData: allOrders,
-      rowHeight: 40,
+      rowHeight: window.matchMedia("(max-width: 768px)").matches ? 48 : 40,
       headerHeight: 40,
       pagination: true,
 

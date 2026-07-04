@@ -303,7 +303,14 @@ def shipping_report():
         total = int(getattr(order, "total", 0) or 0)
         payment_status = getattr(order, "payment_status", None)
         status = getattr(order, "status", None)
-        if payment_status == "مسدد" or status == "مسدد":
+        if payment_status in ("مرتجع", "ملغي", "راجع", "راجعة") or status in (
+            "مرتجع",
+            "ملغي",
+            "راجع",
+            "راجعة",
+        ):
+            return 0
+        if payment_status == "مسدد" or status in ("مسدد", "تم التوصيل"):
             return max(total, 0)
         if payment_status == "جزئي":
             paid_amount = int(getattr(order, "paid_amount", 0) or 0)

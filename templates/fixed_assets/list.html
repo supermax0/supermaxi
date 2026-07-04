@@ -15,6 +15,8 @@
 .fa-table th { background: rgba(99,102,241,0.12); }
 .fa-table tbody tr:hover { background: rgba(99,102,241,0.06); }
 .badge { padding: 3px 8px; border-radius: 999px; font-size: 12px; background: rgba(99,102,241,0.15); }
+.fa-actions-cell { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.fa-btn-danger { background: #dc2626; color: #fff; padding: 4px 10px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; }
 </style>
 <div class="fa-page">
   {% include "fixed_assets/_nav.html" %}
@@ -53,7 +55,15 @@
         <td>{{ "{:,}".format(a.accumulated_depreciation or 0) }}</td>
         <td>{{ "{:,}".format(a.book_value or 0) }}</td>
         <td><span class="badge">{{ a.status_label() }}</span></td>
-        <td><a href="/assets/{{ a.id }}">عرض</a></td>
+        <td class="fa-actions-cell">
+          <a href="/assets/{{ a.id }}">عرض</a>
+          {% if a.status in ['draft','under_installation'] and not a.acquisition_journal_entry_id %}
+          <form method="post" action="/assets/{{ a.id }}/delete" style="display:inline;margin:0;"
+                onsubmit="return confirm('حذف الأصل {{ a.asset_code }} — {{ a.name }}؟ لا يمكن التراجع.');">
+            <button type="submit" class="fa-btn-danger">حذف</button>
+          </form>
+          {% endif %}
+        </td>
       </tr>
       {% else %}
       <tr><td colspan="9">لا توجد أصول. <a href="/assets/create">أضف أول أصل</a></td></tr>

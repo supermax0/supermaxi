@@ -17,8 +17,7 @@ from utils.permission_checks import guard_permission
 from utils.activity_logger import INVOICE_SNAPSHOT_FIELDS, log_activity, snapshot_attrs
 from utils.branch_migration import ensure_branch_schema, get_default_branch
 from utils.branch_context import current_branch_id, init_branch_context
-from utils.branch_stock_service import deduct_stock, get_branch_stock, get_total_stock, BranchStockError
-from utils.inventory_movements import validate_sale_quantity
+from utils.branch_stock_service import deduct_stock, get_branch_stock, BranchStockError
 from utils.order_shipping import add_shipping_line_item
 from utils.product_delivery_fees import fee_for_cart_items
 
@@ -41,9 +40,14 @@ def _parse_product_meta(product):
 
 
 def _product_bootstrap_dict(product):
+    from utils.branch_sales import is_sell_from_all_branches_enabled
+
     meta = _parse_product_meta(product)
-    branch_id = current_branch_id()
-    display_qty = get_branch_stock(branch_id, product.id) if branch_id else (product.quantity or 0)
+    if is_sell_from_all_branches_enabled():
+        display_qty = product.quantity or 0
+    else:
+        branch_id = current_branch_id()
+        display_qty = get_branch_stock(branch_id, product.id) if branch_id else (product.quantity or 0)
     return {
         "id": product.id,
         "name": product.name,
@@ -56,6 +60,7 @@ def _product_bootstrap_dict(product):
         "low_stock_threshold": product.low_stock_threshold or 5,
         "category": (meta.get("category") or "").strip(),
         "store_badge": (meta.get("store_badge") or "").strip(),
+        "sell_from_all_branches": is_sell_from_all_branches_enabled(),
     }
 
 
@@ -535,23 +540,27 @@ def create_order():
             return jsonify({"error": "منتج غير موجود"}), 400
 
         qty = i.get("qty", 0)
-        fulfillment_branch_id = i.get("fulfillment_branch_id") or current_branch_id()
-        if not fulfillment_branch_id and get_default_branch():
-            fulfillment_branch_id = get_default_branch().id
-        
-        validation = validate_sale_quantity(product.id, qty, fulfillment_branch_id)
-        if not validation["valid"]:
+        from utils.branch_sales import resolve_sale_fulfillment
+
+        explicit_branch = i.get("fulfillment_branch_id")
+        try:
+            explicit_branch = int(explicit_branch) if explicit_branch not in (None, "", 0, "0") else None
+        except (TypeError, ValueError):
+            explicit_branch = None
+
+        fulfillment_branch_id, validation = resolve_sale_fulfillment(
+            product.id,
+            qty,
+            preferred_branch_id=current_branch_id() or (
+                get_default_branch().id if get_default_branch() else None
+            ),
+            explicit_branch_id=explicit_branch,
+        )
+        if not validation.get("valid") or not fulfillment_branch_id:
             db.session.rollback()
             return jsonify({
-                "error": validation["message"],
-                "available": validation["available"]
-            }), 400
-        
-        available = get_branch_stock(fulfillment_branch_id, product.id) if fulfillment_branch_id else (product.quantity or 0)
-        if available < qty:
-            db.session.rollback()
-            return jsonify({
-                "error": f"الكمية المتوفرة ({available}) أقل من المطلوب ({qty}) - المنتج: {product.name}"
+                "error": validation.get("message") or f"الكمية غير متوفرة - المنتج: {product.name}",
+                "available": validation.get("available", 0),
             }), 400
 
         # استخدام السعر المعدل من الواجهة إذا كان موجوداً، وإلا استخدم السعر الافتراضي

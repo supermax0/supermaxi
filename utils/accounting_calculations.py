@@ -54,15 +54,20 @@ def _is_canceled_invoice(invoice: Invoice) -> bool:
 def _effective_paid_amount(invoice: Invoice) -> int:
     """
     المبلغ المسدد الفعلي للفاتورة.
-    - إذا كانت مسددة بالكامل: نرجع total حتى لو لم يُحدث paid_amount في بعض المسارات.
-    - إذا جزئي: نرجع paid_amount (مقيد بين 0..total).
+    - مسدد / تم التوصيل: total
+    - جزئي: paid_amount (مقيد بين 0..total)
     - غير ذلك: 0
     """
     total = int(getattr(invoice, "total", 0) or 0)
     payment_status = getattr(invoice, "payment_status", None)
     status = getattr(invoice, "status", None)
 
-    if payment_status == "مسدد" or status == "مسدد":
+    if payment_status in ("مرتجع", "ملغي", "راجع", "راجعة"):
+        return 0
+    if status in ("مرتجع", "ملغي", "راجع", "راجعة"):
+        return 0
+
+    if payment_status == "مسدد" or status in ("مسدد", "تم التوصيل"):
         return max(total, 0)
 
     if payment_status == "جزئي":

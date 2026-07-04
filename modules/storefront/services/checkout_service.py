@@ -9,9 +9,9 @@ from models.customer import Customer
 from models.invoice import Invoice
 from models.order_item import OrderItem
 from models.product import Product
-from utils.inventory_movements import validate_sale_quantity
 from utils.branch_migration import get_default_branch
 from utils.branch_stock_service import deduct_stock, BranchStockError
+from utils.branch_sales import resolve_sale_fulfillment
 from utils.order_shipping import add_shipping_line_item
 
 SERVICE_SHIPPING_BARCODE = "__SF_SHIPPING__"
@@ -68,10 +68,14 @@ class StorefrontCheckoutService:
             return False, "سلة الطلب فارغة."
 
         default_branch = get_default_branch()
-        branch_id = default_branch.id if default_branch else None
+        preferred = default_branch.id if default_branch else None
         for item in cart_items:
-            check = validate_sale_quantity(item["id"], item["quantity"], branch_id)
-            if not check.get("valid"):
+            _branch_id, check = resolve_sale_fulfillment(
+                item["id"],
+                item["quantity"],
+                preferred_branch_id=preferred,
+            )
+            if not check.get("valid") or not _branch_id:
                 return False, f"المنتج {item['name']}: {str(check.get('message') or 'الكمية غير متوفرة.')}"
         return True, ""
 
@@ -122,7 +126,7 @@ class StorefrontCheckoutService:
         grand_total = net_subtotal + shipping_fee
 
         default_branch = get_default_branch()
-        fulfillment_branch_id = default_branch.id if default_branch else None
+        preferred_branch_id = default_branch.id if default_branch else None
 
         invoice = Invoice(
             customer_id=customer.id,
@@ -130,7 +134,7 @@ class StorefrontCheckoutService:
             employee_id=None,
             employee_name=None,
             tenant_id=tenant_id,
-            branch_id=fulfillment_branch_id,
+            branch_id=preferred_branch_id,
             total=grand_total,
             status="تم الطلب",
             payment_status="غير مسدد",
@@ -143,15 +147,22 @@ class StorefrontCheckoutService:
         db.session.add(invoice)
         db.session.flush()
 
+        invoice_branch_id = preferred_branch_id
         for item in cart_items:
             product = Product.query.get(item["id"])
             if not product:
                 db.session.rollback()
                 return False, f"المنتج غير موجود: {item['name']}", {}
-            check = validate_sale_quantity(product.id, item["quantity"], fulfillment_branch_id)
-            if not check.get("valid"):
+            fulfillment_branch_id, check = resolve_sale_fulfillment(
+                product.id,
+                item["quantity"],
+                preferred_branch_id=preferred_branch_id,
+            )
+            if not check.get("valid") or not fulfillment_branch_id:
                 db.session.rollback()
                 return False, f"المنتج {product.name}: {str(check.get('message') or 'الكمية غير متوفرة.')}", {}
+            if invoice_branch_id is None:
+                invoice_branch_id = fulfillment_branch_id
             line_total = int(product.sale_price or 0) * int(item["quantity"])
             db.session.add(
                 OrderItem(
@@ -170,6 +181,8 @@ class StorefrontCheckoutService:
             except BranchStockError as exc:
                 db.session.rollback()
                 return False, str(exc), {}
+        if invoice_branch_id:
+            invoice.branch_id = invoice_branch_id
 
         if discount_amount > 0:
             discount_product = _get_or_create_service_product("خصم كوبون", SERVICE_DISCOUNT_BARCODE, tenant_id)

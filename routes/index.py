@@ -35,7 +35,11 @@ from utils.date_periods import get_period_dates, get_period_label
 from utils.cash_calculations import calculate_cash_balance, get_cash_movements, _effective_paid_amount
 from utils.period_net_profit import net_profit_for_range as _net_profit_for_range
 from utils.period_net_profit import expenses_sum_for_range as _expenses_sum_for_range
-from utils.payment_ledger import net_profit_for_collection_calendar_day
+from utils.payment_ledger import (
+    append_payment_ledger_delta,
+    business_today,
+    net_profit_for_collection_calendar_day,
+)
 from utils.order_status import PENDING_STATUSES
 from utils.decorators import admin_required
 from utils.executive_dashboard_data import (
@@ -1227,7 +1231,7 @@ def index_executive_overview():
     - الشهر/السنة: إنشاء الطلب ضمن الفترة (`net_profit_for_range`).
     - النقدية: رصيد تراكمي، مقياس مختلف عن الربح.
     """
-    today = date.today()
+    today = business_today()
     month_start = today.replace(day=1)
     year_start = today.replace(month=1, day=1)
 
@@ -1619,7 +1623,7 @@ def index_today_profit():
     تحصيل بلحظة التسديد (مع COGS المتناسب والمصاريف اليومية)؛
     قبل وجود أي سجل تحصيل يُستخدم احتياطياً منطق طلبات اُنشئت اليوم.
     """
-    today = date.today()
+    today = business_today()
     if _is_beauty_center_session():
         from utils.beauty_accounting import beauty_net_profit_calendar_day
 
@@ -1752,10 +1756,17 @@ def index_execute():
         invoice.status = "جاري الشحن"
 
     elif action == "delivered":
+        # التوصيل = تحصيل في مسار لوحة التحكم (مثل كشف الشحن «واصل»)
+        from utils.delivery_expense_service import sync_delivery_expense_for_invoice
+
+        prev_eff = _effective_paid_amount(invoice)
         invoice.status = "تم التوصيل"
+        invoice.payment_status = "مسدد"
+        invoice.paid_amount = int(invoice.total or 0)
+        append_payment_ledger_delta(invoice.id, _effective_paid_amount(invoice) - prev_eff)
+        sync_delivery_expense_for_invoice(invoice)
 
     elif action == "paid":
-        from utils.payment_ledger import append_payment_ledger_delta
         from utils.delivery_expense_service import sync_delivery_expense_for_invoice
 
         prev_eff = _effective_paid_amount(invoice)
@@ -1809,12 +1820,18 @@ def index_execute_bulk():
             elif action == "shipping":
                 invoice.status = "جاري الشحن"
             elif action == "delivered":
+                from utils.delivery_expense_service import sync_delivery_expense_for_invoice
+
+                prev_eff = _effective_paid_amount(invoice)
                 invoice.status = "تم التوصيل"
+                invoice.payment_status = "مسدد"
+                invoice.paid_amount = int(invoice.total or 0)
+                append_payment_ledger_delta(invoice.id, _effective_paid_amount(invoice) - prev_eff)
+                sync_delivery_expense_for_invoice(invoice)
             elif action == "paid":
                 # ==========================
                 # تصحيح محاسبي: الطلب الواصل يتم تسديده بشكل صحيح
                 # ==========================
-                from utils.payment_ledger import append_payment_ledger_delta
                 from utils.delivery_expense_service import sync_delivery_expense_for_invoice
 
                 prev_eff = _effective_paid_amount(invoice)
@@ -1883,8 +1900,9 @@ def index_charts():
     RETURN_STATUSES = ["مرتجع", "راجع", "راجعة"]
     CANCELED_STATUSES = ["ملغي"]
 
+    today = business_today()
     for i in range(6, -1, -1):
-        d = date.today() - timedelta(days=i)
+        d = today - timedelta(days=i)
         labels.append(d.strftime("%m/%d"))
 
         day_invoices = db.session.query(
@@ -1899,35 +1917,12 @@ def index_charts():
             Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
             Invoice.payment_status != "مرتجع",
         ).all()
-        
-        # المبيعات المسددة فعلياً (تشمل الجزئي)
-        day_sales = sum(_effective_paid_amount(inv) for inv in day_invoices)
-        
-        # COGS متناسب مع التحصيل (تقريب)
-        ratios = {}
-        for inv in day_invoices:
-            total = int(inv.total or 0)
-            paid = _effective_paid_amount(inv)
-            if total > 0 and paid > 0:
-                ratios[int(inv.id)] = min(max(paid / total, 0.0), 1.0)
-        
-        day_cost = 0
-        if ratios:
-            rows = db.session.query(
-                OrderItem.invoice_id,
-                func.sum(OrderItem.cost * OrderItem.quantity).label("cogs_sum"),
-            ).filter(
-                OrderItem.invoice_id.in_(list(ratios.keys()))
-            ).group_by(OrderItem.invoice_id).all()
-            
-            for invoice_id, cogs_sum in rows:
-                if not cogs_sum:
-                    continue
-                day_cost += int(round(float(cogs_sum) * ratios.get(int(invoice_id), 0.0)))
 
+        # المبيعات المحصّلة (مسدد / تم التوصيل / جزئي)
+        day_sales = sum(_effective_paid_amount(inv) for inv in day_invoices)
         sales.append(int(day_sales))
-        # الربح = المبيعات - COGS (ربح إجمالي بدون المصاريف)
-        profit.append(int(int(day_sales) - int(day_cost)))
+        # نفس منطق بطاقة «ربح اليوم» (تحصيل + تكلفة + مصاريف اليوم)
+        profit.append(int(net_profit_for_collection_calendar_day(d)))
 
     status_data = {
         "ordered": db.session.query(func.count(Invoice.id)).filter(Invoice.status == "تم الطلب").scalar() or 0,

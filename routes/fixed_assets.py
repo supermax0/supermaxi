@@ -24,6 +24,7 @@ from utils.fixed_assets_service import (
     calculate_monthly_depreciation,
     calculate_total_cost,
     dashboard_stats,
+    delete_fixed_asset,
     get_asset_depreciation_schedule,
     post_asset_acquisition,
     post_asset_maintenance,
@@ -369,13 +370,32 @@ def create_asset():
         return render_template("fixed_assets/create.html", asset=None, **ctx)
 
     action = (request.form.get("action") or "draft").strip()
-    as_draft = action != "post"
+    want_post = action == "post"
     try:
-        asset = build_asset_from_form(request.form, user_id=session.get("user_id"), as_draft=as_draft)
-        if not as_draft:
-            post_asset_acquisition(asset, user_id=session.get("user_id"))
+        # نبني الأصل دائماً كمسودة أولاً حتى لا يُرفض الترحيل بسبب حالة "نشط"
+        asset = build_asset_from_form(
+            request.form, user_id=session.get("user_id"), as_draft=True
+        )
+        if want_post:
+            try:
+                post_asset_acquisition(asset, user_id=session.get("user_id"))
+                db.session.commit()
+                flash("تم حفظ الأصل وترحيل قيد الشراء", "success")
+            except FixedAssetError as post_exc:
+                # فشل الترحيل (رصيد صندوق، فترة مغلقة، ...) — نحفظ المسودة بدل ضياع الأصل
+                db.session.rollback()
+                asset = build_asset_from_form(
+                    request.form, user_id=session.get("user_id"), as_draft=True
+                )
+                db.session.commit()
+                flash(
+                    f"تم حفظ الأصل كمسودة، لكن فشل ترحيل قيد الشراء: {post_exc}",
+                    "error",
+                )
+            return redirect(url_for("fixed_assets.view_asset", asset_id=asset.id))
+
         db.session.commit()
-        flash("تم حفظ الأصل وترحيل قيد الشراء" if not as_draft else "تم حفظ الأصل كمسودة", "success")
+        flash("تم حفظ الأصل كمسودة", "success")
         return redirect(url_for("fixed_assets.view_asset", asset_id=asset.id))
     except FixedAssetError as exc:
         db.session.rollback()
@@ -452,6 +472,27 @@ def post_asset(asset_id):
         db.session.rollback()
         flash(f"حدث خطأ: {exc}", "error")
     return redirect(url_for("fixed_assets.view_asset", asset_id=asset.id))
+
+
+@fixed_assets_bp.route("/<int:asset_id>/delete", methods=["POST"])
+def delete_asset(asset_id):
+    denied = _guard_manage()
+    if denied:
+        return denied
+
+    asset = FixedAsset.query.get_or_404(asset_id)
+    try:
+        code = delete_fixed_asset(asset, user_id=session.get("user_id"))
+        db.session.commit()
+        flash(f"تم حذف الأصل {code}", "success")
+        return redirect(url_for("fixed_assets.list_assets"))
+    except FixedAssetError as exc:
+        db.session.rollback()
+        flash(str(exc), "error")
+    except Exception as exc:
+        db.session.rollback()
+        flash(f"حدث خطأ: {exc}", "error")
+    return redirect(url_for("fixed_assets.view_asset", asset_id=asset_id))
 
 
 @fixed_assets_bp.route("/categories", methods=["GET", "POST"])

@@ -40,6 +40,28 @@
 
 <div class="settings-section-card">
   <div class="settings-section-header">
+    <h2><i class="fas fa-warehouse"></i> سياسة البيع والمخزون</h2>
+    <p>عند التفعيل يمكن البيع من أي فرع فيه مخزون، وتحديد فرع الخصم أثناء تجهيز الطلب للمندوب.</p>
+  </div>
+  <div class="settings-switch-row" style="display:flex;justify-content:space-between;gap:16px;align-items:center;flex-wrap:wrap;">
+    <div class="settings-switch-label">
+      <strong>البيع لكل الفروع</strong>
+      <span style="display:block;font-size:13px;color:var(--text-muted);margin-top:4px;">
+        أي فرع عنده كمية كافية ينسحب منه تلقائياً عند البيع، ويمكنك تغيير فرع الخصم من تفاصيل الطلب قبل/أثناء التجهيز للمندوب.
+      </span>
+    </div>
+    <label class="settings-toggle" style="display:inline-flex;align-items:center;gap:10px;cursor:pointer;">
+      <input type="checkbox" id="sellFromAllBranches" {% if sell_from_all_branches %}checked{% endif %}>
+      <span id="sellFromAllBranchesLabel" style="font-weight:700;font-size:13px;">{{ 'مفعّل' if sell_from_all_branches else 'معطّل' }}</span>
+    </label>
+  </div>
+  <div class="branch-actions" style="margin-top:14px;">
+    <button type="button" class="btn-action" onclick="saveSalesPolicy()"><i class="fas fa-save"></i> حفظ السياسة</button>
+  </div>
+</div>
+
+<div class="settings-section-card">
+  <div class="settings-section-header">
     <h2><i class="fas fa-plus-circle"></i> فرع جديد</h2>
   </div>
   <div class="branch-form-grid" id="newBranchForm">
@@ -94,6 +116,30 @@
 
 {% block settings_extra_script %}
 <script>
+(function () {
+  const checkbox = document.getElementById('sellFromAllBranches');
+  const label = document.getElementById('sellFromAllBranchesLabel');
+  if (!checkbox || !label) return;
+  checkbox.addEventListener('change', function () {
+    label.textContent = checkbox.checked ? 'مفعّل' : 'معطّل';
+  });
+})();
+
+async function saveSalesPolicy() {
+  const enabled = !!document.getElementById('sellFromAllBranches')?.checked;
+  const res = await fetch('/settings/branches/sales-policy', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sell_from_all_branches: enabled }),
+  });
+  const data = await res.json();
+  if (!data.success) {
+    alert(data.error || 'فشل حفظ السياسة');
+    return;
+  }
+  alert(data.message || 'تم الحفظ');
+}
+
 async function saveBranch(id) {
   let payload;
   if (id) {

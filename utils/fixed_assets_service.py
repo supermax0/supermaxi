@@ -418,7 +418,13 @@ def build_asset_from_form(data, user_id=None, as_draft=True):
     if settings.require_invoice_attachment and not (data.get("supplier_invoice_no") or "").strip():
         raise FixedAssetError("رقم فاتورة المورد مطلوب حسب الإعدادات")
 
-    status = (data.get("status") or ("draft" if as_draft else "active")).strip()
+    # عند الترحيل يجب أن تكون الحالة قابلة للترحيل (مسودة / تحت التركيب).
+    # اختيار "نشط" من النموذج كان يمنع الترحيل ويلغي حفظ الأصل بالكامل.
+    requested_status = (data.get("status") or "").strip()
+    if requested_status == "under_installation":
+        status = "under_installation"
+    else:
+        status = "draft"
     payment_method = (data.get("payment_method") or "cash").strip()
     paid_amount = _safe_int(data.get("paid_amount"))
     credit_amount = _safe_int(data.get("credit_amount"))
@@ -492,12 +498,61 @@ def build_asset_from_form(data, user_id=None, as_draft=True):
     return asset
 
 
-def post_asset_acquisition(asset: FixedAsset, user_id=None):
+def delete_fixed_asset(asset: FixedAsset, user_id=None):
+    """حذف أصل غير مُرحّل (مسودة أو بدون قيد شراء)."""
+    ensure_fixed_assets_schema()
+    settings = get_fixed_asset_settings()
+    if asset.acquisition_journal_entry_id:
+        if settings.prevent_delete_posted:
+            raise FixedAssetError("لا يمكن حذف أصل مُرحّل محاسبياً")
+        raise FixedAssetError("لا يمكن حذف أصل له قيد شراء — استخدم البيع أو الإتلاف")
     if asset.status not in ("draft", "under_installation"):
-        raise FixedAssetError("لا يمكن ترحيل هذا الأصل في حالته الحالية")
-    _enforce_period_date(asset.purchase_date or date.today(), "ترحيل شراء أصل")
+        raise FixedAssetError("يمكن حذف المسودات والأصول تحت التركيب غير المرحّلة فقط")
+
+    from models.fixed_asset_audit_log import FixedAssetAuditLog
+    from models.fixed_asset_attachment import FixedAssetAttachment
+    from models.fixed_asset_disposal_request import FixedAssetDisposalRequest
+    from models.fixed_asset_depreciation import FixedAssetDepreciation
+    from models.fixed_asset_maintenance import FixedAssetMaintenance
+    from utils.fixed_assets_attachments import delete_asset_attachment
+
+    snapshot = asset_snapshot(asset)
+    code = asset.asset_code
+    name = asset.name
+    asset_id = asset.id
+
+    for att in FixedAssetAttachment.query.filter_by(asset_id=asset_id).all():
+        delete_asset_attachment(att)
+
+    FixedAssetMovement.query.filter_by(asset_id=asset_id).delete(synchronize_session=False)
+    FixedAssetDepreciation.query.filter_by(asset_id=asset_id).delete(synchronize_session=False)
+    FixedAssetMaintenance.query.filter_by(asset_id=asset_id).delete(synchronize_session=False)
+    FixedAssetDisposalRequest.query.filter_by(asset_id=asset_id).delete(synchronize_session=False)
+    FixedAssetDisposal.query.filter_by(asset_id=asset_id).delete(synchronize_session=False)
+    FixedAssetAuditLog.query.filter_by(asset_id=asset_id).update(
+        {"asset_id": None}, synchronize_session=False
+    )
+
+    db.session.delete(asset)
+    db.session.flush()
+    log_fixed_asset_audit(
+        "delete",
+        "fixed_asset",
+        entity_id=asset_id,
+        asset_id=None,
+        old_values=snapshot,
+        summary=f"حذف أصل {code} — {name}",
+        user_id=user_id,
+    )
+    return code
+
+
+def post_asset_acquisition(asset: FixedAsset, user_id=None):
     if asset.acquisition_journal_entry_id:
         raise FixedAssetError("تم ترحيل قيد شراء هذا الأصل مسبقاً")
+    if asset.status in ("sold", "scrapped", "fully_depreciated"):
+        raise FixedAssetError("لا يمكن ترحيل هذا الأصل في حالته الحالية")
+    _enforce_period_date(asset.purchase_date or date.today(), "ترحيل شراء أصل")
     if asset.total_cost <= 0:
         raise FixedAssetError("تكلفة الأصل يجب أن تكون أكبر من صفر")
 

@@ -71,7 +71,9 @@ def _effective_paid_amount(inv):
     total = int(getattr(inv, "total", 0) or 0)
     ps = getattr(inv, "payment_status", None)
     st = getattr(inv, "status", None)
-    if ps == "مسدد" or st == "مسدد":
+    if ps in ("مرتجع", "ملغي", "راجع", "راجعة") or st in ("مرتجع", "ملغي", "راجع", "راجعة"):
+        return 0
+    if ps == "مسدد" or st in ("مسدد", "تم التوصيل"):
         return max(total, 0)
     if ps == "جزئي":
         paid = int(getattr(inv, "paid_amount", 0) or 0)

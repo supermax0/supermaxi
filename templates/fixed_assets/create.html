@@ -39,13 +39,22 @@
         </div>
         <div class="fa-field"><label>الحالة</label>
           <select name="status">
-            {% for key, label in statuses.items() if key in ['draft','active','under_installation'] %}
+            {# "نشط" يُعيَّن تلقائياً بعد ترحيل قيد الشراء — لا يُختار يدوياً عند الإنشاء #}
+            {% for key, label in statuses.items() if key in ['draft','under_installation'] %}
             <option value="{{ key }}" {% if form and form.status == key %}selected{% endif %}>{{ label }}</option>
             {% endfor %}
           </select>
         </div>
         <div class="fa-field"><label>الرقم التسلسلي</label><input name="serial_number" value="{{ form.serial_number if form else '' }}"></div>
         <div class="fa-field"><label>الموقع / الفرع</label><input name="location_text" value="{{ form.location_text if form else '' }}"></div>
+        <div class="fa-field"><label>المسؤول</label>
+          <select name="responsible_user_id">
+            <option value="">—</option>
+            {% for e in employees %}
+            <option value="{{ e.id }}" {% if form and form.responsible_user_id|string == e.id|string %}selected{% endif %}>{{ e.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
         <div class="fa-field full"><label>الوصف</label><textarea name="description" rows="2">{{ form.description if form else '' }}</textarea></div>
         <div class="fa-field"><label><input type="checkbox" name="is_depreciable" id="isDepreciable" checked> قابل للاستهلاك</label></div>
       </div>

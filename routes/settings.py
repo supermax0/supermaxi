@@ -721,6 +721,7 @@ def _require_active_admin():
 def branches_settings():
     from models.branch import Branch
     from utils.branch_migration import ensure_branch_schema
+    from utils.branch_sales import is_sell_from_all_branches_enabled
 
     try:
         ensure_branch_schema()
@@ -730,8 +731,42 @@ def branches_settings():
         branches = []
     return render_template(
         "settings_branches.html",
-        **_settings_ctx("branches", branches=branches),
+        **_settings_ctx(
+            "branches",
+            branches=branches,
+            sell_from_all_branches=is_sell_from_all_branches_enabled(),
+        ),
     )
+
+
+@settings_bp.route("/branches/sales-policy", methods=["POST"])
+def branches_sales_policy():
+    """حفظ سياسة البيع عبر الفروع."""
+    from utils.branch_sales import set_sell_from_all_branches
+
+    data = request.get_json(silent=True) or {}
+    enabled = bool(data.get("sell_from_all_branches"))
+    try:
+        set_sell_from_all_branches(enabled)
+        db.session.commit()
+        try:
+            log_activity(
+                "update",
+                "settings",
+                "تفعيل البيع لكل الفروع" if enabled else "تعطيل البيع لكل الفروع",
+                entity_type="system_settings",
+                payload={"sell_from_all_branches": enabled},
+            )
+        except Exception:
+            pass
+        return jsonify({
+            "success": True,
+            "message": "تم حفظ سياسة البيع عبر الفروع",
+            "sell_from_all_branches": enabled,
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
 
 
 @settings_bp.route("/branches/save", methods=["POST"])

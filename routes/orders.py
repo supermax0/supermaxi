@@ -66,6 +66,25 @@ orders_bp = Blueprint("orders", __name__, url_prefix="/orders")
 _ORDERS_PUBLIC_PREFIXES = ("/orders/p/o/", "/orders/invoice-video/")
 
 
+@orders_bp.context_processor
+def _orders_branch_sales_ctx():
+    try:
+        from utils.branch_sales import (
+            active_branches_for_sales,
+            is_sell_from_all_branches_enabled,
+        )
+
+        return {
+            "sell_from_all_branches": is_sell_from_all_branches_enabled(),
+            "company_branches": [
+                {"id": b.id, "name": b.name, "code": b.code}
+                for b in active_branches_for_sales()
+            ],
+        }
+    except Exception:
+        return {"sell_from_all_branches": False, "company_branches": []}
+
+
 @orders_bp.before_request
 def _orders_mutations_guard():
     if "user_id" in session:
@@ -1214,6 +1233,24 @@ def details(order_id):
         )
     ).count()
 
+    from utils.branch_sales import (
+        branches_stock_for_product,
+        is_sell_from_all_branches_enabled,
+        order_can_edit_fulfillment,
+    )
+    from models.branch import Branch
+
+    branch_ids = {i.fulfillment_branch_id for i in items if i.fulfillment_branch_id}
+    if order.branch_id:
+        branch_ids.add(order.branch_id)
+    branch_names = {}
+    if branch_ids:
+        for branch in Branch.query.filter(Branch.id.in_(list(branch_ids))).all():
+            branch_names[branch.id] = branch.name
+
+    sell_all = is_sell_from_all_branches_enabled()
+    can_edit_fulfillment = sell_all and order_can_edit_fulfillment(order)
+
     return jsonify({
         "order": {
             "id": order.id,
@@ -1236,16 +1273,114 @@ def details(order_id):
             "shipping_status": order.shipping_status,
             "note": order.note,
             "video": _order_video_payload(order),
+            "branch_id": order.branch_id,
+            "branch_name": branch_names.get(order.branch_id) if order.branch_id else None,
+            "sell_from_all_branches": sell_all,
+            "can_edit_fulfillment": can_edit_fulfillment,
         },
         "items": [
             {
+                "id": i.id,
+                "product_id": i.product_id,
                 "name": i.product_name,
                 "qty": i.quantity,
                 "price": i.price,
-                "total": i.total
+                "total": i.total,
+                "fulfillment_branch_id": i.fulfillment_branch_id,
+                "fulfillment_branch_name": branch_names.get(i.fulfillment_branch_id) if i.fulfillment_branch_id else None,
+                "branch_stocks": branches_stock_for_product(i.product_id) if can_edit_fulfillment else [],
             } for i in items
         ]
     })
+
+
+@orders_bp.route("/update-fulfillment-branch", methods=["POST"])
+def update_fulfillment_branch():
+    """تحديد/تغيير فرع خصم المخزون لصنف أو لكل أصناف الطلب أثناء التجهيز."""
+    denied = guard_permission("can_see_orders", json=True)
+    if denied:
+        return denied
+
+    from utils.branch_sales import (
+        is_sell_from_all_branches_enabled,
+        order_can_edit_fulfillment,
+        reassign_item_fulfillment_branch,
+    )
+    from utils.branch_stock_service import BranchStockError
+
+    if not is_sell_from_all_branches_enabled():
+        return jsonify({
+            "success": False,
+            "error": "خيار البيع لكل الفروع غير مفعّل في إعدادات الشركة",
+        }), 400
+
+    data = request.get_json(silent=True) or {}
+    order_id = data.get("order_id") or data.get("id")
+    branch_id = data.get("branch_id") or data.get("fulfillment_branch_id")
+    item_id = data.get("item_id")
+
+    if not order_id or not branch_id:
+        return jsonify({"success": False, "error": "رقم الطلب والفرع مطلوبان"}), 400
+
+    try:
+        order_id = int(order_id)
+        branch_id = int(branch_id)
+        item_id = int(item_id) if item_id not in (None, "", 0, "0") else None
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "error": "بيانات غير صالحة"}), 400
+
+    order = Invoice.query.get_or_404(order_id)
+    denied = guard_order_access(order, json=True)
+    if denied:
+        return denied
+
+    if not order_can_edit_fulfillment(order):
+        return jsonify({
+            "success": False,
+            "error": "لا يمكن تغيير فرع الخصم بعد اكتمال أو إلغاء الطلب",
+        }), 400
+
+    items = OrderItem.query.filter_by(invoice_id=order.id).all()
+    if item_id:
+        items = [i for i in items if i.id == item_id]
+        if not items:
+            return jsonify({"success": False, "error": "الصنف غير موجود في الطلب"}), 404
+
+    before = snapshot_attrs(order, *INVOICE_SNAPSHOT_FIELDS)
+    try:
+        for item in items:
+            reassign_item_fulfillment_branch(item, branch_id)
+        if not item_id:
+            order.branch_id = branch_id
+        db.session.commit()
+        try:
+            log_mutation(
+                "update",
+                "orders",
+                "invoice",
+                order.id,
+                before,
+                snapshot_attrs(order, *INVOICE_SNAPSHOT_FIELDS),
+                f"تحديث فرع الخصم للطلب #{order.id}",
+            )
+        except Exception:
+            pass
+
+        from models.branch import Branch
+
+        branch = Branch.query.get(branch_id)
+        return jsonify({
+            "success": True,
+            "message": "تم تحديث فرع الخصم",
+            "branch_id": branch_id,
+            "branch_name": branch.name if branch else None,
+        })
+    except BranchStockError as exc:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(exc)}), 400
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": _db_user_facing_error(e)}), 500
 
 
 @orders_bp.route("/<int:order_id>")

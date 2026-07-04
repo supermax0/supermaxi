@@ -13,6 +13,7 @@
 .fa-table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .fa-table th, .fa-table td { padding: 10px; border: 1px solid var(--border-light); text-align: right; }
 .fa-btn { padding: 10px 16px; border-radius: 10px; border: none; background: var(--success); color: #fff; cursor: pointer; font-weight: 700; }
+.fa-btn-danger { background: #dc2626; color: #fff; }
 .badge { padding: 4px 10px; border-radius: 999px; background: rgba(99,102,241,0.15); }
 </style>
 <div class="fa-page">
@@ -26,6 +27,13 @@
       {% if asset.status == 'draft' and not asset.acquisition_journal_entry_id %}
       <form method="post" action="/assets/{{ asset.id }}/post" onsubmit="return confirm('ترحيل قيد شراء الأصل؟');" style="display:inline;">
         <button type="submit" class="fa-btn">ترحيل قيد الشراء</button>
+      </form>
+      {% endif %}
+      {% if asset.status in ['draft','under_installation'] and not asset.acquisition_journal_entry_id %}
+      <form method="post" action="/assets/{{ asset.id }}/delete"
+            onsubmit="return confirm('حذف الأصل {{ asset.asset_code }}؟ لا يمكن التراجع.');"
+            style="display:inline;">
+        <button type="submit" class="fa-btn fa-btn-danger">حذف الأصل</button>
       </form>
       {% endif %}
       <a href="/assets/{{ asset.id }}/card" target="_blank" class="fa-btn" style="background:var(--primary);text-decoration:none;display:inline-block;">بطاقة / طباعة</a>
