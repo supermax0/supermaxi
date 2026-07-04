@@ -633,7 +633,8 @@
                   <span>{{ _('shipping_action_statement') }}</span>
                 </a>
                 {% if c.opening_balance and c.opening_balance > 0 %}
-                <button class="btn btn-primary" onclick="collectOpeningBalance({{ c.id }}, {{ c.opening_balance }}, {{ c.name|tojson }})"
+                <button class="btn btn-primary" type="button"
+                  onclick="collectOpeningBalance({{ c.id }}, {{ c.opening_balance }}, this)"
                   style="padding: 8px 16px; min-width: auto;">
                   <span>💵</span>
                   <span>استلام</span>
@@ -792,7 +793,11 @@
         });
     }
 
-    function collectOpeningBalance(companyId, maxAmount, companyName) {
+    function collectOpeningBalance(companyId, maxAmount, triggerEl) {
+      const row = triggerEl && triggerEl.closest ? triggerEl.closest("tr") : null;
+      const companyName = row
+        ? (row.getAttribute("data-company-name") || "")
+        : String(triggerEl || "");
       const formattedMax = Number(maxAmount || 0).toLocaleString("en-US");
       const raw = prompt(`استلام من شركة ${companyName}\nالرصيد الافتتاحي المتبقي: ${formattedMax} د.ع\n\nأدخل مبلغ القبض:`, maxAmount || "");
       if (raw === null) return;

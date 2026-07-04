@@ -1453,9 +1453,9 @@
         </div>
 
         <div class="grid">
-          <input id="name" placeholder="الاسم" class="modal-input">
-          <input id="phone" placeholder="رقم الهاتف" class="modal-input">
-          <input id="phone2" placeholder="رقم آخر" class="modal-input">
+          <input id="name" placeholder="الاسم" class="modal-input" autocomplete="name">
+          <input id="phone" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="رقم الهاتف" class="modal-input" autocomplete="tel">
+          <input id="phone2" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="رقم آخر" class="modal-input" autocomplete="tel">
           <select id="city" class="modal-input">
             <option value="{{ primary_province }}">{{ primary_province }}</option>
             {% for p in tenant_group_provinces %}
@@ -1472,7 +1472,7 @@
           <textarea id="ocrText" style="height:100px" class="modal-input"></textarea>
           <div class="grid">
             <input id="ocrName" placeholder="الاسم" class="modal-input">
-            <input id="ocrPhone" placeholder="رقم الهاتف" class="modal-input">
+            <input id="ocrPhone" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="رقم الهاتف" class="modal-input" autocomplete="tel">
           </div>
           <input id="ocrAddress" placeholder="العنوان" class="modal-input">
           <select id="ocrCity" class="modal-input">
@@ -1861,7 +1861,7 @@
             if (nameInput) nameInput.value = ""
             if (phoneInput) phoneInput.value = ""
             if (phone2Input) phone2Input.value = ""
-            if (cityInput) cityInput.value = ""
+            if (cityInput && cityInput.options.length) cityInput.selectedIndex = 0
             if (addressInput) addressInput.value = ""
             toast("✅ تم حفظ الزبون بنجاح")
             closeCustomerModal()

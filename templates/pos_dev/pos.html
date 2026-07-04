@@ -404,11 +404,11 @@
 
       <div class="pos-modal-form">
 
-        <input id="name" class="pos-input" placeholder="الاسم">
+        <input id="name" class="pos-input" placeholder="الاسم" autocomplete="name">
 
-        <input id="phone" class="pos-input" placeholder="رقم الهاتف">
+        <input id="phone" class="pos-input" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="رقم الهاتف" autocomplete="tel">
 
-        <input id="phone2" class="pos-input" placeholder="رقم آخر">
+        <input id="phone2" class="pos-input" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="رقم آخر" autocomplete="tel">
 
         <select id="city" class="pos-select">
           <option value="{{ primary_province }}">{{ primary_province }}</option>
@@ -430,7 +430,7 @@
 
           <input id="ocrName" class="pos-input" placeholder="الاسم">
 
-          <input id="ocrPhone" class="pos-input" placeholder="الهاتف">
+          <input id="ocrPhone" class="pos-input" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="الهاتف" autocomplete="tel">
 
           <input id="ocrAddress" class="pos-input" placeholder="العنوان">
 
@@ -706,7 +706,7 @@
   }</script>
 
   <script src="{{ url_for('static', filename='js/notification-sound.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/pos-white-pro.js') }}?v=20260704-customer-select"></script>
+  <script src="{{ url_for('static', filename='js/pos-white-pro.js') }}?v=20260704-customer-form"></script>
   <script>
     function openPosProfileModal() {
       document.getElementById('posProfileModal')?.classList.add('show');

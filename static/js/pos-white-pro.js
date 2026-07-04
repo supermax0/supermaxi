@@ -541,7 +541,21 @@
     }
   }
 
+  function resetCustomerForm() {
+    const name = $("name");
+    const phone = $("phone");
+    const phone2 = $("phone2");
+    const address = $("address");
+    const city = $("city");
+    if (name) name.value = "";
+    if (phone) phone.value = "";
+    if (phone2) phone2.value = "";
+    if (address) address.value = "";
+    if (city && city.options.length) city.selectedIndex = 0;
+  }
+
   function openCustomerModal() {
+    resetCustomerForm();
     $("customerModal")?.classList.add("show");
     $("name")?.focus();
   }
@@ -561,6 +575,8 @@
     if (saveBtn?.dataset.busy === "1") return;
     if (saveBtn) saveBtn.dataset.busy = "1";
 
+    const cityValue = ($("city")?.value || "").trim();
+
     fetch("/pos/add-customer", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -568,7 +584,7 @@
         name,
         phone,
         phone2: ($("phone2")?.value || "").trim(),
-        city: $("city")?.value || "",
+        city: cityValue,
         address: ($("address")?.value || "").trim(),
       }),
     })
@@ -583,13 +599,14 @@
           selectedCustomerId = d.id;
           selectedCustomerName = d.name || name;
           selectedCustomerPhone = d.phone || phone;
-          selectedCustomerCity = ($("city")?.value || "").trim();
+          selectedCustomerCity = cityValue;
           updateCustomerDisplay({
             id: d.id,
             name: selectedCustomerName,
             phone: selectedCustomerPhone,
             city: selectedCustomerCity,
           });
+          resetCustomerForm();
           toast("تم حفظ الزبون بنجاح");
           closeCustomerModal();
         } else {
