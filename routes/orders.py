@@ -2183,10 +2183,12 @@ def update_barcode(invoice_id):
 @orders_bp.route("/update-shipping-barcode/<int:invoice_id>", methods=["POST"])
 def update_shipping_barcode(invoice_id):
     invoice = Invoice.query.get_or_404(invoice_id)
+    before = snapshot_attrs(invoice, *INVOICE_SNAPSHOT_FIELDS)
     data = request.get_json() or {}
     
     shipping_barcode = data.get("shipping_barcode", "").strip()
     shipping_company_id = data.get("shipping_company_id")
+    shipping_company = invoice.shipping_company
 
     if shipping_company_id is not None and shipping_company_id != "":
         try:
@@ -2201,13 +2203,30 @@ def update_shipping_barcode(invoice_id):
         return jsonify({"success": False, "error": "اختر شركة النقل"}), 400
 
     invoice.shipping_barcode = shipping_barcode if shipping_barcode else None
+    invoice.status = "جاري الشحن"
+    invoice.shipping_status = "جاري الشحن"
     
     db.session.commit()
+    try:
+        log_mutation(
+            "update",
+            "orders",
+            "invoice",
+            invoice.id,
+            before,
+            snapshot_attrs(invoice, *INVOICE_SNAPSHOT_FIELDS),
+            f"حفظ باركود شركة النقل وتحويل الطلب للشحن #{invoice.id}",
+        )
+    except Exception:
+        pass
     
     return jsonify({
         "success": True,
-        "message": "تم حفظ باركود شركة النقل بنجاح",
+        "message": "تم حفظ باركود شركة النقل وتحويل الطلب إلى جاري الشحن",
+        "status": invoice.status,
+        "shipping_status": invoice.shipping_status,
         "shipping_company_id": invoice.shipping_company_id,
+        "shipping_company": shipping_company.name if shipping_company else None,
         "shipping_barcode": invoice.shipping_barcode,
     })
 

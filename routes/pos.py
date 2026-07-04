@@ -17,8 +17,8 @@ from utils.permission_checks import guard_permission
 from utils.activity_logger import INVOICE_SNAPSHOT_FIELDS, log_activity, snapshot_attrs
 from utils.branch_migration import ensure_branch_schema, get_default_branch
 from utils.branch_context import current_branch_id, init_branch_context
-from utils.branch_stock_service import deduct_stock, get_branch_stock, BranchStockError
-from utils.order_shipping import add_shipping_line_item
+from utils.branch_stock_service import deduct_stock, get_branch_stock, receive_stock, BranchStockError
+from utils.order_shipping import add_shipping_line_item, is_shipping_item
 from utils.product_delivery_fees import fee_for_cart_items
 
 pos_bp = Blueprint("pos", __name__, url_prefix="/pos")
@@ -146,7 +146,7 @@ def pos():
             invoice = Invoice.query.get(order_id)
             if invoice:
                 # جلب عناصر الطلب
-                items = OrderItem.query.filter_by(invoice_id=invoice.id).all()
+                items = [item for item in OrderItem.query.filter_by(invoice_id=invoice.id).all() if not is_shipping_item(item)]
                 # إنشاء list من dictionaries للعناصر
                 items_list = []
                 for item in items:
@@ -154,7 +154,10 @@ def pos():
                     product_stock = 0
                     if item.product:
                         # الكمية المتاحة للتعديل = الكمية في المخزن + الكمية المحجوزة في هذا الطلب
-                        product_stock = (item.product.quantity or 0) + (item.quantity or 0)
+                        if item.fulfillment_branch_id:
+                            product_stock = get_branch_stock(item.fulfillment_branch_id, item.product.id) + (item.quantity or 0)
+                        else:
+                            product_stock = (item.product.quantity or 0) + (item.quantity or 0)
                     
                     items_list.append({
                         "product_id": int(item.product_id),
@@ -162,7 +165,8 @@ def pos():
                         "product_name": str(item.product_name),
                         "qty": int(item.quantity),
                         "price": float(item.price) if item.price else 0.0,
-                        "stock": int(product_stock)
+                        "stock": int(product_stock),
+                        "fulfillment_branch_id": int(item.fulfillment_branch_id) if item.fulfillment_branch_id else None,
                     })
                 
                 # التأكد من أن جميع القيم قابلة للـ JSON serialization
@@ -509,23 +513,61 @@ def create_order():
                 page_name = None
 
     # ===============================
-    # إنشاء الفاتورة
+    # إنشاء / تعديل الفاتورة
     # ===============================
-    invoice = Invoice(
-        customer_id=customer_id,
-        customer_name=customer_name,
-        employee_id=employee.id,
-        employee_name=employee.name,
-        branch_id=current_branch_id() or (get_default_branch().id if get_default_branch() else None),
-        total=0,
-        status="تم الطلب",
-        payment_status="غير مسدد",
-        note=note,
-        scheduled_date=scheduled_date,
-        page_id=page_id,
-        page_name=page_name,
-        created_at=datetime.utcnow()
-    )
+    editing_order_id = data.get("order_id")
+    invoice = None
+    if editing_order_id:
+        try:
+            invoice = Invoice.query.get(int(editing_order_id))
+        except (TypeError, ValueError):
+            invoice = None
+        if not invoice:
+            return jsonify({"error": "الطلب المراد تعديله غير موجود"}), 404
+        if (invoice.status or "") in ("تم التوصيل", "مسدد", "ملغي", "راجع", "مرتجع", "راجعة"):
+            return jsonify({"error": "لا يمكن تعديل طلب مكتمل أو ملغي أو راجع"}), 400
+
+        # إرجاع مخزون عناصر الطلب القديمة داخل نفس المعاملة قبل فحص الكميات الجديدة.
+        old_items = OrderItem.query.filter_by(invoice_id=invoice.id).all()
+        for old_item in old_items:
+            if is_shipping_item(old_item):
+                db.session.delete(old_item)
+                continue
+            if old_item.product:
+                old_qty = int(old_item.quantity or 0)
+                if old_item.fulfillment_branch_id:
+                    receive_stock(old_item.fulfillment_branch_id, old_item.product.id, old_qty)
+                else:
+                    old_item.product.quantity = int(old_item.product.quantity or 0) + old_qty
+            db.session.delete(old_item)
+        db.session.flush()
+
+        invoice.customer_id = customer_id
+        invoice.customer_name = customer_name
+        invoice.employee_id = employee.id
+        invoice.employee_name = employee.name
+        invoice.branch_id = current_branch_id() or invoice.branch_id or (get_default_branch().id if get_default_branch() else None)
+        invoice.total = 0
+        invoice.note = note
+        invoice.scheduled_date = scheduled_date
+        invoice.page_id = page_id
+        invoice.page_name = page_name
+    else:
+        invoice = Invoice(
+            customer_id=customer_id,
+            customer_name=customer_name,
+            employee_id=employee.id,
+            employee_name=employee.name,
+            branch_id=current_branch_id() or (get_default_branch().id if get_default_branch() else None),
+            total=0,
+            status="تم الطلب",
+            payment_status="غير مسدد",
+            note=note,
+            scheduled_date=scheduled_date,
+            page_id=page_id,
+            page_name=page_name,
+            created_at=datetime.utcnow()
+        )
 
     db.session.add(invoice)
     db.session.flush()  # للحصول على invoice.id
@@ -622,9 +664,9 @@ def create_order():
         db.session.commit()
         try:
             log_activity(
-                "create",
+                "update" if editing_order_id else "create",
                 "pos",
-                f"بيع جديد — فاتورة #{invoice.id} بمبلغ {total}",
+                f"{'تعديل طلب' if editing_order_id else 'بيع جديد'} — فاتورة #{invoice.id} بمبلغ {total}",
                 entity_type="invoice",
                 entity_id=invoice.id,
                 payload={"invoice": snapshot_attrs(invoice, *INVOICE_SNAPSHOT_FIELDS), "items_count": len(items)},
@@ -634,7 +676,8 @@ def create_order():
         return jsonify({
             "success": True,
             "invoice_id": invoice.id,
-            "total": total
+            "total": total,
+            "updated": bool(editing_order_id),
         })
     except Exception as e:
         db.session.rollback()

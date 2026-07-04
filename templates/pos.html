@@ -1753,6 +1753,14 @@
       items = Array.isArray(initialOrderData.items) ? initialOrderData.items : [];
       console.log("Loading order data:", editingOrderId, selectedCustomerId, items);
     }
+    const editStockByProduct = {};
+    if (initialOrderData && Array.isArray(initialOrderData.items)) {
+      initialOrderData.items.forEach(function (it) {
+        const pid = Number(it.product_id);
+        if (!pid) return;
+        editStockByProduct[pid] = Math.max(Number(editStockByProduct[pid] || 0), Number(it.stock || it.qty || 0));
+      });
+    }
 
     const toast = (m) => {
       const t = document.getElementById("toast")
@@ -1937,14 +1945,17 @@
 
     function addItem(id, name, price, stock) {
       const idNum = typeof id === 'string' ? parseInt(id, 10) : id;
-      const stockNum = typeof stock === 'string' ? parseInt(stock, 10) : (stock || 0);
+      const rawStock = typeof stock === 'string' ? parseInt(stock, 10) : (stock || 0);
+      const stockNum = Math.max(rawStock || 0, Number(editStockByProduct[idNum] || 0));
       const item = items.find(i => i.product_id === idNum);
 
       if (item) {
-        if (item.qty + 1 > stockNum) {
-          toast(`⚠ الكمية المتوفرة (${stockNum}) فقط!`);
+        const itemStock = Math.max(Number(item.stock || 0), stockNum);
+        if (item.qty + 1 > itemStock) {
+          toast(`⚠ الكمية المتوفرة (${itemStock}) فقط!`);
           return;
         }
+        item.stock = itemStock;
         item.qty++;
         toast(`✅ تم زيادة كمية ${name}`);
       } else {
@@ -2174,6 +2185,7 @@
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          order_id: editingOrderId || null,
           customer_id: selectedCustomerId,
           items: items,
           note: notes || null,
@@ -2292,6 +2304,7 @@
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          order_id: editingOrderId || null,
           customer_id: selectedCustomerId,
           items: items,
           note: notes || null,

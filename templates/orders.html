@@ -283,7 +283,10 @@
     "page_name": {{ (o.page_name or '—')|tojson }},
     "city": {{ (o.customer.city if o.customer and o.customer.city else '—')|tojson }},
     "address": {{ (o.customer.address if o.customer and o.customer.address else '—')|tojson }},
+    "shipping_company_id": {{ o.shipping_company_id or 'null' }},
     "shipping_company": {{ (o.shipping_company.name if o.shipping_company else '—')|tojson }},
+    "shipping_barcode": {{ (o.shipping_barcode or '—')|tojson }},
+    "shipping_status": {{ (o.shipping_status or '—')|tojson }},
     "delivery_agent_id": {{ o.delivery_agent_id or 'null' }},
     "delivery_agent": {% if o.delivery_agent_id and o.delivery_agent %}{{ o.delivery_agent.name|tojson }}{% else %}"—"{% endif %},
     "note": {{ (o.note or '')|tojson }},
@@ -3354,6 +3357,26 @@
     }).then(function (r) { return r.json(); }).then(function (data) {
       if (data.success) {
         showToast(data.message || 'تم الحفظ', 'success');
+        if (gridApi) {
+          gridApi.forEachNode(function (node) {
+            if (node.data && Number(node.data.id) === Number(orderId)) {
+              const rd = node.data;
+              rd.status = data.status || 'جاري الشحن';
+              rd.shipping_status = data.shipping_status || 'جاري الشحن';
+              rd.shipping_company_id = data.shipping_company_id || parseInt(companyId, 10);
+              rd.shipping_company = data.shipping_company || (select && select.options[select.selectedIndex] ? select.options[select.selectedIndex].text : '—');
+              rd.shipping_barcode = data.shipping_barcode || barcode;
+              rd.can_cancel = false;
+              gridApi.applyTransaction({ update: [rd] });
+              gridApi.refreshCells({
+                rowNodes: [node],
+                columns: ['status', 'shipping_company', 'shipping_barcode', 'actions'],
+                force: true
+              });
+            }
+          });
+          updateStats();
+        }
         if (options.closeOnSuccess) {
           const modal = document.querySelector('.modal[data-order-details]');
           if (modal) modal.remove();
@@ -4241,6 +4264,7 @@
       { headerName: "المحافظة", field: "city", width: 130 },
       { headerName: "العنوان", field: "address", width: 220 },
       { headerName: "شركة النقل", field: "shipping_company", width: 150 },
+      { headerName: "باركود النقل", field: "shipping_barcode", width: 160 },
       { headerName: "مندوب التوصيل", field: "delivery_agent", width: 150 },
       { headerName: "الملاحظات", field: "note", width: 200 },
     ];
@@ -4273,6 +4297,7 @@
         try {
           const savedVisible = JSON.parse(localStorage.getItem("orders_table_visible_columns") || "[]");
           if (Array.isArray(savedVisible) && savedVisible.length > 0) {
+            if (!savedVisible.includes("shipping_barcode")) savedVisible.push("shipping_barcode");
             const allCols = gridApi.getColumns();
             const hideCols = allCols.filter(c => {
               const id = c.getColId();
