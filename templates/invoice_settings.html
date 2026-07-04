@@ -220,12 +220,23 @@
         </div>
       </div>
 
+      <!-- Return Policy -->
+      <div class="settings-card">
+        <h3 class="card-title">سياسة الاسترجاع والاستبدال</h3>
+        <div class="form-group">
+          <label>النص</label>
+          <textarea id="return_policy_notes" class="form-textarea" rows="4" onchange="updatePreview()">{{ settings.return_policy_notes or '' }}</textarea>
+          <small>يظهر في قالب المتجر الإلكتروني وغيره من القوالب التي تعرض سياسة الاسترجاع.</small>
+        </div>
+      </div>
+
       <!-- Warranty Notes -->
       <div class="settings-card">
-        <h3 class="card-title">ملاحظات الضمان</h3>
+        <h3 class="card-title">ملاحظات الضمان والصيانة</h3>
         <div class="form-group">
           <label>النص</label>
           <textarea id="warranty_notes" class="form-textarea" rows="6" onchange="updatePreview()">{{ settings.warranty_notes }}</textarea>
+          <small>كل سطر يظهر كنقطة منفصلة في الفاتورة.</small>
         </div>
       </div>
 
@@ -1245,6 +1256,7 @@ function saveSettings() {
     company_subtitle: document.getElementById('company_subtitle').value,
     company_address: document.getElementById('company_address').value,
     company_phone: document.getElementById('company_phone').value,
+    return_policy_notes: document.getElementById('return_policy_notes').value,
     warranty_notes: document.getElementById('warranty_notes').value,
     warranty_card_background: document.getElementById('warranty_card_background').value,
     logo_circle_text: document.getElementById('logo_circle_text').value,
@@ -1488,6 +1500,7 @@ function updatePreview() {
   s.company_subtitle = document.getElementById('company_subtitle').value;
   s.company_address = document.getElementById('company_address').value;
   s.company_phone = document.getElementById('company_phone').value;
+  s.return_policy_notes = document.getElementById('return_policy_notes').value;
   s.warranty_notes = document.getElementById('warranty_notes').value;
   s.warranty_card_background = document.getElementById('warranty_card_background').value;
   s.logo_circle_text = document.getElementById('logo_circle_text').value;

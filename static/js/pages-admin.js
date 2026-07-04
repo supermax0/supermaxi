@@ -111,6 +111,45 @@ function deletePage(id) {
     });
 }
 
+function renamePage(pageId, currentName) {
+  const nextName = prompt(pagesT('pages_rename_prompt'), currentName || '');
+  if (nextName === null) return;
+  const trimmed = nextName.trim();
+  if (!trimmed) {
+    showToast(pagesT('pages_rename_empty'), 'warning');
+    return;
+  }
+  if (trimmed === (currentName || '').trim()) return;
+
+  showLoading();
+  fetch(`/pages/rename/${pageId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: trimmed }),
+  })
+    .then((r) => r.json())
+    .then((d) => {
+      hideLoading();
+      if (!d.success) {
+        showToast(d.error || pagesT('pages_err_generic'), 'error');
+        return;
+      }
+      showToast(d.message || pagesT('pages_toast_renamed'), 'success');
+      const label = document.querySelector(`.page-name-display[data-page-id="${pageId}"]`);
+      if (label) label.textContent = d.name || trimmed;
+      document.querySelectorAll(`.js-assign-employees-btn[data-page-id="${pageId}"]`).forEach((btn) => {
+        btn.dataset.pageName = d.name || trimmed;
+      });
+      document.querySelectorAll(`.js-rename-page-btn[data-page-id="${pageId}"]`).forEach((btn) => {
+        btn.dataset.pageName = d.name || trimmed;
+      });
+    })
+    .catch(() => {
+      hideLoading();
+      showToast(pagesT('pages_err_connection'), 'error');
+    });
+}
+
 let assignPageId = null;
 
 function updateAssignSelectedCount() {
@@ -241,6 +280,14 @@ function openAddPageSection() {
 document.addEventListener('DOMContentLoaded', () => {
   restoreSectionStates();
 
+  document.querySelectorAll('.js-rename-page-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const pageId = parseInt(btn.dataset.pageId, 10);
+      const pageName = btn.dataset.pageName || '';
+      if (pageId) renamePage(pageId, pageName);
+    });
+  });
+
   document.querySelectorAll('.js-assign-employees-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       const pageId = parseInt(btn.dataset.pageId, 10);
@@ -275,6 +322,7 @@ window.toggleSection = toggleSection;
 window.handleAddPage = handleAddPage;
 window.updateVisibility = updateVisibility;
 window.deletePage = deletePage;
+window.renamePage = renamePage;
 window.openAssignEmployees = openAssignEmployees;
 window.closeAssignModal = closeAssignModal;
 window.saveAssignEmployees = saveAssignEmployees;

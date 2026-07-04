@@ -1677,7 +1677,44 @@ def invoice_page(order_id):
     )
 
 # =====================================================
-# Print Batch Invoices (single printable page)
+# Print Selected Invoices (each with active template)
+# =====================================================
+@orders_bp.route("/print-invoices")
+def print_invoices():
+    denied = guard_permission("can_see_orders")
+    if denied:
+        return denied
+
+    ids_param = request.args.get("ids", "").strip()
+    if not ids_param:
+        return "لا توجد فواتير محددة", 400
+    try:
+        ids_list = [int(x) for x in ids_param.split(",") if x.strip().isdigit()]
+    except Exception:
+        return "صيغة معرفات غير صحيحة", 400
+    if not ids_list:
+        return "لا توجد فواتير محددة", 400
+
+    invoices = Invoice.query.filter(Invoice.id.in_(ids_list)).all()
+    id_to_invoice = {inv.id: inv for inv in invoices}
+    ordered_ids = []
+    for order_id in ids_list:
+        order = id_to_invoice.get(order_id)
+        if not order:
+            continue
+        denied = guard_order_access(order)
+        if denied:
+            return denied
+        ordered_ids.append(order_id)
+
+    if not ordered_ids:
+        return "لا توجد فواتير محددة", 400
+
+    return render_template("print_invoices.html", ids=ordered_ids)
+
+
+# =====================================================
+# Print Batch Invoices (legacy default template)
 # =====================================================
 @orders_bp.route("/print-batch")
 def print_batch():
@@ -1747,9 +1784,13 @@ def print_batch():
         })
 
     _, template_styles = _tenant_invoice_template_bundle()
-    template_file = "print_batch.html"
 
-    return render_template(template_file, batch=batch, settings=settings, template_styles=template_styles)
+    return render_template(
+        "print_batch.html",
+        batch=batch,
+        settings=settings,
+        template_styles=template_styles,
+    )
 
 # =====================================================
 # Export Excel (All Orders)

@@ -2703,22 +2703,15 @@
       showToast({{ _('orders_err_select_for_print')|tojson }}, "warning");
       return;
     }
-    // اطبع كل فاتورة من نفس مسار /orders/invoice حتى يُستخدم القالب النشط.
-    const firstUrl = `/orders/invoice/${encodeURIComponent(selected[0])}`;
-    const firstWindow = window.open(firstUrl, '_blank');
-    if (!firstWindow) {
+    // صفحة واحدة — كل فاتورة بقالبها النشط داخل iframe
+    const url = `/orders/print-invoices?ids=${encodeURIComponent(selected.join(","))}`;
+    const printWindow = window.open(url, '_blank');
+    if (!printWindow) {
       showToast({{ _('orders_err_popup_blocked')|tojson }}, "error");
-      setTimeout(() => window.location.href = firstUrl, 1000);
+      setTimeout(() => window.location.href = url, 1000);
       return;
     }
-    setTimeout(() => firstWindow?.focus(), 400);
-
-    // افتح البقية تدريجياً لتقليل احتمال حظر النوافذ المنبثقة.
-    for (let i = 1; i < selected.length; i++) {
-      const id = selected[i];
-      const url = `/orders/invoice/${encodeURIComponent(id)}`;
-      setTimeout(() => window.open(url, '_blank'), i * 350);
-    }
+    setTimeout(() => printWindow?.focus(), 500);
   }
 
   function printSelectedReport() {

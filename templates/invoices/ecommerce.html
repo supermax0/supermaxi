@@ -521,8 +521,10 @@
                     <h1>{{ settings.store_name if settings and settings.store_name else 'E-Store' }}</h1>
                     <p>{{ settings.company_subtitle if settings and settings.company_subtitle else 'واجهة طلبات احترافية وسريعة' }}</p>
                     <div class="address">
-                        {% if settings and settings.company_address %}{{ settings.company_address }}<br>{% endif %}
-                        <span class="address-phone">07711272744</span>
+                        {% if settings and settings.company_address %}{{ settings.company_address }}{% endif %}
+                        {% if settings and settings.company_phone %}
+                        <br><span class="address-phone">{{ settings.company_phone }}</span>
+                        {% endif %}
                     </div>
                 </div>
                 <div class="invoice-meta">
@@ -592,18 +594,20 @@
             <div class="summary-area">
                 <div class="policy">
                     <h4>سياسة الاسترجاع والاستبدال</h4>
-                    <p>{{ settings.invoice_note if settings and settings.invoice_note else 'يحق للعميل استرجاع أو استبدال المنتجات خلال 3 أيام من تاريخ الاستلام بشرط أن تكون بحالتها الأصلية غير مستخدمة. للاسترجاع، يرجى التواصل معنا وتزويدنا برقم الطلب المبين أعلاه.' }}</p>
+                    <p>{{ settings.invoice_note if settings and settings.invoice_note else 'يحق للعميل استرجاع أو استبدال المنتجات خلال 3 أيام من تاريخ الاستلام بشرط أن تكون بحالتها الأصلية غير مستخدمة.' }}</p>
 
+                    {% if settings and settings.warranty_notes %}
                     <div class="warranty-block">
                         <h4>الضمان والصيانة</h4>
                         <ul>
-                            <li>مدة الضمان: سنة واحدة.</li>
-                            <li>الصيانة لا تشمل الكسر.</li>
-                            <li>يُرجى فحص الجهاز قبل مغادرة المندوب.</li>
-                            <li>عند مغادرة المندوب، أي خلل يُراجع عبر قسم الصيانة.</li>
-                            <li>الصيانة حصراً في بغداد — كراده خارج مجمع سوبر ماكس قرب شارع العطار.</li>
+                            {% for line in settings.warranty_notes.split('\n') %}
+                            {% if line.strip() %}
+                            <li>{{ line.strip() }}</li>
+                            {% endif %}
+                            {% endfor %}
                         </ul>
                     </div>
+                    {% endif %}
 
                     {% if order.note %}
                     <div class="customer-note">

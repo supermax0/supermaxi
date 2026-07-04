@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>طباعة الفواتير المحددة</title>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Tajawal', sans-serif; background: #eef2f7; }
+    .toolbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      background: #fff;
+      padding: 12px 20px;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,.06);
+    }
+    .toolbar button {
+      padding: 9px 18px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: inherit;
+      font-weight: 700;
+      font-size: 14px;
+    }
+    .btn-print { background: #2563eb; color: #fff; }
+    .btn-close { background: #f3f4f6; color: #374151; }
+    .load-status { color: #6b7280; font-size: 13px; margin-right: auto; }
+    .frames-wrap { padding: 72px 16px 32px; }
+    .invoice-frame-wrap {
+      max-width: 900px;
+      margin: 0 auto 28px;
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 8px 30px rgba(15, 23, 42, 0.08);
+      page-break-after: always;
+      break-after: page;
+    }
+    .invoice-frame-wrap:last-child {
+      page-break-after: auto;
+      break-after: auto;
+    }
+    .invoice-frame {
+      width: 100%;
+      border: 0;
+      display: block;
+      min-height: 900px;
+    }
+    @media print {
+      body { background: #fff; }
+      .toolbar { display: none !important; }
+      .frames-wrap { padding: 0; }
+      .invoice-frame-wrap {
+        box-shadow: none;
+        margin: 0;
+        max-width: none;
+        border-radius: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar no-print">
+    <span class="load-status" id="load-status">جاري تحميل {{ ids|length }} فاتورة...</span>
+    <button type="button" class="btn-close" onclick="window.close()">إغلاق</button>
+    <button type="button" class="btn-print" onclick="window.print()">طباعة</button>
+  </div>
+  <div class="frames-wrap">
+    {% for oid in ids %}
+    <div class="invoice-frame-wrap">
+      <iframe class="invoice-frame" src="{{ url_for('orders.invoice_page', order_id=oid) }}" title="فاتورة {{ oid }}"></iframe>
+    </div>
+    {% endfor %}
+  </div>
+  <script>
+    (function () {
+      const frames = document.querySelectorAll('.invoice-frame');
+      const status = document.getElementById('load-status');
+      let loaded = 0;
+      const total = frames.length;
+
+      function resizeFrame(frame) {
+        try {
+          const doc = frame.contentDocument;
+          if (!doc) return;
+          const height = Math.max(
+            doc.body ? doc.body.scrollHeight : 0,
+            doc.documentElement ? doc.documentElement.scrollHeight : 0
+          );
+          if (height > 0) frame.style.height = height + 'px';
+        } catch (e) {}
+      }
+
+      function onReady() {
+        loaded += 1;
+        status.textContent = 'تحميل ' + loaded + ' / ' + total;
+        if (loaded >= total) {
+          status.textContent = 'تم التحميل — ' + total + ' فاتورة';
+          setTimeout(function () { window.print(); }, 600);
+        }
+      }
+
+      frames.forEach(function (frame) {
+        frame.addEventListener('load', function () {
+          resizeFrame(frame);
+          onReady();
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

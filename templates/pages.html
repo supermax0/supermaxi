@@ -3,7 +3,7 @@
 {% block page_title %}📄 {{ _('pages_page_title') }}{% endblock %}
 {% block content %}
 
-<link rel="stylesheet" href="{{ url_for('static', filename='css/pages-admin.css') }}?v=20260702f">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages-admin.css') }}?v=20260704a">
 
 <div class="team-admin-page pages-page">
   <div class="toast-container" id="toastContainer"></div>
@@ -82,7 +82,13 @@
       <tbody>
         {% for data in pages_data %}
         <tr>
-          <td><strong>{{ data.page.name }}</strong></td>
+          <td>
+            {% if can_manage_pages %}
+            <strong class="page-name-display" data-page-id="{{ data.page.id }}">{{ data.page.name }}</strong>
+            {% else %}
+            <strong>{{ data.page.name }}</strong>
+            {% endif %}
+          </td>
           <td>
             {% for emp in data.employees %}
             <span class="admin-chip">{{ emp.name }}</span>
@@ -112,6 +118,10 @@
           {% if can_manage_pages %}
           <td>
             <div class="admin-actions">
+              <button type="button" class="action-btn primary js-rename-page-btn" title="تعديل الاسم"
+                data-page-id="{{ data.page.id }}" data-page-name="{{ data.page.name|e }}">
+                <i class="fas fa-pen"></i>
+              </button>
               <button type="button" class="action-btn success js-assign-employees-btn" title="{{ _('pages_assign_employees') if _('pages_assign_employees') != 'pages_assign_employees' else 'تعيين موظفين' }}"
                 data-page-id="{{ data.page.id }}" data-page-name="{{ data.page.name|e }}">
                 <i class="fas fa-users"></i>
@@ -181,8 +191,11 @@
     pages_err_connection: {{ _('pages_err_connection')|tojson }},
     pages_confirm_delete: {{ (_('pages_confirm_delete') if _('pages_confirm_delete') != 'pages_confirm_delete' else 'حذف هذا البيج؟')|tojson }},
     pages_toast_deleted: {{ (_('pages_toast_deleted') if _('pages_toast_deleted') != 'pages_toast_deleted' else 'تم الحذف')|tojson }},
-    pages_assign_title: {{ (_('pages_assign_title') if _('pages_assign_title') != 'pages_assign_title' else 'تعيين موظفين للبيج')|tojson }}
+    pages_assign_title: {{ (_('pages_assign_title') if _('pages_assign_title') != 'pages_assign_title' else 'تعيين موظفين للبيج')|tojson }},
+    pages_rename_prompt: {{ 'أدخل الاسم الجديد للبيج:'|tojson }},
+    pages_rename_empty: {{ 'اسم البيج مطلوب'|tojson }},
+    pages_toast_renamed: {{ 'تم تحديث اسم البيج'|tojson }}
   };
 </script>
-<script src="{{ url_for('static', filename='js/pages-admin.js') }}?v=20260702f"></script>
+<script src="{{ url_for('static', filename='js/pages-admin.js') }}?v=20260704a"></script>
 {% endblock %}

@@ -429,6 +429,8 @@ def update_invoice_settings():
             settings.company_address = data.get('company_address', '')
         if 'company_phone' in data:
             settings.company_phone = data.get('company_phone', '')
+        if 'return_policy_notes' in data:
+            settings.return_policy_notes = data.get('return_policy_notes', '')
         if 'warranty_notes' in data:
             settings.warranty_notes = data.get('warranty_notes', '')
         if 'warranty_card_background' in data:
@@ -703,6 +705,7 @@ def preview_invoice():
                 "logo_path": settings.logo_path,
                 "company_address": settings.company_address,
                 "company_phone": settings.company_phone,
+                "return_policy_notes": getattr(settings, "return_policy_notes", "") or "",
                 "warranty_notes": settings.warranty_notes,
                 "warranty_card_background": getattr(settings, "warranty_card_background", "") or "linear-gradient(135deg, #031021 0%, #1f2e42 100%)",
                 "logo_circle_text": settings.logo_circle_text,

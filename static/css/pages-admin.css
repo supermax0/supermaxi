@@ -209,3 +209,14 @@
   min-height: 40px;
   font-weight: 700;
 }
+
+.team-admin-page.pages-page .admin-actions .action-btn.primary {
+  background: rgba(37, 99, 235, 0.12);
+  color: #2563eb;
+  border-color: rgba(37, 99, 235, 0.25);
+}
+
+.team-admin-page.pages-page .admin-actions .action-btn.primary:hover {
+  background: rgba(37, 99, 235, 0.2);
+  color: #1d4ed8;
+}

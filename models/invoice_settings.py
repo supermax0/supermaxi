@@ -15,11 +15,20 @@ class InvoiceSettings(db.Model):
     # Contact Info
     company_address = db.Column(db.Text, default="كراده خارج مجمع سوبر ماكس قرب شارع العطار")
     company_phone = db.Column(db.String(50), default="07711272744")
+
+    # Return policy (shown on ecommerce-style templates)
+    return_policy_notes = db.Column(db.Text, default=(
+        "يحق للعميل استرجاع أو استبدال المنتجات خلال 3 أيام من تاريخ الاستلام "
+        "بشرط أن تكون بحالتها الأصلية غير مستخدمة. للاسترجاع، يرجى التواصل معنا "
+        "وتزويدنا برقم الطلب المبين أعلاه."
+    ))
     
     # Warranty Notes
-    warranty_notes = db.Column(db.Text, default="""مدة الضمان سنه واحدة صيانه لا تشمل الكسر
-افحص الجهاز قبل مغادرة المندوب
-عند مغادرة المندوب اي خلل مراجعة الصيانه الصيانه حصرا بغداد كراده خارج""")
+    warranty_notes = db.Column(db.Text, default="""مدة الضمان: سنة واحدة.
+الصيانة لا تشمل الكسر.
+يُرجى فحص الجهاز قبل مغادرة المندوب.
+عند مغادرة المندوب، أي خلل يُراجع عبر قسم الصيانة.
+الصيانة حصراً في بغداد — كراده خارج مجمع سوبر ماكس قرب شارع العطار.""")
     warranty_card_background = db.Column(
         db.Text,
         default="linear-gradient(135deg, #031021 0%, #1f2e42 100%)"
@@ -98,7 +107,10 @@ AL ATWANI""")
 
     @property
     def invoice_note(self):
-        """نص تذييل الفاتورة: أول سطر من ملاحظات الضمان أو عبارة افتراضية."""
+        """نص سياسة الاسترجاع للقوالب."""
+        note = (getattr(self, "return_policy_notes", None) or "").strip()
+        if note:
+            return note[:800]
         w = (self.warranty_notes or "").strip()
         if not w:
             return "شكراً لتسوقكم معنا!"
@@ -132,6 +144,12 @@ AL ATWANI""")
                     "ALTER TABLE invoice_settings "
                     "ADD COLUMN warranty_card_background TEXT "
                     "DEFAULT 'linear-gradient(135deg, #031021 0%, #1f2e42 100%)'"
+                ))
+                db.session.commit()
+
+            if "return_policy_notes" not in columns:
+                db.session.execute(text(
+                    "ALTER TABLE invoice_settings ADD COLUMN return_policy_notes TEXT"
                 ))
                 db.session.commit()
 

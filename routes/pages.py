@@ -75,6 +75,34 @@ def pages():
     )
 
 
+@pages_bp.route("/rename/<int:page_id>", methods=["POST"])
+@permission_required("manage_pages")
+def rename_page(page_id):
+    page = Page.query.get_or_404(page_id)
+    data = request.get_json(silent=True) or {}
+    name = (data.get("name") or request.form.get("name") or "").strip()
+    if not name:
+        return jsonify({"success": False, "error": "اسم البيج مطلوب"}), 400
+    if len(name) > 150:
+        return jsonify({"success": False, "error": "اسم البيج طويل جداً (150 حرف كحد أقصى)"}), 400
+
+    duplicate = Page.query.filter(Page.id != page.id, Page.name == name).first()
+    if duplicate:
+        return jsonify({"success": False, "error": "يوجد بيج بنفس الاسم"}), 400
+
+    try:
+        page.name = name
+        Invoice.query.filter_by(page_id=page.id).update(
+            {Invoice.page_name: name},
+            synchronize_session=False,
+        )
+        db.session.commit()
+        return jsonify({"success": True, "message": "تم تحديث اسم البيج", "name": name})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": f"حدث خطأ: {str(e)}"}), 500
+
+
 @pages_bp.route("/delete/<int:id>", methods=["POST"])
 @permission_required("manage_pages")
 def delete_page(id):

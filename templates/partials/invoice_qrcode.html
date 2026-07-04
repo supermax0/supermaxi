@@ -3,7 +3,7 @@
 {% set visibility_settings = settings.get_visibility_settings() %}
 {% set show_qrcode = visibility_settings.get('show_qrcode', True) %}
 {% if show_qrcode %}
-{% set _host_id = 'invoiceQrHost' ~ (host_suffix|string) %}
+{% set _host_id = 'invoiceQrHost' ~ ((host_suffix if host_suffix is not none else order.id)|string) %}
 <div class="invoice-qr-addon" style="display:inline-block;text-align:center;margin-top:4px;vertical-align:top;">
   <div style="font-size:10px;font-weight:700;margin-bottom:3px;opacity:.9;">QR Code</div>
   <div id="{{ _host_id }}" style="width:108px;height:108px;display:inline-flex;align-items:center;justify-content:center;background:#fff;border-radius:8px;border:1px solid rgba(0,0,0,.08);"></div>
