@@ -151,61 +151,21 @@ def add_shipping_line_item(invoice, shipping_fee: int, tenant_id: int | None = N
 def prepare_invoice_items_for_print(items):
     """
     عناصر الطباعة: بدون بند الشحن.
-    للفواتير القديمة التي أُضيف فيها الشحن فوق السعر، يُخصم من المنتجات للعرض فقط.
+    الشحن لا يُضاف ولا يُخصم من المنتجات في الفاتورة المطبوعة.
     يُرجع (printable_items, display_total).
     """
     items = list(items or [])
-    product_items = []
-    legacy_added_fee = 0
 
-    for item in items:
-        if is_shipping_item(item):
-            total = _safe_int(getattr(item, "total", 0))
-            if total > 0:
-                legacy_added_fee += total
-            continue
-        product_items.append(item)
-
-    if legacy_added_fee <= 0:
-        printable = [
-            SimpleNamespace(
-                product_name=getattr(i, "product_name", "") or "",
-                quantity=_safe_int(getattr(i, "quantity", 1), 1),
-                price=_safe_int(getattr(i, "price", 0)),
-                total=_safe_int(getattr(i, "total", 0)),
-                product=getattr(i, "product", None),
-            )
-            for i in product_items
-        ]
-        display_total = sum(i.total for i in printable)
-        return printable, display_total
-
-    # فواتير قديمة: الشحن كان مضافاً — نخصمه من العرض فقط
-    products_total = sum(_safe_int(i.total) for i in product_items)
-    fee = min(legacy_added_fee, products_total) if products_total > 0 else 0
-    remaining = fee
-    printable = []
-    for idx, item in enumerate(product_items):
-        line_total = _safe_int(item.total)
-        qty = max(1, _safe_int(getattr(item, "quantity", 1), 1))
-        if fee > 0 and products_total > 0:
-            if idx == len(product_items) - 1:
-                share = remaining
-            else:
-                share = int(round(fee * (line_total / float(products_total))))
-                share = min(max(0, share), remaining, line_total)
-            remaining -= share
-            new_total = max(0, line_total - share)
-        else:
-            new_total = line_total
-        printable.append(
-            SimpleNamespace(
-                product_name=getattr(item, "product_name", "") or "",
-                quantity=qty,
-                price=int(round(new_total / qty)) if qty else new_total,
-                total=new_total,
-                product=getattr(item, "product", None),
-            )
+    printable = [
+        SimpleNamespace(
+            product_name=getattr(i, "product_name", "") or "",
+            quantity=_safe_int(getattr(i, "quantity", 1), 1),
+            price=_safe_int(getattr(i, "price", 0)),
+            total=_safe_int(getattr(i, "total", 0)),
+            product=getattr(i, "product", None),
         )
+        for i in items
+        if not is_shipping_item(i)
+    ]
     display_total = sum(i.total for i in printable)
     return printable, display_total
