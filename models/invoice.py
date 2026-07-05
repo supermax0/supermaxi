@@ -119,7 +119,12 @@ class Invoice(db.Model):
     shipping_barcode = db.Column(
         db.String(100),
         nullable=True
-    )  # باركود شركة النقل
+    )  # باركود شركة النقل (الأول — للتوافق)
+
+    shipping_barcodes_json = db.Column(
+        db.Text,
+        nullable=True
+    )  # قائمة باركودات الشحن (قطعة لكل وحدة)
 
     # =====================
     # Order Video

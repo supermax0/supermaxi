@@ -407,9 +407,9 @@
 
         <input id="name" class="pos-input" placeholder="الاسم" autocomplete="name">
 
-        <input id="phone" class="pos-input" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="رقم الهاتف" autocomplete="tel" data-digits-en>
+        <input id="phone" class="pos-input" type="tel" inputmode="numeric" pattern="[0-9]{11}" maxlength="11" placeholder="07xxxxxxxxx" autocomplete="tel" data-digits-en>
 
-        <input id="phone2" class="pos-input" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="رقم آخر" autocomplete="tel" data-digits-en>
+        <input id="phone2" class="pos-input" type="tel" inputmode="numeric" pattern="[0-9]{11}" maxlength="11" placeholder="07xxxxxxxxx (اختياري)" autocomplete="tel" data-digits-en>
 
         <select id="city" class="pos-select">
           <option value="{{ primary_province }}">{{ primary_province }}</option>
@@ -431,7 +431,7 @@
 
           <input id="ocrName" class="pos-input" placeholder="الاسم">
 
-          <input id="ocrPhone" class="pos-input" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="الهاتف" autocomplete="tel">
+          <input id="ocrPhone" class="pos-input" type="tel" inputmode="numeric" pattern="[0-9]{11}" maxlength="11" placeholder="07xxxxxxxxx" autocomplete="tel" data-digits-en>
 
           <input id="ocrAddress" class="pos-input" placeholder="العنوان">
 

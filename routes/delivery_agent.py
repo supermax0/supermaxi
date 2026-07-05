@@ -114,14 +114,33 @@ def _agent_pending_orders(agent_id):
     return [_serialize_agent_order(o) for o in rows]
 
 
+def _agent_delivered_today_count(agent_id):
+    """عدد الطلبات «واصل» في كشوف المندوب غير المنفّذة (بانتظار المحاسب)."""
+    reports = ShippingReport.query.filter(
+        ShippingReport.report_number.like(f"AGT-{agent_id}-%"),
+        ShippingReport.is_executed.is_(False),
+    ).all()
+
+    count = 0
+    for report in reports:
+        try:
+            selections = json.loads(report.order_status_selections or "{}")
+        except Exception:
+            selections = {}
+        if not isinstance(selections, dict):
+            continue
+        for status in selections.values():
+            if status in ("واصل", "Delivered"):
+                count += 1
+    return count
+
+
 def _agent_order_stats(agent_id):
     base = Invoice.query.filter(Invoice.delivery_agent_id == agent_id)
     pending_q = base.filter(Invoice.status.in_(_AGENT_PENDING_STATUSES))
     pending_count = pending_q.count()
     pending_total = pending_q.with_entities(func.sum(Invoice.total)).scalar() or 0
-    delivered_count = base.filter(
-        Invoice.status.in_(("تم التوصيل", "مسدد"))
-    ).count()
+    delivered_count = _agent_delivered_today_count(agent_id)
     return {
         "pending_count": int(pending_count),
         "pending_total": int(pending_total),

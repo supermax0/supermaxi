@@ -36,6 +36,10 @@
 
     function apply() {
       var normalized = normalizeDigits(el.value, allowDecimal);
+      var maxLen = parseInt(el.getAttribute("maxlength"), 10);
+      if (maxLen > 0 && normalized.length > maxLen) {
+        normalized = normalized.slice(0, maxLen);
+      }
       if (el.value !== normalized) el.value = normalized;
     }
 

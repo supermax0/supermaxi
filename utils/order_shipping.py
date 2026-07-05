@@ -44,6 +44,27 @@ def get_or_create_shipping_product(tenant_id: int | None = None) -> Product:
     return product
 
 
+def order_item_display_name(item) -> str:
+    """اسم المنتج للعرض: الاسم الحالي من المخزون إن وُجد، وإلا اللقطة المحفوظة."""
+    product = getattr(item, "product", None)
+    if product is not None:
+        live = (getattr(product, "name", None) or "").strip()
+        if live:
+            return live
+    return (getattr(item, "product_name", None) or "").strip() or "منتج"
+
+
+def sync_product_name_to_order_items(product_id: int, new_name: str) -> int:
+    """تحديث اسم المنتج في كل بنود الطلبات المرتبطة."""
+    name = (new_name or "").strip()
+    if not product_id or not name:
+        return 0
+    return OrderItem.query.filter_by(product_id=product_id).update(
+        {OrderItem.product_name: name},
+        synchronize_session=False,
+    )
+
+
 def is_shipping_item(item) -> bool:
     if item is None:
         return False
@@ -158,7 +179,7 @@ def prepare_invoice_items_for_print(items):
 
     printable = [
         SimpleNamespace(
-            product_name=getattr(i, "product_name", "") or "",
+            product_name=order_item_display_name(i),
             quantity=_safe_int(getattr(i, "quantity", 1), 1),
             price=_safe_int(getattr(i, "price", 0)),
             total=_safe_int(getattr(i, "total", 0)),

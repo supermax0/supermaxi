@@ -1,4 +1,5 @@
 import json
+from urllib.parse import parse_qs, urlparse
 
 from flask import Blueprint, render_template, request, jsonify, session, redirect, g
 from jinja2 import TemplateNotFound
@@ -37,6 +38,20 @@ def _parse_product_meta(product):
         return json.loads(raw) if isinstance(raw, str) else dict(raw)
     except (json.JSONDecodeError, TypeError, ValueError):
         return {}
+
+
+def _editing_order_id_from_request(data: dict) -> int | None:
+    raw = data.get("order_id")
+    if raw in (None, "", 0, "0"):
+        try:
+            ref = request.referrer or ""
+            raw = (parse_qs(urlparse(ref).query).get("order_id") or [None])[0]
+        except Exception:
+            raw = None
+    try:
+        return int(raw) if raw not in (None, "", 0, "0") else None
+    except (TypeError, ValueError):
+        return None
 
 
 def _product_bootstrap_dict(product):
@@ -298,6 +313,18 @@ def add_customer():
                 "msg": "رقم الهاتف مطلوب"
             }), 400
 
+        if len(phone) != 11:
+            return jsonify({
+                "status": "fail",
+                "msg": "رقم الهاتف يجب أن يكون 11 رقم"
+            }), 400
+
+        if phone2 and len(phone2) != 11:
+            return jsonify({
+                "status": "fail",
+                "msg": "رقم الهاتف الثاني يجب أن يكون 11 رقم"
+            }), 400
+
         if is_phone_blacklisted_for_new_customer(phone, phone2):
             return jsonify({
                 "status": "fail",
@@ -515,7 +542,7 @@ def create_order():
     # ===============================
     # إنشاء / تعديل الفاتورة
     # ===============================
-    editing_order_id = data.get("order_id")
+    editing_order_id = _editing_order_id_from_request(data)
     invoice = None
     if editing_order_id:
         try:

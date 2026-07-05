@@ -58,7 +58,12 @@ from utils.order_status import (
 from utils.order_lifecycle import OrderLifecycleError, process_order_cancel, process_order_return
 from utils.cash_calculations import _effective_paid_amount
 from utils.delivery_expense_service import sync_delivery_expense_for_invoice
-from utils.order_shipping import is_shipping_item
+from utils.order_shipping import is_shipping_item, order_item_display_name
+from utils.shipping_barcodes import (
+    get_shipping_barcodes_list,
+    set_shipping_barcodes,
+    shipping_barcodes_display,
+)
 from utils.payment_ledger import append_payment_ledger_delta
 from services.media_service import get_thumbnail_upload_root, get_video_upload_root, save_uploaded_file
 from utils.activity_logger import INVOICE_SNAPSHOT_FIELDS, log_mutation, snapshot_attrs
@@ -401,6 +406,8 @@ def _ensure_order_video_columns() -> None:
             stmts.append("ALTER TABLE invoice ADD COLUMN order_video_duration_sec FLOAT")
         if "order_video_recorded_at" not in invoice_columns:
             stmts.append(f"ALTER TABLE invoice ADD COLUMN order_video_recorded_at {recorded_type}")
+        if "shipping_barcodes_json" not in invoice_columns:
+            stmts.append("ALTER TABLE invoice ADD COLUMN shipping_barcodes_json TEXT")
         if stmts:
             with engine.begin() as conn:
                 for stmt in stmts:
@@ -590,7 +597,7 @@ def orders_ordered():
     
     q = q.order_by(Invoice.created_at.desc())
     pagination = q.paginate(page=page, per_page=per_page, error_out=False)
-    orders = pagination.items
+    orders = q.all()
     cities = [c[0] for c in db.session.query(Customer.city).distinct().all() if c[0]]
     
     return render_template(
@@ -666,7 +673,7 @@ def orders_shipping():
     
     q = q.order_by(Invoice.created_at.desc())
     pagination = q.paginate(page=page, per_page=per_page, error_out=False)
-    orders = pagination.items
+    orders = q.all()
     cities = [c[0] for c in db.session.query(Customer.city).distinct().all() if c[0]]
     
     return render_template(
@@ -746,7 +753,7 @@ def orders_delivered():
 
     q = q.order_by(Invoice.created_at.desc())
     pagination = q.paginate(page=page, per_page=per_page, error_out=False)
-    orders = pagination.items
+    orders = q.all()
     cities = [c[0] for c in db.session.query(Customer.city).distinct().all() if c[0]]
 
     return render_template(
@@ -825,7 +832,7 @@ def orders_returned():
 
     q = q.order_by(Invoice.created_at.desc())
     pagination = q.paginate(page=page, per_page=per_page, error_out=False)
-    orders = pagination.items
+    orders = q.all()
     cities = [c[0] for c in db.session.query(Customer.city).distinct().all() if c[0]]
 
     return render_template(
@@ -901,7 +908,7 @@ def orders_cancelled():
     
     q = q.order_by(Invoice.created_at.desc())
     pagination = q.paginate(page=page, per_page=per_page, error_out=False)
-    orders = pagination.items
+    orders = q.all()
     cities = [c[0] for c in db.session.query(Customer.city).distinct().all() if c[0]]
     
     return render_template(
@@ -1278,7 +1285,8 @@ def details(order_id):
             "created_at": order.created_at.strftime("%Y-%m-%d %H:%M:%S") if order.created_at else "",
             "shipping_company": order.shipping_company.name if order.shipping_company else None,
             "shipping_company_id": order.shipping_company_id,
-            "shipping_barcode": order.shipping_barcode,
+            "shipping_barcode": shipping_barcodes_display(order) or order.shipping_barcode,
+            "shipping_barcodes": get_shipping_barcodes_list(order),
             "shipping_status": order.shipping_status,
             "note": order.note,
             "video": _order_video_payload(order),
@@ -1291,7 +1299,7 @@ def details(order_id):
             {
                 "id": i.id,
                 "product_id": i.product_id,
-                "name": i.product_name,
+                "name": order_item_display_name(i),
                 "qty": i.quantity,
                 "price": i.price,
                 "total": i.total,
@@ -1591,7 +1599,7 @@ def query_order(order_id):
             "items_count": len(items),
             "items": [
                 {
-                    "name": i.product_name,
+                    "name": order_item_display_name(i),
                     "quantity": i.quantity,
                     "price": i.price,
                     "total": i.total
@@ -1877,7 +1885,7 @@ def print_selected():
                 },
                 "items": [
                     {
-                        "name": i.product_name,
+                        "name": order_item_display_name(i),
                         "qty": i.quantity,
                         "price": i.price,
                         "total": i.total
@@ -1909,9 +1917,7 @@ def print_report():
             items_count = sum((item.quantity or 0) for item in items) if items else 0
             products_list = []
             for item in items:
-                # اسم المنتج مثل ما يظهر في تفاصيل الطلب:
-                # أولاً من snapshot (product_name)، وإذا فارغ نأخذ الاسم الحالي من جدول المنتجات
-                name = item.product_name or (item.product.name if item.product else None)
+                name = order_item_display_name(item)
                 products_list.append({
                     "name": name,
                     "quantity": item.quantity
@@ -2014,7 +2020,7 @@ def get_print_report_data():
             items_count = sum((item.quantity or 0) for item in items) if items else 0
             products_list = []
             for item in items:
-                name = item.product_name or (item.product.name if item.product else None)
+                name = order_item_display_name(item)
                 products_list.append({
                     "name": name,
                     "quantity": item.quantity
@@ -2078,7 +2084,7 @@ def save_report():
             items_count = sum((item.quantity or 0) for item in items) if items else 0
             products_list = []
             for item in items:
-                name = item.product_name or (item.product.name if item.product else None)
+                name = order_item_display_name(item)
                 products_list.append({
                     "name": name,
                     "quantity": item.quantity
@@ -2187,6 +2193,7 @@ def update_shipping_barcode(invoice_id):
     data = request.get_json() or {}
     
     shipping_barcode = data.get("shipping_barcode", "").strip()
+    shipping_barcodes_raw = data.get("shipping_barcodes")
     shipping_company_id = data.get("shipping_company_id")
     shipping_company = invoice.shipping_company
 
@@ -2202,7 +2209,20 @@ def update_shipping_barcode(invoice_id):
     elif not invoice.shipping_company_id:
         return jsonify({"success": False, "error": "اختر شركة النقل"}), 400
 
-    invoice.shipping_barcode = shipping_barcode if shipping_barcode else None
+    if shipping_barcodes_raw is not None:
+        if not isinstance(shipping_barcodes_raw, list):
+            return jsonify({"success": False, "error": "صيغة الباركودات غير صحيحة"}), 400
+        cleaned = [str(b).strip() for b in shipping_barcodes_raw if str(b).strip()]
+        if not cleaned:
+            return jsonify({"success": False, "error": "أدخل باركود الشحن لكل قطعة"}), 400
+        if len(set(cleaned)) != len(cleaned):
+            return jsonify({"success": False, "error": "لا يمكن تكرار نفس باركود الشحن"}), 400
+        set_shipping_barcodes(invoice, cleaned)
+    else:
+        if not shipping_barcode:
+            return jsonify({"success": False, "error": "أدخل باركود الشحن"}), 400
+        set_shipping_barcodes(invoice, [shipping_barcode])
+
     invoice.status = "جاري الشحن"
     invoice.shipping_status = "جاري الشحن"
     
@@ -2227,7 +2247,8 @@ def update_shipping_barcode(invoice_id):
         "shipping_status": invoice.shipping_status,
         "shipping_company_id": invoice.shipping_company_id,
         "shipping_company": shipping_company.name if shipping_company else None,
-        "shipping_barcode": invoice.shipping_barcode,
+        "shipping_barcode": shipping_barcodes_display(invoice) or invoice.shipping_barcode,
+        "shipping_barcodes": get_shipping_barcodes_list(invoice),
     })
 
 @orders_bp.route("/get-selected-orders", methods=["POST"])
@@ -2243,7 +2264,7 @@ def get_selected_orders():
         order = Invoice.query.get(order_id)
         if order:
             items = [item for item in OrderItem.query.filter_by(invoice_id=order.id).all() if not is_shipping_item(item)]
-            product_names = [item.product_name for item in items]
+            product_names = [order_item_display_name(item) for item in items]
             
             orders_data.append({
                 "id": order.id,
@@ -2335,7 +2356,7 @@ def create_shipping_report():
             "created_at": order.created_at.strftime("%Y-%m-%d %H:%M") if order.created_at else "",
             "items": [
                 {
-                    "product_name": item.product_name,
+                    "product_name": order_item_display_name(item),
                     "quantity": item.quantity,
                     "price": item.price,
                     "total": item.total
@@ -2425,7 +2446,7 @@ def create_agent_report_internal(order_ids, agent_id, save_to_db=True):
             "created_at": order.created_at.strftime("%Y-%m-%d %H:%M") if order.created_at else "",
             "items": [
                 {
-                    "product_name": item.product_name,
+                    "product_name": order_item_display_name(item),
                     "quantity": item.quantity,
                     "price": item.price,
                     "total": item.total

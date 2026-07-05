@@ -18,6 +18,7 @@ from utils.delivery_expense_service import sync_delivery_expense_for_invoice
 from utils.order_shipping import add_shipping_line_item
 from utils.product_delivery_fees import fee_for_cart_items
 from utils.payment_ledger import append_payment_ledger_delta
+from utils.permission_checks import employee_can
 from utils.product_schema_guard import ensure_customer_blacklist_columns, ensure_product_schema
 
 
@@ -46,12 +47,7 @@ def _current_employee():
 def _can_use_quick_sale(employee: Employee | None) -> bool:
     if not employee or not employee.is_active:
         return False
-    if employee.role in {"admin", "cashier"}:
-        return True
-    try:
-        return employee.has_permission("view_pos")
-    except Exception:
-        return False
+    return employee_can(employee, "view_pos")
 
 
 def _safe_int(value, default=0):

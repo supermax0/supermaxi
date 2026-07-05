@@ -31,12 +31,20 @@ def verify_order_barcode(order, scanned: Optional[str]) -> bool:
     shipping_barcode = normalize_status(getattr(order, "shipping_barcode", None))
     if shipping_barcode and shipping_barcode == code:
         return True
+    try:
+        from utils.shipping_barcodes import shipping_barcodes_match_code
+        if shipping_barcodes_match_code(order, code):
+            return True
+    except Exception:
+        pass
     return False
 
 
 def clear_order_barcodes(order) -> None:
     order.barcode = None
     order.shipping_barcode = None
+    if hasattr(order, "shipping_barcodes_json"):
+        order.shipping_barcodes_json = None
 
 
 def restore_order_stock_once(order) -> bool:

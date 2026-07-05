@@ -1455,8 +1455,8 @@
 
         <div class="grid">
           <input id="name" placeholder="الاسم" class="modal-input" autocomplete="name">
-          <input id="phone" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="رقم الهاتف" class="modal-input" autocomplete="tel" data-digits-en>
-          <input id="phone2" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="رقم آخر" class="modal-input" autocomplete="tel" data-digits-en>
+          <input id="phone" type="tel" inputmode="numeric" pattern="[0-9]{11}" maxlength="11" placeholder="07xxxxxxxxx" class="modal-input" autocomplete="tel" data-digits-en>
+          <input id="phone2" type="tel" inputmode="numeric" pattern="[0-9]{11}" maxlength="11" placeholder="07xxxxxxxxx (اختياري)" class="modal-input" autocomplete="tel" data-digits-en>
           <select id="city" class="modal-input">
             <option value="{{ primary_province }}">{{ primary_province }}</option>
             {% for p in tenant_group_provinces %}
@@ -1473,7 +1473,7 @@
           <textarea id="ocrText" style="height:100px" class="modal-input"></textarea>
           <div class="grid">
             <input id="ocrName" placeholder="الاسم" class="modal-input">
-            <input id="ocrPhone" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="رقم الهاتف" class="modal-input" autocomplete="tel" data-digits-en>
+            <input id="ocrPhone" type="tel" inputmode="numeric" pattern="[0-9]{11}" maxlength="11" placeholder="07xxxxxxxxx" class="modal-input" autocomplete="tel" data-digits-en>
           </div>
           <input id="ocrAddress" placeholder="العنوان" class="modal-input">
           <select id="ocrCity" class="modal-input">
@@ -1820,6 +1820,10 @@
       if (searchCustomer) searchCustomer.value = ""
     }
 
+    function isPhone11Digits(value) {
+      return /^\d{11}$/.test(String(value || "").trim())
+    }
+
     /* ===== حفظ زبون ===== */
     function saveCustomer() {
       // الحصول على العناصر
@@ -1843,6 +1847,17 @@
         if (phoneInput) phoneInput.focus()
         return
       }
+      if (!isPhone11Digits(phoneValue)) {
+        toast("رقم الهاتف يجب أن يكون 11 رقم")
+        if (phoneInput) phoneInput.focus()
+        return
+      }
+      const phone2Value = phone2Input ? phone2Input.value.trim() : ""
+      if (phone2Value && !isPhone11Digits(phone2Value)) {
+        toast("رقم الهاتف الثاني يجب أن يكون 11 رقم")
+        if (phone2Input) phone2Input.focus()
+        return
+      }
 
       fetch("/pos/add-customer", {
         method: "POST",
@@ -1850,7 +1865,7 @@
         body: JSON.stringify({
           name: nameValue,
           phone: phoneValue,
-          phone2: phone2Input ? (phone2Input.value ? phone2Input.value.trim() : "") : "",
+          phone2: phone2Value,
           city: cityInput ? (cityInput.value ? cityInput.value.trim() : "") : "",
           address: addressInput ? (addressInput.value ? addressInput.value.trim() : "") : ""
         })
@@ -2427,6 +2442,12 @@
     }
 
     function confirmOCR() {
+      const ocrPhoneValue = ocrPhone ? ocrPhone.value.trim() : ""
+      if (!ocrPhoneValue || !isPhone11Digits(ocrPhoneValue)) {
+        toast("رقم الهاتف يجب أن يكون 11 رقم")
+        if (ocrPhone) ocrPhone.focus()
+        return
+      }
       fetch("/ai/ocr/confirm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

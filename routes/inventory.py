@@ -27,6 +27,7 @@ from utils.permission_checks import check_permission
 from utils.activity_logger import PRODUCT_SNAPSHOT_FIELDS, log_activity, log_mutation, snapshot_attrs
 
 from utils.product_schema_guard import ensure_product_schema
+from utils.order_shipping import sync_product_name_to_order_items
 from utils.product_delivery_fees import (
     apply_delivery_fees_to_meta,
     delivery_fees_from_form,
@@ -555,6 +556,7 @@ def add_product_page():
             before_product = snapshot_attrs(p, *PRODUCT_SNAPSHOT_FIELDS)
             old_buy_price = p.buy_price
             old_opening_stock = p.opening_stock or 0
+            old_name = p.name
 
             p.name = name
             p.sku = sku
@@ -591,6 +593,8 @@ def add_product_page():
                         p.quantity = 0
 
             p.meta_json = json.dumps(meta, ensure_ascii=False) if meta else None
+            if name != old_name:
+                sync_product_name_to_order_items(p.id, name)
             db.session.commit()
             try:
                 log_mutation(
@@ -850,6 +854,8 @@ def edit_product(id):
     old_buy_price = p.buy_price
     old_opening_stock = p.opening_stock or 0
 
+    old_name = p.name
+
     p.name = request.form["name"]
     p.sku = request.form.get("sku", "").strip() or None
     p.barcode = request.form.get("barcode", "").strip() or None
@@ -897,6 +903,9 @@ def edit_product(id):
         
         if p.quantity < 0:
             p.quantity = 0
+
+    if p.name != old_name:
+        sync_product_name_to_order_items(p.id, p.name)
         
     db.session.commit()
     return redirect(url_for("inventory.inventory"))

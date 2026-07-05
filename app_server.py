@@ -884,31 +884,32 @@ def inject_global_data():
 
         final_lang = employee.language or lang_now
         print(f"DEBUG: Employee lang: {employee.language}, Final lang: {final_lang}")
+        from utils.permission_checks import employee_can
 
         return {
             "current_employee": employee,
-            "can_see_orders": employee.has_permission("view_orders"),
-            "can_see_reports": employee.has_permission("view_reports"),
-            "can_manage_inventory": employee.has_permission("manage_inventory"),
-            "can_see_expenses": employee.has_permission("view_expenses"),
-            "can_manage_suppliers": employee.has_permission("manage_suppliers"),
-            "can_manage_customers": employee.has_permission("manage_customers"),
-            "can_see_accounts": employee.has_permission("view_accounts"),
-            "can_see_financial": employee.has_permission("view_financial"),
+            "can_see_orders": employee_can(employee, "view_orders"),
+            "can_see_reports": employee_can(employee, "view_reports"),
+            "can_manage_inventory": employee_can(employee, "manage_inventory"),
+            "can_see_expenses": employee_can(employee, "view_expenses"),
+            "can_manage_suppliers": employee_can(employee, "manage_suppliers"),
+            "can_manage_customers": employee_can(employee, "manage_customers"),
+            "can_see_accounts": employee_can(employee, "view_accounts"),
+            "can_see_financial": employee_can(employee, "view_financial"),
             # ربط أعلام القائمة الجانبية بصلاحيات الـ RBAC
-            "can_use_pos": employee.has_permission("view_pos"),
-            "can_see_shipping": employee.has_permission("view_shipping"),
-            "can_see_agents": employee.has_permission("view_agents"),
-            "can_see_pages": employee.has_permission("view_pages"),
-            "can_see_messages": employee.has_permission("view_messages"),
-            "can_edit_price": employee.has_permission("edit_price"),
-            "can_manage_employees": employee.has_permission("manage_employees"),
-            "can_manage_agents": employee.has_permission("manage_agents"),
-            "can_manage_pages": employee.has_permission("manage_pages"),
-            "can_manage_orders": employee.has_permission("manage_orders"),
-            "can_manage_shipping": employee.has_permission("manage_shipping"),
-            "can_manage_settings": employee.has_permission("manage_settings"),
-            "can_view_dashboard": employee.has_permission("view_dashboard"),
+            "can_use_pos": employee_can(employee, "view_pos"),
+            "can_see_shipping": employee_can(employee, "view_shipping"),
+            "can_see_agents": employee_can(employee, "view_agents"),
+            "can_see_pages": employee_can(employee, "view_pages"),
+            "can_see_messages": employee_can(employee, "view_messages"),
+            "can_edit_price": employee_can(employee, "edit_price"),
+            "can_manage_employees": employee_can(employee, "manage_employees"),
+            "can_manage_agents": employee_can(employee, "manage_agents"),
+            "can_manage_pages": employee_can(employee, "manage_pages"),
+            "can_manage_orders": employee_can(employee, "manage_orders"),
+            "can_manage_shipping": employee_can(employee, "manage_shipping"),
+            "can_manage_settings": employee_can(employee, "manage_settings"),
+            "can_view_dashboard": employee_can(employee, "view_dashboard"),
             "_": translate,
             "current_lang": final_lang
         }

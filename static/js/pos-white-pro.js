@@ -565,11 +565,18 @@
     closeOCR();
   }
 
+  function isPhone11Digits(value) {
+    return /^\d{11}$/.test(String(value || "").trim());
+  }
+
   function saveCustomer() {
     const name = ($("name")?.value || "").trim();
     const phone = ($("phone")?.value || "").trim();
+    const phone2 = ($("phone2")?.value || "").trim();
     if (!name) { toast("يرجى إدخال اسم الزبون"); return; }
     if (!phone) { toast("يرجى إدخال رقم الهاتف"); return; }
+    if (!isPhone11Digits(phone)) { toast("رقم الهاتف يجب أن يكون 11 رقم"); $("phone")?.focus(); return; }
+    if (phone2 && !isPhone11Digits(phone2)) { toast("رقم الهاتف الثاني يجب أن يكون 11 رقم"); $("phone2")?.focus(); return; }
 
     const saveBtn = document.querySelector("#customerModal .pos-btn-primary");
     if (saveBtn?.dataset.busy === "1") return;
@@ -583,7 +590,7 @@
       body: JSON.stringify({
         name,
         phone,
-        phone2: ($("phone2")?.value || "").trim(),
+        phone2,
         city: cityValue,
         address: ($("address")?.value || "").trim(),
       }),
