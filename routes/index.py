@@ -2064,6 +2064,12 @@ def index_alerts():
                 "action": "/shipping"
             })
 
+        try:
+            from utils.rotating_savings_service import get_dashboard_alerts
+            alerts.extend(get_dashboard_alerts())
+        except Exception:
+            pass
+
         from utils.agent_report_helpers import list_pending_agent_reports, get_report_progress, get_agent_name_for_report
         for report in list_pending_agent_reports():
             progress = get_report_progress(report)

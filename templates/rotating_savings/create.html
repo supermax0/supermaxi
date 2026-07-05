@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% block title %}إنشاء جمعية{% endblock %}
+{% block page_title %}إنشاء جمعية جديدة{% endblock %}
+{% block content %}
+<style>
+.rs-page { max-width: 900px; margin: 0 auto; direction: rtl; }
+.rs-nav { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
+.rs-nav a { padding: 8px 14px; border-radius: 10px; background: var(--card-alt); border: 1px solid var(--border-light); color: var(--text); text-decoration: none; font-size: 14px; }
+.rs-nav a:hover, .rs-nav a.active { background: var(--primary); color: #fff; }
+.rs-form { background: var(--card); border: 1px solid var(--border-light); border-radius: 14px; padding: 24px; }
+.rs-field { margin-bottom: 16px; }
+.rs-field label { display: block; font-weight: 700; margin-bottom: 6px; font-size: 14px; }
+.rs-field input, .rs-field select, .rs-field textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-light); background: var(--bg); color: var(--text); box-sizing: border-box; }
+.rs-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.rs-section { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border-light); }
+.rs-section h3 { margin: 0 0 16px; font-size: 16px; }
+.rs-btn { padding: 10px 20px; border-radius: 10px; border: none; cursor: pointer; font-weight: 700; }
+.rs-btn-primary { background: var(--primary); color: #fff; }
+@media (max-width: 640px) { .rs-grid-2 { grid-template-columns: 1fr; } }
+</style>
+<div class="rs-page">
+  {% include "rotating_savings/_nav.html" %}
+
+  <form class="rs-form" method="post">
+    <div class="rs-grid-2">
+      <div class="rs-field">
+        <label>اسم الجمعية *</label>
+        <input type="text" name="name" required placeholder="مثال: جمعية أجهزة 2026">
+      </div>
+      <div class="rs-field">
+        <label>نوع الجمعية *</label>
+        <select name="type" id="savingType" onchange="toggleTypeFields()">
+          {% for k, v in saving_types.items() %}
+          <option value="{{ k }}">{{ v }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="rs-field">
+      <label>وصف مختصر</label>
+      <textarea name="description" rows="2"></textarea>
+    </div>
+
+    <div class="rs-grid-2">
+      <div class="rs-field">
+        <label>اسم المسؤول</label>
+        <input type="text" name="manager_name">
+      </div>
+      <div class="rs-field">
+        <label>رقم هاتف المسؤول</label>
+        <input type="tel" name="manager_phone">
+      </div>
+    </div>
+
+    <div class="rs-grid-2">
+      <div class="rs-field">
+        <label>مبلغ القسط الشهري (د.ع) *</label>
+        <input type="number" name="monthly_amount" required min="1" id="monthlyAmount" oninput="calcExpected()">
+      </div>
+      <div class="rs-field">
+        <label>عدد الأشهر *</label>
+        <input type="number" name="total_months" required min="1" value="10" id="totalMonths" oninput="calcExpected()">
+      </div>
+    </div>
+
+    <div class="rs-grid-2">
+      <div class="rs-field">
+        <label>المبلغ المتوقع استلامه</label>
+        <input type="number" name="expected_receive_amount" id="expectedReceive" min="0">
+      </div>
+      <div class="rs-field">
+        <label>عدد الأعضاء</label>
+        <input type="number" name="members_count" min="1" value="10">
+      </div>
+    </div>
+
+    <div class="rs-grid-2">
+      <div class="rs-field">
+        <label>تاريخ البداية *</label>
+        <input type="date" name="start_date" required value="{{ today if today else '' }}">
+      </div>
+      <div class="rs-field">
+        <label>طريقة تحديد الدور</label>
+        <select name="receive_method">
+          {% for k, v in receive_methods.items() %}
+          <option value="{{ k }}">{{ v }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="rs-grid-2">
+      <div class="rs-field">
+        <label>طريقة الدفع الافتراضية</label>
+        <select name="default_payment_method">
+          <option value="cash">صندوق</option>
+          <option value="bank">بنك</option>
+        </select>
+      </div>
+      <div class="rs-field">
+        <label>الحساب النقدي المرتبط</label>
+        <select name="default_treasury_account_id">
+          <option value="">— افتراضي —</option>
+          {% for tid, tlabel in treasury_choices %}
+          <option value="{{ tid }}">{{ tlabel }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="rs-field" id="employeeField" style="display:none;">
+      <label>الموظف</label>
+      <select name="employee_id">
+        <option value="">— اختر —</option>
+        {% for emp in employees %}
+        <option value="{{ emp.id }}">{{ emp.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="rs-section">
+      <h3>📋 دفعات سابقة (اختياري)</h3>
+      <p style="color:var(--text-muted);font-size:13px;margin:0 0 12px;">إذا دفعت أشهراً قبل إنشاء السجل، أدخلها هنا.</p>
+      <div class="rs-grid-2">
+        <div class="rs-field">
+          <label>عدد الدفعات السابقة</label>
+          <input type="number" name="prior_payments_count" min="0" value="0">
+        </div>
+        <div class="rs-field">
+          <label>مبلغ كل دفعة</label>
+          <input type="number" name="prior_payment_amount" min="0" placeholder="يُستخدم القسط الشهري إن تُرك فارغاً">
+        </div>
+      </div>
+      <div class="rs-grid-2">
+        <div class="rs-field">
+          <label>تاريخ أول دفعة</label>
+          <input type="date" name="prior_first_date">
+        </div>
+        <div class="rs-field">
+          <label style="display:flex;align-items:center;gap:8px;">
+            <input type="checkbox" name="prior_combined_entry" value="1"> قيد تجميعي واحد
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="rs-field">
+      <label>ملاحظات</label>
+      <textarea name="notes" rows="2"></textarea>
+    </div>
+
+    <button type="submit" class="rs-btn rs-btn-primary">حفظ وإنشاء القيود</button>
+  </form>
+</div>
+<script>
+function calcExpected() {
+  const m = parseInt(document.getElementById('monthlyAmount').value) || 0;
+  const n = parseInt(document.getElementById('totalMonths').value) || 0;
+  document.getElementById('expectedReceive').value = m * n || '';
+}
+function toggleTypeFields() {
+  const t = document.getElementById('savingType').value;
+  document.getElementById('employeeField').style.display = t === 'employee' ? 'block' : 'none';
+}
+toggleTypeFields();
+</script>
+{% endblock %}

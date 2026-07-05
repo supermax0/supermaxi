@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}كشف حساب — {{ saving.name }}{% endblock %}
+{% block page_title %}كشف حساب — {{ saving.name }}{% endblock %}
+{% block content %}
+<style>
+body {% if print_mode %}{ background: #fff; }{% endif %}
+.stmt { max-width: 800px; margin: 0 auto; direction: rtl; {% if print_mode %}padding: 20px;{% endif %} }
+.stmt h1 { font-size: 22px; margin-bottom: 4px; }
+.stmt-meta { color: #666; font-size: 14px; margin-bottom: 20px; }
+.stmt-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+.stmt-table th, .stmt-table td { border: 1px solid #ddd; padding: 8px; text-align: right; font-size: 13px; }
+.stmt-table th { background: #f3f4f6; }
+@media print { .no-print { display: none; } }
+</style>
+<div class="stmt">
+  {% if not print_mode %}
+  <div class="no-print" style="margin-bottom:16px;">
+    <a href="{{ url_for('rotating_savings.detail', saving_id=saving.id) }}">← رجوع</a>
+    · <a href="?print=1" target="_blank">طباعة</a>
+  </div>
+  {% endif %}
+
+  <h1>كشف حساب الجمعية</h1>
+  <div class="stmt-meta">
+    {{ saving.name }} · {{ saving.type_label() }} · {{ saving.start_date }}
+  </div>
+
+  <table class="stmt-table">
+    <tr><th>المدفوع</th><td>{{ "{:,}".format(saving.total_paid) }} د.ع</td></tr>
+    <tr><th>المستلم</th><td>{{ "{:,}".format(saving.total_received) }} د.ع</td></tr>
+    <tr><th>المتبقي</th><td>{{ "{:,}".format(saving.remaining_to_pay) }} د.ع</td></tr>
+    <tr><th>الحالة المحاسبية</th><td>{{ saving.accounting_status_label() }}</td></tr>
+  </table>
+
+  <h3>الدفعات</h3>
+  <table class="stmt-table">
+    <thead><tr><th>التاريخ</th><th>المبلغ</th><th>الحالة</th></tr></thead>
+    <tbody>
+      {% for p in saving.payments %}
+      <tr><td>{{ p.payment_date }}</td><td>{{ "{:,}".format(p.amount) }}</td><td>{{ p.status_label() }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h3>القيود</h3>
+  <table class="stmt-table">
+    <thead><tr><th>التاريخ</th><th>الوصف</th><th>المبلغ</th></tr></thead>
+    <tbody>
+      {% for e in entries %}
+      <tr><td>{{ e.entry_date.strftime('%Y-%m-%d') if e.entry_date else '' }}</td><td>{{ e.description }}</td><td>{{ "{:,}".format(e.amount) }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% if print_mode %}<script>window.onload=function(){window.print();}</script>{% endif %}
+{% endblock %}

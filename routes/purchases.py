@@ -1210,8 +1210,21 @@ def clone_purchase(purchase_id):
 
 @purchases_bp.route("/print/<int:purchase_id>")
 def print_purchase(purchase_id):
-    if not check_permission("can_manage_inventory"):
+    if not (
+        check_permission("can_manage_inventory")
+        or check_permission("can_manage_suppliers")
+    ):
         return redirect("/pos"), 403
     _ensure_purchase_schema()
-    purchase = Purchase.query.get_or_404(purchase_id)
+    from sqlalchemy.orm import joinedload
+    from models.purchase_item import PurchaseItem
+
+    purchase = (
+        Purchase.query.options(
+            joinedload(Purchase.items).joinedload(PurchaseItem.product),
+            joinedload(Purchase.supplier),
+            joinedload(Purchase.payments),
+        )
+        .get_or_404(purchase_id)
+    )
     return render_template("purchase_print.html", purchase=purchase)

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}إعدادات الجمعيات{% endblock %}
+{% block page_title %}إعدادات الجمعيات{% endblock %}
+{% block content %}
+<style>
+.rs-page { max-width: 700px; margin: 0 auto; direction: rtl; }
+.rs-nav { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
+.rs-nav a { padding: 8px 14px; border-radius: 10px; background: var(--card-alt); border: 1px solid var(--border-light); color: var(--text); text-decoration: none; font-size: 14px; }
+.rs-nav a.active { background: var(--primary); color: #fff; }
+.rs-form { background: var(--card); border: 1px solid var(--border-light); border-radius: 14px; padding: 24px; }
+.rs-field { margin-bottom: 16px; }
+.rs-field label { display: block; font-weight: 700; margin-bottom: 6px; }
+.rs-field select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-light); }
+.rs-btn { padding: 10px 20px; border-radius: 10px; border: none; background: var(--primary); color: #fff; font-weight: 700; cursor: pointer; }
+</style>
+<div class="rs-page">
+  {% include "rotating_savings/_nav.html" %}
+  <form class="rs-form" method="post">
+    <div class="rs-field">
+      <label><input type="checkbox" name="enabled" value="1" {% if settings.enabled %}checked{% endif %}> تفعيل الموديول</label>
+    </div>
+    <div class="rs-field">
+      <label>عند إرجاع مبالغ الجمعيات الشخصية</label>
+      <select name="owner_return_mode">
+        <option value="drawings" {% if settings.owner_return_mode == 'drawings' %}selected{% endif %}>تقليل مسحوبات المالك</option>
+        <option value="owner_current" {% if settings.owner_return_mode == 'owner_current' %}selected{% endif %}>تسجيلها في جاري المالك</option>
+      </select>
+    </div>
+    <div class="rs-field">
+      <label>تصنيف تدفقات الجمعيات باسم الشركة</label>
+      <select name="cash_flow_classification">
+        <option value="operating" {% if settings.cash_flow_classification == 'operating' %}selected{% endif %}>تشغيلي</option>
+        <option value="investing" {% if settings.cash_flow_classification == 'investing' %}selected{% endif %}>استثماري</option>
+        <option value="financing" {% if settings.cash_flow_classification == 'financing' %}selected{% endif %}>تمويلي</option>
+      </select>
+    </div>
+    <button type="submit" class="rs-btn">حفظ</button>
+  </form>
+</div>
+{% endblock %}

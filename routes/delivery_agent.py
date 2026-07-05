@@ -114,14 +114,14 @@ def _agent_pending_orders(agent_id):
     return [_serialize_agent_order(o) for o in rows]
 
 
-def _agent_delivered_today_count(agent_id):
-    """عدد الطلبات «واصل» في كشوف المندوب غير المنفّذة (بانتظار المحاسب)."""
+def _agent_delivered_today_total(agent_id):
+    """مجموع مبالغ الطلبات «واصل» في كشوف المندوب غير المنفّذة (بانتظار المحاسب)."""
     reports = ShippingReport.query.filter(
         ShippingReport.report_number.like(f"AGT-{agent_id}-%"),
         ShippingReport.is_executed.is_(False),
     ).all()
 
-    count = 0
+    delivered_ids = []
     for report in reports:
         try:
             selections = json.loads(report.order_status_selections or "{}")
@@ -129,10 +129,23 @@ def _agent_delivered_today_count(agent_id):
             selections = {}
         if not isinstance(selections, dict):
             continue
-        for status in selections.values():
+        for oid_str, status in selections.items():
             if status in ("واصل", "Delivered"):
-                count += 1
-    return count
+                try:
+                    delivered_ids.append(int(oid_str))
+                except (TypeError, ValueError):
+                    pass
+
+    if not delivered_ids:
+        return 0
+
+    total = (
+        Invoice.query.filter(Invoice.id.in_(delivered_ids))
+        .with_entities(func.sum(Invoice.total))
+        .scalar()
+        or 0
+    )
+    return int(total)
 
 
 def _agent_order_stats(agent_id):
@@ -140,11 +153,11 @@ def _agent_order_stats(agent_id):
     pending_q = base.filter(Invoice.status.in_(_AGENT_PENDING_STATUSES))
     pending_count = pending_q.count()
     pending_total = pending_q.with_entities(func.sum(Invoice.total)).scalar() or 0
-    delivered_count = _agent_delivered_today_count(agent_id)
+    delivered_total = _agent_delivered_today_total(agent_id)
     return {
         "pending_count": int(pending_count),
         "pending_total": int(pending_total),
-        "delivered_count": int(delivered_count),
+        "delivered_total": int(delivered_total),
     }
 
 

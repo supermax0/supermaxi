@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}تقرير ملخص الجمعيات{% endblock %}
+{% block page_title %}📊 تقرير ملخص الجمعيات{% endblock %}
+{% block content %}
+<style>
+.rs-page { max-width: 1100px; margin: 0 auto; direction: rtl; }
+.rs-nav { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
+.rs-nav a { padding: 8px 14px; border-radius: 10px; background: var(--card-alt); border: 1px solid var(--border-light); color: var(--text); text-decoration: none; font-size: 14px; }
+.rs-nav a.active { background: var(--primary); color: #fff; }
+.rs-kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 22px; }
+.rs-kpi { background: var(--card); border: 1px solid var(--border-light); border-radius: 12px; padding: 12px; }
+.rs-kpi .label { font-size: 12px; color: var(--text-muted); }
+.rs-kpi .value { font-size: 20px; font-weight: 800; }
+.charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+.chart-box { background: var(--card); border: 1px solid var(--border-light); border-radius: 14px; padding: 16px; }
+.chart-wrap { height: 260px; position: relative; }
+.rs-table { width: 100%; border-collapse: collapse; }
+.rs-table th, .rs-table td { padding: 8px 10px; border: 1px solid var(--border-light); text-align: right; font-size: 13px; }
+@media (max-width: 768px) { .charts-grid { grid-template-columns: 1fr; } }
+</style>
+<div class="rs-page">
+  {% include "rotating_savings/_nav.html" %}
+
+  <div class="rs-kpi-grid">
+    <div class="rs-kpi"><div class="label">نشطة</div><div class="value">{{ stats.active_count }}</div></div>
+    <div class="rs-kpi"><div class="label">المدفوع</div><div class="value">{{ "{:,}".format(stats.total_paid) }}</div></div>
+    <div class="rs-kpi"><div class="label">المستلم</div><div class="value">{{ "{:,}".format(stats.total_received) }}</div></div>
+    <div class="rs-kpi"><div class="label">الالتزامات</div><div class="value">{{ "{:,}".format(stats.total_liability) }}</div></div>
+    <div class="rs-kpi"><div class="label">لم تُستلم</div><div class="value">{{ not_received_count }}</div></div>
+    <div class="rs-kpi"><div class="label">باقي أقساط</div><div class="value">{{ received_with_due_count }}</div></div>
+    <div class="rs-kpi"><div class="label">رسوم</div><div class="value">{{ "{:,}".format(stats.total_fees) }}</div></div>
+    <div class="rs-kpi"><div class="label">تحذيرات</div><div class="value">{{ late_count }}</div></div>
+  </div>
+
+  {% if top_saving %}
+  <p style="margin-bottom:16px;color:var(--text-muted);">أعلى جمعية مدفوعات: <strong>{{ top_saving.name }}</strong> — {{ "{:,}".format(top_saving.total_paid) }} د.ع</p>
+  {% endif %}
+
+  <div class="charts-grid">
+    <div class="chart-box">
+      <h3 style="margin:0 0 10px;font-size:15px;">المدفوع vs المستلم شهرياً</h3>
+      <div class="chart-wrap"><canvas id="monthlyChart"></canvas></div>
+    </div>
+    <div class="chart-box">
+      <h3 style="margin:0 0 10px;font-size:15px;">الجمعيات حسب النوع</h3>
+      <div class="chart-wrap"><canvas id="typeChart"></canvas></div>
+    </div>
+    <div class="chart-box">
+      <h3 style="margin:0 0 10px;font-size:15px;">الجمعيات حسب الحالة</h3>
+      <div class="chart-wrap"><canvas id="statusChart"></canvas></div>
+    </div>
+    <div class="chart-box">
+      <h3 style="margin:0 0 10px;font-size:15px;">أرصدة مفتوحة</h3>
+      <div class="chart-wrap"><canvas id="balanceChart"></canvas></div>
+    </div>
+  </div>
+
+  <h3>ملاحظة محاسبية</h3>
+  <p style="color:var(--text-muted);font-size:14px;">دفعات الجمعيات لا تدخل المصاريف ولا الإيرادات — فقط الرسوم تظهر في قائمة الدخل.</p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+const monthlyLabels = {{ monthly_labels | tojson }};
+const monthlyPaid = {{ monthly_paid | tojson }};
+const monthlyReceived = {{ monthly_received | tojson }};
+const byType = {{ by_type | tojson }};
+const byStatus = {{ by_status | tojson }};
+const openBalances = {{ open_balances | tojson }};
+
+new Chart(document.getElementById('monthlyChart'), {
+  type: 'bar',
+  data: {
+    labels: monthlyLabels,
+    datasets: [
+      { label: 'مدفوع', data: monthlyPaid, backgroundColor: '#6366f1' },
+      { label: 'مستلم', data: monthlyReceived, backgroundColor: '#22c55e' },
+    ],
+  },
+  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { rtl: true } } },
+});
+
+new Chart(document.getElementById('typeChart'), {
+  type: 'doughnut',
+  data: {
+    labels: byType.map(x => x.label),
+    datasets: [{ data: byType.map(x => x.count), backgroundColor: ['#6366f1','#f59e0b','#22c55e','#94a3b8'] }],
+  },
+  options: { responsive: true, maintainAspectRatio: false },
+});
+
+new Chart(document.getElementById('statusChart'), {
+  type: 'pie',
+  data: {
+    labels: byStatus.map(x => x.label),
+    datasets: [{ data: byStatus.map(x => x.count), backgroundColor: ['#22c55e','#3b82f6','#64748b','#ef4444','#f59e0b'] }],
+  },
+  options: { responsive: true, maintainAspectRatio: false },
+});
+
+new Chart(document.getElementById('balanceChart'), {
+  type: 'bar',
+  data: {
+    labels: openBalances.map(x => x.name),
+    datasets: [{ label: 'الرصيد', data: openBalances.map(x => x.balance), backgroundColor: '#8b5cf6' }],
+  },
+  options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false },
+});
+</script>
+{% endblock %}

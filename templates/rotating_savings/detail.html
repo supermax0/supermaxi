@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% block title %}{{ saving.name }}{% endblock %}
+{% block page_title %}{{ saving.name }}{% endblock %}
+{% block content %}
+<style>
+.rs-page { max-width: 1100px; margin: 0 auto; direction: rtl; }
+.rs-nav { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
+.rs-nav a { padding: 8px 14px; border-radius: 10px; background: var(--card-alt); border: 1px solid var(--border-light); color: var(--text); text-decoration: none; font-size: 14px; }
+.rs-nav a:hover, .rs-nav a.active { background: var(--primary); color: #fff; }
+.rs-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px; }
+.rs-kpi { background: var(--card); border: 1px solid var(--border-light); border-radius: 12px; padding: 12px; }
+.rs-kpi .label { font-size: 12px; color: var(--text-muted); }
+.rs-kpi .value { font-size: 18px; font-weight: 800; }
+.rs-panel { background: var(--card); border: 1px solid var(--border-light); border-radius: 14px; padding: 18px; margin-bottom: 20px; }
+.rs-panel h3 { margin: 0 0 14px; font-size: 16px; }
+.rs-table { width: 100%; border-collapse: collapse; }
+.rs-table th, .rs-table td { padding: 8px 10px; border: 1px solid var(--border-light); text-align: right; font-size: 13px; }
+.rs-table th { background: rgba(99,102,241,0.1); }
+.rs-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+.rs-btn { padding: 8px 14px; border-radius: 8px; border: none; cursor: pointer; font-weight: 700; font-size: 13px; }
+.rs-btn-primary { background: var(--primary); color: #fff; }
+.rs-btn-ghost { background: var(--card-alt); border: 1px solid var(--border-light); color: var(--text); }
+.rs-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 999; align-items: center; justify-content: center; }
+.rs-modal.open { display: flex; }
+.rs-modal-box { background: var(--card); border-radius: 14px; padding: 24px; width: min(480px, 92vw); max-height: 90vh; overflow-y: auto; }
+.rs-field { margin-bottom: 12px; }
+.rs-field label { display: block; font-weight: 700; margin-bottom: 4px; font-size: 13px; }
+.rs-field input, .rs-field select, .rs-field textarea { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-light); background: var(--bg); color: var(--text); box-sizing: border-box; }
+</style>
+<div class="rs-page">
+  {% include "rotating_savings/_nav.html" %}
+
+  <div style="margin-bottom:12px;color:var(--text-muted);">
+    {{ saving.type_label() }} · {{ saving.status_label() }} · {{ saving.accounting_status_label() }}
+  </div>
+
+  <div class="rs-summary">
+    <div class="rs-kpi"><div class="label">القسط الشهري</div><div class="value">{{ "{:,}".format(saving.monthly_amount) }}</div></div>
+    <div class="rs-kpi"><div class="label">المدفوع</div><div class="value">{{ "{:,}".format(saving.total_paid) }}</div></div>
+    <div class="rs-kpi"><div class="label">المستلم</div><div class="value">{{ "{:,}".format(saving.total_received) }}</div></div>
+    <div class="rs-kpi"><div class="label">المتبقي</div><div class="value">{{ "{:,}".format(saving.remaining_to_pay) }}</div></div>
+    <div class="rs-kpi"><div class="label">رصيد الأصل</div><div class="value">{{ "{:,}".format(saving.asset_balance) }}</div></div>
+    <div class="rs-kpi"><div class="label">رصيد الالتزام</div><div class="value">{{ "{:,}".format(saving.liability_balance) }}</div></div>
+  </div>
+
+  {% if can_manage %}
+  <div class="rs-actions">
+    <button class="rs-btn rs-btn-primary" onclick="openModal('paymentModal')">تسجيل دفعة</button>
+    <button class="rs-btn rs-btn-primary" onclick="openModal('receiptModal')">تسجيل استلام</button>
+    <button class="rs-btn rs-btn-ghost" onclick="openModal('feeModal')">إضافة رسوم</button>
+    <a href="{{ url_for('rotating_savings.statement', saving_id=saving.id) }}" class="rs-btn rs-btn-ghost">كشف حساب</a>
+    <a href="{{ url_for('rotating_savings.export_statement', saving_id=saving.id) }}" class="rs-btn rs-btn-ghost">Excel</a>
+    <a href="{{ url_for('rotating_savings.statement', saving_id=saving.id, print=1) }}" class="rs-btn rs-btn-ghost" target="_blank">طباعة</a>
+  </div>
+  {% endif %}
+
+  <div class="rs-panel">
+    <h3>جدول الدفعات</h3>
+    <table class="rs-table">
+      <thead><tr><th>#</th><th>التاريخ</th><th>المبلغ</th><th>الرسوم</th><th>الحالة</th><th>قيد</th><th>ملاحظات</th></tr></thead>
+      <tbody>
+        {% for p in saving.payments %}
+        <tr>
+          <td>{{ p.payment_no or p.id }}</td>
+          <td>{{ p.payment_date }}</td>
+          <td>{{ "{:,}".format(p.amount) }}</td>
+          <td>{{ "{:,}".format(p.fee_amount or 0) }}</td>
+          <td>{{ p.status_label() }}</td>
+          <td>{% if p.journal_entry_id %}#{{ p.journal_entry_id }}{% else %}—{% endif %}</td>
+          <td>
+            {{ p.notes or '—' }}
+            {% if can_manage and p.status == 'paid' %}
+            <form method="post" action="{{ url_for('rotating_savings.reverse_payment_route', saving_id=saving.id, payment_id=p.id) }}" style="display:inline;" onsubmit="return confirm('عكس هذه الدفعة؟')">
+              <button type="submit" class="rs-btn rs-btn-ghost" style="padding:2px 8px;font-size:11px;">عكس</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7">لا توجد دفعات</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="rs-panel">
+    <h3>سجل الاستلام</h3>
+    <table class="rs-table">
+      <thead><tr><th>التاريخ</th><th>المبلغ</th><th>مدفوع قبل الاستلام</th><th>التزام مُنشأ</th><th>قيد</th><th>إجراءات</th></tr></thead>
+      <tbody>
+        {% for r in saving.receipts %}
+        <tr>
+          <td>{{ r.receipt_date }}</td>
+          <td>{{ "{:,}".format(r.received_amount) }}</td>
+          <td>{{ "{:,}".format(r.paid_before_receipt) }}</td>
+          <td>{{ "{:,}".format(r.liability_created) }}</td>
+          <td>{{ r.journal_entry_ids or '—' }}</td>
+          <td>
+            {% if can_manage and not r.reversed_at %}
+            <form method="post" action="{{ url_for('rotating_savings.reverse_receipt_route', saving_id=saving.id, receipt_id=r.id) }}" style="display:inline;" onsubmit="return confirm('عكس هذا الاستلام؟')">
+              <button type="submit" class="rs-btn rs-btn-ghost" style="padding:2px 8px;font-size:11px;">عكس</button>
+            </form>
+            {% elif r.reversed_at %}<small>معكوس</small>{% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6">لم يتم الاستلام بعد</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="rs-panel">
+    <h3>القيود المرتبطة</h3>
+    <table class="rs-table">
+      <thead><tr><th>رقم القيد</th><th>التاريخ</th><th>الوصف</th><th>المبلغ</th></tr></thead>
+      <tbody>
+        {% for e in entries %}
+        <tr>
+          <td>{{ e.entry_number }}</td>
+          <td>{{ e.entry_date.strftime('%Y-%m-%d') if e.entry_date else '—' }}</td>
+          <td>{{ e.description }}</td>
+          <td>{{ "{:,}".format(e.amount) }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4">لا توجد قيود</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if can_manage %}
+<div id="paymentModal" class="rs-modal" onclick="if(event.target===this)closeModal('paymentModal')">
+  <div class="rs-modal-box">
+    <h3 style="margin:0 0 16px;">تسجيل دفعة شهرية</h3>
+    <form method="post" action="{{ url_for('rotating_savings.add_payment', saving_id=saving.id) }}">
+      <div class="rs-field"><label>تاريخ الدفع</label><input type="date" name="payment_date" required value="{{ saving.start_date }}"></div>
+      <div class="rs-field"><label>المبلغ</label><input type="number" name="amount" required value="{{ saving.monthly_amount }}" min="1"></div>
+      <div class="rs-field"><label>طريقة الدفع</label><select name="payment_method"><option value="cash">صندوق</option><option value="bank">بنك</option></select></div>
+      <div class="rs-field"><label>الحساب النقدي</label><select name="treasury_account_id"><option value="">— افتراضي —</option>{% for tid, tlabel in treasury_choices %}<option value="{{ tid }}">{{ tlabel }}</option>{% endfor %}</select></div>
+      <div class="rs-field"><label>رسوم (اختياري)</label><input type="number" name="fee_amount" min="0" value="0"></div>
+      <div class="rs-field"><label>ملاحظات</label><textarea name="notes" rows="2"></textarea></div>
+      <button type="submit" class="rs-btn rs-btn-primary">حفظ</button>
+      <button type="button" class="rs-btn rs-btn-ghost" onclick="closeModal('paymentModal')">إلغاء</button>
+    </form>
+  </div>
+</div>
+
+<div id="receiptModal" class="rs-modal" onclick="if(event.target===this)closeModal('receiptModal')">
+  <div class="rs-modal-box">
+    <h3 style="margin:0 0 16px;">تسجيل استلام</h3>
+    <form method="post" action="{{ url_for('rotating_savings.add_receipt', saving_id=saving.id) }}">
+      <div class="rs-field"><label>تاريخ الاستلام</label><input type="date" name="receipt_date" required></div>
+      <div class="rs-field"><label>المبلغ المستلم</label><input type="number" name="received_amount" required value="{{ saving.expected_receive_amount }}" min="1"></div>
+      <div class="rs-field"><label>حساب الإيداع</label><select name="deposit_method"><option value="cash">صندوق</option><option value="bank">بنك</option></select></div>
+      <div class="rs-field"><label>الحساب النقدي</label><select name="treasury_account_id"><option value="">— افتراضي —</option>{% for tid, tlabel in treasury_choices %}<option value="{{ tid }}">{{ tlabel }}</option>{% endfor %}</select></div>
+      <div class="rs-field"><label>ملاحظات</label><textarea name="notes" rows="2"></textarea></div>
+      <button type="submit" class="rs-btn rs-btn-primary">حفظ</button>
+      <button type="button" class="rs-btn rs-btn-ghost" onclick="closeModal('receiptModal')">إلغاء</button>
+    </form>
+  </div>
+</div>
+
+<div id="feeModal" class="rs-modal" onclick="if(event.target===this)closeModal('feeModal')">
+  <div class="rs-modal-box">
+    <h3 style="margin:0 0 16px;">تسجيل رسوم</h3>
+    <form method="post" action="{{ url_for('rotating_savings.add_fee', saving_id=saving.id) }}">
+      <div class="rs-field"><label>التاريخ</label><input type="date" name="fee_date" required></div>
+      <div class="rs-field"><label>المبلغ</label><input type="number" name="amount" required min="1"></div>
+      <div class="rs-field"><label>طريقة الدفع</label><select name="payment_method"><option value="cash">صندوق</option><option value="bank">بنك</option></select></div>
+      <div class="rs-field"><label>ملاحظات</label><textarea name="notes" rows="2"></textarea></div>
+      <button type="submit" class="rs-btn rs-btn-primary">حفظ</button>
+      <button type="button" class="rs-btn rs-btn-ghost" onclick="closeModal('feeModal')">إلغاء</button>
+    </form>
+  </div>
+</div>
+<script>
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+</script>
+{% endif %}
+{% endblock %}

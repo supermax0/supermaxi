@@ -11,6 +11,7 @@ from models.supplier_payment import SupplierPayment
 from models.product import Product
 from datetime import datetime
 from models.purchase import Purchase
+from models.purchase_item import PurchaseItem
 from models.employee import Employee
 from utils.plan_guard import feature_required
 from utils.permission_checks import check_permission
@@ -48,6 +49,56 @@ def _parse_opening_balance(raw_value):
         return max(0, int(float(cleaned)))
     except (TypeError, ValueError):
         return 0
+
+
+def _purchase_invoice_summary(purchase: Purchase) -> dict:
+    """ملخص فاتورة شراء واحدة (وليس دمج الأصناف في صف واحد)."""
+    items = list(purchase.items or [])
+    grand_total = int(purchase.grand_total or purchase.total or 0)
+    paid_total = int(purchase.paid_total or 0)
+    remaining_total = int(
+        purchase.remaining_total
+        if purchase.remaining_total is not None
+        else max(grand_total - paid_total, 0)
+    )
+
+    if items:
+        item_count = len(items)
+        names = [
+            (it.product.name if it.product else "—")
+            for it in items[:3]
+        ]
+        products_label = "، ".join(names)
+        if item_count > 3:
+            products_label += f" (+{item_count - 3})"
+    else:
+        item_count = 1
+        legacy_product = getattr(purchase, "product", None)
+        products_label = legacy_product.name if legacy_product else (purchase.invoice_no or "—")
+
+    return {
+        "id": purchase.id,
+        "invoice_no": purchase.invoice_no or f"LEG-{purchase.id}",
+        "item_count": item_count,
+        "products_label": products_label,
+        "grand_total": grand_total,
+        "paid_total": paid_total,
+        "remaining_total": remaining_total,
+        "purchase_date": purchase.purchase_date,
+        "status": purchase.status or "confirmed",
+    }
+
+
+def _supplier_purchases_query(supplier_id: int):
+    from sqlalchemy.orm import joinedload
+
+    return (
+        Purchase.query.options(
+            joinedload(Purchase.items).joinedload(PurchaseItem.product),
+        )
+        .filter_by(supplier_id=supplier_id)
+        .order_by(Purchase.purchase_date.desc(), Purchase.id.desc())
+    )
 
 
 # =============================
@@ -89,11 +140,8 @@ def supplier_details(id):
         return redirect("/pos"), 403
     _ensure_supplier_opening_balance_column()
     supplier = Supplier.query.get_or_404(id)
-    purchases = (
-        Purchase.query.filter_by(supplier_id=id)
-        .order_by(Purchase.purchase_date.desc(), Purchase.id.desc())
-        .all()
-    )
+    purchases = _supplier_purchases_query(id).all()
+    purchase_invoices = [_purchase_invoice_summary(p) for p in purchases]
     payments = (
         SupplierPayment.query.filter_by(supplier_id=id)
         .order_by(SupplierPayment.created_at.desc())
@@ -104,6 +152,7 @@ def supplier_details(id):
         "supplier_details.html",
         supplier=supplier,
         purchases=purchases,
+        purchase_invoices=purchase_invoices,
         payments=payments,
         treasury_choices=treasury_choices_for_form(),
     )
@@ -262,11 +311,12 @@ def supplier_statement_print(id):
     _ensure_supplier_opening_balance_column()
     supplier = Supplier.query.get_or_404(id)
 
-    purchases = Purchase.query.filter_by(supplier_id=id).all()
+    purchases = _supplier_purchases_query(id).all()
+    purchase_invoices = [_purchase_invoice_summary(p) for p in purchases]
     payments = SupplierPayment.query.filter_by(supplier_id=id).all()
 
     opening_balance = int(getattr(supplier, "opening_balance", 0) or 0)
-    total_purchase = sum(p.total for p in purchases)
+    total_purchase = sum(p["grand_total"] for p in purchase_invoices)
     total_paid = int(supplier.total_paid or 0)
     total_debt = int(supplier.total_debt or 0)
     remaining = int(supplier.remaining or 0)
@@ -275,6 +325,7 @@ def supplier_statement_print(id):
         "supplier_statement_print.html",
         supplier=supplier,
         purchases=purchases,
+        purchase_invoices=purchase_invoices,
         payments=payments,
         opening_balance=opening_balance,
         total_purchase=total_purchase,

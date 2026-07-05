@@ -213,6 +213,28 @@ body.pos-white-pro {
   color: var(--text-secondary);
 }
 
+@keyframes pos-shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-5px); }
+  40%, 80% { transform: translateX(5px); }
+}
+
+.pos-input--error,
+.pos-select--error {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18) !important;
+}
+
+.pos-input--error:focus,
+.pos-select--error:focus {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.25) !important;
+}
+
+.pos-input--shake {
+  animation: pos-shake 0.35s ease;
+}
+
 .pos-field-label {
   font-size: 12px;
   color: var(--text-secondary);

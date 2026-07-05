@@ -1,6 +1,13 @@
 from .product import Product
 from .customer import Customer
 from .customer_credit import CustomerCreditPlan, CustomerInstallment, CustomerCreditPayment
+from .rotating_savings import (
+    RotatingSaving,
+    RotatingSavingAttachment,
+    RotatingSavingPayment,
+    RotatingSavingReceipt,
+    RotatingSavingSettings,
+)
 from .account_transaction import AccountTransaction
 from .treasury_account import TreasuryAccount
 from .treasury_transfer import TreasuryTransfer

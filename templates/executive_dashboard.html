@@ -824,9 +824,9 @@
 </div>
 
 <script>
-  const nf = new Intl.NumberFormat("ar-IQ");
+  const nf = new Intl.NumberFormat("en-US");
   document.getElementById("execDate").textContent = new Date().toLocaleDateString("ar-IQ", {
-    day: "numeric", month: "long", year: "numeric"
+    day: "numeric", month: "long", year: "numeric", numberingSystem: "latn"
   });
 
   let performanceChart = null;

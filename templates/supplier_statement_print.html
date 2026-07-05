@@ -86,23 +86,25 @@ th,td{
 <h3>{{ _('supplier_statement_purchases_title') }}</h3>
 <table>
     <tr>
-        <th>{{ _('supplier_statement_col_product') }}</th>
-        <th>{{ _('supplier_statement_col_quantity') }}</th>
-        <th>{{ _('supplier_statement_col_price') }}</th>
+        <th>رقم الفاتورة</th>
+        <th>الأصناف</th>
         <th>{{ _('supplier_statement_col_total') }}</th>
+        <th>المدفوع</th>
+        <th>المتبقي</th>
         <th>{{ _('supplier_statement_col_date') }}</th>
     </tr>
-    {% for p in purchases %}
+    {% for inv in purchase_invoices|default([]) %}
     <tr>
-        <td>{{ p.product.name }}</td>
-        <td>{{ p.quantity }}</td>
-        <td>{{ p.price }}</td>
-        <td>{{ p.total }}</td>
-        <td>{{ p.purchase_date }}</td>
+        <td>{{ inv.invoice_no }}</td>
+        <td>{{ inv.item_count }} — {{ inv.products_label }}</td>
+        <td>{{ "{:,}".format(inv.grand_total) }}</td>
+        <td>{{ "{:,}".format(inv.paid_total) }}</td>
+        <td>{{ "{:,}".format(inv.remaining_total) }}</td>
+        <td>{{ inv.purchase_date }}</td>
     </tr>
     {% else %}
     <tr>
-        <td colspan="5">{{ _('supplier_statement_no_purchases_short') }}</td>
+        <td colspan="6">{{ _('supplier_statement_no_purchases_short') }}</td>
     </tr>
     {% endfor %}
 </table>

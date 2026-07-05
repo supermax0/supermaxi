@@ -28,7 +28,7 @@ def _purchase_paid(purchase: Purchase) -> int:
 
 
 def _purchase_is_active(purchase: Purchase) -> bool:
-    return (purchase.status or "confirmed").strip().lower() not in {"cancelled", "canceled"}
+    return (purchase.status or "confirmed").strip().lower() not in {"draft", "cancelled", "canceled"}
 
 
 def _fixed_asset_credit_for_supplier(supplier_id: int) -> int:

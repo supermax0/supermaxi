@@ -72,6 +72,7 @@ from routes.quick_sale import quick_sale_bp
 from routes.beauty import beauty_bp
 from routes.maintenance import maintenance_bp
 from routes.fixed_assets import fixed_assets_bp
+from routes.rotating_savings import rotating_savings_bp
 from routes.whatsapp_webhook import whatsapp_webhook_bp
 from routes.landing import landing_bp
 from telegram_bot import telegram_bp
@@ -224,6 +225,13 @@ with app.app_context():
     from models.beauty_appointment import BeautyAppointment  # noqa: F401
     from models.beauty_session_note import BeautySessionNote  # noqa: F401
     from models.customer_credit import CustomerCreditPlan, CustomerInstallment, CustomerCreditPayment  # noqa: F401
+    from models.rotating_savings import (  # noqa: F401
+        RotatingSaving,
+        RotatingSavingPayment,
+        RotatingSavingReceipt,
+        RotatingSavingAttachment,
+        RotatingSavingSettings,
+    )
     from models.activity_log import ActivityLog  # noqa: F401
     from models.core.platform_announcement import PlatformAnnouncement  # noqa: F401
     from models.core.announcement_send_log import AnnouncementSendLog  # noqa: F401
@@ -386,6 +394,12 @@ with app.app_context():
                             if col not in is_cols:
                                 cur.execute(stmt)
                     if "invoice" in existing_tables:
+                        cur.execute("PRAGMA table_info(invoice)")
+                        invoice_cols = {row[1] for row in cur.fetchall()}
+                        if "shipping_barcodes_json" not in invoice_cols:
+                            cur.execute(
+                                "ALTER TABLE invoice ADD COLUMN shipping_barcodes_json TEXT"
+                            )
                         cur.execute(
                             "UPDATE invoice SET status = ? "
                             "WHERE status = ? AND payment_status = ?",
@@ -947,11 +961,13 @@ with app.app_context():
                 db.session.execute(text("ALTER TABLE invoice ADD COLUMN order_video_duration_sec FLOAT"))
             if 'order_video_recorded_at' not in invoice_columns:
                 db.session.execute(text(f"ALTER TABLE invoice ADD COLUMN order_video_recorded_at {recorded_type}"))
+            if 'shipping_barcodes_json' not in invoice_columns:
+                db.session.execute(text("ALTER TABLE invoice ADD COLUMN shipping_barcodes_json TEXT"))
             db.session.commit()
-            print("Added order video columns to invoice table.")
+            print("Added order video / shipping barcode columns to invoice table.")
     except Exception as e:
         db.session.rollback()
-        print(f"Migration note (order video columns): {e}")
+        print(f"Migration note (order video / shipping barcode columns): {e}")
 
     # Migration: Create RBAC tables if needed
     try:
@@ -1227,6 +1243,8 @@ def inject_global_data():
         "can_see_financial": False,
         "can_see_fixed_assets": False,
         "can_manage_fixed_assets": False,
+        "can_see_rotating_savings": False,
+        "can_manage_rotating_savings": False,
         # صلاحيات ظهور الروابط في القائمة الجانبية
         "can_use_pos": False,
         "can_see_shipping": False,
@@ -1291,6 +1309,8 @@ def inject_global_data():
             "can_see_financial": employee_can(employee, "view_financial"),
             "can_see_fixed_assets": employee_can(employee, "view_fixed_assets"),
             "can_manage_fixed_assets": employee_can(employee, "manage_fixed_assets"),
+            "can_see_rotating_savings": employee_can(employee, "view_rotating_savings"),
+            "can_manage_rotating_savings": employee_can(employee, "manage_rotating_savings"),
             # ربط أعلام القائمة الجانبية بصلاحيات الـ RBAC
             "can_use_pos": employee_can(employee, "view_pos"),
             "can_see_shipping": employee_can(employee, "view_shipping"),
@@ -1461,6 +1481,7 @@ def require_login():
             ("/cash", "view_accounts"),
             ("/accounts", "view_accounts"),
             ("/assets", ("view_fixed_assets", "view_accounts")),
+            ("/finance/rotating-savings", ("view_rotating_savings", "view_accounts")),
             ("/reports", "view_reports"),
             ("/messages", "view_messages"),
             ("/pages", "view_pages"),
@@ -1473,7 +1494,7 @@ def require_login():
             if not path.startswith(prefix):
                 continue
             if isinstance(required, tuple):
-                if prefix == "/assets":
+                if prefix in ("/assets", "/finance/rotating-savings"):
                     allowed = any(employee_can(employee, perm) for perm in required)
                 else:
                     allowed = all(employee_can(employee, perm) for perm in required)
@@ -1773,6 +1794,7 @@ app.register_blueprint(delivery_fee_api_bp)
 app.register_blueprint(purchases_bp, url_prefix="/purchases")
 app.register_blueprint(maintenance_bp)
 app.register_blueprint(fixed_assets_bp)
+app.register_blueprint(rotating_savings_bp)
 app.register_blueprint(inventory_ledger_bp, url_prefix="/inventory/ledger")
 app.register_blueprint(media_library_bp)
 app.register_blueprint(cash_bp, url_prefix="/cash")

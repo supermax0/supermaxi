@@ -31,6 +31,39 @@ RETURN_STATUSES = list(ORDER_RETURN_STATUSES)
 CANCELED_STATUSES = list(ORDER_CANCELED_STATUSES)
 
 
+def _rotating_savings_financial_summary(date_from, date_to):
+    """ملخص الجمعيات للتقرير المالي."""
+    defaults = {
+        "rotating_savings_paid": 0,
+        "rotating_savings_received": 0,
+        "rotating_savings_liability": 0,
+        "rotating_savings_asset": 0,
+        "rotating_savings_fees": 0,
+        "rotating_savings_active_count": 0,
+    }
+    try:
+        from utils.rotating_savings_service import financial_summary
+        from models.rotating_savings import RotatingSaving
+
+        data = financial_summary()
+        if not data:
+            return defaults
+        asset_total = sum(
+            int(s.asset_balance or 0)
+            for s in RotatingSaving.query.filter(RotatingSaving.deleted_at.is_(None)).all()
+        )
+        return {
+            "rotating_savings_paid": data.get("total_paid", 0),
+            "rotating_savings_received": data.get("total_received", 0),
+            "rotating_savings_liability": data.get("total_liability", 0),
+            "rotating_savings_asset": asset_total,
+            "rotating_savings_fees": data.get("total_fees", 0),
+            "rotating_savings_active_count": data.get("active_count", 0),
+        }
+    except Exception:
+        return defaults
+
+
 def _fixed_assets_financial_summary(date_from, date_to):
     """ملخص الأصول الثابتة للتقرير المالي (يُتجاهل إن لم تُنشأ الجداول بعد)."""
     defaults = {
@@ -204,11 +237,18 @@ def get_financial_report_data(period_type="this_month", custom_date_from=None, c
     expense_to_revenue_pct = round(expenses_period / total_revenue * 100, 1) if total_revenue else None
 
     fa_summary = _fixed_assets_financial_summary(date_from, date_to)
+    rs_summary = _rotating_savings_financial_summary(date_from, date_to)
     fixed_assets_book_value = fa_summary["fixed_assets_book_value"]
     fixed_assets_depreciation_period = fa_summary["fixed_assets_depreciation_period"]
 
-    total_assets = int(cash_balance + inventory_value + accounts_receivable + fixed_assets_book_value)
-    total_liabilities = int(supplier_debts)
+    total_assets = int(
+        cash_balance
+        + inventory_value
+        + accounts_receivable
+        + fixed_assets_book_value
+        + rs_summary["rotating_savings_asset"]
+    )
+    total_liabilities = int(supplier_debts + rs_summary["rotating_savings_liability"])
     liquidity_ratio = round(total_assets / total_liabilities, 2) if total_liabilities else None
 
     # ─── حقوق الملكية وموازنة الميزانية (الأصول = الالتزامات + حقوق الملكية) ───
@@ -255,6 +295,51 @@ def get_financial_report_data(period_type="this_month", custom_date_from=None, c
         "count": int(r.cnt or 0),
         "total": int(r.total or 0),
     } for r in tc_rows]
+
+    # ─── أفضل الموظفين والبيجات ───
+    employee_totals = {}
+    page_totals = {}
+    for inv in period_invoices:
+        inv_id = int(inv.id)
+        inv_total = int(inv.total or 0)
+        inv_profit = int(inv_total - cogs_by_invoice.get(inv_id, 0))
+
+        employee_key = int(inv.employee_id or 0)
+        employee_name = (inv.employee_name or "").strip() or "غير محدد"
+        employee_row = employee_totals.setdefault(
+            employee_key,
+            {"name": employee_name, "count": 0, "total": 0, "profit": 0},
+        )
+        if employee_name != "غير محدد":
+            employee_row["name"] = employee_name
+        employee_row["count"] += 1
+        employee_row["total"] += inv_total
+        employee_row["profit"] += inv_profit
+
+        page_key = int(inv.page_id or 0)
+        page_name = (inv.page_name or "").strip()
+        if not page_name and getattr(inv, "page", None):
+            page_name = (inv.page.name or "").strip()
+        page_row = page_totals.setdefault(
+            page_key,
+            {"name": page_name or "غير محدد", "count": 0, "total": 0, "profit": 0},
+        )
+        if page_name:
+            page_row["name"] = page_name
+        page_row["count"] += 1
+        page_row["total"] += inv_total
+        page_row["profit"] += inv_profit
+
+    top_employees = sorted(
+        employee_totals.values(),
+        key=lambda row: (row["total"], row["profit"], row["count"]),
+        reverse=True,
+    )[:10]
+    top_pages = sorted(
+        page_totals.values(),
+        key=lambda row: (row["total"], row["profit"], row["count"]),
+        reverse=True,
+    )[:10]
 
     # ─── الموردون (أعلى الأرصدة المستحقة) ───
     ts_rows = Supplier.query.order_by(
@@ -365,6 +450,8 @@ def get_financial_report_data(period_type="this_month", custom_date_from=None, c
         # جداول تفصيلية
         "top_products": top_products,
         "top_customers": top_customers,
+        "top_employees": top_employees,
+        "top_pages": top_pages,
         "top_suppliers": top_suppliers,
         # رسوم بيانية
         "chart_series": chart_series,
@@ -374,4 +461,11 @@ def get_financial_report_data(period_type="this_month", custom_date_from=None, c
         "fixed_assets_accumulated_depreciation": fa_summary["fixed_assets_accumulated_depreciation"],
         "fixed_assets_depreciation_period": fixed_assets_depreciation_period,
         "fixed_assets_active_count": fa_summary["fixed_assets_active_count"],
+        # جمعيات وسلف دوّارة
+        "rotating_savings_paid": rs_summary["rotating_savings_paid"],
+        "rotating_savings_received": rs_summary["rotating_savings_received"],
+        "rotating_savings_liability": rs_summary["rotating_savings_liability"],
+        "rotating_savings_asset": rs_summary["rotating_savings_asset"],
+        "rotating_savings_fees": rs_summary["rotating_savings_fees"],
+        "rotating_savings_active_count": rs_summary["rotating_savings_active_count"],
     }

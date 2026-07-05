@@ -245,6 +245,7 @@
       {% if growth_revenue_pct is not none %}<li>نسبة تغيّر الإيرادات مقارنة بـ {{ prev_label or 'الفترة السابقة' }}: <strong class="{{ 'pos' if growth_revenue_pct >= 0 else 'neg' }}">{{ growth_revenue_pct }}%</strong>.</li>{% endif %}
       {% if growth_profit_pct is not none %}<li>نسبة تغيّر الربح: <strong class="{{ 'pos' if growth_profit_pct >= 0 else 'neg' }}">{{ growth_profit_pct }}%</strong>.</li>{% endif %}
       {% if fixed_assets_active_count %}<li>الأصول الثابتة النشطة: <strong>{{ fixed_assets_active_count }}</strong> — القيمة الدفترية: <strong>{{ money(fixed_assets_book_value) }} د.ع</strong>{% if fixed_assets_depreciation_period %} — استهلاك الفترة: <strong>{{ money(fixed_assets_depreciation_period) }} د.ع</strong>{% endif %}.</li>{% endif %}
+      {% if rotating_savings_active_count %}<li>الجمعيات النشطة: <strong>{{ rotating_savings_active_count }}</strong> — المدفوع: <strong>{{ money(rotating_savings_paid) }} د.ع</strong> — المستلم: <strong>{{ money(rotating_savings_received) }} د.ع</strong> — أصل الجمعيات: <strong>{{ money(rotating_savings_asset) }} د.ع</strong> — الالتزامات: <strong>{{ money(rotating_savings_liability) }} د.ع</strong> — رسوم فقط في الدخل: <strong>{{ money(rotating_savings_fees) }} د.ع</strong>.</li>{% endif %}
     </ul>
     <p class="report-no-data">جميع الأرقام مستخرجة من سجلات النظام دون تخمين.</p>
   </section>
@@ -261,6 +262,9 @@
         <tr><td>إجمالي المصاريف التشغيلية</td><td class="amount neg">({{ money(expenses_period) }})</td></tr>
         {% if fixed_assets_depreciation_period %}
         <tr><td>استهلاك الأصول الثابتة (الفترة)</td><td class="amount neg">({{ money(fixed_assets_depreciation_period) }})</td></tr>
+        {% endif %}
+        {% if rotating_savings_fees %}
+        <tr><td>مصاريف ورسوم جمعيات (فقط)</td><td class="amount neg">({{ money(rotating_savings_fees) }})</td></tr>
         {% endif %}
         <tr class="total-row"><td>صافي الربح / الخسارة</td><td class="amount {{ 'pos' if net_profit_period >= 0 else 'neg' }}">{{ money(net_profit_period) }}</td></tr>
       </tbody>
@@ -322,9 +326,15 @@
         {% if fixed_assets_book_value %}
         <tr><td>الأصول الثابتة (صافي القيمة الدفترية)</td><td class="amount">{{ money(fixed_assets_book_value) }}</td></tr>
         {% endif %}
+        {% if rotating_savings_asset %}
+        <tr><td>سلف وجمعيات دوّارة (باسم الشركة)</td><td class="amount">{{ money(rotating_savings_asset) }}</td></tr>
+        {% endif %}
         <tr class="total-row"><td>إجمالي الأصول</td><td class="amount">{{ money(total_assets) }}</td></tr>
         <tr><td colspan="2"><strong>الالتزامات</strong></td></tr>
         <tr><td>ديون الموردين</td><td class="amount">{{ money(supplier_debts) }}</td></tr>
+        {% if rotating_savings_liability %}
+        <tr><td>التزامات جمعيات دوّارة</td><td class="amount">{{ money(rotating_savings_liability) }}</td></tr>
+        {% endif %}
         <tr class="total-row"><td>إجمالي الالتزامات</td><td class="amount">{{ money(total_liabilities) }}</td></tr>
         <tr class="total-row"><td>حقوق الملكية (الأصول − الالتزامات)</td><td class="amount {{ 'neg' if equity < 0 else '' }}">{{ money(equity) }}</td></tr>
       </tbody>
@@ -393,9 +403,39 @@
     {% else %}<p class="report-no-data">لا توجد بيانات عملاء للفترة.</p>{% endif %}
   </section>
 
-  <!-- 11) الموردون -->
+  <!-- 11) أفضل الموظفين -->
   <section class="report-section">
-    <h2><span class="sec-num">9</span> أرصدة الموردين المستحقة</h2>
+    <h2><span class="sec-num">9</span> أفضل الموظفين</h2>
+    {% if top_employees %}
+    <table class="report-table">
+      <thead><tr><th>#</th><th>الموظف</th><th>عدد الفواتير</th><th>إجمالي المبيعات (د.ع)</th><th>الربح (د.ع)</th></tr></thead>
+      <tbody>
+        {% for e in top_employees %}
+        <tr><td>{{ loop.index }}</td><td>{{ e.name }}</td><td class="amount">{{ money(e.count) }}</td><td class="amount">{{ money(e.total) }}</td><td class="amount {{ 'pos' if e.profit >= 0 else 'neg' }}">{{ money(e.profit) }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p class="report-no-data">لا توجد بيانات موظفين للفترة.</p>{% endif %}
+  </section>
+
+  <!-- 12) أفضل البيجات -->
+  <section class="report-section">
+    <h2><span class="sec-num">10</span> أفضل البيجات</h2>
+    {% if top_pages %}
+    <table class="report-table">
+      <thead><tr><th>#</th><th>البيج</th><th>عدد الفواتير</th><th>إجمالي المبيعات (د.ع)</th><th>الربح (د.ع)</th></tr></thead>
+      <tbody>
+        {% for p in top_pages %}
+        <tr><td>{{ loop.index }}</td><td>{{ p.name }}</td><td class="amount">{{ money(p.count) }}</td><td class="amount">{{ money(p.total) }}</td><td class="amount {{ 'pos' if p.profit >= 0 else 'neg' }}">{{ money(p.profit) }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p class="report-no-data">لا توجد بيانات بيجات للفترة.</p>{% endif %}
+  </section>
+
+  <!-- 13) الموردون -->
+  <section class="report-section">
+    <h2><span class="sec-num">11</span> أرصدة الموردين المستحقة</h2>
     {% if top_suppliers %}
     <table class="report-table">
       <thead><tr><th>#</th><th>المورد</th><th>إجمالي الديون (د.ع)</th><th>المسدد (د.ع)</th><th>المتبقي (د.ع)</th></tr></thead>
@@ -408,9 +448,9 @@
     {% else %}<p class="report-no-data">لا توجد أرصدة مستحقة للموردين.</p>{% endif %}
   </section>
 
-  <!-- 12) المخزون -->
+  <!-- 14) المخزون -->
   <section class="report-section">
-    <h2><span class="sec-num">10</span> المخزون</h2>
+    <h2><span class="sec-num">12</span> المخزون</h2>
     <table class="report-table">
       <tbody>
         <tr><td>إجمالي قيمة المخزون</td><td class="amount">{{ money(inventory_value) }} د.ع</td></tr>
@@ -423,9 +463,9 @@
     {% endif %}
   </section>
 
-  <!-- 13) الملاحظات والتوصيات -->
+  <!-- 15) الملاحظات والتوصيات -->
   <section class="report-section">
-    <h2><span class="sec-num">11</span> الملاحظات والتوصيات</h2>
+    <h2><span class="sec-num">13</span> الملاحظات والتوصيات</h2>
     <ul>
       <li>جميع الأرقام مستخرجة من سجلات النظام الرسمية (فواتير، مصاريف، مخزون، موردين، نقدية) دون تقدير أو افتراض.</li>
       {% if net_profit_period < 0 %}<li class="neg"><strong>تحذير:</strong> صافي الربح للفترة سالب (خسارة). يُنصح بمراجعة المصاريف والإيرادات.</li>{% endif %}
@@ -436,9 +476,9 @@
     </ul>
   </section>
 
-  <!-- 14) الخاتمة -->
+  <!-- 16) الخاتمة -->
   <section class="report-section">
-    <h2><span class="sec-num">12</span> الخاتمة</h2>
+    <h2><span class="sec-num">14</span> الخاتمة</h2>
     <p>تم توليد هذا التقرير تلقائياً من نظام المحاسبة. جميع الأرقام مستخرجة من السجلات الرسمية. التقرير جاهز للطباعة أو التصدير كـ PDF.</p>
   </section>
 

@@ -81,6 +81,44 @@
   box-shadow: 0 8px 20px rgba(59, 130, 246, 0.35);
 }
 
+.supplier-statement-page .ss-btn--view {
+  background: rgba(59, 130, 246, 0.12);
+  color: var(--ss-primary);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.supplier-statement-page .ss-btn--view:hover {
+  background: rgba(59, 130, 246, 0.18);
+}
+
+.supplier-statement-page .ss-btn--mini-print {
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--ss-success);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.supplier-statement-page .ss-btn--mini-print:hover {
+  background: rgba(16, 185, 129, 0.18);
+}
+
+.supplier-statement-page .ss-row-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.supplier-statement-page .ss-products-preview {
+  font-size: 12px;
+  color: var(--ss-muted);
+  margin-top: 4px;
+  font-weight: 600;
+}
+
 .supplier-statement-page .ss-card {
   background: linear-gradient(145deg, var(--card), var(--card-alt));
   border-radius: 20px;
@@ -550,26 +588,42 @@
       <span class="ss-section-title__icon">📦</span>
       <span>{{ _('supplier_statement_purchases_title') }}</span>
     </h3>
-    {% if purchases %}
+    {% if purchase_invoices %}
     <div class="ss-table-wrap">
       <table class="ss-table">
         <thead>
           <tr>
-            <th>{{ _('supplier_statement_col_product') }}</th>
-            <th>{{ _('supplier_statement_col_quantity') }}</th>
-            <th>{{ _('supplier_statement_col_price') }}</th>
+            <th>رقم الفاتورة</th>
+            <th>الأصناف</th>
             <th>{{ _('supplier_statement_col_total') }}</th>
+            <th>المدفوع</th>
+            <th>المتبقي</th>
             <th>{{ _('supplier_statement_col_date') }}</th>
+            <th>إجراءات</th>
           </tr>
         </thead>
         <tbody>
-          {% for p in purchases %}
+          {% for inv in purchase_invoices %}
           <tr>
-            <td>{{ p.product.name if p.product else (p.invoice_no or '—') }}</td>
-            <td>{{ p.quantity }}</td>
-            <td>{{ fmt_money(p.price) }}</td>
-            <td class="ss-money--debit">{{ fmt_money(p.grand_total or p.total) }}</td>
-            <td>{{ p.purchase_date }}</td>
+            <td><strong>{{ inv.invoice_no }}</strong></td>
+            <td>
+              <span>{{ inv.item_count }} صنف</span>
+              <div class="ss-products-preview">{{ inv.products_label }}</div>
+            </td>
+            <td class="ss-money--debit">{{ fmt_money(inv.grand_total) }}</td>
+            <td class="ss-money--credit">{{ fmt_money(inv.paid_total) }}</td>
+            <td>{{ fmt_money(inv.remaining_total) }}</td>
+            <td>{{ inv.purchase_date }}</td>
+            <td>
+              <div class="ss-row-actions">
+                <a href="/purchases/print/{{ inv.id }}" target="_blank" rel="noopener" class="ss-btn ss-btn--view">
+                  👁️ عرض
+                </a>
+                <a href="/purchases/print/{{ inv.id }}" data-finora-print class="ss-btn ss-btn--mini-print">
+                  🖨️ طباعة
+                </a>
+              </div>
+            </td>
           </tr>
           {% endfor %}
         </tbody>

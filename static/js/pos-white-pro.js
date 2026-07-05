@@ -541,6 +541,50 @@
     }
   }
 
+  function clearFieldError(input) {
+    if (!input) return;
+    input.classList.remove("pos-input--error", "pos-input--shake");
+  }
+
+  function showFieldError(input) {
+    if (!input) return;
+    input.classList.add("pos-input--error");
+    input.classList.remove("pos-input--shake");
+    void input.offsetWidth;
+    input.classList.add("pos-input--shake");
+    input.focus();
+  }
+
+  function validatePhoneField(input, required) {
+    const value = (input?.value || "").trim();
+    if (!value) {
+      if (required) {
+        showFieldError(input);
+        return false;
+      }
+      clearFieldError(input);
+      return true;
+    }
+    if (!isPhone11Digits(value)) {
+      showFieldError(input);
+      return false;
+    }
+    clearFieldError(input);
+    return true;
+  }
+
+  function initPhoneFieldValidation() {
+    ["phone", "phone2"].forEach((id) => {
+      const input = $(id);
+      if (!input) return;
+      input.addEventListener("input", () => clearFieldError(input));
+      input.addEventListener("blur", () => {
+        const value = (input.value || "").trim();
+        if (value && !isPhone11Digits(value)) showFieldError(input);
+      });
+    });
+  }
+
   function resetCustomerForm() {
     const name = $("name");
     const phone = $("phone");
@@ -552,6 +596,8 @@
     if (phone2) phone2.value = "";
     if (address) address.value = "";
     if (city && city.options.length) city.selectedIndex = 0;
+    clearFieldError(phone);
+    clearFieldError(phone2);
   }
 
   function openCustomerModal() {
@@ -562,6 +608,8 @@
 
   function closeCustomerModal() {
     $("customerModal")?.classList.remove("show");
+    clearFieldError($("phone"));
+    clearFieldError($("phone2"));
     closeOCR();
   }
 
@@ -571,12 +619,19 @@
 
   function saveCustomer() {
     const name = ($("name")?.value || "").trim();
-    const phone = ($("phone")?.value || "").trim();
-    const phone2 = ($("phone2")?.value || "").trim();
+    const phoneEl = $("phone");
+    const phone2El = $("phone2");
+    const phone = (phoneEl?.value || "").trim();
+    const phone2 = (phone2El?.value || "").trim();
     if (!name) { toast("يرجى إدخال اسم الزبون"); return; }
-    if (!phone) { toast("يرجى إدخال رقم الهاتف"); return; }
-    if (!isPhone11Digits(phone)) { toast("رقم الهاتف يجب أن يكون 11 رقم"); $("phone")?.focus(); return; }
-    if (phone2 && !isPhone11Digits(phone2)) { toast("رقم الهاتف الثاني يجب أن يكون 11 رقم"); $("phone2")?.focus(); return; }
+    if (!validatePhoneField(phoneEl, true)) {
+      toast(phone ? "رقم الهاتف يجب أن يكون 11 رقم" : "يرجى إدخال رقم الهاتف");
+      return;
+    }
+    if (phone2 && !validatePhoneField(phone2El, false)) {
+      toast("رقم الهاتف الثاني يجب أن يكون 11 رقم");
+      return;
+    }
     const addressValue = ($("address")?.value || "").trim();
     if (!addressValue) { toast("يرجى إدخال العنوان"); $("address")?.focus(); return; }
 
@@ -1147,6 +1202,7 @@
     initDiscountShipping();
     initKeyboard();
     initHorizontalProductWheel();
+    initPhoneFieldValidation();
 
     $("cameraInput")?.addEventListener("change", (e) => {
       if (e.target.files?.[0]) sendToOCR(e.target.files[0]);

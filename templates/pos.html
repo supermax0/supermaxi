@@ -690,6 +690,26 @@
       box-shadow: 0 0 0 3px var(--primary-glow);
     }
 
+    @keyframes modal-shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-5px); }
+      40%, 80% { transform: translateX(5px); }
+    }
+
+    .modal-input--error {
+      border-color: #ef4444 !important;
+      box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18) !important;
+    }
+
+    .modal-input--error:focus {
+      border-color: #ef4444 !important;
+      box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.25) !important;
+    }
+
+    .modal-input--shake {
+      animation: modal-shake 0.35s ease;
+    }
+
     .modal-actions {
       display: flex;
       gap: 12px;
@@ -1768,6 +1788,8 @@
 
     function closeCustomerModal() {
       document.getElementById('customerModal').classList.remove('show');
+      clearFieldError(document.getElementById("phone"))
+      clearFieldError(document.getElementById("phone2"))
       // Reset OCR modal internally if open
       closeOCR();
     }
@@ -1858,6 +1880,48 @@
       return /^\d{11}$/.test(String(value || "").trim())
     }
 
+    function clearFieldError(input) {
+      if (!input) return
+      input.classList.remove("modal-input--error", "modal-input--shake")
+    }
+
+    function showFieldError(input) {
+      if (!input) return
+      input.classList.add("modal-input--error")
+      input.classList.remove("modal-input--shake")
+      void input.offsetWidth
+      input.classList.add("modal-input--shake")
+      input.focus()
+    }
+
+    function validatePhoneField(input, required) {
+      const value = input ? input.value.trim() : ""
+      if (!value) {
+        if (required) {
+          showFieldError(input)
+          return false
+        }
+        clearFieldError(input)
+        return true
+      }
+      if (!isPhone11Digits(value)) {
+        showFieldError(input)
+        return false
+      }
+      clearFieldError(input)
+      return true
+    }
+
+    ;["phone", "phone2"].forEach(function (id) {
+      const input = document.getElementById(id)
+      if (!input) return
+      input.addEventListener("input", function () { clearFieldError(input) })
+      input.addEventListener("blur", function () {
+        const value = input.value.trim()
+        if (value && !isPhone11Digits(value)) showFieldError(input)
+      })
+    })
+
     /* ===== حفظ زبون ===== */
     function saveCustomer() {
       // الحصول على العناصر
@@ -1876,20 +1940,13 @@
         if (nameInput) nameInput.focus()
         return
       }
-      if (!phoneValue) {
-        toast("يرجى إدخال رقم الهاتف")
-        if (phoneInput) phoneInput.focus()
-        return
-      }
-      if (!isPhone11Digits(phoneValue)) {
-        toast("رقم الهاتف يجب أن يكون 11 رقم")
-        if (phoneInput) phoneInput.focus()
+      if (!validatePhoneField(phoneInput, true)) {
+        toast(phoneValue ? "رقم الهاتف يجب أن يكون 11 رقم" : "يرجى إدخال رقم الهاتف")
         return
       }
       const phone2Value = phone2Input ? phone2Input.value.trim() : ""
-      if (phone2Value && !isPhone11Digits(phone2Value)) {
+      if (phone2Value && !validatePhoneField(phone2Input, false)) {
         toast("رقم الهاتف الثاني يجب أن يكون 11 رقم")
-        if (phone2Input) phone2Input.focus()
         return
       }
       const addressValue = addressInput ? addressInput.value.trim() : ""
@@ -1926,6 +1983,8 @@
             if (nameInput) nameInput.value = ""
             if (phoneInput) phoneInput.value = ""
             if (phone2Input) phone2Input.value = ""
+            clearFieldError(phoneInput)
+            clearFieldError(phone2Input)
             if (cityInput && cityInput.options.length) cityInput.selectedIndex = 0
             if (addressInput) addressInput.value = ""
             toast("✅ تم حفظ الزبون بنجاح")

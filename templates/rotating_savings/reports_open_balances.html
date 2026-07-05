@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}أرصدة الجمعيات المفتوحة{% endblock %}
+{% block page_title %}أرصدة الجمعيات المفتوحة{% endblock %}
+{% block content %}
+<style>
+.rs-page { max-width: 1100px; margin: 0 auto; direction: rtl; }
+.rs-nav { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
+.rs-nav a { padding: 8px 14px; border-radius: 10px; background: var(--card-alt); border: 1px solid var(--border-light); color: var(--text); text-decoration: none; font-size: 14px; }
+.rs-nav a.active { background: var(--primary); color: #fff; }
+.rs-table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: 12px; overflow: hidden; }
+.rs-table th, .rs-table td { padding: 10px; border: 1px solid var(--border-light); text-align: right; font-size: 13px; }
+.rs-table th { background: rgba(99,102,241,0.12); }
+</style>
+<div class="rs-page">
+  {% include "rotating_savings/_nav.html" %}
+  <table class="rs-table">
+    <thead>
+      <tr>
+        <th>الاسم</th><th>النوع</th><th>المدفوع</th><th>المستلم</th>
+        <th>رصيد الأصل</th><th>رصيد الالتزام</th><th>المتبقي</th><th>آخر حركة</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      {% set s = row.saving %}
+      <tr>
+        <td><a href="{{ url_for('rotating_savings.detail', saving_id=s.id) }}">{{ s.name }}</a></td>
+        <td>{{ s.type_label() }}</td>
+        <td>{{ "{:,}".format(s.total_paid) }}</td>
+        <td>{{ "{:,}".format(s.total_received) }}</td>
+        <td>{{ "{:,}".format(s.asset_balance) }}</td>
+        <td>{{ "{:,}".format(s.liability_balance) }}</td>
+        <td>{{ "{:,}".format(s.remaining_to_pay) }}</td>
+        <td>{{ row.last_payment_date or '—' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8">لا توجد أرصدة</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

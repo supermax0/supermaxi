@@ -1,0 +1,8 @@
+<nav class="rs-nav">
+  <a href="{{ url_for('rotating_savings.index') }}" class="{% if request.endpoint == 'rotating_savings.index' %}active{% endif %}">الجمعيات</a>
+  <a href="{{ url_for('rotating_savings.create') }}" class="{% if request.endpoint == 'rotating_savings.create' %}active{% endif %}">إنشاء جمعية</a>
+  <a href="{{ url_for('rotating_savings.report_summary') }}" class="{% if request.endpoint == 'rotating_savings.report_summary' %}active{% endif %}">ملخص</a>
+  <a href="{{ url_for('rotating_savings.report_open_balances') }}" class="{% if request.endpoint == 'rotating_savings.report_open_balances' %}active{% endif %}">أرصدة مفتوحة</a>
+  <a href="{{ url_for('rotating_savings.report_warnings') }}" class="{% if request.endpoint == 'rotating_savings.report_warnings' %}active{% endif %}">تحذيرات</a>
+  <a href="{{ url_for('rotating_savings.settings') }}" class="{% if request.endpoint == 'rotating_savings.settings' %}active{% endif %}">إعدادات</a>
+</nav>

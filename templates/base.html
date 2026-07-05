@@ -2320,6 +2320,9 @@ or request.path.startswith('/superadmin') %}
         {% if is_admin or (current_employee and (can_see_fixed_assets or can_see_accounts)) %}
         <a href="/assets/dashboard" class="{% if request.path.startswith('/assets') %}active{% endif %}"><i class="fa fa-building"></i> الأصول</a>
         {% endif %}
+        {% if is_admin or (current_employee and (can_see_rotating_savings or can_see_accounts)) %}
+        <a href="/finance/rotating-savings" class="{% if request.path.startswith('/finance/rotating-savings') %}active{% endif %}"><i class="fa fa-sync-alt"></i> الجمعيات</a>
+        {% endif %}
         {% if (is_admin or (current_employee and can_see_reports)) and business_allows('reports') %}
         {% if plan_has("reports_adv") %}
         <a href="/reports"><i class="fa fa-chart-pie"></i> {{ _('reports') }}</a>
