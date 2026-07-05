@@ -10,7 +10,7 @@
 4. الربح = (الإيرادات - المرتجعات) - COGS - المصاريف
 5. المرتجعات تخصم من الإيرادات وتعيد COGS للمخزون
 6. المصاريف لا تؤثر على المخزون أو رأس المال مباشرة
-7. الالتزامات (ديون الموردين، مستحقات النقل) لا تؤثر على الربح إلا عند الدفع
+7. الالتزامات هي ديون فعلية مثل ديون الموردين. مبالغ شركات النقل ذمم مدينة لنا.
 """
 
 from extensions import db
@@ -20,6 +20,8 @@ from models.order_item import OrderItem
 from models.product import Product
 from models.expense import Expense
 from models.supplier import Supplier
+from models.shipping import ShippingCompany
+from utils.order_item_costs import exclude_delivery_fee_items
 from utils.order_status import CANCELED_STATUSES as ORDER_CANCELED_STATUSES
 from utils.order_status import RETURN_STATUSES as ORDER_RETURN_STATUSES
 
@@ -141,6 +143,7 @@ def calculate_total_cogs():
     ).filter(
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
         _valid_revenue_payment_status_filter(),
+        exclude_delivery_fee_items(OrderItem),
     ).scalar() or 0
 
     return int(total_cogs)
@@ -243,7 +246,8 @@ def calculate_returns_cogs():
         or_(
             Invoice.status.in_(RETURN_STATUSES),
             Invoice.payment_status.in_(RETURN_STATUSES),
-        )
+        ),
+        exclude_delivery_fee_items(OrderItem),
     ).scalar() or 0
 
     return int(returns_cogs)
@@ -370,7 +374,8 @@ def calculate_operational_profit():
             OrderItem.invoice_id,
             func.sum(OrderItem.cost * OrderItem.quantity).label("cogs_sum"),
         ).filter(
-            OrderItem.invoice_id.in_(list(ratios.keys()))
+            OrderItem.invoice_id.in_(list(ratios.keys())),
+            exclude_delivery_fee_items(OrderItem),
         ).group_by(OrderItem.invoice_id).all()
 
         for invoice_id, cogs_sum in rows:
@@ -388,7 +393,7 @@ def calculate_operational_profit():
     return operational_profit
 
 # ======================================================
-# 9️⃣ حساب الالتزامات (Liabilities)
+# 9️⃣ حساب الالتزامات والذمم
 # ======================================================
 
 def calculate_supplier_debts():
@@ -411,16 +416,19 @@ def calculate_supplier_debts():
 
 def calculate_shipping_due():
     """
-    حساب مستحقات شركات النقل
-    
+    حساب ذمم شركات النقل
+
     السبب المحاسبي:
-    - مستحقات النقل تُعتبر التزامات (Liabilities)
-    - لا تؤثر على الربح إلا عند الدفع
-    - لا تدخل في حساب رأس المال
+    - هذا المبلغ يمثل بضاعة/طلبات تم تسليمها لشركة النقل ولم تُسدد لنا بعد،
+      إضافة إلى الرصيد الافتتاحي المتبقي عند شركات النقل.
+    - لذلك هو أصل ضمن الذمم المدينة وليس التزاماً على الشركة.
+    - أجرة النقل نفسها تُسجل كمصروف عند تسديد/تنفيذ الطلب، وليست ضمن هذا الرصيد.
     
     Returns:
-        int: إجمالي مستحقات شركات النقل
+        int: إجمالي ذمم شركات النقل (طلبات + رصيد افتتاحي)
     """
+    shipping_due = calculate_shipping_opening_balance()
+
     all_orders = db.session.query(
         Invoice.id,
         Invoice.status,
@@ -434,7 +442,6 @@ def calculate_shipping_due():
         Invoice.payment_status.notin_(RETURN_STATUSES),
     ).all()
 
-    shipping_due = 0
     for o in all_orders:
         total = int(o.total or 0)
         paid = _effective_paid_amount(o)
@@ -443,6 +450,19 @@ def calculate_shipping_due():
             shipping_due += remaining
 
     return int(shipping_due)
+
+
+def calculate_shipping_receivables():
+    """اسم أوضح لنفس رصيد calculate_shipping_due القديم."""
+    return calculate_shipping_due()
+
+
+def calculate_shipping_opening_balance():
+    """الرصيد الافتتاحي المتبقي عند شركات النقل، وهو ذمة مدينة لنا."""
+    balance = db.session.query(
+        func.sum(ShippingCompany.opening_balance)
+    ).scalar() or 0
+    return int(balance)
 
 # ======================================================
 # 🔟 حساب الذمم المدينة (Accounts Receivable)
@@ -547,7 +567,8 @@ def calculate_paid_cogs():
             OrderItem.invoice_id,
             func.sum(OrderItem.cost * OrderItem.quantity).label("cogs_sum"),
         ).filter(
-            OrderItem.invoice_id.in_(list(ratios.keys()))
+            OrderItem.invoice_id.in_(list(ratios.keys())),
+            exclude_delivery_fee_items(OrderItem),
         ).group_by(OrderItem.invoice_id).all()
 
         for invoice_id, cogs_sum in rows:

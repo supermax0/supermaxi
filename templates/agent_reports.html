@@ -113,6 +113,46 @@
   font-size: 16px;
 }
 
+.agent-reports-page .report-add-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(130px, 180px) auto;
+  gap: 10px;
+  align-items: end;
+  margin: 16px 0 20px;
+  padding: 14px;
+  border: 1px solid rgba(59, 130, 246, 0.14);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.35);
+}
+
+.agent-reports-page .report-add-field label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--reports-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.agent-reports-page .report-add-field input {
+  width: 100%;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 10px;
+  padding: 11px 12px;
+  background: rgba(15, 23, 42, 0.55);
+  color: var(--reports-text);
+  outline: none;
+}
+
+.agent-reports-page .report-add-message {
+  min-height: 22px;
+  color: var(--reports-muted);
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.agent-reports-page .report-add-message.ok { color: #10b981; }
+.agent-reports-page .report-add-message.err { color: #ef4444; }
+
 /* Light mode readability */
 :root[data-theme="light"] .agent-reports-page .card {
   background: rgba(255, 255, 255, 0.92);
@@ -136,6 +176,20 @@
 
 :root[data-theme="light"] .agent-reports-page tbody tr:hover {
   background: rgba(37, 99, 235, 0.05);
+}
+
+:root[data-theme="light"] .agent-reports-page .report-add-row {
+  background: rgba(248, 250, 252, 0.88);
+  border-color: rgba(2, 6, 23, 0.08);
+}
+
+:root[data-theme="light"] .agent-reports-page .report-add-field input {
+  background: #fff;
+  border-color: rgba(2, 6, 23, 0.12);
+}
+
+@media (max-width: 720px) {
+  .agent-reports-page .report-add-row { grid-template-columns: 1fr; }
 }
 </style>
 
@@ -187,6 +241,19 @@
     ⚠️ لم تُحدَّد بيانات دخول لهذا المندوب. من صفحة المندوبين اضغط 🔑 لإعداد اسم المستخدم وكلمة المرور.
   </p>
   {% endif %}
+
+  <div class="report-add-row">
+    <div class="report-add-field">
+      <label for="manualReportNumber">رقم الكشف</label>
+      <input id="manualReportNumber" type="text" placeholder="AGT-1-20260705-0001" value="{{ reports[0].report_number if reports else '' }}">
+    </div>
+    <div class="report-add-field">
+      <label for="manualOrderId">رقم الطلب</label>
+      <input id="manualOrderId" type="number" min="1" placeholder="مثلاً 49">
+    </div>
+    <button type="button" class="btn btn-primary" onclick="addOrderToReport()">➕ إضافة للكشف</button>
+  </div>
+  <div id="manualAddMessage" class="report-add-message"></div>
   
   <table>
     <thead>
@@ -240,5 +307,39 @@
     </tbody>
   </table>
 </div>
+
+<script>
+async function addOrderToReport() {
+  const msg = document.getElementById("manualAddMessage");
+  const reportNumber = document.getElementById("manualReportNumber").value.trim();
+  const orderId = document.getElementById("manualOrderId").value.trim();
+  msg.className = "report-add-message";
+  msg.textContent = "";
+  if (!reportNumber || !orderId) {
+    msg.classList.add("err");
+    msg.textContent = "اكتب رقم الكشف ورقم الطلب.";
+    return;
+  }
+  try {
+    const res = await fetch("/agents/reports/add-order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ report_number: reportNumber, order_id: Number(orderId) })
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      msg.classList.add("err");
+      msg.textContent = data.error || "تعذر إضافة الطلب.";
+      return;
+    }
+    msg.classList.add("ok");
+    msg.textContent = data.message || "تمت الإضافة.";
+    setTimeout(() => window.location.reload(), 700);
+  } catch (err) {
+    msg.classList.add("err");
+    msg.textContent = "حدث خطأ بالاتصال.";
+  }
+}
+</script>
 
 {% endblock %}

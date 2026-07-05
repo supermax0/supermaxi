@@ -309,14 +309,22 @@
         <tr><td colspan="2"><strong>الأصول</strong></td></tr>
         <tr><td>النقدية</td><td class="amount">{{ money(cash_balance) }}</td></tr>
         <tr><td>المخزون</td><td class="amount">{{ money(inventory_value) }}</td></tr>
-        <tr><td>الذمم المدينة (ديون العملاء)</td><td class="amount">{{ money(accounts_receivable) }}</td></tr>
+        <tr><td>الذمم المدينة (ديون العملاء)</td><td class="amount">{{ money(customer_receivables if customer_receivables is defined else accounts_receivable) }}</td></tr>
+        <tr>
+          <td>
+            ذمم شركات النقل (طلبات + رصيد افتتاحي)
+            {% if shipping_opening_balance is defined and shipping_opening_balance %}
+            <small> - الافتتاحي {{ money(shipping_opening_balance) }}</small>
+            {% endif %}
+          </td>
+          <td class="amount">{{ money(shipping_receivables if shipping_receivables is defined else 0) }}</td>
+        </tr>
         {% if fixed_assets_book_value %}
         <tr><td>الأصول الثابتة (صافي القيمة الدفترية)</td><td class="amount">{{ money(fixed_assets_book_value) }}</td></tr>
         {% endif %}
         <tr class="total-row"><td>إجمالي الأصول</td><td class="amount">{{ money(total_assets) }}</td></tr>
         <tr><td colspan="2"><strong>الالتزامات</strong></td></tr>
         <tr><td>ديون الموردين</td><td class="amount">{{ money(supplier_debts) }}</td></tr>
-        <tr><td>مستحقات شركات النقل</td><td class="amount">{{ money(shipping_due) }}</td></tr>
         <tr class="total-row"><td>إجمالي الالتزامات</td><td class="amount">{{ money(total_liabilities) }}</td></tr>
         <tr class="total-row"><td>حقوق الملكية (الأصول − الالتزامات)</td><td class="amount {{ 'neg' if equity < 0 else '' }}">{{ money(equity) }}</td></tr>
       </tbody>
@@ -422,7 +430,7 @@
       <li>جميع الأرقام مستخرجة من سجلات النظام الرسمية (فواتير، مصاريف، مخزون، موردين، نقدية) دون تقدير أو افتراض.</li>
       {% if net_profit_period < 0 %}<li class="neg"><strong>تحذير:</strong> صافي الربح للفترة سالب (خسارة). يُنصح بمراجعة المصاريف والإيرادات.</li>{% endif %}
       {% if cash_balance < 0 %}<li class="neg"><strong>تحذير:</strong> عجز نقدي حسب السجلات. يُنصح بمراجعة التحصيلات والمدفوعات.</li>{% endif %}
-      {% if accounts_receivable > 0 %}<li>لديك ذمم مدينة بقيمة {{ money(accounts_receivable) }} د.ع؛ متابعة التحصيل تحسّن التدفق النقدي.</li>{% endif %}
+      {% if accounts_receivable > 0 %}<li>لديك ذمم مدينة بقيمة {{ money(accounts_receivable) }} د.ع؛ منها {{ money(shipping_receivables if shipping_receivables is defined else 0) }} د.ع عند شركات النقل، ومتابعة التحصيل تحسّن التدفق النقدي.</li>{% endif %}
       {% if liquidity_ratio is not none and liquidity_ratio < 1 %}<li class="neg">نسبة السيولة أقل من 1، ما يشير إلى ضغط على القدرة على سداد الالتزامات.</li>{% endif %}
       <li>توصية: مراجعة المنتجات ذات المخزون المنخفض والذمم المدينة لتحسين رأس المال العامل.</li>
     </ul>

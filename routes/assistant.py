@@ -403,11 +403,14 @@ def generate_report():
         
         total_cost = 0
         if paid_invoices:
+            from utils.order_item_costs import exclude_delivery_fee_items
+
             invoice_ids = [inv.id for inv in paid_invoices]
             total_cost = db.session.query(
                 func.sum(OrderItem.cost * OrderItem.quantity)
             ).filter(
-                OrderItem.invoice_id.in_(invoice_ids)
+                OrderItem.invoice_id.in_(invoice_ids),
+                exclude_delivery_fee_items(OrderItem),
             ).scalar() or 0
         
         stats["total_cost"] = total_cost

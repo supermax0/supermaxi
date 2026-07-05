@@ -129,18 +129,37 @@ def get_watchdog_ephemeral_alerts() -> list[dict[str, Any]]:
         )
 
     try:
-        from utils.accounting_calculations import calculate_operational_profit, calculate_paid_sales
+        from utils.accounting_calculations import (
+            calculate_net_profit,
+            calculate_operational_profit,
+            calculate_paid_sales,
+        )
 
         paid = int(calculate_paid_sales() or 0)
-        net = int(calculate_operational_profit() or 0)
-        if paid > 500_000 and net < 0:
+        cash_profit = int(calculate_operational_profit() or 0)
+        booked_profit = int(calculate_net_profit() or 0)
+        if paid > 500_000 and cash_profit < 0 and booked_profit < 0:
             alerts.append(
                 {
                     "type": "danger",
                     "icon": "📉",
-                    "message": "مراقب مالي: الربح التشغيلي سالب رغم وجود مبيعات مسددة — راجع التكاليف والمصاريف فوراً.",
+                    "message": "مراقب مالي: الربح النقدي والمحاسبي سالبان — راجع التكاليف والمصاريف فوراً.",
                     "action": "/accounts",
                     "source": "watchdog_negative_operating",
+                    "decisions": _nav_decisions(("الحسابات", "/accounts"), ("المصاريف", "/expenses")),
+                }
+            )
+        elif paid > 500_000 and cash_profit < 0:
+            alerts.append(
+                {
+                    "type": "info",
+                    "icon": "💡",
+                    "message": (
+                        f"مراقب مالي: التحصيل المسدد لا يغطي المصاريف حالياً "
+                        f"({cash_profit:,} د.ع)، لكن ربح الطلبات المحاسبي موجب ({booked_profit:,} د.ع)."
+                    ),
+                    "action": "/accounts",
+                    "source": "watchdog_cash_basis_profit",
                     "decisions": _nav_decisions(("الحسابات", "/accounts"), ("المصاريف", "/expenses")),
                 }
             )

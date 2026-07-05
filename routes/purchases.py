@@ -71,6 +71,7 @@ def _ensure_purchase_schema():
             "paid_total": "ALTER TABLE purchase ADD COLUMN paid_total INTEGER DEFAULT 0",
             "remaining_total": "ALTER TABLE purchase ADD COLUMN remaining_total INTEGER DEFAULT 0",
             "created_by_employee_id": "ALTER TABLE purchase ADD COLUMN created_by_employee_id INTEGER",
+            "stock_applied": "ALTER TABLE purchase ADD COLUMN stock_applied BOOLEAN DEFAULT 0",
         }
         for key, stmt in additions.items():
             if key not in cols:
@@ -78,6 +79,24 @@ def _ensure_purchase_schema():
         for stmt in stmts:
             db.session.execute(text(stmt))
         if stmts:
+            if "stock_applied" not in cols:
+                db.session.execute(
+                    text(
+                        "UPDATE purchase SET stock_applied = 1 "
+                        "WHERE lower(coalesce(status, 'confirmed')) = 'confirmed'"
+                    )
+                )
+            db.session.commit()
+
+        # Guard legacy rows: draft/cancelled purchases must never be treated as stock-applied.
+        if "stock_applied" in cols or "stock_applied" in additions:
+            db.session.execute(
+                text(
+                    "UPDATE purchase SET stock_applied = 0 "
+                    "WHERE lower(coalesce(status, '')) IN ('draft', 'cancelled', 'canceled') "
+                    "AND coalesce(stock_applied, 0) != 0"
+                )
+            )
             db.session.commit()
 
     PurchaseItem.__table__.create(bind=bind, checkfirst=True)
@@ -172,6 +191,16 @@ def _safe_int(v, default=0):
         return default
 
 
+def _purchase_status_applies_stock(status) -> bool:
+    return (status or "confirmed").strip().lower() not in {"draft", "cancelled", "canceled"}
+
+
+def _purchase_stock_applied(purchase) -> bool:
+    if hasattr(purchase, "stock_applied"):
+        return bool(getattr(purchase, "stock_applied", False))
+    return _purchase_status_applies_stock(getattr(purchase, "status", None))
+
+
 def _resolve_purchase_branch_id(payload: dict, branch_code: str | None = None) -> int | None:
     branch_id = payload.get("branch_id") if payload else None
     if branch_id:
@@ -199,21 +228,24 @@ def _reverse_purchase_effects(purchase, reason):
     if not items and getattr(purchase, "product", None):
         items = [purchase]
 
-    for it in items:
-        if not it.product:
-            continue
-        qty = _safe_int(it.quantity, 0)
-        if qty <= 0:
-            continue
-        if branch_id:
-            deduct_stock(branch_id, it.product.id, qty)
-        else:
-            current_qty = _safe_int(it.product.quantity, 0)
-            if current_qty < qty:
-                raise ValueError(
-                    f"لا يمكن عكس فاتورة الشراء لأن مخزون {it.product.name} أقل من كمية الفاتورة."
-                )
-            it.product.quantity = current_qty - qty
+    if _purchase_stock_applied(purchase):
+        for it in items:
+            if not it.product:
+                continue
+            qty = _safe_int(it.quantity, 0)
+            if qty <= 0:
+                continue
+            if branch_id:
+                deduct_stock(branch_id, it.product.id, qty)
+            else:
+                current_qty = _safe_int(it.product.quantity, 0)
+                if current_qty < qty:
+                    raise ValueError(
+                        f"لا يمكن عكس فاتورة الشراء لأن مخزون {it.product.name} أقل من كمية الفاتورة."
+                    )
+                it.product.quantity = current_qty - qty
+        if hasattr(purchase, "stock_applied"):
+            purchase.stock_applied = False
 
     # Reverse supplier ledgers
     if purchase.supplier:
@@ -280,6 +312,7 @@ def _create_purchase_from_payload(payload, files):
     shipping_details = (payload.get("shipping_details") or "").strip() or None
     extra_cost_note = (payload.get("extra_cost_note") or "").strip() or None
     status = (payload.get("status") or "confirmed").strip()
+    apply_stock = _purchase_status_applies_stock(status)
 
     parsed_items = []
     sub_total = 0
@@ -374,6 +407,7 @@ def _create_purchase_from_payload(payload, files):
         remaining_total=remaining_total,
         purchase_date=purchase_date,
         created_by_employee_id=session.get("user_id"),
+        stock_applied=apply_stock,
     )
     db.session.add(purchase)
     db.session.flush()
@@ -390,11 +424,11 @@ def _create_purchase_from_payload(payload, files):
                 line_total=line_total,
             )
         )
-        # stock update
-        if branch_id:
-            receive_stock(branch_id, product.id, qty)
-        else:
-            product.quantity = int(product.quantity or 0) + qty
+        if apply_stock:
+            if branch_id:
+                receive_stock(branch_id, product.id, qty)
+            else:
+                product.quantity = int(product.quantity or 0) + qty
         product.buy_price = final_unit
 
     for pay in parsed_payments:
@@ -941,13 +975,16 @@ def update_purchase(purchase_id):
                 )
             )
 
+        new_status = (payload.get("status") or "confirmed").strip()
+        apply_stock = _purchase_status_applies_stock(new_status)
+
         purchase.supplier_id = supplier.id
         purchase.product_id = legacy_product_id
         purchase.quantity = legacy_qty
         purchase.price = legacy_price
         purchase.total = grand_total
         purchase.invoice_no = (payload.get("invoice_no") or "").strip() or (purchase.invoice_no or _next_invoice_no())
-        purchase.status = (payload.get("status") or "confirmed").strip()
+        purchase.status = new_status
         purchase.branch_code = branch_code
         purchase.branch_id = branch_id
         purchase.reference_no = (payload.get("reference_no") or "").strip() or None
@@ -978,11 +1015,15 @@ def update_purchase(purchase_id):
                     line_total=line_total,
                 )
             )
-            if branch_id:
-                receive_stock(branch_id, product.id, qty)
-            else:
-                product.quantity = _safe_int(product.quantity, 0) + qty
+            if apply_stock:
+                if branch_id:
+                    receive_stock(branch_id, product.id, qty)
+                else:
+                    product.quantity = _safe_int(product.quantity, 0) + qty
             product.buy_price = final_unit
+
+        if hasattr(purchase, "stock_applied"):
+            purchase.stock_applied = apply_stock
 
         for pay in parsed_payments:
             db.session.add(pay)

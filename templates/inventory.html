@@ -1551,8 +1551,14 @@
 
     @media print {
       @page {
-        size: A4 landscape;
+        size: A4 portrait;
         margin: 10mm;
+      }
+
+      .ipr-header,
+      .ipr-stats,
+      .ipr-footer {
+        display: none !important;
       }
 
       body * {
@@ -1769,17 +1775,8 @@
     <table class="ipr-table">
       <thead>
         <tr>
-          <th style="width:34px;">#</th>
-          <th style="width:18%;">المنتج</th>
-          <th>الباركود</th>
-          <th>SKU</th>
-          <th>الفرع</th>
-          <th>الكمية</th>
-          <th>سعر الشراء</th>
-          <th>سعر البيع</th>
-          <th>قيمة المخزون</th>
-          <th>الربح</th>
-          <th>الحالة</th>
+          <th>المنتج</th>
+          <th style="width:90px;">الكمية</th>
         </tr>
       </thead>
       <tbody id="iprBody"></tbody>
@@ -2386,77 +2383,21 @@
     return productsForSelectedBranch();
   }
 
-  function getSelectedOptionText(id) {
-    const element = document.getElementById(id);
-    if (!element) return '—';
-    return (element.options[element.selectedIndex]?.textContent || '—').trim();
-  }
-
-  function inventoryMoney(value) {
-    return `${formatInventoryNumber(value)} د.ع`;
-  }
-
   function printInventoryReport() {
     const rows = getFilteredInventoryRowsForPrint();
-    const scopeText = document.getElementById('invProductsScope')?.textContent?.trim() || 'كل الفروع';
-    const searchText = document.getElementById('globalSearch')?.value?.trim();
-    const filters = [
-      `المخزون: ${getSelectedOptionText('filterStock')}`,
-      `الفرع: ${getSelectedOptionText('filterBranch')}`,
-      `الحالة: ${getSelectedOptionText('filterActive')}`,
-      searchText ? `بحث: ${searchText}` : null
-    ].filter(Boolean).join(' | ');
-
-    const totals = rows.reduce((acc, product) => {
-      const qty = Number(product.quantity) || 0;
-      const buy = Number(product.buy_price) || 0;
-      const sale = Number(product.sale_price) || 0;
-      acc.qty += qty;
-      acc.purchase += buy * qty;
-      acc.sale += sale * qty;
-      acc.profit += (sale - buy) * qty;
-      return acc;
-    }, { qty: 0, purchase: 0, sale: 0, profit: 0 });
 
     const body = document.getElementById('iprBody');
     if (body) {
-      body.innerHTML = rows.length ? rows.map((product, index) => {
+      body.innerHTML = rows.length ? rows.map(product => {
         const qty = Number(product.quantity) || 0;
-        const buy = Number(product.buy_price) || 0;
-        const sale = Number(product.sale_price) || 0;
-        const threshold = Number(product.low_stock_threshold) || 5;
-        const status = !product.active ? 'غير نشط' : (qty === 0 ? 'نافذ' : (qty <= threshold ? 'منخفض' : 'متوفر'));
         return `
           <tr>
-            <td>${index + 1}</td>
             <td>${escapeHtml(product.name || '—')}</td>
-            <td>${escapeHtml(product.barcode || '—')}</td>
-            <td>${escapeHtml(product.sku || '—')}</td>
-            <td>${escapeHtml(product.branch_name || '—')}</td>
             <td>${formatInventoryNumber(qty)}</td>
-            <td>${inventoryMoney(buy)}</td>
-            <td>${inventoryMoney(sale)}</td>
-            <td>${inventoryMoney(buy * qty)}</td>
-            <td>${inventoryMoney((sale - buy) * qty)}</td>
-            <td>${status}</td>
           </tr>
         `;
-      }).join('') : '<tr><td colspan="11" style="text-align:center; padding:18px;">لا توجد منتجات ضمن التصفية الحالية</td></tr>';
+      }).join('') : '<tr><td colspan="2" style="text-align:center; padding:18px;">لا توجد منتجات ضمن التصفية الحالية</td></tr>';
     }
-
-    const setText = (id, value) => {
-      const element = document.getElementById(id);
-      if (element) element.textContent = value;
-    };
-
-    setText('iprScope', scopeText);
-    setText('iprGeneratedAt', new Date().toLocaleString('ar-IQ'));
-    setText('iprRowsCount', formatInventoryNumber(rows.length));
-    setText('iprFilters', filters || 'بدون تصفية');
-    setText('iprTotalQty', formatInventoryNumber(totals.qty));
-    setText('iprInventoryValue', inventoryMoney(totals.purchase));
-    setText('iprExpectedSale', inventoryMoney(totals.sale));
-    setText('iprExpectedProfit', inventoryMoney(totals.profit));
 
     requestAnimationFrame(() => window.print());
   }

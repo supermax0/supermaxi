@@ -52,6 +52,7 @@ class Purchase(db.Model):
     remaining_total = db.Column(db.Integer, default=0)
 
     created_by_employee_id = db.Column(db.Integer, db.ForeignKey("employee.id"), nullable=True)
+    stock_applied = db.Column(db.Boolean, default=False)
 
     purchase_date = db.Column(db.Date, default=datetime.utcnow().date)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

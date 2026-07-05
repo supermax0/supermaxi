@@ -3031,7 +3031,7 @@
         // الصف الرابع: المخزون والالتزامات
         const inventoryText = formatNumber(d.inventory || 0) + " د.ع";
         setTextForIds(["inventory", "quickInventory", "finoraInventoryValue"], inventoryText);
-        const liabilities = (d.debts || 0) + (d.shipping || 0);
+        const liabilities = d.debts || 0;
         setText("liabilities", formatNumber(liabilities) + " د.ع");
 
         setText("expenses", formatNumber(d.expenses || 0) + " د.ع");

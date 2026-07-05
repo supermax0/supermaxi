@@ -29,7 +29,7 @@ from utils.accounting_calculations import (
     calculate_net_profit,              # صافي الربح (الإيرادات - COGS - المصاريف)
     calculate_operational_profit,      # الربح التشغيلي (من المبيعات المسددة)
     calculate_supplier_debts,          # ديون الموردين (التزامات)
-    calculate_shipping_due,            # مستحقات النقل (التزامات)
+    calculate_shipping_due,            # ذمم شركات النقل
     calculate_total_sales_for_display  # إجمالي المبيعات (للعرض فقط)
 )
 from utils.permission_checks import check_permission
@@ -83,7 +83,7 @@ def reports_dashboard():
     
     # ===============================
     # الالتزامات (Liabilities)
-    # ديون الموردين ومستحقات النقل
+    # ديون الموردين. ذمم شركات النقل تُعامل كأصل/ذمم مدينة.
     # السبب المحاسبي: الالتزامات لا تؤثر على الربح إلا عند الدفع
     # ===============================
     supplier_debts = calculate_supplier_debts()

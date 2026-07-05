@@ -38,6 +38,7 @@ from models.shipping_report import ShippingReport
 from models.invoice_settings import InvoiceSettings
 from models.invoice_template import InvoiceTemplate, TenantTemplateSettings
 from models.delivery_agent import DeliveryAgent
+from models.message import Message
 from datetime import datetime, date
 from sqlalchemy import func
 from io import BytesIO
@@ -51,6 +52,7 @@ from utils.order_status import (
     is_returned,
     is_completed,
     ensure_return_status_unified,
+    ensure_delivered_status_normalized,
     RETURN_STATUS,
     invoice_returned_condition,
     is_return_status_value,
@@ -96,6 +98,7 @@ def _orders_mutations_guard():
     if "user_id" in session:
         try:
             ensure_return_status_unified()
+            ensure_delivered_status_normalized()
         except Exception:
             pass
     path = request.path or ""
@@ -1311,6 +1314,88 @@ def details(order_id):
     })
 
 
+@orders_bp.route("/notify-employee/<int:order_id>", methods=["POST"])
+def notify_order_employee(order_id):
+    """إرسال تبليغ بخصوص الطلب إلى الموظف الذي أنشأه عبر محادثة الموظفين."""
+    denied = guard_permission("can_see_orders", json=True)
+    if denied:
+        return denied
+
+    sender_id = session.get("user_id")
+    if not sender_id:
+        return jsonify({"success": False, "error": "غير مصرح"}), 403
+
+    order = Invoice.query.get_or_404(order_id)
+    denied = guard_order_access(order, json=True)
+    if denied:
+        return denied
+
+    if not order.employee_id:
+        return jsonify({"success": False, "error": "لا يوجد موظف مرتبط بهذا الطلب"}), 400
+
+    if int(order.employee_id) == int(sender_id):
+        return jsonify({"success": False, "error": "لا يمكنك إرسال تبليغ لنفسك"}), 400
+
+    receiver = Employee.query.get(order.employee_id)
+    if not receiver or not getattr(receiver, "is_active", True):
+        return jsonify({"success": False, "error": "الموظف غير موجود أو غير نشط"}), 404
+
+    data = request.get_json(silent=True) or {}
+    user_note = ""
+    file_type = None
+    file_path = None
+    file_name = None
+
+    if request.content_type and "multipart/form-data" in request.content_type:
+        user_note = (request.form.get("message") or "").strip()
+        upload = request.files.get("file")
+        if upload and upload.filename:
+            from routes.messages import _save_uploaded_file
+
+            file_type, file_path, file_name = _save_uploaded_file(upload)
+    else:
+        user_note = (data.get("message") or "").strip()
+
+    if not user_note:
+        return jsonify({"success": False, "error": "نص التبليغ مطلوب"}), 400
+
+    sender = Employee.query.get(sender_id)
+    sender_name = sender.name if sender else "مستخدم"
+    customer_name = order.customer.name if order.customer else (order.customer_name or "—")
+    customer_phone = order.customer.phone if order.customer else "—"
+
+    if file_type == "image":
+        content = f"📦 تبليغ الطلب #{order.id}: {user_note}"
+    else:
+        content = (
+            f"📦 تبليغ بخصوص الطلب #{order.id}\n\n"
+            f"{user_note}\n\n"
+            f"──────────────\n"
+            f"الزبون: {customer_name}\n"
+            f"الهاتف: {customer_phone}\n"
+            f"الحالة: {order.status} | {order.payment_status}\n"
+            f"المبلغ: {int(order.total or 0):,} د.ع\n"
+            f"من: {sender_name}"
+        )
+
+    message = Message(
+        sender_id=sender_id,
+        receiver_id=order.employee_id,
+        content=content,
+        file_type=file_type,
+        file_path=file_path,
+        file_name=file_name,
+    )
+    db.session.add(message)
+    db.session.commit()
+
+    return jsonify({
+        "success": True,
+        "message": f"تم إرسال صورة الفاتورة والتبليغ إلى {receiver.name}",
+        "receiver_id": receiver.id,
+    })
+
+
 @orders_bp.route("/update-fulfillment-branch", methods=["POST"])
 def update_fulfillment_branch():
     """تحديد/تغيير فرع خصم المخزون لصنف أو لكل أصناف الطلب أثناء التجهيز."""
@@ -1671,6 +1756,8 @@ def invoice_page(order_id):
     except Exception:
         current_app.logger.exception("order_public_view_url failed for order %s", order.id)
 
+    invoice_capture = request.args.get("capture") == "1"
+
     return render_template(
         template_file,
         order=order,
@@ -1682,6 +1769,7 @@ def invoice_page(order_id):
         settings=settings,
         template_styles=template_styles,
         order_public_view_url=order_public_view_url,
+        invoice_capture=invoice_capture,
     )
 
 # =====================================================
@@ -2422,6 +2510,60 @@ def create_agent_report_internal(order_ids, agent_id, save_to_db=True):
     agent = DeliveryAgent.query.get(agent_id)
     if not agent:
         return {"error": "المندوب غير موجود"}
+
+    try:
+        order_ids = [int(oid) for oid in order_ids]
+    except (TypeError, ValueError):
+        return {"error": "أرقام الطلبات غير صحيحة"}
+
+    order_ids = list(dict.fromkeys(order_ids))
+    if not order_ids:
+        return {"error": "لا توجد طلبات محددة"}
+
+    from utils.agent_report_helpers import (
+        find_executed_agent_reports_for_order,
+        find_open_agent_reports_for_order,
+        get_report_order_ids,
+    )
+
+    duplicate_open: dict[int, list[str]] = {}
+    executed_hits: dict[int, list[str]] = {}
+    requested_set = set(order_ids)
+    exact_existing_report = None
+    for oid in order_ids:
+        open_reports = find_open_agent_reports_for_order(oid, int(agent_id))
+        if open_reports:
+            duplicate_open[oid] = [r.report_number for r in open_reports]
+            for report in open_reports:
+                if set(get_report_order_ids(report)) == requested_set:
+                    exact_existing_report = report
+        executed_reports = find_executed_agent_reports_for_order(oid, int(agent_id))
+        if executed_reports:
+            executed_hits[oid] = [r.report_number for r in executed_reports]
+
+    if exact_existing_report and len(duplicate_open) == len(order_ids):
+        return {
+            "success": True,
+            "already_exists": True,
+            "report_id": exact_existing_report.id,
+            "report_number": exact_existing_report.report_number,
+            "agent_id": int(agent_id),
+            "message": f"الكشف موجود سابقاً: {exact_existing_report.report_number}",
+        }
+
+    if duplicate_open:
+        details = "، ".join(
+            f"#{oid} داخل {', '.join(report_numbers)}"
+            for oid, report_numbers in sorted(duplicate_open.items())
+        )
+        return {"error": f"لا يمكن إنشاء كشف مكرر: {details}"}
+
+    if executed_hits:
+        details = "، ".join(
+            f"#{oid} منفذ في {', '.join(report_numbers)}"
+            for oid, report_numbers in sorted(executed_hits.items())
+        )
+        return {"error": f"لا يمكن إدخال طلب منفذ سابقاً بكشف جديد: {details}"}
     
     # جلب الطلبات
     orders = Invoice.query.filter(Invoice.id.in_(order_ids)).all()

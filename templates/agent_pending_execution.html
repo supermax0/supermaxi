@@ -178,7 +178,7 @@
 
 <script>
 function executeAgentReport(reportId) {
-  if (!confirm('تنفيذ الكشف؟ سيتم تطبيق: الواصل → مسدد | الملغي → ملغي | المؤجل → تم الطلب')) return;
+  if (!confirm('تنفيذ الكشف؟ سيتم تطبيق: الواصل → تم التوصيل / مسدد | الملغي → ملغي | المؤجل → تم الطلب')) return;
   fetch('/delivery/execute-report/' + reportId, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

@@ -327,8 +327,7 @@ function printReportWindow(data) {
     </table>
   `;
   
-  const printWindow = window.open("", "_blank");
-  printWindow.document.write(`
+  const printHtml = `
     <!DOCTYPE html>
     <html dir="rtl" lang="ar">
       <head>
@@ -357,12 +356,8 @@ function printReportWindow(data) {
         </div>
       </body>
     </html>
-  `);
-  
-  printWindow.document.close();
-  setTimeout(() => {
-    printWindow.print();
-  }, 250);
+  `;
+  finoraPrintHtml(printHtml);
 }
 </script>
 

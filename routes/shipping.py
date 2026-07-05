@@ -19,6 +19,7 @@ shipping_bp = Blueprint("shipping", __name__, url_prefix="/shipping")
 
 _SHIPPING_WRITE_ENDPOINTS = {
     "shipping.add_company",
+    "shipping.update_company",
     "shipping.delete_company",
     "shipping.settle_order",
     "shipping.collect_company_balance",
@@ -200,6 +201,49 @@ def add_company():
         "password": company.password,
         "login_url": "/delivery/login"
     })
+
+# =====================================
+# Update Company
+# =====================================
+@shipping_bp.route("/update/<int:id>", methods=["POST"])
+def update_company(id):
+    _ensure_shipping_opening_balance_column()
+    company = ShippingCompany.query.get_or_404(id)
+    data = request.get_json(silent=True) or {}
+
+    name = (data.get("name") or "").strip()
+    if not name:
+        return jsonify({"success": False, "error": "اسم الشركة مطلوب"}), 400
+
+    duplicate = ShippingCompany.query.filter(
+        ShippingCompany.id != id,
+        ShippingCompany.name == name,
+    ).first()
+    if duplicate:
+        return jsonify({"success": False, "error": "يوجد شركة أخرى بنفس الاسم"}), 400
+
+    opening_balance = _parse_opening_balance(data.get("opening_balance"))
+    old_name = company.name
+    company.name = name
+    company.opening_balance = opening_balance
+    db.session.commit()
+    try:
+        log_activity(
+            "update",
+            "shipping",
+            f"تعديل شركة شحن: {old_name} → {company.name}",
+            entity_type="shipping_company",
+            entity_id=company.id,
+            payload={"name": company.name, "opening_balance": company.opening_balance},
+        )
+    except Exception:
+        pass
+    return jsonify({
+        "success": True,
+        "name": company.name,
+        "opening_balance": company.opening_balance,
+    })
+
 
 # =====================================
 # Delete Company

@@ -987,6 +987,86 @@ def require_login():
         pass
     # #endregion
 
+    def sync_staff_session_from_db():
+        if "user_id" not in session:
+            return None
+        tenant_slug = (session.get("tenant_slug") or "").strip()
+        if tenant_slug:
+            g.tenant = tenant_slug
+        employee = db.session.get(Employee, session["user_id"])
+        if not employee or not employee.is_active:
+            session.clear()
+            return None
+        session["role"] = employee.role or "cashier"
+        session["name"] = employee.name
+        session["tenant_id"] = employee.tenant_id
+        if employee.language:
+            session["language"] = employee.language
+        return employee
+
+    current_employee_for_request = sync_staff_session_from_db()
+
+    def deny_current_path():
+        if request.path.startswith("/api/") or request.is_json:
+            return jsonify({"success": False, "error": "غير مصرح"}), 403
+        return redirect("/pos")
+
+    def enforce_page_permission(employee):
+        if not employee:
+            return None
+        path = request.path or ""
+        if employee.role == "admin":
+            return None
+        from utils.permission_checks import employee_can
+
+        if path.startswith(("/superadmin", "/super-admin", "/admin/", "/executive-dashboard")):
+            return deny_current_path()
+
+        rules = [
+            ("/quick-sale", "view_pos"),
+            ("/inventory", "manage_inventory"),
+            ("/maintenance", "manage_inventory"),
+            ("/purchases", "manage_inventory"),
+            ("/suppliers", "manage_suppliers"),
+            ("/customers", "manage_customers"),
+            ("/orders/ordered", ("view_orders", "view_orders_placed")),
+            ("/orders/shipping", ("view_orders", "view_orders_shipped")),
+            ("/orders/delivered", ("view_orders", "view_orders_delivered")),
+            ("/orders/returned", ("view_orders", "view_orders_returned")),
+            ("/orders/cancelled", ("view_orders", "view_orders_returned")),
+            ("/orders", "view_orders"),
+            ("/shipping", "view_shipping"),
+            ("/expenses", "view_expenses"),
+            ("/cash", "view_accounts"),
+            ("/accounts", "view_accounts"),
+            ("/assets", ("view_fixed_assets", "view_accounts")),
+            ("/reports", "view_reports"),
+            ("/messages", "view_messages"),
+            ("/pages", "view_pages"),
+            ("/agents", "view_agents"),
+            ("/employees", "manage_employees"),
+            ("/settings", "manage_settings"),
+            ("/activity", "view_activity"),
+        ]
+        for prefix, required in rules:
+            if not path.startswith(prefix):
+                continue
+            if isinstance(required, tuple):
+                if prefix == "/assets":
+                    allowed = any(employee_can(employee, perm) for perm in required)
+                else:
+                    allowed = all(employee_can(employee, perm) for perm in required)
+            else:
+                allowed = employee_can(employee, required)
+            if not allowed:
+                return deny_current_path()
+            break
+        return None
+
+    denied_by_page_permission = enforce_page_permission(current_employee_for_request)
+    if denied_by_page_permission:
+        return denied_by_page_permission
+
     # مسارات مسموحة بدون تسجيل (الصفحة الرئيسية "/" تصل لـ root() فتُوجّه إلى /pricing)
     if _is_public_path(request.path or ""):
         return

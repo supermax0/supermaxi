@@ -325,6 +325,12 @@ def add_customer():
                 "msg": "رقم الهاتف الثاني يجب أن يكون 11 رقم"
             }), 400
 
+        if not address:
+            return jsonify({
+                "status": "fail",
+                "msg": "العنوان مطلوب"
+            }), 400
+
         if is_phone_blacklisted_for_new_customer(phone, phone2):
             return jsonify({
                 "status": "fail",

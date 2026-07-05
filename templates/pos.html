@@ -6,6 +6,7 @@
   <title>POS</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <script src="/static/js/no-zoom.js"></script>
+  <script src="/static/js/print-utils.js"></script>
   <script src="/static/js/digits-enforcer.js"></script>
   <meta name="format-detection" content="telephone=no">
   <!-- Favicon -->
@@ -1382,12 +1383,45 @@
 
   <div class="pos">
     <div class="pos-shell">
+    {% set is_admin = session.get("role") == "admin" or (current_employee and current_employee.role == "admin") %}
+    {% set pos_return = namespace(url='', label='رجوع') %}
+    {% if is_admin or can_view_dashboard %}
+      {% set pos_return.url = '/' %}
+    {% elif can_see_orders %}
+      {% set pos_return.url = '/orders' %}
+    {% elif can_manage_inventory %}
+      {% set pos_return.url = '/inventory' %}
+    {% elif can_see_shipping %}
+      {% set pos_return.url = '/shipping' %}
+    {% elif can_see_expenses %}
+      {% set pos_return.url = '/expenses' %}
+    {% elif can_see_accounts %}
+      {% set pos_return.url = '/accounts' %}
+    {% elif can_see_reports %}
+      {% set pos_return.url = '/reports' %}
+    {% elif can_see_messages %}
+      {% set pos_return.url = '/messages' %}
+    {% elif can_manage_customers %}
+      {% set pos_return.url = '/customers' %}
+    {% elif can_manage_suppliers %}
+      {% set pos_return.url = '/suppliers' %}
+    {% elif can_see_agents %}
+      {% set pos_return.url = '/agents' %}
+    {% elif can_see_pages %}
+      {% set pos_return.url = '/pages' %}
+    {% elif can_manage_employees %}
+      {% set pos_return.url = '/employees' %}
+    {% elif can_manage_settings %}
+      {% set pos_return.url = '/settings' %}
+    {% endif %}
+    {% if pos_return.url %}
     <div class="pos-topbar">
-      <a href="/" class="pos-back" title="رجوع">
+      <a href="{{ pos_return.url }}" class="pos-back" title="رجوع">
         <i class="fas fa-arrow-right"></i>
         <span>رجوع</span>
       </a>
     </div>
+    {% endif %}
     {% if order_data %}
     <!-- عرض رقم الطلب عند التعديل -->
     <div class="card edit-banner"
@@ -1464,7 +1498,7 @@
             {% endfor %}
             <option value="{{ provinces_group_label }}">{{ provinces_group_label }}</option>
           </select>
-          <input id="address" placeholder="العنوان" class="modal-input">
+          <input id="address" placeholder="العنوان *" class="modal-input" required autocomplete="street-address">
         </div>
 
         <!-- OCR Section inside Modal -->
@@ -1858,6 +1892,12 @@
         if (phone2Input) phone2Input.focus()
         return
       }
+      const addressValue = addressInput ? addressInput.value.trim() : ""
+      if (!addressValue) {
+        toast("يرجى إدخال العنوان")
+        if (addressInput) addressInput.focus()
+        return
+      }
 
       fetch("/pos/add-customer", {
         method: "POST",
@@ -1867,7 +1907,7 @@
           phone: phoneValue,
           phone2: phone2Value,
           city: cityInput ? (cityInput.value ? cityInput.value.trim() : "") : "",
-          address: addressInput ? (addressInput.value ? addressInput.value.trim() : "") : ""
+          address: addressValue
         })
       })
         .then(r => r.json())
@@ -2231,23 +2271,7 @@
 
     /* ===== طباعة الفاتورة (قالب السيرفر — /orders/invoice) ===== */
     function printServerInvoice(invoiceId) {
-      const url = '/orders/invoice/' + encodeURIComponent(invoiceId);
-      const printWin = window.open(url, '_blank');
-      if (!printWin) {
-        toast('⚠️ اسمح بالنوافذ المنبثقة لطباعة الفاتورة');
-        return;
-      }
-      const tryPrint = function () {
-        try {
-          printWin.focus();
-          printWin.print();
-        } catch (e) { /* ignore */ }
-      };
-      printWin.addEventListener('load', function onLoad() {
-        printWin.removeEventListener('load', onLoad);
-        setTimeout(tryPrint, 500);
-      });
-      setTimeout(tryPrint, 2500);
+      finoraPrintUrl('/orders/invoice/' + encodeURIComponent(invoiceId));
     }
 
     /* ===== تأجيل الطلب ===== */
@@ -2621,9 +2645,8 @@
   `;
       }
 
-      // فتح نافذة الطباعة
-      const printWindow = window.open('', '_blank')
-      printWindow.document.write(`
+      // طباعة قائمة الأسعار
+      const printHtml = `
   <!DOCTYPE html>
   <html dir="rtl" lang="ar">
 
@@ -2772,13 +2795,8 @@
   </body>
 
   </html>
-  `);
-      printWindow.document.close()
-
-      // انتظار تحميل الصفحة ثم الطباعة
-      setTimeout(() => {
-        printWindow.print()
-      }, 250)
+  `;
+      finoraPrintHtml(printHtml);
     }
 
 

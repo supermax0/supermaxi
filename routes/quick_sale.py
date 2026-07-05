@@ -134,9 +134,13 @@ def execute():
         )
         if not validation.get("valid") or not fulfillment_branch_id:
             return jsonify({"success": False, "error": validation.get("message") or "الكمية غير متوفرة"}), 400
+        unit_price = _safe_int(item.get("price"), int(product.sale_price or 0))
+        if unit_price <= 0:
+            return jsonify({"success": False, "error": f"سعر المنتج {product.name} غير صالح"}), 400
         clean_items.append({
             "product": product,
             "qty": qty,
+            "price": unit_price,
             "fulfillment_branch_id": fulfillment_branch_id,
         })
 
@@ -177,7 +181,8 @@ def execute():
     for row in clean_items:
         product = row["product"]
         qty = int(row["qty"])
-        line_total = int(product.sale_price or 0) * qty
+        unit_price = int(row["price"])
+        line_total = unit_price * qty
         total += line_total
         fulfillment_branch_id = row["fulfillment_branch_id"]
         db.session.add(
@@ -186,7 +191,7 @@ def execute():
                 product_id=product.id,
                 product_name=product.name,
                 quantity=qty,
-                price=int(product.sale_price or 0),
+                price=unit_price,
                 cost=int(product.buy_price or 0),
                 total=line_total,
                 fulfillment_branch_id=fulfillment_branch_id,

@@ -944,10 +944,8 @@ function generateReport(type) {
     hideLoading();
     if (data.success) {
       updateLoaderState(null);
-      speak('تم إنشاء التقرير بنجاح! سيتم فتحه في نافذة جديدة.');
-      
-      // إنشاء تقرير محسّن مع إمكانية الطباعة
-      const reportWindow = window.open('', '_blank');
+      speak('تم إنشاء التقرير بنجاح! سيتم فتح نافذة الطباعة.');
+
       const reportDate = new Date().toLocaleString('ar-SA', {
         year: 'numeric',
         month: 'long',
@@ -956,7 +954,7 @@ function generateReport(type) {
         minute: '2-digit'
       });
       
-      reportWindow.document.write(`
+      const reportHtml = `
         <!DOCTYPE html>
         <html dir="rtl" lang="ar">
         <head>
@@ -1163,8 +1161,8 @@ function generateReport(type) {
           </div>
         </body>
         </html>
-      `);
-      reportWindow.document.close();
+      `;
+      finoraPrintHtml(reportHtml);
       showToast('✅ تم إنشاء التقرير', 'success');
     } else {
       updateLoaderState(null);

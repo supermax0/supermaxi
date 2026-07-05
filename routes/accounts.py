@@ -53,6 +53,8 @@ def _build_order_accounting_impact(limit=12):
     cost_rows = {}
 
     if invoice_ids:
+        from utils.order_item_costs import exclude_delivery_fee_items
+
         cost_rows = {
             row.invoice_id: {
                 "stock_cost": int(row.stock_cost or 0),
@@ -64,7 +66,7 @@ def _build_order_accounting_impact(limit=12):
                     func.sum(OrderItem.cost * OrderItem.quantity).label("stock_cost"),
                     func.sum(OrderItem.quantity).label("items_count"),
                 )
-                .filter(OrderItem.invoice_id.in_(invoice_ids))
+                .filter(OrderItem.invoice_id.in_(invoice_ids), exclude_delivery_fee_items(OrderItem))
                 .group_by(OrderItem.invoice_id)
                 .all()
             )

@@ -10,6 +10,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <script src="/static/js/no-zoom.js"></script>
+  <script src="/static/js/print-utils.js"></script>
   <script src="/static/js/digits-enforcer.js"></script>
 
   <link rel="icon" type="image/png" href="{{ platform_logo_url }}">
@@ -67,6 +68,37 @@
       </div>
 
       <div class="pos-header-end">
+        {% set is_admin = session.get("role") == "admin" or (current_employee and current_employee.role == "admin") %}
+        {% set pos_return = namespace(url='') %}
+        {% if is_admin or can_view_dashboard %}
+          {% set pos_return.url = '/' %}
+        {% elif can_see_orders %}
+          {% set pos_return.url = '/orders' %}
+        {% elif can_manage_inventory %}
+          {% set pos_return.url = '/inventory' %}
+        {% elif can_see_shipping %}
+          {% set pos_return.url = '/shipping' %}
+        {% elif can_see_expenses %}
+          {% set pos_return.url = '/expenses' %}
+        {% elif can_see_accounts %}
+          {% set pos_return.url = '/accounts' %}
+        {% elif can_see_reports %}
+          {% set pos_return.url = '/reports' %}
+        {% elif can_see_messages %}
+          {% set pos_return.url = '/messages' %}
+        {% elif can_manage_customers %}
+          {% set pos_return.url = '/customers' %}
+        {% elif can_manage_suppliers %}
+          {% set pos_return.url = '/suppliers' %}
+        {% elif can_see_agents %}
+          {% set pos_return.url = '/agents' %}
+        {% elif can_see_pages %}
+          {% set pos_return.url = '/pages' %}
+        {% elif can_manage_employees %}
+          {% set pos_return.url = '/employees' %}
+        {% elif can_manage_settings %}
+          {% set pos_return.url = '/settings' %}
+        {% endif %}
 
         <button type="button" class="pos-btn-icon pos-desktop-only" title="بحث (Ctrl+K)" onclick="document.getElementById('searchProduct').focus()">
 
@@ -74,8 +106,8 @@
 
         </button>
 
-        {% if session.get("role") == "admin" or can_view_dashboard %}
-        <a href="/" class="pos-btn-icon" title="رجوع" aria-label="رجوع"><i class="fas fa-arrow-right"></i></a>
+        {% if pos_return.url %}
+        <a href="{{ pos_return.url }}" class="pos-btn-icon" title="رجوع" aria-label="رجوع"><i class="fas fa-arrow-right"></i></a>
         {% endif %}
 
       </div>
@@ -419,7 +451,7 @@
           <option value="{{ provinces_group_label }}">{{ provinces_group_label }}</option>
         </select>
 
-        <input id="address" class="pos-input" placeholder="العنوان">
+        <input id="address" class="pos-input" placeholder="العنوان *" required autocomplete="street-address">
 
       </div>
 

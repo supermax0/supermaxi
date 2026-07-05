@@ -254,6 +254,11 @@
   color: var(--ledger-warning);
 }
 
+.movement-type.reconciliation {
+  background: rgba(99, 102, 241, 0.18);
+  color: var(--ledger-primary);
+}
+
 /* ================= Cards View (Mobile) ================= */
 .ledger-cards-view {
   display: none;
@@ -442,6 +447,7 @@
 :root[data-theme="light"] .movement-type.purchase { background: rgba(22, 163, 74, 0.12); color: #166534; }
 :root[data-theme="light"] .movement-type.sale { background: rgba(220, 38, 38, 0.12); color: #991b1b; }
 :root[data-theme="light"] .movement-type.return { background: rgba(245, 158, 11, 0.14); color: #92400e; }
+:root[data-theme="light"] .movement-type.reconciliation { background: rgba(79, 70, 229, 0.12); color: #3730a3; }
 </style>
 
 <!-- ================= Stats ================= -->
@@ -610,7 +616,8 @@ function displayMovements(data) {
       'opening_stock': 'opening',
       'purchase': 'purchase',
       'sale': 'sale',
-      'return_sale': 'return'
+      'return_sale': 'return',
+      'stock_reconciliation': 'reconciliation'
     }[m.type] || '';
     
     row.innerHTML = `
@@ -632,7 +639,8 @@ function displayMovements(data) {
       'opening_stock': 'opening',
       'purchase': 'purchase',
       'sale': 'sale',
-      'return_sale': 'return'
+      'return_sale': 'return',
+      'stock_reconciliation': 'reconciliation'
     }[m.type] || '';
     
     const card = document.createElement('div');

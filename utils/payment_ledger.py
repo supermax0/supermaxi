@@ -108,9 +108,11 @@ def append_payment_ledger_delta(invoice_id: int, delta: int) -> None:
 
 def invoice_total_cogs(invoice_id: int) -> int:
     from models.order_item import OrderItem
+    from utils.order_item_costs import exclude_delivery_fee_items
 
     q = db.session.query(func.sum(OrderItem.cost * OrderItem.quantity)).filter(
-        OrderItem.invoice_id == invoice_id
+        OrderItem.invoice_id == invoice_id,
+        exclude_delivery_fee_items(OrderItem),
     )
     return int(q.scalar() or 0)
 

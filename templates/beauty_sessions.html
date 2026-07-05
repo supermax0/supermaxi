@@ -22,7 +22,7 @@
           <td>{{ "{:,}".format(a.total_amount or 0) }}</td>
           <td>{{ "{:,}".format(a.paid_amount or 0) }}</td>
           <td>{{ a.session_notes[-1].note if a.session_notes else a.notes or '—' }}</td>
-          <td><a href="{{ url_for('beauty.appointment_receipt', appointment_id=a.id) }}" target="_blank">إيصال</a></td>
+          <td><a href="{{ url_for('beauty.appointment_receipt', appointment_id=a.id) }}" data-finora-print>إيصال</a></td>
         </tr>
       {% else %}
         <tr><td colspan="7" style="text-align:center;color:var(--text-muted)">لا توجد جلسات منفذة.</td></tr>

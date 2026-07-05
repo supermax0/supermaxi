@@ -21,9 +21,11 @@ from utils.accounting_calculations import (
     calculate_inventory_value,
     calculate_supplier_debts,
     calculate_shipping_due,
+    calculate_shipping_opening_balance,
     calculate_accounts_receivable,
 )
 from utils.cash_calculations import calculate_cash_balance
+from utils.order_item_costs import exclude_delivery_fee_items
 
 RETURN_STATUSES = list(ORDER_RETURN_STATUSES)
 CANCELED_STATUSES = list(ORDER_CANCELED_STATUSES)
@@ -110,7 +112,10 @@ def get_financial_report_data(period_type="this_month", custom_date_from=None, c
         rows = db.session.query(
             OrderItem.invoice_id,
             func.sum(OrderItem.cost * OrderItem.quantity).label("cogs_sum"),
-        ).filter(OrderItem.invoice_id.in_(period_invoice_ids)).group_by(OrderItem.invoice_id).all()
+        ).filter(
+            OrderItem.invoice_id.in_(period_invoice_ids),
+            exclude_delivery_fee_items(OrderItem),
+        ).group_by(OrderItem.invoice_id).all()
         for invoice_id, cogs_sum in rows:
             if cogs_sum:
                 inv_cogs = int(cogs_sum or 0)
@@ -133,9 +138,13 @@ def get_financial_report_data(period_type="this_month", custom_date_from=None, c
     # ─── أرصدة كما في نهاية الفترة (نستخدم الحالية من النظام) ───
     cash_balance = calculate_cash_balance()
     inventory_value = calculate_inventory_value()
-    accounts_receivable = calculate_accounts_receivable()
+    invoice_receivables = calculate_accounts_receivable()
     supplier_debts = calculate_supplier_debts()
-    shipping_due = calculate_shipping_due()
+    shipping_receivables = calculate_shipping_due()
+    shipping_opening_balance = calculate_shipping_opening_balance()
+    shipping_orders_receivable = max(int(shipping_receivables or 0) - int(shipping_opening_balance or 0), 0)
+    accounts_receivable = int(invoice_receivables + shipping_opening_balance)
+    customer_receivables = max(int(invoice_receivables or 0) - int(shipping_orders_receivable or 0), 0)
 
     # ─── المخزون: عدد مواد ناقصة وراكدة (تعريف بسيط) ───
     low_stock_count = Product.query.filter(Product.quantity <= 2).count()
@@ -171,7 +180,10 @@ def get_financial_report_data(period_type="this_month", custom_date_from=None, c
             prev_rows = db.session.query(
                 OrderItem.invoice_id,
                 func.sum(OrderItem.cost * OrderItem.quantity).label("cogs_sum"),
-            ).filter(OrderItem.invoice_id.in_(prev_invoice_ids)).group_by(OrderItem.invoice_id).all()
+            ).filter(
+                OrderItem.invoice_id.in_(prev_invoice_ids),
+                exclude_delivery_fee_items(OrderItem),
+            ).group_by(OrderItem.invoice_id).all()
             for invoice_id, cogs_sum in prev_rows:
                 if cogs_sum:
                     prev_cogs += int(cogs_sum or 0)
@@ -196,7 +208,7 @@ def get_financial_report_data(period_type="this_month", custom_date_from=None, c
     fixed_assets_depreciation_period = fa_summary["fixed_assets_depreciation_period"]
 
     total_assets = int(cash_balance + inventory_value + accounts_receivable + fixed_assets_book_value)
-    total_liabilities = int(supplier_debts + shipping_due)
+    total_liabilities = int(supplier_debts)
     liquidity_ratio = round(total_assets / total_liabilities, 2) if total_liabilities else None
 
     # ─── حقوق الملكية وموازنة الميزانية (الأصول = الالتزامات + حقوق الملكية) ───
@@ -218,6 +230,7 @@ def get_financial_report_data(period_type="this_month", custom_date_from=None, c
         func.date(Invoice.created_at) <= date_to,
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
         Invoice.payment_status.notin_(RETURN_STATUSES),
+        exclude_delivery_fee_items(OrderItem),
     ).group_by(OrderItem.product_name).order_by(func.sum(OrderItem.total).desc()).limit(10).all()
     top_products = [{
         "name": r.product_name or "غير محدد",
@@ -323,8 +336,12 @@ def get_financial_report_data(period_type="this_month", custom_date_from=None, c
         "cash_balance": int(cash_balance),
         "inventory_value": int(inventory_value),
         "accounts_receivable": int(accounts_receivable),
+        "customer_receivables": int(customer_receivables),
         "supplier_debts": int(supplier_debts),
-        "shipping_due": int(shipping_due),
+        "shipping_due": 0,
+        "shipping_receivables": int(shipping_receivables),
+        "shipping_orders_receivable": int(shipping_orders_receivable),
+        "shipping_opening_balance": int(shipping_opening_balance),
         "total_assets": total_assets,
         "total_liabilities": total_liabilities,
         "equity": equity,

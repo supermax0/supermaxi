@@ -632,7 +632,7 @@
           <article class="exec-card kpi-card">
             <div class="kpi-top">
               <span class="kpi-icon orange"><i class="fas fa-file-invoice-dollar"></i></span>
-              <span class="kpi-title">الذمم المدينة (آجل)</span>
+              <span class="kpi-title">الذمم المدينة (آجل + نقل)</span>
             </div>
             <div class="kpi-value"><span id="creditReceivables">0</span><span class="kpi-unit">د.ع</span></div>
             <div class="kpi-bottom">
@@ -647,10 +647,10 @@
               <span class="kpi-title">الالتزامات</span>
             </div>
             <div class="kpi-value"><span id="liabilitiesTotal">0</span><span class="kpi-unit">د.ع</span></div>
-            <div class="kpi-sub" id="liabilitiesBreakdown">موردين 0 · نقل 0</div>
+            <div class="kpi-sub" id="liabilitiesBreakdown">موردين 0</div>
             <div class="kpi-bottom">
               <div></div>
-              <div class="trend"><span>موردين+نقل</span></div>
+              <div class="trend"><span>ديون فعلية</span></div>
             </div>
           </article>
 
@@ -1021,7 +1021,7 @@
     setText("creditReceivables", money(receivables));
     setText("debtRateKpi", nf.format(clampPercent(collectionRate)) + "%");
     setText("liabilitiesTotal", money(liabilitiesTotal));
-    setText("liabilitiesBreakdown", `موردين ${money(liabilities.supplier_debts)} · نقل ${money(liabilities.shipping_due)}`);
+    setText("liabilitiesBreakdown", `موردين ${money(liabilities.supplier_debts)}`);
     setText("netPosition", money(netPosition));
 
     setText("cashBoxBalance", money(cashBox));
@@ -1105,7 +1105,7 @@
         expenses_today: 0,
         receivables: 0,
         liabilities: 0,
-        liabilities_breakdown: { supplier_debts: 0, shipping_due: 0, total: 0 },
+        liabilities_breakdown: { supplier_debts: 0, shipping_due: 0, shipping_receivables: 0, total: 0 },
         credit_summary: { receivables: 0, credit_sales_today: 0, credit_sales_month: 0, cash_sales_today: 0, overdue_installments_count: 0, overdue_installments_amount: 0, collection_rate: 0 },
         net_financial_position: 0,
         alerts: [],

@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <script src="/static/js/no-zoom.js"></script>
+  <script src="/static/js/print-utils.js"></script>
     <title>كشوفات {{ shipping_company.name }}</title>
     <script>
       (function() {
@@ -274,7 +275,7 @@
                         <td>{{ report.created_by or "—" }}</td>
                         <td>
                             <a href="/delivery/report/{{ report.id }}?token={{ access_token }}" class="btn btn-primary" target="_blank">👁️ عرض</a>
-                            <a href="/delivery/report/{{ report.id }}?token={{ access_token }}" class="btn btn-success" target="_blank" onclick="window.print()">🖨️ طباعة</a>
+                            <a href="/delivery/report/{{ report.id }}?token={{ access_token }}" class="btn btn-success" data-finora-print>🖨️ طباعة</a>
                         </td>
                     </tr>
                     {% endfor %}

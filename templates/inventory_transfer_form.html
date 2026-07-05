@@ -170,7 +170,7 @@
         </h2>
       </div>
       {% if readonly and transfer %}
-      <a href="{{ url_for('stock_transfers.transfers_print', transfer_id=transfer.id) }}" target="_blank" rel="noopener" class="trf-btn secondary">
+      <a href="{{ url_for('stock_transfers.transfers_print', transfer_id=transfer.id) }}" data-finora-print rel="noopener" class="trf-btn secondary">
         <i class="fas fa-print"></i> طباعة الكشف
       </a>
       {% endif %}

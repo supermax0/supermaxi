@@ -9,11 +9,16 @@ from sqlalchemy import func
 import json
 
 from utils.agent_report_helpers import (
+    find_executed_agent_reports_for_order,
+    find_open_agent_reports_for_order,
+    get_report_order_ids,
     get_pending_agent_reports_summary,
+    is_agent_report,
     list_pending_agent_reports,
     serialize_pending_report,
 )
 from utils.decorators import permission_required
+from utils.order_shipping import is_shipping_item, order_item_display_name
 from utils.permission_checks import employee_can, get_current_employee
 from utils.team_schema import ensure_delivery_agent_schema
 from utils.agent_employee_link import ensure_agent_employee
@@ -200,21 +205,11 @@ def agent_reports(agent_id):
     orders = Invoice.query.filter_by(delivery_agent_id=agent.id).order_by(Invoice.created_at.desc()).all()
     total_orders = len(orders)
     total_amount = sum(order.total for order in orders)
-    agent_order_ids = {order.id for order in orders}
-    all_reports = ShippingReport.query.order_by(ShippingReport.created_at.desc()).all()
-    agent_reports_list = []
-    for report in all_reports:
-        if not report.orders_data:
-            continue
-        try:
-            orders_data = json.loads(report.orders_data)
-            for order_data in orders_data:
-                order_id = order_data.get("id") or order_data.get("order_id")
-                if order_id and order_id in agent_order_ids:
-                    agent_reports_list.append(report)
-                    break
-        except Exception:
-            continue
+    agent_reports_list = (
+        ShippingReport.query.filter(ShippingReport.report_number.like(f"AGT-{agent.id}-%"))
+        .order_by(ShippingReport.created_at.desc())
+        .all()
+    )
     reports_data = [serialize_pending_report(r) for r in agent_reports_list]
     return render_template(
         "agent_reports.html",
@@ -224,6 +219,99 @@ def agent_reports(agent_id):
         total_orders=total_orders,
         total_amount=total_amount,
     )
+
+
+def _agent_report_order_payload(order: Invoice) -> dict:
+    items = [item for item in OrderItem.query.filter_by(invoice_id=order.id).all() if not is_shipping_item(item)]
+    customer = order.customer
+    return {
+        "id": order.id,
+        "customer_name": customer.name if customer else order.customer_name,
+        "customer_phone": customer.phone if customer else "",
+        "customer_city": customer.city if customer else "",
+        "customer_address": customer.address if customer else "",
+        "total": int(order.total or 0),
+        "status": order.status,
+        "payment_status": order.payment_status,
+        "created_at": order.created_at.strftime("%Y-%m-%d %H:%M") if order.created_at else "",
+        "items": [
+            {
+                "product_name": order_item_display_name(item),
+                "quantity": item.quantity,
+                "price": item.price,
+                "total": item.total,
+            }
+            for item in items
+        ],
+    }
+
+
+@agents_bp.route("/reports/add-order", methods=["POST"])
+@permission_required("view_agents")
+def add_order_to_agent_report():
+    data = request.get_json(silent=True) or request.form or {}
+    report_number = (data.get("report_number") or "").strip()
+    order_id = data.get("order_id")
+
+    if not report_number or not order_id:
+        return jsonify({"error": "رقم الكشف ورقم الطلب مطلوبان"}), 400
+
+    try:
+        order_id = int(order_id)
+    except (TypeError, ValueError):
+        return jsonify({"error": "رقم الطلب غير صحيح"}), 400
+
+    report = ShippingReport.query.filter_by(report_number=report_number).first()
+    if not report or not is_agent_report(report):
+        return jsonify({"error": "كشف المندوب غير موجود"}), 404
+
+    if report.is_executed:
+        return jsonify({"error": "لا يمكن إضافة طلب إلى كشف منفذ"}), 400
+
+    agent_id = int(report.report_number.split("-")[1])
+    order = Invoice.query.get(order_id)
+    if not order:
+        return jsonify({"error": "الطلب غير موجود"}), 404
+
+    if order.delivery_agent_id and int(order.delivery_agent_id) != agent_id:
+        return jsonify({"error": "الطلب مرتبط بمندوب آخر"}), 400
+
+    current_ids = get_report_order_ids(report)
+    if order_id in current_ids:
+        return jsonify({"success": True, "message": "الطلب موجود بهذا الكشف أصلاً"}), 200
+
+    open_reports = find_open_agent_reports_for_order(order_id, agent_id)
+    if open_reports:
+        return jsonify({
+            "error": "الطلب موجود بكشف مفتوح آخر: " + ", ".join(r.report_number for r in open_reports)
+        }), 400
+
+    executed_reports = find_executed_agent_reports_for_order(order_id, agent_id)
+    if executed_reports:
+        return jsonify({
+            "error": "الطلب منفذ سابقاً بكشف: " + ", ".join(r.report_number for r in executed_reports)
+        }), 400
+
+    try:
+        orders_data = json.loads(report.orders_data or "[]")
+        if not isinstance(orders_data, list):
+            orders_data = []
+    except Exception:
+        orders_data = []
+
+    order.delivery_agent_id = agent_id
+    orders_data.append(_agent_report_order_payload(order))
+    report.orders_data = json.dumps(orders_data, ensure_ascii=False)
+    report.orders_count = len(orders_data)
+    report.total_amount = sum(int(row.get("total") or 0) for row in orders_data)
+    db.session.commit()
+
+    return jsonify({
+        "success": True,
+        "message": f"تمت إضافة الطلب #{order_id} إلى الكشف {report.report_number}",
+        "orders_count": report.orders_count,
+        "total_amount": int(report.total_amount or 0),
+    })
 
 
 @agents_bp.route("/<int:agent_id>/orders")

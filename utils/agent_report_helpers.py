@@ -80,19 +80,37 @@ def get_report_progress(report) -> dict[str, Any]:
 
 
 def find_open_agent_report_for_order(order_id: int):
-    reports = (
+    reports = find_open_agent_reports_for_order(order_id)
+    return reports[0] if reports else None
+
+
+def find_open_agent_reports_for_order(order_id: int, agent_id: int | None = None) -> list[ShippingReport]:
+    query = (
         ShippingReport.query.filter(
             ShippingReport.is_executed.is_(False),
             ShippingReport.report_number.like("AGT-%"),
         )
         .order_by(ShippingReport.created_at.desc())
-        .all()
     )
+    if agent_id:
+        query = query.filter(ShippingReport.report_number.like(f"AGT-{int(agent_id)}-%"))
+    reports = query.all()
     oid = int(order_id)
-    for report in reports:
-        if oid in get_report_order_ids(report):
-            return report
-    return None
+    return [report for report in reports if oid in get_report_order_ids(report)]
+
+
+def find_executed_agent_reports_for_order(order_id: int, agent_id: int | None = None) -> list[ShippingReport]:
+    query = (
+        ShippingReport.query.filter(
+            ShippingReport.is_executed.is_(True),
+            ShippingReport.report_number.like("AGT-%"),
+        )
+        .order_by(ShippingReport.created_at.desc())
+    )
+    if agent_id:
+        query = query.filter(ShippingReport.report_number.like(f"AGT-{int(agent_id)}-%"))
+    oid = int(order_id)
+    return [report for report in query.all() if oid in get_report_order_ids(report)]
 
 
 def get_order_applied_status(order_id: int) -> str | None:

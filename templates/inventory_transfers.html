@@ -110,7 +110,7 @@
             <td>
               <a href="{{ url_for('stock_transfers.transfers_view', transfer_id=t.id) }}">عرض</a>
               ·
-              <a href="{{ url_for('stock_transfers.transfers_print', transfer_id=t.id) }}" target="_blank" rel="noopener">طباعة</a>
+              <a href="{{ url_for('stock_transfers.transfers_print', transfer_id=t.id) }}" data-finora-print rel="noopener">طباعة</a>
             </td>
           </tr>
           {% else %}

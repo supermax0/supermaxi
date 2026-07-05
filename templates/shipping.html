@@ -329,11 +329,49 @@
   }
 
   /* ================= ACTION BUTTONS IN TABLE ================= */
-  .shipping-page td .btn {
+  .shipping-page td .btn,
+  .shipping-page td .btn-sm {
     min-width: auto;
-    padding: 10px 18px;
-    margin: 0 4px;
-    font-size: 14px;
+    padding: 5px 10px;
+    margin: 0 2px;
+    font-size: 12px;
+    gap: 4px;
+    border-radius: 8px;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+
+  .shipping-page td .btn-sm span:first-child {
+    font-size: 13px;
+  }
+
+  .shipping-page .btn-warning {
+    background: linear-gradient(135deg, var(--shipping-warning), #d97706);
+    color: white;
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.25);
+  }
+
+  .shipping-page .btn-warning:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 18px rgba(245, 158, 11, 0.35);
+  }
+
+  .shipping-page .btn-outline-danger {
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+    box-shadow: none;
+  }
+
+  .shipping-page .btn-outline-danger:hover {
+    background: rgba(239, 68, 68, 0.2);
+    transform: translateY(-2px);
+  }
+
+  .shipping-page .ship-actions {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    flex-wrap: wrap;
   }
 
   /* ================= ANIMATIONS ================= */
@@ -608,7 +646,7 @@
           </tr>
           {% else %}
           {% for c in companies %}
-          <tr data-company-id="{{ c.id }}" data-company-name="{{ c.name }}">
+          <tr data-company-id="{{ c.id }}" data-company-name="{{ c.name }}" data-opening-balance="{{ c.opening_balance or 0 }}">
             <td data-label="{{ _('shipping_th_company_name') }}"><strong>{{ c.name }}</strong></td>
             <td data-label="{{ _('shipping_th_orders_count') }}">{{ c.orders_count }}</td>
             <td data-label="{{ _('shipping_opening_balance') }}">
@@ -626,22 +664,24 @@
               {% endif %}
             </td>
             <td data-label="{{ _('shipping_th_actions') }}">
-              <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
-                <a href="/delivery/archive?company_id={{ c.id }}" class="btn btn-success"
-                  style="text-decoration:none; padding: 8px 16px; min-width: auto;">
+              <div class="ship-actions">
+                <a href="/delivery/archive?company_id={{ c.id }}" class="btn btn-success btn-sm"
+                  style="text-decoration:none;">
                   <span>📋</span>
                   <span>{{ _('shipping_action_statement') }}</span>
                 </a>
+                <button class="btn btn-warning btn-sm" type="button" onclick="editCompanyFromRow(this)">
+                  <span>✏️</span>
+                  <span>تعديل</span>
+                </button>
                 {% if c.opening_balance and c.opening_balance > 0 %}
-                <button class="btn btn-primary" type="button"
-                  onclick="collectOpeningBalance({{ c.id }}, {{ c.opening_balance }}, this)"
-                  style="padding: 8px 16px; min-width: auto;">
+                <button class="btn btn-primary btn-sm" type="button"
+                  onclick="collectOpeningBalance({{ c.id }}, {{ c.opening_balance }}, this)">
                   <span>💵</span>
                   <span>استلام</span>
                 </button>
                 {% endif %}
-                <button class="btn btn-danger" onclick="deleteCompany({{ c.id }})"
-                  style="padding: 8px 16px; min-width: auto; background: rgba(239, 68, 68, 0.15); color: #ef4444; box-shadow: none;">
+                <button class="btn btn-outline-danger btn-sm" onclick="deleteCompany({{ c.id }})">
                   <span>🗑️</span>
                   <span>{{ _('shipping_action_delete') }}</span>
                 </button>
@@ -652,6 +692,38 @@
           {% endif %}
         </tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- Edit Company Modal -->
+  <div class="modal" id="editCompanyModal">
+    <div class="modal-box" style="max-width: 460px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <h3 style="color:var(--shipping-text);margin:0;">✏️ تعديل شركة النقل</h3>
+        <button class="btn btn-outline-danger btn-sm" type="button" onclick="closeEditCompanyModal()">
+          <span>✕</span>
+        </button>
+      </div>
+      <input type="hidden" id="editCompanyId">
+      <div style="display:grid;gap:14px;">
+        <div>
+          <label for="editCompanyName" style="display:block;margin-bottom:6px;color:var(--shipping-muted);font-size:13px;">اسم الشركة</label>
+          <input id="editCompanyName" type="text" placeholder="اسم شركة النقل"
+            style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(15,23,42,0.6);color:var(--shipping-text);">
+        </div>
+        <div>
+          <label for="editCompanyOpeningBalance" style="display:block;margin-bottom:6px;color:var(--shipping-muted);font-size:13px;">الرصيد الافتتاحي (د.ع)</label>
+          <input id="editCompanyOpeningBalance" type="number" min="0" step="1" placeholder="0"
+            style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(15,23,42,0.6);color:var(--shipping-text);">
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:22px;">
+        <button class="btn btn-outline-danger btn-sm" type="button" onclick="closeEditCompanyModal()">إلغاء</button>
+        <button class="btn btn-primary btn-sm" type="button" onclick="saveCompanyEdit()">
+          <span>💾</span>
+          <span>حفظ</span>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -764,6 +836,62 @@
         .catch(error => {
           hideLoading();
           showToast("{{ _('shipping_err_add_generic') }}", "error");
+          console.error(error);
+        });
+    }
+
+    function editCompanyFromRow(btn) {
+      const row = btn && btn.closest ? btn.closest('tr') : null;
+      if (!row) return;
+      editCompany(
+        Number(row.getAttribute('data-company-id')),
+        row.getAttribute('data-company-name') || '',
+        Number(row.getAttribute('data-opening-balance') || 0)
+      );
+    }
+
+    function editCompany(id, name, openingBalance) {
+      document.getElementById("editCompanyId").value = id;
+      document.getElementById("editCompanyName").value = name || "";
+      document.getElementById("editCompanyOpeningBalance").value = Number(openingBalance || 0);
+      document.getElementById("editCompanyModal").style.display = "flex";
+      setTimeout(() => document.getElementById("editCompanyName").focus(), 80);
+    }
+
+    function closeEditCompanyModal() {
+      document.getElementById("editCompanyModal").style.display = "none";
+    }
+
+    function saveCompanyEdit() {
+      const id = document.getElementById("editCompanyId").value;
+      const name = document.getElementById("editCompanyName").value.trim();
+      const openingBalance = document.getElementById("editCompanyOpeningBalance").value || "0";
+
+      if (!name) {
+        showToast("{{ _('shipping_err_name_required') }}", "warning");
+        return;
+      }
+
+      showLoading();
+      fetch("/shipping/update/" + id, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, opening_balance: openingBalance })
+      })
+        .then(r => r.json())
+        .then(data => {
+          hideLoading();
+          if (data.success) {
+            showToast("تم حفظ التعديلات", "success");
+            closeEditCompanyModal();
+            setTimeout(() => location.reload(), 700);
+          } else {
+            showToast(data.error || "تعذر حفظ التعديلات", "error");
+          }
+        })
+        .catch(error => {
+          hideLoading();
+          showToast("تعذر حفظ التعديلات", "error");
           console.error(error);
         });
     }
@@ -1127,8 +1255,7 @@
       const printDate = new Date().toLocaleDateString("ar-IQ");
       const printTime = new Date().toLocaleTimeString("ar-IQ");
 
-      const printWindow = window.open("", "_blank");
-      printWindow.document.write(`
+      const printHtml = `
     <!DOCTYPE html>
     <html dir="rtl" lang="ar">
       <head>
@@ -1216,12 +1343,9 @@
         </div>
       </body>
     </html>
-  `);
+  `;
 
-      printWindow.document.close();
-      setTimeout(() => {
-        printWindow.print();
-      }, 250);
+      finoraPrintHtml(printHtml);
     }
 
     function closeModal() {
@@ -1232,6 +1356,12 @@
     document.getElementById("modal").addEventListener("click", function (e) {
       if (e.target.id === "modal") {
         closeModal();
+      }
+    });
+
+    document.getElementById("editCompanyModal").addEventListener("click", function (e) {
+      if (e.target.id === "editCompanyModal") {
+        closeEditCompanyModal();
       }
     });
   </script>

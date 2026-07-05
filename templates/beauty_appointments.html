@@ -93,7 +93,7 @@
                 <button class="beauty-btn cancel" type="submit" name="status" value="cancelled">ملغي</button>
               </div>
               {% if a.status == 'done' %}
-              <a class="beauty-link" href="{{ url_for('beauty.appointment_receipt', appointment_id=a.id) }}" target="_blank">طباعة الإيصال</a>
+              <a class="beauty-link" href="{{ url_for('beauty.appointment_receipt', appointment_id=a.id) }}" data-finora-print>طباعة الإيصال</a>
               <a class="beauty-link" href="{{ url_for('beauty.client_history', customer_id=a.customer_id) }}">سجل العميل</a>
               {% endif %}
             </form>

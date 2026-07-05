@@ -46,6 +46,14 @@
   .cart-title { display: flex; justify-content: space-between; gap: 8px; align-items: start; }
   .cart-title strong { line-height: 1.5; }
   .cart-title small { color: var(--text-muted); white-space: nowrap; }
+  .cart-price-wrap { display: inline-flex; align-items: center; gap: 6px; }
+  .cart-price-wrap small.cart-price-custom { color: #fbbf24; font-weight: 700; }
+  .cart-price-edit {
+    width: 28px; height: 28px; border: 1px solid var(--border-light); border-radius: 8px;
+    background: rgba(59, 130, 246, .12); color: #93c5fd; cursor: pointer; font-size: 12px;
+    display: inline-grid; place-items: center; flex-shrink: 0;
+  }
+  .cart-price-edit:hover { background: rgba(59, 130, 246, .22); }
   .cart-controls { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
   .qty-control { display: inline-flex; align-items: center; gap: 6px; padding: 4px; border-radius: 999px; border: 1px solid var(--border-light); background: var(--card-alt); }
   .qty-control button { width: 30px; height: 30px; border: 0; border-radius: 50%; background: rgba(148, 163, 184, .16); color: var(--text); cursor: pointer; font-weight: 900; }
@@ -240,7 +248,10 @@ function renderCart() {
         <div class="cart-main">
           <div class="cart-title">
             <strong>${item.name}</strong>
-            <small>${money(item.price)}</small>
+            <div class="cart-price-wrap">
+              <small class="${item.basePrice != null && item.price !== item.basePrice ? 'cart-price-custom' : ''}">${money(item.price)}</small>
+              <button type="button" class="cart-price-edit" onclick="editCartPrice(${item.id})" title="تعديل السعر"><i class="fa fa-pen"></i></button>
+            </div>
           </div>
           <div class="cart-controls">
             <div class="qty-control">
@@ -269,8 +280,23 @@ function addToCart(product) {
   if (existing) {
     existing.qty = Math.min(existing.stock, existing.qty + 1);
   } else {
-    cart.set(product.id, { ...product, qty: 1 });
+    cart.set(product.id, { ...product, basePrice: product.price, qty: 1 });
   }
+  renderCart();
+}
+
+function editCartPrice(id) {
+  const item = cart.get(id);
+  if (!item) return;
+  const raw = prompt("أدخل السعر الجديد (د.ع):", String(item.price || 0));
+  if (raw === null) return;
+  const price = Math.max(0, parseInt(String(raw).replace(/[^\d]/g, ""), 10) || 0);
+  if (!price) {
+    showQuickMessage("السعر غير صالح.");
+    return;
+  }
+  item.price = price;
+  showQuickMessage("");
   renderCart();
 }
 
@@ -352,7 +378,11 @@ async function executeSale() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         customer: { phone, city, name },
-        items: Array.from(cart.values()).map(item => ({ product_id: item.id, qty: item.qty })),
+        items: Array.from(cart.values()).map(item => ({
+          product_id: item.id,
+          qty: item.qty,
+          price: item.price,
+        })),
         shipping_fee: shippingFee,
       })
     });
@@ -363,8 +393,7 @@ async function executeSale() {
     }
     cart.clear();
     renderCart();
-    const printWindow = window.open(data.print_url, "_blank");
-    if (!printWindow) window.location.href = data.print_url;
+    finoraPrintUrl(data.print_url);
   } catch (err) {
     showQuickMessage(String(err));
   } finally {

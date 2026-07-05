@@ -27,7 +27,8 @@ from utils.accounting_calculations import (
     calculate_inventory_value,         # قيمة المخزون
     calculate_total_expenses,          # المصاريف
     calculate_supplier_debts,          # ديون الموردين (التزامات)
-    calculate_shipping_due,            # مستحقات النقل (التزامات)
+    calculate_shipping_due,            # ذمم شركات النقل (مبالغ إلنا عندهم)
+    calculate_shipping_opening_balance,
     calculate_total_sales_for_display, # إجمالي المبيعات (للعرض فقط)
     calculate_accounts_receivable      # الذمم المدينة
 )
@@ -1099,10 +1100,11 @@ def api_executive_dashboard_data():
         
     # 7. Financial Status
     supplier_debts = calculate_supplier_debts()
-    shipping_due = calculate_shipping_due()
-    liabilities = supplier_debts + shipping_due
+    shipping_receivables = calculate_shipping_due()
+    shipping_opening_balance = calculate_shipping_opening_balance()
+    liabilities = supplier_debts
     inventory_value = calculate_inventory_value()
-    receivables = calculate_accounts_receivable()
+    receivables = calculate_accounts_receivable() + shipping_opening_balance
 
     paid_rows = db.session.query(
         Invoice.id,
@@ -1139,7 +1141,9 @@ def api_executive_dashboard_data():
     credit_summary = get_credit_executive_summary(today, debt_collection_rate)
     liabilities_breakdown = {
         "supplier_debts": int(supplier_debts),
-        "shipping_due": int(shipping_due),
+        "shipping_due": 0,
+        "shipping_receivables": int(shipping_receivables),
+        "shipping_opening_balance": int(shipping_opening_balance),
         "total": int(liabilities),
     }
     net_financial_position = int(total_liquidity) + int(receivables) - int(liabilities)
@@ -1416,7 +1420,8 @@ def index_reports():
                 "delivered_paid_sales": int(bs["revenue"]),
                 "inventory": int(inventory_value),
                 "debts": int(supplier_debts),
-                "shipping": int(shipping_due),
+                "shipping": 0,
+                "shipping_receivables": int(shipping_due),
                 "expenses": int(expenses_total),
                 "expenses_period": int(bs["expenses"]),
                 "agent_commissions": 0,
@@ -1474,8 +1479,8 @@ def index_reports():
         )
     ).scalar() or 0
     
-    # صافي الربح للفترة — مصدر وحيد للمنطق (يدمج تحصيلاً جزئياً، COGS متناسباً، مصاريف expense_date)
-    period_profit = _net_profit_for_range(date_from, date_to)
+    # صافي الربح للفترة — نفس منطق بطاقات اللوحة: ربح الطلب عند إنشائه.
+    period_profit = net_profit_for_order_range(date_from, date_to)
     expenses_period = _expenses_sum_for_range(date_from, date_to)
 
     # قيمة المخزون (Inventory Value)
@@ -1484,8 +1489,7 @@ def index_reports():
     inventory_value = calculate_inventory_value()
 
     # الالتزامات (Liabilities)
-    # ديون الموردين ومستحقات النقل
-    # السبب المحاسبي: الالتزامات لا تؤثر على الربح إلا عند الدفع
+    # ديون الموردين فقط. مبالغ شركات النقل ذمم مدينة لنا وليست التزاماً.
     supplier_debts = calculate_supplier_debts()
     shipping_due = calculate_shipping_due()
 
@@ -1547,8 +1551,7 @@ def index_reports():
     inventory_value = calculate_inventory_value()
 
     # الالتزامات (Liabilities) - هذا إجمالي وليس للفترة
-    # ديون الموردين ومستحقات النقل
-    # السبب المحاسبي: الالتزامات لا تؤثر على الربح إلا عند الدفع
+    # ديون الموردين فقط. مبالغ شركات النقل ذمم مدينة لنا وليست التزاماً.
     supplier_debts = calculate_supplier_debts()
     shipping_due = calculate_shipping_due()
 
@@ -1569,7 +1572,8 @@ def index_reports():
         "delivered_paid_sales": int(delivered_paid_sales),  # المبيعات الواصلة والمسددة للفترة
         "inventory": int(inventory_value),  # قيمة المخزون (إجمالي)
         "debts": int(supplier_debts),  # ديون الموردين (إجمالي)
-        "shipping": int(shipping_due),  # مستحقات النقل (إجمالي)
+        "shipping": 0,  # توافق قديم: النقل ليس التزاماً
+        "shipping_receivables": int(shipping_due),  # ذمم شركات النقل (إجمالي)
         "expenses": int(expenses),  # المصاريف (إجمالي)
         "expenses_period": int(expenses_period),  # المصاريف للفترة
         "agent_commissions": int(agent_commissions)  # إسنحاقات المندوبين (إجمالي)
@@ -2056,7 +2060,7 @@ def index_alerts():
             alerts.append({
                 "type": "info",
                 "icon": "🚚",
-                "message": f"مستحقات النقل عالية: {shipping_due} د.ع",
+                "message": f"ذمم شركات النقل عالية: {shipping_due} د.ع",
                 "action": "/shipping"
             })
 

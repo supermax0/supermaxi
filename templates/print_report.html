@@ -436,6 +436,9 @@
       // إنشاء الباركود بعد تحميل DOM
       setTimeout(() => {
         generateBarcodes(data.orders || []);
+        if (new URLSearchParams(location.search).has('finora_embed')) {
+          setTimeout(() => window.print(), 500);
+        }
       }, 300);
     }
     

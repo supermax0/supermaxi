@@ -84,6 +84,51 @@ def invoice_returned_condition(invoice_model):
     )
 
 
+_DELIVERED_STATUS_NORMALIZED_BINDS: set[str] = set()
+
+
+def ensure_delivered_status_normalized() -> None:
+    """تحويل الطلبات القديمة: status=مسدد + payment=مسدد → status=تم التوصيل."""
+    bind_key = "default"
+    try:
+        from flask import g
+
+        bind_key = str(getattr(g, "tenant", None) or "core")
+    except Exception:
+        pass
+
+    if bind_key in _DELIVERED_STATUS_NORMALIZED_BINDS:
+        return
+
+    try:
+        from extensions import db
+        from sqlalchemy import text
+
+        result = db.session.execute(
+            text(
+                "UPDATE invoice SET status = :new_status "
+                "WHERE status = :old_status AND payment_status = :paid"
+            ),
+            {
+                "new_status": "تم التوصيل",
+                "old_status": "مسدد",
+                "paid": "مسدد",
+            },
+        )
+        updated = int(result.rowcount or 0)
+        if updated:
+            db.session.commit()
+            _log.info("ensure_delivered_status_normalized: updated %s orders", updated)
+        _DELIVERED_STATUS_NORMALIZED_BINDS.add(bind_key)
+    except Exception:
+        _log.exception("ensure_delivered_status_normalized failed")
+        try:
+            from extensions import db
+            db.session.rollback()
+        except Exception:
+            pass
+
+
 def ensure_return_status_unified() -> None:
     """تحويل القيم القديمة (مرتجع/راجعة) إلى «راجع» مرة واحدة لكل قاعدة."""
     bind_key = "default"

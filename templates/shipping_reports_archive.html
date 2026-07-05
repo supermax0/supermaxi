@@ -191,7 +191,7 @@
         <td>{{ report.created_at.strftime('%Y-%m-%d %H:%M') if report.created_at else "—" }}</td>
         <td>{{ report.created_by or "—" }}</td>
         <td>
-          <a href="/delivery/report/{{ report.id }}" class="btn-print" target="_blank">🖨️ طباعة</a>
+          <a href="/delivery/report/{{ report.id }}" class="btn-print" data-finora-print>🖨️ طباعة</a>
           <a href="/delivery/report/{{ report.id }}" class="btn-view" target="_blank">👁️ عرض</a>
         </td>
       </tr>

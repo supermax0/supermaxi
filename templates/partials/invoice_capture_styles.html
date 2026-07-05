@@ -1,0 +1,44 @@
+{% if invoice_capture %}
+<style id="invoiceCaptureStyles">
+  html, body {
+    background: #fff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .no-print,
+  .actions,
+  .invoice-actions,
+  .risk-banner,
+  .risk,
+  .risk-info {
+    display: none !important;
+  }
+
+  .invoice,
+  .invoice-container {
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+  }
+
+  .invoice-body {
+    padding: 0 !important;
+  }
+
+  .invoice-container {
+    padding: 20px !important;
+  }
+
+  thead,
+  .invoice-label,
+  .product-img-placeholder,
+  .accent-bar {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+</style>
+{% endif %}

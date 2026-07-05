@@ -33,6 +33,32 @@ def execute_shipping_report(report, expense_amount: int = 0) -> dict:
         return {"error": "لا توجد حالات محفوظة للتنفيذ"}
 
     orders_data = json.loads(report.orders_data) if report.orders_data else []
+    report_number = str(getattr(report, "report_number", "") or "")
+
+    if report_number.startswith("AGT-"):
+        try:
+            from utils.agent_report_helpers import (
+                extract_agent_id_from_report,
+                find_executed_agent_reports_for_order,
+            )
+
+            agent_id = extract_agent_id_from_report(report_number)
+            blocked = []
+            for order_data in orders_data:
+                order_id = order_data.get("id") or order_data.get("order_id")
+                if not order_id or not status_selections.get(str(order_id)):
+                    continue
+                previous_reports = [
+                    r.report_number
+                    for r in find_executed_agent_reports_for_order(int(order_id), agent_id)
+                    if int(r.id) != int(report.id)
+                ]
+                if previous_reports:
+                    blocked.append(f"#{order_id} منفذ في {', '.join(previous_reports)}")
+            if blocked:
+                return {"error": "لا يمكن تنفيذ كشف يحتوي طلبات منفذة سابقاً: " + "، ".join(blocked)}
+        except Exception as exc:
+            return {"error": f"تعذر التحقق من تكرار كشوف المندوب قبل التنفيذ: {exc}"}
 
     updated_count = 0
     canceled_count = 0
@@ -64,7 +90,7 @@ def execute_shipping_report(report, expense_amount: int = 0) -> dict:
 
             if selected_status in ("واصل", "Delivered"):
                 prev_eff = _effective_paid_amount_inv(order)
-                order.status = "مسدد"
+                order.status = "تم التوصيل"
                 order.payment_status = "مسدد"
                 if not order.paid_amount or int(order.paid_amount or 0) < int(order.total or 0):
                     order.paid_amount = order.total

@@ -241,6 +241,60 @@ def get_product_inventory_movements(product_id, branch_id=None):
                         "description": f"نقل من فرع #{transfer.from_branch_id}",
                     })
     
+    try:
+        from models.branch import BranchStock
+
+        if branch_id:
+            actual_quantity = int(
+                db.session.query(db.func.coalesce(db.func.sum(BranchStock.quantity), 0))
+                .filter(
+                    BranchStock.product_id == product_id,
+                    BranchStock.branch_id == branch_id,
+                )
+                .scalar()
+                or 0
+            )
+        else:
+            rows_count = BranchStock.query.filter_by(product_id=product_id).count()
+            if rows_count:
+                actual_quantity = int(
+                    db.session.query(db.func.coalesce(db.func.sum(BranchStock.quantity), 0))
+                    .filter(BranchStock.product_id == product_id)
+                    .scalar()
+                    or 0
+                )
+            else:
+                actual_quantity = int(product.quantity or 0)
+    except Exception:
+        db.session.rollback()
+        actual_quantity = int(product.quantity or 0)
+
+    documented_balance = sum(int(m.get("quantity_in") or 0) for m in movements) - sum(
+        int(m.get("quantity_out") or 0) for m in movements
+    )
+    reconciliation_qty = actual_quantity - documented_balance
+    if reconciliation_qty:
+        abs_qty = abs(reconciliation_qty)
+        reconciliation_date = date.today()
+        if reconciliation_qty > 0:
+            reconciliation_date = product.created_at.date() if product.created_at else date.today()
+        movements.append({
+            "date": reconciliation_date,
+            "type": "stock_reconciliation",
+            "type_ar": "رصيد مخزون مرحّل" if reconciliation_qty > 0 else "تسوية رصيد المخزون",
+            "quantity_in": abs_qty if reconciliation_qty > 0 else 0,
+            "quantity_out": abs_qty if reconciliation_qty < 0 else 0,
+            "balance_after": actual_quantity,
+            "cost_per_unit": product.buy_price,
+            "total_cost": abs_qty * int(product.buy_price or 0),
+            "reference_type": "stock_reconciliation",
+            "reference_id": product.id,
+            "description": (
+                f"تسوية للرصيد الفعلي - المخزون الحالي {actual_quantity} قطعة "
+                f"والرصيد حسب الحركات المسجلة {documented_balance} قطعة"
+            )
+        })
+
     movements.sort(key=lambda x: (x["date"], x["reference_id"]))
     running_balance = 0
     for movement in movements:

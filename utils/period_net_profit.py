@@ -9,6 +9,7 @@ from extensions import db
 from models.expense import Expense
 from models.invoice import Invoice
 from utils.cash_calculations import _effective_paid_amount
+from utils.order_item_costs import exclude_delivery_fee_items
 
 
 def net_profit_for_range(date_from: date, date_to: date) -> int:
@@ -53,7 +54,8 @@ def net_profit_for_range(date_from: date, date_to: date) -> int:
             OrderItem.invoice_id,
             func.sum(OrderItem.cost * OrderItem.quantity).label("cogs_sum"),
         ).filter(
-            OrderItem.invoice_id.in_(list(ratios.keys()))
+            OrderItem.invoice_id.in_(list(ratios.keys())),
+            exclude_delivery_fee_items(OrderItem),
         ).group_by(OrderItem.invoice_id).all()
 
         for invoice_id, cogs_sum in rows:
@@ -107,7 +109,8 @@ def net_profit_for_order_range(date_from: date, date_to: date) -> int:
         cogs_period = db.session.query(
             func.sum(OrderItem.cost * OrderItem.quantity)
         ).filter(
-            OrderItem.invoice_id.in_(invoice_ids)
+            OrderItem.invoice_id.in_(invoice_ids),
+            exclude_delivery_fee_items(OrderItem),
         ).scalar() or 0
 
     expenses_period = db.session.query(func.sum(Expense.amount)).filter(

@@ -1329,6 +1329,36 @@
     font-size: 14px;
   }
 
+  .modal .od-card--notify {
+    border-color: rgba(59, 130, 246, 0.28) !important;
+  }
+
+  .modal .od-notify-hint {
+    margin: 0 0 12px;
+    color: var(--orders-muted);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .modal .od-notify-input {
+    width: 100%;
+    min-height: 88px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(15, 23, 42, 0.55);
+    color: var(--orders-text);
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.6;
+    resize: vertical;
+    margin-bottom: 12px;
+  }
+
+  .modal .od-notify-btn {
+    min-width: 180px;
+  }
+
   :root[data-theme="light"] .modal.od-modal-overlay {
     background: rgba(15, 23, 42, 0.45);
   }
@@ -2098,6 +2128,8 @@
 
 <!-- ==================== JavaScript ==================== -->
 <script>
+  const ordersCurrentUserId = {{ session.get('user_id') or 'null' }};
+
   // ========================
   // Sound Management (إدارة الأصوات)
   // ========================
@@ -2706,15 +2738,8 @@
       showToast({{ _('orders_err_select_for_print')|tojson }}, "warning");
       return;
     }
-    // صفحة واحدة — كل فاتورة بقالبها النشط داخل iframe
     const url = `/orders/print-invoices?ids=${encodeURIComponent(selected.join(","))}`;
-    const printWindow = window.open(url, '_blank');
-    if (!printWindow) {
-      showToast({{ _('orders_err_popup_blocked')|tojson }}, "error");
-      setTimeout(() => window.location.href = url, 1000);
-      return;
-    }
-    setTimeout(() => printWindow?.focus(), 500);
+    finoraPrintUrl(url);
   }
 
   function printSelectedReport() {
@@ -2725,13 +2750,7 @@
     }
 
     const url = `/orders/print-report-page?ids=${encodeURIComponent(selected.join(","))}`;
-    const printWindow = window.open(url, '_blank');
-    if (!printWindow) {
-      showToast({{ _('orders_err_popup_blocked')|tojson }}, "error");
-      setTimeout(() => window.location.href = url, 1000);
-      return;
-    }
-    setTimeout(() => printWindow?.focus(), 500);
+    finoraPrintUrl(url);
   }
 
   function printAgentReport() {
@@ -2839,13 +2858,7 @@
         if (data.success) {
           showToast({{ _('orders_toast_agent_report_saved')|tojson }}.replace('{number}', data.report_number || ''), "success");
           const url = `/orders/print-report-page?ids=${encodeURIComponent(selected.join(","))}&agent_id=${agentId}&save=true`;
-          const printWindow = window.open(url, '_blank');
-          if (!printWindow) {
-            showToast("❌ تم منع النافذة المنبثقة. يرجى السماح بالنوافذ المنبثقة.", "error");
-            setTimeout(() => window.location.href = url, 1000);
-            return;
-          }
-          setTimeout(() => printWindow?.focus(), 500);
+          finoraPrintUrl(url);
         } else {
           showToast(data.error || {{ _('orders_err_save_report')|tojson }}, "error");
         }
@@ -2950,13 +2963,7 @@
   }
 
   function printInvoice(orderId) {
-    const printWindow = window.open(`/orders/invoice/${orderId}`, '_blank');
-    if (!printWindow) {
-      showToast({{ _('orders_err_popup_blocked')|tojson }}, "error");
-      setTimeout(() => window.location.href = `/orders/invoice/${orderId}`, 1000);
-      return;
-    }
-    setTimeout(() => printWindow?.focus(), 500);
+    finoraPrintUrl(`/orders/invoice/${orderId}`);
   }
 
   function sendWhatsApp(orderId, phone) {
@@ -3676,6 +3683,168 @@
       });
   }
 
+  function employeeNotifySectionHtml(order) {
+    if (!order.employee_id) return '';
+    if (Number(order.employee_id) === Number(ordersCurrentUserId)) return '';
+    const empName = escapeHtml(order.employee || 'الموظف');
+    return '<div class="od-card od-card--notify" id="employeeNotifyCard">' +
+      '<h3 class="od-card__title"><span class="od-card__title-icon" style="background:rgba(59,130,246,.18);">💬</span><span>تبليغ الموظف</span></h3>' +
+      '<p class="od-notify-hint">إرسال صورة الفاتورة مع التبليغ إلى <strong style="color:var(--orders-text);">' + empName + '</strong> عبر محادثة الموظفين</p>' +
+      '<textarea id="employeeNotifyText" class="od-notify-input" rows="3" placeholder="اكتب نص التبليغ هنا..."></textarea>' +
+      '<button type="button" class="btn btn-primary od-notify-btn" id="sendOrderToEmployeeBtn" onclick="sendOrderToEmployee(' + order.id + ')">' +
+      '<span>📨</span><span>إرسال الطلب للموظف</span></button>' +
+      '</div>';
+  }
+
+  function loadHtml2CanvasLib() {
+    if (window.html2canvas) return Promise.resolve(window.html2canvas);
+    return new Promise(function (resolve, reject) {
+      const existing = document.getElementById('ordersHtml2CanvasLib');
+      if (existing) {
+        existing.addEventListener('load', function () { resolve(window.html2canvas); });
+        existing.addEventListener('error', reject);
+        return;
+      }
+      const script = document.createElement('script');
+      script.id = 'ordersHtml2CanvasLib';
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+      script.onload = function () { resolve(window.html2canvas); };
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
+  }
+
+  function applyInvoicePrintCaptureStyles(clonedDoc) {
+    const style = clonedDoc.createElement('style');
+    style.textContent = [
+      'html, body { background:#fff !important; padding:0 !important; margin:0 !important; }',
+      '.no-print, .actions, .invoice-actions, .risk-banner, .risk, .risk-info { display:none !important; }',
+      '.invoice, .invoice-container { border:none !important; box-shadow:none !important; border-radius:0 !important; margin:0 !important; max-width:none !important; width:100% !important; }',
+      '.invoice-body { padding:0 !important; }',
+      '.invoice-container { padding:20px !important; }'
+    ].join('');
+    clonedDoc.head.appendChild(style);
+  }
+
+  function injectNotifyIntoInvoiceCapture(clonedDoc, orderId, note) {
+    const host = clonedDoc.querySelector('.invoice-body') || clonedDoc.querySelector('.invoice-container') || clonedDoc.querySelector('.invoice');
+    if (!host) return;
+    const box = clonedDoc.createElement('div');
+    box.className = 'employee-notify-box';
+    box.style.cssText = 'margin:0 0 20px;padding:14px 16px;border-radius:10px;border:1px solid #bfdbfe;background:#eff6ff;color:#1e3a8a;font-family:Tajawal,Tahoma,Arial,sans-serif;';
+    box.innerHTML = '<div style="font-weight:800;font-size:15px;margin-bottom:8px;">📦 تبليغ بخصوص الطلب #' + orderId + '</div>' +
+      '<div style="font-size:14px;line-height:1.7;white-space:pre-wrap;">' + escapeHtml(note) + '</div>';
+    const anchor = host.querySelector('.actions, .invoice-actions, .no-print');
+    if (anchor && anchor.parentNode === host) {
+      host.insertBefore(box, anchor.nextSibling);
+    } else {
+      host.insertBefore(box, host.firstChild);
+    }
+  }
+
+  function captureInvoiceImageWithNotify(orderId, note) {
+    return loadHtml2CanvasLib().then(function (html2canvas) {
+      const iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position:fixed;left:-12000px;top:0;width:820px;height:2600px;border:0;visibility:hidden;';
+      iframe.src = '/orders/invoice/' + orderId + '?capture=1';
+      document.body.appendChild(iframe);
+
+      return new Promise(function (resolve, reject) {
+        let settled = false;
+        const cleanup = function () {
+          if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+        };
+        const finish = function (fn, value) {
+          if (settled) return;
+          settled = true;
+          cleanup();
+          fn(value);
+        };
+        iframe.onload = function () {
+          const doc = iframe.contentDocument;
+          const win = iframe.contentWindow;
+          if (!doc || !win) {
+            finish(reject, new Error('تعذر تحميل الفاتورة'));
+            return;
+          }
+          const fontsReady = (doc.fonts && doc.fonts.ready) ? doc.fonts.ready : Promise.resolve();
+          fontsReady.then(function () {
+            return new Promise(function (r) { setTimeout(r, 700); });
+          }).then(function () {
+            const target = doc.querySelector('.invoice') || doc.querySelector('.invoice-container') || doc.body;
+            return html2canvas(target, {
+              scale: 2,
+              useCORS: true,
+              allowTaint: true,
+              backgroundColor: '#ffffff',
+              width: target.scrollWidth,
+              height: target.scrollHeight,
+              windowWidth: target.scrollWidth,
+              onclone: function (clonedDoc) {
+                applyInvoicePrintCaptureStyles(clonedDoc);
+                injectNotifyIntoInvoiceCapture(clonedDoc, orderId, note);
+              }
+            });
+          }).then(function (canvas) {
+            canvas.toBlob(function (blob) {
+              if (blob) finish(resolve, blob);
+              else finish(reject, new Error('فشل إنشاء صورة الفاتورة'));
+            }, 'image/png', 0.92);
+          }).catch(function (err) {
+            finish(reject, err);
+          });
+        };
+        iframe.onerror = function () { finish(reject, new Error('تعذر تحميل صفحة الفاتورة')); };
+        setTimeout(function () { finish(reject, new Error('انتهت مهلة تحميل الفاتورة')); }, 25000);
+      });
+    });
+  }
+
+  function sendOrderToEmployee(orderId) {
+    const textarea = document.getElementById('employeeNotifyText');
+    const btn = document.getElementById('sendOrderToEmployeeBtn');
+    const note = textarea ? textarea.value.trim() : '';
+    if (!note) {
+      showToast('اكتب نص التبليغ أولاً', 'warning');
+      if (textarea) textarea.focus();
+      return;
+    }
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span>⏳</span><span>جاري تحضير صورة الفاتورة...</span>';
+    }
+
+    captureInvoiceImageWithNotify(orderId, note)
+      .then(function (blob) {
+        if (btn) btn.innerHTML = '<span>⏳</span><span>جاري الإرسال...</span>';
+        const form = new FormData();
+        form.append('message', note);
+        form.append('file', blob, 'order-' + orderId + '-notify.png');
+        return fetch('/orders/notify-employee/' + orderId, {
+          method: 'POST',
+          body: form
+        });
+      })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.success) {
+          showToast(data.message || 'تم إرسال التبليغ مع صورة الفاتورة', 'success');
+          if (textarea) textarea.value = '';
+        } else {
+          showToast(data.error || 'فشل الإرسال', 'error');
+        }
+      })
+      .catch(function (err) {
+        showToast((err && err.message) ? err.message : 'حدث خطأ أثناء الإرسال', 'error');
+      })
+      .finally(function () {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<span>📨</span><span>إرسال الطلب للموظف</span>';
+        }
+      });
+  }
+
   function showOrderDetailsModal(data, options) {
     options = options || {};
     const order = data.order;
@@ -3802,6 +3971,7 @@
         : '') +
       shippingBarcodeSectionHtml(order, items) +
       orderVideoSectionHtml(order) +
+      employeeNotifySectionHtml(order) +
       '</div>' +
 
       '<div class="od-modal-footer"><div class="od-actions">' +
@@ -4675,6 +4845,7 @@
   window.sendWhatsApp = sendWhatsApp;
   window.sendWhatsAppToSelected = sendWhatsAppToSelected;
   window.showOrderDetailsModal = showOrderDetailsModal;
+  window.sendOrderToEmployee = sendOrderToEmployee;
   window.pay = pay;
   window.payPartial = payPartial;
   window.cancelOrder = cancelOrder;

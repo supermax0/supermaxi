@@ -36,7 +36,7 @@
         <button type="submit" class="fa-btn fa-btn-danger">حذف الأصل</button>
       </form>
       {% endif %}
-      <a href="/assets/{{ asset.id }}/card" target="_blank" class="fa-btn" style="background:var(--primary);text-decoration:none;display:inline-block;">بطاقة / طباعة</a>
+      <a href="/assets/{{ asset.id }}/card" data-finora-print class="fa-btn" style="background:var(--primary);text-decoration:none;display:inline-block;">بطاقة / طباعة</a>
     </div>
     <div class="fa-grid">
       <div><strong>كود الأصل</strong>{{ asset.asset_code }}</div>
