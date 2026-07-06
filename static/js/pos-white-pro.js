@@ -112,6 +112,31 @@
       .replace(/"/g, "&quot;");
   }
 
+  function getLockedPagePayload() {
+    if (!editingOrderId || !initialOrderData) return { pageId: null, pageName: null };
+    return {
+      pageId: initialOrderData.page_id || null,
+      pageName: initialOrderData.page_name || null,
+    };
+  }
+
+  function lockEditModeUi() {
+    if (!editingOrderId) return;
+    const sc = $("searchCustomer");
+    if (sc) {
+      sc.readOnly = true;
+      sc.disabled = true;
+      sc.title = "لا يمكن تغيير الزبون أثناء التعديل";
+    }
+    document.querySelector(".pos-customer-row .pos-btn-icon-only")?.setAttribute("disabled", "disabled");
+    const ps = $("pageSelect");
+    if (ps) ps.disabled = true;
+    const btn = $("btnExecute");
+    const btnM = $("btnExecuteMobile");
+    if (btn) btn.innerHTML = '<i class="fas fa-save"></i> حفظ التعديل';
+    if (btnM) btnM.innerHTML = '<i class="fas fa-save"></i> حفظ';
+  }
+
   function customerLabel(c) {
     const name = (c && c.name) || selectedCustomerName || "";
     const phone = (c && c.phone) || selectedCustomerPhone || "";
@@ -509,6 +534,7 @@
   }
 
   function selectCustomer(c) {
+    if (editingOrderId) return;
     if (!c || c.id == null || c.id === "") {
       toast("تعذر اختيار الزبون");
       return;
@@ -601,6 +627,10 @@
   }
 
   function openCustomerModal() {
+    if (editingOrderId) {
+      toast("لا يمكن تغيير الزبون أثناء التعديل");
+      return;
+    }
     resetCustomerForm();
     $("customerModal")?.classList.add("show");
     $("name")?.focus();
@@ -684,16 +714,24 @@
   function openOrderNotesModal() {
     if (!selectedCustomerId) { toast("اختر زبوناً"); return; }
     if (!items.length) { toast("لا توجد منتجات"); return; }
+    const ni = $("orderNotesInput");
+    if (ni && editingOrderId && initialOrderData?.note) {
+      ni.value = String(initialOrderData.note);
+    } else if (ni && !editingOrderId) {
+      ni.value = "";
+    }
     $("orderNotesModal")?.classList.add("show");
-    $("orderNotesInput")?.focus();
+    ni?.focus();
   }
 
   function closeOrderNotesModal() {
     $("orderNotesModal")?.classList.remove("show");
-    const ni = $("orderNotesInput");
-    if (ni) ni.value = "";
-    const ps = $("pageSelect");
-    if (ps) ps.value = "";
+    if (!editingOrderId) {
+      const ni = $("orderNotesInput");
+      if (ni) ni.value = "";
+      const ps = $("pageSelect");
+      if (ps) ps.value = "";
+    }
   }
 
   function confirmOrderWithNotes() {
@@ -702,18 +740,23 @@
     if (!items.length) { toast("لا توجد منتجات"); return; }
 
     const pageSelect = $("pageSelect");
-    if (pageSelect && !pageSelect.value) {
-      toast("يرجى اختيار البيج أو 'لا يوجد بيج'");
-      pageSelect.focus();
-      return;
-    }
-
     let pageId = null;
     let pageName = null;
-    if (pageSelect && pageSelect.value && pageSelect.value !== "no_page") {
-      pageId = pageSelect.value;
-      const opt = pageSelect.options[pageSelect.selectedIndex];
-      pageName = opt ? opt.getAttribute("data-name") || opt.text : null;
+    if (editingOrderId) {
+      const locked = getLockedPagePayload();
+      pageId = locked.pageId;
+      pageName = locked.pageName;
+    } else {
+      if (pageSelect && !pageSelect.value) {
+        toast("يرجى اختيار البيج أو 'لا يوجد بيج'");
+        pageSelect.focus();
+        return;
+      }
+      if (pageSelect && pageSelect.value && pageSelect.value !== "no_page") {
+        pageId = pageSelect.value;
+        const opt = pageSelect.options[pageSelect.selectedIndex];
+        pageName = opt ? opt.getAttribute("data-name") || opt.text : null;
+      }
     }
 
     const notes = ($("orderNotesInput")?.value || "").trim()
@@ -730,6 +773,7 @@
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        order_id: editingOrderId || null,
         customer_id: selectedCustomerId,
         items: items.map(({ product_id, qty, price }) => ({ product_id, qty, price })),
         note: notes || null,
@@ -742,27 +786,31 @@
       .then((r) => r.json())
       .then((d) => {
         isSubmitting = false;
-        if (btn) btn.innerHTML = '<i class="fas fa-print"></i> تنفيذ و طباعة';
-        if (btnM) btnM.innerHTML = '<i class="fas fa-print"></i> تنفيذ';
+        if (btn) btn.innerHTML = editingOrderId ? '<i class="fas fa-save"></i> حفظ التعديل' : '<i class="fas fa-print"></i> تنفيذ و طباعة';
+        if (btnM) btnM.innerHTML = editingOrderId ? '<i class="fas fa-save"></i> حفظ' : '<i class="fas fa-print"></i> تنفيذ';
         if (d.error) {
           toast(d.error);
           updateStats();
           return;
         }
-        toast("تم تنفيذ البيع وإنشاء الفاتورة");
+        toast(editingOrderId ? "تم حفظ التعديل" : "تم تنفيذ البيع وإنشاء الفاتورة");
         items.forEach((i) => syncLocalStock(i.product_id, i.qty));
         closeOrderNotesModal();
         printServerInvoice(d.invoice_id);
-        items = [];
-        selectedCustomerId = null;
-        clearCustomerDisplay();
-        if (pageSelect) pageSelect.value = "";
+        if (!editingOrderId) {
+          items = [];
+          selectedCustomerId = null;
+          clearCustomerDisplay();
+          if (pageSelect) pageSelect.value = "";
+        } else if (initialOrderData) {
+          initialOrderData.note = notes || "";
+        }
         renderItems();
       })
       .catch((err) => {
         isSubmitting = false;
-        if (btn) btn.innerHTML = '<i class="fas fa-print"></i> تنفيذ و طباعة';
-        if (btnM) btnM.innerHTML = '<i class="fas fa-print"></i> تنفيذ';
+        if (btn) btn.innerHTML = editingOrderId ? '<i class="fas fa-save"></i> حفظ التعديل' : '<i class="fas fa-print"></i> تنفيذ و طباعة';
+        if (btnM) btnM.innerHTML = editingOrderId ? '<i class="fas fa-save"></i> حفظ' : '<i class="fas fa-print"></i> تنفيذ';
         toast("حدث خطأ: " + err.message);
         updateStats();
       });
@@ -792,16 +840,23 @@
 
     const notes = ($("scheduleNotesInput")?.value || "").trim();
     const pageSelect = $("pageSelect");
+    let pageId = null;
+    if (editingOrderId) {
+      pageId = getLockedPagePayload().pageId;
+    } else if (pageSelect?.value && pageSelect.value !== "no_page") {
+      pageId = pageSelect.value;
+    }
 
     fetch("/pos/create-order", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        order_id: editingOrderId || null,
         customer_id: selectedCustomerId,
         items: items.map(({ product_id, qty, price }) => ({ product_id, qty, price })),
         note: notes || null,
         scheduled_date: scheduleDate,
-        page_id: pageSelect?.value && pageSelect.value !== "no_page" ? pageSelect.value : null,
+        page_id: pageId || null,
         shipping_fee: Number(shippingValue) || 0,
       }),
     })
@@ -1230,6 +1285,7 @@
       if (initialOrderData.page_id && $("pageSelect")) {
         $("pageSelect").value = String(initialOrderData.page_id);
       }
+      lockEditModeUi();
     }
 
     renderProductGrid();

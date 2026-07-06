@@ -190,10 +190,12 @@ def pos():
                     "id": int(invoice.id),
                     "customer_id": int(invoice.customer_id) if invoice.customer_id else None,
                     "customer_name": str(invoice.customer_name) if invoice.customer_name else "",
-                    "items": items_list,  # list of dicts - قابل للـ JSON
+                    "employee_name": str(invoice.employee_name) if invoice.employee_name else "",
+                    "items": items_list,
                     "note": str(invoice.note) if invoice.note else "",
                     "scheduled_date": str(invoice.scheduled_date.strftime("%Y-%m-%d")) if invoice.scheduled_date else "",
-                    "page_id": int(invoice.page_id) if invoice.page_id else None
+                    "page_id": int(invoice.page_id) if invoice.page_id else None,
+                    "page_name": str(invoice.page_name) if invoice.page_name else "",
                 }
         except (ValueError, AttributeError) as e:
             print(f"Error loading order data: {e}")
@@ -575,16 +577,14 @@ def create_order():
             db.session.delete(old_item)
         db.session.flush()
 
-        invoice.customer_id = customer_id
-        invoice.customer_name = customer_name
-        invoice.employee_id = employee.id
-        invoice.employee_name = employee.name
-        invoice.branch_id = current_branch_id() or invoice.branch_id or (get_default_branch().id if get_default_branch() else None)
+        if int(customer_id) != int(invoice.customer_id):
+            return jsonify({"error": "لا يمكن تغيير الزبون عند تعديل الطلب"}), 400
+
+        # تثبيت بيانات الهوية الأصلية — يُحدَّث المنتج والملاحظة والتأجيل فقط
+        customer = invoice.customer or Customer.query.get(invoice.customer_id)
         invoice.total = 0
         invoice.note = note
         invoice.scheduled_date = scheduled_date
-        invoice.page_id = page_id
-        invoice.page_name = page_name
     else:
         invoice = Invoice(
             customer_id=customer_id,
@@ -673,7 +673,10 @@ def create_order():
     # ===============================
     # تحديث الإجمالي + رسوم التوصيل
     # ===============================
-    province = (getattr(customer, "city", None) or "").strip()
+    shipping_customer = customer
+    if editing_order_id and invoice:
+        shipping_customer = invoice.customer or Customer.query.get(invoice.customer_id) or customer
+    province = (getattr(shipping_customer, "city", None) or "").strip()
     shipping_fee = data.get("shipping_fee")
     if shipping_fee is None:
         shipping_fee, _ = fee_for_cart_items(
@@ -686,7 +689,7 @@ def create_order():
         except (TypeError, ValueError):
             shipping_fee = 0
 
-    tenant_id = getattr(customer, "tenant_id", None)
+    tenant_id = getattr(shipping_customer, "tenant_id", None)
     if shipping_fee > 0:
         # تُحفظ داخلياً كمصروف توصيل عند التسديد ولا تؤثر على إجمالي الفاتورة
         add_shipping_line_item(invoice, shipping_fee, tenant_id)
@@ -702,7 +705,14 @@ def create_order():
                 f"{'تعديل طلب' if editing_order_id else 'بيع جديد'} — فاتورة #{invoice.id} بمبلغ {total}",
                 entity_type="invoice",
                 entity_id=invoice.id,
-                payload={"invoice": snapshot_attrs(invoice, *INVOICE_SNAPSHOT_FIELDS), "items_count": len(items)},
+                payload={
+                    "invoice": snapshot_attrs(invoice, *INVOICE_SNAPSHOT_FIELDS),
+                    "items_count": len(items),
+                    **(
+                        {"edited_by_id": employee.id, "edited_by_name": employee.name}
+                        if editing_order_id else {}
+                    ),
+                },
             )
         except Exception:
             pass

@@ -738,3 +738,126 @@
 .team-admin-page .btn-settle-commission:hover {
   background: rgba(16, 185, 129, 0.25);
 }
+
+.team-admin-page .btn-commission-print {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ================= PRINT: Commission Statement ================= */
+.commission-statement-print {
+  display: none;
+}
+
+.csp-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 2px solid #111827;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+}
+
+.csp-header h1 {
+  margin: 0;
+  font-size: 22px;
+  color: #111827;
+}
+
+.csp-header p,
+.csp-meta p {
+  margin: 0;
+  color: #4b5563;
+  font-size: 12px;
+}
+
+.csp-meta {
+  text-align: left;
+  display: grid;
+  gap: 3px;
+}
+
+.csp-note {
+  margin: 0 0 8px;
+  color: #6b7280;
+  font-size: 11px;
+}
+
+.csp-summary {
+  margin: 0 0 10px;
+  color: #111827;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.csp-table {
+  width: auto;
+  max-width: 100%;
+  border-collapse: collapse;
+  direction: rtl;
+  table-layout: fixed;
+  font-size: 11px;
+}
+
+.csp-table th,
+.csp-table td {
+  border: 1px solid #d1d5db;
+  padding: 7px 8px;
+  color: #111827;
+  vertical-align: middle;
+}
+
+.csp-table th {
+  background: #e5e7eb;
+  font-weight: 800;
+  text-align: center;
+}
+
+.csp-col-index { width: 42px; text-align: center; }
+.csp-col-name { width: 220px; text-align: right; }
+.csp-col-orders { width: 90px; text-align: center; }
+.csp-col-rate { width: 100px; text-align: center; }
+.csp-col-amount { width: 120px; text-align: center; }
+
+.csp-table tfoot td {
+  font-weight: 800;
+  background: #f3f4f6;
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  .commission-statement-print,
+  .commission-statement-print * {
+    visibility: visible !important;
+  }
+
+  .commission-statement-print {
+    display: block !important;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    padding: 0;
+    background: #fff;
+    color: #111827;
+    direction: rtl;
+    font-family: "Tahoma", "Arial", sans-serif;
+  }
+
+  .csp-table thead {
+    display: table-header-group;
+  }
+
+  .csp-table tr {
+    break-inside: avoid;
+  }
+}

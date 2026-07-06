@@ -39,7 +39,7 @@ def execute_shipping_report(report, expense_amount: int = 0) -> dict:
         try:
             from utils.agent_report_helpers import (
                 extract_agent_id_from_report,
-                find_executed_agent_reports_for_order,
+                find_blocking_executed_agent_reports_for_order,
             )
 
             agent_id = extract_agent_id_from_report(report_number)
@@ -50,7 +50,7 @@ def execute_shipping_report(report, expense_amount: int = 0) -> dict:
                     continue
                 previous_reports = [
                     r.report_number
-                    for r in find_executed_agent_reports_for_order(int(order_id), agent_id)
+                    for r in find_blocking_executed_agent_reports_for_order(int(order_id), agent_id)
                     if int(r.id) != int(report.id)
                 ]
                 if previous_reports:

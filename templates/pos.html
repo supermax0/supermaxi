@@ -1450,6 +1450,9 @@
         style="color:#f59e0b;margin:0;font-size:22px;font-weight:700;text-align:center;display:flex;align-items:center;justify-content:center;gap:12px;">
         <span>✏️</span>
         <span>تعديل الطلب #{{ order_data['id'] }}</span>
+        {% if order_data.get('employee_name') %}
+        <span style="font-size:16px;font-weight:600;opacity:0.9;">— الموظف: {{ order_data['employee_name'] }}</span>
+        {% endif %}
       </h3>
     </div>
     {% endif %}
@@ -1462,12 +1465,12 @@
           <h3><i class="fas fa-user"></i> الزبون<span data-help="pos.customer"></span></h3>
         </div>
 
-        <div class="customer-search-row">
+        <div class="customer-search-row" id="customerSearchRow">
           <div class="search-wrapper">
             <i class="fas fa-search"></i>
-            <input id="searchCustomer" placeholder="بحث عن زبون بالاسم أو الهاتف..." data-help="pos.customer">
+            <input id="searchCustomer" placeholder="بحث عن زبون بالاسم أو الهاتف..." data-help="pos.customer"{% if order_data %} disabled title="لا يمكن تغيير الزبون أثناء التعديل"{% endif %}>
           </div>
-          <button onclick="openCustomerModal()" class="btn-primary" type="button">
+          <button onclick="openCustomerModal()" class="btn-primary" type="button"{% if order_data %} disabled title="لا يمكن تغيير الزبون أثناء التعديل"{% endif %}>
             <i class="fas fa-user-plus"></i> إضافة زبون
           </button>
         </div>
@@ -1720,7 +1723,7 @@
         <span id="totalPrice">0</span> <span style="font-size:20px;color:var(--text-muted)">د.ع</span>
       </div>
       <div class="pos-total-actions">
-        <button class="btn-primary" onclick="openOrderNotesModal()">✅ تنفيذ الطلب</button>
+        <button class="btn-primary" onclick="openOrderNotesModal()" id="btnExecuteOrder">{% if order_data %}💾 حفظ التعديل{% else %}✅ تنفيذ الطلب{% endif %}</button>
         <button class="btn-success" onclick="openScheduleModal()">📅 تأجيل الطلب</button>
       </div>
     </section>
@@ -1736,17 +1739,22 @@
     <div class="modal-content">
       <div class="modal-header">📝 ملاحظة البيع</div>
       {% if pages %}
-      <div style="margin-bottom: 15px;">
+      <div style="margin-bottom: 15px;" id="pageSelectWrap">
         <label style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--text);">اختر
           البيج:</label>
         <select id="pageSelect" class="modal-input"
-          style="width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: 8px; font-size: 15px; background: rgba(15, 23, 42, 0.6); color: var(--text);">
+          style="width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: 8px; font-size: 15px; background: rgba(15, 23, 42, 0.6); color: var(--text);"{% if order_data %} disabled{% endif %}>
           <option value="">-- اختر البيج --</option>
           {% for page in pages %}
           <option value="{{ page.id }}" data-name="{{ page.name }}">{{ page.name }}</option>
           {% endfor %}
           <option value="no_page">-- لا يوجد بيج --</option>
         </select>
+        {% if order_data %}
+        <div id="pageLockedHint" style="margin-top:8px;font-size:13px;color:var(--text-muted);">
+          البيج: {{ order_data.get('page_name') or '—' }} (مثبت — لا يتغير عند التعديل)
+        </div>
+        {% endif %}
       </div>
       {% endif %}
       <textarea id="orderNotesInput" class="modal-input" placeholder="أدخل ملاحظة البيع (اختياري)" rows="3"
@@ -1782,6 +1790,10 @@
     let isSelectingCustomer = false
 
     function openCustomerModal() {
+      if (editingOrderId) {
+        toast("لا يمكن تغيير الزبون أثناء التعديل");
+        return;
+      }
       document.getElementById('customerModal').classList.add('show');
       document.getElementById('name').focus();
     }
@@ -2240,21 +2252,37 @@
       }
     })
 
+    function getLockedPagePayload() {
+      if (!editingOrderId || !initialOrderData) return { pageId: null, pageName: null };
+      const pageId = initialOrderData.page_id || null;
+      return {
+        pageId: pageId,
+        pageName: initialOrderData.page_name || null,
+      };
+    }
+
     /* ===== تنفيذ الطلب ===== */
     function openOrderNotesModal() {
       if (!selectedCustomerId) { toast("اختر زبون"); return }
       if (!items.length) { toast("لا توجد منتجات"); return }
 
       document.getElementById("orderNotesModal").classList.add("show")
-      document.getElementById("orderNotesInput").value = ""
-      document.getElementById("orderNotesInput").focus()
+      const orderNotesInputEl = document.getElementById("orderNotesInput");
+      if (orderNotesInputEl && editingOrderId && initialOrderData?.note) {
+        orderNotesInputEl.value = String(initialOrderData.note);
+      } else if (orderNotesInputEl && !editingOrderId) {
+        orderNotesInputEl.value = "";
+      }
+      orderNotesInputEl?.focus()
     }
 
     function closeOrderNotesModal() {
       document.getElementById("orderNotesModal").classList.remove("show")
-      document.getElementById("orderNotesInput").value = ""
-      const pageSelect = document.getElementById("pageSelect")
-      if (pageSelect) pageSelect.value = ""
+      if (!editingOrderId) {
+        document.getElementById("orderNotesInput").value = ""
+        const pageSelect = document.getElementById("pageSelect")
+        if (pageSelect) pageSelect.value = ""
+      }
     }
 
     function confirmOrderWithNotes() {
@@ -2265,34 +2293,38 @@
       if (!selectedCustomerId) { toast("اختر زبون"); return }
       if (!items.length) { toast("لا توجد منتجات"); return }
 
-      // التحقق من اختيار البيج
-      if (pageSelect && !pageSelect.value) {
-        toast("يرجى اختيار البيج أو اختيار 'لا يوجد بيج'")
-        pageSelect.style.borderColor = "#ef4444"
-        pageSelect.style.borderWidth = "2px"
-        pageSelect.focus()
-        // إزالة الحد الأحمر بعد ثانيتين
-        setTimeout(() => {
-          if (pageSelect) {
-            pageSelect.style.borderColor = ""
-            pageSelect.style.borderWidth = ""
-          }
-        }, 2000)
-        return
-      }
-
-      // إزالة الحد الأحمر إذا تم الاختيار بنجاح
-      if (pageSelect) {
-        pageSelect.style.borderColor = ""
-        pageSelect.style.borderWidth = ""
-      }
-
       let pageId = null
       let pageName = null
-      if (pageSelect && pageSelect.value && pageSelect.value !== "no_page") {
-        pageId = pageSelect.value
-        const selectedOption = pageSelect.options[pageSelect.selectedIndex]
-        pageName = selectedOption ? selectedOption.getAttribute('data-name') || selectedOption.text : null
+      if (editingOrderId) {
+        const locked = getLockedPagePayload()
+        pageId = locked.pageId
+        pageName = locked.pageName
+      } else {
+        // التحقق من اختيار البيج
+        if (pageSelect && !pageSelect.value) {
+          toast("يرجى اختيار البيج أو اختيار 'لا يوجد بيج'")
+          pageSelect.style.borderColor = "#ef4444"
+          pageSelect.style.borderWidth = "2px"
+          pageSelect.focus()
+          setTimeout(() => {
+            if (pageSelect) {
+              pageSelect.style.borderColor = ""
+              pageSelect.style.borderWidth = ""
+            }
+          }, 2000)
+          return
+        }
+
+        if (pageSelect) {
+          pageSelect.style.borderColor = ""
+          pageSelect.style.borderWidth = ""
+        }
+
+        if (pageSelect && pageSelect.value && pageSelect.value !== "no_page") {
+          pageId = pageSelect.value
+          const selectedOption = pageSelect.options[pageSelect.selectedIndex]
+          pageName = selectedOption ? selectedOption.getAttribute('data-name') || selectedOption.text : null
+        }
       }
 
       fetch("/pos/create-order", {
@@ -2312,17 +2344,21 @@
           toast("❌ " + d.error)
           return
         }
-        toast("✅ تم تنفيذ الطلب")
+        toast(editingOrderId ? "✅ تم حفظ التعديل" : "✅ تم تنفيذ الطلب")
         closeOrderNotesModal()
 
-        // طباعة نفس صفحة الفاتورة في النظام (القالب المختار من الإعدادات)
         printServerInvoice(d.invoice_id);
 
-        items = []
-        renderItems()
-        selectedCustomerId = null
-        selectedCustomer.innerText = "لم يتم اختيار زبون"
-        if (pageSelect) pageSelect.value = ""
+        if (!editingOrderId) {
+          items = []
+          renderItems()
+          selectedCustomerId = null
+          selectedCustomer.innerText = "لم يتم اختيار زبون"
+          if (pageSelect) pageSelect.value = ""
+        } else {
+          if (initialOrderData) initialOrderData.note = notes || "";
+          renderItems()
+        }
       }).catch(err => {
         toast("❌ حدث خطأ: " + err.message)
       })
@@ -2367,35 +2403,37 @@
       if (!selectedCustomerId) { toast("اختر زبون"); return }
       if (!items.length) { toast("لا توجد منتجات"); return }
 
-      // التحقق من اختيار البيج
-      const pageSelect = document.getElementById("pageSelect")
-      if (pageSelect && !pageSelect.value) {
-        toast("يرجى اختيار البيج أو اختيار 'لا يوجد بيج'")
-        pageSelect.style.borderColor = "#ef4444"
-        pageSelect.style.borderWidth = "2px"
-        // إزالة الحد الأحمر بعد ثانيتين
-        setTimeout(() => {
-          if (pageSelect) {
-            const selectedCustomer = document.getElementById("selectedCustomer")
-            if (selectedCustomer) selectedCustomer.innerText = "لم يتم اختيار زبون"
-            pageSelect.style.borderWidth = ""
-          }
-        }, 2000)
-        return
-      }
-
-      // إزالة الحد الأحمر إذا تم الاختيار بنجاح
-      if (pageSelect) {
-        pageSelect.style.borderColor = ""
-        pageSelect.style.borderWidth = ""
-      }
-
       let pageId = null
       let pageName = null
-      if (pageSelect && pageSelect.value && pageSelect.value !== "no_page") {
-        pageId = pageSelect.value
-        const selectedOption = pageSelect.options[pageSelect.selectedIndex]
-        pageName = selectedOption ? selectedOption.getAttribute('data-name') || selectedOption.text : null
+      if (editingOrderId) {
+        const locked = getLockedPagePayload()
+        pageId = locked.pageId
+        pageName = locked.pageName
+      } else {
+        const pageSelect = document.getElementById("pageSelect")
+        if (pageSelect && !pageSelect.value) {
+          toast("يرجى اختيار البيج أو اختيار 'لا يوجد بيج'")
+          pageSelect.style.borderColor = "#ef4444"
+          pageSelect.style.borderWidth = "2px"
+          setTimeout(() => {
+            if (pageSelect) {
+              pageSelect.style.borderColor = ""
+              pageSelect.style.borderWidth = ""
+            }
+          }, 2000)
+          return
+        }
+
+        if (pageSelect) {
+          pageSelect.style.borderColor = ""
+          pageSelect.style.borderWidth = ""
+        }
+
+        if (pageSelect && pageSelect.value && pageSelect.value !== "no_page") {
+          pageId = pageSelect.value
+          const selectedOption = pageSelect.options[pageSelect.selectedIndex]
+          pageName = selectedOption ? selectedOption.getAttribute('data-name') || selectedOption.text : null
+        }
       }
 
       fetch("/pos/create-order", {

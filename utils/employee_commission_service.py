@@ -12,7 +12,11 @@ from extensions import db
 from models.employee import Employee
 from models.employee_commission_settlement import EmployeeCommissionSettlement
 from models.invoice import Invoice
-from utils.employee_commission import get_employee_commission_amount, get_fixed_employee_commission_amount
+from utils.employee_commission import (
+    get_employee_commission_amount,
+    get_fixed_employee_commission_amount,
+    is_commission_eligible_employee,
+)
 from utils.order_status import CANCELED_STATUSES, invoice_returned_condition
 
 
@@ -137,8 +141,18 @@ def compute_commission_due(
     unsettled_only: bool = True,
 ) -> int:
     employee = Employee.query.get(employee_id)
+    if not is_commission_eligible_employee(employee):
+        return 0
     count = count_commission_orders(employee_id, year, month, unsettled_only)
     return count * get_employee_commission_amount(employee)
+
+
+def _commission_eligible_employee_ids() -> set[int]:
+    return {
+        e.id
+        for e in Employee.query.filter(Employee.role != "admin").all()
+        if is_commission_eligible_employee(e)
+    }
 
 
 def build_employee_commission_stats_map(
@@ -147,6 +161,10 @@ def build_employee_commission_stats_map(
     month: Optional[int] = None,
 ) -> dict[int, dict]:
     """Aggregate commission stats per employee for the grid or statement."""
+    eligible_ids = _commission_eligible_employee_ids()
+    if not eligible_ids:
+        return {}
+
     q = (
         db.session.query(
             Invoice.employee_id,
@@ -155,6 +173,7 @@ def build_employee_commission_stats_map(
         )
         .filter(
             Invoice.employee_id.isnot(None),
+            Invoice.employee_id.in_(eligible_ids),
             delivered_paid_filter(),
         )
     )
@@ -169,6 +188,8 @@ def build_employee_commission_stats_map(
 
     stats_map: dict[int, dict] = {}
     for row in rows:
+        if row.employee_id not in eligible_ids:
+            continue
         orders = int(row.orders or 0)
         rate = rate_map.get(row.employee_id, get_fixed_employee_commission_amount())
         commission = orders * rate
@@ -202,6 +223,7 @@ def build_monthly_statement(year: int, month: int) -> list[dict]:
                 "employee_name": employee_names.get(employee_id, f"#{employee_id}"),
                 "orders": stats["orders"],
                 "amount": stats["total_due"],
+                "commission_rate": stats.get("commission_rate", 0),
             }
         )
     rows.sort(key=lambda r: r["employee_name"])
@@ -218,6 +240,8 @@ def settle_employee_commission(
     employee = Employee.query.get(employee_id)
     if not employee:
         return {"ok": False, "error": "الموظف غير موجود"}
+    if not is_commission_eligible_employee(employee):
+        return {"ok": False, "error": "المدير غير مشمول بعمولة الطلبات"}
 
     invoices = _commission_query(employee_id, year, month, unsettled_only=True).all()
     if not invoices:

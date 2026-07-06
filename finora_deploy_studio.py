@@ -25,6 +25,7 @@ SAFE_PUSH_EXCLUDED_PARTS = {
     "logs",
     "instance",
     "uploads",
+    "outputs",
     "playwright-report",
     "test-results",
     ".pytest_cache",
@@ -669,6 +670,78 @@ class FinoraDeployStudio(tk.Tk):
         except FileNotFoundError:
             return 1, "[ERROR] git command not found.\n"
 
+    def git_capture_bytes(self, args: list[str], cwd: Path) -> tuple[int, bytes]:
+        """Run git and return raw stdout (for -z / NUL-delimited output)."""
+        try:
+            proc = subprocess.run(
+                ["git", *args],
+                cwd=str(cwd),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+            stderr = proc.stderr or b""
+            if stderr.strip():
+                self.append_log(stderr.decode("utf-8", errors="replace"))
+            return proc.returncode, proc.stdout or b""
+        except FileNotFoundError:
+            return 1, b""
+
+    @staticmethod
+    def parse_git_z_paths(data: bytes) -> list[str]:
+        """Parse NUL-delimited paths from git -z output."""
+        paths: list[str] = []
+        for part in data.split(b"\x00"):
+            if not part:
+                continue
+            paths.append(part.decode("utf-8", errors="surrogateescape"))
+        return paths
+
+    def git_add_paths(self, paths: list[str], cwd: Path) -> int:
+        """Stage paths via stdin to handle Unicode filenames on Windows."""
+        if not paths:
+            return 0
+        valid_paths: list[str] = []
+        for p in paths:
+            rel = p.strip().replace("\\", "/")
+            if not rel:
+                continue
+            local_file = cwd / Path(rel)
+            if not local_file.is_file():
+                self.append_log(f"[WARN] Skip missing path for git add: {rel}\n")
+                continue
+            valid_paths.append(rel)
+        if not valid_paths:
+            self.append_log("[WARN] No existing files to stage after path validation.\n")
+            return 0
+        if len(valid_paths) < len(paths):
+            self.append_log(
+                f"[WARN] Skipped {len(paths) - len(valid_paths)} missing/invalid paths before git add.\n"
+            )
+        payload = "\x00".join(valid_paths).encode("utf-8") + b"\x00"
+        self.append_log(f"$ git add --pathspec-from-file=- ({len(valid_paths)} paths)\n")
+        try:
+            proc = subprocess.run(
+                ["git", "add", "--pathspec-from-file=-", "--pathspec-file-nul"],
+                cwd=str(cwd),
+                input=payload,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+            stdout = (proc.stdout or b"").decode("utf-8", errors="replace")
+            stderr = (proc.stderr or b"").decode("utf-8", errors="replace")
+            if stdout.strip():
+                self.append_log(stdout)
+            if stderr.strip():
+                self.append_log(stderr)
+            if proc.returncode != 0:
+                self.append_log(f"[ERROR] git add failed with code {proc.returncode}\n")
+            return proc.returncode
+        except FileNotFoundError:
+            self.append_log("[ERROR] git command not found.\n")
+            return 1
+
     def current_git_commit(self, cwd: Path) -> str:
         rc, out = self.git_capture(["rev-parse", "HEAD"], cwd)
         if rc != 0:
@@ -690,23 +763,20 @@ class FinoraDeployStudio(tk.Tk):
         return not bool(parts.intersection(SAFE_PUSH_EXCLUDED_PARTS))
 
     def collect_safe_push_paths(self, cwd: Path) -> tuple[list[str], list[str]]:
-        rc_mod, modified_out = self.git_capture(["diff", "--name-only", "--diff-filter=AM"], cwd)
-        rc_untracked, untracked_out = self.git_capture(["ls-files", "-o", "--exclude-standard"], cwd)
-        rc_deleted, deleted_out = self.git_capture(["ls-files", "-d"], cwd)
+        rc_mod, modified_out = self.git_capture_bytes(["diff", "-z", "--name-only", "--diff-filter=AM"], cwd)
+        rc_untracked, untracked_out = self.git_capture_bytes(["ls-files", "-z", "-o", "--exclude-standard"], cwd)
+        rc_deleted, deleted_out = self.git_capture_bytes(["ls-files", "-z", "-d"], cwd)
 
         if rc_mod != 0:
-            self.append_log(modified_out)
+            self.append_log((modified_out or b"").decode("utf-8", errors="replace"))
         if rc_untracked != 0:
-            self.append_log(untracked_out)
+            self.append_log((untracked_out or b"").decode("utf-8", errors="replace"))
         if rc_deleted != 0:
-            self.append_log(deleted_out)
+            self.append_log((deleted_out or b"").decode("utf-8", errors="replace"))
 
         candidates: list[str] = []
         for output in (modified_out, untracked_out):
-            for line in output.splitlines():
-                p = line.strip()
-                if p:
-                    candidates.append(p)
+            candidates.extend(self.parse_git_z_paths(output))
 
         safe_paths: list[str] = []
         skipped_paths: list[str] = []
@@ -720,7 +790,7 @@ class FinoraDeployStudio(tk.Tk):
             else:
                 skipped_paths.append(p)
 
-        deleted = [line.strip() for line in deleted_out.splitlines() if line.strip()]
+        deleted = self.parse_git_z_paths(deleted_out)
         if deleted:
             self.append_log(
                 f"[WARN] Ignoring {len(deleted)} deleted tracked files. "
@@ -743,31 +813,28 @@ class FinoraDeployStudio(tk.Tk):
     ) -> tuple[list[str], list[str], list[str]]:
         """Collect modified/added/untracked files for Smart Deploy; deletions are reported only."""
         commands = [
-            ["diff", "--name-only", "--diff-filter=AM"],
-            ["diff", "--cached", "--name-only", "--diff-filter=AM"],
-            ["ls-files", "-o", "--exclude-standard"],
+            ["diff", "-z", "--name-only", "--diff-filter=AM"],
+            ["diff", "-z", "--cached", "--name-only", "--diff-filter=AM"],
+            ["ls-files", "-z", "-o", "--exclude-standard"],
         ]
         if since_commit:
-            commands.append(["diff", "--name-only", "--diff-filter=AM", f"{since_commit}..HEAD"])
+            commands.append(["diff", "-z", "--name-only", "--diff-filter=AM", f"{since_commit}..HEAD"])
         else:
-            commands.append(["diff-tree", "--no-commit-id", "--name-only", "--diff-filter=AM", "-r", "HEAD"])
+            commands.append(["diff-tree", "-z", "--no-commit-id", "--name-only", "--diff-filter=AM", "-r", "HEAD"])
 
         candidates: list[str] = []
         errors: list[str] = []
         for args in commands:
-            rc, out = self.git_capture(args, cwd)
+            rc, out = self.git_capture_bytes(args, cwd)
             if rc != 0:
-                errors.append(out)
+                errors.append((out or b"").decode("utf-8", errors="replace"))
                 continue
-            for line in out.splitlines():
-                p = line.strip()
-                if p:
-                    candidates.append(p)
+            candidates.extend(self.parse_git_z_paths(out))
 
-        rc_deleted, deleted_out = self.git_capture(["ls-files", "-d"], cwd)
+        rc_deleted, deleted_out = self.git_capture_bytes(["ls-files", "-z", "-d"], cwd)
         if rc_deleted != 0:
-            errors.append(deleted_out)
-        deleted = [line.strip() for line in deleted_out.splitlines() if line.strip()]
+            errors.append((deleted_out or b"").decode("utf-8", errors="replace"))
+        deleted = self.parse_git_z_paths(deleted_out)
 
         safe_paths: list[str] = []
         skipped_paths: list[str] = []
@@ -986,7 +1053,7 @@ class FinoraDeployStudio(tk.Tk):
                 return
 
             self.append_log(f"[INFO] Staging {len(safe_paths)} safe files.\n")
-            rc = self.run_local_commands([["git", "add", "--", *safe_paths]], cwd=local_path)
+            rc = self.git_add_paths(safe_paths, local_path)
             if rc != 0:
                 self.set_status("Push failed while staging files.")
                 return

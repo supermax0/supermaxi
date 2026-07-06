@@ -4,7 +4,7 @@
 
 {% block content %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/team-admin.css') }}?v=20260702g">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/employees-admin.css') }}?v=20260702k">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/employees-admin.css') }}?v=20260706a">
 
 <div class="team-admin-page employees-page">
 
@@ -144,6 +144,9 @@
         <input type="month" id="commissionStmtMonth">
       </div>
       <button type="button" class="btn-fixed-commission" onclick="loadCommissionStatement()">{{ _('employees_commission_statement_load') }}</button>
+      <button type="button" class="btn-fixed-commission btn-commission-print" onclick="printCommissionStatement()">
+        <i class="fas fa-print"></i> طباعة الكشف
+      </button>
     </div>
     <div class="commission-statement-summary" id="commissionStatementSummary"></div>
     <div class="commission-statement-table-wrap">
@@ -165,6 +168,34 @@
     </div>
   </div>
 </div>
+
+<section id="commissionStatementPrint" class="commission-statement-print" aria-hidden="true">
+  <header class="csp-header">
+    <div>
+      <h1>كشف عمولات الموظفين</h1>
+      <p>Finora System</p>
+    </div>
+    <div class="csp-meta">
+      <p><strong>الفترة:</strong> <span id="cspPeriod">—</span></p>
+      <p><strong>تاريخ الطباعة:</strong> <span id="cspPrintedAt">—</span></p>
+    </div>
+  </header>
+  <p class="csp-note">العمولة محسوبة لكل طلب واصل ومسدد — وليست نسبة من المبيعات. المدير غير مشمول.</p>
+  <p class="csp-summary" id="cspSummary"></p>
+  <table class="csp-table">
+    <thead>
+      <tr>
+        <th class="csp-col-index">#</th>
+        <th class="csp-col-name">اسم الموظف</th>
+        <th class="csp-col-orders">عدد الطلبات</th>
+        <th class="csp-col-rate">مبلغ لكل طلب</th>
+        <th class="csp-col-amount">المبلغ المستحق</th>
+      </tr>
+    </thead>
+    <tbody id="cspBody"></tbody>
+    <tfoot id="cspFoot"></tfoot>
+  </table>
+</section>
 
 <div class="collapsible-group" id="groupEmpFilters">
   <div class="group-header" onclick="toggleSection('groupEmpFilters')">
@@ -273,6 +304,8 @@
   "employees_commission_statement_settled": _("employees_commission_statement_settled"),
   "employees_commission_statement_confirm": _("employees_commission_statement_confirm"),
   "employees_commission_statement_total": _("employees_commission_statement_total"),
+  "employees_commission_statement_print": "طباعة الكشف",
+  "employees_commission_statement_print_empty": "اعرض الكشف أولاً ثم اطبع",
   "employees_toast_settle_success": _("employees_toast_settle_success"),
   "employees_edit_commission_label": _("employees_edit_commission_label"),
   "employees_edit_commission_hint": _("employees_edit_commission_hint")
@@ -286,7 +319,7 @@
   } catch (e) { console.warn(e); }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.js"></script>
-<script src="{{ url_for('static', filename='js/employees-admin.js') }}?v=20260702j"></script>
+<script src="{{ url_for('static', filename='js/employees-admin.js') }}?v=20260706a"></script>
 
 </div>
 {% endblock %}

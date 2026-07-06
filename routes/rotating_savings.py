@@ -42,6 +42,30 @@ rotating_savings_bp = Blueprint(
     "rotating_savings", __name__, url_prefix="/finance/rotating-savings"
 )
 
+# Alias with underscore for older/bookmarked URLs
+rotating_savings_bp_alias = Blueprint(
+    "rotating_savings_alias", __name__, url_prefix="/finance/rotating_savings"
+)
+
+
+@rotating_savings_bp_alias.before_request
+def _alias_setup():
+    return _setup()
+
+
+@rotating_savings_bp_alias.route("/", defaults={"subpath": ""})
+@rotating_savings_bp_alias.route("/<path:subpath>")
+def alias_redirect(subpath):
+    if "user_id" not in session:
+        return redirect("/pos/login")
+    target = "/finance/rotating-savings"
+    if subpath:
+        target = f"{target}/{subpath}"
+    qs = request.query_string.decode("utf-8")
+    if qs:
+        target = f"{target}?{qs}"
+    return redirect(target, code=308)
+
 
 @rotating_savings_bp.before_request
 def _setup():

@@ -352,14 +352,17 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
         field: "commission",
         width: 120,
         type: 'numericColumn',
-        cellRenderer: params => params.data.is_delivery ? '—' : `${params.value.toLocaleString()} ${__t('employees_currency_iqd')}`
+        cellRenderer: params => (params.data.is_delivery || params.data.role === 'admin') ? '—' : `${params.value.toLocaleString()} ${__t('employees_currency_iqd')}`
       },
       {
         headerName: __t('employees_col_total_due'),
         field: "total_due",
         width: 120,
         type: 'numericColumn',
-        cellRenderer: params => `<span style="color:var(--emp-warning);font-weight:700">${params.value.toLocaleString()} ${__t('employees_currency_iqd')}</span>`
+        cellRenderer: params => {
+          if (params.data.is_delivery || params.data.role === 'admin') return '—';
+          return `<span style="color:var(--emp-warning);font-weight:700">${params.value.toLocaleString()} ${__t('employees_currency_iqd')}</span>`;
+        }
       },
       {
         headerName: __t('employees_col_actions'),
@@ -692,6 +695,7 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
 
   // ==================== Commission Monthly Statement ====================
   let commissionStatementPeriod = { year: null, month: null };
+  let lastCommissionStatementData = null;
 
   function initCommissionStatementMonth() {
     const input = document.getElementById('commissionStmtMonth');
@@ -712,12 +716,22 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
     return { year, month };
   }
 
+  function formatCommissionPeriodLabel(year, month) {
+    try {
+      const d = new Date(year, month - 1, 1);
+      return d.toLocaleDateString('ar-IQ', { year: 'numeric', month: 'long' });
+    } catch (e) {
+      return `${year}-${String(month).padStart(2, '0')}`;
+    }
+  }
+
   function renderCommissionStatement(data) {
     const tbody = document.getElementById('commissionStatementBody');
     const summary = document.getElementById('commissionStatementSummary');
     if (!tbody) return;
 
     commissionStatementPeriod = { year: data.year, month: data.month };
+    lastCommissionStatementData = data;
     const currency = __t('employees_currency_iqd');
 
     if (summary) {
@@ -758,6 +772,58 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
         );
       });
     });
+  }
+
+  function printCommissionStatement() {
+    if (!lastCommissionStatementData || !(lastCommissionStatementData.rows || []).length) {
+      showToast(__t('employees_commission_statement_print_empty') || 'اعرض الكشف أولاً ثم اطبع', 'warning');
+      return;
+    }
+
+    const data = lastCommissionStatementData;
+    const currency = __t('employees_currency_iqd');
+    const periodEl = document.getElementById('cspPeriod');
+    const printedAtEl = document.getElementById('cspPrintedAt');
+    const summaryEl = document.getElementById('cspSummary');
+    const bodyEl = document.getElementById('cspBody');
+    const footEl = document.getElementById('cspFoot');
+    if (!bodyEl) return;
+
+    if (periodEl) {
+      periodEl.textContent = formatCommissionPeriodLabel(data.year, data.month);
+    }
+    if (printedAtEl) {
+      printedAtEl.textContent = new Date().toLocaleString('ar-IQ');
+    }
+    if (summaryEl) {
+      summaryEl.textContent = __t('employees_commission_statement_total')
+        .replace('{orders}', String(data.total_orders || 0))
+        .replace('{amount}', (data.total_amount || 0).toLocaleString());
+    }
+
+    const rate = data.fixed_commission_amount || 0;
+    bodyEl.innerHTML = (data.rows || []).map((row, index) => `
+      <tr>
+        <td class="csp-col-index">${index + 1}</td>
+        <td class="csp-col-name">${row.employee_name}</td>
+        <td class="csp-col-orders">${row.orders}</td>
+        <td class="csp-col-rate">${(row.commission_rate ?? rate).toLocaleString()} ${currency}</td>
+        <td class="csp-col-amount">${row.amount.toLocaleString()} ${currency}</td>
+      </tr>
+    `).join('');
+
+    if (footEl) {
+      footEl.innerHTML = `
+        <tr>
+          <td colspan="2">الإجمالي</td>
+          <td class="csp-col-orders">${data.total_orders || 0}</td>
+          <td></td>
+          <td class="csp-col-amount">${(data.total_amount || 0).toLocaleString()} ${currency}</td>
+        </tr>
+      `;
+    }
+
+    requestAnimationFrame(() => window.print());
   }
 
   function loadCommissionStatement() {

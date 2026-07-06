@@ -118,7 +118,12 @@
 
     {% if order_data %}
 
-    <div class="edit-banner">✏️ تعديل الطلب #{{ order_data['id'] }}</div>
+    <div class="edit-banner">
+      ✏️ تعديل الطلب #{{ order_data['id'] }}
+      {% if order_data.get('employee_name') %}
+      <span class="edit-banner-meta"> — الموظف: {{ order_data['employee_name'] }}</span>
+      {% endif %}
+    </div>
 
     {% endif %}
 
@@ -148,13 +153,13 @@
 
                 <i class="fas fa-user"></i>
 
-                <input type="text" id="searchCustomer" class="pos-input" placeholder="ابحث عن زبون أو أضف جديد..." autocomplete="off">
+                <input type="text" id="searchCustomer" class="pos-input" placeholder="ابحث عن زبون أو أضف جديد..." autocomplete="off"{% if order_data %} disabled title="لا يمكن تغيير الزبون أثناء التعديل"{% endif %}>
 
                 <div id="customerResults" class="pos-dropdown"></div>
 
               </div>
 
-              <button type="button" class="pos-btn-primary pos-btn-icon-only" onclick="PosWP.openCustomerModal()" title="إضافة زبون">
+              <button type="button" class="pos-btn-primary pos-btn-icon-only" onclick="PosWP.openCustomerModal()" title="إضافة زبون"{% if order_data %} disabled{% endif %}>
 
                 <i class="fas fa-user-plus"></i>
 
@@ -235,7 +240,7 @@
 
             <div class="pos-actions pos-desktop-only">
               <button type="button" id="btnExecute" class="pos-btn-primary" disabled onclick="PosWP.openOrderNotesModal()">
-                <i class="fas fa-print"></i> تنفيذ و طباعة
+                <i class="fas fa-{% if order_data %}save{% else %}print{% endif %}"></i> {% if order_data %}حفظ التعديل{% else %}تنفيذ و طباعة{% endif %}
               </button>
               <button type="button" class="pos-btn-secondary" onclick="PosWP.openScheduleModal()">
                 <i class="fas fa-clock"></i> تأجيل الطلب
@@ -591,7 +596,7 @@
 
       <label class="pos-field-label">اختر البيج:</label>
 
-      <select id="pageSelect" class="pos-select pos-select--mb">
+      <select id="pageSelect" class="pos-select pos-select--mb"{% if order_data %} disabled{% endif %}>
 
         <option value="">-- اختر البيج --</option>
 
@@ -604,6 +609,11 @@
         <option value="no_page">-- لا يوجد بيج --</option>
 
       </select>
+      {% if order_data %}
+      <p class="pos-field-hint" style="margin:0 0 12px;font-size:13px;opacity:0.85;">
+        البيج: {{ order_data.get('page_name') or '—' }} (مثبت — لا يتغير عند التعديل)
+      </p>
+      {% endif %}
 
       {% endif %}
 

@@ -353,8 +353,8 @@
       <div class="value">{{ report.orders_count }}</div>
     </div>
     <div class="info-item">
-      <div class="label">إجمالي المبلغ</div>
-      <div class="value" style="color: var(--report-success);">{{ "{:,.0f}".format(report.total_amount) }} د.ع</div>
+      <div class="label">{% if display_total_label == 'مجموع الواصل' %}مجموع الواصل{% else %}إجمالي المبلغ{% endif %}</div>
+      <div class="value" style="color: var(--report-success);">{{ "{:,.0f}".format(display_total_amount) }} د.ع</div>
     </div>
     <div class="info-item">
       <div class="label">التاريخ</div>
@@ -531,8 +531,8 @@ document.addEventListener('DOMContentLoaded', function() {
       </tr>
       {% endfor %}
       <tr class="total-summary-row" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.2)); font-weight: 700;">
-        <td colspan="5" style="text-align: right; padding-right: 25px; font-size: 16px;">💰 المجموع الكلي:</td>
-        <td style="color: var(--report-success); font-size: 18px; font-weight: 800;">{{ "{:,.0f}".format(report.total_amount) }} دينار عراقي</td>
+        <td colspan="5" style="text-align: right; padding-right: 25px; font-size: 16px;">💰 {{ display_total_label }}:</td>
+        <td id="reportTotalAmount" style="color: var(--report-success); font-size: 18px; font-weight: 800;">{{ "{:,.0f}".format(display_total_amount) }} دينار عراقي</td>
         <td colspan="{% if current_role == 'admin' and not report.is_executed and status_selections %}4{% else %}3{% endif %}"></td>
       </tr>
     </tbody>

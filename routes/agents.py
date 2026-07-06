@@ -9,7 +9,7 @@ from sqlalchemy import func
 import json
 
 from utils.agent_report_helpers import (
-    find_executed_agent_reports_for_order,
+    find_blocking_executed_agent_reports_for_order,
     find_open_agent_reports_for_order,
     get_report_order_ids,
     get_pending_agent_reports_summary,
@@ -286,7 +286,7 @@ def add_order_to_agent_report():
             "error": "الطلب موجود بكشف مفتوح آخر: " + ", ".join(r.report_number for r in open_reports)
         }), 400
 
-    executed_reports = find_executed_agent_reports_for_order(order_id, agent_id)
+    executed_reports = find_blocking_executed_agent_reports_for_order(order_id, agent_id)
     if executed_reports:
         return jsonify({
             "error": "الطلب منفذ سابقاً بكشف: " + ", ".join(r.report_number for r in executed_reports)

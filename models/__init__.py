@@ -46,6 +46,16 @@ from .call import CallSession, CallSignal
 from .system_analytics import SystemAnalytics
 from .system_alert import SystemAlert
 from .assistant_memory import AssistantMemory
+from .ai_assistant_control import (
+    AIActionItem,
+    AIActionPlan,
+    AIAuditRun,
+    AIChatMessage,
+    AIChatSession,
+    AIScheduledAudit,
+    AIToolCallLog,
+    AIUploadedFile,
+)
 from .role import Role, Permission
 from .tenant import Tenant  # SaaS multi-tenant support
 from .beauty_service import BeautyService

@@ -2,27 +2,7 @@
 {% block title %}الجمعيات والسلف الدوّارة{% endblock %}
 {% block page_title %}🔄 الجمعيات والسلف الدوّارة{% endblock %}
 {% block content %}
-<style>
-.rs-page { max-width: 1280px; margin: 0 auto; direction: rtl; }
-.rs-nav { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
-.rs-nav a { padding: 8px 14px; border-radius: 10px; background: var(--card-alt); border: 1px solid var(--border-light); color: var(--text); text-decoration: none; font-size: 14px; }
-.rs-nav a:hover, .rs-nav a.active { background: var(--primary); color: #fff; border-color: var(--primary); }
-.rs-kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 22px; }
-.rs-kpi { background: var(--card); border: 1px solid var(--border-light); border-radius: 14px; padding: 14px; }
-.rs-kpi .label { color: var(--text-muted); font-size: 12px; margin-bottom: 4px; }
-.rs-kpi .value { font-size: 20px; font-weight: 800; }
-.rs-toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; align-items: center; }
-.rs-toolbar input, .rs-toolbar select { padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-light); background: var(--card); color: var(--text); }
-.rs-btn { padding: 8px 16px; border-radius: 10px; border: none; cursor: pointer; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
-.rs-btn-primary { background: var(--primary); color: #fff; }
-.rs-table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: 12px; overflow: hidden; }
-.rs-table th, .rs-table td { padding: 10px 12px; border: 1px solid var(--border-light); text-align: right; font-size: 13px; }
-.rs-table th { background: rgba(99,102,241,0.12); }
-.rs-badge { padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; }
-.rs-badge-active { background: #dcfce7; color: #166534; }
-.rs-badge-received { background: #dbeafe; color: #1e40af; }
-.rs-badge-defaulted { background: #fee2e2; color: #991b1b; }
-</style>
+{% include "rotating_savings/_styles.html" %}
 <div class="rs-page">
   {% include "rotating_savings/_nav.html" %}
 
@@ -53,38 +33,61 @@
     </select>
     <button type="submit" class="rs-btn rs-btn-primary">تصفية</button>
     <a href="{{ url_for('rotating_savings.create') }}" class="rs-btn rs-btn-primary"><i class="fa fa-plus"></i> إنشاء جمعية</a>
-    <a href="{{ url_for('rotating_savings.export_list') }}" class="rs-btn rs-btn-primary" style="background:#059669;"><i class="fa fa-file-excel"></i> Excel</a>
+    <a href="{{ url_for('rotating_savings.export_list') }}" class="rs-btn rs-btn-success"><i class="fa fa-file-excel"></i> Excel</a>
   </form>
 
-  <table class="rs-table">
-    <thead>
-      <tr>
-        <th>الاسم</th><th>النوع</th><th>القسط</th><th>الأشهر</th>
-        <th>المدفوع</th><th>المستلم</th><th>المتبقي</th>
-        <th>الحالة المحاسبية</th><th>الحالة</th><th>إجراءات</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for s in savings %}
-      <tr>
-        <td><a href="{{ url_for('rotating_savings.detail', saving_id=s.id) }}">{{ s.name }}</a></td>
-        <td>{{ s.type_label() }}</td>
-        <td>{{ "{:,}".format(s.monthly_amount) }}</td>
-        <td>{{ s.total_months }}</td>
-        <td>{{ "{:,}".format(s.total_paid) }}</td>
-        <td>{{ "{:,}".format(s.total_received) }}</td>
-        <td>{{ "{:,}".format(s.remaining_to_pay) }}</td>
-        <td>{{ s.accounting_status_label() }}</td>
-        <td><span class="rs-badge rs-badge-{{ s.status }}">{{ s.status_label() }}</span></td>
-        <td>
-          <a href="{{ url_for('rotating_savings.detail', saving_id=s.id) }}">تفاصيل</a>
-          · <a href="{{ url_for('rotating_savings.statement', saving_id=s.id) }}">كشف</a>
-        </td>
-      </tr>
-      {% else %}
-      <tr><td colspan="10">لا توجد جمعيات بعد. <a href="{{ url_for('rotating_savings.create') }}">إنشاء أول جمعية</a></td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <div class="rs-table-wrap rs-table-desktop">
+    <table class="rs-table">
+      <thead>
+        <tr>
+          <th>الاسم</th><th>النوع</th><th>القسط</th><th>الأشهر</th>
+          <th>المدفوع</th><th>المستلم</th><th>المتبقي</th>
+          <th>الحالة المحاسبية</th><th>الحالة</th><th>إجراءات</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in savings %}
+        <tr>
+          <td><a href="{{ url_for('rotating_savings.detail', saving_id=s.id) }}">{{ s.name }}</a></td>
+          <td>{{ s.type_label() }}</td>
+          <td>{{ "{:,}".format(s.monthly_amount) }}</td>
+          <td>{{ s.total_months }}</td>
+          <td>{{ "{:,}".format(s.total_paid) }}</td>
+          <td>{{ "{:,}".format(s.total_received) }}</td>
+          <td>{{ "{:,}".format(s.remaining_to_pay) }}</td>
+          <td>{{ s.accounting_status_label() }}</td>
+          <td><span class="rs-badge rs-badge-{{ s.status }}">{{ s.status_label() }}</span></td>
+          <td>
+            <a href="{{ url_for('rotating_savings.detail', saving_id=s.id) }}">تفاصيل</a>
+            · <a href="{{ url_for('rotating_savings.statement', saving_id=s.id) }}">كشف</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="10">لا توجد جمعيات بعد. <a href="{{ url_for('rotating_savings.create') }}">إنشاء أول جمعية</a></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="rs-cards">
+    {% for s in savings %}
+    <article class="rs-card">
+      <div class="rs-card__title"><a href="{{ url_for('rotating_savings.detail', saving_id=s.id) }}">{{ s.name }}</a></div>
+      <div class="rs-card__grid">
+        <div><span>النوع</span><strong>{{ s.type_label() }}</strong></div>
+        <div><span>القسط</span><strong>{{ "{:,}".format(s.monthly_amount) }}</strong></div>
+        <div><span>المدفوع</span><strong>{{ "{:,}".format(s.total_paid) }}</strong></div>
+        <div><span>المتبقي</span><strong>{{ "{:,}".format(s.remaining_to_pay) }}</strong></div>
+        <div><span>الحالة</span><strong>{{ s.status_label() }}</strong></div>
+      </div>
+      <div class="rs-card__actions">
+        <a href="{{ url_for('rotating_savings.detail', saving_id=s.id) }}" class="rs-btn rs-btn-primary">تفاصيل</a>
+        <a href="{{ url_for('rotating_savings.statement', saving_id=s.id) }}" class="rs-btn rs-btn-ghost">كشف</a>
+      </div>
+    </article>
+    {% else %}
+    <div class="rs-card">لا توجد جمعيات بعد. <a href="{{ url_for('rotating_savings.create') }}">إنشاء أول جمعية</a></div>
+    {% endfor %}
+  </div>
 </div>
 {% endblock %}

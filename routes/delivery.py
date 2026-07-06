@@ -11,6 +11,7 @@ from datetime import datetime
 import json
 
 from utils.shipping_report_execute import execute_shipping_report
+from utils.agent_report_helpers import compute_report_delivered_amount
 
 delivery_bp = Blueprint("delivery", __name__, url_prefix="/delivery")
 
@@ -306,6 +307,14 @@ def view_report(report_id):
     can_execute = False
     if is_admin and not report.is_executed and has_status_selections:
         can_execute = True
+
+    # بعد تحديد الحالات: المجموع = الواصل فقط (بدون مؤجل/ملغي)
+    if has_status_selections:
+        display_total_amount = compute_report_delivered_amount(report)
+        display_total_label = "مجموع الواصل"
+    else:
+        display_total_amount = int(report.total_amount or 0)
+        display_total_label = "المجموع الكلي"
     
     return render_template(
         template_name,
@@ -316,7 +325,9 @@ def view_report(report_id):
         session=session,
         is_public_access=is_public_access,
         can_execute=can_execute,
-        status_selections=status_selections
+        status_selections=status_selections,
+        display_total_amount=display_total_amount,
+        display_total_label=display_total_label,
     )
 
 # =====================================================
@@ -531,24 +542,8 @@ def get_delivered_amount(report_id):
     
     report = ShippingReport.query.get_or_404(report_id)
     
-    if not report.orders_data:
-        return jsonify({"delivered_amount": 0}), 200
-    
     try:
-        orders_data = json.loads(report.orders_data)
-        status_selections = json.loads(report.order_status_selections) if report.order_status_selections else {}
-        
-        delivered_amount = 0
-        
-        for order_data in orders_data:
-            order_id = order_data.get("id")
-            if not order_id:
-                continue
-            
-            selected_status = status_selections.get(str(order_id))
-            if selected_status == "واصل" or selected_status == "Delivered":
-                delivered_amount += order_data.get("total", 0)
-        
+        delivered_amount = compute_report_delivered_amount(report)
         return jsonify({"delivered_amount": int(delivered_amount)})
     except Exception as e:
         return jsonify({"error": f"حدث خطأ: {str(e)}"}), 500

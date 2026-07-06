@@ -344,8 +344,8 @@
                     <div class="value">{{ report.orders_count }}</div>
                 </div>
                 <div class="info-item">
-                    <div class="label">إجمالي المبلغ</div>
-                    <div class="value" style="color: var(--report-success);">{{ "{:,.0f}".format(report.total_amount) }} د.ع</div>
+                    <div class="label">{% if display_total_label == 'مجموع الواصل' %}مجموع الواصل{% else %}إجمالي المبلغ{% endif %}</div>
+                    <div class="value" style="color: var(--report-success);">{{ "{:,.0f}".format(display_total_amount) }} د.ع</div>
                 </div>
                 <div class="info-item">
                     <div class="label">التاريخ</div>
@@ -429,8 +429,8 @@
                     </tr>
                     {% endfor %}
                     <tr class="total-summary-row" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.2)); font-weight: 700;">
-                        <td colspan="5" style="text-align: right; padding-right: 25px; font-size: 16px;">💰 المجموع الكلي:</td>
-                        <td style="color: var(--report-success); font-size: 18px; font-weight: 800;">{{ "{:,.0f}".format(report.total_amount) }} دينار عراقي</td>
+                        <td colspan="5" style="text-align: right; padding-right: 25px; font-size: 16px;">💰 <span id="reportTotalLabel">{{ display_total_label }}</span>:</td>
+                        <td id="reportTotalAmount" style="color: var(--report-success); font-size: 18px; font-weight: 800;">{{ "{:,.0f}".format(display_total_amount) }} دينار عراقي</td>
                         <td colspan="3"></td>
                     </tr>
                 </tbody>
@@ -446,12 +446,41 @@
     </div>
 
     <script>
+        const DELIVERED_STATUSES = new Set(['واصل', 'Delivered']);
+
+        function updateDeliveredTotal() {
+            const totalCell = document.getElementById('reportTotalAmount');
+            const totalLabel = document.getElementById('reportTotalLabel');
+            if (!totalCell) return;
+
+            let deliveredTotal = 0;
+            let hasSelection = false;
+            document.querySelectorAll('.order-status-select').forEach(select => {
+                const row = select.closest('tr');
+                const amountCell = row ? row.querySelector('td:nth-child(6)') : null;
+                const amountText = amountCell ? amountCell.textContent.replace(/[^\d]/g, '') : '0';
+                const amount = parseInt(amountText, 10) || 0;
+                if (select.value) {
+                    hasSelection = true;
+                    if (DELIVERED_STATUSES.has(select.value)) {
+                        deliveredTotal += amount;
+                    }
+                }
+            });
+
+            if (hasSelection) {
+                if (totalLabel) totalLabel.textContent = 'مجموع الواصل';
+                totalCell.textContent = deliveredTotal.toLocaleString('ar-EG') + ' دينار عراقي';
+            }
+        }
+
         function onStatusChange() {
             // إظهار زر الحفظ عند تغيير أي حالة
             const saveBtn = document.getElementById('saveBtn');
             if (saveBtn) {
                 saveBtn.style.display = 'inline-flex';
             }
+            updateDeliveredTotal();
         }
 
         function saveOrderStatuses() {
@@ -514,6 +543,7 @@
                 if (saveBtn) {
                     saveBtn.style.display = 'inline-flex';
                 }
+                updateDeliveredTotal();
             }
         });
     </script>

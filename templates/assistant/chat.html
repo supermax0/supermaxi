@@ -496,6 +496,79 @@
   margin-top: 8px;
 }
 
+.ai-upload-box,
+.ai-plan-panel {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid var(--border-light);
+  background: rgba(15, 23, 42, 0.18);
+}
+
+:root[data-theme="light"] .ai-upload-box,
+:root[data-theme="light"] .ai-plan-panel {
+  background: rgba(248, 250, 252, 0.92);
+}
+
+.ai-file-row,
+.ai-plan-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+  font-size: 12px;
+}
+
+.ai-file-row:last-child,
+.ai-plan-item:last-child {
+  border-bottom: none;
+}
+
+.ai-plan-title {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.ai-plan-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.12);
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.ai-plan-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.ai-plan-buttons .btn,
+.ai-upload-box .btn {
+  min-height: 36px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.ai-file-input {
+  width: 100%;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px dashed var(--border);
+  color: var(--text);
+  background: transparent;
+}
+
 @media (max-width: 900px) {
   .ai-chat-head {
     flex-direction: column;
@@ -594,13 +667,83 @@
           </div>
         </div>
 
+        <div class="ai-settings-section">
+          <h4>ملفات الجرد</h4>
+          <p class="ai-section-kicker">ارفع ملف Excel الجرد للفرع أو الفرعين، ثم اكتب للمساعد “حلل الجرد وسوّي خطة”.</p>
+          <div class="ai-upload-box">
+            <input class="ai-file-input" id="aiFileInput" type="file" accept=".xlsx,.xlsm" />
+            <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+              <button type="button" class="btn btn-secondary" id="aiUploadBtn">رفع الملف</button>
+              <button type="button" class="btn btn-ghost" id="aiClearFilesBtn">مسح الملفات</button>
+            </div>
+            <div id="aiUploadedFiles" style="margin-top:10px"></div>
+          </div>
+        </div>
+
+        {% if assistant_permissions.manage_ai_schedules or assistant_permissions.view_ai_audit_logs %}
+        <div class="ai-settings-section">
+          <h4>الدوريات</h4>
+          <p class="ai-section-kicker">أنشئ تدقيق دوري يقرأ البيانات ويضيف تنبيهات فقط، بدون تنفيذ إصلاحات تلقائية.</p>
+          {% if assistant_permissions.manage_ai_schedules %}
+          <div class="ai-field">
+            <label for="aiScheduleName">اسم الدورية</label>
+            <input id="aiScheduleName" type="text" value="تدقيق شامل يومي" />
+          </div>
+          <div class="ai-field">
+            <label for="aiScheduleType">نوع التحليل</label>
+            <select id="aiScheduleType">
+              <option value="comprehensive">شامل</option>
+              <option value="accounting">محاسبة</option>
+              <option value="inventory">مخزون</option>
+              <option value="orders">طلبات</option>
+              <option value="suppliers">موردين</option>
+              <option value="shipping">شركات نقل</option>
+            </select>
+          </div>
+          <div class="ai-field">
+            <label for="aiScheduleInterval">الفترة بالدقائق</label>
+            <input id="aiScheduleInterval" type="number" min="15" step="15" value="1440" />
+          </div>
+          <div class="ai-field">
+            <label for="aiScheduleSeverity">مستوى التنبيه</label>
+            <select id="aiScheduleSeverity">
+              <option value="warning">تحذير فما فوق</option>
+              <option value="critical">حرج فقط</option>
+              <option value="info">معلومات فما فوق</option>
+            </select>
+          </div>
+          <label class="ai-section-kicker" style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+            <input id="aiScheduleActive" type="checkbox" checked style="width:auto" />
+            <span>الدورية مفعلة</span>
+          </label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button type="button" class="btn btn-secondary" id="aiSaveScheduleBtn">حفظ دورية</button>
+            <button type="button" class="btn btn-ghost" id="aiLoadSchedulesBtn">عرض الدوريات</button>
+          </div>
+          {% else %}
+          <button type="button" class="btn btn-ghost" id="aiLoadSchedulesBtn">عرض الدوريات</button>
+          {% endif %}
+          <div id="aiSchedulesList" class="ai-upload-box"></div>
+        </div>
+        {% endif %}
+
+        {% if assistant_permissions.view_ai_audit_logs %}
+        <div class="ai-settings-section">
+          <h4>سجل المساعد</h4>
+          <p class="ai-section-kicker">آخر خطط التنفيذ، تشغيلات التدقيق، والتنبيهات الناتجة من المساعد.</p>
+          <button type="button" class="btn btn-ghost" id="aiLoadOverviewBtn">تحديث السجل</button>
+          <div id="aiOverviewList" class="ai-upload-box"></div>
+        </div>
+        {% endif %}
+
         <div class="ai-note">
-          تلميح: اكتب سؤالك بوضوح (شنو تريد + الفترة + الهدف). Enter للإرسال، Shift+Enter سطر جديد.
+          تلميح: أي تعديل يقترحه المساعد يبقى خطة فقط. الموافقة والتنفيذ يحتاج صلاحية أدمن.
         </div>
       </div>
 
       <div class="ai-chat">
         <div class="ai-messages" id="aiMessages" aria-live="polite"></div>
+        <div class="ai-plan-panel" id="aiPlanPanel" style="display:none"></div>
         <div id="aiTypingRow" class="ai-typing-row" aria-live="polite" aria-atomic="true">
           <span class="ai-typing-dots" aria-hidden="true"><span></span><span></span><span></span></span>
           <span>جاري تحليل البيانات…</span>
@@ -621,6 +764,7 @@
 
   const STORAGE_KEY = 'finora_ai_chat_v2';
   const MAX_MESSAGES = 60;
+  const permissions = {{ assistant_permissions|tojson|safe }};
 
   const els = {
     messages: document.getElementById('aiMessages'),
@@ -633,7 +777,22 @@
     custom: document.getElementById('aiCustomDates'),
     dateFrom: document.getElementById('aiDateFrom'),
     dateTo: document.getElementById('aiDateTo'),
-    typing: document.getElementById('aiTypingRow')
+    typing: document.getElementById('aiTypingRow'),
+    fileInput: document.getElementById('aiFileInput'),
+    upload: document.getElementById('aiUploadBtn'),
+    clearFiles: document.getElementById('aiClearFilesBtn'),
+    uploadedFiles: document.getElementById('aiUploadedFiles'),
+    planPanel: document.getElementById('aiPlanPanel'),
+    scheduleName: document.getElementById('aiScheduleName'),
+    scheduleType: document.getElementById('aiScheduleType'),
+    scheduleInterval: document.getElementById('aiScheduleInterval'),
+    scheduleSeverity: document.getElementById('aiScheduleSeverity'),
+    scheduleActive: document.getElementById('aiScheduleActive'),
+    saveSchedule: document.getElementById('aiSaveScheduleBtn'),
+    loadSchedules: document.getElementById('aiLoadSchedulesBtn'),
+    schedulesList: document.getElementById('aiSchedulesList'),
+    loadOverview: document.getElementById('aiLoadOverviewBtn'),
+    overviewList: document.getElementById('aiOverviewList')
   };
 
   function nowTime() {
@@ -670,8 +829,11 @@
     period: 'last_30_days',
     date_from: '',
     date_to: '',
+    session_id: null,
+    uploaded_files: [],
+    active_plan: null,
     messages: [
-      { role: 'assistant', text: 'هلا! اختر نوع التحليل والفترة، ثم اسألني. أرى ملخص الفترة (مبيعات، أرباح، مخزون…) ولقطة الطلبات المتأخرة (7+ أيام) إن وُجدت، وأجاوب بالعربي وبنقاط واضحة.', time: nowTime() }
+      { role: 'assistant', text: 'هلا! ارفع ملفات الجرد أو اسألني عن المخزون والحسابات. إذا احتجنا تعديل، أنشئ لك خطة تنفيذ وتبقى تنتظر موافقة الأدمن.', time: nowTime() }
     ]
   };
 
@@ -689,6 +851,8 @@
     if (state.messages.length > MAX_MESSAGES) state.messages = state.messages.slice(-MAX_MESSAGES);
     saveState(state);
     renderMessages();
+    renderFiles();
+    renderPlan(state.active_plan);
     scrollToBottom();
   }
 
@@ -715,6 +879,142 @@
     els.messages.innerHTML = html || '';
   }
 
+  function renderFiles() {
+    const files = state.uploaded_files || [];
+    if (!els.uploadedFiles) return;
+    if (!files.length) {
+      els.uploadedFiles.innerHTML = '<div class="ai-section-kicker">لا توجد ملفات مرفوعة حالياً.</div>';
+      return;
+    }
+    els.uploadedFiles.innerHTML = files.map(f => `
+      <div class="ai-file-row">
+        <strong>${escapeHtml(f.original_name || ('ملف #' + f.id))}</strong>
+        <span>${escapeHtml(f.status || '')}</span>
+      </div>
+    `).join('');
+  }
+
+  function renderPlan(plan) {
+    if (!els.planPanel) return;
+    if (!plan) {
+      els.planPanel.style.display = 'none';
+      els.planPanel.innerHTML = '';
+      return;
+    }
+    const items = Array.isArray(plan.items) ? plan.items : [];
+    const impact = plan.impact || {};
+    const issues = Array.isArray(impact.issues) ? impact.issues : [];
+    const itemHtml = items.slice(0, 12).map(item => `
+      <div class="ai-plan-item">
+        <div>
+          <strong>${escapeHtml(item.title || '')}</strong>
+          <div class="ai-section-kicker" style="margin:4px 0 0">${escapeHtml(item.description || '')}</div>
+        </div>
+        <span>${escapeHtml(item.item_type || '')}</span>
+      </div>
+    `).join('');
+    const issuesHtml = issues.slice(0, 5).map(issue => `
+      <div class="ai-section-kicker">تحذير: ${escapeHtml(issue.message || '')}</div>
+    `).join('');
+    const buttons = `
+      <div class="ai-plan-buttons">
+        <button type="button" class="btn btn-secondary" data-plan-action="refresh">تحديث</button>
+        ${permissions.approve_ai_actions && ['draft', 'approved'].includes(plan.status) ? '<button type="button" class="btn btn-ghost" data-plan-action="validate">فحص قبل التنفيذ</button>' : ''}
+        ${permissions.approve_ai_actions && plan.status === 'draft' ? '<button type="button" class="btn btn-success" data-plan-action="approve">موافقة أدمن</button><button type="button" class="btn btn-danger" data-plan-action="reject">رفض</button>' : ''}
+        ${permissions.approve_ai_actions && plan.status === 'approved' ? '<button type="button" class="btn btn-primary" data-plan-action="execute">تنفيذ الخطة</button>' : ''}
+      </div>
+    `;
+    els.planPanel.style.display = '';
+    els.planPanel.innerHTML = `
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
+        <div>
+          <h4 class="ai-plan-title">${escapeHtml(plan.title || 'خطة تنفيذ')}</h4>
+          <div class="ai-section-kicker">${escapeHtml(plan.summary || '')}</div>
+        </div>
+        <span class="ai-plan-status">${escapeHtml(plan.status || '')}</span>
+      </div>
+      ${issuesHtml}
+      ${itemHtml || '<div class="ai-section-kicker">لا توجد إجراءات تنفيذية داخل هذه الخطة.</div>'}
+      ${buttons}
+    `;
+  }
+
+  function renderSchedules(schedules) {
+    if (!els.schedulesList) return;
+    if (!Array.isArray(schedules) || !schedules.length) {
+      els.schedulesList.innerHTML = '<div class="ai-section-kicker">لا توجد دوريات محفوظة.</div>';
+      return;
+    }
+    els.schedulesList.innerHTML = schedules.map(s => `
+      <div class="ai-file-row">
+        <div>
+          <strong>${escapeHtml(s.name || ('دورية #' + s.id))}</strong>
+          <div class="ai-section-kicker" style="margin:4px 0 0">
+            ${escapeHtml(s.audit_type || '')} | كل ${escapeHtml(s.interval_minutes || '')} دقيقة | ${escapeHtml(s.severity_threshold || 'warning')} | ${s.is_active ? 'مفعلة' : 'متوقفة'}
+          </div>
+        </div>
+        ${permissions.manage_ai_schedules ? `
+          <button type="button" class="btn btn-ghost" data-schedule-edit="${escapeHtml(s.id)}">تعديل</button>
+          <button type="button" class="btn btn-ghost" data-schedule-toggle="${escapeHtml(s.id)}">${s.is_active ? 'إيقاف' : 'تشغيل تلقائي'}</button>
+          <button type="button" class="btn btn-ghost" data-schedule-run="${escapeHtml(s.id)}">تشغيل الآن</button>
+        ` : ''}
+      </div>
+    `).join('');
+    window.__finoraAiSchedules = schedules;
+  }
+
+  function renderOverview(data) {
+    if (!els.overviewList) return;
+    const plans = Array.isArray(data && data.plans) ? data.plans : [];
+    const runs = Array.isArray(data && data.runs) ? data.runs : [];
+    const alerts = Array.isArray(data && data.alerts) ? data.alerts : [];
+    const logs = Array.isArray(data && data.logs) ? data.logs : [];
+    const rows = [];
+    plans.slice(0, 4).forEach(plan => {
+      rows.push(`
+        <div class="ai-file-row">
+          <div>
+            <strong>خطة #${escapeHtml(plan.id)} - ${escapeHtml(plan.status || '')}</strong>
+            <div class="ai-section-kicker" style="margin:4px 0 0">${escapeHtml(plan.title || '')}</div>
+          </div>
+          <span>${escapeHtml(plan.risk_level || '')}</span>
+        </div>
+      `);
+    });
+    runs.slice(0, 3).forEach(run => {
+      rows.push(`
+        <div class="ai-file-row">
+          <div>
+            <strong>تدقيق #${escapeHtml(run.id)} - ${escapeHtml(run.status || '')}</strong>
+            <div class="ai-section-kicker" style="margin:4px 0 0">${escapeHtml(run.summary || run.run_type || '')}</div>
+          </div>
+        </div>
+      `);
+    });
+    alerts.slice(0, 3).forEach(alert => {
+      rows.push(`
+        <div class="ai-file-row">
+          <div>
+            <strong>${escapeHtml(alert.title || 'تنبيه')}</strong>
+            <div class="ai-section-kicker" style="margin:4px 0 0">${escapeHtml(alert.message || '')}</div>
+          </div>
+          <span>${escapeHtml(alert.priority || '')}</span>
+        </div>
+      `);
+    });
+    logs.slice(0, 4).forEach(log => {
+      rows.push(`
+        <div class="ai-file-row">
+          <div>
+            <strong>${escapeHtml(log.tool_name || '')}</strong>
+            <div class="ai-section-kicker" style="margin:4px 0 0">${escapeHtml(log.mode || '')} - ${escapeHtml(log.status || '')}</div>
+          </div>
+        </div>
+      `);
+    });
+    els.overviewList.innerHTML = rows.join('') || '<div class="ai-section-kicker">لا يوجد سجل بعد.</div>';
+  }
+
   function scrollToBottom() {
     try { els.messages.scrollTop = els.messages.scrollHeight; } catch {}
   }
@@ -732,11 +1032,13 @@
     if (busy) scrollToBottom();
   }
 
-  async function callAnalyze(userText) {
+  async function callAssistant(userText) {
     const payload = {
       type: (els.type.value || 'report'),
       period: (els.period.value || 'last_30_days'),
-      message: userText || ''
+      message: userText || '',
+      session_id: state.session_id || null,
+      upload_ids: (state.uploaded_files || []).map(f => f.id).filter(Boolean)
     };
 
     if (payload.period === 'custom') {
@@ -744,7 +1046,7 @@
       payload.date_to = (els.dateTo.value || '').trim();
     }
 
-    const res = await fetch('/ai/analyze', {
+    const res = await fetch('/assistant/api/chat/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -755,6 +1057,189 @@
       throw new Error(data.error || 'تعذر تنفيذ التحليل.');
     }
     return data;
+  }
+
+  async function uploadFile() {
+    const file = els.fileInput && els.fileInput.files ? els.fileInput.files[0] : null;
+    if (!file) {
+      pushMessage('assistant', 'اختار ملف Excel أولاً.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      if (state.session_id) form.append('session_id', state.session_id);
+      const res = await fetch('/assistant/api/files/upload', { method: 'POST', body: form });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) throw new Error(data.error || 'فشل رفع الملف.');
+      state.uploaded_files = state.uploaded_files || [];
+      state.uploaded_files.push(data.file);
+      saveState(state);
+      renderFiles();
+      pushMessage('assistant', `تم رفع ${data.file.original_name}. الأسطر المقروءة: ${(data.file.preview && data.file.preview.row_count) || 0}`);
+      els.fileInput.value = '';
+    } catch (e) {
+      pushMessage('assistant', `صار خطأ برفع الملف: ${e.message || e}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function planAction(action) {
+    const plan = state.active_plan;
+    if (!plan || !plan.id) return;
+    setBusy(true);
+    try {
+      let url = `/assistant/api/action-plans/${plan.id}`;
+      let opts = { method: 'GET' };
+      if (action !== 'refresh') {
+        url += `/${action}`;
+        opts = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) };
+      }
+      const res = await fetch(url, opts);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) throw new Error(data.error || 'فشل تحديث الخطة.');
+      if (action === 'validate') {
+        const validation = data.validation || {};
+        const errors = Array.isArray(validation.errors) ? validation.errors : [];
+        const warnings = Array.isArray(validation.warnings) ? validation.warnings : [];
+        const lines = [
+          validation.ok ? 'فحص الخطة ناجح، تقدر تكمل الموافقة/التنفيذ.' : 'فحص الخطة فشل، لا تنفذ قبل معالجة الملاحظات.',
+          ...errors.slice(0, 5).map(x => `خطأ: ${x}`),
+          ...warnings.slice(0, 5).map(x => `تحذير: ${x}`)
+        ];
+        pushMessage('assistant', lines.join('\n'));
+        return;
+      }
+      state.active_plan = data.plan;
+      saveState(state);
+      renderPlan(state.active_plan);
+      pushMessage('assistant', `تم تحديث الخطة #${data.plan.id}: الحالة ${data.plan.status}`);
+    } catch (e) {
+      pushMessage('assistant', `تعذر تنفيذ العملية: ${e.message || e}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function loadSchedules() {
+    try {
+      const res = await fetch('/assistant/api/schedules');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) throw new Error(data.error || 'تعذر جلب الدوريات.');
+      renderSchedules(data.schedules || []);
+    } catch (e) {
+      if (els.schedulesList) els.schedulesList.innerHTML = `<div class="ai-section-kicker">تعذر عرض الدوريات: ${escapeHtml(e.message || e)}</div>`;
+    }
+  }
+
+  async function loadOverview() {
+    if (!permissions.view_ai_audit_logs || !els.overviewList) return;
+    try {
+      const res = await fetch('/assistant/api/overview');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) throw new Error(data.error || 'تعذر جلب سجل المساعد.');
+      renderOverview(data);
+    } catch (e) {
+      els.overviewList.innerHTML = `<div class="ai-section-kicker">تعذر عرض السجل: ${escapeHtml(e.message || e)}</div>`;
+    }
+  }
+
+  async function saveSchedule() {
+    if (!permissions.manage_ai_schedules || !els.scheduleName || !els.scheduleType || !els.scheduleInterval) {
+      pushMessage('assistant', 'ما عندك صلاحية إدارة الدوريات.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const payload = {
+        id: els.scheduleName.getAttribute('data-edit-id') || null,
+        name: (els.scheduleName.value || 'تدقيق دوري').trim(),
+        audit_type: els.scheduleType.value || 'comprehensive',
+        interval_minutes: parseInt(els.scheduleInterval.value || '1440', 10),
+        severity_threshold: (els.scheduleSeverity && els.scheduleSeverity.value) || 'warning',
+        is_active: els.scheduleActive ? !!els.scheduleActive.checked : true
+      };
+      const res = await fetch('/assistant/api/schedules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) throw new Error(data.error || 'تعذر حفظ الدورية.');
+      pushMessage('assistant', `تم حفظ الدورية: ${data.schedule.name}`);
+      els.scheduleName.removeAttribute('data-edit-id');
+      els.saveSchedule.textContent = 'حفظ دورية';
+      await loadSchedules();
+    } catch (e) {
+      pushMessage('assistant', `تعذر حفظ الدورية: ${e.message || e}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function runSchedule(scheduleId) {
+    if (!permissions.manage_ai_schedules) {
+      pushMessage('assistant', 'تشغيل الدوريات يحتاج صلاحية إدارة الدوريات.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await fetch(`/assistant/api/schedules/${scheduleId}/run`, { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) throw new Error(data.error || 'تعذر تشغيل الدورية.');
+      pushMessage('assistant', `تشغيل دوري #${scheduleId}: ${data.summary || 'تم التدقيق.'}`);
+    } catch (e) {
+      pushMessage('assistant', `تعذر تشغيل الدورية: ${e.message || e}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function editSchedule(scheduleId) {
+    if (!permissions.manage_ai_schedules) return;
+    const schedules = Array.isArray(window.__finoraAiSchedules) ? window.__finoraAiSchedules : [];
+    const schedule = schedules.find(s => String(s.id) === String(scheduleId));
+    if (!schedule || !els.scheduleName) return;
+    els.scheduleName.value = schedule.name || 'تدقيق دوري';
+    els.scheduleName.setAttribute('data-edit-id', String(schedule.id));
+    if (els.scheduleType) els.scheduleType.value = schedule.audit_type || 'comprehensive';
+    if (els.scheduleInterval) els.scheduleInterval.value = schedule.interval_minutes || 1440;
+    if (els.scheduleSeverity) els.scheduleSeverity.value = schedule.severity_threshold || 'warning';
+    if (els.scheduleActive) els.scheduleActive.checked = !!schedule.is_active;
+    if (els.saveSchedule) els.saveSchedule.textContent = 'تحديث الدورية';
+  }
+
+  async function toggleSchedule(scheduleId) {
+    if (!permissions.manage_ai_schedules) return;
+    const schedules = Array.isArray(window.__finoraAiSchedules) ? window.__finoraAiSchedules : [];
+    const schedule = schedules.find(s => String(s.id) === String(scheduleId));
+    if (!schedule) return;
+    setBusy(true);
+    try {
+      const payload = {
+        id: schedule.id,
+        name: schedule.name || 'تدقيق دوري',
+        audit_type: schedule.audit_type || 'comprehensive',
+        interval_minutes: schedule.interval_minutes || 1440,
+        severity_threshold: schedule.severity_threshold || 'warning',
+        is_active: !schedule.is_active
+      };
+      const res = await fetch('/assistant/api/schedules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) throw new Error(data.error || 'تعذر تحديث الدورية.');
+      pushMessage('assistant', `${data.schedule.is_active ? 'تم تفعيل' : 'تم إيقاف'} الدورية: ${data.schedule.name}`);
+      await loadSchedules();
+    } catch (e) {
+      pushMessage('assistant', `تعذر تحديث الدورية: ${e.message || e}`);
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function send() {
@@ -773,9 +1258,14 @@
 
     setBusy(true);
     try {
-      const data = await callAnalyze(text);
-      const label = data.period_label ? `الفترة: ${data.period_label}` : '';
-      pushMessage('assistant', data.analysis || 'تم.', label ? { label } : null);
+      const data = await callAssistant(text);
+      state.session_id = data.session_id || state.session_id || null;
+      if (data.action_plan) {
+        state.active_plan = data.action_plan;
+        renderPlan(state.active_plan);
+      }
+      saveState(state);
+      pushMessage('assistant', data.reply || 'تم.');
     } catch (e) {
       pushMessage('assistant', `صار خطأ: ${e.message || e}`);
     } finally {
@@ -808,6 +1298,36 @@
   els.send.addEventListener('click', send);
   els.clear.addEventListener('click', clearChat);
   els.export.addEventListener('click', exportChat);
+  els.upload.addEventListener('click', uploadFile);
+  els.clearFiles.addEventListener('click', function() {
+    state.uploaded_files = [];
+    saveState(state);
+    renderFiles();
+  });
+  els.planPanel.addEventListener('click', function(e) {
+    const btn = e.target.closest('[data-plan-action]');
+    if (!btn) return;
+    planAction(btn.getAttribute('data-plan-action'));
+  });
+  if (els.saveSchedule) els.saveSchedule.addEventListener('click', saveSchedule);
+  if (els.loadSchedules) els.loadSchedules.addEventListener('click', loadSchedules);
+  if (els.loadOverview) els.loadOverview.addEventListener('click', loadOverview);
+  if (els.schedulesList) {
+    els.schedulesList.addEventListener('click', function(e) {
+      const btn = e.target.closest('[data-schedule-run]');
+      if (btn) {
+        runSchedule(btn.getAttribute('data-schedule-run'));
+        return;
+      }
+      const editBtn = e.target.closest('[data-schedule-edit]');
+      if (editBtn) {
+        editSchedule(editBtn.getAttribute('data-schedule-edit'));
+        return;
+      }
+      const toggleBtn = e.target.closest('[data-schedule-toggle]');
+      if (toggleBtn) toggleSchedule(toggleBtn.getAttribute('data-schedule-toggle'));
+    });
+  }
 
   els.input.addEventListener('keydown', function(e) {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -831,6 +1351,10 @@
   // Init
   setControlsFromState();
   renderMessages();
+  renderFiles();
+  renderPlan(state.active_plan);
+  if (permissions.view_ai_audit_logs && els.schedulesList) loadSchedules();
+  if (permissions.view_ai_audit_logs && els.overviewList) loadOverview();
   scrollToBottom();
 })();
 </script>

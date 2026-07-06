@@ -24,6 +24,16 @@ from models.system_analytics import SystemAnalytics
 from models.system_alert import SystemAlert
 from models.system_settings import SystemSettings
 from models.assistant_memory import AssistantMemory
+from models.ai_assistant_control import (
+    AIActionItem,
+    AIActionPlan,
+    AIAuditRun,
+    AIChatMessage,
+    AIChatSession,
+    AIScheduledAudit,
+    AIToolCallLog,
+    AIUploadedFile,
+)
 from models.delivery_agent import DeliveryAgent
 from models.page import Page
 from models.role import Role, Permission
@@ -72,7 +82,7 @@ from routes.quick_sale import quick_sale_bp
 from routes.beauty import beauty_bp
 from routes.maintenance import maintenance_bp
 from routes.fixed_assets import fixed_assets_bp
-from routes.rotating_savings import rotating_savings_bp
+from routes.rotating_savings import rotating_savings_bp, rotating_savings_bp_alias
 from routes.whatsapp_webhook import whatsapp_webhook_bp
 from routes.landing import landing_bp
 from telegram_bot import telegram_bp
@@ -233,6 +243,16 @@ with app.app_context():
         RotatingSavingSettings,
     )
     from models.activity_log import ActivityLog  # noqa: F401
+    from models.ai_assistant_control import (  # noqa: F401
+        AIActionItem,
+        AIActionPlan,
+        AIAuditRun,
+        AIChatMessage,
+        AIChatSession,
+        AIScheduledAudit,
+        AIToolCallLog,
+        AIUploadedFile,
+    )
     from models.core.platform_announcement import PlatformAnnouncement  # noqa: F401
     from models.core.announcement_send_log import AnnouncementSendLog  # noqa: F401
 
@@ -462,6 +482,8 @@ with app.app_context():
                 db.session.execute(text("ALTER TABLE message ADD COLUMN file_name VARCHAR(255)"))
             if 'is_edited' not in message_columns:
                 db.session.execute(text("ALTER TABLE message ADD COLUMN is_edited BOOLEAN DEFAULT 0"))
+            if 'reply_to_id' not in message_columns:
+                db.session.execute(text("ALTER TABLE message ADD COLUMN reply_to_id INTEGER"))
             db.session.commit()
     except Exception as e:
         print(f"Migration note: {e}")
@@ -1482,6 +1504,7 @@ def require_login():
             ("/accounts", "view_accounts"),
             ("/assets", ("view_fixed_assets", "view_accounts")),
             ("/finance/rotating-savings", ("view_rotating_savings", "view_accounts")),
+            ("/finance/rotating_savings", ("view_rotating_savings", "view_accounts")),
             ("/reports", "view_reports"),
             ("/messages", "view_messages"),
             ("/pages", "view_pages"),
@@ -1494,7 +1517,7 @@ def require_login():
             if not path.startswith(prefix):
                 continue
             if isinstance(required, tuple):
-                if prefix in ("/assets", "/finance/rotating-savings"):
+                if prefix in ("/assets", "/finance/rotating-savings", "/finance/rotating_savings"):
                     allowed = any(employee_can(employee, perm) for perm in required)
                 else:
                     allowed = all(employee_can(employee, perm) for perm in required)
@@ -1795,6 +1818,7 @@ app.register_blueprint(purchases_bp, url_prefix="/purchases")
 app.register_blueprint(maintenance_bp)
 app.register_blueprint(fixed_assets_bp)
 app.register_blueprint(rotating_savings_bp)
+app.register_blueprint(rotating_savings_bp_alias)
 app.register_blueprint(inventory_ledger_bp, url_prefix="/inventory/ledger")
 app.register_blueprint(media_library_bp)
 app.register_blueprint(cash_bp, url_prefix="/cash")
@@ -2113,6 +2137,66 @@ def _start_ai_agent_scheduler():
 
 
 _start_ai_agent_scheduler()
+
+# =====================================
+# AI Assistant Scheduled Audits
+# =====================================
+def _start_ai_assistant_audit_scheduler():
+    import os
+    import sys
+
+    if os.environ.get("SERVER_SOFTWARE", "").startswith("gunicorn/") or "gunicorn" in (sys.argv[0] or ""):
+        return
+
+    try:
+        from apscheduler.schedulers.background import BackgroundScheduler  # type: ignore[import-untyped]
+        from apscheduler.triggers.interval import IntervalTrigger  # type: ignore[import-untyped]
+
+        def _run_ai_assistant_audits():
+            with app.app_context():
+                try:
+                    from flask import g
+                    from models.core.tenant import Tenant as CoreTenant
+                    from utils.ai_assistant_service import ensure_ai_assistant_schema, run_due_scheduled_audits
+
+                    tenants = CoreTenant.query.filter_by(is_active=True).all()
+                    if not tenants:
+                        ensure_ai_assistant_schema()
+                        run_due_scheduled_audits()
+                        return
+                    for tenant in tenants:
+                        tenant_slug = tenant.slug
+                        g.tenant = tenant_slug
+                        try:
+                            ensure_ai_assistant_schema()
+                            run_due_scheduled_audits()
+                        except Exception:
+                            db.session.rollback()
+                            try:
+                                app.logger.exception("AI assistant audit failed for tenant %s", tenant_slug)
+                            except Exception:
+                                pass
+                        finally:
+                            g.tenant = None
+                except Exception:
+                    try:
+                        app.logger.exception("AI assistant audit scheduler failed")
+                    except Exception:
+                        pass
+
+        scheduler = BackgroundScheduler()
+        scheduler.add_job(
+            _run_ai_assistant_audits,
+            IntervalTrigger(minutes=1),
+            id="ai_assistant_audits",
+            replace_existing=True,
+        )
+        scheduler.start()
+    except Exception:
+        pass
+
+
+_start_ai_assistant_audit_scheduler()
 
 # Favicon for browser tabs (/favicon.ico)
 @app.route("/favicon.ico")

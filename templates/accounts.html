@@ -474,6 +474,7 @@
         <span class="acc-stat-icon acc-stat-icon--green"><i class="fas fa-arrow-down"></i></span>
       </div>
       <div class="acc-stat-value acc-stat-value--green">{{ "{:,.0f}".format(total_deposit) }} <small style="font-size:11px;font-weight:600">{{ _('accounts_currency_iqd') }}</small></div>
+      <div class="acc-stat-note">مجموع إيداعات رأس المال منذ البداية (ليس رصيد الصندوق)</div>
     </div>
     <div class="acc-stat">
       <div class="acc-stat-top">
@@ -488,7 +489,7 @@
         <span class="acc-stat-icon acc-stat-icon--blue"><i class="fas fa-wallet"></i></span>
       </div>
       <div class="acc-stat-value acc-stat-value--blue">{{ "{:,.0f}".format(balance) }} <small style="font-size:11px;font-weight:600">{{ _('accounts_currency_iqd') }}</small></div>
-      <div class="acc-stat-note"><a href="/cash" class="acc-link-cash">من الصندوق ←</a></div>
+      <div class="acc-stat-note"><a href="/cash" class="acc-link-cash">النقد الفعلي الحالي — تفاصيل الصندوق ←</a></div>
     </div>
     <div class="acc-stat">
       <div class="acc-stat-top">
@@ -506,11 +507,13 @@
     </div>
     <div class="acc-treasury-grid">
       {% for item in treasury_balances|default([]) %}
+      {% if not item.account.is_default or not item.account.is_cash %}
       <div class="acc-treasury-card acc-treasury-card--{% if item.account.is_cash %}cash{% else %}bank{% endif %}">
         <div class="acc-treasury-name">{{ item.account.name }}</div>
         <div class="acc-treasury-value">{{ "{:,.0f}".format(item.balance) }} <small style="font-size:10px">{{ _('accounts_currency_iqd') }}</small></div>
         <div class="acc-treasury-type">{% if item.account.is_cash %}{{ _('treasury_cash') }}{% else %}{{ _('treasury_bank') }}{% endif %}</div>
       </div>
+      {% endif %}
       {% endfor %}
     </div>
   </div>
@@ -773,9 +776,9 @@
       confirmText: isDeposit ? "تسجيل الإيداع" : "تسجيل السحب",
       danger: !isDeposit,
       impact: [
-        isDeposit ? "يزيد إجمالي الإيداعات المعروضة في الحسابات." : "يزيد إجمالي السحوبات المعروضة في الحسابات.",
-        "لا يغير معادلات أرباح الطلبات أو تكلفة المخزون.",
-        "رصيد النقد يبقى معتمداً على صفحة الصندوق كمصدر موثوق."
+        isDeposit ? "يزيد «إجمالي الإيداعات» (سجل رأس المال التراكمي)." : "يزيد «إجمالي السحوبات» (سجل مسحوبات المالك).",
+        isDeposit ? "يزيد «الرصيد الحالي» بنفس المبلغ مرة واحدة فقط (نقد دخل الصندوق)." : "ينقص «الرصيد الحالي» بنفس المبلغ مرة واحدة فقط.",
+        "لا يغير أرباح الطلبات أو تكلفة المخزون."
       ]
     }).then((ok) => {
       if (!ok) return;

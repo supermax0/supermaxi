@@ -2,22 +2,12 @@
 {% block title %}إعدادات الجمعيات{% endblock %}
 {% block page_title %}إعدادات الجمعيات{% endblock %}
 {% block content %}
-<style>
-.rs-page { max-width: 700px; margin: 0 auto; direction: rtl; }
-.rs-nav { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
-.rs-nav a { padding: 8px 14px; border-radius: 10px; background: var(--card-alt); border: 1px solid var(--border-light); color: var(--text); text-decoration: none; font-size: 14px; }
-.rs-nav a.active { background: var(--primary); color: #fff; }
-.rs-form { background: var(--card); border: 1px solid var(--border-light); border-radius: 14px; padding: 24px; }
-.rs-field { margin-bottom: 16px; }
-.rs-field label { display: block; font-weight: 700; margin-bottom: 6px; }
-.rs-field select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-light); }
-.rs-btn { padding: 10px 20px; border-radius: 10px; border: none; background: var(--primary); color: #fff; font-weight: 700; cursor: pointer; }
-</style>
-<div class="rs-page">
+{% include "rotating_savings/_styles.html" %}
+<div class="rs-page rs-page--narrow">
   {% include "rotating_savings/_nav.html" %}
   <form class="rs-form" method="post">
     <div class="rs-field">
-      <label><input type="checkbox" name="enabled" value="1" {% if settings.enabled %}checked{% endif %}> تفعيل الموديول</label>
+      <label><input type="checkbox" name="enabled" value="1" {% if settings.enabled %}checked{% endif %} style="width:auto;"> تفعيل الموديول</label>
     </div>
     <div class="rs-field">
       <label>عند إرجاع مبالغ الجمعيات الشخصية</label>
@@ -34,7 +24,9 @@
         <option value="financing" {% if settings.cash_flow_classification == 'financing' %}selected{% endif %}>تمويلي</option>
       </select>
     </div>
-    <button type="submit" class="rs-btn">حفظ</button>
+    <div class="rs-form-actions">
+      <button type="submit" class="rs-btn rs-btn-primary">حفظ</button>
+    </div>
   </form>
 </div>
 {% endblock %}

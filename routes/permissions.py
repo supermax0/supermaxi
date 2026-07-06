@@ -43,6 +43,10 @@ DEFAULT_PERMISSIONS = [
     ("manage_branches", "إدارة الفروع"),
     ("manage_transfers", "نقل المخزون بين الفروع"),
     ("view_all_branches", "عرض كل الفروع"),
+    ("use_ai_assistant", "استخدام مساعد Finora الذكي"),
+    ("approve_ai_actions", "الموافقة على خطط المساعد الذكي وتنفيذها"),
+    ("manage_ai_schedules", "إدارة دوريات تحليل المساعد الذكي"),
+    ("view_ai_audit_logs", "رؤية سجل أدوات ومراجعات المساعد الذكي"),
 ]
 
 
@@ -86,6 +90,7 @@ def list_roles():
         ("communication", "الصفحات والمراسلة والشحن", ["view_shipping", "manage_shipping", "view_agents", "view_pages", "view_messages"]),
         ("team", "إدارة الفريق والإعدادات", ["manage_employees", "manage_agents", "manage_pages", "manage_settings"]),
         ("audit", "السجل والمراجعة", ["view_activity"]),
+        ("ai_assistant", "المساعد الذكي", ["use_ai_assistant", "approve_ai_actions", "manage_ai_schedules", "view_ai_audit_logs"]),
     ]
 
     used_names = set()

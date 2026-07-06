@@ -54,6 +54,7 @@ playwright/.cache/
 
 # مرفقات مؤقتة
 static/uploads/
+outputs/
 *.tmp
 temp/
 tmp/

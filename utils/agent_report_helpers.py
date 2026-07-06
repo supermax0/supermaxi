@@ -13,6 +13,9 @@ from models.system_alert import SystemAlert
 
 STATUS_TO_EN = {"واصل": "Delivered", "ملغي": "Canceled", "مؤجل": "Delayed"}
 STATUS_TO_AR = {v: k for k, v in STATUS_TO_EN.items()}
+DELIVERED_STATUSES = frozenset({"واصل", "Delivered"})
+POSTPONED_STATUSES = frozenset({"مؤجل", "Delayed"})
+FINALIZED_AGENT_STATUSES = frozenset({"واصل", "Delivered", "ملغي", "Canceled"})
 
 
 def is_agent_report(report) -> bool:
@@ -47,6 +50,20 @@ def _parse_selections(report) -> dict:
         return sel if isinstance(sel, dict) else {}
     except Exception:
         return {}
+
+
+def compute_report_delivered_amount(report) -> int:
+    """مجموع مبالغ الطلبات المحددة «واصل» فقط (يستثني المؤجل والملغي)."""
+    total = 0
+    selections = _parse_selections(report)
+    for row in _parse_orders_data(report):
+        order_id = row.get("id") or row.get("order_id")
+        if order_id is None:
+            continue
+        if selections.get(str(order_id)) not in DELIVERED_STATUSES:
+            continue
+        total += int(row.get("total", 0) or 0)
+    return total
 
 
 def get_report_order_ids(report) -> list[int]:
@@ -111,6 +128,42 @@ def find_executed_agent_reports_for_order(order_id: int, agent_id: int | None = 
         query = query.filter(ShippingReport.report_number.like(f"AGT-{int(agent_id)}-%"))
     oid = int(order_id)
     return [report for report in query.all() if oid in get_report_order_ids(report)]
+
+
+def is_order_finalized_in_executed_report(report, order_id: int) -> bool:
+    """هل الطلب واصل أو ملغي في كشف منفّذ؟ (المؤجل يُسمح بإعادته لكشف جديد)"""
+    if not report or not report.is_executed:
+        return False
+    oid = int(order_id)
+    if oid not in get_report_order_ids(report):
+        return False
+
+    status = _parse_selections(report).get(str(oid))
+    if status in POSTPONED_STATUSES:
+        return False
+    if status in FINALIZED_AGENT_STATUSES:
+        return True
+
+    from models.invoice import Invoice
+    from utils.order_status import is_canceled, is_completed
+
+    order = Invoice.query.get(oid)
+    if not order:
+        return True
+    return is_canceled(order.status, order.payment_status) or is_completed(
+        order.status, order.payment_status
+    )
+
+
+def find_blocking_executed_agent_reports_for_order(
+    order_id: int, agent_id: int | None = None
+) -> list[ShippingReport]:
+    """كشوف منفّذة يمنع إعادة الطلب منها (واصل/ملغي فقط — لا يشمل المؤجل)."""
+    return [
+        report
+        for report in find_executed_agent_reports_for_order(order_id, agent_id)
+        if is_order_finalized_in_executed_report(report, order_id)
+    ]
 
 
 def get_order_applied_status(order_id: int) -> str | None:

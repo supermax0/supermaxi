@@ -2521,7 +2521,7 @@ def create_agent_report_internal(order_ids, agent_id, save_to_db=True):
         return {"error": "لا توجد طلبات محددة"}
 
     from utils.agent_report_helpers import (
-        find_executed_agent_reports_for_order,
+        find_blocking_executed_agent_reports_for_order,
         find_open_agent_reports_for_order,
         get_report_order_ids,
     )
@@ -2537,7 +2537,7 @@ def create_agent_report_internal(order_ids, agent_id, save_to_db=True):
             for report in open_reports:
                 if set(get_report_order_ids(report)) == requested_set:
                     exact_existing_report = report
-        executed_reports = find_executed_agent_reports_for_order(oid, int(agent_id))
+        executed_reports = find_blocking_executed_agent_reports_for_order(oid, int(agent_id))
         if executed_reports:
             executed_hits[oid] = [r.report_number for r in executed_reports]
 

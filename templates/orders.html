@@ -4257,7 +4257,7 @@
     const isPaid = row && row.payment_status === "مسدد";
     const collapsed = !!(row && row.actions_collapsed);
     const canPay = !collapsed && !!(ORDERS_USER_CAN_MANAGE && row && row.can_pay);
-    const canReturn = !collapsed && !!(ORDERS_USER_CAN_MANAGE && row && !isReturned && !isPaid);
+    const canReturn = !collapsed && !!(ORDERS_USER_CAN_MANAGE && row && !isReturned);
     const canCancel = !collapsed && !!(ORDERS_USER_CAN_MANAGE && row && row.can_cancel);
 
     function actionBtn(className, action, iconClass, label, title, extraAttrs, disabled) {

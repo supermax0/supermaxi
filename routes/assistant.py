@@ -4,12 +4,26 @@ from extensions import db
 from models.system_analytics import SystemAnalytics
 from models.system_alert import SystemAlert
 from models.assistant_memory import AssistantMemory
+from models.ai_assistant_control import AIActionPlan, AIAuditRun, AIToolCallLog, AIUploadedFile
 from models.employee import Employee
 from models.invoice import Invoice
 from models.customer import Customer
 from models.product import Product
 from utils.assistant_analyzer import AssistantAnalyzer
 from utils.audit_accounting_integrity import audit_accounting_integrity
+from utils.ai_assistant_service import (
+    approve_action_plan,
+    create_or_update_schedule,
+    execute_action_plan,
+    ensure_ai_assistant_schema,
+    handle_chat_send,
+    list_schedules,
+    reject_action_plan,
+    run_ai_audit,
+    save_uploaded_file,
+    validate_action_plan,
+)
+from utils.permission_checks import check_permission, guard_permission
 from utils.plan_limits import get_plan, has_feature
 from datetime import datetime, timedelta
 from sqlalchemy import func
@@ -44,7 +58,281 @@ def chat():
     """صفحة محادثة المساعد المالي (متاحة لأي مستخدم مسجل)"""
     if "user_id" not in session:
         return redirect("/pos")
-    return render_template("assistant/chat.html", session=session)
+    ensure_ai_assistant_schema()
+    denied = guard_permission("use_ai_assistant")
+    if denied:
+        return denied
+    is_admin = session.get("role") == "admin"
+    assistant_permissions = {
+        "approve_ai_actions": is_admin or check_permission("approve_ai_actions"),
+        "manage_ai_schedules": is_admin or check_permission("manage_ai_schedules"),
+        "view_ai_audit_logs": is_admin or check_permission("view_ai_audit_logs"),
+    }
+    return render_template("assistant/chat.html", session=session, assistant_permissions=assistant_permissions)
+
+
+def _require_assistant_json(permission_name: str = "use_ai_assistant"):
+    if "user_id" not in session:
+        return jsonify({"success": False, "error": "غير مصرح"}), 403
+    ensure_ai_assistant_schema()
+    denied = guard_permission(permission_name, json=True)
+    if denied:
+        return denied
+    return None
+
+
+def _require_ai_action_approval():
+    denied = _require_assistant_json("approve_ai_actions")
+    if denied:
+        return denied
+    if session.get("role") == "admin" or check_permission("approve_ai_actions"):
+        return None
+    return jsonify({"success": False, "error": "الموافقة والتنفيذ للأدمن فقط"}), 403
+
+
+@assistant_bp.route("/api/chat/send", methods=["POST"])
+def api_chat_send():
+    denied = _require_assistant_json("use_ai_assistant")
+    if denied:
+        return denied
+    data = request.get_json(silent=True) or {}
+    message = (data.get("message") or "").strip()
+    if not message:
+        return jsonify({"success": False, "error": "اكتب رسالة للمساعد"}), 400
+    upload_ids = data.get("upload_ids") or []
+    try:
+        result = handle_chat_send(
+            employee_id=session.get("user_id"),
+            message=message,
+            session_id=data.get("session_id"),
+            upload_ids=upload_ids,
+        )
+        return jsonify(result)
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@assistant_bp.route("/api/files/upload", methods=["POST"])
+def api_file_upload():
+    denied = _require_assistant_json("use_ai_assistant")
+    if denied:
+        return denied
+    file = request.files.get("file")
+    try:
+        uploaded = save_uploaded_file(
+            file,
+            employee_id=session.get("user_id"),
+            session_id=request.form.get("session_id", type=int),
+        )
+        db.session.commit()
+        return jsonify(
+            {
+                "success": True,
+                "file": {
+                    "id": uploaded.id,
+                    "original_name": uploaded.original_name,
+                    "status": uploaded.status,
+                    "error_message": uploaded.error_message or "",
+                    "preview": uploaded.get_preview(),
+                },
+            }
+        )
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+@assistant_bp.route("/api/action-plans/<int:plan_id>", methods=["GET"])
+def api_get_action_plan(plan_id):
+    denied = _require_assistant_json("use_ai_assistant")
+    if denied:
+        return denied
+    plan = AIActionPlan.query.get_or_404(plan_id)
+    return jsonify({"success": True, "plan": plan.to_dict()})
+
+
+@assistant_bp.route("/api/action-plans/<int:plan_id>/approve", methods=["POST"])
+def api_approve_action_plan(plan_id):
+    denied = _require_ai_action_approval()
+    if denied:
+        return denied
+    data = request.get_json(silent=True) or {}
+    try:
+        plan = approve_action_plan(plan_id, employee_id=session.get("user_id"), note=data.get("note"))
+        return jsonify({"success": True, "plan": plan.to_dict()})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+@assistant_bp.route("/api/action-plans/<int:plan_id>/validate", methods=["POST"])
+def api_validate_action_plan(plan_id):
+    denied = _require_ai_action_approval()
+    if denied:
+        return denied
+    try:
+        validation = validate_action_plan(plan_id)
+        return jsonify({"success": True, "validation": validation})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+@assistant_bp.route("/api/action-plans/<int:plan_id>/execute", methods=["POST"])
+def api_execute_action_plan(plan_id):
+    denied = _require_ai_action_approval()
+    if denied:
+        return denied
+    try:
+        plan = execute_action_plan(plan_id, employee_id=session.get("user_id"))
+        return jsonify({"success": True, "plan": plan.to_dict()})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+@assistant_bp.route("/api/action-plans/<int:plan_id>/reject", methods=["POST"])
+def api_reject_action_plan(plan_id):
+    denied = _require_ai_action_approval()
+    if denied:
+        return denied
+    data = request.get_json(silent=True) or {}
+    try:
+        plan = reject_action_plan(plan_id, employee_id=session.get("user_id"), reason=data.get("reason"))
+        return jsonify({"success": True, "plan": plan.to_dict()})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+@assistant_bp.route("/api/schedules", methods=["GET", "POST"])
+def api_schedules():
+    permission = "manage_ai_schedules" if request.method == "POST" else "view_ai_audit_logs"
+    denied = _require_assistant_json(permission)
+    if denied:
+        return denied
+    if request.method == "GET":
+        return jsonify({"success": True, "schedules": list_schedules()})
+    data = request.get_json(silent=True) or {}
+    try:
+        schedule = create_or_update_schedule(data, employee_id=session.get("user_id"))
+        return jsonify({"success": True, "schedule": schedule.to_dict()})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+@assistant_bp.route("/api/schedules/<int:schedule_id>/run", methods=["POST"])
+def api_run_schedule(schedule_id):
+    denied = _require_assistant_json("manage_ai_schedules")
+    if denied:
+        return denied
+    try:
+        from models.ai_assistant_control import AIScheduledAudit
+
+        schedule = AIScheduledAudit.query.get_or_404(schedule_id)
+        run = run_ai_audit(audit_type=schedule.audit_type, schedule_id=schedule.id, employee_id=session.get("user_id"))
+        return jsonify({"success": True, "run_id": run.id, "summary": run.summary, "result": run.get_result()})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+@assistant_bp.route("/api/tool-logs", methods=["GET"])
+def api_tool_logs():
+    denied = _require_assistant_json("view_ai_audit_logs")
+    if denied:
+        return denied
+    limit = request.args.get("limit", 80, type=int)
+    limit = max(10, min(limit or 80, 300))
+    rows = AIToolCallLog.query.order_by(AIToolCallLog.created_at.desc()).limit(limit).all()
+
+    def loads(raw):
+        if not raw:
+            return {}
+        try:
+            return json.loads(raw)
+        except Exception:
+            return {}
+
+    return jsonify(
+        {
+            "success": True,
+            "logs": [
+                {
+                    "id": row.id,
+                    "session_id": row.session_id,
+                    "plan_id": row.plan_id,
+                    "employee_id": row.employee_id,
+                    "tool_name": row.tool_name,
+                    "mode": row.mode,
+                    "status": row.status,
+                    "error_message": row.error_message or "",
+                    "input": loads(row.input_json),
+                    "output": loads(row.output_json),
+                    "created_at": row.created_at.isoformat() if row.created_at else None,
+                }
+                for row in rows
+            ],
+        }
+    )
+
+
+@assistant_bp.route("/api/overview", methods=["GET"])
+def api_ai_overview():
+    denied = _require_assistant_json("view_ai_audit_logs")
+    if denied:
+        return denied
+    plans = AIActionPlan.query.order_by(AIActionPlan.created_at.desc()).limit(8).all()
+    runs = AIAuditRun.query.order_by(AIAuditRun.started_at.desc()).limit(8).all()
+    logs = AIToolCallLog.query.order_by(AIToolCallLog.created_at.desc()).limit(12).all()
+    alerts = (
+        SystemAlert.query.filter_by(is_dismissed=False)
+        .filter(SystemAlert.alert_type == "ai_audit")
+        .order_by(SystemAlert.created_at.desc())
+        .limit(8)
+        .all()
+    )
+    return jsonify(
+        {
+            "success": True,
+            "plans": [plan.to_dict(include_items=False) for plan in plans],
+            "runs": [
+                {
+                    "id": run.id,
+                    "run_type": run.run_type,
+                    "status": run.status,
+                    "summary": run.summary or "",
+                    "started_at": run.started_at.isoformat() if run.started_at else None,
+                    "finished_at": run.finished_at.isoformat() if run.finished_at else None,
+                    "action_plan_id": run.action_plan_id,
+                }
+                for run in runs
+            ],
+            "logs": [
+                {
+                    "id": row.id,
+                    "tool_name": row.tool_name,
+                    "mode": row.mode,
+                    "status": row.status,
+                    "created_at": row.created_at.isoformat() if row.created_at else None,
+                    "plan_id": row.plan_id,
+                }
+                for row in logs
+            ],
+            "alerts": [
+                {
+                    "id": alert.id,
+                    "title": alert.title,
+                    "message": alert.message,
+                    "priority": alert.priority,
+                    "created_at": alert.created_at.isoformat() if alert.created_at else None,
+                }
+                for alert in alerts
+            ],
+        }
+    )
 
 # =====================================================
 # Assistant Dashboard

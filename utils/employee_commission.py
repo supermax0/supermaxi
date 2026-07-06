@@ -28,8 +28,17 @@ def set_fixed_employee_commission_amount(amount: int) -> int:
     return value
 
 
+def is_commission_eligible_employee(employee) -> bool:
+    """Per-order commission applies to cashiers only — not admins/managers."""
+    if employee is None:
+        return False
+    return (getattr(employee, "role", None) or "").lower() != "admin"
+
+
 def get_employee_commission_amount(employee) -> int:
-    """Per-order commission stored on the employee record."""
+    """Per-order commission stored on the employee record (not tied to sales)."""
+    if not is_commission_eligible_employee(employee):
+        return 0
     if employee is None:
         return get_fixed_employee_commission_amount()
     try:

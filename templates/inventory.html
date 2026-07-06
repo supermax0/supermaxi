@@ -1513,17 +1513,18 @@
     }
 
     .ipr-table {
-      width: 100%;
+      width: auto;
+      max-width: 100%;
       border-collapse: collapse;
       direction: rtl;
       table-layout: fixed;
-      font-size: 10.5px;
+      font-size: 11px;
     }
 
     .ipr-table th,
     .ipr-table td {
       border: 1px solid #d1d5db;
-      padding: 6px 5px;
+      padding: 6px 8px;
       color: #111827;
       vertical-align: middle;
       word-break: break-word;
@@ -1532,6 +1533,30 @@
     .ipr-table th {
       background: #e5e7eb;
       font-weight: 800;
+      text-align: center;
+    }
+
+    .ipr-col-index {
+      width: 42px;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .ipr-col-product {
+      width: 320px;
+      text-align: right;
+    }
+
+    .ipr-col-qty {
+      width: 68px;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .ipr-col-diff {
+      width: 80px;
+      text-align: center;
+      min-height: 22px;
     }
 
     .ipr-table tbody tr:nth-child(even) td {
@@ -1580,6 +1605,10 @@
         color: #111827;
         direction: rtl;
         font-family: "Tahoma", "Arial", sans-serif;
+      }
+
+      .inventory-print-report .ipr-table {
+        margin-inline-start: 0;
       }
 
       .ipr-header,
@@ -1701,6 +1730,15 @@
           <i class="fas fa-print"></i>
           <span>طباعة</span>
         </button>
+        <button type="button" class="inv-btn secondary compact" onclick="downloadInventoryAuditTemplate()">
+          <i class="fas fa-file-excel" style="color:#107C41;"></i>
+          <span>تنزيل جرد الفرع</span>
+        </button>
+        <button type="button" class="inv-btn success compact" onclick="openInventoryAuditUpload()">
+          <i class="fas fa-cloud-upload-alt"></i>
+          <span>رفع الجرد للـ AI</span>
+        </button>
+        <input id="inventoryAuditUploadInput" type="file" accept=".xlsx,.xlsm" style="display:none" onchange="uploadInventoryAuditToAI(this)">
         <a href="{{ url_for('stock_transfers.transfers_index') }}" class="inv-btn secondary compact">
           <i class="fas fa-truck-loading"></i>
           <span>نقل بين الفروع</span>
@@ -1775,8 +1813,10 @@
     <table class="ipr-table">
       <thead>
         <tr>
-          <th>المنتج</th>
-          <th style="width:90px;">الكمية</th>
+          <th class="ipr-col-index">#</th>
+          <th class="ipr-col-product">المنتج</th>
+          <th class="ipr-col-qty">الكمية</th>
+          <th class="ipr-col-diff">الفارق</th>
         </tr>
       </thead>
       <tbody id="iprBody"></tbody>
@@ -1992,6 +2032,50 @@
     const branchFilter = document.getElementById('filterBranch');
     if (!branchFilter || branchFilter.value === 'all' || branchFilter.value === 'none') return null;
     return branchFilter.options[branchFilter.selectedIndex] || null;
+  }
+
+  function downloadInventoryAuditTemplate() {
+    const branchFilter = document.getElementById('filterBranch');
+    const branchValue = branchFilter ? branchFilter.value : 'all';
+    if (branchValue === 'none') {
+      alert('اختار فرع حقيقي حتى ينزل ملف الجرد.');
+      return;
+    }
+    const url = new URL("{{ url_for('inventory.download_inventory_audit_template') }}", window.location.origin);
+    url.searchParams.set('branch_id', branchValue || 'all');
+    window.location.href = url.toString();
+  }
+
+  function openInventoryAuditUpload() {
+    const input = document.getElementById('inventoryAuditUploadInput');
+    if (input) input.click();
+  }
+
+  async function uploadInventoryAuditToAI(input) {
+    const file = input && input.files ? input.files[0] : null;
+    if (!file) return;
+    const form = new FormData();
+    form.append('file', file);
+    try {
+      const res = await fetch("{{ url_for('inventory.upload_inventory_audit_to_ai') }}", {
+        method: 'POST',
+        body: form
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'تعذر تحليل ملف الجرد.');
+      }
+      const plan = data.plan || {};
+      const itemsCount = Array.isArray(plan.items) ? plan.items.length : 0;
+      const message = `تم تحليل الجرد وإنشاء خطة #${plan.id || '-'} بعدد إجراءات ${itemsCount}. افتح المساعد للمراجعة والموافقة.`;
+      if (window.confirm(message + '\n\nفتح المساعد الآن؟')) {
+        window.location.href = data.assistant_url || '/assistant/chat';
+      }
+    } catch (err) {
+      alert('صار خطأ برفع الجرد للـ AI: ' + (err.message || err));
+    } finally {
+      if (input) input.value = '';
+    }
   }
 
   function getProductBranchQuantity(product, branchId) {
@@ -2388,15 +2472,17 @@
 
     const body = document.getElementById('iprBody');
     if (body) {
-      body.innerHTML = rows.length ? rows.map(product => {
+      body.innerHTML = rows.length ? rows.map((product, index) => {
         const qty = Number(product.quantity) || 0;
         return `
           <tr>
-            <td>${escapeHtml(product.name || '—')}</td>
-            <td>${formatInventoryNumber(qty)}</td>
+            <td class="ipr-col-index">${index + 1}</td>
+            <td class="ipr-col-product">${escapeHtml(product.name || '—')}</td>
+            <td class="ipr-col-qty">${formatInventoryNumber(qty)}</td>
+            <td class="ipr-col-diff"></td>
           </tr>
         `;
-      }).join('') : '<tr><td colspan="2" style="text-align:center; padding:18px;">لا توجد منتجات ضمن التصفية الحالية</td></tr>';
+      }).join('') : '<tr><td colspan="4" style="text-align:center; padding:18px;">لا توجد منتجات ضمن التصفية الحالية</td></tr>';
     }
 
     requestAnimationFrame(() => window.print());

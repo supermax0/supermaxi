@@ -1,7 +1,8 @@
 import json
 import os
+from io import BytesIO
 
-from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify, current_app, g
+from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify, current_app, g, send_file
 from werkzeug.utils import secure_filename
 from extensions import db
 from models.product import Product
@@ -352,10 +353,335 @@ def _delivery_fees_context(product=None, meta: dict | None = None) -> dict:
     }
 
 
+def _safe_xlsx_filename(value: str) -> str:
+    clean = "".join(ch if ch.isalnum() or ch in ("-", "_") else "_" for ch in str(value or "").strip())
+    return clean.strip("_") or "inventory"
+
+
+def _is_shipping_fee_product(product) -> bool:
+    marker_values = (product.name or "", product.sku or "", product.barcode or "")
+    return any("رسوم الشحن" in str(v) or "__SF_SHIPPING__" in str(v) for v in marker_values)
+
+
+def _build_inventory_audit_workbook(branch=None, *, all_branches=False):
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+    from openpyxl.utils import get_column_letter
+    from models.branch import Branch, BranchStock
+
+    ensure_branch_schema()
+    branches = (
+        Branch.query.filter_by(is_active=True).order_by(Branch.name.asc()).all()
+        if all_branches
+        else ([branch] if branch else [])
+    )
+    if not branches:
+        branches = Branch.query.filter_by(is_active=True).order_by(Branch.name.asc()).all()
+
+    products = [
+        p for p in Product.query.order_by(Product.name.asc(), Product.id.asc()).all()
+        if not _is_shipping_fee_product(p)
+    ]
+    product_ids = [p.id for p in products]
+    branch_ids = [b.id for b in branches]
+
+    stock_by_key: dict[tuple[int, int], int] = {}
+    if product_ids and branch_ids:
+        rows = (
+            BranchStock.query
+            .filter(BranchStock.product_id.in_(product_ids), BranchStock.branch_id.in_(branch_ids))
+            .all()
+        )
+        stock_by_key = {
+            (int(row.branch_id), int(row.product_id)): int(row.quantity or 0)
+            for row in rows
+        }
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "الجرد"
+    ws.sheet_view.rightToLeft = True
+    ws.freeze_panes = "A7"
+    summary = wb.create_sheet("ملخص الفروع")
+    summary.sheet_view.rightToLeft = True
+    info = wb.create_sheet("تعليمات")
+    info.sheet_view.rightToLeft = True
+
+    title_fill = PatternFill("solid", fgColor="0F172A")
+    header_fill = PatternFill("solid", fgColor="2563EB")
+    note_fill = PatternFill("solid", fgColor="EFF6FF")
+    input_fill = PatternFill("solid", fgColor="FEF9C3")
+    light_fill = PatternFill("solid", fgColor="F8FAFC")
+    total_fill = PatternFill("solid", fgColor="E0F2FE")
+    border = Border(
+        left=Side(style="thin", color="D9E2EC"),
+        right=Side(style="thin", color="D9E2EC"),
+        top=Side(style="thin", color="D9E2EC"),
+        bottom=Side(style="thin", color="D9E2EC"),
+    )
+
+    headers = [
+        "رقم الفرع",
+        "رقم المنتج",
+        "الفرع",
+        "المنتج",
+        "SKU",
+        "الباركود",
+        "الحالة",
+        "كمية النظام بالفرع",
+        "الكمية الفعلية",
+        "الفرق",
+        "ملاحظة الجرد",
+        "إجمالي المنتج بالنظام",
+        "سعر الشراء",
+    ]
+    start_row = 7
+    data_rows_count = len(branches) * len(products)
+    end_row = start_row + max(data_rows_count, 1) - 1
+    scope = "كل الفروع" if all_branches else (branch.name if branch else "كل الفروع")
+
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(headers))
+    ws["A1"] = "قالب جرد المخزون حسب الفروع"
+    ws["A1"].fill = title_fill
+    ws["A1"].font = Font(color="FFFFFF", bold=True, size=18)
+    ws["A1"].alignment = Alignment(horizontal="center", vertical="center")
+    ws.row_dimensions[1].height = 30
+
+    ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=len(headers))
+    ws["A2"] = f"الفرع: {scope} | تاريخ الإنشاء: {datetime.now().strftime('%Y-%m-%d %H:%M')} | اكتب العدد الفعلي في العمود الأصفر."
+    ws["A2"].fill = note_fill
+    ws["A2"].font = Font(color="1E3A8A", bold=True)
+    ws["A2"].alignment = Alignment(horizontal="center")
+
+    for cell_range, label in (
+        ("A4:B5", "إجمالي أسطر الجرد"),
+        ("C4:D5", None),
+        ("E4:F5", "الأسطر المدخلة"),
+        ("G4:H5", None),
+        ("I4:J5", "أسطر بيها فرق"),
+        ("K4:M5", None),
+    ):
+        ws.merge_cells(cell_range)
+        if label:
+            ws[cell_range.split(":")[0]] = label
+    ws["C4"] = f"=COUNTA(D{start_row}:D{end_row})"
+    ws["G4"] = f"=COUNT(I{start_row}:I{end_row})"
+    ws["K4"] = f'=SUMPRODUCT(--(I{start_row}:I{end_row}<>""),--(J{start_row}:J{end_row}<>0))'
+    for row in ws.iter_rows(min_row=4, max_row=5, min_col=1, max_col=len(headers)):
+        for cell in row:
+            cell.fill = light_fill
+            cell.border = border
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+            cell.font = Font(bold=True, color="0F172A")
+    for addr, color in (("C4", "2563EB"), ("G4", "16A34A"), ("K4", "DC2626")):
+        ws[addr].font = Font(bold=True, color=color, size=16)
+
+    for col_idx, header in enumerate(headers, 1):
+        cell = ws.cell(row=6, column=col_idx, value=header)
+        cell.fill = header_fill
+        cell.font = Font(color="FFFFFF", bold=True)
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        cell.border = border
+
+    row_idx = start_row
+    for b in branches:
+        branch_label = f"{b.name} ({b.code})" if b.code else b.name
+        for p in products:
+            qty = stock_by_key.get((int(b.id), int(p.id)), 0)
+            values = [
+                b.id,
+                p.id,
+                branch_label,
+                p.name,
+                p.sku or "",
+                p.barcode or "",
+                "نشط" if p.active else "غير نشط",
+                qty,
+                None,
+                f'=IF(I{row_idx}="","",I{row_idx}-H{row_idx})',
+                "",
+                int(p.quantity or 0),
+                int(p.buy_price or 0),
+            ]
+            for col_idx, value in enumerate(values, 1):
+                cell = ws.cell(row=row_idx, column=col_idx, value=value)
+                cell.border = border
+                cell.alignment = Alignment(
+                    horizontal="right" if col_idx in (4, 11) else "center",
+                    vertical="center",
+                )
+                if col_idx == 9:
+                    cell.fill = input_fill
+                    cell.font = Font(bold=True)
+            row_idx += 1
+    if data_rows_count == 0:
+        ws.cell(row=start_row, column=1, value="لا توجد منتجات للجرد")
+
+    for row_no in range(start_row, end_row + 1):
+        for col_idx in (8, 9, 10, 12, 13):
+            ws.cell(row=row_no, column=col_idx).number_format = "#,##0"
+    for idx, width in enumerate([10, 10, 22, 34, 14, 18, 12, 16, 16, 12, 24, 16, 14], 1):
+        ws.column_dimensions[get_column_letter(idx)].width = width
+    ws.auto_filter.ref = f"A6:M{end_row}"
+
+    summary_headers = ["رقم الفرع", "الفرع", "أسطر الجرد", "المدخل", "أسطر الفرق", "الزيادة", "النقص", "صافي الفرق"]
+    summary.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(summary_headers))
+    summary["A1"] = "ملخص الفروقات حسب الفرع"
+    summary["A1"].fill = title_fill
+    summary["A1"].font = Font(color="FFFFFF", bold=True, size=18)
+    summary["A1"].alignment = Alignment(horizontal="center")
+    for col_idx, header in enumerate(summary_headers, 1):
+        cell = summary.cell(row=3, column=col_idx, value=header)
+        cell.fill = header_fill
+        cell.font = Font(color="FFFFFF", bold=True)
+        cell.border = border
+        cell.alignment = Alignment(horizontal="center")
+    for idx, b in enumerate(branches, 4):
+        summary.cell(row=idx, column=1, value=b.id)
+        summary.cell(row=idx, column=2, value=b.name)
+        summary.cell(row=idx, column=3, value=f'=COUNTIF(\'الجرد\'!$A${start_row}:$A${end_row},A{idx})')
+        summary.cell(row=idx, column=4, value=f'=COUNTIFS(\'الجرد\'!$A${start_row}:$A${end_row},A{idx},\'الجرد\'!$I${start_row}:$I${end_row},"<>")')
+        summary.cell(row=idx, column=5, value=f'=SUMPRODUCT(--(\'الجرد\'!$A${start_row}:$A${end_row}=A{idx}),--(\'الجرد\'!$I${start_row}:$I${end_row}<>""),--(\'الجرد\'!$J${start_row}:$J${end_row}<>0))')
+        summary.cell(row=idx, column=6, value=f'=SUMIFS(\'الجرد\'!$J${start_row}:$J${end_row},\'الجرد\'!$A${start_row}:$A${end_row},A{idx},\'الجرد\'!$J${start_row}:$J${end_row},">0")')
+        summary.cell(row=idx, column=7, value=f'=ABS(SUMIFS(\'الجرد\'!$J${start_row}:$J${end_row},\'الجرد\'!$A${start_row}:$A${end_row},A{idx},\'الجرد\'!$J${start_row}:$J${end_row},"<0"))')
+        summary.cell(row=idx, column=8, value=f"=F{idx}-G{idx}")
+    total_row = 4 + len(branches)
+    summary.merge_cells(start_row=total_row, start_column=1, end_row=total_row, end_column=2)
+    summary.cell(row=total_row, column=1, value="الإجمالي")
+    for col_idx in range(3, 9):
+        col = get_column_letter(col_idx)
+        summary.cell(row=total_row, column=col_idx, value=f"=SUM({col}4:{col}{total_row - 1})")
+    for row in summary.iter_rows(min_row=3, max_row=total_row, min_col=1, max_col=len(summary_headers)):
+        for cell in row:
+            cell.border = border
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+    for cell in summary[total_row]:
+        cell.fill = total_fill
+        cell.font = Font(bold=True)
+    for idx, width in enumerate([12, 26, 14, 12, 12, 12, 12, 14], 1):
+        summary.column_dimensions[get_column_letter(idx)].width = width
+
+    info.merge_cells(start_row=1, start_column=1, end_row=1, end_column=2)
+    info["A1"] = "تعليمات استخدام ملف الجرد"
+    info["A1"].fill = title_fill
+    info["A1"].font = Font(color="FFFFFF", bold=True, size=18)
+    info["A1"].alignment = Alignment(horizontal="center")
+    instructions = [
+        ("1", "لا تعدل الأعمدة الزرقاء أو الرمادية، اكتب فقط في عمود الكمية الفعلية الأصفر."),
+        ("2", "الفرق ينحسب تلقائياً: الكمية الفعلية - كمية النظام."),
+        ("3", "الفرق الموجب يعني زيادة، والفرق السالب يعني نقص."),
+        ("4", "اكتب سبب الفرق أو أي ملاحظة في عمود ملاحظة الجرد."),
+        ("5", "بعد إكمال الجرد، أرسل نفس الملف حتى أطلع الفروقات حسب الفرع والمنتج."),
+    ]
+    for row_no, (no, text) in enumerate(instructions, 3):
+        info.cell(row=row_no, column=1, value=no)
+        info.cell(row=row_no, column=2, value=text)
+    for row in info.iter_rows(min_row=3, max_row=3 + len(instructions) - 1, min_col=1, max_col=2):
+        for cell in row:
+            cell.fill = light_fill
+            cell.border = border
+            cell.alignment = Alignment(horizontal="right", vertical="center", wrap_text=True)
+    info.column_dimensions["A"].width = 10
+    info.column_dimensions["B"].width = 80
+
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    return output, scope
+
+
 
 # ======================================
 # Inventory Page
 # ======================================
+@inventory_bp.route("/audit-template.xlsx", methods=["GET"])
+def download_inventory_audit_template():
+    if not check_permission("can_manage_inventory"):
+        return redirect("/pos"), 403
+
+    ensure_product_schema()
+    ensure_branch_schema()
+    from models.branch import Branch
+
+    branch_id_raw = (request.args.get("branch_id") or "all").strip()
+    all_branches = branch_id_raw in ("", "all")
+    branch = None
+    if not all_branches:
+        if not branch_id_raw.isdigit():
+            return jsonify({"ok": False, "error": "يرجى اختيار فرع صحيح."}), 400
+        branch = Branch.query.filter_by(id=int(branch_id_raw), is_active=True).first()
+        if not branch:
+            return jsonify({"ok": False, "error": "الفرع غير موجود أو غير نشط."}), 404
+
+    output, scope = _build_inventory_audit_workbook(branch, all_branches=all_branches)
+    suffix = "all_branches" if all_branches else _safe_xlsx_filename(scope)
+    filename = f"inventory_audit_{suffix}_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
+    return send_file(
+        output,
+        as_attachment=True,
+        download_name=filename,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+
+@inventory_bp.route("/audit-ai-upload", methods=["POST"])
+def upload_inventory_audit_to_ai():
+    if not check_permission("can_manage_inventory"):
+        return jsonify({"success": False, "error": "غير مصرح"}), 403
+
+    try:
+        from utils.ai_assistant_service import (
+            build_inventory_reconcile_plan,
+            ensure_ai_assistant_schema,
+            save_uploaded_file,
+        )
+
+        ensure_ai_assistant_schema()
+        uploaded = save_uploaded_file(
+            request.files.get("file"),
+            employee_id=session.get("user_id"),
+            session_id=None,
+        )
+        if uploaded.status != "parsed":
+            db.session.commit()
+            return jsonify(
+                {
+                    "success": False,
+                    "error": uploaded.error_message or "تعذر قراءة ملف الجرد",
+                    "file": {
+                        "id": uploaded.id,
+                        "original_name": uploaded.original_name,
+                        "status": uploaded.status,
+                        "preview": uploaded.get_preview(),
+                    },
+                }
+            ), 400
+
+        plan, meta = build_inventory_reconcile_plan(
+            [uploaded.id],
+            employee_id=session.get("user_id"),
+            session_id=None,
+        )
+        db.session.commit()
+        return jsonify(
+            {
+                "success": True,
+                "file": {
+                    "id": uploaded.id,
+                    "original_name": uploaded.original_name,
+                    "status": uploaded.status,
+                    "preview": uploaded.get_preview(),
+                },
+                "plan": plan.to_dict() if plan else None,
+                "meta": meta,
+                "assistant_url": "/assistant/chat",
+            }
+        )
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
 @inventory_bp.route("/", methods=["GET", "POST"])
 def inventory():
     # فحص الصلاحية
