@@ -190,3 +190,28 @@ def prepare_invoice_items_for_print(items):
     ]
     display_total = sum(i.total for i in printable)
     return printable, display_total
+
+
+def invoice_print_amounts(order, total: int) -> dict:
+    """مبالغ الفاتورة للطباعة: الإجمالي، المدفوع، والمتبقي."""
+    total = int(total or 0)
+    payment_status = (getattr(order, "payment_status", None) or "").strip()
+    paid = min(max(int(getattr(order, "paid_amount", None) or 0), 0), total)
+
+    if payment_status == "مسدد":
+        paid = total
+        due = total
+        is_partial = False
+    elif payment_status == "جزئي":
+        due = max(total - paid, 0)
+        is_partial = paid > 0 and due > 0
+    else:
+        due = max(total - paid, 0) if paid > 0 else total
+        is_partial = paid > 0 and due > 0
+
+    return {
+        "total": total,
+        "paid_amount": paid,
+        "due": due,
+        "is_partial": is_partial,
+    }

@@ -588,6 +588,310 @@
     min-width: 110px;
   }
 }
+
+/* Command-center layout: chat first, live report always visible on wide screens. */
+.ai-chat-page {
+  max-width: none;
+  width: min(100%, 1720px);
+  min-height: calc(100vh - 128px);
+  padding: 0 8px 18px;
+}
+
+.ai-chat-card {
+  min-height: calc(100vh - 138px);
+  border-radius: 22px;
+  padding: 14px;
+}
+
+.ai-chat-head {
+  margin-bottom: 12px;
+  padding: 14px 16px;
+  border-radius: 18px;
+}
+
+.ai-chat-title {
+  font-size: 21px;
+}
+
+.ai-chat-title-mark {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+}
+
+.ai-chat-subtitle {
+  max-width: 980px;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.ai-chat-hero-stats {
+  margin-top: 10px;
+}
+
+.ai-chat-layout {
+  grid-template-columns: minmax(0, 1fr) 390px;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.ai-settings {
+  grid-column: 1 / -1;
+  position: static;
+  top: auto;
+  display: grid;
+  grid-template-columns: minmax(280px, 0.75fr) minmax(360px, 1.2fr) minmax(280px, 0.82fr) minmax(280px, 0.9fr);
+  gap: 12px;
+  padding: 12px;
+  border-radius: 18px;
+}
+
+.ai-settings-section {
+  min-width: 0;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(15, 23, 42, 0.18);
+}
+
+:root[data-theme="light"] .ai-settings-section {
+  background: rgba(248, 250, 252, 0.8);
+}
+
+.ai-settings-section + .ai-settings-section {
+  margin-top: 0;
+  padding-top: 12px;
+}
+
+.ai-settings h4 {
+  margin-bottom: 8px;
+}
+
+.ai-field {
+  margin-bottom: 8px;
+}
+
+.ai-field select,
+.ai-field input,
+.ai-file-input {
+  min-height: 42px;
+  padding: 10px 12px;
+  border-radius: 12px;
+}
+
+.ai-chips {
+  gap: 6px;
+}
+
+.ai-chip {
+  padding: 8px 10px;
+  border-radius: 12px;
+}
+
+.ai-note {
+  align-self: stretch;
+  margin-top: 0;
+  display: flex;
+  align-items: center;
+}
+
+.ai-chat {
+  min-height: 0;
+  height: calc(100vh - 396px);
+  max-height: none;
+  border-radius: 18px;
+  padding: 12px;
+}
+
+.ai-messages {
+  border-radius: 16px;
+  padding: 12px;
+}
+
+.ai-compose {
+  border-radius: 16px;
+}
+
+.ai-live-report {
+  min-height: 0;
+  height: calc(100vh - 396px);
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(2, 6, 23, 0.18);
+  overflow: auto;
+}
+
+:root[data-theme="light"] .ai-live-report {
+  background: rgba(255, 255, 255, 0.84);
+}
+
+.ai-report-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.ai-report-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--text);
+}
+
+.ai-report-subtitle {
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.ai-report-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.14);
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.ai-report-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ai-report-stat,
+.ai-report-block {
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(15, 23, 42, 0.18);
+  border-radius: 14px;
+  padding: 11px;
+}
+
+:root[data-theme="light"] .ai-report-stat,
+:root[data-theme="light"] .ai-report-block {
+  background: rgba(248, 250, 252, 0.86);
+}
+
+.ai-report-stat span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 11px;
+  margin-bottom: 5px;
+}
+
+.ai-report-stat strong {
+  color: var(--text);
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.ai-report-section {
+  margin-top: 12px;
+}
+
+.ai-report-section h4 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 900;
+  color: var(--text);
+}
+
+.ai-report-list {
+  display: grid;
+  gap: 8px;
+}
+
+.ai-report-item {
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.13);
+  background: rgba(15, 23, 42, 0.12);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+:root[data-theme="light"] .ai-report-item {
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.ai-report-item strong {
+  display: block;
+  margin-bottom: 2px;
+}
+
+.ai-report-item small {
+  color: var(--text-muted);
+}
+
+.ai-report-empty {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.ai-report-progress {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.16);
+  overflow: hidden;
+  margin: 10px 0 2px;
+}
+
+.ai-report-progress span {
+  display: block;
+  width: 28%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2563eb, #10b981);
+  transition: width 220ms ease;
+}
+
+.ai-report-progress.is-working span {
+  width: 78%;
+  animation: aiReportPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes aiReportPulse {
+  0%, 100% { opacity: 0.62; }
+  50% { opacity: 1; }
+}
+
+@media (max-width: 1280px) {
+  .ai-settings {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ai-chat-layout {
+    grid-template-columns: minmax(0, 1fr) 340px;
+  }
+}
+
+@media (max-width: 980px) {
+  .ai-chat-page,
+  .ai-chat-card {
+    min-height: auto;
+  }
+  .ai-chat-layout,
+  .ai-settings {
+    grid-template-columns: 1fr;
+  }
+  .ai-chat,
+  .ai-live-report {
+    height: auto;
+    min-height: 520px;
+  }
+  .ai-live-report {
+    min-height: auto;
+  }
+}
 </style>
 
 <div class="ai-chat-page">
@@ -753,6 +1057,53 @@
           <button class="btn ai-send" id="aiSendBtn" type="button">إرسال</button>
         </div>
       </div>
+
+      <aside class="ai-live-report" aria-live="polite">
+        <div class="ai-report-head">
+          <div>
+            <h3 class="ai-report-title">تقرير التحليل</h3>
+            <div class="ai-report-subtitle">يراقب الفروقات والأخطاء المتكررة أثناء المحادثة.</div>
+          </div>
+          <span class="ai-report-status" id="aiReportStatus">جاهز</span>
+        </div>
+        <div class="ai-report-progress" id="aiReportProgress"><span></span></div>
+        <div class="ai-report-grid">
+          <div class="ai-report-stat">
+            <span>فروقات مخزون</span>
+            <strong id="aiReportStock">0</strong>
+          </div>
+          <div class="ai-report-stat">
+            <span>حالات طلبات</span>
+            <strong id="aiReportStatusIssues">0</strong>
+          </div>
+          <div class="ai-report-stat">
+            <span>فواتير مختلفة</span>
+            <strong id="aiReportInvoices">0</strong>
+          </div>
+          <div class="ai-report-stat">
+            <span>هوامش سالبة</span>
+            <strong id="aiReportMargins">0</strong>
+          </div>
+        </div>
+        <div class="ai-report-section">
+          <h4>أهم الملاحظات</h4>
+          <div class="ai-report-list" id="aiReportFindings">
+            <div class="ai-report-empty">اضغط “تحديث السجل” أو ابدأ تحليل حتى تظهر الملاحظات.</div>
+          </div>
+        </div>
+        <div class="ai-report-section">
+          <h4>قواعد النظام التي ينتبه لها</h4>
+          <div class="ai-report-list" id="aiReportRules">
+            <div class="ai-report-item">الجرد يشمل تم الطلب وجاري الشحن، وأي تعديل يحتاج خطة وموافقة.</div>
+          </div>
+        </div>
+        <div class="ai-report-section">
+          <h4>خطة التنفيذ الحالية</h4>
+          <div class="ai-report-list" id="aiReportPlan">
+            <div class="ai-report-empty">لا توجد خطة نشطة.</div>
+          </div>
+        </div>
+      </aside>
     </div>
   </div>
 </div>
@@ -792,7 +1143,16 @@
     loadSchedules: document.getElementById('aiLoadSchedulesBtn'),
     schedulesList: document.getElementById('aiSchedulesList'),
     loadOverview: document.getElementById('aiLoadOverviewBtn'),
-    overviewList: document.getElementById('aiOverviewList')
+    overviewList: document.getElementById('aiOverviewList'),
+    reportStatus: document.getElementById('aiReportStatus'),
+    reportProgress: document.getElementById('aiReportProgress'),
+    reportStock: document.getElementById('aiReportStock'),
+    reportStatusIssues: document.getElementById('aiReportStatusIssues'),
+    reportInvoices: document.getElementById('aiReportInvoices'),
+    reportMargins: document.getElementById('aiReportMargins'),
+    reportFindings: document.getElementById('aiReportFindings'),
+    reportRules: document.getElementById('aiReportRules'),
+    reportPlan: document.getElementById('aiReportPlan')
   };
 
   function nowTime() {
@@ -832,8 +1192,10 @@
     session_id: null,
     uploaded_files: [],
     active_plan: null,
+    report_snapshot: null,
+    report_phase: 'جاهز',
     messages: [
-      { role: 'assistant', text: 'هلا! ارفع ملفات الجرد أو اسألني عن المخزون والحسابات. إذا احتجنا تعديل، أنشئ لك خطة تنفيذ وتبقى تنتظر موافقة الأدمن.', time: nowTime() }
+      { role: 'assistant', text: 'هلا! هذه واجهة تدقيق حيّة. ارفع ملفات الجرد أو اسألني عن المخزون، الصندوق، الفواتير، الموردين، وشركات النقل. التقرير الجانبي راح يبين الفروقات والأخطاء أولاً بأول.', time: nowTime() }
     ]
   };
 
@@ -937,6 +1299,82 @@
       ${itemHtml || '<div class="ai-section-kicker">لا توجد إجراءات تنفيذية داخل هذه الخطة.</div>'}
       ${buttons}
     `;
+    renderLiveReport();
+  }
+
+  function setReportPhase(label, working) {
+    state.report_phase = label || 'جاهز';
+    if (els.reportStatus) els.reportStatus.textContent = state.report_phase;
+    if (els.reportProgress) els.reportProgress.classList.toggle('is-working', !!working);
+    saveState(state);
+  }
+
+  function countSummary(summary, key) {
+    const value = summary && summary[key];
+    const num = Number(value || 0);
+    return Number.isFinite(num) ? num : 0;
+  }
+
+  function reportItem(title, text, tone) {
+    const color = tone === 'critical' ? 'style="border-color:rgba(239,68,68,.35)"' : (tone === 'warning' ? 'style="border-color:rgba(245,158,11,.35)"' : '');
+    return `<div class="ai-report-item" ${color}><strong>${escapeHtml(title)}</strong><small>${escapeHtml(text || '')}</small></div>`;
+  }
+
+  function renderLiveReport(snapshot) {
+    if (snapshot) {
+      state.report_snapshot = snapshot;
+      saveState(state);
+    }
+    const diagnostics = (state.report_snapshot && state.report_snapshot.diagnostics) || {};
+    const summary = diagnostics.summary || {};
+    if (els.reportStock) els.reportStock.textContent = countSummary(summary, 'stock_imbalances_count').toLocaleString('ar-IQ');
+    if (els.reportStatusIssues) els.reportStatusIssues.textContent = countSummary(summary, 'status_inconsistencies_count').toLocaleString('ar-IQ');
+    if (els.reportInvoices) els.reportInvoices.textContent = countSummary(summary, 'invoice_total_mismatches_count').toLocaleString('ar-IQ');
+    if (els.reportMargins) els.reportMargins.textContent = countSummary(summary, 'negative_margin_items_count').toLocaleString('ar-IQ');
+
+    const rows = [];
+    (diagnostics.stock_imbalances || []).slice(0, 3).forEach(item => {
+      rows.push(reportItem('فرق مخزون', `${item.product_name || item.name || 'منتج'} | الفرق: ${item.difference ?? item.diff ?? 'غير محدد'}`, 'warning'));
+    });
+    (diagnostics.invoice_total_mismatches || []).slice(0, 3).forEach(item => {
+      rows.push(reportItem('اختلاف فاتورة', `فاتورة #${item.invoice_id || item.id || '-'} | الفرق: ${item.difference ?? '-'}`, 'critical'));
+    });
+    (diagnostics.negative_margin_items || []).slice(0, 3).forEach(item => {
+      rows.push(reportItem('هامش سالب', `${item.product_name || 'منتج'} | فاتورة #${item.invoice_id || '-'} | خسارة/وحدة ${item.loss_per_unit || 0}`, 'critical'));
+    });
+    (diagnostics.status_inconsistencies || []).slice(0, 3).forEach(item => {
+      const issues = Array.isArray(item.issues) ? item.issues.join('، ') : 'حالة غير متناسقة';
+      rows.push(reportItem('حالة طلب غير متناسقة', `فاتورة #${item.invoice_id || '-'} | ${issues}`, 'warning'));
+    });
+    if (diagnostics.error) {
+      rows.push(reportItem('تعذر التدقيق', diagnostics.error, 'warning'));
+    }
+    if (els.reportFindings) {
+      els.reportFindings.innerHTML = rows.join('') || '<div class="ai-report-empty">لا توجد ملاحظات حرجة في آخر قراءة، أو لم يتم تحديث التقرير بعد.</div>';
+    }
+
+    const rules = diagnostics.known_rules || [
+      'الجرد يشمل تم الطلب وجاري الشحن.',
+      'أجرة التوصيل لا تغيّر سعر المنتج داخل الفاتورة.',
+      'مستحقات شركات النقل ذمم إلنا وليست دين علينا.',
+      'أي إصلاح يحتاج خطة وموافقة أدمن.'
+    ];
+    if (els.reportRules) {
+      els.reportRules.innerHTML = rules.slice(0, 5).map(rule => reportItem('قاعدة', rule, 'info')).join('');
+    }
+
+    const plan = state.active_plan;
+    if (els.reportPlan) {
+      if (!plan) {
+        els.reportPlan.innerHTML = '<div class="ai-report-empty">لا توجد خطة نشطة.</div>';
+      } else {
+        const items = Array.isArray(plan.items) ? plan.items.length : 0;
+        els.reportPlan.innerHTML = [
+          reportItem(`#${plan.id} - ${plan.status || 'draft'}`, `${plan.title || 'خطة تنفيذ'} | الإجراءات: ${items} | الخطر: ${plan.risk_level || 'medium'}`, plan.risk_level === 'high' ? 'critical' : 'warning'),
+          plan.summary ? reportItem('الأثر', plan.summary, 'info') : ''
+        ].join('');
+      }
+    }
   }
 
   function renderSchedules(schedules) {
@@ -1013,6 +1451,7 @@
       `);
     });
     els.overviewList.innerHTML = rows.join('') || '<div class="ai-section-kicker">لا يوجد سجل بعد.</div>';
+    renderLiveReport(data);
   }
 
   function scrollToBottom() {
@@ -1030,6 +1469,7 @@
       els.typing.classList.toggle('is-visible', !!busy);
     }
     if (busy) scrollToBottom();
+    setReportPhase(busy ? 'يحلل البيانات' : 'جاهز', !!busy);
   }
 
   async function callAssistant(userText) {
@@ -1066,6 +1506,7 @@
       return;
     }
     setBusy(true);
+    setReportPhase('يقرأ ملف الجرد', true);
     try {
       const form = new FormData();
       form.append('file', file);
@@ -1079,6 +1520,7 @@
       renderFiles();
       pushMessage('assistant', `تم رفع ${data.file.original_name}. الأسطر المقروءة: ${(data.file.preview && data.file.preview.row_count) || 0}`);
       els.fileInput.value = '';
+      await loadOverview();
     } catch (e) {
       pushMessage('assistant', `صار خطأ برفع الملف: ${e.message || e}`);
     } finally {
@@ -1115,6 +1557,8 @@
       state.active_plan = data.plan;
       saveState(state);
       renderPlan(state.active_plan);
+      renderLiveReport();
+      await loadOverview();
       pushMessage('assistant', `تم تحديث الخطة #${data.plan.id}: الحالة ${data.plan.status}`);
     } catch (e) {
       pushMessage('assistant', `تعذر تنفيذ العملية: ${e.message || e}`);
@@ -1136,13 +1580,17 @@
 
   async function loadOverview() {
     if (!permissions.view_ai_audit_logs || !els.overviewList) return;
+    setReportPhase('يحدث التقرير', true);
     try {
       const res = await fetch('/assistant/api/overview');
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.success) throw new Error(data.error || 'تعذر جلب سجل المساعد.');
       renderOverview(data);
+      setReportPhase('محدث', false);
     } catch (e) {
       els.overviewList.innerHTML = `<div class="ai-section-kicker">تعذر عرض السجل: ${escapeHtml(e.message || e)}</div>`;
+      renderLiveReport({ diagnostics: { error: e.message || String(e) } });
+      setReportPhase('تعذر التحديث', false);
     }
   }
 
@@ -1190,6 +1638,7 @@
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.success) throw new Error(data.error || 'تعذر تشغيل الدورية.');
       pushMessage('assistant', `تشغيل دوري #${scheduleId}: ${data.summary || 'تم التدقيق.'}`);
+      await loadOverview();
     } catch (e) {
       pushMessage('assistant', `تعذر تشغيل الدورية: ${e.message || e}`);
     } finally {
@@ -1257,6 +1706,7 @@
     saveState(state);
 
     setBusy(true);
+    setReportPhase('يفحص النظام والفروقات', true);
     try {
       const data = await callAssistant(text);
       state.session_id = data.session_id || state.session_id || null;
@@ -1266,6 +1716,7 @@
       }
       saveState(state);
       pushMessage('assistant', data.reply || 'تم.');
+      await loadOverview();
     } catch (e) {
       pushMessage('assistant', `صار خطأ: ${e.message || e}`);
     } finally {
@@ -1277,8 +1728,11 @@
     state.messages = [
       { role: 'assistant', text: 'تم مسح المحادثة. شنو تحب تسأل؟', time: nowTime() }
     ];
+    state.active_plan = null;
     saveState(state);
     renderMessages();
+    renderPlan(null);
+    renderLiveReport();
     scrollToBottom();
   }
 
@@ -1303,6 +1757,7 @@
     state.uploaded_files = [];
     saveState(state);
     renderFiles();
+    renderLiveReport();
   });
   els.planPanel.addEventListener('click', function(e) {
     const btn = e.target.closest('[data-plan-action]');
@@ -1353,6 +1808,7 @@
   renderMessages();
   renderFiles();
   renderPlan(state.active_plan);
+  renderLiveReport(state.report_snapshot);
   if (permissions.view_ai_audit_logs && els.schedulesList) loadSchedules();
   if (permissions.view_ai_audit_logs && els.overviewList) loadOverview();
   scrollToBottom();

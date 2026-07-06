@@ -284,6 +284,24 @@ def api_ai_overview():
     denied = _require_assistant_json("view_ai_audit_logs")
     if denied:
         return denied
+    diagnostics = {}
+    try:
+        audit = audit_accounting_integrity(limit=40)
+        diagnostics = {
+            "summary": audit.get("summary") or {},
+            "stock_imbalances": (audit.get("stock_imbalances") or [])[:5],
+            "status_inconsistencies": (audit.get("status_inconsistencies") or [])[:5],
+            "invoice_total_mismatches": (audit.get("invoice_total_mismatches") or [])[:5],
+            "negative_margin_items": (audit.get("negative_margin_items") or [])[:5],
+            "known_rules": [
+                "الجرد الفعلي يشمل تم الطلب وجاري الشحن، والقابل للبيع = الجرد الفعلي - المحجوز.",
+                "مستحقات شركات النقل ذمم إلنا عند الشركة وليست ديناً علينا.",
+                "أي حركة صندوق يدوية لازم يكون إلها سبب واضح، ولا تعتمد حركة بلا ملاحظة.",
+                "سعر المنتج في الفاتورة يبقى سعر البيع المخزني؛ أجرة التوصيل لا تغيّر سعر المنتج.",
+            ],
+        }
+    except Exception as exc:
+        diagnostics = {"error": str(exc)}
     plans = AIActionPlan.query.order_by(AIActionPlan.created_at.desc()).limit(8).all()
     runs = AIAuditRun.query.order_by(AIAuditRun.started_at.desc()).limit(8).all()
     logs = AIToolCallLog.query.order_by(AIToolCallLog.created_at.desc()).limit(12).all()
@@ -297,6 +315,7 @@ def api_ai_overview():
     return jsonify(
         {
             "success": True,
+            "diagnostics": diagnostics,
             "plans": [plan.to_dict(include_items=False) for plan in plans],
             "runs": [
                 {

@@ -491,11 +491,19 @@ def login():
     if not tenant_slug or not username or not password:
         return render_template("login.html", error="الرجاء إدخال معرف الشركة، اسم المستخدم، وكلمة المرور")
 
-    # 1. Verify tenant in Core DB (g.tenant is None so it queries core.db)
+    # 1. Verify tenant in Core DB (PostgreSQL). Must unset g.tenant first —
+    # before_request may have bound a stale session tenant, which would route
+    # CoreTenant.query to the per-tenant SQLite DB (empty tenants table).
     from models.core.tenant import Tenant as CoreTenant
     from flask import g
-    core_tenant = CoreTenant.query.filter_by(slug=tenant_slug).first()
-    
+    prev_tenant = getattr(g, "tenant", None)
+    g.tenant = None
+    try:
+        core_tenant = CoreTenant.query.filter_by(slug=tenant_slug).first()
+    finally:
+        if not getattr(g, "tenant", None):
+            g.tenant = prev_tenant
+
     if not core_tenant:
         return render_template("login.html", error="الشركة غير موجودة. تأكد من معرف الشركة.")
     

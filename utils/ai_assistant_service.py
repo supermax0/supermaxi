@@ -291,6 +291,20 @@ def collect_system_snapshot(employee_id: int | None = None) -> dict:
         financial_data["shipping_receivables"] = shipping_receivables
         financial_data["shipping_opening_balance_receivable"] = shipping_opening_balance
         financial_data["shipping_note"] = "مستحقات شركات النقل ذمم مدينة لصالح الشركة، وليست ديناً على الشركة."
+    if scope["financial"]:
+        try:
+            from utils.cash_calculations import get_cash_summary
+
+            cash_summary = get_cash_summary()
+            financial_data["cash"] = {
+                "balance": _money(cash_summary.get("current_balance")),
+                "total_in": _money(cash_summary.get("total_in")),
+                "total_out": _money(cash_summary.get("total_out")),
+                "movements_count": int(cash_summary.get("movements_count") or 0),
+                "audit_rule": "أي حركة صندوق يدوية بلا سبب/ملاحظة تعتبر مشبوهة وتحتاج مراجعة قبل اعتمادها.",
+            }
+        except Exception as exc:
+            financial_data["cash"] = {"error": str(exc)}
     if not financial_data:
         financial_data = _restricted()
     return {
@@ -306,6 +320,14 @@ def collect_system_snapshot(employee_id: int | None = None) -> dict:
         "reserved_stock_lines": len(reserved) if scope["inventory"] else None,
         "recent_30d_sales": _money(recent_sales) if recent_sales is not None else None,
         "negative_margin_count": int(negative_margin_count or 0) if negative_margin_count is not None else None,
+        "known_accounting_rules": [
+            "الجرد الفعلي يشمل الطلبات بحالة تم الطلب وجاري الشحن، والقابل للبيع = الجرد الفعلي - المحجوز.",
+            "سعر المنتج داخل الفاتورة يجب أن يبقى سعر بيع المنتج المخزني ولا يتغير بسبب أجرة التوصيل.",
+            "أجرة التوصيل لا تنضاف على سعر المنتج؛ تخصم/تحاسب لاحقاً عند التسديد حسب سياسة النظام.",
+            "مستحقات شركات النقل ذمم مدينة لصالح الشركة وليست ديناً على الشركة.",
+            "حركة الصندوق اليدوية بدون ملاحظة/سبب واضحة علامة خطأ إدخال.",
+            "أي تنفيذ تعديل يحتاج خطة وموافقة أدمن، ولا ينفذ GPT مباشرة.",
+        ],
         "financial": financial_data,
     }
 
@@ -1037,6 +1059,9 @@ def _call_openai_narrative(message: str, snapshot: dict, local_findings: dict | 
         "أنت مساعد Finora الإداري. جاوب بالعربية العراقية المختصرة. "
         "لا تدّعي تنفيذ أي تعديل. أي تعديل لازم يكون خطة موافقة أدمن. "
         "اعتمد فقط على ملخص البيانات المعطى، واقترح مخاطر وخطوات مراجعة. "
+        "انتبه لقواعد Finora الخاصة: الجرد الفعلي يشمل تم الطلب وجاري الشحن، "
+        "وسعر المنتج في الفاتورة لا يتغير بسبب أجرة التوصيل، ومبالغ شركات النقل ذمم إلنا وليست ديناً علينا، "
+        "وحركة الصندوق اليدوية بلا سبب تعتبر خطأ إدخال محتمل. "
         "أرجع JSON مطابق للمخطط: answer, key_points, risks, next_steps, needs_admin_approval."
     )
     payload = {
@@ -1180,9 +1205,15 @@ def handle_chat_send(
     elif any(word in (message or "") for word in ("نقل", "شحن", "شركة النقل", "شركات النقل")) and not scope["shipping"]:
         local_findings["shipping_plan"] = {"restricted": True, "message": "تحليل شركات النقل يحتاج صلاحية الشحن."}
 
-    if any(word in (message or "") for word in ("محاسبي", "حساب", "هامش", "سالب", "تقرير", "اخطاء", "أخطاء")) and (scope["financial"] or scope["reports"]):
+    if any(word in (message or "") for word in ("محاسبي", "حساب", "هامش", "سالب", "تقرير", "اخطاء", "أخطاء", "صندوق", "كاش", "نقد", "فروقات")) and (scope["financial"] or scope["reports"]):
         audit = audit_accounting_integrity(limit=120)
         local_findings["accounting_audit"] = audit.get("summary", {})
+        local_findings["accounting_audit_samples"] = {
+            "stock_imbalances": (audit.get("stock_imbalances") or [])[:5],
+            "invoice_total_mismatches": (audit.get("invoice_total_mismatches") or [])[:5],
+            "negative_margin_items": (audit.get("negative_margin_items") or [])[:5],
+            "status_inconsistencies": (audit.get("status_inconsistencies") or [])[:5],
+        }
         _log_tool(
             "accounting.audit_integrity",
             session_id=chat.id,
@@ -1190,7 +1221,7 @@ def handle_chat_send(
             input_data={"limit": 120},
             output_data=audit.get("summary", {}),
         )
-    elif any(word in (message or "") for word in ("محاسبي", "حساب", "هامش", "سالب", "تقرير", "اخطاء", "أخطاء")):
+    elif any(word in (message or "") for word in ("محاسبي", "حساب", "هامش", "سالب", "تقرير", "اخطاء", "أخطاء", "صندوق", "كاش", "نقد", "فروقات")):
         local_findings["accounting_audit"] = {"restricted": True, "message": "التدقيق المحاسبي يحتاج صلاحية التقارير أو المالية."}
 
     ok, ai_text = _call_openai_narrative(message, snapshot, local_findings)

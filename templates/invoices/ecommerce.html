@@ -622,18 +622,25 @@
                 </div>
 
                 <div class="totals">
+                    {% set is_partial = is_partial|default(false) %}
+                    {% set paid_amount = paid_amount|default(0) %}
                     <div class="t-row">
                         <span style="color:var(--text-muted);">قيمة المشتريات</span>
                         <span>{{ "{:,.0f}".format(total) }} د.ع</span>
                     </div>
-                    {% if due < total %}
+                    {% if is_partial %}
+                    <div class="t-row" style="color:var(--primary-color);">
+                        <span>المدفوع</span>
+                        <span>{{ "{:,.0f}".format(paid_amount) }} د.ع</span>
+                    </div>
+                    {% elif due < total %}
                     <div class="t-row" style="color:var(--primary-color);">
                         <span>تخفيض / كوبون</span>
                         <span>- {{ "{:,.0f}".format(total - due) }} د.ع</span>
                     </div>
                     {% endif %}
                     <div class="t-row grand">
-                        <span>المبلغ الإجمالي</span>
+                        <span>{% if is_partial %}المتبقي{% else %}المبلغ الإجمالي{% endif %}</span>
                         <span>{{ "{:,.0f}".format(due) }} د.ع</span>
                     </div>
                 </div>

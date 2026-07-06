@@ -1615,12 +1615,15 @@ def public_order_view(token: str):
         joinedload(Invoice.customer),
         joinedload(Invoice.shipping_company),
     ).get_or_404(oid)
-    from utils.order_shipping import prepare_invoice_items_for_print
+    from utils.order_shipping import prepare_invoice_items_for_print, invoice_print_amounts
 
     raw_items = OrderItem.query.filter_by(invoice_id=order.id).all()
     items, print_total = prepare_invoice_items_for_print(raw_items)
     total = int(print_total) if items else int(order.total or 0)
-    due = total
+    amounts = invoice_print_amounts(order, total)
+    due = amounts["due"]
+    paid_amount = amounts["paid_amount"]
+    is_partial = amounts["is_partial"]
     settings = InvoiceSettings.get_settings()
     invoice_video_guest_url = None
     if getattr(order, "order_video_path", None):
@@ -1638,6 +1641,8 @@ def public_order_view(token: str):
         items=items,
         total=total,
         due=due,
+        paid_amount=paid_amount,
+        is_partial=is_partial,
         settings=settings,
         invoice_video_guest_url=invoice_video_guest_url,
     )
@@ -1707,7 +1712,7 @@ def invoice_page(order_id):
     if denied:
         return denied
 
-    from utils.order_shipping import prepare_invoice_items_for_print
+    from utils.order_shipping import prepare_invoice_items_for_print, invoice_print_amounts
 
     raw_items = OrderItem.query.filter_by(invoice_id=order.id).all()
     items, print_total = prepare_invoice_items_for_print(raw_items)
@@ -1741,7 +1746,10 @@ def invoice_page(order_id):
     
     # الإجمالي المعروض: منتجات بعد خصم الشحن وبدون بند الشحن
     total = int(print_total) if items else int(order.total or 0)
-    due = total
+    amounts = invoice_print_amounts(order, total)
+    due = amounts["due"]
+    paid_amount = amounts["paid_amount"]
+    is_partial = amounts["is_partial"]
 
     # Get invoice settings
     settings = InvoiceSettings.get_settings()
@@ -1764,6 +1772,8 @@ def invoice_page(order_id):
         items=items,
         total=total,
         due=due,
+        paid_amount=paid_amount,
+        is_partial=is_partial,
         returned_count=returned_count,
         cancelled_count=cancelled_count,
         settings=settings,
@@ -1830,7 +1840,7 @@ def print_batch():
     id_to_invoice = {inv.id: inv for inv in invoices}
     ordered_invoices = [id_to_invoice[i] for i in ids_list if i in id_to_invoice]
 
-    from utils.order_shipping import prepare_invoice_items_for_print
+    from utils.order_shipping import prepare_invoice_items_for_print, invoice_print_amounts
 
     settings = InvoiceSettings.get_settings()
     batch = []
@@ -1859,7 +1869,10 @@ def print_batch():
             ).count()
 
         total = int(print_total) if items else int(order.total or 0)
-        due = total
+        amounts = invoice_print_amounts(order, total)
+        due = amounts["due"]
+        paid_amount = amounts["paid_amount"]
+        is_partial = amounts["is_partial"]
 
         public_view_url = ""
         try:
@@ -1874,6 +1887,8 @@ def print_batch():
             "items": items,
             "total": total,
             "due": due,
+            "paid_amount": paid_amount,
+            "is_partial": is_partial,
             "returned_count": returned_count,
             "cancelled_count": cancelled_count,
             "public_view_url": public_view_url,

@@ -108,8 +108,21 @@ def accounts():
     if request.method == "POST":
         ensure_treasury_schema()
         treasury_account_id = resolve_treasury_account_id(request.form.get("treasury_account_id"))
-        tx_type = request.form["type"]
-        amount = int(request.form["amount"])
+        tx_type = (request.form.get("type") or "").strip()
+        if tx_type not in ("deposit", "withdraw"):
+            flash("نوع الحركة غير صالح", "error")
+            return redirect(url_for("accounts.accounts"))
+        try:
+            amount = int(request.form.get("amount") or 0)
+        except (TypeError, ValueError):
+            amount = 0
+        if amount <= 0:
+            flash("المبلغ يجب أن يكون أكبر من صفر", "error")
+            return redirect(url_for("accounts.accounts"))
+        note = (request.form.get("note") or "").strip()
+        if not note:
+            flash("يرجى كتابة سبب واضح للحركة المالية اليدوية", "error")
+            return redirect(url_for("accounts.accounts"))
         if tx_type == "withdraw":
             try:
                 from utils.treasury_calculations import assert_sufficient_balance
@@ -121,7 +134,7 @@ def accounts():
         tx = AccountTransaction(
             type=tx_type,
             amount=amount,
-            note=request.form.get("note"),
+            note=f"حركة يدوية - {note}",
             treasury_account_id=treasury_account_id,
         )
         db.session.add(tx)
