@@ -1778,6 +1778,9 @@ def _execute_action_item(item: AIActionItem, *, employee_id: int) -> dict:
             invoice.paid_amount = int(invoice.total or 0)
             if invoice.status not in {"تم التوصيل", "مرتجع", "راجع", "راجعة"}:
                 invoice.status = "تم التوصيل"
+            from utils.order_shipping import apply_shipping_fee_on_paid_invoice
+
+            apply_shipping_fee_on_paid_invoice(invoice)
         elif action == "cancel":
             process_order_cancel(invoice)
         elif action == "return":

@@ -401,7 +401,22 @@ def validate_sale_quantity(product_id, requested_quantity, branch_id=None):
         from utils.branch_stock_service import get_branch_stock
         available = get_branch_stock(branch_id, product_id)
     else:
-        available = product.quantity
+        try:
+            from models.branch import BranchStock
+
+            rows_count = BranchStock.query.filter_by(product_id=product_id).count()
+            if rows_count:
+                available = int(
+                    db.session.query(db.func.coalesce(db.func.sum(BranchStock.quantity), 0))
+                    .filter(BranchStock.product_id == product_id)
+                    .scalar()
+                    or 0
+                )
+            else:
+                available = int(product.quantity or 0)
+        except Exception:
+            db.session.rollback()
+            available = int(product.quantity or 0)
     
     if available < requested_quantity:
         return {

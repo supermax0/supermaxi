@@ -179,7 +179,7 @@ def test_get_shipping_fee_from_invoice_reads_cost_when_total_zero():
     assert get_shipping_fee_from_invoice(invoice) == 15000
 
 
-def test_prepare_invoice_items_hides_shipping_and_deducts_legacy():
+def test_prepare_invoice_items_hides_shipping_without_deducting_legacy():
     from utils.order_shipping import SHIPPING_PRODUCT_NAME, prepare_invoice_items_for_print
 
     items = [
@@ -188,12 +188,12 @@ def test_prepare_invoice_items_hides_shipping_and_deducts_legacy():
     ]
     printable, total = prepare_invoice_items_for_print(items)
     assert len(printable) == 1
-    assert printable[0].total == 180000
-    assert printable[0].price == 180000
-    assert total == 180000
+    assert printable[0].total == 195000
+    assert printable[0].price == 195000
+    assert total == 195000
 
 
-def test_prepare_invoice_items_deducts_new_cost_shipping_line():
+def test_prepare_invoice_items_hides_new_cost_shipping_without_deducting():
     from utils.order_shipping import SHIPPING_PRODUCT_NAME, prepare_invoice_items_for_print
 
     items = [
@@ -202,9 +202,29 @@ def test_prepare_invoice_items_deducts_new_cost_shipping_line():
     ]
     printable, total = prepare_invoice_items_for_print(items)
     assert len(printable) == 1
-    assert printable[0].total == 189000
-    assert printable[0].price == 189000
-    assert total == 189000
+    assert printable[0].total == 195000
+    assert printable[0].price == 195000
+    assert total == 195000
+
+
+def test_apply_shipping_fee_on_paid_invoice_deducts_once():
+    from utils.order_shipping import SHIPPING_PRODUCT_NAME, apply_shipping_fee_on_paid_invoice
+
+    invoice = SimpleNamespace(
+        total=195000,
+        paid_amount=195000,
+        payment_status="مسدد",
+        status="تم التوصيل",
+        order_items=[
+            SimpleNamespace(product_name="منتج", quantity=1, price=195000, total=195000, product=None),
+            SimpleNamespace(product_name=SHIPPING_PRODUCT_NAME, quantity=1, price=0, total=0, cost=6000, product=None),
+        ],
+    )
+    assert apply_shipping_fee_on_paid_invoice(invoice) == 6000
+    assert invoice.total == 189000
+    assert invoice.paid_amount == 189000
+    assert apply_shipping_fee_on_paid_invoice(invoice) == 0
+    assert invoice.total == 189000
 
 
 def test_shipping_fee_deducted_detection():
@@ -229,7 +249,8 @@ if __name__ == "__main__":
     test_apply_delivery_fees_to_meta_clears_empty_values()
     test_product_delivery_config_reads_meta()
     test_get_shipping_fee_from_invoice_reads_line_item()
-    test_prepare_invoice_items_hides_shipping_and_deducts_legacy()
-    test_prepare_invoice_items_deducts_new_cost_shipping_line()
+    test_prepare_invoice_items_hides_shipping_without_deducting_legacy()
+    test_prepare_invoice_items_hides_new_cost_shipping_without_deducting()
+    test_apply_shipping_fee_on_paid_invoice_deducts_once()
     test_shipping_fee_deducted_detection()
     print("all product delivery fee tests ok")

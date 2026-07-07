@@ -180,6 +180,31 @@ def is_shipping_fee_deducted_from_invoice(invoice) -> bool:
     return invoice_total == net_total_after_shipping(non_shipping_items_total(invoice), fee)
 
 
+def apply_shipping_fee_on_paid_invoice(invoice) -> int:
+    """Deduct the stored delivery fee from invoice.total only when the order is paid."""
+    if invoice is None:
+        return 0
+
+    fee = get_shipping_fee_from_invoice(invoice)
+    if fee <= 0 or is_shipping_fee_deducted_from_invoice(invoice):
+        return 0
+
+    gross_total = non_shipping_items_total(invoice)
+    if gross_total <= 0:
+        return 0
+
+    net_total = net_total_after_shipping(gross_total, fee)
+    old_total = _safe_int(getattr(invoice, "total", 0))
+    invoice.total = net_total
+
+    payment_status = (getattr(invoice, "payment_status", None) or "").strip()
+    status = (getattr(invoice, "status", None) or "").strip()
+    if payment_status == "\u0645\u0633\u062f\u062f" or status == "\u0645\u0633\u062f\u062f":
+        invoice.paid_amount = net_total
+
+    return max(0, old_total - net_total)
+
+
 def add_shipping_line_item(invoice, shipping_fee: int, tenant_id: int | None = None) -> int:
     """
     تسجيل رسوم الشحن داخلياً بدون إضافتها للإجمالي وبدون خصمها من المنتجات.
@@ -219,8 +244,6 @@ def prepare_invoice_items_for_print(items):
     يُرجع (printable_items, display_total).
     """
     items = list(items or [])
-    shipping_fee = sum(_shipping_fee_from_item(i) for i in items if is_shipping_item(i))
-
     printable = [
         SimpleNamespace(
             product_name=order_item_display_name(i),
@@ -232,8 +255,6 @@ def prepare_invoice_items_for_print(items):
         for i in items
         if not is_shipping_item(i)
     ]
-    if shipping_fee > 0:
-        _deduct_fee_from_product_items(printable, shipping_fee)
     display_total = sum(i.total for i in printable)
     return printable, display_total
 

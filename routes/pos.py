@@ -29,7 +29,7 @@ from utils.activity_logger import INVOICE_SNAPSHOT_FIELDS, log_activity, snapsho
 from utils.branch_migration import ensure_branch_schema, get_default_branch
 from utils.branch_context import current_branch_id, init_branch_context
 from utils.branch_stock_service import deduct_stock, get_branch_stock, get_total_stock, receive_stock, BranchStockError
-from utils.order_shipping import add_shipping_line_item, is_shipping_item, net_total_after_shipping
+from utils.order_shipping import add_shipping_line_item, is_shipping_item
 from utils.product_delivery_fees import fee_for_cart_items
 
 pos_bp = Blueprint("pos", __name__, url_prefix="/pos")
@@ -784,11 +784,10 @@ def create_order():
 
     tenant_id = getattr(shipping_customer, "tenant_id", None)
     if shipping_fee > 0:
-        # تحفظ داخليا للتسوية وتخصم من صافي البيع.
+        # Stored for settlement; deducted only when the invoice is paid.
         add_shipping_line_item(invoice, shipping_fee, tenant_id)
 
-    net_total = net_total_after_shipping(total, shipping_fee)
-    invoice.total = net_total
+    invoice.total = total
 
     try:
         db.session.commit()

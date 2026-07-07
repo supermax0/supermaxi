@@ -32,15 +32,34 @@
     border-radius: 6px !important;
   }
 
-  /* Order details modal — bottom sheet handle */
+  /* Order details modal - mobile polish */
+  .modal.od-modal-overlay {
+    align-items: center !important;
+    padding: 10px !important;
+    background: rgba(15, 23, 42, 0.56) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+  }
+
+  .modal.od-modal-overlay .od-modal-box {
+    width: min(100%, 420px) !important;
+    max-width: 420px !important;
+    max-height: calc(100dvh - 20px) !important;
+    border: 1px solid rgba(203, 213, 225, 0.95) !important;
+    border-radius: 18px !important;
+    background: #ffffff !important;
+    box-shadow: 0 18px 48px rgba(15, 23, 42, 0.28) !important;
+    color: #0f172a !important;
+  }
+
   .modal.od-modal-overlay .od-modal-box::before {
     content: "";
     display: block;
-    width: 36px;
+    width: 34px;
     height: 4px;
     border-radius: 999px;
-    background: rgba(148, 163, 184, 0.45);
-    margin: 8px auto 0;
+    background: #cbd5e1;
+    margin: 7px auto 0;
     flex-shrink: 0;
   }
 
@@ -48,12 +67,304 @@
     position: sticky;
     top: 0;
     z-index: 2;
+    padding: 10px 12px 9px !important;
+    gap: 8px !important;
+    background: #ffffff !important;
+    border-bottom: 1px solid #dbe7f5 !important;
+    color: #0f172a !important;
+  }
+
+  .modal .od-modal-title {
+    margin: 0 0 4px !important;
+    font-size: 16px !important;
+    line-height: 1.25 !important;
+    color: #0f172a !important;
+    letter-spacing: 0 !important;
+  }
+
+  .modal .od-modal-subtitle {
+    margin: 0 0 7px !important;
+    font-size: 11px !important;
+    color: #64748b !important;
+  }
+
+  .modal .od-modal-badges {
+    gap: 5px !important;
+  }
+
+  .modal .od-pill {
+    padding: 4px 8px !important;
+    font-size: 10px !important;
+    line-height: 1.15 !important;
+  }
+
+  .modal .od-pill--success {
+    background: #dcfce7 !important;
+    color: #166534 !important;
+  }
+
+  .modal .od-pill--warning {
+    background: #fef3c7 !important;
+    color: #92400e !important;
+  }
+
+  .modal .od-pill--danger {
+    background: #fee2e2 !important;
+    color: #991b1b !important;
+  }
+
+  .modal .od-pill--info {
+    background: #dbeafe !important;
+    color: #1d4ed8 !important;
+  }
+
+  .modal .od-pill--neutral {
+    background: #e2e8f0 !important;
+    color: #334155 !important;
+  }
+
+  .modal .od-close-btn {
+    width: 30px !important;
+    height: 30px !important;
+    border-radius: 10px !important;
+    border-color: #dbe3ee !important;
+    background: #ffffff !important;
+    color: #64748b !important;
+    font-size: 14px !important;
+  }
+
+  .modal .od-close-btn:hover {
+    background: #fee2e2 !important;
+    border-color: #fecaca !important;
+    color: #dc2626 !important;
+  }
+
+  .modal .od-modal-body {
+    padding: 9px 10px 0 !important;
+    background: #ffffff !important;
+  }
+
+  .modal .od-card {
+    padding: 11px 12px !important;
+    margin-bottom: 9px !important;
+    border-radius: 12px !important;
+    background: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05) !important;
+  }
+
+  .modal .od-card--summary {
+    background: #ffffff !important;
+    border-color: #bfdbfe !important;
+  }
+
+  .modal .od-card__title {
+    margin-bottom: 9px !important;
+    font-size: 13px !important;
+    color: #1d4ed8 !important;
+    letter-spacing: 0 !important;
+  }
+
+  .modal .od-card__title-icon {
+    width: 24px !important;
+    height: 24px !important;
+    border-radius: 8px !important;
+    font-size: 12px !important;
+  }
+
+  .modal .od-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 9px 10px !important;
+  }
+
+  .modal .od-field__label {
+    margin-bottom: 2px !important;
+    font-size: 10px !important;
+    letter-spacing: 0 !important;
+    color: #64748b !important;
+  }
+
+  .modal .od-field__value {
+    font-size: 13px !important;
+    line-height: 1.4 !important;
+    color: #0f172a !important;
+  }
+
+  .modal .od-field__value--empty {
+    color: #94a3b8 !important;
+  }
+
+  .modal .od-table-wrap {
+    border-radius: 10px !important;
+    border-color: #e2e8f0 !important;
+    overflow-x: auto !important;
+  }
+
+  .modal .od-items-table {
+    min-width: 520px !important;
+  }
+
+  .modal .od-items-table thead {
+    background: #f1f5f9 !important;
+  }
+
+  .modal .od-items-table th,
+  .modal .od-items-table td {
+    padding: 8px 9px !important;
+    font-size: 12px !important;
+    color: #0f172a !important;
+    border-bottom-color: #e2e8f0 !important;
+  }
+
+  .modal .od-items-table th {
+    color: #64748b !important;
+    letter-spacing: 0 !important;
+  }
+
+  .modal .od-summary-row {
+    padding: 7px 0 !important;
+    border-bottom-color: #e2e8f0 !important;
+  }
+
+  .modal .od-summary-row__label {
+    font-size: 12px !important;
+    color: #64748b !important;
+  }
+
+  .modal .od-summary-row__value {
+    font-size: 14px !important;
+    color: #0f172a !important;
+  }
+
+  .modal .od-summary-row__value--paid,
+  .modal .od-summary-row__value--settled {
+    color: #15803d !important;
+  }
+
+  .modal .od-summary-row__value--due {
+    color: #dc2626 !important;
+  }
+
+  .modal .od-note-text,
+  .modal .od-notify-input {
+    border-color: #dbe3ee !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    font-size: 13px !important;
+  }
+
+  .modal .od-notify-input {
+    min-height: 74px !important;
+  }
+
+  .modal .od-notify-hint,
+  .modal #shippingBarcodeCard p,
+  .modal #shippingBarcodeCard label,
+  .modal .shipping-barcode-field label {
+    font-size: 12px !important;
+    color: #64748b !important;
+  }
+
+  .modal #shippingCompanySelect,
+  .modal .shipping-barcode-input,
+  .modal .od-branch-select {
+    padding: 10px 11px !important;
+    border-radius: 10px !important;
+    border-color: #cbd5e1 !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    font-size: 13px !important;
+  }
+
+  .modal #shippingBarcodeFields {
+    grid-template-columns: 1fr !important;
+    gap: 9px !important;
   }
 
   .modal .od-modal-footer {
     position: sticky;
     bottom: 0;
     z-index: 2;
-    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.22);
+    padding: 9px 10px calc(9px + env(safe-area-inset-bottom, 0px)) !important;
+    border-top: 1px solid #dbe7f5 !important;
+    background: #ffffff !important;
+    box-shadow: 0 -8px 22px rgba(15, 23, 42, 0.12) !important;
+  }
+
+  .modal .od-actions {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+    justify-content: stretch !important;
+    width: 100% !important;
+  }
+
+  .modal .od-actions .btn {
+    min-width: 0 !important;
+    width: 100% !important;
+    min-height: 40px !important;
+    padding: 6px 5px !important;
+    border-radius: 10px !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    line-height: 1.15 !important;
+    display: inline-flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 2px !important;
+    box-shadow: none !important;
+    transform: none !important;
+  }
+
+  .modal .od-actions .btn > span:first-child {
+    font-size: 14px !important;
+    line-height: 1 !important;
+  }
+
+  .modal .od-actions .btn > span:last-child {
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-align: center !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .modal .od-actions .btn-primary {
+    background: #2563eb !important;
+    color: #ffffff !important;
+  }
+
+  .modal .od-actions .btn-success {
+    background: #16a34a !important;
+    color: #ffffff !important;
+  }
+
+  .modal .od-actions .btn-warning {
+    background: #f59e0b !important;
+    color: #111827 !important;
+  }
+
+  .modal .od-actions .btn-secondary {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border: 1px solid #cbd5e1 !important;
+  }
+
+  .modal .od-actions .btn.od-action-btn--wide {
+    grid-column: 1 / -1 !important;
+    min-height: 36px !important;
+    flex-direction: row !important;
+    gap: 6px !important;
+    font-size: 12px !important;
+  }
+
+  .modal .od-notify-btn,
+  .modal #saveShippingBarcodeBtn {
+    min-width: 0 !important;
+    width: 100% !important;
+    min-height: 40px !important;
+    padding: 8px 12px !important;
+    border-radius: 10px !important;
   }
 }

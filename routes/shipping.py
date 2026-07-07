@@ -10,6 +10,7 @@ import secrets
 
 from utils.payment_ledger import append_payment_ledger_delta
 from utils.delivery_expense_service import sync_delivery_expense_for_invoice
+from utils.order_shipping import apply_shipping_fee_on_paid_invoice
 from utils.permission_checks import guard_permission
 from utils.activity_logger import log_activity
 from utils.treasury_helpers import resolve_treasury_account_id
@@ -313,12 +314,13 @@ def settle_order(order_id):
     prev_eff = _effective_paid_amount_inv(order)
     order.payment_status = "مسدد"
     order.paid_amount = order.total
+    apply_shipping_fee_on_paid_invoice(order)
 
     db.session.add(
         ShippingPayment(
             shipping_company_id=order.shipping_company_id,
             invoice_id=order.id,
-            amount=amount,
+            amount=int(order.paid_amount or 0),
             action="تسديد",
             note=f"قبض من شركة الشحن عن الطلب #{order.id}",
             treasury_account_id=treasury_account_id,

@@ -60,7 +60,7 @@ from utils.order_status import (
 from utils.order_lifecycle import OrderLifecycleError, process_order_cancel, process_order_return
 from utils.cash_calculations import _effective_paid_amount
 from utils.delivery_expense_service import sync_delivery_expense_for_invoice
-from utils.order_shipping import is_shipping_item, order_item_display_name
+from utils.order_shipping import apply_shipping_fee_on_paid_invoice, is_shipping_item, order_item_display_name
 from utils.shipping_barcodes import (
     get_shipping_barcodes_list,
     set_shipping_barcodes,
@@ -1054,6 +1054,7 @@ def payment():
         if payment_status == "مسدد":
             video_cleanup_targets = _collect_order_video_cleanup_targets(order)
             _clear_order_video_fields(order)
+            apply_shipping_fee_on_paid_invoice(order)
         delta_pay = _effective_paid_amount(order) - prev_effective_paid
         append_payment_ledger_delta(order.id, delta_pay)
         sync_delivery_expense_for_invoice(order)

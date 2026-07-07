@@ -112,6 +112,9 @@ def sync_invoice_from_plan(plan: CustomerCreditPlan):
         invoice.payment_status = "مسدد"
         if invoice.status not in ("تم التوصيل", "مرتجع", "ملغي"):
             invoice.status = "تم التوصيل"
+        from utils.order_shipping import apply_shipping_fee_on_paid_invoice
+
+        apply_shipping_fee_on_paid_invoice(invoice)
     elif paid > 0:
         invoice.payment_status = "جزئي"
     else:

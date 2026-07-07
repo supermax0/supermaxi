@@ -13,7 +13,7 @@ from models.order_item import OrderItem
 from utils.cash_calculations import _effective_paid_amount as _effective_paid_amount_inv
 from utils.branch_stock_service import receive_stock
 from utils.delivery_expense_service import sync_delivery_expense_for_invoice
-from utils.order_shipping import is_shipping_item
+from utils.order_shipping import apply_shipping_fee_on_paid_invoice, is_shipping_item
 from utils.payment_ledger import append_payment_ledger_delta
 
 
@@ -94,6 +94,7 @@ def execute_shipping_report(report, expense_amount: int = 0) -> dict:
                 order.payment_status = "مسدد"
                 if not order.paid_amount or int(order.paid_amount or 0) < int(order.total or 0):
                     order.paid_amount = order.total
+                apply_shipping_fee_on_paid_invoice(order)
                 delta_pay = _effective_paid_amount_inv(order) - prev_eff
                 append_payment_ledger_delta(order.id, delta_pay)
                 sync_delivery_expense_for_invoice(order)

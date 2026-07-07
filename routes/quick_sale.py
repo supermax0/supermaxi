@@ -15,7 +15,7 @@ from utils.branch_context import current_branch_id, init_branch_context
 from utils.branch_stock_service import deduct_stock, BranchStockError
 from utils.branch_sales import resolve_sale_fulfillment
 from utils.delivery_expense_service import sync_delivery_expense_for_invoice
-from utils.order_shipping import add_shipping_line_item, net_total_after_shipping
+from utils.order_shipping import add_shipping_line_item, apply_shipping_fee_on_paid_invoice
 from utils.product_delivery_fees import fee_for_cart_items
 from utils.payment_ledger import append_payment_ledger_delta
 from utils.permission_checks import employee_can
@@ -213,13 +213,13 @@ def execute():
         shipping_fee = max(0, _safe_int(shipping_fee, 0))
     if shipping_fee > 0:
         tenant_id = getattr(customer, "tenant_id", None)
-        # تحفظ داخليا للتسوية وتخصم من صافي البيع.
+        # Stored for settlement; deducted only when the invoice is paid.
         add_shipping_line_item(invoice, shipping_fee, tenant_id)
 
-    net_total = net_total_after_shipping(total, shipping_fee)
-    invoice.total = net_total
-    invoice.paid_amount = net_total
-    append_payment_ledger_delta(invoice.id, net_total)
+    invoice.total = total
+    invoice.paid_amount = total
+    apply_shipping_fee_on_paid_invoice(invoice)
+    append_payment_ledger_delta(invoice.id, int(invoice.paid_amount or 0))
     sync_delivery_expense_for_invoice(invoice)
 
     try:
@@ -232,7 +232,7 @@ def execute():
         {
             "success": True,
             "invoice_id": invoice.id,
-            "total": net_total,
+            "total": invoice.total,
             "print_url": url_for("orders.invoice_page", order_id=invoice.id),
         }
     )

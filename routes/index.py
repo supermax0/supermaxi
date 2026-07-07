@@ -1790,21 +1790,25 @@ def index_execute():
     elif action == "delivered":
         # التوصيل = تحصيل في مسار لوحة التحكم (مثل كشف الشحن «واصل»)
         from utils.delivery_expense_service import sync_delivery_expense_for_invoice
+        from utils.order_shipping import apply_shipping_fee_on_paid_invoice
 
         prev_eff = _effective_paid_amount(invoice)
         invoice.status = "تم التوصيل"
         invoice.payment_status = "مسدد"
         invoice.paid_amount = int(invoice.total or 0)
+        apply_shipping_fee_on_paid_invoice(invoice)
         append_payment_ledger_delta(invoice.id, _effective_paid_amount(invoice) - prev_eff)
         sync_delivery_expense_for_invoice(invoice)
 
     elif action == "paid":
         from utils.delivery_expense_service import sync_delivery_expense_for_invoice
+        from utils.order_shipping import apply_shipping_fee_on_paid_invoice
 
         prev_eff = _effective_paid_amount(invoice)
         invoice.status = "مسدد"
         invoice.payment_status = "مسدد"
         invoice.paid_amount = int(invoice.total or 0)
+        apply_shipping_fee_on_paid_invoice(invoice)
         invoice.shipping_status = "تم التسديد"
         append_payment_ledger_delta(invoice.id, _effective_paid_amount(invoice) - prev_eff)
         sync_delivery_expense_for_invoice(invoice)
@@ -1869,11 +1873,13 @@ def index_execute_bulk():
                 invoice.status = "جاري الشحن"
             elif action == "delivered":
                 from utils.delivery_expense_service import sync_delivery_expense_for_invoice
+                from utils.order_shipping import apply_shipping_fee_on_paid_invoice
 
                 prev_eff = _effective_paid_amount(invoice)
                 invoice.status = "تم التوصيل"
                 invoice.payment_status = "مسدد"
                 invoice.paid_amount = int(invoice.total or 0)
+                apply_shipping_fee_on_paid_invoice(invoice)
                 append_payment_ledger_delta(invoice.id, _effective_paid_amount(invoice) - prev_eff)
                 sync_delivery_expense_for_invoice(invoice)
             elif action == "paid":
@@ -1881,11 +1887,13 @@ def index_execute_bulk():
                 # تصحيح محاسبي: الطلب الواصل يتم تسديده بشكل صحيح
                 # ==========================
                 from utils.delivery_expense_service import sync_delivery_expense_for_invoice
+                from utils.order_shipping import apply_shipping_fee_on_paid_invoice
 
                 prev_eff = _effective_paid_amount(invoice)
                 invoice.status = "مسدد"
                 invoice.payment_status = "مسدد"  # تأكيد حالة الدفع
                 invoice.paid_amount = int(invoice.total or 0)
+                apply_shipping_fee_on_paid_invoice(invoice)
                 invoice.shipping_status = "تم التسديد"
                 append_payment_ledger_delta(invoice.id, _effective_paid_amount(invoice) - prev_eff)
                 sync_delivery_expense_for_invoice(invoice)
