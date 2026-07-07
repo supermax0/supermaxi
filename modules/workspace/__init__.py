@@ -42,6 +42,12 @@ def _ensure_workspace_request_context():
             from modules.workspace.services.schema_guard import ensure_workspace_schema_for_tenant
 
             ensure_workspace_schema_for_tenant(slug)
+            try:
+                from routes.permissions import ensure_default_permissions
+
+                ensure_default_permissions()
+            except Exception:
+                pass
             _tenant_context_ready.add(slug)
 
 
@@ -65,6 +71,22 @@ def _resolve_plan_key():
         except Exception:
             pass
     return plan_key
+
+
+@workspace_bp.before_request
+def require_ai_workspace_permission():
+    """مساحة LEON تتطلب صلاحية use_ai_workspace (الأدمن يملكها تلقائياً)."""
+    if request.endpoint and str(request.endpoint).endswith("static"):
+        return None
+    if not session.get("user_id"):
+        return None
+
+    from utils.permission_checks import guard_permission
+
+    return guard_permission(
+        "use_ai_workspace",
+        json=request.path.startswith("/workspace/api") or request.is_json,
+    )
 
 
 @workspace_bp.before_request

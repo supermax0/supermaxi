@@ -99,7 +99,7 @@ class Message(db.Model):
             "is_edited": self.is_edited,
             "reply_to_id": self.reply_to_id,
             "reply_to": reply_preview,
-            "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S") if self.created_at else "",
+            "created_at": (self.created_at.isoformat() + "Z") if self.created_at else "",
             "time_ago": self.get_time_ago()
         }
     

@@ -53,6 +53,13 @@
     }
     .product-suggest button:hover { background: rgba(99,102,241,0.1); }
     .product-suggest small { color: var(--text-muted); display: block; margin-top: 2px; }
+    .pur-color-modal { display:none; position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:1200; align-items:center; justify-content:center; padding:16px; }
+    .pur-color-modal.open { display:flex; }
+    .pur-color-card { background:#fff; border-radius:14px; padding:16px; width:min(420px,100%); box-shadow:0 20px 40px rgba(0,0,0,.15); }
+    .pur-color-list { display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:8px; margin:12px 0; }
+    .pur-color-btn { border:1px solid #e2e8f0; border-radius:10px; padding:10px; background:#fff; cursor:pointer; font-weight:700; }
+    .pur-color-btn:hover { border-color:#6366f1; background:#eef2ff; }
+    .pur-color-new { display:flex; gap:8px; margin-top:8px; }
     .collapse-toggle {
       width: 100%; background: var(--card-alt); border: 1px solid var(--border-light); color: var(--text);
       border-radius: 10px; padding: 10px 14px; font-weight: 700; cursor: pointer; text-align: right;
@@ -110,6 +117,7 @@
         <label>بحث منتج</label>
         <input type="text" id="productSearch" placeholder="اسم المنتج / باركود / SKU" autocomplete="off">
         <input type="hidden" id="selectedProductId" value="">
+        <input type="hidden" id="selectedColor" value="">
         <div class="product-suggest" id="productSuggest"></div>
       </div>
       <div class="pur-field"><label>الكمية</label><input type="number" id="itemQty" min="1" value="1"></div>
@@ -224,6 +232,21 @@
   </div>
 </div>
 
+<div id="purchaseColorModal" class="pur-color-modal">
+  <div class="pur-color-card">
+    <h3 style="margin:0 0 8px;">اختر اللون</h3>
+    <div id="purchaseColorProductName" class="muted" style="margin-bottom:8px;"></div>
+    <div id="purchaseColorList" class="pur-color-list"></div>
+    <div class="pur-color-new">
+      <input type="text" id="purchaseNewColorInput" placeholder="لون جديد" style="flex:1;">
+      <button type="button" class="pur-btn pur-btn-primary" id="purchaseNewColorBtn">إضافة</button>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-top:12px;">
+      <button type="button" class="pur-btn pur-btn-muted" id="purchaseColorCancelBtn">إلغاء</button>
+    </div>
+  </div>
+</div>
+
 <script>
   const treasuryChoices = [
     {% for acc in treasury_choices|default([]) %}
@@ -248,6 +271,7 @@
   const payments = [];
   let paymentMode = "credit";
   let selectedProduct = null;
+  let selectedColor = "";
   let searchTimer = null;
   const currentEditingId = {{ edit_purchase.id if edit_purchase else 'null' }};
   const fmt = n => `${(Number(n) || 0).toLocaleString('en-US')} د.ع`;
@@ -288,6 +312,15 @@
     return { sub, discount, ship, grand, paid, remain };
   }
 
+  function purchaseLineKey(productId, color) {
+    return String(productId) + "::" + ((color || "").trim());
+  }
+
+  function displayProductName(name, color) {
+    const c = (color || "").trim();
+    return c ? `${name} — ${c}` : name;
+  }
+
   function renderItems() {
     const tbody = byId("itemsTable").querySelector("tbody");
     byId("emptyItemsHint").style.display = items.length ? "none" : "block";
@@ -296,7 +329,7 @@
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td>${i + 1}</td>
-        <td>${it.product_name}</td>
+        <td>${displayProductName(it.product_name, it.color)}</td>
         <td>${it.quantity}</td>
         <td>${fmt(it.final_unit_cost)}</td>
         <td>${fmt(it.discount_value)}</td>
@@ -329,14 +362,52 @@
     recalc();
   }
 
+  function finishProductSelection(color) {
+    selectedColor = (color || "").trim();
+    byId("selectedColor").value = selectedColor;
+    byId("itemQty").focus();
+    byId("itemQty").select();
+  }
+
+  function closePurchaseColorModal() {
+    byId("purchaseColorModal").classList.remove("open");
+  }
+
+  function openPurchaseColorModal(product) {
+    byId("purchaseColorProductName").textContent = product.name || "";
+    const list = byId("purchaseColorList");
+    const colors = Array.isArray(product.colors) ? product.colors : [];
+    if (!colors.length) {
+      list.innerHTML = '<div class="muted">لا توجد ألوان معرّفة — أدخل لوناً جديداً أدناه</div>';
+    } else {
+      list.innerHTML = colors.map(c => {
+        const name = (c.name || c).toString().replace(/"/g, "&quot;");
+        return `<button type="button" class="pur-color-btn" data-color="${name}">${name}</button>`;
+      }).join("");
+      list.querySelectorAll("[data-color]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          finishProductSelection(btn.dataset.color || "");
+          closePurchaseColorModal();
+        });
+      });
+    }
+    byId("purchaseNewColorInput").value = "";
+    byId("purchaseColorModal").classList.add("open");
+  }
+
   function selectProduct(p) {
     selectedProduct = p;
     byId("selectedProductId").value = p.id;
     byId("productSearch").value = p.name;
     byId("itemUnitCost").value = p.buy_price || 0;
     byId("productSuggest").classList.remove("open");
-    byId("itemQty").focus();
-    byId("itemQty").select();
+    selectedColor = "";
+    byId("selectedColor").value = "";
+    if (p.has_colors) {
+      openPurchaseColorModal(p);
+      return;
+    }
+    finishProductSelection("");
   }
 
   async function runProductSearch(q) {
@@ -387,6 +458,7 @@
   function addCurrentItem() {
     const product_id = Number(byId("selectedProductId").value || 0);
     const product_name = selectedProduct?.name || byId("productSearch").value.trim();
+    const color = (byId("selectedColor").value || selectedColor || "").trim();
     const quantity = Number(byId("itemQty").value || 0);
     const unit_cost_before_discount = Number(byId("itemUnitCost").value || 0);
     const discount_value = Number(byId("itemDisc").value || 0);
@@ -394,12 +466,25 @@
       alert("اختر منتجاً من نتائج البحث وأدخل كمية صحيحة.");
       return;
     }
+    if (selectedProduct?.has_colors && !color) {
+      openPurchaseColorModal(selectedProduct);
+      return;
+    }
     const final_unit_cost = Math.max(unit_cost_before_discount - discount_value, 0);
     const line_total = final_unit_cost * quantity;
-    items.push({ product_id, product_name, quantity, unit_cost_before_discount, discount_value, final_unit_cost, line_total });
+    const lineKey = purchaseLineKey(product_id, color);
+    const existing = items.find(it => purchaseLineKey(it.product_id, it.color) === lineKey);
+    if (existing) {
+      existing.quantity += quantity;
+      existing.line_total = existing.final_unit_cost * existing.quantity;
+    } else {
+      items.push({ product_id, product_name, color, quantity, unit_cost_before_discount, discount_value, final_unit_cost, line_total });
+    }
     byId("productSearch").value = "";
     byId("selectedProductId").value = "";
+    byId("selectedColor").value = "";
     selectedProduct = null;
+    selectedColor = "";
     byId("itemQty").value = "1";
     byId("itemDisc").value = "0";
     renderItems();
@@ -407,6 +492,14 @@
   }
 
   byId("addItemBtn").addEventListener("click", addCurrentItem);
+
+  byId("purchaseColorCancelBtn").addEventListener("click", closePurchaseColorModal);
+  byId("purchaseNewColorBtn").addEventListener("click", () => {
+    const color = (byId("purchaseNewColorInput").value || "").trim();
+    if (!color) { alert("أدخل اسم اللون"); return; }
+    finishProductSelection(color);
+    closePurchaseColorModal();
+  });
 
   byId("addPayBtn").addEventListener("click", () => {
     const amount = Number(byId("payAmount").value || 0);
@@ -506,6 +599,7 @@
         {
           product_id: {{ it.product_id }},
           product_name: {{ (it.product.name if it.product else '')|tojson }},
+          color: {{ (it.variant_color or '')|tojson }},
           quantity: {{ it.quantity or 0 }},
           unit_cost_before_discount: {{ it.unit_cost_before_discount or 0 }},
           discount_value: {{ it.discount_value or 0 }},

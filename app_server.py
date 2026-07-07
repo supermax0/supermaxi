@@ -847,6 +847,8 @@ def inject_global_data():
         "can_see_financial": False,
         # صلاحيات ظهور الروابط في القائمة الجانبية
         "can_use_pos": False,
+        "can_use_quick_sale": False,
+        "can_use_ai_workspace": False,
         "can_see_shipping": False,
         "can_see_agents": False,
         "can_see_pages": False,
@@ -898,6 +900,8 @@ def inject_global_data():
             "can_see_financial": employee_can(employee, "view_financial"),
             # ربط أعلام القائمة الجانبية بصلاحيات الـ RBAC
             "can_use_pos": employee_can(employee, "view_pos"),
+            "can_use_quick_sale": employee_can(employee, "view_quick_sale"),
+            "can_use_ai_workspace": employee_can(employee, "use_ai_workspace"),
             "can_see_shipping": employee_can(employee, "view_shipping"),
             "can_see_agents": employee_can(employee, "view_agents"),
             "can_see_pages": employee_can(employee, "view_pages"),
@@ -1023,7 +1027,8 @@ def require_login():
             return deny_current_path()
 
         rules = [
-            ("/quick-sale", "view_pos"),
+            ("/quick-sale", "view_quick_sale"),
+            ("/workspace", "use_ai_workspace"),
             ("/inventory", "manage_inventory"),
             ("/maintenance", "manage_inventory"),
             ("/purchases", "manage_inventory"),

@@ -26,8 +26,8 @@
 {% set storefront_cities = ['بغداد', 'البصرة', 'نينوى', 'أربيل', 'النجف', 'كربلاء', 'ذي قار', 'السليمانية', 'دهوك', 'كركوك', 'ديالى', 'الأنبار', 'صلاح الدين', 'واسط', 'بابل', 'القادسية', 'ميسان', 'المثنى'] %}
 
 <div class="settings-page-header">
-  <h1><i class="fas fa-store"></i> {{ _('settings_nav_storefront') }}</h1>
-  <p>خصص ألوان المتجر، شكل بطاقات المنتجات، الشحن، والكوبونات.</p>
+  <h1><i class="fas fa-store"></i> {{ _('settings_card_storefront_title') }}</h1>
+  <p>{{ _('settings_card_storefront_desc') }}</p>
 </div>
 
 <div class="settings-section-card">
@@ -187,12 +187,16 @@
     </div>
   </div>
 </div>
+{% endblock %}
 
-<div class="settings-actions-bar">
-  <button type="button" class="settings-btn settings-btn-primary" id="saveStorefrontBtn">
-    <i class="fas fa-save"></i>
-    حفظ إعدادات المتجر
-  </button>
+{% block settings_sticky_actions %}
+<div class="settings-sticky-bar">
+  <div class="settings-sticky-bar-info">{{ _('settings_unsaved_hint') }}</div>
+  <div class="settings-sticky-bar-actions">
+    <button type="button" class="settings-btn settings-btn-primary" id="saveStorefrontBtn">
+      <i class="fas fa-save"></i> {{ _('settings_save_storefront') }}
+    </button>
+  </div>
 </div>
 {% endblock %}
 

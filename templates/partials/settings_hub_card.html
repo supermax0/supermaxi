@@ -1,0 +1,11 @@
+<a href="{{ href }}" class="settings-hub-card{% if extra_class %} {{ extra_class }}{% endif %}"{% if aria_label %} aria-label="{{ aria_label }}"{% endif %}{% if external %} target="_blank" rel="noopener"{% endif %}>
+  <div class="settings-hub-card-head">
+    <div class="settings-hub-card-icon"><i class="fas fa-{{ icon }}"></i></div>
+    <span class="settings-hub-card-arrow"><i class="fas fa-arrow-left"></i></span>
+  </div>
+  <h3>{{ title }}</h3>
+  <p>{{ description }}</p>
+  {% if actions %}
+  <div class="settings-hub-card-actions">{{ actions|safe }}</div>
+  {% endif %}
+</a>

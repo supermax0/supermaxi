@@ -200,9 +200,9 @@
   }
 
   .user-item {
-    padding: var(--spacing-md);
+    padding: 14px;
     border-radius: var(--radius-md);
-    margin-bottom: var(--spacing-sm);
+    margin-bottom: 10px;
     cursor: pointer;
     transition: all 0.2s ease;
     border: 1px solid transparent;
@@ -228,8 +228,8 @@
   .user-item-info {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    gap: var(--spacing-md);
+    align-items: flex-start;
+    gap: 12px;
     pointer-events: none;
   }
 
@@ -242,21 +242,28 @@
     font-weight: 600;
     color: var(--chat-text);
     font-size: 15px;
-    margin-bottom: var(--spacing-xs);
+    line-height: 1.35;
+    margin-bottom: 6px;
   }
 
   .user-item-preview {
-    font-size: 12px;
+    display: -webkit-box;
+    font-size: 12.5px;
+    line-height: 1.55;
     color: var(--chat-muted);
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow-wrap: anywhere;
+    text-align: right;
+    white-space: normal;
   }
 
   .user-item-time {
     font-size: 11px;
     color: var(--chat-muted);
     margin-top: var(--spacing-xs);
+    white-space: nowrap;
   }
 
   .user-item-badge {
@@ -383,10 +390,10 @@
   .chat-messages {
     flex: 1;
     overflow-y: auto;
-    padding: var(--spacing-lg);
+    padding: 28px clamp(18px, 4vw, 56px);
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-md);
+    gap: 10px;
     background: var(--chat-bg);
     position: relative;
     scrollbar-width: thin;
@@ -396,13 +403,13 @@
 
   .message {
     display: flex;
-    gap: var(--spacing-md);
+    gap: 10px;
     align-items: flex-end;
     position: relative;
     z-index: 1;
     animation: fadeInUp 0.3s ease-out;
     pointer-events: auto;
-    margin-bottom: var(--spacing-sm);
+    margin-bottom: 6px;
     width: 100%;
   }
 
@@ -422,7 +429,7 @@
     flex-direction: column;
     gap: var(--spacing-xs);
     flex: 0 1 auto;
-    max-width: 82%;
+    max-width: min(680px, 76%);
     min-width: 0;
   }
 
@@ -448,13 +455,14 @@
   }
 
   .message-content {
-    max-width: 80%;
+    max-width: 100%;
     width: fit-content;
-    padding: 10px 18px;
+    padding: 14px 18px 11px;
     border-radius: var(--radius-lg);
     position: relative;
     word-wrap: break-word;
-    line-height: 1.4;
+    overflow-wrap: anywhere;
+    line-height: 1.85;
     transition: all 0.2s ease;
     pointer-events: auto;
     display: block;
@@ -477,26 +485,35 @@
 
   /* Message text content wrapper */
   .message-text-content {
-    word-break: break-word;
+    color: inherit;
+    direction: rtl;
+    font-size: 15.5px;
+    font-weight: 500;
+    letter-spacing: 0;
+    line-height: 1.85;
     margin: 0;
-    font-size: 14.5px;
+    overflow-wrap: anywhere;
+    text-align: right;
+    white-space: pre-wrap;
+    word-break: normal;
   }
 
-  /* Message timestamp - positioned inside bubble */
+  /* Message timestamp */
   .message-timestamp-wrapper {
     display: flex;
     justify-content: flex-end;
-    margin-top: 4px;
+    margin-top: 8px;
     pointer-events: none;
   }
 
   .message-time {
-    font-size: 10px;
+    font-size: 11px;
     color: var(--chat-muted);
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    opacity: 0.7;
+    gap: 5px;
+    line-height: 1;
+    opacity: 0.8;
     font-weight: 500;
     white-space: nowrap;
   }
@@ -1218,11 +1235,16 @@
     }
 
     .chat-messages {
-      padding: var(--spacing-md);
+      padding: 18px 14px;
+    }
+
+    .message-wrapper {
+      max-width: 88%;
     }
 
     .message-content {
-      max-width: 85%;
+      max-width: 100%;
+      padding: 13px 15px 10px;
     }
 
     .toast-container {
@@ -1308,12 +1330,13 @@
     }
 
     .message-content {
-      max-width: 92% !important;
-      padding: 8px 12px !important;
+      max-width: 100% !important;
+      padding: 12px 13px 9px !important;
     }
 
     .message-text-content {
-      font-size: 13.5px !important;
+      font-size: 14.5px !important;
+      line-height: 1.75 !important;
     }
 
     .chat-file-btn {
@@ -2259,6 +2282,31 @@
   const msgsErrorPrefix = "{{ _('messages_error_prefix') }}";
   const msgsTimeAm = "{{ _('messages_time_am') }}";
   const msgsTimePm = "{{ _('messages_time_pm') }}";
+  const msgsChannelNotify = "{{ _('messages_channel_notify') }}";
+
+  function playMessageSound(kind) {
+    if (window.FinoraMsgNotify) window.FinoraMsgNotify.play(kind || 'receive');
+  }
+
+  function showMessageNotification(title, body, tag) {
+    if (window.FinoraMsgNotify) window.FinoraMsgNotify.notify(title, body, tag);
+  }
+
+  function notifyMessageSent(preview) {
+    playMessageSound('send');
+    showToast(msgsSendSuccess, 'success');
+    showMessageNotification(msgsSendSuccess, preview || '', 'finora-msg-sent');
+  }
+
+  function notifyMessageReceived(item) {
+    if (!item || !item.id) return;
+    if (window.FinoraMsgNotify && !window.FinoraMsgNotify.shouldNotify(item.id)) return;
+    playMessageSound('receive');
+    const title = item.kind === 'channel'
+      ? msgsChannelNotify
+      : (msgsNewFrom + (item.sender_name || ''));
+    showMessageNotification(title, item.preview || '', 'finora-msg-' + item.id);
+  }
 
   // ==================== UTILITY FUNCTIONS ====================
   function showToast(message, type = 'info') {
@@ -2312,9 +2360,20 @@
     return div.innerHTML;
   }
 
+  /** تواريخ السيرفر مخزّنة UTC بدون منطقة زمنية — نحوّلها للتوقيت المحلي للعرض */
+  function parseServerDate(dateString) {
+    if (!dateString) return null;
+    const s = String(dateString).trim();
+    if (!s) return null;
+    if (/Z$|[+-]\d{2}:?\d{2}$/.test(s)) return new Date(s);
+    const normalized = s.includes('T') ? s : s.replace(' ', 'T');
+    return new Date(normalized + 'Z');
+  }
+
   function formatMessageTime(dateString) {
     if (!dateString) return '';
-    const date = new Date(dateString);
+    const date = parseServerDate(dateString);
+    if (!date || isNaN(date.getTime())) return '';
     const hours = date.getHours();
     const minutes = date.getMinutes();
     const ampm = hours >= 12 ? msgsTimePm : msgsTimeAm;
@@ -2329,16 +2388,6 @@
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
-  }
-
-  function playNotificationSound() {
-    try {
-      const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0vPSgjMGHm7A7+OZUA==');
-      audio.volume = 0.3;
-      audio.play().catch(e => console.log('Could not play sound'));
-    } catch (e) {
-      console.log('Sound not available');
-    }
   }
 
   // ==================== STATE VARIABLES ====================
@@ -2368,7 +2417,82 @@
   let recTimerInterval = null;
   let recSeconds = 0;
 
-  // Long press variables
+  let inboxNotifyInitialized = false;
+  let msgsLastUnreadCount = 0;
+
+  function applyUnreadBadgeData(data) {
+    const badge = document.getElementById('messagesBadge');
+    if (badge) {
+      if (data.unread_count > 0) {
+        badge.textContent = data.unread_count;
+        badge.style.display = 'inline-flex';
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+
+    const chBadge = document.getElementById('channelBadge');
+    if (chBadge) {
+      const cc = data.channel_count || 0;
+      if (cc > 0 && !inChannel) {
+        chBadge.textContent = cc;
+        chBadge.classList.remove('hidden');
+      } else {
+        chBadge.classList.add('hidden');
+      }
+    }
+  }
+
+  function pollInboxNotifications() {
+    fetch('/messages/unread-count')
+      .then(r => {
+        if (!r.ok) throw new Error('Network response was not ok');
+        return r.json();
+      })
+      .then(data => {
+        applyUnreadBadgeData(data);
+
+        if (!inboxNotifyInitialized) {
+          inboxNotifyInitialized = true;
+          msgsLastUnreadCount = data.unread_count || 0;
+          if (window.FinoraMsgNotify) {
+            if (data.latest_unread) window.FinoraMsgNotify.markNotified(data.latest_unread.id);
+            if (data.latest_channel) window.FinoraMsgNotify.markNotified(data.latest_channel.id);
+          }
+          return;
+        }
+
+        if ((data.unread_count || 0) <= msgsLastUnreadCount) {
+          msgsLastUnreadCount = data.unread_count || 0;
+          return;
+        }
+
+        const items = [];
+        if (data.latest_unread) items.push(data.latest_unread);
+        if (data.latest_channel) items.push(data.latest_channel);
+
+        items.forEach(item => {
+          if (!item || !item.id) return;
+          if (item.kind === 'private' && currentChatUserId && parseInt(item.sender_id) === parseInt(currentChatUserId)) {
+            if (window.FinoraMsgNotify) window.FinoraMsgNotify.markNotified(item.id);
+            return;
+          }
+          if (item.kind === 'channel' && inChannel) {
+            if (window.FinoraMsgNotify) window.FinoraMsgNotify.markNotified(item.id);
+            return;
+          }
+          notifyMessageReceived(item);
+        });
+
+        msgsLastUnreadCount = data.unread_count || 0;
+      })
+      .catch(error => {
+        if (error.name !== 'TypeError' || !error.message.includes('fetch')) {
+          console.error('Error polling inbox notifications:', error);
+        }
+      });
+  }
+
   let pressTimer;
   let isDragging = false;
   let contextMenuTargetId = null;
@@ -2399,13 +2523,15 @@
   // ==================== DATE HELPERS ====================
   function dateKey(dateString) {
     if (!dateString) return '';
-    const d = new Date(dateString);
+    const d = parseServerDate(dateString);
+    if (!d || isNaN(d.getTime())) return '';
     return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
   }
 
   function formatDateSeparator(dateString) {
     if (!dateString) return '';
-    const d = new Date(dateString);
+    const d = parseServerDate(dateString);
+    if (!d || isNaN(d.getTime())) return '';
     const today = new Date();
     const yesterday = new Date();
     yesterday.setDate(today.getDate() - 1);
@@ -2711,14 +2837,18 @@
 
           const otherUserMessages = newMessages.filter(m => parseInt(m.sender_id) !== parseInt(loggedInUserId));
           if (otherUserMessages.length > 0) {
-            otherUserMessages.forEach((_, idx) => setTimeout(() => playNotificationSound(), idx * 180));
-            updateUnreadCount();
-            if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
-              new Notification(msgsNewFrom + currentChatUserName, {
-                body: (otherUserMessages[0].content || '').substring(0, 50),
-                icon: '/static/favicon.png'
+            playMessageSound('receive');
+            const first = otherUserMessages[0];
+            const preview = (first.content || '').trim() || (first.file_type ? '📎 مرفق' : '');
+            if (document.hidden) {
+              notifyMessageReceived({
+                id: first.id,
+                kind: 'private',
+                sender_name: currentChatUserName,
+                preview: preview
               });
             }
+            updateUnreadCount();
           }
           lastMessageId = Math.max(lastMessageId, ...newMessages.map(m => m.id));
         }
@@ -2758,6 +2888,7 @@
         return;
       }
 
+      const sendPreview = content || (selectedFile ? msgsFileLabel : '');
       const cfd = new FormData();
       cfd.append('content', content || '');
       if (selectedFile) cfd.append('file', selectedFile);
@@ -2768,7 +2899,10 @@
         .then(r => r.json())
         .then(data => {
           hideLoading();
-          if (data.success) { playNotificationSound(); setTimeout(loadChannel, 200); }
+          if (data.success) {
+            notifyMessageSent(sendPreview);
+            setTimeout(loadChannel, 200);
+          }
           else showToast(msgsErrorPrefix + (data.error || msgsSendFailed), 'error');
         })
         .catch(() => { hideLoading(); showToast(msgsSendError, 'error'); });
@@ -2794,9 +2928,9 @@
           hideLoading();
           if (data.success) {
             cancelEditMode();
-            playNotificationSound();
-            setTimeout(loadMessages, 300);
+            playMessageSound('send');
             showToast(msgsEditSuccess, 'success');
+            setTimeout(loadMessages, 300);
           } else {
             showToast(msgsErrorPrefix + (data.error || msgsEditFailed), 'error');
           }
@@ -2809,6 +2943,7 @@
       return;
     }
 
+    const sendPreview = content || (selectedFile ? msgsFileLabel : '');
     const formData = new FormData();
     formData.append('receiver_id', currentChatUserId);
     formData.append('content', content || '');
@@ -2829,9 +2964,8 @@
       .then(data => {
         hideLoading();
         if (data.success) {
-          playNotificationSound();
+          notifyMessageSent(sendPreview);
           setTimeout(() => checkNewMessages(), 200);
-          showToast(msgsSendSuccess, 'success');
         } else {
           showToast(msgsErrorPrefix + (data.error || msgsSendFailed), 'error');
         }
@@ -2902,7 +3036,16 @@
           const container = document.getElementById('chatMessages');
           appendMessages(container, data.messages);
           const others = data.messages.filter(m => parseInt(m.sender_id) !== parseInt(loggedInUserId));
-          if (others.length) playNotificationSound();
+          if (others.length) {
+            playMessageSound('receive');
+            const first = others[0];
+            notifyMessageReceived({
+              id: first.id,
+              kind: 'channel',
+              sender_name: first.sender_name || 'الإدارة',
+              preview: (first.content || '').trim() || '📎 مرفق'
+            });
+          }
           lastChannelId = Math.max(lastChannelId, ...data.messages.map(m => m.id));
           updateUnreadCount();
         }
@@ -3072,7 +3215,11 @@
       .then(r => r.json())
       .then(data => {
         hideLoading();
-        if (data.success) { playNotificationSound(); cancelReply(); inChannel ? setTimeout(loadChannel, 200) : setTimeout(checkNewMessages, 200); }
+        if (data.success) {
+          notifyMessageSent('🎤 تسجيل صوتي');
+          cancelReply();
+          inChannel ? setTimeout(loadChannel, 200) : setTimeout(checkNewMessages, 200);
+        }
         else showToast(msgsErrorPrefix + (data.error || msgsSendFailed), 'error');
       })
       .catch(() => { hideLoading(); showToast(msgsSendError, 'error'); });
@@ -3110,7 +3257,8 @@
   }
 
   function formatLastSeen(dateString) {
-    const d = new Date(dateString + 'Z');
+    const d = parseServerDate(dateString);
+    if (!d || isNaN(d.getTime())) return '';
     const now = new Date();
     const diff = Math.floor((now - d) / 1000);
     if (diff < 60) return 'قبل لحظات';
@@ -3317,38 +3465,7 @@
   }
 
   function updateUnreadCount() {
-    fetch('/messages/unread-count')
-      .then(r => {
-        if (!r.ok) throw new Error('Network response was not ok');
-        return r.json();
-      })
-      .then(data => {
-        const badge = document.getElementById('messagesBadge');
-        if (badge) {
-          if (data.unread_count > 0) {
-            badge.textContent = data.unread_count;
-            badge.style.display = 'inline-flex';
-          } else {
-            badge.style.display = 'none';
-          }
-        }
-
-        const chBadge = document.getElementById('channelBadge');
-        if (chBadge) {
-          const cc = data.channel_count || 0;
-          if (cc > 0 && !inChannel) {
-            chBadge.textContent = cc;
-            chBadge.classList.remove('hidden');
-          } else {
-            chBadge.classList.add('hidden');
-          }
-        }
-      })
-      .catch(error => {
-        if (error.name !== 'TypeError' || !error.message.includes('fetch')) {
-          console.error('Error updating unread count:', error);
-        }
-      });
+    pollInboxNotifications();
   }
 
   function updateConversations() {
@@ -3911,20 +4028,18 @@
   });
 
   // ==================== INITIALIZATION ====================
-  if ('Notification' in window && Notification.permission === 'default') {
-    Notification.requestPermission();
-  }
+  if (window.FinoraMsgNotify) window.FinoraMsgNotify.requestPermission();
 
-  let unreadInterval = null;
   let conversationsInterval = null;
+  let inboxNotifyInterval = null;
 
   function startBackgroundPolling() {
-    if (!unreadInterval) unreadInterval = setInterval(updateUnreadCount, 5000);
+    if (!inboxNotifyInterval) inboxNotifyInterval = setInterval(pollInboxNotifications, 5000);
     if (!conversationsInterval) conversationsInterval = setInterval(updateConversations, 10000);
   }
 
   function stopBackgroundPolling() {
-    if (unreadInterval) { clearInterval(unreadInterval); unreadInterval = null; }
+    if (inboxNotifyInterval) { clearInterval(inboxNotifyInterval); inboxNotifyInterval = null; }
     if (conversationsInterval) { clearInterval(conversationsInterval); conversationsInterval = null; }
   }
 
@@ -3950,10 +4065,10 @@
     if (document.hidden) {
       stopDmPolling();
       stopChannelPolling();
-      stopBackgroundPolling();
       stopPresence();
       if (heartbeatInterval) { clearInterval(heartbeatInterval); heartbeatInterval = null; }
-      // Keep incoming-call polling active if in a call; otherwise pause it
+      // Keep inbox notifications + badge polling when tab is hidden
+      if (!inboxNotifyInterval) inboxNotifyInterval = setInterval(pollInboxNotifications, 5000);
       if (!callState.active) stopIncomingPolling();
     } else {
       startBackgroundPolling();

@@ -9,7 +9,8 @@ ARABIC_VARIANTS = str.maketrans("أإآ", "ااا")
 INVISIBLE_CHARS = re.compile(r"[\u200b\u200c\u200d\ufeff]")
 MULTI_SPACE = re.compile(r"\s+")
 
-ORDER_NUMERIC = re.compile(r"(?:#|طلب\s*|ORD[-_]?\s*)?(\d{4,})", re.IGNORECASE)
+ORDER_WITH_HASH = re.compile(r"#\s*(\d{1,8})", re.IGNORECASE)
+ORDER_NUMERIC = re.compile(r"(?:طلب\s*|ORD[-_]?\s*)?(\d{4,})", re.IGNORECASE)
 ORDER_PREFIXED = re.compile(r"(ORD[-_]?[A-Z0-9]+)", re.IGNORECASE)
 IQD_MARKERS = re.compile(r"(د\.ع|IQD|دينار)", re.IGNORECASE)
 DATE_ISO = re.compile(r"^(\d{4})-(\d{1,2})-(\d{1,2})$")
@@ -105,6 +106,14 @@ class DocumentNormalizationService:
                 "raw": raw,
                 "normalized": num or token,
                 "kind": "prefixed",
+            }
+
+        hash_order = ORDER_WITH_HASH.search(digits)
+        if hash_order:
+            return {
+                "raw": raw,
+                "normalized": hash_order.group(1),
+                "kind": "numeric",
             }
 
         numeric = ORDER_NUMERIC.search(digits)

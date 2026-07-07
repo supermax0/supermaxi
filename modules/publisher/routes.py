@@ -139,7 +139,7 @@ def settings():
         return guard
     if _should_use_legacy_ui():
         return _render_locked_or_dev_template(
-            "publisher_dev/settings.html",
+            "publisher_dev/settings_hub.html",
             "publisher/settings.html",
         )
     return _render_spa("/publisher/settings", "إعدادات الناشر")

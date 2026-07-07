@@ -50,8 +50,15 @@ def order_item_display_name(item) -> str:
     if product is not None:
         live = (getattr(product, "name", None) or "").strip()
         if live:
-            return live
-    return (getattr(item, "product_name", None) or "").strip() or "منتج"
+            name = live
+        else:
+            name = (getattr(item, "product_name", None) or "").strip() or "منتج"
+    else:
+        name = (getattr(item, "product_name", None) or "").strip() or "منتج"
+    color = (getattr(item, "variant_color", None) or "").strip()
+    if color:
+        return f"{name} — {color}"
+    return name
 
 
 def sync_product_name_to_order_items(product_id: int, new_name: str) -> int:
@@ -137,6 +144,42 @@ def _deduct_fee_from_product_items(product_items, fee: int) -> int:
     return fee
 
 
+def net_total_after_shipping(total: int, shipping_fee: int) -> int:
+    return max(0, _safe_int(total, 0) - max(0, _safe_int(shipping_fee, 0)))
+
+
+def _invoice_items(invoice) -> list:
+    if invoice is None:
+        return []
+    items = getattr(invoice, "order_items", None)
+    if items is None:
+        items = getattr(invoice, "items", None)
+    if items is not None:
+        try:
+            return list(items)
+        except TypeError:
+            pass
+    if getattr(invoice, "id", None) is None:
+        return []
+    return OrderItem.query.filter_by(invoice_id=invoice.id).all()
+
+
+def non_shipping_items_total(invoice) -> int:
+    return sum(
+        _safe_int(getattr(item, "total", 0))
+        for item in _invoice_items(invoice)
+        if not is_shipping_item(item)
+    )
+
+
+def is_shipping_fee_deducted_from_invoice(invoice) -> bool:
+    fee = get_shipping_fee_from_invoice(invoice)
+    if fee <= 0 or invoice is None:
+        return False
+    invoice_total = _safe_int(getattr(invoice, "total", 0))
+    return invoice_total == net_total_after_shipping(non_shipping_items_total(invoice), fee)
+
+
 def add_shipping_line_item(invoice, shipping_fee: int, tenant_id: int | None = None) -> int:
     """
     تسجيل رسوم الشحن داخلياً بدون إضافتها للإجمالي وبدون خصمها من المنتجات.
@@ -176,6 +219,7 @@ def prepare_invoice_items_for_print(items):
     يُرجع (printable_items, display_total).
     """
     items = list(items or [])
+    shipping_fee = sum(_shipping_fee_from_item(i) for i in items if is_shipping_item(i))
 
     printable = [
         SimpleNamespace(
@@ -188,6 +232,8 @@ def prepare_invoice_items_for_print(items):
         for i in items
         if not is_shipping_item(i)
     ]
+    if shipping_fee > 0:
+        _deduct_fee_from_product_items(printable, shipping_fee)
     display_total = sum(i.total for i in printable)
     return printable, display_total
 

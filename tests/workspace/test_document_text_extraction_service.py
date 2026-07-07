@@ -47,7 +47,24 @@ def test_mock_pdf_extraction():
     print("test_mock_pdf_extraction ok")
 
 
+def test_empty_extraction_is_unreadable():
+    from modules.workspace.services.document_intelligence.document_intelligence_service import (
+        DocumentIntelligenceService,
+    )
+
+    payload = {
+        "status": "not_available",
+        "text": "",
+        "warnings": ["تعذّر قراءة PDF — ثبّت pypdf أو pymupdf"],
+    }
+    assert DocumentIntelligenceService._is_unreadable(payload, [])
+    message = DocumentIntelligenceService._unreadable_message(payload, {"warnings": []})
+    assert "لم يتم استخراج نص" in message
+    print("test_empty_extraction_is_unreadable ok")
+
+
 if __name__ == "__main__":
     test_pdf_not_available_without_dependency()
     test_mock_pdf_extraction()
+    test_empty_extraction_is_unreadable()
     print("All text extraction tests passed.")

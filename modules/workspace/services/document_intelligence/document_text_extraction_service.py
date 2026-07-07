@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from typing import Any, Dict, List, Optional
 
 from modules.workspace.services.document_intelligence.document_normalization_service import (
@@ -56,85 +55,77 @@ class DocumentTextExtractionService:
 
     @staticmethod
     def _extract_pdf(abs_path: str) -> Dict[str, Any]:
-        # pymupdf / fitz
+        warnings: List[str] = []
+        partial_pages: List[Dict[str, Any]] = []
+
+        for extractor in (
+            DocumentTextExtractionService._try_fitz_text,
+            DocumentTextExtractionService._try_pypdf_text,
+            DocumentTextExtractionService._try_pdfplumber_text,
+        ):
+            try:
+                payload = extractor(abs_path)
+            except Exception as exc:
+                warnings.append(str(exc))
+                continue
+            if not payload:
+                continue
+            partial_pages = payload.get("pages") or partial_pages
+            text = (payload.get("text") or "").strip()
+            if text:
+                return DocumentTextExtractionService._result(
+                    "completed",
+                    text,
+                    payload.get("pages") or [],
+                    warnings=warnings,
+                )
+            if payload.get("image_only_pdf"):
+                warnings.append("PDF لا يحتوي طبقة نص ويبدو أنه صور ممسوحة")
+                break
+
+        ocr_payload = DocumentTextExtractionService._try_fitz_ocr(abs_path)
+        if ocr_payload and (ocr_payload.get("text") or "").strip():
+            warnings.append("تم استخدام OCR لأن PDF لا يحتوي طبقة نص قابلة للقراءة")
+            warnings.extend(ocr_payload.get("warnings") or [])
+            return DocumentTextExtractionService._result(
+                "completed",
+                ocr_payload.get("text") or "",
+                ocr_payload.get("pages") or [],
+                warnings=warnings,
+            )
+        if ocr_payload:
+            warnings.extend(ocr_payload.get("warnings") or [])
+
+        if partial_pages:
+            return DocumentTextExtractionService._result(
+                "partial",
+                "",
+                partial_pages,
+                warnings=warnings + ["لم يُعثر على طبقة نص في PDF"],
+            )
+
+        if warnings:
+            return DocumentTextExtractionService._result("failed", warnings=warnings)
+
+        return DocumentTextExtractionService._not_available(
+            "تعذّر قراءة PDF — ثبّت pypdf أو pymupdf، أو تأكد من توفر Tesseract للملفات الممسوحة"
+        )
+
+    @staticmethod
+    def _try_fitz_text(abs_path: str) -> Optional[Dict[str, Any]]:
         try:
             import fitz  # type: ignore
-
-            pages_out = []
-            full_parts = []
-            with fitz.open(abs_path) as doc:
-                for i, page in enumerate(doc, start=1):
-                    page_text = page.get_text("text") or ""
-                    page_text = DocumentNormalizationService.normalize_text(page_text)
-                    pages_out.append({
-                        "page": i,
-                        "text": page_text,
-                        "confidence": None,
-                        "method": "pdf_text",
-                    })
-                    full_parts.append(page_text)
-            full_text = "\n".join(full_parts).strip()
-            if full_text:
-                return DocumentTextExtractionService._result("completed", full_text, pages_out)
-            return DocumentTextExtractionService._result(
-                "partial",
-                "",
-                pages_out,
-                warnings=["لم يُعثر على طبقة نص في PDF"],
-            )
         except ImportError:
-            pass
-        except Exception as exc:
-            return DocumentTextExtractionService._result(
-                "failed",
-                pages=[{"page": 1, "text": "", "confidence": None, "method": "pdf_text"}],
-                warnings=[str(exc)],
-            )
+            return None
 
-        # pdfplumber fallback
-        try:
-            import pdfplumber  # type: ignore
-
-            pages_out = []
-            full_parts = []
-            with pdfplumber.open(abs_path) as pdf:
-                for i, page in enumerate(pdf.pages, start=1):
-                    page_text = page.extract_text() or ""
-                    page_text = DocumentNormalizationService.normalize_text(page_text)
-                    pages_out.append({
-                        "page": i,
-                        "text": page_text,
-                        "confidence": None,
-                        "method": "pdf_text",
-                    })
-                    full_parts.append(page_text)
-            full_text = "\n".join(full_parts).strip()
-            if full_text:
-                return DocumentTextExtractionService._result("completed", full_text, pages_out)
-            return DocumentTextExtractionService._result(
-                "partial",
-                "",
-                pages_out,
-                warnings=["لم يُعثر على طبقة نص في PDF"],
-            )
-        except ImportError:
-            pass
-        except Exception as exc:
-            return DocumentTextExtractionService._result(
-                "failed",
-                warnings=[str(exc)],
-            )
-
-        # PyPDF2 fallback
-        try:
-            from PyPDF2 import PdfReader  # type: ignore
-
-            reader = PdfReader(abs_path)
-            pages_out = []
-            full_parts = []
-            for i, page in enumerate(reader.pages, start=1):
-                page_text = page.extract_text() or ""
-                page_text = DocumentNormalizationService.normalize_text(page_text)
+        pages_out: List[Dict[str, Any]] = []
+        full_parts: List[str] = []
+        with fitz.open(abs_path) as doc:
+            image_pages = 0
+            for i, page in enumerate(doc, start=1):
+                page_text = DocumentNormalizationService.normalize_text(page.get_text("text") or "")
+                if not page_text and page.get_images(full=True):
+                    image_pages += 1
                 pages_out.append({
                     "page": i,
                     "text": page_text,
@@ -142,16 +133,103 @@ class DocumentTextExtractionService:
                     "method": "pdf_text",
                 })
                 full_parts.append(page_text)
-            full_text = "\n".join(full_parts).strip()
-            if full_text:
-                return DocumentTextExtractionService._result("completed", full_text, pages_out)
-            return DocumentTextExtractionService._result("partial", "", pages_out)
+        full_text = "\n".join(full_parts).strip()
+        return {
+            "text": full_text,
+            "pages": pages_out,
+            "image_only_pdf": bool(pages_out) and not full_text and image_pages == len(pages_out),
+        }
+
+    @staticmethod
+    def _try_pypdf_text(abs_path: str) -> Optional[Dict[str, Any]]:
+        try:
+            from pypdf import PdfReader  # type: ignore
         except ImportError:
-            return DocumentTextExtractionService._not_available(
-                "PDF text extraction dependency not installed"
-            )
+            try:
+                from PyPDF2 import PdfReader  # type: ignore
+            except ImportError:
+                return None
+
+        reader = PdfReader(abs_path)
+        pages_out: List[Dict[str, Any]] = []
+        full_parts: List[str] = []
+        for i, page in enumerate(reader.pages, start=1):
+            page_text = DocumentNormalizationService.normalize_text(page.extract_text() or "")
+            pages_out.append({
+                "page": i,
+                "text": page_text,
+                "confidence": None,
+                "method": "pdf_text",
+            })
+            full_parts.append(page_text)
+        return {"text": "\n".join(full_parts).strip(), "pages": pages_out}
+
+    @staticmethod
+    def _try_pdfplumber_text(abs_path: str) -> Optional[Dict[str, Any]]:
+        try:
+            import pdfplumber  # type: ignore
+        except ImportError:
+            return None
+
+        pages_out: List[Dict[str, Any]] = []
+        full_parts: List[str] = []
+        with pdfplumber.open(abs_path) as pdf:
+            for i, page in enumerate(pdf.pages, start=1):
+                page_text = DocumentNormalizationService.normalize_text(page.extract_text() or "")
+                pages_out.append({
+                    "page": i,
+                    "text": page_text,
+                    "confidence": None,
+                    "method": "pdf_text",
+                })
+                full_parts.append(page_text)
+        return {"text": "\n".join(full_parts).strip(), "pages": pages_out}
+
+    @staticmethod
+    def _try_fitz_ocr(abs_path: str) -> Optional[Dict[str, Any]]:
+        try:
+            import pytesseract  # type: ignore
+        except ImportError:
+            return None
+
+        pages_out: List[Dict[str, Any]] = []
+        full_parts: List[str] = []
+        warnings: List[str] = []
+
+        try:
+            pytesseract.get_tesseract_version()
+        except Exception:
+            warnings.append("OCR غير متوفر — ثبّت Tesseract مع اللغة العربية لقراءة PDF الممسوح")
+            return {"text": "", "pages": pages_out, "warnings": warnings}
+
+        try:
+            import fitz  # type: ignore
+            from ai.ocr import extract_text
+        except ImportError:
+            return None
+
+        try:
+            with fitz.open(abs_path) as doc:
+                for i, page in enumerate(doc, start=1):
+                    pix = page.get_pixmap(matrix=fitz.Matrix(2, 2), alpha=False)
+                    page_text = extract_text(pix.tobytes("png")) or ""
+                    page_text = DocumentNormalizationService.normalize_text(page_text)
+                    pages_out.append({
+                        "page": i,
+                        "text": page_text,
+                        "confidence": None,
+                        "method": "pdf_ocr",
+                    })
+                    full_parts.append(page_text)
         except Exception as exc:
-            return DocumentTextExtractionService._result("failed", warnings=[str(exc)])
+            err = str(exc).lower()
+            if "tesseract" in err or "pytesseract" in err:
+                warnings.append("OCR غير متوفر — ثبّت Tesseract لقراءة PDF الممسوح")
+                return {"text": "", "pages": pages_out, "warnings": warnings}
+            warnings.append(str(exc))
+            return {"text": "", "pages": pages_out, "warnings": warnings}
+
+        return {"text": "\n".join(full_parts).strip(), "pages": pages_out, "warnings": warnings}
 
     @staticmethod
     def _extract_image(abs_path: str) -> Dict[str, Any]:

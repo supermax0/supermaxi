@@ -12,7 +12,7 @@ from models.product import Product
 from utils.branch_migration import get_default_branch
 from utils.branch_stock_service import deduct_stock, BranchStockError
 from utils.branch_sales import resolve_sale_fulfillment
-from utils.order_shipping import add_shipping_line_item
+from utils.order_shipping import add_shipping_line_item, net_total_after_shipping
 
 SERVICE_SHIPPING_BARCODE = "__SF_SHIPPING__"
 SERVICE_DISCOUNT_BARCODE = "__SF_DISCOUNT__"
@@ -123,8 +123,8 @@ class StorefrontCheckoutService:
         subtotal = sum(int(i["line_total"]) for i in cart_items)
         net_subtotal = max(0, subtotal - discount_amount)
         shipping_fee = max(0, _safe_int(shipping_fee, 0))
-        # الشحن يُحفظ داخلياً كمصروف عند التسديد ولا يؤثر على إجمالي الطلب.
-        grand_total = net_subtotal
+        # Delivery is deducted from the customer-facing sale total and kept as an internal line for settlement.
+        grand_total = net_total_after_shipping(net_subtotal, shipping_fee)
 
         default_branch = get_default_branch()
         preferred_branch_id = default_branch.id if default_branch else None

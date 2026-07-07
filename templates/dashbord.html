@@ -610,11 +610,12 @@
   #alerts li {
     padding: 16px 20px;
     margin-bottom: 12px;
-    background: rgba(30, 41, 59, 0.5);
+    background: var(--surface-soft, #F3F6FB);
     border-radius: 14px;
-    border-left: 4px solid var(--dashboard-warning);
+    border: 1px solid var(--border-light, #EDF1F7);
+    border-right: 4px solid var(--dashboard-warning);
     color: var(--dashboard-text);
-    transition: all 0.3s ease;
+    transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
     display: flex;
     align-items: center;
     gap: 12px;
@@ -623,58 +624,30 @@
     overflow: hidden;
   }
 
-  #alerts li::before {
-    content: '';
-    position: absolute;
-    right: 0;
-    top: 0;
-    width: 4px;
-    height: 100%;
-    background: var(--dashboard-warning);
-    transition: width 0.3s ease;
-  }
-
   #alerts li:hover {
-    background: rgba(30, 41, 59, 0.7);
-    transform: translateX(-5px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  }
-
-  #alerts li:hover::before {
-    width: 100%;
-    opacity: 0.1;
+    background: var(--surface-hover, #EEF4FF);
+    transform: translateX(-3px);
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.08);
   }
 
   #alerts li.alert-success {
-    border-left-color: var(--dashboard-success);
-  }
-
-  #alerts li.alert-success::before {
-    background: var(--dashboard-success);
+    background: var(--success-soft, #EAFBF0);
+    border-right-color: var(--dashboard-success);
   }
 
   #alerts li.alert-danger {
-    border-left-color: var(--dashboard-danger);
-  }
-
-  #alerts li.alert-danger::before {
-    background: var(--dashboard-danger);
+    background: var(--danger-soft, #FEECEC);
+    border-right-color: var(--dashboard-danger);
   }
 
   #alerts li.alert-warning {
-    border-left-color: var(--dashboard-warning);
-  }
-
-  #alerts li.alert-warning::before {
-    background: var(--dashboard-warning);
+    background: var(--warning-soft, #FFF7E6);
+    border-right-color: var(--dashboard-warning);
   }
 
   #alerts li.alert-info {
-    border-left-color: var(--dashboard-primary);
-  }
-
-  #alerts li.alert-info::before {
-    background: var(--dashboard-primary);
+    background: var(--info-soft, #EAF8FF);
+    border-right-color: var(--dashboard-primary);
   }
 
   #alerts li .alert-icon {
@@ -762,17 +735,11 @@
   }
 
   .chart-card {
-    background: linear-gradient(145deg, rgba(17, 24, 39, 0.9), rgba(11, 18, 32, 0.9));
+    background: var(--surface, #FFFFFF);
     padding: 24px;
     border-radius: 20px;
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
-    border: 1px solid rgba(59, 130, 246, 0.15);
-  }
-
-  :root[data-theme="light"] .chart-card {
-    background: var(--card);
-    border: 1px solid var(--border-light);
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+    box-shadow: var(--shadow-card, 0 6px 20px rgba(16, 24, 40, 0.06));
+    border: 1px solid var(--border-light, #EDF1F7);
   }
 
   .chart-card h4 {
@@ -792,16 +759,11 @@
   .chart-meta-item {
     padding: 8px 10px;
     border-radius: 12px;
-    background: rgba(15, 23, 42, 0.65);
-    border: 1px solid rgba(148, 163, 184, 0.25);
+    background: var(--primary-soft, #EAF1FF);
+    border: 1px solid rgba(37, 99, 235, 0.12);
     display: flex;
     flex-direction: column;
     gap: 4px;
-  }
-
-  :root[data-theme="light"] .chart-meta-item {
-    background: rgba(30, 41, 59, 0.05);
-    border: 1px solid rgba(30, 41, 59, 0.1);
   }
 
   .chart-meta-label {
@@ -3621,20 +3583,19 @@
 
   function getChartTheme() {
     const root = document.documentElement;
-    const theme = root.getAttribute("data-theme") || "dark";
     const cs = getComputedStyle(root);
     const getVar = (v, fallback) => (cs.getPropertyValue(v).trim() || fallback);
 
-    const isLight = theme === "light";
-    const text = isLight ? "#1e293b" : "#f1f5f9";
-    const muted = isLight ? "#64748b" : "#94a3b8";
-    const primary = isLight ? "#2563eb" : "#3b82f6";
-    const success = isLight ? "#16a34a" : "#10b981";
-    const grid = isLight ? "rgba(0, 0, 0, 0.05)" : "rgba(255, 255, 255, 0.06)";
-    const tooltipBg = isLight ? "#ffffff" : "#111827";
-    const tooltipBorder = isLight ? "#e2e8f0" : "rgba(255,255,255,0.10)";
-
-    return { theme, text, muted, primary, success, grid, tooltipBg, tooltipBorder };
+    return {
+      theme: "light",
+      text: getVar("--text-main", "#101828"),
+      muted: getVar("--text-muted", "#667085"),
+      primary: getVar("--primary", "#2563EB"),
+      success: getVar("--success", "#16A34A"),
+      grid: "rgba(16, 24, 40, 0.06)",
+      tooltipBg: "#ffffff",
+      tooltipBorder: "#E4EAF2"
+    };
   }
 
   function commonChartOptions() {
@@ -3725,9 +3686,9 @@
             datasets: [{
               label: beautyDash ? "إيراد الجلسات (د.ع)" : "المبيعات (د.ع)",
               data: data.sales,
-              backgroundColor: t.theme === "light" ? "rgba(37, 99, 235, 0.35)" : "rgba(59, 130, 246, 0.45)",
-              borderColor: t.primary,
-              borderWidth: 2,
+              backgroundColor: "rgba(37, 99, 235, 0.72)",
+              borderColor: "#2563EB",
+              borderWidth: 1,
               borderRadius: 10,
               barThickness: 18,
               maxBarThickness: 22
@@ -3747,12 +3708,12 @@
             datasets: [{
               label: beautyDash ? "صافي الربح بعد المصاريف (د.ع)" : "الربح (د.ع)",
               data: data.profit,
-              borderColor: t.success,
-              backgroundColor: t.theme === "light" ? "rgba(22, 163, 74, 0.12)" : "rgba(16, 185, 129, 0.10)",
-              pointRadius: 2,
+              borderColor: "#16A34A",
+              backgroundColor: "rgba(22, 163, 74, 0.22)",
+              pointRadius: 3,
               pointHoverRadius: 5,
-              pointBorderColor: t.success,
-              pointBackgroundColor: t.theme === "light" ? "#fff" : t.success,
+              pointBorderColor: "#16A34A",
+              pointBackgroundColor: "#ffffff",
               tension: 0.4,
               fill: true
             }]

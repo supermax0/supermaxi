@@ -269,6 +269,7 @@
 
 .ai-msg.assistant .ai-msg-body {
   align-items: flex-start;
+  width: min(940px, 100%);
 }
 
 .ai-msg-avatar {
@@ -325,6 +326,8 @@
   background: linear-gradient(135deg, rgba(37, 99, 235, 0.22), rgba(139, 92, 246, 0.16));
   color: var(--text);
   border-top-left-radius: 6px;
+  max-width: 100%;
+  width: 100%;
 }
 
 :root[data-theme="light"] .ai-msg.assistant .ai-bubble {
@@ -383,6 +386,180 @@
 
 :root[data-theme="light"] .ai-bubble--rich .ai-fmt-code {
   background: rgba(15, 23, 42, 0.07);
+}
+
+.ai-fmt-structured {
+  display: grid;
+  gap: 10px;
+  min-width: min(720px, 100%);
+}
+
+.ai-fmt-section-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 900;
+  color: var(--text);
+}
+
+.ai-fmt-product-card,
+.ai-fmt-section {
+  border: 1px solid #dbeafe;
+  background: #ffffff;
+  color: #0f172a;
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+}
+
+:root[data-theme="dark"] .ai-fmt-product-card,
+:root[data-theme="dark"] .ai-fmt-section {
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.ai-fmt-product-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+.ai-fmt-product-head small,
+.ai-fmt-stat small,
+.ai-fmt-section p,
+.ai-fmt-mini-list,
+.ai-fmt-order-links small {
+  color: #475569;
+}
+
+.ai-fmt-product-head strong {
+  display: block;
+  margin-top: 2px;
+  font-size: 14px;
+  color: #0f172a;
+}
+
+.ai-fmt-product-head a,
+.ai-fmt-link,
+.ai-fmt-order-links a {
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 800;
+}
+
+.ai-fmt-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.ai-fmt-stat {
+  display: grid;
+  gap: 2px;
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+}
+
+.ai-fmt-stat strong {
+  color: #0f172a;
+  font-size: 15px;
+}
+
+.ai-fmt-table-wrap {
+  overflow-x: auto;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+}
+
+.ai-fmt-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 440px;
+  font-size: 12px;
+}
+
+.ai-fmt-table th,
+.ai-fmt-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: right;
+  color: #0f172a;
+}
+
+.ai-fmt-table th {
+  background: #f1f5f9;
+  color: #475569;
+  font-weight: 800;
+}
+
+.ai-fmt-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.ai-fmt-row-title {
+  margin: 10px 0 6px;
+  font-size: 12px;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.ai-fmt-order-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.ai-fmt-order-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 7px 9px;
+  border-radius: 10px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  font-size: 12px;
+}
+
+.ai-fmt-order-links small {
+  font-weight: 600;
+}
+
+.ai-fmt-mini-list,
+.ai-fmt-section ul {
+  margin: 6px 0 0;
+  padding-inline-start: 1.1rem;
+}
+
+.ai-fmt-section h3 {
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.ai-fmt-section.is-warn {
+  border-color: #fed7aa;
+  background: #fff7ed;
+}
+
+.ai-fmt-section.is-evidence {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+@media (max-width: 760px) {
+  .ai-fmt-structured {
+    min-width: 0;
+  }
+  .ai-fmt-stats {
+    grid-template-columns: 1fr;
+  }
 }
 
 .ai-meta {
@@ -892,6 +1069,388 @@
     min-height: auto;
   }
 }
+
+/* Chat-first workspace. Tool/report panels are opened by the assistant or toolbar. */
+.ai-chat-page {
+  width: 100%;
+  min-height: calc(100vh - 92px);
+  padding: 0;
+}
+
+.ai-chat-card {
+  height: calc(100vh - 94px);
+  min-height: 620px;
+  padding: 12px;
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+.ai-chat-head {
+  min-height: 74px;
+  padding: 12px 14px;
+  align-items: center;
+  background: rgba(15, 23, 42, 0.34);
+}
+
+:root[data-theme="light"] .ai-chat-head {
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.ai-chat-title {
+  font-size: 20px;
+}
+
+.ai-chat-title-mark {
+  width: 36px;
+  height: 36px;
+}
+
+.ai-chat-subtitle {
+  display: none;
+}
+
+.ai-chat-hero-stats {
+  margin-top: 8px;
+}
+
+.ai-chat-hero-stat {
+  padding: 7px 10px;
+  min-height: 30px;
+}
+
+.ai-chat-actions {
+  flex-wrap: nowrap;
+}
+
+.ai-chat-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  height: calc(100% - 86px);
+  min-height: 0;
+  gap: 0;
+}
+
+.ai-chat {
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.ai-messages {
+  border-radius: 16px;
+}
+
+.ai-compose {
+  margin-top: 10px;
+  grid-template-columns: minmax(0, 1fr) 112px;
+}
+
+.ai-input {
+  min-height: 58px;
+}
+
+.ai-send {
+  min-width: 112px;
+}
+
+.ai-drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+  color: var(--text);
+  font-size: 15px;
+}
+
+.ai-icon-btn {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 12px;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.ai-settings,
+.ai-live-report {
+  position: fixed;
+  top: 108px;
+  bottom: 18px;
+  z-index: 1200;
+  width: min(520px, calc(100vw - 64px));
+  height: auto;
+  max-height: none;
+  overflow: auto;
+  border-radius: 18px;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 180ms ease, opacity 180ms ease;
+}
+
+.ai-settings {
+  right: 318px;
+  display: block;
+  transform: translateX(24px);
+}
+
+.ai-live-report {
+  left: 22px;
+  transform: translateX(-24px);
+}
+
+body.ai-assistant-tools-open .ai-settings,
+body.ai-assistant-report-open .ai-live-report {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
+}
+
+.ai-report-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+body.ai-assistant-tools-open .ai-chat-card::before,
+body.ai-assistant-report-open .ai-chat-card::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  background: rgba(15, 23, 42, 0.22);
+  backdrop-filter: blur(2px);
+}
+
+body.ai-assistant-tools-open .ai-settings,
+body.ai-assistant-report-open .ai-live-report {
+  z-index: 1201;
+}
+
+body.ai-assistant-tools-open.ai-assistant-report-open .ai-chat-card::before {
+  background: rgba(15, 23, 42, 0.18);
+}
+
+@media (max-width: 1280px) {
+  .ai-settings {
+    right: 24px;
+  }
+}
+
+@media (max-width: 980px) {
+  .ai-chat-card {
+    height: calc(100vh - 82px);
+    min-height: 560px;
+    border-radius: 14px;
+  }
+  .ai-chat-head {
+    align-items: flex-start;
+    min-height: auto;
+  }
+  .ai-chat-actions {
+    flex-wrap: wrap;
+  }
+  .ai-chat-layout {
+    height: calc(100% - 132px);
+  }
+  .ai-settings,
+  .ai-live-report {
+    top: 76px;
+    right: 12px;
+    left: 12px;
+    bottom: 12px;
+    width: auto;
+    transform: translateY(16px);
+  }
+  body.ai-assistant-tools-open .ai-settings,
+  body.ai-assistant-report-open .ai-live-report {
+    transform: translateY(0);
+  }
+  .ai-compose {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Match the rest of Finora: restrained cards, system borders, primary blue accents. */
+.ai-chat-card {
+  background: var(--card);
+  border-color: var(--border);
+  box-shadow: var(--shadow);
+}
+
+.ai-chat-head,
+.ai-settings,
+.ai-live-report,
+.ai-chat .ai-messages,
+.ai-compose,
+.ai-plan-panel {
+  background: var(--card-light);
+  border-color: var(--border);
+}
+
+:root[data-theme="light"] .ai-chat-head,
+:root[data-theme="light"] .ai-settings,
+:root[data-theme="light"] .ai-live-report,
+:root[data-theme="light"] .ai-chat .ai-messages,
+:root[data-theme="light"] .ai-compose {
+  background: #fff;
+}
+
+.ai-chat-title-mark,
+.ai-msg.assistant .ai-msg-avatar {
+  background: rgba(37, 99, 235, 0.12);
+  color: var(--primary);
+  border-color: rgba(37, 99, 235, 0.18);
+  box-shadow: none;
+}
+
+.ai-chat-hero-stat,
+.ai-report-status {
+  background: rgba(37, 99, 235, 0.10);
+  color: var(--primary);
+  border-color: rgba(37, 99, 235, 0.16);
+}
+
+.ai-msg.assistant .ai-bubble,
+:root[data-theme="light"] .ai-msg.assistant .ai-bubble {
+  background: rgba(37, 99, 235, 0.10);
+  border-color: rgba(37, 99, 235, 0.16);
+}
+
+.ai-msg.user .ai-bubble {
+  background: rgba(148, 163, 184, 0.12);
+}
+
+.ai-send {
+  background: var(--primary);
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.18);
+}
+
+.ai-chip {
+  background: var(--card);
+  border-color: var(--border);
+}
+
+.ai-chip:hover {
+  border-color: var(--primary);
+}
+
+.ai-report-stat,
+.ai-report-block,
+.ai-report-item,
+.ai-settings-section {
+  background: var(--card);
+  border-color: var(--border-light);
+}
+
+/* Inline collapsible report: it stays on the page and follows the latest chat evidence. */
+.ai-chat-layout {
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 390px);
+  gap: 12px;
+}
+
+.ai-live-report {
+  position: static;
+  inset: auto;
+  z-index: auto;
+  width: auto;
+  height: 100%;
+  max-height: none;
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
+  box-shadow: none;
+}
+
+body.ai-assistant-report-open .ai-chat-card::before,
+body.ai-assistant-tools-open.ai-assistant-report-open .ai-chat-card::before {
+  display: none;
+}
+
+body.ai-assistant-report-collapsed .ai-chat-layout {
+  grid-template-columns: minmax(0, 1fr) 58px;
+}
+
+body.ai-assistant-report-collapsed .ai-live-report {
+  overflow: hidden;
+  padding: 10px;
+}
+
+body.ai-assistant-report-collapsed .ai-live-report > :not(.ai-report-head) {
+  display: none;
+}
+
+body.ai-assistant-report-collapsed .ai-report-head {
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+body.ai-assistant-report-collapsed .ai-report-head > div:first-child {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+body.ai-assistant-report-collapsed .ai-report-subtitle,
+body.ai-assistant-report-collapsed .ai-report-status {
+  display: none;
+}
+
+body.ai-assistant-report-collapsed .ai-report-actions {
+  margin-top: 10px;
+}
+
+body.ai-assistant-report-collapsed #aiCloseReportBtn {
+  transform: rotate(180deg);
+}
+
+.ai-report-item.is-evidence {
+  border-color: rgba(37, 99, 235, 0.22);
+  background: rgba(37, 99, 235, 0.07);
+}
+
+.ai-report-kv {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.ai-report-kv span {
+  display: block;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: rgba(148, 163, 184, 0.10);
+  color: var(--text-muted);
+}
+
+@media (max-width: 1100px) {
+  .ai-chat-layout {
+    grid-template-columns: 1fr;
+  }
+  .ai-live-report {
+    height: auto;
+    max-height: 42vh;
+  }
+  body.ai-assistant-report-collapsed .ai-chat-layout {
+    grid-template-columns: 1fr;
+  }
+  body.ai-assistant-report-collapsed .ai-live-report {
+    height: 58px;
+  }
+  body.ai-assistant-report-collapsed .ai-report-head {
+    writing-mode: horizontal-tb;
+  }
+}
 </style>
 
 <div class="ai-chat-page">
@@ -912,6 +1471,8 @@
         </div>
       </div>
       <div class="ai-chat-actions">
+        <button type="button" class="btn btn-secondary" id="aiToolsBtn">الأدوات</button>
+        <button type="button" class="btn btn-secondary" id="aiReportBtn">التقرير</button>
         <button type="button" class="btn btn-secondary" id="aiClearBtn">مسح</button>
         <button type="button" class="btn btn-ghost" id="aiExportBtn">نسخ</button>
       </div>
@@ -919,6 +1480,10 @@
 
     <div class="ai-chat-layout">
       <div class="card ai-settings">
+        <div class="ai-drawer-head">
+          <strong>لوحات المساعد</strong>
+          <button type="button" class="btn btn-ghost ai-icon-btn" id="aiCloseToolsBtn" aria-label="إغلاق الأدوات">×</button>
+        </div>
         <div class="ai-settings-section">
           <h4>الإعدادات</h4>
           <p class="ai-section-kicker">اختر نوع التحليل والفترة حتى يحصل المساعد على السياق المناسب قبل بناء الرد.</p>
@@ -1064,7 +1629,10 @@
             <h3 class="ai-report-title">تقرير التحليل</h3>
             <div class="ai-report-subtitle">يراقب الفروقات والأخطاء المتكررة أثناء المحادثة.</div>
           </div>
-          <span class="ai-report-status" id="aiReportStatus">جاهز</span>
+          <div class="ai-report-actions">
+            <span class="ai-report-status" id="aiReportStatus">جاهز</span>
+            <button type="button" class="btn btn-ghost ai-icon-btn" id="aiCloseReportBtn" aria-label="إغلاق التقرير">×</button>
+          </div>
         </div>
         <div class="ai-report-progress" id="aiReportProgress"><span></span></div>
         <div class="ai-report-grid">
@@ -1092,6 +1660,12 @@
           </div>
         </div>
         <div class="ai-report-section">
+          <h4>بيانات آخر سؤال</h4>
+          <div class="ai-report-list" id="aiReportEvidence">
+            <div class="ai-report-empty">اسأل عن منتج أو فرع حتى تظهر الأدلة المقروءة من النظام هنا.</div>
+          </div>
+        </div>
+        <div class="ai-report-section">
           <h4>قواعد النظام التي ينتبه لها</h4>
           <div class="ai-report-list" id="aiReportRules">
             <div class="ai-report-item">الجرد يشمل تم الطلب وجاري الشحن، وأي تعديل يحتاج خطة وموافقة.</div>
@@ -1108,12 +1682,12 @@
   </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/ai_message_format.js') }}"></script>
+<script src="{{ url_for('static', filename='js/ai_message_format.js') }}?v=20260707-order-details-links"></script>
 <script>
 (function() {
   'use strict';
 
-  const STORAGE_KEY = 'finora_ai_chat_v2';
+  const STORAGE_KEY = 'finora_ai_chat_v3';
   const MAX_MESSAGES = 60;
   const permissions = {{ assistant_permissions|tojson|safe }};
 
@@ -1121,6 +1695,10 @@
     messages: document.getElementById('aiMessages'),
     input: document.getElementById('aiInput'),
     send: document.getElementById('aiSendBtn'),
+    toolsBtn: document.getElementById('aiToolsBtn'),
+    reportBtn: document.getElementById('aiReportBtn'),
+    closeTools: document.getElementById('aiCloseToolsBtn'),
+    closeReport: document.getElementById('aiCloseReportBtn'),
     clear: document.getElementById('aiClearBtn'),
     export: document.getElementById('aiExportBtn'),
     type: document.getElementById('aiType'),
@@ -1151,6 +1729,7 @@
     reportInvoices: document.getElementById('aiReportInvoices'),
     reportMargins: document.getElementById('aiReportMargins'),
     reportFindings: document.getElementById('aiReportFindings'),
+    reportEvidence: document.getElementById('aiReportEvidence'),
     reportRules: document.getElementById('aiReportRules'),
     reportPlan: document.getElementById('aiReportPlan')
   };
@@ -1193,6 +1772,8 @@
     uploaded_files: [],
     active_plan: null,
     report_snapshot: null,
+    last_findings: null,
+    report_collapsed: false,
     report_phase: 'جاهز',
     messages: [
       { role: 'assistant', text: 'هلا! هذه واجهة تدقيق حيّة. ارفع ملفات الجرد أو اسألني عن المخزون، الصندوق، الفواتير، الموردين، وشركات النقل. التقرير الجانبي راح يبين الفروقات والأخطاء أولاً بأول.', time: nowTime() }
@@ -1205,6 +1786,33 @@
     els.dateFrom.value = state.date_from || '';
     els.dateTo.value = state.date_to || '';
     els.custom.style.display = (els.period.value === 'custom') ? '' : 'none';
+  }
+
+  function setToolsOpen(open) {
+    document.body.classList.toggle('ai-assistant-tools-open', !!open);
+  }
+
+  function setReportOpen(open) {
+    state.report_collapsed = !open;
+    document.body.classList.toggle('ai-assistant-report-collapsed', !open);
+    document.body.classList.remove('ai-assistant-report-open');
+    if (els.closeReport) {
+      els.closeReport.textContent = open ? '‹' : '›';
+      els.closeReport.setAttribute('aria-label', open ? 'طي التقرير' : 'فتح التقرير');
+    }
+    saveState(state);
+  }
+
+  function hasReportFindings(snapshot) {
+    const diagnostics = (snapshot && snapshot.diagnostics) || {};
+    const summary = diagnostics.summary || {};
+    const keys = [
+      'stock_imbalances_count',
+      'status_inconsistencies_count',
+      'invoice_total_mismatches_count',
+      'negative_margin_items_count'
+    ];
+    return keys.some(key => Number(summary[key] || 0) > 0) || !!diagnostics.error;
   }
 
   function pushMessage(role, text, meta) {
@@ -1300,6 +1908,7 @@
       ${buttons}
     `;
     renderLiveReport();
+    setReportOpen(true);
   }
 
   function setReportPhase(label, working) {
@@ -1317,7 +1926,58 @@
 
   function reportItem(title, text, tone) {
     const color = tone === 'critical' ? 'style="border-color:rgba(239,68,68,.35)"' : (tone === 'warning' ? 'style="border-color:rgba(245,158,11,.35)"' : '');
-    return `<div class="ai-report-item" ${color}><strong>${escapeHtml(title)}</strong><small>${escapeHtml(text || '')}</small></div>`;
+    const cls = tone === 'evidence' ? 'ai-report-item is-evidence' : 'ai-report-item';
+    return `<div class="${cls}" ${color}><strong>${escapeHtml(title)}</strong><small>${escapeHtml(text || '')}</small></div>`;
+  }
+
+  function money(value) {
+    const num = Number(value || 0);
+    return Number.isFinite(num) ? num.toLocaleString('ar-IQ') : '0';
+  }
+
+  function renderQueryEvidence(findings) {
+    if (!els.reportEvidence) return;
+    const evidence = (findings && findings.query_evidence) || {};
+    const products = Array.isArray(evidence.products) ? evidence.products : [];
+    const lowStock = Array.isArray(evidence.low_stock_samples) ? evidence.low_stock_samples : [];
+    const rows = [];
+
+    products.slice(0, 4).forEach(product => {
+      const stockRows = Array.isArray(product.branch_stock) ? product.branch_stock : [];
+      const orders = Array.isArray(product.recent_orders) ? product.recent_orders : [];
+      const movements = Array.isArray(product.recent_movements) ? product.recent_movements : [];
+      const stockText = stockRows.slice(0, 4).map(stock => (
+        `${stock.branch_name || 'فرع'}: نظام ${stock.system_qty || 0}، محجوز ${stock.reserved_ordered_or_shipping || 0}، قابل للبيع ${stock.salable_qty || 0}`
+      )).join(' | ');
+      const orderLinks = orders.slice(0, 5).map(order => (
+        `<a href="/orders?open_details=${encodeURIComponent(order.invoice_id || '')}" target="_blank" rel="noopener">طلب #${escapeHtml(order.invoice_id || '-')} <small>${escapeHtml((order.status || '') + ' ' + (order.branch_name || '') + ' كمية ' + (order.quantity || 0))}</small></a>`
+      )).join('');
+      const movementText = movements.filter(m => !m.error).slice(-4).map(m => (
+        `${m.type || ''} +${m.in || 0}/-${m.out || 0} رصيد ${m.balance_after || 0} (${m.reference || ''})`
+      )).join(' | ');
+      rows.push(`
+        <div class="ai-report-item is-evidence">
+          <strong>منتج #${escapeHtml(product.product_id)} - ${escapeHtml(product.name || '')}</strong>
+          <small>إجمالي ${money(product.total_quantity)} | شراء ${money(product.buy_price)} | بيع ${money(product.sale_price)}</small>
+          <div class="ai-report-kv">
+            <span>${escapeHtml(stockText || 'لا يوجد رصيد فروع مطابق')}</span>
+            <span>${escapeHtml(movementText || 'لا توجد حركات حديثة مطابقة')}</span>
+            <span>مصدر التقرير: نتيجة آخر سؤال في الشات</span>
+          </div>
+          ${orderLinks ? `<div class="ai-fmt-row-title">روابط الطلبات</div><div class="ai-fmt-order-links">${orderLinks}</div>` : '<div class="ai-report-empty">لا توجد طلبات حديثة مطابقة.</div>'}
+        </div>
+      `);
+    });
+
+    lowStock.slice(0, 6).forEach(item => {
+      rows.push(reportItem(
+        `منخفض: ${item.product_name || 'منتج'}`,
+        `${item.branch_name || 'فرع'} | الكمية ${item.qty || 0} | حد التنبيه ${item.threshold || 0}`,
+        'evidence'
+      ));
+    });
+
+    els.reportEvidence.innerHTML = rows.join('') || '<div class="ai-report-empty">ماكو أدلة خاصة بآخر سؤال بعد. اسأل باسم منتج/فرع/فاتورة حتى أطلعها هنا.</div>';
   }
 
   function renderLiveReport(snapshot) {
@@ -1337,14 +1997,14 @@
       rows.push(reportItem('فرق مخزون', `${item.product_name || item.name || 'منتج'} | الفرق: ${item.difference ?? item.diff ?? 'غير محدد'}`, 'warning'));
     });
     (diagnostics.invoice_total_mismatches || []).slice(0, 3).forEach(item => {
-      rows.push(reportItem('اختلاف فاتورة', `فاتورة #${item.invoice_id || item.id || '-'} | الفرق: ${item.difference ?? '-'}`, 'critical'));
+      rows.push(reportItem('اختلاف طلب', `طلب #${item.invoice_id || item.id || '-'} | الفرق: ${item.difference ?? '-'}`, 'critical'));
     });
     (diagnostics.negative_margin_items || []).slice(0, 3).forEach(item => {
-      rows.push(reportItem('هامش سالب', `${item.product_name || 'منتج'} | فاتورة #${item.invoice_id || '-'} | خسارة/وحدة ${item.loss_per_unit || 0}`, 'critical'));
+      rows.push(reportItem('هامش سالب', `${item.product_name || 'منتج'} | طلب #${item.invoice_id || '-'} | خسارة/وحدة ${item.loss_per_unit || 0}`, 'critical'));
     });
     (diagnostics.status_inconsistencies || []).slice(0, 3).forEach(item => {
       const issues = Array.isArray(item.issues) ? item.issues.join('، ') : 'حالة غير متناسقة';
-      rows.push(reportItem('حالة طلب غير متناسقة', `فاتورة #${item.invoice_id || '-'} | ${issues}`, 'warning'));
+      rows.push(reportItem('حالة طلب غير متناسقة', `طلب #${item.invoice_id || '-'} | ${issues}`, 'warning'));
     });
     if (diagnostics.error) {
       rows.push(reportItem('تعذر التدقيق', diagnostics.error, 'warning'));
@@ -1352,6 +2012,7 @@
     if (els.reportFindings) {
       els.reportFindings.innerHTML = rows.join('') || '<div class="ai-report-empty">لا توجد ملاحظات حرجة في آخر قراءة، أو لم يتم تحديث التقرير بعد.</div>';
     }
+    renderQueryEvidence(state.last_findings);
 
     const rules = diagnostics.known_rules || [
       'الجرد يشمل تم الطلب وجاري الشحن.',
@@ -1374,6 +2035,9 @@
           plan.summary ? reportItem('الأثر', plan.summary, 'info') : ''
         ].join('');
       }
+    }
+    if ((snapshot && hasReportFindings(snapshot)) || (state.last_findings && state.last_findings.query_evidence)) {
+      setReportOpen(true);
     }
   }
 
@@ -1699,6 +2363,18 @@
     els.input.value = '';
     els.input.focus();
 
+    const compactText = text.replace(/[إأآ]/g, 'ا').trim();
+    if (/^(افتح|طلع|وريني)\s+(التقرير|تقرير التحليل)/.test(compactText)) {
+      setReportOpen(true);
+      pushMessage('assistant', 'فتحت تقرير التحليل الجانبي.');
+      return;
+    }
+    if (/^(افتح|طلع|وريني)\s+(الادوات|الاعدادات|لوحات المساعد)/.test(compactText) || compactText.includes('ارفع ملف')) {
+      setToolsOpen(true);
+      pushMessage('assistant', 'فتحت لوحات المساعد.');
+      return;
+    }
+
     state.type = els.type.value;
     state.period = els.period.value;
     state.date_from = els.dateFrom.value;
@@ -1714,7 +2390,10 @@
         state.active_plan = data.action_plan;
         renderPlan(state.active_plan);
       }
+      state.last_findings = data.local_findings || null;
       saveState(state);
+      renderLiveReport();
+      setReportOpen(true);
       pushMessage('assistant', data.reply || 'تم.');
       await loadOverview();
     } catch (e) {
@@ -1729,6 +2408,7 @@
       { role: 'assistant', text: 'تم مسح المحادثة. شنو تحب تسأل؟', time: nowTime() }
     ];
     state.active_plan = null;
+    state.last_findings = null;
     saveState(state);
     renderMessages();
     renderPlan(null);
@@ -1749,6 +2429,29 @@
   }
 
   // Events
+  if (els.toolsBtn) els.toolsBtn.addEventListener('click', function() {
+    setToolsOpen(!document.body.classList.contains('ai-assistant-tools-open'));
+  });
+  if (els.reportBtn) els.reportBtn.addEventListener('click', function() {
+    setReportOpen(document.body.classList.contains('ai-assistant-report-collapsed'));
+  });
+  if (els.closeTools) els.closeTools.addEventListener('click', function() {
+    setToolsOpen(false);
+  });
+  if (els.closeReport) els.closeReport.addEventListener('click', function() {
+    setReportOpen(document.body.classList.contains('ai-assistant-report-collapsed'));
+  });
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      setToolsOpen(false);
+    }
+  });
+  document.addEventListener('click', function(e) {
+    if (!document.body.classList.contains('ai-assistant-tools-open')) return;
+    const insidePanel = e.target.closest('.ai-settings, #aiToolsBtn');
+    if (insidePanel) return;
+    setToolsOpen(false);
+  });
   els.send.addEventListener('click', send);
   els.clear.addEventListener('click', clearChat);
   els.export.addEventListener('click', exportChat);
@@ -1808,6 +2511,7 @@
   renderMessages();
   renderFiles();
   renderPlan(state.active_plan);
+  setReportOpen(state.report_collapsed !== true);
   renderLiveReport(state.report_snapshot);
   if (permissions.view_ai_audit_logs && els.schedulesList) loadSchedules();
   if (permissions.view_ai_audit_logs && els.overviewList) loadOverview();

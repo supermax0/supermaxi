@@ -12,6 +12,7 @@ from modules.workspace.models.workspace_session import WorkspaceSession
 from modules.workspace.services import event_bus
 from modules.workspace.services.courier_settlement.courier_analysis_errors import (
     CourierAnalysisAccessError,
+    CourierAnalysisError,
     CourierNoDocumentError,
 )
 from modules.workspace.services.courier_settlement.courier_financial_preview_service import (
@@ -64,7 +65,11 @@ class CourierReadonlyAnalysisService:
             raise CourierNoDocumentError("المستند غير موجود")
 
         extraction = DocumentIntelligenceService.get_latest_result(doc_id)
-        if not extraction or extraction.status != "completed":
+        if (
+            not extraction
+            or extraction.status != "completed"
+            or not CourierReadonlyAnalysisService._has_readable_extraction(extraction)
+        ):
             extraction = DocumentIntelligenceService.analyze_document(
                 session_id, doc_id, user_id, tenant_slug
             )
@@ -115,6 +120,17 @@ class CourierReadonlyAnalysisService:
 
             parsed = CourierStatementParser.parse(extraction)
             db_rows = CourierReadonlyAnalysisService._persist_rows(analysis, parsed.get("rows") or [])
+            if not db_rows:
+                parser_warnings = parsed.get("warnings") or []
+                extraction_warnings = (extraction.get_metadata() or {}).get("warnings") or []
+                details = parser_warnings + extraction_warnings
+                message = (
+                    "لم يتم استخراج أي صف طلب من المستند. إذا كان الملف PDF صوري، "
+                    "فعّل OCR/Tesseract العربي أو ارفع PDF يحتوي طبقة نص."
+                )
+                if details:
+                    message = f"{message} التفاصيل: {' | '.join(str(x) for x in details[:3])}"
+                raise CourierAnalysisError(message)
 
             analysis.total_rows = len(db_rows)
             analysis.status = "matching"
@@ -290,6 +306,14 @@ class CourierReadonlyAnalysisService:
             db_rows.append(row)
         db.session.flush()
         return db_rows
+
+    @staticmethod
+    def _has_readable_extraction(extraction) -> bool:
+        if not extraction:
+            return False
+        if (extraction.extracted_text or "").strip():
+            return True
+        return bool(extraction.get_tables())
 
     @staticmethod
     def _persist_issues(analysis, issue_dicts: List[Dict]) -> List[CourierStatementAnalysisIssue]:

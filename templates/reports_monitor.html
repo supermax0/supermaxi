@@ -1,0 +1,444 @@
+{% extends "base.html" %}
+{% block title %}مراقب البيجات والموظفين{% endblock %}
+{% block page_title %}مراقب البيجات والموظفين{% endblock %}
+
+{% block content %}
+<style>
+  .monitor-page {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .monitor-toolbar {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+
+  .monitor-filter-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(140px, 1fr));
+    gap: 12px;
+    flex: 1;
+  }
+
+  .monitor-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .monitor-field label {
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .monitor-field input {
+    min-height: 42px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--card-alt);
+    color: var(--text);
+    padding: 8px 10px;
+  }
+
+  .monitor-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .monitor-btn {
+    min-height: 42px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--primary);
+    color: #fff;
+    padding: 8px 14px;
+    font-weight: 800;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .monitor-btn.secondary {
+    background: var(--card-alt);
+    color: var(--text);
+  }
+
+  .monitor-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(160px, 1fr));
+    gap: 12px;
+  }
+
+  .monitor-stat {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+
+  .monitor-stat span {
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .monitor-stat strong {
+    display: block;
+    margin-top: 6px;
+    font-size: 24px;
+    color: var(--text);
+  }
+
+  .monitor-section {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .monitor-section-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .monitor-section-head h2 {
+    margin: 0;
+    font-size: 18px;
+  }
+
+  .monitor-section-head p {
+    margin: 4px 0 0;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+
+  .monitor-table-wrap {
+    overflow-x: auto;
+  }
+
+  .monitor-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 880px;
+  }
+
+  .monitor-table th,
+  .monitor-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    text-align: right;
+    vertical-align: middle;
+  }
+
+  .monitor-table th {
+    color: var(--text-muted);
+    font-size: 12px;
+    background: var(--card-alt);
+    white-space: nowrap;
+  }
+
+  .monitor-table td {
+    color: var(--text);
+    font-size: 14px;
+  }
+
+  .monitor-table tr:last-child td {
+    border-bottom: 0;
+  }
+
+  .monitor-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    border-radius: 999px;
+    padding: 3px 10px;
+    font-size: 12px;
+    font-weight: 800;
+    border: 1px solid transparent;
+    white-space: nowrap;
+  }
+
+  .monitor-badge.success {
+    color: var(--success);
+    background: rgba(16, 185, 129, 0.12);
+    border-color: rgba(16, 185, 129, 0.25);
+  }
+
+  .monitor-badge.warning {
+    color: var(--warning);
+    background: rgba(245, 158, 11, 0.12);
+    border-color: rgba(245, 158, 11, 0.25);
+  }
+
+  .monitor-badge.danger {
+    color: var(--danger);
+    background: rgba(239, 68, 68, 0.12);
+    border-color: rgba(239, 68, 68, 0.25);
+  }
+
+  .monitor-note {
+    color: var(--text-muted);
+    max-width: 240px;
+  }
+
+  .monitor-alerts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 10px;
+  }
+
+  .monitor-alert {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    background: var(--card);
+  }
+
+  .monitor-alert strong {
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .monitor-alert span {
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+
+  .monitor-empty {
+    padding: 18px;
+    color: var(--text-muted);
+  }
+
+  @media (max-width: 900px) {
+    .monitor-toolbar {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .monitor-filter-grid,
+    .monitor-summary {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .monitor-actions {
+      width: 100%;
+    }
+
+    .monitor-btn {
+      flex: 1;
+      justify-content: center;
+    }
+  }
+
+  @media (max-width: 520px) {
+    .monitor-filter-grid,
+    .monitor-summary {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<div class="monitor-page">
+  <form class="monitor-toolbar" method="get" action="{{ url_for('reports.pages_employees_monitor') }}">
+    <div class="monitor-filter-grid">
+      <div class="monitor-field">
+        <label for="date_from">من تاريخ</label>
+        <input id="date_from" type="date" name="date_from" value="{{ date_from.strftime('%Y-%m-%d') }}">
+      </div>
+      <div class="monitor-field">
+        <label for="date_to">إلى تاريخ</label>
+        <input id="date_to" type="date" name="date_to" value="{{ date_to.strftime('%Y-%m-%d') }}">
+      </div>
+      <div class="monitor-field">
+        <label for="min_orders">حد ضعف الطلبات</label>
+        <input id="min_orders" type="number" min="0" name="min_orders" value="{{ min_orders }}">
+      </div>
+      <div class="monitor-field">
+        <label for="min_sales">حد ضعف المبيعات</label>
+        <input id="min_sales" type="number" min="0" step="1000" name="min_sales" value="{{ min_sales }}">
+      </div>
+    </div>
+    <div class="monitor-actions">
+      <button class="monitor-btn" type="submit"><i class="fas fa-filter"></i> تطبيق</button>
+      <a class="monitor-btn secondary" href="{{ url_for('reports.pages_employees_monitor') }}"><i class="fas fa-rotate-right"></i> افتراضي</a>
+    </div>
+  </form>
+
+  <div class="monitor-summary">
+    <div class="monitor-stat">
+      <span>طلبات البيجات</span>
+      <strong>{{ summary.page_orders }}</strong>
+    </div>
+    <div class="monitor-stat">
+      <span>مبيعات البيجات</span>
+      <strong>{{ summary.page_sales_display }}</strong>
+    </div>
+    <div class="monitor-stat">
+      <span>الموظفون الضعيفون</span>
+      <strong>{{ summary.weak_employees_count }} / {{ summary.employees_count }}</strong>
+    </div>
+    <div class="monitor-stat">
+      <span>مبيعات الموظفين</span>
+      <strong>{{ summary.employee_sales_display }}</strong>
+    </div>
+  </div>
+
+  {% if alerts %}
+  <div class="monitor-alerts">
+    {% for alert in alerts %}
+      <div class="monitor-alert">
+        <strong>{{ alert.name }}</strong>
+        <span>{{ alert.note }} - {{ alert.orders_count }} طلب</span>
+      </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <section class="monitor-section">
+    <div class="monitor-section-head">
+      <div>
+        <h2>مراقبة البيجات</h2>
+        <p>يعرض الطلبات والمبيعات ونسبة الراجع/الإلغاء لكل بيج خلال الفترة المحددة.</p>
+      </div>
+    </div>
+    <div class="monitor-table-wrap">
+      <table class="monitor-table">
+        <thead>
+          <tr>
+            <th>البيج</th>
+            <th>الحالة</th>
+            <th>الطلبات</th>
+            <th>المبيعات الصافية</th>
+            <th>واصل</th>
+            <th>نسبة الوصول</th>
+            <th>راجع/ملغي</th>
+            <th>نسبة الراجع</th>
+            <th>الموظفون</th>
+            <th>ملاحظة</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for page in page_monitor %}
+          <tr>
+            <td><strong>{{ page.name }}</strong></td>
+            <td><span class="monitor-badge {{ page.health_class }}">{{ page.health }}</span></td>
+            <td>{{ page.orders_count }}</td>
+            <td>{{ page.sales_display }}</td>
+            <td>{{ page.delivered_count }}</td>
+            <td>{{ page.delivered_rate }}%</td>
+            <td>{{ page.returned_count }}</td>
+            <td>{{ page.return_rate }}%</td>
+            <td>{{ page.assigned_employees }}</td>
+            <td class="monitor-note">{{ page.note }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="10" class="monitor-empty">لا توجد بيجات لعرضها.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="monitor-section">
+    <div class="monitor-section-head">
+      <div>
+        <h2>الموظفون الضعيفون</h2>
+        <p>أي موظف أقل من حد الطلبات أو حد المبيعات يظهر هنا حتى تتم متابعته بسرعة.</p>
+      </div>
+    </div>
+    <div class="monitor-table-wrap">
+      <table class="monitor-table">
+        <thead>
+          <tr>
+            <th>الموظف</th>
+            <th>الحالة</th>
+            <th>الطلبات</th>
+            <th>المبيعات</th>
+            <th>واصل</th>
+            <th>راجع/ملغي</th>
+            <th>نسبة الراجع</th>
+            <th>آخر طلب</th>
+            <th>السبب</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for employee in weak_employees %}
+          <tr>
+            <td>
+              <strong>{{ employee.name }}</strong>
+              <div class="monitor-note">@{{ employee.username }} - {{ employee.role }}</div>
+            </td>
+            <td><span class="monitor-badge {{ employee.status_class }}">{{ employee.status }}</span></td>
+            <td>{{ employee.orders_count }}</td>
+            <td>{{ employee.sales_display }}</td>
+            <td>{{ employee.delivered_count }}</td>
+            <td>{{ employee.returned_count }}</td>
+            <td>{{ employee.return_rate }}%</td>
+            <td>{{ employee.last_order_display }}</td>
+            <td class="monitor-note">{{ employee.reason }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="9" class="monitor-empty">لا يوجد موظفون ضعيفون حسب الحدود الحالية.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="monitor-section">
+    <div class="monitor-section-head">
+      <div>
+        <h2>كل الموظفين</h2>
+        <p>ترتيب سريع حتى ترى الضعيف والطبيعي بنفس الشاشة.</p>
+      </div>
+    </div>
+    <div class="monitor-table-wrap">
+      <table class="monitor-table">
+        <thead>
+          <tr>
+            <th>الموظف</th>
+            <th>الحالة</th>
+            <th>الطلبات</th>
+            <th>المبيعات</th>
+            <th>واصل</th>
+            <th>راجع/ملغي</th>
+            <th>آخر طلب</th>
+            <th>ملاحظة</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for employee in employee_monitor %}
+          <tr>
+            <td><strong>{{ employee.name }}</strong></td>
+            <td><span class="monitor-badge {{ employee.status_class }}">{{ employee.status }}</span></td>
+            <td>{{ employee.orders_count }}</td>
+            <td>{{ employee.sales_display }}</td>
+            <td>{{ employee.delivered_count }}</td>
+            <td>{{ employee.returned_count }}</td>
+            <td>{{ employee.last_order_display }}</td>
+            <td class="monitor-note">{{ employee.reason }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="8" class="monitor-empty">لا يوجد موظفون نشطون.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+{% endblock %}

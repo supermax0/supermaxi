@@ -1,21 +1,25 @@
-{% extends "base.html" %}
-{% block title %}صلاحيات الموظف: {{ employee.name }}{% endblock %}
-{% block page_title %}<i class="fas fa-user-lock"></i> أدوار الموظف{% endblock %}
+{% extends "settings_base.html" %}
+{% block title %}{{ _('roles_employee_page_title') }} — {{ employee.name }}{% endblock %}
 
-{% block content %}
+{% block settings_extra_style %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/team-admin.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/permissions-admin.css') }}">
+{% endblock %}
 
-<div class="team-admin-page permissions-page">
+{% block settings_content %}
+<div class="settings-permissions-page team-admin-page permissions-page">
+  <div class="settings-page-header">
+    <h1><i class="fas fa-user-lock"></i> {{ _('roles_employee_page_title') }}</h1>
+    <p>{{ _('roles_employee_page_desc') }} <strong>{{ employee.name }}</strong> ({{ employee.username }})</p>
+  </div>
+
   <div class="admin-page-header">
-    <div class="admin-page-header__meta">
-      <p>تعديل أدوار الموظف <strong>{{ employee.name }}</strong> ({{ employee.username }})</p>
-    </div>
+    <div class="admin-page-header__meta"></div>
     <div class="admin-page-header__actions">
-      <a href="{{ url_for('employees.employees') }}?highlight={{ employee.id }}" class="nav-crosslink">
+      <a href="{{ url_for('employees.employees') }}?highlight={{ employee.id }}" class="settings-btn settings-btn-secondary settings-btn-sm">
         <i class="fas fa-arrow-right"></i> {{ _('employees') }}
       </a>
-      <a href="{{ url_for('permissions.list_roles') }}" class="nav-crosslink">
+      <a href="{{ url_for('permissions.list_roles') }}" class="settings-btn settings-btn-secondary settings-btn-sm">
         <i class="fas fa-user-shield"></i> {{ _('roles_page_title') }}
       </a>
     </div>
@@ -23,42 +27,40 @@
 
   {% if effective_permissions %}
   <div class="admin-banner info effective-perms-banner">
-    <strong>الصلاحيات الفعلية:</strong>
+    <strong>{{ _('roles_effective_permissions') }}:</strong>
     {% for perm in effective_permissions %}
     <span class="perm-badge">{{ perm.description or perm.name }}</span>
     {% endfor %}
   </div>
   {% endif %}
 
-  <div class="collapsible-group" style="margin-bottom:0;">
-    <div class="group-content employee-roles-panel">
-      <form action="{{ url_for('permissions.employee_roles', id=employee.id) }}" method="POST">
-        <p class="employee-roles-intro">اختر الأدوار الممنوحة لهذا الموظف:</p>
-        <div class="employee-roles-grid">
-          {% for role in roles %}
-          <label class="employee-role-card" for="role_{{ role.id }}">
-            <input type="checkbox" name="roles" value="{{ role.id }}" id="role_{{ role.id }}"
-              {% if role in employee.roles %}checked{% endif %}>
-            <span class="employee-role-card__body">
-              <strong class="employee-role-card__title">{{ role.name }}</strong>
-              <small class="employee-role-card__desc">{{ role.description or '—' }}</small>
-              {% if role.permissions %}
-              <span class="employee-role-card__perms">
-                {% for perm in role.permissions %}
-                <span class="perm-badge">{{ perm.description or perm.name }}</span>
-                {% endfor %}
-              </span>
-              {% endif %}
+  <div class="settings-section-card">
+    <form action="{{ url_for('permissions.employee_roles', id=employee.id) }}" method="POST">
+      <p class="employee-roles-intro">{{ _('roles_employee_pick') }}</p>
+      <div class="employee-roles-grid">
+        {% for role in roles %}
+        <label class="employee-role-card" for="role_{{ role.id }}">
+          <input type="checkbox" name="roles" value="{{ role.id }}" id="role_{{ role.id }}"
+            {% if role in employee.roles %}checked{% endif %}>
+          <span class="employee-role-card__body">
+            <strong class="employee-role-card__title">{{ role.name }}</strong>
+            <small class="employee-role-card__desc">{{ role.description or '—' }}</small>
+            {% if role.permissions %}
+            <span class="employee-role-card__perms">
+              {% for perm in role.permissions %}
+              <span class="perm-badge">{{ perm.description or perm.name }}</span>
+              {% endfor %}
             </span>
-          </label>
-          {% endfor %}
-        </div>
-        <div class="team-modal-actions" style="margin-top:24px;">
-          <a href="{{ url_for('employees.employees') }}" class="btn btn-light">{{ _('cancel') }}</a>
-          <button type="submit" class="btn btn-primary">حفظ الأدوار</button>
-        </div>
-      </form>
-    </div>
+            {% endif %}
+          </span>
+        </label>
+        {% endfor %}
+      </div>
+      <div class="settings-actions-bar">
+        <a href="{{ url_for('employees.employees') }}" class="settings-btn settings-btn-secondary">{{ _('cancel') }}</a>
+        <button type="submit" class="settings-btn settings-btn-primary">{{ _('roles_save_employee_roles') }}</button>
+      </div>
+    </form>
   </div>
 </div>
 {% endblock %}

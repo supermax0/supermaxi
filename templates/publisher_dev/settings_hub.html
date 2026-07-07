@@ -1,0 +1,102 @@
+{% extends "publisher/publisher_layout.html" %}
+{% set active_page = "settings" %}
+
+{% block page_title %}الإعدادات | Finora Publisher{% endblock %}
+{% block page_heading %}إعدادات النشر{% endblock %}
+{% block page_subheading %}
+<p class="topbar-sub">ضبط بيانات فيسبوك وربط الصفحات لإدارة النشر من مكان واحد</p>
+<p class="topbar-sub" style="color:#fbbf24;">وضع التطوير DEV — Hub & Spoke</p>
+{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="/static/publisher_dev/css/settings-hub.css">
+<section class="pub-settings-hub" aria-label="إعدادات الناشر">
+  <div class="pub-settings-hub__grid">
+    <a href="#pub-settings-facebook" class="pub-settings-hub__card">
+      <span class="pub-settings-hub__icon"><i data-lucide="facebook"></i></span>
+      <strong>Facebook App</strong>
+      <span>App ID و Secret و OpenAI</span>
+    </a>
+    <a href="#pub-settings-token" class="pub-settings-hub__card">
+      <span class="pub-settings-hub__icon"><i data-lucide="key"></i></span>
+      <strong>User Token</strong>
+      <span>حفظ التوكن وربط الصفحات</span>
+    </a>
+    <a href="#pub-settings-pages" class="pub-settings-hub__card">
+      <span class="pub-settings-hub__icon"><i data-lucide="layout-grid"></i></span>
+      <strong>الصفحات</strong>
+      <span>الصفحات المربوطة للنشر</span>
+    </a>
+  </div>
+</section>
+
+<section class="settings-grid" id="pub-settings-facebook">
+    <article class="pub-card settings-card">
+        <div class="section-title">
+            <span class="step-badge">1</span>
+            <h2>Facebook App Credentials</h2>
+            <a href="https://developers.facebook.com/apps" target="_blank" class="help-link">developers.facebook.com</a>
+        </div>
+        <p class="section-note">أدخل بيانات التطبيق الأساسية من Facebook، ويمكنك حفظ مفتاح OpenAI لمساعد الكتابة.</p>
+        <div class="form-group">
+            <label class="form-label">App ID <span id="appIdDot" class="status-dot dot-gray"></span></label>
+            <input type="text" id="fbAppId" class="form-input" placeholder="123456789012345" dir="ltr">
+        </div>
+        <div class="form-group">
+            <label class="form-label">App Secret <span id="appSecretDot" class="status-dot dot-gray"></span></label>
+            <div class="input-group">
+                <input type="password" id="fbAppSecret" class="form-input" placeholder="أدخل App Secret" dir="ltr">
+                <button class="eye-btn" type="button" data-target="fbAppSecret" aria-label="إظهار أو إخفاء"><i data-lucide="eye"></i></button>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="form-label">OpenAI API Key <span id="openAiDot" class="status-dot dot-gray"></span></label>
+            <div class="input-group">
+                <input type="password" id="openAiApiKey" class="form-input" placeholder="sk-..." dir="ltr">
+                <button class="eye-btn" type="button" data-target="openAiApiKey" aria-label="إظهار أو إخفاء"><i data-lucide="eye"></i></button>
+            </div>
+        </div>
+        <button class="btn btn-primary" id="saveCredentialsBtn" data-ripple><i data-lucide="save"></i><span>حفظ بيانات التكامل</span></button>
+    </article>
+
+    <article class="pub-card settings-card" id="pub-settings-token">
+        <div class="section-title">
+            <span class="step-badge">2</span>
+            <h2>User Access Token</h2>
+            <a href="https://developers.facebook.com/tools/explorer/" target="_blank" class="help-link">Graph API Explorer</a>
+        </div>
+        <p class="section-note">احفظ User Token ثم اربط الصفحات المتاحة للنشر.</p>
+        <div class="token-scope-list">
+            <span class="badge badge-queued">pages_show_list</span>
+            <span class="badge badge-queued">pages_read_engagement</span>
+            <span class="badge badge-queued">pages_manage_posts</span>
+            <span class="badge badge-queued">pages_read_user_content</span>
+        </div>
+        <div class="form-group">
+            <label class="form-label">User Token <span id="tokenDot" class="status-dot dot-gray"></span></label>
+            <div class="input-group">
+                <input type="password" id="fbUserToken" class="form-input" placeholder="EAAB..." dir="ltr">
+                <button class="eye-btn" type="button" data-target="fbUserToken" aria-label="إظهار أو إخفاء"><i data-lucide="eye"></i></button>
+            </div>
+        </div>
+        <div class="settings-actions">
+            <button class="btn btn-primary" id="saveTokenBtn" data-ripple><i data-lucide="save"></i><span>حفظ التوكن</span></button>
+            <button class="btn btn-outline" id="connectPagesBtn" data-ripple><i data-lucide="link-2"></i><span>جلب وربط الصفحات</span></button>
+        </div>
+    </article>
+</section>
+
+<section class="pub-card" id="pub-settings-pages">
+    <div class="section-title section-title-inline">
+        <span class="step-badge">3</span>
+        <h2>الصفحات المربوطة</h2>
+        <button class="btn btn-outline btn-sm" id="refreshPagesBtn" data-ripple><i data-lucide="refresh-cw"></i><span>تحديث</span></button>
+    </div>
+    <div id="pagesContainer"><div class="empty-state"><span class="spinner"></span><p>جاري تحميل الصفحات...</p></div></div>
+    <div id="noPagesMsg" style="display:none"><div class="empty-state"><div class="empty-icon"><i data-lucide="folder-x"></i></div><p>لا توجد صفحات مربوطة بعد</p><p class="empty-note">احفظ User Token ثم اضغط على "جلب وربط الصفحات".</p></div></div>
+</section>
+{% endblock %}
+
+{% block page_scripts %}
+<script src="/static/publisher/js/settings.js?v=20260316b"></script>
+{% endblock %}

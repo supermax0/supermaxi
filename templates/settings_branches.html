@@ -1,41 +1,11 @@
 {% extends "settings_base.html" %}
 
-{% block title %}إدارة الفروع{% endblock %}
-
-{% block settings_extra_style %}
-<style>
-  .branch-grid { display: grid; gap: 16px; }
-  .branch-card {
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 18px;
-    background: var(--card);
-  }
-  .branch-card.is-default { border-color: rgba(16,185,129,.45); }
-  .branch-form-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 12px;
-    margin-top: 12px;
-  }
-  .branch-form-grid label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
-  .branch-form-grid input, .branch-form-grid select {
-    width: 100%; padding: 10px 12px; border-radius: 10px;
-    border: 1px solid var(--border); background: var(--card-alt); color: var(--text);
-  }
-  .branch-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
-  .branch-badge {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 700;
-    background: rgba(16,185,129,.15); color: #10b981;
-  }
-</style>
-{% endblock %}
+{% block title %}{{ _('settings_card_branches_title') }}{% endblock %}
 
 {% block settings_content %}
 <div class="settings-page-header">
-  <h1><i class="fas fa-code-branch"></i> إدارة الفروع</h1>
-  <p>أضف فروع الشركة، حدّد الفرع الافتراضي، واربط الموظفين بفروعهم من صفحة فريق العمل.</p>
+  <h1><i class="fas fa-code-branch"></i> {{ _('settings_card_branches_title') }}</h1>
+  <p>{{ _('settings_card_branches_desc') }}</p>
 </div>
 
 <div class="settings-section-card">
@@ -56,7 +26,57 @@
     </label>
   </div>
   <div class="branch-actions" style="margin-top:14px;">
-    <button type="button" class="btn-action" onclick="saveSalesPolicy()"><i class="fas fa-save"></i> حفظ السياسة</button>
+    <button type="button" class="settings-btn settings-btn-secondary settings-btn-sm" onclick="saveSalesPolicy()"><i class="fas fa-save"></i> {{ _('settings_save_policy') }}</button>
+  </div>
+</div>
+
+<div class="settings-section-card">
+  <div class="settings-section-header">
+    <h2><i class="fas fa-clock"></i> جدولة فرع الخصم عند الشحن</h2>
+    <p>عند تحويل الطلب من «تم الطلب» إلى «جاري الشحن» يُنقل خصم المخزون تلقائياً إلى فرع النهار أو الليل حسب توقيت بغداد.</p>
+  </div>
+  <div class="settings-switch-row" style="display:flex;justify-content:space-between;gap:16px;align-items:center;flex-wrap:wrap;">
+    <div class="settings-switch-label">
+      <strong>تفعيل الجدولة</strong>
+      <span style="display:block;font-size:13px;color:var(--text-muted);margin-top:4px;">
+        النهار (افتراضي 8ص–5م) وفرع الليل (5م–8ص). يُمنع التحويل إذا لم يتوفر المخزون في الفرع المحدد.
+      </span>
+    </div>
+    <label class="settings-toggle" style="display:inline-flex;align-items:center;gap:10px;cursor:pointer;">
+      <input type="checkbox" id="shippingScheduleEnabled" {% if shipping_branch_schedule.enabled %}checked{% endif %}>
+      <span id="shippingScheduleEnabledLabel" style="font-weight:700;font-size:13px;">{{ 'مفعّل' if shipping_branch_schedule.enabled else 'معطّل' }}</span>
+    </label>
+  </div>
+  <div class="branch-form-grid" style="margin-top:14px;">
+    <div>
+      <label>فرع النهار</label>
+      <select id="shippingDayBranch">
+        <option value="">— اختر الفرع —</option>
+        {% for branch in branches if branch.is_active %}
+        <option value="{{ branch.id }}" {% if shipping_branch_schedule.day_branch_id == branch.id %}selected{% endif %}>{{ branch.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>فرع الليل</label>
+      <select id="shippingNightBranch">
+        <option value="">— اختر الفرع —</option>
+        {% for branch in branches if branch.is_active %}
+        <option value="{{ branch.id }}" {% if shipping_branch_schedule.night_branch_id == branch.id %}selected{% endif %}>{{ branch.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>بداية النهار</label>
+      <input type="time" id="shippingDayStart" value="{{ shipping_branch_schedule.day_start }}">
+    </div>
+    <div>
+      <label>نهاية النهار</label>
+      <input type="time" id="shippingDayEnd" value="{{ shipping_branch_schedule.day_end }}">
+    </div>
+  </div>
+  <div class="branch-actions" style="margin-top:14px;">
+    <button type="button" class="settings-btn settings-btn-secondary settings-btn-sm" onclick="saveShippingSchedule()"><i class="fas fa-save"></i> {{ _('settings_save_schedule') }}</button>
   </div>
 </div>
 
@@ -72,7 +92,7 @@
   </div>
   <div class="branch-actions">
     <label><input type="checkbox" id="newDefault"> فرع افتراضي</label>
-    <button type="button" class="btn-action" onclick="saveBranch()"><i class="fas fa-save"></i> حفظ الفرع</button>
+    <button type="button" class="settings-btn settings-btn-primary settings-btn-sm" onclick="saveBranch()"><i class="fas fa-save"></i> {{ _('settings_save_branch') }}</button>
   </div>
 </div>
 
@@ -104,7 +124,7 @@
       <div class="branch-actions">
         <label><input type="checkbox" class="b-default" {% if branch.is_default %}checked{% endif %}> افتراضي</label>
         <label><input type="checkbox" class="b-active" {% if branch.is_active %}checked{% endif %}> نشط</label>
-        <button type="button" class="btn-action" onclick="saveBranch({{ branch.id }})"><i class="fas fa-save"></i> تحديث</button>
+        <button type="button" class="settings-btn settings-btn-secondary settings-btn-sm" onclick="saveBranch({{ branch.id }})"><i class="fas fa-save"></i> {{ _('settings_update_branch') }}</button>
       </div>
     </div>
     {% else %}
@@ -119,11 +139,48 @@
 (function () {
   const checkbox = document.getElementById('sellFromAllBranches');
   const label = document.getElementById('sellFromAllBranchesLabel');
-  if (!checkbox || !label) return;
-  checkbox.addEventListener('change', function () {
-    label.textContent = checkbox.checked ? 'مفعّل' : 'معطّل';
-  });
+  if (checkbox && label) {
+    checkbox.addEventListener('change', function () {
+      label.textContent = checkbox.checked ? 'مفعّل' : 'معطّل';
+    });
+  }
+  const scheduleCheckbox = document.getElementById('shippingScheduleEnabled');
+  const scheduleLabel = document.getElementById('shippingScheduleEnabledLabel');
+  if (scheduleCheckbox && scheduleLabel) {
+    scheduleCheckbox.addEventListener('change', function () {
+      scheduleLabel.textContent = scheduleCheckbox.checked ? 'مفعّل' : 'معطّل';
+    });
+  }
 })();
+
+async function saveShippingSchedule() {
+  const enabled = !!document.getElementById('shippingScheduleEnabled')?.checked;
+  const dayBranch = document.getElementById('shippingDayBranch')?.value || '';
+  const nightBranch = document.getElementById('shippingNightBranch')?.value || '';
+  const dayStart = document.getElementById('shippingDayStart')?.value || '08:00';
+  const dayEnd = document.getElementById('shippingDayEnd')?.value || '17:00';
+  if (enabled && (!dayBranch || !nightBranch)) {
+    alert('عند التفعيل يجب اختيار فرع النهار وفرع الليل');
+    return;
+  }
+  const res = await fetch('/settings/branches/shipping-schedule', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      shipping_branch_schedule_enabled: enabled,
+      shipping_day_branch_id: dayBranch || null,
+      shipping_night_branch_id: nightBranch || null,
+      shipping_day_start: dayStart,
+      shipping_day_end: dayEnd,
+    }),
+  });
+  const data = await res.json();
+  if (!data.success) {
+    alert(data.error || 'فشل حفظ الجدولة');
+    return;
+  }
+  alert(data.message || 'تم الحفظ');
+}
 
 async function saveSalesPolicy() {
   const enabled = !!document.getElementById('sellFromAllBranches')?.checked;

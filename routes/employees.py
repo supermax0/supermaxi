@@ -125,11 +125,12 @@ def employees():
         limit_result = users_limit_check()
         if not limit_result["ok"]:
             return render_template("upgrade_required.html", limit_error=limit_result["error"]), 403
+        role_name = request.form.get("role", "cashier")
         emp = Employee(
             name=request.form["name"],
             username=request.form["username"],
             password=generate_password_hash(request.form["password"]),
-            role=request.form.get("role", "cashier"),
+            role=role_name,
             salary=int(request.form.get("salary", 0)),
             commission_percent=max(
                 0,
@@ -137,6 +138,12 @@ def employees():
             ),
         )
         db.session.add(emp)
+        db.session.flush()
+        from models.role import Role
+
+        base_role = Role.query.filter_by(name=role_name).first()
+        if base_role:
+            emp.roles = [base_role]
         db.session.commit()
         try:
             log_activity(

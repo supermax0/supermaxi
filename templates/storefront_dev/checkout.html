@@ -67,8 +67,8 @@
     </div>
     <div class="sf-sum-row"><span>المجموع</span><span>{{ "{:,.0f}".format(subtotal) }} د.ع</span></div>
     <div class="sf-sum-row"><span>الخصم</span><span>-{{ "{:,.0f}".format(discount_amount) }} د.ع</span></div>
-    <div class="sf-sum-row"><span>الشحن</span><span id="sfShippingFeeText">{{ "{:,.0f}".format(shipping_fee) }} د.ع</span></div>
-    <div class="sf-sum-row final"><span>الإجمالي</span><span id="sfGrandTotalText">{{ "{:,.0f}".format(grand_total) }} د.ع</span></div>
+    <div class="sf-sum-row"><span>أجور التوصيل</span><span id="sfShippingFeeText">{% if shipping_fee %}-{% endif %}{{ "{:,.0f}".format(shipping_fee) }} د.ع</span></div>
+    <div class="sf-sum-row final"><span>الصافي</span><span id="sfGrandTotalText">{{ "{:,.0f}".format(grand_total) }} د.ع</span></div>
     <div style="margin-top:10px;"><span class="sf-shipping-chip">الدفع عند الاستلام (COD)</span></div>
     {% else %}
     <p style="color:var(--muted);">لا توجد عناصر في السلة.</p>

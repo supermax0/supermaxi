@@ -200,8 +200,29 @@ def supplier_pay(id):
 
     db.session.add(payment)
     db.session.commit()
+    flash("تم تسجيل الدفعة بنجاح.", "success")
 
     return redirect(url_for("suppliers.supplier_details", id=id))
+
+
+@suppliers_bp.route("/payment/<int:payment_id>/delete", methods=["POST"])
+def supplier_payment_delete(payment_id):
+    if not check_permission("can_manage_suppliers"):
+        return redirect("/pos"), 403
+
+    payment = SupplierPayment.query.get_or_404(payment_id)
+    supplier = Supplier.query.get_or_404(payment.supplier_id)
+    amount = int(payment.amount or 0)
+    supplier_id = supplier.id
+
+    supplier.total_paid = max(int(supplier.total_paid or 0) - amount, 0)
+    db.session.delete(payment)
+    db.session.commit()
+    flash(f"تم حذف دفعة {amount:,} د.ع من سجل المورد.", "success")
+
+    return redirect(url_for("suppliers.supplier_details", id=supplier_id))
+
+
 @suppliers_bp.route("/statement/pdf/<int:id>")
 def supplier_statement_pdf(id):
     # فحص الصلاحية

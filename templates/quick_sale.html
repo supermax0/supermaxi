@@ -151,7 +151,7 @@
       <div class="cart-summary" id="cartSummary" style="display:none;">
         <div class="cart-summary-row"><span>عدد القطع</span><strong id="cartPiecesCount">0</strong></div>
         <div class="cart-summary-row"><span>أجور التوصيل</span><strong id="cartShippingFee">0 د.ع</strong></div>
-        <div class="cart-summary-row"><span>الإجمالي</span><strong id="cartSummaryTotal">0 د.ع</strong></div>
+        <div class="cart-summary-row"><span>الصافي</span><strong id="cartSummaryTotal">0 د.ع</strong></div>
       </div>
       <button class="quick-btn success" id="executeSaleBtn" type="button">تنفيذ البيع وطباعة الفاتورة</button>
       <div class="quick-message" id="quickMessage"></div>
@@ -212,9 +212,10 @@ async function refreshShippingQuote() {
   await quoteShippingFee();
   let subtotal = 0;
   rows.forEach(item => { subtotal += item.price * item.qty; });
-  document.getElementById("quickTotal").textContent = money(subtotal + shippingFee);
-  document.getElementById("cartShippingFee").textContent = money(shippingFee);
-  document.getElementById("cartSummaryTotal").textContent = money(subtotal + shippingFee);
+  const netTotal = Math.max(0, subtotal - shippingFee);
+  document.getElementById("quickTotal").textContent = money(netTotal);
+  document.getElementById("cartShippingFee").textContent = shippingFee > 0 ? "-" + money(shippingFee) : money(0);
+  document.getElementById("cartSummaryTotal").textContent = money(netTotal);
 }
 
 function showQuickMessage(text) {
@@ -266,11 +267,12 @@ function renderCart() {
       </div>
     `;
   }).join("");
-  document.getElementById("quickTotal").textContent = money(total + shippingFee);
+  const netTotal = Math.max(0, total - shippingFee);
+  document.getElementById("quickTotal").textContent = money(netTotal);
   document.getElementById("cartItemsCount").textContent = `${rows.length} منتج / ${pieces} قطعة`;
   document.getElementById("cartPiecesCount").textContent = pieces;
-  document.getElementById("cartShippingFee").textContent = money(shippingFee);
-  document.getElementById("cartSummaryTotal").textContent = money(total + shippingFee);
+  document.getElementById("cartShippingFee").textContent = shippingFee > 0 ? "-" + money(shippingFee) : money(0);
+  document.getElementById("cartSummaryTotal").textContent = money(netTotal);
   document.getElementById("cartSummary").style.display = "grid";
   scheduleShippingQuote();
 }

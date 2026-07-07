@@ -59,7 +59,8 @@ class OrderItem(db.Model):
         db.Integer,
         nullable=False
     )
-    
+
+    variant_color = db.Column(db.String(80), nullable=True)
 
     # =====================
     # Helper

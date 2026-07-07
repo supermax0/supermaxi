@@ -15,6 +15,8 @@
   let customerSearchCache = Object.create(null);
   let editingOrderId = null;
   let currentPriceEditIndex = -1;
+  let pendingColorCtx = null;
+  let colorEditCartIndex = -1;
   let activeCategory = "all";
   let productSearchQuery = "";
   let discountType = "amount";
@@ -29,7 +31,20 @@
     editingOrderId = initialOrderData.id ?? null;
     selectedCustomerId = initialOrderData.customer_id ?? null;
     selectedCustomerName = initialOrderData.customer_name || "";
-    items = Array.isArray(initialOrderData.items) ? initialOrderData.items.slice() : [];
+    items = Array.isArray(initialOrderData.items)
+      ? initialOrderData.items.map((it) => ({
+          product_id: it.product_id,
+          name: it.name || it.product_name || "",
+          price: Number(it.price) || 0,
+          qty: Number(it.qty ?? it.quantity) || 0,
+          stock: Number(it.stock) || 0,
+          color: (it.color || "").trim(),
+          color_stock: Number(it.color_stock) || 0,
+          fulfillment_branch_id: it.fulfillment_branch_id || null,
+          image_url: it.image_url || "",
+          sku: it.sku || "",
+        }))
+      : [];
   }
 
   const $ = (id) => document.getElementById(id);
@@ -65,11 +80,32 @@
   }
 
   function fmt(n) {
-    return (Number(n) || 0).toLocaleString("ar-IQ");
+    return (Number(n) || 0).toLocaleString("en-US");
   }
 
   function getProductById(id) {
     return allProducts.find((p) => p.id === id);
+  }
+
+  function cartLineKey(productId, color) {
+    return String(productId) + "::" + ((color || "").trim() || "");
+  }
+
+  function serializeCartItems() {
+    return items.map(({ product_id, qty, price, color, fulfillment_branch_id }) => ({
+      product_id,
+      qty,
+      price,
+      color: (color || "").trim() || null,
+      fulfillment_branch_id: fulfillment_branch_id || null,
+    }));
+  }
+
+  function effectiveItemStock(item) {
+    if (item.color) {
+      return Number(item.color_stock || item.stock) || 0;
+    }
+    return Number(item.stock) || 0;
   }
 
   function calcSubtotal() {
@@ -87,7 +123,7 @@
     const sub = calcSubtotal();
     const disc = calcDiscount(sub);
     const ship = Number(shippingValue) || 0;
-    return Math.max(0, sub - disc + ship);
+    return Math.max(0, sub - disc - ship);
   }
 
   function stockBadge(product, qty) {
@@ -238,7 +274,7 @@
     const set = (id, val) => { const el = $(id); if (el) el.textContent = val; };
     set("summarySubtotal", fmt(sub) + " د.ع");
     set("summaryDiscount", discStr);
-    set("summaryShipping", fmt(ship) + " د.ع");
+    set("summaryShipping", ship > 0 ? "−" + fmt(ship) + " د.ع" : "0 د.ع");
     set("summaryTotal", fmt(total) + " د.ع");
     set("summaryTotalFixed", fmt(total) + " د.ع");
     set("summaryDiscountFixed", disc > 0 ? "−" + fmt(disc) + " د.ع" : "0 د.ع");
@@ -258,6 +294,10 @@
     const rowHtml = items.map((i, idx) => {
       const t = (i.price || 0) * (i.qty || 0);
       const sku = i.sku || "";
+      const color = (i.color || "").trim();
+      const colorBadge = color
+        ? `<button type="button" class="pos-color-badge" onclick="PosWP.changeCartColor(${idx})" title="تغيير اللون">${color}</button>`
+        : "";
       const priceEdit = canEditPrice
         ? `<button type="button" class="pos-qty-btn" onclick="PosWP.changePrice(${idx})" title="تعديل السعر"><i class="fas fa-pen"></i></button>`
         : "";
@@ -267,6 +307,7 @@
             ${cartThumbHtml(i)}
             <div>
               <strong>${i.name}</strong>
+              ${colorBadge}
               ${sku ? `<div class="pos-cart-sku">${sku}</div>` : ""}
             </div>
           </div>
@@ -275,7 +316,7 @@
         <td>
           <div class="pos-qty-stepper">
             <button type="button" class="pos-qty-btn" onclick="PosWP.updateQty(${idx},-1)">−</button>
-            <span class="pos-qty-value">${i.qty}</span>
+            <span class="pos-qty-value">${fmt(i.qty)}</span>
             <button type="button" class="pos-qty-btn" onclick="PosWP.updateQty(${idx},1)">+</button>
           </div>
         </td>
@@ -288,18 +329,20 @@
 
     const mobileHtml = items.map((i, idx) => {
       const t = (i.price || 0) * (i.qty || 0);
+      const color = (i.color || "").trim();
       return `<div class="pos-cart-mobile-item">
         <div class="pos-cart-mobile-thumb-wrap">${cartThumbHtml(i)}</div>
         <div class="pos-cart-mobile-main">
           <div class="pos-cart-mobile-item-name">${i.name}</div>
           <div class="pos-cart-mobile-meta">
+            ${color ? `<span class="pos-color-badge pos-color-badge--sm" onclick="PosWP.changeCartColor(${idx})">${color}</span>` : ""}
             ${i.sku ? `<span class="pos-cart-sku">${i.sku}</span>` : "<span></span>"}
             <span class="pos-cart-mobile-unit">${fmt(i.price)} د.ع</span>
           </div>
           <div class="pos-cart-mobile-controls">
             <div class="pos-qty-stepper pos-qty-stepper--sm">
               <button type="button" class="pos-qty-btn" onclick="PosWP.updateQty(${idx},-1)">−</button>
-              <span class="pos-qty-value">${i.qty}</span>
+              <span class="pos-qty-value">${fmt(i.qty)}</span>
               <button type="button" class="pos-qty-btn" onclick="PosWP.updateQty(${idx},1)">+</button>
             </div>
             <span class="pos-cart-line-total">${fmt(t)} د.ع</span>
@@ -399,7 +442,7 @@
         : "";
       const sku = p.sku || p.barcode || ("#" + p.id);
       const nameEsc = (p.name || "").replace(/\\/g, "\\\\").replace(/'/g, "\\'");
-      const stockLabel = qty <= 0 ? "نفد" : `المخزون: ${qty}`;
+      const stockLabel = qty <= 0 ? "نفد" : `المخزون: ${fmt(qty)}`;
       return `<article class="pos-product-card" data-id="${p.id}">
         <div class="pos-product-img">${imgInner}${overlay}</div>
         <div class="pos-product-name">${p.name}</div>
@@ -424,13 +467,115 @@
   function addItemById(id) {
     const p = getProductById(id);
     if (!p) return;
-    addItem(p.id, p.name, p.sale_price, p.quantity, p.image_url, p.sku);
+    if (p.has_colors && Array.isArray(p.colors) && p.colors.length) {
+      openColorPickerModal({
+        id: p.id,
+        name: p.name,
+        price: p.sale_price,
+        stock: p.quantity,
+        image_url: p.image_url,
+        sku: p.sku,
+        colors: p.colors,
+      });
+      return;
+    }
+    addItem(p.id, p.name, p.sale_price, p.quantity, p.image_url, p.sku, "");
+  }
+
+  function openColorPickerModal(product, cartIndex) {
+    pendingColorCtx = product;
+    colorEditCartIndex = typeof cartIndex === "number" ? cartIndex : -1;
+    const modal = $("colorPickerModal");
+    const list = $("colorPickerList");
+    const title = $("colorPickerProductName");
+    if (title) title.textContent = product.name || "اختر اللون";
+    if (!list) {
+      modal?.classList.add("show");
+      return;
+    }
+    const colors = Array.isArray(product.colors) ? product.colors : [];
+    if (!colors.length) {
+      list.innerHTML = '<div class="pos-dropdown-empty">لا توجد ألوان معرّفة</div>';
+    } else {
+      list.innerHTML = colors.map((c) => {
+        const name = (c.name || c).toString().replace(/"/g, "&quot;");
+        const qty = Number(c.qty ?? c.quantity) || 0;
+        const disabled = qty <= 0 ? "disabled" : "";
+        return `<button type="button" class="pos-color-option" ${disabled} data-color="${name}" onclick="PosWP.selectColor('${name.replace(/'/g, "\\'")}')">
+          <span>${name}</span><small>${qty > 0 ? "متوفر: " + fmt(qty) : "نفد"}</small>
+        </button>`;
+      }).join("");
+    }
+    modal?.classList.add("show");
+  }
+
+  function closeColorPickerModal() {
+    $("colorPickerModal")?.classList.remove("show");
+    pendingColorCtx = null;
+    colorEditCartIndex = -1;
+  }
+
+  function selectColor(colorName) {
+    if (!pendingColorCtx) return;
+    const color = (colorName || "").trim();
+    if (!color) return;
+    const p = pendingColorCtx;
+    const colorRow = (p.colors || []).find((c) => (c.name || c) === color);
+    const colorStock = colorRow ? Number(colorRow.qty ?? colorRow.quantity) || 0 : 0;
+    if (colorEditCartIndex >= 0) {
+      const item = items[colorEditCartIndex];
+      if (item) {
+        item.color = color;
+        item.color_stock = colorStock + (item.qty || 0);
+        const dup = items.find((it, idx) => idx !== colorEditCartIndex && cartLineKey(it.product_id, it.color) === cartLineKey(item.product_id, color));
+        if (dup) {
+          toast("هذا اللون موجود مسبقاً في السلة");
+        } else {
+          toast("تم تغيير اللون إلى " + color);
+        }
+      }
+      closeColorPickerModal();
+      renderItems();
+      return;
+    }
+    addItem(p.id, p.name, p.price ?? p.sale_price, p.stock ?? p.quantity, p.image_url, p.sku, color, colorStock);
+    closeColorPickerModal();
+  }
+
+  function changeCartColor(idx) {
+    const item = items[idx];
+    if (!item) return;
+    const p = getProductById(item.product_id);
+    if (!p || !p.has_colors) return;
+    openColorPickerModal({
+      id: p.id,
+      name: item.name,
+      price: item.price,
+      stock: item.stock,
+      image_url: item.image_url,
+      sku: item.sku,
+      colors: p.colors || [],
+    }, idx);
   }
 
   function addItemFromCard(el) {
     if (!el) return;
+    const id = parseInt(el.getAttribute("data-id"), 10);
+    const p = getProductById(id);
+    if (p?.has_colors && p.colors?.length) {
+      openColorPickerModal({
+        id: p.id,
+        name: p.name,
+        price: parseInt(el.getAttribute("data-price"), 10) || p.sale_price,
+        stock: parseInt(el.getAttribute("data-stock"), 10) || p.quantity,
+        image_url: el.getAttribute("data-image") || p.image_url,
+        sku: p.sku,
+        colors: p.colors,
+      });
+      return;
+    }
     addItem(
-      parseInt(el.getAttribute("data-id"), 10),
+      id,
       el.querySelector(".pos-product-name")?.textContent || "",
       parseInt(el.getAttribute("data-price"), 10) || 0,
       parseInt(el.getAttribute("data-stock"), 10) || 0,
@@ -439,24 +584,29 @@
     );
   }
 
-  function addItem(id, name, price, stock, imageUrl, sku) {
+  function addItem(id, name, price, stock, imageUrl, sku, color, colorStock) {
     const idNum = typeof id === "string" ? parseInt(id, 10) : id;
     const stockNum = typeof stock === "string" ? parseInt(stock, 10) : (stock || 0);
     const product = getProductById(idNum);
     const img = imageUrl || product?.image_url || "";
     const itemSku = sku || product?.sku || product?.barcode || "";
-    const item = items.find((i) => i.product_id === idNum);
+    const colorName = (color || "").trim();
+    const lineKey = cartLineKey(idNum, colorName);
+    const item = items.find((i) => cartLineKey(i.product_id, i.color) === lineKey);
+    const maxStock = colorName
+      ? (Number(colorStock) || (product?.colors || []).find((c) => c.name === colorName)?.qty || 0)
+      : stockNum;
 
     if (item) {
-      if (item.qty + 1 > stockNum) {
-        toast("الكمية المطلوبة أكبر من المخزون (" + stockNum + ")");
+      if (item.qty + 1 > effectiveItemStock({ ...item, stock: maxStock, color_stock: maxStock })) {
+        toast("الكمية المطلوبة أكبر من المخزون (" + fmt(maxStock) + ")");
         return;
       }
       item.qty++;
-      toast("تم زيادة كمية " + name);
+      toast("تم زيادة كمية " + name + (colorName ? " — " + colorName : ""));
     } else {
-      if (stockNum <= 0) {
-        toast("المنتج غير متوفر في المخزون");
+      if (maxStock <= 0) {
+        toast(colorName ? "اللون غير متوفر في المخزون" : "المنتج غير متوفر في المخزون");
         return;
       }
       items.push({
@@ -465,10 +615,13 @@
         price: Number(price) || 0,
         qty: 1,
         stock: stockNum,
+        color: colorName,
+        color_stock: maxStock,
+        fulfillment_branch_id: product?.fulfillment_branch_id || null,
         image_url: img,
         sku: itemSku,
       });
-      toast("تم إضافة " + (name || "منتج") + " للسلة");
+      toast("تم إضافة " + (name || "منتج") + (colorName ? " — " + colorName : "") + " للسلة");
     }
     const sp = $("searchProduct");
     if (sp) sp.value = "";
@@ -481,8 +634,8 @@
     const item = items[i];
     if (!item) return;
     const newQty = item.qty + d;
-    if (newQty > item.stock) {
-      toast("الكمية المطلوبة أكبر من المخزون (" + item.stock + ")");
+    if (newQty > effectiveItemStock(item)) {
+      toast("الكمية المطلوبة أكبر من المخزون (" + fmt(effectiveItemStock(item)) + ")");
       return;
     }
     if (newQty <= 0) {
@@ -775,7 +928,7 @@
       body: JSON.stringify({
         order_id: editingOrderId || null,
         customer_id: selectedCustomerId,
-        items: items.map(({ product_id, qty, price }) => ({ product_id, qty, price })),
+        items: serializeCartItems(),
         note: notes || null,
         scheduled_date: null,
         page_id: pageId || null,
@@ -853,7 +1006,7 @@
       body: JSON.stringify({
         order_id: editingOrderId || null,
         customer_id: selectedCustomerId,
-        items: items.map(({ product_id, qty, price }) => ({ product_id, qty, price })),
+        items: serializeCartItems(),
         note: notes || null,
         scheduled_date: scheduleDate,
         page_id: pageId || null,
@@ -1133,7 +1286,19 @@
         .then((d) => {
           if (d.length === 1 && d[0].is_barcode) {
             const p = getProductById(d[0].id);
-            addItem(d[0].id, d[0].name, d[0].price, d[0].quantity, d[0].image_url || p?.image_url, p?.sku);
+            if (d[0].has_colors && Array.isArray(d[0].colors) && d[0].colors.length) {
+              openColorPickerModal({
+                id: d[0].id,
+                name: d[0].name,
+                price: d[0].price,
+                stock: d[0].quantity,
+                image_url: d[0].image_url || p?.image_url,
+                sku: p?.sku,
+                colors: d[0].colors,
+              });
+            } else {
+              addItem(d[0].id, d[0].name, d[0].price, d[0].quantity, d[0].image_url || p?.image_url, p?.sku, "");
+            }
             if (searchProduct) searchProduct.value = "";
             productSearchQuery = "";
             return;
@@ -1143,9 +1308,8 @@
           renderProductGrid();
           if (d.length > 0 && productResults) {
             productResults.innerHTML = d.map((p) => {
-              const prod = getProductById(p.id);
-              const nameEsc = (p.name || "").replace(/'/g, "\\'");
-              return `<div class="pos-product-item" onclick="PosWP.addItem(${p.id},'${nameEsc}',${p.price},${p.quantity || 0},'${(p.image_url || prod?.image_url || "").replace(/'/g, "\\'")}','${(prod?.sku || "").replace(/'/g, "\\'")}')">${p.name} — ${fmt(p.price)} <small>(${p.quantity || 0})</small></div>`;
+              const nameEsc = (p.name || "").replace(/</g, "&lt;");
+              return `<div class="pos-product-item" onclick="PosWP.addItemById(${p.id})">${nameEsc} — ${fmt(p.price)} <small>(${fmt(p.quantity || 0)})</small></div>`;
             }).join("");
             productResults.classList.add("open");
           } else if (productResults) {
@@ -1302,6 +1466,10 @@
     changePrice,
     confirmPriceChange,
     closePriceModal,
+    openColorPickerModal,
+    closeColorPickerModal,
+    selectColor,
+    changeCartColor,
     pickCustomerFromSearch,
     openCustomerModal,
     closeCustomerModal,

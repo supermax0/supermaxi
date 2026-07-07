@@ -139,6 +139,12 @@ def _ensure_call_schema():
 
 @messages_bp.before_request
 def ensure_messages_schema():
+    try:
+        from utils.permission_checks import ensure_cashier_role_has_messages
+
+        ensure_cashier_role_has_messages()
+    except Exception:
+        pass
     _ensure_messages_schema()
     _ensure_channel_schema()
     _ensure_call_schema()
@@ -314,7 +320,9 @@ def unread_count():
     return jsonify({
         "unread_count": private_count + channel_count,
         "private_count": private_count,
-        "channel_count": channel_count
+        "channel_count": channel_count,
+        "latest_unread": _latest_unread_private(current_user_id),
+        "latest_channel": _latest_unread_channel(current_user_id),
     })
 
 
@@ -330,6 +338,55 @@ def _channel_unread_count(user_id):
         ).count()
     except Exception:
         return 0
+
+
+def _message_preview(msg):
+    snippet = (msg.content or "").strip()
+    if snippet:
+        return snippet[:80]
+    return {
+        "image": "📷 صورة",
+        "video": "🎥 فيديو",
+        "audio": "🎤 تسجيل صوتي",
+    }.get(msg.file_type, "📎 مرفق")
+
+
+def _latest_unread_private(user_id):
+    msg = Message.query.filter(
+        Message.receiver_id == user_id,
+        Message.is_read == False,
+    ).order_by(Message.created_at.desc()).first()
+    if not msg:
+        return None
+    return {
+        "id": msg.id,
+        "kind": "private",
+        "sender_id": msg.sender_id,
+        "sender_name": msg.sender.name if msg.sender else "",
+        "preview": _message_preview(msg),
+    }
+
+
+def _latest_unread_channel(user_id):
+    try:
+        read_ids = db.session.query(ChannelRead.channel_message_id).filter(
+            ChannelRead.user_id == user_id
+        ).subquery()
+        msg = ChannelMessage.query.filter(
+            ChannelMessage.sender_id != user_id,
+            ~ChannelMessage.id.in_(db.session.query(read_ids.c.channel_message_id)),
+        ).order_by(ChannelMessage.created_at.desc()).first()
+    except Exception:
+        return None
+    if not msg:
+        return None
+    return {
+        "id": msg.id,
+        "kind": "channel",
+        "sender_id": msg.sender_id,
+        "sender_name": msg.sender.name if msg.sender else "الإدارة",
+        "preview": _message_preview(msg),
+    }
 
 # =====================================================
 # Get Last Messages with Each User
@@ -446,7 +503,7 @@ def get_conversations():
                 "user_name": other_user.name if hasattr(other_user, 'name') else (other_user.username if hasattr(other_user, 'username') else ""),
                 "user_role": user_role,
                 "last_message": msg.content,
-                "last_message_time": msg.created_at.strftime("%Y-%m-%d %H:%M:%S") if msg.created_at else "",
+                "last_message_time": (msg.created_at.isoformat() + "Z") if msg.created_at else "",
                 "unread_count": unread_count
             })
     
@@ -650,7 +707,7 @@ def presence(other_user_id):
     if other.last_active:
         delta = (datetime.utcnow() - other.last_active).total_seconds()
         online = delta < 45  # نشِط خلال 45 ثانية = متصل
-        last_seen = other.last_active.strftime("%Y-%m-%d %H:%M:%S")
+        last_seen = (other.last_active.isoformat() + "Z")
 
     # هل الطرف الآخر يكتب لي؟
     typing = False

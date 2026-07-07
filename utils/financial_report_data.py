@@ -64,6 +64,22 @@ def _rotating_savings_financial_summary(date_from, date_to):
         return defaults
 
 
+def _credit_plan_financial_summary():
+    """ملخص الأجل/الأقساط — يُتجاهل إن لم تُنشأ الجداول بعد."""
+    defaults = {
+        "installment_debt_total": 0,
+        "installment_debt_unlinked": 0,
+        "installment_debt_linked": 0,
+        "installment_active_plans": 0,
+    }
+    try:
+        from utils.customer_credit_service import credit_plan_financial_summary
+
+        return {**defaults, **credit_plan_financial_summary()}
+    except Exception:
+        return defaults
+
+
 def _fixed_assets_financial_summary(date_from, date_to):
     """ملخص الأصول الثابتة للتقرير المالي (يُتجاهل إن لم تُنشأ الجداول بعد)."""
     defaults = {
@@ -171,13 +187,22 @@ def get_financial_report_data(period_type="this_month", custom_date_from=None, c
     # ─── أرصدة كما في نهاية الفترة (نستخدم الحالية من النظام) ───
     cash_balance = calculate_cash_balance()
     inventory_value = calculate_inventory_value()
+    cc_summary = _credit_plan_financial_summary()
+    installment_debt_total = cc_summary["installment_debt_total"]
+    installment_debt_unlinked = cc_summary["installment_debt_unlinked"]
+    installment_debt_linked = cc_summary["installment_debt_linked"]
+    installment_active_plans = cc_summary["installment_active_plans"]
+
     invoice_receivables = calculate_accounts_receivable()
     supplier_debts = calculate_supplier_debts()
     shipping_receivables = calculate_shipping_due()
     shipping_opening_balance = calculate_shipping_opening_balance()
     shipping_orders_receivable = max(int(shipping_receivables or 0) - int(shipping_opening_balance or 0), 0)
-    accounts_receivable = int(invoice_receivables + shipping_opening_balance)
-    customer_receivables = max(int(invoice_receivables or 0) - int(shipping_orders_receivable or 0), 0)
+    # أقساط بدون فاتورة (افتتاحي/يدوي) تُضاف للذمم — المرتبطة بفاتورة محسوبة ضمن الفواتير
+    accounts_receivable = int(invoice_receivables + shipping_opening_balance + installment_debt_unlinked)
+    customer_receivables = max(
+        int(invoice_receivables or 0) - int(shipping_orders_receivable or 0), 0
+    ) + int(installment_debt_unlinked or 0)
 
     # ─── المخزون: عدد مواد ناقصة وراكدة (تعريف بسيط) ───
     low_stock_count = Product.query.filter(Product.quantity <= 2).count()
@@ -468,4 +493,9 @@ def get_financial_report_data(period_type="this_month", custom_date_from=None, c
         "rotating_savings_asset": rs_summary["rotating_savings_asset"],
         "rotating_savings_fees": rs_summary["rotating_savings_fees"],
         "rotating_savings_active_count": rs_summary["rotating_savings_active_count"],
+        # الأجل والأقساط
+        "installment_debt_total": installment_debt_total,
+        "installment_debt_unlinked": installment_debt_unlinked,
+        "installment_debt_linked": installment_debt_linked,
+        "installment_active_plans": installment_active_plans,
     }

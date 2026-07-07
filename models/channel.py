@@ -51,7 +51,7 @@ class ChannelMessage(db.Model):
             "file_path": self.file_path if self.file_path else None,
             "file_name": self.file_name,
             "is_edited": self.is_edited,
-            "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S") if self.created_at else "",
+            "created_at": (self.created_at.isoformat() + "Z") if self.created_at else "",
         }
 
 

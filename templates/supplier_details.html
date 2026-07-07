@@ -16,8 +16,9 @@
   --ss-border: var(--border-light);
   --ss-text: var(--text);
   --ss-muted: var(--text-muted);
-  max-width: 1100px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
 }
 
 .supplier-statement-page .ss-topbar {
@@ -103,6 +104,18 @@
 
 .supplier-statement-page .ss-btn--mini-print:hover {
   background: rgba(16, 185, 129, 0.18);
+}
+
+.supplier-statement-page .ss-btn--delete {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--ss-danger);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.supplier-statement-page .ss-btn--delete:hover {
+  background: rgba(239, 68, 68, 0.16);
 }
 
 .supplier-statement-page .ss-row-actions {
@@ -650,6 +663,7 @@
             <th>{{ _('supplier_statement_col_date') }}</th>
             <th>{{ _('supplier_statement_amount') }}</th>
             <th>{{ _('supplier_statement_note_label') }}</th>
+            <th>إجراءات</th>
           </tr>
         </thead>
         <tbody>
@@ -658,6 +672,12 @@
             <td>{{ pay.created_at.strftime("%Y-%m-%d") }}</td>
             <td class="ss-money--credit">{{ fmt_money(pay.amount) }}</td>
             <td>{{ pay.note or _('supplier_statement_no_note') }}</td>
+            <td>
+              <form method="post" action="/suppliers/payment/{{ pay.id }}/delete" style="display:inline;"
+                    onsubmit="return confirm('حذف دفعة {{ fmt_money(pay.amount) }}؟ سيتم إرجاع المبلغ إلى رصيد المورد والصندوق.');">
+                <button type="submit" class="ss-btn ss-btn--delete">🗑️ حذف</button>
+              </form>
+            </td>
           </tr>
           {% endfor %}
         </tbody>

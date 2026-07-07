@@ -134,24 +134,35 @@ AL ATWANI""")
         try:
             from sqlalchemy import inspect, text
 
-            inspector = inspect(db.engine)
+            bind = db.session.get_bind()
+            inspector = inspect(bind)
             if "invoice_settings" not in inspector.get_table_names():
                 return
 
             columns = {col["name"] for col in inspector.get_columns("invoice_settings")}
-            if "warranty_card_background" not in columns:
-                db.session.execute(text(
-                    "ALTER TABLE invoice_settings "
-                    "ADD COLUMN warranty_card_background TEXT "
+            additions = {
+                "return_policy_notes": "ALTER TABLE invoice_settings ADD COLUMN return_policy_notes TEXT",
+                "warranty_card_background": (
+                    "ALTER TABLE invoice_settings ADD COLUMN warranty_card_background TEXT "
                     "DEFAULT 'linear-gradient(135deg, #031021 0%, #1f2e42 100%)'"
-                ))
+                ),
+                "report_company_name": "ALTER TABLE invoice_settings ADD COLUMN report_company_name VARCHAR(200)",
+                "report_logo_path": "ALTER TABLE invoice_settings ADD COLUMN report_logo_path VARCHAR(500)",
+                "report_address": "ALTER TABLE invoice_settings ADD COLUMN report_address TEXT",
+                "report_phone": "ALTER TABLE invoice_settings ADD COLUMN report_phone VARCHAR(50)",
+                "report_footer_text": "ALTER TABLE invoice_settings ADD COLUMN report_footer_text TEXT",
+                "report_show_logo": "ALTER TABLE invoice_settings ADD COLUMN report_show_logo BOOLEAN DEFAULT TRUE",
+            }
+            changed = False
+            for col, stmt in additions.items():
+                if col not in columns:
+                    db.session.execute(text(stmt))
+                    changed = True
+            if changed:
                 db.session.commit()
-
-            if "return_policy_notes" not in columns:
-                db.session.execute(text(
-                    "ALTER TABLE invoice_settings ADD COLUMN return_policy_notes TEXT"
-                ))
-                db.session.commit()
+                for obj in list(db.session):
+                    if isinstance(obj, InvoiceSettings):
+                        db.session.expire(obj)
 
             row = InvoiceSettings.query.first()
             if row and row.company_address and "عبد الرسول علي" in row.company_address:

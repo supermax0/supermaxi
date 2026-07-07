@@ -8,6 +8,8 @@ reportlab
 pandas
 openpyxl
 pypdf
+pymupdf
+pdfplumber
 gunicorn
 Flask-Compress
 psycopg2-binary

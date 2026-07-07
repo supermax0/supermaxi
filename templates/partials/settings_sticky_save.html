@@ -1,0 +1,10 @@
+<div class="settings-sticky-bar" role="region" aria-label="{{ _('settings_save_bar_label') }}">
+  {% if info %}
+  <div class="settings-sticky-bar-info">{{ info }}</div>
+  {% else %}
+  <div class="settings-sticky-bar-info">{{ _('settings_unsaved_hint') }}</div>
+  {% endif %}
+  <div class="settings-sticky-bar-actions">
+    {% block sticky_actions %}{% endblock %}
+  </div>
+</div>

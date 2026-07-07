@@ -15,7 +15,7 @@ from utils.branch_context import current_branch_id, init_branch_context
 from utils.branch_stock_service import deduct_stock, BranchStockError
 from utils.branch_sales import resolve_sale_fulfillment
 from utils.delivery_expense_service import sync_delivery_expense_for_invoice
-from utils.order_shipping import add_shipping_line_item
+from utils.order_shipping import add_shipping_line_item, net_total_after_shipping
 from utils.product_delivery_fees import fee_for_cart_items
 from utils.payment_ledger import append_payment_ledger_delta
 from utils.permission_checks import employee_can
@@ -47,7 +47,7 @@ def _current_employee():
 def _can_use_quick_sale(employee: Employee | None) -> bool:
     if not employee or not employee.is_active:
         return False
-    return employee_can(employee, "view_pos")
+    return employee_can(employee, "view_quick_sale")
 
 
 def _safe_int(value, default=0):
@@ -203,7 +203,6 @@ def execute():
             db.session.rollback()
             return jsonify({"success": False, "error": str(exc)}), 400
 
-    invoice.total = total
     shipping_fee = data.get("shipping_fee")
     if shipping_fee is None:
         shipping_fee, _ = fee_for_cart_items(
@@ -214,11 +213,13 @@ def execute():
         shipping_fee = max(0, _safe_int(shipping_fee, 0))
     if shipping_fee > 0:
         tenant_id = getattr(customer, "tenant_id", None)
-        # تُحفظ داخلياً كمصروف توصيل عند التسديد ولا تؤثر على إجمالي الفاتورة
+        # تحفظ داخليا للتسوية وتخصم من صافي البيع.
         add_shipping_line_item(invoice, shipping_fee, tenant_id)
 
-    invoice.paid_amount = total
-    append_payment_ledger_delta(invoice.id, total)
+    net_total = net_total_after_shipping(total, shipping_fee)
+    invoice.total = net_total
+    invoice.paid_amount = net_total
+    append_payment_ledger_delta(invoice.id, net_total)
     sync_delivery_expense_for_invoice(invoice)
 
     try:
@@ -231,7 +232,7 @@ def execute():
         {
             "success": True,
             "invoice_id": invoice.id,
-            "total": total,
+            "total": net_total,
             "print_url": url_for("orders.invoice_page", order_id=invoice.id),
         }
     )

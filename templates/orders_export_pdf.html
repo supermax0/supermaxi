@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>تصدير الطلبات PDF</title>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Tajawal', 'Arial', 'Tahoma', sans-serif;
+      direction: rtl;
+      background: #fff;
+      color: #111827;
+      line-height: 1.5;
+    }
+
+    .export-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(255, 255, 255, 0.96);
+    }
+
+    .export-status {
+      background: #fff;
+      border-radius: 18px;
+      padding: 28px 36px;
+      box-shadow: 0 12px 40px rgba(15, 23, 42, 0.12);
+      text-align: center;
+      max-width: 420px;
+      width: 100%;
+    }
+
+    .export-status h2 {
+      font-size: 22px;
+      margin-bottom: 10px;
+      color: #0f172a;
+    }
+
+    .export-status p {
+      color: #64748b;
+      font-size: 14px;
+    }
+
+    .export-spinner {
+      width: 42px;
+      height: 42px;
+      border: 4px solid #dbeafe;
+      border-top-color: #2563eb;
+      border-radius: 50%;
+      margin: 0 auto 18px;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    #exportRoot {
+      width: 1123px;
+      max-width: 100%;
+      margin: 0 auto;
+      background: #fff;
+      padding: 28px 32px 24px;
+    }
+
+    .doc-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 24px;
+      padding-bottom: 18px;
+      border-bottom: 3px solid #0f172a;
+      margin-bottom: 18px;
+      position: relative;
+    }
+
+    .doc-header::after {
+      content: '';
+      position: absolute;
+      bottom: -3px;
+      right: 0;
+      width: 120px;
+      height: 3px;
+      background: #2563eb;
+    }
+
+    .brand-block h1 {
+      font-size: 28px;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 4px;
+    }
+
+    .brand-block p {
+      color: #64748b;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .doc-meta {
+      text-align: left;
+      min-width: 260px;
+    }
+
+    .doc-meta .doc-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: #1d4ed8;
+      margin-bottom: 8px;
+    }
+
+    .meta-grid {
+      display: grid;
+      gap: 6px;
+      font-size: 12px;
+      color: #475569;
+    }
+
+    .meta-grid strong {
+      color: #0f172a;
+    }
+
+    .summary-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .summary-chip {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 999px;
+      padding: 8px 14px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #334155;
+    }
+
+    .summary-chip.primary {
+      background: #eff6ff;
+      border-color: #bfdbfe;
+      color: #1d4ed8;
+    }
+
+    .summary-chip.success {
+      background: #ecfdf5;
+      border-color: #a7f3d0;
+      color: #047857;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    thead th {
+      background: #0f172a;
+      color: #fff;
+      padding: 11px 10px;
+      text-align: center;
+      font-weight: 700;
+      border: 1px solid #0f172a;
+    }
+
+    tbody td {
+      border: 1px solid #e2e8f0;
+      padding: 10px 8px;
+      text-align: center;
+      vertical-align: middle;
+    }
+
+    tbody tr:nth-child(even) {
+      background: #f8fafc;
+    }
+
+    .col-invoice {
+      font-weight: 800;
+      color: #0f172a;
+      font-size: 13px;
+    }
+
+    .col-barcode {
+      direction: ltr;
+      font-family: 'Courier New', monospace;
+      font-weight: 700;
+      font-size: 11px;
+      color: #334155;
+      word-break: break-all;
+    }
+
+    .col-phone {
+      direction: ltr;
+      font-family: 'Courier New', monospace;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .col-name {
+      font-weight: 700;
+      color: #111827;
+    }
+
+    .col-amount {
+      font-weight: 800;
+      color: #047857;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .total-row td {
+      background: #d1fae5 !important;
+      border-top: 2px solid #10b981;
+      border-bottom: 2px solid #10b981;
+      font-weight: 800;
+      font-size: 13px;
+      padding: 12px 8px;
+    }
+
+    .doc-footer {
+      margin-top: 18px;
+      padding-top: 12px;
+      border-top: 2px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: #64748b;
+      font-weight: 600;
+    }
+
+    .empty-cell {
+      color: #94a3b8;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #64748b;
+      font-size: 18px;
+    }
+
+    @media print {
+      .export-screen {
+        display: none !important;
+      }
+
+      body {
+        background: #fff;
+      }
+
+      #exportRoot {
+        width: 100%;
+        padding: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="exportRoot">
+    {% if rows %}
+    <div class="doc-header">
+      <div class="brand-block">
+        <h1>{{ company_name }}</h1>
+        {% if company_subtitle %}<p>{{ company_subtitle }}</p>{% endif %}
+      </div>
+      <div class="doc-meta">
+        <div class="doc-title">كشف الطلبات</div>
+        <div class="meta-grid">
+          <div>تاريخ التصدير: <strong>{{ export_datetime }}</strong></div>
+          <div>عدد الطلبات: <strong>{{ rows|length }}</strong></div>
+          <div>إجمالي المبالغ: <strong>{{ "{:,}".format(total_amount|int) }} د.ع</strong></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="summary-row">
+      <span class="summary-chip primary">{{ rows|length }} طلب</span>
+      <span class="summary-chip success">{{ "{:,}".format(total_amount|int) }} د.ع</span>
+      <span class="summary-chip">{{ export_date }}</span>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:90px;">رقم الفاتورة</th>
+          <th style="width:180px;">باركود شركة النقل</th>
+          <th style="width:130px;">رقم الهاتف</th>
+          <th>اسم الزبون</th>
+          <th style="width:120px;">المبلغ</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td class="col-invoice">#{{ row.invoice_no }}</td>
+          <td class="col-barcode">{% if row.shipping_barcode %}{{ row.shipping_barcode }}{% else %}<span class="empty-cell">—</span>{% endif %}</td>
+          <td class="col-phone">{% if row.phone %}{{ row.phone }}{% else %}<span class="empty-cell">—</span>{% endif %}</td>
+          <td class="col-name">{% if row.customer_name %}{{ row.customer_name }}{% else %}<span class="empty-cell">—</span>{% endif %}</td>
+          <td class="col-amount">{{ "{:,}".format(row.amount|int) }} د.ع</td>
+        </tr>
+        {% endfor %}
+        <tr class="total-row">
+          <td colspan="4" style="text-align:left;">الإجمالي</td>
+          <td class="col-amount">{{ "{:,}".format(total_amount|int) }} د.ع</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="doc-footer">
+      <span>تم إنشاء هذا الكشف تلقائياً من نظام Finora</span>
+      <span>{{ company_name }} — {{ export_datetime }}</span>
+    </div>
+    {% else %}
+    <div class="empty-state">لا توجد طلبات للتصدير</div>
+    {% endif %}
+  </div>
+
+  <div class="export-screen" id="exportScreen">
+    <div class="export-status">
+      <div class="export-spinner" id="exportSpinner"></div>
+      <h2 id="statusTitle">جاري إنشاء ملف PDF...</h2>
+      <p id="statusMsg">يرجى الانتظار، يتم تجهيز كشف الطلبات</p>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script>
+    (function () {
+      const filename = {{ filename|tojson }};
+      const hasRows = {{ (rows|length > 0)|tojson }};
+      const root = document.getElementById('exportRoot');
+      const exportScreen = document.getElementById('exportScreen');
+      const statusTitle = document.getElementById('statusTitle');
+      const statusMsg = document.getElementById('statusMsg');
+      const spinner = document.getElementById('exportSpinner');
+
+      function setStatus(title, message, success) {
+        statusTitle.textContent = title;
+        statusMsg.textContent = message;
+        if (success) {
+          spinner.style.display = 'none';
+          statusTitle.style.color = '#047857';
+        }
+      }
+
+      function waitForFonts() {
+        if (document.fonts && document.fonts.ready) {
+          return document.fonts.ready;
+        }
+        return Promise.resolve();
+      }
+
+      function generatePdf() {
+        if (!hasRows) {
+          setStatus('لا توجد بيانات', 'لم يتم العثور على طلبات للتصدير.', false);
+          return;
+        }
+
+        if (!window.html2pdf) {
+          setStatus('تعذر التصدير', 'مكتبة PDF غير متوفرة. حاول مرة أخرى.', false);
+          return;
+        }
+
+        exportScreen.style.display = 'none';
+
+        const opt = {
+          margin: [8, 8, 8, 8],
+          filename: filename,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: {
+            scale: 2,
+            useCORS: true,
+            allowTaint: true,
+            backgroundColor: '#ffffff',
+            logging: false,
+            width: root.scrollWidth,
+            height: root.scrollHeight,
+            windowWidth: root.scrollWidth,
+            windowHeight: root.scrollHeight,
+            scrollX: 0,
+            scrollY: 0
+          },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+          pagebreak: { mode: ['css', 'legacy'] }
+        };
+
+        html2pdf().set(opt).from(root).save()
+          .then(function () {
+            setStatus('تم التصدير بنجاح', 'سيتم إغلاق هذه النافذة تلقائياً...', true);
+            exportScreen.style.display = 'flex';
+            setTimeout(function () { window.close(); }, 1800);
+          })
+          .catch(function (err) {
+            console.error(err);
+            exportScreen.style.display = 'flex';
+            setStatus('فشل التحميل التلقائي', 'سيتم فتح نافذة الطباعة — اختر "حفظ كـ PDF"', false);
+            setTimeout(function () { window.print(); }, 800);
+          });
+      }
+
+      window.addEventListener('load', function () {
+        waitForFonts().then(function () {
+          setTimeout(generatePdf, 600);
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

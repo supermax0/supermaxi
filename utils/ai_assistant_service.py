@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from flask import current_app, has_request_context, session
-from sqlalchemy import func, inspect, text
+from sqlalchemy import func, inspect, or_, text
 from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
 
@@ -50,6 +50,7 @@ from utils.branch_stock_service import (
     transfer_deduct,
     transfer_receive,
 )
+from utils.inventory_movements import get_product_inventory_movements
 from utils.order_item_costs import exclude_delivery_fee_items
 from utils.activity_logger import log_activity
 from utils.payment_ledger import append_payment_ledger_delta
@@ -356,6 +357,239 @@ def _reserved_stock_map() -> dict[tuple[int, int], int]:
             continue
         out[(branch_id, int(row.product_id))] = int(row.qty or 0)
     return out
+
+
+_QUERY_STOP_WORDS = {
+    "شنو", "ليش", "هذا", "هاي", "هسه", "اكو", "اكو", "على", "عن", "من", "الى", "إلى", "في", "بي", "بيه",
+    "مال", "ممكن", "تقرير", "تحليل", "حلل", "شوف", "تاكد", "تأكد", "نقص", "زايد", "فرع", "شركة", "قطعة", "قطعه",
+    "قطع", "شاشة", "الشاشة", "شاشه", "الشاشه", "شاشات", "الشاشات", "موديل", "حجم", "جرد", "مخزون", "طلبات", "طلب", "حالة", "ضروري", "راجع",
+    "صار", "صارت", "النوع", "نوع", "طلبته", "منه", "بفرع", "بالفرع", "بشاشه", "بالشاشه", "موجود", "بس",
+    "زياده", "زيادة", "زائد", "الزياده", "الزيادة", "ليشكو", "شكد", "شكتلة", "شنطاني",
+    "شوفي", "شوفلي", "وحده", "واحده", "منتج", "المنتج", "للمنتج", "لمنتج",
+}
+
+
+def _normalize_query_token(raw: str) -> str:
+    term = (raw or "").strip().lower()
+    replacements = {
+        "أ": "ا",
+        "إ": "ا",
+        "آ": "ا",
+        "ى": "ي",
+        "ة": "ه",
+    }
+    for old, new in replacements.items():
+        term = term.replace(old, new)
+    for prefix in ("بال", "وال", "لل", "ال"):
+        if term.startswith(prefix) and len(term) > len(prefix) + 2:
+            term = term[len(prefix):]
+            break
+    for prefix in ("ب", "ل", "و"):
+        if term.startswith(prefix) and len(term) > 4:
+            term = term[1:]
+            break
+    return term
+
+
+def _query_terms(message: str) -> list[str]:
+    text_value = re.sub(r"[^\w\u0600-\u06FF]+", " ", message or "").strip()
+    terms: list[str] = []
+    for raw in text_value.split():
+        term = _normalize_query_token(raw)
+        if len(term) < 2 or term in _QUERY_STOP_WORDS:
+            continue
+        if term not in terms:
+            terms.append(term)
+    return terms[:10]
+
+
+def _collect_query_evidence(message: str, scope: dict | None = None) -> dict:
+    """Collect concrete DB rows related to the user's question.
+
+    This keeps the assistant grounded: product/branch stock, reserved orders,
+    recent invoices, and inventory movements are sent as evidence instead of
+    letting GPT infer from a high-level summary.
+    """
+    scope = scope or _assistant_read_scope(None)
+    evidence: dict[str, Any] = {"terms": _query_terms(message)}
+    if not evidence["terms"]:
+        return evidence
+
+    if not scope.get("inventory"):
+        evidence["inventory"] = _restricted("تفاصيل المخزون تحتاج صلاحية المخزون.")
+        return evidence
+
+    terms = evidence["terms"]
+    branches = Branch.query.order_by(Branch.name.asc()).all()
+    branch_matches = []
+    branch_term_ids: set[str] = set()
+    for branch in branches:
+        haystack = _normalize_query_token(f"{branch.name or ''} {branch.code or ''}")
+        matched = [term for term in terms if term in haystack]
+        if matched:
+            branch_matches.append(branch)
+            branch_term_ids.update(matched)
+    if not branch_matches and len(branches) == 1:
+        branch_matches = branches
+
+    target_branch_ids = [branch.id for branch in branch_matches]
+    product_terms = [term for term in terms if term not in branch_term_ids]
+    product_filters = []
+    for term in product_terms:
+        like = f"%{term}%"
+        product_filters.extend(
+            [
+                Product.name.ilike(like),
+                Product.sku.ilike(like),
+                Product.barcode.ilike(like),
+            ]
+        )
+    product_candidates = (
+        Product.query.filter(or_(*product_filters))
+        .order_by(Product.active.desc(), Product.name.asc())
+        .limit(20)
+        .all()
+        if product_filters
+        else []
+    )
+
+    scored_products: list[tuple[int, Product]] = []
+    for product in product_candidates:
+        haystack = _normalize_query_token(f"{product.name or ''} {product.sku or ''} {product.barcode or ''}")
+        score = 0
+        for term in product_terms:
+            if term in haystack:
+                score += 2 if term.isdigit() else 3
+        if score:
+            scored_products.append((score, product))
+    scored_products.sort(key=lambda item: (-item[0], item[1].name or ""))
+    if scored_products:
+        best_score = scored_products[0][0]
+        if best_score >= 5:
+            products = [product for score, product in scored_products if score == best_score][:3]
+        else:
+            products = [product for _score, product in scored_products[:5]]
+    else:
+        products = []
+
+    reserved = _reserved_stock_map()
+    product_rows = []
+    for product in products:
+        branch_rows = []
+        stock_query = BranchStock.query.filter_by(product_id=product.id)
+        if target_branch_ids:
+            stock_query = stock_query.filter(BranchStock.branch_id.in_(target_branch_ids))
+        stock_rows = stock_query.order_by(BranchStock.branch_id.asc()).all()
+        stock_by_branch_id = {row.branch_id: row for row in stock_rows}
+        visible_branches = branch_matches or branches
+        for branch in visible_branches:
+            row = stock_by_branch_id.get(branch.id)
+            qty = int(row.quantity or 0) if row else 0
+            reserved_qty = int(reserved.get((branch.id, product.id), 0) or 0)
+            branch_rows.append(
+                {
+                    "branch_id": branch.id,
+                    "branch_name": branch.name,
+                    "system_qty": qty,
+                    "reserved_ordered_or_shipping": reserved_qty,
+                    "salable_qty": qty - reserved_qty,
+                    "opening_stock": int(row.opening_stock or 0) if row else 0,
+                }
+            )
+        recent_orders = []
+        if scope.get("orders"):
+            order_branch_expr = func.coalesce(OrderItem.fulfillment_branch_id, Invoice.branch_id)
+            order_query = (
+                db.session.query(OrderItem, Invoice, Branch)
+                .join(Invoice, Invoice.id == OrderItem.invoice_id)
+                .outerjoin(Branch, Branch.id == order_branch_expr)
+                .filter(OrderItem.product_id == product.id)
+                .filter(Invoice.status.in_(["تم الطلب", "جاري الشحن", "تم التوصيل", "واصل", "تم التسليم"]))
+            )
+            if target_branch_ids:
+                order_query = order_query.filter(order_branch_expr.in_(target_branch_ids))
+            order_rows = order_query.order_by(Invoice.created_at.desc(), Invoice.id.desc()).limit(10).all()
+            for item, invoice, branch in order_rows:
+                recent_orders.append(
+                    {
+                        "invoice_id": invoice.id,
+                        "status": invoice.status,
+                        "payment_status": invoice.payment_status,
+                        "branch_id": (branch.id if branch else None),
+                        "branch_name": (branch.name if branch else "غير محدد"),
+                        "quantity": int(item.quantity or 0),
+                        "unit_price": int(item.price or 0),
+                        "line_total": int(item.total or 0),
+                        "created_at": invoice.created_at.isoformat() if invoice.created_at else None,
+                        "shipping_barcode": invoice.shipping_barcode or "",
+                    }
+                )
+        movements = []
+        movement_branch_id = branch_matches[0].id if len(branch_matches) == 1 else None
+        try:
+            raw_movements = get_product_inventory_movements(product.id, branch_id=movement_branch_id)
+            for movement in raw_movements[-8:]:
+                movements.append(
+                    {
+                        "date": str(movement.get("date") or ""),
+                        "type": movement.get("type_ar") or movement.get("type") or "",
+                        "in": int(movement.get("quantity_in") or 0),
+                        "out": int(movement.get("quantity_out") or 0),
+                        "balance_after": int(movement.get("balance_after") or 0),
+                        "reference": f"{movement.get('reference_type') or ''}#{movement.get('reference_id') or ''}",
+                        "description": movement.get("description") or "",
+                    }
+                )
+        except Exception as exc:
+            movements.append({"error": str(exc)})
+
+        product_rows.append(
+            {
+                "product_id": product.id,
+                "name": product.name,
+                "sku": product.sku or "",
+                "barcode": product.barcode or "",
+                "active": bool(product.active),
+                "total_quantity": int(product.quantity or 0),
+                "buy_price": int(product.buy_price or 0),
+                "sale_price": int(product.sale_price or 0),
+                "branch_stock": branch_rows,
+                "recent_orders": recent_orders,
+                "recent_movements": movements,
+            }
+        )
+
+    if product_rows:
+        evidence["products"] = product_rows
+        evidence["branch_matches"] = [{"id": b.id, "name": b.name, "code": b.code} for b in branch_matches]
+        evidence["scope_note"] = (
+            "، ".join(b.name for b in branch_matches if b.name)
+            if branch_matches
+            else "كل الفروع"
+        )
+    else:
+        low_rows = (
+            db.session.query(Product, BranchStock, Branch)
+            .join(BranchStock, BranchStock.product_id == Product.id)
+            .join(Branch, Branch.id == BranchStock.branch_id)
+            .filter(Product.active == True)  # noqa: E712
+            .filter(BranchStock.quantity <= BranchStock.low_stock_threshold)
+            .order_by(BranchStock.quantity.asc(), Product.name.asc())
+            .limit(12)
+            .all()
+        )
+        evidence["low_stock_samples"] = [
+            {
+                "product_id": product.id,
+                "product_name": product.name,
+                "branch_id": branch.id,
+                "branch_name": branch.name,
+                "qty": int(stock.quantity or 0),
+                "threshold": int(stock.low_stock_threshold or 0),
+            }
+            for product, stock, branch in low_rows
+        ]
+    return evidence
 
 
 def _normalize_text(value: Any) -> str:
@@ -993,12 +1227,13 @@ def _assistant_response_schema() -> dict:
         "additionalProperties": False,
         "properties": {
             "answer": {"type": "string"},
+            "evidence": {"type": "array", "items": {"type": "string"}, "maxItems": 8},
             "key_points": {"type": "array", "items": {"type": "string"}, "maxItems": 8},
             "risks": {"type": "array", "items": {"type": "string"}, "maxItems": 6},
             "next_steps": {"type": "array", "items": {"type": "string"}, "maxItems": 6},
             "needs_admin_approval": {"type": "boolean"},
         },
-        "required": ["answer", "key_points", "risks", "next_steps", "needs_admin_approval"],
+        "required": ["answer", "evidence", "key_points", "risks", "next_steps", "needs_admin_approval"],
     }
 
 
@@ -1028,6 +1263,7 @@ def _format_structured_ai_reply(data: dict | None, fallback: str = "") -> str:
     if answer:
         lines.append(answer)
     sections = [
+        ("الأدلة من النظام", data.get("evidence")),
         ("النقاط المهمة", data.get("key_points")),
         ("المخاطر", data.get("risks")),
         ("الخطوات المقترحة", data.get("next_steps")),
@@ -1058,11 +1294,16 @@ def _call_openai_narrative(message: str, snapshot: dict, local_findings: dict | 
     system_text = (
         "أنت مساعد Finora الإداري. جاوب بالعربية العراقية المختصرة. "
         "لا تدّعي تنفيذ أي تعديل. أي تعديل لازم يكون خطة موافقة أدمن. "
-        "اعتمد فقط على ملخص البيانات المعطى، واقترح مخاطر وخطوات مراجعة. "
+        "اعتمد فقط على بيانات system_snapshot وlocal_findings. إذا local_findings.query_evidence موجود، "
+        "لازم تذكر أرقام الأدلة منه مثل product_id، invoice_id، الفرع، الكمية، المحجوز، وآخر الحركات. "
+        "إذا local_findings.query_evidence.branch_matches يحتوي فرع محدد، احصر الطلبات والحركات والاستنتاج بهذا الفرع فقط. "
+        "ممنوع تقول 'ممكن' أو 'احتمال' كسبب رئيسي إذا ماكو دليل في query_evidence؛ قل 'ما عندي دليل كافي' واذكر شنو لازم نفحص. "
+        "افصل بوضوح بين الاستنتاج المثبت من الأرقام وبين المخاطر المحتملة التي تحتاج فحص إضافي. "
+        "لا تخترع اسم منتج أو فرع أو رقم طلب غير موجود في البيانات المعطاة. "
         "انتبه لقواعد Finora الخاصة: الجرد الفعلي يشمل تم الطلب وجاري الشحن، "
         "وسعر المنتج في الفاتورة لا يتغير بسبب أجرة التوصيل، ومبالغ شركات النقل ذمم إلنا وليست ديناً علينا، "
         "وحركة الصندوق اليدوية بلا سبب تعتبر خطأ إدخال محتمل. "
-        "أرجع JSON مطابق للمخطط: answer, key_points, risks, next_steps, needs_admin_approval."
+        "أرجع JSON مطابق للمخطط: answer, evidence, key_points, risks, next_steps, needs_admin_approval."
     )
     payload = {
         "user_message": message,
@@ -1174,6 +1415,9 @@ def handle_chat_send(
     scope = _assistant_read_scope(employee_id)
     snapshot = collect_system_snapshot(employee_id=employee_id)
     local_findings: dict[str, Any] = {"snapshot": snapshot}
+    query_evidence = _collect_query_evidence(message or "", scope)
+    if query_evidence.get("products") or query_evidence.get("low_stock_samples"):
+        local_findings["query_evidence"] = query_evidence
     plan = None
 
     wants_inventory_plan = bool(upload_ids) or any(word in (message or "") for word in ("جرد", "فروقات", "فرق", "حول", "نقص", "زايد"))
@@ -1227,6 +1471,9 @@ def handle_chat_send(
     ok, ai_text = _call_openai_narrative(message, snapshot, local_findings)
     if not ai_text:
         ai_text = "حللت البيانات المحلية. إذا تريد تنفيذ أي تغيير راجع خطة التنفيذ واضغط موافقة أدمن ثم تنفيذ."
+    evidence_text = _local_evidence_text(local_findings.get("query_evidence") or {})
+    if evidence_text and "الأدلة المحلية المباشرة" not in ai_text:
+        ai_text = f"{evidence_text}\n\nالاستنتاج:\n{ai_text}"
     if plan:
         ai_text = f"{ai_text}\n\nتم إنشاء خطة تنفيذ #{plan.id}: {plan.summary}"
     elif not ok:
@@ -1259,7 +1506,52 @@ def _local_summary_text(findings: dict) -> str:
         lines.append(
             f"تدقيق محاسبي: اختلاف مخزون {audit.get('stock_imbalances_count', 0)}، فواتير مختلفة {audit.get('invoice_total_mismatches_count', 0)}، هوامش سالبة {audit.get('negative_margin_items_count', 0)}."
         )
+    evidence_text = _local_evidence_text(findings.get("query_evidence") or {})
+    if evidence_text:
+        lines.append(evidence_text)
     return "\n".join(lines)
+
+
+def _local_evidence_text(evidence: dict) -> str:
+    products = evidence.get("products") or []
+    if products:
+        lines = ["\nالأدلة المحلية المباشرة:"]
+        if evidence.get("scope_note"):
+            lines.append(f"- نطاق التحليل: {evidence.get('scope_note')}.")
+        for product in products[:3]:
+            lines.append(
+                f"- المنتج #{product.get('product_id')}: {product.get('name')} | إجمالي المخزون {product.get('total_quantity', 0)} | شراء {product.get('buy_price', 0):,} | بيع {product.get('sale_price', 0):,}."
+            )
+            for stock in (product.get("branch_stock") or [])[:4]:
+                lines.append(
+                    f"  - {stock.get('branch_name')}: نظام {stock.get('system_qty', 0)}، محجوز/جاري الشحن {stock.get('reserved_ordered_or_shipping', 0)}، قابل للبيع {stock.get('salable_qty', 0)}."
+                )
+            orders = product.get("recent_orders") or []
+            if orders:
+                order_bits = [
+                    f"#{o.get('invoice_id')} {o.get('status')} {o.get('branch_name')} كمية {o.get('quantity')}"
+                    for o in orders[:5]
+                ]
+                lines.append("  - آخر الطلبات: " + " | ".join(order_bits))
+            movements = product.get("recent_movements") or []
+            if movements:
+                move_bits = [
+                    f"{m.get('date')} {m.get('type')} +{m.get('in', 0)}/-{m.get('out', 0)} رصيد {m.get('balance_after', 0)} ({m.get('reference')})"
+                    for m in movements[-5:]
+                    if not m.get("error")
+                ]
+                if move_bits:
+                    lines.append("  - آخر الحركات: " + " | ".join(move_bits))
+        return "\n".join(lines)
+    low_stock = evidence.get("low_stock_samples") or []
+    if low_stock:
+        lines = ["\nعينات منخفضة المخزون من النظام:"]
+        for row in low_stock[:8]:
+            lines.append(
+                f"- {row.get('product_name')} في {row.get('branch_name')}: {row.get('qty')} قطعة، حد التنبيه {row.get('threshold')}."
+            )
+        return "\n".join(lines)
+    return ""
 
 
 def approve_action_plan(plan_id: int, *, employee_id: int, note: str | None = None) -> AIActionPlan:

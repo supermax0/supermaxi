@@ -1842,7 +1842,7 @@
       "branch_name": {{ (pb.get('branch_name') or '—')|tojson }},
       "branch_stocks": {{ product_branch_stock_map.get(p.id, {})|tojson }},
       "opening_stock": {{ p.opening_stock or 0 }},
-      "quantity": {{ (branch_stock_map.get(p.id, p.quantity or 0) if not view_all_branches else (p.quantity or 0)) }},
+      "quantity": {{ branch_stock_map.get(p.id, p.quantity or 0) }},
       "low_stock_threshold": {{ p.low_stock_threshold or 5 }},
       "active": {{ 'true' if p.active else 'false' }},
       "product_url": {{ (url_for('storefront.product_detail', tenant_slug=_store_tslug, product_id=p.id) if _store_tslug else '')|tojson }},
@@ -1851,7 +1851,7 @@
       "meta_json": {{ (p.meta_json or '{}')|tojson }},
       "buy_price": {{ p.buy_price or 0 }},
       "sale_price": {{ p.sale_price or 0 }},
-      "inventory_value": {{ (p.buy_price or 0) * ((branch_stock_map.get(p.id, p.quantity or 0) if not view_all_branches else (p.quantity or 0))) }},
+      "inventory_value": {{ (p.buy_price or 0) * branch_stock_map.get(p.id, p.quantity or 0) }},
       "profit": {{ (p.sale_price or 0) - (p.buy_price or 0) }}
     }{% if not loop.last %},{% endif %}
     {% endfor %}

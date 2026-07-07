@@ -216,6 +216,11 @@
   <h3 class="section-title orders-section-title-row">
     <span>📋 {{ _('orders_list_title') }}</span>
     <span class="orders-section-actions">
+      <button class="btn btn-success orders-toggle-btn" type="button" onclick="exportOrdersPdf()"
+        title="تصدير PDF">
+        <span>📄</span>
+        <span>تصدير PDF</span>
+      </button>
       <button class="btn btn-secondary orders-toggle-btn" type="button" onclick="openColumnVisibilityModal()"
         title="{{ _('orders_columns_toggle_title') }}">
         <span>👁️</span>
@@ -2468,6 +2473,42 @@
       btn.classList.add('btn-secondary');
     }
   }
+
+  function exportOrdersPdf() {
+    if (!gridApi) {
+      showToast('❌ الجدول غير جاهز بعد', 'error');
+      return;
+    }
+
+    const selectedRows = gridApi.getSelectedRows();
+    let rows = selectedRows.length > 0 ? selectedRows.slice() : [];
+
+    if (!rows.length) {
+      gridApi.forEachNodeAfterFilter(function (node) {
+        if (node.data) rows.push(node.data);
+      });
+    }
+
+    if (!rows.length) {
+      showToast('⚠️ لا توجد طلبات للتصدير', 'warning');
+      return;
+    }
+
+    const ids = rows
+      .map(function (row) { return row.order_id || row.id; })
+      .filter(function (id) { return id && id !== '—'; });
+
+    if (!ids.length) {
+      showToast('⚠️ لا توجد طلبات صالحة للتصدير', 'warning');
+      return;
+    }
+
+    const url = '/orders/export-pdf?ids=' + encodeURIComponent(ids.join(','));
+    window.open(url, '_blank');
+    showToast('📄 جاري تجهيز ملف PDF...', 'info');
+  }
+
+  window.exportExcel = exportOrdersPdf;
 
   function updateSelectionCount() {
     const selected = selectedIds();

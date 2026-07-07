@@ -74,8 +74,35 @@ def test_ambiguous_row_warning():
     print("test_ambiguous_row_warning ok")
 
 
+def test_parse_orders_export_format():
+    from modules.workspace.services.courier_settlement.courier_statement_parser import CourierStatementParser
+
+    class FakeExtraction:
+        def get_tables(self):
+            return [{
+                "page": 1,
+                "index": 0,
+                "headers": ["#", "باركود شركة النقل", "رقم الهاتف", "اسم الزبون", "المبلغ"],
+                "rows": [
+                    ["#87", "-", "07754043822", "علي", "560,000"],
+                    ["#86", "-", "07710238991", "هند", "45,000"],
+                ],
+            }]
+
+        extracted_text = ""
+        text_sample = ""
+
+    result = CourierStatementParser.parse(FakeExtraction())
+    assert len(result["rows"]) == 2
+    assert result["rows"][0]["normalized_order_number"] == "87"
+    assert result["rows"][0]["customer_phone"] == "07754043822"
+    assert result["rows"][0]["collected_amount"] == 560000
+    print("test_parse_orders_export_format ok")
+
+
 if __name__ == "__main__":
     test_parse_row_with_amounts()
     test_ignores_header_rows()
     test_ambiguous_row_warning()
+    test_parse_orders_export_format()
     print("All parser tests passed.")

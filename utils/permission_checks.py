@@ -72,14 +72,33 @@ def get_current_employee() -> Employee | None:
     return employee
 
 
+def ensure_cashier_role_has_messages() -> None:
+    """Ensure the default cashier RBAC role includes messaging (POS chat button)."""
+    from extensions import db
+    from models.role import Permission, Role
+
+    try:
+        perm = Permission.query.filter_by(name="view_messages").first()
+        if not perm:
+            return
+        role = Role.query.filter_by(name="cashier").first()
+        if not role or perm in (role.permissions or []):
+            return
+        role.permissions.append(perm)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+
 def employee_can(employee: Employee | None, permission_name: str) -> bool:
     if not employee or not employee.is_active:
         return False
     if employee.role == "admin":
         return True
     rbac_name = LEGACY_TO_RBAC.get(permission_name, permission_name)
-    if rbac_name == "view_pos" and employee.role == "cashier" and not list(employee.roles or []):
-        return True
+    if employee.role == "cashier" and not list(employee.roles or []):
+        if rbac_name in ("view_pos", "view_messages"):
+            return True
     return employee.has_permission(rbac_name)
 
 

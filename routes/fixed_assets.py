@@ -605,14 +605,19 @@ def settings():
     from models.fixed_asset_settings import DEPRECIATION_START_MODES
 
     today = datetime.utcnow()
+    from routes.settings import _settings_ctx
+
     return render_template(
         "fixed_assets/settings.html",
-        settings=settings_row,
-        accounts=accounts,
-        depreciation_start_modes=DEPRECIATION_START_MODES,
-        closed_periods=list_closed_periods(),
-        default_period_year=today.year,
-        default_period_month=today.month,
+        **_settings_ctx(
+            "fixed_assets",
+            settings=settings_row,
+            accounts=accounts,
+            depreciation_start_modes=DEPRECIATION_START_MODES,
+            closed_periods=list_closed_periods(),
+            default_period_year=today.year,
+            default_period_month=today.month,
+        ),
     )
 
 

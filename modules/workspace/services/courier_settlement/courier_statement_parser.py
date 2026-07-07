@@ -11,10 +11,10 @@ HEADER_ORDER = re.compile(
     r"رقم\s*الطلب|رقم\s*الفاتورة|الطلب|order|invoice|tracking|awb|#",
     re.IGNORECASE,
 )
-HEADER_CUSTOMER = re.compile(r"العميل|الزبون|الاسم|customer|name", re.IGNORECASE)
-HEADER_PHONE = re.compile(r"الهاتف|الموبايل|phone|mobile", re.IGNORECASE)
+HEADER_CUSTOMER = re.compile(r"العميل|الزبون|الاسم|اسم\s*الزبون|customer|name", re.IGNORECASE)
+HEADER_PHONE = re.compile(r"الهاتف|الموبايل|phone|mobile|الرقم", re.IGNORECASE)
 HEADER_COLLECTED = re.compile(
-    r"المبلغ\s*المحصل|المحصل|قيمة\s*الطلب|collected|cod|amount|total|المبلغ",
+    r"المبلغ\s*المحصل|المحصل|قيمة\s*الطلب|collected|cod|amount|total|المبلغ|المجموع|السعر",
     re.IGNORECASE,
 )
 HEADER_FEE = re.compile(
@@ -99,7 +99,9 @@ class CourierStatementParser:
             return {}
         for idx, cell in enumerate(header_row):
             text = DocumentNormalizationService.normalize_text(str(cell or ""))
-            if HEADER_ORDER.search(text):
+            if text.strip() == "#" or text.startswith("# "):
+                col_map.setdefault("order", idx)
+            elif HEADER_ORDER.search(text):
                 col_map.setdefault("order", idx)
             elif HEADER_CUSTOMER.search(text):
                 col_map.setdefault("customer", idx)
@@ -149,6 +151,10 @@ class CourierStatementParser:
         col_map: Dict[str, int] = {}
         for idx, cell in enumerate(sample):
             text = str(cell or "").strip()
+            phone_info = DocumentNormalizationService.normalize_phone(text)
+            if phone_info.get("valid"):
+                col_map.setdefault("phone", idx)
+                continue
             if CourierStatementParser._looks_like_order_cell(text):
                 col_map.setdefault("order", idx)
                 continue
@@ -197,6 +203,12 @@ class CourierStatementParser:
 
         phone_cell = cell("phone")
         phone_info = DocumentNormalizationService.normalize_phone(phone_cell) if phone_cell else {"valid": False}
+        if not phone_info.get("valid"):
+            for c in cells:
+                pinfo = DocumentNormalizationService.normalize_phone(c)
+                if pinfo.get("valid"):
+                    phone_info = pinfo
+                    break
 
         collected = CourierStatementParser._parse_amount(cell("collected"))
         fee = CourierStatementParser._parse_amount(cell("fee"))

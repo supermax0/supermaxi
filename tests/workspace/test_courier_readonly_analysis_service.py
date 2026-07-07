@@ -100,6 +100,10 @@ def test_readonly_analysis_creates_records():
             "DocumentTextExtractionService.extract_from_file",
             return_value=_mock_intel(),
         ), patch(
+            "modules.workspace.services.document_intelligence.document_table_extraction_service."
+            "DocumentTableExtractionService.extract_tables",
+            return_value=tables,
+        ), patch(
             "modules.workspace.services.courier_settlement.courier_order_matcher.CourierOrderMatcher._default_query",
             return_value=_mock_invoices(),
         ), patch(
@@ -139,6 +143,22 @@ def test_readonly_analysis_creates_records():
         print("test_readonly_analysis_creates_records ok")
 
 
+def test_completed_empty_extraction_is_not_readable():
+    from modules.workspace.services.courier_settlement.courier_readonly_analysis_service import (
+        CourierReadonlyAnalysisService,
+    )
+
+    empty = SimpleNamespace(extracted_text="", get_tables=lambda: [])
+    with_text = SimpleNamespace(extracted_text="كشف تسديد", get_tables=lambda: [])
+    with_tables = SimpleNamespace(extracted_text="", get_tables=lambda: [{"rows": [["#1"]]}])
+
+    assert not CourierReadonlyAnalysisService._has_readable_extraction(empty)
+    assert CourierReadonlyAnalysisService._has_readable_extraction(with_text)
+    assert CourierReadonlyAnalysisService._has_readable_extraction(with_tables)
+    print("test_completed_empty_extraction_is_not_readable ok")
+
+
 if __name__ == "__main__":
     test_readonly_analysis_creates_records()
+    test_completed_empty_extraction_is_not_readable()
     print("All readonly analysis tests passed.")

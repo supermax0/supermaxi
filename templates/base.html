@@ -8,6 +8,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <script src="/static/js/no-zoom.js"></script>
   <script src="/static/js/print-utils.js"></script>
+  <script src="/static/js/message-notify.js"></script>
   <meta name="format-detection" content="telephone=no">
   <meta name="description" content="Finora - نظام محاسبة متكامل لإدارة المبيعات والمخزون">
   <meta name="theme-color" content="#0a0f1c">
@@ -2121,6 +2122,8 @@ or request.path.startswith('/superadmin') %}
         {% set show_pos = is_admin or (current_employee and can_use_pos) %}
         {% if show_pos and business_allows('pos') %}
         <a href="/pos"><i class="fa fa-cash-register"></i> {{ _('dashboard_welcome_pos') }}</a>
+        {% endif %}
+        {% if (is_admin or (current_employee and can_use_quick_sale)) and business_allows('pos') %}
         <a href="/quick-sale" class="{% if request.path.startswith('/quick-sale') %}active{% endif %}"><i class="fa fa-bolt"></i> بيع سريع</a>
         {% endif %}
         {% if (is_admin or (current_employee and can_manage_inventory)) and business_allows('inventory') %}
@@ -2331,6 +2334,19 @@ or request.path.startswith('/superadmin') %}
           _('reports') }} <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
         {% endif %}
         {% endif %}
+        {% set can_use_ai_assistant = is_admin or (current_employee and current_employee.has_permission('use_ai_assistant')) %}
+        {% if can_use_ai_assistant %}
+        {% if plan_has("ai_assistant") %}
+        <a href="/assistant/chat" class="{% if request.path.startswith('/assistant') %}active{% endif %}">
+          <i class="fa fa-robot"></i> المساعد الذكي
+        </a>
+        {% else %}
+        <a href="/upgrade" style="opacity:.55" title="{{ _('upgrade_plan') }}">
+          <i class="fa fa-robot"></i> المساعد الذكي
+          <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i>
+        </a>
+        {% endif %}
+        {% endif %}
         {% if is_admin and business_allows('permissions') %}
         {% if plan_has("rbac") %}
         <a href="/admin/permissions/roles"><i class="fa fa-user-shield"></i> {{ _('permissions') }}</a>
@@ -2357,7 +2373,7 @@ or request.path.startswith('/superadmin') %}
           _('messaging') }} <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
         {% endif %}
         {% endif %}
-        {% if session.get("user_id") %}
+        {% if is_admin or (current_employee and can_use_ai_workspace) %}
         {% if plan_has("ai_workspace") %}
         <a href="/workspace/" class="{% if request.path.startswith('/workspace') %}active{% endif %}"><i
             class="fa fa-layer-group"></i> مساحة LEON</a>
@@ -2368,8 +2384,8 @@ or request.path.startswith('/superadmin') %}
         {% endif %}
       </nav>
 
-      <!-- Plan Badge in Sidebar -->
-      {% if session.get("user_id") and current_plan %}
+      <!-- Plan Badge in Sidebar (admin only — billing is not relevant to staff) -->
+      {% if is_admin and current_plan %}
       <div
         style="margin:16px 12px 8px;padding:12px 14px;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.2);border-radius:14px;font-size:13px">
         <div style="font-weight:800;color:#a5b4fc;margin-bottom:4px">
@@ -3083,8 +3099,38 @@ or request.path.startswith('/superadmin') %}
     };
 
     // ======================================================
-    // UPDATE UNREAD MESSAGES COUNT
+    // UPDATE UNREAD MESSAGES COUNT + NOTIFY
     // ======================================================
+    const msgsNotifyNewFrom = {{ _('messages_new_from')|tojson }};
+    const msgsNotifyChannel = {{ _('messages_channel_notify')|tojson }};
+    let msgsBadgeInitialized = false;
+    let msgsLastUnreadCount = 0;
+
+    function _msgPreview(item) {
+      if (!item) return '';
+      if (item.preview) return item.preview;
+      return '';
+    }
+
+    function _handleIncomingMessageNotify(data) {
+      const notify = window.FinoraMsgNotify;
+      if (!notify) return;
+
+      const items = [];
+      if (data.latest_unread) items.push(data.latest_unread);
+      if (data.latest_channel) items.push(data.latest_channel);
+
+      items.forEach(function (item) {
+        if (!item || !item.id) return;
+        if (!notify.shouldNotify(item.id)) return;
+        notify.play('receive');
+        const title = item.kind === 'channel'
+          ? msgsNotifyChannel
+          : (msgsNotifyNewFrom + (item.sender_name || ''));
+        notify.notify(title, _msgPreview(item), 'finora-msg-' + item.id);
+      });
+    }
+
     function updateMessagesBadge() {
       fetch('/messages/unread-count')
         .then(r => {
@@ -3103,6 +3149,21 @@ or request.path.startswith('/superadmin') %}
               badge.style.display = 'none';
             }
           }
+
+          if (!msgsBadgeInitialized) {
+            msgsBadgeInitialized = true;
+            msgsLastUnreadCount = data.unread_count || 0;
+            if (window.FinoraMsgNotify) {
+              if (data.latest_unread) window.FinoraMsgNotify.markNotified(data.latest_unread.id);
+              if (data.latest_channel) window.FinoraMsgNotify.markNotified(data.latest_channel.id);
+            }
+            return;
+          }
+
+          if ((data.unread_count || 0) > msgsLastUnreadCount) {
+            _handleIncomingMessageNotify(data);
+          }
+          msgsLastUnreadCount = data.unread_count || 0;
         })
         .catch(error => {
           // إخفاء الأخطاء الصامتة - الخادم غير متاح
@@ -3117,9 +3178,10 @@ or request.path.startswith('/superadmin') %}
 
     // Update badge on page load
     document.addEventListener('DOMContentLoaded', function () {
+      if (window.FinoraMsgNotify) window.FinoraMsgNotify.requestPermission();
       updateMessagesBadge();
-      // Update every 10 seconds
-      setInterval(updateMessagesBadge, 10000);
+      // Update every 5 seconds (also when tab is hidden)
+      setInterval(updateMessagesBadge, 5000);
     });
   </script>
 

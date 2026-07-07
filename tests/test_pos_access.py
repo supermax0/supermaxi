@@ -43,6 +43,7 @@ def test_legacy_cashier_can_view_pos_without_rbac_roles():
         db.session.commit()
 
         assert employee_can(emp, "view_pos")
+        assert employee_can(emp, "view_messages")
         print("test_legacy_cashier_can_view_pos_without_rbac_roles ok")
 
 

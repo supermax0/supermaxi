@@ -1,4 +1,5 @@
 from .product import Product
+from .product_color_variant import ProductColorVariant
 from .customer import Customer
 from .customer_credit import CustomerCreditPlan, CustomerInstallment, CustomerCreditPayment
 from .rotating_savings import (

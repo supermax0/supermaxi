@@ -2,37 +2,6 @@
 
 {% block title %}{{ _('db_repair_page_title') }}{% endblock %}
 
-{% block settings_extra_style %}
-<style>
-  .db-repair-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
-  .db-repair-btn {
-    border: none; border-radius: 12px; padding: 12px 20px; font-weight: 600; cursor: pointer;
-    display: inline-flex; align-items: center; gap: 8px; transition: opacity 0.15s;
-  }
-  .db-repair-btn:disabled { opacity: 0.55; cursor: not-allowed; }
-  .db-repair-btn-scan { background: rgba(59, 130, 246, 0.2); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.35); }
-  .db-repair-btn-apply { background: rgba(34, 197, 94, 0.2); color: #86efac; border: 1px solid rgba(34, 197, 94, 0.35); }
-  .db-repair-out {
-    background: rgba(15, 23, 42, 0.75); border: 1px solid var(--border); border-radius: 14px;
-    padding: 16px; font-family: ui-monospace, monospace; font-size: 12px; white-space: pre-wrap;
-    word-break: break-word; color: #e2e8f0; min-height: 80px; max-height: 50vh; overflow: auto;
-    text-align: left; direction: ltr;
-  }
-  .db-repair-summary {
-    font-family: inherit; font-size: 0.95rem; line-height: 1.6; color: var(--text);
-    margin-bottom: 14px; padding: 14px 16px; border-radius: 12px;
-    background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2);
-  }
-  .db-repair-summary.ok { border-color: rgba(34, 197, 94, 0.35); background: rgba(34, 197, 94, 0.08); }
-  .db-repair-summary.warn { border-color: rgba(234, 179, 8, 0.4); background: rgba(234, 179, 8, 0.08); }
-  .db-repair-summary.err { border-color: rgba(248, 113, 113, 0.4); background: rgba(248, 113, 113, 0.08); }
-  .db-repair-links { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 18px; align-items: center; }
-  .db-repair-links a { color: #93c5fd; text-decoration: none; font-size: 0.95rem; }
-  .db-repair-links a:hover { text-decoration: underline; }
-  .db-repair-note { font-size: 0.85rem; color: var(--text-muted); margin-top: 16px; line-height: 1.5; }
-</style>
-{% endblock %}
-
 {% block settings_content %}
 <div class="settings-page-header">
   <h1><i class="fas fa-database"></i> {{ _('db_repair_page_title') }}</h1>
@@ -49,10 +18,10 @@
   </div>
 
   <div class="db-repair-actions" style="margin-top:20px;">
-    <button type="button" class="db-repair-btn db-repair-btn-scan" id="btnScan">
+    <button type="button" class="settings-btn settings-btn-secondary" id="btnScan">
       <i class="fas fa-search"></i> {{ _('db_repair_btn_scan') }}
     </button>
-    <button type="button" class="db-repair-btn db-repair-btn-apply" id="btnApply">
+    <button type="button" class="settings-btn settings-btn-primary" id="btnApply">
       <i class="fas fa-wrench"></i> {{ _('db_repair_btn_apply') }}
     </button>
   </div>

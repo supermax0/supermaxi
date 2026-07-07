@@ -271,6 +271,21 @@ def allocate_payment_fifo(customer_id: int, amount: int, note: str = "", employe
     return payments_created, amount - remaining_pay
 
 
+def credit_plan_financial_summary() -> dict:
+    """ملخص ديون الأجل/الأقساط للتقرير المالي."""
+    plans = CustomerCreditPlan.query.all()
+    total_remaining = sum(p.remaining for p in plans)
+    unlinked_remaining = sum(p.remaining for p in plans if not p.invoice_id)
+    linked_remaining = max(0, int(total_remaining) - int(unlinked_remaining))
+    active_plans = sum(1 for p in plans if p.remaining > 0)
+    return {
+        "installment_debt_total": int(total_remaining),
+        "installment_debt_unlinked": int(unlinked_remaining),
+        "installment_debt_linked": int(linked_remaining),
+        "installment_active_plans": int(active_plans),
+    }
+
+
 def customer_credit_summary(customer_id: int) -> dict:
     plans = CustomerCreditPlan.query.filter_by(customer_id=customer_id).all()
     total_debt = sum(int(p.total_amount or 0) for p in plans)

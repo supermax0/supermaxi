@@ -521,9 +521,17 @@ def login():
         # لا نمنع تسجيل الدخول إذا فشل سكريبت الهجرة؛ سيتم تسجيل الخطأ فقط في اللوج
         print(f"[login] employee profile schema ensure failed: {e}")
 
-    emp = Employee.query.filter(db.func.lower(Employee.username) == username.lower()).first()
+    matching_employees = Employee.query.filter(db.func.lower(Employee.username) == username.lower()).all()
+    emp = None
+    for candidate in matching_employees:
+        try:
+            if check_password_hash(candidate.password, password):
+                emp = candidate
+                break
+        except Exception:
+            continue
 
-    if not emp or not check_password_hash(emp.password, password):
+    if not emp:
         try:
             from utils.activity_logger import log_auth
             log_auth("login_failed", success=False, extra={"username": username, "tenant_slug": tenant_slug})
@@ -1769,7 +1777,15 @@ def index_execute():
         invoice.shipping_company_id = None
 
     elif action == "shipping":
-        invoice.status = "جاري الشحن"
+        from utils.branch_stock_service import BranchStockError
+        from utils.shipping_branch_schedule import apply_shipping_branch_schedule
+
+        try:
+            apply_shipping_branch_schedule(invoice, previous_status=invoice.status)
+            invoice.status = "جاري الشحن"
+        except BranchStockError as exc:
+            db.session.rollback()
+            return jsonify({"success": False, "error": str(exc)}), 400
 
     elif action == "delivered":
         # التوصيل = تحصيل في مسار لوحة التحكم (مثل كشف الشحن «واصل»)
@@ -1847,6 +1863,9 @@ def index_execute_bulk():
                 invoice.status = "تم الطلب"
                 invoice.shipping_company_id = None
             elif action == "shipping":
+                from utils.shipping_branch_schedule import apply_shipping_branch_schedule
+
+                apply_shipping_branch_schedule(invoice, previous_status=invoice.status)
                 invoice.status = "جاري الشحن"
             elif action == "delivered":
                 from utils.delivery_expense_service import sync_delivery_expense_for_invoice
@@ -2062,6 +2081,48 @@ def index_alerts():
                 "message": f"يوجد {pending_orders} طلب معلق",
                 "action": "/orders"
             })
+
+        try:
+            from routes.reports import _build_monitor_data
+            from utils.permission_checks import check_permission
+
+            now = datetime.utcnow()
+            monitor = _build_monitor_data(now - timedelta(days=30), now, 5, 0)
+            weak_employees = monitor.get("weak_employees") or []
+            page_alerts = monitor.get("alerts") or []
+            can_open_monitor = check_permission("can_see_reports")
+            monitor_action = "/reports/monitor" if can_open_monitor else "/"
+            monitor_decisions = (
+                [{"label": "فتح المراقب", "href": "/reports/monitor", "kind": "navigate"}]
+                if can_open_monitor
+                else []
+            )
+
+            if weak_employees:
+                names = "، ".join(emp.get("name", "—") for emp in weak_employees[:3])
+                extra = len(weak_employees) - 3
+                suffix = f" و {extra} آخرين" if extra > 0 else ""
+                alerts.append({
+                    "type": "warning",
+                    "icon": "👥",
+                    "message": f"يوجد {len(weak_employees)} موظف ضعيف آخر 30 يوم: {names}{suffix}",
+                    "action": monitor_action,
+                    "decisions": monitor_decisions,
+                })
+
+            if page_alerts:
+                page_names = "، ".join(page.get("name", "—") for page in page_alerts[:3])
+                extra = len(page_alerts) - 3
+                suffix = f" و {extra} أخرى" if extra > 0 else ""
+                alerts.append({
+                    "type": "warning",
+                    "icon": "📣",
+                    "message": f"يوجد {len(page_alerts)} بيج يحتاج متابعة آخر 30 يوم: {page_names}{suffix}",
+                    "action": monitor_action,
+                    "decisions": monitor_decisions,
+                })
+        except Exception:
+            db.session.rollback()
 
         shipping_due = calculate_shipping_due()
         if shipping_due > 100000:

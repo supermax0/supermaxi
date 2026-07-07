@@ -13,6 +13,7 @@ class PurchaseItem(db.Model):
     discount_value = db.Column(db.Integer, nullable=False, default=0)
     final_unit_cost = db.Column(db.Integer, nullable=False, default=0)
     line_total = db.Column(db.Integer, nullable=False, default=0)
+    variant_color = db.Column(db.String(80), nullable=True)
 
     purchase = db.relationship("Purchase", back_populates="items", lazy=True)
     product = db.relationship("Product", lazy=True)

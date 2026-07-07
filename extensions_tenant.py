@@ -70,6 +70,8 @@ def init_tenant_db(tenant_slug):
             ('view_agents', 'رؤية مندوبي التوصيل'),
             ('view_pages', 'رؤية / إدارة الصفحات'),
             ('view_messages', 'رؤية واجهة المراسلة'),
+            ('view_quick_sale', 'استخدام البيع السريع'),
+            ('use_ai_workspace', 'استخدام مساحة LEON'),
             ('manage_employees', 'إدارة الموظفين'),
             ('manage_agents', 'إدارة المندوبين'),
             ('manage_pages', 'إدارة البيجات'),
@@ -92,7 +94,7 @@ def init_tenant_db(tenant_slug):
             perms = session.query(Permission).filter(Permission.name.in_([
                 'view_dashboard', 'view_orders', 'manage_orders', 'manage_customers',
                 'view_orders_placed', 'view_orders_delivered', 'view_orders_returned',
-                'view_orders_shipped', 'view_pos',
+                'view_orders_shipped', 'view_pos', 'view_messages',
             ])).all()
             cashier_role.permissions.extend(perms)
             session.add(cashier_role)

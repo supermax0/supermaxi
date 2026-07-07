@@ -241,6 +241,7 @@
     <ul>
       <li>إجمالي الإيرادات: <strong>{{ money(total_revenue) }} د.ع</strong> ({{ invoices_count }} فاتورة).</li>
       <li>المبيعات النقدية المحصّلة: <strong>{{ money(cash_sales) }} د.ع</strong> — المبيعات الآجلة: <strong>{{ money(credit_sales) }} د.ع</strong>.</li>
+      {% if installment_debt_total %}<li>إجمالي ديون الأجل والأقساط: <strong>{{ money(installment_debt_total) }} د.ع</strong>{% if installment_active_plans %} ({{ installment_active_plans }} خطة نشطة){% endif %}{% if installment_debt_unlinked %} — منها غير مرتبطة بفاتورة: <strong>{{ money(installment_debt_unlinked) }} د.ع</strong>{% endif %}.</li>{% endif %}
       <li>صافي الربح/الخسارة: <strong class="{{ 'pos' if net_profit_period >= 0 else 'neg' }}">{{ money(net_profit_period) }} د.ع</strong>{% if net_profit_period < 0 %} (خسارة){% endif %}.</li>
       {% if growth_revenue_pct is not none %}<li>نسبة تغيّر الإيرادات مقارنة بـ {{ prev_label or 'الفترة السابقة' }}: <strong class="{{ 'pos' if growth_revenue_pct >= 0 else 'neg' }}">{{ growth_revenue_pct }}%</strong>.</li>{% endif %}
       {% if growth_profit_pct is not none %}<li>نسبة تغيّر الربح: <strong class="{{ 'pos' if growth_profit_pct >= 0 else 'neg' }}">{{ growth_profit_pct }}%</strong>.</li>{% endif %}
@@ -313,7 +314,26 @@
         <tr><td colspan="2"><strong>الأصول</strong></td></tr>
         <tr><td>النقدية</td><td class="amount">{{ money(cash_balance) }}</td></tr>
         <tr><td>المخزون</td><td class="amount">{{ money(inventory_value) }}</td></tr>
-        <tr><td>الذمم المدينة (ديون العملاء)</td><td class="amount">{{ money(customer_receivables if customer_receivables is defined else accounts_receivable) }}</td></tr>
+        <tr>
+          <td>
+            الذمم المدينة (ديون العملاء)
+            {% if installment_debt_unlinked %}
+            <small> — يشمل أقساط افتتاحي/يدوي {{ money(installment_debt_unlinked) }}</small>
+            {% endif %}
+          </td>
+          <td class="amount">{{ money(customer_receivables if customer_receivables is defined else accounts_receivable) }}</td>
+        </tr>
+        {% if installment_debt_total %}
+        <tr>
+          <td>
+            ديون الأجل والأقساط (إجمالي النظام)
+            {% if installment_debt_linked %}
+            <small> — {{ money(installment_debt_linked) }} مرتبطة بفواتير (ضمن الذمم أعلاه)</small>
+            {% endif %}
+          </td>
+          <td class="amount">{{ money(installment_debt_total) }}</td>
+        </tr>
+        {% endif %}
         <tr>
           <td>
             ذمم شركات النقل (طلبات + رصيد افتتاحي)

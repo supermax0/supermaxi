@@ -1,0 +1,54 @@
+.pub-settings-hub {
+  margin-bottom: 24px;
+}
+
+.pub-settings-hub__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.pub-settings-hub__card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.55);
+  color: inherit;
+  text-decoration: none;
+  transition: transform 0.18s ease, border-color 0.18s ease;
+}
+
+.pub-settings-hub__card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(99, 102, 241, 0.45);
+  text-decoration: none;
+}
+
+.pub-settings-hub__card strong {
+  font-size: 16px;
+}
+
+.pub-settings-hub__card span:last-child {
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+.pub-settings-hub__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(99, 102, 241, 0.15);
+  color: #818cf8;
+}
+
+#pub-settings-facebook,
+#pub-settings-token,
+#pub-settings-pages {
+  scroll-margin-top: 88px;
+}

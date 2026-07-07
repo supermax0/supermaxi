@@ -402,6 +402,7 @@ with app.app_context():
                         cur.execute("PRAGMA table_info(invoice_settings)")
                         is_cols = {row[1] for row in cur.fetchall()}
                         report_additions = {
+                            "return_policy_notes": "ALTER TABLE invoice_settings ADD COLUMN return_policy_notes TEXT",
                             "report_company_name": "ALTER TABLE invoice_settings ADD COLUMN report_company_name VARCHAR(200)",
                             "report_logo_path": "ALTER TABLE invoice_settings ADD COLUMN report_logo_path VARCHAR(500)",
                             "report_address": "ALTER TABLE invoice_settings ADD COLUMN report_address TEXT",
@@ -495,6 +496,7 @@ with app.app_context():
         if 'invoice_settings' in inspector.get_table_names():
             is_columns = {col['name'] for col in inspector.get_columns('invoice_settings')}
             report_additions = {
+                "return_policy_notes": "ALTER TABLE invoice_settings ADD COLUMN return_policy_notes TEXT",
                 "report_company_name": "ALTER TABLE invoice_settings ADD COLUMN report_company_name VARCHAR(200)",
                 "report_logo_path": "ALTER TABLE invoice_settings ADD COLUMN report_logo_path VARCHAR(500)",
                 "report_address": "ALTER TABLE invoice_settings ADD COLUMN report_address TEXT",
@@ -1269,6 +1271,8 @@ def inject_global_data():
         "can_manage_rotating_savings": False,
         # صلاحيات ظهور الروابط في القائمة الجانبية
         "can_use_pos": False,
+        "can_use_quick_sale": False,
+        "can_use_ai_workspace": False,
         "can_see_shipping": False,
         "can_see_agents": False,
         "can_see_pages": False,
@@ -1335,6 +1339,8 @@ def inject_global_data():
             "can_manage_rotating_savings": employee_can(employee, "manage_rotating_savings"),
             # ربط أعلام القائمة الجانبية بصلاحيات الـ RBAC
             "can_use_pos": employee_can(employee, "view_pos"),
+            "can_use_quick_sale": employee_can(employee, "view_quick_sale"),
+            "can_use_ai_workspace": employee_can(employee, "use_ai_workspace"),
             "can_see_shipping": employee_can(employee, "view_shipping"),
             "can_see_agents": employee_can(employee, "view_agents"),
             "can_see_pages": employee_can(employee, "view_pages"),
@@ -1486,7 +1492,8 @@ def require_login():
             return deny_current_path()
 
         rules = [
-            ("/quick-sale", "view_pos"),
+            ("/quick-sale", "view_quick_sale"),
+            ("/workspace", "use_ai_workspace"),
             ("/inventory", "manage_inventory"),
             ("/maintenance", "manage_inventory"),
             ("/purchases", "manage_inventory"),
@@ -2197,6 +2204,71 @@ def _start_ai_assistant_audit_scheduler():
 
 
 _start_ai_assistant_audit_scheduler()
+
+# =====================================
+# Weak Employee Auto Message Scheduler
+# =====================================
+def _start_weak_employee_message_scheduler():
+    import os
+    import sys
+
+    if os.environ.get("SERVER_SOFTWARE", "").startswith("gunicorn/") or "gunicorn" in (sys.argv[0] or ""):
+        return
+
+    try:
+        from apscheduler.schedulers.background import BackgroundScheduler  # type: ignore[import-untyped]
+        from apscheduler.triggers.interval import IntervalTrigger  # type: ignore[import-untyped]
+
+        def _run_weak_employee_messages():
+            with app.app_context():
+                try:
+                    from flask import g
+                    from models.core.tenant import Tenant as CoreTenant
+                    from utils.weak_employee_messaging import send_weak_employee_messages
+
+                    old_tenant = getattr(g, "tenant", None)
+                    g.tenant = None
+                    try:
+                        tenants = CoreTenant.query.filter_by(is_active=True).all()
+                    except Exception:
+                        tenants = []
+                    finally:
+                        g.tenant = old_tenant
+
+                    for tenant in tenants:
+                        tenant_slug = getattr(tenant, "slug", None)
+                        if not tenant_slug:
+                            continue
+                        g.tenant = tenant_slug
+                        try:
+                            send_weak_employee_messages()
+                        except Exception:
+                            db.session.rollback()
+                            try:
+                                app.logger.exception("weak employee message scheduler failed for tenant %s", tenant_slug)
+                            except Exception:
+                                pass
+                        finally:
+                            g.tenant = None
+                except Exception:
+                    try:
+                        app.logger.exception("weak employee message scheduler failed")
+                    except Exception:
+                        pass
+
+        scheduler = BackgroundScheduler()
+        scheduler.add_job(
+            _run_weak_employee_messages,
+            IntervalTrigger(hours=1),
+            id="weak_employee_messages",
+            replace_existing=True,
+        )
+        scheduler.start()
+    except Exception:
+        pass
+
+
+_start_weak_employee_message_scheduler()
 
 # Favicon for browser tabs (/favicon.ico)
 @app.route("/favicon.ico")

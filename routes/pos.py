@@ -13,13 +13,23 @@ from models.order_item import OrderItem
 from models.employee import Employee
 from models.page import Page
 from utils.product_schema_guard import ensure_customer_blacklist_columns, ensure_product_schema
+from utils.order_item_schema_guard import ensure_order_item_schema
+from utils.product_color_service import (
+    colors_for_product_dict,
+    deduct_color_stock,
+    get_color_quantity,
+    product_has_colors,
+    restore_color_stock,
+    validate_color_sale,
+    ProductColorError,
+)
 from utils.customer_blacklist import is_phone_blacklisted_for_new_customer
 from utils.permission_checks import guard_permission
 from utils.activity_logger import INVOICE_SNAPSHOT_FIELDS, log_activity, snapshot_attrs
 from utils.branch_migration import ensure_branch_schema, get_default_branch
 from utils.branch_context import current_branch_id, init_branch_context
-from utils.branch_stock_service import deduct_stock, get_branch_stock, receive_stock, BranchStockError
-from utils.order_shipping import add_shipping_line_item, is_shipping_item
+from utils.branch_stock_service import deduct_stock, get_branch_stock, get_total_stock, receive_stock, BranchStockError
+from utils.order_shipping import add_shipping_line_item, is_shipping_item, net_total_after_shipping
 from utils.product_delivery_fees import fee_for_cart_items
 
 pos_bp = Blueprint("pos", __name__, url_prefix="/pos")
@@ -56,27 +66,80 @@ def _editing_order_id_from_request(data: dict) -> int | None:
 
 def _product_bootstrap_dict(product):
     from utils.branch_sales import is_sell_from_all_branches_enabled
+    from models.branch import BranchStock
 
     meta = _parse_product_meta(product)
+    branch_total = get_total_stock(product.id)
+    has_branch_stock = BranchStock.query.filter_by(product_id=product.id).first() is not None
+    total_qty = branch_total if has_branch_stock else int(product.quantity or 0)
     if is_sell_from_all_branches_enabled():
-        display_qty = product.quantity or 0
+        display_qty = total_qty
     else:
         branch_id = current_branch_id()
-        display_qty = get_branch_stock(branch_id, product.id) if branch_id else (product.quantity or 0)
-    return {
+        if not branch_id:
+            default_branch = get_default_branch()
+            branch_id = default_branch.id if default_branch else None
+        display_qty = get_branch_stock(branch_id, product.id) if branch_id else total_qty
+    payload = {
         "id": product.id,
         "name": product.name,
         "sku": product.sku or "",
         "barcode": product.barcode or "",
         "sale_price": product.sale_price or 0,
+        "price": product.sale_price or 0,
         "quantity": display_qty,
-        "total_quantity": product.quantity or 0,
+        "total_quantity": total_qty,
         "image_url": product.image_url or "",
         "low_stock_threshold": product.low_stock_threshold or 5,
         "category": (meta.get("category") or "").strip(),
         "store_badge": (meta.get("store_badge") or "").strip(),
         "sell_from_all_branches": is_sell_from_all_branches_enabled(),
     }
+    payload.update(colors_for_product_dict(product))
+    return payload
+
+
+def _fallback_fulfillment_branch_id(invoice=None):
+    branch_id = getattr(invoice, "branch_id", None) if invoice else None
+    if branch_id:
+        return branch_id
+    branch_id = current_branch_id()
+    if branch_id:
+        return branch_id
+    default_branch = get_default_branch()
+    return default_branch.id if default_branch else None
+
+
+def _branch_with_enough_stock(product_id, qty, *preferred_branch_ids):
+    from models.branch import Branch
+
+    qty = int(qty or 0)
+    checked = set()
+    for branch_id in preferred_branch_ids:
+        if not branch_id:
+            continue
+        try:
+            branch_id = int(branch_id)
+        except (TypeError, ValueError):
+            continue
+        if branch_id in checked:
+            continue
+        checked.add(branch_id)
+        branch = Branch.query.filter_by(id=branch_id, is_active=True).first()
+        if branch and get_branch_stock(branch.id, product_id) >= qty:
+            return branch.id
+
+    candidates = []
+    for branch in Branch.query.filter_by(is_active=True).order_by(Branch.is_default.desc(), Branch.id.asc()).all():
+        if branch.id in checked:
+            continue
+        available = get_branch_stock(branch.id, product_id)
+        if available >= qty:
+            candidates.append((available, branch.id))
+    if not candidates:
+        return None
+    candidates.sort(key=lambda row: (-row[0], row[1]))
+    return candidates[0][1]
 
 
 @pos_bp.before_request
@@ -88,6 +151,7 @@ def pos_use_tenant_db():
     if tenant_slug:
         g.tenant = tenant_slug  # جعل الاستعلامات تستهدف قاعدة بيانات الشركة
         ensure_product_schema()
+        ensure_order_item_schema()
         ensure_customer_blacklist_columns()
         ensure_branch_schema()
         init_branch_context()
@@ -99,6 +163,12 @@ def pos_permission_guard():
         return None
     if "user_id" not in session:
         return None
+    try:
+        from utils.permission_checks import ensure_cashier_role_has_messages
+
+        ensure_cashier_role_has_messages()
+    except Exception:
+        pass
     if request.endpoint == "pos.update_product_price":
         return guard_permission("edit_price", json=True)
     return guard_permission("view_pos")
@@ -167,13 +237,19 @@ def pos():
                 for item in items:
                     # جلب المنتج المتصل للحصول على الكمية الحالية في المخزن
                     product_stock = 0
+                    item_branch_id = item.fulfillment_branch_id or _fallback_fulfillment_branch_id(invoice)
                     if item.product:
                         # الكمية المتاحة للتعديل = الكمية في المخزن + الكمية المحجوزة في هذا الطلب
-                        if item.fulfillment_branch_id:
-                            product_stock = get_branch_stock(item.fulfillment_branch_id, item.product.id) + (item.quantity or 0)
+                        if item_branch_id:
+                            product_stock = get_branch_stock(item_branch_id, item.product.id) + (item.quantity or 0)
                         else:
                             product_stock = (item.product.quantity or 0) + (item.quantity or 0)
                     
+                    color_name = (getattr(item, "variant_color", None) or "").strip()
+                    color_stock = 0
+                    if color_name and item.product:
+                        color_stock = get_color_quantity(item.product.id, color_name) + (item.quantity or 0)
+
                     items_list.append({
                         "product_id": int(item.product_id),
                         "name": str(item.product_name),
@@ -181,7 +257,9 @@ def pos():
                         "qty": int(item.quantity),
                         "price": float(item.price) if item.price else 0.0,
                         "stock": int(product_stock),
-                        "fulfillment_branch_id": int(item.fulfillment_branch_id) if item.fulfillment_branch_id else None,
+                        "color": color_name,
+                        "color_stock": int(color_stock),
+                        "fulfillment_branch_id": int(item_branch_id) if item_branch_id else None,
                     })
                 
                 # التأكد من أن جميع القيم قابلة للـ JSON serialization
@@ -229,6 +307,7 @@ def pos():
     ctx = dict(
         products=products,
         bootstrap_products=bootstrap_products,
+        product_pos_stock_map={p["id"]: p["quantity"] for p in bootstrap_products},
         customers=customers,
         branches=branches,
         default_branch_id=default_branch_id,
@@ -441,14 +520,9 @@ def search_product():
     ).first()
 
     if product_by_barcode:
-        return jsonify([{
-            "id": product_by_barcode.id,
-            "name": product_by_barcode.name,
-            "price": product_by_barcode.sale_price,
-            "quantity": product_by_barcode.quantity or 0,
-            "image_url": product_by_barcode.image_url or "",
-            "is_barcode": True
-        }])
+        row = _product_bootstrap_dict(product_by_barcode)
+        row["is_barcode"] = True
+        return jsonify([row])
 
     # 2. بحث بالاسم — كل المنتجات النشطة التي تحتوي النص (حد 20)
     products = Product.query.filter(
@@ -456,16 +530,12 @@ def search_product():
         Product.name.contains(q)
     ).limit(20).all()
 
-    return jsonify([
-        {
-            "id": p.id,
-            "name": p.name,
-            "price": p.sale_price,
-            "quantity": p.quantity,
-            "image_url": p.image_url or "",
-            "is_barcode": False
-        } for p in products
-    ])
+    rows = []
+    for p in products:
+        row = _product_bootstrap_dict(p)
+        row["is_barcode"] = False
+        rows.append(row)
+    return jsonify(rows)
 
 
 # =================================================
@@ -570,10 +640,14 @@ def create_order():
                 continue
             if old_item.product:
                 old_qty = int(old_item.quantity or 0)
-                if old_item.fulfillment_branch_id:
-                    receive_stock(old_item.fulfillment_branch_id, old_item.product.id, old_qty)
+                old_branch_id = old_item.fulfillment_branch_id or _fallback_fulfillment_branch_id(invoice)
+                if old_branch_id:
+                    receive_stock(old_branch_id, old_item.product.id, old_qty)
                 else:
                     old_item.product.quantity = int(old_item.product.quantity or 0) + old_qty
+                old_color = (getattr(old_item, "variant_color", None) or "").strip()
+                if old_color:
+                    restore_color_stock(old_item.product.id, old_color, old_qty)
             db.session.delete(old_item)
         db.session.flush()
 
@@ -618,6 +692,13 @@ def create_order():
             return jsonify({"error": "منتج غير موجود"}), 400
 
         qty = i.get("qty", 0)
+        variant_color = (i.get("color") or i.get("variant_color") or "").strip()
+        if product_has_colors(product):
+            ok, msg = validate_color_sale(product.id, variant_color, qty)
+            if not ok:
+                db.session.rollback()
+                return jsonify({"error": msg}), 400
+
         from utils.branch_sales import resolve_sale_fulfillment
 
         explicit_branch = i.get("fulfillment_branch_id")
@@ -626,12 +707,21 @@ def create_order():
         except (TypeError, ValueError):
             explicit_branch = None
 
+        preferred_branch_id = current_branch_id() or _fallback_fulfillment_branch_id(invoice)
+        if editing_order_id:
+            stock_branch_id = _branch_with_enough_stock(
+                product.id,
+                qty,
+                explicit_branch,
+                preferred_branch_id,
+            )
+            if stock_branch_id:
+                explicit_branch = stock_branch_id
+
         fulfillment_branch_id, validation = resolve_sale_fulfillment(
             product.id,
             qty,
-            preferred_branch_id=current_branch_id() or (
-                get_default_branch().id if get_default_branch() else None
-            ),
+            preferred_branch_id=preferred_branch_id,
             explicit_branch_id=explicit_branch,
         )
         if not validation.get("valid") or not fulfillment_branch_id:
@@ -659,11 +749,14 @@ def create_order():
             cost=product.buy_price,
             total=item_total,
             fulfillment_branch_id=fulfillment_branch_id,
+            variant_color=variant_color or None,
         )
 
         try:
             deduct_stock(fulfillment_branch_id, product.id, qty)
-        except BranchStockError as exc:
+            if variant_color:
+                deduct_color_stock(product.id, variant_color, qty)
+        except (BranchStockError, ProductColorError) as exc:
             db.session.rollback()
             return jsonify({"error": str(exc)}), 400
         total += item_total
@@ -691,10 +784,11 @@ def create_order():
 
     tenant_id = getattr(shipping_customer, "tenant_id", None)
     if shipping_fee > 0:
-        # تُحفظ داخلياً كمصروف توصيل عند التسديد ولا تؤثر على إجمالي الفاتورة
+        # تحفظ داخليا للتسوية وتخصم من صافي البيع.
         add_shipping_line_item(invoice, shipping_fee, tenant_id)
 
-    invoice.total = total
+    net_total = net_total_after_shipping(total, shipping_fee)
+    invoice.total = net_total
 
     try:
         db.session.commit()
@@ -719,7 +813,7 @@ def create_order():
         return jsonify({
             "success": True,
             "invoice_id": invoice.id,
-            "total": total,
+            "total": net_total,
             "updated": bool(editing_order_id),
         })
     except Exception as e:

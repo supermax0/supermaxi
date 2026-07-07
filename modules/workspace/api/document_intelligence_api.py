@@ -7,6 +7,7 @@ from modules.workspace.services.document_intelligence.document_intelligence_serv
     DocumentIntelligenceService,
 )
 from modules.workspace.services.document_intelligence.extraction_errors import (
+    DocumentIntelligenceError,
     DocumentNotFoundError,
     SessionAccessError,
 )
@@ -44,6 +45,8 @@ def run_document_intelligence(document_id):
         return jsonify({"success": False, "error": "not_found", "message": str(exc)}), 404
     except SessionAccessError as exc:
         return jsonify({"success": False, "error": "forbidden", "message": str(exc)}), 403
+    except DocumentIntelligenceError as exc:
+        return jsonify({"success": False, "error": "unreadable_document", "message": str(exc)}), 400
     except Exception as exc:
         return jsonify({"success": False, "error": "intelligence_failed", "message": str(exc)}), 500
 
@@ -114,5 +117,7 @@ def run_active_intelligence(session_id):
         return jsonify({"success": False, "error": "no_document", "message": str(exc)}), 400
     except SessionAccessError as exc:
         return jsonify({"success": False, "error": "not_found", "message": str(exc)}), 404
+    except DocumentIntelligenceError as exc:
+        return jsonify({"success": False, "error": "unreadable_document", "message": str(exc)}), 400
     except Exception as exc:
         return jsonify({"success": False, "error": "intelligence_failed", "message": str(exc)}), 500

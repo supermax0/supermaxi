@@ -30,6 +30,15 @@ from utils.treasury_schema_guard import ensure_treasury_schema
 from utils.branch_migration import ensure_branch_schema, get_default_branch
 from utils.branch_context import current_branch_id, resolve_branch_id
 from utils.branch_stock_service import deduct_stock, receive_stock
+from utils.order_item_schema_guard import ensure_order_item_schema
+from utils.product_color_service import (
+    ProductColorError,
+    colors_for_product_dict,
+    deduct_color_stock,
+    ensure_color_variant,
+    product_has_colors,
+    receive_color_stock,
+)
 
 purchases_bp = Blueprint("purchases", __name__, url_prefix="/purchases")
 
@@ -79,6 +88,13 @@ def _ensure_purchase_schema():
         for stmt in stmts:
             db.session.execute(text(stmt))
         if stmts:
+            # One-time backfill when the stock_applied column is first added:
+            # confirmed legacy invoices already affected stock before this flag
+            # existed, while legacy draft/cancelled rows never did. Never run
+            # these on later requests, because a draft with stock_applied=1 is
+            # a legitimate state (a confirmed invoice unlocked for editing) and
+            # resetting it would skip the stock reversal on save, duplicating
+            # stock.
             if "stock_applied" not in cols:
                 db.session.execute(
                     text(
@@ -86,22 +102,75 @@ def _ensure_purchase_schema():
                         "WHERE lower(coalesce(status, 'confirmed')) = 'confirmed'"
                     )
                 )
-            db.session.commit()
-
-        # Guard legacy rows: draft/cancelled purchases must never be treated as stock-applied.
-        if "stock_applied" in cols or "stock_applied" in additions:
-            db.session.execute(
-                text(
-                    "UPDATE purchase SET stock_applied = 0 "
-                    "WHERE lower(coalesce(status, '')) IN ('draft', 'cancelled', 'canceled') "
-                    "AND coalesce(stock_applied, 0) != 0"
+                db.session.execute(
+                    text(
+                        "UPDATE purchase SET stock_applied = 0 "
+                        "WHERE lower(coalesce(status, '')) IN ('draft', 'cancelled', 'canceled') "
+                        "AND coalesce(stock_applied, 0) != 0"
+                    )
                 )
-            )
             db.session.commit()
 
     PurchaseItem.__table__.create(bind=bind, checkfirst=True)
     PurchasePayment.__table__.create(bind=bind, checkfirst=True)
     PurchaseAttachment.__table__.create(bind=bind, checkfirst=True)
+    ensure_order_item_schema()
+
+
+def _purchase_line_variant_color(raw: dict) -> str:
+    return (raw.get("color") or raw.get("variant_color") or "").strip()
+
+
+def _parse_purchase_line(raw: dict, idx: int):
+    product_id = _safe_int(raw.get("product_id"), 0)
+    qty = _safe_int(raw.get("quantity"), 0)
+    if product_id <= 0 or qty <= 0:
+        raise ValueError(f"العنصر رقم {idx + 1} غير صالح.")
+    unit_before = _safe_int(raw.get("unit_cost_before_discount") or raw.get("unit_cost"), 0)
+    item_discount = _safe_int(raw.get("discount_value"), 0)
+    final_unit = max(unit_before - item_discount, 0)
+    line_total = _safe_int(raw.get("line_total"), final_unit * qty)
+    product = Product.query.get_or_404(product_id)
+    variant_color = _purchase_line_variant_color(raw)
+    if product_has_colors(product) and not variant_color:
+        raise ValueError(f"يجب اختيار لون للمنتج: {product.name}")
+    if variant_color:
+        ensure_color_variant(product.id, variant_color)
+    return product, qty, unit_before, item_discount, final_unit, line_total, variant_color
+
+
+def _apply_purchase_item_stock(product, qty: int, variant_color: str, branch_id: int | None, apply_stock: bool) -> None:
+    if not apply_stock:
+        return
+    if branch_id:
+        receive_stock(branch_id, product.id, qty)
+    else:
+        product.quantity = _safe_int(product.quantity, 0) + qty
+    if variant_color:
+        receive_color_stock(product.id, variant_color, qty)
+
+
+def _reverse_purchase_item_stock(it, branch_id: int | None) -> None:
+    if not it.product:
+        return
+    qty = _safe_int(it.quantity, 0)
+    if qty <= 0:
+        return
+    if branch_id:
+        deduct_stock(branch_id, it.product.id, qty)
+    else:
+        current_qty = _safe_int(it.product.quantity, 0)
+        if current_qty < qty:
+            raise ValueError(
+                f"لا يمكن عكس فاتورة الشراء لأن مخزون {it.product.name} أقل من كمية الفاتورة."
+            )
+        it.product.quantity = current_qty - qty
+    variant_color = (getattr(it, "variant_color", None) or "").strip()
+    if variant_color:
+        try:
+            deduct_color_stock(it.product.id, variant_color, qty)
+        except ProductColorError as exc:
+            raise ValueError(str(exc)) from exc
 
 
 def _fmt_iq(num):
@@ -197,7 +266,10 @@ def _purchase_status_applies_stock(status) -> bool:
 
 def _purchase_stock_applied(purchase) -> bool:
     if hasattr(purchase, "stock_applied"):
-        return bool(getattr(purchase, "stock_applied", False))
+        raw = getattr(purchase, "stock_applied", None)
+        if raw is not None and bool(raw):
+            return True
+        return _purchase_status_applies_stock(getattr(purchase, "status", None))
     return _purchase_status_applies_stock(getattr(purchase, "status", None))
 
 
@@ -230,20 +302,10 @@ def _reverse_purchase_effects(purchase, reason):
 
     if _purchase_stock_applied(purchase):
         for it in items:
-            if not it.product:
-                continue
-            qty = _safe_int(it.quantity, 0)
-            if qty <= 0:
-                continue
-            if branch_id:
-                deduct_stock(branch_id, it.product.id, qty)
-            else:
-                current_qty = _safe_int(it.product.quantity, 0)
-                if current_qty < qty:
-                    raise ValueError(
-                        f"لا يمكن عكس فاتورة الشراء لأن مخزون {it.product.name} أقل من كمية الفاتورة."
-                    )
-                it.product.quantity = current_qty - qty
+            try:
+                _reverse_purchase_item_stock(it, branch_id)
+            except (ProductColorError, ValueError):
+                raise
         if hasattr(purchase, "stock_applied"):
             purchase.stock_applied = False
 
@@ -320,19 +382,14 @@ def _create_purchase_from_payload(payload, files):
     legacy_qty = 0
     legacy_price = 0
     for idx, raw in enumerate(items):
-        product_id = int(raw.get("product_id") or 0)
-        qty = int(raw.get("quantity") or 0)
-        if product_id <= 0 or qty <= 0:
-            return None, f"العنصر رقم {idx + 1} غير صالح."
-        unit_before = int(raw.get("unit_cost_before_discount") or raw.get("unit_cost") or 0)
-        item_discount = int(raw.get("discount_value") or 0)
-        final_unit = max(unit_before - item_discount, 0)
-        line_total = int(raw.get("line_total") or (final_unit * qty))
-        product = Product.query.get_or_404(product_id)
-        parsed_items.append((product, qty, unit_before, item_discount, final_unit, line_total))
+        try:
+            product, qty, unit_before, item_discount, final_unit, line_total, variant_color = _parse_purchase_line(raw, idx)
+        except ValueError as exc:
+            return None, str(exc)
+        parsed_items.append((product, qty, unit_before, item_discount, final_unit, line_total, variant_color))
         sub_total += line_total
         if legacy_product_id is None:
-            legacy_product_id = product_id
+            legacy_product_id = product.id
             legacy_price = final_unit
         legacy_qty += qty
 
@@ -412,7 +469,7 @@ def _create_purchase_from_payload(payload, files):
     db.session.add(purchase)
     db.session.flush()
 
-    for product, qty, unit_before, item_discount, final_unit, line_total in parsed_items:
+    for product, qty, unit_before, item_discount, final_unit, line_total, variant_color in parsed_items:
         db.session.add(
             PurchaseItem(
                 purchase_id=purchase.id,
@@ -422,13 +479,13 @@ def _create_purchase_from_payload(payload, files):
                 discount_value=item_discount,
                 final_unit_cost=final_unit,
                 line_total=line_total,
+                variant_color=variant_color or None,
             )
         )
-        if apply_stock:
-            if branch_id:
-                receive_stock(branch_id, product.id, qty)
-            else:
-                product.quantity = int(product.quantity or 0) + qty
+        try:
+            _apply_purchase_item_stock(product, qty, variant_color, branch_id, apply_stock)
+        except ProductColorError as exc:
+            return None, str(exc)
         product.buy_price = final_unit
 
     for pay in parsed_payments:
@@ -484,7 +541,7 @@ def _get_purchase_stats():
 
 
 def _product_search_row(product):
-    return {
+    row = {
         "id": product.id,
         "name": product.name,
         "sku": product.sku or "",
@@ -492,6 +549,8 @@ def _product_search_row(product):
         "buy_price": int(product.buy_price or 0),
         "quantity": int(product.quantity or 0),
     }
+    row.update(colors_for_product_dict(product))
+    return row
 
 
 def _prepare_purchases_context():
@@ -601,7 +660,17 @@ def purchases_create():
             ],
         }
 
-    purchase, err = _create_purchase_from_payload(payload, files)
+    try:
+        purchase, err = _create_purchase_from_payload(payload, files)
+    except Exception as exc:
+        db.session.rollback()
+        current_app.logger.exception("purchases_create failed")
+        err_msg = str(exc) or "حدث خطأ أثناء حفظ فاتورة الشراء"
+        if request.is_json or request.form.get("payload"):
+            return jsonify({"success": False, "error": err_msg}), 500
+        flash(f"❌ {err_msg}", "danger")
+        return redirect(url_for("purchases.purchases_new"))
+
     if err:
         if request.is_json or request.form.get("payload"):
             return jsonify({"success": False, "error": err}), 400
@@ -731,6 +800,7 @@ def get_purchases():
                     {
                         "product_id": it.product_id,
                         "product": it.product.name if it.product else "",
+                        "color": (getattr(it, "variant_color", None) or "").strip(),
                         "quantity": int(it.quantity or 0),
                         "unit_cost_before_discount": int(it.unit_cost_before_discount or 0),
                         "discount_value": int(it.discount_value or 0),
@@ -807,6 +877,8 @@ def get_purchase_one(purchase_id):
             {
                 "product_id": it.product_id,
                 "product": it.product.name if it.product else "",
+                "product_name": it.product.name if it.product else "",
+                "color": (getattr(it, "variant_color", None) or "").strip(),
                 "quantity": int(it.quantity or 0),
                 "unit_cost_before_discount": int(it.unit_cost_before_discount or 0),
                 "discount_value": int(it.discount_value or 0),
@@ -910,19 +982,14 @@ def update_purchase(purchase_id):
         legacy_price = 0
         parsed_items = []
         for idx, raw in enumerate(items):
-            product_id = _safe_int(raw.get("product_id"), 0)
-            qty = _safe_int(raw.get("quantity"), 0)
-            if product_id <= 0 or qty <= 0:
-                return jsonify({"success": False, "error": f"العنصر رقم {idx + 1} غير صالح."}), 400
-            unit_before = _safe_int(raw.get("unit_cost_before_discount") or raw.get("unit_cost"), 0)
-            item_discount = _safe_int(raw.get("discount_value"), 0)
-            final_unit = max(unit_before - item_discount, 0)
-            line_total = _safe_int(raw.get("line_total"), final_unit * qty)
-            product = Product.query.get_or_404(product_id)
-            parsed_items.append((product, qty, unit_before, item_discount, final_unit, line_total))
+            try:
+                product, qty, unit_before, item_discount, final_unit, line_total, variant_color = _parse_purchase_line(raw, idx)
+            except ValueError as exc:
+                return jsonify({"success": False, "error": str(exc)}), 400
+            parsed_items.append((product, qty, unit_before, item_discount, final_unit, line_total, variant_color))
             sub_total += line_total
             if legacy_product_id is None:
-                legacy_product_id = product_id
+                legacy_product_id = product.id
                 legacy_price = final_unit
             legacy_qty += qty
 
@@ -1003,7 +1070,7 @@ def update_purchase(purchase_id):
         purchase.remaining_total = remaining_total
         purchase.purchase_date = purchase_date
 
-        for product, qty, unit_before, item_discount, final_unit, line_total in parsed_items:
+        for product, qty, unit_before, item_discount, final_unit, line_total, variant_color in parsed_items:
             db.session.add(
                 PurchaseItem(
                     purchase_id=purchase.id,
@@ -1013,13 +1080,14 @@ def update_purchase(purchase_id):
                     discount_value=item_discount,
                     final_unit_cost=final_unit,
                     line_total=line_total,
+                    variant_color=variant_color or None,
                 )
             )
-            if apply_stock:
-                if branch_id:
-                    receive_stock(branch_id, product.id, qty)
-                else:
-                    product.quantity = _safe_int(product.quantity, 0) + qty
+            try:
+                _apply_purchase_item_stock(product, qty, variant_color, branch_id, apply_stock)
+            except ProductColorError as exc:
+                db.session.rollback()
+                return jsonify({"success": False, "error": str(exc)}), 400
             product.buy_price = final_unit
 
         if hasattr(purchase, "stock_applied"):
@@ -1129,6 +1197,8 @@ def unlock_purchase_for_edit(purchase_id):
         return jsonify({"success": False, "error": "لا يمكن فتح فاتورة ملغية عبر هذا الإجراء"}), 400
     if (purchase.status or "").strip().lower() == "draft":
         return jsonify({"success": True, "message": "الفاتورة بالفعل في وضع مسودة"})
+    if hasattr(purchase, "stock_applied"):
+        purchase.stock_applied = True
     purchase.status = "draft"
     db.session.commit()
     return jsonify({"success": True, "message": f"تم فتح الفاتورة {purchase.invoice_no or purchase.id} للتحرير"})
@@ -1181,6 +1251,7 @@ def clone_purchase(purchase_id):
                     discount_value=it.discount_value,
                     final_unit_cost=it.final_unit_cost,
                     line_total=it.line_total,
+                    variant_color=getattr(it, "variant_color", None),
                 )
             )
 

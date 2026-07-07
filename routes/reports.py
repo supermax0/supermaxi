@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, jsonify, session, redirect, request
 from extensions import db
-from sqlalchemy import func
-from datetime import datetime
+from sqlalchemy import case, func, or_
+from datetime import datetime, timedelta
 
 # =======================
 # Models
@@ -15,6 +15,7 @@ from models.supplier import Supplier
 from models.supplier_invoice import SupplierInvoice
 from models.employee import Employee
 from models.invoice_settings import InvoiceSettings
+from models.page import Page
 from utils.financial_report_data import get_financial_report_data
 
 # =======================
@@ -35,6 +36,263 @@ from utils.accounting_calculations import (
 from utils.permission_checks import check_permission
 
 reports_bp = Blueprint("reports", __name__, url_prefix="/reports")
+
+
+RETURN_STATUSES = ("مرتجع", "راجع", "راجعة", "راجعه")
+CANCELED_STATUSES = ("ملغي",)
+DELIVERED_STATUSES = ("تم التوصيل", "مسدد", "واصل", "واصلة")
+
+
+def _parse_monitor_date(value, fallback):
+    if not value:
+        return fallback
+    try:
+        return datetime.strptime(value, "%Y-%m-%d")
+    except ValueError:
+        return fallback
+
+
+def _not_bad_status_condition():
+    return (
+        or_(Invoice.status.is_(None), ~Invoice.status.in_(RETURN_STATUSES + CANCELED_STATUSES)),
+        or_(Invoice.payment_status.is_(None), ~Invoice.payment_status.in_(RETURN_STATUSES + CANCELED_STATUSES)),
+    )
+
+
+def _rate(part, total):
+    return round((float(part or 0) / float(total or 1)) * 100, 1)
+
+
+def _fmt_money(value):
+    return f"{int(value or 0):,} د.ع"
+
+
+def _build_monitor_data(date_from, date_to, min_orders, min_sales):
+    valid_conditions = _not_bad_status_condition()
+    delivered_condition = or_(
+        Invoice.status.in_(DELIVERED_STATUSES),
+        Invoice.payment_status.in_(("مسدد", "تم التوصيل")),
+    )
+
+    page_rows = (
+        db.session.query(
+            Invoice.page_id,
+            func.count(Invoice.id).label("orders_count"),
+            func.coalesce(
+                func.sum(case((delivered_condition, 1), else_=0)),
+                0,
+            ).label("delivered_count"),
+            func.coalesce(
+                func.sum(
+                    case(
+                        (
+                            or_(
+                                Invoice.status.in_(RETURN_STATUSES + CANCELED_STATUSES),
+                                Invoice.payment_status.in_(RETURN_STATUSES + CANCELED_STATUSES),
+                            ),
+                            1,
+                        ),
+                        else_=0,
+                    )
+                ),
+                0,
+            ).label("returned_count"),
+            func.coalesce(
+                func.sum(case((valid_conditions[0] & valid_conditions[1], Invoice.total), else_=0)),
+                0,
+            ).label("clean_sales"),
+        )
+        .filter(Invoice.created_at >= date_from, Invoice.created_at <= date_to)
+        .group_by(Invoice.page_id)
+        .all()
+    )
+    page_stats = {row.page_id: row for row in page_rows}
+
+    pages = Page.query.order_by(Page.name).all()
+    page_monitor = []
+    total_page_orders = 0
+    total_page_sales = 0
+
+    for page in pages:
+        row = page_stats.get(page.id)
+        orders_count = int(getattr(row, "orders_count", 0) or 0)
+        clean_sales = int(getattr(row, "clean_sales", 0) or 0)
+        delivered_count = int(getattr(row, "delivered_count", 0) or 0)
+        returned_count = int(getattr(row, "returned_count", 0) or 0)
+        return_rate = _rate(returned_count, orders_count)
+        delivered_rate = _rate(delivered_count, orders_count)
+
+        if orders_count == 0:
+            health = "خامد"
+            health_class = "danger"
+            note = "لا توجد طلبات ضمن الفترة"
+        elif return_rate >= 30:
+            health = "يحتاج متابعة"
+            health_class = "warning"
+            note = "نسبة الراجع/الإلغاء عالية"
+        elif orders_count >= 3 and delivered_rate < 40:
+            health = "توصيل ضعيف"
+            health_class = "warning"
+            note = "نسبة الوصول أقل من المطلوب"
+        else:
+            health = "مستقر"
+            health_class = "success"
+            note = "الأداء ضمن الطبيعي"
+
+        total_page_orders += orders_count
+        total_page_sales += clean_sales
+        page_monitor.append(
+            {
+                "id": page.id,
+                "name": page.name,
+                "orders_count": orders_count,
+                "sales": clean_sales,
+                "sales_display": _fmt_money(clean_sales),
+                "delivered_count": delivered_count,
+                "delivered_rate": delivered_rate,
+                "returned_count": returned_count,
+                "return_rate": return_rate,
+                "assigned_employees": ", ".join(emp.name for emp in page.employees.all()) or "غير محدد",
+                "health": health,
+                "health_class": health_class,
+                "note": note,
+            }
+        )
+
+    unassigned_row = page_stats.get(None)
+    unassigned_orders = int(getattr(unassigned_row, "orders_count", 0) or 0)
+    if unassigned_orders:
+        unassigned_sales = int(getattr(unassigned_row, "clean_sales", 0) or 0)
+        unassigned_returned = int(getattr(unassigned_row, "returned_count", 0) or 0)
+        unassigned_delivered = int(getattr(unassigned_row, "delivered_count", 0) or 0)
+        total_page_orders += unassigned_orders
+        total_page_sales += unassigned_sales
+        page_monitor.append(
+            {
+                "id": None,
+                "name": "طلبات بدون بيج",
+                "orders_count": unassigned_orders,
+                "sales": unassigned_sales,
+                "sales_display": _fmt_money(unassigned_sales),
+                "delivered_count": unassigned_delivered,
+                "delivered_rate": _rate(unassigned_delivered, unassigned_orders),
+                "returned_count": unassigned_returned,
+                "return_rate": _rate(unassigned_returned, unassigned_orders),
+                "assigned_employees": "غير محدد",
+                "health": "ناقص ربط",
+                "health_class": "warning",
+                "note": "طلبات لا تحتوي page_id",
+            }
+        )
+
+    page_monitor.sort(key=lambda item: (item["health_class"] == "success", -item["orders_count"]))
+
+    employee_rows = (
+        db.session.query(
+            Invoice.employee_id,
+            func.count(Invoice.id).label("orders_count"),
+            func.coalesce(func.sum(case((valid_conditions[0] & valid_conditions[1], Invoice.total), else_=0)), 0).label("sales"),
+            func.coalesce(func.sum(case((delivered_condition, 1), else_=0)), 0).label("delivered_count"),
+            func.coalesce(
+                func.sum(
+                    case(
+                        (
+                            or_(
+                                Invoice.status.in_(RETURN_STATUSES + CANCELED_STATUSES),
+                                Invoice.payment_status.in_(RETURN_STATUSES + CANCELED_STATUSES),
+                            ),
+                            1,
+                        ),
+                        else_=0,
+                    )
+                ),
+                0,
+            ).label("returned_count"),
+            func.max(Invoice.created_at).label("last_order_at"),
+        )
+        .filter(Invoice.created_at >= date_from, Invoice.created_at <= date_to)
+        .group_by(Invoice.employee_id)
+        .all()
+    )
+    employee_stats = {row.employee_id: row for row in employee_rows}
+    employees = (
+        Employee.query
+        .filter(Employee.is_active.is_(True), Employee.role != "admin")
+        .order_by(Employee.name)
+        .all()
+    )
+    employee_monitor = []
+    weak_employees = []
+    total_employee_orders = 0
+    total_employee_sales = 0
+
+    for employee in employees:
+        row = employee_stats.get(employee.id)
+        orders_count = int(getattr(row, "orders_count", 0) or 0)
+        sales = int(getattr(row, "sales", 0) or 0)
+        delivered_count = int(getattr(row, "delivered_count", 0) or 0)
+        returned_count = int(getattr(row, "returned_count", 0) or 0)
+        last_order_at = getattr(row, "last_order_at", None)
+        reasons = []
+        if orders_count < min_orders:
+            reasons.append(f"طلبات أقل من {min_orders}")
+        if min_sales > 0 and sales < min_sales:
+            reasons.append(f"مبيعات أقل من {_fmt_money(min_sales)}")
+        if orders_count > 0 and _rate(returned_count, orders_count) >= 30:
+            reasons.append("راجع/إلغاء عالي")
+
+        item = {
+            "id": employee.id,
+            "name": employee.name,
+            "username": employee.username,
+            "role": "مدير" if employee.role == "admin" else "كاشير",
+            "orders_count": orders_count,
+            "sales": sales,
+            "sales_display": _fmt_money(sales),
+            "delivered_count": delivered_count,
+            "returned_count": returned_count,
+            "return_rate": _rate(returned_count, orders_count),
+            "last_order_at": last_order_at,
+            "last_order_display": last_order_at.strftime("%Y-%m-%d %H:%M") if last_order_at else "لا يوجد",
+            "status": "ضعيف" if reasons else "طبيعي",
+            "status_class": "danger" if reasons else "success",
+            "reason": "، ".join(reasons) if reasons else "الأداء ضمن الحد",
+        }
+        total_employee_orders += orders_count
+        total_employee_sales += sales
+        employee_monitor.append(item)
+        if reasons:
+            weak_employees.append(item)
+
+    employee_monitor.sort(key=lambda item: (item["status_class"] == "success", item["orders_count"], item["sales"]))
+    weak_employees.sort(key=lambda item: (item["orders_count"], item["sales"]))
+
+    alerts = [
+        page for page in page_monitor
+        if page["health_class"] in ("danger", "warning")
+    ][:8]
+
+    return {
+        "date_from": date_from,
+        "date_to": date_to,
+        "min_orders": min_orders,
+        "min_sales": min_sales,
+        "page_monitor": page_monitor,
+        "employee_monitor": employee_monitor,
+        "weak_employees": weak_employees,
+        "alerts": alerts,
+        "summary": {
+            "pages_count": len(page_monitor),
+            "page_orders": total_page_orders,
+            "page_sales": total_page_sales,
+            "page_sales_display": _fmt_money(total_page_sales),
+            "employees_count": len(employee_monitor),
+            "weak_employees_count": len(weak_employees),
+            "employee_orders": total_employee_orders,
+            "employee_sales": total_employee_sales,
+            "employee_sales_display": _fmt_money(total_employee_sales),
+        },
+    }
 
 
 # ======================================================
@@ -97,6 +355,40 @@ def reports_dashboard():
         profit=operational_profit,
         supplier_debts=supplier_debts
     )
+
+
+@reports_bp.route("/monitor")
+def pages_employees_monitor():
+    if not check_permission("can_see_reports"):
+        return redirect("/pos"), 403
+
+    now = datetime.utcnow()
+    default_from = now - timedelta(days=30)
+    date_from = _parse_monitor_date(request.args.get("date_from"), default_from).replace(
+        hour=0,
+        minute=0,
+        second=0,
+        microsecond=0,
+    )
+    date_to = _parse_monitor_date(request.args.get("date_to"), now).replace(
+        hour=23,
+        minute=59,
+        second=59,
+        microsecond=999999,
+    )
+    if date_from > date_to:
+        date_from, date_to = date_to.replace(hour=0, minute=0, second=0, microsecond=0), date_from.replace(
+            hour=23,
+            minute=59,
+            second=59,
+            microsecond=999999,
+        )
+
+    min_orders = max(0, request.args.get("min_orders", 5, type=int) or 0)
+    min_sales = max(0, request.args.get("min_sales", 0, type=int) or 0)
+    data = _build_monitor_data(date_from, date_to, min_orders, min_sales)
+
+    return render_template("reports_monitor.html", **data)
 
 # ======================================================
 # التقرير المالي الشامل (Financial Report)

@@ -15,6 +15,32 @@ from datetime import datetime
 
 CONFIG_FILE = Path("finora_deploy_config.json")
 
+# Windows may ignore subprocess encoding= and still use cp1252 — read bytes, decode as UTF-8.
+def _decode_output_chunk(chunk) -> str:
+    if chunk is None:
+        return ""
+    if isinstance(chunk, str):
+        return chunk
+    return chunk.decode("utf-8", errors="replace")
+
+
+def _stream_pipe_lines(pipe, on_line) -> None:
+    if pipe is None:
+        return
+    while True:
+        raw = pipe.readline()
+        if not raw:
+            break
+        line = _decode_output_chunk(raw)
+        if not line.endswith("\n"):
+            line += "\n"
+        on_line(line)
+
+
+def _decode_paramiko_line(line) -> str:
+    text = _decode_output_chunk(line)
+    return text if text.endswith("\n") else text + "\n"
+
 SAFE_PUSH_EXCLUDED_PARTS = {
     ".git",
     "__pycache__",
@@ -495,13 +521,11 @@ class FinoraDeployStudio(tk.Tk):
                     cwd=str(local_path),
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
-                    text=True,
-                    bufsize=1,
+                    bufsize=0,
                     shell=False,
                 )
                 assert proc.stdout is not None
-                for line in proc.stdout:
-                    self.append_log(line)
+                _stream_pipe_lines(proc.stdout, self.append_log)
                 proc.wait()
                 rc = proc.returncode
                 self.last_exit_code_var.set(f"Exit: {rc}")
@@ -637,12 +661,10 @@ class FinoraDeployStudio(tk.Tk):
                     cwd=str(cwd),
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
-                    text=True,
-                    bufsize=1,
+                    bufsize=0,
                 )
                 assert proc.stdout is not None
-                for line in proc.stdout:
-                    self.append_log(line)
+                _stream_pipe_lines(proc.stdout, self.append_log)
                 proc.wait()
                 rc = proc.returncode
                 if rc != 0:
@@ -660,13 +682,12 @@ class FinoraDeployStudio(tk.Tk):
                 cwd=str(cwd),
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                text=True,
                 check=False,
             )
-            stderr = proc.stderr or ""
+            stderr = _decode_output_chunk(proc.stderr)
             if stderr.strip():
                 self.append_log(stderr)
-            return proc.returncode, proc.stdout or ""
+            return proc.returncode, _decode_output_chunk(proc.stdout)
         except FileNotFoundError:
             return 1, "[ERROR] git command not found.\n"
 
@@ -896,12 +917,10 @@ class FinoraDeployStudio(tk.Tk):
                     full_cmd,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
-                    text=True,
-                    bufsize=1,
+                    bufsize=0,
                 )
                 assert proc.stdout is not None
-                for line in proc.stdout:
-                    self.append_log(line)
+                _stream_pipe_lines(proc.stdout, self.append_log)
                 proc.wait()
                 if proc.returncode != 0:
                     self.append_log(f"[ERROR] scp failed with code {proc.returncode}\n")
@@ -963,17 +982,18 @@ class FinoraDeployStudio(tk.Tk):
                     full_cmd,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
-                    text=True,
-                    bufsize=1,
+                    bufsize=0,
                 )
                 assert proc.stdout is not None
-                for line in proc.stdout:
-                    self.append_log(line)
+                _stream_pipe_lines(proc.stdout, self.append_log)
                 proc.wait()
                 rc = proc.returncode
                 if rc != 0:
                     self.append_log(f"[ERROR] SSH command failed with code {rc}\n")
                 return rc
+            except UnicodeDecodeError as exc:
+                self.append_log(f"[ERROR] SSH output decode failed: {exc}\n")
+                return 1
             except FileNotFoundError:
                 self.append_log("[ERROR] ssh command not found. Make sure OpenSSH is installed and in PATH.\n")
                 return 1
@@ -1005,11 +1025,18 @@ class FinoraDeployStudio(tk.Tk):
                 allow_agent=False,
             )
             stdin, stdout, stderr = client.exec_command(script)
-            for line in stdout:
-                self.append_log(line)
-            for line in stderr:
-                if line.strip():
-                    self.append_log(line)
+            while True:
+                line = stdout.readline()
+                if not line:
+                    break
+                self.append_log(_decode_paramiko_line(line))
+            while True:
+                line = stderr.readline()
+                if not line:
+                    break
+                decoded = _decode_output_chunk(line).strip()
+                if decoded:
+                    self.append_log(decoded + "\n")
             exit_status = stdout.channel.recv_exit_status()
             if exit_status != 0:
                 self.append_log(f"[ERROR] SSH command failed with code {exit_status}\n")
@@ -1822,14 +1849,15 @@ class ServerMonitorThread(threading.Thread):
                     full_cmd,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
-                    text=True,
-                    bufsize=1,
+                    bufsize=0,
                 )
                 assert proc.stdout is not None
-                for line in proc.stdout:
-                    output_lines.append(line.rstrip())
+                collected: list[str] = []
+                def _collect(line: str) -> None:
+                    collected.append(line.rstrip("\n"))
+                _stream_pipe_lines(proc.stdout, _collect)
                 proc.wait()
-                return proc.returncode, "\n".join(output_lines)
+                return proc.returncode, "\n".join(collected)
             except FileNotFoundError:
                 return 1, "ssh command not found on local machine."
 
@@ -1856,11 +1884,18 @@ class ServerMonitorThread(threading.Thread):
                 timeout=15,
             )
             stdin, stdout, stderr = client.exec_command(script)
-            for line in stdout:
-                output_lines.append(line.rstrip())
-            for line in stderr:
-                if line.strip():
-                    output_lines.append(line.rstrip())
+            while True:
+                line = stdout.readline()
+                if not line:
+                    break
+                output_lines.append(_decode_output_chunk(line).rstrip())
+            while True:
+                line = stderr.readline()
+                if not line:
+                    break
+                decoded = _decode_output_chunk(line).strip()
+                if decoded:
+                    output_lines.append(decoded)
             exit_status = stdout.channel.recv_exit_status()
             return exit_status, "\n".join(output_lines)
         except Exception as e:  # noqa: BLE001

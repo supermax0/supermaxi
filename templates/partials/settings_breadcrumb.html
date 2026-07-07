@@ -1,0 +1,7 @@
+{% if settings_nav and settings_nav != 'overview' %}
+<nav class="settings-breadcrumb" aria-label="{{ _('settings') }}">
+  <a href="/settings/"><i class="fas fa-cog"></i> {{ _('settings') }}</a>
+  <span class="settings-breadcrumb-sep" aria-hidden="true"><i class="fas fa-chevron-left"></i></span>
+  <span class="settings-breadcrumb-current">{% if settings_page_title_key %}{{ _(settings_page_title_key) }}{% else %}{{ settings_page_title }}{% endif %}</span>
+</nav>
+{% endif %}

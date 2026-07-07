@@ -2120,15 +2120,15 @@
       </td>
       <td data-label="السعر">
         <div style="display:flex; flex-direction:column; align-items:center;">
-            <span>${i.price.toLocaleString()} د.ع</span>
+            <span>${i.price.toLocaleString('en-US')} د.ع</span>
             ${canEditPrice ? `<button class="price-edit-btn" onclick="changePrice(${idx})" style="padding:2px 6px; font-size:10px; margin-top:4px;">✏️ تعديل</button>` : ''}
         </div>
       </td>
-      <td data-label="المجموع" style="font-weight:700; color:var(--success);">${t.toLocaleString()}</td>
+      <td data-label="المجموع" style="font-weight:700; color:var(--success);">${t.toLocaleString('en-US')}</td>
       <td><button onclick="removeItem(${idx})" style="background:none; border:none; color:var(--danger); font-size:18px; padding:4px;">&times;</button></td>
     </tr>`
       }).join("")
-      totalPrice.innerText = total.toLocaleString()
+      totalPrice.innerText = total.toLocaleString('en-US')
     }
 
     function updateQty(i, d) {
@@ -2154,7 +2154,7 @@
     function changePrice(idx) {
       const item = items[idx]
       currentPriceEditIndex = idx
-      document.getElementById('priceModalProductName').innerText = `المنتج: ${item.name}\nالسعر الحالي: ${item.price.toLocaleString()} د.ع`
+      document.getElementById('priceModalProductName').innerText = `المنتج: ${item.name}\nالسعر الحالي: ${item.price.toLocaleString('en-US')} د.ع`
       document.getElementById('priceModalInput').value = item.price
       document.getElementById('priceModal').classList.add('show')
       document.getElementById('priceModalInput').focus()
@@ -2180,7 +2180,7 @@
 
       items[currentPriceEditIndex].price = price
       renderItems()
-      toast(`تم تغيير السعر إلى ${price.toLocaleString()} د.ع`)
+      toast(`تم تغيير السعر إلى ${price.toLocaleString('en-US')} د.ع`)
       closePriceModal()
     }
 
@@ -2678,7 +2678,7 @@
                 <div style="font-weight:700; color:var(--text); margin-bottom:12px; font-size:14px; line-height:1.4;">${p.name}</div>
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                   <span style="background:var(--primary-glow); color:var(--primary); padding:4px 10px; border-radius:8px; font-weight:800; font-size:14px;">
-                    ${p.sale_price.toLocaleString()} <small style="font-size:10px;">د.ع</small>
+                    ${p.sale_price.toLocaleString('en-US')} <small style="font-size:10px;">د.ع</small>
                   </span>
                   <i class="fas fa-plus-circle" style="color:var(--primary); font-size:18px; opacity:0.6;"></i>
                 </div>
@@ -2726,7 +2726,7 @@
           ${p.name}</td>
         <td
           style="padding:14px;text-align:left;font-size:16px;color:#16a34a;font-weight:900;border:1px solid #e2e8f0;direction:ltr">
-          ${p.sale_price.toLocaleString()}</td>
+          ${p.sale_price.toLocaleString('en-US')}</td>
       </tr>
       `).join('')}
     </tbody>

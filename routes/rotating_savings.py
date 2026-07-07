@@ -419,4 +419,9 @@ def settings():
         db.session.commit()
         flash("تم حفظ الإعدادات", "success")
         return redirect(url_for("rotating_savings.settings"))
-    return render_template("rotating_savings/settings.html", settings=settings_row)
+    from routes.settings import _settings_ctx
+
+    return render_template(
+        "rotating_savings/settings.html",
+        **_settings_ctx("rotating_savings", settings=settings_row),
+    )

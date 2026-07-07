@@ -4,6 +4,7 @@ from models.role import Role, Permission
 from models.employee import Employee
 from utils.decorators import admin_required
 from utils.activity_logger import log_activity
+from routes.settings import _settings_ctx
 
 permissions_bp = Blueprint("permissions", __name__)
 
@@ -38,6 +39,8 @@ DEFAULT_PERMISSIONS = [
     ("manage_pages", "إدارة البيجات (إنشاء/حذف)"),
     ("manage_employees", "إدارة الموظفين"),
     ("view_messages", "رؤية واجهة المراسلة"),
+    ("view_quick_sale", "استخدام البيع السريع"),
+    ("use_ai_workspace", "استخدام مساحة LEON"),
     ("manage_settings", "إعدادات النظام"),
     ("view_activity", "رؤية سجل النشاط"),
     ("manage_branches", "إدارة الفروع"),
@@ -60,8 +63,12 @@ def ensure_default_permissions():
             created = True
     if created:
         db.session.commit()
-    from utils.permission_checks import migrate_legacy_permissions_to_roles
+    from utils.permission_checks import ensure_cashier_role_has_messages, migrate_legacy_permissions_to_roles
 
+    try:
+        ensure_cashier_role_has_messages()
+    except Exception:
+        db.session.rollback()
     try:
         migrate_legacy_permissions_to_roles()
     except Exception:
@@ -79,7 +86,7 @@ def list_roles():
 
     groups_config = [
         ("dashboard", "لوحة التحكم", ["view_dashboard"]),
-        ("sales", "المبيعات وواجهة الكاشير", ["view_pos", "view_orders", "manage_orders", "edit_price", "manage_customers"]),
+        ("sales", "المبيعات وواجهة الكاشير", ["view_pos", "view_quick_sale", "view_orders", "manage_orders", "edit_price", "manage_customers"]),
         (
             "order_status",
             "حالات الطلبات",
@@ -90,7 +97,7 @@ def list_roles():
         ("communication", "الصفحات والمراسلة والشحن", ["view_shipping", "manage_shipping", "view_agents", "view_pages", "view_messages"]),
         ("team", "إدارة الفريق والإعدادات", ["manage_employees", "manage_agents", "manage_pages", "manage_settings"]),
         ("audit", "السجل والمراجعة", ["view_activity"]),
-        ("ai_assistant", "المساعد الذكي", ["use_ai_assistant", "approve_ai_actions", "manage_ai_schedules", "view_ai_audit_logs"]),
+        ("ai_assistant", "المساعد الذكي", ["use_ai_assistant", "use_ai_workspace", "approve_ai_actions", "manage_ai_schedules", "view_ai_audit_logs"]),
     ]
 
     used_names = set()
@@ -108,9 +115,7 @@ def list_roles():
 
     return render_template(
         "admin/permissions/roles.html",
-        roles=roles,
-        permissions=permissions,
-        perm_groups=perm_groups,
+        **_settings_ctx("permissions", roles=roles, permissions=permissions, perm_groups=perm_groups),
     )
 
 
@@ -199,7 +204,10 @@ def employee_roles(id):
                 effective.append(perm)
     return render_template(
         "admin/permissions/employee_roles.html",
-        employee=employee,
-        roles=roles,
-        effective_permissions=sorted(effective, key=lambda p: p.name),
+        **_settings_ctx(
+            "permissions",
+            employee=employee,
+            roles=roles,
+            effective_permissions=sorted(effective, key=lambda p: p.name),
+        ),
     )

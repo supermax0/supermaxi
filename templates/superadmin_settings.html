@@ -5,6 +5,7 @@
 {% block breadcrumb_current %}إعدادات النظام{% endblock %}
 
 {% block extra_style %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}">
 <style>
     .settings-container {
         display: grid;
@@ -303,6 +304,29 @@
 {% endblock %}
 
 {% block content %}
+<div class="superadmin-settings-hub" style="margin-bottom:28px;">
+  <div class="settings-hub-hero">
+    <h1 style="font-size:28px;margin:0 0 8px;"><i class="fas fa-cog"></i> إعدادات المنصة</h1>
+    <p style="margin:0;color:var(--text-muted);">اختر القسم الذي تريد ضبطه</p>
+  </div>
+  <div class="settings-hub-grid" style="margin-top:18px;">
+    <button type="button" class="settings-hub-card settings-tab-hub" data-target="general-settings" style="cursor:pointer;border:none;text-align:right;">
+      <div class="settings-hub-card-head"><div class="settings-hub-card-icon"><i class="fas fa-sliders-h"></i></div></div>
+      <h3>الإعدادات العامة</h3>
+      <p>اسم النظام، الشعار، والتجربة المجانية</p>
+    </button>
+    <button type="button" class="settings-hub-card settings-tab-hub" data-target="payment-settings" style="cursor:pointer;border:none;text-align:right;">
+      <div class="settings-hub-card-head"><div class="settings-hub-card-icon"><i class="fas fa-credit-card"></i></div></div>
+      <h3>بوابات الدفع</h3>
+      <p>ZainCash والمدفوعات</p>
+    </button>
+    <button type="button" class="settings-hub-card settings-tab-hub" data-target="notification-settings" style="cursor:pointer;border:none;text-align:right;">
+      <div class="settings-hub-card-head"><div class="settings-hub-card-icon"><i class="fas fa-bell"></i></div></div>
+      <h3>الإشعارات</h3>
+      <p>SMTP و SMS</p>
+    </button>
+  </div>
+</div>
 <div class="settings-container">
     <div class="premium-card settings-nav glass">
         <button class="settings-tab active" data-target="general-settings">
@@ -543,10 +567,19 @@
                 tab.classList.add('active');
                 document.getElementById(targetId).classList.add('active');
 
-                // Animate entry
                 document.getElementById(targetId).style.animation = 'none';
-                document.getElementById(targetId).offsetHeight; // trigger reflow
+                document.getElementById(targetId).offsetHeight;
                 document.getElementById(targetId).style.animation = null;
+            });
+        });
+
+        document.querySelectorAll('.settings-tab-hub').forEach(function (card) {
+            card.addEventListener('click', function () {
+                var targetId = card.getAttribute('data-target');
+                var tab = document.querySelector('.settings-tab[data-target="' + targetId + '"]');
+                if (tab) tab.click();
+                var container = document.querySelector('.settings-container');
+                if (container) container.scrollIntoView({ behavior: 'smooth', block: 'start' });
             });
         });
 

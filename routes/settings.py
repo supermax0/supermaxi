@@ -40,12 +40,44 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 def _settings_ctx(nav_key, **extra):
     """سياق مشترك لكل صفحات الإعدادات."""
     from models.employee import Employee
+    from utils.permission_checks import check_permission
 
     is_admin = False
+    show_fixed_assets_settings = False
+    show_rotating_savings_settings = False
     if "user_id" in session:
         emp = Employee.query.get(session["user_id"])
         is_admin = bool(emp and emp.is_active and emp.role == "admin")
-    return dict(settings_nav=nav_key, is_admin=is_admin, **extra)
+        show_fixed_assets_settings = bool(
+            check_permission("manage_fixed_assets") or check_permission("view_fixed_assets")
+        )
+        show_rotating_savings_settings = bool(
+            check_permission("manage_rotating_savings") or check_permission("view_rotating_savings")
+        )
+
+    page_titles = {
+        "overview": None,
+        "appearance": "settings_nav_appearance",
+        "system": "settings_nav_system",
+        "invoice": "settings_card_invoice_title",
+        "branches": "settings_card_branches_title",
+        "storefront": "settings_nav_storefront",
+        "database": "settings_card_db_repair_title",
+        "permissions": "settings_nav_permissions",
+        "fixed_assets": "settings_card_fixed_assets_title",
+        "rotating_savings": "settings_card_rotating_savings_title",
+    }
+    title_key = page_titles.get(nav_key)
+
+    return dict(
+        settings_nav=nav_key,
+        settings_hub_mode=(nav_key == "overview"),
+        settings_page_title_key=title_key,
+        is_admin=is_admin,
+        show_fixed_assets_settings=show_fixed_assets_settings,
+        show_rotating_savings_settings=show_rotating_savings_settings,
+        **extra,
+    )
 
 
 def _template_owner_uid():
@@ -141,38 +173,119 @@ def system_settings():
     """صفحة إعدادات النظام"""
     from models.employee import Employee
     from models.branch import Branch
+    from models.role import Role
+    from routes.permissions import ensure_default_permissions
     from utils.branch_migration import ensure_branch_schema
+    from utils.weak_employee_messaging import get_weak_employee_message_settings
 
     ensure_branch_schema()
+    ensure_default_permissions()
     employees = Employee.query.order_by(Employee.created_at.desc()).all()
     branches = Branch.query.filter_by(is_active=True).order_by(Branch.name.asc()).all()
+    rbac_roles = Role.query.order_by(Role.name.asc()).all()
+    weak_employee_message_settings = get_weak_employee_message_settings()
     return render_template(
         "system_settings.html",
-        **_settings_ctx("system", employees=employees, branches=branches),
+        **_settings_ctx(
+            "system",
+            employees=employees,
+            branches=branches,
+            rbac_roles=rbac_roles,
+            weak_employee_message_settings=weak_employee_message_settings,
+        ),
     )
+
+
+@settings_bp.route("/system/weak-employee-message", methods=["POST"])
+def update_weak_employee_message_settings():
+    """حفظ إعدادات رسالة الموظفين الضعيفين التلقائية."""
+    try:
+        from utils.weak_employee_messaging import save_weak_employee_message_settings
+
+        data = request.get_json(silent=True) or {}
+        config = save_weak_employee_message_settings(data)
+        try:
+            log_activity(
+                "update",
+                "settings",
+                "تحديث إعدادات رسالة الموظفين الضعيفين",
+                entity_type="system_settings",
+                payload={
+                    "enabled": config.get("enabled"),
+                    "interval_days": config.get("interval_days"),
+                    "period_days": config.get("period_days"),
+                    "min_orders": config.get("min_orders"),
+                    "min_sales": config.get("min_sales"),
+                },
+            )
+        except Exception:
+            pass
+        return jsonify({"success": True, "message": "تم حفظ إعدادات الرسالة", "config": config})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+@settings_bp.route("/system/weak-employee-message/send-now", methods=["POST"])
+def send_weak_employee_message_now():
+    """إرسال الرسالة الآن للموظفين الضعيفين، لا ينتظر الجدولة."""
+    try:
+        from utils.weak_employee_messaging import send_weak_employee_messages
+
+        result = send_weak_employee_messages(force=True)
+        if not result.get("success"):
+            return jsonify({"success": False, "error": result.get("reason") or "تعذر الإرسال"}), 400
+        return jsonify({
+            "success": True,
+            "message": f"تم إرسال {result.get('sent', 0)} رسالة",
+            "result": result,
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
 
 @settings_bp.route("/system/update-role", methods=["POST"])
 def update_employee_role():
-    """تحديث صلاحية موظف"""
+    """تحديث أدوار موظف (RBAC) مع مزامنة الدور الأساسي admin/cashier."""
     try:
         from models.employee import Employee
+        from models.role import Role
+
         data = request.get_json()
         employee_id = data.get("employee_id")
+        role_ids = data.get("role_ids")
         new_role = data.get("role")
-        
-        if not employee_id or not new_role:
+
+        if not employee_id:
             return jsonify({"success": False, "error": "بيانات ناقصة"}), 400
-        
+
         employee = Employee.query.get(employee_id)
         if not employee:
             return jsonify({"success": False, "error": "الموظف غير موجود"}), 404
-        
+
         old_role = employee.role
-        # التحقق من أن الدور صحيح
-        if new_role not in ["admin", "cashier"]:
-            return jsonify({"success": False, "error": "دور غير صحيح"}), 400
-        
-        employee.role = new_role
+        old_role_ids = [r.id for r in (employee.roles or [])]
+
+        if role_ids is not None:
+            if not isinstance(role_ids, list):
+                return jsonify({"success": False, "error": "صيغة الأدوار غير صحيحة"}), 400
+            role_ids = [int(rid) for rid in role_ids]
+            roles = Role.query.filter(Role.id.in_(role_ids)).all() if role_ids else []
+            if role_ids and len(roles) != len(set(role_ids)):
+                return jsonify({"success": False, "error": "دور غير موجود"}), 400
+            employee.roles = roles
+            role_names = {r.name for r in roles}
+            employee.role = "admin" if "admin" in role_names else "cashier"
+        elif new_role:
+            if new_role not in ["admin", "cashier"]:
+                return jsonify({"success": False, "error": "دور غير صحيح"}), 400
+            employee.role = new_role
+            base_role = Role.query.filter_by(name=new_role).first()
+            if base_role:
+                employee.roles = [base_role]
+        else:
+            return jsonify({"success": False, "error": "بيانات ناقصة"}), 400
+
         db.session.commit()
         try:
             log_mutation(
@@ -180,14 +293,14 @@ def update_employee_role():
                 "settings",
                 "employee",
                 employee.id,
-                {"role": old_role},
-                {"role": employee.role},
-                f"تغيير دور الموظف {employee.name} إلى {new_role}",
+                {"role": old_role, "role_ids": old_role_ids},
+                {"role": employee.role, "role_ids": [r.id for r in (employee.roles or [])]},
+                f"تغيير أدوار الموظف {employee.name}",
             )
         except Exception:
             pass
-        
-        return jsonify({"success": True, "message": "تم تحديث الصلاحية بنجاح"})
+
+        return jsonify({"success": True, "message": "تم تحديث الأدوار بنجاح"})
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 400
@@ -303,6 +416,7 @@ def invoice_settings():
             "secondary_color": (tset.secondary_color if tset else "#4a5568") or "#4a5568",
             "custom_css": (tset.custom_css if tset else "") or "",
         }
+        active_template_id = tset.active_template_id if tset else None
     settings = InvoiceSettings.get_settings()
     return render_template(
         "invoice_settings.html",
@@ -310,7 +424,7 @@ def invoice_settings():
             "invoice",
             settings=settings,
             templates=templates,
-            active_template_id=(tset.active_template_id if tset else None),
+            active_template_id=active_template_id,
             purchased_ids=purchased_ids,
             template_style=template_style,
         ),
@@ -743,6 +857,7 @@ def branches_settings():
     from models.branch import Branch
     from utils.branch_migration import ensure_branch_schema
     from utils.branch_sales import is_sell_from_all_branches_enabled
+    from utils.shipping_branch_schedule import get_shipping_branch_schedule_settings
 
     try:
         ensure_branch_schema()
@@ -756,8 +871,79 @@ def branches_settings():
             "branches",
             branches=branches,
             sell_from_all_branches=is_sell_from_all_branches_enabled(),
+            shipping_branch_schedule=get_shipping_branch_schedule_settings(),
         ),
     )
+
+
+@settings_bp.route("/branches/shipping-schedule", methods=["POST"])
+def branches_shipping_schedule():
+    """حفظ جدولة فرع الخصم عند تحويل الطلب إلى جاري الشحن."""
+    from models.branch import Branch
+    from utils.shipping_branch_schedule import set_shipping_branch_schedule
+
+    data = request.get_json(silent=True) or {}
+    enabled = bool(data.get("shipping_branch_schedule_enabled"))
+    day_start = (data.get("shipping_day_start") or "08:00").strip()
+    day_end = (data.get("shipping_day_end") or "17:00").strip()
+
+    day_branch_id = data.get("shipping_day_branch_id")
+    night_branch_id = data.get("shipping_night_branch_id")
+    try:
+        day_branch_id = int(day_branch_id) if day_branch_id not in (None, "", 0, "0") else None
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "error": "فرع النهار غير صالح"}), 400
+    try:
+        night_branch_id = int(night_branch_id) if night_branch_id not in (None, "", 0, "0") else None
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "error": "فرع الليل غير صالح"}), 400
+
+    if enabled:
+        if not day_branch_id or not night_branch_id:
+            return jsonify({
+                "success": False,
+                "error": "عند التفعيل يجب اختيار فرع النهار وفرع الليل",
+            }), 400
+        for branch_id, label in ((day_branch_id, "فرع النهار"), (night_branch_id, "فرع الليل")):
+            branch = Branch.query.filter_by(id=branch_id, is_active=True).first()
+            if not branch:
+                return jsonify({"success": False, "error": f"{label} غير موجود أو غير نشط"}), 400
+
+    try:
+        set_shipping_branch_schedule(
+            enabled=enabled,
+            day_branch_id=day_branch_id,
+            night_branch_id=night_branch_id,
+            day_start=day_start,
+            day_end=day_end,
+        )
+        db.session.commit()
+        try:
+            log_activity(
+                "update",
+                "settings",
+                "تحديث جدولة فرع الخصم عند الشحن",
+                entity_type="system_settings",
+                payload={
+                    "shipping_branch_schedule_enabled": enabled,
+                    "shipping_day_branch_id": day_branch_id,
+                    "shipping_night_branch_id": night_branch_id,
+                    "shipping_day_start": day_start,
+                    "shipping_day_end": day_end,
+                },
+            )
+        except Exception:
+            pass
+        return jsonify({
+            "success": True,
+            "message": "تم حفظ جدولة فرع الخصم عند الشحن",
+        })
+    except ValueError as exc:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(exc)}), 400
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
 
 
 @settings_bp.route("/branches/sales-policy", methods=["POST"])

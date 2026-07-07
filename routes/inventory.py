@@ -28,6 +28,7 @@ from utils.permission_checks import check_permission
 from utils.activity_logger import PRODUCT_SNAPSHOT_FIELDS, log_activity, log_mutation, snapshot_attrs
 
 from utils.product_schema_guard import ensure_product_schema
+from utils.order_item_schema_guard import ensure_order_item_schema
 from utils.order_shipping import sync_product_name_to_order_items
 from utils.product_delivery_fees import (
     apply_delivery_fees_to_meta,
@@ -53,6 +54,8 @@ inventory_bp = Blueprint("inventory", __name__)
 def _inventory_branch_setup():
     if "user_id" not in session or not getattr(g, "tenant", None):
         return
+    ensure_product_schema()
+    ensure_order_item_schema()
     ensure_branch_schema()
     init_branch_context()
 
@@ -94,9 +97,8 @@ def _branch_id_for_product_stock(form=None, meta: dict | None = None) -> int | N
 
 
 def _product_display_qty(product, stock_map, view_all):
-    if view_all:
-        return product.quantity or 0
-    return stock_map.get(product.id, 0)
+    fallback = int(product.quantity or 0)
+    return stock_map.get(product.id, fallback)
 
 
 def _load_product_meta(product) -> dict:
@@ -251,7 +253,40 @@ def _meta_from_inventory_add_form(form) -> dict:
         get_tenant_provinces_config().get("list") or [],
     )
     meta = apply_delivery_fees_to_meta(meta, by_province, default_fee)
+    if form.get("has_colors"):
+        meta["has_colors"] = True
     return meta
+
+
+def _color_rows_from_form(form) -> list[tuple[str, int]]:
+    names = form.getlist("color_name[]")
+    qtys = form.getlist("color_qty[]")
+    rows: list[tuple[str, int]] = []
+    for name, qty in zip(names, qtys):
+        color = (name or "").strip()
+        if not color:
+            continue
+        rows.append((color, max(0, int(qty or 0))))
+    return rows
+
+
+def _apply_product_colors_from_form(product: Product, form) -> int:
+    from utils.product_color_service import save_product_colors
+    from models.product_color_variant import ProductColorVariant
+
+    has_colors = bool(form.get("has_colors"))
+    if not has_colors:
+        ProductColorVariant.query.filter_by(product_id=product.id).delete(synchronize_session=False)
+        meta = _load_product_meta(product)
+        meta.pop("has_colors", None)
+        product.meta_json = json.dumps(meta, ensure_ascii=False) if meta else None
+        return int(product.opening_stock or product.quantity or 0)
+
+    rows = _color_rows_from_form(form)
+    if not rows:
+        return 0
+    save_product_colors(product.id, rows)
+    return sum(qty for _, qty in rows)
 
 
 def _company_branches_for_form():
@@ -834,6 +869,9 @@ def add_product_page():
             return render_template("inventory_add_product.html", **ctx), 400
 
         opening_stock = int(request.form.get("opening_stock", 0) or 0)
+        has_colors_flag = bool(request.form.get("has_colors"))
+        if has_colors_flag:
+            opening_stock = sum(qty for _, qty in _color_rows_from_form(request.form))
         buy_price = int(request.form.get("buy_price", 0) or 0)
         sale_price = int(request.form.get("sale_price", 0) or 0)
         barcode = (request.form.get("barcode") or "").strip() or None
@@ -906,7 +944,7 @@ def add_product_page():
             elif external_image_url:
                 p.image_url = external_image_url
 
-            if "opening_stock" in request.form:
+            if "opening_stock" in request.form and not has_colors_flag:
                 new_opening_stock = int(request.form.get("opening_stock") or 0)
                 p.opening_stock = new_opening_stock
                 stock_difference = new_opening_stock - old_opening_stock
@@ -919,6 +957,14 @@ def add_product_page():
                         p.quantity = 0
 
             p.meta_json = json.dumps(meta, ensure_ascii=False) if meta else None
+            db.session.flush()
+            color_total = _apply_product_colors_from_form(p, request.form)
+            if has_colors_flag:
+                p.opening_stock = color_total
+                p.quantity = color_total
+                stock_branch_id = _branch_id_for_product_stock(request.form, meta)
+                if stock_branch_id:
+                    set_opening_branch_stock(stock_branch_id, p.id, color_total)
             if name != old_name:
                 sync_product_name_to_order_items(p.id, name)
             db.session.commit()
@@ -965,7 +1011,13 @@ def add_product_page():
         db.session.add(p)
         db.session.flush()
         stock_branch_id = _branch_id_for_product_stock(request.form, meta)
-        if stock_branch_id:
+        if has_colors_flag:
+            color_total = _apply_product_colors_from_form(p, request.form)
+            p.opening_stock = color_total
+            p.quantity = color_total
+            if stock_branch_id:
+                set_opening_branch_stock(stock_branch_id, p.id, color_total)
+        elif stock_branch_id:
             set_opening_branch_stock(stock_branch_id, p.id, opening_stock)
         db.session.commit()
         try:
@@ -990,6 +1042,7 @@ def add_product_page():
     ctx["edit_product"] = None
     ctx["product_meta"] = {}
     ctx["product_specs_items"] = []
+    ctx["product_color_rows"] = []
     ctx.update(_delivery_fees_context())
     edit_arg = request.args.get("edit", type=int)
     if edit_arg:
@@ -998,6 +1051,9 @@ def add_product_page():
             ctx["edit_product"] = ep
             ctx["product_meta"] = _load_product_meta(ep)
             ctx["product_specs_items"] = _extract_specs_items(ctx["product_meta"])
+            from utils.product_color_service import get_product_colors
+
+            ctx["product_color_rows"] = get_product_colors(ep.id)
             ctx.update(_delivery_fees_context(ep, ctx["product_meta"]))
         else:
             ctx["error"] = "المنتج غير موجود."

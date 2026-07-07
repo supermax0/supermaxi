@@ -1904,38 +1904,91 @@ def print_batch():
     )
 
 # =====================================================
-# Export Excel (All Orders)
+# Export PDF (selected columns)
 # =====================================================
-@orders_bp.route("/export")
-def export_excel():
+def _collect_orders_for_export(order_ids=None):
+    q = Invoice.query.options(joinedload(Invoice.customer)).order_by(Invoice.created_at.desc())
 
+    employee = get_current_employee()
+    if employee and employee.role != "admin":
+        allowed_statuses = allowed_order_statuses_for(employee)
+        if allowed_statuses:
+            q = q.filter(Invoice.status.in_(allowed_statuses))
+        else:
+            q = q.filter(Invoice.id == -1)
+
+    if order_ids:
+        orders_map = {
+            o.id: o for o in q.filter(Invoice.id.in_(order_ids)).all()
+        }
+        return [orders_map[i] for i in order_ids if i in orders_map]
+
+    return q.all()
+
+
+def _orders_export_rows(orders):
     rows = []
-    orders = Invoice.query.order_by(Invoice.created_at.desc()).all()
-
+    total_amount = 0
     for o in orders:
+        amount = int(o.total or 0)
+        total_amount += amount
         rows.append({
-            "رقم الطلب": o.id,
-            "الزبون": o.customer.name,
-            "الهاتف": o.customer.phone,
-            "المحافظة": o.customer.city,
-            "العنوان": o.customer.address,
-            "المجموع": o.total,
-            "حالة الطلب": o.status,
-            "حالة الدفع": o.payment_status,
-            "الموظف": o.employee_name,
-            "شركة النقل": o.shipping_company.name if o.shipping_company else "",
-            "التاريخ": o.created_at.strftime("%Y-%m-%d %H:%M")
+            "invoice_no": o.id,
+            "shipping_barcode": shipping_barcodes_display(o) or o.shipping_barcode or "",
+            "phone": o.customer.phone if o.customer else "",
+            "customer_name": o.customer.name if o.customer else "",
+            "amount": amount,
         })
+    return rows, total_amount
 
-    df = pd.DataFrame(rows)
-    output = BytesIO()
-    df.to_excel(output, index=False)
-    output.seek(0)
 
-    return send_file(
-        output,
-        as_attachment=True,
-        download_name="orders.xlsx"
+def _parse_export_order_ids():
+    order_ids = None
+    if request.method == "POST":
+        data = request.get_json(silent=True)
+        if data is None:
+            raw = (request.form.get("ids") or "").strip()
+            if raw:
+                try:
+                    parsed = json.loads(raw)
+                    if isinstance(parsed, list):
+                        data = {"ids": parsed}
+                except Exception:
+                    data = {"ids": [i.strip() for i in raw.split(",") if i.strip()]}
+        if data:
+            raw_ids = data.get("ids") or []
+            order_ids = [int(i) for i in raw_ids if str(i).strip().isdigit()]
+    else:
+        ids_param = (request.args.get("ids") or "").strip()
+        if ids_param:
+            order_ids = [int(i.strip()) for i in ids_param.split(",") if i.strip().isdigit()]
+    return order_ids
+
+
+@orders_bp.route("/export", methods=["GET", "POST"])
+@orders_bp.route("/export-pdf", methods=["GET", "POST"])
+def export_pdf():
+    if not check_permission("can_see_orders"):
+        return redirect("/pos"), 403
+
+    order_ids = _parse_export_order_ids()
+    orders = _collect_orders_for_export(order_ids)
+    rows, total_amount = _orders_export_rows(orders)
+
+    settings = InvoiceSettings.get_settings()
+    now = datetime.now()
+    export_date = now.strftime("%Y-%m-%d")
+    export_datetime = now.strftime("%Y-%m-%d %H:%M")
+
+    return render_template(
+        "orders_export_pdf.html",
+        rows=rows,
+        total_amount=total_amount,
+        company_name=(settings.report_company_name or settings.company_name or "Finora System"),
+        company_subtitle=settings.company_subtitle or "",
+        export_date=export_date,
+        export_datetime=export_datetime,
+        filename=f"orders_{export_date.replace('-', '')}.pdf",
     )
 
 # =====================================================
@@ -2326,8 +2379,16 @@ def update_shipping_barcode(invoice_id):
             return jsonify({"success": False, "error": "أدخل باركود الشحن"}), 400
         set_shipping_barcodes(invoice, [shipping_barcode])
 
-    invoice.status = "جاري الشحن"
-    invoice.shipping_status = "جاري الشحن"
+    try:
+        from utils.branch_stock_service import BranchStockError
+        from utils.shipping_branch_schedule import apply_shipping_branch_schedule
+
+        apply_shipping_branch_schedule(invoice, previous_status=invoice.status)
+        invoice.status = "جاري الشحن"
+        invoice.shipping_status = "جاري الشحن"
+    except BranchStockError as exc:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(exc)}), 400
     
     db.session.commit()
     try:

@@ -90,6 +90,11 @@
     return new Intl.NumberFormat("ar-IQ").format(Number(n) || 0) + " د.ع";
   }
 
+  function formatDeduction(n) {
+    const amount = Number(n) || 0;
+    return amount > 0 ? "-" + formatMoney(amount) : formatMoney(0);
+  }
+
   function refreshCheckoutTotals() {
     if (!cityInput) return;
     const city = cityInput.value;
@@ -106,13 +111,13 @@
       .then((res) => res.json())
       .then((data) => {
         const fee = data.success ? Number(data.fee) || 0 : shippingForCity(city);
-        if (shippingText) shippingText.textContent = formatMoney(fee);
-        if (grandTotalText) grandTotalText.textContent = formatMoney(netSubtotal + fee);
+        if (shippingText) shippingText.textContent = formatDeduction(fee);
+        if (grandTotalText) grandTotalText.textContent = formatMoney(Math.max(0, netSubtotal - fee));
       })
       .catch(() => {
         const fee = shippingForCity(city);
-        if (shippingText) shippingText.textContent = formatMoney(fee);
-        if (grandTotalText) grandTotalText.textContent = formatMoney(netSubtotal + fee);
+        if (shippingText) shippingText.textContent = formatDeduction(fee);
+        if (grandTotalText) grandTotalText.textContent = formatMoney(Math.max(0, netSubtotal - fee));
       });
   }
 

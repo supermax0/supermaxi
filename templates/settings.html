@@ -3,83 +3,96 @@
 {% block title %}{{ _('settings') }}{% endblock %}
 
 {% block settings_content %}
-<div class="settings-page-header">
-  <h1><i class="fas fa-home"></i> {{ _('settings_overview_title') }}</h1>
-  <p>{{ _('settings_overview_desc') }}</p>
+<div class="settings-hub-hero">
+  <h1><i class="fas fa-cog"></i> {{ _('settings') }}</h1>
+  <p>{{ _('settings_hub_desc') }}</p>
 </div>
 
-<div class="settings-section-card">
-  <div class="settings-section-title">
-    <i class="fas fa-mobile-alt"></i>
-    {{ _('settings_app_downloads_title') }}
-  </div>
-  <div class="app-downloads-grid">
-    <div class="download-card">
-      <h4>نسخة WebView (مطابقة للموقع)</h4>
-      <p>تعرض نفس واجهة الموقع مباشرة داخل التطبيق.</p>
-      <a href="{{ app_downloads.webview }}" target="_blank" rel="noopener">
-        <i class="fas fa-download"></i>
-        تحميل APK
-      </a>
-    </div>
-    <div class="download-card">
-      <h4>نسخة Native (Kotlin)</h4>
-      <p>نسخة أصلية مبنية بـ Kotlin مع واجهات موبايل.</p>
-      <a href="{{ app_downloads.native }}" target="_blank" rel="noopener">
-        <i class="fas fa-download"></i>
-        تحميل APK
-      </a>
-    </div>
-    <div class="download-card">
-      <h4>{{ _('settings_delivery_agent_apk_title') }}</h4>
-      <p>{{ _('settings_delivery_agent_apk_desc') }}</p>
-      <a href="{{ app_downloads.delivery_agent }}" target="_blank" rel="noopener">
-        <i class="fas fa-download"></i>
-        تحميل APK
-      </a>
-      {% if delivery_agent_portal_url %}
-      <div class="download-card-extra" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border-light);">
-        <p style="font-size:0.85rem;color:var(--muted);margin-bottom:8px;">{{ _('settings_delivery_agent_portal_hint') }}</p>
-        <code style="display:block;word-break:break-all;font-size:0.78rem;padding:8px 10px;border-radius:8px;background:var(--bg);border:1px solid var(--border-light);">{{ delivery_agent_portal_url }}</code>
-        <a href="{{ delivery_agent_portal_url }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;font-weight:700;">
-          <i class="fas fa-external-link-alt"></i>
-          {{ _('settings_delivery_agent_open_portal') }}
-        </a>
+<section class="settings-hub-section" aria-labelledby="settingsHubGeneral">
+  <h2 id="settingsHubGeneral" class="settings-hub-section-label">{{ _('settings_hub_section_general') }}</h2>
+  <div class="settings-hub-grid">
+    <a href="/settings/appearance" class="settings-hub-card" aria-label="{{ _('settings_card_interface_title') }}">
+      <div class="settings-hub-card-head">
+        <div class="settings-hub-card-icon"><i class="fas fa-palette"></i></div>
+        <span class="settings-hub-card-arrow"><i class="fas fa-arrow-left"></i></span>
       </div>
-      {% endif %}
-    </div>
-  </div>
-</div>
-
-<div class="settings-section-card">
-  <div class="settings-section-title">
-    <i class="fas fa-file-invoice"></i>
-    {{ _('settings_current_invoice_title') }}
-  </div>
-
-  <div class="settings-grid" style="margin-bottom: 20px;">
-    <div>
-      <label class="settings-readonly-label">{{ _('settings_label_company_name') }}</label>
-      <div class="settings-readonly-field">{{ invoice_settings.company_name }}</div>
-    </div>
-    <div>
-      <label class="settings-readonly-label">{{ _('settings_label_company_phone') }}</label>
-      <div class="settings-readonly-field">{{ invoice_settings.company_phone }}</div>
-    </div>
-    <div>
-      <label class="settings-readonly-label">{{ _('settings_label_company_address') }}</label>
-      <div class="settings-readonly-field">
-        {{ invoice_settings.company_address[:50] }}{% if invoice_settings.company_address|length > 50 %}...{% endif %}
+      <h3>{{ _('settings_card_interface_title') }}</h3>
+      <p>{{ _('settings_card_interface_desc') }}</p>
+    </a>
+    <a href="/settings/system" class="settings-hub-card" aria-label="{{ _('settings_card_system_title') }}">
+      <div class="settings-hub-card-head">
+        <div class="settings-hub-card-icon"><i class="fas fa-users-cog"></i></div>
+        <span class="settings-hub-card-arrow"><i class="fas fa-arrow-left"></i></span>
       </div>
+      <h3>{{ _('settings_card_system_title') }}</h3>
+      <p>{{ _('settings_card_system_desc') }}</p>
+    </a>
+    <a href="/admin/permissions/roles" class="settings-hub-card" aria-label="{{ _('settings_nav_permissions') }}">
+      <div class="settings-hub-card-head">
+        <div class="settings-hub-card-icon"><i class="fas fa-shield-alt"></i></div>
+        <span class="settings-hub-card-arrow"><i class="fas fa-arrow-left"></i></span>
+      </div>
+      <h3>{{ _('settings_nav_permissions') }}</h3>
+      <p>{{ _('settings_card_permissions_desc') }}</p>
+    </a>
+  </div>
+</section>
+
+<section class="settings-hub-section" aria-labelledby="settingsHubBusiness">
+  <h2 id="settingsHubBusiness" class="settings-hub-section-label">{{ _('settings_hub_section_business') }}</h2>
+  <div class="settings-hub-grid">
+    <a href="/settings/invoice" class="settings-hub-card" aria-label="{{ _('settings_card_invoice_title') }}">
+      <div class="settings-hub-card-head">
+        <div class="settings-hub-card-icon"><i class="fas fa-file-invoice"></i></div>
+        <span class="settings-hub-card-arrow"><i class="fas fa-arrow-left"></i></span>
+      </div>
+      <h3>{{ _('settings_card_invoice_title') }}</h3>
+      <p>{{ _('settings_card_invoice_desc') }}</p>
+    </a>
+    <a href="/settings/branches" class="settings-hub-card" aria-label="{{ _('settings_card_branches_title') }}">
+      <div class="settings-hub-card-head">
+        <div class="settings-hub-card-icon"><i class="fas fa-code-branch"></i></div>
+        <span class="settings-hub-card-arrow"><i class="fas fa-arrow-left"></i></span>
+      </div>
+      <h3>{{ _('settings_card_branches_title') }}</h3>
+      <p>{{ _('settings_card_branches_desc') }}</p>
+    </a>
+    <a href="/settings/storefront" class="settings-hub-card" aria-label="{{ _('settings_nav_storefront') }}">
+      <div class="settings-hub-card-head">
+        <div class="settings-hub-card-icon"><i class="fas fa-store"></i></div>
+        <span class="settings-hub-card-arrow"><i class="fas fa-arrow-left"></i></span>
+      </div>
+      <h3>{{ _('settings_card_storefront_title') }}</h3>
+      <p>{{ _('settings_card_storefront_desc') }}</p>
+    </a>
+  </div>
+</section>
+
+<div class="settings-section-card settings-status-card">
+  <div class="settings-section-header">
+    <h2><i class="fas fa-file-invoice"></i> {{ _('settings_current_invoice_title') }}</h2>
+    <p>{{ _('settings_invoice_status_desc') }}</p>
+  </div>
+  <div class="settings-status-grid">
+    <div class="settings-status-item">
+      <label>{{ _('settings_label_company_name') }}</label>
+      <span>{{ invoice_settings.company_name or '—' }}</span>
+    </div>
+    <div class="settings-status-item">
+      <label>{{ _('settings_label_company_phone') }}</label>
+      <span>{{ invoice_settings.company_phone or '—' }}</span>
+    </div>
+    <div class="settings-status-item">
+      <label>{{ _('settings_label_company_address') }}</label>
+      <span>{{ invoice_settings.company_address[:60] }}{% if invoice_settings.company_address|length > 60 %}…{% endif %}</span>
     </div>
   </div>
-
-  <div class="settings-quick-actions">
+  <div class="settings-quick-actions" style="margin-top:16px;">
     <a href="/settings/invoice" class="settings-quick-action">
       <i class="fas fa-edit"></i>
       <span>{{ _('settings_edit_invoice') }}</span>
     </a>
-    <a href="/orders/invoice/{{ first_order.id if first_order else 1 }}" class="settings-quick-action" target="_blank">
+    <a href="/orders/invoice/{{ first_order.id if first_order else 1 }}" class="settings-quick-action" target="_blank" rel="noopener">
       <i class="fas fa-eye"></i>
       <span>{{ _('settings_preview_invoice') }}</span>
     </a>
@@ -89,4 +102,95 @@
     </a>
   </div>
 </div>
+
+<section class="settings-hub-section" aria-labelledby="settingsHubApps">
+  <h2 id="settingsHubApps" class="settings-hub-section-label">{{ _('settings_app_downloads_title') }}</h2>
+  <div class="settings-hub-grid">
+    <div class="settings-hub-card is-download">
+      <div class="settings-hub-card-head">
+        <div class="settings-hub-card-icon"><i class="fas fa-mobile-alt"></i></div>
+      </div>
+      <h3>{{ _('settings_app_webview_title') }}</h3>
+      <p>{{ _('settings_app_webview_desc') }}</p>
+      <div class="settings-hub-card-actions">
+        <a href="{{ app_downloads.webview }}" class="settings-btn settings-btn-primary" target="_blank" rel="noopener">
+          <i class="fas fa-download"></i> {{ _('settings_download_apk') }}
+        </a>
+      </div>
+    </div>
+    <div class="settings-hub-card is-download">
+      <div class="settings-hub-card-head">
+        <div class="settings-hub-card-icon"><i class="fas fa-mobile-alt"></i></div>
+      </div>
+      <h3>{{ _('settings_app_native_title') }}</h3>
+      <p>{{ _('settings_app_native_desc') }}</p>
+      <div class="settings-hub-card-actions">
+        <a href="{{ app_downloads.native }}" class="settings-btn settings-btn-primary" target="_blank" rel="noopener">
+          <i class="fas fa-download"></i> {{ _('settings_download_apk') }}
+        </a>
+      </div>
+    </div>
+    <div class="settings-hub-card is-download">
+      <div class="settings-hub-card-head">
+        <div class="settings-hub-card-icon"><i class="fas fa-truck"></i></div>
+      </div>
+      <h3>{{ _('settings_delivery_agent_apk_title') }}</h3>
+      <p>{{ _('settings_delivery_agent_apk_desc') }}</p>
+      <div class="settings-hub-card-actions">
+        <a href="{{ app_downloads.delivery_agent }}" class="settings-btn settings-btn-primary" target="_blank" rel="noopener">
+          <i class="fas fa-download"></i> {{ _('settings_download_apk') }}
+        </a>
+        {% if delivery_agent_portal_url %}
+        <a href="{{ delivery_agent_portal_url }}" class="settings-btn settings-btn-secondary" target="_blank" rel="noopener">
+          <i class="fas fa-external-link-alt"></i> {{ _('settings_delivery_agent_open_portal') }}
+        </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+
+{% if show_fixed_assets_settings or show_rotating_savings_settings %}
+<section class="settings-hub-section" aria-labelledby="settingsHubModules">
+  <h2 id="settingsHubModules" class="settings-hub-section-label">{{ _('settings_hub_section_modules') }}</h2>
+  <div class="settings-hub-grid">
+    {% if show_fixed_assets_settings %}
+    <a href="/assets/settings" class="settings-hub-card" aria-label="{{ _('settings_card_fixed_assets_title') }}">
+      <div class="settings-hub-card-head">
+        <div class="settings-hub-card-icon"><i class="fas fa-building"></i></div>
+        <span class="settings-hub-card-arrow"><i class="fas fa-arrow-left"></i></span>
+      </div>
+      <h3>{{ _('settings_card_fixed_assets_title') }}</h3>
+      <p>{{ _('settings_card_fixed_assets_desc') }}</p>
+    </a>
+    {% endif %}
+    {% if show_rotating_savings_settings %}
+    <a href="/finance/rotating-savings/settings" class="settings-hub-card" aria-label="{{ _('settings_card_rotating_savings_title') }}">
+      <div class="settings-hub-card-head">
+        <div class="settings-hub-card-icon"><i class="fas fa-sync-alt"></i></div>
+        <span class="settings-hub-card-arrow"><i class="fas fa-arrow-left"></i></span>
+      </div>
+      <h3>{{ _('settings_card_rotating_savings_title') }}</h3>
+      <p>{{ _('settings_card_rotating_savings_desc') }}</p>
+    </a>
+    {% endif %}
+  </div>
+</section>
+{% endif %}
+
+{% if is_admin %}
+<section class="settings-hub-section" aria-labelledby="settingsHubAdvanced">
+  <h2 id="settingsHubAdvanced" class="settings-hub-section-label">{{ _('settings_nav_section_advanced') }}</h2>
+  <div class="settings-hub-grid">
+    <a href="/settings/database-repair" class="settings-hub-card" aria-label="{{ _('settings_card_db_repair_title') }}">
+      <div class="settings-hub-card-head">
+        <div class="settings-hub-card-icon"><i class="fas fa-database"></i></div>
+        <span class="settings-hub-card-arrow"><i class="fas fa-arrow-left"></i></span>
+      </div>
+      <h3>{{ _('settings_card_db_repair_title') }}</h3>
+      <p>{{ _('settings_card_db_repair_desc') }}</p>
+    </a>
+  </div>
+</section>
+{% endif %}
 {% endblock %}

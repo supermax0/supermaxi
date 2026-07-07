@@ -24,6 +24,7 @@ from modules.workspace.services.document_intelligence.document_text_extraction_s
     DocumentTextExtractionService,
 )
 from modules.workspace.services.document_intelligence.extraction_errors import (
+    DocumentIntelligenceError,
     DocumentNotFoundError,
     SessionAccessError,
 )
@@ -183,6 +184,27 @@ class DocumentIntelligenceService:
                 user_id=user_id,
             )
 
+            if DocumentIntelligenceService._is_unreadable(text_payload, tables):
+                message = DocumentIntelligenceService._unreadable_message(
+                    text_payload, table_payload
+                )
+                result.status = "failed"
+                result.document_kind = "unknown_document"
+                result.confidence = 0.0
+                result.error_message = message
+                result.set_metadata({
+                    "extraction_summary": {
+                        "text_status": text_payload.get("status"),
+                        "tables_status": table_payload.get("status"),
+                    },
+                    "warnings": warnings,
+                    "phase": 4,
+                })
+                result.updated_at = datetime.utcnow()
+                DocumentIntelligenceService._sync_windows(session, doc, result, step_id)
+                db.session.commit()
+                raise DocumentIntelligenceError(message)
+
             normalized = DocumentIntelligenceService._normalize_entities(tables, stored_text)
             result.set_normalized_entities(normalized)
 
@@ -232,8 +254,6 @@ class DocumentIntelligenceService:
             )
 
             result.status = "completed" if text_payload.get("status") != "failed" else "failed"
-            if text_payload.get("status") == "not_available" and not stored_text:
-                result.status = "completed"
 
             result.set_metadata({
                 "extraction_summary": {
@@ -300,6 +320,27 @@ class DocumentIntelligenceService:
             for row in (tbl.get("rows") or [])[:100]:
                 cells.append(DocumentNormalizationService.normalize_row_cells(row))
         return {"cells": cells, "text_length": len(text or "")}
+
+    @staticmethod
+    def _is_unreadable(text_payload: Dict[str, Any], tables: List[Dict]) -> bool:
+        text = (text_payload.get("text") or "").strip()
+        return not text and not (tables or [])
+
+    @staticmethod
+    def _unreadable_message(text_payload: Dict[str, Any], table_payload: Dict[str, Any]) -> str:
+        warnings = list(text_payload.get("warnings") or []) + list(table_payload.get("warnings") or [])
+        joined = " ".join(str(w) for w in warnings)
+        if "Tesseract" in joined or "tesseract" in joined or "OCR" in joined:
+            return (
+                "لم يتم استخراج نص من المستند. يبدو أن PDF ممسوح/صوري ويحتاج OCR، "
+                "وتأكد من تثبيت Tesseract مع اللغة العربية على السيرفر."
+            )
+        if text_payload.get("status") == "not_available":
+            return (
+                "لم يتم استخراج نص من المستند. ثبّت مكتبات قراءة PDF المطلوبة "
+                "(pypdf و pymupdf و pdfplumber) أو فعّل OCR للملفات الممسوحة."
+            )
+        return "لم يتم استخراج نص أو جداول من المستند، لذلك لا يمكن تحليله."
 
     @staticmethod
     def _sse_tables(tables: List[Dict]) -> List[Dict]:

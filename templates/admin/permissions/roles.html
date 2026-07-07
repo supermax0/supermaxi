@@ -1,28 +1,32 @@
-{% extends "base.html" %}
+{% extends "settings_base.html" %}
 {% block title %}{{ _('roles_page_title') }}{% endblock %}
-{% block page_title %}<i class="fas fa-user-shield"></i> {{ _('roles_page_title') }}{% endblock %}
 
-{% block content %}
+{% block settings_extra_style %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/permissions-admin.css') }}">
+{% endblock %}
 
-<div class="team-admin-page permissions-page">
+{% block settings_content %}
+<div class="settings-permissions-page team-admin-page permissions-page">
+  <div class="settings-page-header">
+    <h1><i class="fas fa-shield-alt"></i> {{ _('settings_nav_permissions') }}</h1>
+    <p>{{ _('settings_card_permissions_desc') }}</p>
+  </div>
+
   <div class="admin-banner info">
-    الصلاحيات القديمة (can_*) لم تعد مستخدمة — عدّل الأدوار والصلاحيات من هنا.
+    {{ _('roles_legacy_banner') }}
   </div>
 
   <div class="admin-page-header">
-    <div class="admin-page-header__meta">
-      <p>إدارة أدوار النظام وصلاحيات كل دور</p>
-    </div>
+    <div class="admin-page-header__meta"></div>
     <div class="admin-page-header__actions">
-      <a href="{{ url_for('employees.employees') }}" class="nav-crosslink"><i class="fas fa-user-tie"></i> {{ _('employees') }}</a>
-      <button type="button" class="btn-submit-primary" style="width:auto;padding:0 18px;min-height:40px;" onclick="openModal('addRoleModal')">
+      <a href="{{ url_for('employees.employees') }}" class="settings-btn settings-btn-secondary settings-btn-sm"><i class="fas fa-user-tie"></i> {{ _('employees') }}</a>
+      <button type="button" class="settings-btn settings-btn-primary settings-btn-sm" onclick="openModal('addRoleModal')">
         <i class="fas fa-plus"></i> {{ _('roles_add_role') }}
       </button>
     </div>
   </div>
 
-  <div class="admin-table-wrap roles-layout">
+  <div class="settings-section-card admin-table-wrap roles-layout" style="padding:0;overflow:hidden;">
     <table class="admin-table">
       <thead>
         <tr>
@@ -81,7 +85,6 @@
             </div>
           </div>
         </div>
-
         <div class="perm-modal-body">
           <p class="perm-section-title">{{ _('roles_assign_permissions') }}</p>
           <div class="perm-assign-wrap">
@@ -91,15 +94,15 @@
               <table class="perm-assign-table">
                 <thead>
                   <tr>
-                    <th class="perm-col-toggle">تفعيل</th>
-                    <th class="perm-col-name">الصلاحية</th>
+                    <th class="perm-col-toggle">{{ _('roles_perm_toggle') }}</th>
+                    <th class="perm-col-name">{{ _('roles_perm_name') }}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {% for perm in group.permissions %}
                   <tr class="perm-row{% if perm in role.permissions %} is-on{% endif %}" data-perm-row>
                     <td class="perm-col-toggle">
-                      <label class="perm-switch" for="perm{{ role.id }}_{{ perm.id }}" aria-label="تفعيل {{ perm.description or perm.name }}">
+                      <label class="perm-switch" for="perm{{ role.id }}_{{ perm.id }}" aria-label="{{ perm.description or perm.name }}">
                         <input type="checkbox" name="permissions" value="{{ perm.id }}" id="perm{{ role.id }}_{{ perm.id }}"
                           {% if perm in role.permissions %}checked{% endif %}>
                         <span class="perm-switch__track" aria-hidden="true"></span>
@@ -116,7 +119,6 @@
             {% endfor %}
           </div>
         </div>
-
         <div class="team-modal-actions">
           <button type="button" class="btn btn-light" onclick="closeModal('editRoleModal{{ role.id }}')">{{ _('cancel') }}</button>
           <button type="submit" class="btn btn-primary">{{ _('roles_save_changes') }}</button>
@@ -147,6 +149,8 @@
     </div>
   </div>
 </div>
+{% endblock %}
 
+{% block settings_extra_script %}
 <script src="{{ url_for('static', filename='js/permissions-admin.js') }}"></script>
 {% endblock %}

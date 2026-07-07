@@ -392,8 +392,37 @@
         </label>
       </div>
       {% endif %}
+      <div class="inv-check-row" style="margin-top:8px;">
+        <label class="inv-check">
+          <input type="checkbox" name="has_colors" value="1" id="hasColorsCheck"
+            {% if m.get('has_colors') or product_color_rows %}checked{% endif %}>
+          <span>المنتج له ألوان (مخزون منفصل لكل لون)</span>
+        </label>
+      </div>
+      <div id="colorVariantsBlock" style="margin-top:12px;{% if not m.get('has_colors') and not product_color_rows %}display:none;{% endif %}">
+        <p class="inv-hint">أضف اسم كل لون والكمية الافتتاحية له. المجموع يُحسب تلقائياً كمخزون المنتج.</p>
+        <div id="colorVariantRows">
+          {% if product_color_rows %}
+            {% for row in product_color_rows %}
+            <div class="inv-spec-row inv-color-row">
+              <input name="color_name[]" placeholder="اسم اللون" value="{{ row.name }}">
+              <input name="color_qty[]" type="number" min="0" placeholder="الكمية" value="{{ row.qty }}">
+              <button type="button" class="inv-spec-remove" onclick="removeColorRow(this)">✕</button>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="inv-spec-row inv-color-row">
+              <input name="color_name[]" placeholder="اسم اللون" value="">
+              <input name="color_qty[]" type="number" min="0" placeholder="الكمية" value="0">
+              <button type="button" class="inv-spec-remove" onclick="removeColorRow(this)">✕</button>
+            </div>
+          {% endif %}
+        </div>
+        <button type="button" class="inv-btn" style="margin-top:8px;" onclick="addColorRow()"><i class="fas fa-plus"></i> إضافة لون</button>
+        <p class="inv-hint" style="margin-top:8px;">مجموع كميات الألوان: <strong id="colorStockTotal">0</strong></p>
+      </div>
       <div class="inv-form-grid" style="margin-top:12px;">
-        <div class="inv-field">
+        <div class="inv-field" id="openingStockField">
           <label>{% if is_beauty_center %}الكمية الحالية{% else %}{{ _('inventory_field_opening_stock_label') }}{% endif %}<span data-help="inventory.opening_stock"></span></label>
           <input name="opening_stock" type="number" min="0" value="{{ edit_product.opening_stock if edit_product else 0 }}" id="opening_stock">
         </div>
@@ -778,6 +807,72 @@
       if (deliveryDefault) deliveryDefault.value = '';
       provinceFeeInputs.forEach(function (input) { input.value = ''; });
     });
+  }
+
+  var hasColorsCheck = document.getElementById('hasColorsCheck');
+  var colorVariantsBlock = document.getElementById('colorVariantsBlock');
+  var colorVariantRows = document.getElementById('colorVariantRows');
+  var openingStockField = document.getElementById('openingStockField');
+  var openingStockInput = document.getElementById('opening_stock');
+  var colorStockTotal = document.getElementById('colorStockTotal');
+
+  window.addColorRow = function (name, qty) {
+    if (!colorVariantRows) return;
+    var row = document.createElement('div');
+    row.className = 'inv-spec-row inv-color-row';
+    row.innerHTML =
+      '<input name="color_name[]" placeholder="اسم اللون" value="' + escapeAttr(name || '') + '">' +
+      '<input name="color_qty[]" type="number" min="0" placeholder="الكمية" value="' + escapeAttr(qty == null ? '0' : qty) + '">' +
+      '<button type="button" class="inv-spec-remove" onclick="removeColorRow(this)">✕</button>';
+    colorVariantRows.appendChild(row);
+    row.querySelectorAll('input').forEach(function (input) {
+      input.addEventListener('input', syncColorStockTotal);
+    });
+    syncColorStockTotal();
+  };
+
+  window.removeColorRow = function (btn) {
+    if (!colorVariantRows || !btn) return;
+    var rows = colorVariantRows.querySelectorAll('.inv-color-row');
+    if (rows.length <= 1) {
+      rows[0].querySelectorAll('input').forEach(function (input) { input.value = input.name.indexOf('qty') >= 0 ? '0' : ''; });
+      syncColorStockTotal();
+      return;
+    }
+    btn.closest('.inv-color-row').remove();
+    syncColorStockTotal();
+  };
+
+  function syncColorStockTotal() {
+    if (!colorVariantRows) return;
+    var total = 0;
+    colorVariantRows.querySelectorAll('.inv-color-row').forEach(function (row) {
+      var qtyInput = row.querySelector('input[name="color_qty[]"]');
+      total += parseInt(qtyInput && qtyInput.value, 10) || 0;
+    });
+    if (colorStockTotal) colorStockTotal.textContent = total;
+    if (hasColorsCheck && hasColorsCheck.checked && openingStockInput) {
+      openingStockInput.value = total;
+    }
+  }
+
+  function toggleColorMode() {
+    var enabled = hasColorsCheck && hasColorsCheck.checked;
+    if (colorVariantsBlock) colorVariantsBlock.style.display = enabled ? '' : 'none';
+    if (openingStockField) openingStockField.style.display = enabled ? 'none' : '';
+    if (openingStockInput) openingStockInput.readOnly = !!enabled;
+    syncColorStockTotal();
+  }
+
+  if (hasColorsCheck) {
+    hasColorsCheck.addEventListener('change', toggleColorMode);
+    toggleColorMode();
+  }
+  if (colorVariantRows) {
+    colorVariantRows.querySelectorAll('input').forEach(function (input) {
+      input.addEventListener('input', syncColorStockTotal);
+    });
+    syncColorStockTotal();
   }
 })();
 </script>

@@ -6,6 +6,7 @@ from modules.workspace.api.session_api import _ctx, _require_auth
 from modules.workspace.models.courier_statement_analysis_issue import CourierStatementAnalysisIssue
 from modules.workspace.services.courier_settlement.courier_analysis_errors import (
     CourierAnalysisAccessError,
+    CourierAnalysisError,
     CourierAnalysisNotFoundError,
     CourierNoDocumentError,
 )
@@ -69,6 +70,8 @@ def run_courier_analysis(session_id):
         return jsonify({"success": False, "error": "no_document", "message": str(exc)}), 400
     except CourierAnalysisAccessError as exc:
         return jsonify({"success": False, "error": "forbidden", "message": str(exc)}), 403
+    except CourierAnalysisError as exc:
+        return jsonify({"success": False, "error": "analysis_failed", "message": str(exc)}), 400
     except Exception as exc:
         return jsonify({"success": False, "error": "analysis_failed", "message": str(exc)}), 500
 

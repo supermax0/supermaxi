@@ -193,6 +193,33 @@ def test_prepare_invoice_items_hides_shipping_and_deducts_legacy():
     assert total == 180000
 
 
+def test_prepare_invoice_items_deducts_new_cost_shipping_line():
+    from utils.order_shipping import SHIPPING_PRODUCT_NAME, prepare_invoice_items_for_print
+
+    items = [
+        SimpleNamespace(product_name="منتج", quantity=1, price=195000, total=195000, product=None),
+        SimpleNamespace(product_name=SHIPPING_PRODUCT_NAME, quantity=1, price=0, total=0, cost=6000, product=None),
+    ]
+    printable, total = prepare_invoice_items_for_print(items)
+    assert len(printable) == 1
+    assert printable[0].total == 189000
+    assert printable[0].price == 189000
+    assert total == 189000
+
+
+def test_shipping_fee_deducted_detection():
+    from utils.order_shipping import SHIPPING_PRODUCT_NAME, is_shipping_fee_deducted_from_invoice
+
+    invoice = SimpleNamespace(
+        total=189000,
+        order_items=[
+            SimpleNamespace(product_name="منتج", quantity=1, price=195000, total=195000, product=None),
+            SimpleNamespace(product_name=SHIPPING_PRODUCT_NAME, quantity=1, price=0, total=0, cost=6000, product=None),
+        ],
+    )
+    assert is_shipping_fee_deducted_from_invoice(invoice) is True
+
+
 if __name__ == "__main__":
     test_fee_for_product_uses_province_specific_fee()
     test_fee_for_product_uses_default_when_province_missing()
@@ -202,4 +229,7 @@ if __name__ == "__main__":
     test_apply_delivery_fees_to_meta_clears_empty_values()
     test_product_delivery_config_reads_meta()
     test_get_shipping_fee_from_invoice_reads_line_item()
+    test_prepare_invoice_items_hides_shipping_and_deducts_legacy()
+    test_prepare_invoice_items_deducts_new_cost_shipping_line()
+    test_shipping_fee_deducted_detection()
     print("all product delivery fee tests ok")
