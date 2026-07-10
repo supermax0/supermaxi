@@ -2184,9 +2184,9 @@ or request.path.startswith('/superadmin') %}
         {% set show_contacts_pages = (is_admin or (current_employee and can_see_pages)) and business_allows('pages') %}
         {% set show_contacts = show_contacts_customers or show_contacts_agents or show_contacts_employees or show_contacts_pages %}
         {% if show_contacts %}
-        <div class="menu-group {% if request.path.startswith('/customers') or request.path.startswith('/agents') or request.path.startswith('/employees') or request.path.startswith('/pages') or request.path.startswith('/beauty/clients') %}open{% endif %}">
+        <div class="menu-group {% if request.path.startswith('/customers') or request.path.startswith('/agents') or request.path.startswith('/employees') or request.path.startswith('/payroll') or request.path.startswith('/pages') or request.path.startswith('/beauty/clients') %}open{% endif %}">
           <button type="button"
-            class="menu-group-header {% if request.path.startswith('/customers') or request.path.startswith('/agents') or request.path.startswith('/employees') or request.path.startswith('/pages') or request.path.startswith('/beauty/clients') %}active{% endif %}"
+            class="menu-group-header {% if request.path.startswith('/customers') or request.path.startswith('/agents') or request.path.startswith('/employees') or request.path.startswith('/payroll') or request.path.startswith('/pages') or request.path.startswith('/beauty/clients') %}active{% endif %}"
             onclick="this.parentElement.classList.toggle('open')">
             <i class="fa fa-address-book"></i>
             {{ _('nav_contacts') }}
@@ -2243,6 +2243,10 @@ or request.path.startswith('/superadmin') %}
             <a href="/employees"
               class="{% if request.path.startswith('/employees') %}active{% endif %}">
               <i class="fa fa-user-tie"></i> {{ _('employees') }}
+            </a>
+            <a href="/payroll"
+              class="{% if request.path.startswith('/payroll') %}active{% endif %}">
+              <i class="fa fa-wallet"></i> الرواتب
             </a>
             {% endif %}
             {% if show_contacts_pages %}

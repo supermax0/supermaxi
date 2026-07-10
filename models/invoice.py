@@ -67,6 +67,11 @@ class Invoice(db.Model):
         default=0
     )
 
+    discount_amount = db.Column(
+        db.Integer,
+        default=0
+    )
+
     paid_amount = db.Column(
         db.Integer,
         default=0

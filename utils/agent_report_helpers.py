@@ -52,17 +52,103 @@ def _parse_selections(report) -> dict:
         return {}
 
 
+def order_payment_snapshot(order) -> dict[str, int]:
+    """الإجمالي والمدفوع الفعلي والباقي المستحق لتحصيل المندوب."""
+    from utils.cash_calculations import _effective_paid_amount
+
+    total = int(getattr(order, "total", 0) or 0)
+    paid_amount = int(_effective_paid_amount(order) or 0)
+    remaining = total - paid_amount
+    if remaining < 0:
+        remaining = 0
+    return {
+        "total": total,
+        "paid_amount": paid_amount,
+        "remaining": remaining,
+    }
+
+
+def row_collectible_amount(row: dict) -> int:
+    """المبلغ الواجب تحصيله من صف الكشف: الباقي إن وُجد وإلا الإجمالي."""
+    if not isinstance(row, dict):
+        return 0
+    if "remaining" in row and row.get("remaining") is not None:
+        try:
+            return max(0, int(row.get("remaining") or 0))
+        except (TypeError, ValueError):
+            pass
+    try:
+        return max(0, int(row.get("total", 0) or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def enrich_orders_data_payment_fields(orders_data: list) -> list:
+    """أملأ paid_amount/remaining للكشوف القديمة من الفاتورة الحية."""
+    if not orders_data:
+        return orders_data
+
+    from models.invoice import Invoice
+
+    missing_ids: list[int] = []
+    for row in orders_data:
+        if not isinstance(row, dict):
+            continue
+        if "remaining" in row and row.get("remaining") is not None and "paid_amount" in row:
+            continue
+        oid = row.get("id") or row.get("order_id")
+        if oid is None:
+            continue
+        try:
+            missing_ids.append(int(oid))
+        except (TypeError, ValueError):
+            pass
+
+    if not missing_ids:
+        return orders_data
+
+    invoices = {
+        inv.id: inv
+        for inv in Invoice.query.filter(Invoice.id.in_(missing_ids)).all()
+    }
+    for row in orders_data:
+        if not isinstance(row, dict):
+            continue
+        if "remaining" in row and row.get("remaining") is not None and "paid_amount" in row:
+            continue
+        oid = row.get("id") or row.get("order_id")
+        try:
+            oid_int = int(oid)
+        except (TypeError, ValueError):
+            continue
+        invoice = invoices.get(oid_int)
+        if not invoice:
+            total = int(row.get("total", 0) or 0)
+            row.setdefault("paid_amount", 0)
+            row.setdefault("remaining", total)
+            continue
+        snap = order_payment_snapshot(invoice)
+        row["total"] = int(row.get("total") or snap["total"])
+        row["paid_amount"] = snap["paid_amount"]
+        row["remaining"] = snap["remaining"]
+    return orders_data
+
+
 def compute_report_delivered_amount(report) -> int:
-    """مجموع مبالغ الطلبات المحددة «واصل» فقط (يستثني المؤجل والملغي)."""
+    """مجموع الباقي (أو الإجمالي للكشوف القديمة) للطلبات المحددة «واصل» فقط."""
     total = 0
     selections = _parse_selections(report)
-    for row in _parse_orders_data(report):
+    rows = _parse_orders_data(report)
+    # للكشوف المفتوحة فقط: املأ remaining من الفاتورة الحية
+    if report and not getattr(report, "is_executed", False):
+        rows = enrich_orders_data_payment_fields(rows)
+    for row in rows:
         order_id = row.get("id") or row.get("order_id")
         if order_id is None:
             continue
         if selections.get(str(order_id)) not in DELIVERED_STATUSES:
             continue
-        total += int(row.get("total", 0) or 0)
+        total += row_collectible_amount(row)
     return total
 
 

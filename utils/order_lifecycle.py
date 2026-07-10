@@ -59,6 +59,10 @@ def restore_order_stock_once(order) -> bool:
 
     items = OrderItem.query.filter_by(invoice_id=order.id).all()
     for item in items:
+        from utils.order_shipping import is_shipping_item
+
+        if is_shipping_item(item):
+            continue
         product = Product.query.get(item.product_id)
         if product:
             branch_id = item.fulfillment_branch_id or getattr(order, "branch_id", None)
@@ -67,6 +71,11 @@ def restore_order_stock_once(order) -> bool:
                 receive_stock(branch_id, product.id, int(item.quantity or 0))
             else:
                 product.quantity += int(item.quantity or 0)
+            variant_color = (getattr(item, "variant_color", None) or "").strip()
+            if variant_color:
+                from utils.product_color_service import restore_color_stock
+
+                restore_color_stock(product.id, variant_color, int(item.quantity or 0))
     return True
 
 

@@ -53,6 +53,11 @@ from utils.branch_stock_service import (
 from utils.inventory_movements import get_product_inventory_movements
 from utils.order_item_costs import exclude_delivery_fee_items
 from utils.activity_logger import log_activity
+from utils.ai_assistant_tools import (
+    execute_tool,
+    get_tool_definitions,
+    now_local as business_now_local,
+)
 from utils.payment_ledger import append_payment_ledger_delta
 from utils.permission_checks import employee_can
 from utils.product_schema_guard import ensure_product_schema
@@ -324,7 +329,7 @@ def collect_system_snapshot(employee_id: int | None = None) -> dict:
         "known_accounting_rules": [
             "الجرد الفعلي يشمل الطلبات بحالة تم الطلب وجاري الشحن، والقابل للبيع = الجرد الفعلي - المحجوز.",
             "سعر المنتج داخل الفاتورة يجب أن يبقى سعر بيع المنتج المخزني ولا يتغير بسبب أجرة التوصيل.",
-            "أجرة التوصيل لا تنضاف على سعر المنتج؛ تخصم/تحاسب لاحقاً عند التسديد حسب سياسة النظام.",
+            "أجرة التوصيل لا تُحسب ولا تُخصم تلقائياً؛ تُدخل يدوياً عند التسديد وتُسجّل كمصروف.",
             "مستحقات شركات النقل ذمم مدينة لصالح الشركة وليست ديناً على الشركة.",
             "حركة الصندوق اليدوية بدون ملاحظة/سبب واضحة علامة خطأ إدخال.",
             "أي تنفيذ تعديل يحتاج خطة وموافقة أدمن، ولا ينفذ GPT مباشرة.",
@@ -1281,124 +1286,208 @@ def _format_structured_ai_reply(data: dict | None, fallback: str = "") -> str:
     return "\n".join(lines).strip() or (fallback or "").strip()
 
 
-def _call_openai_narrative(message: str, snapshot: dict, local_findings: dict | None = None) -> tuple[bool, str]:
+_AR_WEEKDAYS = {0: "الاثنين", 1: "الثلاثاء", 2: "الأربعاء", 3: "الخميس", 4: "الجمعة", 5: "السبت", 6: "الأحد"}
+
+_TOOL_LOOP_MAX_ROUNDS = 6
+_TOOL_OUTPUT_MAX_CHARS = 14000
+
+
+def _assistant_system_prompt() -> str:
+    now = business_now_local()
+    weekday = _AR_WEEKDAYS.get(now.weekday(), "")
+    return (
+        "أنت المساعد المالي لنظام Finora المحاسبي. جاوب بالعربية العراقية بأسلوب محاسب محترف ومختصر.\n"
+        f"الوقت المحلي الحالي في بغداد: {weekday} {now.strftime('%Y-%m-%d %H:%M')}.\n"
+        "\n"
+        "قواعد أساسية:\n"
+        "1. عندك أدوات (tools) تقرأ البيانات الحقيقية من قاعدة بيانات الشركة. لأي سؤال عن أرقام "
+        "(صندوق، مبيعات، أرباح، مصاريف، ديون، مخزون، زبائن، موردين، شحن) لازم تستدعي الأداة المناسبة "
+        "وتجاوب من نتائجها الفعلية. لا تجاوب من الذاكرة ولا تخمّن أرقاماً أبداً.\n"
+        "2. حوّل العبارات الزمنية إلى تواريخ فعلية اعتماداً على الوقت المحلي أعلاه: "
+        "«اليوم» و«من الصبح لهسة» = تاريخ اليوم، «أمس» = اليوم السابق، «هذا الأسبوع» من السبت، "
+        "«هذا الشهر» من أول الشهر. ومرر التواريخ للأدوات بصيغة YYYY-MM-DD. "
+        "اذكر في جوابك الفترة التي حسبتها بوضوح.\n"
+        "3. اكتب المبالغ بأرقام مفصولة بالفواصل متبوعة بـ «د.ع» (مثال: 1,250,000 د.ع).\n"
+        "4. إذا الأداة رجعت error أو restricted أو ما رجعت بيانات، قلها صراحة ولا تعوّضها بتخمين.\n"
+        "5. لا تخترع اسم منتج أو فرع أو زبون أو رقم طلب غير موجود في نتائج الأدوات.\n"
+        "6. لا تدّعي تنفيذ أي تعديل. أنت للقراءة والتحليل فقط؛ أي تعديل فعلي يكون بخطة تنفيذ وموافقة أدمن.\n"
+        "7. للمقارنات (اليوم مقابل أمس، أسبوع مقابل أسبوع) استدعِ الأداة مرتين بفترتين مختلفتين واعرض الفرق.\n"
+        "8. مهم جداً: جاوب حصراً على آخر سؤال كتبه المستخدم. المحادثة السابقة للسياق فقط؛ "
+        "لا تعيد جواب سؤال قديم ولا تكمل على موضوع سابق إلا إذا السؤال الأخير يشير له صراحة.\n"
+        "9. إذا السؤال غامض أو ما عندك أداة تجاوب عليه، قل ذلك بوضوح واذكر شنو تقدر تجاوب عليه، "
+        "بدل ما تجاوب على شي ثاني.\n"
+        "\n"
+        "قواعد Finora المحاسبية الخاصة:\n"
+        "- الجرد الفعلي يشمل الطلبات بحالة «تم الطلب» و«جاري الشحن»؛ القابل للبيع = كمية النظام - المحجوز.\n"
+        "- سعر المنتج في الفاتورة لا يتغير بسبب أجرة التوصيل.\n"
+        "- أجرة التوصيل تُدخل يدوياً عند التسديد فقط ولا تُخصم تلقائياً.\n"
+        "- مستحقات شركات النقل ذمم مدينة لصالحنا (إلنا عندهم) وليست ديناً علينا.\n"
+        "- ديون الموردين التزامات علينا؛ ذمم الزبائن أصول إلنا.\n"
+        "- حركة صندوق يدوية بلا ملاحظة/سبب تعتبر خطأ إدخال محتمل يستحق التنويه.\n"
+        "\n"
+        "بعد ما تجمع البيانات اللازمة، أرجع الجواب النهائي حصراً كـ JSON بهذا الشكل:\n"
+        '{"answer": "الجواب المباشر بالأرقام", "evidence": ["أرقام حقيقية من نتائج الأدوات"], '
+        '"key_points": ["نقاط مهمة"], "risks": ["مخاطر أو ملاحظات"], "next_steps": ["خطوات مقترحة"], '
+        '"needs_admin_approval": false}'
+    )
+
+
+def _serialize_tool_output(data: dict) -> str:
+    try:
+        text = json.dumps(data, ensure_ascii=False, default=str)
+    except (TypeError, ValueError):
+        text = json.dumps({"error": "تعذر تحويل نتيجة الأداة"}, ensure_ascii=False)
+    if len(text) > _TOOL_OUTPUT_MAX_CHARS:
+        text = text[:_TOOL_OUTPUT_MAX_CHARS] + '... (تم اقتصاص النتيجة لكبر حجمها)"'
+    return text
+
+
+def _call_openai_narrative(
+    message: str,
+    snapshot: dict,
+    local_findings: dict | None = None,
+    *,
+    scope: dict | None = None,
+    history: list[dict] | None = None,
+    session_id: int | None = None,
+    employee_id: int | None = None,
+    period_hint: dict | None = None,
+) -> tuple[bool, str]:
     key = _get_openai_key()
     if not key:
-        return False, "مفتاح OpenAI غير مكوّن، لذلك استخدمت التحليل المحلي فقط."
+        return False, ""
     try:
         import openai
     except ImportError:
-        return False, "حزمة openai غير مثبتة، لذلك استخدمت التحليل المحلي فقط."
+        return False, ""
 
+    scope = scope or _assistant_read_scope(employee_id)
     model = os.environ.get("FINORA_AI_MODEL") or os.environ.get("OPENAI_ANALYSIS_MODEL") or "gpt-4o-mini"
-    system_text = (
-        "أنت مساعد Finora الإداري. جاوب بالعربية العراقية المختصرة. "
-        "لا تدّعي تنفيذ أي تعديل. أي تعديل لازم يكون خطة موافقة أدمن. "
-        "اعتمد فقط على بيانات system_snapshot وlocal_findings. إذا local_findings.query_evidence موجود، "
-        "لازم تذكر أرقام الأدلة منه مثل product_id، invoice_id، الفرع، الكمية، المحجوز، وآخر الحركات. "
-        "إذا local_findings.query_evidence.branch_matches يحتوي فرع محدد، احصر الطلبات والحركات والاستنتاج بهذا الفرع فقط. "
-        "ممنوع تقول 'ممكن' أو 'احتمال' كسبب رئيسي إذا ماكو دليل في query_evidence؛ قل 'ما عندي دليل كافي' واذكر شنو لازم نفحص. "
-        "افصل بوضوح بين الاستنتاج المثبت من الأرقام وبين المخاطر المحتملة التي تحتاج فحص إضافي. "
-        "لا تخترع اسم منتج أو فرع أو رقم طلب غير موجود في البيانات المعطاة. "
-        "انتبه لقواعد Finora الخاصة: الجرد الفعلي يشمل تم الطلب وجاري الشحن، "
-        "وسعر المنتج في الفاتورة لا يتغير بسبب أجرة التوصيل، ومبالغ شركات النقل ذمم إلنا وليست ديناً علينا، "
-        "وحركة الصندوق اليدوية بلا سبب تعتبر خطأ إدخال محتمل. "
-        "أرجع JSON مطابق للمخطط: answer, evidence, key_points, risks, next_steps, needs_admin_approval."
-    )
-    payload = {
-        "user_message": message,
+    tools = get_tool_definitions(scope)
+
+    context_payload = {
         "system_snapshot": snapshot,
-        "local_findings": local_findings or {},
-        "tool_policy": {
-            "read_tools": [
-                "system_snapshot",
-                "accounting_audit",
-                "inventory_audit_excel",
-                "orders_lookup",
-                "supplier_ledger_audit",
-                "shipping_company_audit",
-            ],
-            "plan_tools": [
-                "inventory_reconcile_plan",
-                "order_action_plan",
-                "supplier_ledger_fix_plan",
-                "shipping_opening_balance_plan",
-            ],
-            "execution_rule": "GPT لا ينفذ الأدوات. التنفيذ يتم فقط لخطة approved داخل النظام.",
-        },
+        "local_findings": {k: v for k, v in (local_findings or {}).items() if k != "snapshot"},
     }
-    schema = _assistant_response_schema()
-    client = None
+    if period_hint:
+        context_payload["ui_period_hint"] = period_hint
+
+    messages: list[dict] = [{"role": "system", "content": _assistant_system_prompt()}]
+    for item in history or []:
+        messages.append(item)
+    messages.append(
+        {
+            "role": "system",
+            "content": (
+                "سياق النظام الحالي (للاستئناس فقط، ولا يغني عن استدعاء الأدوات للأرقام الدقيقة):\n"
+                + json.dumps(context_payload, ensure_ascii=False, default=str)
+            ),
+        }
+    )
+    messages.append({"role": "user", "content": message})
+
     try:
         client = openai.OpenAI(api_key=key)
-        if hasattr(client, "responses"):
-            try:
-                response = client.responses.create(
-                    model=model,
-                    instructions=system_text,
-                    input=json.dumps(payload, ensure_ascii=False),
-                    text={
-                        "format": {
-                            "type": "json_schema",
-                            "name": "finora_assistant_reply",
-                            "schema": schema,
-                            "strict": True,
+    except Exception as exc:
+        current_app.logger.warning("OpenAI client init failed: %s", exc)
+        return False, ""
+
+    try:
+        loop_kwargs: dict[str, Any] = {"model": model, "max_tokens": 1800, "timeout": 45}
+        if tools:
+            loop_kwargs["tools"] = tools
+            loop_kwargs["tool_choice"] = "auto"
+        for _round in range(_TOOL_LOOP_MAX_ROUNDS):
+            response = client.chat.completions.create(messages=messages, **loop_kwargs)
+            choice = response.choices[0] if response.choices else None
+            if not choice or not choice.message:
+                break
+            msg = choice.message
+            tool_calls = getattr(msg, "tool_calls", None) or []
+            if not tool_calls:
+                text = msg.content or ""
+                return True, _format_structured_ai_reply(_safe_json_loads(text), text)
+
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": msg.content or None,
+                    "tool_calls": [
+                        {
+                            "id": tc.id,
+                            "type": "function",
+                            "function": {"name": tc.function.name, "arguments": tc.function.arguments or "{}"},
                         }
-                    },
-                    max_output_tokens=1800,
-                    timeout=30,
+                        for tc in tool_calls
+                    ],
+                }
+            )
+            for tc in tool_calls:
+                tool_name = tc.function.name
+                try:
+                    tool_args = json.loads(tc.function.arguments or "{}")
+                    if not isinstance(tool_args, dict):
+                        tool_args = {}
+                except (TypeError, json.JSONDecodeError):
+                    tool_args = {}
+                result = execute_tool(tool_name, tool_args, scope)
+                _log_tool(
+                    f"ai.{tool_name}",
+                    session_id=session_id,
+                    employee_id=employee_id,
+                    input_data=tool_args,
+                    output_data={"preview": _serialize_tool_output(result)[:500]},
+                    mode="read",
+                    status="error" if isinstance(result, dict) and result.get("error") else "success",
+                    error=str(result.get("error")) if isinstance(result, dict) and result.get("error") else None,
                 )
-            except TypeError:
-                response = client.responses.create(
-                    model=model,
-                    instructions=system_text,
-                    input=json.dumps(payload, ensure_ascii=False),
-                    max_output_tokens=1800,
-                    timeout=30,
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tc.id,
+                        "content": _serialize_tool_output(result if isinstance(result, dict) else {"result": result}),
+                    }
                 )
-            text = getattr(response, "output_text", "") or ""
-            return True, _format_structured_ai_reply(_safe_json_loads(text), text or "تم تحليل البيانات.")
+
+        # تجاوز عدد الجولات: اطلب خلاصة نهائية بدون أدوات
+        messages.append(
+            {
+                "role": "user",
+                "content": "أعطِ الجواب النهائي الآن كـ JSON حسب المخطط، بالاعتماد على نتائج الأدوات أعلاه فقط.",
+            }
+        )
         response = client.chat.completions.create(
             model=model,
-            messages=[
-                {"role": "system", "content": system_text},
-                {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
-            ],
-            response_format={
-                "type": "json_schema",
-                "json_schema": {
-                    "name": "finora_assistant_reply",
-                    "strict": True,
-                    "schema": schema,
-                },
-            },
+            messages=messages,
             max_tokens=1600,
-            timeout=30,
+            timeout=45,
         )
         choice = response.choices[0] if response.choices else None
         text = choice.message.content if choice and choice.message else ""
         return True, _format_structured_ai_reply(_safe_json_loads(text or ""), text or "")
     except Exception as exc:
-        current_app.logger.warning("OpenAI structured narrative failed: %s", exc)
-        if client is None:
-            return False, "تعذر تهيئة اتصال GPT، رجعت لك التحليل المحلي وخطة التنفيذ إن وجدت."
-        try:
-            response = client.chat.completions.create(
-                model=model,
-                messages=[
-                    {"role": "system", "content": system_text},
-                    {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
-                ],
-                response_format={"type": "json_object"},
-                max_tokens=1600,
-                timeout=30,
-            )
-            choice = response.choices[0] if response.choices else None
-            text = choice.message.content if choice and choice.message else ""
-            return True, _format_structured_ai_reply(_safe_json_loads(text or ""), text or "")
-        except Exception as fallback_exc:
-            current_app.logger.warning("OpenAI narrative fallback failed: %s", fallback_exc)
-            return False, "تعذر الاتصال بـ GPT، رجعت لك التحليل المحلي وخطة التنفيذ إن وجدت."
+        current_app.logger.warning("OpenAI tool-calling narrative failed: %s", exc)
+        return False, ""
+
+
+def _chat_history_messages(chat: AIChatSession, limit: int = 12) -> list[dict]:
+    """آخر رسائل الجلسة (ذاكرة المحادثة) بصيغة OpenAI messages."""
+    rows = (
+        AIChatMessage.query.filter_by(session_id=chat.id)
+        .filter(AIChatMessage.role.in_(["user", "assistant"]))
+        .order_by(AIChatMessage.id.desc())
+        .limit(limit)
+        .all()
+    )
+    history: list[dict] = []
+    for row in reversed(rows):
+        content = (row.content or "").strip()
+        if not content:
+            continue
+        # نقتصر ردود المساعد السابقة حتى لا تطغى على السؤال الأخير
+        max_len = 700 if row.role == "assistant" else 1200
+        history.append({"role": row.role, "content": content[:max_len]})
+    return history
 
 
 def handle_chat_send(
@@ -1407,10 +1496,25 @@ def handle_chat_send(
     message: str,
     session_id: int | None = None,
     upload_ids: list[int] | None = None,
+    period: str | None = None,
+    analysis_type: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
 ) -> dict:
     chat = get_or_create_chat_session(employee_id, session_id)
+    history = _chat_history_messages(chat)
     add_chat_message(chat, "user", message, {"upload_ids": upload_ids or []})
     upload_ids = [int(x) for x in (upload_ids or []) if str(x).isdigit()]
+    period_hint = {
+        k: v
+        for k, v in {
+            "type": analysis_type,
+            "period": period,
+            "date_from": date_from,
+            "date_to": date_to,
+        }.items()
+        if v
+    } or None
 
     scope = _assistant_read_scope(employee_id)
     snapshot = collect_system_snapshot(employee_id=employee_id)
@@ -1468,16 +1572,23 @@ def handle_chat_send(
     elif any(word in (message or "") for word in ("محاسبي", "حساب", "هامش", "سالب", "تقرير", "اخطاء", "أخطاء", "صندوق", "كاش", "نقد", "فروقات")):
         local_findings["accounting_audit"] = {"restricted": True, "message": "التدقيق المحاسبي يحتاج صلاحية التقارير أو المالية."}
 
-    ok, ai_text = _call_openai_narrative(message, snapshot, local_findings)
-    if not ai_text:
-        ai_text = "حللت البيانات المحلية. إذا تريد تنفيذ أي تغيير راجع خطة التنفيذ واضغط موافقة أدمن ثم تنفيذ."
-    evidence_text = _local_evidence_text(local_findings.get("query_evidence") or {})
-    if evidence_text and "الأدلة المحلية المباشرة" not in ai_text:
-        ai_text = f"{evidence_text}\n\nالاستنتاج:\n{ai_text}"
+    ok, ai_text = _call_openai_narrative(
+        message,
+        snapshot,
+        local_findings,
+        scope=scope,
+        history=history,
+        session_id=chat.id,
+        employee_id=employee_id,
+        period_hint=period_hint,
+    )
+    if not ok or not (ai_text or "").strip():
+        ai_text = _local_fallback_answer(message, scope, local_findings)
+        evidence_text = _local_evidence_text(local_findings.get("query_evidence") or {})
+        if evidence_text and "الأدلة المحلية المباشرة" not in ai_text:
+            ai_text = f"{ai_text}\n{evidence_text}"
     if plan:
         ai_text = f"{ai_text}\n\nتم إنشاء خطة تنفيذ #{plan.id}: {plan.summary}"
-    elif not ok:
-        ai_text = f"{ai_text}\n\n{_local_summary_text(local_findings)}"
 
     add_chat_message(chat, "assistant", ai_text, {"action_plan_id": plan.id if plan else None, "local_findings": local_findings})
     db.session.commit()
@@ -1488,6 +1599,59 @@ def handle_chat_send(
         "action_plan": _serialize_plan(plan),
         "local_findings": local_findings,
     }
+
+
+def _local_fallback_answer(message: str, scope: dict, local_findings: dict) -> str:
+    """رد محلي بأرقام حقيقية عند تعذر الاتصال بـ GPT (مفتاح مفقود أو خطأ اتصال)."""
+    text = message or ""
+    lines: list[str] = []
+
+    def _fmt(value) -> str:
+        return f"{int(value or 0):,} د.ع"
+
+    if any(w in text for w in ("صندوق", "كاش", "نقد", "خزين", "سيولة")) and scope.get("financial"):
+        data = execute_tool("get_cash_movements", {}, scope)
+        if isinstance(data, dict) and not data.get("error") and not data.get("restricted"):
+            period = data.get("period") or {}
+            lines.append(f"حساب {data.get('account', {}).get('name', 'الصندوق')} ليوم {period.get('from', '')}:")
+            lines.append(f"- رصيد بداية اليوم: {_fmt(data.get('opening_balance'))}")
+            lines.append(f"- الداخل: {_fmt(data.get('total_in'))} | الخارج: {_fmt(data.get('total_out'))}")
+            lines.append(f"- رصيد نهاية الفترة: {_fmt(data.get('closing_balance'))} | الرصيد الحالي: {_fmt(data.get('current_balance_now'))}")
+            movements = data.get("movements") or []
+            if movements:
+                lines.append(f"- آخر الحركات ({min(len(movements), 5)} من {data.get('movements_count_in_period', 0)}):")
+                for m in movements[-5:]:
+                    lines.append(f"  • {m.get('type')} {_fmt(m.get('amount'))} — {m.get('description') or m.get('reason')}")
+
+    if any(w in text for w in ("مبيعات", "بيعت", "مبيع")) and (scope.get("reports") or scope.get("financial")):
+        data = execute_tool("get_sales_summary", {}, scope)
+        if isinstance(data, dict) and not data.get("error") and not data.get("restricted"):
+            lines.append(f"مبيعات اليوم: {data.get('orders_count', 0)} طلب بإجمالي {_fmt(data.get('total_sales'))} (المحصّل {_fmt(data.get('collected_cash'))}).")
+
+    if "ربح" in text and (scope.get("financial") or scope.get("reports")):
+        data = execute_tool("get_profit_summary", {}, scope)
+        if isinstance(data, dict) and not data.get("error") and not data.get("restricted"):
+            lines.append(
+                f"ربح اليوم: مبيعات {_fmt(data.get('sales_total'))} - تكلفة {_fmt(data.get('cogs'))} - مصاريف {_fmt(data.get('expenses'))} = صافي {_fmt(data.get('net_profit'))}."
+            )
+
+    if any(w in text for w in ("مصروف", "مصاريف")) and scope.get("financial"):
+        data = execute_tool("get_expenses", {}, scope)
+        if isinstance(data, dict) and not data.get("error") and not data.get("restricted"):
+            period = data.get("period") or {}
+            lines.append(f"مصاريف الفترة {period.get('from', '')} → {period.get('to', '')}: {_fmt(data.get('total'))} ({data.get('count', 0)} مصروف).")
+
+    if any(w in text for w in ("مورد", "موردين")) and (scope.get("suppliers") or scope.get("financial")):
+        data = execute_tool("get_supplier_debts", {}, scope)
+        if isinstance(data, dict) and not data.get("error") and not data.get("restricted"):
+            lines.append(f"إجمالي المتبقي للموردين: {_fmt(data.get('total_remaining_debt'))} على {data.get('suppliers_count', 0)} مورد.")
+
+    if lines:
+        lines.append("\n(تعذر الاتصال بمحرك GPT، فهذه إجابة محلية مباشرة من بيانات النظام.)")
+        return "\n".join(lines)
+    return (
+        "تعذر الاتصال بمحرك GPT حالياً. هذا ملخص محلي من النظام:\n" + _local_summary_text(local_findings)
+    )
 
 
 def _local_summary_text(findings: dict) -> str:
@@ -1778,9 +1942,6 @@ def _execute_action_item(item: AIActionItem, *, employee_id: int) -> dict:
             invoice.paid_amount = int(invoice.total or 0)
             if invoice.status not in {"تم التوصيل", "مرتجع", "راجع", "راجعة"}:
                 invoice.status = "تم التوصيل"
-            from utils.order_shipping import apply_shipping_fee_on_paid_invoice
-
-            apply_shipping_fee_on_paid_invoice(invoice)
         elif action == "cancel":
             process_order_cancel(invoice)
         elif action == "return":

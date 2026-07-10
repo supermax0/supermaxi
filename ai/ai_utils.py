@@ -199,7 +199,7 @@ def collect_context_data(period_type: str, custom_date_from=None, custom_date_to
     from models.invoice import Invoice
     from models.order_item import OrderItem
     from models.product import Product
-    from models.expense import Expense
+    from utils.expense_queries import sum_posted_expenses
     from utils.accounting_calculations import (
         calculate_inventory_value,
         calculate_supplier_debts,
@@ -253,10 +253,7 @@ def collect_context_data(period_type: str, custom_date_from=None, custom_date_to
             if cogs_sum:
                 cogs_period += int(round(float(cogs_sum) * ratios.get(int(invoice_id), 0.0)))
 
-    expenses_period = db.session.query(func.sum(Expense.amount)).filter(
-        func.date(Expense.expense_date) >= date_from,
-        func.date(Expense.expense_date) <= date_to,
-    ).scalar() or 0
+    expenses_period = sum_posted_expenses(date_from, date_to)
 
     period_profit = int(cash_sales - cogs_period - expenses_period)
     inventory_value = calculate_inventory_value()

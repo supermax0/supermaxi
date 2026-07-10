@@ -10,7 +10,7 @@ import secrets
 
 from utils.payment_ledger import append_payment_ledger_delta
 from utils.delivery_expense_service import sync_delivery_expense_for_invoice
-from utils.order_shipping import apply_shipping_fee_on_paid_invoice
+from utils.order_shipping import apply_manual_delivery_fee_on_payment
 from utils.permission_checks import guard_permission
 from utils.activity_logger import log_activity
 from utils.treasury_helpers import resolve_treasury_account_id
@@ -311,10 +311,17 @@ def settle_order(order_id):
     if amount <= 0:
         return jsonify({"success": True, "message": "الطلب مسدد مسبقاً"})
 
+    delivery_fee = max(0, int(data.get("delivery_fee") or 0))
+
     prev_eff = _effective_paid_amount_inv(order)
     order.payment_status = "مسدد"
     order.paid_amount = order.total
-    apply_shipping_fee_on_paid_invoice(order)
+    tenant_id = getattr(order, "tenant_id", None)
+    if getattr(order, "customer", None) is not None:
+        tenant_id = getattr(order.customer, "tenant_id", tenant_id)
+    apply_manual_delivery_fee_on_payment(order, delivery_fee, tenant_id)
+    if delivery_fee <= 0:
+        order.paid_amount = order.total
 
     db.session.add(
         ShippingPayment(

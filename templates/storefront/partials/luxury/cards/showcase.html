@@ -1,0 +1,14 @@
+{% from "storefront/partials/luxury/cards/_macros.html" import lux_badges, lux_meta, lux_prices, lux_media, lux_cart_btn %}
+<article class="lux-product-card lux-card-tpl-showcase{% if card_size %} lux-card-size-{{ card_size }}{% endif %}" data-product-id="{{ product.id }}" data-lux-category="{{ product.category or product.badge or '' }}" data-lux-price="{{ product.price or 0 }}">
+  <a class="lux-product-media lux-product-media--showcase" href="{{ product.url }}{% if request.args.get('dev') %}?dev=1{% endif %}">
+    {{ lux_media(product) }}
+    <div class="lux-badges">{{ lux_badges(product) }}</div>
+  </a>
+  <div class="lux-product-body lux-product-body--showcase">
+    {% if product.category or product.badge %}<span class="lux-card-chip">{{ product.category or product.badge }}</span>{% endif %}
+    <a class="lux-product-title" href="{{ product.url }}{% if request.args.get('dev') %}?dev=1{% endif %}">{{ product.name }}</a>
+    {{ lux_meta(product) }}
+    {{ lux_prices(product) }}
+    {{ lux_cart_btn(product) }}
+  </div>
+</article>

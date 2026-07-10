@@ -44,6 +44,20 @@ ACCOUNT_CODES = {
 # دوال إنشاء الحسابات (إذا لم تكن موجودة)
 # ======================================================
 
+_INITIALIZED_ACCOUNT_BINDS: set[str] = set()
+
+
+def _accounts_bind_key() -> str:
+    try:
+        from flask import g, has_request_context
+
+        if has_request_context():
+            return getattr(g, "tenant", None) or "__core__"
+    except Exception:
+        pass
+    return "__core__"
+
+
 def get_or_create_account(code, name, account_type, description=None):
     """
     الحصول على حساب محاسبي أو إنشاؤه إذا لم يكن موجوداً
@@ -78,6 +92,10 @@ def initialize_accounts():
     تهيئة الحسابات المحاسبية الأساسية
     يتم استدعاؤها عند بداية النظام
     """
+    bind_key = _accounts_bind_key()
+    if bind_key in _INITIALIZED_ACCOUNT_BINDS:
+        return
+
     accounts = [
         # الأصول (Assets)
         (ACCOUNT_CODES["CASH"], "النقدية / الصندوق", "asset", "حساب النقدية - جميع التحصيلات النقدية تُضاف وجميع المدفوعات تُخصم"),
@@ -97,11 +115,21 @@ def initialize_accounts():
         (ACCOUNT_CODES["COGS"], "تكلفة البضاعة المباعة", "expense", "حساب تكلفة البضاعة المباعة (COGS)"),
         (ACCOUNT_CODES["EXPENSES"], "المصاريف التشغيلية", "expense", "حساب المصاريف التشغيلية"),
     ]
-    
+
+    codes = [code for code, *_ in accounts]
+    existing = {
+        row[0]
+        for row in db.session.query(Account.code).filter(Account.code.in_(codes)).all()
+    }
+    if len(existing) == len(codes):
+        _INITIALIZED_ACCOUNT_BINDS.add(bind_key)
+        return
+
     for code, name, account_type, description in accounts:
         get_or_create_account(code, name, account_type, description)
     
     db.session.commit()
+    _INITIALIZED_ACCOUNT_BINDS.add(bind_key)
 
 # ======================================================
 # دوال إنشاء القيود المحاسبية

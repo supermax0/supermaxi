@@ -223,7 +223,6 @@
               <option value="amount" selected>مبلغ</option>
             </select>
             <input type="hidden" id="discountValue" value="0">
-            <input type="hidden" id="shippingValue" value="0">
             <input type="hidden" id="invoiceNotes" value="">
 
 
@@ -233,8 +232,7 @@
               <button type="button" class="pos-summary-row pos-summary-row-btn" onclick="PosWP.openDiscountModal()">
                 <span><i class="fas fa-tag"></i> الخصم</span><span id="summaryDiscount">0 د.ع</span>
               </button>
-              <div class="pos-summary-row"><span>أجور التوصيل</span><span id="summaryShipping">0 د.ع</span></div>
-              <div class="pos-summary-row total"><span>الصافي بعد التوصيل</span><span id="summaryTotal">0 د.ع</span></div>
+              <div class="pos-summary-row total"><span>الإجمالي</span><span id="summaryTotal">0 د.ع</span></div>
               <span id="totalPrice" style="display:none">0</span>
             </div>
 
@@ -767,7 +765,7 @@
   }</script>
 
   <script src="{{ url_for('static', filename='js/notification-sound.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/pos-white-pro.js') }}?v=20260707-branch-stock-edit-fix"></script>
+  <script src="{{ url_for('static', filename='js/pos-white-pro.js') }}?v=20260707-pos-submit-guard"></script>
   <script>
     function openPosProfileModal() {
       document.getElementById('posProfileModal')?.classList.add('show');

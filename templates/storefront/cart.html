@@ -1,81 +1,146 @@
 {% extends "storefront/base.html" %}
 {% block title %}السلة - {{ store_design.store_name }}{% endblock %}
 {% block content %}
-<div class="sf-page-head">
-  <div>
-    <span class="sf-eyebrow">سلة المشتريات</span>
-    <h1>راجع طلبك قبل الإتمام</h1>
-  </div>
-  <a class="sf-btn ghost" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">متابعة التسوق</a>
-</div>
 
-{% if coupon_success %}<div class="sf-alert ok">{{ coupon_success }}</div>{% endif %}
-{% if coupon_error %}<div class="sf-alert err">{{ coupon_error }}</div>{% endif %}
+<nav class="lux-cart-breadcrumb" aria-label="مسار التنقل">
+  <a href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">الرئيسية</a>
+  <span class="lux-cart-breadcrumb-sep" aria-hidden="true">›</span>
+  <span class="lux-cart-breadcrumb-current">السلة</span>
+</nav>
+
+<header class="lux-cart-head">
+  <div>
+    <span class="lux-cart-eyebrow">سلة المشتريات</span>
+    <h1 class="lux-cart-title">راجع طلبك قبل الإتمام</h1>
+    {% if cart_items %}
+    <p class="lux-cart-sub">{{ cart_items|length }} منتج · {{ cart_count }} قطعة</p>
+    {% endif %}
+  </div>
+  <a class="lux-btn lux-btn-outline" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">متابعة التسوق</a>
+</header>
+
+<ol class="lux-checkout-steps" aria-label="خطوات الطلب">
+  <li class="is-active"><span>1</span> السلة</li>
+  <li><span>2</span> الدفع</li>
+  <li><span>3</span> التأكيد</li>
+</ol>
+
+{% if coupon_success %}<div class="lux-cart-alert lux-cart-alert--ok" role="status">{{ coupon_success }}</div>{% endif %}
+{% if coupon_error %}<div class="lux-cart-alert lux-cart-alert--err" role="alert">{{ coupon_error }}</div>{% endif %}
 
 {% if cart_items %}
-<section class="sf-cart-layout">
-  <div class="sf-card sf-panel">
-    <form method="post" action="{{ url_for('storefront.cart_update', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.cart_update', tenant_slug=shop_tenant_slug) }}">
-      <div class="sf-table-wrap">
-        <table class="sf-table">
-          <thead>
-            <tr><th>المنتج</th><th>السعر</th><th>الكمية</th><th>المجموع</th><th></th></tr>
-          </thead>
-          <tbody>
-            {% for item in cart_items %}
-            <tr>
-              <td data-label="المنتج">
-                <div class="sf-product-row">
-                  {% if item.image_url %}<img src="{{ item.image_url }}" alt="{{ item.name }}" loading="lazy">{% endif %}
-                  <div>
-                    <strong>{{ item.name }}</strong>
-                    <small>المتوفر: {{ item.stock }}</small>
-                  </div>
-                </div>
-              </td>
-              <td data-label="السعر">{{ "{:,.0f}".format(item.price) }} د.ع</td>
-              <td data-label="الكمية">
-                <input class="sf-qty-input" type="number" min="0" max="{{ item.stock }}" name="qty_{{ item.id }}" value="{{ item.quantity }}">
-              </td>
-              <td data-label="المجموع">{{ "{:,.0f}".format(item.line_total) }} د.ع</td>
-              <td data-label="حذف">
-                <button class="sf-btn danger" formaction="{{ url_for('storefront.cart_remove', tenant_slug=shop_tenant_slug, product_id=item.id, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.cart_remove', tenant_slug=shop_tenant_slug, product_id=item.id) }}" formmethod="post" type="submit">حذف</button>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-      <div class="sf-cart-actions">
-        <button class="sf-btn ghost" type="submit">تحديث السلة</button>
-        <a class="sf-btn primary" href="{{ url_for('storefront.checkout_page', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.checkout_page', tenant_slug=shop_tenant_slug) }}">إكمال الطلب</a>
+<section class="lux-cart-layout" id="luxCartPage"
+  data-subtotal="{{ subtotal }}"
+  data-discount="{{ discount_amount }}"
+  data-net="{{ net_subtotal }}">
+  <div class="lux-cart-main">
+    <form id="luxCartForm" class="lux-cart-form" method="post" action="{{ url_for('storefront.cart_update', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.cart_update', tenant_slug=shop_tenant_slug) }}">
+      <ul class="lux-cart-list">
+        {% for item in cart_items %}
+        <li class="lux-cart-item" data-lux-cart-item data-product-id="{{ item.id }}" data-unit-price="{{ item.price }}" data-stock="{{ item.stock }}">
+          <a class="lux-cart-item-media" href="{{ item.url }}{% if request.args.get('dev') %}?dev=1{% endif %}">
+            {% if item.image_url %}
+            <img src="{{ item.image_url }}" alt="{{ item.name }}" loading="lazy">
+            {% else %}
+            <span class="lux-cart-item-placeholder">{{ item.name[:1] }}</span>
+            {% endif %}
+          </a>
+
+          <div class="lux-cart-item-body">
+            <a class="lux-cart-item-name" href="{{ item.url }}{% if request.args.get('dev') %}?dev=1{% endif %}">{{ item.name }}</a>
+            {% if item.brand or item.model or item.sku %}
+            <p class="lux-cart-item-meta">
+              {% if item.brand %}<span>{{ item.brand }}</span>{% endif %}
+              {% if item.model %}<span>{{ item.model }}</span>{% endif %}
+              {% if item.sku %}<span class="lux-cart-item-sku">رمز: {{ item.sku }}</span>{% endif %}
+            </p>
+            {% endif %}
+            <p class="lux-cart-item-unit">
+              {% if item.price and item.price > 0 %}
+              {{ "{:,.0f}".format(item.price) }} <small>د.ع / قطعة</small>
+              {% else %}
+              <span class="lux-cart-price-na">السعر غير متوفر</span>
+              {% endif %}
+            </p>
+            {% if item.stock <= 5 and item.stock > 0 %}
+            <p class="lux-cart-item-low">بقي {{ item.stock }} فقط في المخزون</p>
+            {% endif %}
+          </div>
+
+          <div class="lux-cart-item-qty">
+            <span class="lux-cart-qty-label">الكمية</span>
+            <div class="lux-pd-qty" role="group" aria-label="كمية {{ item.name }}">
+              <button type="button" class="lux-pd-qty-btn" data-lux-cart-qty-minus aria-label="تقليل">−</button>
+              <input class="lux-pd-qty-input lux-cart-qty-input" type="number" min="1" max="{{ item.stock }}" name="qty_{{ item.id }}" value="{{ item.quantity }}" aria-label="الكمية">
+              <button type="button" class="lux-pd-qty-btn" data-lux-cart-qty-plus aria-label="زيادة">+</button>
+            </div>
+          </div>
+
+          <div class="lux-cart-item-total">
+            <span class="lux-cart-total-label">المجموع</span>
+            <strong class="lux-cart-line-total" data-lux-line-total>{{ "{:,.0f}".format(item.line_total) }} <small>د.ع</small></strong>
+          </div>
+
+          <button class="lux-cart-remove" type="button" data-lux-cart-remove aria-label="حذف {{ item.name }}">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </li>
+        {% endfor %}
+      </ul>
+
+      <div class="lux-cart-form-actions">
+        <button class="lux-btn lux-btn-outline" type="submit">تحديث السلة</button>
       </div>
     </form>
   </div>
 
-  <aside class="sf-card sf-summary">
-    <h2>ملخص السلة</h2>
-    <div class="sf-sum-row"><span>المجموع</span><strong>{{ "{:,.0f}".format(subtotal) }} د.ع</strong></div>
-    <div class="sf-sum-row"><span>الخصم</span><strong>-{{ "{:,.0f}".format(discount_amount) }} د.ع</strong></div>
-    <div class="sf-sum-row final"><span>الصافي</span><strong>{{ "{:,.0f}".format(net_subtotal) }} د.ع</strong></div>
+  <aside class="lux-cart-summary">
+    <h2>ملخص الطلب</h2>
 
-    <form id="sfCouponForm" class="sf-coupon" method="post" action="{{ url_for('storefront.cart_coupon', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.cart_coupon', tenant_slug=shop_tenant_slug) }}">
-      <label for="sfCoupon">كود الكوبون</label>
-      <div class="sf-coupon-row">
-        <input id="sfCoupon" type="text" name="coupon_code" placeholder="مثال: SAVE10" value="{{ active_coupon }}">
-        <button class="sf-btn ghost" type="submit" name="action" value="apply">تطبيق</button>
+    <div class="lux-cart-summary-rows">
+      <div class="lux-cart-sum-row">
+        <span>المجموع الفرعي</span>
+        <strong id="luxCartSubtotal">{{ "{:,.0f}".format(subtotal) }} د.ع</strong>
+      </div>
+      <div class="lux-cart-sum-row lux-cart-sum-row--discount">
+        <span>الخصم</span>
+        <strong id="luxCartDiscount">{% if discount_amount > 0 %}-{{ "{:,.0f}".format(discount_amount) }} د.ع{% else %}0 د.ع{% endif %}</strong>
+      </div>
+      <div class="lux-cart-sum-row lux-cart-sum-row--final">
+        <span>الصافي</span>
+        <strong id="luxCartNet">{{ "{:,.0f}".format(net_subtotal) }} د.ع</strong>
+      </div>
+    </div>
+
+    <a class="lux-btn lux-btn-gold lux-cart-checkout" href="{{ url_for('storefront.checkout_page', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.checkout_page', tenant_slug=shop_tenant_slug) }}">إكمال الطلب</a>
+
+    <form id="sfCouponForm" class="lux-cart-coupon" method="post" action="{{ url_for('storefront.cart_coupon', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.cart_coupon', tenant_slug=shop_tenant_slug) }}">
+      <label for="sfCoupon">كود الخصم</label>
+      <div class="lux-cart-coupon-row">
+        <input id="sfCoupon" type="text" name="coupon_code" placeholder="مثال: SAVE10" value="{{ active_coupon }}" autocomplete="off">
+        <button class="lux-btn lux-btn-outline" type="submit" name="action" value="apply">تطبيق</button>
       </div>
       {% if active_coupon %}
-      <button class="sf-btn danger full" type="submit" name="action" value="remove">إزالة الكوبون</button>
+      <p class="lux-cart-coupon-active">الكوبون النشط: <strong>{{ active_coupon }}</strong></p>
+      <button class="lux-btn lux-btn-outline lux-cart-coupon-remove" type="submit" name="action" value="remove">إزالة الكوبون</button>
       {% endif %}
     </form>
+
+    <ul class="lux-cart-trust">
+      <li><span aria-hidden="true">✓</span> دفع عند الاستلام</li>
+      <li><span aria-hidden="true">🚚</span> توصيل آمن</li>
+      <li><span aria-hidden="true">↩</span> إرجاع سهل</li>
+    </ul>
   </aside>
 </section>
 {% else %}
-<div class="sf-empty">
+<section class="lux-cart-empty">
+  <div class="lux-cart-empty-icon" aria-hidden="true">🛒</div>
   <h2>السلة فارغة حالياً</h2>
   <p>ابدأ بإضافة منتجاتك المفضلة، وسنحفظها هنا حتى إتمام الطلب.</p>
-  <a class="sf-btn primary" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">تصفح المنتجات</a>
-</div>
+  <a class="lux-btn lux-btn-gold" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">تصفح المنتجات</a>
+</section>
 {% endif %}
+
+{% include "storefront/partials/luxury/benefits.html" %}
 {% endblock %}

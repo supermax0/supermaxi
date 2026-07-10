@@ -7,7 +7,7 @@ from datetime import datetime
 from extensions import db
 from models.account_transaction import AccountTransaction
 from models.expense import Expense
-from utils.order_shipping import get_shipping_fee_from_invoice, is_shipping_fee_deducted_from_invoice
+from utils.order_shipping import get_shipping_fee_from_invoice
 
 _DELIVERY_EXPENSE_NOTE_PREFIX = "delivery_fee_invoice:"
 
@@ -51,8 +51,14 @@ def sync_delivery_expense_for_invoice(invoice) -> Expense | None:
     fee = get_shipping_fee_from_invoice(invoice)
     is_paid = (getattr(invoice, "payment_status", None) or "") == "مسدد"
 
-    if not is_paid or fee <= 0 or is_shipping_fee_deducted_from_invoice(invoice):
+    if not is_paid or fee <= 0:
         remove_delivery_expense_for_invoice(invoice_id)
+        try:
+            from utils.payroll_service import sync_commission_line_for_invoice
+
+            sync_commission_line_for_invoice(invoice)
+        except Exception:
+            pass
         return None
 
     title = f"أجور توصيل — فاتورة #{invoice_id}"
@@ -80,4 +86,10 @@ def sync_delivery_expense_for_invoice(invoice) -> Expense | None:
             note=title,
         )
         db.session.add(withdraw_tx)
+    try:
+        from utils.payroll_service import sync_commission_line_for_invoice
+
+        sync_commission_line_for_invoice(invoice)
+    except Exception:
+        pass
     return expense

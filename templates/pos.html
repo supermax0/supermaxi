@@ -1788,6 +1788,14 @@
     let items = []
     let selectedCustomerId = null
     let isSelectingCustomer = false
+    let isSubmittingOrder = false
+
+    function createSubmissionToken() {
+      if (window.crypto && typeof window.crypto.randomUUID === "function") {
+        return window.crypto.randomUUID()
+      }
+      return "pos-" + Date.now() + "-" + Math.random().toString(36).slice(2)
+    }
 
     function openCustomerModal() {
       if (editingOrderId) {
@@ -2286,6 +2294,7 @@
     }
 
     function confirmOrderWithNotes() {
+      if (isSubmittingOrder) { toast("جاري إنشاء الطلب، انتظر لحظة..."); return }
       const notesInput = document.getElementById("orderNotesInput")
       const pageSelect = document.getElementById("pageSelect")
       const notes = notesInput.value.trim()
@@ -2327,6 +2336,9 @@
         }
       }
 
+      isSubmittingOrder = true
+      const submissionToken = createSubmissionToken()
+
       fetch("/pos/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -2337,9 +2349,11 @@
           note: notes || null,
           scheduled_date: null,
           page_id: pageId || null,
-          page_name: pageName || null
+          page_name: pageName || null,
+          submission_token: submissionToken
         })
       }).then(r => r.json()).then(d => {
+        isSubmittingOrder = false
         if (d.error) {
           toast("❌ " + d.error)
           return
@@ -2360,6 +2374,7 @@
           renderItems()
         }
       }).catch(err => {
+        isSubmittingOrder = false
         toast("❌ حدث خطأ: " + err.message)
       })
     }
@@ -2390,6 +2405,7 @@
     }
 
     function confirmScheduleOrder() {
+      if (isSubmittingOrder) { toast("جاري إنشاء الطلب، انتظر لحظة..."); return }
       const dateInput = document.getElementById("scheduleDateInput")
       const notesInput = document.getElementById("scheduleNotesInput")
       const scheduleDate = dateInput.value
@@ -2436,6 +2452,9 @@
         }
       }
 
+      isSubmittingOrder = true
+      const submissionToken = createSubmissionToken()
+
       fetch("/pos/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -2446,9 +2465,11 @@
           note: notes || null,
           scheduled_date: scheduleDate,
           page_id: pageId || null,
-          page_name: pageName || null
+          page_name: pageName || null,
+          submission_token: submissionToken
         })
       }).then(r => r.json()).then(d => {
+        isSubmittingOrder = false
         if (d.error) {
           toast("❌ " + d.error)
           return
@@ -2461,6 +2482,7 @@
         selectedCustomerId = null
         selectedCustomer.innerText = "لم يتم اختيار زبون"
       }).catch(err => {
+        isSubmittingOrder = false
         toast("❌ حدث خطأ: " + err.message)
       })
     }

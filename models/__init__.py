@@ -13,6 +13,9 @@ from .account_transaction import AccountTransaction
 from .treasury_account import TreasuryAccount
 from .treasury_transfer import TreasuryTransfer
 from .supplier import Supplier
+from .supplier_payment import SupplierPayment
+from .supplier_sale import SupplierSale
+from .supplier_sale_item import SupplierSaleItem
 from .purchase import Purchase
 from .purchase_item import PurchaseItem
 from .purchase_payment import PurchasePayment
@@ -32,7 +35,9 @@ from .fixed_asset_attachment import FixedAssetAttachment
 from .fixed_asset_disposal_request import FixedAssetDisposalRequest
 from .financial_period_close import FinancialPeriodClose
 from .employee import Employee
+from .employee_commission_line import EmployeeCommissionLine
 from .employee_commission_settlement import EmployeeCommissionSettlement
+from .employee_payment import EmployeePayment
 from .invoice import Invoice
 from .invoice_payment_ledger import InvoicePaymentLedger
 from .order_item import OrderItem

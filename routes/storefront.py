@@ -10,7 +10,8 @@ from modules.storefront.services.ai_assistant_service import StorefrontAIAssista
 from modules.storefront.services.cart_service import StorefrontCartService
 from modules.storefront.services.catalog_service import StorefrontCatalogService
 from modules.storefront.services.checkout_service import StorefrontCheckoutService
-from modules.storefront.services.product_presenter import product_card
+from modules.storefront.services.product_presenter import product_card, build_hero_slides
+from modules.storefront.services.store_layout_service import build_store_sections
 from modules.storefront.services.settings_service import StorefrontSettingsService, safe_int
 from modules.storefront.services.tracking_service import build_tracking_steps, lookup_order
 from modules.storefront.template_utils import storefront_template
@@ -190,6 +191,11 @@ def store_index(tenant_slug: str):
         badge_filter=str(request.args.get("badge") or "").strip(),
         sort=str(request.args.get("sort") or "latest").strip().lower(),
     )
+    hero_products = [p for p in cards if p.get("image_url")][:4]
+    store_design = _settings.design_settings()
+    hero_slides = build_hero_slides(cards, store_design)
+    flags = _settings.ui_flags()
+    product_sections = build_store_sections(cards, flags, store_design.get("card_style") or "classic")
     return render_template(
         storefront_template("index.html"),
         products=cards,
@@ -203,6 +209,9 @@ def store_index(tenant_slug: str):
             "sort": request.args.get("sort", "latest"),
         },
         badges=badges,
+        hero_products=hero_products,
+        hero_slides=hero_slides,
+        product_sections=product_sections,
         **_store_context(slug, cart),
     )
 

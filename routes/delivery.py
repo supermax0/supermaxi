@@ -11,7 +11,11 @@ from datetime import datetime
 import json
 
 from utils.shipping_report_execute import execute_shipping_report
-from utils.agent_report_helpers import compute_report_delivered_amount
+from utils.agent_report_helpers import (
+    compute_report_delivered_amount,
+    enrich_orders_data_payment_fields,
+    row_collectible_amount,
+)
 
 delivery_bp = Blueprint("delivery", __name__, url_prefix="/delivery")
 
@@ -287,6 +291,14 @@ def view_report(report_id):
         return jsonify({"error": "غير مصرح"}), 403
     
     orders_data = json.loads(report.orders_data) if report.orders_data else []
+    # إثراء المدفوع/الباقي للكشوف غير المنفّذة فقط (بعد التنفيذ تكون الفاتورة مسددة)
+    if not report.is_executed:
+        orders_data = enrich_orders_data_payment_fields(orders_data)
+    else:
+        for row in orders_data:
+            if isinstance(row, dict) and "remaining" not in row:
+                row.setdefault("paid_amount", 0)
+                row.setdefault("remaining", int(row.get("total", 0) or 0))
     
     # استخدام template مختلف للوصول العام (بدون sidebar)
     template_name = "shipping_report_view_public.html" if is_shipping_company else "shipping_report_view.html"
@@ -308,12 +320,12 @@ def view_report(report_id):
     if is_admin and not report.is_executed and has_status_selections:
         can_execute = True
 
-    # بعد تحديد الحالات: المجموع = الواصل فقط (بدون مؤجل/ملغي)
+    # بعد تحديد الحالات: المجموع = الباقي للواصل فقط (بدون مؤجل/ملغي)
     if has_status_selections:
         display_total_amount = compute_report_delivered_amount(report)
         display_total_label = "مجموع الواصل"
     else:
-        display_total_amount = int(report.total_amount or 0)
+        display_total_amount = sum(row_collectible_amount(row) for row in orders_data)
         display_total_label = "المجموع الكلي"
     
     return render_template(

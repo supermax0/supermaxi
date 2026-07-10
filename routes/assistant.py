@@ -106,6 +106,10 @@ def api_chat_send():
             message=message,
             session_id=data.get("session_id"),
             upload_ids=upload_ids,
+            period=(data.get("period") or "").strip() or None,
+            analysis_type=(data.get("type") or "").strip() or None,
+            date_from=(data.get("date_from") or "").strip() or None,
+            date_to=(data.get("date_to") or "").strip() or None,
         )
         return jsonify(result)
     except Exception as e:
@@ -297,7 +301,7 @@ def api_ai_overview():
                 "الجرد الفعلي يشمل تم الطلب وجاري الشحن، والقابل للبيع = الجرد الفعلي - المحجوز.",
                 "مستحقات شركات النقل ذمم إلنا عند الشركة وليست ديناً علينا.",
                 "أي حركة صندوق يدوية لازم يكون إلها سبب واضح، ولا تعتمد حركة بلا ملاحظة.",
-                "سعر المنتج في الفاتورة يبقى سعر البيع المخزني؛ أجرة التوصيل لا تغيّر سعر المنتج.",
+                "سعر المنتج في الفاتورة يبقى سعر البيع المخزني؛ أجرة التوصيل تُدخل يدوياً عند التسديد فقط ولا تُحسب تلقائياً.",
             ],
         }
     except Exception as exc:

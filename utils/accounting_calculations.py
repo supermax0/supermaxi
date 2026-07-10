@@ -41,6 +41,22 @@ def _valid_revenue_payment_status_filter():
     )
 
 
+def _paid_invoice_filter():
+    """Cash-basis invoice filter: explicit payment status wins; delivered NULL is legacy-paid."""
+    return and_(
+        Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
+        or_(
+            Invoice.payment_status.is_(None),
+            Invoice.payment_status.notin_(RETURN_STATUSES + CANCELED_STATUSES),
+        ),
+        or_(
+            Invoice.payment_status.in_(["مسدد", "جزئي"]),
+            Invoice.status == "مسدد",
+            and_(Invoice.payment_status.is_(None), Invoice.status == "تم التوصيل"),
+        ),
+    )
+
+
 def _is_returned_invoice(invoice: Invoice) -> bool:
     """هل الفاتورة مرتجعة؟ (حسب status أو payment_status)"""
     try:
@@ -77,7 +93,7 @@ def _effective_paid_amount(invoice: Invoice) -> int:
     if status in ("مرتجع", "ملغي", "راجع", "راجعة"):
         return 0
 
-    if payment_status == "مسدد" or status in ("مسدد", "تم التوصيل"):
+    if payment_status == "مسدد":
         return max(total, 0)
 
     if payment_status == "جزئي":
@@ -85,6 +101,12 @@ def _effective_paid_amount(invoice: Invoice) -> int:
         if paid_amount < 0:
             return 0
         return min(paid_amount, total) if total > 0 else paid_amount
+
+    if payment_status == "غير مسدد":
+        return 0
+
+    if not payment_status and status in ("مسدد", "تم التوصيل"):
+        return max(total, 0)
 
     return 0
 
@@ -183,10 +205,10 @@ def calculate_inventory_value():
 
 def calculate_total_expenses():
     """
-    حساب إجمالي المصاريف
+    حساب إجمالي المصاريف الفعلية (المخصومة من الصندوق فقط).
     
     الصيغة المحاسبية:
-    المصاريف = مجموع جميع المصاريف المسجلة
+    المصاريف = مجموع المصاريف المسجّلة (تُخصم من الصندوق عند الإضافة)
     
     السبب المحاسبي:
     - المصاريف تُسجل في حساب مستقل
@@ -195,13 +217,11 @@ def calculate_total_expenses():
     - تُطرح من الربح عند حساب صافي الربح
     
     Returns:
-        int: إجمالي المصاريف
+        int: إجمالي المصاريف الفعلية
     """
-    total_expenses = db.session.query(
-        func.sum(Expense.amount)
-    ).scalar() or 0
-    
-    return int(total_expenses)
+    from utils.expense_queries import sum_posted_expenses
+
+    return sum_posted_expenses()
 
 # ======================================================
 # 5️⃣ حساب المرتجعات (Returns)
@@ -310,14 +330,7 @@ def calculate_paid_sales():
         Invoice.payment_status,
         Invoice.total,
         Invoice.paid_amount,
-    ).filter(
-        Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
-        Invoice.payment_status.notin_(RETURN_STATUSES),
-        or_(
-            Invoice.payment_status.in_(["مسدد", "جزئي"]),
-            Invoice.status == "مسدد",
-        ),
-    ).all()
+    ).filter(_paid_invoice_filter()).all()
 
     paid_sales = sum(_effective_paid_amount(o) for o in paid_orders)
 
@@ -352,14 +365,7 @@ def calculate_operational_profit():
         Invoice.payment_status,
         Invoice.total,
         Invoice.paid_amount,
-    ).filter(
-        Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
-        Invoice.payment_status.notin_(RETURN_STATUSES),
-        or_(
-            Invoice.payment_status.in_(["مسدد", "جزئي"]),
-            Invoice.status == "مسدد",
-        ),
-    ).all()
+    ).filter(_paid_invoice_filter()).all()
 
     ratios: dict[int, float] = {}
     for inv in paid_orders:
@@ -408,11 +414,13 @@ def calculate_supplier_debts():
     Returns:
         int: إجمالي ديون الموردين
     """
-    supplier_debts = db.session.query(
-        func.sum(Supplier.total_debt - Supplier.total_paid)
-    ).scalar() or 0
-    
-    return supplier_debts
+    suppliers = db.session.query(Supplier.total_debt, Supplier.total_paid).all()
+    return int(
+        sum(
+            max(int((total_debt or 0) - (total_paid or 0)), 0)
+            for total_debt, total_paid in suppliers
+        )
+    )
 
 def calculate_shipping_due():
     """
@@ -439,7 +447,7 @@ def calculate_shipping_due():
     ).filter(
         Invoice.shipping_company_id.isnot(None),
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
-        Invoice.payment_status.notin_(RETURN_STATUSES),
+        _valid_revenue_payment_status_filter(),
     ).all()
 
     for o in all_orders:
@@ -489,7 +497,7 @@ def calculate_accounts_receivable():
         Invoice.paid_amount,
     ).filter(
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
-        Invoice.payment_status.notin_(RETURN_STATUSES),
+        _valid_revenue_payment_status_filter(),
     ).all()
 
     accounts_receivable = 0
@@ -545,14 +553,7 @@ def calculate_paid_cogs():
         Invoice.payment_status,
         Invoice.total,
         Invoice.paid_amount,
-    ).filter(
-        Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
-        Invoice.payment_status.notin_(RETURN_STATUSES),
-        or_(
-            Invoice.payment_status.in_(["مسدد", "جزئي"]),
-            Invoice.status == "مسدد",
-        ),
-    ).all()
+    ).filter(_paid_invoice_filter()).all()
 
     ratios: dict[int, float] = {}
     for inv in paid_orders:

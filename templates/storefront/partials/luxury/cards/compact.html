@@ -1,0 +1,16 @@
+{% from "storefront/partials/luxury/cards/_macros.html" import lux_badges, lux_prices, lux_media, lux_cart_btn %}
+<article class="lux-product-card lux-card-tpl-compact{% if card_size %} lux-card-size-{{ card_size }}{% endif %}{% if not product.is_available %} is-unavailable{% endif %}" data-product-id="{{ product.id }}" data-lux-category="{{ product.category or product.badge or '' }}" data-lux-price="{{ product.price or 0 }}">
+  <a class="lux-product-media lux-product-media--compact" href="{{ product.url }}{% if request.args.get('dev') %}?dev=1{% endif %}">
+    {{ lux_media(product) }}
+    <div class="lux-badges lux-badges--compact">{{ lux_badges(product) }}</div>
+  </a>
+  <div class="lux-product-body lux-product-body--compact">
+    <a class="lux-product-title lux-product-title--compact" href="{{ product.url }}{% if request.args.get('dev') %}?dev=1{% endif %}">{{ product.name }}</a>
+    <div class="lux-card-compact-foot">
+      {{ lux_prices(product) }}
+      <button type="button" class="lux-btn-cart lux-btn-cart--compact" data-sf-add-cart="{{ product.id }}" {% if not product.is_available %}disabled{% endif %} aria-label="أضف {{ product.name }} إلى السلة">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+      </button>
+    </div>
+  </div>
+</article>

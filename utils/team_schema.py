@@ -98,6 +98,9 @@ def build_employees_grid_rows(employees_list, stats_map, delivery_agents, agent_
                 "commission_rate": commission_rate,
                 "total_due": total_due,
                 "is_delivery": False,
+                "pay_type": str(getattr(e, "pay_type", None) or "none"),
+                "pay_day_of_month": int(getattr(e, "pay_day_of_month", 25) or 25),
+                "pay_weekday": int(getattr(e, "pay_weekday", 4) or 4),
             }
         )
 
@@ -123,6 +126,9 @@ def build_employees_grid_rows(employees_list, stats_map, delivery_agents, agent_
                 "commission": 0,
                 "total_due": agent_salary,
                 "is_delivery": True,
+                "pay_type": str(getattr(agent, "pay_type", None) or "none"),
+                "pay_day_of_month": int(getattr(agent, "pay_day_of_month", 25) or 25),
+                "pay_weekday": int(getattr(agent, "pay_weekday", 4) or 4),
             }
         )
     return rows

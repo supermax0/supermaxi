@@ -32,7 +32,7 @@
             <option value="{{ city }}">{{ city }} - {{ "{:,.0f}".format(fee) }} د.ع</option>
             {% endfor %}
           </datalist>
-          <small>الشحن الافتراضي: {{ "{:,.0f}".format(shipping_default_fee) }} د.ع</small>
+          <small>أجرة التوصيل تُحدد عند التسديد</small>
         </div>
         <div class="sf-field wide">
           <label for="sfAddress">العنوان التفصيلي</label>
@@ -71,8 +71,7 @@
     </div>
     <div class="sf-sum-row"><span>المجموع</span><strong>{{ "{:,.0f}".format(subtotal) }} د.ع</strong></div>
     <div class="sf-sum-row"><span>الخصم</span><strong>-{{ "{:,.0f}".format(discount_amount) }} د.ع</strong></div>
-    <div class="sf-sum-row"><span>أجور التوصيل</span><strong id="sfShippingFeeText">{% if shipping_fee %}-{% endif %}{{ "{:,.0f}".format(shipping_fee) }} د.ع</strong></div>
-    <div class="sf-sum-row final"><span>الصافي</span><strong id="sfGrandTotalText">{{ "{:,.0f}".format(grand_total) }} د.ع</strong></div>
+    <div class="sf-sum-row final"><span>الإجمالي</span><strong id="sfGrandTotalText">{{ "{:,.0f}".format(grand_total) }} د.ع</strong></div>
     {% else %}
     <p class="sf-muted">لا توجد عناصر في السلة.</p>
     {% endif %}

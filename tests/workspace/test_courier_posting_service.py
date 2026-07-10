@@ -124,7 +124,7 @@ def test_posts_only_safe_matched_rows_via_shipping_report():
         db.session.refresh(inv_safe)
         db.session.refresh(inv_blocked)
         assert inv_safe.payment_status == "مسدد"
-        assert inv_safe.status == "مسدد"
+        assert inv_safe.status == "تم التوصيل"
         assert inv_safe.paid_amount == inv_safe.total
         assert inv_blocked.payment_status == "غير مسدد"
         assert inv_blocked.status == "تم الطلب"

@@ -376,12 +376,12 @@
                 <div class="totals">
                     <div class="t-row">
                         <span>Subtotal</span>
-                        <span>{{ "{:,.0f}".format(total) }}</span>
+                        <span>{{ "{:,.0f}".format(total_before_discount|default(total)) }}</span>
                     </div>
-                    {% if due < total %}
+                    {% if discount_amount|default(0) > 0 %}
                     <div class="t-row" style="color:var(--primary-color);">
                         <span>Discount</span>
-                        <span>- {{ "{:,.0f}".format(total - due) }}</span>
+                        <span>- {{ "{:,.0f}".format(discount_amount) }}</span>
                     </div>
                     {% endif %}
                     <div class="t-row grand">

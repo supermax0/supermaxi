@@ -245,12 +245,27 @@ def _add_purchase_withdraw(pay: PurchasePayment, purchase, supplier, note_suffix
 
 
 def _treasury_paid_amount(purchase):
+    return sum(_treasury_paid_by_account(purchase).values())
+
+
+def _treasury_paid_by_account(purchase) -> dict[int, int]:
+    default_cash_id = get_default_cash_account().id
+    totals: dict[int, int] = {}
     rows = purchase.payments or []
     if rows:
-        return sum(_safe_int(x.amount, 0) for x in rows if _affects_treasury(x.payment_method))
+        for payment in rows:
+            if not _affects_treasury(payment.payment_method):
+                continue
+            amount = _safe_int(payment.amount, 0)
+            if amount <= 0:
+                continue
+            treasury_id = payment.treasury_account_id or default_cash_id
+            totals[treasury_id] = totals.get(treasury_id, 0) + amount
+        return totals
     if _affects_treasury(purchase.purchase_mode) and _safe_int(purchase.paid_total, 0) > 0:
-        return _safe_int(purchase.paid_total, 0)
-    return 0
+        treasury_id = getattr(purchase, "treasury_account_id", None) or default_cash_id
+        totals[treasury_id] = _safe_int(purchase.paid_total, 0)
+    return totals
 
 
 def _safe_int(v, default=0):
@@ -271,6 +286,15 @@ def _purchase_stock_applied(purchase) -> bool:
             return True
         return _purchase_status_applies_stock(getattr(purchase, "status", None))
     return _purchase_status_applies_stock(getattr(purchase, "status", None))
+
+
+def _purchase_accounting_applied(purchase) -> bool:
+    status = (getattr(purchase, "status", None) or "confirmed").strip().lower()
+    if status in {"cancelled", "canceled"}:
+        return False
+    if status == "draft":
+        return bool(getattr(purchase, "stock_applied", False))
+    return True
 
 
 def _resolve_purchase_branch_id(payload: dict, branch_code: str | None = None) -> int | None:
@@ -309,8 +333,10 @@ def _reverse_purchase_effects(purchase, reason):
         if hasattr(purchase, "stock_applied"):
             purchase.stock_applied = False
 
+    accounting_applied = _purchase_accounting_applied(purchase)
+
     # Reverse supplier ledgers
-    if purchase.supplier:
+    if accounting_applied and purchase.supplier:
         purchase.supplier.total_debt = max(
             _safe_int(purchase.supplier.total_debt, 0) - _safe_int(purchase.grand_total or purchase.total, 0),
             0,
@@ -320,15 +346,13 @@ def _reverse_purchase_effects(purchase, reason):
             0,
         )
 
+    if not accounting_applied:
+        return
+
     # Reverse treasury movement with opposite transaction (audit-safe)
-    treasury_paid = _treasury_paid_amount(purchase)
-    if treasury_paid > 0:
-        default_cash_id = get_default_cash_account().id
-        treasury_id = default_cash_id
-        for pay in (purchase.payments or []):
-            if _affects_treasury(pay.payment_method):
-                treasury_id = pay.treasury_account_id or default_cash_id
-                break
+    for treasury_id, treasury_paid in _treasury_paid_by_account(purchase).items():
+        if treasury_paid <= 0:
+            continue
         db.session.add(
             AccountTransaction(
                 type="deposit",
@@ -488,18 +512,21 @@ def _create_purchase_from_payload(payload, files):
             return None, str(exc)
         product.buy_price = final_unit
 
+    accounting_applied = _purchase_accounting_applied(purchase)
     for pay in parsed_payments:
         pay.purchase_id = purchase.id
         db.session.add(pay)
-        try:
-            _add_purchase_withdraw(pay, purchase, supplier)
-        except InsufficientTreasuryBalance as exc:
-            db.session.rollback()
-            return None, str(exc)
+        if accounting_applied:
+            try:
+                _add_purchase_withdraw(pay, purchase, supplier)
+            except InsufficientTreasuryBalance as exc:
+                db.session.rollback()
+                return None, str(exc)
 
     # supplier ledger: debt is the gross obligation, paid is the actual payments.
-    supplier.total_debt = int(supplier.total_debt or 0) + grand_total
-    supplier.total_paid = int(supplier.total_paid or 0) + paid_total
+    if accounting_applied:
+        supplier.total_debt = int(supplier.total_debt or 0) + grand_total
+        supplier.total_paid = int(supplier.total_paid or 0) + paid_total
 
     # attachments
     if files:
@@ -525,8 +552,15 @@ def _get_purchase_stats():
             int(p.grand_total or p.total or 0)
             for p in Purchase.query.filter(Purchase.purchase_date >= current_month_start).all()
         )
-        total_supplier_debts = sum(int(getattr(s, "total_debt", 0) or 0) for s in suppliers)
-        suppliers_with_debt = len([s for s in suppliers if int(getattr(s, "total_debt", 0) or 0) > 0])
+        supplier_remaining = [
+            max(
+                int(getattr(s, "total_debt", 0) or 0) - int(getattr(s, "total_paid", 0) or 0),
+                0,
+            )
+            for s in suppliers
+        ]
+        total_supplier_debts = sum(supplier_remaining)
+        suppliers_with_debt = len([remaining for remaining in supplier_remaining if remaining > 0])
     except Exception:
         db.session.rollback()
         current_app.logger.exception("purchases stats query failed")
@@ -1093,16 +1127,20 @@ def update_purchase(purchase_id):
         if hasattr(purchase, "stock_applied"):
             purchase.stock_applied = apply_stock
 
+        accounting_applied = _purchase_accounting_applied(purchase)
         for pay in parsed_payments:
             db.session.add(pay)
+            if not accounting_applied:
+                continue
             try:
                 _add_purchase_withdraw(pay, purchase, supplier, " (بعد تعديل)")
             except InsufficientTreasuryBalance as exc:
                 db.session.rollback()
                 return jsonify({"success": False, "error": str(exc)}), 400
 
-        supplier.total_debt = _safe_int(supplier.total_debt, 0) + grand_total
-        supplier.total_paid = _safe_int(supplier.total_paid, 0) + paid_total
+        if accounting_applied:
+            supplier.total_debt = _safe_int(supplier.total_debt, 0) + grand_total
+            supplier.total_paid = _safe_int(supplier.total_paid, 0) + paid_total
 
         if files:
             for f in files:

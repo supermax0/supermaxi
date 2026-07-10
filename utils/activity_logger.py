@@ -256,7 +256,7 @@ def infer_category_from_path(path: str) -> str:
     return "system"
 
 
-INVOICE_SNAPSHOT_FIELDS = ("id", "status", "payment_status", "paid_amount", "total", "customer_id", "shipping_company_id", "delivery_agent_id")
+INVOICE_SNAPSHOT_FIELDS = ("id", "status", "payment_status", "paid_amount", "total", "discount_amount", "customer_id", "shipping_company_id", "delivery_agent_id")
 PRODUCT_SNAPSHOT_FIELDS = ("id", "name", "quantity", "price", "cost", "active", "barcode")
 EMPLOYEE_SNAPSHOT_FIELDS = ("id", "name", "username", "role", "is_active")
 CUSTOMER_SNAPSHOT_FIELDS = ("id", "name", "phone", "address", "city")

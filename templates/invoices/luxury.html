@@ -449,12 +449,12 @@
             <div class="summary-box">
                 <div class="s-row">
                     <span>Subtotal</span>
-                    <span class="s-val">{{ "{:,.0f}".format(total) }}</span>
+                    <span class="s-val">{{ "{:,.0f}".format(total_before_discount|default(total)) }}</span>
                 </div>
-                {% if due < total %}
+                {% if discount_amount|default(0) > 0 %}
                 <div class="s-row">
                     <span>Discount</span>
-                    <span class="s-val" style="color: var(--primary-color);">- {{ "{:,.0f}".format(total - due) }}</span>
+                    <span class="s-val" style="color: var(--primary-color);">- {{ "{:,.0f}".format(discount_amount) }}</span>
                 </div>
                 {% endif %}
                 <div class="s-grand">

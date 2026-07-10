@@ -91,6 +91,32 @@
           <small>{{ _('employees_edit_commission_hint') if _('employees_edit_commission_hint') != 'employees_edit_commission_hint' else 'مبلغ العمولة لكل طلب واصل ومسدد' }}</small>
         </div>
       </div>
+      <div class="emp-form-row-secondary">
+        <div class="emp-field">
+          <label class="emp-field-label" for="emp_pay_type">نوع الراتب</label>
+          <select name="pay_type" id="emp_pay_type">
+            <option value="none">بدون جدولة</option>
+            <option value="monthly">راتب شهري ثابت</option>
+            <option value="weekly">راتب أسبوعي ثابت</option>
+            <option value="commission">عمولة فقط</option>
+            <option value="monthly_commission">شهري + عمولة</option>
+            <option value="weekly_commission">أسبوعي + عمولة</option>
+          </select>
+        </div>
+        <div class="emp-field">
+          <label class="emp-field-label" for="emp_pay_day_of_month">يوم الصرف الشهري</label>
+          <input name="pay_day_of_month" type="number" id="emp_pay_day_of_month" min="1" max="28" value="25">
+        </div>
+        <div class="emp-field">
+          <label class="emp-field-label" for="emp_pay_weekday">يوم الصرف الأسبوعي</label>
+          <select name="pay_weekday" id="emp_pay_weekday">
+            {% for label in weekday_labels %}
+            <option value="{{ loop.index0 }}" {% if loop.index0 == 4 %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <p class="emp-payroll-hint"><a href="/payroll">انتقل إلى نظام الرواتب</a> لصرف المستحقات والعمولات من الخزينة.</p>
       <button type="submit" id="employeeSubmitBtn" class="btn-submit-primary">
         <span>💾</span><span>{{ _('employees_save_button') }}</span>
       </button>
@@ -234,6 +260,24 @@
     <div class="team-modal-field"><label>الاسم</label><input id="editEmpName" type="text"></div>
     <div class="team-modal-field"><label>الراتب</label><input id="editEmpSalary" type="number" min="0"></div>
     <div class="team-modal-field" id="editEmpCommissionField"><label>{{ _('employees_edit_commission_label') }}</label><input id="editEmpCommission" type="number" min="0" step="1" placeholder="0"><small>{{ _('employees_edit_commission_hint') }}</small></div>
+    <div class="team-modal-field"><label>نوع الراتب</label>
+      <select id="editEmpPayType">
+        <option value="none">بدون جدولة</option>
+        <option value="monthly">راتب شهري ثابت</option>
+        <option value="weekly">راتب أسبوعي ثابت</option>
+        <option value="commission">عمولة فقط</option>
+        <option value="monthly_commission">شهري + عمولة</option>
+        <option value="weekly_commission">أسبوعي + عمولة</option>
+      </select>
+    </div>
+    <div class="team-modal-field"><label>يوم الصرف الشهري</label><input id="editEmpPayDay" type="number" min="1" max="28" value="25"></div>
+    <div class="team-modal-field"><label>يوم الصرف الأسبوعي</label>
+      <select id="editEmpPayWeekday">
+        {% for label in weekday_labels %}
+        <option value="{{ loop.index0 }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
     <div class="team-modal-field"><label>كلمة مرور جديدة (اختياري)</label><input id="editEmpPassword" type="password"></div>
     <div class="team-modal-actions">
       <button type="button" class="btn btn-light" onclick="closeEditEmployeeModal()">إلغاء</button>

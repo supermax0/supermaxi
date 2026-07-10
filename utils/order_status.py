@@ -75,12 +75,12 @@ def any_in(value: Optional[str], candidates: Iterable[str]) -> bool:
 
 def invoice_returned_condition(invoice_model):
     """شرط SQLAlchemy: الطلب راجع (يشمل القيم القديمة)."""
-    from sqlalchemy import or_
+    from sqlalchemy import func, or_
 
     legacy = list(RETURN_STATUSES)
     return or_(
-        invoice_model.status.in_(legacy),
-        invoice_model.payment_status.in_(legacy),
+        func.coalesce(invoice_model.status, "").in_(legacy),
+        func.coalesce(invoice_model.payment_status, "").in_(legacy),
     )
 
 

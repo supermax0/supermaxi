@@ -296,7 +296,9 @@
           <th>رقم الفاتورة</th>
           <th>رقم الهاتف</th>
           <th>الكمية</th>
-          <th>المجموع</th>
+          <th>الإجمالي</th>
+          <th>المدفوع مسبقاً</th>
+          <th>الباقي</th>
           <th>المحافظة</th>
           <th>العنوان</th>
           {% if not agent_name %}
@@ -385,7 +387,9 @@
           if (order && order.id) {
             orderCount++;
             const orderTotal = parseInt(order.total) || 0;
-            total += orderTotal;
+            const paidAmount = parseInt(order.paid_amount) || 0;
+            const remaining = order.remaining != null ? (parseInt(order.remaining) || 0) : Math.max(0, orderTotal - paidAmount);
+            total += remaining;
             
             const row = document.createElement('tr');
             const shippingColumn = hasAgentName ? '' : `<td>${order.shipping || "—"}</td>`;
@@ -398,7 +402,9 @@
               </td>
               <td class="phone-cell">${order.phone || "—"}</td>
               <td><strong>${order.quantity || 0}</strong></td>
-              <td class="total-cell">${orderTotal.toLocaleString()} د.ع</td>
+              <td>${orderTotal.toLocaleString()} د.ع</td>
+              <td>${paidAmount.toLocaleString()} د.ع</td>
+              <td class="total-cell">${remaining.toLocaleString()} د.ع</td>
               <td>${order.city || "—"}</td>
               <td style="max-width: 150px; word-wrap: break-word;">${order.address || "—"}</td>
               ${shippingColumn}
@@ -408,13 +414,13 @@
         });
       }
       
-      // إضافة صف الإجمالي
+      // إضافة صف الإجمالي (مجموع الباقي)
       const totalRow = document.createElement('tr');
       totalRow.className = 'total-row';
-      const colspan = hasAgentName ? 6 : 7;
+      const colspan = hasAgentName ? 8 : 9;
       totalRow.innerHTML = `
-        <td colspan="3" style="text-align:right;padding-right:25px;font-size:16px">💰 المجموع الكلي:</td>
-        <td colspan="${colspan - 3}" style="text-align:center;font-size:20px;color:#1b5e20">${total.toLocaleString()} دينار عراقي</td>
+        <td colspan="5" style="text-align:right;padding-right:25px;font-size:16px">💰 مجموع الباقي:</td>
+        <td colspan="${colspan - 5}" style="text-align:center;font-size:20px;color:#1b5e20">${total.toLocaleString()} دينار عراقي</td>
       `;
       tbody.appendChild(totalRow);
       

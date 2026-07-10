@@ -12,11 +12,15 @@
 {% set storefront_theme_preset = ui_flags.get('storefront_theme_preset', 'custom') %}
 {% set storefront_hero_title = ui_flags.get('storefront_hero_title', 'واجهة متجر احترافية') %}
 {% set storefront_hero_subtitle = ui_flags.get('storefront_hero_subtitle', 'ابحث، فلتر، واختر منتجاتك بسهولة. كل عملية شراء تمر عبر سلة متكاملة ثم Checkout بالدفع عند الاستلام.') %}
+{% set storefront_hero_mode = ui_flags.get('storefront_hero_mode', 'auto') %}
+{% set storefront_hero_slides = ui_flags.get('storefront_hero_slides', []) %}
+{% set storefront_product_sections = storefront_product_sections if storefront_product_sections is defined else ui_flags.get('storefront_product_sections', []) %}
 {% set storefront_coupon_code = ui_flags.get('storefront_coupon_code', '') %}
 {% set storefront_coupon_type = ui_flags.get('storefront_coupon_type', 'percent') %}
 {% set storefront_coupon_value = ui_flags.get('storefront_coupon_value', 0) %}
-{% set storefront_store_name = ui_flags.get('storefront_store_name', 'متجر المنتجات') %}
-{% set storefront_logo_url = ui_flags.get('storefront_logo_url', '') %}
+{% set _sf_name = ui_flags.get('storefront_store_name', '') %}
+{% set storefront_store_name = _sf_name if _sf_name and _sf_name != 'متجر المنتجات' else (invoice_settings.company_name if invoice_settings and invoice_settings.company_name else 'متجر المنتجات') %}
+{% set storefront_logo_url = ui_flags.get('storefront_logo_url') or (invoice_settings.logo_path if invoice_settings and invoice_settings.logo_path else '') %}
 {% set storefront_whatsapp = ui_flags.get('storefront_whatsapp', '') %}
 {% set storefront_theme_mode = ui_flags.get('storefront_theme_mode', 'light') %}
 {% set storefront_ai_enabled = ui_flags.get('storefront_ai_assistant_enabled', true) %}
@@ -76,6 +80,15 @@
       <input id="storefrontHeroSubtitle" class="settings-input" type="text" value="{{ storefront_hero_subtitle }}">
     </div>
     <div class="settings-field">
+      <label class="settings-field-label" for="storefrontHeroMode">وضع المساحة الإعلانية</label>
+      <select id="storefrontHeroMode" class="settings-select">
+        <option value="auto" {% if storefront_hero_mode == 'auto' %}selected{% endif %}>تلقائي (من المنتجات)</option>
+        <option value="manual" {% if storefront_hero_mode == 'manual' %}selected{% endif %}>يدوي فقط (شرائح من الإعدادات)</option>
+        <option value="both" {% if storefront_hero_mode == 'both' %}selected{% endif %}>يدوي + تلقائي (اليدوي أولاً)</option>
+      </select>
+      <div class="settings-field-help">التلقائي يعرض خصومات/جديد من منتجات حقيقية. اليدوي يسمح لك ببناء شرائح إعلان خاصة.</div>
+    </div>
+    <div class="settings-field">
       <label class="settings-field-label" for="storefrontDefaultShipping">سعر الشحن الافتراضي</label>
       <input id="storefrontDefaultShipping" class="settings-input" type="number" min="0" value="{{ storefront_default_shipping }}">
       <div class="settings-field-help">يُستخدم إذا كتب العميل محافظة غير موجودة في القائمة.</div>
@@ -83,10 +96,15 @@
     <div class="settings-field">
       <label class="settings-field-label" for="storefrontStoreName">اسم المتجر</label>
       <input id="storefrontStoreName" class="settings-input" type="text" value="{{ storefront_store_name }}">
+      <div class="settings-field-help">يُستخدم اسم الشركة من إعدادات الفاتورة تلقائياً إن تُرك الحقل فارغاً أو بالقيمة الافتراضية.</div>
     </div>
     <div class="settings-field">
       <label class="settings-field-label" for="storefrontLogoUrl">رابط الشعار</label>
       <input id="storefrontLogoUrl" class="settings-input" type="url" value="{{ storefront_logo_url }}" placeholder="https://...">
+      <div class="settings-field-help">يُستخدم شعار الشركة من إعدادات الفاتورة إن لم يُحدَّد رابط هنا.</div>
+      {% if invoice_settings and invoice_settings.logo_path and not ui_flags.get('storefront_logo_url') %}
+      <img src="{{ invoice_settings.logo_path }}" alt="" style="max-width:120px;margin-top:8px;border-radius:8px;border:1px solid #e5e5e5;">
+      {% endif %}
     </div>
     <div class="settings-field">
       <label class="settings-field-label" for="storefrontWhatsapp">واتساب (رقم دولي)</label>
@@ -100,6 +118,43 @@
         <option value="auto" {% if storefront_theme_mode == 'auto' %}selected{% endif %}>تلقائي</option>
       </select>
     </div>
+  </div>
+
+  <div class="settings-section-subcard" style="margin-top:12px;">
+    <div class="settings-section-header" style="margin-bottom:10px;">
+      <h3 style="margin:0;"><i class="fas fa-bullhorn"></i> شرائح المساحة الإعلانية (يدوي)</h3>
+      <p style="margin:6px 0 0;">أضف شرائح إعلان خاصة (صورة + نص + زر). تُعرض حسب وضع الهيرو أعلاه.</p>
+    </div>
+
+    <div class="settings-grid" style="margin-bottom:10px;">
+      <div class="settings-field wide">
+        <button type="button" class="btn btn-primary" id="addHeroSlideBtn">+ إضافة شريحة</button>
+        <button type="button" class="btn btn-secondary" id="clearHeroSlidesBtn" style="margin-inline-start:8px;">مسح الشرائح</button>
+      </div>
+    </div>
+
+    <div id="heroSlidesList" class="settings-grid" style="grid-template-columns: repeat(2, minmax(0, 1fr)); gap:12px;"></div>
+    <textarea id="storefrontHeroSlidesJson" style="display:none;">{{ storefront_hero_slides|tojson }}</textarea>
+  </div>
+
+  <div class="settings-section-subcard" style="margin-top:12px;">
+    <div class="settings-section-header" style="margin-bottom:10px;">
+      <h3 style="margin:0;"><i class="fas fa-th-large"></i> أقسام وقوالب بطاقات المنتجات</h3>
+      <p style="margin:6px 0 0;">أضف أقسام متعددة داخل المتجر، اختر قالب البطاقة والحجم، ورتّب مكان كل قسم.</p>
+    </div>
+
+    <div class="settings-grid" style="margin-bottom:10px;">
+      <div class="settings-field wide">
+        <button type="button" class="btn btn-primary" id="addProductSectionBtn">+ إضافة قسم</button>
+        <button type="button" class="btn btn-secondary" id="resetProductSectionsBtn" style="margin-inline-start:8px;">استعادة الافتراضي</button>
+      </div>
+    </div>
+
+    <div id="productSectionsList" class="settings-grid" style="grid-template-columns: 1fr; gap:12px;"></div>
+    <textarea id="storefrontProductSectionsJson" style="display:none;">{{ storefront_product_sections|tojson }}</textarea>
+
+    <script id="sfCardTemplatesCatalog" type="application/json">{{ card_templates_catalog|default([])|tojson }}</script>
+    <script id="sfCardSizesCatalog" type="application/json">{{ card_sizes_catalog|default([])|tojson }}</script>
   </div>
 
   <div class="settings-section-header" style="margin-top:18px;">
@@ -262,9 +317,337 @@ const presetEl = document.getElementById("storefrontThemePreset");
 if (presetEl) presetEl.addEventListener("change", applyPresetToInputs);
 updateStorePreview();
 
+function safeJsonParse(text, fallback) {
+  try {
+    const parsed = JSON.parse(text || "");
+    return parsed ?? fallback;
+  } catch (e) {
+    return fallback;
+  }
+}
+
+function getHeroSlides() {
+  const el = document.getElementById("storefrontHeroSlidesJson");
+  const slides = safeJsonParse(el ? el.value : "[]", []);
+  return Array.isArray(slides) ? slides : [];
+}
+
+function setHeroSlides(slides) {
+  const el = document.getElementById("storefrontHeroSlidesJson");
+  if (!el) return;
+  el.value = JSON.stringify(Array.isArray(slides) ? slides : []);
+}
+
+function uploadHeroImage(file) {
+  const fd = new FormData();
+  fd.append("image", file);
+  return fetch("/settings/storefront/upload-hero-image", { method: "POST", body: fd })
+    .then(r => r.json())
+    .then(data => {
+      if (!data || !data.success) throw new Error((data && data.error) || "فشل رفع الصورة");
+      return data.url;
+    });
+}
+
+function heroSlideCard(slide, idx) {
+  const wrap = document.createElement("div");
+  wrap.className = "settings-section-card";
+  wrap.style.margin = "0";
+
+  const imageUrl = (slide && slide.image_url) ? String(slide.image_url) : "";
+  wrap.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;">
+      <strong>شريحة #${idx + 1}</strong>
+      <button type="button" class="btn btn-danger btn-sm" data-action="remove">حذف</button>
+    </div>
+    <div class="settings-grid" style="grid-template-columns: 1fr 1fr; gap:10px;">
+      <div class="settings-field wide">
+        <label class="settings-field-label">عنوان الشريحة</label>
+        <input class="settings-input" data-field="title" type="text" value="${(slide.title || "")}">
+      </div>
+      <div class="settings-field wide">
+        <label class="settings-field-label">كلمة صغيرة (Kicker)</label>
+        <input class="settings-input" data-field="kicker" type="text" value="${(slide.kicker || "")}">
+      </div>
+      <div class="settings-field wide">
+        <label class="settings-field-label">وصف/سطر ثاني</label>
+        <input class="settings-input" data-field="subtitle" type="text" value="${(slide.subtitle || "")}">
+      </div>
+      <div class="settings-field">
+        <label class="settings-field-label">نص الزر</label>
+        <input class="settings-input" data-field="cta_text" type="text" value="${(slide.cta_text || "")}">
+      </div>
+      <div class="settings-field">
+        <label class="settings-field-label">رابط الزر</label>
+        <input class="settings-input" data-field="cta_href" type="text" placeholder="#luxProducts أو /shop/slug/..." value="${(slide.cta_href || "")}">
+      </div>
+      <div class="settings-field wide">
+        <label class="settings-field-label">رابط الصورة (URL)</label>
+        <input class="settings-input" data-field="image_url" type="url" placeholder="https://..." value="${imageUrl}">
+        <div class="settings-field-help">تقدر ترفع صورة بالزر أدناه أو تستخدم رابط مباشر.</div>
+      </div>
+      <div class="settings-field">
+        <label class="settings-field-label">رفع صورة</label>
+        <input class="settings-input" data-field="upload" type="file" accept="image/*">
+      </div>
+      <div class="settings-field">
+        <label class="settings-field-label">مزايا (اختياري)</label>
+        <input class="settings-input" data-field="features" type="text" placeholder="افصل بـ |" value="${(slide.features || "")}">
+      </div>
+      <div class="settings-field wide">
+        <div style="display:flex;gap:10px;align-items:center;">
+          <img data-preview src="${imageUrl}" alt="" style="width:120px;height:70px;object-fit:cover;border-radius:10px;border:1px solid #e5e5e5;background:#fafafa;">
+          <small style="color:#666;">المعاينة</small>
+        </div>
+      </div>
+    </div>
+  `;
+
+  wrap.querySelector('[data-action="remove"]').addEventListener("click", () => {
+    const slides = getHeroSlides();
+    slides.splice(idx, 1);
+    setHeroSlides(slides);
+    renderHeroSlides();
+  });
+
+  wrap.querySelectorAll("input[data-field]").forEach((input) => {
+    const field = input.getAttribute("data-field");
+    if (field === "upload") return;
+    input.addEventListener("input", () => {
+      const slides = getHeroSlides();
+      slides[idx] = slides[idx] || {};
+      slides[idx][field] = input.value;
+      setHeroSlides(slides);
+      if (field === "image_url") {
+        const img = wrap.querySelector("img[data-preview]");
+        if (img) img.src = input.value || "";
+      }
+    });
+  });
+
+  const uploadInput = wrap.querySelector('input[data-field="upload"]');
+  if (uploadInput) {
+    uploadInput.addEventListener("change", () => {
+      const file = uploadInput.files && uploadInput.files[0];
+      if (!file) return;
+      uploadInput.disabled = true;
+      uploadHeroImage(file)
+        .then((url) => {
+          const slides = getHeroSlides();
+          slides[idx] = slides[idx] || {};
+          slides[idx].image_url = url;
+          setHeroSlides(slides);
+          const urlInput = wrap.querySelector('input[data-field="image_url"]');
+          const img = wrap.querySelector("img[data-preview]");
+          if (urlInput) urlInput.value = url;
+          if (img) img.src = url;
+          showToast("تم رفع صورة الشريحة", "success");
+        })
+        .catch((e) => showToast(e.message || "فشل رفع الصورة", "error"))
+        .finally(() => { uploadInput.disabled = false; uploadInput.value = ""; });
+    });
+  }
+
+  return wrap;
+}
+
+function renderHeroSlides() {
+  const list = document.getElementById("heroSlidesList");
+  if (!list) return;
+  list.innerHTML = "";
+  const slides = getHeroSlides();
+  if (!slides.length) {
+    const empty = document.createElement("div");
+    empty.className = "settings-field wide";
+    empty.innerHTML = "<div class='settings-field-help'>لا توجد شرائح يدوية حالياً.</div>";
+    list.appendChild(empty);
+    return;
+  }
+  slides.forEach((slide, idx) => list.appendChild(heroSlideCard(slide || {}, idx)));
+}
+
+const addSlideBtn = document.getElementById("addHeroSlideBtn");
+if (addSlideBtn) {
+  addSlideBtn.addEventListener("click", () => {
+    const slides = getHeroSlides();
+    slides.push({ title: "", kicker: "", subtitle: "", cta_text: "تسوق الآن", cta_href: "#luxProducts", image_url: "", features: "" });
+    setHeroSlides(slides);
+    renderHeroSlides();
+  });
+}
+
+const clearSlidesBtn = document.getElementById("clearHeroSlidesBtn");
+if (clearSlidesBtn) {
+  clearSlidesBtn.addEventListener("click", () => {
+    setHeroSlides([]);
+    renderHeroSlides();
+  });
+}
+
+renderHeroSlides();
+
+const CARD_TEMPLATES = safeJsonParse((document.getElementById("sfCardTemplatesCatalog") || {}).textContent, []);
+const CARD_SIZES = safeJsonParse((document.getElementById("sfCardSizesCatalog") || {}).textContent, []);
+
+function getProductSections() {
+  const el = document.getElementById("storefrontProductSectionsJson");
+  const rows = safeJsonParse(el ? el.value : "[]", []);
+  return Array.isArray(rows) ? rows : [];
+}
+
+function setProductSections(rows) {
+  const el = document.getElementById("storefrontProductSectionsJson");
+  if (!el) return;
+  el.value = JSON.stringify(Array.isArray(rows) ? rows : []);
+}
+
+function templateOptions(selected) {
+  return CARD_TEMPLATES.map(t => `<option value="${t.id}" ${t.id === selected ? "selected" : ""}>${t.label}</option>`).join("");
+}
+
+function sizeOptions(selected) {
+  return CARD_SIZES.map(s => `<option value="${s.id}" ${s.id === selected ? "selected" : ""}>${s.label}</option>`).join("");
+}
+
+function productSectionCard(section, idx, total) {
+  const wrap = document.createElement("div");
+  wrap.className = "settings-section-card";
+  wrap.style.margin = "0";
+  const mode = section.product_mode || "all";
+  wrap.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;">
+      <strong>قسم #${idx + 1}</strong>
+      <div style="display:flex;gap:6px;">
+        <button type="button" class="btn btn-secondary btn-sm" data-action="up" ${idx === 0 ? "disabled" : ""}>↑</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-action="down" ${idx === total - 1 ? "disabled" : ""}>↓</button>
+        <button type="button" class="btn btn-danger btn-sm" data-action="remove">حذف</button>
+      </div>
+    </div>
+    <div class="settings-grid" style="grid-template-columns: repeat(3, minmax(0,1fr)); gap:10px;">
+      <div class="settings-field"><label class="settings-field-label">عنوان القسم</label><input class="settings-input" data-field="title" type="text" value="${section.title || ""}"></div>
+      <div class="settings-field"><label class="settings-field-label">مفعّل</label><select class="settings-select" data-field="enabled"><option value="1" ${section.enabled !== false ? "selected" : ""}>نعم</option><option value="0" ${section.enabled === false ? "selected" : ""}>لا</option></select></div>
+      <div class="settings-field"><label class="settings-field-label">قالب البطاقة</label><select class="settings-select" data-field="card_template">${templateOptions(section.card_template || "classic")}</select></div>
+      <div class="settings-field"><label class="settings-field-label">حجم البطاقة</label><select class="settings-select" data-field="card_size">${sizeOptions(section.card_size || "md")}</select></div>
+      <div class="settings-field"><label class="settings-field-label">أعمدة الشبكة</label><input class="settings-input" data-field="columns" type="number" min="2" max="6" value="${section.columns || 5}"></div>
+      <div class="settings-field"><label class="settings-field-label">عدد المنتجات</label><input class="settings-input" data-field="limit" type="number" min="1" max="48" value="${section.limit || 12}"></div>
+      <div class="settings-field"><label class="settings-field-label">مصدر المنتجات</label>
+        <select class="settings-select" data-field="product_mode">
+          <option value="all" ${mode === "all" ? "selected" : ""}>الكل</option>
+          <option value="discount" ${mode === "discount" ? "selected" : ""}>خصومات</option>
+          <option value="new" ${mode === "new" ? "selected" : ""}>جديد</option>
+          <option value="category" ${mode === "category" ? "selected" : ""}>فئة</option>
+          <option value="manual" ${mode === "manual" ? "selected" : ""}>منتجات محددة (IDs)</option>
+        </select>
+      </div>
+      <div class="settings-field"><label class="settings-field-label">الفئة (إن وجد)</label><input class="settings-input" data-field="category" type="text" value="${section.category || ""}"></div>
+      <div class="settings-field wide"><label class="settings-field-label">معرّفات المنتجات (يدوي)</label><input class="settings-input" data-field="product_ids" type="text" placeholder="مثال: 12,45,90" value="${Array.isArray(section.product_ids) ? section.product_ids.join(",") : ""}"></div>
+    </div>
+  `;
+
+  function persistFromDom() {
+    const rows = getProductSections();
+    const row = rows[idx] || {};
+    wrap.querySelectorAll("[data-field]").forEach((input) => {
+      const field = input.getAttribute("data-field");
+      if (field === "enabled") row.enabled = input.value === "1";
+      else if (field === "columns" || field === "limit") row[field] = Math.max(0, parseInt(input.value, 10) || 0);
+      else if (field === "product_ids") {
+        row.product_ids = String(input.value || "").split(",").map(v => parseInt(v.trim(), 10)).filter(v => v > 0);
+      } else row[field] = input.value;
+    });
+    if (!row.id) row.id = "sec_" + Date.now().toString(36);
+    row.sort_order = idx;
+    rows[idx] = row;
+    setProductSections(rows);
+  }
+
+  wrap.querySelectorAll("[data-field]").forEach((input) => {
+    input.addEventListener("input", persistFromDom);
+    input.addEventListener("change", persistFromDom);
+  });
+
+  wrap.querySelector('[data-action="remove"]').addEventListener("click", () => {
+    const rows = getProductSections();
+    rows.splice(idx, 1);
+    setProductSections(rows);
+    renderProductSections();
+  });
+  wrap.querySelector('[data-action="up"]').addEventListener("click", () => {
+    const rows = getProductSections();
+    if (idx <= 0) return;
+    const tmp = rows[idx - 1]; rows[idx - 1] = rows[idx]; rows[idx] = tmp;
+    setProductSections(rows); renderProductSections();
+  });
+  wrap.querySelector('[data-action="down"]').addEventListener("click", () => {
+    const rows = getProductSections();
+    if (idx >= rows.length - 1) return;
+    const tmp = rows[idx + 1]; rows[idx + 1] = rows[idx]; rows[idx] = tmp;
+    setProductSections(rows); renderProductSections();
+  });
+
+  return wrap;
+}
+
+function renderProductSections() {
+  const list = document.getElementById("productSectionsList");
+  if (!list) return;
+  list.innerHTML = "";
+  const rows = getProductSections();
+  if (!rows.length) {
+    const empty = document.createElement("div");
+    empty.className = "settings-field-help";
+    empty.textContent = "لا توجد أقسام مخصصة — سيُستخدم قسم افتراضي واحد.";
+    list.appendChild(empty);
+    return;
+  }
+  rows.forEach((row, idx) => list.appendChild(productSectionCard(row || {}, idx, rows.length)));
+}
+
+const addSectionBtn = document.getElementById("addProductSectionBtn");
+if (addSectionBtn) {
+  addSectionBtn.addEventListener("click", () => {
+    const rows = getProductSections();
+    rows.push({
+      id: "sec_" + Date.now().toString(36),
+      title: "قسم جديد",
+      enabled: true,
+      card_template: "classic",
+      card_size: "md",
+      columns: 5,
+      product_mode: "all",
+      limit: 12,
+      sort_order: rows.length,
+    });
+    setProductSections(rows);
+    renderProductSections();
+  });
+}
+
+const resetSectionsBtn = document.getElementById("resetProductSectionsBtn");
+if (resetSectionsBtn) {
+  resetSectionsBtn.addEventListener("click", () => {
+    setProductSections([{
+      id: "main_products",
+      title: "المنتجات",
+      enabled: true,
+      card_template: document.getElementById("storefrontProductCardStyle")?.value || "classic",
+      card_size: "md",
+      columns: 5,
+      product_mode: "all",
+      limit: 48,
+      sort_order: 0,
+    }]);
+    renderProductSections();
+  });
+}
+
+renderProductSections();
+
 document.getElementById("saveStorefrontBtn").addEventListener("click", function () {
   const btn = this;
   btn.disabled = true;
+
+  const heroSlides = getHeroSlides().filter(s => s && (String(s.image_url || "").trim().length > 0));
 
   const ui_flags = {
     storefront_primary_color: document.getElementById("storefrontPrimaryColor").value || "#4f8cff",
@@ -273,6 +656,9 @@ document.getElementById("saveStorefrontBtn").addEventListener("click", function 
     storefront_theme_preset: document.getElementById("storefrontThemePreset").value || "custom",
     storefront_hero_title: document.getElementById("storefrontHeroTitle").value || "واجهة متجر احترافية",
     storefront_hero_subtitle: document.getElementById("storefrontHeroSubtitle").value || "",
+    storefront_hero_mode: document.getElementById("storefrontHeroMode").value || "auto",
+    storefront_hero_slides: heroSlides,
+    storefront_product_sections: getProductSections().filter(s => s && (s.title || s.card_template)),
     storefront_shipping_default_fee: Math.max(0, parseInt(document.getElementById("storefrontDefaultShipping").value, 10) || 0),
     storefront_shipping_by_city: collectStorefrontShippingByCity(),
     storefront_coupon_code: (document.getElementById("storefrontCouponCode").value || "").trim().toUpperCase(),

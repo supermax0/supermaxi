@@ -1,0 +1,5 @@
+{% set tpl = card_template|default('classic') %}
+{% if tpl not in ['classic','compact','showcase','spotlight','horizontal','elegant','overlay'] %}
+  {% set tpl = 'classic' %}
+{% endif %}
+{% include "storefront/partials/luxury/cards/" ~ tpl ~ ".html" %}

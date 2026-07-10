@@ -1,0 +1,48 @@
+<section class="lux-toolbar" aria-label="أدوات التصفح">
+  <div class="lux-toolbar-row">
+    <div class="lux-view-toggle" role="group" aria-label="طريقة العرض">
+      <button type="button" class="lux-view-btn is-active" data-lux-view="grid" aria-pressed="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        شبكة
+      </button>
+      <button type="button" class="lux-view-btn" data-lux-view="list" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg>
+        قائمة
+      </button>
+    </div>
+    <div class="lux-search-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <label class="sr-only" for="luxSearch">بحث</label>
+      <input id="luxSearch" type="search" class="lux-search" placeholder="ابحث عن منتج..." autocomplete="off" value="{{ filters.q or '' }}">
+    </div>
+    <div class="lux-toolbar-field">
+      <label class="sr-only" for="luxCategory">الفئة</label>
+      <select id="luxCategory" class="lux-select">
+        <option value="">كل الفئات</option>
+        {% for b in badges %}
+        <option value="{{ b }}" {% if filters.badge == b %}selected{% endif %}>{{ b }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="button" class="lux-filter-toggle" id="luxFilterToggle" aria-expanded="false" aria-controls="luxPricePanel">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+      تصفية الفلاتر
+    </button>
+    <div class="lux-toolbar-field">
+      <label class="sr-only" for="luxSort">الترتيب</label>
+      <select id="luxSort" class="lux-select">
+        <option value="best_selling" {% if filters.sort == 'best_selling' %}selected{% endif %}>الأكثر مبيعاً</option>
+        <option value="latest" {% if filters.sort == 'latest' or not filters.sort %}selected{% endif %}>الأحدث</option>
+        <option value="price_asc" {% if filters.sort == 'price_asc' %}selected{% endif %}>السعر من الأقل</option>
+        <option value="price_desc" {% if filters.sort == 'price_desc' %}selected{% endif %}>السعر من الأعلى</option>
+        <option value="name_asc" {% if filters.sort == 'name_asc' %}selected{% endif %}>الاسم</option>
+      </select>
+    </div>
+  </div>
+  <div class="lux-price-panel" id="luxPricePanel" hidden>
+    <label for="luxMinPrice">السعر من</label>
+    <input id="luxMinPrice" type="number" min="0" class="lux-price-input" value="{{ filters.min_price or '' }}" placeholder="0">
+    <label for="luxMaxPrice">إلى</label>
+    <input id="luxMaxPrice" type="number" min="0" class="lux-price-input" value="{{ filters.max_price or '' }}" placeholder="0">
+  </div>
+</section>

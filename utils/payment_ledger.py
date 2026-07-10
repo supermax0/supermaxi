@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
 
-from sqlalchemy import func, inspect
+from sqlalchemy import func, inspect, or_
 
 from extensions import db
 
@@ -135,10 +135,10 @@ def net_profit_for_collection_calendar_day(day: date) -> int:
        (بيانات قديمة أو مسارات لم تسجّل الدفتر — مثل «تم التوصيل» فقط).
     3) تُطرح مصاريف Expense لذلك اليوم.
     """
-    from models.expense import Expense
     from models.invoice import Invoice
     from models.invoice_payment_ledger import InvoicePaymentLedger
     from utils.cash_calculations import _effective_paid_amount
+    from utils.expense_queries import sum_posted_expenses
 
     ensure_invoice_payment_ledger_table()
     start_utc, end_utc = calendar_day_bounds_utc(day)
@@ -150,11 +150,7 @@ def net_profit_for_collection_calendar_day(day: date) -> int:
         ).all()
     )
 
-    expenses_day = db.session.query(func.sum(Expense.amount)).filter(
-        Expense.expense_date.isnot(None),
-        func.date(Expense.expense_date) == day,
-    ).scalar() or 0
-    expenses_day = int(expenses_day or 0)
+    expenses_day = sum_posted_expenses(day, day)
 
     revenue = 0
     cogs = 0
@@ -182,7 +178,10 @@ def net_profit_for_collection_calendar_day(day: date) -> int:
     ).filter(
         func.date(Invoice.created_at) == day,
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
-        Invoice.payment_status.notin_(RETURN_STATUSES + CANCELED_STATUSES),
+        or_(
+            Invoice.payment_status.is_(None),
+            Invoice.payment_status.notin_(RETURN_STATUSES + CANCELED_STATUSES),
+        ),
     ).all()
 
     invoices_with_ledger = set()

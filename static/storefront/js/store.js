@@ -46,7 +46,7 @@
     const qtyInput =
       btn.closest("form")?.querySelector("[name=quantity]") ||
       document.querySelector(`[form="${btn.closest("form")?.id}"][name=quantity]`) ||
-      btn.closest(".sf-detail-info, .sf-product-card")?.querySelector("[name=quantity]");
+      btn.closest(".sf-detail-info, .lux-pd-info, .sf-product-card, .lux-product-card")?.querySelector("[name=quantity]");
     const qty = qtyInput ? parseInt(qtyInput.value, 10) || 1 : 1;
     btn.disabled = true;
     try {
@@ -59,73 +59,18 @@
     }
   });
 
-  document.querySelectorAll(".sf-thumb[data-full]").forEach((thumb) => {
+  document.querySelectorAll(".sf-thumb[data-full], .lux-pd-thumb[data-full]").forEach((thumb) => {
     thumb.addEventListener("click", () => {
       const main = document.getElementById("sfMainImage");
       const src = thumb.getAttribute("data-full");
       if (main && src) main.src = src;
+      document.querySelectorAll(".lux-pd-thumb").forEach((t) => {
+        const active = t === thumb;
+        t.classList.toggle("is-active", active);
+        t.setAttribute("aria-selected", active ? "true" : "false");
+      });
     });
   });
-
-  const cityInput = document.getElementById("sfCheckoutCity");
-  const shippingText = document.getElementById("sfShippingFeeText");
-  const grandTotalText = document.getElementById("sfGrandTotalText");
-  const shippingMap = cfg.shippingMap || {};
-  const defaultShipping = cfg.shippingDefault || 0;
-  const netSubtotal = cfg.netSubtotal || 0;
-
-  function normalizedCity(value) {
-    return String(value || "").replace(/-/g, " ").trim().toLowerCase();
-  }
-
-  function shippingForCity(city) {
-    const norm = normalizedCity(city);
-    for (const [name, fee] of Object.entries(shippingMap)) {
-      if (normalizedCity(name) === norm) return Number(fee) || 0;
-    }
-    return Number(defaultShipping) || 0;
-  }
-
-  function formatMoney(n) {
-    return new Intl.NumberFormat("ar-IQ").format(Number(n) || 0) + " د.ع";
-  }
-
-  function formatDeduction(n) {
-    const amount = Number(n) || 0;
-    return amount > 0 ? "-" + formatMoney(amount) : formatMoney(0);
-  }
-
-  function refreshCheckoutTotals() {
-    if (!cityInput) return;
-    const city = cityInput.value;
-    if (!city) {
-      if (shippingText) shippingText.textContent = formatMoney(0);
-      if (grandTotalText) grandTotalText.textContent = formatMoney(netSubtotal);
-      return;
-    }
-    fetch(apiUrl("shipping-quote"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
-      body: JSON.stringify({ city }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        const fee = data.success ? Number(data.fee) || 0 : shippingForCity(city);
-        if (shippingText) shippingText.textContent = formatDeduction(fee);
-        if (grandTotalText) grandTotalText.textContent = formatMoney(Math.max(0, netSubtotal - fee));
-      })
-      .catch(() => {
-        const fee = shippingForCity(city);
-        if (shippingText) shippingText.textContent = formatDeduction(fee);
-        if (grandTotalText) grandTotalText.textContent = formatMoney(Math.max(0, netSubtotal - fee));
-      });
-  }
-
-  if (cityInput) {
-    cityInput.addEventListener("input", refreshCheckoutTotals);
-    cityInput.addEventListener("change", refreshCheckoutTotals);
-    refreshCheckoutTotals();
-  }
 
   const couponForm = document.getElementById("sfCouponForm");
   if (couponForm) {

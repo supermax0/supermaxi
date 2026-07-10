@@ -8,6 +8,7 @@ from extensions import db
 from models.account_transaction import AccountTransaction
 from models.beauty_appointment import BeautyAppointment
 from models.expense import Expense
+from utils.expense_queries import posted_expense_filter, sum_posted_expenses
 from utils.period_net_profit import expenses_sum_for_range
 
 _CASH_NOTE_PREFIX = "مركز التجميل - جلسة #"
@@ -50,11 +51,10 @@ def sync_beauty_cash_transaction(appointment: BeautyAppointment) -> None:
 
 
 def _expenses_amount_for_beauty_range(date_from: date | None, date_to: date | None) -> int:
-    """مصاريف الصرفيات بنفس نطاق التقرير؛ بدون تواريخ = مجموع كل المصاريف ذات التاريخ."""
+    """مصاريف الصرفيات الفعلية بنفس نطاق التقرير."""
     if date_from is not None and date_to is not None:
         return expenses_sum_for_range(date_from, date_to)
-    total = db.session.query(func.sum(Expense.amount)).filter(Expense.expense_date.isnot(None)).scalar() or 0
-    return int(total or 0)
+    return sum_posted_expenses()
 
 
 def beauty_summary(date_from: date | None = None, date_to: date | None = None) -> dict:
@@ -103,7 +103,7 @@ def beauty_daily_revenue_points(days: int = 14) -> list[dict]:
     )
     exp_rows = (
         db.session.query(func.date(Expense.expense_date).label("day"), func.sum(Expense.amount).label("amt"))
-        .filter(Expense.expense_date.isnot(None))
+        .filter(Expense.expense_date.isnot(None), posted_expense_filter())
         .group_by(func.date(Expense.expense_date))
         .all()
     )

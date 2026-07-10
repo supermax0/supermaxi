@@ -48,14 +48,10 @@ rotating_savings_bp_alias = Blueprint(
 )
 
 
-@rotating_savings_bp_alias.before_request
-def _alias_setup():
-    return _setup()
-
-
 @rotating_savings_bp_alias.route("/", defaults={"subpath": ""})
-@rotating_savings_bp_alias.route("/<path:subpath>")
+@rotating_savings_bp_alias.route("/<path:subpath>", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
 def alias_redirect(subpath):
+    """Redirect underscore URLs without running schema/GL setup (avoids double work + 504)."""
     if "user_id" not in session:
         return redirect("/pos/login")
     target = "/finance/rotating-savings"
@@ -64,7 +60,8 @@ def alias_redirect(subpath):
     qs = request.query_string.decode("utf-8")
     if qs:
         target = f"{target}?{qs}"
-    return redirect(target, code=308)
+    # 307 keeps method/body for POST create; 308 was fine for GET but POST must not re-run setup twice.
+    return redirect(target, code=307)
 
 
 @rotating_savings_bp.before_request
@@ -74,6 +71,7 @@ def _setup():
     tenant_slug = session.get("tenant_slug")
     if tenant_slug:
         g.tenant = tenant_slug
+    # Cached per-tenant after first hit — must stay cheap on every request.
     ensure_treasury_schema()
     ensure_rotating_savings_schema()
     ensure_rotating_savings_gl_accounts()

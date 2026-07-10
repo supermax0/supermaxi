@@ -86,6 +86,16 @@ class Employee(db.Model):
         default=0
     )  # راتب ثابت (اختياري)
 
+    pay_type = db.Column(
+        db.String(30),
+        default="none",
+    )  # none | monthly | weekly | commission | monthly_commission | weekly_commission
+
+    pay_day_of_month = db.Column(db.Integer, default=25)  # 1-28
+    pay_weekday = db.Column(db.Integer, default=4)  # 0=Mon .. 6=Sun (Friday=4 in Python weekday)
+    payroll_effective_from = db.Column(db.Date, nullable=True)
+    last_salary_paid_at = db.Column(db.DateTime, nullable=True)
+
     # =====================
     # Statistics (Cached)
     # =====================

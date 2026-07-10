@@ -1,0 +1,75 @@
+<section class="lux-hero" id="luxHero" aria-label="بانر المتجر">
+  <div class="lux-hero-glow" aria-hidden="true"></div>
+  <div class="lux-hero-track">
+    {% for slide in hero_slides %}
+    {% set slide_first = loop.first %}
+    <article class="lux-hero-slide{% if slide_first %} is-active{% endif %}" data-slide="{{ loop.index0 }}" data-layout="{{ slide.layout }}">
+      <div class="lux-hero-copy">
+        <p class="lux-hero-kicker">{{ slide.kicker }}</p>
+        <h1>{{ slide.title }}</h1>
+        {% if slide.subtitle %}<p class="lux-hero-sub">{{ slide.subtitle }}</p>{% endif %}
+        {% if slide.features %}
+        <ul class="lux-hero-features">
+          {% for feat in slide.features %}
+          <li>{{ feat }}</li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+        <a class="lux-btn lux-btn-gold lux-hero-cta" href="{{ slide.cta_href }}{% if request.args.get('dev') and not slide.cta_href.startswith('#') %}?dev=1{% endif %}">
+          {{ slide.cta_text }} <span aria-hidden="true">&#8592;</span>
+        </a>
+      </div>
+
+      <div class="lux-hero-visual" aria-hidden="true">
+        {% if slide.layout == 'spotlight' and slide.spotlight %}
+        <div class="lux-hero-spotlight">
+          <div class="lux-hero-stage">
+            <div class="lux-hero-stage-ring"></div>
+            <div class="lux-hero-stage-glow"></div>
+            <img class="lux-hero-spotlight-img" src="{{ slide.spotlight.image_url }}" alt="{{ slide.spotlight.name }}" loading="{% if loop.first %}eager{% else %}lazy{% endif %}">
+          </div>
+          <div class="lux-hero-spotlight-card">
+            {% if slide.spotlight.discount_percent %}
+            <span class="lux-hero-spotlight-badge">-{{ slide.spotlight.discount_percent }}%</span>
+            {% elif slide.spotlight.is_new %}
+            <span class="lux-hero-spotlight-badge lux-hero-spotlight-badge--new">جديد</span>
+            {% endif %}
+            {% if slide.spotlight.price and slide.spotlight.price > 0 %}
+            <p class="lux-hero-spotlight-price">{{ "{:,.0f}".format(slide.spotlight.price) }} <small>د.ع</small></p>
+            {% if slide.spotlight.old_price and slide.spotlight.old_price > slide.spotlight.price %}
+            <p class="lux-hero-spotlight-old">{{ "{:,.0f}".format(slide.spotlight.old_price) }} د.ع</p>
+            {% endif %}
+            {% endif %}
+          </div>
+        </div>
+        {% elif slide.products %}
+        <div class="lux-hero-products">
+          {% for hp in slide.products %}
+          <a class="lux-hero-product-link" href="{{ hp.url }}{% if request.args.get('dev') %}?dev=1{% endif %}" style="--lux-hero-i: {{ loop.index0 }}">
+            <img class="lux-hero-product-img" src="{{ hp.image_url }}" alt="{{ hp.name }}" loading="{% if slide_first and loop.first %}eager{% else %}lazy{% endif %}">
+            {% if hp.discount_percent %}<span class="lux-hero-product-tag">-{{ hp.discount_percent }}%</span>{% endif %}
+          </a>
+          {% endfor %}
+        </div>
+        {% elif slide.logo_url %}
+        <div class="lux-hero-brand">
+          <div class="lux-hero-stage lux-hero-stage--brand">
+            <div class="lux-hero-stage-ring"></div>
+            <img class="lux-hero-logo" src="{{ slide.logo_url }}" alt="{{ slide.store_name or store_design.store_name }}">
+          </div>
+        </div>
+        {% else %}
+        <div class="lux-hero-brand lux-hero-brand--text">
+          <div class="lux-hero-brand-initial">{{ (slide.store_name or store_design.store_name or 'م')[:1] }}</div>
+        </div>
+        {% endif %}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% if hero_slides|length > 1 %}
+  <button type="button" class="lux-hero-nav lux-hero-prev" aria-label="السابق">&#10094;</button>
+  <button type="button" class="lux-hero-nav lux-hero-next" aria-label="التالي">&#10095;</button>
+  <div class="lux-hero-dots" id="luxHeroDots" role="tablist" aria-label="شرائح العرض"></div>
+  {% endif %}
+</section>

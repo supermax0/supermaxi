@@ -259,6 +259,8 @@ def preview_invoice_template(template_id):
     ]
     total = 55000
     due = 55000
+    paid_amount = 55000
+    is_partial = False
     returned_count = 0
     cancelled_count = 0
 
@@ -297,10 +299,13 @@ def preview_invoice_template(template_id):
         items=items,
         total=total,
         due=due,
+        paid_amount=paid_amount,
+        is_partial=is_partial,
         returned_count=returned_count,
         cancelled_count=cancelled_count,
         settings=inv_settings,
         template_styles=template_styles,
+        order_public_view_url="",
     )
 
 
@@ -328,6 +333,7 @@ def seed_templates():
         {'name': 'المتجر الإلكتروني', 'description': 'يعرض شروط الاسترجاع بشكل واضح وبارز.', 'html_file_name': 'ecommerce.html', 'is_premium': True, 'price': 5000},
         {'name': 'الخط العربي الأصيل', 'description': 'زخرفة إسلامية وخط عربي أصيل.', 'html_file_name': 'arabic.html', 'is_premium': True, 'price': 10000},
         {'name': 'الفاخر (Luxury Gold)', 'description': 'ذهبي وأسود، فخامة مطلقة للعطور والمجوهرات.', 'html_file_name': 'luxury.html', 'is_premium': True, 'price': 15000},
+        {'name': 'فاتورة فاخرة (Luxury Invoice)', 'description': 'أبيض رسمي مع لمسة ذهبية للأجهزة الكهربائية — A4 قابل للطباعة.', 'html_file_name': 'LuxuryInvoiceTemplate.html', 'is_premium': False, 'price': 0},
         {'name': 'سوبر ماكس الضريبي', 'description': 'قالب ضريبي فاخر بالأزرق الداكن والذهبي مع بطاقة ضمان مرفقة.', 'html_file_name': 'supermax_tax.html', 'is_premium': False, 'price': 0},
     ]
     for t in default_templates:

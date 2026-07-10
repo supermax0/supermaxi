@@ -1,4 +1,4 @@
-from flask import Blueprint, flash, render_template, request, redirect, url_for, session
+from flask import Blueprint, flash, render_template, request, redirect, url_for, session, jsonify
 from extensions import db
 from flask import send_file
 from reportlab.lib.pagesizes import A4
@@ -13,11 +13,20 @@ from datetime import datetime
 from models.purchase import Purchase
 from models.purchase_item import PurchaseItem
 from models.employee import Employee
+from models.product import Product
+from models.supplier_sale import SupplierSale
 from utils.plan_guard import feature_required
 from utils.permission_checks import check_permission
 from utils.treasury_helpers import resolve_treasury_account_id, treasury_choices_for_form
 from utils.treasury_calculations import assert_sufficient_balance, InsufficientTreasuryBalance
 from utils.treasury_schema_guard import ensure_treasury_schema
+from utils.supplier_sale_service import (
+    SupplierSaleError,
+    cancel_supplier_sale,
+    create_supplier_sale,
+    ensure_supplier_sale_schema,
+    supplier_sale_summary,
+)
 
 suppliers_bp = Blueprint("suppliers", __name__)
 
@@ -101,6 +110,17 @@ def _supplier_purchases_query(supplier_id: int):
     )
 
 
+def _supplier_sales_query(supplier_id: int):
+    from sqlalchemy.orm import joinedload
+
+    return (
+        SupplierSale.query.options(joinedload(SupplierSale.items))
+        .filter_by(supplier_id=supplier_id)
+        .filter(SupplierSale.status != "cancelled")
+        .order_by(SupplierSale.sale_date.desc(), SupplierSale.id.desc())
+    )
+
+
 # =============================
 # Suppliers Page
 # =============================
@@ -139,22 +159,30 @@ def supplier_details(id):
     if not check_permission("can_manage_suppliers"):
         return redirect("/pos"), 403
     _ensure_supplier_opening_balance_column()
+    ensure_supplier_sale_schema()
     supplier = Supplier.query.get_or_404(id)
     purchases = _supplier_purchases_query(id).all()
     purchase_invoices = [_purchase_invoice_summary(p) for p in purchases]
+    sales = _supplier_sales_query(id).all()
+    sale_invoices = [supplier_sale_summary(s) for s in sales]
     payments = (
         SupplierPayment.query.filter_by(supplier_id=id)
         .order_by(SupplierPayment.created_at.desc())
         .all()
     )
+    remaining = int(supplier.remaining or 0)
+    supplier_receivable = abs(remaining) if remaining < 0 else 0
 
     return render_template(
         "supplier_details.html",
         supplier=supplier,
         purchases=purchases,
         purchase_invoices=purchase_invoices,
+        sales=sales,
+        sale_invoices=sale_invoices,
         payments=payments,
         treasury_choices=treasury_choices_for_form(),
+        supplier_receivable=supplier_receivable,
     )
 
 
@@ -177,6 +205,9 @@ def supplier_pay(id):
     if amount <= 0:
         flash("أدخل مبلغ دفع صحيح أكبر من صفر.", "error")
         return redirect(url_for("suppliers.supplier_details", id=id))
+    if remaining <= 0:
+        flash("لا يمكن تسديد دفعة — المورد لا يدين لنا أو تمت تسوية الدين بالكامل.", "error")
+        return redirect(url_for("suppliers.supplier_details", id=id))
     if amount > remaining:
         flash("مبلغ الدفع أكبر من المتبقي على المورد.", "error")
         return redirect(url_for("suppliers.supplier_details", id=id))
@@ -194,6 +225,7 @@ def supplier_pay(id):
         amount=amount,
         note=note,
         treasury_account_id=treasury_account_id,
+        payment_method="cash",
     )
 
     supplier.total_paid = int(supplier.total_paid or 0) + amount
@@ -211,6 +243,10 @@ def supplier_payment_delete(payment_id):
         return redirect("/pos"), 403
 
     payment = SupplierPayment.query.get_or_404(payment_id)
+    if (payment.payment_method or "cash").strip().lower() == "offset":
+        flash("لا يمكن حذف دفعة تسوية مرتبطة ببيع للمورد — ألغِ البيع من جدول المبيعات.", "error")
+        return redirect(url_for("suppliers.supplier_details", id=payment.supplier_id))
+
     supplier = Supplier.query.get_or_404(payment.supplier_id)
     amount = int(payment.amount or 0)
     supplier_id = supplier.id
@@ -223,15 +259,139 @@ def supplier_payment_delete(payment_id):
     return redirect(url_for("suppliers.supplier_details", id=supplier_id))
 
 
+@suppliers_bp.route("/<int:id>/sale", methods=["POST"])
+def supplier_sale_create(id):
+    if not check_permission("can_manage_suppliers"):
+        return jsonify({"success": False, "error": "غير مصرح"}), 403
+
+    supplier = Supplier.query.get_or_404(id)
+    data = request.get_json(silent=True) or {}
+    items = data.get("items") or []
+    note = (data.get("note") or "").strip()
+    employee = Employee.query.get(session.get("user_id")) if session.get("user_id") else None
+
+    try:
+        sale = create_supplier_sale(supplier, items, note=note, employee=employee)
+        db.session.commit()
+    except SupplierSaleError as exc:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(exc)}), 400
+    except Exception as exc:
+        db.session.rollback()
+        return jsonify({"success": False, "error": f"خطأ غير متوقع: {exc}"}), 500
+
+    remaining = int(supplier.remaining or 0)
+    receivable = abs(remaining) if remaining < 0 else 0
+    return jsonify(
+        {
+            "success": True,
+            "message": f"تم تسجيل بيع للمورد — {sale.invoice_no}",
+            "sale_id": sale.id,
+            "invoice_no": sale.invoice_no,
+            "grand_total": int(sale.grand_total or 0),
+            "remaining": remaining,
+            "supplier_receivable": receivable,
+            "redirect": url_for("suppliers.supplier_details", id=supplier.id),
+        }
+    )
+
+
+@suppliers_bp.route("/sale/<int:sale_id>/cancel", methods=["POST"])
+def supplier_sale_cancel(sale_id):
+    if not check_permission("can_manage_suppliers"):
+        return jsonify({"success": False, "error": "غير مصرح"}), 403
+
+    sale = SupplierSale.query.get_or_404(sale_id)
+    supplier_id = sale.supplier_id
+
+    try:
+        cancel_supplier_sale(sale)
+        db.session.commit()
+    except SupplierSaleError as exc:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(exc)}), 400
+    except Exception as exc:
+        db.session.rollback()
+        return jsonify({"success": False, "error": f"خطأ غير متوقع: {exc}"}), 500
+
+    supplier = Supplier.query.get(supplier_id)
+    remaining = int(supplier.remaining or 0) if supplier else 0
+    return jsonify(
+        {
+            "success": True,
+            "message": "تم إلغاء البيع واسترجاع المخزون.",
+            "remaining": remaining,
+            "redirect": url_for("suppliers.supplier_details", id=supplier_id),
+        }
+    )
+
+
+@suppliers_bp.route("/api/products/search")
+def supplier_products_search():
+    if not check_permission("can_manage_suppliers"):
+        return jsonify([]), 403
+
+    q = (request.args.get("q") or "").strip()
+    query = Product.query.filter_by(active=True)
+    if q:
+        like = f"%{q}%"
+        query = query.filter(Product.name.ilike(like))
+    rows = query.order_by(Product.name.asc()).limit(40).all()
+    return jsonify(
+        [
+            {
+                "id": p.id,
+                "name": p.name,
+                "sale_price": int(p.sale_price or 0),
+                "quantity": int(p.quantity or 0),
+            }
+            for p in rows
+        ]
+    )
+
+
+def _supplier_statement_context(supplier: Supplier) -> dict:
+    purchases = _supplier_purchases_query(supplier.id).all()
+    purchase_invoices = [_purchase_invoice_summary(p) for p in purchases]
+    sales = _supplier_sales_query(supplier.id).all()
+    sale_invoices = [supplier_sale_summary(s) for s in sales]
+    payments = SupplierPayment.query.filter_by(supplier_id=supplier.id).all()
+
+    total_cash_paid = 0
+    total_offset_paid = 0
+    for pay in payments:
+        amount = int(pay.amount or 0)
+        method = (pay.payment_method or "cash").strip().lower()
+        if method == "offset":
+            total_offset_paid += amount
+        else:
+            total_cash_paid += amount
+
+    return {
+        "purchases": purchases,
+        "purchase_invoices": purchase_invoices,
+        "sale_invoices": sale_invoices,
+        "payments": payments,
+        "opening_balance": int(getattr(supplier, "opening_balance", 0) or 0),
+        "total_purchase": sum(p["grand_total"] for p in purchase_invoices),
+        "total_sales": sum(s["grand_total"] for s in sale_invoices),
+        "total_cash_paid": total_cash_paid,
+        "total_offset_paid": total_offset_paid,
+        "total_paid": int(supplier.total_paid or 0),
+        "total_debt": int(supplier.total_debt or 0),
+        "remaining": int(supplier.remaining or 0),
+    }
+
+
 @suppliers_bp.route("/statement/pdf/<int:id>")
 def supplier_statement_pdf(id):
     # فحص الصلاحية
     if not check_permission("can_manage_suppliers"):
         return redirect("/pos"), 403
+    _ensure_supplier_opening_balance_column()
+    ensure_supplier_sale_schema()
     supplier = Supplier.query.get_or_404(id)
-
-    products = Purchase.query.filter_by(supplier_id=id).all()
-    payments = SupplierPayment.query.filter_by(supplier_id=id).all()
+    statement = _supplier_statement_context(supplier)
 
     buffer = BytesIO()
     pdf = canvas.Canvas(buffer, pagesize=A4)
@@ -252,70 +412,74 @@ def supplier_statement_pdf(id):
     pdf.drawString(2*cm, y, f"Date: {datetime.now().strftime('%Y-%m-%d')}")
     y -= 1*cm
 
-    # ================= PRODUCTS =================
-    pdf.setFont("Helvetica-Bold", 13)
-    pdf.drawString(2*cm, y, "Purchases")
-    y -= 0.7*cm
-
-    pdf.setFont("Helvetica", 10)
-    pdf.drawString(2*cm, y, "Product")
-    pdf.drawString(9*cm, y, "Qty")
-    pdf.drawString(11*cm, y, "Buy Price")
-    pdf.drawString(15*cm, y, "Total")
-    y -= 0.4*cm
-
-    total_purchase = 0
-    for p in products:
-        total = p.buy_price * p.quantity
-        total_purchase += total
-
-        pdf.drawString(2*cm, y, p.name)
-        pdf.drawString(9*cm, y, str(p.quantity))
-        pdf.drawString(11*cm, y, str(p.buy_price))
-        pdf.drawString(15*cm, y, str(total))
-        y -= 0.4*cm
-
+    def new_page_if_needed():
+        nonlocal y
         if y < 2*cm:
             pdf.showPage()
             y = height - 2*cm
+
+    # ================= PURCHASES =================
+    pdf.setFont("Helvetica-Bold", 13)
+    pdf.drawString(2*cm, y, "Purchase Invoices")
+    y -= 0.7*cm
+
+    pdf.setFont("Helvetica", 10)
+    pdf.drawString(2*cm, y, "Invoice")
+    pdf.drawString(6*cm, y, "Items")
+    pdf.drawString(11*cm, y, "Total")
+    pdf.drawString(14*cm, y, "Paid")
+    pdf.drawString(17*cm, y, "Remain")
+    y -= 0.4*cm
+
+    for row in statement["purchase_invoices"]:
+        pdf.drawString(2*cm, y, str(row["invoice_no"])[:18])
+        pdf.drawString(6*cm, y, str(row["products_label"])[:28])
+        pdf.drawString(11*cm, y, str(row["grand_total"]))
+        pdf.drawString(14*cm, y, str(row["paid_total"]))
+        pdf.drawString(17*cm, y, str(row["remaining_total"]))
+        y -= 0.4*cm
+        new_page_if_needed()
 
     y -= 0.7*cm
 
     # ================= PAYMENTS =================
     pdf.setFont("Helvetica-Bold", 13)
-    pdf.drawString(2*cm, y, "Payments")
+    pdf.drawString(2*cm, y, "Payments and Supplier Sale Offsets")
     y -= 0.7*cm
 
     pdf.setFont("Helvetica", 10)
     pdf.drawString(2*cm, y, "Date")
-    pdf.drawString(7*cm, y, "Amount")
-    pdf.drawString(11*cm, y, "Note")
+    pdf.drawString(6*cm, y, "Method")
+    pdf.drawString(9*cm, y, "Amount")
+    pdf.drawString(12*cm, y, "Note")
     y -= 0.4*cm
 
-    total_paid = 0
-    for pay in payments:
-        total_paid += pay.amount
-
+    for pay in statement["payments"]:
+        method = (pay.payment_method or "cash").strip().lower()
         pdf.drawString(2*cm, y, pay.created_at.strftime("%Y-%m-%d"))
-        pdf.drawString(7*cm, y, str(pay.amount))
-        pdf.drawString(11*cm, y, pay.note or "-")
+        pdf.drawString(6*cm, y, method)
+        pdf.drawString(9*cm, y, str(int(pay.amount or 0)))
+        pdf.drawString(12*cm, y, (pay.note or "-")[:36])
         y -= 0.4*cm
-
-        if y < 2*cm:
-            pdf.showPage()
-            y = height - 2*cm
+        new_page_if_needed()
 
     y -= 1*cm
 
     # ================= SUMMARY =================
-    remaining = total_purchase - total_paid
-
     pdf.setFont("Helvetica-Bold", 12)
-    pdf.drawString(2*cm, y, f"Total Purchases: {total_purchase}")
+    pdf.drawString(2*cm, y, f"Opening Balance: {statement['opening_balance']}")
     y -= 0.6*cm
-    pdf.drawString(2*cm, y, f"Total Paid: {total_paid}")
+    pdf.drawString(2*cm, y, f"Purchase Invoices Total: {statement['total_purchase']}")
     y -= 0.6*cm
-    pdf.drawString(2*cm, y, f"Remaining Balance: {remaining}")
+    pdf.drawString(2*cm, y, f"Supplier Sale Offsets: {statement['total_sales']}")
+    y -= 0.6*cm
+    pdf.drawString(2*cm, y, f"Ledger Debt Total: {statement['total_debt']}")
+    y -= 0.6*cm
+    pdf.drawString(2*cm, y, f"Cash Paid: {statement['total_cash_paid']}")
+    y -= 0.6*cm
+    pdf.drawString(2*cm, y, f"Total Paid/Settled: {statement['total_paid']}")
+    y -= 0.6*cm
+    pdf.drawString(2*cm, y, f"Remaining Balance: {statement['remaining']}")
 
     pdf.showPage()
     pdf.save()
@@ -330,29 +494,37 @@ def supplier_statement_pdf(id):
 @suppliers_bp.route("/statement/print/<int:id>")
 def supplier_statement_print(id):
     _ensure_supplier_opening_balance_column()
+    ensure_supplier_sale_schema()
     supplier = Supplier.query.get_or_404(id)
 
     purchases = _supplier_purchases_query(id).all()
     purchase_invoices = [_purchase_invoice_summary(p) for p in purchases]
+    sales = _supplier_sales_query(id).all()
+    sale_invoices = [supplier_sale_summary(s) for s in sales]
     payments = SupplierPayment.query.filter_by(supplier_id=id).all()
 
     opening_balance = int(getattr(supplier, "opening_balance", 0) or 0)
     total_purchase = sum(p["grand_total"] for p in purchase_invoices)
+    total_sales = sum(s["grand_total"] for s in sale_invoices)
     total_paid = int(supplier.total_paid or 0)
     total_debt = int(supplier.total_debt or 0)
     remaining = int(supplier.remaining or 0)
+    supplier_receivable = abs(remaining) if remaining < 0 else 0
 
     return render_template(
         "supplier_statement_print.html",
         supplier=supplier,
         purchases=purchases,
         purchase_invoices=purchase_invoices,
+        sale_invoices=sale_invoices,
         payments=payments,
         opening_balance=opening_balance,
         total_purchase=total_purchase,
+        total_sales=total_sales,
         total_paid=total_paid,
         total_debt=total_debt,
         remaining=remaining,
+        supplier_receivable=supplier_receivable,
         today=datetime.now(),
     )
 

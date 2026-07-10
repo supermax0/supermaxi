@@ -32,6 +32,17 @@ from utils.treasury_schema_guard import ensure_treasury_schema
 
 accounts_bp = Blueprint("accounts", __name__, url_prefix="/accounts")
 
+
+@accounts_bp.before_request
+def _ensure_accounts_schema():
+    ensure_treasury_schema()
+    try:
+        from utils.payroll_schema import ensure_payroll_schema
+
+        ensure_payroll_schema()
+    except Exception:
+        pass
+
 def _build_order_accounting_impact(limit=12):
     """Read-only impact cards for recent orders; it does not post accounting entries."""
     rows = []

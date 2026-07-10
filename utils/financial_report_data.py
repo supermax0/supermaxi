@@ -7,7 +7,7 @@
 
 from datetime import date, timedelta
 from calendar import monthrange
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from extensions import db
 from models.invoice import Invoice
 from models.order_item import OrderItem
@@ -25,6 +25,7 @@ from utils.accounting_calculations import (
     calculate_accounts_receivable,
 )
 from utils.cash_calculations import calculate_cash_balance
+from utils.expense_queries import posted_expense_filter, sum_posted_expenses
 from utils.order_item_costs import exclude_delivery_fee_items
 
 RETURN_STATUSES = list(ORDER_RETURN_STATUSES)
@@ -124,14 +125,25 @@ def _effective_paid_amount(inv):
     st = getattr(inv, "status", None)
     if ps in ("مرتجع", "ملغي", "راجع", "راجعة") or st in ("مرتجع", "ملغي", "راجع", "راجعة"):
         return 0
-    if ps == "مسدد" or st in ("مسدد", "تم التوصيل"):
+    if ps == "مسدد":
         return max(total, 0)
     if ps == "جزئي":
         paid = int(getattr(inv, "paid_amount", 0) or 0)
         if paid < 0:
             return 0
         return min(paid, total) if total > 0 else paid
+    if ps == "غير مسدد":
+        return 0
+    if not ps and st in ("مسدد", "تم التوصيل"):
+        return max(total, 0)
     return 0
+
+
+def _valid_invoice_payment_status_filter():
+    return or_(
+        Invoice.payment_status.is_(None),
+        Invoice.payment_status.notin_(RETURN_STATUSES + CANCELED_STATUSES),
+    )
 
 
 def get_financial_report_data(period_type="this_month", custom_date_from=None, custom_date_to=None):
@@ -147,7 +159,7 @@ def get_financial_report_data(period_type="this_month", custom_date_from=None, c
         func.date(Invoice.created_at) >= date_from,
         func.date(Invoice.created_at) <= date_to,
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
-        Invoice.payment_status.notin_(RETURN_STATUSES),
+        _valid_invoice_payment_status_filter(),
     ).all()
 
     total_revenue = sum(int(inv.total or 0) for inv in period_invoices)
@@ -175,6 +187,7 @@ def get_financial_report_data(period_type="this_month", custom_date_from=None, c
         Expense.category,
         func.sum(Expense.amount).label("total"),
     ).filter(
+        posted_expense_filter(),
         func.date(Expense.expense_date) >= date_from,
         func.date(Expense.expense_date) <= date_to,
     ).group_by(Expense.category).all()
@@ -229,7 +242,7 @@ def get_financial_report_data(period_type="this_month", custom_date_from=None, c
             func.date(Invoice.created_at) >= prev_start,
             func.date(Invoice.created_at) <= prev_end,
             Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
-            Invoice.payment_status.notin_(RETURN_STATUSES),
+            _valid_invoice_payment_status_filter(),
         ).all()
         prev_revenue = sum(int(inv.total or 0) for inv in prev_invoices)
         prev_cogs = 0
@@ -245,10 +258,7 @@ def get_financial_report_data(period_type="this_month", custom_date_from=None, c
             for invoice_id, cogs_sum in prev_rows:
                 if cogs_sum:
                     prev_cogs += int(cogs_sum or 0)
-        prev_expenses = db.session.query(func.sum(Expense.amount)).filter(
-            func.date(Expense.expense_date) >= prev_start,
-            func.date(Expense.expense_date) <= prev_end,
-        ).scalar() or 0
+        prev_expenses = sum_posted_expenses(prev_start, prev_end)
         prev_profit = int(prev_revenue - prev_cogs - prev_expenses)
         if prev_revenue and total_revenue:
             growth_revenue_pct = round((total_revenue - prev_revenue) / prev_revenue * 100, 1)
@@ -294,7 +304,7 @@ def get_financial_report_data(period_type="this_month", custom_date_from=None, c
         func.date(Invoice.created_at) >= date_from,
         func.date(Invoice.created_at) <= date_to,
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
-        Invoice.payment_status.notin_(RETURN_STATUSES),
+        _valid_invoice_payment_status_filter(),
         exclude_delivery_fee_items(OrderItem),
     ).group_by(OrderItem.product_name).order_by(func.sum(OrderItem.total).desc()).limit(10).all()
     top_products = [{
@@ -313,7 +323,7 @@ def get_financial_report_data(period_type="this_month", custom_date_from=None, c
         func.date(Invoice.created_at) >= date_from,
         func.date(Invoice.created_at) <= date_to,
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
-        Invoice.payment_status.notin_(RETURN_STATUSES),
+        _valid_invoice_payment_status_filter(),
     ).group_by(Invoice.customer_name).order_by(func.sum(Invoice.total).desc()).limit(10).all()
     top_customers = [{
         "name": r.customer_name or "غير محدد",
@@ -404,6 +414,7 @@ def get_financial_report_data(period_type="this_month", custom_date_from=None, c
         Expense.expense_date,
         func.sum(Expense.amount).label("total"),
     ).filter(
+        posted_expense_filter(),
         func.date(Expense.expense_date) >= date_from,
         func.date(Expense.expense_date) <= date_to,
     ).group_by(Expense.expense_date).all()

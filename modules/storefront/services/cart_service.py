@@ -171,7 +171,7 @@ class StorefrontCartService:
         subtotal = sum(int(i["line_total"]) for i in items)
         discount_amount, coupon = self.discount_for_subtotal(subtotal)
         net_subtotal = max(0, subtotal - discount_amount)
-        grand_total = max(0, net_subtotal - max(0, shipping_fee))
+        grand_total = net_subtotal
         return {
             "items": items,
             "subtotal": subtotal,

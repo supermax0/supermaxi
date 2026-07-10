@@ -1,4 +1,6 @@
 import json
+import threading
+import time
 from urllib.parse import parse_qs, urlparse
 
 from flask import Blueprint, render_template, request, jsonify, session, redirect, g
@@ -14,6 +16,7 @@ from models.employee import Employee
 from models.page import Page
 from utils.product_schema_guard import ensure_customer_blacklist_columns, ensure_product_schema
 from utils.order_item_schema_guard import ensure_order_item_schema
+from utils.invoice_schema_guard import ensure_invoice_schema
 from utils.product_color_service import (
     colors_for_product_dict,
     deduct_color_stock,
@@ -29,10 +32,54 @@ from utils.activity_logger import INVOICE_SNAPSHOT_FIELDS, log_activity, snapsho
 from utils.branch_migration import ensure_branch_schema, get_default_branch
 from utils.branch_context import current_branch_id, init_branch_context
 from utils.branch_stock_service import deduct_stock, get_branch_stock, get_total_stock, receive_stock, BranchStockError
-from utils.order_shipping import add_shipping_line_item, is_shipping_item
-from utils.product_delivery_fees import fee_for_cart_items
+from utils.order_shipping import is_shipping_item
 
 pos_bp = Blueprint("pos", __name__, url_prefix="/pos")
+_POS_SUBMISSION_LOCK = threading.Lock()
+_POS_SUBMISSIONS = {}
+_POS_SUBMISSION_TTL_SECONDS = 10 * 60
+
+
+def _cleanup_pos_submissions(now=None):
+    now = now or time.time()
+    expired = [
+        token
+        for token, record in _POS_SUBMISSIONS.items()
+        if now - float(record.get("created_at", 0) or 0) > _POS_SUBMISSION_TTL_SECONDS
+    ]
+    for token in expired:
+        _POS_SUBMISSIONS.pop(token, None)
+
+
+def _begin_pos_submission(token):
+    token = (token or "").strip()
+    if not token:
+        return "new", None
+    now = time.time()
+    with _POS_SUBMISSION_LOCK:
+        _cleanup_pos_submissions(now)
+        existing = _POS_SUBMISSIONS.get(token)
+        if existing:
+            if existing.get("status") == "done" and existing.get("response"):
+                return "done", dict(existing["response"])
+            return "busy", None
+        _POS_SUBMISSIONS[token] = {"status": "busy", "created_at": now}
+    return "new", None
+
+
+def _finish_pos_submission(token, response=None, success=False):
+    token = (token or "").strip()
+    if not token:
+        return
+    with _POS_SUBMISSION_LOCK:
+        if success and response:
+            _POS_SUBMISSIONS[token] = {
+                "status": "done",
+                "response": dict(response),
+                "created_at": time.time(),
+            }
+        else:
+            _POS_SUBMISSIONS.pop(token, None)
 
 
 def _should_use_legacy_ui():
@@ -152,6 +199,7 @@ def pos_use_tenant_db():
         g.tenant = tenant_slug  # جعل الاستعلامات تستهدف قاعدة بيانات الشركة
         ensure_product_schema()
         ensure_order_item_schema()
+        ensure_invoice_schema()
         ensure_customer_blacklist_columns()
         ensure_branch_schema()
         init_branch_context()
@@ -274,6 +322,7 @@ def pos():
                     "scheduled_date": str(invoice.scheduled_date.strftime("%Y-%m-%d")) if invoice.scheduled_date else "",
                     "page_id": int(invoice.page_id) if invoice.page_id else None,
                     "page_name": str(invoice.page_name) if invoice.page_name else "",
+                    "discount_amount": int(getattr(invoice, "discount_amount", 0) or 0),
                 }
         except (ValueError, AttributeError) as e:
             print(f"Error loading order data: {e}")
@@ -553,6 +602,11 @@ def create_order():
 
     ensure_customer_blacklist_columns()
     data = request.json or {}
+    submission_token = (
+        data.get("submission_token")
+        or request.headers.get("X-Submission-Token")
+        or ""
+    ).strip()
 
     # ===============================
     # الزبون
@@ -621,6 +675,20 @@ def create_order():
     # إنشاء / تعديل الفاتورة
     # ===============================
     editing_order_id = _editing_order_id_from_request(data)
+    submission_started = False
+    if not editing_order_id:
+        submission_state, submission_payload = _begin_pos_submission(submission_token)
+        if submission_state == "done":
+            submission_payload["duplicate"] = True
+            return jsonify(submission_payload)
+        if submission_state == "busy":
+            return jsonify({
+                "success": False,
+                "error": "الطلب قيد الإنشاء حالياً، انتظر لحظة ولا تضغط تأكيد مرة ثانية.",
+                "in_progress": True,
+            }), 409
+        submission_started = bool(submission_token)
+
     invoice = None
     if editing_order_id:
         try:
@@ -652,6 +720,7 @@ def create_order():
         db.session.flush()
 
         if int(customer_id) != int(invoice.customer_id):
+            db.session.rollback()
             return jsonify({"error": "لا يمكن تغيير الزبون عند تعديل الطلب"}), 400
 
         # تثبيت بيانات الهوية الأصلية — يُحدَّث المنتج والملاحظة والتأجيل فقط
@@ -689,6 +758,8 @@ def create_order():
 
         if not product:
             db.session.rollback()
+            if submission_started:
+                _finish_pos_submission(submission_token)
             return jsonify({"error": "منتج غير موجود"}), 400
 
         qty = i.get("qty", 0)
@@ -697,6 +768,8 @@ def create_order():
             ok, msg = validate_color_sale(product.id, variant_color, qty)
             if not ok:
                 db.session.rollback()
+                if submission_started:
+                    _finish_pos_submission(submission_token)
                 return jsonify({"error": msg}), 400
 
         from utils.branch_sales import resolve_sale_fulfillment
@@ -726,6 +799,8 @@ def create_order():
         )
         if not validation.get("valid") or not fulfillment_branch_id:
             db.session.rollback()
+            if submission_started:
+                _finish_pos_submission(submission_token)
             return jsonify({
                 "error": validation.get("message") or f"الكمية غير متوفرة - المنتج: {product.name}",
                 "available": validation.get("available", 0),
@@ -758,36 +833,27 @@ def create_order():
                 deduct_color_stock(product.id, variant_color, qty)
         except (BranchStockError, ProductColorError) as exc:
             db.session.rollback()
+            if submission_started:
+                _finish_pos_submission(submission_token)
             return jsonify({"error": str(exc)}), 400
         total += item_total
 
         db.session.add(order_item)
 
     # ===============================
-    # تحديث الإجمالي + رسوم التوصيل
+    # تحديث الإجمالي
     # ===============================
-    shipping_customer = customer
-    if editing_order_id and invoice:
-        shipping_customer = invoice.customer or Customer.query.get(invoice.customer_id) or customer
-    province = (getattr(shipping_customer, "city", None) or "").strip()
-    shipping_fee = data.get("shipping_fee")
-    if shipping_fee is None:
-        shipping_fee, _ = fee_for_cart_items(
-            [{"product_id": i.get("product_id"), "qty": i.get("qty", 0)} for i in items],
-            province,
-        )
-    else:
-        try:
-            shipping_fee = max(0, int(shipping_fee))
-        except (TypeError, ValueError):
-            shipping_fee = 0
+    raw_discount = data.get("discount_amount")
+    if raw_discount is None:
+        raw_discount = data.get("discount_value") or data.get("discount")
+    try:
+        discount_amount = max(0, int(raw_discount or 0))
+    except (TypeError, ValueError):
+        discount_amount = 0
+    discount_amount = min(discount_amount, total)
 
-    tenant_id = getattr(shipping_customer, "tenant_id", None)
-    if shipping_fee > 0:
-        # Stored for settlement; deducted only when the invoice is paid.
-        add_shipping_line_item(invoice, shipping_fee, tenant_id)
-
-    invoice.total = total
+    invoice.discount_amount = discount_amount
+    invoice.total = max(0, total - discount_amount)
 
     try:
         db.session.commit()
@@ -795,7 +861,7 @@ def create_order():
             log_activity(
                 "update" if editing_order_id else "create",
                 "pos",
-                f"{'تعديل طلب' if editing_order_id else 'بيع جديد'} — فاتورة #{invoice.id} بمبلغ {total}",
+                f"{'تعديل طلب' if editing_order_id else 'بيع جديد'} — فاتورة #{invoice.id} بمبلغ {invoice.total}",
                 entity_type="invoice",
                 entity_id=invoice.id,
                 payload={
@@ -809,14 +875,19 @@ def create_order():
             )
         except Exception:
             pass
-        return jsonify({
+        response_payload = {
             "success": True,
             "invoice_id": invoice.id,
-            "total": net_total,
+            "total": invoice.total,
             "updated": bool(editing_order_id),
-        })
+        }
+        if submission_started:
+            _finish_pos_submission(submission_token, response_payload, success=True)
+        return jsonify(response_payload)
     except Exception as e:
         db.session.rollback()
+        if submission_started:
+            _finish_pos_submission(submission_token)
         return jsonify({"success": False, "error": str(e)}), 500
 
 

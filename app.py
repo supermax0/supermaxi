@@ -50,6 +50,7 @@ from routes.index import index_bp
 from routes.payments import payments_bp
 from routes.pos import pos_bp
 from routes.employees import employees_bp
+from routes.payroll import payroll_bp
 from routes.inventory import inventory_bp
 from routes.branch_api import branch_api_bp
 from routes.delivery_fee_api import delivery_fee_api_bp
@@ -296,6 +297,25 @@ with app.app_context():
     except Exception as e:
         db.session.rollback()
         print(f"Treasury schema note: {e}")
+
+    try:
+        import sqlite3
+        from extensions_tenant import get_tenant_engine
+        from utils.payroll_schema import ensure_payroll_schema
+
+        tenants_dir = os.path.join(app.root_path, "tenants")
+        if os.path.isdir(tenants_dir):
+            for db_name in sorted(os.listdir(tenants_dir)):
+                if not db_name.endswith(".db"):
+                    continue
+                tenant_slug = os.path.splitext(db_name)[0]
+                try:
+                    g.tenant = tenant_slug
+                    ensure_payroll_schema()
+                except Exception as _payroll_err:
+                    print(f"Payroll schema note ({tenant_slug}): {_payroll_err}")
+    except Exception as e:
+        print(f"Payroll schema migration note: {e}")
 
     try:
         from sqlalchemy import inspect, text
@@ -1416,6 +1436,7 @@ def require_login():
         "/api/landing-chat",  # مساعد الذكاء الاصطناعي لصفحة الهبوط
         "/telegram",  # بوت تيليجرام: webhook و setup و test — بدون تسجيل (ليستقبل التحديثات من Telegram)
         "/delivery-agent",  # بوابة مندوب التوصيل
+        "/store",
         "/shop",  # المتجر العام للزبائن — بدون تسجيل دخول
         "/orders/p/o",  # تفاصيل طلب عامة (QR) — موقّعة، بدون تسجيل
         "/orders/invoice-video",  # بث فيديو الطلب للعامة — رمز موقّع
@@ -1462,6 +1483,12 @@ def require_login():
         tenant_slug = (session.get("tenant_slug") or "").strip()
         if tenant_slug:
             g.tenant = tenant_slug
+        try:
+            from utils.payroll_schema import ensure_payroll_schema
+
+            ensure_payroll_schema()
+        except Exception:
+            pass
         employee = db.session.get(Employee, session["user_id"])
         if not employee or not employee.is_active:
             session.clear()
@@ -1517,6 +1544,7 @@ def require_login():
             ("/pages", "view_pages"),
             ("/agents", "view_agents"),
             ("/employees", "manage_employees"),
+            ("/payroll", "manage_employees"),
             ("/settings", "manage_settings"),
             ("/activity", "view_activity"),
         ]
@@ -1817,6 +1845,7 @@ app.register_blueprint(workflow_api)
 
 app.register_blueprint(pos_bp)
 app.register_blueprint(employees_bp, url_prefix="/employees")
+app.register_blueprint(payroll_bp, url_prefix="/payroll")
 app.register_blueprint(inventory_bp, url_prefix="/inventory")
 app.register_blueprint(stock_transfers_bp)
 app.register_blueprint(branch_api_bp)
@@ -1857,6 +1886,12 @@ app.register_blueprint(admin_bp)
 
 app.register_blueprint(invoice_store_bp)
 app.register_blueprint(storefront_bp)
+
+@app.route("/store")
+@app.route("/store/")
+def store_root_alias():
+    return redirect(url_for("storefront.shop_root"))
+
 app.register_blueprint(quick_sale_bp)
 app.register_blueprint(beauty_bp)
 app.register_blueprint(whatsapp_webhook_bp)

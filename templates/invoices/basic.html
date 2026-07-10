@@ -438,12 +438,12 @@
                 <tfoot>
                     <tr>
                         <td colspan="4" style="text-align: left;">مجموع المنتجات</td>
-                        <td>{{ "{:,.0f}".format(total) }} د.ع</td>
+                        <td>{{ "{:,.0f}".format(total_before_discount|default(total)) }} د.ع</td>
                     </tr>
-                    {% if due < total %}
+                    {% if discount_amount|default(0) > 0 %}
                     <tr>
-                        <td colspan="4" style="text-align: left;">خصم / واصل</td>
-                        <td style="color:#059669;font-weight:bold;">- {{ "{:,.0f}".format(total - due) }} د.ع</td>
+                        <td colspan="4" style="text-align: left;">خصم</td>
+                        <td style="color:#059669;font-weight:bold;">- {{ "{:,.0f}".format(discount_amount) }} د.ع</td>
                     </tr>
                     {% endif %}
                     <tr>

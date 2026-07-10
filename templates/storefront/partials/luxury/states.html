@@ -1,0 +1,13 @@
+<div class="lux-states">
+  <div class="lux-skeleton-grid" id="luxSkeleton" hidden aria-hidden="true">
+    {% for i in range(10) %}
+    <div class="lux-skeleton-card"></div>
+    {% endfor %}
+  </div>
+  <div class="lux-empty" id="luxEmpty" hidden>
+    <h3>لا توجد منتجات متاحة حالياً</h3>
+  </div>
+  <div class="lux-error" id="luxError" hidden>
+    <h3>تعذر تحميل المنتجات، حاول لاحقاً</h3>
+  </div>
+</div>

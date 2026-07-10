@@ -1,0 +1,42 @@
+<header class="lux-header" dir="rtl">
+  <div class="lux-header-inner">
+    <a class="lux-brand" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">
+      {% if store_design.logo_url %}
+      <img class="lux-brand-logo" src="{{ store_design.logo_url }}" alt="{{ store_design.store_name }}">
+      {% else %}
+      <span class="lux-brand-crown" aria-hidden="true">&#9813;</span>
+      {% endif %}
+      <span class="lux-brand-text">
+        <strong>{{ store_design.store_name }}</strong>
+        <small>{{ store_design.store_tagline or 'الفخامة في كل تفصيلة' }}</small>
+      </span>
+    </a>
+    <nav class="lux-nav" aria-label="التنقل الرئيسي">
+      <a class="lux-nav-link is-active" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">الرئيسية</a>
+      {% for b in (badges or [])[:5] %}
+      <a class="lux-nav-link lux-nav-badge" href="#luxProducts" data-lux-category="{{ b }}">{{ b }}</a>
+      {% endfor %}
+      <a class="lux-nav-link" href="#luxProducts">العروض</a>
+      {% if store_design.whatsapp %}
+      <a class="lux-nav-link" href="https://wa.me/{{ store_design.whatsapp|replace('+','')|replace(' ','') }}" target="_blank" rel="noopener">خدمة العملاء</a>
+      {% else %}
+      <a class="lux-nav-link" href="{{ url_for('storefront.tracking_page', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.tracking_page', tenant_slug=shop_tenant_slug) }}">خدمة العملاء</a>
+      {% endif %}
+    </nav>
+    <div class="lux-header-actions">
+      <a class="lux-icon-btn" href="{{ url_for('storefront.tracking_page', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.tracking_page', tenant_slug=shop_tenant_slug) }}" title="حسابي">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span>حسابي</span>
+      </a>
+      <button type="button" class="lux-icon-btn lux-wishlist" disabled title="المفضلة — قريباً">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+        <span>المفضلة</span>
+      </button>
+      <a class="lux-cart-btn" href="{{ url_for('storefront.cart_page', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.cart_page', tenant_slug=shop_tenant_slug) }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+        <span>السلة</span>
+        <span class="lux-cart-count" data-sf-cart-count>{{ cart_count }}</span>
+      </a>
+    </div>
+  </div>
+</header>

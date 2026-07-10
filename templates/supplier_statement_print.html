@@ -109,6 +109,28 @@ th,td{
     {% endfor %}
 </table>
 
+<h3>{{ _('supplier_sales_title') }}</h3>
+<table>
+    <tr>
+        <th>رقم الفاتورة</th>
+        <th>الأصناف</th>
+        <th>{{ _('supplier_statement_col_total') }}</th>
+        <th>{{ _('supplier_statement_col_date') }}</th>
+    </tr>
+    {% for inv in sale_invoices|default([]) %}
+    <tr>
+        <td>{{ inv.invoice_no }}</td>
+        <td>{{ inv.item_count }} — {{ inv.products_label }}</td>
+        <td>{{ "{:,}".format(inv.grand_total) }}</td>
+        <td>{{ inv.sale_date }}</td>
+    </tr>
+    {% else %}
+    <tr>
+        <td colspan="4">{{ _('supplier_sales_empty_short') }}</td>
+    </tr>
+    {% endfor %}
+</table>
+
 <h3>{{ _('supplier_statement_section_payments') }}</h3>
 <table>
     <tr>
@@ -146,9 +168,20 @@ th,td{
         <td>{{ total_paid }}</td>
     </tr>
     <tr>
+        <td>{{ _('supplier_statement_total_sales') }}</td>
+        <td>{{ total_sales|default(0) }}</td>
+    </tr>
+    {% if supplier_receivable|default(0) > 0 %}
+    <tr>
+        <td>{{ _('supplier_receivable_label') }}</td>
+        <td>{{ supplier_receivable }}</td>
+    </tr>
+    {% else %}
+    <tr>
         <td>{{ _('supplier_statement_remaining') }}</td>
         <td>{{ remaining }}</td>
     </tr>
+    {% endif %}
 </table>
 
 </body>

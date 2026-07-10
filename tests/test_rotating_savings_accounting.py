@@ -98,6 +98,7 @@ class RotatingSavingsAccountingTests(unittest.TestCase):
 
     def test_2_receive_more_than_paid(self):
         """Test 2: Receive 12M after paying 10M → liability 2M."""
+        cash_before = self._cash_balance()
         saving = build_saving_from_form({
             "name": "جمعية اختبار 2",
             "type": "company",
@@ -110,6 +111,13 @@ class RotatingSavingsAccountingTests(unittest.TestCase):
             "prior_combined_entry": "1",
         })
         db.session.commit()
+        # الدفعات السابقة رصيد افتتاحي — لا تخصم من الصندوق/النقدية
+        self.assertEqual(self._cash_balance(), cash_before)
+        self.assertEqual(saving.total_paid, 10_000_000)
+        self.assertTrue(
+            all(p.treasury_transaction_id is None for p in saving.payments),
+            "prior payments must not withdraw from treasury",
+        )
         record_receipt(saving, date.today(), 12_000_000, user_id=1)
         db.session.commit()
         recalculate_balances(saving)

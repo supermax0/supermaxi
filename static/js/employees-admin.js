@@ -205,6 +205,12 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
     document.getElementById('editEmpIsDelivery').value = data.is_delivery ? '1' : '0';
     document.getElementById('editEmpName').value = cleanName;
     document.getElementById('editEmpSalary').value = data.salary || 0;
+    const payTypeEl = document.getElementById('editEmpPayType');
+    const payDayEl = document.getElementById('editEmpPayDay');
+    const payWeekdayEl = document.getElementById('editEmpPayWeekday');
+    if (payTypeEl) payTypeEl.value = data.pay_type || 'none';
+    if (payDayEl) payDayEl.value = data.pay_day_of_month || 25;
+    if (payWeekdayEl) payWeekdayEl.value = String(data.pay_weekday ?? 4);
     const commissionField = document.getElementById('editEmpCommissionField');
     const commissionInput = document.getElementById('editEmpCommission');
     if (commissionField && commissionInput) {
@@ -224,6 +230,9 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
     const body = {
       name: document.getElementById('editEmpName').value,
       salary: document.getElementById('editEmpSalary').value,
+      pay_type: document.getElementById('editEmpPayType')?.value,
+      pay_day_of_month: document.getElementById('editEmpPayDay')?.value,
+      pay_weekday: document.getElementById('editEmpPayWeekday')?.value,
     };
     if (!isDelivery) {
       const commissionInput = document.getElementById('editEmpCommission');

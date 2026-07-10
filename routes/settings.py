@@ -444,10 +444,22 @@ def appearance_settings():
 @settings_bp.route("/storefront")
 def storefront_settings():
     """صفحة إعدادات المتجر الإلكتروني."""
+    from models.invoice_settings import InvoiceSettings
+    from modules.storefront.services.store_layout_service import card_sizes_catalog, card_templates_catalog
+
     settings = SystemSettings.get_settings()
+    invoice_settings = InvoiceSettings.get_settings()
+    ui_flags = settings.get_ui_flags() if settings else {}
     return render_template(
         "settings_storefront.html",
-        **_settings_ctx("storefront", settings=settings),
+        **_settings_ctx(
+            "storefront",
+            settings=settings,
+            invoice_settings=invoice_settings,
+            card_templates_catalog=card_templates_catalog(),
+            card_sizes_catalog=card_sizes_catalog(),
+            storefront_product_sections=ui_flags.get("storefront_product_sections", []),
+        ),
     )
 
 
@@ -684,6 +696,37 @@ def upload_report_logo():
             return jsonify({"success": False, "error": "نوع الملف غير مدعوم"}), 400
     except Exception as e:
         db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+@settings_bp.route("/storefront/upload-hero-image", methods=["POST"])
+def upload_storefront_hero_image():
+    """رفع صورة لاستخدامها في شرائح إعلان المتجر (hero)."""
+    try:
+        if "image" not in request.files:
+            return jsonify({"success": False, "error": "لم يتم اختيار ملف"}), 400
+
+        file = request.files["image"]
+        if not file or file.filename == "":
+            return jsonify({"success": False, "error": "لم يتم اختيار ملف"}), 400
+
+        if not allowed_file(file.filename):
+            return jsonify({"success": False, "error": "نوع الملف غير مدعوم"}), 400
+
+        filename = secure_filename(file.filename)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"storefront_hero_{timestamp}_{filename}"
+        filepath = os.path.join(UPLOAD_FOLDER, filename)
+        file.save(filepath)
+
+        return jsonify(
+            {
+                "success": True,
+                "message": "تم رفع الصورة بنجاح",
+                "url": f"/static/uploads/logos/{filename}",
+            }
+        )
+    except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 400
 
 @settings_bp.route("/invoice/remove-report-logo", methods=["POST"])

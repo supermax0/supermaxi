@@ -3,9 +3,11 @@ from __future__ import annotations
 import os
 import re
 
-from flask import current_app
+from flask import current_app, g
 
+from models.system_settings import SystemSettings
 from modules.storefront.constants import DEFAULT_GREETING, DEFAULT_SUGGESTIONS
+from modules.storefront.services.store_layout_service import parse_sections
 
 DEFAULT_SHIPPING_BY_CITY = {
     "بغداد": 5000,
@@ -33,6 +35,8 @@ def safe_hex_color(value: str, default: str) -> str:
 
 
 class StorefrontSettingsService:
+    GENERIC_STORE_NAME = "متجر المنتجات"
+
     def _flags(self) -> dict:
         try:
             settings = SystemSettings.get_settings()
@@ -40,6 +44,63 @@ class StorefrontSettingsService:
         except Exception:
             current_app.logger.exception("failed loading storefront settings")
             return {}
+
+    def ui_flags(self) -> dict:
+        return self._flags()
+
+    def _company_branding(self) -> dict:
+        try:
+            from models.invoice_settings import InvoiceSettings
+
+            inv = InvoiceSettings.get_settings()
+            if not inv:
+                return {}
+            logo = str(getattr(inv, "logo_path", None) or "").strip()
+            if not logo:
+                logo = str(getattr(inv, "report_logo_path", None) or "").strip()
+            return {
+                "company_name": str(getattr(inv, "company_name", None) or "").strip(),
+                "company_subtitle": str(getattr(inv, "company_subtitle", None) or "").strip(),
+                "logo_url": logo,
+                "company_phone": str(getattr(inv, "company_phone", None) or "").strip(),
+            }
+        except Exception:
+            current_app.logger.exception("failed loading company branding for storefront")
+            return {}
+
+    def _tenant_display_name(self) -> str:
+        slug = str(getattr(g, "tenant", None) or "").strip()
+        if not slug:
+            return ""
+        try:
+            from models.core.tenant import Tenant
+
+            row = Tenant.query.filter_by(slug=slug).first()
+            if row and row.name:
+                return str(row.name).strip()
+        except Exception:
+            pass
+        return slug.replace("-", " ").replace("_", " ").strip()
+
+    def _resolve_store_name(self, flags: dict, company: dict) -> str:
+        explicit = str(flags.get("storefront_store_name") or "").strip()
+        if explicit and explicit != self.GENERIC_STORE_NAME:
+            return explicit
+        for candidate in (company.get("company_name"), self._tenant_display_name(), explicit):
+            name = str(candidate or "").strip()
+            if name:
+                return name
+        return self.GENERIC_STORE_NAME
+
+    def _resolve_logo_url(self, flags: dict, company: dict) -> str:
+        explicit = str(flags.get("storefront_logo_url") or "").strip()
+        if explicit:
+            return explicit
+        return str(company.get("logo_url") or "").strip()
+
+    def _resolve_store_tagline(self, company: dict) -> str:
+        subtitle = str(company.get("company_subtitle") or "").strip()
+        return subtitle or "الفخامة في كل تفصيلة"
 
     def design_settings(self) -> dict:
         defaults = {
@@ -50,6 +111,7 @@ class StorefrontSettingsService:
             "theme_mode": "light",
         }
         flags = self._flags()
+        company = self._company_branding()
         card_style = str(flags.get("storefront_product_card_style") or defaults["card_style"]).strip()
         if card_style not in {"modern", "compact", "showcase", "minimal", "bordered", "overlay"}:
             card_style = defaults["card_style"]
@@ -66,6 +128,13 @@ class StorefrontSettingsService:
         else:
             ai_assistant_enabled = bool(ai_enabled_raw)
 
+        hero_mode = str(flags.get("storefront_hero_mode") or "auto").strip().lower()
+        if hero_mode not in {"auto", "manual", "both"}:
+            hero_mode = "auto"
+        hero_slides = flags.get("storefront_hero_slides")
+        if not isinstance(hero_slides, list):
+            hero_slides = []
+
         return {
             "primary_color": safe_hex_color(flags.get("storefront_primary_color"), defaults["primary_color"]),
             "shipping_color": safe_hex_color(flags.get("storefront_shipping_color"), defaults["shipping_color"]),
@@ -77,9 +146,13 @@ class StorefrontSettingsService:
                 flags.get("storefront_hero_subtitle")
                 or "ابحث، فلتر، واختر منتجاتك بسهولة. كل عملية شراء تمر عبر سلة متكاملة ثم Checkout بالدفع عند الاستلام."
             ).strip(),
-            "store_name": str(flags.get("storefront_store_name") or "متجر المنتجات").strip(),
-            "logo_url": str(flags.get("storefront_logo_url") or "").strip(),
-            "whatsapp": str(flags.get("storefront_whatsapp") or "").strip(),
+            "hero_mode": hero_mode,
+            "hero_slides": hero_slides,
+            "product_sections": parse_sections(flags, card_style),
+            "store_name": self._resolve_store_name(flags, company),
+            "store_tagline": self._resolve_store_tagline(company),
+            "logo_url": self._resolve_logo_url(flags, company),
+            "whatsapp": str(flags.get("storefront_whatsapp") or company.get("company_phone") or "").strip(),
             "ai_assistant_enabled": ai_assistant_enabled,
             "ai_assistant_name": str(flags.get("storefront_ai_assistant_name") or "مساعد المتجر").strip(),
             "ai_assistant_greeting": str(flags.get("storefront_ai_assistant_greeting") or DEFAULT_GREETING).strip(),

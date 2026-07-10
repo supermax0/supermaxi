@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from sqlalchemy import func
+from sqlalchemy import func, or_
 
 from extensions import db
 from models.customer_credit import CustomerInstallment
@@ -67,7 +67,10 @@ def _invoices_for_range(date_from: date, date_to: date):
         func.date(Invoice.created_at) >= date_from,
         func.date(Invoice.created_at) <= date_to,
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
-        Invoice.payment_status.notin_(RETURN_STATUSES),
+        or_(
+            Invoice.payment_status.is_(None),
+            Invoice.payment_status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
+        ),
     ).all()
 
 

@@ -10,6 +10,7 @@ from sqlalchemy import and_, func, or_
 
 from extensions import db
 from models.employee import Employee
+from models.employee_commission_line import EmployeeCommissionLine
 from models.employee_commission_settlement import EmployeeCommissionSettlement
 from models.invoice import Invoice
 from utils.employee_commission import (
@@ -29,10 +30,14 @@ def delivered_paid_filter():
     paid = or_(
         Invoice.payment_status == "مسدد",
         Invoice.status == "مسدد",
+        and_(Invoice.payment_status.is_(None), Invoice.status == "تم التوصيل"),
     )
     not_canceled = and_(
         ~Invoice.status.in_(list(CANCELED_STATUSES)),
-        ~Invoice.payment_status.in_(list(CANCELED_STATUSES)),
+        or_(
+            Invoice.payment_status.is_(None),
+            ~Invoice.payment_status.in_(list(CANCELED_STATUSES)),
+        ),
     )
     return and_(paid, not_canceled, ~invoice_returned_condition(Invoice))
 
@@ -131,6 +136,15 @@ def count_commission_orders(
     month: Optional[int] = None,
     unsettled_only: bool = True,
 ) -> int:
+    pending_q = EmployeeCommissionLine.query.filter_by(employee_id=employee_id, status="pending")
+    if year is not None and month is not None:
+        start, end = _month_bounds(year, month)
+        pending_q = pending_q.filter(
+            EmployeeCommissionLine.accrued_at >= start,
+            EmployeeCommissionLine.accrued_at <= end,
+        )
+    if unsettled_only:
+        return pending_q.count()
     return _commission_query(employee_id, year, month, unsettled_only).count()
 
 
@@ -143,6 +157,19 @@ def compute_commission_due(
     employee = Employee.query.get(employee_id)
     if not is_commission_eligible_employee(employee):
         return 0
+    if unsettled_only:
+        from utils.payroll_service import get_pending_commission_total
+
+        pending = get_pending_commission_total(employee_id)
+        if year is not None and month is not None:
+            start, end = _month_bounds(year, month)
+            lines = [
+                l
+                for l in pending["lines"]
+                if l.accrued_at and start <= l.accrued_at <= end
+            ]
+            return sum(int(l.amount or 0) for l in lines)
+        return int(pending["amount"] or 0)
     count = count_commission_orders(employee_id, year, month, unsettled_only)
     return count * get_employee_commission_amount(employee)
 
@@ -161,50 +188,74 @@ def build_employee_commission_stats_map(
     month: Optional[int] = None,
 ) -> dict[int, dict]:
     """Aggregate commission stats per employee for the grid or statement."""
+    from utils.payroll_service import get_pending_commission_total
+
     eligible_ids = _commission_eligible_employee_ids()
     if not eligible_ids:
         return {}
 
-    q = (
-        db.session.query(
-            Invoice.employee_id,
-            func.count(Invoice.id).label("orders"),
-            func.coalesce(func.sum(Invoice.total), 0).label("sales"),
-        )
-        .filter(
-            Invoice.employee_id.isnot(None),
-            Invoice.employee_id.in_(eligible_ids),
-            delivered_paid_filter(),
-        )
-    )
-    if unsettled_only:
-        q = q.filter(Invoice.employee_commission_settled_at.is_(None))
-    q = _apply_period_filter(q, year, month)
-    rows = q.group_by(Invoice.employee_id).all()
-
-    employee_ids = [row.employee_id for row in rows]
-    employees = Employee.query.filter(Employee.id.in_(employee_ids)).all() if employee_ids else []
-    rate_map = {e.id: get_employee_commission_amount(e) for e in employees}
-
     stats_map: dict[int, dict] = {}
-    for row in rows:
-        if row.employee_id not in eligible_ids:
+    for employee_id in eligible_ids:
+        pending = get_pending_commission_total(employee_id)
+        lines = pending["lines"]
+        if year is not None and month is not None:
+            start, end = _month_bounds(year, month)
+            lines = [l for l in lines if l.accrued_at and start <= l.accrued_at <= end]
+        if unsettled_only and not lines:
             continue
-        orders = int(row.orders or 0)
-        rate = rate_map.get(row.employee_id, get_fixed_employee_commission_amount())
-        commission = orders * rate
-        stats_map[row.employee_id] = {
+        orders = len(lines)
+        commission = sum(int(l.amount or 0) for l in lines)
+        if orders <= 0 and unsettled_only:
+            continue
+        employee = Employee.query.get(employee_id)
+        rate = get_employee_commission_amount(employee) if employee else get_fixed_employee_commission_amount()
+        sales = 0
+        for line in lines:
+            if line.invoice:
+                sales += int(line.invoice.total or 0)
+        stats_map[employee_id] = {
             "orders": orders,
-            "sales": int(row.sales or 0),
+            "sales": sales,
             "commission": commission,
             "total_due": commission,
             "commission_rate": rate,
         }
+
+    if not unsettled_only:
+        q = (
+            db.session.query(
+                Invoice.employee_id,
+                func.count(Invoice.id).label("orders"),
+                func.coalesce(func.sum(Invoice.total), 0).label("sales"),
+            )
+            .filter(
+                Invoice.employee_id.isnot(None),
+                Invoice.employee_id.in_(eligible_ids),
+                delivered_paid_filter(),
+            )
+        )
+        q = _apply_period_filter(q, year, month)
+        rows = q.group_by(Invoice.employee_id).all()
+        employees = Employee.query.filter(Employee.id.in_([r.employee_id for r in rows])).all() if rows else []
+        rate_map = {e.id: get_employee_commission_amount(e) for e in employees}
+        for row in rows:
+            if row.employee_id not in eligible_ids:
+                continue
+            orders = int(row.orders or 0)
+            rate = rate_map.get(row.employee_id, get_fixed_employee_commission_amount())
+            stats_map[row.employee_id] = {
+                "orders": orders,
+                "sales": int(row.sales or 0),
+                "commission": orders * rate,
+                "total_due": orders * rate,
+                "commission_rate": rate,
+            }
+
     return stats_map
 
 
 def build_monthly_statement(year: int, month: int) -> list[dict]:
-    """Unsettled delivered+paid orders in the given month, per employee."""
+    """Unsettled commission lines in the given month, per employee."""
     stats_map = build_employee_commission_stats_map(
         unsettled_only=True,
         year=year,
@@ -235,24 +286,43 @@ def settle_employee_commission(
     year: int,
     month: int,
     settled_by: Optional[int] = None,
+    treasury_account_id: Optional[int] = None,
 ) -> dict:
-    """Mark all unsettled delivered+paid invoices for employee/month as settled."""
+    """Settle pending commission lines with optional treasury payout."""
+    if treasury_account_id is not None:
+        from utils.payroll_service import settle_employee_commission_payment
+
+        return settle_employee_commission_payment(
+            employee_id,
+            treasury_account_id=treasury_account_id,
+            settled_by=settled_by,
+            year=year,
+            month=month,
+        )
+
     employee = Employee.query.get(employee_id)
     if not employee:
         return {"ok": False, "error": "الموظف غير موجود"}
     if not is_commission_eligible_employee(employee):
         return {"ok": False, "error": "المدير غير مشمول بعمولة الطلبات"}
 
-    invoices = _commission_query(employee_id, year, month, unsettled_only=True).all()
-    if not invoices:
-        return {"ok": False, "error": "لا توجد طلبات مستحقة للسداد في هذا الشهر"}
+    from utils.payroll_service import get_pending_commission_lines
+
+    lines = get_pending_commission_lines(employee_id)
+    if year and month:
+        start, end = _month_bounds(year, month)
+        lines = [l for l in lines if l.accrued_at and start <= l.accrued_at <= end]
+    if not lines:
+        return {"ok": False, "error": "لا توجد طلبات مستحقة للسداد في هذه الفترة"}
 
     now = datetime.utcnow()
-    order_count = len(invoices)
-    amount = order_count * get_employee_commission_amount(employee)
+    order_count = len(lines)
+    amount = sum(int(l.amount or 0) for l in lines)
 
-    for inv in invoices:
-        inv.employee_commission_settled_at = now
+    for line in lines:
+        line.status = "paid"
+        if line.invoice:
+            line.invoice.employee_commission_settled_at = now
 
     settlement = EmployeeCommissionSettlement(
         employee_id=employee_id,

@@ -465,8 +465,18 @@
         </div>
         <div class="summary-item">
           <span class="summary-label">المجموع</span>
+          <span class="summary-value">{{ "{:,.2f}".format(total_before_discount|default(total)) }} د.ع</span>
+        </div>
+        {% if discount_amount|default(0) > 0 %}
+        <div class="summary-item">
+          <span class="summary-label">الخصم</span>
+          <span class="summary-value">- {{ "{:,.2f}".format(discount_amount) }} د.ع</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">الصافي</span>
           <span class="summary-value">{{ "{:,.2f}".format(total) }} د.ع</span>
         </div>
+        {% endif %}
         <div class="summary-item">
           <span class="summary-label">المستحق</span>
           <span class="summary-value">{{ "{:,.2f}".format(due) }} د.ع</span>
@@ -540,14 +550,20 @@
     <div class="bottom-summary" data-section="total">
       <!-- Total Box (Right) -->
       <div class="total-box">
+        {% if discount_amount|default(0) > 0 %}
+        المجموع: {{ "{:,.2f}".format(total_before_discount|default(total)) }} د.ع<br>
+        الخصم: - {{ "{:,.2f}".format(discount_amount) }} د.ع<br>
+        الصافي: {{ "{:,.2f}".format(total) }} د.ع
+        {% else %}
         المجموع: {{ "{:,.2f}".format(total) }} د.ع
+        {% endif %}
       </div>
       
       <!-- Signature Box (Left) -->
       <div class="signature-box">
         <div class="signature-label">المفوض بالتوقيع</div>
         <div class="signature-line"></div>
-        <div class="signature-amount">{{ "{:,.2f}".format(total) }} د.ع</div>
+        <div class="signature-amount">{{ "{:,.2f}".format(due) }} د.ع</div>
       </div>
     </div>
     

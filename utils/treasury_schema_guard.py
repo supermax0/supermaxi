@@ -14,6 +14,11 @@ _TABLES_NEEDING_TREASURY_ACCOUNT_ID = (
     "shipping_payment",
     "purchase_payment",
 )
+_TREASURY_SCHEMA_ENSURED_BINDS: set[str] = set()
+
+
+def _treasury_bind_key() -> str:
+    return getattr(g, "tenant", None) or "__core__"
 
 
 def _treasury_schema_engine():
@@ -38,6 +43,10 @@ def ensure_treasury_schema() -> None:
     """Create treasury tables/columns and seed default cash account."""
     from models.treasury_transfer import TreasuryTransfer  # noqa: F401
 
+    bind_key = _treasury_bind_key()
+    if bind_key in _TREASURY_SCHEMA_ENSURED_BINDS:
+        return
+
     engine = _treasury_schema_engine()
     TreasuryAccount.__table__.create(bind=engine, checkfirst=True)
     TreasuryTransfer.__table__.create(bind=engine, checkfirst=True)
@@ -54,11 +63,36 @@ def ensure_treasury_schema() -> None:
                 f'ALTER TABLE "{table_name}" ADD COLUMN "treasury_account_id" INTEGER'
             )
 
+    if _table_exists(inspector, "supplier_payment"):
+        cols = _column_names(inspector, "supplier_payment")
+        if "payment_method" not in cols:
+            stmts.append(
+                'ALTER TABLE "supplier_payment" ADD COLUMN "payment_method" VARCHAR(20) DEFAULT \'cash\''
+            )
+        if "supplier_sale_id" not in cols:
+            stmts.append(
+                'ALTER TABLE "supplier_payment" ADD COLUMN "supplier_sale_id" INTEGER'
+            )
+
     if _table_exists(inspector, "account_transaction"):
         cols = _column_names(inspector, "account_transaction")
         if "treasury_transfer_id" not in cols:
             stmts.append(
                 'ALTER TABLE "account_transaction" ADD COLUMN "treasury_transfer_id" INTEGER'
+            )
+
+    if _table_exists(inspector, "expense"):
+        cols = _column_names(inspector, "expense")
+        if "treasury_account_id" not in cols:
+            stmts.append(
+                'ALTER TABLE "expense" ADD COLUMN "treasury_account_id" INTEGER'
+            )
+        if "cash_posted" not in cols:
+            # الافتراضي مخصوم: المصاريف القديمة اعتُبرت مخصومة مسبقاً
+            dialect = engine.dialect.name
+            bool_default = "true" if dialect == "postgresql" else "1"
+            stmts.append(
+                f'ALTER TABLE "expense" ADD COLUMN "cash_posted" BOOLEAN DEFAULT {bool_default} NOT NULL'
             )
 
     if stmts:
@@ -80,3 +114,5 @@ def ensure_treasury_schema() -> None:
         )
         db.session.add(cash)
         db.session.commit()
+
+    _TREASURY_SCHEMA_ENSURED_BINDS.add(bind_key)

@@ -1,0 +1,13 @@
+{% from "storefront/partials/luxury/cards/_macros.html" import lux_badges, lux_meta, lux_prices, lux_media, lux_cart_btn %}
+<article class="lux-product-card lux-card-tpl-spotlight{% if card_size %} lux-card-size-{{ card_size }}{% endif %}" data-product-id="{{ product.id }}" data-lux-category="{{ product.category or product.badge or '' }}" data-lux-price="{{ product.price or 0 }}">
+  <a class="lux-product-media lux-product-media--spotlight" href="{{ product.url }}{% if request.args.get('dev') %}?dev=1{% endif %}">
+    {{ lux_media(product) }}
+    <div class="lux-badges">{{ lux_badges(product) }}</div>
+  </a>
+  <div class="lux-product-body lux-product-body--spotlight">
+    <a class="lux-product-title lux-product-title--spotlight" href="{{ product.url }}{% if request.args.get('dev') %}?dev=1{% endif %}">{{ product.name }}</a>
+    {{ lux_prices(product) }}
+    <a class="lux-btn lux-btn-gold lux-card-spotlight-cta" href="{{ product.url }}{% if request.args.get('dev') %}?dev=1{% endif %}">اكتشف المنتج</a>
+    {{ lux_cart_btn(product) }}
+  </div>
+</article>

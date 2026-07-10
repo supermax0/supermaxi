@@ -423,8 +423,14 @@
       </div>
       <div class="inv-form-grid" style="margin-top:12px;">
         <div class="inv-field" id="openingStockField">
+          {% if edit_product %}
+          <label>{{ _('inventory_current_stock_label') }}</label>
+          <input name="current_stock" type="number" min="0" value="{{ edit_current_stock|default(edit_product.quantity or 0) }}" id="current_stock">
+          <p class="inv-hint">هذه الكمية المتبقية بعد المبيعات والمشتريات.</p>
+          {% else %}
           <label>{% if is_beauty_center %}الكمية الحالية{% else %}{{ _('inventory_field_opening_stock_label') }}{% endif %}<span data-help="inventory.opening_stock"></span></label>
-          <input name="opening_stock" type="number" min="0" value="{{ edit_product.opening_stock if edit_product else 0 }}" id="opening_stock">
+          <input name="opening_stock" type="number" min="0" value="0" id="opening_stock">
+          {% endif %}
         </div>
         <div class="inv-field">
           <label>{{ _('inventory_field_low_stock_alert') }}</label>
@@ -813,7 +819,7 @@
   var colorVariantsBlock = document.getElementById('colorVariantsBlock');
   var colorVariantRows = document.getElementById('colorVariantRows');
   var openingStockField = document.getElementById('openingStockField');
-  var openingStockInput = document.getElementById('opening_stock');
+  var stockQtyInput = document.getElementById('opening_stock') || document.getElementById('current_stock');
   var colorStockTotal = document.getElementById('colorStockTotal');
 
   window.addColorRow = function (name, qty) {
@@ -851,8 +857,8 @@
       total += parseInt(qtyInput && qtyInput.value, 10) || 0;
     });
     if (colorStockTotal) colorStockTotal.textContent = total;
-    if (hasColorsCheck && hasColorsCheck.checked && openingStockInput) {
-      openingStockInput.value = total;
+    if (hasColorsCheck && hasColorsCheck.checked && stockQtyInput) {
+      stockQtyInput.value = total;
     }
   }
 
@@ -860,7 +866,7 @@
     var enabled = hasColorsCheck && hasColorsCheck.checked;
     if (colorVariantsBlock) colorVariantsBlock.style.display = enabled ? '' : 'none';
     if (openingStockField) openingStockField.style.display = enabled ? 'none' : '';
-    if (openingStockInput) openingStockInput.readOnly = !!enabled;
+    if (stockQtyInput) stockQtyInput.readOnly = !!enabled;
     syncColorStockTotal();
   }
 

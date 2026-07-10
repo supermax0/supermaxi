@@ -12,7 +12,6 @@ from models.product import Product
 from utils.branch_migration import get_default_branch
 from utils.branch_stock_service import deduct_stock, BranchStockError
 from utils.branch_sales import resolve_sale_fulfillment
-from utils.order_shipping import add_shipping_line_item
 
 SERVICE_SHIPPING_BARCODE = "__SF_SHIPPING__"
 SERVICE_DISCOUNT_BARCODE = "__SF_DISCOUNT__"
@@ -197,9 +196,6 @@ class StorefrontCheckoutService:
                     total=-discount_amount,
                 )
             )
-
-        if shipping_fee > 0:
-            add_shipping_line_item(invoice, shipping_fee, tenant_id)
 
         db.session.commit()
 

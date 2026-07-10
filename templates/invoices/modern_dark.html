@@ -451,12 +451,12 @@
                 <div class="summary-box">
                     <div class="summary-row">
                         <span class="summary-label">المجموع الفرعي</span>
-                        <span class="summary-value">{{ "{:,.0f}".format(total) }} د.ع</span>
+                        <span class="summary-value">{{ "{:,.0f}".format(total_before_discount|default(total)) }} د.ع</span>
                     </div>
-                    {% if due < total %}
+                    {% if discount_amount|default(0) > 0 %}
                     <div class="summary-row">
-                        <span class="summary-label">تخفيض / واصل</span>
-                        <span class="summary-value" style="color: #10b981;">{{ "{:,.0f}".format(total - due) }} د.ع</span>
+                        <span class="summary-label">تخفيض</span>
+                        <span class="summary-value" style="color: #10b981;">- {{ "{:,.0f}".format(discount_amount) }} د.ع</span>
                     </div>
                     {% endif %}
                     <div class="grand-total">

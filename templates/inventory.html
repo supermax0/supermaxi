@@ -1953,10 +1953,10 @@
       </div>
 
       <div class="inv-modal-opening-box">
-        <label class="inv-modal-info-label">📦 {{ _('inventory_field_opening_stock_label') }}</label>
-        <input type="number" id="editOpeningStock" name="opening_stock" placeholder="{{ _('inventory_field_opening_stock') }}" min="0"
+        <label class="inv-modal-info-label">📦 {{ _('inventory_current_stock_label') }}</label>
+        <input type="number" id="editOpeningStock" name="current_stock" placeholder="{{ _('inventory_current_stock_label') }}" min="0"
           class="inv-modal-input inv-modal-opening-input">
-        <small class="inv-modal-help">⚠️ {{ _('inventory_opening_stock_help') }}</small>
+        <small class="inv-modal-help">الكمية المتبقية بعد المبيعات والمشتريات.</small>
       </div>
 
       <div>
@@ -2509,7 +2509,7 @@
     document.getElementById('editSku').value = product.sku === '---' ? '' : (product.sku || '');
     document.getElementById('editBuyPrice').value = product.buy_price || 0;
     document.getElementById('editSalePrice').value = product.sale_price || 0;
-    document.getElementById('editOpeningStock').value = product.opening_stock || 0;
+    document.getElementById('editOpeningStock').value = product.quantity || 0;
     document.getElementById('editDescription').value = product.description || '';
     document.getElementById('editImageUrl').value = product.image_url || '';
     document.getElementById('editVideoUrl').value = meta.video_url || '';

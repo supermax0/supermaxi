@@ -22,9 +22,10 @@
 
 <script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.js"></script>
 <script src="/static/js/barcode-scanner.js"></script>
+<script src="/static/js/delivery-fee-pay-modal.js"></script>
 
 <link rel="stylesheet" href="/static/css/global-improvements.css">
-<link rel="stylesheet" href="/static/css/orders-mobile.css?v=20260707-mobile-details-white">
+<link rel="stylesheet" href="/static/css/orders-mobile.css?v=20260707-mobile-details-white2">
 
 
 <!-- ==================== Toast & Loading ==================== -->
@@ -2129,6 +2130,107 @@
   .ag-theme-alpine-dark .ag-row {
     cursor: pointer;
   }
+
+  /* Order details modal — white on mobile (override dark card backgrounds) */
+  @media (max-width: 720px) {
+    .modal.od-modal-overlay .od-modal-box {
+      background: #ffffff !important;
+      border-color: #e2e8f0 !important;
+      color: #0f172a !important;
+      box-shadow: 0 18px 48px rgba(15, 23, 42, 0.22) !important;
+    }
+
+    .modal .od-modal-header {
+      background: #ffffff !important;
+      border-bottom-color: #e2e8f0 !important;
+      color: #0f172a !important;
+    }
+
+    .modal .od-modal-body {
+      background: #ffffff !important;
+    }
+
+    .modal .od-modal-footer {
+      background: #ffffff !important;
+      border-top-color: #e2e8f0 !important;
+    }
+
+    .modal .od-modal-title {
+      color: #0f172a !important;
+    }
+
+    .modal .od-modal-subtitle {
+      color: #64748b !important;
+    }
+
+    .modal .od-close-btn {
+      background: #ffffff !important;
+      border-color: #e2e8f0 !important;
+      color: #64748b !important;
+    }
+
+    .modal .od-card,
+    .modal .od-card--summary {
+      background: #ffffff !important;
+      border-color: #e2e8f0 !important;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05) !important;
+    }
+
+    .modal .od-card__title {
+      color: #1d4ed8 !important;
+    }
+
+    .modal .od-field__label {
+      color: #64748b !important;
+    }
+
+    .modal .od-field__value {
+      color: #0f172a !important;
+    }
+
+    .modal .od-items-table thead {
+      background: #f8fafc !important;
+    }
+
+    .modal .od-items-table th {
+      color: #64748b !important;
+      border-bottom-color: #e2e8f0 !important;
+    }
+
+    .modal .od-items-table td {
+      color: #0f172a !important;
+      border-bottom-color: #e2e8f0 !important;
+    }
+
+    .modal .od-items-table tbody tr:nth-child(even) {
+      background: #ffffff !important;
+    }
+
+    .modal .od-table-wrap {
+      border-color: #e2e8f0 !important;
+      background: #ffffff !important;
+    }
+
+    .modal .od-summary-row {
+      border-bottom-color: #e2e8f0 !important;
+    }
+
+    .modal .od-summary-row__label {
+      color: #64748b !important;
+    }
+
+    .modal .od-summary-row__value {
+      color: #0f172a !important;
+    }
+
+    .modal .od-branch-select,
+    .modal .od-note-text,
+    .modal .od-notify-input {
+      background: #ffffff !important;
+      border-color: #cbd5e1 !important;
+      color: #0f172a !important;
+    }
+  }
 </style>
 
 <!-- ==================== JavaScript ==================== -->
@@ -4025,6 +4127,9 @@
         ? '<button type="button" class="btn btn-warning od-action-btn" onclick="pay(' + order.id + '); this.closest(\'.modal\').remove();"><span>💰</span><span>{{ _("orders_details_btn_full_pay") }}</span></button>' +
           '<button type="button" class="btn btn-success od-action-btn" onclick="payPartial(' + order.id + ', ' + remaining + '); this.closest(\'.modal\').remove();"><span>💵</span><span>{{ _("orders_details_btn_partial_pay") }}</span></button>'
         : '') +
+      (!isReturnedStatus(order.status) && !isReturnedStatus(order.payment) && order.status !== 'ملغي'
+        ? '<button type="button" class="btn btn-danger od-action-btn" onclick="returnOrder(' + order.id + '); this.closest(\'.modal\').remove();" style="min-width:160px;"><span>↩️</span><span>ترجيع الطلب</span></button>'
+        : '') +
       '<button type="button" class="btn btn-secondary od-action-btn od-action-btn--wide" onclick="window.location.href=\'/orders/invoice/' + order.id + '\'"><span>🔗</span><span>{{ _("orders_details_btn_full_page") }}</span></button>' +
       '</div></div></div>';
 
@@ -4042,8 +4147,105 @@
     });
   }
 
+  function getOrderRowData(orderId) {
+    if (!gridApi) return null;
+    const rowNode = gridApi.getRowNode(orderId);
+    if (rowNode) return rowNode.data;
+    let found = null;
+    gridApi.forEachNode(function (node) {
+      if (node.data && node.data.id === orderId) found = node.data;
+    });
+    return found;
+  }
+
+  function submitOrderPayment(orderId, deliveryFee) {
+    collapseRowActions(orderId);
+    showLoading();
+    fetch(`/orders/payment`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: orderId,
+        payment: "مسدد",
+        paid_amount: null,
+        delivery_fee: deliveryFee || 0
+      })
+    })
+      .then(r => {
+        if (!r.ok) {
+          return r.text().then(text => {
+            throw new Error(`HTTP ${r.status}: ${text.substring(0, 100)}`);
+          });
+        }
+        return r.json();
+      })
+      .then(data => {
+        hideLoading();
+        if (data.success) {
+          playSuccessSound();
+          showToast({{ _('orders_toast_pay_success')|tojson }}, "success");
+          if (gridApi) {
+            const rowNode = gridApi.getRowNode(orderId);
+            const applyPaid = function (rd) {
+              rd.can_pay = false;
+              rd.can_cancel = false;
+              rd.actions_collapsed = true;
+              rd.status = "تم التوصيل";
+              rd.payment_status = "مسدد";
+              if (deliveryFee > 0) {
+                rd.total = Math.max(0, (Number(rd.total) || 0) - deliveryFee);
+              }
+              rd.paid_amount = rd.total;
+              rd.remaining = 0;
+            };
+            if (rowNode) {
+              applyPaid(rowNode.data);
+              gridApi.applyTransaction({ update: [rowNode.data] });
+              gridApi.refreshCells({ rowNodes: [rowNode], columns: ['actions'], force: true });
+            } else {
+              gridApi.forEachNode(function (node) {
+                if (node.data && node.data.id === orderId) {
+                  applyPaid(node.data);
+                  gridApi.applyTransaction({ update: [node.data] });
+                  gridApi.refreshCells({ rowNodes: [node], columns: ['actions'], force: true });
+                }
+              });
+            }
+          }
+        } else {
+          showToast(data.error || {{ _('orders_err_generic')|tojson }}, "error");
+        }
+      })
+      .catch(error => {
+        hideLoading();
+        showToast({{ _('orders_err_payment')|tojson }}, "error");
+        console.error("Payment error:", error);
+      });
+  }
+
   function pay(orderId) {
-    showConfirm({{ _('orders_confirm_full_pay')|tojson }}, function () {
+    const row = getOrderRowData(orderId);
+    const orderTotal = row ? Number(row.total) || 0 : 0;
+    const customerCity = row && row.city && row.city !== "—" ? row.city : "";
+    openDeliveryFeePayModal({
+      orderId: orderId,
+      orderTotal: orderTotal,
+      customerCity: customerCity,
+      onConfirm: function (deliveryFee) {
+        submitOrderPayment(orderId, deliveryFee);
+      }
+    });
+  }
+
+  function returnOrder(orderId) {
+    const code = window.prompt('امسح باركود الطلب لتأكيد الترجيع (أو أدخله يدويًا) ثم اضغط OK');
+    const barcode = String(code || '').trim();
+    if (!barcode) {
+      showToast('⚠️ يجب مسح/إدخال باركود الطلب لتأكيد الترجيع', 'warning');
+      return;
+    }
+
+    showConfirm('تأكيد ترجيع الطلب؟ سيتم إرجاع المخزون وتصفير التحصيل على هذا الطلب.', function () {
       collapseRowActions(orderId);
       showLoading();
       fetch(`/orders/payment`, {
@@ -4051,14 +4253,17 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: orderId,
-          payment: "مسدد",
-          paid_amount: null
+          payment: RETURN_STATUS,
+          paid_amount: null,
+          barcode: barcode
         })
       })
         .then(r => {
           if (!r.ok) {
-            return r.text().then(text => {
-              throw new Error(`HTTP ${r.status}: ${text.substring(0, 100)}`);
+            return r.json().then(j => {
+              throw new Error(j && j.error ? j.error : `HTTP ${r.status}`);
+            }).catch(() => {
+              throw new Error(`HTTP ${r.status}`);
             });
           }
           return r.json();
@@ -4066,48 +4271,41 @@
         .then(data => {
           hideLoading();
           if (data.success) {
-            // تشغيل صوت النجاح عند تسديد الطلب
-            playSuccessSound();
-            showToast({{ _('orders_toast_pay_success')|tojson }}, "success");
-            // تحديث الصف في الجدول مباشرة
+            showToast(data.message || 'تم ترجيع الطلب', "success");
             if (gridApi) {
               const rowNode = gridApi.getRowNode(orderId);
-              if (rowNode) {
-                const rowData = rowNode.data;
-                rowData.can_pay = false;
-                rowData.can_cancel = false;
-                rowData.actions_collapsed = true;
-                rowData.status = "تم التوصيل";
-                rowData.paid_amount = rowData.total;
-                rowData.remaining = 0;
-                gridApi.applyTransaction({ update: [rowData] });
-                gridApi.refreshCells({ rowNodes: [rowNode], columns: ['actions'], force: true });
+              const updateRow = function (rd) {
+                rd.can_pay = false;
+                rd.can_cancel = false;
+                rd.actions_collapsed = true;
+                rd.status = RETURN_STATUS;
+                rd.payment = RETURN_STATUS;
+                rd.payment_status = RETURN_STATUS;
+                rd.paid_amount = 0;
+                rd.remaining = (parseFloat(rd.total) || 0);
+              };
+              if (rowNode && rowNode.data) {
+                updateRow(rowNode.data);
+                gridApi.applyTransaction({ update: [rowNode.data] });
+                gridApi.refreshCells({ rowNodes: [rowNode], columns: ['status', 'payment', 'paid_amount', 'remaining', 'actions'], force: true });
               } else {
-                // FALLBACK: If row node not found by ID, reload or find by iteration
                 gridApi.forEachNode(node => {
-                  if (node.data.id === orderId) {
-                    const rd = node.data;
-                    rd.can_pay = false;
-                    rd.can_cancel = false;
-                    rd.actions_collapsed = true;
-                    rd.status = "تم التوصيل";
-                    rd.paid_amount = rd.total;
-                    rd.remaining = 0;
-                    gridApi.applyTransaction({ update: [rd] });
-                    gridApi.refreshCells({ rowNodes: [node], columns: ['actions'], force: true });
+                  if (node.data && Number(node.data.id) === Number(orderId)) {
+                    updateRow(node.data);
+                    gridApi.applyTransaction({ update: [node.data] });
+                    gridApi.refreshCells({ rowNodes: [node], columns: ['status', 'payment', 'paid_amount', 'remaining', 'actions'], force: true });
                   }
                 });
               }
             }
-
           } else {
             showToast(data.error || {{ _('orders_err_generic')|tojson }}, "error");
           }
         })
         .catch(error => {
           hideLoading();
-          showToast({{ _('orders_err_payment')|tojson }}, "error");
-          console.error("Payment error:", error);
+          showToast(String(error && error.message ? error.message : {{ _('orders_err_generic')|tojson }}), "error");
+          console.error("Return error:", error);
         });
     });
   }

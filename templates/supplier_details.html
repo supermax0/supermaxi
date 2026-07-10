@@ -237,6 +237,7 @@
 .supplier-statement-page .ss-stat--debt::before { background: var(--ss-warning); }
 .supplier-statement-page .ss-stat--paid::before { background: var(--ss-success); }
 .supplier-statement-page .ss-stat--remaining::before { background: var(--ss-danger); }
+.supplier-statement-page .ss-stat--receivable::before { background: #8b5cf6; }
 
 .supplier-statement-page .ss-stat__label {
   margin: 0 0 8px;
@@ -258,6 +259,103 @@
 .supplier-statement-page .ss-stat--debt .ss-stat__value { color: var(--ss-warning); }
 .supplier-statement-page .ss-stat--paid .ss-stat__value { color: var(--ss-success); }
 .supplier-statement-page .ss-stat--remaining .ss-stat__value { color: var(--ss-danger); }
+.supplier-statement-page .ss-stat--receivable .ss-stat__value { color: #8b5cf6; }
+
+.supplier-statement-page .ss-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.supplier-statement-page .ss-sale-search-wrap {
+  position: relative;
+}
+
+.supplier-statement-page .ss-sale-suggest {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  z-index: 30;
+  background: var(--card);
+  border: 1px solid var(--ss-border);
+  border-radius: 12px;
+  max-height: 220px;
+  overflow: auto;
+  display: none;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.supplier-statement-page .ss-sale-suggest.open { display: block; }
+
+.supplier-statement-page .ss-sale-suggest button {
+  width: 100%;
+  text-align: right;
+  border: none;
+  background: transparent;
+  color: var(--ss-text);
+  padding: 10px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--ss-border);
+  font-weight: 700;
+}
+
+.supplier-statement-page .ss-sale-suggest button:hover {
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.supplier-statement-page .ss-sale-suggest small {
+  display: block;
+  color: var(--ss-muted);
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.supplier-statement-page .ss-sale-alert {
+  grid-column: 1 / -1;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  color: #6d28d9;
+  font-size: 13px;
+  font-weight: 700;
+  display: none;
+}
+
+.supplier-statement-page .ss-sale-alert.visible { display: block; }
+
+.supplier-statement-page .ss-sale-submit {
+  grid-column: 1 / -1;
+  padding: 14px 20px;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+  color: #fff;
+  font-weight: 800;
+  font-size: 15px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.supplier-statement-page .ss-sale-submit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.supplier-statement-page .ss-pay-disabled {
+  padding: 14px;
+  border-radius: 12px;
+  background: rgba(148, 163, 184, 0.12);
+  border: 1px dashed var(--ss-border);
+  color: var(--ss-muted);
+  font-weight: 700;
+  font-size: 14px;
+}
 
 .supplier-statement-page .ss-progress {
   margin-top: 16px;
@@ -489,7 +587,9 @@
 
 @media print {
   .supplier-statement-page .ss-topbar,
-  .supplier-statement-page .ss-pay-card {
+  .supplier-statement-page .ss-pay-card,
+  .supplier-statement-page .ss-sale-card,
+  .supplier-statement-page .ss-actions-grid {
     display: none !important;
   }
   .supplier-statement-page .ss-card {
@@ -500,6 +600,7 @@
 }
 </style>
 
+{% set remaining_val = (supplier.remaining or 0)|int %}
 {% set paid_pct = ((supplier.total_paid or 0) * 100 // (supplier.total_debt or 1)) if (supplier.total_debt or 0) > 0 else 0 %}
 {% if paid_pct > 100 %}{% set paid_pct = 100 %}{% endif %}
 
@@ -548,13 +649,20 @@
         <p class="ss-stat__label">{{ _('supplier_statement_total_paid') }}</p>
         <div class="ss-stat__value">{{ fmt_money(supplier.total_paid) }}</div>
       </div>
+      {% if remaining_val < 0 %}
+      <div class="ss-stat ss-stat--receivable">
+        <p class="ss-stat__label">{{ _('supplier_receivable_label') }}</p>
+        <div class="ss-stat__value">{{ fmt_money(supplier_receivable|default(0)) }}</div>
+      </div>
+      {% else %}
       <div class="ss-stat ss-stat--remaining">
         <p class="ss-stat__label">{{ _('supplier_statement_remaining') }}</p>
-        <div class="ss-stat__value">{{ fmt_money(supplier.remaining) }}</div>
+        <div class="ss-stat__value">{{ fmt_money(remaining_val) }}</div>
       </div>
+      {% endif %}
     </div>
 
-    {% if (supplier.total_debt or 0) > 0 %}
+    {% if (supplier.total_debt or 0) > 0 and remaining_val > 0 %}
     <div class="ss-progress">
       <div class="ss-progress__head">
         <span>نسبة التسديد</span>
@@ -567,33 +675,91 @@
     {% endif %}
   </div>
 
-  <div class="ss-card ss-pay-card">
-    <h3 class="ss-section-title">
-      <span class="ss-section-title__icon">💰</span>
-      <span>{{ _('supplier_statement_pay_section') }}</span>
-    </h3>
-    <form class="ss-pay-form" method="post" action="/suppliers/pay/{{ supplier.id }}">
-      <div class="ss-field">
-        <label for="payAmount">{{ _('supplier_statement_amount') }}</label>
-        <input id="payAmount" name="amount" type="number" min="1" step="1" placeholder="0" required>
+  <div class="ss-actions-grid">
+    <div class="ss-card ss-pay-card">
+      <h3 class="ss-section-title">
+        <span class="ss-section-title__icon">💰</span>
+        <span>{{ _('supplier_statement_pay_section') }}</span>
+      </h3>
+      {% if remaining_val > 0 %}
+      <form class="ss-pay-form" method="post" action="/suppliers/pay/{{ supplier.id }}">
+        <div class="ss-field">
+          <label for="payAmount">{{ _('supplier_statement_amount') }}</label>
+          <input id="payAmount" name="amount" type="number" min="1" step="1" max="{{ remaining_val }}" placeholder="0" required>
+        </div>
+        <div class="ss-field">
+          <label for="payTreasury">{{ _('pay_from_account') }}</label>
+          <select id="payTreasury" name="treasury_account_id" required>
+            {% for acc in treasury_choices|default([]) %}
+            <option value="{{ acc.id }}">{{ acc.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="ss-field">
+          <label for="payNote">{{ _('supplier_statement_note_optional') }}</label>
+          <input id="payNote" name="note" type="text" placeholder="{{ _('supplier_statement_note_optional') }}">
+        </div>
+        <button type="submit" class="ss-pay-submit">
+          <span>💳</span>
+          <span>{{ _('supplier_statement_submit_payment') }}</span>
+        </button>
+      </form>
+      {% else %}
+      <div class="ss-pay-disabled">{{ _('supplier_pay_disabled_message') }}</div>
+      {% endif %}
+    </div>
+
+    <div class="ss-card ss-sale-card">
+      <h3 class="ss-section-title">
+        <span class="ss-section-title__icon">🛒</span>
+        <span>{{ _('supplier_sale_section') }}</span>
+      </h3>
+      <div class="ss-pay-form" id="supplierSaleForm">
+        <div class="ss-field ss-field--wide ss-sale-search-wrap">
+          <label for="saleProductSearch">{{ _('supplier_sale_search_product') }}</label>
+          <input id="saleProductSearch" type="text" placeholder="{{ _('supplier_sale_search_placeholder') }}" autocomplete="off">
+          <div id="saleProductSuggest" class="ss-sale-suggest"></div>
+        </div>
+        <div class="ss-field ss-field--wide">
+          <label>{{ _('supplier_sale_items_label') }}</label>
+          <div class="ss-table-wrap">
+            <table class="ss-table" id="saleItemsTable">
+              <thead>
+                <tr>
+                  <th>{{ _('supplier_statement_col_product') }}</th>
+                  <th>{{ _('supplier_statement_col_quantity') }}</th>
+                  <th>{{ _('supplier_sale_col_price') }}</th>
+                  <th>{{ _('supplier_statement_col_total') }}</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="saleItemsBody">
+                <tr id="saleItemsEmpty">
+                  <td colspan="5" class="ss-empty" style="padding:18px;">{{ _('supplier_sale_no_items') }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="ss-field ss-field--wide">
+          <label for="saleNote">{{ _('supplier_statement_note_optional') }}</label>
+          <input id="saleNote" type="text" placeholder="{{ _('supplier_sale_note_placeholder') }}">
+        </div>
+        <div class="ss-field">
+          <label>{{ _('supplier_sale_total_label') }}</label>
+          <div class="ss-stat__value" id="saleGrandTotal">0 {{ _('reports_currency_iqd') }}</div>
+        </div>
+        <div class="ss-field">
+          <label>{{ _('supplier_statement_remaining') }}</label>
+          <div class="ss-stat__value" id="saleRemainingPreview">{{ fmt_money(remaining_val if remaining_val > 0 else 0) }}</div>
+        </div>
+        <div class="ss-sale-alert" id="saleReceivableAlert"></div>
+        <button type="button" class="ss-sale-submit" id="saleSubmitBtn" disabled>
+          <span>✅</span>
+          <span>{{ _('supplier_sale_submit') }}</span>
+        </button>
       </div>
-      <div class="ss-field">
-        <label for="payTreasury">{{ _('pay_from_account') }}</label>
-        <select id="payTreasury" name="treasury_account_id" required>
-          {% for acc in treasury_choices|default([]) %}
-          <option value="{{ acc.id }}">{{ acc.name }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="ss-field">
-        <label for="payNote">{{ _('supplier_statement_note_optional') }}</label>
-        <input id="payNote" name="note" type="text" placeholder="{{ _('supplier_statement_note_optional') }}">
-      </div>
-      <button type="submit" class="ss-pay-submit">
-        <span>💳</span>
-        <span>{{ _('supplier_statement_submit_payment') }}</span>
-      </button>
-    </form>
+    </div>
   </div>
 
   <div class="ss-card">
@@ -652,6 +818,51 @@
 
   <div class="ss-card">
     <h3 class="ss-section-title">
+      <span class="ss-section-title__icon">🛍️</span>
+      <span>{{ _('supplier_sales_title') }}</span>
+    </h3>
+    {% if sale_invoices %}
+    <div class="ss-table-wrap">
+      <table class="ss-table">
+        <thead>
+          <tr>
+            <th>رقم الفاتورة</th>
+            <th>الأصناف</th>
+            <th>{{ _('supplier_statement_col_total') }}</th>
+            <th>{{ _('supplier_statement_col_date') }}</th>
+            <th>إجراءات</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for inv in sale_invoices %}
+          <tr>
+            <td><strong>{{ inv.invoice_no }}</strong></td>
+            <td>
+              <span>{{ inv.item_count }} صنف</span>
+              <div class="ss-products-preview">{{ inv.products_label }}</div>
+            </td>
+            <td class="ss-money--credit">{{ fmt_money(inv.grand_total) }}</td>
+            <td>{{ inv.sale_date }}</td>
+            <td>
+              <button type="button" class="ss-btn ss-btn--delete" onclick="cancelSupplierSale({{ inv.id }}, '{{ inv.invoice_no }}')">
+                🗑️ إلغاء
+              </button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="ss-empty">
+      <span class="ss-empty__icon">🛍️</span>
+      {{ _('supplier_sales_empty') }}
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="ss-card">
+    <h3 class="ss-section-title">
       <span class="ss-section-title__icon">📑</span>
       <span>{{ _('supplier_statement_payments_log') }}</span>
     </h3>
@@ -673,10 +884,14 @@
             <td class="ss-money--credit">{{ fmt_money(pay.amount) }}</td>
             <td>{{ pay.note or _('supplier_statement_no_note') }}</td>
             <td>
+              {% if (pay.payment_method or 'cash') == 'offset' %}
+              <span class="ss-products-preview">{{ _('supplier_payment_offset_label') }}</span>
+              {% else %}
               <form method="post" action="/suppliers/payment/{{ pay.id }}/delete" style="display:inline;"
                     onsubmit="return confirm('حذف دفعة {{ fmt_money(pay.amount) }}؟ سيتم إرجاع المبلغ إلى رصيد المورد والصندوق.');">
                 <button type="submit" class="ss-btn ss-btn--delete">🗑️ حذف</button>
               </form>
+              {% endif %}
             </td>
           </tr>
           {% endfor %}
@@ -692,4 +907,176 @@
   </div>
 
 </div>
+
+<script>
+(function() {
+  const supplierId = {{ supplier.id }};
+  const supplierRemaining = {{ remaining_val }};
+  const currencyLabel = {{ _('reports_currency_iqd')|tojson }};
+  const receivableTemplate = {{ _('supplier_sale_receivable_alert')|tojson }};
+  const saleItems = [];
+  let searchTimer = null;
+
+  const byId = (id) => document.getElementById(id);
+  const fmt = (n) => Number(n || 0).toLocaleString('en-US');
+
+  function renderSaleItems() {
+    const body = byId('saleItemsBody');
+    const empty = byId('saleItemsEmpty');
+    body.querySelectorAll('tr[data-sale-item]').forEach((row) => row.remove());
+    if (!saleItems.length) {
+      empty.style.display = '';
+      byId('saleSubmitBtn').disabled = true;
+      updateSaleTotals();
+      return;
+    }
+    empty.style.display = 'none';
+    saleItems.forEach((item, index) => {
+      const tr = document.createElement('tr');
+      tr.dataset.saleItem = '1';
+      tr.innerHTML = `
+        <td>${item.name}</td>
+        <td><input type="number" min="1" step="1" value="${item.qty}" data-index="${index}" data-field="qty" style="width:80px;padding:6px;border-radius:8px;border:1px solid var(--border-light);"></td>
+        <td><input type="number" min="1" step="1" value="${item.price}" data-index="${index}" data-field="price" style="width:110px;padding:6px;border-radius:8px;border:1px solid var(--border-light);"></td>
+        <td>${fmt(item.qty * item.price)} ${currencyLabel}</td>
+        <td><button type="button" class="ss-btn ss-btn--delete" data-remove="${index}">✕</button></td>
+      `;
+      body.appendChild(tr);
+    });
+    byId('saleSubmitBtn').disabled = false;
+    updateSaleTotals();
+  }
+
+  function updateSaleTotals() {
+    const grandTotal = saleItems.reduce((sum, item) => sum + (item.qty * item.price), 0);
+    byId('saleGrandTotal').textContent = `${fmt(grandTotal)} ${currencyLabel}`;
+    const newRemaining = supplierRemaining - grandTotal;
+    const alertEl = byId('saleReceivableAlert');
+    if (newRemaining < 0) {
+      byId('saleRemainingPreview').textContent = `0 ${currencyLabel}`;
+      alertEl.textContent = receivableTemplate.replace('{amount}', `${fmt(Math.abs(newRemaining))} ${currencyLabel}`);
+      alertEl.classList.add('visible');
+    } else {
+      byId('saleRemainingPreview').textContent = `${fmt(newRemaining)} ${currencyLabel}`;
+      alertEl.textContent = '';
+      alertEl.classList.remove('visible');
+    }
+  }
+
+  function addSaleItem(product) {
+    const existing = saleItems.find((item) => item.product_id === product.id);
+    if (existing) {
+      existing.qty += 1;
+    } else {
+      saleItems.push({
+        product_id: product.id,
+        name: product.name,
+        qty: 1,
+        price: Number(product.sale_price || 0),
+      });
+    }
+    renderSaleItems();
+    byId('saleProductSearch').value = '';
+    byId('saleProductSuggest').classList.remove('open');
+  }
+
+  function searchProducts(q) {
+    fetch(`/suppliers/api/products/search?q=${encodeURIComponent(q || '')}`)
+      .then((res) => res.json())
+      .then((rows) => {
+        const box = byId('saleProductSuggest');
+        box.innerHTML = '';
+        if (!rows.length) {
+          box.classList.remove('open');
+          return;
+        }
+        rows.forEach((product) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.innerHTML = `${product.name}<small>${fmt(product.sale_price)} ${currencyLabel} — متوفر: ${product.quantity}</small>`;
+          btn.addEventListener('click', () => addSaleItem(product));
+          box.appendChild(btn);
+        });
+        box.classList.add('open');
+      });
+  }
+
+  byId('saleProductSearch').addEventListener('input', (event) => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => searchProducts(event.target.value.trim()), 200);
+  });
+
+  byId('saleItemsBody').addEventListener('input', (event) => {
+    const target = event.target;
+    if (!target.dataset.index) return;
+    const index = Number(target.dataset.index);
+    const field = target.dataset.field;
+    const value = Math.max(1, Number(target.value || 1));
+    if (!saleItems[index]) return;
+    saleItems[index][field] = value;
+    renderSaleItems();
+  });
+
+  byId('saleItemsBody').addEventListener('click', (event) => {
+    const btn = event.target.closest('[data-remove]');
+    if (!btn) return;
+    saleItems.splice(Number(btn.dataset.remove), 1);
+    renderSaleItems();
+  });
+
+  document.addEventListener('click', (event) => {
+    if (!event.target.closest('.ss-sale-search-wrap')) {
+      byId('saleProductSuggest').classList.remove('open');
+    }
+  });
+
+  byId('saleSubmitBtn').addEventListener('click', async () => {
+    if (!saleItems.length) return;
+    byId('saleSubmitBtn').disabled = true;
+    try {
+      const response = await fetch(`/suppliers/${supplierId}/sale`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          note: byId('saleNote').value.trim(),
+          items: saleItems.map((item) => ({
+            product_id: item.product_id,
+            qty: item.qty,
+            price: item.price,
+          })),
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'تعذر تسجيل البيع');
+      }
+      if (typeof showToast === 'function') {
+        showToast(data.message, 'success');
+      }
+      window.location.href = data.redirect || window.location.href;
+    } catch (error) {
+      if (typeof showToast === 'function') {
+        showToast(error.message || 'تعذر تسجيل البيع', 'error');
+      } else {
+        alert(error.message || 'تعذر تسجيل البيع');
+      }
+      byId('saleSubmitBtn').disabled = saleItems.length === 0;
+    }
+  });
+
+  window.cancelSupplierSale = async function(saleId, invoiceNo) {
+    if (!confirm(`إلغاء بيع ${invoiceNo}؟ سيتم استرجاع المخزون وعكس التسوية.`)) return;
+    try {
+      const response = await fetch(`/suppliers/sale/${saleId}/cancel`, { method: 'POST' });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'تعذر إلغاء البيع');
+      }
+      window.location.href = data.redirect || window.location.href;
+    } catch (error) {
+      alert(error.message || 'تعذر إلغاء البيع');
+    }
+  };
+})();
+</script>
 {% endblock %}

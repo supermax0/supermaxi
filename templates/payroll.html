@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block title %}الرواتب{% endblock %}
+{% block page_title %}💼 نظام الرواتب{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/payroll.css') }}">
+
+<div class="payroll-page">
+  <div class="payroll-summary">
+    <div class="payroll-card">
+      <h4>رواتب مستحقة اليوم</h4>
+      <div class="payroll-card-value" id="summarySalaryDue">0</div>
+      <span class="payroll-card-unit">د.ع</span>
+    </div>
+    <div class="payroll-card">
+      <h4>عمولات معلّقة</h4>
+      <div class="payroll-card-value" id="summaryCommissionDue">0</div>
+      <span class="payroll-card-unit">د.ع</span>
+    </div>
+    <div class="payroll-card accent">
+      <h4>إجمالي المستحق</h4>
+      <div class="payroll-card-value" id="summaryTotalDue">0</div>
+      <span class="payroll-card-unit">د.ع</span>
+    </div>
+  </div>
+
+  <div class="payroll-toolbar">
+    <label>
+      حساب الصرف
+      <select id="treasuryAccount">
+        {% for acc in treasury_accounts %}
+        <option value="{{ acc.id }}" {% if acc.is_default %}selected{% endif %}>{{ acc.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="button" class="payroll-btn primary" id="btnProcessDue">صرف الرواتب المستحقة اليوم</button>
+    <button type="button" class="payroll-btn secondary" id="btnRefresh">تحديث</button>
+  </div>
+
+  <div class="payroll-tabs">
+    <button type="button" class="payroll-tab active" data-tab="due">المستحقات</button>
+    <button type="button" class="payroll-tab" data-tab="commission">العمولات</button>
+    <button type="button" class="payroll-tab" data-tab="schedule">الجدولة</button>
+    <button type="button" class="payroll-tab" data-tab="history">السجل</button>
+  </div>
+
+  <section class="payroll-panel active" id="panelDue">
+    <div class="payroll-table-wrap">
+      <table class="payroll-table">
+        <thead>
+          <tr>
+            <th>الاسم</th>
+            <th>النوع</th>
+            <th>الجدولة</th>
+            <th>المبلغ</th>
+            <th>الموعد</th>
+            <th>إجراء</th>
+          </tr>
+        </thead>
+        <tbody id="dueTableBody">
+          <tr><td colspan="6" class="empty">جاري التحميل...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="payroll-panel" id="panelCommission">
+    <div class="payroll-table-wrap">
+      <table class="payroll-table">
+        <thead>
+          <tr>
+            <th>الموظف</th>
+            <th>الطلبات</th>
+            <th>مبلغ العمولة/طلب</th>
+            <th>المجموع</th>
+            <th>إجراء</th>
+          </tr>
+        </thead>
+        <tbody id="commissionTableBody">
+          <tr><td colspan="5" class="empty">لا توجد عمولات معلّقة</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="payroll-panel" id="panelSchedule">
+    <div class="payroll-table-wrap">
+      <table class="payroll-table">
+        <thead>
+          <tr>
+            <th>الاسم</th>
+            <th>الجدولة</th>
+            <th>المبلغ</th>
+            <th>الموعد القادم</th>
+          </tr>
+        </thead>
+        <tbody id="scheduleTableBody">
+          <tr><td colspan="4" class="empty">لا توجد جداول رواتب</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="payroll-panel" id="panelHistory">
+    <div class="payroll-table-wrap">
+      <table class="payroll-table">
+        <thead>
+          <tr>
+            <th>التاريخ</th>
+            <th>المستفيد</th>
+            <th>النوع</th>
+            <th>المبلغ</th>
+            <th>المصروف</th>
+          </tr>
+        </thead>
+        <tbody id="historyTableBody">
+          <tr><td colspan="5" class="empty">جاري التحميل...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<div class="payroll-modal" id="commissionModal" hidden>
+  <div class="payroll-modal-backdrop" data-close-modal></div>
+  <div class="payroll-modal-content">
+    <header>
+      <h3 id="commissionModalTitle">تفاصيل العمولة</h3>
+      <button type="button" class="payroll-modal-close" data-close-modal>&times;</button>
+    </header>
+    <div class="payroll-modal-body">
+      <table class="payroll-table compact">
+        <thead>
+          <tr>
+            <th>الكود</th>
+            <th>الطلب</th>
+            <th>الزبون</th>
+            <th>المبلغ</th>
+          </tr>
+        </thead>
+        <tbody id="commissionLinesBody"></tbody>
+      </table>
+    </div>
+    <footer>
+      <button type="button" class="payroll-btn primary" id="btnSettleFromModal">سداد الكل</button>
+      <button type="button" class="payroll-btn secondary" data-close-modal>إغلاق</button>
+    </footer>
+  </div>
+</div>
+
+<script>
+  window.PAYROLL_CONFIG = {
+    treasuryDefault: {% if treasury_accounts %}{{ treasury_accounts[0].id }}{% else %}null{% endif %}
+  };
+</script>
+<script src="{{ url_for('static', filename='js/payroll.js') }}"></script>
+{% endblock %}

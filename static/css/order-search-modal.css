@@ -232,6 +232,76 @@ body.finora-search-modal-open {
   flex-shrink: 0;
 }
 
+.order-search-results__head--split {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.order-search-results__head-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.order-search-results__scan-count {
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.order-search-bulk-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.order-search-bulk-status__label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+  white-space: nowrap;
+}
+
+.order-search-bulk-status__select {
+  height: 38px;
+  min-width: 130px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.order-search-bulk-status__btn {
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.order-search-bulk-status__btn:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
 .order-search-results__table-wrap {
   flex: 1;
   min-height: 0;
@@ -249,10 +319,12 @@ body.finora-search-modal-open {
 }
 
 .order-results-table col.col-id { width: 60px; }
-.order-results-table col.col-customer { width: 22%; }
-.order-results-table col.col-phone { width: 18%; }
-.order-results-table col.col-status { width: 16%; }
-.order-results-table col.col-amount { width: 15%; }
+.order-results-table col.col-customer { width: 18%; }
+.order-results-table col.col-phone { width: 14%; }
+.order-results-table col.col-shipping-barcode { width: 140px; }
+.order-results-table col.col-status { width: 14%; }
+.order-results-table col.col-amount { width: 12%; }
+.order-results-table col.col-delivery-fee { width: 120px; }
 .order-results-table col.col-check { width: 80px; }
 .order-results-table col.col-action { width: 90px; }
 
@@ -307,6 +379,29 @@ body.finora-search-modal-open {
   white-space: nowrap;
 }
 
+.order-results-table .order-td-shipping-barcode {
+  white-space: nowrap;
+  max-width: 160px;
+}
+
+.order-results-table .order-shipping-barcode {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: ltr;
+  text-align: left;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f172a;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 4px 8px;
+  letter-spacing: 0.02em;
+}
+
 .order-results-table .order-td-phone {
   direction: ltr;
   text-align: right;
@@ -322,6 +417,75 @@ body.finora-search-modal-open {
   color: #16a34a;
   white-space: nowrap;
   font-size: 13px;
+}
+
+.order-results-table .order-td-delivery-fee {
+  padding-inline: 6px;
+}
+
+.order-delivery-fee-cell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.order-delivery-fee-input {
+  width: 100%;
+  max-width: 72px;
+  padding: 8px 6px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  direction: ltr;
+  font-family: inherit;
+}
+
+.order-delivery-fee-input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.order-delivery-fee-input.is-loading {
+  color: #94a3b8;
+}
+
+.order-delivery-fee-input:disabled,
+.order-delivery-fee-input.is-disabled {
+  background: #f1f5f9;
+  color: #94a3b8;
+  border-color: #e2e8f0;
+  cursor: not-allowed;
+}
+
+.order-delivery-fee-suggest {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.order-delivery-fee-suggest:hover:not(:disabled) {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+.order-delivery-fee-suggest:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .order-results-table .order-td-check {
@@ -347,6 +511,44 @@ body.finora-search-modal-open {
   color: #64748b;
   font-size: 14px;
   height: auto;
+}
+
+.order-results-table tfoot.order-search-totals td {
+  height: 52px;
+  padding: 10px 12px;
+  border-top: 2px solid #cbd5e1;
+  background: #f8fafc;
+  font-weight: 800;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.order-results-table .order-search-totals__label {
+  text-align: start;
+  color: #0f172a;
+  font-size: 13px;
+}
+
+.order-results-table tfoot.order-search-totals .order-td-amount {
+  color: #16a34a;
+  font-size: 14px;
+}
+
+.order-results-table tfoot.order-search-totals .order-td-delivery-fee {
+  color: #1d4ed8;
+  font-size: 14px;
+  direction: ltr;
+  text-align: center;
+}
+
+:root[data-theme="dark"] #searchModal.order-search-modal .order-results-table tfoot.order-search-totals td {
+  background: rgba(30, 41, 59, 0.85);
+  border-top-color: rgba(255, 255, 255, 0.12);
+  color: #f1f5f9;
+}
+
+:root[data-theme="dark"] #searchModal.order-search-modal .order-search-totals__label {
+  color: #e2e8f0;
 }
 
 /* Override strong row tint inside modal */
@@ -641,4 +843,10 @@ body.finora-search-modal-open {
   background: rgba(30, 41, 59, 0.8);
   border-color: rgba(255, 255, 255, 0.08);
   color: #94a3b8;
+}
+
+:root[data-theme="dark"] #searchModal.order-search-modal .order-shipping-barcode {
+  background: rgba(30, 41, 59, 0.9);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
 }

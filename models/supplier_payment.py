@@ -23,7 +23,16 @@ class SupplierPayment(db.Model):
         index=True,
     )
 
+    payment_method = db.Column(db.String(20), default="cash")  # cash | offset
+    supplier_sale_id = db.Column(
+        db.Integer,
+        db.ForeignKey("supplier_sale.id"),
+        nullable=True,
+        index=True,
+    )
+
     treasury_account = db.relationship("TreasuryAccount", lazy=True)
+    supplier_sale = db.relationship("SupplierSale", lazy=True)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 

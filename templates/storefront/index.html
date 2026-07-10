@@ -1,86 +1,46 @@
-{% extends "storefront/base.html" %}
+{% extends "storefront/luxury_layout.html" %}
 {% block title %}{{ store_design.store_name }} - المتجر{% endblock %}
 {% block content %}
-<section class="sf-hero">
-  <div class="sf-company-ad-banner" aria-label="إعلانات الشركة">
-    <span>إعلانات الشركة</span>
-    <b>مساحة إعلان الشركة</b>
-    <small>ضع هنا صورة العرض أو إعلان الموسم أو أي حملة تسويقية.</small>
-  </div>
-</section>
+{% include "storefront/partials/luxury/hero.html" %}
+{% include "storefront/partials/luxury/toolbar.html" %}
+{% include "storefront/partials/luxury/states.html" %}
 
-<section class="sf-card sf-filters" aria-label="فلترة المنتجات">
-  <form method="get">
-    {% if request.args.get('dev') %}<input type="hidden" name="dev" value="1">{% endif %}
-    <div class="sf-field search">
-      <label for="sfSearch">بحث</label>
-      <input id="sfSearch" name="q" value="{{ filters.q }}" placeholder="اسم المنتج أو الوصف">
-    </div>
-    <div class="sf-field">
-      <label for="sfMinPrice">أقل سعر</label>
-      <input id="sfMinPrice" type="number" name="min_price" min="0" value="{{ filters.min_price }}" placeholder="0">
-    </div>
-    <div class="sf-field">
-      <label for="sfMaxPrice">أعلى سعر</label>
-      <input id="sfMaxPrice" type="number" name="max_price" min="0" value="{{ filters.max_price }}" placeholder="0">
-    </div>
-    <div class="sf-field">
-      <label for="sfAvailability">التوفر</label>
-      <select id="sfAvailability" name="availability">
-        <option value="all" {% if filters.availability == 'all' %}selected{% endif %}>كل الحالات</option>
-        <option value="in_stock" {% if filters.availability == 'in_stock' %}selected{% endif %}>متوفر</option>
-        <option value="out_stock" {% if filters.availability == 'out_stock' %}selected{% endif %}>غير متوفر</option>
-      </select>
-    </div>
-    <div class="sf-field">
-      <label for="sfBadge">التصنيف</label>
-      <select id="sfBadge" name="badge">
-        <option value="">كل التصنيفات</option>
-        {% for b in badges %}
-        <option value="{{ b }}" {% if filters.badge == b %}selected{% endif %}>{{ b }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="sf-field">
-      <label for="sfSort">الترتيب</label>
-      <select id="sfSort" name="sort">
-        <option value="latest" {% if filters.sort == 'latest' %}selected{% endif %}>الأحدث</option>
-        <option value="price_asc" {% if filters.sort == 'price_asc' %}selected{% endif %}>السعر: الأقل</option>
-        <option value="price_desc" {% if filters.sort == 'price_desc' %}selected{% endif %}>السعر: الأعلى</option>
-        <option value="name_asc" {% if filters.sort == 'name_asc' %}selected{% endif %}>الاسم</option>
-      </select>
-    </div>
-    <button class="sf-btn primary" type="submit">تطبيق</button>
-  </form>
-</section>
-
-{% if featured_products %}
-<section class="sf-section">
-  <div class="sf-section-title">
-    <h2>منتجات مميزة</h2>
-    <span>مختارة من أحدث المنتجات</span>
+<div id="luxProducts">
+{% for section in product_sections %}
+<section class="lux-products-section" id="luxSection-{{ section.id }}" data-section-id="{{ section.id }}" aria-label="{{ section.title }}">
+  <div class="lux-section-head">
+    <h2>{{ section.title }}</h2>
+    <span class="lux-count lux-section-count" data-section-count="{{ section.id }}">{{ section.products|length }} منتج</span>
   </div>
-  <div class="sf-grid">
-    {% for product in featured_products %}
-    {% include "storefront/partials/product_card.html" %}
+  <div class="lux-grid lux-section-grid lux-grid--cols-{{ section.grid_columns }}" id="luxGrid-{{ section.id }}" data-view="grid" data-section="{{ section.id }}">
+    {% for product in section.products %}
+    {% with card_template=section.card_template, card_size=section.card_size %}
+    {% include "storefront/partials/luxury/product_card.html" %}
+    {% endwith %}
     {% endfor %}
   </div>
 </section>
-{% endif %}
+{% endfor %}
+</div>
 
-<section class="sf-section" id="sfProducts">
-  <div class="sf-section-title">
-    <h2>كل المنتجات</h2>
-    <span>{{ products|length }} عنصر</span>
+<script id="sfProductsData" type="application/json">{{ products|tojson }}</script>
+<script type="text/template" id="sfLuxuryCardTpl">
+{% raw %}
+<article class="lux-product-card lux-card-tpl-classic" data-product-id="{{ID}}" data-lux-category="{{CATEGORY}}" data-lux-price="{{PRICE}}">
+  <button type="button" class="lux-wish-btn" title="المفضلة — قريباً" disabled>&#9825;</button>
+  <a class="lux-product-media" href="{{URL}}">
+    {{IMAGE_BLOCK}}
+    <div class="lux-badges">{{BADGES}}</div>
+  </a>
+  <div class="lux-product-body">
+    <a class="lux-product-title" href="{{URL}}">{{NAME}}</a>
+    {{META_LINE}}
+    <div class="lux-product-prices">{{PRICE_BLOCK}}</div>
+    <button type="button" class="lux-btn-cart" data-sf-add-cart="{{ID}}" {{DISABLED}}>أضف إلى السلة</button>
   </div>
-  {% if products %}
-  <div class="sf-grid">
-    {% for product in products %}
-    {% include "storefront/partials/product_card.html" %}
-    {% endfor %}
-  </div>
-  {% else %}
-  <div class="sf-empty">لا توجد منتجات مطابقة للفلاتر الحالية.</div>
-  {% endif %}
-</section>
+</article>
+{% endraw %}
+</script>
+
+{% include "storefront/partials/luxury/benefits.html" %}
 {% endblock %}

@@ -360,12 +360,12 @@
                 <div class="totals-box">
                     <div class="totals-row">
                         <span style="color:var(--text-light); font-weight:bold;">الإجمالي الفرعي</span>
-                        <span style="font-weight:bold;">{{ "{:,.0f}".format(total) }} د.ع</span>
+                        <span style="font-weight:bold;">{{ "{:,.0f}".format(total_before_discount|default(total)) }} د.ع</span>
                     </div>
-                    {% if due < total %}
+                    {% if discount_amount|default(0) > 0 %}
                     <div class="totals-row">
                         <span style="color:var(--text-light); font-weight:bold;">الخصميات</span>
-                        <span style="color:#ef4444; font-weight:bold;">- {{ "{:,.0f}".format(total - due) }} د.ع</span>
+                        <span style="color:#ef4444; font-weight:bold;">- {{ "{:,.0f}".format(discount_amount) }} د.ع</span>
                     </div>
                     {% endif %}
                     <div class="totals-row grand-title">

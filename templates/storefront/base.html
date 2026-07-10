@@ -1,68 +1,42 @@
 ﻿<!doctype html>
-<html lang="ar" dir="rtl" data-theme="{{ store_design.theme_mode if store_design.theme_mode in ['light','dark'] else 'light' }}">
+<html lang="ar" dir="rtl">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <script src="/static/js/no-zoom.js"></script>
   <title>{% block title %}{{ store_design.store_name }}{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='storefront/css/store.css') }}?v=20260703-full-ad-banner">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='storefront/css/store.css') }}?v=20260709-cards2">
+  <link rel="stylesheet" href="{{ url_for('static', filename='storefront/css/store-luxury.css') }}?v=20260709-cards2">
   {% if store_design.ai_assistant_enabled %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='storefront/css/ai-chat.css') }}?v=20260703-mobile-chat">
+  <link rel="stylesheet" href="{{ url_for('static', filename='storefront/css/ai-chat.css') }}?v=20260709-pro">
   {% endif %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/help-system.css') }}">
   <style>
     :root {
-      --brand: {{ store_design.primary_color }};
-      --shipping: {{ store_design.shipping_color }};
+      --brand: {{ store_design.primary_color or '#D6A84F' }};
+      --shipping: {{ store_design.shipping_color or '#D6A84F' }};
     }
   </style>
-  {% if store_design.theme_mode == 'auto' %}
-  <script>
-    (function () {
-      const dark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-      document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
-    })();
-  </script>
-  {% endif %}
   {% block head_extra %}{% endblock %}
 </head>
-<body class="store-card-{{ store_design.card_style }}">
-  <header class="sf-header">
-    <div class="sf-header-inner">
-      <a class="sf-brand" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">
-        {% if store_design.logo_url %}
-        <img src="{{ store_design.logo_url }}" alt="{{ store_design.store_name }}">
-        {% else %}
-        <span class="sf-brand-mark">{{ store_design.store_name[:1] }}</span>
-        {% endif %}
-        <span>{{ store_design.store_name }}</span>
-      </a>
-      <nav class="sf-nav" aria-label="روابط المتجر">
-        <a class="sf-link" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">المنتجات</a>
-        <a class="sf-link" href="{{ url_for('storefront.tracking_page', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.tracking_page', tenant_slug=shop_tenant_slug) }}">تتبع الطلب</a>
-        {% if store_design.whatsapp %}
-        <a class="sf-link" href="https://wa.me/{{ store_design.whatsapp|replace('+','')|replace(' ','') }}" target="_blank" rel="noopener">واتساب</a>
-        {% endif %}
-        <a class="sf-cart-btn" href="{{ url_for('storefront.cart_page', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.cart_page', tenant_slug=shop_tenant_slug) }}">
-          السلة
-          <span class="sf-cart-count" data-sf-cart-count>{{ cart_count }}</span>
-        </a>
-      </nav>
-    </div>
-  </header>
+<body class="lux-body store-card-{{ store_design.card_style }}">
+  {% include "storefront/partials/luxury/header.html" %}
 
-  <main class="sf-page">
+  <main class="lux-page">
     {% block content %}{% endblock %}
   </main>
 
-  <footer class="sf-footer">
-    <span>{{ store_design.store_name }}</span>
-    <span>الدفع عند الاستلام</span>
+  <footer class="lux-footer">
+    <span>{{ store_design.store_name }} — {{ store_design.store_tagline or 'الفخامة في كل تفصيلة' }}</span>
+    <span>الدفع عند الاستلام · جميع الحقوق محفوظة</span>
   </footer>
 
-  <div class="sf-mobile-bar">
+  <div class="sf-mobile-bar lux-mobile-bar">
     <div class="sf-mobile-bar-inner">
-      <a class="sf-mobile-action" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">المنتجات</a>
+      <a class="sf-mobile-action" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">الرئيسية</a>
       <a class="sf-mobile-action primary" href="{{ url_for('storefront.cart_page', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.cart_page', tenant_slug=shop_tenant_slug) }}">السلة (<span data-sf-cart-count>{{ cart_count }}</span>)</a>
     </div>
   </div>
@@ -88,7 +62,8 @@
   </script>
   <script id="finora-help-fields" type="application/json">{{ help_fields_json|safe }}</script>
   <script src="{{ url_for('static', filename='js/help-system.js') }}" defer></script>
-  <script src="{{ url_for('static', filename='storefront/js/store.js') }}"></script>
+  <script src="{{ url_for('static', filename='storefront/js/store.js') }}?v=20260709-cards2"></script>
+  <script src="{{ url_for('static', filename='storefront/js/store-luxury.js') }}?v=20260709-cards2"></script>
   {% if store_design.ai_assistant_enabled %}
   <script src="{{ url_for('static', filename='storefront/js/ai-chat.js') }}"></script>
   {% endif %}

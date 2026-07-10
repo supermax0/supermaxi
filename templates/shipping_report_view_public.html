@@ -392,7 +392,9 @@
                         <th>الزبون</th>
                         <th>الهاتف</th>
                         <th>المحافظة</th>
-                        <th>المبلغ</th>
+                        <th>الإجمالي</th>
+                        <th>المدفوع مسبقاً</th>
+                        <th>الباقي</th>
                         <th>حالة الطلب الحالية</th>
                         {% if not report.is_executed %}
                         <th>تحديد الحالة</th>
@@ -413,7 +415,9 @@
                         <td><strong>{{ order.customer_name }}</strong></td>
                         <td style="direction: ltr; text-align: center; font-family: 'Courier New', monospace; font-weight: 600;">{{ order.customer_phone }}</td>
                         <td>{{ order.customer_city }}</td>
-                        <td style="color: var(--report-success); font-weight: 700; font-size: 14px;">{{ "{:,.0f}".format(order.total) }} د.ع</td>
+                        <td style="font-weight: 600; font-size: 13px;">{{ "{:,.0f}".format(order.total|default(0)|int) }} د.ع</td>
+                        <td style="color: #3b82f6; font-weight: 600; font-size: 13px;">{{ "{:,.0f}".format(order.paid_amount|default(0, true)|int) }} د.ع</td>
+                        <td class="remaining-amount-cell" style="color: var(--report-success); font-weight: 700; font-size: 14px;">{{ "{:,.0f}".format(order.remaining|default(order.total, true)|int) }} د.ع</td>
                         <td>{{ order.status }}</td>
                         {% if not report.is_executed %}
                         <td>
@@ -429,9 +433,9 @@
                     </tr>
                     {% endfor %}
                     <tr class="total-summary-row" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.2)); font-weight: 700;">
-                        <td colspan="5" style="text-align: right; padding-right: 25px; font-size: 16px;">💰 <span id="reportTotalLabel">{{ display_total_label }}</span>:</td>
+                        <td colspan="7" style="text-align: right; padding-right: 25px; font-size: 16px;">💰 <span id="reportTotalLabel">{{ display_total_label }}</span>:</td>
                         <td id="reportTotalAmount" style="color: var(--report-success); font-size: 18px; font-weight: 800;">{{ "{:,.0f}".format(display_total_amount) }} دينار عراقي</td>
-                        <td colspan="3"></td>
+                        <td colspan="{% if not report.is_executed %}3{% else %}2{% endif %}"></td>
                     </tr>
                 </tbody>
             </table>
@@ -457,7 +461,7 @@
             let hasSelection = false;
             document.querySelectorAll('.order-status-select').forEach(select => {
                 const row = select.closest('tr');
-                const amountCell = row ? row.querySelector('td:nth-child(6)') : null;
+                const amountCell = row ? row.querySelector('.remaining-amount-cell') : null;
                 const amountText = amountCell ? amountCell.textContent.replace(/[^\d]/g, '') : '0';
                 const amount = parseInt(amountText, 10) || 0;
                 if (select.value) {

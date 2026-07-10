@@ -21,8 +21,8 @@
   let productSearchQuery = "";
   let discountType = "amount";
   let discountValue = 0;
-  let shippingValue = 0;
   let isSubmitting = false;
+  let activeSubmissionToken = null;
   let currentPage = 1;
   let pageSize = 20;
 
@@ -31,6 +31,7 @@
     editingOrderId = initialOrderData.id ?? null;
     selectedCustomerId = initialOrderData.customer_id ?? null;
     selectedCustomerName = initialOrderData.customer_name || "";
+    discountValue = Number(initialOrderData.discount_amount) || 0;
     items = Array.isArray(initialOrderData.items)
       ? initialOrderData.items.map((it) => ({
           product_id: it.product_id,
@@ -101,6 +102,27 @@
     }));
   }
 
+  function createSubmissionToken() {
+    if (window.crypto && typeof window.crypto.randomUUID === "function") {
+      return window.crypto.randomUUID();
+    }
+    return "pos-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+  }
+
+  function setSubmitBusy(busy) {
+    const buttons = [
+      $("btnExecute"),
+      $("btnExecuteMobile"),
+      document.querySelector("#orderNotesModal .pos-btn-primary"),
+      document.querySelector("#scheduleOrderModal .pos-btn-primary"),
+    ];
+    buttons.forEach((button) => {
+      if (!button) return;
+      button.disabled = !!busy;
+      button.classList.toggle("is-busy", !!busy);
+    });
+  }
+
   function effectiveItemStock(item) {
     if (item.color) {
       return Number(item.color_stock || item.stock) || 0;
@@ -122,8 +144,7 @@
   function calcTotal() {
     const sub = calcSubtotal();
     const disc = calcDiscount(sub);
-    const ship = Number(shippingValue) || 0;
-    return Math.max(0, sub - disc - ship);
+    return Math.max(0, sub - disc);
   }
 
   function stockBadge(product, qty) {
@@ -208,16 +229,13 @@
       }
     }
 
-    quoteDeliveryFee();
+    updateSummary();
   }
 
   function clearCustomerDisplay() {
     selectedCustomerName = "";
     selectedCustomerCity = "";
     selectedCustomerPhone = "";
-    shippingValue = 0;
-    const shipInput = $("shippingValue");
-    if (shipInput) shipInput.value = "";
     const badge = $("selectedCustomer");
     if (badge) {
       badge.textContent = "لم يتم اختيار زبون";
@@ -228,27 +246,6 @@
       sc.value = "";
       sc.classList.remove("pos-input--selected");
     }
-  }
-
-  function quoteDeliveryFee() {
-    if (!selectedCustomerId || !selectedCustomerCity || !items.length) return;
-    fetch("/api/delivery-fee/quote", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        city: selectedCustomerCity,
-        items: items.map(({ product_id, qty }) => ({ product_id, qty })),
-      }),
-    })
-      .then((r) => r.json())
-      .then((d) => {
-        if (!d.ok) return;
-        shippingValue = Number(d.fee) || 0;
-        const shipInput = $("shippingValue");
-        if (shipInput) shipInput.value = shippingValue;
-        updateSummary();
-      })
-      .catch(() => { /* ignore */ });
   }
 
   function updateStats() {
@@ -268,13 +265,11 @@
   function updateSummary() {
     const sub = calcSubtotal();
     const disc = calcDiscount(sub);
-    const ship = Number(shippingValue) || 0;
     const total = calcTotal();
     const discStr = disc > 0 ? "−" + fmt(disc) + " د.ع" : "0 د.ع";
     const set = (id, val) => { const el = $(id); if (el) el.textContent = val; };
     set("summarySubtotal", fmt(sub) + " د.ع");
     set("summaryDiscount", discStr);
-    set("summaryShipping", ship > 0 ? "−" + fmt(ship) + " د.ع" : "0 د.ع");
     set("summaryTotal", fmt(total) + " د.ع");
     set("summaryTotalFixed", fmt(total) + " د.ع");
     set("summaryDiscountFixed", disc > 0 ? "−" + fmt(disc) + " د.ع" : "0 د.ع");
@@ -359,7 +354,6 @@
     }
 
     updateSummary();
-    quoteDeliveryFee();
   }
 
   function filteredProducts() {
@@ -888,7 +882,7 @@
   }
 
   function confirmOrderWithNotes() {
-    if (isSubmitting) return;
+    if (isSubmitting) { toast("جاري إنشاء الطلب، انتظر لحظة..."); return; }
     if (!selectedCustomerId) { toast("اختر زبوناً"); return; }
     if (!items.length) { toast("لا توجد منتجات"); return; }
 
@@ -916,6 +910,8 @@
       || ($("invoiceNotes")?.value || "").trim();
 
     isSubmitting = true;
+    activeSubmissionToken = createSubmissionToken();
+    setSubmitBusy(true);
     updateStats();
     const btn = $("btnExecute");
     const btnM = $("btnExecuteMobile");
@@ -933,12 +929,15 @@
         scheduled_date: null,
         page_id: pageId || null,
         page_name: pageName || null,
-        shipping_fee: Number(shippingValue) || 0,
+        discount_amount: Number(discountValue) || 0,
+        submission_token: activeSubmissionToken,
       }),
     })
       .then((r) => r.json())
       .then((d) => {
         isSubmitting = false;
+        activeSubmissionToken = null;
+        setSubmitBusy(false);
         if (btn) btn.innerHTML = editingOrderId ? '<i class="fas fa-save"></i> حفظ التعديل' : '<i class="fas fa-print"></i> تنفيذ و طباعة';
         if (btnM) btnM.innerHTML = editingOrderId ? '<i class="fas fa-save"></i> حفظ' : '<i class="fas fa-print"></i> تنفيذ';
         if (d.error) {
@@ -962,6 +961,8 @@
       })
       .catch((err) => {
         isSubmitting = false;
+        activeSubmissionToken = null;
+        setSubmitBusy(false);
         if (btn) btn.innerHTML = editingOrderId ? '<i class="fas fa-save"></i> حفظ التعديل' : '<i class="fas fa-print"></i> تنفيذ و طباعة';
         if (btnM) btnM.innerHTML = editingOrderId ? '<i class="fas fa-save"></i> حفظ' : '<i class="fas fa-print"></i> تنفيذ';
         toast("حدث خطأ: " + err.message);
@@ -987,6 +988,7 @@
   }
 
   function confirmScheduleOrder() {
+    if (isSubmitting) { toast("جاري إنشاء الطلب، انتظر لحظة..."); return; }
     const scheduleDate = $("scheduleDateInput")?.value;
     if (!scheduleDate) { toast("اختر تاريخ التأجيل"); return; }
     if (!selectedCustomerId || !items.length) return;
@@ -1000,6 +1002,10 @@
       pageId = pageSelect.value;
     }
 
+    isSubmitting = true;
+    activeSubmissionToken = createSubmissionToken();
+    setSubmitBusy(true);
+
     fetch("/pos/create-order", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1010,11 +1016,15 @@
         note: notes || null,
         scheduled_date: scheduleDate,
         page_id: pageId || null,
-        shipping_fee: Number(shippingValue) || 0,
+        discount_amount: Number(discountValue) || 0,
+        submission_token: activeSubmissionToken,
       }),
     })
       .then((r) => r.json())
       .then((d) => {
+        isSubmitting = false;
+        activeSubmissionToken = null;
+        setSubmitBusy(false);
         if (d.error) { toast(d.error); return; }
         items.forEach((i) => syncLocalStock(i.product_id, i.qty));
         toast("تم تأجيل الطلب — رقم " + d.invoice_id);
@@ -1024,7 +1034,12 @@
         clearCustomerDisplay();
         renderItems();
       })
-      .catch((err) => toast("حدث خطأ: " + err.message));
+      .catch((err) => {
+        isSubmitting = false;
+        activeSubmissionToken = null;
+        setSubmitBusy(false);
+        toast("حدث خطأ: " + err.message);
+      });
   }
 
   function openClearCartDialog() {
@@ -1367,10 +1382,6 @@
       discountValue = e.target.value;
       updateSummary();
     });
-    $("shippingValue")?.addEventListener("input", (e) => {
-      shippingValue = e.target.value;
-      updateSummary();
-    });
   }
 
   function initKeyboard() {
@@ -1449,6 +1460,8 @@
       if (initialOrderData.page_id && $("pageSelect")) {
         $("pageSelect").value = String(initialOrderData.page_id);
       }
+      const discountInput = $("discountValue");
+      if (discountInput) discountInput.value = String(discountValue);
       lockEditModeUi();
     }
 

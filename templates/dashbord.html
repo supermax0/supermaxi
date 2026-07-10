@@ -2081,7 +2081,7 @@
       <div class="card metric-card">
         <div class="metric-title"><i class="fas fa-receipt"></i> {{ _('dashboard_expenses_total_title') }}</div>
         <div id="expenses" class="count metric-count">0</div>
-        <div class="metric-note">{{ _('dashboard_for_selected_period') }}</div>
+        <div class="metric-note">{{ _('dashboard_expenses_posted_note') }}</div>
       </div>
     </div>
     {% endif %}
@@ -2139,9 +2139,9 @@
       <div class="order-search-toolbar">
         <div class="order-search-input-wrap">
           <span class="order-search-input__icon" aria-hidden="true">🔍</span>
-          <input id="q" class="order-search-input" type="search" inputmode="numeric" autocomplete="off"
+          <input id="q" class="order-search-input" type="text" inputmode="numeric" autocomplete="off"
             placeholder="رقم الوصل أو رقم الهاتف"
-            onkeyup="if(event.key==='Enter') search()">
+            onkeydown="if(event.key==='Enter'){event.preventDefault();search();}">
         </div>
         <button type="button" onclick="search()" class="order-search-submit-btn" aria-label="{{ _('dashboard_search_button') }}">
           <span class="order-search-submit-btn__icon" aria-hidden="true">🔍</span>
@@ -2150,9 +2150,22 @@
       </div>
 
       <div class="order-search-results">
-        <div class="order-search-results__head">
-          <span id="searchResultsCount">نتائج البحث (0)</span>
-          <span id="searchScanSessionCount" style="margin-right:12px;font-size:13px;color:var(--text-muted,#64748b);"></span>
+        <div class="order-search-results__head order-search-results__head--split">
+          <div class="order-search-results__head-left">
+            <span id="searchResultsCount">نتائج البحث (0)</span>
+            <span id="searchScanSessionCount" class="order-search-results__scan-count"></span>
+          </div>
+          <div class="order-search-bulk-status">
+            <label class="order-search-bulk-status__label" for="bulkStatusApplySelect">حالة الكل:</label>
+            <select id="bulkStatusApplySelect" class="order-search-bulk-status__select" aria-label="الحالة المطلوبة لكل الطلبات">
+              <option value="ordered">{{ _('dashboard_th_ordered') }}</option>
+              <option value="delivered">{{ _('dashboard_th_delivered') }}</option>
+              <option value="returned">{{ _('dashboard_th_returned') }}</option>
+            </select>
+            <button type="button" class="order-search-bulk-status__btn" onclick="applyBulkStatusToAll()" title="تغيير الحالة فقط — بدون تنفيذ">
+              تطبيق على الكل
+            </button>
+          </div>
         </div>
         <div class="order-search-results__table-wrap">
           <table class="order-results-table">
@@ -2160,8 +2173,10 @@
               <col class="col-id">
               <col class="col-customer">
               <col class="col-phone">
+              <col class="col-shipping-barcode">
               <col class="col-status">
               <col class="col-amount">
+              <col class="col-delivery-fee">
               <col class="col-check">
               <col class="col-action">
             </colgroup>
@@ -2170,17 +2185,27 @@
                 <th class="order-td-id">#</th>
                 <th class="order-td-customer">{{ _('dashboard_th_customer') }}</th>
                 <th class="order-td-phone">رقم الهاتف</th>
+                <th class="order-td-shipping-barcode">باركود النقل</th>
                 <th class="order-td-status">الحالة</th>
                 <th class="order-td-amount">{{ _('dashboard_th_amount') }}</th>
+                <th class="order-td-delivery-fee">أجرة التوصيل</th>
                 <th class="order-td-check"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()" aria-label="تحديد الكل"></th>
                 <th class="order-td-action">{{ _('dashboard_th_action') }}</th>
               </tr>
             </thead>
             <tbody id="rows">
               <tr class="order-orders-empty" id="searchEmptyRow">
-                <td colspan="7">ابحث برقم الوصل أو الهاتف لعرض النتائج</td>
+                <td colspan="9">ابحث برقم الوصل أو الهاتف لعرض النتائج</td>
               </tr>
             </tbody>
+            <tfoot id="searchTotalsRow" class="order-search-totals" hidden>
+              <tr>
+                <td colspan="5" class="order-search-totals__label">الإجمالي</td>
+                <td class="order-td-amount"><span id="searchTotalAmount">0 د.ع</span></td>
+                <td class="order-td-delivery-fee"><span id="searchTotalDeliveryFee">0</span></td>
+                <td colspan="2"></td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       </div>
@@ -2277,7 +2302,7 @@
       <select id="expenseCategory">
         <option value="">{{ _('dashboard_expense_category_placeholder') }}</option>
         <option value="إيجار">🏠 {{ _('dashboard_expense_category_rent') }}</option>
-        <option value="رواتب">💰 {{ _('dashboard_expense_category_salaries') }}</option>
+        <option value="salary">💰 {{ _('dashboard_expense_category_salaries') }}</option>
         <option value="كهرباء">⚡ {{ _('dashboard_expense_category_electricity') }}</option>
         <option value="إنترنت">🌐 {{ _('dashboard_expense_category_internet') }}</option>
         <option value="إعلان">📢 {{ _('dashboard_expense_category_ads') }}</option>
@@ -2926,6 +2951,7 @@
 ======================= -->
 <script src="{{ url_for('static', filename='js/ai_message_format.js') }}"></script>
 <script src="/static/js/barcode-scanner.js"></script>
+<script src="/static/js/delivery-fee-pay-modal.js"></script>
 <script>
   /* =======================
      Load Dashboard
@@ -3209,6 +3235,31 @@
     return rowsContainer.querySelectorAll("tr:not(.order-orders-empty)").length;
   }
 
+  function parseSearchMoney(value) {
+    return Math.max(0, parseInt(String(value == null ? "0" : value).replace(/[^\d]/g, ""), 10) || 0);
+  }
+
+  function updateSearchTotals() {
+    const rowsContainer = document.getElementById("rows");
+    const totalsEl = document.getElementById("searchTotalsRow");
+    const amountEl = document.getElementById("searchTotalAmount");
+    const feeEl = document.getElementById("searchTotalDeliveryFee");
+    if (!rowsContainer || !totalsEl || !amountEl || !feeEl) return;
+
+    const dataRows = rowsContainer.querySelectorAll("tr:not(.order-orders-empty)");
+    let totalAmount = 0;
+    let totalFee = 0;
+    dataRows.forEach(function (row) {
+      totalAmount += parseSearchMoney(row.dataset.amount);
+      const feeInput = row.querySelector(".order-delivery-fee-input");
+      totalFee += parseSearchMoney(feeInput ? feeInput.value : 0);
+    });
+
+    amountEl.textContent = formatNumber(totalAmount) + " د.ع";
+    feeEl.textContent = formatNumber(totalFee);
+    totalsEl.hidden = dataRows.length === 0;
+  }
+
   function updateSearchResultsCount() {
     const el = document.getElementById("searchResultsCount");
     if (el) el.textContent = `نتائج البحث (${getSearchDataRowCount()})`;
@@ -3218,6 +3269,26 @@
         ? `تم مسح ${scannedBarcodesSession.length} باركود`
         : "";
     }
+    updateSearchTotals();
+  }
+
+  function escapeSearchHtml(value) {
+    return String(value == null ? "" : value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function resolveSearchShippingBarcode(o) {
+    if (!o) return "";
+    if (o.scanned_barcode) return String(o.scanned_barcode).trim();
+    if (o.shipping_barcode) return String(o.shipping_barcode).trim();
+    if (Array.isArray(o.shipping_barcodes) && o.shipping_barcodes.length) {
+      return o.shipping_barcodes.map(function (b) { return String(b || "").trim(); }).filter(Boolean).join(" | ");
+    }
+    return "";
   }
 
   function appendSearchOrderRow(o) {
@@ -3225,16 +3296,22 @@
     if (!rowsContainer || !o || !o.id) return false;
     if (document.getElementById("r" + o.id)) return false;
 
+    const shippingBarcode = resolveSearchShippingBarcode(o);
     const tr = document.createElement("tr");
     tr.id = "r" + o.id;
     tr.className = "row-ordered";
-    tr.dataset.barcode = o.scanned_barcode || o.barcode || o.shipping_barcode || "";
+    tr.dataset.barcode = shippingBarcode;
+    tr.dataset.city = o.city || "";
+    tr.dataset.amount = String(parseSearchMoney(o.total));
     tr.innerHTML = `
           <td class="order-td-id"><strong>#${o.id}</strong></td>
           <td class="order-td-customer">
-            <span class="order-customer-name">${o.customer || o.customer_name || "—"}</span>
+            <span class="order-customer-name">${escapeSearchHtml(o.customer || o.customer_name || "—")}</span>
           </td>
-          <td class="order-td-phone">${o.phone || "—"}</td>
+          <td class="order-td-phone">${escapeSearchHtml(o.phone || "—")}</td>
+          <td class="order-td-shipping-barcode">
+            <span class="order-shipping-barcode" title="${escapeSearchHtml(shippingBarcode || "")}">${escapeSearchHtml(shippingBarcode || "—")}</span>
+          </td>
           <td class="order-td-status">
             <select name="s${o.id}" class="order-status-badge search-status-select status-ordered" onchange="setRowColor(${o.id}, this.value)">
               <option value="ordered" selected>{{ _('dashboard_th_ordered') }}</option>
@@ -3243,29 +3320,93 @@
             </select>
           </td>
           <td class="order-td-amount">${formatNumber(o.total)} د.ع</td>
+          <td class="order-td-delivery-fee">
+            <div class="order-delivery-fee-cell">
+              <input type="text" class="order-delivery-fee-input" data-order-id="${o.id}"
+                value="0" inputmode="numeric" disabled
+                title="أجرة التوصيل — يُقترح تلقائياً"
+                oninput="updateSearchTotals()">
+              <button type="button" class="order-delivery-fee-suggest" data-order-id="${o.id}"
+                onclick="fillSuggestedDeliveryFee(${o.id})" title="اقتراح الأجرة" disabled>↻</button>
+            </div>
+          </td>
           <td class="order-td-check"><input type="checkbox" class="row-checkbox" data-id="${o.id}"></td>
           <td class="order-td-action"><button type="button" class="order-execute-btn" onclick="exec(${o.id})" title="تنفيذ">🚀<span class="order-execute-btn__label"> تنفيذ</span></button></td>
         `;
     rowsContainer.appendChild(tr);
     syncStatusBadgeClass(tr.querySelector(".order-status-badge"));
+    syncDeliveryFeeInputState(o.id);
+    fillSuggestedDeliveryFee(o.id);
     syncSearchEmptyState();
     return true;
   }
 
+  async function fillSuggestedDeliveryFee(orderId) {
+    const input = document.querySelector(`.order-delivery-fee-input[data-order-id="${orderId}"]`);
+    const suggestBtn = document.querySelector(`.order-delivery-fee-suggest[data-order-id="${orderId}"]`);
+    if (!input || typeof suggestDeliveryFeeForOrder !== "function") return;
+    input.classList.add("is-loading");
+    if (suggestBtn) suggestBtn.disabled = true;
+    try {
+      const result = await suggestDeliveryFeeForOrder(orderId);
+      if (document.body.contains(input)) {
+        input.value = String(result.fee || 0);
+        const row = document.getElementById("r" + orderId);
+        if (row && result.city) row.dataset.city = result.city;
+      }
+    } finally {
+      input.classList.remove("is-loading");
+      if (suggestBtn && getOrderStatus(orderId) === "delivered") suggestBtn.disabled = false;
+      updateSearchTotals();
+    }
+  }
+
+  function syncDeliveryFeeInputState(orderId) {
+    const action = getOrderStatus(orderId);
+    const input = document.querySelector(`.order-delivery-fee-input[data-order-id="${orderId}"]`);
+    const suggestBtn = document.querySelector(`.order-delivery-fee-suggest[data-order-id="${orderId}"]`);
+    if (!input) return;
+    const isDelivered = action === "delivered";
+    input.disabled = !isDelivered;
+    input.classList.toggle("is-disabled", !isDelivered);
+    if (suggestBtn) {
+      suggestBtn.disabled = !isDelivered;
+    }
+    if (isDelivered && (parseInt(String(input.value || "0").replace(/[^\d]/g, ""), 10) || 0) === 0) {
+      fillSuggestedDeliveryFee(orderId);
+    }
+  }
+
+  function getRowDeliveryFee(orderId) {
+    if (getOrderStatus(orderId) !== "delivered") return 0;
+    const input = document.querySelector(`.order-delivery-fee-input[data-order-id="${orderId}"]`);
+    return Math.max(0, parseInt(String(input?.value || "0").replace(/[^\d]/g, ""), 10) || 0);
+  }
+
   function addOrderFromBarcodeScan(invoice, barcode) {
     openSearch();
+    const displayBarcode = barcode || invoice.shipping_barcode || invoice.barcode || "";
     const added = appendSearchOrderRow({
       id: invoice.id,
       customer: invoice.customer_name || invoice.customer,
       phone: invoice.phone,
       total: invoice.total,
-      scanned_barcode: barcode
+      shipping_barcode: invoice.shipping_barcode || displayBarcode,
+      shipping_barcodes: invoice.shipping_barcodes,
+      scanned_barcode: displayBarcode
     });
-    if (barcode) {
-      scannedBarcodesSession.push(barcode);
-      scannedBarcodeByOrder[invoice.id] = barcode;
+    if (displayBarcode) {
+      scannedBarcodesSession.push(displayBarcode);
+      scannedBarcodeByOrder[invoice.id] = displayBarcode;
       const row = document.getElementById("r" + invoice.id);
-      if (row) row.dataset.barcode = barcode;
+      if (row) {
+        row.dataset.barcode = displayBarcode;
+        const barcodeEl = row.querySelector(".order-shipping-barcode");
+        if (barcodeEl) {
+          barcodeEl.textContent = displayBarcode;
+          barcodeEl.setAttribute("title", displayBarcode);
+        }
+      }
     }
     updateSearchResultsCount();
     if (added) {
@@ -3275,6 +3416,18 @@
     }
     document.getElementById("selectAllCheckbox").checked = false;
     updateSelectionCount();
+  }
+
+  function clearSearchQueryInput() {
+    const input = document.getElementById("q");
+    if (!input) return;
+    input.value = "";
+    setTimeout(function () {
+      if (document.getElementById("searchModal")?.style.display === "flex") {
+        input.focus();
+        if (typeof input.select === "function") input.select();
+      }
+    }, 30);
   }
 
   function handleDashboardBarcodeScan(barcode) {
@@ -3290,12 +3443,16 @@
       .then(function (ref) {
         if (ref.ok && ref.data.success && ref.data.invoice) {
           addOrderFromBarcodeScan(ref.data.invoice, trimmed);
+          clearSearchQueryInput();
           return;
         }
         openSearch();
+        clearSearchQueryInput();
         showToast(ref.data.error || "⚠️ لم يتم العثور على الطلب", "warning");
       })
       .catch(function () {
+        openSearch();
+        clearSearchQueryInput();
         showToast("❌ حدث خطأ أثناء البحث عن الباركود", "error");
       });
   }
@@ -3351,13 +3508,14 @@
     }
 
     showLoading();
-    fetch("/api/index/search?q=" + query)
+    fetch("/api/index/search?q=" + encodeURIComponent(query))
       .then(r => r.json())
       .then(list => {
         hideLoading();
         // لا نمسح النتائج السابقة - نضيف النتائج الجديدة فقط
 
         if (list.length === 0) {
+          clearSearchQueryInput();
           showToast("❌ لم يتم العثور على نتائج", "warning");
           return;
         }
@@ -3376,10 +3534,11 @@
         // تحديث حالة checkbox تحديد الكل
         document.getElementById("selectAllCheckbox").checked = false;
         updateSelectionCount();
-        document.getElementById("q").value = "";
+        clearSearchQueryInput();
       })
       .catch(error => {
         hideLoading();
+        clearSearchQueryInput();
         showToast("❌ حدث خطأ أثناء البحث", "error");
         console.error(error);
       });
@@ -3396,6 +3555,7 @@
         type === "delivered" ? "row-delivered" :
           "row-returned";
     syncStatusBadgeClass(document.querySelector(`select[name=s${id}]`));
+    syncDeliveryFeeInputState(id);
   }
 
   function getOrderStatus(id) {
@@ -3419,7 +3579,7 @@
     fetch("/api/index/execute", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, action, barcode })
+      body: JSON.stringify({ id, action, barcode, delivery_fee: getRowDeliveryFee(id) })
     })
       .then(r => r.json())
       .then(res => {
@@ -3459,6 +3619,30 @@
     const checked = document.getElementById("selectAllCheckbox").checked;
     document.querySelectorAll(".row-checkbox").forEach(cb => cb.checked = checked);
     updateSelectionCount();
+  }
+
+  function applyBulkStatusToAll() {
+    const rowsContainer = document.getElementById("rows");
+    if (!rowsContainer) return;
+    const statusSelect = document.getElementById("bulkStatusApplySelect");
+    const status = statusSelect ? statusSelect.value : "ordered";
+    const dataRows = rowsContainer.querySelectorAll("tr:not(.order-orders-empty)");
+    if (!dataRows.length) {
+      showToast("⚠️ لا توجد طلبات في النتائج", "warning");
+      return;
+    }
+    dataRows.forEach(function (row) {
+      const id = parseInt(String(row.id || "").replace(/^r/, ""), 10);
+      if (!id) return;
+      const select = document.querySelector(`select[name=s${id}]`);
+      if (!select) return;
+      select.value = status;
+      setRowColor(id, status);
+      if (status === "delivered") {
+        fillSuggestedDeliveryFee(id);
+      }
+    });
+    showToast(`✅ تم تغيير حالة ${dataRows.length} طلب — لم يتم التنفيذ بعد`, "success");
   }
 
   /* =======================
@@ -3519,7 +3703,8 @@
       return {
         id,
         action: getOrderStatus(id),
-        barcode: (scannedBarcodeByOrder[id] || (row && row.dataset ? row.dataset.barcode : "") || "").trim()
+        barcode: (scannedBarcodeByOrder[id] || (row && row.dataset ? row.dataset.barcode : "") || "").trim(),
+        delivery_fee: getRowDeliveryFee(id),
       };
     });
 
@@ -4265,11 +4450,13 @@
   if (window.FinoraBarcode) {
     FinoraBarcode.createBarcodeScanner({
       ignoreWhen: function () {
+        const searchModal = document.getElementById('searchModal');
+        if (searchModal && searchModal.style.display === 'flex') return true;
         const active = document.activeElement;
         if (!active) return false;
         const tag = active.tagName;
         if (tag !== 'INPUT' && tag !== 'TEXTAREA') return false;
-        if (active.id === 'q' && !String(active.value || '').trim()) return false;
+        if (active.id === 'q') return true;
         return true;
       },
       onScan: handleDashboardBarcodeScan

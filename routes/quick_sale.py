@@ -15,10 +15,18 @@ from utils.branch_context import current_branch_id, init_branch_context
 from utils.branch_stock_service import deduct_stock, BranchStockError
 from utils.branch_sales import resolve_sale_fulfillment
 from utils.delivery_expense_service import sync_delivery_expense_for_invoice
-from utils.order_shipping import add_shipping_line_item, apply_shipping_fee_on_paid_invoice
-from utils.product_delivery_fees import fee_for_cart_items
+from utils.order_shipping import apply_manual_delivery_fee_on_payment
 from utils.payment_ledger import append_payment_ledger_delta
+from utils.payroll_schema import ensure_payroll_schema
+from utils.payroll_service import sync_commission_line_for_invoice
 from utils.permission_checks import employee_can
+from utils.product_color_service import (
+    ProductColorError,
+    colors_for_product_dict,
+    deduct_color_stock,
+    product_has_colors,
+    validate_color_sale,
+)
 from utils.product_schema_guard import ensure_customer_blacklist_columns, ensure_product_schema
 
 
@@ -58,7 +66,7 @@ def _safe_int(value, default=0):
 
 
 def _product_payload(product: Product) -> dict:
-    return {
+    payload = {
         "id": product.id,
         "name": product.name,
         "sku": product.sku or "",
@@ -67,6 +75,8 @@ def _product_payload(product: Product) -> dict:
         "stock": int(product.quantity or 0),
         "image_url": product.image_url or "",
     }
+    payload.update(colors_for_product_dict(product))
+    return payload
 
 
 @quick_sale_bp.route("/")
@@ -126,6 +136,11 @@ def execute():
         product = Product.query.get(product_id)
         if not product or not product.active:
             return jsonify({"success": False, "error": "منتج غير موجود أو غير فعال"}), 400
+        variant_color = (item.get("color") or item.get("variant_color") or "").strip()
+        if product_has_colors(product):
+            ok, msg = validate_color_sale(product.id, variant_color, qty)
+            if not ok:
+                return jsonify({"success": False, "error": msg}), 400
         preferred = current_branch_id() or (get_default_branch().id if get_default_branch() else None)
         fulfillment_branch_id, validation = resolve_sale_fulfillment(
             product.id,
@@ -142,6 +157,7 @@ def execute():
             "qty": qty,
             "price": unit_price,
             "fulfillment_branch_id": fulfillment_branch_id,
+            "variant_color": variant_color or None,
         })
 
     if not clean_items:
@@ -185,6 +201,7 @@ def execute():
         line_total = unit_price * qty
         total += line_total
         fulfillment_branch_id = row["fulfillment_branch_id"]
+        variant_color = row.get("variant_color")
         db.session.add(
             OrderItem(
                 invoice_id=invoice.id,
@@ -195,32 +212,29 @@ def execute():
                 cost=int(product.buy_price or 0),
                 total=line_total,
                 fulfillment_branch_id=fulfillment_branch_id,
+                variant_color=variant_color,
             )
         )
         try:
             deduct_stock(fulfillment_branch_id, product.id, qty)
-        except BranchStockError as exc:
+            if variant_color:
+                deduct_color_stock(product.id, variant_color, qty)
+        except (BranchStockError, ProductColorError) as exc:
             db.session.rollback()
             return jsonify({"success": False, "error": str(exc)}), 400
 
-    shipping_fee = data.get("shipping_fee")
-    if shipping_fee is None:
-        shipping_fee, _ = fee_for_cart_items(
-            [{"product_id": row["product"].id, "qty": row["qty"]} for row in clean_items],
-            city,
-        )
-    else:
-        shipping_fee = max(0, _safe_int(shipping_fee, 0))
-    if shipping_fee > 0:
-        tenant_id = getattr(customer, "tenant_id", None)
-        # Stored for settlement; deducted only when the invoice is paid.
-        add_shipping_line_item(invoice, shipping_fee, tenant_id)
+    delivery_fee = max(0, _safe_int(data.get("delivery_fee"), 0))
 
     invoice.total = total
     invoice.paid_amount = total
-    apply_shipping_fee_on_paid_invoice(invoice)
+    tenant_id = getattr(customer, "tenant_id", None)
+    apply_manual_delivery_fee_on_payment(invoice, delivery_fee, tenant_id)
+    if delivery_fee <= 0:
+        invoice.paid_amount = total
     append_payment_ledger_delta(invoice.id, int(invoice.paid_amount or 0))
     sync_delivery_expense_for_invoice(invoice)
+    ensure_payroll_schema()
+    sync_commission_line_for_invoice(invoice)
 
     try:
         db.session.commit()

@@ -6,9 +6,9 @@ from sqlalchemy import or_
 from sqlalchemy.sql import func
 
 from extensions import db
-from models.expense import Expense
 from models.invoice import Invoice
 from utils.cash_calculations import _effective_paid_amount
+from utils.expense_queries import sum_posted_expenses
 from utils.order_item_costs import exclude_delivery_fee_items
 
 
@@ -17,7 +17,7 @@ def net_profit_for_range(date_from: date, date_to: date) -> int:
     صافي الربح للفترة — يطابق منطق تقارير `/api/index/reports`.
 
     - الفواتير بتاريخ إنشائها (created_at) ضمن الفترة؛ التحصيل الفعلي فقط.
-    - COGS متناسب مع التحصيل؛ مصاريف Expense حسب expense_date.
+    - COGS متناسب مع التحصيل؛ مصاريف Expense حسب expense_date (فعلية فقط).
     """
     from models.order_item import OrderItem
 
@@ -35,7 +35,10 @@ def net_profit_for_range(date_from: date, date_to: date) -> int:
         func.date(Invoice.created_at) >= date_from,
         func.date(Invoice.created_at) <= date_to,
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
-        Invoice.payment_status != "مرتجع",
+        or_(
+            Invoice.payment_status.is_(None),
+            Invoice.payment_status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
+        ),
     ).all()
 
     cash_sales = sum(_effective_paid_amount(inv) for inv in period_invoices)
@@ -64,13 +67,9 @@ def net_profit_for_range(date_from: date, date_to: date) -> int:
             ratio = ratios.get(int(invoice_id), 0.0)
             cogs_period += int(round(float(cogs_sum) * ratio))
 
-    expenses_period = db.session.query(func.sum(Expense.amount)).filter(
-        Expense.expense_date.isnot(None),
-        func.date(Expense.expense_date) >= date_from,
-        func.date(Expense.expense_date) <= date_to,
-    ).scalar() or 0
+    expenses_period = sum_posted_expenses(date_from, date_to)
 
-    return int(sales_total - cogs_period - int(expenses_period or 0))
+    return int(sales_total - cogs_period - expenses_period)
 
 
 def net_profit_for_order_range(date_from: date, date_to: date) -> int:
@@ -113,13 +112,9 @@ def net_profit_for_order_range(date_from: date, date_to: date) -> int:
             exclude_delivery_fee_items(OrderItem),
         ).scalar() or 0
 
-    expenses_period = db.session.query(func.sum(Expense.amount)).filter(
-        Expense.expense_date.isnot(None),
-        func.date(Expense.expense_date) >= date_from,
-        func.date(Expense.expense_date) <= date_to,
-    ).scalar() or 0
+    expenses_period = sum_posted_expenses(date_from, date_to)
 
-    return int(sales_total - int(cogs_period or 0) - int(expenses_period or 0))
+    return int(sales_total - int(cogs_period or 0) - expenses_period)
 
 
 def net_profit_for_order_calendar_day(day: date) -> int:
@@ -128,10 +123,5 @@ def net_profit_for_order_calendar_day(day: date) -> int:
 
 
 def expenses_sum_for_range(date_from: date, date_to: date) -> int:
-    """مجموع المصاريف ضمن الفترة (expense_date)."""
-    total = db.session.query(func.sum(Expense.amount)).filter(
-        Expense.expense_date.isnot(None),
-        func.date(Expense.expense_date) >= date_from,
-        func.date(Expense.expense_date) <= date_to,
-    ).scalar() or 0
-    return int(total or 0)
+    """مجموع المصاريف الفعلية ضمن الفترة (expense_date)."""
+    return sum_posted_expenses(date_from, date_to)

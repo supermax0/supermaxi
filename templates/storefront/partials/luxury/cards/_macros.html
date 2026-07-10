@@ -1,0 +1,47 @@
+{# Shared fragments for luxury product cards #}
+{% macro lux_badges(product) %}
+  {% if product.discount_percent %}<span class="lux-badge lux-badge-sale">-{{ product.discount_percent }}%</span>{% endif %}
+  {% if product.is_new and product.is_available %}<span class="lux-badge lux-badge-new">جديد</span>{% endif %}
+  {% if not product.is_available %}<span class="lux-badge lux-badge-out">غير متوفر</span>{% endif %}
+{% endmacro %}
+
+{% macro lux_meta(product) %}
+  {% if product.brand or product.model %}
+  <p class="lux-product-meta-line">
+    {% if product.brand %}<span class="lux-product-brand">{{ product.brand }}</span>{% endif %}
+    {% if product.brand and product.model %}<span aria-hidden="true">-</span>{% endif %}
+    {% if product.model %}<span class="lux-product-model">{{ product.model }}</span>{% endif %}
+  </p>
+  {% elif product.short_specs %}
+  <p class="lux-product-meta-line">{{ product.short_specs }}</p>
+  {% elif product.badge %}
+  <p class="lux-product-meta-line">{{ product.badge }}</p>
+  {% endif %}
+{% endmacro %}
+
+{% macro lux_prices(product) %}
+  <div class="lux-product-prices">
+    {% if product.price and product.price > 0 %}
+    <span class="lux-price">{{ "{:,.0f}".format(product.price) }} <small>د.ع</small></span>
+    {% if product.old_price and product.old_price > product.price %}
+    <span class="lux-old-price">{{ "{:,.0f}".format(product.old_price) }}</span>
+    {% endif %}
+    {% else %}
+    <span class="lux-price-muted">السعر غير متوفر</span>
+    {% endif %}
+  </div>
+{% endmacro %}
+
+{% macro lux_media(product) %}
+  {% if product.image_url %}
+  <img src="{{ product.image_url }}" alt="{{ product.name }}" loading="lazy">
+  {% else %}
+  <span class="lux-media-placeholder" aria-hidden="true">
+    <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+  </span>
+  {% endif %}
+{% endmacro %}
+
+{% macro lux_cart_btn(product) %}
+  <button type="button" class="lux-btn-cart" data-sf-add-cart="{{ product.id }}" {% if not product.is_available %}disabled{% endif %}>أضف إلى السلة</button>
+{% endmacro %}

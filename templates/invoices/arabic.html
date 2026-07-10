@@ -356,12 +356,12 @@
         <div class="summary">
             <div class="s-row">
                 <span>مجموع البضاعة</span>
-                <span>{{ "{:,.0f}".format(total) }} د.ع</span>
+                <span>{{ "{:,.0f}".format(total_before_discount|default(total)) }} د.ع</span>
             </div>
-            {% if due < total %}
+            {% if discount_amount|default(0) > 0 %}
             <div class="s-row" style="color:#16a34a;">
                 <span>الحسميات</span>
-                <span>- {{ "{:,.0f}".format(total - due) }} د.ع</span>
+                <span>- {{ "{:,.0f}".format(discount_amount) }} د.ع</span>
             </div>
             {% endif %}
             <div class="s-row s-grand">

@@ -8,6 +8,8 @@ from datetime import date, datetime, timedelta
 from typing import Optional
 import uuid
 
+from flask import g, has_request_context
+
 from extensions import db
 from models.account import Account
 from models.account_transaction import AccountTransaction
@@ -36,6 +38,14 @@ RS_GL = {
     "BANK": "1002",
     "OWNER_CURRENT": "3103",
 }
+
+_RS_GL_ENSURED_BINDS: set[str] = set()
+
+
+def _rs_bind_key() -> str:
+    if has_request_context():
+        return getattr(g, "tenant", None) or "__core__"
+    return "__core__"
 
 
 class RotatingSavingError(Exception):
@@ -71,6 +81,19 @@ def get_settings() -> RotatingSavingSettings:
 
 
 def ensure_rotating_savings_gl_accounts():
+    bind_key = _rs_bind_key()
+    if bind_key in _RS_GL_ENSURED_BINDS:
+        return
+
+    codes = list(RS_GL.values())
+    existing = {
+        row[0]
+        for row in db.session.query(Account.code).filter(Account.code.in_(codes)).all()
+    }
+    if len(existing) == len(codes):
+        _RS_GL_ENSURED_BINDS.add(bind_key)
+        return
+
     initialize_accounts()
     get_or_create_account(
         RS_GL["ROTATING_PARENT"],
@@ -127,6 +150,7 @@ def ensure_rotating_savings_gl_accounts():
         "حساب البنك",
     )
     db.session.commit()
+    _RS_GL_ENSURED_BINDS.add(bind_key)
 
 
 def _next_sub_code(parent_code: str, saving_name: str) -> str:
@@ -391,30 +415,29 @@ def _create_prior_payments(
         recalculate_balances(saving)
         return
 
-    if combined and count > 1:
-        total = amount_per * count
-        record_payment(
-            saving,
-            payment_date=first_date,
-            amount=total,
-            payment_method=payment_method,
-            treasury_account_id=treasury_id,
-            notes=f"قيد تجميعي — {count} دفعات سابقة",
-            user_id=user_id,
-        )
-        return
+    # One opening journal for the whole prior total (no treasury withdraw).
+    # Extra per-month journal loops were timing out nginx on POST /create.
+    total = amount_per * count
+    record_payment(
+        saving,
+        payment_date=first_date,
+        amount=total,
+        payment_method=payment_method,
+        treasury_account_id=treasury_id,
+        notes=f"رصيد افتتاحي — {count} دفعة سابقة" if count > 1 else "دفعة سابقة #1",
+        user_id=user_id,
+        affect_treasury=False,
+        opening_balance=True,
+    )
 
-    for i in range(count):
-        pdate = first_date + timedelta(days=30 * i)
-        record_payment(
-            saving,
-            payment_date=pdate,
-            amount=amount_per,
-            payment_method=payment_method,
-            treasury_account_id=treasury_id,
-            notes=f"دفعة سابقة #{i + 1}",
-            user_id=user_id,
-        )
+
+def _opening_balance_credit_account_id():
+    """طرف دائن للقيود التاريخية — رأس المال بدل الصندوق حتى لا يُخصم النقد."""
+    acc = Account.query.filter_by(code=ACCOUNT_CODES["CAPITAL"]).first()
+    if not acc:
+        initialize_accounts()
+        acc = Account.query.filter_by(code=ACCOUNT_CODES["CAPITAL"]).first()
+    return acc.id if acc else None
 
 
 def record_payment(
@@ -427,6 +450,8 @@ def record_payment(
     notes=None,
     user_id=None,
     is_post_receipt=None,
+    affect_treasury=True,
+    opening_balance=False,
 ):
     if saving.type == "tracking_only":
         raise RotatingSavingError("جمعية المتابعة فقط لا تولّد قيوداً")
@@ -439,6 +464,10 @@ def record_payment(
     payment_date = _parse_date(payment_date) or date.today()
     treasury_id = treasury_account_id or saving.default_treasury_account_id
     cash_gl = _resolve_gl_cash_account(payment_method)
+    # الدفعات السابقة: رصيد افتتاحي بدون سحب من الصندوق
+    credit_gl = _opening_balance_credit_account_id() if opening_balance else cash_gl
+    if not credit_gl:
+        credit_gl = cash_gl
 
     if is_post_receipt is None:
         is_post_receipt = saving.receive_status in ("received", "partial_received")
@@ -459,14 +488,19 @@ def record_payment(
     db.session.add(payment)
     db.session.flush()
 
-    desc = f"تسجيل دفعة جمعية شهرية - {saving.name}"
-    note = f"جمعية/سلفة دوّارة — دفع قسط — {saving.name}"
+    if opening_balance:
+        desc = f"رصيد افتتاحي دفعات سابقة - {saving.name}"
+        note = f"جمعية/سلفة دوّارة — دفعات سابقة (بدون سحب صندوق) — {saving.name}"
+    else:
+        desc = f"تسجيل دفعة جمعية شهرية - {saving.name}"
+        note = f"جمعية/سلفة دوّارة — دفع قسط — {saving.name}"
 
-    try:
-        tx = _treasury_withdraw(amount, note, treasury_id)
-        payment.treasury_transaction_id = tx.id if tx else None
-    except InsufficientTreasuryBalance as exc:
-        raise RotatingSavingError(str(exc)) from exc
+    if affect_treasury:
+        try:
+            tx = _treasury_withdraw(amount, note, treasury_id)
+            payment.treasury_transaction_id = tx.id if tx else None
+        except InsufficientTreasuryBalance as exc:
+            raise RotatingSavingError(str(exc)) from exc
 
     entry = None
     if saving.type == "company":
@@ -474,7 +508,7 @@ def record_payment(
             liability_id = _liability_account_id(saving)
             entry = _journal_by_ids(
                 liability_id,
-                cash_gl,
+                credit_gl,
                 amount,
                 f"تسوية التزام جمعية - {saving.name}",
                 reference_id=saving.id,
@@ -485,7 +519,7 @@ def record_payment(
                 saving.asset_account_id = _create_saving_sub_account(saving)
             entry = _journal_by_ids(
                 saving.asset_account_id,
-                cash_gl,
+                credit_gl,
                 amount,
                 desc,
                 reference_id=saving.id,
@@ -495,7 +529,7 @@ def record_payment(
         equity_id = _owner_equity_account_id(saving)
         entry = _journal_by_ids(
             equity_id,
-            cash_gl,
+            credit_gl,
             amount,
             desc,
             reference_id=saving.id,
@@ -506,7 +540,7 @@ def record_payment(
             saving.employee_receivable_account_id = _create_saving_sub_account(saving)
         entry = _journal_by_ids(
             saving.employee_receivable_account_id,
-            cash_gl,
+            credit_gl,
             amount,
             desc,
             reference_id=saving.id,
@@ -515,7 +549,7 @@ def record_payment(
 
     payment.journal_entry_id = entry.id if entry else None
 
-    if fee_amount > 0:
+    if fee_amount > 0 and affect_treasury:
         _record_fee_on_payment(payment, fee_amount, payment_method, treasury_id, user_id)
 
     recalculate_balances(saving)
@@ -918,7 +952,9 @@ def reverse_payment(payment_id: int, user_id=None, notes=None):
         payment.reversal_journal_entry_id = rev.id if rev else None
 
     note = f"جمعية/سلفة دوّارة — عكس دفع قسط — {saving.name}"
-    _treasury_deposit(amount, note, payment.treasury_account_id)
+    # Only refund treasury if this payment actually withdrew cash (skip opening-balance rows).
+    if payment.treasury_transaction_id:
+        _treasury_deposit(amount, note, payment.treasury_account_id)
 
     if payment.fee_amount and payment.fee_journal_entry_id:
         fee_orig = JournalEntry.query.get(payment.fee_journal_entry_id)
@@ -928,7 +964,8 @@ def reverse_payment(payment_id: int, user_id=None, notes=None):
             saving.id,
             user_id,
         )
-        _treasury_deposit(payment.fee_amount, f"{note} — رسوم", payment.treasury_account_id)
+        if payment.fee_treasury_transaction_id:
+            _treasury_deposit(payment.fee_amount, f"{note} — رسوم", payment.treasury_account_id)
 
     payment.status = "reversed"
     payment.reversed_at = datetime.utcnow()

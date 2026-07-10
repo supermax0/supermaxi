@@ -20,6 +20,8 @@ from utils.employee_commission_service import (
     settle_employee_commission,
 )
 from utils.team_schema import build_employees_grid_rows, ensure_delivery_agent_schema
+from utils.payroll_schema import ensure_payroll_schema
+from utils.payroll_service import apply_payroll_config, WEEKDAY_LABELS
 from utils.activity_logger import EMPLOYEE_SNAPSHOT_FIELDS, log_activity, log_mutation, snapshot_attrs
 
 employees_bp = Blueprint("employees", __name__)
@@ -109,6 +111,7 @@ def _ensure_commission_schema():
 def ensure_employee_schema():
     _ensure_employee_profile_schema()
     ensure_delivery_agent_schema()
+    ensure_payroll_schema()
     _ensure_commission_schema()
     try:
         backfill_invoice_employee_ids()
@@ -136,6 +139,14 @@ def employees():
                 0,
                 int(request.form.get("commission", get_fixed_employee_commission_amount()) or 0),
             ),
+        )
+        apply_payroll_config(
+            emp,
+            pay_type=request.form.get("pay_type"),
+            salary=int(request.form.get("salary", 0) or 0),
+            pay_day_of_month=request.form.get("pay_day_of_month"),
+            pay_weekday=request.form.get("pay_weekday"),
+            commission=int(request.form.get("commission", 0) or 0) if request.form.get("commission") else None,
         )
         db.session.add(emp)
         db.session.flush()
@@ -191,6 +202,7 @@ def employees():
         pages=pages_list,
         agents_without_login=agents_without_login,
         fixed_commission_amount=get_fixed_employee_commission_amount(),
+        weekday_labels=WEEKDAY_LABELS,
     )
 
 
@@ -314,6 +326,14 @@ def update_employee(id):
         emp.salary = int(data.get("salary") or 0)
     if "commission" in data:
         emp.commission_percent = max(0, int(data.get("commission") or 0))
+    apply_payroll_config(
+        emp,
+        pay_type=data.get("pay_type"),
+        salary=int(data.get("salary", emp.salary or 0) or 0) if "salary" in data else None,
+        pay_day_of_month=data.get("pay_day_of_month"),
+        pay_weekday=data.get("pay_weekday"),
+        commission=int(data.get("commission") or 0) if "commission" in data else None,
+    )
     db.session.commit()
     try:
         log_mutation(
@@ -340,6 +360,13 @@ def update_delivery_agent(id):
         agent.name = name.replace("🚚", "").strip()
     if "salary" in data:
         agent.salary = int(data.get("salary") or 0)
+    apply_payroll_config(
+        agent,
+        pay_type=data.get("pay_type"),
+        salary=int(data.get("salary", agent.salary or 0) or 0) if "salary" in data else None,
+        pay_day_of_month=data.get("pay_day_of_month"),
+        pay_weekday=data.get("pay_weekday"),
+    )
     password = str(data.get("password") or "").strip()
     if password:
         if len(password) < 4:

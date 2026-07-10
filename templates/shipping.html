@@ -757,6 +757,7 @@
     </div>
   </div>
 
+  <script src="/static/js/delivery-fee-pay-modal.js"></script>
   <script>
     let currentCompany = null;
 
@@ -1107,33 +1108,34 @@
     }
 
     function settle(id) {
-      if (!confirm("{{ _('shipping_confirm_settle') }}")) {
-        return;
-      }
-
-      showLoading();
-
-      fetch("/shipping/settle/" + id, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({})
-      })
-        .then(r => r.json())
-        .then(data => {
-          hideLoading();
-          if (data.success) {
-            showToast("{{ _('shipping_toast_settle_success') }}", "success");
-            viewOrders(currentCompany);
-            updateCompanyDue(); // تحديث المستحقات في الجدول الرئيسي
-          } else {
-            showToast(data.error || "{{ _('shipping_err_settle') }}", "error");
-          }
-        })
-        .catch(error => {
-          hideLoading();
-          showToast("{{ _('shipping_err_settle') }}", "error");
-          console.error(error);
-        });
+      openDeliveryFeePayModal({
+        orderId: id,
+        title: "تسديد الطلب #" + id,
+        onConfirm: function (deliveryFee) {
+          showLoading();
+          fetch("/shipping/settle/" + id, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ delivery_fee: deliveryFee || 0 })
+          })
+            .then(r => r.json())
+            .then(data => {
+              hideLoading();
+              if (data.success) {
+                showToast("{{ _('shipping_toast_settle_success') }}", "success");
+                viewOrders(currentCompany);
+                updateCompanyDue();
+              } else {
+                showToast(data.error || "{{ _('shipping_err_settle') }}", "error");
+              }
+            })
+            .catch(error => {
+              hideLoading();
+              showToast("{{ _('shipping_err_settle') }}", "error");
+              console.error(error);
+            });
+        }
+      });
     }
 
     function submitShippingReturn(orderId, barcode, modal) {

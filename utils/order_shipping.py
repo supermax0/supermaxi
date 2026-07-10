@@ -1,7 +1,8 @@
 """Shared helpers for delivery fees on invoices.
 
-رسوم الشحن تُحفظ داخلياً للتسوية كمصروف عند التسديد.
-لا تُضاف إلى إجمالي الفاتورة ولا تُخصم من أسعار المنتجات.
+أجرة التوصيل لا تُحسب ولا تُخصم تلقائياً عند إنشاء الطلب.
+تُدخل يدوياً عند التسديد فقط، ثم تُحفظ داخلياً وتُسجّل كمصروف.
+لا تُنقص إيراد الفاتورة ولا تُغيّر أسعار بنود المنتجات.
 """
 
 from __future__ import annotations
@@ -103,47 +104,6 @@ def get_shipping_fee_from_invoice(invoice) -> int:
     return 0
 
 
-def _deductible_product_items(items) -> list:
-    result = []
-    for item in items:
-        if is_shipping_item(item):
-            continue
-        name = (getattr(item, "product_name", None) or "").strip()
-        if name in ("خصم كوبون",):
-            continue
-        if _safe_int(getattr(item, "total", 0)) <= 0:
-            continue
-        result.append(item)
-    return result
-
-
-def _deduct_fee_from_product_items(product_items, fee: int) -> int:
-    """Reduce product line totals by fee (proportional). Returns applied amount."""
-    fee = max(0, _safe_int(fee))
-    if fee <= 0 or not product_items:
-        return 0
-
-    products_total = sum(_safe_int(i.total) for i in product_items)
-    if products_total <= 0:
-        return 0
-
-    fee = min(fee, products_total)
-    remaining = fee
-    for idx, item in enumerate(product_items):
-        line_total = _safe_int(item.total)
-        if idx == len(product_items) - 1:
-            share = remaining
-        else:
-            share = int(round(fee * (line_total / float(products_total))))
-            share = min(max(0, share), remaining, line_total)
-        remaining -= share
-        new_total = max(0, line_total - share)
-        qty = max(1, _safe_int(getattr(item, "quantity", 1), 1))
-        item.total = new_total
-        item.price = int(round(new_total / qty)) if qty else new_total
-    return fee
-
-
 def net_total_after_shipping(total: int, shipping_fee: int) -> int:
     return max(0, _safe_int(total, 0) - max(0, _safe_int(shipping_fee, 0)))
 
@@ -180,8 +140,16 @@ def is_shipping_fee_deducted_from_invoice(invoice) -> bool:
     return invoice_total == net_total_after_shipping(non_shipping_items_total(invoice), fee)
 
 
+def apply_manual_delivery_fee_on_payment(invoice, delivery_fee: int, tenant_id: int | None = None) -> int:
+    """يُستدعى يدوياً عند التسديد فقط: يحفظ الأجرة كبند داخلي بدون إنقاص إيراد الفاتورة."""
+    fee = max(0, _safe_int(delivery_fee, 0))
+    if fee <= 0 or invoice is None:
+        return 0
+    return add_shipping_line_item(invoice, fee, tenant_id)
+
+
 def apply_shipping_fee_on_paid_invoice(invoice) -> int:
-    """Deduct the stored delivery fee from invoice.total only when the order is paid."""
+    """Legacy helper: deduct a saved delivery fee from invoice.total for old repair flows only."""
     if invoice is None:
         return 0
 
@@ -207,7 +175,7 @@ def apply_shipping_fee_on_paid_invoice(invoice) -> int:
 
 def add_shipping_line_item(invoice, shipping_fee: int, tenant_id: int | None = None) -> int:
     """
-    تسجيل رسوم الشحن داخلياً بدون إضافتها للإجمالي وبدون خصمها من المنتجات.
+    تسجيل رسوم الشحن داخلياً بدون إضافتها للإجمالي وبدون خصمها من المنتجات أو الإيراد.
     يُرجع مبلغ رسوم الشحن المحفوظ للتسوية عند الدفع.
     """
     fee = max(0, _safe_int(shipping_fee, 0))
@@ -257,6 +225,40 @@ def prepare_invoice_items_for_print(items):
     ]
     display_total = sum(i.total for i in printable)
     return printable, display_total
+
+
+def _coupon_discount_from_items(items) -> int:
+    coupon_discount = 0
+    for item in items or []:
+        if is_shipping_item(item):
+            continue
+        name = (getattr(item, "product_name", None) or "").strip()
+        line_total = _safe_int(getattr(item, "total", 0))
+        if name == "خصم كوبون" or line_total < 0:
+            coupon_discount += abs(line_total)
+    return coupon_discount
+
+
+def invoice_display_amounts(order, raw_items, print_total: int) -> dict:
+    """Compute subtotal/discount/net totals for invoice rendering."""
+    print_total = max(0, _safe_int(print_total, 0))
+    pos_discount = max(0, _safe_int(getattr(order, "discount_amount", 0), 0))
+    coupon_discount = _coupon_discount_from_items(raw_items)
+
+    if pos_discount > 0:
+        total_before_discount = print_total
+        discount_amount = pos_discount + coupon_discount
+        net_total = max(0, total_before_discount - pos_discount)
+    else:
+        discount_amount = coupon_discount
+        net_total = max(0, _safe_int(getattr(order, "total", 0), 0) or print_total)
+        total_before_discount = net_total + coupon_discount
+
+    return {
+        "total_before_discount": total_before_discount,
+        "discount_amount": discount_amount,
+        "total": net_total,
+    }
 
 
 def invoice_print_amounts(order, total: int) -> dict:

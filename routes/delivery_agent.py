@@ -115,37 +115,15 @@ def _agent_pending_orders(agent_id):
 
 
 def _agent_delivered_today_total(agent_id):
-    """مجموع مبالغ الطلبات «واصل» في كشوف المندوب غير المنفّذة (بانتظار المحاسب)."""
+    """مجموع الباقي للطلبات «واصل» في كشوف المندوب غير المنفّذة (بانتظار المحاسب)."""
+    from utils.agent_report_helpers import compute_report_delivered_amount
+
     reports = ShippingReport.query.filter(
         ShippingReport.report_number.like(f"AGT-{agent_id}-%"),
         ShippingReport.is_executed.is_(False),
     ).all()
 
-    delivered_ids = []
-    for report in reports:
-        try:
-            selections = json.loads(report.order_status_selections or "{}")
-        except Exception:
-            selections = {}
-        if not isinstance(selections, dict):
-            continue
-        for oid_str, status in selections.items():
-            if status in ("واصل", "Delivered"):
-                try:
-                    delivered_ids.append(int(oid_str))
-                except (TypeError, ValueError):
-                    pass
-
-    if not delivered_ids:
-        return 0
-
-    total = (
-        Invoice.query.filter(Invoice.id.in_(delivered_ids))
-        .with_entities(func.sum(Invoice.total))
-        .scalar()
-        or 0
-    )
-    return int(total)
+    return sum(compute_report_delivered_amount(report) for report in reports)
 
 
 def _agent_order_stats(agent_id):
@@ -164,13 +142,18 @@ def _agent_order_stats(agent_id):
 def _serialize_agent_order(order):
     items_count = OrderItem.query.filter_by(invoice_id=order.id).count()
     applied_status = get_order_applied_status(order.id)
+    from utils.agent_report_helpers import order_payment_snapshot
+
+    payment = order_payment_snapshot(order)
     return {
         "id": order.id,
         "customer_name": order.customer_name,
         "phone": order.customer.phone if order.customer else "",
         "city": order.customer.city if order.customer else "",
         "address": order.customer.address if order.customer else "",
-        "total": order.total,
+        "total": payment["total"],
+        "paid_amount": payment["paid_amount"],
+        "remaining": payment["remaining"],
         "status": order.status,
         "payment_status": order.payment_status,
         "items_count": items_count,

@@ -23,6 +23,15 @@ from utils.cash_calculations import (
 from utils.treasury_helpers import account_matches_treasury, get_default_cash_account
 
 
+SHIPPING_OPENING_COLLECTION_ACTIONS = (
+    "\u0642\u0628\u0636",  # قبض
+    "\u0627\u0633\u062a\u0644\u0627\u0645",  # استلام
+)
+SHIPPING_INVOICE_COLLECTION_ACTIONS = (
+    "\u062a\u0633\u062f\u064a\u062f",  # تسديد
+)
+
+
 class InsufficientTreasuryBalance(Exception):
     def __init__(self, account_name: str, balance: int, amount: int):
         self.account_name = account_name
@@ -79,11 +88,31 @@ def _sum_withdrawals(account_id: int, default_cash_id: int) -> int:
     return int(value)
 
 
+def _cash_affecting_supplier_payment_filter():
+    """
+    دفعات المورد التي تؤثر على الصندوق فعلياً.
+    تسوية «بيع للمورد» (offset) لا تخرج نقداً — تُخصم من حساب المورد فقط.
+    """
+    not_offset_method = or_(
+        SupplierPayment.payment_method.is_(None),
+        SupplierPayment.payment_method == "cash",
+    )
+    not_linked_sale = SupplierPayment.supplier_sale_id.is_(None)
+    not_sale_note = or_(
+        SupplierPayment.note.is_(None),
+        ~SupplierPayment.note.like("%بيع للمورد%"),
+    )
+    return and_(not_offset_method, not_linked_sale, not_sale_note)
+
+
 def _sum_supplier_payments(account_id: int, default_cash_id: int) -> int:
     col = SupplierPayment.treasury_account_id
     match = account_matches_treasury(col, account_id, default_cash_id)
     value = (
-        db.session.query(func.sum(SupplierPayment.amount)).filter(match).scalar() or 0
+        db.session.query(func.sum(SupplierPayment.amount))
+        .filter(match, _cash_affecting_supplier_payment_filter())
+        .scalar()
+        or 0
     )
     return int(value)
 
@@ -94,8 +123,16 @@ def _sum_shipping_collections(account_id: int, default_cash_id: int) -> int:
     value = (
         db.session.query(func.sum(ShippingPayment.amount))
         .filter(
-            ShippingPayment.invoice_id.is_(None),
-            ShippingPayment.action.in_(["قبض", "استلام"]),
+            or_(
+                and_(
+                    ShippingPayment.invoice_id.is_(None),
+                    ShippingPayment.action.in_(SHIPPING_OPENING_COLLECTION_ACTIONS),
+                ),
+                and_(
+                    ShippingPayment.invoice_id.isnot(None),
+                    ShippingPayment.action.in_(SHIPPING_INVOICE_COLLECTION_ACTIONS),
+                ),
+            ),
             match,
         )
         .scalar()
@@ -104,25 +141,39 @@ def _sum_shipping_collections(account_id: int, default_cash_id: int) -> int:
     return int(value)
 
 
-def _paid_sales_for_default_cash() -> int:
-    paid_invoices = (
-        db.session.query(
-            Invoice.id,
-            Invoice.status,
-            Invoice.payment_status,
-            Invoice.total,
-            Invoice.paid_amount,
-        )
+def _shipping_settled_invoice_ids() -> list[int]:
+    rows = (
+        db.session.query(ShippingPayment.invoice_id)
         .filter(
-            Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
-            Invoice.payment_status.notin_(RETURN_STATUSES),
-            or_(
-                Invoice.payment_status.in_(["مسدد", "جزئي"]),
-                Invoice.status == "مسدد",
-            ),
+            ShippingPayment.invoice_id.isnot(None),
+            ShippingPayment.action.in_(SHIPPING_INVOICE_COLLECTION_ACTIONS),
         )
+        .distinct()
         .all()
     )
+    return [int(row[0]) for row in rows if row[0] is not None]
+
+
+def _paid_sales_for_default_cash() -> int:
+    query = db.session.query(
+        Invoice.id,
+        Invoice.status,
+        Invoice.payment_status,
+        Invoice.total,
+        Invoice.paid_amount,
+    ).filter(
+        Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
+        or_(Invoice.payment_status.is_(None), Invoice.payment_status.notin_(RETURN_STATUSES)),
+        or_(
+            Invoice.payment_status.in_(["مسدد", "جزئي"]),
+            Invoice.status == "مسدد",
+            and_(Invoice.payment_status.is_(None), Invoice.status == "تم التوصيل"),
+        ),
+    )
+    shipping_invoice_ids = _shipping_settled_invoice_ids()
+    if shipping_invoice_ids:
+        query = query.filter(~Invoice.id.in_(shipping_invoice_ids))
+    paid_invoices = query.all()
     return sum(_effective_paid_amount(inv) for inv in paid_invoices)
 
 
@@ -232,7 +283,7 @@ def get_treasury_movements(account_id: int | None = None):
     current_balance = 0
 
     if account.is_cash and account.is_default:
-        paid_invoices = (
+        invoice_query = (
             db.session.query(
                 Invoice.id,
                 Invoice.customer_name,
@@ -241,18 +292,20 @@ def get_treasury_movements(account_id: int | None = None):
                 Invoice.payment_status,
                 Invoice.total,
                 Invoice.paid_amount,
-            )
-            .filter(
+            ).filter(
                 Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
-                Invoice.payment_status.notin_(RETURN_STATUSES),
+                or_(Invoice.payment_status.is_(None), Invoice.payment_status.notin_(RETURN_STATUSES)),
                 or_(
                     Invoice.payment_status.in_(["مسدد", "جزئي"]),
                     Invoice.status == "مسدد",
+                    and_(Invoice.payment_status.is_(None), Invoice.status == "تم التوصيل"),
                 ),
             )
-            .order_by(Invoice.created_at)
-            .all()
         )
+        shipping_invoice_ids = _shipping_settled_invoice_ids()
+        if shipping_invoice_ids:
+            invoice_query = invoice_query.filter(~Invoice.id.in_(shipping_invoice_ids))
+        paid_invoices = invoice_query.order_by(Invoice.created_at).all()
         for invoice in paid_invoices:
             payment_amount = _effective_paid_amount(invoice)
             if payment_amount <= 0:
@@ -312,7 +365,9 @@ def get_treasury_movements(account_id: int | None = None):
     sp_col = SupplierPayment.treasury_account_id
     sp_match = account_matches_treasury(sp_col, account_id, default_cash_id)
     supplier_payments = (
-        SupplierPayment.query.filter(sp_match).order_by(SupplierPayment.created_at).all()
+        SupplierPayment.query.filter(sp_match, _cash_affecting_supplier_payment_filter())
+        .order_by(SupplierPayment.created_at)
+        .all()
     )
     for payment in supplier_payments:
         current_balance -= payment.amount
@@ -337,8 +392,16 @@ def get_treasury_movements(account_id: int | None = None):
     sh_match = account_matches_treasury(sh_col, account_id, default_cash_id)
     shipping_payments = (
         ShippingPayment.query.filter(
-            ShippingPayment.invoice_id.is_(None),
-            ShippingPayment.action.in_(["قبض", "استلام"]),
+            or_(
+                and_(
+                    ShippingPayment.invoice_id.is_(None),
+                    ShippingPayment.action.in_(SHIPPING_OPENING_COLLECTION_ACTIONS),
+                ),
+                and_(
+                    ShippingPayment.invoice_id.isnot(None),
+                    ShippingPayment.action.in_(SHIPPING_INVOICE_COLLECTION_ACTIONS),
+                ),
+            ),
             sh_match,
         )
         .order_by(ShippingPayment.created_at)

@@ -20,6 +20,7 @@ from extensions import db
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload, selectinload
 from models.invoice import Invoice
+from models.invoice_payment_ledger import InvoicePaymentLedger
 from models.order_item import OrderItem
 from models.product import Product
 from models.customer import Customer
@@ -57,21 +58,39 @@ from utils.order_status import (
     invoice_returned_condition,
     is_return_status_value,
 )
-from utils.order_lifecycle import OrderLifecycleError, process_order_cancel, process_order_return
+from utils.order_lifecycle import OrderLifecycleError, process_order_cancel, process_order_return, restore_order_stock_once
 from utils.cash_calculations import _effective_paid_amount
-from utils.delivery_expense_service import sync_delivery_expense_for_invoice
-from utils.order_shipping import apply_shipping_fee_on_paid_invoice, is_shipping_item, order_item_display_name
+from utils.delivery_expense_service import remove_delivery_expense_for_invoice, sync_delivery_expense_for_invoice
+from utils.order_shipping import apply_manual_delivery_fee_on_payment, is_shipping_item, order_item_display_name
 from utils.shipping_barcodes import (
     get_shipping_barcodes_list,
     set_shipping_barcodes,
     shipping_barcodes_display,
+    shipping_barcodes_match_code,
 )
-from utils.payment_ledger import append_payment_ledger_delta
+from utils.payment_ledger import append_payment_ledger_delta, ensure_invoice_payment_ledger_table
 from services.media_service import get_thumbnail_upload_root, get_video_upload_root, save_uploaded_file
 from utils.activity_logger import INVOICE_SNAPSHOT_FIELDS, log_mutation, snapshot_attrs
 
 orders_bp = Blueprint("orders", __name__, url_prefix="/orders")
 _ORDERS_PUBLIC_PREFIXES = ("/orders/p/o/", "/orders/invoice-video/")
+# Hard cap: embedding every invoice into the HTML/JSON page caused nginx 504s.
+_ORDERS_GRID_LIMIT = 500
+
+
+def _orders_grid_rows(q, limit=_ORDERS_GRID_LIMIT):
+    """Load a bounded newest-first slice for the AG Grid page (avoids full-table dumps)."""
+    return q.limit(int(limit)).all()
+
+
+def _orders_page_lookups():
+    cities = [c[0] for c in db.session.query(Customer.city).distinct().all() if c[0]]
+    return {
+        "employees": Employee.query.all(),
+        "shippings": ShippingCompany.query.all(),
+        "delivery_agents": DeliveryAgent.query.all(),
+        "cities": cities,
+    }
 
 
 @orders_bp.context_processor
@@ -411,6 +430,8 @@ def _ensure_order_video_columns() -> None:
             stmts.append(f"ALTER TABLE invoice ADD COLUMN order_video_recorded_at {recorded_type}")
         if "shipping_barcodes_json" not in invoice_columns:
             stmts.append("ALTER TABLE invoice ADD COLUMN shipping_barcodes_json TEXT")
+        if "discount_amount" not in invoice_columns:
+            stmts.append("ALTER TABLE invoice ADD COLUMN discount_amount INTEGER DEFAULT 0")
         if stmts:
             with engine.begin() as conn:
                 for stmt in stmts:
@@ -429,12 +450,6 @@ def orders():
     if not check_permission("can_see_orders"):
         return redirect("/pos"), 403
     _ensure_order_video_columns()
-
-    q = Invoice.query.join(Customer, isouter=True)
-
-    # ------------------ Pagination ------------------
-    page = request.args.get("page", 1, type=int)
-    per_page = 10  # عرض 10 طلبات فقط
 
     # ------------------ Base Query ------------------
     q = Invoice.query.options(
@@ -513,29 +528,15 @@ def orders():
         else:
             q = q.filter(Invoice.id == -1)
 
-    # جلب جميع الطلبات للعرض (بدون pagination للبيانات في JSON)
-    all_orders_for_data = q.all()
-    
-    # Pagination للعرض فقط (إذا كان مطلوباً) - استخدام نفس الاستعلام
-    pagination = q.paginate(page=page, per_page=per_page, error_out=False)
-    orders = pagination.items
-    
-    # للتأكد من أن البيانات موجودة
-    print(f"Total orders for data: {len(all_orders_for_data)}")
-    print(f"Pagination items: {len(orders)}")
-
-    # ------------------ Select Data ------------------
-    cities = [c[0] for c in db.session.query(Customer.city).distinct().all() if c[0]]
+    # Bounded list for AG Grid JSON — never dump the full invoice table into HTML.
+    orders = _orders_grid_rows(q)
 
     return render_template(
         "orders.html",
-        orders=all_orders_for_data,  # إرسال جميع الطلبات للبيانات
-        pagination=pagination,
-        employees=Employee.query.all(),
-        shippings=ShippingCompany.query.all(),
-        delivery_agents=DeliveryAgent.query.all(),
-        cities=cities,
-        page_type="all"
+        orders=orders,
+        pagination=None,
+        page_type="all",
+        **_orders_page_lookups(),
     )
 
 # =====================================================
@@ -547,9 +548,7 @@ def orders_ordered():
     if not check_permission("can_see_orders") or not check_permission("can_see_orders_placed"):
         return redirect("/pos"), 403
     _ensure_order_video_columns()
-    page = request.args.get("page", 1, type=int)
-    per_page = 10
-    
+
     q = Invoice.query.options(
         joinedload(Invoice.customer),
         joinedload(Invoice.shipping_company),
@@ -599,19 +598,14 @@ def orders_ordered():
         )
     
     q = q.order_by(Invoice.created_at.desc())
-    pagination = q.paginate(page=page, per_page=per_page, error_out=False)
-    orders = q.all()
-    cities = [c[0] for c in db.session.query(Customer.city).distinct().all() if c[0]]
-    
+    orders = _orders_grid_rows(q)
+
     return render_template(
         "orders.html",
         orders=orders,
-        pagination=pagination,
-        employees=Employee.query.all(),
-        shippings=ShippingCompany.query.all(),
-        delivery_agents=DeliveryAgent.query.all(),
-        cities=cities,
-        page_type="ordered"
+        pagination=None,
+        page_type="ordered",
+        **_orders_page_lookups(),
     )
 
 # =====================================================
@@ -623,8 +617,7 @@ def orders_shipping():
     if not check_permission("can_see_orders") or not check_permission("can_see_orders_shipped"):
         return redirect("/pos"), 403
     _ensure_order_video_columns()
-    page = request.args.get("page", 1, type=int)
-    per_page = 10
+
     
     q = Invoice.query.options(
         joinedload(Invoice.customer),
@@ -675,19 +668,14 @@ def orders_shipping():
         )
     
     q = q.order_by(Invoice.created_at.desc())
-    pagination = q.paginate(page=page, per_page=per_page, error_out=False)
-    orders = q.all()
-    cities = [c[0] for c in db.session.query(Customer.city).distinct().all() if c[0]]
-    
+    orders = _orders_grid_rows(q)
+
     return render_template(
         "orders.html",
         orders=orders,
-        pagination=pagination,
-        employees=Employee.query.all(),
-        shippings=ShippingCompany.query.all(),
-        delivery_agents=DeliveryAgent.query.all(),
-        cities=cities,
-        page_type="shipping"
+        pagination=None,
+        page_type="shipping",
+        **_orders_page_lookups(),
     )
 
 # =====================================================
@@ -699,8 +687,6 @@ def orders_delivered():
     if not check_permission("can_see_orders") or not check_permission("can_see_orders_delivered"):
         return redirect("/pos"), 403
     _ensure_order_video_columns()
-    page = request.args.get("page", 1, type=int)
-    per_page = 10
 
     q = Invoice.query.options(
         joinedload(Invoice.customer),
@@ -755,19 +741,14 @@ def orders_delivered():
         )
 
     q = q.order_by(Invoice.created_at.desc())
-    pagination = q.paginate(page=page, per_page=per_page, error_out=False)
-    orders = q.all()
-    cities = [c[0] for c in db.session.query(Customer.city).distinct().all() if c[0]]
+    orders = _orders_grid_rows(q)
 
     return render_template(
         "orders.html",
         orders=orders,
-        pagination=pagination,
-        employees=Employee.query.all(),
-        shippings=ShippingCompany.query.all(),
-        delivery_agents=DeliveryAgent.query.all(),
-        cities=cities,
-        page_type="delivered"
+        pagination=None,
+        page_type="delivered",
+        **_orders_page_lookups(),
     )
 
 # =====================================================
@@ -778,8 +759,6 @@ def orders_returned():
     if not check_permission("can_see_orders") or not check_permission("can_see_orders_returned"):
         return redirect("/pos"), 403
     _ensure_order_video_columns()
-    page = request.args.get("page", 1, type=int)
-    per_page = 10
 
     q = Invoice.query.options(
         joinedload(Invoice.customer),
@@ -834,19 +813,14 @@ def orders_returned():
         )
 
     q = q.order_by(Invoice.created_at.desc())
-    pagination = q.paginate(page=page, per_page=per_page, error_out=False)
-    orders = q.all()
-    cities = [c[0] for c in db.session.query(Customer.city).distinct().all() if c[0]]
+    orders = _orders_grid_rows(q)
 
     return render_template(
         "orders.html",
         orders=orders,
-        pagination=pagination,
-        employees=Employee.query.all(),
-        shippings=ShippingCompany.query.all(),
-        delivery_agents=DeliveryAgent.query.all(),
-        cities=cities,
-        page_type="returned"
+        pagination=None,
+        page_type="returned",
+        **_orders_page_lookups(),
     )
 
 # =====================================================
@@ -858,8 +832,7 @@ def orders_cancelled():
     if not check_permission("can_see_orders"):
         return redirect("/pos"), 403
     _ensure_order_video_columns()
-    page = request.args.get("page", 1, type=int)
-    per_page = 10
+
     
     q = Invoice.query.options(
         joinedload(Invoice.customer),
@@ -910,19 +883,14 @@ def orders_cancelled():
         )
     
     q = q.order_by(Invoice.created_at.desc())
-    pagination = q.paginate(page=page, per_page=per_page, error_out=False)
-    orders = q.all()
-    cities = [c[0] for c in db.session.query(Customer.city).distinct().all() if c[0]]
-    
+    orders = _orders_grid_rows(q)
+
     return render_template(
         "orders.html",
         orders=orders,
-        pagination=pagination,
-        employees=Employee.query.all(),
-        shippings=ShippingCompany.query.all(),
-        delivery_agents=DeliveryAgent.query.all(),
-        cities=cities,
-        page_type="cancelled"
+        pagination=None,
+        page_type="cancelled",
+        **_orders_page_lookups(),
     )
 
 # =====================================================
@@ -933,12 +901,52 @@ def update_order():
     data = request.json
     order = Invoice.query.get_or_404(int(data["id"]))
     before = snapshot_attrs(order, *INVOICE_SNAPSHOT_FIELDS)
+    prev_effective_paid = _effective_paid_amount(order)
+    lifecycle_changed = False
 
     if data.get("status"):
-        order.status = data["status"]
+        new_status = data["status"]
+        # لا نسمح بتغيير "راجع" عبر تحديث بسيط بدون باركود/تسوية — استخدم مسار الترجيع الموحّد
+        if is_return_status_value(new_status):
+            scanned_barcode = (data.get("barcode") or "").strip()
+            if not scanned_barcode:
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": "يجب مسح باركود الطلب لتأكيد الراجع",
+                        }
+                    ),
+                    400,
+                )
+            try:
+                already_returned, msg = process_order_return(order, scanned_barcode)
+            except OrderLifecycleError as exc:
+                return jsonify({"success": False, "error": exc.message}), exc.status_code
+            if already_returned:
+                return jsonify({"success": True, "message": msg})
+            lifecycle_changed = True
+        elif is_canceled(new_status, None):
+            try:
+                process_order_cancel(order)
+            except OrderLifecycleError as exc:
+                return jsonify({"success": False, "error": exc.message}), exc.status_code
+            lifecycle_changed = True
+        else:
+            order.status = new_status
 
     if data.get("shipping"):
         order.shipping_company_id = int(data["shipping"])
+
+    if lifecycle_changed:
+        append_payment_ledger_delta(order.id, _effective_paid_amount(order) - prev_effective_paid)
+        sync_delivery_expense_for_invoice(order)
+        try:
+            from utils.payroll_service import sync_commission_line_for_invoice
+
+            sync_commission_line_for_invoice(order)
+        except Exception:
+            pass
 
     db.session.commit()
     try:
@@ -980,6 +988,10 @@ def payment():
         before_pay = snapshot_attrs(order, *INVOICE_SNAPSHOT_FIELDS)
         payment_status = data.get("payment")
         paid_amount = data.get("paid_amount", 0)
+        try:
+            delivery_fee = max(0, int(data.get("delivery_fee") or 0))
+        except (TypeError, ValueError):
+            delivery_fee = 0
         video_cleanup_targets = None
         prev_effective_paid = _effective_paid_amount(order)
 
@@ -1002,6 +1014,12 @@ def payment():
                 delta_pay = _effective_paid_amount(order) - prev_effective_paid
                 append_payment_ledger_delta(order.id, delta_pay)
                 sync_delivery_expense_for_invoice(order)
+                try:
+                    from utils.payroll_service import sync_commission_line_for_invoice
+
+                    sync_commission_line_for_invoice(order)
+                except Exception:
+                    pass
                 db.session.commit()
                 _delete_order_video_cleanup_targets(video_cleanup_targets)
                 try:
@@ -1024,15 +1042,21 @@ def payment():
                     current_app.logger.exception("auto blacklist after return failed")
                 return jsonify({"success": True})
 
+            if payment_status == "جزئي":
+                try:
+                    paid_amount = int(paid_amount)
+                except (ValueError, TypeError):
+                    return jsonify({"success": False, "error": "مبلغ التسديد الجزئي غير صحيح"}), 400
+                if paid_amount <= 0:
+                    return jsonify({"success": False, "error": "مبلغ التسديد الجزئي يجب أن يكون أكبر من صفر"}), 400
+
             order.payment_status = payment_status
             
             # تحديث المبلغ المدفوع
             if payment_status == "مسدد":
-                # عند التسديد الكامل، المدفوع = المجموع (حتى لو كان paid_amount هو None)
                 order.paid_amount = order.total
             elif payment_status == "جزئي" and paid_amount is not None:
                 try:
-                    paid_amount = int(paid_amount)
                     # عند التسديد الجزئي، إضافة المبلغ المدفوع للمبلغ الموجود
                     order.paid_amount = min(order.paid_amount + paid_amount, order.total)
                     # إذا وصل المستحق إلى 0 (paid_amount == total)، تسديد تلقائي
@@ -1054,10 +1078,21 @@ def payment():
         if payment_status == "مسدد":
             video_cleanup_targets = _collect_order_video_cleanup_targets(order)
             _clear_order_video_fields(order)
-            apply_shipping_fee_on_paid_invoice(order)
+            tenant_id = getattr(order, "tenant_id", None)
+            if getattr(order, "customer", None) is not None:
+                tenant_id = getattr(order.customer, "tenant_id", tenant_id)
+            apply_manual_delivery_fee_on_payment(order, delivery_fee, tenant_id)
+            if delivery_fee <= 0:
+                order.paid_amount = order.total
         delta_pay = _effective_paid_amount(order) - prev_effective_paid
         append_payment_ledger_delta(order.id, delta_pay)
         sync_delivery_expense_for_invoice(order)
+        try:
+            from utils.payroll_service import sync_commission_line_for_invoice
+
+            sync_commission_line_for_invoice(order)
+        except Exception:
+            pass
         db.session.commit()
         _delete_order_video_cleanup_targets(video_cleanup_targets)
         try:
@@ -1121,19 +1156,17 @@ def delete_order(order_id):
 
     try:
         video_cleanup_targets = _collect_order_video_cleanup_targets(order)
-        # إعادة المخزون قبل الحذف
-        items = OrderItem.query.filter_by(invoice_id=order.id).all()
-        for item in items:
-            if is_shipping_item(item):
-                continue
-            product = Product.query.get(item.product_id)
-            if product:
-                branch_id = item.fulfillment_branch_id or order.branch_id
-                if branch_id:
-                    from utils.branch_stock_service import receive_stock
-                    receive_stock(branch_id, product.id, int(item.quantity or 0))
-                else:
-                    product.quantity += int(item.quantity or 0)
+        try:
+            from utils.payroll_service import remove_commission_lines_for_deleted_invoice
+
+            remove_commission_lines_for_deleted_invoice(order.id)
+        except ValueError as exc:
+            db.session.rollback()
+            return jsonify({"success": False, "error": str(exc)}), 400
+        restore_order_stock_once(order)
+        remove_delivery_expense_for_invoice(order.id)
+        ensure_invoice_payment_ledger_table()
+        InvoicePaymentLedger.query.filter_by(invoice_id=order.id).delete(synchronize_session=False)
 
         db.session.delete(order)
         db.session.commit()
@@ -1616,11 +1649,14 @@ def public_order_view(token: str):
         joinedload(Invoice.customer),
         joinedload(Invoice.shipping_company),
     ).get_or_404(oid)
-    from utils.order_shipping import prepare_invoice_items_for_print, invoice_print_amounts
+    from utils.order_shipping import prepare_invoice_items_for_print, invoice_print_amounts, invoice_display_amounts
 
     raw_items = OrderItem.query.filter_by(invoice_id=order.id).all()
     items, print_total = prepare_invoice_items_for_print(raw_items)
-    total = int(print_total) if items else int(order.total or 0)
+    display_amounts = invoice_display_amounts(order, raw_items, print_total)
+    total = display_amounts["total"]
+    total_before_discount = display_amounts["total_before_discount"]
+    discount_amount = display_amounts["discount_amount"]
     amounts = invoice_print_amounts(order, total)
     due = amounts["due"]
     paid_amount = amounts["paid_amount"]
@@ -1641,6 +1677,8 @@ def public_order_view(token: str):
         order=order,
         items=items,
         total=total,
+        total_before_discount=total_before_discount,
+        discount_amount=discount_amount,
         due=due,
         paid_amount=paid_amount,
         is_partial=is_partial,
@@ -1713,13 +1751,21 @@ def invoice_page(order_id):
     if denied:
         return denied
 
-    from utils.order_shipping import prepare_invoice_items_for_print, invoice_print_amounts
+    from utils.order_shipping import prepare_invoice_items_for_print, invoice_print_amounts, invoice_display_amounts
 
     raw_items = OrderItem.query.filter_by(invoice_id=order.id).all()
     items, print_total = prepare_invoice_items_for_print(raw_items)
 
+    display_amounts = invoice_display_amounts(order, raw_items, print_total)
+    total = display_amounts["total"]
+    total_before_discount = display_amounts["total_before_discount"]
+    discount_amount = display_amounts["discount_amount"]
+    amounts = invoice_print_amounts(order, total)
+    due = amounts["due"]
+    paid_amount = amounts["paid_amount"]
+    is_partial = amounts["is_partial"]
+
     # حساب عدد الرواجع بناءً على رقم الهاتف (phone أو phone2)
-    # البحث عن جميع الزبائن بنفس رقم الهاتف
     customer_phone = order.customer.phone
     customers_with_same_phone = Customer.query.filter(
         or_(
@@ -1727,30 +1773,17 @@ def invoice_page(order_id):
             Customer.phone2 == customer_phone
         )
     ).all()
-    
-    # جمع جميع customer_ids للزبائن بنفس رقم الهاتف
     customer_ids = [c.id for c in customers_with_same_phone]
-    
-    # حساب عدد الرواجع لجميع الطلبات لهؤلاء الزبائن
     returned_count = Invoice.query.filter(
         Invoice.customer_id.in_(customer_ids),
         or_(
             invoice_returned_condition(Invoice),
         )
     ).count()
-    
-    # حساب عدد الملغيات لجميع الطلبات لهؤلاء الزبائن
     cancelled_count = Invoice.query.filter(
         Invoice.customer_id.in_(customer_ids),
         Invoice.status == "ملغي"
     ).count()
-    
-    # الإجمالي المعروض: منتجات بعد خصم الشحن وبدون بند الشحن
-    total = int(print_total) if items else int(order.total or 0)
-    amounts = invoice_print_amounts(order, total)
-    due = amounts["due"]
-    paid_amount = amounts["paid_amount"]
-    is_partial = amounts["is_partial"]
 
     # Get invoice settings
     settings = InvoiceSettings.get_settings()
@@ -1772,6 +1805,8 @@ def invoice_page(order_id):
         order=order,
         items=items,
         total=total,
+        total_before_discount=total_before_discount,
+        discount_amount=discount_amount,
         due=due,
         paid_amount=paid_amount,
         is_partial=is_partial,
@@ -1841,7 +1876,7 @@ def print_batch():
     id_to_invoice = {inv.id: inv for inv in invoices}
     ordered_invoices = [id_to_invoice[i] for i in ids_list if i in id_to_invoice]
 
-    from utils.order_shipping import prepare_invoice_items_for_print, invoice_print_amounts
+    from utils.order_shipping import prepare_invoice_items_for_print, invoice_print_amounts, invoice_display_amounts
 
     settings = InvoiceSettings.get_settings()
     batch = []
@@ -1869,7 +1904,10 @@ def print_batch():
                 Invoice.status == "ملغي"
             ).count()
 
-        total = int(print_total) if items else int(order.total or 0)
+        display_amounts = invoice_display_amounts(order, raw_items, print_total)
+        total = display_amounts["total"]
+        total_before_discount = display_amounts["total_before_discount"]
+        discount_amount = display_amounts["discount_amount"]
         amounts = invoice_print_amounts(order, total)
         due = amounts["due"]
         paid_amount = amounts["paid_amount"]
@@ -1887,6 +1925,8 @@ def print_batch():
             "order": order,
             "items": items,
             "total": total,
+            "total_before_discount": total_before_discount,
+            "discount_amount": discount_amount,
             "due": due,
             "paid_amount": paid_amount,
             "is_partial": is_partial,
@@ -2079,17 +2119,22 @@ def print_report():
                     "name": name,
                     "quantity": item.quantity
                 })
+            from utils.agent_report_helpers import order_payment_snapshot
+
+            payment = order_payment_snapshot(order)
             orders_data.append({
                 "id": order.id,
                 "phone": order.customer.phone,
                 "quantity": items_count,
-                "total": order.total,
+                "total": payment["total"],
+                "paid_amount": payment["paid_amount"],
+                "remaining": payment["remaining"],
                 "city": order.customer.city or "",
                 "address": order.customer.address or "",
                 "shipping": order.shipping_company.name if order.shipping_company else "",
                 "products": products_list
             })
-            total_amount += order.total
+            total_amount += payment["remaining"]
     
     return jsonify({
         "orders": orders_data,
@@ -2182,17 +2227,22 @@ def get_print_report_data():
                     "name": name,
                     "quantity": item.quantity
                 })
+            from utils.agent_report_helpers import order_payment_snapshot
+
+            payment = order_payment_snapshot(order)
             orders_data.append({
                 "id": order.id,
                 "phone": order.customer.phone,
                 "quantity": items_count,
-                "total": order.total,
+                "total": payment["total"],
+                "paid_amount": payment["paid_amount"],
+                "remaining": payment["remaining"],
                 "city": order.customer.city or "",
                 "address": order.customer.address or "",
                 "shipping": order.shipping_company.name if order.shipping_company else "",
                 "products": products_list
             })
-            total_amount += order.total
+            total_amount += payment["remaining"]
     
     response_data = {
         "success": True,
@@ -2311,6 +2361,19 @@ def search_by_barcode():
             invoice = None
 
     if not invoice:
+        # مطابقة باركودات النقل المتعددة (shipping_barcodes_json)
+        candidates = (
+            Invoice.query.filter(Invoice.shipping_barcodes_json.ilike(f'%"{barcode}"%'))
+            .order_by(Invoice.id.desc())
+            .limit(50)
+            .all()
+        )
+        for cand in candidates:
+            if shipping_barcodes_match_code(cand, barcode):
+                invoice = cand
+                break
+
+    if not invoice:
         return jsonify({"success": False, "error": "لم يتم العثور على فاتورة"}), 404
     
     return jsonify({
@@ -2324,7 +2387,8 @@ def search_by_barcode():
             "status": invoice.status,
             "payment_status": invoice.payment_status,
             "barcode": invoice.barcode,
-            "shipping_barcode": invoice.shipping_barcode
+            "shipping_barcode": shipping_barcodes_display(invoice) or invoice.shipping_barcode,
+            "shipping_barcodes": get_shipping_barcodes_list(invoice),
         }
     })
 
@@ -2507,15 +2571,20 @@ def create_shipping_report():
     orders_data = []
     total_amount = 0
     
+    from utils.agent_report_helpers import order_payment_snapshot
+
     for order in orders:
         items = [item for item in OrderItem.query.filter_by(invoice_id=order.id).all() if not is_shipping_item(item)]
+        payment = order_payment_snapshot(order)
         order_info = {
             "id": order.id,
             "customer_name": order.customer.name if order.customer else order.customer_name,
             "customer_phone": order.customer.phone if order.customer else "",
             "customer_city": order.customer.city if order.customer else "",
             "customer_address": order.customer.address if order.customer else "",
-            "total": order.total,
+            "total": payment["total"],
+            "paid_amount": payment["paid_amount"],
+            "remaining": payment["remaining"],
             "status": order.status,
             "payment_status": order.payment_status,
             "created_at": order.created_at.strftime("%Y-%m-%d %H:%M") if order.created_at else "",
@@ -2530,7 +2599,7 @@ def create_shipping_report():
             ]
         }
         orders_data.append(order_info)
-        total_amount += order.total
+        total_amount += payment["remaining"]
     
     # إنشاء رقم الكشف (تاريخ + رقم متسلسل)
     today = datetime.utcnow().strftime("%Y%m%d")
@@ -2651,15 +2720,20 @@ def create_agent_report_internal(order_ids, agent_id, save_to_db=True):
     orders_data = []
     total_amount = 0
     
+    from utils.agent_report_helpers import order_payment_snapshot
+
     for order in orders:
         items = [item for item in OrderItem.query.filter_by(invoice_id=order.id).all() if not is_shipping_item(item)]
+        payment = order_payment_snapshot(order)
         order_info = {
             "id": order.id,
             "customer_name": order.customer.name if order.customer else order.customer_name,
             "customer_phone": order.customer.phone if order.customer else "",
             "customer_city": order.customer.city if order.customer else "",
             "customer_address": order.customer.address if order.customer else "",
-            "total": order.total,
+            "total": payment["total"],
+            "paid_amount": payment["paid_amount"],
+            "remaining": payment["remaining"],
             "status": order.status,
             "payment_status": order.payment_status,
             "created_at": order.created_at.strftime("%Y-%m-%d %H:%M") if order.created_at else "",
@@ -2674,7 +2748,7 @@ def create_agent_report_internal(order_ids, agent_id, save_to_db=True):
             ]
         }
         orders_data.append(order_info)
-        total_amount += order.total
+        total_amount += payment["remaining"]
     
     # إنشاء رقم الكشف (تاريخ + رقم متسلسل للمندوب)
     today = datetime.utcnow().strftime("%Y%m%d")

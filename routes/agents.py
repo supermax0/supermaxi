@@ -15,6 +15,8 @@ from utils.agent_report_helpers import (
     get_pending_agent_reports_summary,
     is_agent_report,
     list_pending_agent_reports,
+    order_payment_snapshot,
+    row_collectible_amount,
     serialize_pending_report,
 )
 from utils.decorators import permission_required
@@ -22,6 +24,7 @@ from utils.order_shipping import is_shipping_item, order_item_display_name
 from utils.permission_checks import employee_can, get_current_employee
 from utils.team_schema import ensure_delivery_agent_schema
 from utils.agent_employee_link import ensure_agent_employee
+from utils.payroll_service import apply_payroll_config
 from utils.agent_passwords import hash_agent_password
 
 agents_bp = Blueprint("agents", __name__, url_prefix="/agents")
@@ -138,6 +141,13 @@ def edit_agent(agent_id):
         agent.notes = str(data.get("notes") or "").strip() or None
     if "salary" in data:
         agent.salary = int(data.get("salary") or 0)
+    apply_payroll_config(
+        agent,
+        pay_type=data.get("pay_type"),
+        salary=int(data.get("salary", agent.salary or 0) or 0) if "salary" in data else None,
+        pay_day_of_month=data.get("pay_day_of_month"),
+        pay_weekday=data.get("pay_weekday"),
+    )
     db.session.commit()
     if agent.username:
         ensure_agent_employee(agent)
@@ -224,13 +234,16 @@ def agent_reports(agent_id):
 def _agent_report_order_payload(order: Invoice) -> dict:
     items = [item for item in OrderItem.query.filter_by(invoice_id=order.id).all() if not is_shipping_item(item)]
     customer = order.customer
+    payment = order_payment_snapshot(order)
     return {
         "id": order.id,
         "customer_name": customer.name if customer else order.customer_name,
         "customer_phone": customer.phone if customer else "",
         "customer_city": customer.city if customer else "",
         "customer_address": customer.address if customer else "",
-        "total": int(order.total or 0),
+        "total": payment["total"],
+        "paid_amount": payment["paid_amount"],
+        "remaining": payment["remaining"],
         "status": order.status,
         "payment_status": order.payment_status,
         "created_at": order.created_at.strftime("%Y-%m-%d %H:%M") if order.created_at else "",
@@ -303,7 +316,7 @@ def add_order_to_agent_report():
     orders_data.append(_agent_report_order_payload(order))
     report.orders_data = json.dumps(orders_data, ensure_ascii=False)
     report.orders_count = len(orders_data)
-    report.total_amount = sum(int(row.get("total") or 0) for row in orders_data)
+    report.total_amount = sum(row_collectible_amount(row) for row in orders_data)
     db.session.commit()
 
     return jsonify({

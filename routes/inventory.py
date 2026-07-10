@@ -96,6 +96,14 @@ def _branch_id_for_product_stock(form=None, meta: dict | None = None) -> int | N
     return _inventory_branch_id()
 
 
+def _edit_current_stock_for_product(product: Product, meta: dict | None = None) -> int:
+    """Current on-hand quantity for the product edit form (branch-scoped when applicable)."""
+    stock_branch_id = _branch_id_for_product_stock(meta=meta)
+    if stock_branch_id:
+        return get_branch_stock(stock_branch_id, product.id)
+    return int(product.quantity or 0)
+
+
 def _product_display_qty(product, stock_map, view_all):
     fallback = int(product.quantity or 0)
     return stock_map.get(product.id, fallback)
@@ -919,7 +927,6 @@ def add_product_page():
 
             before_product = snapshot_attrs(p, *PRODUCT_SNAPSHOT_FIELDS)
             old_buy_price = p.buy_price
-            old_opening_stock = p.opening_stock or 0
             old_name = p.name
 
             p.name = name
@@ -944,27 +951,22 @@ def add_product_page():
             elif external_image_url:
                 p.image_url = external_image_url
 
-            if "opening_stock" in request.form and not has_colors_flag:
-                new_opening_stock = int(request.form.get("opening_stock") or 0)
-                p.opening_stock = new_opening_stock
-                stock_difference = new_opening_stock - old_opening_stock
+            if "current_stock" in request.form and not has_colors_flag:
+                new_qty = max(0, int(request.form.get("current_stock") or 0))
                 stock_branch_id = _branch_id_for_product_stock(request.form, meta)
                 if stock_branch_id:
-                    set_opening_branch_stock(stock_branch_id, p.id, new_opening_stock)
+                    set_branch_stock(stock_branch_id, p.id, new_qty)
                 else:
-                    p.quantity = (p.quantity or 0) + stock_difference
-                    if p.quantity < 0:
-                        p.quantity = 0
+                    p.quantity = new_qty
 
             p.meta_json = json.dumps(meta, ensure_ascii=False) if meta else None
             db.session.flush()
             color_total = _apply_product_colors_from_form(p, request.form)
             if has_colors_flag:
-                p.opening_stock = color_total
                 p.quantity = color_total
                 stock_branch_id = _branch_id_for_product_stock(request.form, meta)
                 if stock_branch_id:
-                    set_opening_branch_stock(stock_branch_id, p.id, color_total)
+                    set_branch_stock(stock_branch_id, p.id, color_total)
             if name != old_name:
                 sync_product_name_to_order_items(p.id, name)
             db.session.commit()
@@ -1040,6 +1042,7 @@ def add_product_page():
 
     ctx = _inventory_add_summary()
     ctx["edit_product"] = None
+    ctx["edit_current_stock"] = 0
     ctx["product_meta"] = {}
     ctx["product_specs_items"] = []
     ctx["product_color_rows"] = []
@@ -1050,6 +1053,7 @@ def add_product_page():
         if ep:
             ctx["edit_product"] = ep
             ctx["product_meta"] = _load_product_meta(ep)
+            ctx["edit_current_stock"] = _edit_current_stock_for_product(ep, ctx["product_meta"])
             ctx["product_specs_items"] = _extract_specs_items(ctx["product_meta"])
             from utils.product_color_service import get_product_colors
 
@@ -1232,10 +1236,7 @@ def edit_product(id):
     p = Product.query.get_or_404(id)
     meta = _load_product_meta(p)
 
-    # حفظ القيم القديمة قبل التحديث (لحساب الفرق في رأس المال)
-    old_buy_price = p.buy_price
-    old_opening_stock = p.opening_stock or 0
-
+    # حفظ القيم القديمة قبل التحديث
     old_name = p.name
 
     p.name = request.form["name"]
@@ -1273,18 +1274,14 @@ def edit_product(id):
         meta.pop("gallery", None)
     p.meta_json = json.dumps(meta, ensure_ascii=False) if meta else None
     
-    # تحديث المخزون الافتتاحي إذا تم توفيره
-    if "opening_stock" in request.form:
-        new_opening_stock = int(request.form["opening_stock"]) if request.form["opening_stock"] else 0
-        # تحديث المخزون الافتتاحي
-        p.opening_stock = new_opening_stock
-        
-        # تحديث المخزون الحالي (quantity) بناءً على الفرق
-        stock_difference = new_opening_stock - old_opening_stock
-        p.quantity += stock_difference
-        
-        if p.quantity < 0:
-            p.quantity = 0
+    # تحديث المخزون الحالي إذا تم توفيره (لا نعدّل المخزون الافتتاحي)
+    if "current_stock" in request.form:
+        new_qty = max(0, int(request.form["current_stock"]) if request.form["current_stock"] else 0)
+        branch_id = _branch_id_for_product_stock(meta=meta)
+        if branch_id:
+            set_branch_stock(branch_id, p.id, new_qty)
+        else:
+            p.quantity = new_qty
 
     if p.name != old_name:
         sync_product_name_to_order_items(p.id, p.name)

@@ -1668,6 +1668,8 @@ def index_today_profit():
 # =================================================
 @index_bp.route("/api/index/search")
 def index_search():
+    from utils.shipping_barcodes import shipping_barcodes_display
+
     q = request.args.get("q", "").strip()
 
     if not q:
@@ -1679,6 +1681,17 @@ def index_search():
     q_normalized = q
     for i, arabic_digit in enumerate(arabic_digits):
         q_normalized = q_normalized.replace(arabic_digit, english_digits[i])
+
+    _search_cols = (
+        Invoice.id,
+        Invoice.total,
+        Invoice.status,
+        Invoice.shipping_barcode,
+        Invoice.shipping_barcodes_json,
+        Customer.phone,
+        Customer.city,
+        Customer.name.label("customer"),
+    )
     
     # التحقق إذا كان الإدخال رقم فقط (مطابقة كاملة لرقم الفاتورة)
     # يجب أن يكون الرقم فقط بدون أي أحرف أو مسافات
@@ -1686,13 +1699,7 @@ def index_search():
         # إذا كان رقم فقط (مثل "1")، ابحث عن مطابقة كاملة لرقم الفاتورة فقط
         # هذا يضمن أن "1" يبحث فقط عن الطلب رقم 1 وليس 10 أو 11
         invoice_id = int(q_normalized)
-        orders = db.session.query(
-            Invoice.id,
-            Invoice.total,
-            Invoice.status,
-            Customer.phone,
-            Customer.name.label("customer"),
-        ).join(Customer).filter(
+        orders = db.session.query(*_search_cols).join(Customer).filter(
             Invoice.id == invoice_id
         ).order_by(
             Invoice.id.desc()
@@ -1715,13 +1722,7 @@ def index_search():
                 phone_filters.append(Customer.phone.like(f"%{num_normalized}%"))
                 phone_filters.append(Customer.phone2.like(f"%{num_normalized}%"))
             
-            orders = db.session.query(
-                Invoice.id,
-                Invoice.total,
-                Invoice.status,
-                Customer.phone,
-                Customer.name.label("customer"),
-            ).join(Customer).filter(
+            orders = db.session.query(*_search_cols).join(Customer).filter(
                 or_(*phone_filters)
             ).order_by(
                 Invoice.id.desc()
@@ -1732,13 +1733,9 @@ def index_search():
             orders = []
 
     if not orders:
-        orders = db.session.query(
-            Invoice.id,
-            Invoice.total,
-            Invoice.status,
-            Customer.phone,
-            Customer.name.label("customer"),
-        ).join(Customer).filter(
+        from utils.shipping_barcodes import shipping_barcodes_match_code
+
+        orders = db.session.query(*_search_cols).join(Customer).filter(
             or_(
                 Invoice.barcode == q,
                 Invoice.shipping_barcode == q,
@@ -1747,16 +1744,74 @@ def index_search():
             Invoice.id.desc()
         ).limit(100).all()
 
+        if not orders:
+            candidates = (
+                db.session.query(*_search_cols)
+                .join(Customer)
+                .filter(Invoice.shipping_barcodes_json.ilike(f'%"{q}"%'))
+                .order_by(Invoice.id.desc())
+                .limit(50)
+                .all()
+            )
+            orders = [c for c in candidates if shipping_barcodes_match_code(c, q)]
+
     return jsonify([
         {
             "id": o.id,
             "phone": o.phone or "",
             "customer": o.customer or "",
+            "city": o.city or "",
             "total": o.total,
-            "status": o.status
+            "status": o.status,
+            "shipping_barcode": shipping_barcodes_display(o) or (o.shipping_barcode or ""),
         }
         for o in orders
     ])
+
+
+@index_bp.route("/api/index/order-delivery-fee/<int:order_id>")
+def index_order_delivery_fee(order_id):
+    """اقتراح أجرة التوصيل لطلب — للداشبورد ونافذة البحث."""
+    from utils.order_shipping import is_shipping_item
+    from utils.product_delivery_fees import fee_for_cart_items
+
+    invoice = Invoice.query.get(order_id)
+    if not invoice:
+        return jsonify({"ok": False, "error": "الطلب غير موجود"}), 404
+
+    customer = invoice.customer or Customer.query.get(invoice.customer_id)
+    city = (getattr(customer, "city", None) or "").strip()
+
+    cart_items = []
+    for item in OrderItem.query.filter_by(invoice_id=invoice.id).all():
+        if is_shipping_item(item):
+            continue
+        name = (getattr(item, "product_name", None) or "").strip()
+        if name == "خصم كوبون" or int(getattr(item, "total", 0) or 0) < 0:
+            continue
+        product_id = int(getattr(item, "product_id", 0) or 0)
+        if product_id <= 0:
+            continue
+        cart_items.append(
+            {
+                "product_id": product_id,
+                "qty": max(1, int(getattr(item, "quantity", 0) or 1)),
+            }
+        )
+
+    if not city or not cart_items:
+        return jsonify({"ok": True, "fee": 0, "city": city, "total": int(invoice.total or 0)})
+
+    fee, breakdown = fee_for_cart_items(cart_items, city)
+    return jsonify(
+        {
+            "ok": True,
+            "fee": int(fee or 0),
+            "city": city,
+            "total": int(invoice.total or 0),
+            "breakdown": breakdown,
+        }
+    )
 
 # =================================================
 # EXECUTE ORDER ACTION
@@ -1788,27 +1843,32 @@ def index_execute():
             return jsonify({"success": False, "error": str(exc)}), 400
 
     elif action == "delivered":
-        # التوصيل = تحصيل في مسار لوحة التحكم (مثل كشف الشحن «واصل»)
         from utils.delivery_expense_service import sync_delivery_expense_for_invoice
-        from utils.order_shipping import apply_shipping_fee_on_paid_invoice
+        from utils.order_shipping import apply_manual_delivery_fee_on_payment
+
+        try:
+            delivery_fee = max(0, int(data.get("delivery_fee") or 0))
+        except (TypeError, ValueError):
+            delivery_fee = 0
 
         prev_eff = _effective_paid_amount(invoice)
         invoice.status = "تم التوصيل"
         invoice.payment_status = "مسدد"
         invoice.paid_amount = int(invoice.total or 0)
-        apply_shipping_fee_on_paid_invoice(invoice)
+        tenant_id = getattr(invoice.customer, "tenant_id", None) if invoice.customer else None
+        apply_manual_delivery_fee_on_payment(invoice, delivery_fee, tenant_id)
+        if delivery_fee <= 0:
+            invoice.paid_amount = int(invoice.total or 0)
         append_payment_ledger_delta(invoice.id, _effective_paid_amount(invoice) - prev_eff)
         sync_delivery_expense_for_invoice(invoice)
 
     elif action == "paid":
         from utils.delivery_expense_service import sync_delivery_expense_for_invoice
-        from utils.order_shipping import apply_shipping_fee_on_paid_invoice
 
         prev_eff = _effective_paid_amount(invoice)
         invoice.status = "مسدد"
         invoice.payment_status = "مسدد"
         invoice.paid_amount = int(invoice.total or 0)
-        apply_shipping_fee_on_paid_invoice(invoice)
         invoice.shipping_status = "تم التسديد"
         append_payment_ledger_delta(invoice.id, _effective_paid_amount(invoice) - prev_eff)
         sync_delivery_expense_for_invoice(invoice)
@@ -1873,27 +1933,30 @@ def index_execute_bulk():
                 invoice.status = "جاري الشحن"
             elif action == "delivered":
                 from utils.delivery_expense_service import sync_delivery_expense_for_invoice
-                from utils.order_shipping import apply_shipping_fee_on_paid_invoice
+                from utils.order_shipping import apply_manual_delivery_fee_on_payment
+
+                try:
+                    delivery_fee = max(0, int(order_data.get("delivery_fee") or 0))
+                except (TypeError, ValueError):
+                    delivery_fee = 0
 
                 prev_eff = _effective_paid_amount(invoice)
                 invoice.status = "تم التوصيل"
                 invoice.payment_status = "مسدد"
                 invoice.paid_amount = int(invoice.total or 0)
-                apply_shipping_fee_on_paid_invoice(invoice)
+                tenant_id = getattr(invoice.customer, "tenant_id", None) if invoice.customer else None
+                apply_manual_delivery_fee_on_payment(invoice, delivery_fee, tenant_id)
+                if delivery_fee <= 0:
+                    invoice.paid_amount = int(invoice.total or 0)
                 append_payment_ledger_delta(invoice.id, _effective_paid_amount(invoice) - prev_eff)
                 sync_delivery_expense_for_invoice(invoice)
             elif action == "paid":
-                # ==========================
-                # تصحيح محاسبي: الطلب الواصل يتم تسديده بشكل صحيح
-                # ==========================
                 from utils.delivery_expense_service import sync_delivery_expense_for_invoice
-                from utils.order_shipping import apply_shipping_fee_on_paid_invoice
 
                 prev_eff = _effective_paid_amount(invoice)
                 invoice.status = "مسدد"
-                invoice.payment_status = "مسدد"  # تأكيد حالة الدفع
+                invoice.payment_status = "مسدد"
                 invoice.paid_amount = int(invoice.total or 0)
-                apply_shipping_fee_on_paid_invoice(invoice)
                 invoice.shipping_status = "تم التسديد"
                 append_payment_ledger_delta(invoice.id, _effective_paid_amount(invoice) - prev_eff)
                 sync_delivery_expense_for_invoice(invoice)
@@ -2375,6 +2438,7 @@ def add_expense():
     from utils.treasury_helpers import resolve_treasury_account_id
     from utils.treasury_calculations import assert_sufficient_balance, InsufficientTreasuryBalance
     from utils.treasury_schema_guard import ensure_treasury_schema
+    from utils.expense_posting import build_expense_withdraw_note
 
     ensure_treasury_schema()
     treasury_account_id = resolve_treasury_account_id(data.get("treasury_account_id"))
@@ -2398,18 +2462,22 @@ def add_expense():
             category=category,
             amount=amount,
             note=note,
-            expense_date=expense_date_obj
+            expense_date=expense_date_obj,
+            treasury_account_id=treasury_account_id,
+            cash_posted=False,
         )
         db.session.add(expense)
+        db.session.flush()
         
         # خصم المبلغ من رأس المال تلقائياً
         withdraw_tx = AccountTransaction(
             type="withdraw",
             amount=amount,
-            note=f"مصروف: {title} ({category})" + (f" - {note}" if note else ""),
+            note=build_expense_withdraw_note(expense),
             treasury_account_id=treasury_account_id,
         )
         db.session.add(withdraw_tx)
+        expense.cash_posted = True
         
         db.session.commit()
         

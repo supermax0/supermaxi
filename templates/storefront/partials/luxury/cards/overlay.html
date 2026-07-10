@@ -1,0 +1,14 @@
+{% from "storefront/partials/luxury/cards/_macros.html" import lux_badges, lux_prices, lux_media, lux_cart_btn %}
+<article class="lux-product-card lux-card-tpl-overlay{% if card_size %} lux-card-size-{{ card_size }}{% endif %}" data-product-id="{{ product.id }}" data-lux-category="{{ product.category or product.badge or '' }}" data-lux-price="{{ product.price or 0 }}">
+  <a class="lux-product-media lux-product-media--overlay" href="{{ product.url }}{% if request.args.get('dev') %}?dev=1{% endif %}">
+    {{ lux_media(product) }}
+    <div class="lux-badges">{{ lux_badges(product) }}</div>
+    <div class="lux-card-overlay-panel">
+      <span class="lux-card-overlay-title">{{ product.name }}</span>
+      {{ lux_prices(product) }}
+    </div>
+  </a>
+  <div class="lux-product-body lux-product-body--overlay">
+    {{ lux_cart_btn(product) }}
+  </div>
+</article>

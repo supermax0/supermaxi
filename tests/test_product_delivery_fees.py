@@ -207,6 +207,24 @@ def test_prepare_invoice_items_hides_new_cost_shipping_without_deducting():
     assert total == 195000
 
 
+def test_apply_manual_delivery_fee_on_payment():
+    from utils.order_shipping import SHIPPING_PRODUCT_NAME, apply_manual_delivery_fee_on_payment
+
+    invoice = SimpleNamespace(
+        id=1,
+        total=195000,
+        paid_amount=195000,
+        payment_status="مسدد",
+        status="تم التوصيل",
+        order_items=[
+            SimpleNamespace(product_name="منتج", quantity=1, price=195000, total=195000, product=None),
+        ],
+    )
+    # Manual path stores line item then deducts — requires DB in integration; test zero fee.
+    assert apply_manual_delivery_fee_on_payment(invoice, 0) == 0
+    assert invoice.total == 195000
+
+
 def test_apply_shipping_fee_on_paid_invoice_deducts_once():
     from utils.order_shipping import SHIPPING_PRODUCT_NAME, apply_shipping_fee_on_paid_invoice
 
@@ -251,6 +269,7 @@ if __name__ == "__main__":
     test_get_shipping_fee_from_invoice_reads_line_item()
     test_prepare_invoice_items_hides_shipping_without_deducting_legacy()
     test_prepare_invoice_items_hides_new_cost_shipping_without_deducting()
+    test_apply_manual_delivery_fee_on_payment()
     test_apply_shipping_fee_on_paid_invoice_deducts_once()
     test_shipping_fee_deducted_detection()
     print("all product delivery fee tests ok")

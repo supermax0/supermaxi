@@ -1615,7 +1615,7 @@ body.ai-assistant-report-collapsed #aiCloseReportBtn {
         <div class="ai-plan-panel" id="aiPlanPanel" style="display:none"></div>
         <div id="aiTypingRow" class="ai-typing-row" aria-live="polite" aria-atomic="true">
           <span class="ai-typing-dots" aria-hidden="true"><span></span><span></span><span></span></span>
-          <span>جاري تحليل البيانات…</span>
+          <span>يجمع البيانات الحقيقية من النظام ويحللها…</span>
         </div>
         <div class="ai-compose">
           <textarea class="ai-input" id="aiInput" placeholder="اكتب سؤالك هنا..."></textarea>
@@ -2133,7 +2133,7 @@ body.ai-assistant-report-collapsed #aiCloseReportBtn {
       els.typing.classList.toggle('is-visible', !!busy);
     }
     if (busy) scrollToBottom();
-    setReportPhase(busy ? 'يحلل البيانات' : 'جاهز', !!busy);
+    setReportPhase(busy ? 'يجمع البيانات ويحلل' : 'جاهز', !!busy);
   }
 
   async function callAssistant(userText) {

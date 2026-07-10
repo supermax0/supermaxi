@@ -17,6 +17,7 @@ from models.employee import Employee
 from models.invoice_settings import InvoiceSettings
 from models.page import Page
 from utils.financial_report_data import get_financial_report_data
+from utils.cash_calculations import _effective_paid_amount
 
 # =======================
 # Accounting Calculations (الحسابات المحاسبية الصحيحة)
@@ -512,7 +513,9 @@ def expenses_report():
         func.sum(Invoice.total)
     ).filter(Invoice.status != "ملغي").scalar() or 1
 
-    expenses = Expense.query.order_by(
+    from utils.expense_queries import posted_expenses_query
+
+    expenses = posted_expenses_query().order_by(
         Expense.expense_date.desc()
     ).limit(limit).all()
 
@@ -567,7 +570,7 @@ def returned_report():
     orders = Invoice.query.filter(
         or_(
             Invoice.status.in_(["مرتجع", "راجع", "راجعة"]),
-            Invoice.payment_status == "مرتجع"
+            Invoice.payment_status.in_(["مرتجع", "راجع", "راجعة"]),
         )
     ).order_by(Invoice.created_at.desc()).limit(limit).all()
 
@@ -591,29 +594,9 @@ def shipping_report():
     RETURN_STATUSES = ["مرتجع", "راجع", "راجعة"]
     CANCELED_STATUSES = ["ملغي"]
 
-    def effective_paid_amount(order: Invoice) -> int:
-        total = int(getattr(order, "total", 0) or 0)
-        payment_status = getattr(order, "payment_status", None)
-        status = getattr(order, "status", None)
-        if payment_status in ("مرتجع", "ملغي", "راجع", "راجعة") or status in (
-            "مرتجع",
-            "ملغي",
-            "راجع",
-            "راجعة",
-        ):
-            return 0
-        if payment_status == "مسدد" or status in ("مسدد", "تم التوصيل"):
-            return max(total, 0)
-        if payment_status == "جزئي":
-            paid_amount = int(getattr(order, "paid_amount", 0) or 0)
-            if paid_amount < 0:
-                return 0
-            return min(paid_amount, total) if total > 0 else paid_amount
-        return 0
-
     def remaining_amount(order: Invoice) -> int:
         total = int(getattr(order, "total", 0) or 0)
-        remaining = total - effective_paid_amount(order)
+        remaining = total - _effective_paid_amount(order)
         return remaining if remaining > 0 else 0
 
     companies = ShippingCompany.query.all()
@@ -626,7 +609,7 @@ def shipping_report():
         # المستحق = المتبقي (يدعم الدفع الجزئي) مع استبعاد الملغي/المرتجع
         due = sum(
             remaining_amount(o) for o in orders
-            if o.payment_status != "مرتجع"
+            if o.payment_status not in RETURN_STATUSES
             and o.status not in (CANCELED_STATUSES + RETURN_STATUSES)
             and remaining_amount(o) > 0
         )

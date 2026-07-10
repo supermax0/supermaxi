@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  {% from 'partials/invoice_qrcode.html' import invoice_qr_block with context %}
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>فاتورة رقم #{{ order.id }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+  <style>
+    :root {
+      --ink: {{ template_styles.secondary if template_styles and template_styles.secondary else '#111111' }};
+      --ink-soft: #2a2a2a;
+      --muted: #6b6b6b;
+      --line: #e8e8e8;
+      --paper: #ffffff;
+      --soft: #f6f6f6;
+      --gold-line: {{ template_styles.primary if template_styles and template_styles.primary else '#c9a24d' }};
+      --paid: #1f7a4d;
+      --partial: #a66a20;
+      --unpaid: #a33b3b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Tajawal', 'Segoe UI', Tahoma, Arial, sans-serif;
+      background: #efefef;
+      color: var(--ink);
+      line-height: 1.55;
+      padding: 24px 12px 48px;
+    }
+
+    .page-shell {
+      width: 100%;
+      max-width: 210mm;
+      margin-inline: auto;
+      margin-block: 0;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      padding: 12px 14px;
+    }
+
+    .actions__label {
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0.4px;
+    }
+
+    .actions__btns {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .btn {
+      border: 1px solid var(--ink);
+      background: var(--ink);
+      color: #fff;
+      padding: 9px 16px;
+      font-size: 13px;
+      cursor: pointer;
+      font-family: inherit;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .btn--ghost {
+      background: transparent;
+      color: var(--ink);
+    }
+
+    .invoice {
+      width: 100%;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      padding: 24px 24px 20px;
+      position: relative;
+      margin-inline: auto;
+    }
+
+    .invoice::before {
+      content: "";
+      position: absolute;
+      top: 0; right: 0; left: 0;
+      height: 3px;
+      background: var(--gold-line);
+    }
+
+    .invoice-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      align-items: flex-start;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .brand {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      min-width: 0;
+    }
+
+    .brand__logo {
+      width: 64px;
+      height: 64px;
+      object-fit: contain;
+      border: 1px solid var(--line);
+      background: var(--soft);
+      flex-shrink: 0;
+    }
+
+    .brand__logo-fallback {
+      width: 64px;
+      height: 64px;
+      display: grid;
+      place-items: center;
+      background: var(--ink);
+      color: var(--gold-line);
+      font-weight: 700;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .brand__name {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--ink);
+    }
+
+    .brand__activity {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 2px;
+    }
+
+    .invoice-title-block { text-align: start; flex-shrink: 0; }
+
+    .invoice-title {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--ink);
+      margin-bottom: 6px;
+    }
+
+    .invoice-number {
+      font-size: 14px;
+      color: var(--ink-soft);
+    }
+
+    .status-badge {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 4px 10px;
+      font-size: 12px;
+      border: 1px solid currentColor;
+      background: transparent;
+    }
+
+    .status-badge--paid { color: var(--paid); }
+    .status-badge--partial { color: var(--partial); }
+    .status-badge--unpaid { color: var(--unpaid); }
+    .status-badge--returned { color: #7c3aed; }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 16px;
+      margin: 22px 0 26px;
+    }
+
+    .info-card {
+      background: var(--soft);
+      border: 1px solid var(--line);
+      padding: 14px 16px;
+    }
+
+    .info-card__label {
+      font-size: 12px;
+      color: var(--gold-line);
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+
+    .info-row {
+      display: flex;
+      gap: 8px;
+      font-size: 13px;
+      margin-bottom: 6px;
+    }
+
+    .info-row:last-child { margin-bottom: 0; }
+    .info-row__key { color: var(--muted); min-width: 92px; flex-shrink: 0; }
+    .info-row__val { color: var(--ink); font-weight: 600; word-break: break-word; }
+
+    .risk-info {
+      background: #fff5f5;
+      border: 1px dashed #fc8181;
+      color: #c53030;
+      text-align: center;
+      padding: 10px 12px;
+      font-size: 13px;
+      margin-bottom: 18px;
+    }
+
+    .section-heading {
+      font-size: 14px;
+      font-weight: 800;
+      margin-bottom: 10px;
+      color: var(--ink);
+      border-right: 3px solid var(--gold-line);
+      padding-right: 8px;
+    }
+
+    .items-wrap { overflow-x: auto; margin-bottom: 22px; }
+
+    .items-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 620px;
+      font-size: 13px;
+    }
+
+    .items-table thead th {
+      background: var(--ink);
+      color: #fff;
+      font-weight: 700;
+      text-align: right;
+      padding: 11px 10px;
+      white-space: nowrap;
+    }
+
+    .items-table tbody td {
+      padding: 12px 10px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+
+    .items-table tbody tr:nth-child(even) { background: #fafafa; }
+    .item-name { font-weight: 700; color: var(--ink); }
+    .col-num { text-align: left; white-space: nowrap; direction: ltr; }
+
+    .bottom-grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 18px;
+      align-items: start;
+      margin-bottom: 24px;
+    }
+
+    .totals { border: 1px solid var(--line); background: var(--paper); }
+
+    .totals__row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 14px;
+      font-size: 13px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .totals__row:last-child { border-bottom: 0; }
+
+    .totals__row--grand {
+      background: var(--ink);
+      color: #fff;
+      font-size: 16px;
+      font-weight: 800;
+    }
+
+    .totals__row--grand .totals__value { color: var(--gold-line); }
+    .totals__value {
+      font-weight: 700;
+      direction: ltr;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    .warranty {
+      background: var(--soft);
+      border: 1px solid var(--line);
+      border-right: 3px solid var(--gold-line);
+      padding: 14px 16px;
+      font-size: 13px;
+    }
+
+    .warranty__title { font-weight: 800; margin-bottom: 6px; }
+
+    .notes-box {
+      margin-top: 14px;
+      font-size: 13px;
+      color: var(--ink-soft);
+    }
+
+    .notes-box strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--ink);
+    }
+
+    .signatures {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin: 28px 0 18px;
+    }
+
+    .signature { text-align: center; padding-top: 36px; }
+    .signature__line {
+      border-top: 1px solid var(--ink-soft);
+      width: 70%;
+      margin: 0 auto 8px;
+    }
+    .signature__label { font-size: 12px; color: var(--muted); }
+
+    .invoice-footer {
+      border-top: 1px solid var(--line);
+      padding-top: 12px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .invoice-footer__gold {
+      color: var(--gold-line);
+      margin-top: 4px;
+    }
+
+    .codes {
+      display: flex;
+      gap: 16px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 14px;
+    }
+
+    .barcode-svg { opacity: 0.55; }
+
+{% if template_styles and template_styles.custom_css %}
+{{ template_styles.custom_css | safe }}
+{% endif %}
+
+    @media (max-width: 760px) {
+      .invoice { padding: 18px 14px; }
+      .invoice-header,
+      .meta-grid,
+      .bottom-grid,
+      .signatures {
+        display: grid;
+        grid-template-columns: 1fr;
+      }
+      .invoice-title-block { text-align: right; }
+    }
+
+    @media print {
+      /*
+        لا نثبت A4 هنا — المتصفح يترك حجم الورق من إعدادات الطباعة (A4/Letter).
+        هوامش متساوية فقط حتى المحتوى يملأ العرض وما يميل يمين/يسار.
+      */
+      @page {
+        margin: 0.5in;
+      }
+
+      html {
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+
+      body {
+        width: 100% !important;
+        max-width: none !important;
+        height: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #fff !important;
+        direction: rtl !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      .actions { display: none !important; }
+
+      .page-shell,
+      .invoice {
+        display: block !important;
+        width: 100% !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        float: none !important;
+        position: static !important;
+        inset: auto !important;
+        transform: none !important;
+      }
+
+      .invoice::before {
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+      }
+
+      .items-table thead th,
+      .totals__row--grand,
+      .status-badge {
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+      }
+
+      .invoice-header,
+      .meta-grid,
+      .bottom-grid,
+      .signatures,
+      .items-wrap,
+      .totals,
+      .warranty,
+      .info-card {
+        width: 100% !important;
+        max-width: none !important;
+        box-sizing: border-box !important;
+      }
+
+      .items-wrap {
+        overflow: visible !important;
+      }
+
+      .items-table {
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        table-layout: fixed !important;
+      }
+
+      .items-table th,
+      .items-table td {
+        word-wrap: break-word;
+        overflow-wrap: anywhere;
+      }
+
+      .col-num,
+      .totals__value {
+        text-align: end;
+      }
+    }
+  </style>
+</head>
+<body>
+{% set company_name = (settings.store_name if settings and settings.store_name else (settings.company_name if settings and settings.company_name else 'سوبر ماكس')) %}
+{% set company_activity = (settings.company_subtitle if settings and settings.company_subtitle else 'أجهزة كهربائية ومنزلية') %}
+{% set company_address = (settings.company_address if settings and settings.company_address else '') %}
+{% set company_phone = (settings.phone1 if settings and settings.phone1 else (settings.company_phone if settings and settings.company_phone else '')) %}
+{% set paid_val = (paid_amount if paid_amount is defined and paid_amount is not none else (order.paid_amount or 0)) %}
+{% set grand_val = (total if total is defined else (order.total or 0)) %}
+{% set due_val = (due if due is defined else grand_val) %}
+{% set remaining_val = (due_val - paid_val) if (due_val - paid_val) > 0 else 0 %}
+{% set pay = (order.payment_status or '') %}
+{% if pay in ['راجع', 'مرتجع', 'راجعة'] %}
+  {% set pay_kind = 'returned' %}
+  {% set pay_label = pay %}
+{% elif pay == 'مسدد' or (is_partial is defined and not is_partial and paid_val >= grand_val and grand_val > 0) %}
+  {% set pay_kind = 'paid' %}
+  {% set pay_label = 'مدفوعة بالكامل' %}
+{% elif pay == 'جزئي' or (is_partial is defined and is_partial) or (paid_val > 0 and remaining_val > 0) %}
+  {% set pay_kind = 'partial' %}
+  {% set pay_label = 'مدفوعة جزئياً' %}
+{% else %}
+  {% set pay_kind = 'unpaid' %}
+  {% set pay_label = 'غير مدفوعة' %}
+{% endif %}
+
+  <div class="page-shell">
+    <div class="actions no-print">
+      <div class="actions__label">LuxuryInvoiceTemplate</div>
+      <div class="actions__btns">
+        <a href="/orders" class="btn btn--ghost">عودة</a>
+        <button type="button" class="btn" onclick="window.print()">طباعة الفاتورة</button>
+      </div>
+    </div>
+
+    <article class="invoice">
+      <header class="invoice-header">
+        <div class="brand">
+          {% if settings and settings.use_logo_image and settings.logo_path %}
+          <img class="brand__logo" src="{{ settings.logo_path }}" alt="{{ company_name }}" />
+          {% else %}
+          <div class="brand__logo-fallback">
+            {{ (settings.logo_circle_text if settings and settings.logo_circle_text else company_name[:2]) | replace('\n', ' ') }}
+          </div>
+          {% endif %}
+          <div>
+            <div class="brand__name">{{ company_name }}</div>
+            <div class="brand__activity">{{ company_activity }}</div>
+            <div class="brand__activity">
+              {% if company_address %}{{ company_address }}{% endif %}
+              {% if company_address and company_phone %} · {% endif %}
+              {% if company_phone %}{{ company_phone }}{% endif %}
+            </div>
+          </div>
+        </div>
+        <div class="invoice-title-block">
+          <h1 class="invoice-title">فاتورة بيع</h1>
+          <div class="invoice-number">رقم الفاتورة: <strong>#{{ order.id }}</strong></div>
+          <div class="status-badge status-badge--{{ pay_kind }}">{{ pay_label }}</div>
+        </div>
+      </header>
+
+      {% if (settings and settings.show_returned_count) and ((returned_count or 0) > 0 or (cancelled_count or 0) > 0) %}
+      <div class="risk-info">
+        تنبيه: للزبون ({{ returned_count or 0 }}) راجع و ({{ cancelled_count or 0 }}) ملغي سابقاً
+      </div>
+      {% endif %}
+
+      <section class="meta-grid">
+        <div class="info-card">
+          <div class="info-card__label">بيانات الزبون</div>
+          <div class="info-row"><span class="info-row__key">الاسم</span><span class="info-row__val">{{ order.customer.name if order.customer else '—' }}</span></div>
+          <div class="info-row"><span class="info-row__key">الهاتف</span><span class="info-row__val" style="direction:ltr;text-align:right;">{{ order.customer.phone if order.customer else '—' }}</span></div>
+          <div class="info-row"><span class="info-row__key">رقم هاتف الآخر</span><span class="info-row__val" style="direction:ltr;text-align:right;">{{ order.customer.phone2 if order.customer and order.customer.phone2 else '—' }}</span></div>
+          <div class="info-row"><span class="info-row__key">العنوان</span><span class="info-row__val">{% if order.customer %}{{ order.customer.city or '' }}{% if order.customer.city and order.customer.address %} — {% endif %}{{ order.customer.address or '' }}{% else %}—{% endif %}</span></div>
+        </div>
+        <div class="info-card">
+          <div class="info-card__label">بيانات الفاتورة</div>
+          <div class="info-row"><span class="info-row__key">التاريخ</span><span class="info-row__val">{{ order.created_at.strftime('%Y-%m-%d %H:%M') if order.created_at else '—' }}</span></div>
+          <div class="info-row"><span class="info-row__key">الموظف</span><span class="info-row__val">{{ order.employee_name or '—' }}</span></div>
+          {% if (returned_count or 0) > 0 %}
+          <div class="info-row"><span class="info-row__key">عدد الراجع</span><span class="info-row__val" style="color:#a33b3b;">{{ returned_count }}</span></div>
+          {% endif %}
+        </div>
+      </section>
+
+      <h2 class="section-heading">تفاصيل المنتجات</h2>
+      <div class="items-wrap">
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>المنتج</th>
+              <th>الكمية</th>
+              <th>السعر</th>
+              <th>الإجمالي</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in items %}
+            <tr>
+              <td>{{ loop.index }}</td>
+              <td>
+                <div class="item-name">{{ item.product_name or (item.product.name if item.product else 'منتج') }}</div>
+              </td>
+              <td class="col-num">{{ item.quantity }}</td>
+              <td class="col-num">{{ "{:,.0f}".format(item.price or 0) }} د.ع</td>
+              <td class="col-num">{{ "{:,.0f}".format(item.total or 0) }} د.ع</td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="5" style="text-align:center;color:#6b6b6b;padding:18px;">لا توجد منتجات</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <section class="bottom-grid">
+        <div>
+          <div class="warranty">
+            <div class="warranty__title">ملاحظات الضمان</div>
+            <div>{{ (settings.warranty_notes if settings and settings.warranty_notes else (settings.invoice_note if settings and settings.invoice_note else 'يشمل الضمان الأعطال المصنعية وفق سياسة الشركة.')) }}</div>
+          </div>
+          {% if order.note %}
+          <div class="notes-box">
+            <strong>ملاحظات الفاتورة</strong>
+            <div>{{ order.note }}</div>
+          </div>
+          {% endif %}
+        </div>
+        <div class="totals">
+          <div class="totals__row">
+            <span>المجموع الفرعي</span>
+            <span class="totals__value">{{ "{:,.0f}".format(grand_val) }} د.ع</span>
+          </div>
+          <div class="totals__row">
+            <span>المدفوع</span>
+            <span class="totals__value">{{ "{:,.0f}".format(paid_val) }} د.ع</span>
+          </div>
+          <div class="totals__row">
+            <span>المتبقي</span>
+            <span class="totals__value">{{ "{:,.0f}".format(remaining_val) }} د.ع</span>
+          </div>
+          <div class="totals__row totals__row--grand">
+            <span>الإجمالي النهائي</span>
+            <span class="totals__value">{{ "{:,.0f}".format(due_val) }} د.ع</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="signatures">
+        <div class="signature">
+          <div class="signature__line"></div>
+          <div class="signature__label">توقيع البائع</div>
+        </div>
+        <div class="signature">
+          <div class="signature__line"></div>
+          <div class="signature__label">توقيع الزبون</div>
+        </div>
+      </section>
+
+      <footer class="invoice-footer">
+        <div>
+          {{ company_name }}
+          {% if company_phone %} · {{ company_phone }}{% endif %}
+          {% if company_address %} · {{ company_address }}{% endif %}
+        </div>
+        <div class="invoice-footer__gold">شكراً لثقتكم — نتمنى لكم تجربة ممتازة</div>
+        <div class="codes">
+          <svg id="barcode-luxury-invoice" class="barcode-svg"></svg>
+          {{ invoice_qr_block(settings, order, public_url=order_public_view_url) }}
+        </div>
+      </footer>
+    </article>
+  </div>
+
+  <script>
+    try {
+      JsBarcode("#barcode-luxury-invoice", "{{ order.id }}", {
+        format: "CODE128",
+        width: 1.2,
+        height: 42,
+        displayValue: false,
+        margin: 0,
+        lineColor: "#111111"
+      });
+    } catch (e) {}
+  </script>
+</body>
+</html>
