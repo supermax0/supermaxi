@@ -1513,7 +1513,7 @@
     }
 
     .ipr-table {
-      width: auto;
+      width: 100%;
       max-width: 100%;
       border-collapse: collapse;
       direction: rtl;
@@ -1524,7 +1524,7 @@
     .ipr-table th,
     .ipr-table td {
       border: 1px solid #d1d5db;
-      padding: 6px 8px;
+      padding: 5px 7px;
       color: #111827;
       vertical-align: middle;
       word-break: break-word;
@@ -1543,24 +1543,43 @@
     }
 
     .ipr-col-product {
-      width: 320px;
+      width: auto;
       text-align: right;
     }
 
     .ipr-col-qty {
-      width: 68px;
+      width: 58px;
       text-align: center;
       white-space: nowrap;
     }
 
     .ipr-col-diff {
-      width: 80px;
+      width: 64px;
       text-align: center;
       min-height: 22px;
     }
 
+    .ipr-table.ipr-dual .ipr-col-product {
+      width: 28%;
+    }
+
+    .ipr-table.ipr-dual .ipr-col-qty,
+    .ipr-table.ipr-dual .ipr-col-diff {
+      width: 11%;
+    }
+
+    .ipr-table.ipr-dual th.ipr-col-product:nth-child(4),
+    .ipr-table.ipr-dual td.ipr-col-product:nth-child(4) {
+      border-right-width: 2px;
+      border-right-color: #9ca3af;
+    }
+
     .ipr-table tbody tr:nth-child(even) td {
       background: #f9fafb;
+    }
+
+    .ipr-print-bar {
+      display: none;
     }
 
     .ipr-footer {
@@ -1577,7 +1596,7 @@
     @media print {
       @page {
         size: A4 portrait;
-        margin: 10mm;
+        margin: 8mm;
       }
 
       .ipr-header,
@@ -1607,15 +1626,30 @@
         font-family: "Tahoma", "Arial", sans-serif;
       }
 
-      .inventory-print-report .ipr-table {
-        margin-inline-start: 0;
+      .ipr-print-bar {
+        display: flex !important;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 8px;
+        padding-bottom: 6px;
+        border-bottom: 1.5px solid #111827;
+        font-size: 11px;
+        color: #111827;
       }
 
-      .ipr-header,
-      .ipr-stats,
-      .ipr-table,
-      .ipr-footer {
-        break-inside: avoid;
+      .ipr-print-bar strong {
+        font-size: 12px;
+      }
+
+      .inventory-print-report .ipr-table {
+        margin-inline-start: 0;
+        font-size: 10px;
+      }
+
+      .ipr-table th,
+      .ipr-table td {
+        padding: 4px 5px;
       }
 
       .ipr-table thead {
@@ -1797,11 +1831,17 @@
         <p id="iprScope">كل الفروع</p>
       </div>
       <div class="ipr-meta">
+        <p><strong>رقم الطباعة:</strong> <span id="iprPrintNumber">—</span></p>
         <p><strong>تاريخ الطباعة:</strong> <span id="iprGeneratedAt">—</span></p>
         <p><strong>عدد المنتجات:</strong> <span id="iprRowsCount">0</span></p>
         <p><strong>التصفية:</strong> <span id="iprFilters">—</span></p>
       </div>
     </header>
+
+    <div class="ipr-print-bar">
+      <strong>تقرير المخزون — <span id="iprBarNumber">—</span></strong>
+      <span id="iprBarDate">—</span>
+    </div>
 
     <div class="ipr-stats">
       <div class="ipr-stat"><span>إجمالي الكمية</span><strong id="iprTotalQty">0</strong></div>
@@ -1810,12 +1850,11 @@
       <div class="ipr-stat"><span>الربح المتوقع</span><strong id="iprExpectedProfit">0 د.ع</strong></div>
     </div>
 
-    <table class="ipr-table">
-      <thead>
+    <table class="ipr-table" id="iprTable">
+      <thead id="iprHead">
         <tr>
-          <th class="ipr-col-index">#</th>
           <th class="ipr-col-product">المنتج</th>
-          <th class="ipr-col-qty">الكمية</th>
+          <th class="ipr-col-qty">العدد</th>
           <th class="ipr-col-diff">الفارق</th>
         </tr>
       </thead>
@@ -2467,22 +2506,146 @@
     return productsForSelectedBranch();
   }
 
+  function nextDailyInventoryPrintNumber() {
+    const now = new Date();
+    const dayKey = [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, '0'),
+      String(now.getDate()).padStart(2, '0')
+    ].join('');
+    const storageKey = 'inventoryPrintSeq:' + dayKey;
+    let seq = 1;
+    try {
+      seq = (parseInt(localStorage.getItem(storageKey), 10) || 0) + 1;
+      localStorage.setItem(storageKey, String(seq));
+    } catch (e) {
+      seq = 1;
+    }
+    return 'INV-' + dayKey + '-' + String(seq).padStart(4, '0');
+  }
+
+  function buildInventoryPrintFilterLabel() {
+    const parts = [];
+    const branchEl = document.getElementById('filterBranch');
+    const stockEl = document.getElementById('filterStock');
+    const activeEl = document.getElementById('filterActive');
+    const searchEl = document.getElementById('globalSearch');
+
+    if (branchEl && branchEl.value !== 'all') {
+      parts.push(branchEl.options[branchEl.selectedIndex]?.textContent.trim() || 'فرع محدد');
+    } else {
+      parts.push('كل الفروع');
+    }
+    if (stockEl && stockEl.value !== 'all') {
+      parts.push(stockEl.options[stockEl.selectedIndex]?.textContent.trim());
+    }
+    if (activeEl && activeEl.value !== 'all') {
+      parts.push(activeEl.options[activeEl.selectedIndex]?.textContent.trim());
+    }
+    if (searchEl && searchEl.value.trim()) {
+      parts.push('بحث: ' + searchEl.value.trim());
+    }
+    return parts.filter(Boolean).join(' | ') || '—';
+  }
+
   function printInventoryReport() {
     const rows = getFilteredInventoryRowsForPrint();
+    const now = new Date();
+    const printDate = now.toLocaleDateString('ar-IQ', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    const printTime = now.toLocaleTimeString('ar-IQ', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    const printNumber = nextDailyInventoryPrintNumber();
+    const dateLabel = printDate + ' — ' + printTime;
 
+    const setText = (id, value) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = value;
+    };
+
+    const branchEl = document.getElementById('filterBranch');
+    const scopeLabel = (!branchEl || branchEl.value === 'all')
+      ? 'كل الفروع'
+      : (branchEl.options[branchEl.selectedIndex]?.textContent.trim() || '—');
+
+    setText('iprPrintNumber', printNumber);
+    setText('iprGeneratedAt', dateLabel);
+    setText('iprBarNumber', printNumber);
+    setText('iprBarDate', dateLabel);
+    setText('iprRowsCount', formatInventoryNumber(rows.length));
+    setText('iprFilters', buildInventoryPrintFilterLabel());
+    setText('iprScope', scopeLabel);
+
+    const totalQty = rows.reduce((sum, p) => sum + (Number(p.quantity) || 0), 0);
+    const inventoryValue = rows.reduce((sum, p) => sum + ((Number(p.buy_price) || 0) * (Number(p.quantity) || 0)), 0);
+    const expectedSale = rows.reduce((sum, p) => sum + ((Number(p.sale_price) || 0) * (Number(p.quantity) || 0)), 0);
+    setText('iprTotalQty', formatInventoryNumber(totalQty));
+    setText('iprInventoryValue', formatInventoryNumber(inventoryValue) + ' د.ع');
+    setText('iprExpectedSale', formatInventoryNumber(expectedSale) + ' د.ع');
+    setText('iprExpectedProfit', formatInventoryNumber(expectedSale - inventoryValue) + ' د.ع');
+
+    const table = document.getElementById('iprTable');
+    const head = document.getElementById('iprHead');
     const body = document.getElementById('iprBody');
-    if (body) {
-      body.innerHTML = rows.length ? rows.map((product, index) => {
-        const qty = Number(product.quantity) || 0;
+    const useDual = rows.length > 12;
+
+    if (table) table.classList.toggle('ipr-dual', useDual);
+
+    if (head) {
+      head.innerHTML = useDual
+        ? `<tr>
+            <th class="ipr-col-product">المنتج</th>
+            <th class="ipr-col-qty">العدد</th>
+            <th class="ipr-col-diff">الفارق</th>
+            <th class="ipr-col-product">المنتج</th>
+            <th class="ipr-col-qty">العدد</th>
+            <th class="ipr-col-diff">الفارق</th>
+          </tr>`
+        : `<tr>
+            <th class="ipr-col-product">المنتج</th>
+            <th class="ipr-col-qty">العدد</th>
+            <th class="ipr-col-diff">الفارق</th>
+          </tr>`;
+    }
+
+    const cellTriplet = (product) => {
+      if (!product) {
         return `
-          <tr>
-            <td class="ipr-col-index">${index + 1}</td>
-            <td class="ipr-col-product">${escapeHtml(product.name || '—')}</td>
-            <td class="ipr-col-qty">${formatInventoryNumber(qty)}</td>
-            <td class="ipr-col-diff"></td>
-          </tr>
+          <td class="ipr-col-product"></td>
+          <td class="ipr-col-qty"></td>
+          <td class="ipr-col-diff"></td>
         `;
-      }).join('') : '<tr><td colspan="4" style="text-align:center; padding:18px;">لا توجد منتجات ضمن التصفية الحالية</td></tr>';
+      }
+      const qty = Number(product.quantity) || 0;
+      return `
+        <td class="ipr-col-product">${escapeHtml(product.name || '—')}</td>
+        <td class="ipr-col-qty">${formatInventoryNumber(qty)}</td>
+        <td class="ipr-col-diff"></td>
+      `;
+    };
+
+    if (body) {
+      if (!rows.length) {
+        body.innerHTML = `<tr><td colspan="${useDual ? 6 : 3}" style="text-align:center; padding:18px;">لا توجد منتجات ضمن التصفية الحالية</td></tr>`;
+      } else if (useDual) {
+        const half = Math.ceil(rows.length / 2);
+        const left = rows.slice(0, half);
+        const right = rows.slice(half);
+        const pairCount = Math.max(left.length, right.length);
+        const html = [];
+        for (let i = 0; i < pairCount; i++) {
+          html.push(`<tr>${cellTriplet(left[i])}${cellTriplet(right[i])}</tr>`);
+        }
+        body.innerHTML = html.join('');
+      } else {
+        body.innerHTML = rows.map((product) => `<tr>${cellTriplet(product)}</tr>`).join('');
+      }
     }
 
     requestAnimationFrame(() => window.print());
