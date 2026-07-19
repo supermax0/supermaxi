@@ -190,6 +190,69 @@ def _specs_items_from_form(form) -> list[dict]:
     return _parse_specs_text(form.get("specs_text"))
 
 
+def _save_uploaded_product_image(file_storage) -> str | None:
+    """حفظ صورة منتج في static/uploads/products وإرجاع المسار العام."""
+    if not file_storage or not getattr(file_storage, "filename", None):
+        return None
+    ext = os.path.splitext(file_storage.filename)[1].lower()
+    if ext not in (".jpg", ".jpeg", ".png", ".webp", ".gif"):
+        return None
+    upload_folder = os.path.join(current_app.root_path, "static", "uploads", "products")
+    os.makedirs(upload_folder, exist_ok=True)
+    raw = secure_filename(file_storage.filename) or f"image{ext}"
+    safe = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{raw}"
+    path = os.path.join(upload_folder, safe)
+    file_storage.save(path)
+    return f"/static/uploads/products/{safe}"
+
+
+def _save_uploaded_product_video(file_storage) -> str | None:
+    """حفظ فيديو منتج عبر خدمة الوسائط وإرجاع الرابط العام."""
+    if not file_storage or not getattr(file_storage, "filename", None):
+        return None
+    from services.media_service import VIDEO_EXTENSIONS, detect_kind, save_uploaded_file
+
+    ext = os.path.splitext(file_storage.filename)[1].lower()
+    if detect_kind(file_storage.content_type or "") != "video" and ext not in VIDEO_EXTENSIONS:
+        return None
+    result = save_uploaded_file(file_storage, max_mb=500)
+    if not result.get("ok"):
+        return None
+    return str(result.get("url") or "").strip() or None
+
+
+def _apply_product_media_uploads(meta: dict, form, files) -> dict:
+    """رفع فيديو وحتى 4 صور إضافية؛ الإبقاء على الحالي إن لم يُرفع جديد."""
+    video_file = files.get("product_video") if files else None
+    new_video = _save_uploaded_product_video(video_file)
+    if new_video:
+        meta["video_url"] = new_video
+    else:
+        keep_video = (form.get("keep_video_url") or "").strip()
+        if keep_video:
+            meta["video_url"] = keep_video
+        else:
+            meta.pop("video_url", None)
+
+    gallery_files = files.getlist("gallery_images") if files and hasattr(files, "getlist") else []
+    saved_gallery: list[str] = []
+    for gallery_file in gallery_files:
+        if len(saved_gallery) >= 4:
+            break
+        url = _save_uploaded_product_image(gallery_file)
+        if url:
+            saved_gallery.append(url)
+    if saved_gallery:
+        meta["gallery"] = saved_gallery
+    else:
+        keep_gallery = _split_multiline_values(form.get("keep_gallery_urls"))
+        if keep_gallery:
+            meta["gallery"] = keep_gallery[:4]
+        else:
+            meta.pop("gallery", None)
+    return meta
+
+
 def _meta_from_inventory_add_form(form) -> dict:
     """بناء meta_json من نموذج صفحة إضافة/تعديل المنتج."""
     meta_keys = (
@@ -244,12 +307,6 @@ def _meta_from_inventory_add_form(form) -> dict:
         meta["enable_imei"] = True
     if bool(form.get("not_for_sale")):
         meta["not_for_sale"] = True
-    video_url = (form.get("video_url") or "").strip()
-    if video_url:
-        meta["video_url"] = video_url
-    gallery_urls = _split_multiline_values(form.get("gallery_urls"))
-    if gallery_urls:
-        meta["gallery"] = gallery_urls
     specs_items = _specs_items_from_form(form)
     if specs_items:
         meta["specs_items"] = specs_items
@@ -887,7 +944,6 @@ def add_product_page():
         not_for_sale_flag = bool(request.form.get("not_for_sale"))
         low_stock_threshold = int(request.form.get("low_stock_threshold", 5) or 5)
         description = (request.form.get("description") or "").strip() or None
-        external_image_url = (request.form.get("external_image_url") or "").strip() or None
         skin_type = (request.form.get("skin_type") or "").strip() or None
         usage_type = (request.form.get("usage_type") or "").strip() or None
         requires_patch_test = bool(request.form.get("requires_patch_test"))
@@ -896,24 +952,12 @@ def add_product_page():
         batch_number = (request.form.get("batch_number") or "").strip() or None
 
         meta = _meta_from_inventory_add_form(request.form)
+        meta = _apply_product_media_uploads(meta, request.form, request.files)
 
         edit_raw = (request.form.get("edit_product_id") or "").strip()
         edit_id = int(edit_raw) if edit_raw.isdigit() else None
 
-        image_url = None
-        file = request.files.get("product_image")
-        if file and file.filename:
-            ext = os.path.splitext(file.filename)[1].lower()
-            if ext in (".jpg", ".jpeg", ".png", ".webp", ".gif"):
-                upload_folder = os.path.join(current_app.root_path, "static", "uploads", "products")
-                os.makedirs(upload_folder, exist_ok=True)
-                raw = secure_filename(file.filename)
-                safe = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{raw}"
-                path = os.path.join(upload_folder, safe)
-                file.save(path)
-                image_url = f"/static/uploads/products/{safe}"
-        if not image_url and external_image_url:
-            image_url = external_image_url
+        image_url = _save_uploaded_product_image(request.files.get("product_image"))
 
         if edit_id:
             p = Product.query.get(edit_id)
@@ -948,8 +992,6 @@ def add_product_page():
 
             if image_url:
                 p.image_url = image_url
-            elif external_image_url:
-                p.image_url = external_image_url
 
             if "current_stock" in request.form and not has_colors_flag:
                 new_qty = max(0, int(request.form.get("current_stock") or 0))
@@ -1148,9 +1190,27 @@ def add_supplier():
 # ======================================
 @inventory_bp.route("/toggle/<int:id>")
 def toggle_product(id):
+    if not check_permission("can_manage_inventory"):
+        return redirect("/pos"), 403
+
     p = Product.query.get_or_404(id)
     p.active = not p.active
     db.session.commit()
+    return redirect(url_for("inventory.inventory"))
+
+
+@inventory_bp.route("/toggle-store/<int:id>")
+def toggle_product_store_visibility(id):
+    if not check_permission("can_manage_inventory"):
+        return redirect("/pos"), 403
+
+    p = Product.query.get_or_404(id)
+    p.store_visible = not bool(p.store_visible)
+    db.session.commit()
+    flash(
+        "تم إظهار المنتج في المتجر." if p.store_visible else "تم إخفاء المنتج من المتجر.",
+        "success",
+    )
     return redirect(url_for("inventory.inventory"))
 
 

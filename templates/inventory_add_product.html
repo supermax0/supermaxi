@@ -592,24 +592,36 @@
           <textarea name="description" placeholder="{{ _('inventory_field_description') }}">{{ edit_product.description if edit_product and edit_product.description else '' }}</textarea>
         </div>
         {% if not is_beauty_center %}
+        {% set gallery_list = m.get('gallery') or [] %}
+        {% if gallery_list is string %}{% set gallery_list = gallery_list.splitlines() %}{% endif %}
         <div class="inv-field inv-span-2">
-          <label>رابط فيديو المنتج</label>
-          <input name="video_url" placeholder="https://... أو /autoposter/serve/video/..." value="{{ m.get('video_url', '') }}">
-          <p class="inv-hint">يظهر في صفحة المنتج ويمكن للبوت إرساله عند طلب فيديو.</p>
+          <label>فيديو المنتج</label>
+          <input type="file" name="product_video" id="productVideoInput" accept="video/mp4,video/webm,video/quicktime,video/x-msvideo,video/x-matroska,.mp4,.mov,.webm,.avi,.mkv">
+          {% if m.get('video_url') %}
+          <input type="hidden" name="keep_video_url" value="{{ m.get('video_url') }}">
+          <p class="inv-hint">يوجد فيديو محفوظ حالياً. رفع ملف جديد يستبدله.</p>
+          {% else %}
+          <p class="inv-hint">ارفع ملف فيديو من جهازك (حتى 500 ميجا). يظهر في صفحة المنتج ويمكن للبوت إرساله.</p>
+          {% endif %}
         </div>
         <div class="inv-field inv-span-2">
           <label>شارة المتجر</label>
           <input name="store_badge" placeholder="جديد / الأكثر طلباً / عرض خاص" value="{{ m.get('store_badge', '') }}">
         </div>
         <div class="inv-field inv-span-2">
-          <label>رابط صورة رئيسية بديل</label>
-          <input name="external_image_url" placeholder="https://..." value="{{ edit_product.image_url if edit_product and edit_product.image_url else '' }}">
-          <p class="inv-hint">يُستخدم إذا لم ترفع صورة من الجهاز.</p>
-        </div>
-        <div class="inv-field inv-span-2">
-          <label>صور إضافية</label>
-          <textarea name="gallery_urls" placeholder="كل رابط أو مسار في سطر مستقل">{% if m.get('gallery') %}{% if m.gallery is string %}{{ m.gallery }}{% else %}{{ m.gallery | join('\n') }}{% endif %}{% endif %}</textarea>
-          <p class="inv-hint">مثال: `/static/uploads/products/x.jpg` أو رابط خارجي مباشر.</p>
+          <label>صور إضافية (حتى 4)</label>
+          <input type="file" name="gallery_images" id="galleryImagesInput" accept="image/jpeg,image/png,image/webp,image/gif" multiple>
+          {% if gallery_list %}
+          <textarea name="keep_gallery_urls" hidden>{{ gallery_list|join('\n') }}</textarea>
+          <div class="inv-gallery-preview" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">
+            {% for g in gallery_list[:4] %}
+            <img src="{{ g }}" alt="صورة إضافية" style="width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid rgba(255,255,255,.12);">
+            {% endfor %}
+          </div>
+          <p class="inv-hint">{{ gallery_list|length }} صور محفوظة حالياً. رفع صور جديدة (حتى 4) يستبدلها.</p>
+          {% else %}
+          <p class="inv-hint">اختر حتى 4 صور من جهازك دفعة واحدة.</p>
+          {% endif %}
         </div>
         <div class="inv-field inv-span-4">
           <label>مواصفات صفحة المنتج</label>
@@ -634,12 +646,6 @@
             <button type="button" class="inv-spec-add" onclick="addSpecRow()">+ إضافة مواصفة</button>
           </div>
           <p class="inv-hint">كل سطر هنا يمثل مواصفة مستقلة في صفحة المنتج، ولن يتم جمع المواصفات من حقول المنتج الأخرى.</p>
-        </div>
-        {% else %}
-        <div class="inv-field inv-span-2">
-          <label>رابط صورة رئيسية بديل</label>
-          <input name="external_image_url" placeholder="https://..." value="{{ edit_product.image_url if edit_product and edit_product.image_url else '' }}">
-          <p class="inv-hint">اختياري إذا لم ترفع صورة من الجهاز.</p>
         </div>
         {% endif %}
       </div>
@@ -879,6 +885,16 @@
       input.addEventListener('input', syncColorStockTotal);
     });
     syncColorStockTotal();
+  }
+
+  var galleryImagesInput = document.getElementById('galleryImagesInput');
+  if (galleryImagesInput) {
+    galleryImagesInput.addEventListener('change', function () {
+      if (this.files && this.files.length > 4) {
+        alert('يمكنك رفع 4 صور كحد أقصى.');
+        this.value = '';
+      }
+    });
   }
 })();
 </script>
