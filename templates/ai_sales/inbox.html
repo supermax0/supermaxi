@@ -1,0 +1,438 @@
+{% extends "base.html" %}
+{% block title %}Finora Sales AI{% endblock %}
+{% block body_class %}sales-ai-page{% endblock %}
+{% block page_title %}
+  <a class="sales-ai-top-settings" href="{{ url_for('ai_sales.comments_page') }}" title="المنشورات والتعليقات">
+    <i class="fa-regular fa-message"></i><span>التعليقات</span>
+  </a>
+  {% if can_manage %}
+  <button class="sales-ai-top-settings" id="simulateBtn" type="button" title="جات التدريب" aria-label="جات التدريب">
+    <i class="fa-solid fa-graduation-cap"></i><span>جات التدريب</span>
+  </button>
+  <button class="sales-ai-top-settings" id="settingsBtn" type="button" title="إعدادات Sales AI" aria-label="إعدادات Sales AI">
+    <i class="fa-solid fa-sliders"></i><span>الإعدادات</span>
+  </button>
+  {% endif %}
+{% endblock %}
+{% block topbar_actions %}{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ai-sales-inbox.css', v='20260716-02') }}">
+
+<div class="sales-ai-app" id="salesAiApp" data-can-manage="{{ 'true' if can_manage else 'false' }}">
+  <section class="sales-ai-workspace" id="workspace">
+    <aside class="sales-ai-conversation-pane" id="conversationPane">
+      <div class="sales-ai-pane-title">
+        <div><h2>المحادثات</h2><span id="conversationCount">0</span></div>
+        <div class="sales-ai-pane-tools">
+          <button class="sales-ai-icon-btn" id="summaryBtn" type="button" title="إحصائيات اليوم" aria-label="إحصائيات اليوم">
+            <i class="fa-solid fa-chart-simple"></i>
+          </button>
+          <button class="sales-ai-icon-btn" id="refreshBtn" type="button" title="تحديث" aria-label="تحديث">
+            <i class="fa-solid fa-rotate"></i>
+          </button>
+        </div>
+      </div>
+      <div class="sales-ai-search">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input id="conversationSearch" type="search" placeholder="بحث بالاسم أو الرقم" autocomplete="off">
+      </div>
+      <div class="sales-ai-filter-strip" id="conversationFilters" role="tablist" aria-label="فلترة المحادثات">
+        <button class="active" type="button" data-filter="">الكل</button>
+        <button type="button" data-filter="unread">غير المقروء</button>
+        <button type="button" data-filter="human">عند الموظف</button>
+        <button type="button" data-filter="ai">AI يعمل</button>
+        <button type="button" data-filter="hot">ساخن</button>
+        <button type="button" data-filter="closed">مغلق</button>
+      </div>
+      <div class="sales-ai-conversations" id="conversationList" aria-live="polite">
+        <div class="sales-ai-list-skeleton" aria-label="جاري التحميل">
+          <span></span><span></span><span></span><span></span>
+        </div>
+      </div>
+    </aside>
+
+    <section class="sales-ai-chat-pane" id="chatPane">
+      <div class="sales-ai-chat-empty" id="chatEmpty">
+        <span><i class="fa-regular fa-comments"></i></span>
+        <h2>اختر محادثة</h2>
+        <p>حدد زبوناً من القائمة لعرض الرسائل ومتابعة البيع.</p>
+      </div>
+
+      <div class="sales-ai-chat-active" id="chatActive" hidden>
+        <header class="sales-ai-chat-header">
+          <button class="sales-ai-icon-btn mobile-only" id="mobileBackBtn" type="button" title="رجوع" aria-label="رجوع">
+            <i class="fa-solid fa-arrow-right"></i>
+          </button>
+          <span class="sales-ai-avatar compact" id="chatAvatar">؟</span>
+          <div class="sales-ai-chat-identity">
+            <strong id="chatName">—</strong>
+            <span id="chatStatus">—</span>
+          </div>
+          <div class="sales-ai-chat-actions">
+            <button class="sales-ai-icon-btn" id="customerInfoBtn" type="button" title="بيانات العميل" aria-label="بيانات العميل">
+              <i class="fa-solid fa-circle-info"></i>
+            </button>
+            <button class="sales-ai-icon-btn desktop-only" id="toggleDetailsBtn" type="button" title="طي بيانات العميل" aria-label="طي بيانات العميل">
+              <i class="fa-solid fa-table-columns"></i>
+            </button>
+            <button class="sales-ai-icon-btn" id="closeConversationBtn" type="button" title="إغلاق المحادثة" aria-label="إغلاق المحادثة">
+              <i class="fa-solid fa-box-archive"></i>
+            </button>
+          </div>
+        </header>
+
+        <div class="sales-ai-messages" id="messageList" aria-live="polite"></div>
+        <button class="sales-ai-new-messages" id="newMessagesBtn" type="button" hidden>
+          رسائل جديدة <i class="fa-solid fa-arrow-down"></i>
+        </button>
+
+        <form class="sales-ai-compose" id="composeForm">
+          <div class="sales-ai-editing" id="editingBar" hidden>
+            <i class="fa-solid fa-pen"></i>
+            <div><strong id="editingTitle">تعديل الرسالة</strong><span id="editingPreview"></span></div>
+            <button class="sales-ai-icon-btn" id="cancelEditingBtn" type="button" title="إلغاء التعديل" aria-label="إلغاء التعديل"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+          <div class="sales-ai-draft-media" id="draftMedia" hidden></div>
+          <div class="sales-ai-recording" id="recordingBar" hidden>
+            <span class="sales-ai-recording-dot"></span>
+            <strong>جاري التسجيل</strong>
+            <time id="recordingTime">00:00</time>
+            <span class="sales-ai-recording-wave"><i></i><i></i><i></i><i></i><i></i></span>
+            <button class="sales-ai-btn danger" id="cancelRecordingBtn" type="button"><i class="fa-solid fa-trash"></i><span>إلغاء</span></button>
+            <button class="sales-ai-btn primary" id="stopRecordingBtn" type="button"><i class="fa-solid fa-stop"></i><span>إنهاء</span></button>
+          </div>
+          <div class="sales-ai-compose-row">
+            <button class="sales-ai-compose-tool" id="attachmentBtn" type="button" title="إرفاق صورة أو فيديو" aria-label="إرفاق صورة أو فيديو" disabled>
+              <i class="fa-solid fa-paperclip"></i>
+            </button>
+            <input id="chatMediaInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/3gpp,video/quicktime,audio/mpeg,audio/mp4,audio/aac,audio/ogg,audio/webm" hidden>
+            <div class="sales-ai-compose-input"><textarea id="messageInput" rows="1" placeholder="اكتب رسالة..." disabled></textarea></div>
+            <button class="sales-ai-compose-tool" id="voiceBtn" type="button" title="تسجيل رسالة صوتية" aria-label="تسجيل رسالة صوتية" disabled>
+              <i class="fa-solid fa-microphone"></i>
+            </button>
+            <button class="sales-ai-send-btn" id="sendBtn" type="submit" title="إرسال" aria-label="إرسال" disabled>
+              <i class="fa-solid fa-paper-plane"></i>
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <aside class="sales-ai-details-pane" id="detailsPane">
+      <div class="sales-ai-pane-title">
+        <div><h2>بيانات البيع</h2><span class="sales-ai-live-dot" id="leadDot"></span></div>
+        <button class="sales-ai-icon-btn" id="closeDetailsBtn" type="button" title="طي" aria-label="طي">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="sales-ai-details-content" id="contactPanel">
+        <div class="sales-ai-detail-empty"><i class="fa-regular fa-address-card"></i><span>لا توجد محادثة محددة</span></div>
+      </div>
+    </aside>
+  </section>
+</div>
+
+<div class="sales-ai-overlay mobile-summary" id="summaryOverlay" hidden>
+  <section class="sales-ai-mobile-screen" role="dialog" aria-modal="true" aria-labelledby="summaryTitle">
+    <header><button class="sales-ai-icon-btn" data-close-overlay="summaryOverlay" type="button" aria-label="إغلاق"><i class="fa-solid fa-arrow-right"></i></button><h2 id="summaryTitle">ملخص اليوم</h2><span></span></header>
+    <div class="sales-ai-mobile-metrics">
+      <article><span class="metric-icon blue"><i class="fa-regular fa-comments"></i></span><strong id="mobileMetricOpen">0</strong><p>المحادثات المفتوحة</p></article>
+      <article><span class="metric-icon amber"><i class="fa-solid fa-headset"></i></span><strong id="mobileMetricHuman">0</strong><p>بانتظار موظف</p></article>
+      <article><span class="metric-icon red"><i class="fa-solid fa-fire"></i></span><strong id="mobileMetricHot">0</strong><p>العملاء الساخنون</p></article>
+      <article><span class="metric-icon green"><i class="fa-regular fa-paper-plane"></i></span><strong id="mobileMetricMessages">0</strong><p>رسائل اليوم</p></article>
+    </div>
+  </section>
+</div>
+
+<div class="sales-ai-overlay customer-sheet-overlay" id="customerOverlay" hidden>
+  <button class="sales-ai-overlay-dismiss" data-close-overlay="customerOverlay" type="button" aria-label="إغلاق"></button>
+  <section class="sales-ai-customer-sheet" role="dialog" aria-modal="true" aria-labelledby="customerSheetTitle">
+    <span class="sales-ai-sheet-handle"></span>
+    <header><h2 id="customerSheetTitle">بيانات العميل</h2><button class="sales-ai-icon-btn" data-close-overlay="customerOverlay" type="button" aria-label="إغلاق"><i class="fa-solid fa-xmark"></i></button></header>
+    <div id="mobileContactPanel"></div>
+  </section>
+</div>
+
+{% if can_manage %}
+<div class="sales-ai-settings" id="settingsDrawer" hidden>
+  <button class="sales-ai-settings-backdrop" id="closeSettingsBackdrop" type="button" aria-label="إغلاق الإعدادات"></button>
+  <section class="sales-ai-settings-dialog" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <header class="sales-ai-settings-header">
+      <div><span class="sales-ai-brand-icon small"><i class="fa-solid fa-sliders"></i></span><div><h2 id="settingsTitle">إعدادات Sales AI</h2><p>الموظف والقنوات ووسائط المنتجات</p></div></div>
+      <button class="sales-ai-icon-btn" id="closeSettings" type="button" title="إغلاق" aria-label="إغلاق"><i class="fa-solid fa-xmark"></i></button>
+    </header>
+    <div class="sales-ai-settings-layout">
+      <nav class="sales-ai-settings-nav" aria-label="أقسام الإعدادات">
+        <button class="active" type="button" data-tab="agent"><i class="fa-solid fa-robot"></i><span>الموظف الذكي</span></button>
+        <button type="button" data-tab="knowledge"><i class="fa-solid fa-book-open"></i><span>معرفة المنتجات</span></button>
+        <button type="button" data-tab="learning"><i class="fa-solid fa-graduation-cap"></i><span>التعلّم والمشاكل</span></button>
+        <button type="button" data-tab="channel"><i class="fa-brands fa-whatsapp"></i><span>واتساب</span></button>
+        <button type="button" data-tab="meta"><i class="fa-brands fa-meta"></i><span>Meta والصفحات</span></button>
+        <button type="button" data-tab="media"><i class="fa-regular fa-images"></i><span>الوسائط</span></button>
+      </nav>
+      <div class="sales-ai-settings-content">
+        <form class="sales-ai-form" id="agentForm" data-pane="agent">
+          <div class="sales-ai-section-heading"><h3>هوية الموظف الذكي</h3><p>تحكم بطريقة الكلام وسلوك البيع والتحويل للموظف.</p></div>
+          <fieldset class="sales-ai-intelligence-fieldset">
+            <legend>درجة الذكاء</legend>
+            <div class="sales-ai-intelligence-grid" role="radiogroup" aria-label="درجة ذكاء الموظف">
+              <label class="sales-ai-intelligence-option">
+                <input type="radio" name="agentIntelligence" value="fast">
+                <span class="sales-ai-level-icon"><i class="fa-solid fa-bolt"></i></span>
+                <span><strong>سريع</strong><small>أسرع رد وأقل استهلاك</small></span>
+                <i class="fa-solid fa-circle-check"></i>
+              </label>
+              <label class="sales-ai-intelligence-option">
+                <input type="radio" name="agentIntelligence" value="professional">
+                <span class="sales-ai-level-icon"><i class="fa-solid fa-user-tie"></i></span>
+                <span><strong>احترافي</strong><small>استشاري ومتوازن</small></span>
+                <i class="fa-solid fa-circle-check"></i>
+              </label>
+              <label class="sales-ai-intelligence-option recommended">
+                <input type="radio" name="agentIntelligence" value="expert" checked>
+                <span class="sales-ai-level-icon"><i class="fa-solid fa-brain"></i></span>
+                <span><strong>خبير مبيعات</strong><small>يفهم الاعتراض ويقنع</small></span>
+                <i class="fa-solid fa-circle-check"></i>
+              </label>
+              <label class="sales-ai-intelligence-option">
+                <input type="radio" name="agentIntelligence" value="elite">
+                <span class="sales-ai-level-icon"><i class="fa-solid fa-crown"></i></span>
+                <span><strong>مدير مبيعات</strong><small>أعمق تحليل وأعلى استهلاك</small></span>
+                <i class="fa-solid fa-circle-check"></i>
+              </label>
+            </div>
+            <p class="sales-ai-level-description" id="agentLevelDescription"></p>
+            <div class="sales-ai-intelligence-capabilities" aria-label="قدرات محرك الذكاء">
+              <span><i class="fa-solid fa-memory"></i> ذاكرة حقائق الزبون</span>
+              <span><i class="fa-solid fa-gauge-high"></i> استدلال تكيفي</span>
+              <span><i class="fa-solid fa-shield-halved"></i> منع التخمين</span>
+              <span><i class="fa-solid fa-ranking-star"></i> ترتيب ذكي للمنتجات</span>
+            </div>
+          </fieldset>
+          <div class="sales-ai-form-grid">
+            <div class="sales-ai-field"><label for="agentName">اسم الموظف</label><input id="agentName"></div>
+            <div class="sales-ai-field"><label for="agentModel">موديل المحادثة</label><input id="agentModel" dir="ltr" placeholder="gpt-5.6-sol"></div>
+            <div class="sales-ai-field"><label for="agentDialect">اللهجة</label><select id="agentDialect"><option value="iraqi">عراقية</option><option value="arabic">عربية</option></select></div>
+            <div class="sales-ai-field"><label for="agentStyle">أسلوب البيع</label><select id="agentStyle"><option value="consultative">استشاري</option><option value="direct">مباشر</option></select></div>
+            <div class="sales-ai-field"><label for="agentPersuasion">قوة الإقناع</label><select id="agentPersuasion"><option value="gentle">هادئ</option><option value="balanced">متوازن</option><option value="assertive">حازم بدون ضغط</option></select></div>
+            <div class="sales-ai-field"><label for="agentMaxProducts">أقصى خيارات بالرد</label><select id="agentMaxProducts"><option value="1">خيار واحد</option><option value="2">خياران</option><option value="3">ثلاثة خيارات</option></select></div>
+            <div class="sales-ai-field"><label for="agentLength">أقصى طول للرد</label><input id="agentLength" type="number" min="120" max="1500"></div>
+            <div class="sales-ai-field"><label for="agentHandoff">حد التحويل للموظف</label><input id="agentHandoff" type="number" min="0" max="100"></div>
+            <div class="sales-ai-field full"><label for="agentInstructions">تعليمات ومعرفة الشركة</label><textarea id="agentInstructions" rows="5" placeholder="مثال: سياسة التوصيل، الضمان والاستبدال، أوقات العمل، طريقة التعامل، ومتى يحتاج الزبون إلى موظف"></textarea><small>الأسعار والمخزون تؤخذ مباشرة من Finora؛ هنا أضف السياسات والمعلومات الثابتة فقط.</small></div>
+            <div class="sales-ai-field"><label for="agentContextMessages">رسائل السياق</label><input id="agentContextMessages" type="number" min="6" max="30"></div>
+            <div class="sales-ai-field"><label for="agentResponseDelay">تأخير الرد الطبيعي</label><input id="agentResponseDelay" type="number" min="0" max="3000" step="100"><small>بالمللي ثانية؛ اتركه 0 لأسرع رد.</small></div>
+            <div class="sales-ai-field"><label for="agentVoiceMode">طريقة الرد الصوتي</label><select id="agentVoiceMode"><option value="match_customer">صوت مقابل صوت</option><option value="text_and_voice">نص وصوت دائماً</option><option value="voice_only">صوت فقط</option><option value="text_only">نص فقط</option></select></div>
+            <div class="sales-ai-field"><label for="agentVoice">الصوت</label><select id="agentVoice"><option value="marin">Marin · أعلى جودة</option><option value="cedar">Cedar · أعلى جودة</option><option value="coral">Coral</option><option value="nova">Nova</option><option value="shimmer">Shimmer</option><option value="alloy">Alloy</option><option value="ash">Ash</option><option value="ballad">Ballad</option><option value="echo">Echo</option><option value="fable">Fable</option><option value="onyx">Onyx</option><option value="sage">Sage</option><option value="verse">Verse</option></select><small>Marin وCedar هما الخياران الموصى بهما لأفضل جودة.</small></div>
+            <div class="sales-ai-field"><label for="agentTtsModel">موديل توليد الصوت</label><input id="agentTtsModel" dir="ltr" placeholder="gpt-4o-mini-tts"></div>
+            <div class="sales-ai-field"><label for="agentTranscribeModel">موديل فهم الصوت</label><input id="agentTranscribeModel" dir="ltr" placeholder="gpt-4o-mini-transcribe"></div>
+            <div class="sales-ai-field"><label for="agentRealtimeModel">موديل المكالمات المباشرة</label><input id="agentRealtimeModel" dir="ltr" placeholder="gpt-realtime-2.1"></div>
+            <div class="sales-ai-field"><label for="agentAudioQuality">معالجة الجودة</label><select id="agentAudioQuality"><option value="professional">احترافية · تنقية وتوحيد الصوت</option><option value="standard">قياسية · ترميز فقط</option><option value="original">أصلية · بدون mastering</option></select></div>
+            <div class="sales-ai-field"><label for="agentVoiceSpeed">سرعة الكلام <output id="agentVoiceSpeedValue">0.96×</output></label><input id="agentVoiceSpeed" type="range" min="0.75" max="1.25" step="0.01" value="0.96"><small>السرعة 0.96 تعطي نطقاً عراقياً أهدأ وأكثر طبيعية.</small></div>
+            <div class="sales-ai-field"><label for="agentAudioFormat">صيغة الصوت</label><select id="agentAudioFormat"><option value="opus">Opus · موصى للبصمات</option><option value="mp3">MP3</option><option value="aac">AAC</option><option value="wav">WAV</option><option value="flac">FLAC</option></select></div>
+            <div class="sales-ai-field"><label for="agentMaxAudio">أقصى حجم للتسجيل</label><input id="agentMaxAudio" type="number" min="1" max="25"><small>بالميغابايت، والحد الأعلى 25 MB.</small></div>
+            <div class="sales-ai-field"><label for="agentHumanPause">توقف الذكاء بعد رد الموظف</label><input id="agentHumanPause" type="number" min="1" max="1440"><small>بالدقائق؛ بعدها يعود للرد تلقائياً على القنوات الذكية.</small></div>
+            <div class="sales-ai-field full"><label for="agentVoiceInstructions">تعليمات نبرة الصوت</label><textarea id="agentVoiceInstructions" rows="3" placeholder="تكلم باللهجة العراقية الطبيعية بصوت بشري دافئ وواضح وواثق، مع وقفات قصيرة ونطق دقيق للأسعار وأسماء المنتجات"></textarea></div>
+            <label class="sales-ai-switch-row"><span><strong>الردود الصوتية</strong><small>الرد بصوت حسب النمط المحدد</small></span><input id="agentVoiceEnabled" type="checkbox"><i></i></label>
+            <label class="sales-ai-switch-row"><span><strong>التحويل التلقائي للموظف</strong><small>عند طلب موظف أو انخفاض الثقة في حالة حساسة</small></span><input id="agentAutoEscalation" type="checkbox"><i></i></label>
+            <label class="sales-ai-switch-row"><span><strong>الموظف الذكي فعال</strong><small>السماح للذكاء بالرد على القنوات المفعلة</small></span><input id="agentActive" type="checkbox"><i></i></label>
+            <section class="sales-ai-tts-test full" aria-labelledby="ttsTestTitle">
+              <div><strong id="ttsTestTitle"><i class="fa-solid fa-volume-high"></i> تجربة الصوت الاحترافي</strong><small>تُطبّق السرعة والنبرة والمعالجة نفسها المستخدمة مع الزبائن.</small></div>
+              <div class="sales-ai-tts-test-controls"><input id="agentTtsTestText" value="هلا بيك، متوفرة شاشة حجم خمسين بسعر ميتين وسبعين ألف دينار، وضمانها سنة."><button class="sales-ai-btn" id="agentTtsTestBtn" type="button"><i class="fa-solid fa-play"></i>تجربة</button></div>
+              <audio id="agentTtsTestAudio" controls hidden></audio>
+              <p id="agentOpenAiStatus" aria-live="polite"></p>
+            </section>
+          </div>
+          <div class="sales-ai-form-footer"><button class="sales-ai-btn primary" type="submit"><i class="fa-solid fa-floppy-disk"></i>حفظ الموظف</button></div>
+        </form>
+
+        <form class="sales-ai-form" id="knowledgeForm" data-pane="knowledge" hidden>
+          <div class="sales-ai-section-heading"><h3>معرفة المنتجات</h3><p>علّم الموظف الذكي الحقائق التي يستخدمها في التوصية والإقناع ومعالجة الاعتراضات.</p></div>
+          <div class="sales-ai-form-grid sales-ai-knowledge-picker">
+            <div class="sales-ai-field"><label for="knowledgeSearch">بحث سريع</label><input id="knowledgeSearch" type="search" placeholder="الاسم أو الكود أو الباركود"></div>
+            <div class="sales-ai-field"><label for="knowledgeProduct">المنتج</label><select id="knowledgeProduct" required><option value="">اختر المنتج</option></select></div>
+          </div>
+          <div class="sales-ai-knowledge-empty" id="knowledgeEmpty"><i class="fa-solid fa-box-open"></i><span>اختر منتجاً حتى تعرض وتكمل معرفته.</span></div>
+          <div class="sales-ai-knowledge-editor" id="knowledgeEditor" hidden>
+            <div class="sales-ai-knowledge-score">
+              <div><strong id="knowledgeScore">0%</strong><span>اكتمال معرفة المنتج</span></div>
+              <div class="sales-ai-knowledge-meter" aria-hidden="true"><i id="knowledgeMeter"></i></div>
+              <p id="knowledgeMissing"></p>
+            </div>
+            <div class="sales-ai-knowledge-visibility" id="knowledgeVisibilityPanel">
+              <div>
+                <strong id="knowledgeVisibilityTitle">يظهر للزبائن</strong>
+                <span id="knowledgeVisibilityText">الذكاء يكدر يقترح هذا المنتج ويرسل صوره وفيديوهاته.</span>
+              </div>
+              <button class="sales-ai-btn danger" type="button" id="knowledgeVisibilityButton">
+                <i class="fa-solid fa-eye-slash"></i>
+                <span>إخفاء عن الزبائن</span>
+              </button>
+            </div>
+            <div class="sales-ai-form-grid">
+              <div class="sales-ai-field"><label for="knowledgeMarketingName">الاسم التسويقي</label><input id="knowledgeMarketingName" placeholder="يُترك فارغاً لاستخدام الاسم الرسمي"></div>
+              <div class="sales-ai-field"><label for="knowledgeAliases">أسماء البحث البديلة</label><textarea id="knowledgeAliases" rows="2" placeholder="شاشة 50، تلفزيون خمسين"></textarea></div>
+              <div class="sales-ai-field full"><label for="knowledgeDescription">الوصف الحقيقي</label><textarea id="knowledgeDescription" rows="3" placeholder="المواصفات المؤكدة للمنتج فقط"></textarea></div>
+              <div class="sales-ai-field"><label for="knowledgeSellingPoints">نقاط البيع</label><textarea id="knowledgeSellingPoints" rows="5" placeholder="كل نقطة بسطر مستقل"></textarea></div>
+              <div class="sales-ai-field"><label for="knowledgeIdealFor">الاستخدام المناسب</label><textarea id="knowledgeIdealFor" rows="5" placeholder="غرفة متوسطة&#10;محل تجاري"></textarea></div>
+              <div class="sales-ai-field"><label for="knowledgeWarranty">الضمان</label><input id="knowledgeWarranty" placeholder="مثلاً: ضمان سنة من الشركة"></div>
+              <div class="sales-ai-field"><label for="knowledgeDelivery">التوصيل</label><input id="knowledgeDelivery" placeholder="مثلاً: حسب المحافظة والمنطقة"></div>
+              <div class="sales-ai-field full"><label for="knowledgeColors">الألوان المتوفرة</label><input id="knowledgeColors" placeholder="أبيض، أسود، فضي"><small>افصل الألوان بفاصلة. ألوان المخزون المسجلة تضاف تلقائياً أيضاً.</small></div>
+              <div class="sales-ai-field"><label for="knowledgeWidth">العرض (سم)</label><input id="knowledgeWidth" type="number" min="0" max="1000" step="0.1" placeholder="مثلاً 52"></div>
+              <div class="sales-ai-field"><label for="knowledgeHeight">الارتفاع (سم)</label><input id="knowledgeHeight" type="number" min="0" max="1000" step="0.1" placeholder="مثلاً 85"></div>
+              <div class="sales-ai-field"><label for="knowledgeDepth">العمق (سم)</label><input id="knowledgeDepth" type="number" min="0" max="1000" step="0.1" placeholder="مثلاً 48"></div>
+              <div class="sales-ai-field full"><label for="knowledgeObjections">ردود الاعتراضات</label><textarea id="knowledgeObjections" rows="4" placeholder="غالية: وضح القيمة واعرض البديل الأوفر&#10;الضمان: اذكر الضمان المسجل فقط"></textarea><small>اكتب كل اعتراض وردّه في سطر بصيغة: الاعتراض: الرد.</small></div>
+              <div class="sales-ai-field full"><label for="knowledgeNotes">ملاحظات خاصة للذكاء</label><textarea id="knowledgeNotes" rows="4" placeholder="معلومات ثابتة لا تظهر للزبون حرفياً، وتساعد في اختيار المنتج"></textarea></div>
+              <label class="sales-ai-switch-row"><span><strong>عرض السعر</strong><small>السماح للذكاء بذكر سعر البيع</small></span><input id="knowledgeAllowPrice" type="checkbox" checked><i></i></label>
+              <label class="sales-ai-switch-row"><span><strong>السماح بالتوصية</strong><small>إظهار المنتج ضمن الترشيحات</small></span><input id="knowledgeAllowRecommendation" type="checkbox" checked><i></i></label>
+              <label class="sales-ai-switch-row full"><span><strong>المعرفة فعالة</strong><small>استخدام هذه البيانات داخل محرك المبيعات</small></span><input id="knowledgeActive" type="checkbox" checked><i></i></label>
+            </div>
+            <div class="sales-ai-form-footer"><button class="sales-ai-btn primary" type="submit"><i class="fa-solid fa-floppy-disk"></i>حفظ معرفة المنتج</button></div>
+          </div>
+        </form>
+
+        <section class="sales-ai-form sales-ai-learning-pane" data-pane="learning" hidden>
+          <div class="sales-ai-section-heading"><h3>التعلّم المستمر والمعرفة</h3><p>يتعلم من ردود الموظفين الآمنة، ومن المشاكل والحلول المكتوبة، ومن ملف Excel منظم.</p></div>
+
+          <div class="sales-ai-learning-stats" aria-label="حالة التعلم">
+            <article><i class="fa-solid fa-user-check"></i><strong id="learningApproved">0</strong><span>رد موظف معتمد</span></article>
+            <article><i class="fa-solid fa-arrows-rotate"></i><strong id="learningContinuous">0</strong><span>تعلم مستمر</span></article>
+            <article><i class="fa-solid fa-screwdriver-wrench"></i><strong id="learningProblems">0</strong><span>مشكلة وحل فعال</span></article>
+            <article><i class="fa-solid fa-file-excel"></i><strong id="learningExcelSources">0</strong><span>ملف Excel مستورد</span></article>
+          </div>
+
+          <form class="sales-ai-learning-settings" id="learningSettingsForm">
+            <div class="sales-ai-subsection-heading"><div><strong>التعلم من الموظفين</strong><small>يُنقّح الرد ويزيل الاسم والهاتف والسعر قبل استخدام أسلوبه. الحقائق تبقى من Finora فقط.</small></div><button class="sales-ai-btn secondary" id="scanEmployeeRepliesBtn" type="button"><i class="fa-solid fa-wand-magic-sparkles"></i>التقط الردود الجديدة</button></div>
+            <div class="sales-ai-form-grid">
+              <label class="sales-ai-switch-row"><span><strong>التعلّم المستمر</strong><small>تشغيل طبقة التعلم المستقبلية</small></span><input id="learningEnabled" type="checkbox"><i></i></label>
+              <label class="sales-ai-switch-row"><span><strong>التعلم من ردود الموظفين</strong><small>Finora وMeta بعد اجتياز فحص الجودة</small></span><input id="learningFromEmployees" type="checkbox"><i></i></label>
+              <div class="sales-ai-field full"><label for="learningMinQuality">حد جودة الرد المتعلم <span id="learningMinQualityValue">76%</span></label><input id="learningMinQuality" type="range" min="60" max="95" step="1"><small>الردود الأقل من الحد تُحفظ كمرفوضة ولا تؤثر على إجابات الذكاء.</small></div>
+            </div>
+            <div class="sales-ai-inline-actions"><button class="sales-ai-btn primary" type="submit"><i class="fa-solid fa-floppy-disk"></i>حفظ إعدادات التعلم</button></div>
+          </form>
+
+          <div class="sales-ai-learning-grid">
+            <form class="sales-ai-problem-editor" id="problemForm">
+              <input id="problemId" type="hidden">
+              <div class="sales-ai-subsection-heading"><div><strong>علّم الذكاء مشكلة وحلها</strong><small>اربطها بمنتج محدد أو اترك المنتج فارغاً لتكون حلاً عاماً.</small></div></div>
+              <div class="sales-ai-form-grid">
+                <div class="sales-ai-field full"><label for="problemProduct">المنتج المرتبط (اختياري)</label><select id="problemProduct"><option value="">مشكلة عامة</option></select></div>
+                <div class="sales-ai-field full"><label for="problemText">المشكلة التي يذكرها الزبون</label><textarea id="problemText" rows="3" placeholder="مثال: الشاشة تتصل بالواي فاي لكن يوتيوب لا يفتح" required></textarea></div>
+                <div class="sales-ai-field full"><label for="problemKeywords">الكلمات والأعراض</label><input id="problemKeywords" placeholder="واي فاي، يوتيوب، لا يفتح"></div>
+                <div class="sales-ai-field full"><label for="problemQuestions">أسئلة التشخيص</label><textarea id="problemQuestions" rows="3" placeholder="كل سؤال بسطر مستقل"></textarea></div>
+                <div class="sales-ai-field full"><label for="problemSolution">الحل المعتمد</label><textarea id="problemSolution" rows="5" placeholder="اكتب خطوات الحل الصحيحة بالترتيب" required></textarea></div>
+                <div class="sales-ai-field full"><label for="problemEscalation">متى يحول إلى موظف</label><textarea id="problemEscalation" rows="2" placeholder="مثال: إذا ظهرت رائحة احتراق أو لم تنجح الخطوات"></textarea></div>
+                <label class="sales-ai-switch-row full"><span><strong>الحل فعال</strong><small>السماح للذكاء باستخدامه</small></span><input id="problemActive" type="checkbox" checked><i></i></label>
+              </div>
+              <div class="sales-ai-inline-actions"><button class="sales-ai-btn subtle" id="cancelProblemEdit" type="button" hidden><i class="fa-solid fa-xmark"></i>إلغاء التعديل</button><button class="sales-ai-btn primary" type="submit"><i class="fa-solid fa-plus"></i><span id="problemSubmitLabel">إضافة المشكلة والحل</span></button></div>
+            </form>
+
+            <section class="sales-ai-problem-library">
+              <div class="sales-ai-subsection-heading"><div><strong>مكتبة المشاكل والحلول</strong><small>المصادر اليدوية والمستوردة من Excel.</small></div></div>
+              <div class="sales-ai-meta-search"><i class="fa-solid fa-magnifying-glass"></i><input id="problemSearch" type="search" placeholder="ابحث بالمشكلة أو المنتج"></div>
+              <div class="sales-ai-problem-list" id="problemList"></div>
+            </section>
+          </div>
+
+          <section class="sales-ai-excel-import">
+            <div class="sales-ai-subsection-heading"><div><strong>التعلّم من Excel</strong><small>المنتجات والمواصفات والمشاكل والحلول في ملف واحد. السعر والمخزون لا يتم استيرادهما.</small></div><a class="sales-ai-btn secondary" href="/ai-sales/api/learning/template"><i class="fa-solid fa-download"></i>تنزيل النموذج</a></div>
+            <form id="learningImportForm" class="sales-ai-excel-controls"><input id="learningExcelFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required><button class="sales-ai-btn primary" type="submit"><i class="fa-solid fa-file-import"></i>استيراد وتعلّم</button></form>
+            <div class="sales-ai-import-history" id="learningImportHistory"></div>
+          </section>
+        </section>
+
+        <form class="sales-ai-form" id="channelForm" data-pane="channel" hidden>
+          <div class="sales-ai-section-heading"><h3>قناة واتساب</h3><p>بيانات WhatsApp Cloud API وحالة الربط الحالية.</p></div>
+          <div id="channelSummary"></div><input id="channelId" type="hidden">
+          <div class="sales-ai-form-grid">
+            <div class="sales-ai-field"><label for="channelName">اسم القناة</label><input id="channelName" value="WhatsApp Super Max"></div>
+            <div class="sales-ai-field"><label for="channelPhone">رقم واتساب</label><input id="channelPhone" dir="ltr" placeholder="9647..."></div>
+            <div class="sales-ai-field"><label for="channelPhoneId">Phone Number ID</label><input id="channelPhoneId" dir="ltr"></div>
+            <div class="sales-ai-field"><label for="channelWaba">WABA ID</label><input id="channelWaba" dir="ltr"></div>
+            <div class="sales-ai-field full"><label class="sales-ai-secret-label" for="channelToken"><span>Access Token</span><span class="sales-ai-saved" id="channelTokenSaved"><i class="fa-solid fa-check"></i> محفوظ</span></label><input id="channelToken" type="password" autocomplete="new-password" placeholder="اتركه فارغاً للاحتفاظ بالمحفوظ"><small>لن يظهر الرمز بعد الحفظ، وهذا لا يعني أنه انحذف.</small></div>
+            <div class="sales-ai-field"><label class="sales-ai-secret-label" for="channelSecret"><span>App Secret</span><span class="sales-ai-saved" id="channelSecretSaved"><i class="fa-solid fa-check"></i> محفوظ</span></label><input id="channelSecret" type="password" autocomplete="new-password"></div>
+            <div class="sales-ai-field"><label class="sales-ai-secret-label" for="channelVerify"><span>Verify Token</span><span class="sales-ai-saved" id="channelVerifySaved"><i class="fa-solid fa-check"></i> محفوظ</span></label><input id="channelVerify" type="password" autocomplete="new-password" placeholder="يُنشأ تلقائياً عند أول حفظ"></div>
+            <label class="sales-ai-switch-row full"><span><strong>تشغيل قناة واتساب</strong><small>استقبال الرسائل وإرسال الردود</small></span><input id="channelActive" type="checkbox"><i></i></label>
+          </div>
+          <section class="sales-ai-calling-readiness" id="channelCallingSummary">
+            <div><span class="sales-ai-level-icon"><i class="fa-solid fa-phone-volume"></i></span><span><strong>مكالمات واتساب</strong><small>افحص أهلية الرقم والتوكن قبل تشغيل مسار المكالمات.</small></span></div>
+            <span class="sales-ai-calling-state unknown" id="channelCallingState">لم يتم الفحص</span>
+          </section>
+          <div class="sales-ai-form-footer"><button class="sales-ai-btn secondary" id="checkCallingBtn" type="button"><i class="fa-solid fa-stethoscope"></i>فحص جاهزية المكالمات</button><button class="sales-ai-btn whatsapp" type="submit"><i class="fa-solid fa-link"></i>حفظ قناة واتساب</button></div>
+        </form>
+
+        <form class="sales-ai-form" id="metaForm" data-pane="meta" hidden>
+          <div class="sales-ai-section-heading"><h3>Meta والصفحات</h3><p>إعداد تطبيق واحد وإدارة صفحات Messenger وInstagram المرتبطة به.</p></div>
+          <input id="metaConnectorId" type="hidden">
+          <div class="sales-ai-meta-tabs" role="tablist" aria-label="إعدادات Meta">
+            <button class="active" type="button" data-meta-tab="general" role="tab" aria-selected="true"><i class="fa-solid fa-gear"></i>إعدادات التطبيق</button>
+            <button type="button" data-meta-tab="pages" role="tab" aria-selected="false"><i class="fa-brands fa-facebook-messenger"></i>الصفحات <span id="metaPageCount">0</span></button>
+          </div>
+
+          <div class="sales-ai-meta-panel" data-meta-panel="general">
+            <div id="metaSummary"></div>
+            <div class="sales-ai-form-grid">
+              <div class="sales-ai-field"><label for="metaName">اسم الاتصال</label><input id="metaName" value="Meta Super Max"></div>
+              <div class="sales-ai-field"><label for="metaAppId">Meta App ID</label><input id="metaAppId" dir="ltr" autocomplete="off"></div>
+              <div class="sales-ai-field"><label class="sales-ai-secret-label" for="metaSecret"><span>Meta App Secret</span><span class="sales-ai-saved" id="metaSecretSaved"><i class="fa-solid fa-check"></i> محفوظ ومشفّر</span></label><input id="metaSecret" type="password" autocomplete="new-password" placeholder="اتركه فارغاً للاحتفاظ بالمحفوظ"></div>
+              <div class="sales-ai-field"><label class="sales-ai-secret-label" for="metaVerify"><span>Webhook Verify Token</span><span class="sales-ai-saved" id="metaVerifySaved"><i class="fa-solid fa-check"></i> محفوظ ومشفّر</span></label><input id="metaVerify" type="password" autocomplete="new-password" placeholder="يُنشأ تلقائياً عند أول حفظ"></div>
+              <label class="sales-ai-switch-row full"><span><strong>استقبال رسائل Meta</strong><small>تشغيل Webhook للصفحات الفعالة</small></span><input id="metaActive" type="checkbox"><i></i></label>
+            </div>
+            <div class="sales-ai-form-footer"><button class="sales-ai-btn meta" type="submit"><i class="fa-solid fa-floppy-disk"></i>حفظ إعدادات التطبيق</button></div>
+          </div>
+
+          <div class="sales-ai-meta-panel" data-meta-panel="pages" hidden>
+            <div class="sales-ai-meta-import">
+              <div><strong>ربط صفحة بواسطة Page Access Token</strong><small>اختر الصفحة من Meta وأنشئ توكنها، ثم الصقه هنا. سيقرأ Finora اسم الصفحة ومعرّفها ويحفظ التوكن مشفّراً.</small></div>
+              <div class="sales-ai-meta-import-fields"><input id="metaPageToken" type="password" dir="ltr" autocomplete="new-password" placeholder="Page Access Token"><button class="sales-ai-btn meta" id="addMetaPageBtn" type="button"><i class="fa-solid fa-link"></i>ربط الصفحة</button></div>
+            </div>
+
+            <div class="sales-ai-meta-toolbar">
+              <div class="sales-ai-meta-search"><i class="fa-solid fa-magnifying-glass"></i><input id="metaPageSearch" type="search" placeholder="بحث باسم الصفحة أو المعرّف"></div>
+              <select id="metaPagePlatform" aria-label="تصفية حسب المنصة"><option value="all">كل المنصات</option><option value="messenger">Messenger</option><option value="instagram">Instagram</option></select>
+              <select id="metaPageStatus" aria-label="تصفية حسب الحالة"><option value="all">كل الحالات</option><option value="active">الفعالة</option><option value="inactive">المتوقفة</option><option value="ai">الذكاء يرد</option><option value="inbox">استقبال فقط</option><option value="auth">تحتاج تحديث</option></select>
+            </div>
+
+            <div class="sales-ai-meta-bulk">
+              <label><input id="metaSelectAll" type="checkbox"><span>تحديد الظاهر</span></label>
+              <strong id="metaSelectedCount">لم يتم تحديد صفحات</strong>
+              <div>
+                <button type="button" data-meta-bulk="activate" title="تفعيل المحدد"><i class="fa-solid fa-toggle-on"></i><span>تفعيل</span></button>
+                <button type="button" data-meta-bulk="deactivate" title="إيقاف المحدد"><i class="fa-solid fa-toggle-off"></i><span>إيقاف</span></button>
+                <button type="button" data-meta-bulk="ai" title="تشغيل الذكاء للمحدد"><i class="fa-solid fa-robot"></i><span>تشغيل AI</span></button>
+                <button type="button" data-meta-bulk="inbox" title="استقبال فقط للمحدد"><i class="fa-solid fa-inbox"></i><span>استقبال فقط</span></button>
+              </div>
+            </div>
+
+            <div class="sales-ai-meta-pages" id="metaPages"></div>
+            <div class="sales-ai-inline-actions"><button class="sales-ai-btn danger" id="stopMetaAiBtn" type="button"><i class="fa-solid fa-stop"></i><span>إيقاف الذكاء عن كل الصفحات</span></button></div>
+          </div>
+        </form>
+
+        <form class="sales-ai-form" id="mediaForm" data-pane="media" hidden>
+          <div class="sales-ai-section-heading"><h3>وسائط المنتجات</h3><p>الصور والفيديوهات والأصوات المعتمدة التي يرسلها الموظف الذكي.</p></div>
+          <div class="sales-ai-form-grid">
+            <div class="sales-ai-field full"><label for="mediaProduct">المنتج</label><select id="mediaProduct" required><option value="">اختر المنتج</option></select></div>
+            <div class="sales-ai-field"><label for="mediaType">نوع الوسيط</label><select id="mediaType"><option value="image">صورة</option><option value="video">فيديو</option><option value="audio">صوت</option></select></div>
+            <div class="sales-ai-field"><label for="mediaTitle">العنوان</label><input id="mediaTitle" placeholder="مثلاً: الشاشة وهي مشتغلة"></div>
+            <div class="sales-ai-field full"><label for="mediaTags">الكلمات الدلالية</label><input id="mediaTags" placeholder="تشغيل، واجهة، ريموت"></div>
+            <div class="sales-ai-field"><label for="mediaFile">رفع ملف</label><input id="mediaFile" type="file" accept="image/*,video/*,audio/*"></div>
+            <div class="sales-ai-field"><label for="mediaUrl">أو رابط عام</label><input id="mediaUrl" type="url" dir="ltr" placeholder="https://..."></div>
+            <label class="sales-ai-switch-row full"><span><strong>وسيط رئيسي</strong><small>يعرض قبل بقية وسائط المنتج</small></span><input id="mediaPrimary" type="checkbox"><i></i></label>
+          </div>
+          <div class="sales-ai-form-footer"><button class="sales-ai-btn primary" type="submit"><i class="fa-solid fa-cloud-arrow-up"></i>إضافة الوسيط</button></div>
+          <div class="sales-ai-media-list" id="mediaList"></div>
+        </form>
+      </div>
+    </div>
+  </section>
+</div>
+{% endif %}
+
+<div class="sales-ai-toast" id="toast" role="status" aria-live="polite"></div>
+<div class="sales-ai-message-actions" id="messageActions" hidden role="menu" aria-label="إجراءات الرسالة"></div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/ai-sales-inbox.js', v='20260716-02') }}"></script>
+{% endblock %}

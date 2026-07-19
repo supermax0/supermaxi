@@ -34,6 +34,7 @@ from models.ai_assistant_control import (
     AIToolCallLog,
     AIUploadedFile,
 )
+from models.investment_proposal import InvestmentProposal
 from models.delivery_agent import DeliveryAgent
 from models.page import Page
 from models.role import Role, Permission
@@ -73,6 +74,7 @@ from routes.settings import settings_bp
 from routes.messages import messages_bp
 from routes.delivery import delivery_bp
 from routes.assistant import assistant_bp
+from routes.investments import investments_bp
 from routes.agents import agents_bp
 from routes.delivery_agent import delivery_agent_bp
 from routes.pages import pages_bp
@@ -85,6 +87,7 @@ from routes.maintenance import maintenance_bp
 from routes.fixed_assets import fixed_assets_bp
 from routes.rotating_savings import rotating_savings_bp, rotating_savings_bp_alias
 from routes.whatsapp_webhook import whatsapp_webhook_bp
+from modules.ai_sales.routes import ai_sales_bp, ai_sales_webhook_bp
 from routes.landing import landing_bp
 from telegram_bot import telegram_bp
 from api_workflows import workflow_api
@@ -254,10 +257,30 @@ with app.app_context():
         AIToolCallLog,
         AIUploadedFile,
     )
+    from models.investment_proposal import InvestmentProposal  # noqa: F401
     from models.core.platform_announcement import PlatformAnnouncement  # noqa: F401
     from models.core.announcement_send_log import AnnouncementSendLog  # noqa: F401
 
-    db.create_all()
+    # Gunicorn imports the app in multiple workers. Serialize PostgreSQL DDL so
+    # a newly added model cannot make workers race while creating the same table.
+    if db.engine.dialect.name == "postgresql":
+        from sqlalchemy import text as sa_text
+
+        schema_lock_key = 736251904  # Stable application-level advisory lock.
+        with db.engine.connect() as schema_lock_conn:
+            schema_lock_conn.execute(
+                sa_text("SELECT pg_advisory_lock(:lock_key)"),
+                {"lock_key": schema_lock_key},
+            )
+            try:
+                db.create_all()
+            finally:
+                schema_lock_conn.execute(
+                    sa_text("SELECT pg_advisory_unlock(:lock_key)"),
+                    {"lock_key": schema_lock_key},
+                )
+    else:
+        db.create_all()
 
     try:
         from sqlalchemy import inspect, text
@@ -365,6 +388,10 @@ with app.app_context():
                         cur.execute("PRAGMA table_info(product)")
                         product_cols = {row[1] for row in cur.fetchall()}
                         product_additions = {
+                            "sku": "ALTER TABLE product ADD COLUMN sku VARCHAR(100)",
+                            "description": "ALTER TABLE product ADD COLUMN description TEXT",
+                            "image_url": "ALTER TABLE product ADD COLUMN image_url VARCHAR(500)",
+                            "meta_json": "ALTER TABLE product ADD COLUMN meta_json TEXT",
                             "skin_type": "ALTER TABLE product ADD COLUMN skin_type TEXT",
                             "usage_type": "ALTER TABLE product ADD COLUMN usage_type TEXT",
                             "requires_patch_test": "ALTER TABLE product ADD COLUMN requires_patch_test BOOLEAN DEFAULT 0",
@@ -434,9 +461,55 @@ with app.app_context():
                         for col, stmt in report_additions.items():
                             if col not in is_cols:
                                 cur.execute(stmt)
+                    if "order_item" in existing_tables:
+                        cur.execute("PRAGMA table_info(order_item)")
+                        order_item_cols = {row[1] for row in cur.fetchall()}
+                        if "fulfillment_branch_id" not in order_item_cols:
+                            cur.execute("ALTER TABLE order_item ADD COLUMN fulfillment_branch_id INTEGER")
+                        if "variant_color" not in order_item_cols:
+                            cur.execute("ALTER TABLE order_item ADD COLUMN variant_color VARCHAR(80)")
                     if "invoice" in existing_tables:
                         cur.execute("PRAGMA table_info(invoice)")
                         invoice_cols = {row[1] for row in cur.fetchall()}
+                        invoice_additions = {
+                            "branch_id": "ALTER TABLE invoice ADD COLUMN branch_id INTEGER",
+                            "discount_amount": "ALTER TABLE invoice ADD COLUMN discount_amount INTEGER DEFAULT 0",
+                            "is_stock_locked": "ALTER TABLE invoice ADD COLUMN is_stock_locked BOOLEAN DEFAULT 0",
+                            "stock_lock_reason": "ALTER TABLE invoice ADD COLUMN stock_lock_reason TEXT",
+                            "stock_locked_at": "ALTER TABLE invoice ADD COLUMN stock_locked_at DATETIME",
+                            "stock_unlocked_at": "ALTER TABLE invoice ADD COLUMN stock_unlocked_at DATETIME",
+                        }
+                        for col, stmt in invoice_additions.items():
+                            if col not in invoice_cols:
+                                cur.execute(stmt)
+                        stock_state_added = "stock_is_deducted" not in invoice_cols
+                        if stock_state_added:
+                            cur.execute("ALTER TABLE invoice ADD COLUMN stock_is_deducted BOOLEAN DEFAULT 1")
+                        if "stock_deducted_at" not in invoice_cols:
+                            cur.execute("ALTER TABLE invoice ADD COLUMN stock_deducted_at DATETIME")
+                        if "stock_restored_at" not in invoice_cols:
+                            cur.execute("ALTER TABLE invoice ADD COLUMN stock_restored_at DATETIME")
+                        if stock_state_added:
+                            state_where = (
+                                ("COALESCE(is_stock_locked, 0) = 1 OR " if "is_stock_locked" in invoice_cols else "")
+                                + "status IN ('ملغي','راجع','مرتجع','راجعة','راجعه') "
+                                + "OR payment_status IN ('ملغي','راجع','مرتجع','راجعة','راجعه')"
+                            )
+                            cur.execute(
+                                "UPDATE invoice SET stock_is_deducted = 0 "
+                                f"WHERE {state_where}"
+                            )
+                            cur.execute(
+                                "UPDATE invoice SET stock_deducted_at = created_at "
+                                "WHERE stock_deducted_at IS NULL AND (stock_is_deducted = 1 "
+                                "OR status IN ('ملغي','راجع','مرتجع','راجعة','راجعه') "
+                                "OR payment_status IN ('ملغي','راجع','مرتجع','راجعة','راجعه'))"
+                            )
+                            cur.execute(
+                                "UPDATE invoice SET stock_restored_at = created_at "
+                                "WHERE stock_restored_at IS NULL AND stock_deducted_at IS NOT NULL "
+                                "AND stock_is_deducted = 0"
+                            )
                         if "shipping_barcodes_json" not in invoice_cols:
                             cur.execute(
                                 "ALTER TABLE invoice ADD COLUMN shipping_barcodes_json TEXT"
@@ -457,6 +530,23 @@ with app.app_context():
                     print(f"Tenant migration note ({db_name}, beauty/business type): {_tenant_err}")
     except Exception as e:
         print(f"Migration note (tenant beauty/business type): {e}")
+
+    try:
+        from utils.order_stock_policy import initialize_registered_tenant_policies
+
+        policy_init = initialize_registered_tenant_policies()
+        for tenant_slug, result in policy_init["tenants"].items():
+            if result.get("migrated"):
+                print(
+                    "Deferred order stock policy initialized "
+                    f"({tenant_slug}): restored {result.get('restored_orders', 0)} "
+                    f"order(s) / {result.get('restored_units', 0)} unit(s)."
+                )
+        for tenant_slug, error in policy_init["errors"].items():
+            print(f"Deferred order stock policy note ({tenant_slug}): {error}")
+    except Exception as e:
+        db.session.rollback()
+        print(f"Deferred order stock policy startup note: {e}")
 
     # Database health check on startup
     try:
@@ -1306,6 +1396,7 @@ def inject_global_data():
         "can_manage_settings": False,
         "can_view_dashboard": False,
         "can_view_activity": False,
+        "has_assigned_ai_sales_page": False,
         "_": lambda x: x,
         "current_lang": "ar"
     }
@@ -1314,6 +1405,9 @@ def inject_global_data():
         lang = session.get('language')
         if not lang and "user_id" in session:
             try:
+                from routes.employees import _ensure_employee_profile_schema
+
+                _ensure_employee_profile_schema()
                 emp = db.session.get(Employee, session["user_id"])
                 if emp and emp.language:
                     lang = emp.language
@@ -1333,6 +1427,9 @@ def inject_global_data():
         if tenant_slug:
             g.tenant = tenant_slug
         try:
+            from routes.employees import _ensure_employee_profile_schema
+
+            _ensure_employee_profile_schema()
             employee = db.session.get(Employee, session["user_id"])
         finally:
             g.tenant = prev_tenant
@@ -1342,6 +1439,24 @@ def inject_global_data():
         final_lang = employee.language or lang_now
         print(f"DEBUG: Employee lang: {employee.language}, Final lang: {final_lang}")
         from utils.permission_checks import employee_can
+
+        has_assigned_ai_sales_page = False
+        if tenant_slug and employee.role != "admin":
+            scoped_tenant = getattr(g, "tenant", None)
+            g.tenant = tenant_slug
+            try:
+                from modules.ai_sales.models import AISalesChannelAccount
+
+                has_assigned_ai_sales_page = bool(
+                    AISalesChannelAccount.query.filter(
+                        AISalesChannelAccount.default_employee_id == employee.id,
+                        AISalesChannelAccount.connection_status != "removed",
+                    ).first()
+                )
+            except Exception:
+                db.session.rollback()
+            finally:
+                g.tenant = scoped_tenant
         
         return {
             "current_employee": employee,
@@ -1374,6 +1489,7 @@ def inject_global_data():
             "can_manage_settings": employee_can(employee, "manage_settings"),
             "can_view_dashboard": employee_can(employee, "view_dashboard"),
             "can_view_activity": employee_can(employee, "view_activity"),
+            "has_assigned_ai_sales_page": has_assigned_ai_sales_page,
             "_": translate,
             "current_lang": final_lang,
         }
@@ -1419,6 +1535,8 @@ def require_login():
         "/terms",
         "/contact",
         "/landing",
+        "/supermax",
+        "/super-max",
         "/payment",
         "/login",
         "/payment/success",
@@ -1441,7 +1559,10 @@ def require_login():
         "/orders/p/o",  # تفاصيل طلب عامة (QR) — موقّعة، بدون تسجيل
         "/orders/invoice-video",  # بث فيديو الطلب للعامة — رمز موقّع
         "/webhook",  # WhatsApp Cloud API webhook verification/receive
+        "/api/v1/ai-sales/webhooks/",  # Finora Sales AI public WhatsApp callbacks
+        "/ai-sales/public/media/",  # Signed AI Sales media fetched by Meta
         "/webhook-ui",  # صفحة اختبار webhook
+        "/api/mobile/v1/",  # Social Commerce mobile API (OTP/JWT — own auth)
     ]
 
     agent_allowed_paths = ("/delivery-agent", "/messages", "/static")
@@ -1485,8 +1606,10 @@ def require_login():
             g.tenant = tenant_slug
         try:
             from utils.payroll_schema import ensure_payroll_schema
+            from routes.employees import _ensure_employee_profile_schema
 
             ensure_payroll_schema()
+            _ensure_employee_profile_schema()
         except Exception:
             pass
         employee = db.session.get(Employee, session["user_id"])
@@ -1527,6 +1650,7 @@ def require_login():
             ("/suppliers", "manage_suppliers"),
             ("/customers", "manage_customers"),
             ("/orders/ordered", ("view_orders", "view_orders_placed")),
+            ("/orders/packed", ("view_orders", "view_orders_packed")),
             ("/orders/shipping", ("view_orders", "view_orders_shipped")),
             ("/orders/delivered", ("view_orders", "view_orders_delivered")),
             ("/orders/returned", ("view_orders", "view_orders_returned")),
@@ -1870,6 +1994,7 @@ app.register_blueprint(settings_bp)
 app.register_blueprint(messages_bp)
 app.register_blueprint(delivery_bp)
 app.register_blueprint(assistant_bp)
+app.register_blueprint(investments_bp)
 app.register_blueprint(agents_bp)
 app.register_blueprint(delivery_agent_bp)
 app.register_blueprint(pages_bp)
@@ -1895,6 +2020,8 @@ def store_root_alias():
 app.register_blueprint(quick_sale_bp)
 app.register_blueprint(beauty_bp)
 app.register_blueprint(whatsapp_webhook_bp)
+app.register_blueprint(ai_sales_bp)
+app.register_blueprint(ai_sales_webhook_bp)
 app.register_blueprint(telegram_bp)
 
 # ── Publisher (Facebook Publishing Platform) ──────────────────────────────
@@ -1914,6 +2041,14 @@ try:
     print("Workspace module loaded.")
 except Exception as _ws_ex:
     print(f"Workspace module load warning: {_ws_ex}")
+
+# ── Mobile Social Commerce API (Phase 1) ────────────────────────────────
+try:
+    from modules.mobile_app import init_mobile_app
+    init_mobile_app(app)
+    print("Mobile app API loaded.")
+except Exception as _mobile_ex:
+    print(f"Mobile app API load warning: {_mobile_ex}")
 
 
 @app.cli.command("seed_landing_page")
@@ -2304,6 +2439,71 @@ def _start_weak_employee_message_scheduler():
 
 
 _start_weak_employee_message_scheduler()
+
+# =====================================
+# Financial / Operational Watchdog Scheduler
+# =====================================
+def _start_watchdog_persist_scheduler():
+    import os
+    import sys
+
+    if os.environ.get("SERVER_SOFTWARE", "").startswith("gunicorn/") or "gunicorn" in (sys.argv[0] or ""):
+        return
+
+    try:
+        from apscheduler.schedulers.background import BackgroundScheduler  # type: ignore[import-untyped]
+        from apscheduler.triggers.interval import IntervalTrigger  # type: ignore[import-untyped]
+
+        def _run_watchdog_persist():
+            with app.app_context():
+                try:
+                    from flask import g
+                    from models.core.tenant import Tenant as CoreTenant
+                    from utils.financial_watchdog import persist_watchdog_alerts
+
+                    old_tenant = getattr(g, "tenant", None)
+                    g.tenant = None
+                    try:
+                        tenants = CoreTenant.query.filter_by(is_active=True).all()
+                    except Exception:
+                        tenants = []
+                    finally:
+                        g.tenant = old_tenant
+
+                    for tenant in tenants:
+                        tenant_slug = getattr(tenant, "slug", None)
+                        if not tenant_slug:
+                            continue
+                        g.tenant = tenant_slug
+                        try:
+                            persist_watchdog_alerts()
+                        except Exception:
+                            db.session.rollback()
+                            try:
+                                app.logger.exception("watchdog persist scheduler failed for tenant %s", tenant_slug)
+                            except Exception:
+                                pass
+                        finally:
+                            g.tenant = None
+                except Exception:
+                    try:
+                        app.logger.exception("watchdog persist scheduler failed")
+                    except Exception:
+                        pass
+
+        scheduler = BackgroundScheduler()
+        scheduler.add_job(
+            _run_watchdog_persist,
+            IntervalTrigger(hours=6),
+            id="watchdog_persist_alerts",
+            replace_existing=True,
+        )
+        scheduler.start()
+    except Exception:
+        pass
+
+
+_start_watchdog_persist_scheduler()
 
 # Favicon for browser tabs (/favicon.ico)
 @app.route("/favicon.ico")

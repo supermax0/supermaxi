@@ -1,0 +1,3461 @@
+.sales-ai-page .page-main {
+  padding: 0 !important;
+  overflow: visible;
+}
+
+.sales-ai-app,
+.sales-ai-settings,
+.sales-ai-overlay,
+.sales-ai-message-actions {
+  --ai-bg: #f4f7fb;
+  --ai-surface: #ffffff;
+  --ai-surface-soft: #f8fafc;
+  --ai-surface-hover: #eef4ff;
+  --ai-border: #dfe6ef;
+  --ai-border-strong: #cbd5e1;
+  --ai-text: #172033;
+  --ai-muted: #6b778c;
+  --ai-faint: #94a0b2;
+  --ai-primary: #2563eb;
+  --ai-primary-hover: #1d4ed8;
+  --ai-primary-soft: #eaf1ff;
+  --ai-green: #16834f;
+  --ai-green-soft: #e8f7ef;
+  --ai-amber: #b7791f;
+  --ai-amber-soft: #fff6df;
+  --ai-red: #c73838;
+  --ai-red-soft: #feecec;
+  --ai-purple: #7157b8;
+  --ai-purple-soft: #f0edfb;
+  --ai-shadow: 0 10px 30px rgba(16, 24, 40, .08);
+  direction: rtl;
+}
+
+.sales-ai-app {
+  height: calc(100dvh - 79px);
+  min-height: 650px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  overflow: hidden;
+  color: var(--ai-text);
+  background: var(--ai-bg);
+}
+
+.sales-ai-page .page-title {
+  display: flex !important;
+}
+
+.sales-ai-page .page-title::before,
+.sales-ai-page .topbar-actions,
+.sales-ai-page .topbar .user-box {
+  display: none !important;
+}
+
+.sales-ai-page .topbar {
+  display: flex !important;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.sales-ai-page .topbar-left {
+  width: auto;
+  grid-column: auto;
+}
+
+.sales-ai-page .topbar .toggle {
+  display: inline-flex !important;
+  width: 44px !important;
+  min-width: 44px !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  padding: 0 !important;
+}
+
+.sales-ai-top-settings {
+  min-width: 44px !important;
+  min-height: 44px !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 13px !important;
+  border: 1px solid #2563eb !important;
+  border-radius: 8px !important;
+  color: #fff !important;
+  background: #2563eb !important;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.sales-ai-top-settings:hover {
+  border-color: #1d4ed8 !important;
+  background: #1d4ed8 !important;
+}
+
+html[data-theme="dark"] .sales-ai-app,
+html[data-theme="dark"] .sales-ai-settings,
+html[data-theme="dark"] .sales-ai-overlay,
+html[data-theme="dark"] .sales-ai-message-actions {
+  --ai-bg: #11151c;
+  --ai-surface: #1a2029;
+  --ai-surface-soft: #151a22;
+  --ai-surface-hover: #222c3a;
+  --ai-border: #303846;
+  --ai-border-strong: #455064;
+  --ai-text: #eef2f7;
+  --ai-muted: #a7b0bf;
+  --ai-faint: #748095;
+  --ai-primary: #5b8ff7;
+  --ai-primary-hover: #78a6ff;
+  --ai-primary-soft: #1d3152;
+  --ai-green: #4bc486;
+  --ai-green-soft: #173a2a;
+  --ai-amber: #e7ad4c;
+  --ai-amber-soft: #3a2e18;
+  --ai-red: #f06c6c;
+  --ai-red-soft: #442326;
+  --ai-purple: #ac91ef;
+  --ai-purple-soft: #302748;
+  --ai-shadow: 0 12px 32px rgba(0, 0, 0, .28);
+}
+
+.sales-ai-app *,
+.sales-ai-settings *,
+.sales-ai-overlay *,
+.sales-ai-message-actions * {
+  box-sizing: border-box;
+  letter-spacing: 0;
+}
+
+.sales-ai-app input:not([type="checkbox"]):not([type="radio"]),
+.sales-ai-app select,
+.sales-ai-app textarea,
+.sales-ai-settings input:not([type="checkbox"]):not([type="radio"]),
+.sales-ai-settings select,
+.sales-ai-settings textarea {
+  color: var(--ai-text) !important;
+  border-color: var(--ai-border) !important;
+  border-radius: 8px !important;
+  background: var(--ai-surface-soft) !important;
+}
+
+.sales-ai-appbar {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex: 0 0 auto;
+}
+
+.sales-ai-brand,
+.sales-ai-brand > div,
+.sales-ai-settings-header > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.sales-ai-brand-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  color: #fff;
+  background: var(--ai-primary);
+  font-size: 18px;
+}
+
+.sales-ai-brand-icon.small {
+  width: 38px;
+  height: 38px;
+  font-size: 15px;
+}
+
+.sales-ai-brand h1,
+.sales-ai-brand p,
+.sales-ai-settings-header h2,
+.sales-ai-settings-header p {
+  margin: 0;
+}
+
+.sales-ai-brand h1 {
+  font-size: 20px;
+  line-height: 1.25;
+  color: var(--ai-text);
+}
+
+.sales-ai-brand p,
+.sales-ai-settings-header p {
+  color: var(--ai-muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.sales-ai-app-actions,
+.sales-ai-inline-actions,
+.sales-ai-chat-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sales-ai-btn,
+.sales-ai-icon-btn,
+.sales-ai-send-btn {
+  border: 1px solid var(--ai-border);
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+.sales-ai-btn {
+  min-height: 40px !important;
+  padding: 0 14px !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 8px !important;
+  background: var(--ai-surface);
+  color: var(--ai-text);
+}
+
+.sales-ai-btn:hover,
+.sales-ai-icon-btn:hover {
+  border-color: var(--ai-border-strong);
+  background: var(--ai-surface-hover);
+}
+
+.sales-ai-btn.primary,
+.sales-ai-send-btn {
+  color: #fff;
+  border-color: var(--ai-primary);
+  background: var(--ai-primary);
+}
+
+.sales-ai-btn.primary:hover,
+.sales-ai-send-btn:hover {
+  background: var(--ai-primary-hover);
+}
+
+.sales-ai-btn.whatsapp {
+  background: #15864b;
+  border-color: #15864b;
+  color: #fff;
+}
+
+.sales-ai-btn.meta {
+  background: #0866ff;
+  border-color: #0866ff;
+  color: #fff;
+}
+
+.sales-ai-btn.subtle {
+  background: var(--ai-surface);
+  color: var(--ai-text);
+}
+
+.sales-ai-icon-btn,
+.sales-ai-send-btn {
+  width: 40px !important;
+  min-width: 40px !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 0 !important;
+  border-radius: 8px !important;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  color: var(--ai-muted);
+  background: var(--ai-surface);
+}
+
+.sales-ai-send-btn {
+  width: 44px !important;
+  min-width: 44px !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  color: #fff;
+  border-color: var(--ai-primary);
+  background: var(--ai-primary);
+}
+
+.sales-ai-btn:disabled,
+.sales-ai-icon-btn:disabled,
+.sales-ai-send-btn:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.sales-ai-send-btn:disabled {
+  color: var(--ai-muted);
+  border-color: var(--ai-border);
+  background: var(--ai-surface-soft);
+}
+
+.sales-ai-btn:focus-visible,
+.sales-ai-icon-btn:focus-visible,
+.sales-ai-send-btn:focus-visible,
+.sales-ai-app input:focus-visible,
+.sales-ai-app textarea:focus-visible,
+.sales-ai-app select:focus-visible,
+.sales-ai-settings input:focus-visible,
+.sales-ai-settings textarea:focus-visible,
+.sales-ai-settings select:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--ai-primary) 26%, transparent);
+  outline-offset: 1px;
+}
+
+.sales-ai-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.sales-ai-metric {
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 12px;
+  border: 1px solid var(--ai-border);
+  border-radius: 8px;
+  background: var(--ai-surface);
+}
+
+.sales-ai-metric div {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+}
+
+.sales-ai-metric strong {
+  font-size: 22px;
+  line-height: 1;
+  color: var(--ai-text);
+}
+
+.sales-ai-metric div span {
+  font-size: 12px;
+  color: var(--ai-muted);
+}
+
+.metric-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  flex: 0 0 auto;
+}
+
+.metric-icon.blue { color: var(--ai-primary); background: var(--ai-primary-soft); }
+.metric-icon.amber { color: var(--ai-amber); background: var(--ai-amber-soft); }
+.metric-icon.red { color: var(--ai-red); background: var(--ai-red-soft); }
+.metric-icon.green { color: var(--ai-green); background: var(--ai-green-soft); }
+
+.sales-ai-workspace {
+  min-height: 0;
+  flex: 1;
+  display: grid;
+  grid-template-columns: 320px minmax(420px, 1fr) 300px;
+  direction: rtl;
+  overflow: hidden;
+  border: 1px solid var(--ai-border);
+  border-radius: 8px;
+  background: var(--ai-surface);
+  box-shadow: var(--ai-shadow);
+}
+
+.sales-ai-workspace.details-collapsed {
+  grid-template-columns: 320px minmax(420px, 1fr);
+}
+
+.sales-ai-workspace.details-collapsed .sales-ai-details-pane {
+  display: none;
+}
+
+.sales-ai-conversation-pane,
+.sales-ai-chat-pane,
+.sales-ai-details-pane {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--ai-surface);
+}
+
+.sales-ai-chat-pane,
+.sales-ai-details-pane {
+  border-right: 1px solid var(--ai-border);
+}
+
+.sales-ai-pane-title,
+.sales-ai-chat-header {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--ai-border);
+  background: var(--ai-surface);
+}
+
+.sales-ai-pane-title > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sales-ai-pane-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sales-ai-pane-title h2 {
+  margin: 0;
+  color: var(--ai-text);
+  font-size: 15px;
+}
+
+.sales-ai-pane-title > div > span:not(.sales-ai-live-dot) {
+  min-width: 24px;
+  min-height: 22px;
+  display: grid;
+  place-items: center;
+  padding: 0 7px;
+  border-radius: 999px;
+  color: var(--ai-muted);
+  background: var(--ai-surface-soft);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.sales-ai-search {
+  position: relative;
+  padding: 10px 10px 7px;
+}
+
+.sales-ai-search i {
+  position: absolute;
+  right: 23px;
+  top: 50%;
+  transform: translateY(-44%);
+  color: var(--ai-faint);
+  pointer-events: none;
+}
+
+.sales-ai-search input {
+  width: 100%;
+  height: 40px;
+  padding: 0 38px 0 12px;
+  border: 1px solid var(--ai-border);
+  border-radius: 8px;
+  color: var(--ai-text);
+  background: var(--ai-surface-soft);
+  font: inherit;
+}
+
+.sales-ai-search input::placeholder,
+.sales-ai-compose textarea::placeholder {
+  color: var(--ai-faint);
+}
+
+.sales-ai-filter-strip {
+  display: flex;
+  gap: 5px;
+  padding: 3px 10px 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--ai-border);
+}
+
+.sales-ai-filter-strip::-webkit-scrollbar { display: none; }
+
+.sales-ai-filter-strip button {
+  height: 31px;
+  min-height: 31px !important;
+  flex: 0 0 auto;
+  padding: 0 10px !important;
+  border: 1px solid transparent;
+  border-radius: 999px !important;
+  color: var(--ai-muted);
+  background: var(--ai-surface-soft);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sales-ai-filter-strip button.active {
+  color: var(--ai-primary);
+  border-color: color-mix(in srgb, var(--ai-primary) 28%, var(--ai-border));
+  background: var(--ai-primary-soft);
+}
+
+.sales-ai-conversations {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.sales-ai-conversation {
+  width: 100%;
+  min-height: 76px !important;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 42px;
+  gap: 8px;
+  align-items: center;
+  padding: 9px 10px !important;
+  border: 0;
+  border-bottom: 1px solid var(--ai-border);
+  color: var(--ai-text);
+  border-radius: 0 !important;
+  background: transparent;
+  text-align: right;
+  cursor: pointer;
+}
+
+.sales-ai-conversation:hover {
+  background: var(--ai-surface-soft);
+}
+
+.sales-ai-conversation.active {
+  box-shadow: inset -3px 0 0 var(--ai-primary);
+  background: var(--ai-surface-hover);
+}
+
+.sales-ai-avatar {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 50%;
+  color: var(--ai-primary);
+  background: var(--ai-primary-soft);
+  font-weight: 800;
+  font-size: 14px;
+}
+
+.sales-ai-avatar-fallback {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+.sales-ai-avatar > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+  background: var(--ai-surface-soft);
+}
+
+.sales-ai-avatar.tone-0 { color: #1859a9; background: #e7f0ff; }
+.sales-ai-avatar.tone-1 { color: #0f7657; background: #ddf5ea; }
+.sales-ai-avatar.tone-2 { color: #9b4b16; background: #fff0df; }
+.sales-ai-avatar.tone-3 { color: #8b3f63; background: #f9e7f0; }
+.sales-ai-avatar.tone-4 { color: #555b9c; background: #ececff; }
+.sales-ai-avatar.tone-5 { color: #24656e; background: #e1f2f4; }
+
+[data-theme="dark"] .sales-ai-avatar.tone-0 { color: #9fc2ff; background: #20385a; }
+[data-theme="dark"] .sales-ai-avatar.tone-1 { color: #8bdfbf; background: #173f34; }
+[data-theme="dark"] .sales-ai-avatar.tone-2 { color: #ffc08a; background: #4d3320; }
+[data-theme="dark"] .sales-ai-avatar.tone-3 { color: #efaccb; background: #4a293b; }
+[data-theme="dark"] .sales-ai-avatar.tone-4 { color: #bfc1ff; background: #323254; }
+[data-theme="dark"] .sales-ai-avatar.tone-5 { color: #9edbe1; background: #234147; }
+
+.sales-ai-avatar-channel {
+  position: absolute;
+  z-index: 2;
+  inset-inline-end: -1px;
+  bottom: -1px;
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--ai-surface);
+  border-radius: 50%;
+  background: var(--ai-surface);
+  font-size: 9px;
+}
+
+.sales-ai-avatar-channel.whatsapp { color: #16834f; }
+.sales-ai-avatar-channel.messenger { color: #0a7cff; }
+.sales-ai-avatar-channel.instagram { color: #d14f73; }
+
+.sales-ai-avatar.compact {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+}
+
+.sales-ai-conversation-main {
+  min-width: 0;
+}
+
+.sales-ai-conversation-line,
+.sales-ai-conversation-meta,
+.sales-ai-conversation-tags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.sales-ai-conversation-line {
+  justify-content: space-between;
+}
+
+.sales-ai-conversation-line strong {
+  overflow: hidden;
+  color: var(--ai-text);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sales-ai-conversation p {
+  margin: 5px 0;
+  overflow: hidden;
+  color: var(--ai-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sales-ai-conversation time {
+  color: var(--ai-faint);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.sales-ai-conversation-side {
+  min-width: 42px;
+  min-height: 42px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sales-ai-conversation-meta {
+  overflow: hidden;
+  color: var(--ai-muted);
+  font-size: 10px;
+}
+
+.sales-ai-channel-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sales-ai-channel-icon.whatsapp { color: #16834f; }
+
+.sales-ai-calling-readiness {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  margin-top: 16px;
+  border: 1px solid var(--ai-border);
+  background: var(--ai-surface-soft);
+}
+
+.sales-ai-calling-readiness > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sales-ai-calling-readiness strong,
+.sales-ai-calling-readiness small {
+  display: block;
+}
+
+.sales-ai-calling-readiness small {
+  color: var(--ai-muted);
+  margin-top: 3px;
+}
+
+.sales-ai-calling-state {
+  flex: 0 0 auto;
+  padding: 6px 9px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.sales-ai-calling-state.ready { color: #067647; background: #ecfdf3; }
+.sales-ai-calling-state.blocked { color: #b42318; background: #fef3f2; }
+.sales-ai-calling-state.pending,
+.sales-ai-calling-state.unknown { color: #475467; background: #f2f4f7; }
+
+@media (max-width: 640px) {
+  .sales-ai-calling-readiness { align-items: flex-start; }
+}
+.sales-ai-channel-icon.messenger { color: #0a7cff; }
+.sales-ai-channel-icon.instagram { color: #d14f73; }
+
+.sales-ai-unread {
+  min-width: 21px;
+  height: 21px;
+  display: grid;
+  place-items: center;
+  padding: 0 6px;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--ai-primary);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.sales-ai-temperature {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  background: var(--ai-faint);
+}
+
+.sales-ai-temperature.hot { background: var(--ai-red); }
+.sales-ai-temperature.warm { background: var(--ai-amber); }
+.sales-ai-temperature.cold { background: var(--ai-faint); }
+
+.sales-ai-state-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ai-muted);
+}
+
+.sales-ai-state-tag.ai { color: var(--ai-green); }
+.sales-ai-state-tag.human { color: var(--ai-amber); }
+.sales-ai-state-tag.closed { color: var(--ai-faint); }
+
+.sales-ai-list-skeleton {
+  padding: 10px;
+}
+
+.sales-ai-list-skeleton span {
+  height: 68px;
+  display: block;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  background: var(--ai-surface-soft);
+  animation: sales-ai-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes sales-ai-pulse {
+  50% { opacity: .45; }
+}
+
+.sales-ai-chat-pane {
+  position: relative;
+  background: var(--ai-surface-soft);
+}
+
+.sales-ai-chat-empty,
+.sales-ai-detail-empty,
+.sales-ai-empty-state {
+  height: 100%;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  padding: 24px;
+  color: var(--ai-muted);
+  text-align: center;
+}
+
+.sales-ai-chat-empty[hidden],
+.sales-ai-detail-empty[hidden],
+.sales-ai-empty-state[hidden] {
+  display: none !important;
+}
+
+.sales-ai-chat-empty > span {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--ai-primary);
+  background: var(--ai-primary-soft);
+  font-size: 22px;
+}
+
+.sales-ai-chat-empty h2 {
+  margin: 12px 0 3px;
+  color: var(--ai-text);
+  font-size: 17px;
+}
+
+.sales-ai-chat-empty p,
+.sales-ai-empty-state p {
+  max-width: 320px;
+  margin: 0;
+  font-size: 12px;
+}
+
+.sales-ai-chat-active {
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.sales-ai-chat-active[hidden] { display: none; }
+
+.sales-ai-chat-header {
+  min-height: 58px;
+}
+
+.sales-ai-chat-identity {
+  min-width: 0;
+  margin-left: auto;
+}
+
+.sales-ai-chat-identity strong,
+.sales-ai-chat-identity span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sales-ai-chat-identity strong {
+  color: var(--ai-text);
+  font-size: 13px;
+}
+
+.sales-ai-chat-identity span {
+  margin-top: 2px;
+  color: var(--ai-muted);
+  font-size: 11px;
+}
+
+.sales-ai-messages {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 18px 20px;
+  background: var(--ai-surface-soft);
+}
+
+.sales-ai-message {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  margin-bottom: 12px;
+}
+
+.sales-ai-message.inbound { justify-content: flex-start; }
+.sales-ai-message.outbound { justify-content: flex-end; }
+
+.sales-ai-bubble {
+  position: relative;
+  min-width: 116px;
+  max-width: min(72%, 620px);
+  padding: 10px 12px 8px;
+  border: 1px solid var(--ai-border);
+  border-radius: 8px;
+  color: var(--ai-text);
+  background: var(--ai-surface);
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  box-shadow: 0 2px 7px rgba(16, 24, 40, .05);
+  cursor: default;
+}
+
+.sales-ai-message.outbound .sales-ai-bubble {
+  border-color: color-mix(in srgb, var(--ai-primary) 22%, var(--ai-border));
+  background: var(--ai-primary-soft);
+}
+
+.sales-ai-message.inbound .sales-ai-bubble {
+  background: var(--ai-surface);
+}
+
+.sales-ai-message.failed .sales-ai-bubble {
+  border-color: var(--ai-red);
+  background: var(--ai-red-soft);
+}
+
+.sales-ai-message.pending .sales-ai-bubble {
+  opacity: .72;
+}
+
+.sales-ai-message.deleted .sales-ai-bubble {
+  min-width: 190px;
+  color: var(--ai-muted);
+  border-style: dashed;
+  background: var(--ai-surface-soft);
+  font-style: italic;
+}
+
+.sales-ai-sender {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 5px;
+  color: var(--ai-primary);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.sales-ai-bubble-menu {
+  width: 28px !important;
+  min-width: 28px !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  display: grid;
+  place-items: center;
+  margin: -5px -6px -3px 0;
+  padding: 0 !important;
+  border: 0;
+  border-radius: 6px !important;
+  color: var(--ai-faint);
+  background: transparent;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.sales-ai-bubble:hover .sales-ai-bubble-menu,
+.sales-ai-bubble-menu:focus-visible {
+  opacity: 1;
+}
+
+.sales-ai-bubble-menu:hover {
+  color: var(--ai-text);
+  background: var(--ai-surface-hover);
+}
+
+.sales-ai-bubble footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  margin-top: 6px;
+  color: var(--ai-faint);
+  font-size: 10px;
+}
+
+.sales-ai-message-time {
+  direction: rtl;
+  white-space: nowrap;
+}
+
+.sales-ai-edited-label {
+  color: var(--ai-faint);
+}
+
+.sales-ai-status.failed { color: var(--ai-red); }
+.sales-ai-status.read { color: var(--ai-primary); }
+
+.sales-ai-chat-media {
+  display: block;
+  width: min(360px, 100%);
+  max-height: 340px;
+  margin: 4px 0 8px;
+  border-radius: 8px;
+  object-fit: contain;
+  background: #0d1117;
+}
+
+audio.sales-ai-chat-media {
+  width: min(330px, 100%);
+  height: 42px;
+  background: transparent;
+}
+
+.sales-ai-media-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.sales-ai-audio-card {
+  min-width: min(310px, 62vw);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0 2px;
+}
+
+.sales-ai-audio-card > i {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  color: var(--ai-primary);
+  background: var(--ai-primary-soft);
+}
+
+.sales-ai-media-meta {
+  display: block;
+  margin: 1px 0 5px;
+  overflow: hidden;
+  color: var(--ai-muted);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sales-ai-deleted-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.sales-ai-opener-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #5b6472;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.sales-ai-opener-hint i {
+  color: #0b6bcb;
+}
+
+.sales-ai-message-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.sales-ai-inline-link {
+  color: var(--ai-primary);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+
+.sales-ai-link-preview {
+  width: 100%;
+  max-width: 310px;
+  min-width: 0;
+  min-height: 54px;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) 18px;
+  gap: 9px;
+  align-items: center;
+  margin-top: 8px;
+  padding: 7px 9px;
+  border: 1px solid var(--ai-border);
+  border-radius: 7px;
+  color: var(--ai-text);
+  background: color-mix(in srgb, var(--ai-surface) 72%, var(--ai-surface-soft));
+  text-decoration: none;
+}
+
+.sales-ai-link-preview:hover {
+  border-color: color-mix(in srgb, var(--ai-primary) 48%, var(--ai-border));
+  background: var(--ai-surface-hover);
+}
+
+.sales-ai-link-icon {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  color: var(--ai-primary);
+  background: var(--ai-primary-soft);
+}
+
+.sales-ai-link-preview.map .sales-ai-link-icon {
+  color: #b54708;
+  background: #fff2d8;
+}
+
+[data-theme="dark"] .sales-ai-link-preview.map .sales-ai-link-icon {
+  color: #fdb022;
+  background: rgba(245, 158, 11, .13);
+}
+
+.sales-ai-link-copy {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.sales-ai-link-copy strong,
+.sales-ai-link-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sales-ai-link-copy strong { font-size: 11px; }
+.sales-ai-link-copy small { color: var(--ai-muted); font-size: 9px; direction: ltr; text-align: right; }
+.sales-ai-link-open { color: var(--ai-faint); font-size: 10px; }
+
+.sales-ai-message-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 7px;
+  padding-top: 6px;
+  border-top: 1px solid color-mix(in srgb, var(--ai-red) 24%, transparent);
+  color: var(--ai-red);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.sales-ai-compose {
+  min-height: 64px;
+  display: block;
+  padding: 8px 10px 9px;
+  flex: 0 0 auto;
+  border-top: 1px solid var(--ai-border);
+  background: var(--ai-surface);
+}
+
+.sales-ai-compose-row {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 40px 44px;
+  gap: 7px;
+  align-items: end;
+}
+
+.sales-ai-compose-input {
+  min-width: 0;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--ai-border);
+  border-radius: 8px;
+  background: var(--ai-surface-soft);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.sales-ai-compose-input:focus-within {
+  border-color: var(--ai-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ai-primary) 15%, transparent);
+}
+
+.sales-ai-compose textarea {
+  width: 100%;
+  min-height: 42px;
+  max-height: 132px;
+  resize: none;
+  overflow-y: auto;
+  padding: 10px 11px;
+  border: 0 !important;
+  border-radius: 8px;
+  color: var(--ai-text);
+  background: transparent !important;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+
+.sales-ai-compose-tool {
+  width: 40px !important;
+  min-width: 40px !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  display: grid;
+  place-items: center;
+  padding: 0 !important;
+  border: 1px solid var(--ai-border);
+  border-radius: 8px !important;
+  color: var(--ai-muted);
+  background: var(--ai-surface);
+  cursor: pointer;
+}
+
+.sales-ai-compose-tool:hover {
+  color: var(--ai-primary);
+  border-color: var(--ai-border-strong);
+  background: var(--ai-primary-soft);
+}
+
+.sales-ai-compose-tool:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.sales-ai-editing,
+.sales-ai-recording,
+.sales-ai-draft-media {
+  margin-bottom: 8px;
+}
+
+.sales-ai-editing {
+  min-height: 42px;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) 32px;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 8px;
+  border-right: 3px solid var(--ai-primary);
+  border-radius: 6px;
+  background: var(--ai-primary-soft);
+}
+
+.sales-ai-editing[hidden],
+.sales-ai-recording[hidden],
+.sales-ai-draft-media[hidden],
+.sales-ai-message-actions[hidden] {
+  display: none !important;
+}
+
+.sales-ai-editing > i { color: var(--ai-primary); }
+.sales-ai-editing strong,
+.sales-ai-editing span { display: block; }
+.sales-ai-editing strong { font-size: 11px; }
+.sales-ai-editing span {
+  overflow: hidden;
+  color: var(--ai-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sales-ai-editing .sales-ai-icon-btn {
+  width: 30px !important;
+  min-width: 30px !important;
+  height: 30px !important;
+  min-height: 30px !important;
+}
+
+.sales-ai-draft-media {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+  border: 1px solid var(--ai-border);
+  border-radius: 8px;
+  background: var(--ai-surface-soft);
+}
+
+.sales-ai-draft-media-preview {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border-radius: 6px;
+  color: var(--ai-primary);
+  background: var(--ai-primary-soft);
+  font-size: 18px;
+}
+.sales-ai-draft-media-preview img,
+.sales-ai-draft-media-preview video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.sales-ai-draft-media-info { min-width: 0; flex: 1; }
+.sales-ai-draft-media-info strong,
+.sales-ai-draft-media-info span { display: block; }
+.sales-ai-draft-media-info strong {
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sales-ai-draft-media-info span { color: var(--ai-muted); font-size: 10px; }
+
+.sales-ai-recording {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 8px;
+  border: 1px solid color-mix(in srgb, var(--ai-red) 32%, var(--ai-border));
+  border-radius: 8px;
+  background: var(--ai-red-soft);
+}
+.sales-ai-recording-dot {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--ai-red);
+  animation: sales-ai-recording-pulse 1s infinite;
+}
+.sales-ai-recording strong { font-size: 11px; }
+.sales-ai-recording time { color: var(--ai-red); font-size: 12px; font-weight: 800; }
+.sales-ai-recording-wave {
+  height: 24px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+}
+.sales-ai-recording-wave i {
+  width: 3px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--ai-red);
+  animation: sales-ai-wave .8s ease-in-out infinite alternate;
+}
+.sales-ai-recording-wave i:nth-child(2), .sales-ai-recording-wave i:nth-child(4) { animation-delay: .2s; }
+.sales-ai-recording-wave i:nth-child(3) { animation-delay: .35s; }
+@keyframes sales-ai-recording-pulse { 50% { opacity: .35; } }
+@keyframes sales-ai-wave { to { height: 22px; } }
+
+.sales-ai-btn.danger {
+  color: var(--ai-red);
+  border-color: color-mix(in srgb, var(--ai-red) 35%, var(--ai-border));
+  background: var(--ai-surface);
+}
+
+.sales-ai-message-actions {
+  position: fixed;
+  z-index: 5200;
+  width: 210px;
+  overflow: hidden;
+  padding: 5px;
+  border: 1px solid var(--ai-border);
+  border-radius: 8px;
+  color: var(--ai-text);
+  background: var(--ai-surface);
+  box-shadow: var(--ai-shadow);
+}
+
+.sales-ai-message-actions button {
+  width: 100%;
+  min-height: 38px !important;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 10px !important;
+  border: 0;
+  border-radius: 6px !important;
+  color: var(--ai-text);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  text-align: right;
+  cursor: pointer;
+}
+.sales-ai-message-actions button:hover { background: var(--ai-surface-hover); }
+.sales-ai-message-actions button.danger { color: var(--ai-red); }
+.sales-ai-message-actions button.muted { color: var(--ai-faint); }
+.sales-ai-message-actions button i { width: 18px; text-align: center; }
+
+@media (hover: none) {
+  .sales-ai-bubble-menu { opacity: 1; }
+}
+
+.sales-ai-new-messages {
+  position: absolute;
+  bottom: 74px;
+  left: 50%;
+  z-index: 3;
+  transform: translateX(-50%);
+  height: 34px;
+  padding: 0 12px !important;
+  border: 1px solid var(--ai-border);
+  border-radius: 999px !important;
+  color: #fff;
+  background: var(--ai-primary);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: var(--ai-shadow);
+  cursor: pointer;
+}
+
+.sales-ai-details-content {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+}
+
+.sales-ai-contact-card {
+  display: grid;
+  gap: 13px;
+}
+
+.sales-ai-contact-hero {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 13px;
+  border-bottom: 1px solid var(--ai-border);
+}
+
+.sales-ai-contact-hero div {
+  min-width: 0;
+}
+
+.sales-ai-contact-hero strong,
+.sales-ai-contact-hero span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sales-ai-contact-hero strong {
+  color: var(--ai-text);
+  font-size: 14px;
+}
+
+.sales-ai-contact-hero span {
+  margin-top: 3px;
+  color: var(--ai-muted);
+  font-size: 11px;
+}
+
+.sales-ai-lead-score {
+  padding: 11px;
+  border: 1px solid var(--ai-border);
+  border-radius: 8px;
+  background: var(--ai-surface-soft);
+}
+
+.sales-ai-ad-context {
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr);
+    gap: 10px;
+    align-items: center;
+    padding: 10px;
+    margin: 10px 0;
+    border: 1px solid var(--ai-border);
+    background: var(--ai-surface-soft);
+    border-radius: 6px;
+}
+
+.sales-ai-ad-context > img,
+.sales-ai-ad-context > i {
+    width: 48px;
+    height: 48px;
+    border-radius: 5px;
+    object-fit: cover;
+}
+
+.sales-ai-ad-context > i {
+    display: grid;
+    place-items: center;
+    color: var(--ai-primary);
+    background: var(--ai-primary-soft);
+    font-size: 20px;
+}
+
+.sales-ai-ad-context div {
+    min-width: 0;
+    display: grid;
+    gap: 3px;
+}
+
+.sales-ai-ad-context span {
+    color: var(--ai-muted);
+    font-size: 11px;
+}
+
+.sales-ai-ad-context strong {
+    overflow: hidden;
+    color: var(--ai-text);
+    font-size: 12px;
+    line-height: 1.5;
+    text-overflow: ellipsis;
+}
+
+.sales-ai-ad-context a {
+    color: var(--ai-primary);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.sales-ai-origin-card {
+  width: min(420px, 100%);
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 10px;
+  align-items: stretch;
+  overflow: hidden;
+  margin: 2px 0 8px;
+  border: 1px solid var(--ai-border);
+  border-radius: 7px;
+  background: var(--ai-surface);
+  color: var(--ai-text);
+}
+
+.sales-ai-origin-card > img,
+.sales-ai-origin-icon {
+  width: 76px;
+  height: 100%;
+  min-height: 82px;
+  object-fit: cover;
+}
+
+.sales-ai-origin-icon {
+  display: grid;
+  place-items: center;
+  background: var(--ai-primary-soft);
+  color: var(--ai-primary);
+  font-size: 24px;
+}
+
+.sales-ai-origin-copy {
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  gap: 3px;
+  padding: 8px 8px 8px 10px;
+}
+
+.sales-ai-origin-copy > span {
+  color: var(--ai-primary);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.sales-ai-origin-copy strong {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--ai-text);
+  font-size: 12px;
+  line-height: 1.5;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.sales-ai-origin-copy p {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  color: var(--ai-muted);
+  font-size: 10px;
+  line-height: 1.5;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.sales-ai-origin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 3px;
+}
+
+.sales-ai-origin-actions a {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  color: var(--ai-primary);
+  font-size: 10px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+@media (max-width: 480px) {
+  .sales-ai-origin-card {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+
+  .sales-ai-origin-card > img,
+  .sales-ai-origin-icon {
+    width: 64px;
+    min-height: 76px;
+  }
+}
+
+.sales-ai-score-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 7px;
+  color: var(--ai-muted);
+  font-size: 11px;
+}
+
+.sales-ai-score-line strong {
+  color: var(--ai-text);
+  font-size: 14px;
+}
+
+.sales-ai-score-track {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--ai-border);
+}
+
+.sales-ai-score-track span {
+  height: 100%;
+  display: block;
+  border-radius: inherit;
+  background: var(--ai-primary);
+}
+
+.sales-ai-detail-list {
+  display: grid;
+}
+
+.sales-ai-detail-row {
+  min-height: 42px;
+  display: grid;
+  grid-template-columns: 95px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  border-bottom: 1px solid var(--ai-border);
+  font-size: 11px;
+}
+
+.sales-ai-detail-row span { color: var(--ai-muted); }
+.sales-ai-detail-row strong {
+  overflow-wrap: anywhere;
+  color: var(--ai-text);
+  text-align: left;
+}
+
+.sales-ai-location-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ai-primary);
+  text-decoration: none;
+}
+
+.sales-ai-detail-actions {
+  display: grid;
+  gap: 7px;
+}
+
+.sales-ai-detail-actions .sales-ai-btn {
+  width: 100%;
+}
+
+.sales-ai-btn.takeover {
+  color: var(--ai-red);
+  border-color: color-mix(in srgb, var(--ai-red) 35%, var(--ai-border));
+  background: var(--ai-red-soft);
+}
+
+.sales-ai-btn.release {
+  color: var(--ai-green);
+  border-color: color-mix(in srgb, var(--ai-green) 35%, var(--ai-border));
+  background: var(--ai-green-soft);
+}
+
+.sales-ai-btn.reopen {
+  color: var(--ai-primary);
+  background: var(--ai-primary-soft);
+}
+
+.sales-ai-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ai-faint);
+}
+
+.sales-ai-live-dot.hot { background: var(--ai-red); }
+.sales-ai-live-dot.warm { background: var(--ai-amber); }
+
+.sales-ai-empty-state {
+  min-height: 260px;
+}
+
+.sales-ai-empty-state i,
+.sales-ai-detail-empty i {
+  margin-bottom: 8px;
+  color: var(--ai-faint);
+  font-size: 24px;
+}
+
+.sales-ai-overlay,
+.sales-ai-settings {
+  position: fixed;
+  inset: 0;
+  z-index: 4000;
+}
+
+.sales-ai-overlay[hidden],
+.sales-ai-settings[hidden] {
+  display: none;
+}
+
+.sales-ai-overlay {
+  background: rgba(15, 23, 42, .42);
+}
+
+.sales-ai-overlay-dismiss {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: transparent;
+}
+
+.sales-ai-mobile-screen {
+  height: 100%;
+  color: var(--ai-text);
+  background: var(--ai-bg);
+}
+
+.mobile-summary {
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.mobile-summary .sales-ai-mobile-screen {
+  width: min(460px, calc(100vw - 32px));
+  height: auto;
+  max-height: min(620px, calc(100dvh - 40px));
+  overflow: auto;
+  border: 1px solid var(--ai-border);
+  border-radius: 8px;
+  box-shadow: var(--ai-shadow);
+}
+
+.sales-ai-mobile-screen > header,
+.sales-ai-customer-sheet > header {
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: 40px 1fr 40px;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--ai-border);
+  background: var(--ai-surface);
+}
+
+.sales-ai-mobile-screen h2,
+.sales-ai-customer-sheet h2 {
+  margin: 0;
+  color: var(--ai-text);
+  font-size: 16px;
+  text-align: center;
+}
+
+.sales-ai-mobile-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 14px;
+}
+
+.sales-ai-mobile-metrics article {
+  min-height: 132px;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  border: 1px solid var(--ai-border);
+  border-radius: 8px;
+  background: var(--ai-surface);
+}
+
+.sales-ai-mobile-metrics strong {
+  margin-top: 8px;
+  color: var(--ai-text);
+  font-size: 27px;
+}
+
+.sales-ai-mobile-metrics p {
+  margin: 3px 0 0;
+  color: var(--ai-muted);
+  font-size: 12px;
+}
+
+.sales-ai-customer-sheet {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  max-height: min(82dvh, 720px);
+  overflow-y: auto;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  color: var(--ai-text);
+  border-radius: 8px 8px 0 0;
+  background: var(--ai-surface);
+  box-shadow: 0 -14px 36px rgba(0, 0, 0, .2);
+}
+
+.sales-ai-customer-sheet > header {
+  grid-template-columns: 1fr 40px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.sales-ai-customer-sheet h2 { text-align: right; }
+
+.sales-ai-sheet-handle {
+  width: 40px;
+  height: 4px;
+  display: block;
+  margin: 8px auto 2px;
+  border-radius: 999px;
+  background: var(--ai-border-strong);
+}
+
+#mobileContactPanel {
+  padding: 4px 14px 14px;
+}
+
+.sales-ai-settings {
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  color: var(--ai-text);
+}
+
+.sales-ai-settings-backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: rgba(15, 23, 42, .52);
+}
+
+.sales-ai-settings-dialog {
+  position: relative;
+  width: min(1120px, 100%);
+  min-width: 0;
+  max-width: 100%;
+  height: min(820px, calc(100dvh - 36px));
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: clip;
+  border: 1px solid var(--ai-border);
+  border-radius: 8px;
+  background: var(--ai-surface);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .25);
+}
+
+.sales-ai-settings-header {
+  min-width: 0;
+  min-height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 15px;
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--ai-border);
+}
+
+.sales-ai-settings-header h2 {
+  color: var(--ai-text);
+  font-size: 17px;
+}
+
+.sales-ai-settings-layout {
+  height: 100%;
+  width: 100%;
+  min-height: 0;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  overflow: clip;
+}
+
+.sales-ai-settings-nav {
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 12px;
+  border-left: 1px solid var(--ai-border);
+  background: var(--ai-surface-soft);
+  overflow-y: auto;
+}
+
+.sales-ai-settings-nav button {
+  min-height: 43px !important;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 12px !important;
+  border: 0;
+  border-radius: 8px !important;
+  color: var(--ai-muted);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: right;
+  cursor: pointer;
+}
+
+.sales-ai-settings-nav button.active {
+  color: var(--ai-primary);
+  background: var(--ai-primary-soft);
+}
+
+.sales-ai-settings-content {
+  height: 100%;
+  width: 100%;
+  min-height: 0;
+  min-width: 0;
+  max-width: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--ai-surface);
+}
+
+.sales-ai-form {
+  width: 100%;
+  min-height: 0;
+  min-width: 0;
+  max-width: 100%;
+  padding: 20px;
+}
+
+.sales-ai-form[data-pane="meta"] {
+  padding-bottom: 32px;
+}
+
+.sales-ai-form[hidden] { display: none; }
+
+.sales-ai-section-heading {
+  margin-bottom: 18px;
+}
+
+.sales-ai-section-heading h3,
+.sales-ai-section-heading p {
+  margin: 0;
+}
+
+.sales-ai-section-heading h3 {
+  color: var(--ai-text);
+  font-size: 17px;
+}
+
+.sales-ai-section-heading p {
+  margin-top: 4px;
+  color: var(--ai-muted);
+  font-size: 12px;
+}
+
+.sales-ai-intelligence-fieldset {
+  min-width: 0;
+  margin: 0 0 18px;
+  padding: 0;
+  border: 0;
+}
+
+.sales-ai-intelligence-fieldset legend {
+  margin-bottom: 8px;
+  color: var(--ai-text);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.sales-ai-intelligence-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.sales-ai-intelligence-option {
+  min-width: 0;
+  min-height: 102px;
+  position: relative;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-content: center;
+  align-items: center;
+  gap: 9px;
+  padding: 12px 10px;
+  overflow: hidden;
+  border: 1px solid var(--ai-border);
+  border-radius: 8px;
+  background: var(--ai-surface-soft);
+  cursor: pointer;
+  transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease;
+}
+
+.sales-ai-intelligence-option:hover {
+  border-color: var(--ai-border-strong);
+  background: var(--ai-surface-hover);
+}
+
+.sales-ai-intelligence-option:has(input:checked) {
+  border-color: var(--ai-primary);
+  background: var(--ai-primary-soft);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ai-primary) 18%, transparent);
+}
+
+.sales-ai-intelligence-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sales-ai-level-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--ai-primary);
+  background: var(--ai-surface);
+  font-size: 14px;
+}
+
+.sales-ai-intelligence-option > span:nth-of-type(2) {
+  min-width: 0;
+}
+
+.sales-ai-intelligence-option strong,
+.sales-ai-intelligence-option small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.sales-ai-intelligence-option strong {
+  color: var(--ai-text);
+  font-size: 11px;
+}
+
+.sales-ai-intelligence-option small {
+  margin-top: 3px;
+  color: var(--ai-muted);
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.sales-ai-intelligence-option > .fa-circle-check {
+  position: absolute;
+  top: 7px;
+  left: 7px;
+  color: var(--ai-primary);
+  font-size: 13px;
+  opacity: 0;
+}
+
+.sales-ai-intelligence-option input:checked ~ .fa-circle-check {
+  opacity: 1;
+}
+
+.sales-ai-level-description {
+  min-height: 38px;
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  color: var(--ai-muted);
+  border-inline-start: 3px solid var(--ai-primary);
+  border-radius: 4px;
+  background: var(--ai-surface-soft);
+  font-size: 10px;
+  line-height: 1.7;
+}
+
+.sales-ai-intelligence-capabilities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.sales-ai-intelligence-capabilities span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 4px 8px;
+  color: var(--ai-muted);
+  border: 1px solid var(--ai-border);
+  border-radius: 6px;
+  background: var(--ai-surface);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.sales-ai-intelligence-capabilities i {
+  color: var(--ai-primary);
+}
+
+.sales-ai-knowledge-empty {
+  min-height: 230px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  margin-top: 14px;
+  color: var(--ai-muted);
+  border: 1px dashed var(--ai-border-strong);
+  border-radius: 8px;
+  background: var(--ai-surface-soft);
+  font-size: 12px;
+}
+
+.sales-ai-knowledge-empty[hidden],
+.sales-ai-knowledge-editor[hidden] {
+  display: none !important;
+}
+
+.sales-ai-knowledge-empty i {
+  color: var(--ai-primary);
+  font-size: 26px;
+}
+
+.sales-ai-knowledge-editor {
+  margin-top: 14px;
+}
+
+.sales-ai-knowledge-score {
+  display: grid;
+  grid-template-columns: auto minmax(180px, 1fr);
+  align-items: center;
+  gap: 8px 14px;
+  margin-bottom: 16px;
+  padding: 12px;
+  border: 1px solid var(--ai-border);
+  border-radius: 8px;
+  background: var(--ai-surface-soft);
+}
+
+.sales-ai-knowledge-score > div:first-child {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+}
+
+.sales-ai-knowledge-score strong {
+  color: var(--ai-primary);
+  font-size: 20px;
+}
+
+.sales-ai-knowledge-score span,
+.sales-ai-knowledge-score p {
+  color: var(--ai-muted);
+  font-size: 10px;
+}
+
+.sales-ai-knowledge-score p {
+  grid-column: 1 / -1;
+  margin: 0;
+  line-height: 1.7;
+}
+
+.sales-ai-knowledge-meter {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--ai-border);
+}
+
+.sales-ai-knowledge-meter i {
+  width: 0;
+  height: 100%;
+  display: block;
+  border-radius: inherit;
+  background: var(--ai-primary);
+  transition: width .25s ease, background-color .25s ease;
+}
+
+.sales-ai-knowledge-meter i[data-level="low"] { background: var(--ai-red); }
+.sales-ai-knowledge-meter i[data-level="medium"] { background: var(--ai-amber); }
+.sales-ai-knowledge-meter i[data-level="good"] { background: var(--ai-green); }
+
+.sales-ai-knowledge-visibility {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--ai-green) 26%, var(--ai-border));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ai-green) 7%, var(--ai-surface));
+}
+
+.sales-ai-knowledge-visibility > div {
+  display: grid;
+  gap: 4px;
+}
+
+.sales-ai-knowledge-visibility strong {
+  font-size: 13px;
+  color: var(--ai-green);
+}
+
+.sales-ai-knowledge-visibility span {
+  font-size: 11px;
+  color: var(--ai-muted);
+  line-height: 1.7;
+}
+
+.sales-ai-knowledge-visibility.is-hidden {
+  border-color: color-mix(in srgb, var(--ai-red) 30%, var(--ai-border));
+  background: color-mix(in srgb, var(--ai-red) 7%, var(--ai-surface));
+}
+
+.sales-ai-knowledge-visibility.is-hidden strong {
+  color: var(--ai-red);
+}
+
+.sales-ai-learning-pane {
+  display: grid;
+  gap: 18px;
+}
+
+.sales-ai-learning-pane[hidden] { display: none; }
+
+.sales-ai-learning-pane > .sales-ai-section-heading { margin-bottom: 0; }
+
+.sales-ai-learning-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 1px solid var(--ai-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--ai-surface-soft);
+}
+
+.sales-ai-learning-stats article {
+  min-width: 0;
+  min-height: 92px;
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  align-content: center;
+  align-items: center;
+  gap: 2px 9px;
+  padding: 12px;
+  border-inline-end: 1px solid var(--ai-border);
+}
+
+.sales-ai-learning-stats article:last-child { border-inline-end: 0; }
+.sales-ai-learning-stats i {
+  grid-row: 1 / span 2;
+  color: var(--ai-primary);
+  font-size: 18px;
+  text-align: center;
+}
+.sales-ai-learning-stats strong { color: var(--ai-text); font-size: 19px; }
+.sales-ai-learning-stats span { color: var(--ai-muted); font-size: 10px; }
+
+.sales-ai-learning-settings,
+.sales-ai-problem-editor,
+.sales-ai-problem-library,
+.sales-ai-excel-import {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--ai-border);
+  border-radius: 8px;
+  background: var(--ai-surface-soft);
+}
+
+.sales-ai-subsection-heading {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 13px;
+}
+
+.sales-ai-subsection-heading > div { min-width: 0; }
+.sales-ai-subsection-heading strong,
+.sales-ai-subsection-heading small { display: block; }
+.sales-ai-subsection-heading strong { color: var(--ai-text); font-size: 12px; }
+.sales-ai-subsection-heading small { margin-top: 3px; color: var(--ai-muted); font-size: 10px; line-height: 1.6; }
+
+.sales-ai-learning-grid {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(320px, .95fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.sales-ai-problem-list {
+  max-height: 630px;
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+  overflow-y: auto;
+}
+
+.sales-ai-problem-item {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 9px;
+  padding: 10px;
+  border: 1px solid var(--ai-border);
+  border-radius: 7px;
+  background: var(--ai-surface);
+}
+.sales-ai-problem-item.inactive { opacity: .62; }
+.sales-ai-problem-main { min-width: 0; }
+.sales-ai-problem-main strong,
+.sales-ai-problem-main p,
+.sales-ai-problem-main span { display: block; }
+.sales-ai-problem-main strong { color: var(--ai-text); font-size: 11px; line-height: 1.6; }
+.sales-ai-problem-main p {
+  display: -webkit-box;
+  margin: 4px 0;
+  overflow: hidden;
+  color: var(--ai-muted);
+  font-size: 10px;
+  line-height: 1.6;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.sales-ai-problem-main span { color: var(--ai-faint); font-size: 9px; }
+.sales-ai-problem-main span i { margin-inline-end: 5px; color: var(--ai-green); }
+.sales-ai-problem-actions { display: flex; gap: 4px; }
+.sales-ai-problem-actions button {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--ai-border);
+  border-radius: 6px;
+  color: var(--ai-muted);
+  background: var(--ai-surface-soft);
+  cursor: pointer;
+}
+.sales-ai-problem-actions button:hover { color: var(--ai-primary); border-color: var(--ai-border-strong); }
+.sales-ai-problem-actions button.danger:hover { color: var(--ai-red); }
+
+.sales-ai-excel-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: center;
+}
+.sales-ai-excel-controls input {
+  min-width: 0;
+  min-height: 42px;
+  padding: 7px;
+  border: 1px solid var(--ai-border);
+  border-radius: 8px;
+  color: var(--ai-text);
+  background: var(--ai-surface);
+  font: inherit;
+  font-size: 11px;
+}
+.sales-ai-import-history { display: grid; gap: 6px; margin-top: 11px; }
+.sales-ai-import-row {
+  min-width: 0;
+  min-height: 46px;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  border-top: 1px solid var(--ai-border);
+}
+.sales-ai-import-row > i { color: var(--ai-green); font-size: 16px; text-align: center; }
+.sales-ai-import-row.failed > i { color: var(--ai-red); }
+.sales-ai-import-row strong,
+.sales-ai-import-row small { display: block; }
+.sales-ai-import-row strong { overflow: hidden; color: var(--ai-text); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.sales-ai-import-row small,
+.sales-ai-import-row time { color: var(--ai-muted); font-size: 9px; }
+
+.sales-ai-learning-settings input[type="range"] {
+  min-height: 24px;
+  padding: 0;
+  accent-color: var(--ai-primary);
+}
+
+.sales-ai-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 13px;
+}
+
+.sales-ai-field {
+  min-width: 0;
+}
+
+.sales-ai-field.full,
+.sales-ai-switch-row.full {
+  grid-column: 1 / -1;
+}
+
+.sales-ai-field label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 5px;
+  color: var(--ai-text);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.sales-ai-field label output {
+  min-width: 46px;
+  color: var(--ai-primary);
+  direction: ltr;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+}
+
+.sales-ai-field input,
+.sales-ai-field select,
+.sales-ai-field textarea {
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid var(--ai-border);
+  border-radius: 8px;
+  color: var(--ai-text);
+  background: var(--ai-surface-soft);
+  font: inherit;
+  font-size: 12px;
+}
+
+.sales-ai-field input[type="range"] {
+  min-height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  accent-color: var(--ai-primary);
+  background: transparent;
+  cursor: pointer;
+}
+
+.sales-ai-field textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+.sales-ai-field small {
+  display: block;
+  margin-top: 4px;
+  color: var(--ai-muted);
+  font-size: 10px;
+}
+
+.sales-ai-saved {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  color: var(--ai-green);
+  background: var(--ai-green-soft);
+  font-size: 9px;
+}
+
+.sales-ai-saved.show { display: inline-flex; }
+
+.sales-ai-switch-row {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 11px;
+  border: 1px solid var(--ai-border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.sales-ai-switch-row span {
+  min-width: 0;
+}
+
+.sales-ai-switch-row strong,
+.sales-ai-switch-row small {
+  display: block;
+}
+
+.sales-ai-switch-row strong {
+  color: var(--ai-text);
+  font-size: 11px;
+}
+
+.sales-ai-switch-row small {
+  margin-top: 2px;
+  color: var(--ai-muted);
+  font-size: 10px;
+}
+
+.sales-ai-switch-row input {
+  position: absolute;
+  opacity: 0;
+}
+
+.sales-ai-switch-row i {
+  width: 38px;
+  height: 22px;
+  position: relative;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--ai-border-strong);
+  transition: background 160ms ease;
+}
+
+.sales-ai-switch-row i::after {
+  content: "";
+  width: 16px;
+  height: 16px;
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .22);
+  transition: transform 160ms ease;
+}
+
+.sales-ai-switch-row input:checked + i { background: var(--ai-primary); }
+.sales-ai-switch-row input:checked + i::after { transform: translateX(-16px); }
+
+.sales-ai-tts-test {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--ai-border);
+  border-radius: 8px;
+  background: var(--ai-surface-soft);
+}
+
+.sales-ai-tts-test > div:first-child strong,
+.sales-ai-tts-test > div:first-child small { display: block; }
+.sales-ai-tts-test > div:first-child strong { color: var(--ai-text); font-size: 12px; }
+.sales-ai-tts-test > div:first-child small { margin-top: 3px; color: var(--ai-muted); font-size: 10px; }
+.sales-ai-tts-test-controls { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.sales-ai-tts-test-controls input {
+  min-width: 0;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid var(--ai-border);
+  border-radius: 8px;
+  color: var(--ai-text);
+  background: var(--ai-surface);
+  font: inherit;
+  font-size: 12px;
+}
+.sales-ai-tts-test audio { width: 100%; height: 40px; }
+.sales-ai-tts-test p { min-height: 16px; margin: 0; color: var(--ai-muted); font-size: 10px; }
+.sales-ai-tts-test p.success { color: var(--ai-green); }
+.sales-ai-tts-test p.error { color: var(--ai-red); }
+
+.sales-ai-form-footer {
+  position: sticky;
+  bottom: -20px;
+  z-index: 4;
+  display: flex;
+  justify-content: flex-end;
+  margin: 20px -20px -20px;
+  padding: 11px 20px;
+  border-top: 1px solid var(--ai-border);
+  background: color-mix(in srgb, var(--ai-surface) 94%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.sales-ai-inline-actions {
+  margin-top: 16px;
+}
+
+.sales-ai-channel-summary {
+  margin-bottom: 16px;
+  padding: 12px;
+  border: 1px solid var(--ai-border);
+  border-radius: 8px;
+  background: var(--ai-surface-soft);
+}
+
+.sales-ai-channel-summary > strong {
+  display: block;
+  margin-top: 10px;
+  color: var(--ai-text);
+  font-size: 10px;
+}
+
+.sales-ai-channel-summary code {
+  display: block;
+  margin-top: 5px;
+  padding: 8px;
+  overflow-wrap: anywhere;
+  color: var(--ai-muted);
+  border: 1px solid var(--ai-border);
+  border-radius: 6px;
+  background: var(--ai-surface);
+  direction: ltr;
+  font-size: 10px;
+  text-align: left;
+}
+
+.sales-ai-channel-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.sales-ai-channel-state {
+  min-height: 58px;
+  padding: 8px;
+  border: 1px solid var(--ai-border);
+  border-radius: 6px;
+  background: var(--ai-surface);
+}
+
+.sales-ai-channel-state span,
+.sales-ai-channel-state strong {
+  display: block;
+}
+
+.sales-ai-channel-state span {
+  color: var(--ai-muted);
+  font-size: 9px;
+}
+
+.sales-ai-channel-state strong {
+  margin-top: 3px;
+  overflow: hidden;
+  color: var(--ai-text);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sales-ai-channel-state.ok strong { color: var(--ai-green); }
+.sales-ai-channel-state.missing strong { color: var(--ai-amber); }
+
+.sales-ai-meta-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  padding: 4px;
+  border: 1px solid var(--ai-border);
+  border-radius: 8px;
+  background: var(--ai-surface-soft);
+}
+
+.sales-ai-meta-tabs button {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 14px;
+  color: var(--ai-muted);
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sales-ai-meta-tabs button.active {
+  color: var(--ai-primary);
+  background: var(--ai-surface);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, .08);
+}
+
+.sales-ai-meta-tabs button span {
+  min-width: 22px;
+  height: 20px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--ai-primary-soft);
+  font-size: 9px;
+}
+
+.sales-ai-meta-panel[hidden] { display: none !important; }
+
+.sales-ai-meta-import {
+  display: grid;
+  grid-template-columns: minmax(210px, .7fr) minmax(380px, 1.3fr);
+  align-items: end;
+  gap: 14px;
+  padding: 13px;
+  border: 1px solid color-mix(in srgb, var(--ai-primary) 28%, var(--ai-border));
+  border-radius: 8px;
+  background: var(--ai-primary-soft);
+}
+
+.sales-ai-meta-import strong,
+.sales-ai-meta-import small { display: block; }
+.sales-ai-meta-import strong { color: var(--ai-text); font-size: 11px; }
+.sales-ai-meta-import small { margin-top: 4px; color: var(--ai-muted); font-size: 9px; line-height: 1.6; }
+
+.sales-ai-meta-import-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.sales-ai-meta-import-fields input,
+.sales-ai-meta-toolbar input,
+.sales-ai-meta-toolbar select {
+  width: 100%;
+  height: 40px;
+  padding: 0 11px;
+  color: var(--ai-text);
+  border: 1px solid var(--ai-border);
+  border-radius: 6px;
+  outline: none;
+  background: var(--ai-surface);
+  font: inherit;
+  font-size: 10px;
+}
+
+.sales-ai-meta-import-fields input:focus,
+.sales-ai-meta-toolbar input:focus,
+.sales-ai-meta-toolbar select:focus {
+  border-color: var(--ai-primary);
+  box-shadow: 0 0 0 3px var(--ai-primary-soft);
+}
+
+.sales-ai-meta-toolbar {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) 160px 160px;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.sales-ai-meta-search { position: relative; }
+.sales-ai-meta-search i {
+  position: absolute;
+  top: 50%;
+  inset-inline-start: 12px;
+  color: var(--ai-muted);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.sales-ai-meta-search input { padding-inline-start: 34px; }
+
+.sales-ai-meta-bulk {
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  padding: 6px 9px;
+  border: 1px solid var(--ai-border);
+  border-radius: 8px;
+  background: var(--ai-surface-soft);
+}
+
+.sales-ai-meta-bulk > label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ai-text);
+  font-size: 10px;
+  cursor: pointer;
+}
+.sales-ai-meta-bulk > strong { color: var(--ai-muted); font-size: 9px; font-weight: 600; }
+.sales-ai-meta-bulk > div { display: flex; gap: 5px; margin-inline-start: auto; }
+.sales-ai-meta-bulk button {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 9px;
+  color: var(--ai-text);
+  border: 1px solid var(--ai-border);
+  border-radius: 6px;
+  background: var(--ai-surface);
+  font: inherit;
+  font-size: 9px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.sales-ai-meta-bulk button:hover:not(:disabled) { color: var(--ai-primary); border-color: var(--ai-primary); }
+.sales-ai-meta-bulk button:disabled { opacity: .45; cursor: not-allowed; }
+
+.sales-ai-meta-pages,
+.sales-ai-media-list {
+  display: grid;
+  gap: 9px;
+  margin-top: 16px;
+}
+
+.sales-ai-meta-pages {
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  align-items: start;
+}
+
+.sales-ai-meta-page,
+.sales-ai-media-item {
+  padding: 11px;
+  border: 1px solid var(--ai-border);
+  border-radius: 8px;
+  background: var(--ai-surface-soft);
+}
+
+.sales-ai-meta-page { position: relative; }
+
+.sales-ai-meta-select {
+  position: absolute;
+  top: 12px;
+  inset-inline-start: 12px;
+  z-index: 2;
+  cursor: pointer;
+}
+.sales-ai-meta-select input { position: absolute; opacity: 0; }
+.sales-ai-meta-select span {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--ai-border-strong);
+  border-radius: 5px;
+  background: var(--ai-surface);
+}
+.sales-ai-meta-select input:checked + span { border-color: var(--ai-primary); background: var(--ai-primary); }
+.sales-ai-meta-select input:checked + span::after { content: "\2713"; color: #fff; font-size: 12px; font-weight: 900; }
+
+.sales-ai-meta-head,
+.sales-ai-media-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.sales-ai-meta-head > div:first-of-type {
+  min-width: 0;
+  flex: 1;
+}
+
+.sales-ai-meta-head { padding-inline-start: 30px; }
+
+.sales-ai-meta-status {
+  flex: 0 0 auto;
+  padding: 4px 7px;
+  border-radius: 999px;
+  color: var(--ai-amber);
+  background: color-mix(in srgb, var(--ai-amber) 12%, transparent);
+  font-size: 8px;
+  font-weight: 800;
+}
+.sales-ai-meta-status.ok { color: var(--ai-green); background: color-mix(in srgb, var(--ai-green) 12%, transparent); }
+
+.sales-ai-meta-head img,
+.sales-ai-meta-avatar {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  color: var(--ai-primary);
+  background: var(--ai-primary-soft);
+  object-fit: cover;
+}
+
+.sales-ai-meta-head strong,
+.sales-ai-meta-head small,
+.sales-ai-media-item strong,
+.sales-ai-media-item small {
+  display: block;
+}
+
+.sales-ai-meta-head strong,
+.sales-ai-media-item strong {
+  color: var(--ai-text);
+  font-size: 11px;
+}
+
+.sales-ai-meta-head small,
+.sales-ai-media-item small {
+  margin-top: 2px;
+  color: var(--ai-muted);
+  font-size: 9px;
+}
+
+.sales-ai-meta-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.sales-ai-meta-controls label {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--ai-muted);
+  font-size: 9px;
+}
+
+.sales-ai-meta-controls select {
+  width: 100%;
+  height: 36px;
+  padding: 0 8px;
+  border: 1px solid var(--ai-border);
+  border-radius: 6px;
+  color: var(--ai-text);
+  background: var(--ai-surface);
+  font: inherit;
+  font-size: 10px;
+}
+
+.sales-ai-meta-controls > div > small {
+  display: block;
+  margin-top: 4px;
+  color: var(--ai-muted);
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.sales-ai-meta-controls .sales-ai-switch-row {
+  min-height: 36px;
+  padding: 6px 8px;
+}
+
+.sales-ai-meta-controls .sales-ai-switch-row small { display: none; }
+
+.sales-ai-meta-buttons {
+  display: flex;
+  gap: 7px;
+  margin-top: 9px;
+}
+
+.sales-ai-meta-buttons .sales-ai-btn {
+  min-height: 35px;
+  font-size: 10px;
+}
+
+.sales-ai-meta-buttons .sales-ai-icon-btn.danger {
+  width: 35px;
+  height: 35px;
+  margin-inline-start: auto;
+  color: var(--ai-red);
+  border-color: color-mix(in srgb, var(--ai-red) 30%, var(--ai-border));
+  background: var(--ai-surface);
+}
+
+.sales-ai-meta-empty {
+  min-height: 90px;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  color: var(--ai-muted);
+  border: 1px dashed var(--ai-border-strong);
+  border-radius: 8px;
+  font-size: 11px;
+  text-align: center;
+}
+
+.sales-ai-media-item > div {
+  min-width: 0;
+}
+
+.sales-ai-toast {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  z-index: 5000;
+  max-width: min(420px, calc(100vw - 24px));
+  display: none;
+  padding: 10px 14px;
+  color: #fff;
+  border-radius: 8px;
+  background: #172033;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .22);
+  font-size: 12px;
+}
+
+.sales-ai-toast.show { display: block; }
+.sales-ai-toast.error { background: #b4232c; }
+
+.mobile-only { display: none; }
+
+@media (max-width: 1250px) {
+  .sales-ai-workspace {
+    grid-template-columns: 300px minmax(380px, 1fr);
+  }
+
+  .sales-ai-details-pane {
+    display: none;
+  }
+
+  .sales-ai-workspace.details-open {
+    grid-template-columns: 300px minmax(380px, 1fr) 290px;
+  }
+
+  .sales-ai-workspace.details-open .sales-ai-details-pane {
+    display: flex;
+  }
+}
+
+@media (max-width: 900px) {
+  .sales-ai-page .page-main {
+    min-height: 0 !important;
+  }
+
+  .sales-ai-app {
+    height: calc(100dvh - 100px);
+    min-height: 520px;
+    padding: 8px;
+    gap: 8px;
+  }
+
+  .sales-ai-top-settings {
+    width: 44px !important;
+    padding: 0 !important;
+  }
+
+  .sales-ai-top-settings span {
+    display: none;
+  }
+
+  .mobile-summary {
+    display: block;
+    padding: 0;
+  }
+
+  .mobile-summary .sales-ai-mobile-screen {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .sales-ai-appbar {
+    min-height: 46px;
+  }
+
+  .sales-ai-brand-icon {
+    width: 38px;
+    height: 38px;
+    font-size: 16px;
+  }
+
+  .sales-ai-brand h1 { font-size: 16px; }
+  .sales-ai-brand p { display: none; }
+
+  .sales-ai-app-actions .sales-ai-btn {
+    width: 40px !important;
+    min-width: 40px !important;
+    padding: 0 !important;
+  }
+
+  .sales-ai-app-actions .sales-ai-btn span { display: none; }
+  .desktop-metrics,
+  .desktop-only { display: none !important; }
+  .mobile-only { display: inline-grid; }
+
+  .sales-ai-workspace,
+  .sales-ai-workspace.details-open,
+  .sales-ai-workspace.details-collapsed {
+    position: relative;
+    grid-template-columns: 1fr;
+  }
+
+  .sales-ai-conversation-pane,
+  .sales-ai-chat-pane {
+    position: absolute;
+    inset: 0;
+    border: 0;
+  }
+
+  .sales-ai-chat-pane {
+    display: none;
+  }
+
+  .sales-ai-workspace.mobile-chat-open .sales-ai-conversation-pane {
+    display: none;
+  }
+
+  .sales-ai-workspace.mobile-chat-open .sales-ai-chat-pane {
+    display: flex;
+  }
+
+  .sales-ai-details-pane { display: none !important; }
+
+  .sales-ai-pane-title,
+  .sales-ai-chat-header {
+    min-height: 55px;
+  }
+
+  .sales-ai-conversation {
+    min-height: 78px;
+  }
+
+  .sales-ai-messages {
+    padding: 12px 10px;
+  }
+
+  .sales-ai-bubble {
+    max-width: 88%;
+  }
+
+  .sales-ai-compose {
+    padding-bottom: max(9px, env(safe-area-inset-bottom));
+  }
+
+  .sales-ai-settings {
+    padding: 0;
+  }
+
+  .sales-ai-settings-dialog {
+    width: 100vw;
+    min-width: 0;
+    max-width: 100vw;
+    height: 100dvh;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .sales-ai-settings-layout {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: clip;
+  }
+
+  .sales-ai-settings-nav {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 50px;
+    flex-direction: row;
+    flex: 0 0 auto;
+    overflow-x: auto;
+    padding: 7px 9px;
+    border-left: 0;
+    border-bottom: 1px solid var(--ai-border);
+    scrollbar-width: none;
+  }
+
+  .sales-ai-settings-nav::-webkit-scrollbar { display: none; }
+
+  .sales-ai-settings-nav button {
+    min-width: max-content;
+    min-height: 36px;
+    padding: 0 10px;
+  }
+
+  .sales-ai-settings-content {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    height: auto;
+    flex: 1;
+  }
+
+  .sales-ai-form {
+    padding: 14px;
+  }
+
+  .sales-ai-intelligence-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sales-ai-form-footer {
+    bottom: -14px;
+    margin: 18px -14px -14px;
+    padding: 10px 14px max(10px, env(safe-area-inset-bottom));
+  }
+
+  .sales-ai-meta-import,
+  .sales-ai-meta-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .sales-ai-meta-pages {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sales-ai-learning-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .sales-ai-learning-stats article:nth-child(2) { border-inline-end: 0; }
+  .sales-ai-learning-stats article:nth-child(-n+2) { border-bottom: 1px solid var(--ai-border); }
+
+  .sales-ai-learning-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sales-ai-meta-bulk {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .sales-ai-meta-bulk > div {
+    width: 100%;
+    margin-inline-start: 0;
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 600px) {
+  .sales-ai-compose-row {
+    grid-template-columns: 38px minmax(0, 1fr) 38px 42px;
+    gap: 5px;
+  }
+
+  .sales-ai-compose-tool {
+    width: 38px !important;
+    min-width: 38px !important;
+    height: 42px !important;
+    min-height: 42px !important;
+  }
+
+  .sales-ai-recording {
+    gap: 6px;
+  }
+
+  .sales-ai-recording .sales-ai-btn {
+    width: 36px !important;
+    min-width: 36px !important;
+    padding: 0 !important;
+  }
+
+  .sales-ai-recording .sales-ai-btn span,
+  .sales-ai-recording-wave {
+    display: none;
+  }
+
+  .sales-ai-message-actions {
+    top: auto !important;
+    right: 10px !important;
+    bottom: max(10px, env(safe-area-inset-bottom));
+    left: 10px !important;
+    width: auto;
+  }
+
+  .sales-ai-audio-card {
+    min-width: min(260px, 70vw);
+  }
+
+  .sales-ai-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sales-ai-subsection-heading,
+  .sales-ai-excel-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .sales-ai-subsection-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .sales-ai-subsection-heading .sales-ai-btn,
+  .sales-ai-excel-controls .sales-ai-btn {
+    width: 100%;
+  }
+
+  .sales-ai-intelligence-capabilities {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .sales-ai-knowledge-score {
+    grid-template-columns: 1fr;
+  }
+
+  .sales-ai-knowledge-score p {
+    grid-column: auto;
+  }
+
+  .sales-ai-field.full,
+  .sales-ai-switch-row.full {
+    grid-column: auto;
+  }
+
+  .sales-ai-channel-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .sales-ai-meta-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .sales-ai-meta-tabs button {
+    flex: 1;
+    padding: 0 8px;
+  }
+
+  .sales-ai-meta-import-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .sales-ai-meta-bulk button {
+    min-width: 34px;
+    justify-content: center;
+  }
+
+  .sales-ai-meta-bulk button span {
+    display: none;
+  }
+
+  .sales-ai-meta-buttons,
+  .sales-ai-inline-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .sales-ai-meta-buttons .sales-ai-btn,
+  .sales-ai-inline-actions .sales-ai-btn {
+    width: 100%;
+    padding: 0 8px;
+  }
+
+  .sales-ai-chat-actions {
+    gap: 4px;
+  }
+
+  .sales-ai-chat-actions .sales-ai-icon-btn {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+@media (max-width: 380px) {
+  .sales-ai-app {
+    padding: 6px;
+  }
+
+  .sales-ai-brand h1 { font-size: 14px; }
+  .sales-ai-app-actions { gap: 5px; }
+  .sales-ai-app-actions .sales-ai-btn,
+  .sales-ai-app-actions .sales-ai-icon-btn {
+    width: 38px !important;
+    min-width: 38px !important;
+    min-height: 38px !important;
+    padding: 0 !important;
+  }
+
+  .sales-ai-bubble {
+    max-width: 92%;
+    font-size: 12px;
+  }
+
+  .sales-ai-mobile-metrics {
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .sales-ai-mobile-metrics article {
+    min-height: 116px;
+  }
+
+  .sales-ai-intelligence-option {
+    min-height: 96px;
+    grid-template-columns: 30px minmax(0, 1fr);
+    padding: 10px 8px;
+  }
+
+  .sales-ai-level-icon {
+    width: 30px;
+    height: 30px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sales-ai-app *,
+  .sales-ai-settings *,
+  .sales-ai-overlay * {
+    scroll-behavior: auto !important;
+    transition: none !important;
+    animation: none !important;
+  }
+}
+.sales-ai-training-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.sales-ai-training-actions button {
+  border: 1px solid var(--ai-border);
+  background: #fff;
+  color: var(--ai-text);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sales-ai-training-actions button i,
+.sales-ai-training-approved i {
+  margin-inline-end: 6px;
+}
+
+.sales-ai-training-actions .sales-ai-training-like {
+  border-color: rgba(22, 163, 74, 0.28);
+  color: #15803d;
+}
+
+.sales-ai-training-actions .sales-ai-training-dislike {
+  border-color: rgba(220, 38, 38, 0.25);
+  color: #b91c1c;
+}
+
+.sales-ai-training-approved {
+  display: inline-flex;
+  align-items: center;
+  color: #15803d;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.sales-ai-training-correction {
+  width: 100%;
+  display: grid;
+  gap: 8px;
+}
+
+.sales-ai-training-correction select,
+.sales-ai-training-correction textarea {
+  width: 100%;
+  border: 1px solid var(--ai-border);
+  border-radius: 8px;
+  padding: 9px 10px;
+  font: inherit;
+  background: #fff;
+  color: var(--ai-text);
+}
+
+.sales-ai-training-correction textarea {
+  resize: vertical;
+  min-height: 76px;
+}

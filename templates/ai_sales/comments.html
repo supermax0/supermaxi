@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}تعليقات Meta - Finora Sales AI{% endblock %}
+{% block body_class %}sales-comments-page{% endblock %}
+{% block page_title %}
+  <a class="comments-top-link" href="{{ url_for('ai_sales.inbox') }}">
+    <i class="fa-solid fa-comments"></i><span>المحادثات</span>
+  </a>
+{% endblock %}
+{% block topbar_actions %}{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ai-sales-comments.css', v='20260717-03') }}">
+
+<main class="comments-app" id="commentsApp" data-can-manage="{{ 'true' if can_manage else 'false' }}">
+  <header class="comments-toolbar">
+    <div class="comments-title">
+      <span><i class="fa-brands fa-facebook"></i></span>
+      <div><h1>المنشورات والتعليقات</h1><p>متابعة تعليقات الصفحات والرد العام والخاص من مكان واحد</p></div>
+    </div>
+    <div class="comments-toolbar-actions">
+      <label class="comments-page-select">
+        <span>الصفحة</span>
+        <select id="pageSelect"><option value="">كل الصفحات</option></select>
+      </label>
+      <button class="comments-btn secondary" id="refreshCommentsBtn" type="button" title="تحديث القائمة">
+        <i class="fa-solid fa-rotate"></i><span>تحديث</span>
+      </button>
+      <button class="comments-btn primary" id="syncCommentsBtn" type="button">
+        <i class="fa-solid fa-cloud-arrow-down"></i><span>جلب المنشورات</span>
+      </button>
+    </div>
+  </header>
+
+  <details class="comments-meta-help">
+    <summary><i class="fa-brands fa-meta"></i><span>متطلبات الربط مع Meta</span><i class="fa-solid fa-chevron-down"></i></summary>
+    <div class="comments-meta-help-body">
+      <p><strong>Webhook:</strong> اختر الكائن <code>Page</code> واشترك بالحقل <code>feed</code>. استخدم رابط الاستدعاء وVerify Token الظاهرين في إعدادات Meta داخل Finora.</p>
+      <p><strong>الصلاحيات:</strong> <code>pages_show_list</code>، <code>pages_manage_metadata</code>، <code>pages_read_engagement</code>، <code>pages_read_user_content</code>، <code>pages_manage_engagement</code>، <code>pages_messaging</code>.</p>
+      <p>يجب أن يكون لكل صفحة Page Access Token صالح. تفعيل الرد الآلي يبقى مستقلاً ومطفأ افتراضياً إلى أن تشغله للصفحة المطلوبة.</p>
+    </div>
+  </details>
+
+  <section class="comments-policy" id="commentsPolicy" hidden>
+    <div class="comments-policy-head">
+      <div><strong id="policyPageName">إعدادات التعليقات</strong><small>هذه الإعدادات مستقلة عن الرد على رسائل Messenger.</small></div>
+      <span class="comments-status" id="policyStatus"></span>
+    </div>
+    <div class="comments-policy-grid">
+      <label class="comments-switch-row">
+        <span><strong>استقبال التعليقات</strong><small>تخزين التعليقات الجديدة وربطها بالمنشور</small></span>
+        <input id="commentsEnabled" type="checkbox"><i></i>
+      </label>
+      <label class="comments-field"><span>طريقة التعامل</span><select id="commentsMode"><option value="inbox">استقبال فقط</option><option value="ai">الذكاء يرد</option></select></label>
+      <label class="comments-switch-row">
+        <span><strong>رسالة خاصة</strong><small>يرسل جواباً خاصاً قبل الرد العام</small></span>
+        <input id="commentsPrivate" type="checkbox"><i></i>
+      </label>
+      <label class="comments-field public-text"><span>الرد العام بعد نجاح الخاص</span><input id="commentsPublicText" maxlength="300" value="تم الرد على الخاص"></label>
+      <button class="comments-btn primary save-policy" id="saveCommentsPolicyBtn" type="button"><i class="fa-solid fa-floppy-disk"></i><span>حفظ</span></button>
+    </div>
+  </section>
+
+  <section class="comments-workspace">
+    <aside class="posts-pane">
+      <div class="pane-heading"><div><h2>المنشورات</h2><span id="postCount">0</span></div><div class="comments-search"><i class="fa-solid fa-magnifying-glass"></i><input id="postSearch" type="search" placeholder="بحث بالمنشور..."></div></div>
+      <div class="posts-list" id="postsList"><div class="comments-loading"><i class="fa-solid fa-circle-notch fa-spin"></i><span>جاري تحميل المنشورات</span></div></div>
+    </aside>
+
+    <section class="post-detail-pane">
+      <div class="post-empty" id="postEmpty"><i class="fa-regular fa-newspaper"></i><h2>اختر منشوراً</h2><p>راح يظهر المنشور وتعليقاته وحالة كل رد هنا.</p></div>
+      <div class="post-detail" id="postDetail" hidden>
+        <article class="selected-post">
+          <div class="selected-post-channel"><button class="post-back" id="postBackBtn" type="button" title="رجوع للمنشورات"><i class="fa-solid fa-arrow-right"></i></button><img id="postPageImage" alt=""><div><strong id="postPageName"></strong><time id="postTime"></time></div><a id="postPermalink" href="#" target="_blank" rel="noopener" title="فتح المنشور"><i class="fa-solid fa-arrow-up-right-from-square"></i></a></div>
+          <p id="postText"></p>
+          <img class="selected-post-media" id="postMedia" alt="صورة المنشور" hidden>
+        </article>
+        <div class="comments-list-head"><div><h2>التعليقات</h2><span id="selectedCommentCount">0</span></div><div class="comments-legend"><span class="new">جديد</span><span class="replied">تم الرد</span><span class="failed">فشل</span></div></div>
+        <div class="post-comments" id="postComments"></div>
+      </div>
+    </section>
+  </section>
+
+  <div class="comments-toast" id="commentsToast" hidden></div>
+</main>
+
+<script src="{{ url_for('static', filename='js/ai-sales-comments.js', v='20260717-03') }}" defer></script>
+{% endblock %}

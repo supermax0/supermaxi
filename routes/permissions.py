@@ -13,6 +13,7 @@ DEFAULT_PERMISSIONS = [
     ("view_dashboard", "لوحة التحكم الرئيسية"),
     ("view_orders", "رؤية الطلبات"),
     ("view_orders_placed", "رؤية طلبات «تم الطلب»"),
+    ("view_orders_packed", "رؤية طلبات «معباة»"),
     ("view_orders_delivered", "رؤية الطلبات الواصلة"),
     ("view_orders_returned", "رؤية المرتجعات"),
     ("view_orders_shipped", "رؤية الطلبات المشحونة"),
@@ -31,6 +32,7 @@ DEFAULT_PERMISSIONS = [
     ("view_rotating_savings", "رؤية الجمعيات والسلف الدوّارة"),
     ("manage_rotating_savings", "إدارة الجمعيات والسلف الدوّارة"),
     ("view_pos", "استخدام نقطة البيع"),
+    ("view_my_orders", "عرض الموظف لطلباته فقط من نقطة البيع"),
     ("view_shipping", "رؤية شركات الشحن"),
     ("manage_shipping", "إدارة شركات الشحن والتسويات"),
     ("view_agents", "رؤية مندوبي التوصيل"),
@@ -50,6 +52,8 @@ DEFAULT_PERMISSIONS = [
     ("approve_ai_actions", "الموافقة على خطط المساعد الذكي وتنفيذها"),
     ("manage_ai_schedules", "إدارة دوريات تحليل المساعد الذكي"),
     ("view_ai_audit_logs", "رؤية سجل أدوات ومراجعات المساعد الذكي"),
+    ("use_ai_sales", "استخدام صندوق Finora Sales AI"),
+    ("manage_ai_sales", "إدارة قنوات وإعدادات Finora Sales AI"),
 ]
 
 
@@ -57,11 +61,19 @@ def ensure_default_permissions():
     from datetime import datetime
 
     created = False
+    created_names = set()
     for name, desc in DEFAULT_PERMISSIONS:
         if not Permission.query.filter_by(name=name).first():
             db.session.add(Permission(name=name, description=desc, created_at=datetime.utcnow()))
             created = True
+            created_names.add(name)
     if created:
+        db.session.flush()
+        if "view_my_orders" in created_names:
+            cashier_role = Role.query.filter_by(name="cashier").first()
+            my_orders_permission = Permission.query.filter_by(name="view_my_orders").first()
+            if cashier_role and my_orders_permission and my_orders_permission not in cashier_role.permissions:
+                cashier_role.permissions.append(my_orders_permission)
         db.session.commit()
     from utils.permission_checks import ensure_cashier_role_has_messages, migrate_legacy_permissions_to_roles
 
@@ -86,11 +98,11 @@ def list_roles():
 
     groups_config = [
         ("dashboard", "لوحة التحكم", ["view_dashboard"]),
-        ("sales", "المبيعات وواجهة الكاشير", ["view_pos", "view_quick_sale", "view_orders", "manage_orders", "edit_price", "manage_customers"]),
+        ("sales", "المبيعات وواجهة الكاشير", ["view_pos", "view_my_orders", "view_quick_sale", "view_orders", "manage_orders", "edit_price", "manage_customers"]),
         (
             "order_status",
             "حالات الطلبات",
-            ["view_orders_placed", "view_orders_delivered", "view_orders_returned", "view_orders_shipped"],
+            ["view_orders_placed", "view_orders_packed", "view_orders_delivered", "view_orders_returned", "view_orders_shipped"],
         ),
         ("inventory", "المخزون والموردين", ["manage_inventory", "manage_suppliers"]),
         ("finance", "الحسابات والتقارير المالية", ["view_expenses", "view_accounts", "view_financial", "view_reports", "view_fixed_assets", "manage_fixed_assets", "view_rotating_savings", "manage_rotating_savings"]),
@@ -98,6 +110,7 @@ def list_roles():
         ("team", "إدارة الفريق والإعدادات", ["manage_employees", "manage_agents", "manage_pages", "manage_settings"]),
         ("audit", "السجل والمراجعة", ["view_activity"]),
         ("ai_assistant", "المساعد الذكي", ["use_ai_assistant", "use_ai_workspace", "approve_ai_actions", "manage_ai_schedules", "view_ai_audit_logs"]),
+        ("ai_sales", "موظف المبيعات الذكي", ["use_ai_sales", "manage_ai_sales"]),
     ]
 
     used_names = set()

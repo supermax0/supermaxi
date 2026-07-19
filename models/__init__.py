@@ -34,6 +34,7 @@ from .fixed_asset_audit_log import FixedAssetAuditLog
 from .fixed_asset_attachment import FixedAssetAttachment
 from .fixed_asset_disposal_request import FixedAssetDisposalRequest
 from .financial_period_close import FinancialPeriodClose
+from .daily_audit import DailyAudit
 from .employee import Employee
 from .employee_commission_line import EmployeeCommissionLine
 from .employee_commission_settlement import EmployeeCommissionSettlement
@@ -62,6 +63,7 @@ from .ai_assistant_control import (
     AIToolCallLog,
     AIUploadedFile,
 )
+from .investment_proposal import InvestmentProposal
 from .role import Role, Permission
 from .tenant import Tenant  # SaaS multi-tenant support
 from .beauty_service import BeautyService
@@ -78,6 +80,17 @@ from .ai_agent import (
 from .telegram_inbox_message import TelegramInboxMessage
 from .telegram_chat_profile import TelegramChatProfile
 from .telegram_booking_session import TelegramBookingSession
+from modules.ai_sales.models import (
+    AISalesAgentProfile,
+    AISalesChannelAccount,
+    AISalesConversation,
+    AISalesLead,
+    AISalesMessage,
+    AISalesProductProfile,
+    AISalesToolCall,
+    AISalesUsageLog,
+    ProductMediaAsset,
+)
 
 # ======================================================
 # Accounting Models (النماذج المحاسبية)

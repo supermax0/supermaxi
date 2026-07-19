@@ -50,6 +50,7 @@ from routes.expenses import expenses_bp
 from routes.accounts import accounts_bp
 from routes.ai import ai_bp
 from routes.social_ai_routes import social_ai_bp
+from modules.ai_sales.routes import ai_sales_bp, ai_sales_webhook_bp
 from routes.settings import settings_bp
 from routes.messages import messages_bp
 from routes.delivery import delivery_bp
@@ -276,6 +277,67 @@ with app.app_context():
                     cols = [r[1] for r in cur.fetchall()]
                     if "tg_chat_id" not in cols:
                         cur.execute("ALTER TABLE customer ADD COLUMN tg_chat_id TEXT")
+                    cur.execute("PRAGMA table_info(invoice)")
+                    invoice_cols = {r[1] for r in cur.fetchall()}
+                    if invoice_cols:
+                        invoice_additions = {
+                            "branch_id": "ALTER TABLE invoice ADD COLUMN branch_id INTEGER",
+                            "discount_amount": "ALTER TABLE invoice ADD COLUMN discount_amount INTEGER DEFAULT 0",
+                            "is_stock_locked": "ALTER TABLE invoice ADD COLUMN is_stock_locked BOOLEAN DEFAULT 0",
+                            "stock_lock_reason": "ALTER TABLE invoice ADD COLUMN stock_lock_reason TEXT",
+                            "stock_locked_at": "ALTER TABLE invoice ADD COLUMN stock_locked_at DATETIME",
+                            "stock_unlocked_at": "ALTER TABLE invoice ADD COLUMN stock_unlocked_at DATETIME",
+                        }
+                        for col, stmt in invoice_additions.items():
+                            if col not in invoice_cols:
+                                cur.execute(stmt)
+                        stock_state_added = "stock_is_deducted" not in invoice_cols
+                        if stock_state_added:
+                            cur.execute("ALTER TABLE invoice ADD COLUMN stock_is_deducted BOOLEAN DEFAULT 1")
+                        if "stock_deducted_at" not in invoice_cols:
+                            cur.execute("ALTER TABLE invoice ADD COLUMN stock_deducted_at DATETIME")
+                        if "stock_restored_at" not in invoice_cols:
+                            cur.execute("ALTER TABLE invoice ADD COLUMN stock_restored_at DATETIME")
+                        if stock_state_added:
+                            state_where = (
+                                ("COALESCE(is_stock_locked, 0) = 1 OR " if "is_stock_locked" in invoice_cols else "")
+                                + "status IN ('ملغي','راجع','مرتجع','راجعة','راجعه') "
+                                + "OR payment_status IN ('ملغي','راجع','مرتجع','راجعة','راجعه')"
+                            )
+                            cur.execute(
+                                "UPDATE invoice SET stock_is_deducted = 0 "
+                                f"WHERE {state_where}"
+                            )
+                            cur.execute(
+                                "UPDATE invoice SET stock_deducted_at = created_at "
+                                "WHERE stock_deducted_at IS NULL AND (stock_is_deducted = 1 "
+                                "OR status IN ('ملغي','راجع','مرتجع','راجعة','راجعه') "
+                                "OR payment_status IN ('ملغي','راجع','مرتجع','راجعة','راجعه'))"
+                            )
+                            cur.execute(
+                                "UPDATE invoice SET stock_restored_at = created_at "
+                                "WHERE stock_restored_at IS NULL AND stock_deducted_at IS NOT NULL "
+                                "AND stock_is_deducted = 0"
+                            )
+                    cur.execute("PRAGMA table_info(order_item)")
+                    order_item_cols = {r[1] for r in cur.fetchall()}
+                    if order_item_cols:
+                        if "fulfillment_branch_id" not in order_item_cols:
+                            cur.execute("ALTER TABLE order_item ADD COLUMN fulfillment_branch_id INTEGER")
+                        if "variant_color" not in order_item_cols:
+                            cur.execute("ALTER TABLE order_item ADD COLUMN variant_color VARCHAR(80)")
+                    cur.execute("PRAGMA table_info(product)")
+                    product_cols = {r[1] for r in cur.fetchall()}
+                    if product_cols:
+                        product_additions = {
+                            "sku": "ALTER TABLE product ADD COLUMN sku VARCHAR(100)",
+                            "description": "ALTER TABLE product ADD COLUMN description TEXT",
+                            "image_url": "ALTER TABLE product ADD COLUMN image_url VARCHAR(500)",
+                            "meta_json": "ALTER TABLE product ADD COLUMN meta_json TEXT",
+                        }
+                        for col, stmt in product_additions.items():
+                            if col not in product_cols:
+                                cur.execute(stmt)
                     cur.execute(
                         """
                         CREATE TABLE IF NOT EXISTS telegram_chat_profiles (
@@ -322,6 +384,23 @@ with app.app_context():
                     print(f"Tenant migration note ({db_name}): {_tenant_err}")
     except Exception as e:
         print(f"Migration note (tenant telegram booking memory): {e}")
+
+    try:
+        from utils.order_stock_policy import initialize_registered_tenant_policies
+
+        policy_init = initialize_registered_tenant_policies()
+        for tenant_slug, result in policy_init["tenants"].items():
+            if result.get("migrated"):
+                print(
+                    "Deferred order stock policy initialized "
+                    f"({tenant_slug}): restored {result.get('restored_orders', 0)} "
+                    f"order(s) / {result.get('restored_units', 0)} unit(s)."
+                )
+        for tenant_slug, error in policy_init["errors"].items():
+            print(f"Deferred order stock policy note ({tenant_slug}): {error}")
+    except Exception as e:
+        db.session.rollback()
+        print(f"Deferred order stock policy startup note: {e}")
 
     # Migration: Add shipping_company_id to employee if needed
     try:
@@ -866,6 +945,9 @@ def inject_global_data():
         lang = session.get('language')
         if not lang and "user_id" in session:
             try:
+                from routes.employees import _ensure_employee_profile_schema
+
+                _ensure_employee_profile_schema()
                 emp = db.session.get(Employee, session["user_id"])
                 if emp and emp.language:
                     lang = emp.language
@@ -880,6 +962,12 @@ def inject_global_data():
         if "user_id" not in session:
             return {**default, "_": translate, "current_lang": lang_now}
 
+        try:
+            from routes.employees import _ensure_employee_profile_schema
+
+            _ensure_employee_profile_schema()
+        except Exception:
+            pass
         employee = db.session.get(Employee, session["user_id"])
         if not employee:
             return {**default, "_": translate, "current_lang": lang_now}
@@ -953,10 +1041,12 @@ _OPEN_ROUTES = [
     "/api/landing",  # محتوى صفحة الهبوط المنشور
     "/api/landing-chat",  # مساعد الذكاء الاصطناعي لصفحة الهبوط
     "/telegram",  # بوت تيليجرام: webhook و setup و test — بدون تسجيل (ليستقبل التحديثات من Telegram)
+    "/api/v1/ai-sales/webhooks/",  # Finora Sales AI public WhatsApp callbacks
     "/delivery-agent",  # بوابة مندوب التوصيل
     "/shop",  # المتجر العام للزبائن — بدون تسجيل دخول
     "/orders/p/o",  # تفاصيل طلب عامة (QR) — موقّعة، بدون تسجيل
     "/orders/invoice-video",  # بث فيديو الطلب للعامة — رمز موقّع
+    "/api/mobile/v1/",  # Social Commerce mobile API (OTP/JWT — own auth)
 ]
 
 
@@ -997,6 +1087,12 @@ def require_login():
         tenant_slug = (session.get("tenant_slug") or "").strip()
         if tenant_slug:
             g.tenant = tenant_slug
+        try:
+            from routes.employees import _ensure_employee_profile_schema
+
+            _ensure_employee_profile_schema()
+        except Exception:
+            pass
         employee = db.session.get(Employee, session["user_id"])
         if not employee or not employee.is_active:
             session.clear()
@@ -1035,6 +1131,7 @@ def require_login():
             ("/suppliers", "manage_suppliers"),
             ("/customers", "manage_customers"),
             ("/orders/ordered", ("view_orders", "view_orders_placed")),
+            ("/orders/packed", ("view_orders", "view_orders_packed")),
             ("/orders/shipping", ("view_orders", "view_orders_shipped")),
             ("/orders/delivered", ("view_orders", "view_orders_delivered")),
             ("/orders/returned", ("view_orders", "view_orders_returned")),
@@ -1262,6 +1359,8 @@ app.register_blueprint(index_bp)
 app.register_blueprint(payments_bp)
 app.register_blueprint(ai_bp, url_prefix="/ai")
 app.register_blueprint(social_ai_bp, url_prefix="/social-ai")
+app.register_blueprint(ai_sales_bp)
+app.register_blueprint(ai_sales_webhook_bp)
 app.register_blueprint(workflow_api)
 
 app.register_blueprint(pos_bp)
@@ -1302,6 +1401,13 @@ app.register_blueprint(admin_bp)
 app.register_blueprint(invoice_store_bp)
 app.register_blueprint(storefront_bp)
 app.register_blueprint(telegram_bp)
+
+try:
+    from modules.mobile_app import init_mobile_app
+    init_mobile_app(app)
+    print("Mobile app API loaded.")
+except Exception as _mobile_ex:
+    print(f"Mobile app API load warning: {_mobile_ex}")
 
 
 @app.cli.command("seed_landing_page")
