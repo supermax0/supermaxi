@@ -6,7 +6,6 @@ from datetime import datetime, time
 
 from models.branch import Branch
 from models.order_item import OrderItem
-from utils.branch_sales import reassign_item_fulfillment_branch
 from utils.branch_stock_service import BranchStockError, deduct_stock, get_branch_stock, receive_stock
 from utils.order_shipping import is_shipping_item
 from utils.payment_ledger import BUSINESS_TZ_NAME
@@ -121,20 +120,19 @@ def resolve_shipping_branch_for_now(now: datetime | None = None) -> int | None:
     return day_id if in_day else night_id
 
 
-def _reassign_item_to_branch(item: OrderItem, order, target_branch_id: int) -> None:
+def _reassign_item_to_branch(item: OrderItem, order, target_branch_id: int) -> bool:
     target_branch_id = int(target_branch_id)
     qty = int(item.quantity or 0)
     if qty <= 0:
-        return
-
-    old_branch_id = item.fulfillment_branch_id or getattr(order, "branch_id", None)
-    if old_branch_id and int(old_branch_id) == target_branch_id:
-        item.fulfillment_branch_id = target_branch_id
-        return
+        return False
 
     if item.fulfillment_branch_id:
-        reassign_item_fulfillment_branch(item, target_branch_id)
-        return
+        return False
+
+    old_branch_id = getattr(order, "branch_id", None)
+    if old_branch_id and int(old_branch_id) == target_branch_id:
+        item.fulfillment_branch_id = target_branch_id
+        return True
 
     target_branch = Branch.query.filter_by(id=target_branch_id, is_active=True).first()
     if not target_branch:
@@ -159,6 +157,7 @@ def _reassign_item_to_branch(item: OrderItem, order, target_branch_id: int) -> N
         raise
 
     item.fulfillment_branch_id = target_branch_id
+    return True
 
 
 def apply_shipping_branch_schedule(order, *, previous_status: str | None = None) -> None:
@@ -183,7 +182,9 @@ def apply_shipping_branch_schedule(order, *, previous_status: str | None = None)
         for item in OrderItem.query.filter_by(invoice_id=order.id).all()
         if not is_shipping_item(item)
     ]
+    moved_any = False
     for item in items:
-        _reassign_item_to_branch(item, order, target_branch_id)
+        moved_any = _reassign_item_to_branch(item, order, target_branch_id) or moved_any
 
-    order.branch_id = target_branch_id
+    if moved_any:
+        order.branch_id = target_branch_id
