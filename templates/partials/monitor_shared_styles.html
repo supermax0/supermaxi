@@ -1,0 +1,100 @@
+<style>
+  .monitor-page { display: flex; flex-direction: column; gap: 18px; }
+  .monitor-nav { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .monitor-nav a, .monitor-nav button.monitor-tab {
+    min-height: 38px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--card-alt); color: var(--text); padding: 8px 14px;
+    font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  }
+  .monitor-nav a.active, .monitor-nav button.monitor-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .monitor-toolbar {
+    display: flex; align-items: end; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    padding: 16px; background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+  }
+  .monitor-filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; flex: 1; }
+  .monitor-field { display: flex; flex-direction: column; gap: 6px; }
+  .monitor-field label { color: var(--text-muted); font-size: 13px; font-weight: 700; }
+  .monitor-field input, .monitor-field select {
+    min-height: 42px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--card-alt); color: var(--text); padding: 8px 10px;
+  }
+  .monitor-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .monitor-btn {
+    min-height: 42px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--primary); color: #fff; padding: 8px 14px; font-weight: 800;
+    cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;
+  }
+  .monitor-btn.secondary { background: var(--card-alt); color: var(--text); }
+  .monitor-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+  .monitor-stat { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+  .monitor-stat span { color: var(--text-muted); font-size: 13px; font-weight: 700; }
+  .monitor-stat strong { display: block; margin-top: 6px; font-size: 22px; color: var(--text); }
+  .monitor-stat small { display: block; margin-top: 4px; color: var(--text-muted); font-size: 12px; }
+  .monitor-stat small.up { color: var(--success); }
+  .monitor-stat small.down { color: var(--danger); }
+  .monitor-health {
+    display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px;
+    background: var(--card); border: 1px solid var(--border); font-weight: 800;
+  }
+  .monitor-section { background: var(--card); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .monitor-section-head { display: flex; justify-content: space-between; gap: 12px; padding: 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .monitor-section-head h2 { margin: 0; font-size: 18px; }
+  .monitor-section-head p { margin: 4px 0 0; color: var(--text-muted); font-size: 13px; }
+  .monitor-table-wrap { overflow-x: auto; }
+  .monitor-table { width: 100%; border-collapse: collapse; min-width: 760px; }
+  .monitor-table th, .monitor-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); text-align: right; vertical-align: middle; }
+  .monitor-table th { color: var(--text-muted); font-size: 12px; background: var(--card-alt); white-space: nowrap; }
+  .monitor-badge {
+    display: inline-flex; align-items: center; min-height: 28px; border-radius: 999px;
+    padding: 3px 10px; font-size: 12px; font-weight: 800; border: 1px solid transparent;
+  }
+  .monitor-badge.success { color: var(--success); background: rgba(16,185,129,.12); border-color: rgba(16,185,129,.25); }
+  .monitor-badge.warning { color: var(--warning); background: rgba(245,158,11,.12); border-color: rgba(245,158,11,.25); }
+  .monitor-badge.danger { color: var(--danger); background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.25); }
+  .monitor-alerts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+  .monitor-alert { border: 1px solid var(--border); border-radius: 8px; padding: 12px; background: var(--card); }
+  .monitor-empty { padding: 18px; color: var(--text-muted); }
+  .monitor-link { color: var(--primary); font-weight: 700; text-decoration: none; }
+  .monitor-chart-box { padding: 16px; min-height: 280px; }
+  .status-bars { display: flex; flex-direction: column; gap: 10px; padding: 16px; }
+  .status-bar-row { display: grid; grid-template-columns: 120px 1fr 48px; gap: 10px; align-items: center; }
+  .status-bar-track { height: 10px; background: var(--card-alt); border-radius: 999px; overflow: hidden; border: 1px solid var(--border); }
+  .status-bar-fill { height: 100%; background: var(--primary); border-radius: 999px; min-width: 2px; }
+  .funnel-grid { display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 10px; padding: 16px; }
+  .funnel-step { border: 1px solid var(--border); border-radius: 8px; padding: 12px; text-align: center; }
+  .funnel-step strong { display: block; font-size: 22px; }
+  .monitor-last-update { color: var(--text-muted); font-size: 12px; font-weight: 700; }
+  .monitor-overview-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+  .monitor-health-card {
+    display: flex; flex-direction: column; gap: 6px; padding: 16px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--card); text-decoration: none; color: inherit;
+  }
+  .monitor-health-card.success { border-color: rgba(16,185,129,.35); }
+  .monitor-health-card.warning { border-color: rgba(245,158,11,.35); }
+  .monitor-health-card.danger { border-color: rgba(239,68,68,.35); }
+  .monitor-health-card strong { font-size: 28px; }
+  .monitor-saved-alerts { display: flex; flex-direction: column; gap: 10px; padding: 16px; }
+  .monitor-saved-alert { border: 1px solid var(--border); border-radius: 8px; padding: 12px; background: var(--card-alt); }
+  .monitor-saved-alert.unread { border-color: rgba(245,158,11,.35); }
+  .monitor-saved-alert-head { display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .monitor-saved-alert-actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .monitor-table-controls { padding: 12px 16px 0; }
+  .monitor-table-controls input {
+    width: 100%; max-width: 320px; min-height: 38px; border: 1px solid var(--border);
+    border-radius: 8px; background: var(--card-alt); color: var(--text); padding: 8px 10px;
+  }
+  .monitor-table-pager {
+    display: flex; align-items: center; justify-content: flex-end; gap: 10px;
+    padding: 10px 16px 14px; color: var(--text-muted); font-size: 13px;
+  }
+  .monitor-table-pager button {
+    min-height: 34px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--card-alt); color: var(--text); padding: 4px 12px; cursor: pointer;
+  }
+  .monitor-table-pager button:disabled { opacity: .5; cursor: not-allowed; }
+  .monitor-table th { cursor: pointer; }
+  @media print {
+    .monitor-toolbar, .monitor-actions, .monitor-nav a:not(.active) { display: none !important; }
+    .monitor-page { gap: 8px; }
+  }
+</style>

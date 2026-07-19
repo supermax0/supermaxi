@@ -1,0 +1,29 @@
+{% extends "mobile_app/_layout.html" %}
+{% block mobile_app_body %}
+<div class="ma-stack">
+  <div class="ma-page-head">
+    <h2 class="ma-page-title">أعلام الميزات</h2>
+    <p class="ma-page-subtitle">تفعيل أو تعطيل ميزات التطبيق فورياً</p>
+  </div>
+
+  <div class="ma-flags">
+    {% for key, enabled in flags.items()|sort %}
+    <form method="post" class="ma-flag-row">
+      <input type="hidden" name="key" value="{{ key }}">
+      <div class="ma-flag-info">
+        <div class="ma-flag-key">{{ key }}</div>
+        <div class="ma-flag-state {{ 'is-on' if enabled else 'is-off' }}">
+          <i class="fas fa-circle" style="font-size:8px"></i>
+          {{ 'مفعّل حالياً' if enabled else 'معطّل حالياً' }}
+        </div>
+      </div>
+      <select name="enabled" class="ma-input">
+        <option value="1" {% if enabled %}selected{% endif %}>مفعّل</option>
+        <option value="0" {% if not enabled %}selected{% endif %}>معطّل</option>
+      </select>
+      <button class="ma-btn ma-btn-sm ma-btn-primary" type="submit"><i class="fas fa-save"></i> حفظ</button>
+    </form>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

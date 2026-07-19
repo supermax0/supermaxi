@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, jsonify, session, redirect, request
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, Response, session
 from extensions import db
 from sqlalchemy import case, func, or_
 from datetime import datetime, timedelta
@@ -16,6 +16,13 @@ from models.supplier_invoice import SupplierInvoice
 from models.employee import Employee
 from models.invoice_settings import InvoiceSettings
 from models.page import Page
+from models.daily_audit import DailyAudit
+from utils.daily_audit_schema_guard import ensure_daily_audit_schema
+from utils.daily_report_data import (
+    build_daily_report_data,
+    list_daily_audit_archive,
+    parse_report_date,
+)
 from utils.financial_report_data import get_financial_report_data
 from utils.cash_calculations import _effective_paid_amount
 
@@ -35,6 +42,16 @@ from utils.accounting_calculations import (
     calculate_total_sales_for_display  # إجمالي المبيعات (للعرض فقط)
 )
 from utils.permission_checks import check_permission
+from utils.monitor_service import (
+    MONITORS_HUB_URL,
+    VALID_TABS,
+    build_monitor_live_payload,
+    build_monitors_hub_data,
+    build_monitor_summary_payload,
+    build_performance_monitor_data,
+    parse_monitor_filters,
+    resolve_monitor_date_range,
+)
 
 reports_bp = Blueprint("reports", __name__, url_prefix="/reports")
 
@@ -53,247 +70,110 @@ def _parse_monitor_date(value, fallback):
         return fallback
 
 
-def _not_bad_status_condition():
-    return (
-        or_(Invoice.status.is_(None), ~Invoice.status.in_(RETURN_STATUSES + CANCELED_STATUSES)),
-        or_(Invoice.payment_status.is_(None), ~Invoice.payment_status.in_(RETURN_STATUSES + CANCELED_STATUSES)),
-    )
-
-
-def _rate(part, total):
-    return round((float(part or 0) / float(total or 1)) * 100, 1)
-
-
 def _fmt_money(value):
     return f"{int(value or 0):,} د.ع"
 
 
 def _build_monitor_data(date_from, date_to, min_orders, min_sales):
-    valid_conditions = _not_bad_status_condition()
-    delivered_condition = or_(
-        Invoice.status.in_(DELIVERED_STATUSES),
-        Invoice.payment_status.in_(("مسدد", "تم التوصيل")),
-    )
+    """توافق خلفي — يُفضّل build_performance_monitor_data."""
+    return build_performance_monitor_data(date_from, date_to, min_orders, min_sales)
 
-    page_rows = (
-        db.session.query(
-            Invoice.page_id,
-            func.count(Invoice.id).label("orders_count"),
-            func.coalesce(
-                func.sum(case((delivered_condition, 1), else_=0)),
-                0,
-            ).label("delivered_count"),
-            func.coalesce(
-                func.sum(
-                    case(
-                        (
-                            or_(
-                                Invoice.status.in_(RETURN_STATUSES + CANCELED_STATUSES),
-                                Invoice.payment_status.in_(RETURN_STATUSES + CANCELED_STATUSES),
-                            ),
-                            1,
-                        ),
-                        else_=0,
-                    )
-                ),
-                0,
-            ).label("returned_count"),
-            func.coalesce(
-                func.sum(case((valid_conditions[0] & valid_conditions[1], Invoice.total), else_=0)),
-                0,
-            ).label("clean_sales"),
-        )
-        .filter(Invoice.created_at >= date_from, Invoice.created_at <= date_to)
-        .group_by(Invoice.page_id)
-        .all()
-    )
-    page_stats = {row.page_id: row for row in page_rows}
 
-    pages = Page.query.order_by(Page.name).all()
-    page_monitor = []
-    total_page_orders = 0
-    total_page_sales = 0
-
-    for page in pages:
-        row = page_stats.get(page.id)
-        orders_count = int(getattr(row, "orders_count", 0) or 0)
-        clean_sales = int(getattr(row, "clean_sales", 0) or 0)
-        delivered_count = int(getattr(row, "delivered_count", 0) or 0)
-        returned_count = int(getattr(row, "returned_count", 0) or 0)
-        return_rate = _rate(returned_count, orders_count)
-        delivered_rate = _rate(delivered_count, orders_count)
-
-        if orders_count == 0:
-            health = "خامد"
-            health_class = "danger"
-            note = "لا توجد طلبات ضمن الفترة"
-        elif return_rate >= 30:
-            health = "يحتاج متابعة"
-            health_class = "warning"
-            note = "نسبة الراجع/الإلغاء عالية"
-        elif orders_count >= 3 and delivered_rate < 40:
-            health = "توصيل ضعيف"
-            health_class = "warning"
-            note = "نسبة الوصول أقل من المطلوب"
-        else:
-            health = "مستقر"
-            health_class = "success"
-            note = "الأداء ضمن الطبيعي"
-
-        total_page_orders += orders_count
-        total_page_sales += clean_sales
-        page_monitor.append(
-            {
-                "id": page.id,
-                "name": page.name,
-                "orders_count": orders_count,
-                "sales": clean_sales,
-                "sales_display": _fmt_money(clean_sales),
-                "delivered_count": delivered_count,
-                "delivered_rate": delivered_rate,
-                "returned_count": returned_count,
-                "return_rate": return_rate,
-                "assigned_employees": ", ".join(emp.name for emp in page.employees.all()) or "غير محدد",
-                "health": health,
-                "health_class": health_class,
-                "note": note,
-            }
-        )
-
-    unassigned_row = page_stats.get(None)
-    unassigned_orders = int(getattr(unassigned_row, "orders_count", 0) or 0)
-    if unassigned_orders:
-        unassigned_sales = int(getattr(unassigned_row, "clean_sales", 0) or 0)
-        unassigned_returned = int(getattr(unassigned_row, "returned_count", 0) or 0)
-        unassigned_delivered = int(getattr(unassigned_row, "delivered_count", 0) or 0)
-        total_page_orders += unassigned_orders
-        total_page_sales += unassigned_sales
-        page_monitor.append(
-            {
-                "id": None,
-                "name": "طلبات بدون بيج",
-                "orders_count": unassigned_orders,
-                "sales": unassigned_sales,
-                "sales_display": _fmt_money(unassigned_sales),
-                "delivered_count": unassigned_delivered,
-                "delivered_rate": _rate(unassigned_delivered, unassigned_orders),
-                "returned_count": unassigned_returned,
-                "return_rate": _rate(unassigned_returned, unassigned_orders),
-                "assigned_employees": "غير محدد",
-                "health": "ناقص ربط",
-                "health_class": "warning",
-                "note": "طلبات لا تحتوي page_id",
-            }
-        )
-
-    page_monitor.sort(key=lambda item: (item["health_class"] == "success", -item["orders_count"]))
-
-    employee_rows = (
-        db.session.query(
-            Invoice.employee_id,
-            func.count(Invoice.id).label("orders_count"),
-            func.coalesce(func.sum(case((valid_conditions[0] & valid_conditions[1], Invoice.total), else_=0)), 0).label("sales"),
-            func.coalesce(func.sum(case((delivered_condition, 1), else_=0)), 0).label("delivered_count"),
-            func.coalesce(
-                func.sum(
-                    case(
-                        (
-                            or_(
-                                Invoice.status.in_(RETURN_STATUSES + CANCELED_STATUSES),
-                                Invoice.payment_status.in_(RETURN_STATUSES + CANCELED_STATUSES),
-                            ),
-                            1,
-                        ),
-                        else_=0,
-                    )
-                ),
-                0,
-            ).label("returned_count"),
-            func.max(Invoice.created_at).label("last_order_at"),
-        )
-        .filter(Invoice.created_at >= date_from, Invoice.created_at <= date_to)
-        .group_by(Invoice.employee_id)
-        .all()
-    )
-    employee_stats = {row.employee_id: row for row in employee_rows}
-    employees = (
-        Employee.query
-        .filter(Employee.is_active.is_(True), Employee.role != "admin")
-        .order_by(Employee.name)
-        .all()
-    )
-    employee_monitor = []
-    weak_employees = []
-    total_employee_orders = 0
-    total_employee_sales = 0
-
-    for employee in employees:
-        row = employee_stats.get(employee.id)
-        orders_count = int(getattr(row, "orders_count", 0) or 0)
-        sales = int(getattr(row, "sales", 0) or 0)
-        delivered_count = int(getattr(row, "delivered_count", 0) or 0)
-        returned_count = int(getattr(row, "returned_count", 0) or 0)
-        last_order_at = getattr(row, "last_order_at", None)
-        reasons = []
-        if orders_count < min_orders:
-            reasons.append(f"طلبات أقل من {min_orders}")
-        if min_sales > 0 and sales < min_sales:
-            reasons.append(f"مبيعات أقل من {_fmt_money(min_sales)}")
-        if orders_count > 0 and _rate(returned_count, orders_count) >= 30:
-            reasons.append("راجع/إلغاء عالي")
-
-        item = {
-            "id": employee.id,
-            "name": employee.name,
-            "username": employee.username,
-            "role": "مدير" if employee.role == "admin" else "كاشير",
-            "orders_count": orders_count,
-            "sales": sales,
-            "sales_display": _fmt_money(sales),
-            "delivered_count": delivered_count,
-            "returned_count": returned_count,
-            "return_rate": _rate(returned_count, orders_count),
-            "last_order_at": last_order_at,
-            "last_order_display": last_order_at.strftime("%Y-%m-%d %H:%M") if last_order_at else "لا يوجد",
-            "status": "ضعيف" if reasons else "طبيعي",
-            "status_class": "danger" if reasons else "success",
-            "reason": "، ".join(reasons) if reasons else "الأداء ضمن الحد",
-        }
-        total_employee_orders += orders_count
-        total_employee_sales += sales
-        employee_monitor.append(item)
-        if reasons:
-            weak_employees.append(item)
-
-    employee_monitor.sort(key=lambda item: (item["status_class"] == "success", item["orders_count"], item["sales"]))
-    weak_employees.sort(key=lambda item: (item["orders_count"], item["sales"]))
-
-    alerts = [
-        page for page in page_monitor
-        if page["health_class"] in ("danger", "warning")
-    ][:8]
-
-    return {
-        "date_from": date_from,
-        "date_to": date_to,
-        "min_orders": min_orders,
-        "min_sales": min_sales,
-        "page_monitor": page_monitor,
-        "employee_monitor": employee_monitor,
-        "weak_employees": weak_employees,
-        "alerts": alerts,
-        "summary": {
-            "pages_count": len(page_monitor),
-            "page_orders": total_page_orders,
-            "page_sales": total_page_sales,
-            "page_sales_display": _fmt_money(total_page_sales),
-            "employees_count": len(employee_monitor),
-            "weak_employees_count": len(weak_employees),
-            "employee_orders": total_employee_orders,
-            "employee_sales": total_employee_sales,
-            "employee_sales_display": _fmt_money(total_employee_sales),
-        },
+def _hub_query_args(extra: dict | None = None) -> dict:
+    args = {
+        "tab": request.args.get("tab"),
+        "period": request.args.get("period"),
+        "date_from": request.args.get("date_from"),
+        "date_to": request.args.get("date_to"),
+        "overdue_min_days": request.args.get("overdue_min_days"),
+        "stuck_days": request.args.get("stuck_days"),
+        "min_orders": request.args.get("min_orders"),
+        "min_sales": request.args.get("min_sales"),
+        "branch_id": request.args.get("branch_id"),
+        "page_id": request.args.get("page_id"),
+        "employee_id": request.args.get("employee_id"),
     }
+    if extra:
+        args.update(extra)
+    return {k: v for k, v in args.items() if v not in (None, "")}
+
+
+def _load_hub_data():
+    tab = (request.args.get("tab") or "overview").strip()
+    if tab not in VALID_TABS:
+        tab = "overview"
+    date_from, date_to, period_key = resolve_monitor_date_range(
+        period=request.args.get("period"),
+        date_from_raw=request.args.get("date_from"),
+        date_to_raw=request.args.get("date_to"),
+    )
+    filters = parse_monitor_filters(
+        branch_id=request.args.get("branch_id", type=int),
+        page_id=request.args.get("page_id", type=int),
+        employee_id=request.args.get("employee_id", type=int),
+    )
+    return build_monitors_hub_data(
+        tab,
+        date_from=date_from,
+        date_to=date_to,
+        period_key=period_key,
+        overdue_min_days=request.args.get("overdue_min_days", type=int),
+        stuck_days=request.args.get("stuck_days", type=int),
+        min_orders=request.args.get("min_orders", type=int),
+        min_sales=request.args.get("min_sales", type=int),
+        filters=filters,
+    )
+
+
+def _hub_link_kwargs(data: dict, *, tab: str | None = None, extra: dict | None = None) -> dict:
+    kwargs = {
+        "period": data.get("period"),
+        "date_from": data["date_from"].strftime("%Y-%m-%d"),
+        "date_to": data["date_to"].strftime("%Y-%m-%d"),
+    }
+    if tab:
+        kwargs["tab"] = tab
+    filters = data.get("filters") or {}
+    for key in ("branch_id", "page_id", "employee_id"):
+        val = filters.get(key)
+        if val:
+            kwargs[key] = val
+    if extra:
+        for key, val in extra.items():
+            if val is not None and val != "":
+                kwargs[key] = val
+    return kwargs
+
+
+def _build_hub_tab_urls(data: dict) -> dict[str, str]:
+    from flask import url_for
+
+    perf = data.get("performance") or {}
+    return {
+        "overview": url_for("reports.monitors_hub", **_hub_link_kwargs(data, tab="overview")),
+        "financial": url_for("reports.monitors_hub", **_hub_link_kwargs(data, tab="financial")),
+        "operational": url_for("reports.monitors_hub", **_hub_link_kwargs(data, tab="operational")),
+        "performance": url_for(
+            "reports.monitors_hub",
+            **_hub_link_kwargs(
+                data,
+                tab="performance",
+                extra={"min_orders": perf.get("min_orders"), "min_sales": perf.get("min_sales")},
+            ),
+        ),
+    }
+
+
+def _build_assistant_monitor_url(data: dict) -> str:
+    from flask import url_for
+
+    return url_for(
+        "assistant.chat",
+        **_hub_link_kwargs(
+            data,
+            extra={"context": "monitor", "tab": data.get("tab")},
+        ),
+    )
 
 
 # ======================================================
@@ -358,38 +238,197 @@ def reports_dashboard():
     )
 
 
+@reports_bp.route("/daily")
+def daily_report():
+    if not check_permission("can_see_reports"):
+        return redirect("/pos"), 403
+    ensure_daily_audit_schema()
+    report_date = parse_report_date(request.args.get("date"))
+    data = build_daily_report_data(report_date)
+    return render_template("reports_daily.html", **data)
+
+
+@reports_bp.route("/daily/audit", methods=["POST"])
+def save_daily_audit():
+    if not check_permission("can_see_reports"):
+        return redirect("/pos"), 403
+    ensure_daily_audit_schema()
+
+    report_date = parse_report_date(request.form.get("report_date"))
+    status = (request.form.get("status") or "").strip()
+    if status not in {"matched", "mismatch"}:
+        flash("اختار نتيجة التدقيق أولاً.", "error")
+        return redirect(f"/reports/daily?date={report_date.isoformat()}")
+
+    raw_actual = (request.form.get("actual_cash_count") or "").replace(",", "").strip()
+    if not raw_actual:
+        flash("اكتب العد الفعلي للصندوق قبل حفظ التدقيق.", "error")
+        return redirect(f"/reports/daily?date={report_date.isoformat()}")
+    try:
+        actual_cash_count = int(raw_actual)
+    except ValueError:
+        flash("العد الفعلي لازم يكون رقم صحيح.", "error")
+        return redirect(f"/reports/daily?date={report_date.isoformat()}")
+
+    data = build_daily_report_data(report_date)
+    expected_cash_balance = int(data["cash"]["closing_balance"] or 0)
+    difference = actual_cash_count - expected_cash_balance
+    notes = (request.form.get("notes") or "").strip()
+
+    if status == "matched" and difference != 0:
+        flash("لا يمكن حفظ التدقيق كمطابق لأن العد الفعلي لا يساوي رصيد التقرير.", "error")
+        return redirect(f"/reports/daily?date={report_date.isoformat()}")
+    if status == "mismatch" and not notes:
+        flash("اكتب ملاحظة توضح الخلل حتى يرجع الفريق يصحح البيانات.", "error")
+        return redirect(f"/reports/daily?date={report_date.isoformat()}")
+
+    audit = DailyAudit.query.filter_by(report_date=report_date).first()
+    if not audit:
+        audit = DailyAudit(report_date=report_date)
+        db.session.add(audit)
+
+    audit.status = status
+    audit.expected_cash_balance = expected_cash_balance
+    audit.actual_cash_count = actual_cash_count
+    audit.difference = difference
+    audit.notes = notes or None
+    audit.reviewed_by = session.get("employee_id") or session.get("user_id")
+    audit.reviewed_at = datetime.utcnow()
+    audit.updated_at = datetime.utcnow()
+    db.session.commit()
+
+    if status == "matched":
+        flash("تم حفظ التدقيق: التقرير مطابق.", "success")
+    else:
+        flash("تم حفظ التدقيق مع وجود خلل. صحح البيانات ثم أعد التدقيق حتى يصير مطابق.", "warning")
+    return redirect(f"/reports/daily?date={report_date.isoformat()}")
+
+
+@reports_bp.route("/daily/archive")
+def daily_report_archive():
+    if not check_permission("can_see_reports"):
+        return redirect("/pos"), 403
+    ensure_daily_audit_schema()
+    audits = list_daily_audit_archive()
+    return render_template("reports_daily_archive.html", audits=audits)
+
+
+@reports_bp.route("/monitors")
+def monitors_hub():
+    if not check_permission("can_see_reports"):
+        return redirect("/pos"), 403
+    data = _load_hub_data()
+    data["hub_tab_urls"] = _build_hub_tab_urls(data)
+    data["assistant_monitor_url"] = _build_assistant_monitor_url(data)
+    return render_template("reports_monitors_hub.html", **data)
+
+
 @reports_bp.route("/monitor")
 def pages_employees_monitor():
     if not check_permission("can_see_reports"):
         return redirect("/pos"), 403
+    return redirect(f"{MONITORS_HUB_URL}?{_hub_redirect_query('performance')}", code=302)
 
-    now = datetime.utcnow()
-    default_from = now - timedelta(days=30)
-    date_from = _parse_monitor_date(request.args.get("date_from"), default_from).replace(
-        hour=0,
-        minute=0,
-        second=0,
-        microsecond=0,
+
+def _hub_redirect_query(tab: str) -> str:
+    from urllib.parse import urlencode
+
+    q = _hub_query_args({"tab": tab})
+    return urlencode(q)
+
+
+@reports_bp.route("/financial-monitor")
+def financial_monitor():
+    if not check_permission("can_see_reports"):
+        return redirect("/pos"), 403
+    return redirect(f"{MONITORS_HUB_URL}?{_hub_redirect_query('financial')}", code=302)
+
+
+@reports_bp.route("/operational-monitor")
+def operational_monitor():
+    if not check_permission("can_see_reports"):
+        return redirect("/pos"), 403
+    return redirect(f"{MONITORS_HUB_URL}?{_hub_redirect_query('operational')}", code=302)
+
+
+@reports_bp.route("/api/monitors/summary")
+def monitors_summary_api():
+    if not check_permission("can_see_reports"):
+        return jsonify({"error": "forbidden"}), 403
+    data = _load_hub_data()
+    return jsonify(build_monitor_summary_payload(data))
+
+
+@reports_bp.route("/api/monitors/data")
+def monitors_data_api():
+    if not check_permission("can_see_reports"):
+        return jsonify({"error": "forbidden"}), 403
+    data = _load_hub_data()
+    return jsonify(build_monitor_live_payload(data))
+
+
+@reports_bp.route("/api/monitors/export")
+def monitors_export_api():
+    if not check_permission("can_see_reports"):
+        return jsonify({"error": "forbidden"}), 403
+    import csv
+    import io
+
+    data = _load_hub_data()
+    tab = data.get("tab") or "financial"
+    table = request.args.get("table") or "default"
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+
+    if tab == "financial":
+        if table == "expenses":
+            writer.writerow(["الفئة", "المبلغ"])
+            for row in data.get("financial", {}).get("top_expenses") or []:
+                writer.writerow([row.get("category"), row.get("amount")])
+        else:
+            writer.writerow(["رقم الطلب", "العميل", "الهاتف", "الحالة", "أيام التأخير", "الشدة"])
+            for row in data.get("financial", {}).get("overdue_orders") or []:
+                writer.writerow([
+                    row.get("id"), row.get("customer"), row.get("phone"),
+                    row.get("status"), row.get("days_overdue"), row.get("severity_label"),
+                ])
+    elif tab == "operational":
+        if table == "shipping":
+            writer.writerow(["شركة الشحن", "جاري الشحن", "مفتوح", "عالق"])
+            for row in data.get("operational", {}).get("shipping_breakdown") or []:
+                writer.writerow([
+                    row.get("name"), row.get("active_shipping"),
+                    row.get("total_open"), row.get("stuck_count"),
+                ])
+        elif table == "employees":
+            writer.writerow(["الموظف", "تم الطلب", "جاري الشحن", "أقدم طلب (يوم)"])
+            for row in data.get("operational", {}).get("employee_breakdown") or []:
+                writer.writerow([
+                    row.get("name"), row.get("pending_count"),
+                    row.get("shipping_count"), row.get("oldest_pending_days"),
+                ])
+        else:
+            writer.writerow(["رقم الطلب", "العميل", "الموظف", "المبلغ", "عمر الطلب"])
+            for row in data.get("operational", {}).get("pending_orders") or []:
+                writer.writerow([
+                    row.get("id"), row.get("customer"), row.get("employee"),
+                    row.get("total_display"), row.get("age_days"),
+                ])
+    else:
+        writer.writerow(["الموظف", "الحالة", "الطلبات", "المبيعات", "السبب"])
+        for row in data.get("performance", {}).get("weak_employees") or []:
+            writer.writerow([
+                row.get("name"), row.get("status"), row.get("orders_count"),
+                row.get("sales_display"), row.get("reason"),
+            ])
+
+    filename = f"monitor_{tab}_{table}.csv"
+    return Response(
+        "\ufeff" + buf.getvalue(),
+        mimetype="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
-    date_to = _parse_monitor_date(request.args.get("date_to"), now).replace(
-        hour=23,
-        minute=59,
-        second=59,
-        microsecond=999999,
-    )
-    if date_from > date_to:
-        date_from, date_to = date_to.replace(hour=0, minute=0, second=0, microsecond=0), date_from.replace(
-            hour=23,
-            minute=59,
-            second=59,
-            microsecond=999999,
-        )
 
-    min_orders = max(0, request.args.get("min_orders", 5, type=int) or 0)
-    min_sales = max(0, request.args.get("min_sales", 0, type=int) or 0)
-    data = _build_monitor_data(date_from, date_to, min_orders, min_sales)
-
-    return render_template("reports_monitor.html", **data)
 
 # ======================================================
 # التقرير المالي الشامل (Financial Report)

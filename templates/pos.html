@@ -1131,6 +1131,7 @@
       display: flex;
       align-items: center;
       justify-content: flex-start;
+      gap: 10px;
       margin-bottom: 12px;
     }
 
@@ -1146,6 +1147,23 @@
       background: rgba(255, 255, 255, 0.9);
       color: #1f2937;
       box-shadow: 0 8px 18px rgba(16, 24, 40, 0.045);
+      font-size: 14px;
+      font-weight: 900;
+      text-decoration: none;
+    }
+
+    .pos-my-orders {
+      min-height: 42px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 16px;
+      border: 1px solid #bfdbfe;
+      border-radius: 999px;
+      background: #eff6ff;
+      color: #2563eb;
+      box-shadow: 0 8px 18px rgba(37, 99, 235, 0.08);
       font-size: 14px;
       font-weight: 900;
       text-decoration: none;
@@ -1434,14 +1452,20 @@
     {% elif can_manage_settings %}
       {% set pos_return.url = '/settings' %}
     {% endif %}
-    {% if pos_return.url %}
     <div class="pos-topbar">
+      {% if pos_return.url %}
       <a href="{{ pos_return.url }}" class="pos-back" title="رجوع">
         <i class="fas fa-arrow-right"></i>
         <span>رجوع</span>
       </a>
+      {% endif %}
+      {% if can_view_my_orders %}
+      <a href="{{ url_for('pos.my_orders') }}" class="pos-my-orders" title="طلباتي">
+        <i class="fas fa-receipt"></i>
+        <span>طلباتي</span>
+      </a>
+      {% endif %}
     </div>
-    {% endif %}
     {% if order_data %}
     <!-- عرض رقم الطلب عند التعديل -->
     <div class="card edit-banner"
@@ -1514,7 +1538,8 @@
           <input id="name" placeholder="الاسم" class="modal-input" autocomplete="name">
           <input id="phone" type="tel" inputmode="numeric" pattern="[0-9]{11}" maxlength="11" placeholder="07xxxxxxxxx" class="modal-input" autocomplete="tel" data-digits-en>
           <input id="phone2" type="tel" inputmode="numeric" pattern="[0-9]{11}" maxlength="11" placeholder="07xxxxxxxxx (اختياري)" class="modal-input" autocomplete="tel" data-digits-en>
-          <select id="city" class="modal-input">
+          <select id="city" class="modal-input" required>
+            <option value="" selected disabled>اختر المحافظة *</option>
             <option value="{{ primary_province }}">{{ primary_province }}</option>
             {% for p in tenant_group_provinces %}
             <option value="{{ p }}">{{ p }}</option>
@@ -1534,6 +1559,7 @@
           </div>
           <input id="ocrAddress" placeholder="العنوان" class="modal-input">
           <select id="ocrCity" class="modal-input">
+            <option value="" selected disabled>اختر المحافظة *</option>
             <option value="{{ primary_province }}">{{ primary_province }}</option>
             {% for p in tenant_group_provinces %}
             <option value="{{ p }}">{{ p }}</option>
@@ -1975,6 +2001,12 @@
         if (addressInput) addressInput.focus()
         return
       }
+      const cityValue = cityInput ? (cityInput.value || "").trim() : ""
+      if (!cityValue) {
+        toast("يرجى اختيار المحافظة")
+        if (cityInput) cityInput.focus()
+        return
+      }
 
       fetch("/pos/add-customer", {
         method: "POST",
@@ -1983,7 +2015,7 @@
           name: nameValue,
           phone: phoneValue,
           phone2: phone2Value,
-          city: cityInput ? (cityInput.value ? cityInput.value.trim() : "") : "",
+          city: cityValue,
           address: addressValue
         })
       })
@@ -2085,20 +2117,20 @@
 
       if (item) {
         const itemStock = Math.max(Number(item.stock || 0), stockNum);
-        if (item.qty + 1 > itemStock) {
-          toast(`⚠ الكمية المتوفرة (${itemStock}) فقط!`);
-          return;
-        }
         item.stock = itemStock;
         item.qty++;
-        toast(`✅ تم زيادة كمية ${name}`);
-      } else {
-        if (stockNum <= 0) {
-          toast(`⚠ المنتج غير متوفر في المخزون!`);
-          return;
+        if (itemStock <= 0 || item.qty > itemStock) {
+          toast(`⚠ تمت زيادة الكمية وسيقفل الطلب بانتظار المخزون`);
+        } else {
+          toast(`✅ تم زيادة كمية ${name}`);
         }
+      } else {
         items.push({ product_id: idNum, name: name || '', price: Number(price) || 0, qty: 1, stock: stockNum });
-        toast(`✅ تم إضافة ${name || 'منتج'}`);
+        if (stockNum <= 0) {
+          toast(`⚠ تمت الإضافة وسيقفل الطلب بانتظار المخزون`);
+        } else {
+          toast(`✅ تم إضافة ${name || 'منتج'}`);
+        }
       }
       if (productResults) productResults.style.display = "none";
       if (searchProduct) searchProduct.value = "";
@@ -2143,12 +2175,10 @@
       const item = items[i];
       const newQty = item.qty + d;
 
-      if (newQty > item.stock) {
-        toast(`⚠ الكمية المتوفرة (${item.stock}) فقط!`);
-        return;
-      }
-
       item.qty = Math.max(1, newQty)
+      if (d > 0 && (item.stock <= 0 || item.qty > item.stock)) {
+        toast(`⚠ الكمية أكبر من المخزون، سيقفل الطلب بانتظار المخزون`);
+      }
       renderItems()
     }
 
@@ -2358,7 +2388,7 @@
           toast("❌ " + d.error)
           return
         }
-        toast(editingOrderId ? "✅ تم حفظ التعديل" : "✅ تم تنفيذ الطلب")
+        toast(d.stock_locked ? "⚠ تم إنشاء الطلب مقفلاً بانتظار المخزون" : (editingOrderId ? "✅ تم حفظ التعديل" : "✅ تم تنفيذ الطلب"))
         closeOrderNotesModal()
 
         printServerInvoice(d.invoice_id);
@@ -2475,7 +2505,7 @@
           return
         }
         const date = new Date(scheduleDate).toLocaleDateString('ar-SA')
-        toast(`✅ تم تأجيل الطلب إلى ${date}`)
+        toast(d.stock_locked ? `⚠ تم تأجيل الطلب مقفلاً بانتظار المخزون` : `✅ تم تأجيل الطلب إلى ${date}`)
         closeScheduleModal()
         items = []
         renderItems()

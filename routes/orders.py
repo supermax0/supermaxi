@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from types import SimpleNamespace
 
 from flask import (
     Blueprint,
@@ -59,6 +60,19 @@ from utils.order_status import (
     is_return_status_value,
 )
 from utils.order_lifecycle import OrderLifecycleError, process_order_cancel, process_order_return, restore_order_stock_once
+from utils.order_stock_lock import (
+    LOCKED_ORDER_MESSAGE,
+    auto_unlock_locked_orders,
+    is_stock_locked,
+    locked_order_response,
+)
+from utils.order_stock_policy import (
+    OrderStockError,
+    deferred_stock_enabled,
+    ensure_policy_initialized,
+    ensure_stock_for_transition,
+    stock_is_deducted,
+)
 from utils.cash_calculations import _effective_paid_amount
 from utils.delivery_expense_service import remove_delivery_expense_for_invoice, sync_delivery_expense_for_invoice
 from utils.order_shipping import apply_manual_delivery_fee_on_payment, is_shipping_item, order_item_display_name
@@ -69,6 +83,8 @@ from utils.shipping_barcodes import (
     shipping_barcodes_match_code,
 )
 from utils.payment_ledger import append_payment_ledger_delta, ensure_invoice_payment_ledger_table
+from utils.invoice_schema_guard import ensure_invoice_schema
+from utils.shipping_settlement_service import ensure_paid_shipping_order_settled
 from services.media_service import get_thumbnail_upload_root, get_video_upload_root, save_uploaded_file
 from utils.activity_logger import INVOICE_SNAPSHOT_FIELDS, log_mutation, snapshot_attrs
 
@@ -114,8 +130,13 @@ def _orders_branch_sales_ctx():
 
 @orders_bp.before_request
 def _orders_mutations_guard():
+    try:
+        ensure_invoice_schema()
+    except Exception:
+        pass
     if "user_id" in session:
         try:
+            ensure_policy_initialized()
             ensure_return_status_unified()
             ensure_delivered_status_normalized()
         except Exception:
@@ -415,6 +436,7 @@ def _ensure_order_video_columns() -> None:
         invoice_columns = {col["name"] for col in inspector.get_columns("invoice")}
         dialect = engine.dialect.name
         recorded_type = "TIMESTAMP" if dialect == "postgresql" else "DATETIME"
+        bool_default = "BOOLEAN DEFAULT false" if dialect == "postgresql" else "BOOLEAN DEFAULT 0"
         stmts: list[str] = []
         if "order_video_path" not in invoice_columns:
             stmts.append("ALTER TABLE invoice ADD COLUMN order_video_path VARCHAR(255)")
@@ -432,6 +454,14 @@ def _ensure_order_video_columns() -> None:
             stmts.append("ALTER TABLE invoice ADD COLUMN shipping_barcodes_json TEXT")
         if "discount_amount" not in invoice_columns:
             stmts.append("ALTER TABLE invoice ADD COLUMN discount_amount INTEGER DEFAULT 0")
+        if "is_stock_locked" not in invoice_columns:
+            stmts.append(f"ALTER TABLE invoice ADD COLUMN is_stock_locked {bool_default}")
+        if "stock_lock_reason" not in invoice_columns:
+            stmts.append("ALTER TABLE invoice ADD COLUMN stock_lock_reason TEXT")
+        if "stock_locked_at" not in invoice_columns:
+            stmts.append(f"ALTER TABLE invoice ADD COLUMN stock_locked_at {recorded_type}")
+        if "stock_unlocked_at" not in invoice_columns:
+            stmts.append(f"ALTER TABLE invoice ADD COLUMN stock_unlocked_at {recorded_type}")
         if stmts:
             with engine.begin() as conn:
                 for stmt in stmts:
@@ -441,6 +471,74 @@ def _ensure_order_video_columns() -> None:
         current_app.logger.exception("Failed ensuring order video columns on invoice table")
         _ORDER_VIDEO_COLUMNS_FAILED_BINDS.add(bind_key)
 
+
+def _ensure_order_columns_and_unlock() -> None:
+    _ensure_order_video_columns()
+    try:
+        auto_unlock_locked_orders()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Failed auto-unlocking stock-locked orders")
+
+
+def _reject_if_stock_locked(order):
+    if is_stock_locked(order):
+        payload = locked_order_response()
+        payload["locked"] = True
+        payload["reason"] = getattr(order, "stock_lock_reason", None) or LOCKED_ORDER_MESSAGE
+        return jsonify(payload), 423
+    return None
+
+
+def _insufficient_stock_response(exc, order=None):
+    """JSON payload for stock shortage errors (includes order id for UI highlight)."""
+    order_id = getattr(exc, "order_id", None)
+    if order_id is None and order is not None:
+        order_id = getattr(order, "id", None)
+    try:
+        order_id = int(order_id) if order_id is not None else None
+    except (TypeError, ValueError):
+        order_id = None
+    message = getattr(exc, "message", None) or str(exc)
+    shortages = list(getattr(exc, "shortages", None) or [])
+    if message and message not in shortages:
+        shortages = [message] + [s for s in shortages if s != message]
+    payload = {
+        "success": False,
+        "code": "INSUFFICIENT_STOCK",
+        "error": message,
+        "shortages": shortages,
+        "order_id": order_id,
+        "order_ids": [order_id] if order_id else [],
+    }
+    product_name = getattr(exc, "product_name", None)
+    if product_name:
+        payload["product_name"] = product_name
+    return jsonify(payload), 409
+
+
+class _OrderPrintProxy:
+    def __init__(self, order, customer):
+        self._order = order
+        self.customer = customer
+
+    def __getattr__(self, name):
+        return getattr(self._order, name)
+
+
+def _order_for_print(order):
+    if getattr(order, "customer", None) is not None:
+        return order
+    fallback_customer = SimpleNamespace(
+        id=getattr(order, "customer_id", None),
+        name=getattr(order, "customer_name", None) or "—",
+        phone="",
+        phone2="",
+        city="",
+        address="",
+    )
+    return _OrderPrintProxy(order, fallback_customer)
+
 # =====================================================
 # Orders Page (Optimized for many orders)
 # =====================================================
@@ -449,7 +547,7 @@ def orders():
     # فحص الصلاحية
     if not check_permission("can_see_orders"):
         return redirect("/pos"), 403
-    _ensure_order_video_columns()
+    _ensure_order_columns_and_unlock()
 
     # ------------------ Base Query ------------------
     q = Invoice.query.options(
@@ -547,7 +645,7 @@ def orders_ordered():
     # فحص الصلاحية (الطلبات + حالة تم الطلب)
     if not check_permission("can_see_orders") or not check_permission("can_see_orders_placed"):
         return redirect("/pos"), 403
-    _ensure_order_video_columns()
+    _ensure_order_columns_and_unlock()
 
     q = Invoice.query.options(
         joinedload(Invoice.customer),
@@ -609,6 +707,75 @@ def orders_ordered():
     )
 
 # =====================================================
+# Orders by Status - معباة
+# =====================================================
+@orders_bp.route("/packed")
+def orders_packed():
+    # فحص الصلاحية (الطلبات + حالة معباة)
+    if not check_permission("can_see_orders") or not check_permission("can_see_orders_packed"):
+        return redirect("/pos"), 403
+    _ensure_order_columns_and_unlock()
+
+    q = Invoice.query.options(
+        joinedload(Invoice.customer),
+        joinedload(Invoice.shipping_company),
+        joinedload(Invoice.delivery_agent)
+    ).join(Customer).filter(Invoice.status == "معباة")
+
+    # Filters
+    city = request.args.get("city")
+    payment = request.args.get("payment")
+    employee = request.args.get("employee")
+    shipping = request.args.get("shipping")
+    search = request.args.get("search")
+    scheduled_date = request.args.get("scheduled_date")
+
+    # إخفاء الطلبات المؤجلة التي لم يحن موعدها بعد
+    today = date.today()
+    if not scheduled_date:
+        q = q.filter(
+            or_(
+                Invoice.scheduled_date.is_(None),
+                func.date(Invoice.scheduled_date) <= today
+            )
+        )
+    else:
+        try:
+            target_date = datetime.strptime(scheduled_date, "%Y-%m-%d").date()
+            q = q.filter(func.date(Invoice.scheduled_date) == target_date)
+        except:
+            pass
+
+    if city:
+        q = q.filter(Customer.city == city)
+    if payment:
+        q = q.filter(Invoice.payment_status == payment)
+    if employee:
+        q = q.filter(Invoice.employee_name == employee)
+    if shipping:
+        q = q.filter(Invoice.shipping_company_id == shipping)
+    if search:
+        like = f"%{search}%"
+        q = q.filter(
+            or_(
+                Customer.name.ilike(like),
+                Customer.phone.ilike(like),
+                Invoice.id.ilike(like)
+            )
+        )
+
+    q = q.order_by(Invoice.created_at.desc())
+    orders = _orders_grid_rows(q)
+
+    return render_template(
+        "orders.html",
+        orders=orders,
+        pagination=None,
+        page_type="packed",
+        **_orders_page_lookups(),
+    )
+
+# =====================================================
 # Orders by Status - جاري الشحن
 # =====================================================
 @orders_bp.route("/shipping")
@@ -616,7 +783,7 @@ def orders_shipping():
     # فحص الصلاحية (الطلبات + حالة جاري الشحن)
     if not check_permission("can_see_orders") or not check_permission("can_see_orders_shipped"):
         return redirect("/pos"), 403
-    _ensure_order_video_columns()
+    _ensure_order_columns_and_unlock()
 
     
     q = Invoice.query.options(
@@ -686,7 +853,7 @@ def orders_delivered():
     # فحص الصلاحية (الطلبات + حالة تم التوصيل)
     if not check_permission("can_see_orders") or not check_permission("can_see_orders_delivered"):
         return redirect("/pos"), 403
-    _ensure_order_video_columns()
+    _ensure_order_columns_and_unlock()
 
     q = Invoice.query.options(
         joinedload(Invoice.customer),
@@ -758,7 +925,7 @@ def orders_delivered():
 def orders_returned():
     if not check_permission("can_see_orders") or not check_permission("can_see_orders_returned"):
         return redirect("/pos"), 403
-    _ensure_order_video_columns()
+    _ensure_order_columns_and_unlock()
 
     q = Invoice.query.options(
         joinedload(Invoice.customer),
@@ -831,7 +998,7 @@ def orders_cancelled():
     # فحص الصلاحية (الطلبات فقط)
     if not check_permission("can_see_orders"):
         return redirect("/pos"), 403
-    _ensure_order_video_columns()
+    _ensure_order_columns_and_unlock()
 
     
     q = Invoice.query.options(
@@ -900,6 +1067,9 @@ def orders_cancelled():
 def update_order():
     data = request.json
     order = Invoice.query.get_or_404(int(data["id"]))
+    locked_response = _reject_if_stock_locked(order)
+    if locked_response:
+        return locked_response
     before = snapshot_attrs(order, *INVOICE_SNAPSHOT_FIELDS)
     prev_effective_paid = _effective_paid_amount(order)
     lifecycle_changed = False
@@ -933,6 +1103,11 @@ def update_order():
                 return jsonify({"success": False, "error": exc.message}), exc.status_code
             lifecycle_changed = True
         else:
+            try:
+                ensure_stock_for_transition(order, target_status=new_status)
+            except OrderStockError as exc:
+                db.session.rollback()
+                return _insufficient_stock_response(exc, order)
             order.status = new_status
 
     if data.get("shipping"):
@@ -964,6 +1139,121 @@ def update_order():
     return jsonify({"success": True})
 
 
+def _bulk_stock_order_payload(order):
+    from utils.branch_stock_service import get_total_stock
+    from utils.order_stock_policy import is_physical_order_item
+
+    requirements = []
+    for item in order.items:
+        if not is_physical_order_item(item):
+            continue
+        requirements.append({
+            "product_id": item.product_id,
+            "product_name": item.product_name,
+            "quantity": int(item.quantity or 0),
+            "variant_color": (getattr(item, "variant_color", None) or ""),
+            "available": int(get_total_stock(item.product_id) or 0),
+        })
+    return {
+        "id": order.id,
+        "customer_name": order.customer_name,
+        "stock_is_deducted": stock_is_deducted(order),
+        "requirements": requirements,
+    }
+
+
+def _apply_bulk_status_rows(orders, target_status):
+    for order in orders:
+        try:
+            ensure_stock_for_transition(order, target_status=target_status)
+            if target_status == "جاري الشحن":
+                from utils.shipping_branch_schedule import apply_shipping_branch_schedule
+
+                apply_shipping_branch_schedule(order, previous_status=order.status)
+                order.shipping_status = "جاري الشحن"
+        except OrderStockError as exc:
+            if getattr(exc, "order_id", None) is None:
+                exc.order_id = order.id
+            raise
+        except Exception as exc:
+            from utils.branch_stock_service import BranchStockError
+
+            if isinstance(exc, BranchStockError):
+                raise OrderStockError(str(exc), [str(exc)], order_id=order.id) from exc
+            raise
+        order.status = target_status
+    db.session.flush()
+
+
+@orders_bp.route("/bulk-status", methods=["POST"])
+def bulk_status():
+    """Atomic bulk status transition with optional manual shortage allocation."""
+    data = request.get_json(silent=True) or {}
+    target_status = (data.get("status") or "").strip()
+    allowed = {"تم الطلب", "معباة", "جاري الشحن", "تم التوصيل"}
+    if target_status not in allowed:
+        return jsonify({"success": False, "error": "حالة التحويل الجماعي غير صالحة"}), 400
+
+    try:
+        candidate_ids = list(dict.fromkeys(int(v) for v in (data.get("order_ids") or [])))
+        selected_raw = data.get("selected_order_ids")
+        selected_ids = None if selected_raw is None else list(dict.fromkeys(int(v) for v in selected_raw))
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "error": "أرقام الطلبات غير صالحة"}), 400
+    if not candidate_ids:
+        return jsonify({"success": False, "error": "لا توجد طلبات محددة"}), 400
+    if selected_ids is not None and not set(selected_ids).issubset(set(candidate_ids)):
+        return jsonify({"success": False, "error": "الطلبات المختارة ليست ضمن المجموعة"}), 400
+
+    candidates = Invoice.query.filter(Invoice.id.in_(candidate_ids)).order_by(Invoice.id.asc()).all()
+    if len(candidates) != len(candidate_ids):
+        return jsonify({"success": False, "error": "بعض الطلبات غير موجودة"}), 404
+    by_id = {order.id: order for order in candidates}
+    chosen = candidates if selected_ids is None else [by_id[oid] for oid in selected_ids]
+
+    if selected_ids is None:
+        preview = db.session.begin_nested()
+        try:
+            _apply_bulk_status_rows(chosen, target_status)
+        except OrderStockError as exc:
+            preview.rollback()
+            if not deferred_stock_enabled():
+                db.session.rollback()
+                return _insufficient_stock_response(exc)
+            return jsonify({
+                "success": False,
+                "code": "STOCK_SELECTION_REQUIRED",
+                "selection_required": True,
+                "error": "المخزون لا يكفي جميع الطلبات؛ اختر الطلبات التي تريد تنفيذها",
+                "shortages": exc.shortages,
+                "order_id": getattr(exc, "order_id", None),
+                "order_ids": [getattr(exc, "order_id", None)] if getattr(exc, "order_id", None) else [],
+                "orders": [_bulk_stock_order_payload(order) for order in candidates],
+            }), 409
+        except Exception:
+            preview.rollback()
+            raise
+        else:
+            preview.rollback()
+
+    try:
+        _apply_bulk_status_rows(chosen, target_status)
+        db.session.commit()
+        updated_ids = [order.id for order in chosen]
+        return jsonify({
+            "success": True,
+            "updated": len(updated_ids),
+            "updated_ids": updated_ids,
+            "skipped_ids": [oid for oid in candidate_ids if oid not in set(updated_ids)],
+        })
+    except OrderStockError as exc:
+        db.session.rollback()
+        return _insufficient_stock_response(exc)
+    except Exception as exc:
+        db.session.rollback()
+        return jsonify({"success": False, "error": _db_user_facing_error(exc)}), 400
+
+
 # =====================================================
 # Payment (Full / Partial)
 # =====================================================
@@ -981,6 +1271,10 @@ def payment():
         if not order:
             return jsonify({"success": False, "error": "الطلب غير موجود"}), 404
 
+        locked_response = _reject_if_stock_locked(order)
+        if locked_response:
+            return locked_response
+
         from utils.employee_commission_service import attach_session_employee_to_invoice
 
         attach_session_employee_to_invoice(order)
@@ -994,6 +1288,21 @@ def payment():
             delivery_fee = 0
         video_cleanup_targets = None
         prev_effective_paid = _effective_paid_amount(order)
+
+        if payment_status == "جزئي":
+            try:
+                paid_amount = int(paid_amount)
+            except (ValueError, TypeError):
+                return jsonify({"success": False, "error": "مبلغ التسديد الجزئي غير صحيح"}), 400
+            if paid_amount <= 0:
+                return jsonify({"success": False, "error": "مبلغ التسديد الجزئي يجب أن يكون أكبر من صفر"}), 400
+
+        if payment_status in ["جزئي", "مسدد"]:
+            try:
+                ensure_stock_for_transition(order, target_payment_status=payment_status)
+            except OrderStockError as exc:
+                db.session.rollback()
+                return _insufficient_stock_response(exc, order)
 
         if payment_status in ["غير مسدد", "جزئي", "مسدد", RETURN_STATUS, "مرتجع"]:
             if is_return_status_value(payment_status):
@@ -1084,6 +1393,7 @@ def payment():
             apply_manual_delivery_fee_on_payment(order, delivery_fee, tenant_id)
             if delivery_fee <= 0:
                 order.paid_amount = order.total
+            ensure_paid_shipping_order_settled(order)
         delta_pay = _effective_paid_amount(order) - prev_effective_paid
         append_payment_ledger_delta(order.id, delta_pay)
         sync_delivery_expense_for_invoice(order)
@@ -1107,7 +1417,17 @@ def payment():
             )
         except Exception:
             pass
-        return jsonify({"success": True})
+        return jsonify({
+            "success": True,
+            "order": {
+                "id": order.id,
+                "total": int(order.total or 0),
+                "paid_amount": int(order.paid_amount or 0),
+                "remaining": max(0, int(order.total or 0) - int(order.paid_amount or 0)),
+                "status": order.status,
+                "payment_status": order.payment_status,
+            },
+        })
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "error": _db_user_facing_error(e)}), 500
@@ -1119,6 +1439,9 @@ def payment():
 @orders_bp.route("/cancel/<int:order_id>", methods=["POST"])
 def cancel_order(order_id):
     order = Invoice.query.get_or_404(order_id)
+    locked_response = _reject_if_stock_locked(order)
+    if locked_response:
+        return locked_response
     before = snapshot_attrs(order, *INVOICE_SNAPSHOT_FIELDS)
 
     try:
@@ -1152,6 +1475,9 @@ def cancel_order(order_id):
 def delete_order(order_id):
     _ensure_order_video_columns()
     order = Invoice.query.get_or_404(order_id)
+    locked_response = _reject_if_stock_locked(order)
+    if locked_response:
+        return locked_response
     before_del = snapshot_attrs(order, *INVOICE_SNAPSHOT_FIELDS)
 
     try:
@@ -1195,6 +1521,9 @@ def delete_order(order_id):
 def update_shipping():
     data = request.json
     order = Invoice.query.get_or_404(data["order_id"])
+    locked_response = _reject_if_stock_locked(order)
+    if locked_response:
+        return locked_response
     before = snapshot_attrs(order, *INVOICE_SNAPSHOT_FIELDS)
     
     shipping_id = data.get("shipping_id")
@@ -1239,6 +1568,10 @@ def update_delivery_agent():
             return jsonify({"error": "الطلب غير موجود"}), 404
         
         # إذا كان agent_id هو None أو "none" أو ""، نضبطه على None
+        locked_response = _reject_if_stock_locked(order)
+        if locked_response:
+            return locked_response
+
         if agent_id is None or agent_id == "" or agent_id == "none":
             order.delivery_agent_id = None
         else:
@@ -1256,7 +1589,7 @@ def update_delivery_agent():
 # =====================================================
 @orders_bp.route("/details/<int:order_id>")
 def details(order_id):
-    _ensure_order_video_columns()
+    _ensure_order_columns_and_unlock()
     denied = guard_permission("can_see_orders", json=True)
     if denied:
         return denied
@@ -1302,7 +1635,18 @@ def details(order_id):
             branch_names[branch.id] = branch.name
 
     sell_all = is_sell_from_all_branches_enabled()
-    can_edit_fulfillment = sell_all and order_can_edit_fulfillment(order)
+    can_edit_fulfillment = sell_all and order_can_edit_fulfillment(order) and not is_stock_locked(order)
+
+    invoice_url = ""
+    try:
+        if current_app.secret_key:
+            public_path = url_for(
+                "orders.public_order_view",
+                token=build_public_order_view_token(order.id),
+            )
+            invoice_url = _absolute_url_for_path(public_path)
+    except Exception:
+        current_app.logger.exception("details invoice_url failed for order %s", order.id)
 
     return jsonify({
         "order": {
@@ -1314,10 +1658,15 @@ def details(order_id):
             "address": order.customer.address,
             "employee": order.employee_name,
             "employee_id": order.employee_id,
+            "page_name": (order.page_name or "").strip() or None,
+            "invoice_url": invoice_url or None,
             "total": order.total,
             "paid_amount": order.paid_amount or 0,
             "status": order.status,
             "payment": order.payment_status,
+            "is_stock_locked": is_stock_locked(order),
+            "stock_is_deducted": stock_is_deducted(order),
+            "stock_lock_reason": getattr(order, "stock_lock_reason", None),
             "returned_count": returned_count,
             "created_at": order.created_at.strftime("%Y-%m-%d %H:%M:%S") if order.created_at else "",
             "shipping_company": order.shipping_company.name if order.shipping_company else None,
@@ -1363,6 +1712,9 @@ def notify_order_employee(order_id):
     denied = guard_order_access(order, json=True)
     if denied:
         return denied
+    locked_response = _reject_if_stock_locked(order)
+    if locked_response:
+        return locked_response
 
     if not order.employee_id:
         return jsonify({"success": False, "error": "لا يوجد موظف مرتبط بهذا الطلب"}), 400
@@ -1469,6 +1821,9 @@ def update_fulfillment_branch():
     denied = guard_order_access(order, json=True)
     if denied:
         return denied
+    locked_response = _reject_if_stock_locked(order)
+    if locked_response:
+        return locked_response
 
     if not order_can_edit_fulfillment(order):
         return jsonify({
@@ -1513,7 +1868,14 @@ def update_fulfillment_branch():
         })
     except BranchStockError as exc:
         db.session.rollback()
-        return jsonify({"success": False, "error": str(exc)}), 400
+        return jsonify({
+            "success": False,
+            "code": "INSUFFICIENT_STOCK",
+            "error": str(exc),
+            "shortages": [str(exc)],
+            "order_id": order.id,
+            "order_ids": [order.id],
+        }), 400
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "error": _db_user_facing_error(e)}), 500
@@ -1537,6 +1899,12 @@ def upload_order_video(order_id):
         return jsonify({"success": False, "error": "غير مصرح"}), 403
 
     order = Invoice.query.get_or_404(order_id)
+    denied = guard_order_access(order, json=True)
+    if denied:
+        return denied
+    locked_response = _reject_if_stock_locked(order)
+    if locked_response:
+        return locked_response
     file = request.files.get("video")
     if not file or not file.filename:
         return jsonify({"success": False, "error": "يرجى اختيار ملف فيديو."}), 400
@@ -1674,7 +2042,7 @@ def public_order_view(token: str):
             current_app.logger.exception("public_order_view video url for order %s", order.id)
     return render_template(
         "order_public_view.html",
-        order=order,
+        order=_order_for_print(order),
         items=items,
         total=total,
         total_before_discount=total_before_discount,
@@ -1742,6 +2110,7 @@ def query_order(order_id):
 # =====================================================
 @orders_bp.route("/invoice/<int:order_id>")
 def invoice_page(order_id):
+    ensure_invoice_schema()
     _ensure_order_video_columns()
     denied = guard_permission("can_see_orders")
     if denied:
@@ -1766,24 +2135,27 @@ def invoice_page(order_id):
     is_partial = amounts["is_partial"]
 
     # حساب عدد الرواجع بناءً على رقم الهاتف (phone أو phone2)
-    customer_phone = order.customer.phone
-    customers_with_same_phone = Customer.query.filter(
-        or_(
-            Customer.phone == customer_phone,
-            Customer.phone2 == customer_phone
-        )
-    ).all()
-    customer_ids = [c.id for c in customers_with_same_phone]
-    returned_count = Invoice.query.filter(
-        Invoice.customer_id.in_(customer_ids),
-        or_(
-            invoice_returned_condition(Invoice),
-        )
-    ).count()
-    cancelled_count = Invoice.query.filter(
-        Invoice.customer_id.in_(customer_ids),
-        Invoice.status == "ملغي"
-    ).count()
+    customer_phone = getattr(order.customer, "phone", None) if order.customer else None
+    returned_count = 0
+    cancelled_count = 0
+    if customer_phone:
+        customers_with_same_phone = Customer.query.filter(
+            or_(
+                Customer.phone == customer_phone,
+                Customer.phone2 == customer_phone
+            )
+        ).all()
+        customer_ids = [c.id for c in customers_with_same_phone]
+        returned_count = Invoice.query.filter(
+            Invoice.customer_id.in_(customer_ids),
+            or_(
+                invoice_returned_condition(Invoice),
+            )
+        ).count()
+        cancelled_count = Invoice.query.filter(
+            Invoice.customer_id.in_(customer_ids),
+            Invoice.status == "ملغي"
+        ).count()
 
     # Get invoice settings
     settings = InvoiceSettings.get_settings()
@@ -1802,7 +2174,7 @@ def invoice_page(order_id):
 
     return render_template(
         template_file,
-        order=order,
+        order=_order_for_print(order),
         items=items,
         total=total,
         total_before_discount=total_before_discount,
@@ -2395,6 +2767,9 @@ def search_by_barcode():
 @orders_bp.route("/update-barcode/<int:invoice_id>", methods=["POST"])
 def update_barcode(invoice_id):
     invoice = Invoice.query.get_or_404(invoice_id)
+    locked_response = _reject_if_stock_locked(invoice)
+    if locked_response:
+        return locked_response
     data = request.get_json() or {}
     
     barcode = data.get("barcode", "").strip()
@@ -2410,6 +2785,9 @@ def update_barcode(invoice_id):
 @orders_bp.route("/update-shipping-barcode/<int:invoice_id>", methods=["POST"])
 def update_shipping_barcode(invoice_id):
     invoice = Invoice.query.get_or_404(invoice_id)
+    locked_response = _reject_if_stock_locked(invoice)
+    if locked_response:
+        return locked_response
     before = snapshot_attrs(invoice, *INVOICE_SNAPSHOT_FIELDS)
     data = request.get_json() or {}
     
@@ -2448,12 +2826,13 @@ def update_shipping_barcode(invoice_id):
         from utils.branch_stock_service import BranchStockError
         from utils.shipping_branch_schedule import apply_shipping_branch_schedule
 
+        ensure_stock_for_transition(invoice, target_status="جاري الشحن")
         apply_shipping_branch_schedule(invoice, previous_status=invoice.status)
         invoice.status = "جاري الشحن"
         invoice.shipping_status = "جاري الشحن"
-    except BranchStockError as exc:
+    except (BranchStockError, OrderStockError) as exc:
         db.session.rollback()
-        return jsonify({"success": False, "error": str(exc)}), 400
+        return _insufficient_stock_response(exc, invoice)
     
     db.session.commit()
     try:
@@ -2566,6 +2945,8 @@ def create_shipping_report():
     orders = Invoice.query.filter(Invoice.id.in_(order_ids)).all()
     if len(orders) != len(order_ids):
         return jsonify({"error": "بعض الطلبات غير موجودة"}), 404
+    if any(is_stock_locked(order) for order in orders):
+        return jsonify({"error": LOCKED_ORDER_MESSAGE, "locked": True}), 423
     
     # تحضير بيانات الطلبات
     orders_data = []
@@ -2715,6 +3096,8 @@ def create_agent_report_internal(order_ids, agent_id, save_to_db=True):
     orders = Invoice.query.filter(Invoice.id.in_(order_ids)).all()
     if len(orders) != len(order_ids):
         return {"error": "بعض الطلبات غير موجودة"}
+    if any(is_stock_locked(order) for order in orders):
+        return {"error": LOCKED_ORDER_MESSAGE, "locked": True}
     
     # تحضير بيانات الطلبات
     orders_data = []

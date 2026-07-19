@@ -484,10 +484,11 @@ document.addEventListener('DOMContentLoaded', function() {
         <th>الزبون</th>
         <th>الهاتف</th>
         <th>المحافظة</th>
+        <th>العنوان</th>
         <th>الإجمالي</th>
         <th>المدفوع مسبقاً</th>
         <th>الباقي</th>
-        <th>حالة الطلب</th>
+        <th>حالة الطلب الحالية</th>
         <th>حالة الدفع</th>
         {% if current_role == "admin" and not report.is_executed and status_selections %}
         <th>الحالة المحددة</th>
@@ -508,6 +509,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <td><strong>{{ order.customer_name }}</strong></td>
         <td style="direction: ltr; text-align: center; font-family: 'Courier New', monospace; font-weight: 600;">{{ order.customer_phone }}</td>
         <td>{{ order.customer_city }}</td>
+        <td style="max-width: 220px; word-wrap: break-word; text-align: right; font-size: 13px;">{{ order.customer_address or order.address or "—" }}</td>
         <td style="font-weight: 600; font-size: 13px;">{{ "{:,.0f}".format(order.total|default(0)|int) }} د.ع</td>
         <td style="color: #3b82f6; font-weight: 600; font-size: 13px;">{{ "{:,.0f}".format(order.paid_amount|default(0, true)|int) }} د.ع</td>
         <td style="color: var(--report-success); font-weight: 700; font-size: 14px;">{{ "{:,.0f}".format(order.remaining|default(order.total, true)|int) }} د.ع</td>
@@ -535,7 +537,7 @@ document.addEventListener('DOMContentLoaded', function() {
       </tr>
       {% endfor %}
       <tr class="total-summary-row" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.2)); font-weight: 700;">
-        <td colspan="7" style="text-align: right; padding-right: 25px; font-size: 16px;">💰 {{ display_total_label }}:</td>
+        <td colspan="8" style="text-align: right; padding-right: 25px; font-size: 16px;">💰 {{ display_total_label }}:</td>
         <td id="reportTotalAmount" style="color: var(--report-success); font-size: 18px; font-weight: 800;">{{ "{:,.0f}".format(display_total_amount) }} دينار عراقي</td>
         <td colspan="{% if current_role == 'admin' and not report.is_executed and status_selections %}4{% else %}3{% endif %}"></td>
       </tr>

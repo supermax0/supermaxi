@@ -2,6 +2,7 @@
 
 {% block title %}
 {% if page_type == "ordered" %}{{ _('orders_title_ordered') }}
+{% elif page_type == "packed" %}{{ _('orders_title_packed') }}
 {% elif page_type == "shipping" %}{{ _('orders_title_shipping') }}
 {% elif page_type == "cancelled" %}{{ _('orders_title_cancelled') }}
 {% elif page_type == "returned" %}{{ _('orders_status_returned') }}
@@ -11,6 +12,7 @@
 
 {% block page_title %}
 {% if page_type == "ordered" %}{{ _('orders_title_ordered') }}
+{% elif page_type == "packed" %}{{ _('orders_title_packed') }}
 {% elif page_type == "shipping" %}{{ _('orders_title_shipping') }}
 {% elif page_type == "cancelled" %}{{ _('orders_title_cancelled') }}
 {% elif page_type == "returned" %}{{ _('orders_status_returned') }}
@@ -83,6 +85,7 @@
       <select id="filterStatus" title="{{ _('orders_filter_all_statuses') }}" data-help="orders.status">
         <option value="">{{ _('orders_filter_all_statuses') }}</option>
         <option>{{ _('orders_status_ordered') }}</option>
+        <option>{{ _('orders_status_packed') }}</option>
         <option>{{ _('orders_status_shipping') }}</option>
         <option>{{ _('orders_status_delivered') }}</option>
         <option>{{ _('orders_status_returned') }}</option>
@@ -131,9 +134,9 @@
         <select id="bulkStatus">
           <option value="">{{ _('orders_bulk_change_status') }}</option>
           <option>{{ _('orders_status_ordered') }}</option>
+          <option>{{ _('orders_status_packed') }}</option>
           <option>{{ _('orders_status_shipping') }}</option>
           <option>{{ _('orders_status_delivered') }}</option>
-          <option>{{ _('orders_status_returned') }}</option>
         </select>
         <button class="btn btn-primary" onclick="applyStatus()">{{ _('orders_bulk_apply') }}</button>
       </div>
@@ -155,6 +158,23 @@
         </select>
         <button class="btn btn-primary" onclick="applyDeliveryAgent()">{{ _('orders_bulk_apply') }}</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<div id="stockAllocationModal" class="vis-modal" onclick="if(event.target === this) closeStockAllocationModal();">
+  <div class="vis-box stock-alloc-box" onclick="event.stopPropagation();">
+    <div class="vis-header"><i>📦</i><h3 class="vis-title">اختيار الطلبات التي تسحب المخزون</h3></div>
+    <p class="vis-subtitle">المخزون لا يكفي المجموعة كلها. اختر الطلبات التي تريد تحويلها، والباقي سيبقى «تم الطلب».</p>
+    <div id="stockAllocationShortages" class="stock-alloc-shortages"></div>
+    <div class="stock-alloc-balance-wrap">
+      <div class="stock-alloc-balance-label">رصيد المخزون بعد الاختيار</div>
+      <div id="stockAllocationBalance" class="stock-alloc-balance"></div>
+    </div>
+    <div id="stockAllocationOrders" class="vis-list stock-alloc-list"></div>
+    <div class="vis-actions stock-alloc-actions">
+      <button type="button" class="vis-btn vis-btn-cancel" onclick="closeStockAllocationModal()">إلغاء</button>
+      <button type="button" class="vis-btn vis-btn-save" onclick="confirmBulkStockSelection()">تحويل الطلبات المختارة</button>
     </div>
   </div>
 </div>
@@ -296,8 +316,11 @@
     "delivery_agent_id": {{ o.delivery_agent_id or 'null' }},
     "delivery_agent": {% if o.delivery_agent_id and o.delivery_agent %}{{ o.delivery_agent.name|tojson }}{% else %}"—"{% endif %},
     "note": {{ (o.note or '')|tojson }},
-    "can_pay": {% if (o.total or 0) > (o.paid_amount or 0) and (o.payment_status or '') not in ['مسدد', 'مرتجع', 'ملغي'] and o.status not in ['راجع', 'مرتجع', 'راجعة', 'ملغي'] %}true{% else %}false{% endif %},
-    "can_cancel": {% if o.status == 'تم الطلب' %}true{% else %}false{% endif %}
+    "is_stock_locked": {% if o.is_stock_locked %}true{% else %}false{% endif %},
+    "stock_is_deducted": {% if o.stock_is_deducted %}true{% else %}false{% endif %},
+    "stock_lock_reason": {{ (o.stock_lock_reason or '')|tojson }},
+    "can_pay": {% if not o.is_stock_locked and (o.total or 0) > (o.paid_amount or 0) and (o.payment_status or '') not in ['مسدد', 'مرتجع', 'ملغي'] and o.status not in ['راجع', 'مرتجع', 'راجعة', 'ملغي'] %}true{% else %}false{% endif %},
+    "can_cancel": {% if not o.is_stock_locked and o.status == 'تم الطلب' %}true{% else %}false{% endif %}
   }{% if not loop.last %},{% endif %}
   {% endfor %}
 ]
@@ -1899,6 +1922,199 @@
     box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
   }
 
+  /* ================== Modal: Stock Allocation ================== */
+  .stock-alloc-box {
+    width: min(720px, 94vw);
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 28px;
+  }
+
+  .stock-alloc-box .vis-subtitle {
+    margin-bottom: 16px;
+    flex-shrink: 0;
+  }
+
+  .stock-alloc-shortages {
+    margin: 0 0 12px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    color: #fbbf24;
+    font-weight: 700;
+    font-size: 13px;
+    line-height: 1.5;
+    flex-shrink: 0;
+  }
+
+  .stock-alloc-shortages:empty {
+    display: none;
+  }
+
+  .stock-alloc-balance-wrap {
+    margin: 0 0 16px;
+    flex-shrink: 0;
+  }
+
+  .stock-alloc-balance-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #94a3b8;
+    margin-bottom: 8px;
+    letter-spacing: 0.02em;
+  }
+
+  .stock-alloc-balance {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    color: #e2e8f0;
+    max-height: 160px;
+    overflow-y: auto;
+  }
+
+  .stock-alloc-balance:empty::before {
+    content: "لا توجد مواد مخزنية";
+    color: #64748b;
+    font-size: 13px;
+  }
+
+  .stock-alloc-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 16px;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  .stock-alloc-row-name {
+    color: #f1f5f9;
+    font-weight: 600;
+    flex: 1;
+    min-width: 0;
+    text-align: right;
+  }
+
+  .stock-alloc-row-qty {
+    color: #94a3b8;
+    font-weight: 700;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .stock-alloc-row.is-ok .stock-alloc-row-qty {
+    color: #34d399;
+  }
+
+  .stock-alloc-row.is-zero .stock-alloc-row-qty {
+    color: #fbbf24;
+  }
+
+  .stock-alloc-row.is-over .stock-alloc-row-qty {
+    color: #f87171;
+  }
+
+  .stock-alloc-list {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+    margin-bottom: 0;
+  }
+
+  .stock-alloc-item {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    padding: 14px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.03);
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease;
+    color: #e2e8f0;
+  }
+
+  .stock-alloc-item:hover {
+    background: rgba(59, 130, 246, 0.1);
+    border-color: rgba(59, 130, 246, 0.28);
+  }
+
+  .stock-alloc-item.is-fixed {
+    opacity: 0.75;
+    cursor: default;
+  }
+
+  .stock-alloc-item:has(input:checked) {
+    background: rgba(59, 130, 246, 0.14);
+    border-color: rgba(59, 130, 246, 0.4);
+  }
+
+  .stock-alloc-check {
+    width: 20px;
+    height: 20px;
+    margin: 2px 0 0;
+    flex-shrink: 0;
+    accent-color: #3b82f6;
+    cursor: pointer;
+  }
+
+  .stock-alloc-item-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .stock-alloc-item-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #f8fafc;
+    line-height: 1.4;
+  }
+
+  .stock-alloc-item-meta {
+    font-size: 13px;
+    color: #94a3b8;
+    line-height: 1.5;
+  }
+
+  .stock-alloc-actions {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+
+  .stock-alloc-actions .vis-btn-save {
+    flex: 1;
+    min-width: 180px;
+  }
+
+  @media (max-width: 560px) {
+    .stock-alloc-box {
+      padding: 20px;
+      max-height: 92vh;
+    }
+
+    .stock-alloc-actions {
+      flex-direction: column-reverse;
+    }
+
+    .stock-alloc-actions .vis-btn {
+      width: 100%;
+    }
+  }
+
 
   /* Responsive */
   @media (max-width: 768px) {
@@ -2131,6 +2347,50 @@
     cursor: pointer;
   }
 
+  .ag-theme-quartz-dark .ag-row-pinned,
+  .ag-theme-alpine-dark .ag-row-pinned {
+    cursor: default;
+    font-weight: 700;
+    background: rgba(16, 185, 129, 0.12) !important;
+    border-top: 2px solid rgba(16, 185, 129, 0.45) !important;
+  }
+
+  .ag-theme-quartz-dark .ag-row-pinned .ag-cell,
+  .ag-theme-alpine-dark .ag-row-pinned .ag-cell {
+    color: #34d399;
+  }
+
+  :root[data-theme="light"] .ag-theme-quartz-dark .ag-row-pinned,
+  :root[data-theme="light"] .ag-theme-alpine-dark .ag-row-pinned {
+    background: rgba(16, 185, 129, 0.1) !important;
+    border-top-color: rgba(16, 185, 129, 0.35) !important;
+  }
+
+  :root[data-theme="light"] .ag-theme-quartz-dark .ag-row-pinned .ag-cell,
+  :root[data-theme="light"] .ag-theme-alpine-dark .ag-row-pinned .ag-cell {
+    color: #047857;
+  }
+
+  .ag-theme-quartz-dark .ag-row.order-row-stock-shortage,
+  .ag-theme-alpine-dark .ag-row.order-row-stock-shortage {
+    background: rgba(239, 68, 68, 0.28) !important;
+    box-shadow: inset 0 0 0 1px rgba(220, 38, 38, 0.55);
+  }
+  .ag-theme-quartz-dark .ag-row.order-row-stock-shortage .ag-cell,
+  .ag-theme-alpine-dark .ag-row.order-row-stock-shortage .ag-cell {
+    background: transparent !important;
+    color: #fecaca !important;
+  }
+  :root[data-theme="light"] .ag-theme-quartz-dark .ag-row.order-row-stock-shortage,
+  :root[data-theme="light"] .ag-theme-alpine-dark .ag-row.order-row-stock-shortage {
+    background: rgba(254, 226, 226, 0.95) !important;
+    box-shadow: inset 0 0 0 1px rgba(220, 38, 38, 0.45);
+  }
+  :root[data-theme="light"] .ag-theme-quartz-dark .ag-row.order-row-stock-shortage .ag-cell,
+  :root[data-theme="light"] .ag-theme-alpine-dark .ag-row.order-row-stock-shortage .ag-cell {
+    color: #991b1b !important;
+  }
+
   /* Order details modal — white on mobile (override dark card backgrounds) */
   @media (max-width: 720px) {
     .modal.od-modal-overlay .od-modal-box {
@@ -2321,9 +2581,11 @@
   // AG Grid Global Config
   // ==========================
   let gridApi;
+  let stockShortageOrderIds = new Set();
   const ORDERS_USER_CAN_MANAGE = {{ 'true' if can_manage_orders else 'false' }};
   let allOrders = [];
   const RETURN_STATUS = {{ _('orders_status_returned')|tojson }};
+  const STOCK_LOCKED_STATUS = 'مقفل - بانتظار المخزون';
   const RETURN_STATUS_VALUES = new Set(['راجع', 'مرتجع', 'راجعة', 'راجعه']);
 
   function isReturnedStatus(value) {
@@ -2347,7 +2609,10 @@
       return true;
     }
     update(params) {
-      if (!params.data) return;
+      if (!params.data || params.node.rowPinned) {
+        this.eGui.innerHTML = '';
+        return;
+      }
       this.eGui.innerHTML = renderRowActions(params.data);
     }
   }
@@ -2364,12 +2629,15 @@
       return true;
     }
     update(params) {
-      const status = params.value;
+      const row = params.data || {};
+      const status = row.is_stock_locked ? STOCK_LOCKED_STATUS : params.value;
       if (!status) return;
       const displayStatus = displayOrderStatus(status);
 
       let color = "#f59e0b", bg = "rgba(245,158,11,0.2)";
-      if (status === "تم التوصيل") { color = "#10b981"; bg = "rgba(16,185,129,0.2)"; }
+      if (row.is_stock_locked) { color = "#b45309"; bg = "rgba(245,158,11,0.24)"; }
+      else if (status === "تم التوصيل") { color = "#10b981"; bg = "rgba(16,185,129,0.2)"; }
+      else if (status === "معباة") { color = "#8b5cf6"; bg = "rgba(139,92,246,0.2)"; }
       else if (status === "جاري الشحن") { color = "#3b82f6"; bg = "rgba(59,130,246,0.2)"; }
       else if (displayStatus === RETURN_STATUS) { color = "#ef4444"; bg = "rgba(239,68,68,0.2)"; }
       this.eGui.className = 'status-badge';
@@ -2475,7 +2743,50 @@
     setTimeout(() => {
       toast.style.animation = "slideOut 0.3s ease-out";
       setTimeout(() => toast.remove(), 300);
-    }, 4000);
+    }, type === "error" ? 8000 : 4000);
+  }
+
+  function orderRowId(row) {
+    return Number(row && (row.id ?? row.order_id));
+  }
+
+  function highlightStockShortageOrders(orderIds, options = {}) {
+    const ids = new Set(
+      (Array.isArray(orderIds) ? orderIds : [orderIds])
+        .map((v) => Number(v))
+        .filter((v) => Number.isFinite(v) && v > 0)
+    );
+    stockShortageOrderIds = ids;
+    if (!gridApi) return;
+    gridApi.redrawRows();
+    if (!ids.size) return;
+    let firstNode = null;
+    gridApi.forEachNode((node) => {
+      if (!node || node.rowPinned) return;
+      if (ids.has(orderRowId(node.data))) {
+        if (!firstNode) firstNode = node;
+        try { node.setSelected(true); } catch (_) {}
+      }
+    });
+    if (firstNode) {
+      try { gridApi.ensureNodeVisible(firstNode, "middle"); } catch (_) {}
+    }
+    if (options.toast !== false && options.message) {
+      showToast(options.message, "error");
+    }
+  }
+
+  function handleStockShortageResponse(data, fallbackMessage) {
+    const orderIds = []
+      .concat(data && data.order_ids ? data.order_ids : [])
+      .concat(data && data.order_id ? [data.order_id] : []);
+    const message = [data && data.error, ...((data && data.shortages) || [])]
+      .filter(Boolean)
+      .filter((v, i, arr) => arr.indexOf(v) === i)
+      .join(" — ") || fallbackMessage || "المخزون غير كافٍ";
+    highlightStockShortageOrders(orderIds);
+    showToast(message, "error");
+    return message;
   }
 
   function selectedIds() {
@@ -2703,21 +3014,52 @@
   }
 
 
+  function buildOrdersFooterRow(totalCount, totalQty, totalAmount) {
+    return [{
+      id: "__footer__",
+      checkbox: "",
+      actions: "",
+      order_id: "الإجمالي",
+      date: "",
+      barcode: "",
+      customer_name: "(" + totalCount.toLocaleString() + " طلب)",
+      phone: "",
+      quantity: totalQty,
+      total: totalAmount,
+      paid_amount: "",
+      remaining: "",
+      status: "",
+      payment_status: "",
+      employee: "",
+      page_name: "",
+      city: "",
+      address: "",
+      shipping_company: "",
+      shipping_barcode: "",
+      delivery_agent: "",
+      note: ""
+    }];
+  }
+
   function updateStats() {
     if (!gridApi) return;
 
     let totalSales = 0, pendingCount = 0, returnsCount = 0;
     let totalCount = 0;
+    let totalAmount = 0;
+    let totalQty = 0;
 
     gridApi.forEachNodeAfterFilter(node => {
       const order = node.data;
       totalCount++;
       const total = parseFloat(order.total) || 0;
+      totalAmount += total;
+      totalQty += parseFloat(order.quantity) || 0;
 
       if (order.status === "تم التوصيل" || order.status === "مسدد") {
         totalSales += total;
       }
-      if (order.status === "تم الطلب" || order.status === "جاري الشحن") {
+      if (order.status === "تم الطلب" || order.status === "معباة" || order.status === "جاري الشحن") {
         pendingCount++;
       }
       if (isReturnedStatus(order.status) || order.status === "ملغي") {
@@ -2734,6 +3076,11 @@
     if (tableStats) {
       tableStats.textContent = `{{ _('orders_table_stats_prefix') }} ${totalCount}`;
     }
+
+    gridApi.setGridOption(
+      "pinnedBottomRowData",
+      totalCount > 0 ? buildOrdersFooterRow(totalCount, totalQty, totalAmount) : []
+    );
   }
 
 
@@ -2759,6 +3106,106 @@
 
 
   // ============= Action Functions =============
+  let pendingBulkStockAllocation = null;
+
+  function closeStockAllocationModal() {
+    const modal = document.getElementById('stockAllocationModal');
+    if (modal) modal.style.display = 'none';
+    pendingBulkStockAllocation = null;
+  }
+
+  function updateStockAllocationBalance() {
+    if (!pendingBulkStockAllocation) return;
+    const balances = new Map();
+    (pendingBulkStockAllocation.orders || []).forEach(order => {
+      (order.requirements || []).forEach(req => {
+        const key = `${req.product_id}|${req.variant_color || ''}`;
+        if (!balances.has(key)) balances.set(key, { name: req.product_name + (req.variant_color ? ` / ${req.variant_color}` : ''), available: Number(req.available || 0), used: 0 });
+      });
+    });
+    document.querySelectorAll('#stockAllocationOrders input[data-order-id]:checked').forEach(input => {
+      const order = (pendingBulkStockAllocation.orders || []).find(o => Number(o.id) === Number(input.dataset.orderId));
+      (order?.requirements || []).forEach(req => {
+        const key = `${req.product_id}|${req.variant_color || ''}`;
+        const row = balances.get(key);
+        if (row && !order.stock_is_deducted) row.used += Number(req.quantity || 0);
+      });
+    });
+    const html = Array.from(balances.values()).map(row => {
+      const remaining = row.available - row.used;
+      const state = remaining < 0 ? 'is-over' : remaining === 0 ? 'is-zero' : 'is-ok';
+      return `<div class="stock-alloc-row ${state}"><span class="stock-alloc-row-name">${escapeHtml(row.name)}</span><strong class="stock-alloc-row-qty">المتبقي: ${remaining}</strong></div>`;
+    }).join('');
+    const target = document.getElementById('stockAllocationBalance');
+    if (target) target.innerHTML = html || '';
+  }
+
+  function openStockAllocationModal(payload, orderIds, status) {
+    pendingBulkStockAllocation = { ...payload, orderIds, status };
+    const shortages = document.getElementById('stockAllocationShortages');
+    if (shortages) shortages.textContent = (payload.shortages || []).join(' — ');
+    const list = document.getElementById('stockAllocationOrders');
+    if (list) {
+      list.innerHTML = (payload.orders || []).map(order => {
+        const reqs = (order.requirements || []).map(req => `${escapeHtml(req.product_name)}${req.variant_color ? ' / ' + escapeHtml(req.variant_color) : ''}: ${req.quantity}`).join('، ');
+        const fixed = !!order.stock_is_deducted;
+        return `<label class="stock-alloc-item${fixed ? ' is-fixed' : ''}">
+          <input type="checkbox" class="stock-alloc-check" data-order-id="${order.id}" ${fixed ? 'checked disabled' : ''} onchange="updateStockAllocationBalance()">
+          <span class="stock-alloc-item-body">
+            <span class="stock-alloc-item-title">طلب #${order.id} — ${escapeHtml(order.customer_name || '')}</span>
+            <span class="stock-alloc-item-meta">${reqs || 'المخزون مخصوم مسبقاً'}</span>
+          </span>
+        </label>`;
+      }).join('');
+    }
+    const modal = document.getElementById('stockAllocationModal');
+    if (modal) modal.style.display = 'flex';
+    updateStockAllocationBalance();
+  }
+
+  async function sendBulkStatus(payload) {
+    showLoading();
+    try {
+      const response = await fetch('/orders/bulk-status', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+      });
+      const data = await response.json();
+      hideLoading();
+      if (data.selection_required) {
+        if (data.order_id || (data.order_ids && data.order_ids.length)) {
+          highlightStockShortageOrders(data.order_ids && data.order_ids.length ? data.order_ids : [data.order_id]);
+        }
+        openStockAllocationModal(data, payload.order_ids, payload.status);
+        return;
+      }
+      if (!response.ok || !data.success) {
+        if (data.code === 'INSUFFICIENT_STOCK' || data.order_id || (data.shortages && data.shortages.length)) {
+          handleStockShortageResponse(data, {{ _('orders_err_update')|tojson }});
+          return;
+        }
+        throw new Error([data.error, ...(data.shortages || [])].filter(Boolean).join(' — '));
+      }
+      stockShortageOrderIds = new Set();
+      closeStockAllocationModal();
+      showToast(`تم تحويل ${data.updated || 0} طلب`, 'success');
+      setTimeout(() => location.reload(), 700);
+    } catch (error) {
+      hideLoading();
+      showToast(error.message || {{ _('orders_err_update')|tojson }}, 'error');
+    }
+  }
+
+  function confirmBulkStockSelection() {
+    if (!pendingBulkStockAllocation) return;
+    const selected = Array.from(document.querySelectorAll('#stockAllocationOrders input[data-order-id]:checked')).map(el => Number(el.dataset.orderId));
+    if (!selected.length) return showToast('اختر طلباً واحداً على الأقل', 'warning');
+    sendBulkStatus({
+      order_ids: pendingBulkStockAllocation.orderIds,
+      selected_order_ids: selected,
+      status: pendingBulkStockAllocation.status
+    });
+  }
+
   function applyStatus() {
     const status = document.getElementById("bulkStatus")?.value;
     const selected = selectedIds();
@@ -2774,24 +3221,7 @@
     }
 
     showConfirm({{ _('orders_confirm_bulk_status')|tojson }}.replace('{count}', selected.length).replace('{status}', status), function () {
-      showLoading();
-      Promise.all(selected.map(id =>
-        fetch("/orders/update", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: id, status: status })
-        })
-      ))
-        .then(() => {
-          hideLoading();
-          showToast({{ _('orders_toast_bulk_updated')|tojson }}.replace('{count}', selected.length), "success");
-          setTimeout(() => location.reload(), 1000);
-        })
-        .catch(error => {
-          hideLoading();
-          showToast({{ _('orders_err_update')|tojson }}, "error");
-          console.error(error);
-        });
+      sendBulkStatus({ order_ids: selected, status: status });
     });
   }
 
@@ -3071,11 +3501,8 @@
     window.location.href = `/pos?order_id=${orderId}`;
   }
 
-  function showDetails(orderId, options) {
-    options = options || {};
-    // عرض نافذة تفاصيل الطلب
-    showLoading();
-    fetch(`/orders/details/${orderId}`)
+  function fetchOrderDetailsData(orderId) {
+    return fetch(`/orders/details/${orderId}`)
       .then(async (r) => {
         const ct = (r.headers.get("content-type") || "").toLowerCase();
         if (!r.ok) {
@@ -3089,7 +3516,14 @@
           throw new Error(bodyText || "Non-JSON response");
         }
         return r.json();
-      })
+      });
+  }
+
+  function showDetails(orderId, options) {
+    options = options || {};
+    // عرض نافذة تفاصيل الطلب
+    showLoading();
+    fetchOrderDetailsData(orderId)
       .then(data => {
         hideLoading();
         if (data.order) {
@@ -3109,28 +3543,146 @@
     finoraPrintUrl(`/orders/invoice/${orderId}`);
   }
 
-  function sendWhatsApp(orderId, phone) {
-    if (!phone || phone === '—') {
-      showToast({{ _('orders_err_phone_missing')|tojson }}, "warning");
-      return;
+  function formatWhatsAppMoney(value) {
+    return Number(value || 0).toLocaleString();
+  }
+
+  function fillWhatsAppTemplate(template, values) {
+    let out = String(template || '');
+    Object.keys(values || {}).forEach(function (key) {
+      out = out.split('{' + key + '}').join(values[key] == null ? '' : String(values[key]));
+    });
+    return out;
+  }
+
+  function buildOrderWhatsAppMessage(data, fallbackOrderId) {
+    const order = (data && data.order) || {};
+    const items = (data && data.items) || [];
+    const orderId = order.id || fallbackOrderId || '';
+    const customerName = (order.customer || '').trim();
+    const namePart = customerName ? (' ' + customerName) : '';
+    const total = Number(order.total || 0);
+    const paid = Number(order.paid_amount || 0);
+    const remaining = Math.max(0, total - paid);
+    const itemLineTpl = {{ _('orders_whatsapp_item_line')|tojson }};
+    const itemsText = items.length
+      ? items.map(function (item, idx) {
+          return fillWhatsAppTemplate(itemLineTpl, {
+            index: idx + 1,
+            name: item.name || '—',
+            qty: item.qty || 0,
+            price: formatWhatsAppMoney(item.price),
+            total: formatWhatsAppMoney(item.total)
+          });
+        }).join('\n')
+      : '—';
+
+    let delivery = '';
+    const city = (order.city || '').trim();
+    const address = (order.address || '').trim();
+    if (city || address) {
+      delivery = fillWhatsAppTemplate({{ _('orders_whatsapp_delivery_block')|tojson }}, {
+        city: city ? (city + (address ? '\n' : '')) : '',
+        address: address || ''
+      });
     }
 
-    // تنظيف رقم الهاتف من أي أحرف غير رقمية
-    const cleanPhone = phone.replace(/[^0-9]/g, '');
+    let shipping = '';
+    const shippingCompany = (order.shipping_company || '').trim();
+    if (shippingCompany) {
+      shipping = fillWhatsAppTemplate({{ _('orders_whatsapp_shipping_block')|tojson }}, {
+        shipping: shippingCompany
+      });
+    }
 
-    // إذا كان الرقم يبدأ بـ 0، استبدله بـ 964 (كود العراق)
+    let note = '';
+    const orderNote = (order.note || '').trim();
+    if (orderNote) {
+      note = fillWhatsAppTemplate({{ _('orders_whatsapp_note_block')|tojson }}, {
+        note: orderNote
+      });
+    }
+
+    let page = '';
+    const pageName = (order.page_name || '').trim();
+    if (pageName && pageName !== '—') {
+      page = fillWhatsAppTemplate({{ _('orders_whatsapp_page_block')|tojson }}, {
+        page: pageName
+      });
+    }
+
+    let invoice = '';
+    const invoiceUrl = (order.invoice_url || '').trim();
+    if (invoiceUrl) {
+      invoice = fillWhatsAppTemplate({{ _('orders_whatsapp_invoice_block')|tojson }}, {
+        url: invoiceUrl
+      });
+    }
+
+    return fillWhatsAppTemplate({{ _('orders_whatsapp_message_template')|tojson }}, {
+      name: namePart,
+      id: orderId,
+      date: order.created_at || '—',
+      status: order.status || '—',
+      page: page,
+      items: itemsText,
+      total: formatWhatsAppMoney(total),
+      paid: formatWhatsAppMoney(paid),
+      remaining: formatWhatsAppMoney(remaining),
+      payment: order.payment || '—',
+      delivery: delivery,
+      shipping: shipping,
+      note: note,
+      invoice: invoice
+    });
+  }
+
+  function openWhatsAppChat(phone, message) {
+    const cleanPhone = String(phone || '').replace(/[^0-9]/g, '');
     let whatsappPhone = cleanPhone;
     if (whatsappPhone.startsWith('0')) {
       whatsappPhone = '964' + whatsappPhone.substring(1);
     } else if (!whatsappPhone.startsWith('964')) {
       whatsappPhone = '964' + whatsappPhone;
     }
-
-    // إنشاء رسالة واتساب
-    const message = encodeURIComponent({{ _('orders_whatsapp_message_template')|tojson }}.replace('{id}', orderId));
-    const whatsappUrl = `https://wa.me/${whatsappPhone}?text=${message}`;
-
+    const whatsappUrl = `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
+  }
+
+  function sendWhatsApp(orderId, phone) {
+    if (!phone || phone === '—') {
+      showToast({{ _('orders_err_phone_missing')|tojson }}, "warning");
+      return;
+    }
+
+    showToast({{ _('orders_whatsapp_loading')|tojson }}, "info");
+    fetchOrderDetailsData(orderId)
+      .then(function (data) {
+        if (!data || !data.order) {
+          throw new Error('order_not_found');
+        }
+        openWhatsAppChat(phone, buildOrderWhatsAppMessage(data, orderId));
+      })
+      .catch(function () {
+        // احتياطي: رسالة بسيطة إذا تعذر تحميل التفاصيل
+        const fallback = fillWhatsAppTemplate({{ _('orders_whatsapp_message_template')|tojson }}, {
+          name: '',
+          id: orderId,
+          date: '—',
+          status: '—',
+          page: '',
+          items: '—',
+          total: '0',
+          paid: '0',
+          remaining: '0',
+          payment: '—',
+          delivery: '',
+          shipping: '',
+          note: '',
+          invoice: ''
+        });
+        openWhatsAppChat(phone, fallback);
+      });
   }
 
   function getOrderVideoMimeType() {
@@ -3157,6 +3709,7 @@
   }
 
   function orderVideoSectionHtml(order) {
+    if (order && order.is_stock_locked) return '';
     const video = order.video || {};
     const canRecordVideo = !['تم التوصيل', RETURN_STATUS, 'ملغي'].includes(order.status || '') && !['مسدد', RETURN_STATUS].includes(order.payment || '') && !isReturnedStatus(order.payment || '');
     const videoActionButton = canRecordVideo
@@ -3486,6 +4039,7 @@
   }
 
   function shippingBarcodeSectionHtml(order, items) {
+    if (order && order.is_stock_locked) return '';
     const shippings = getShippingsList();
     const defaultId = getDefaultShippingCompanyId(order);
     const options = shippings.map(function (s) {
@@ -3592,7 +4146,11 @@
         }
         return true;
       }
-      showToast(data.error || 'فشل الحفظ', 'error');
+      if (data.code === 'INSUFFICIENT_STOCK' || (data.error || '').includes('المخزون')) {
+        handleStockShortageResponse(Object.assign({}, data, { order_id: data.order_id || orderId }), 'فشل الحفظ');
+      } else {
+        showToast(data.error || 'فشل الحفظ', 'error');
+      }
       return false;
     }).catch(function () {
       showToast('❌ حدث خطأ أثناء الحفظ', 'error');
@@ -3665,7 +4223,7 @@
   function odStatusKind(status) {
     const s = String(status || '');
     if (s === 'تم التوصيل') return 'success';
-    if (s === 'جاري الشحن' || s === 'قيد الشحن' || s === 'تم الطلب') return 'info';
+    if (s === 'جاري الشحن' || s === 'قيد الشحن' || s === 'معباة' || s === 'تم الطلب') return 'info';
     if (s === 'ملغي' || isReturnedStatus(s)) return 'danger';
     return 'warning';
   }
@@ -3778,7 +4336,11 @@
         selectEl.disabled = false;
         if (!data.success) {
           selectEl.value = previous;
-          showToast(data.error || 'فشل تحديث فرع الخصم', 'error');
+          if (data.code === 'INSUFFICIENT_STOCK' || (data.error || '').includes('المخزون')) {
+            handleStockShortageResponse(data, 'فشل تحديث فرع الخصم');
+          } else {
+            showToast(data.error || 'فشل تحديث فرع الخصم', 'error');
+          }
           return;
         }
         selectEl.setAttribute('data-prev', branchId);
@@ -3812,7 +4374,11 @@
       .then(function (data) {
         hideLoading();
         if (!data.success) {
-          showToast(data.error || 'فشل تحديث فرع الخصم', 'error');
+          if (data.code === 'INSUFFICIENT_STOCK' || (data.error || '').includes('المخزون')) {
+            handleStockShortageResponse(data, 'فشل تحديث فرع الخصم');
+          } else {
+            showToast(data.error || 'فشل تحديث فرع الخصم', 'error');
+          }
           return;
         }
         showToast(data.message || 'تم تحديث فرع الخصم لكل الأصناف', 'success');
@@ -3827,6 +4393,7 @@
   }
 
   function employeeNotifySectionHtml(order) {
+    if (order && order.is_stock_locked) return '';
     if (!order.employee_id) return '';
     if (Number(order.employee_id) === Number(ordersCurrentUserId)) return '';
     const empName = escapeHtml(order.employee || 'الموظف');
@@ -3992,7 +4559,8 @@
     options = options || {};
     const order = data.order;
     const items = data.items || [];
-    const canEditFulfillment = !!(order.can_edit_fulfillment || (isSellFromAllBranchesEnabled() && order.status === 'تم الطلب'));
+    const isStockLocked = !!order.is_stock_locked;
+    const canEditFulfillment = !isStockLocked && !!(order.can_edit_fulfillment || (isSellFromAllBranchesEnabled() && order.status === 'تم الطلب'));
     const showBranchCol = !!(order.sell_from_all_branches || isSellFromAllBranchesEnabled() || items.some(function (it) { return it.fulfillment_branch_id; }));
 
     const modal = document.createElement('div');
@@ -4009,8 +4577,9 @@
     const remaining = totalAmount - paidAmount;
     const paidPercent = totalAmount > 0 ? Math.min(100, Math.round((paidAmount / totalAmount) * 100)) : 0;
 
+    const displayStatusForDetails = isStockLocked ? STOCK_LOCKED_STATUS : order.status;
     const headerBadges =
-      odPill(order.status, odStatusKind(order.status)) +
+      odPill(displayStatusForDetails, isStockLocked ? 'warning' : odStatusKind(order.status)) +
       odPill(order.payment, odPaymentKind(order.payment)) +
       (order.shipping_status ? odPill(order.shipping_status, odShippingKind(order.shipping_status)) : '');
 
@@ -4072,7 +4641,7 @@
       odCardTitle('od-card__title-icon--order', '📦', '{{ _("orders_details_order_section") }}') +
       '<div class="od-fields">' +
       odField('{{ _("orders_details_order_date") }}', order.created_at) +
-      odField('{{ _("orders_details_order_status") }}', order.status, { pill: true, pillKind: odStatusKind(order.status) }) +
+      odField('{{ _("orders_details_order_status") }}', displayStatusForDetails, { pill: true, pillKind: isStockLocked ? 'warning' : odStatusKind(order.status) }) +
       odField('{{ _("orders_details_payment_status") }}', order.payment, { pill: true, pillKind: odPaymentKind(order.payment) }) +
       odField('{{ _("orders_details_employee") }}', order.employee) +
       odField('{{ _("orders_details_shipping_company") }}', order.shipping_company, { hideIfEmpty: true }) +
@@ -4112,25 +4681,25 @@
         ? '<div class="od-card"><h3 class="od-card__title"><span class="od-card__title-icon od-card__title-icon--notes">📝</span><span>{{ _("orders_details_notes_section") }}</span></h3>' +
           '<p class="od-note-text">' + escapeHtml(order.note) + '</p></div>'
         : '') +
-      shippingBarcodeSectionHtml(order, items) +
-      orderVideoSectionHtml(order) +
-      employeeNotifySectionHtml(order) +
+      (isStockLocked ? '' : shippingBarcodeSectionHtml(order, items)) +
+      (isStockLocked ? '' : orderVideoSectionHtml(order)) +
+      (isStockLocked ? '' : employeeNotifySectionHtml(order)) +
       '</div>' +
 
       '<div class="od-modal-footer"><div class="od-actions">' +
       '<button type="button" class="btn btn-primary od-action-btn" onclick="printInvoice(' + order.id + ')"><span>🖨️</span><span>{{ _("orders_details_btn_print_invoice") }}</span></button>' +
-      '<button type="button" class="btn btn-success od-action-btn" onclick="sendWhatsApp(' + order.id + ', \'' + (order.phone || '') + '\')"><span>📱</span><span>{{ _("orders_details_btn_whatsapp") }}</span></button>' +
       (order.status !== 'تم التوصيل' && !isReturnedStatus(order.status) && order.status !== 'ملغي'
         ? '<button type="button" class="btn btn-warning od-action-btn" onclick="editOrder(' + order.id + ')"><span>✏️</span><span>{{ _("orders_details_btn_edit_order") }}</span></button>'
         : '') +
-      (remaining > 0 && order.payment !== 'مسدد' && !isReturnedStatus(order.status) && !isReturnedStatus(order.payment) && order.status !== 'ملغي'
+      (!isStockLocked ? '<button type="button" class="btn btn-success od-action-btn" onclick="sendWhatsApp(' + order.id + ', \'' + (order.phone || '') + '\')"><span>📱</span><span>{{ _("orders_details_btn_whatsapp") }}</span></button>' : '') +
+      (!isStockLocked && remaining > 0 && order.payment !== 'مسدد' && !isReturnedStatus(order.status) && !isReturnedStatus(order.payment) && order.status !== 'ملغي'
         ? '<button type="button" class="btn btn-warning od-action-btn" onclick="pay(' + order.id + '); this.closest(\'.modal\').remove();"><span>💰</span><span>{{ _("orders_details_btn_full_pay") }}</span></button>' +
           '<button type="button" class="btn btn-success od-action-btn" onclick="payPartial(' + order.id + ', ' + remaining + '); this.closest(\'.modal\').remove();"><span>💵</span><span>{{ _("orders_details_btn_partial_pay") }}</span></button>'
         : '') +
-      (!isReturnedStatus(order.status) && !isReturnedStatus(order.payment) && order.status !== 'ملغي'
+      (!isStockLocked && order.status !== 'تم الطلب' && !isReturnedStatus(order.status) && !isReturnedStatus(order.payment) && order.status !== 'ملغي'
         ? '<button type="button" class="btn btn-danger od-action-btn" onclick="returnOrder(' + order.id + '); this.closest(\'.modal\').remove();" style="min-width:160px;"><span>↩️</span><span>ترجيع الطلب</span></button>'
         : '') +
-      '<button type="button" class="btn btn-secondary od-action-btn od-action-btn--wide" onclick="window.location.href=\'/orders/invoice/' + order.id + '\'"><span>🔗</span><span>{{ _("orders_details_btn_full_page") }}</span></button>' +
+      (!isStockLocked ? '<button type="button" class="btn btn-secondary od-action-btn od-action-btn--wide" onclick="window.location.href=\'/orders/invoice/' + order.id + '\'"><span>🔗</span><span>{{ _("orders_details_btn_full_page") }}</span></button>' : '') +
       '</div></div></div>';
 
     document.body.appendChild(modal);
@@ -4186,17 +4755,16 @@
           showToast({{ _('orders_toast_pay_success')|tojson }}, "success");
           if (gridApi) {
             const rowNode = gridApi.getRowNode(orderId);
+            const paidOrder = data.order || {};
             const applyPaid = function (rd) {
               rd.can_pay = false;
               rd.can_cancel = false;
               rd.actions_collapsed = true;
-              rd.status = "تم التوصيل";
-              rd.payment_status = "مسدد";
-              if (deliveryFee > 0) {
-                rd.total = Math.max(0, (Number(rd.total) || 0) - deliveryFee);
-              }
-              rd.paid_amount = rd.total;
-              rd.remaining = 0;
+              rd.status = paidOrder.status || "تم التوصيل";
+              rd.payment_status = paidOrder.payment_status || "مسدد";
+              rd.total = Number(paidOrder.total ?? rd.total) || 0;
+              rd.paid_amount = Number(paidOrder.paid_amount ?? rd.total) || 0;
+              rd.remaining = Number(paidOrder.remaining ?? Math.max(0, rd.total - rd.paid_amount)) || 0;
             };
             if (rowNode) {
               applyPaid(rowNode.data);
@@ -4213,7 +4781,11 @@
             }
           }
         } else {
-          showToast(data.error || {{ _('orders_err_generic')|tojson }}, "error");
+          if (data.code === 'INSUFFICIENT_STOCK' || (data.error || '').includes('المخزون')) {
+            handleStockShortageResponse(Object.assign({}, data, { order_id: data.order_id || orderId }), {{ _('orders_err_generic')|tojson }});
+          } else {
+            showToast(data.error || {{ _('orders_err_generic')|tojson }}, "error");
+          }
         }
       })
       .catch(error => {
@@ -4225,16 +4797,36 @@
 
   function pay(orderId) {
     const row = getOrderRowData(orderId);
-    const orderTotal = row ? Number(row.total) || 0 : 0;
-    const customerCity = row && row.city && row.city !== "—" ? row.city : "";
-    openDeliveryFeePayModal({
-      orderId: orderId,
-      orderTotal: orderTotal,
-      customerCity: customerCity,
-      onConfirm: function (deliveryFee) {
-        submitOrderPayment(orderId, deliveryFee);
-      }
-    });
+    const fallbackTotal = row ? Number(row.total) || 0 : 0;
+    const fallbackCity = row && row.city && row.city !== "—" ? row.city : "";
+
+    const openPayModal = function (details) {
+      const order = details && details.order ? details.order : {};
+      const freshTotal = Number(order.total) || 0;
+      const orderTotal = freshTotal > 0 ? freshTotal : fallbackTotal;
+      const customerCity = order.city || fallbackCity;
+      openDeliveryFeePayModal({
+        orderId: orderId,
+        orderTotal: orderTotal,
+        customerCity: customerCity,
+        items: details && Array.isArray(details.items) ? details.items : [],
+        onConfirm: function (deliveryFee) {
+          submitOrderPayment(orderId, deliveryFee);
+        }
+      });
+    };
+
+    showLoading();
+    fetchOrderDetailsData(orderId)
+      .then(function (details) {
+        hideLoading();
+        openPayModal(details);
+      })
+      .catch(function (err) {
+        hideLoading();
+        console.warn("Could not refresh order total before payment:", err);
+        openPayModal(null);
+      });
   }
 
   function returnOrder(orderId) {
@@ -4299,7 +4891,11 @@
               }
             }
           } else {
-            showToast(data.error || {{ _('orders_err_generic')|tojson }}, "error");
+            if (data.code === 'INSUFFICIENT_STOCK' || (data.error || '').includes('المخزون')) {
+              handleStockShortageResponse(Object.assign({}, data, { order_id: data.order_id || orderId }), {{ _('orders_err_generic')|tojson }});
+            } else {
+              showToast(data.error || {{ _('orders_err_generic')|tojson }}, "error");
+            }
           }
         })
         .catch(error => {
@@ -4414,7 +5010,11 @@
             }
 
           } else {
-            showToast(data.error || {{ _('orders_err_generic')|tojson }}, "error");
+            if (data.code === 'INSUFFICIENT_STOCK' || (data.error || '').includes('المخزون')) {
+              handleStockShortageResponse(Object.assign({}, data, { order_id: data.order_id || orderId }), {{ _('orders_err_generic')|tojson }});
+            } else {
+              showToast(data.error || {{ _('orders_err_generic')|tojson }}, "error");
+            }
           }
         })
         .catch(error => {
@@ -4495,9 +5095,10 @@
     const isReturned = row && (isReturnedStatus(row.status) || row.status === "ملغي");
     const isPaid = row && row.payment_status === "مسدد";
     const collapsed = !!(row && row.actions_collapsed);
-    const canPay = !collapsed && !!(ORDERS_USER_CAN_MANAGE && row && row.can_pay);
-    const canReturn = !collapsed && !!(ORDERS_USER_CAN_MANAGE && row && !isReturned);
-    const canCancel = !collapsed && !!(ORDERS_USER_CAN_MANAGE && row && row.can_cancel);
+    const isStockLocked = !!(row && row.is_stock_locked);
+    const canPay = !collapsed && !isStockLocked && !!(ORDERS_USER_CAN_MANAGE && row && row.can_pay);
+    const canReturn = !collapsed && !isStockLocked && !!(ORDERS_USER_CAN_MANAGE && row && !isReturned && row.status !== 'تم الطلب');
+    const canCancel = !collapsed && !isStockLocked && !!(ORDERS_USER_CAN_MANAGE && row && row.can_cancel);
 
     function actionBtn(className, action, iconClass, label, title, extraAttrs, disabled) {
       const disClass = disabled ? ' is-disabled' : '';
@@ -4508,9 +5109,11 @@
         '</button>';
     }
 
-    let html = '<div class="orders-row-actions">' +
-      actionBtn('whatsapp-btn', 'whatsapp', 'fa-brands fa-whatsapp', 'واتساب', 'إرسال واتساب', ' data-phone="' + phoneEnc + '"', !phoneRaw) +
-      actionBtn('print-btn', 'invoice', 'fa fa-print', 'طباعة', 'طباعة الفاتورة', '', false);
+    let html = '<div class="orders-row-actions">';
+    if (!isStockLocked) {
+      html += actionBtn('whatsapp-btn', 'whatsapp', 'fa-brands fa-whatsapp', 'واتساب', 'إرسال واتساب', ' data-phone="' + phoneEnc + '"', !phoneRaw);
+    }
+    html += actionBtn('print-btn', 'invoice', 'fa fa-print', 'طباعة', 'طباعة الفاتورة', '', false);
     if (canPay) {
       html += actionBtn('pay-btn', 'pay', 'fa fa-wallet', 'تسديد', 'تسديد الطلب', '', false);
     }
@@ -4527,6 +5130,7 @@
   document.addEventListener('click', (e) => {
     const actionEl = e.target && e.target.closest ? e.target.closest('[data-action]') : null;
     if (!actionEl) return;
+    if (actionEl.disabled || actionEl.classList.contains('is-disabled')) return;
 
     const action = actionEl.getAttribute('data-action');
     e.preventDefault();
@@ -4762,6 +5366,13 @@
     const gridOptions = {
       columnDefs: columnDefs,
       rowData: allOrders,
+      pinnedBottomRowData: [],
+      getRowId: (params) => String(orderRowId(params.data) || params.data?.order_id || ''),
+      getRowClass: (params) => {
+        if (!params.data || params.node?.rowPinned) return undefined;
+        if (stockShortageOrderIds.has(orderRowId(params.data))) return 'order-row-stock-shortage';
+        return undefined;
+      },
       rowHeight: window.matchMedia("(max-width: 768px)").matches ? 52 : 46,
       headerHeight: 40,
       pagination: true,
@@ -4769,6 +5380,7 @@
       paginationPageSize: 20,
       paginationPageSizeSelector: [10, 20, 50, 100],
       rowSelection: 'multiple',
+      isRowSelectable: (node) => !node.rowPinned,
       enableRtl: true,
       animateRows: true,
       defaultColDef: {
@@ -4807,9 +5419,11 @@
       isExternalFilterPresent: () => isOrdersExternalFilterPresent(),
       doesExternalFilterPass: (node) => doesOrdersExternalFilterPass(node),
       onRowDoubleClicked: (event) => {
+        if (event.node.rowPinned) return;
         showDetails(event.data.id);
       },
       onRowClicked: (event) => {
+        if (event.node.rowPinned) return;
         // Only trigger if not clicking an action button (handled by stopPropagation in listener, but being safe)
         if (event.event.target.closest('.action-btn-small') || event.event.target.closest('.ag-selection-checkbox')) {
           return;

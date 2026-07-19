@@ -44,13 +44,19 @@ from utils.payment_ledger import (
     append_payment_ledger_delta,
     business_today,
 )
+from utils.shipping_settlement_service import ensure_paid_shipping_order_settled
 from utils.order_status import PENDING_STATUSES
 from utils.order_lifecycle import OrderLifecycleError, process_order_return
+from utils.order_stock_policy import OrderStockError, ensure_stock_for_transition
 from utils.decorators import admin_required
 from utils.executive_dashboard_data import (
     get_treasury_summary,
     get_credit_executive_summary,
     get_executive_alerts,
+    build_receivables_proxy_series,
+    build_daily_net_position_series,
+    _invoices_for_range,
+    _cash_credit_split,
 )
 
 index_bp = Blueprint("index", __name__)
@@ -308,6 +314,13 @@ def landing():
     except Exception as e:
         current_app.logger.exception("failed loading /landing: %s", e)
         return redirect("/")
+
+
+@index_bp.route("/supermax")
+@index_bp.route("/super-max")
+def supermax_landing():
+    """صفحة هبوط عامة لشركة Super Max — الشاشات الذكية."""
+    return render_template("supermax_landing.html")
 
 
 # =================================================
@@ -1012,6 +1025,217 @@ def signup():
 # =================================================
 # لوحة المدير التنفيذي — صفحة + API
 # =================================================
+
+def _executive_dashboard_beauty_response(today, yesterday, month_start, percent_change):
+    """Executive dashboard payload for beauty_center tenants."""
+    from models.beauty_appointment import BeautyAppointment
+    from utils.beauty_accounting import (
+        appointment_receivable,
+        beauty_net_profit_calendar_day,
+        beauty_summary,
+    )
+
+    def sessions_count_for(day):
+        return (
+            db.session.query(func.count(BeautyAppointment.id))
+            .filter(
+                BeautyAppointment.status == "done",
+                func.date(BeautyAppointment.completed_at) == day,
+            )
+            .scalar()
+            or 0
+        )
+
+    orders_today = sessions_count_for(today)
+    orders_yesterday = sessions_count_for(yesterday)
+    bs_today = beauty_summary(today, today)
+    bs_yesterday = beauty_summary(yesterday, yesterday)
+    profit_today = int(bs_today["profit"])
+    profit_yesterday = int(bs_yesterday["profit"])
+    sales_today_val = int(bs_today["revenue"])
+    sales_yesterday_val = int(bs_yesterday["revenue"])
+    expenses_today_val = int(bs_today["expenses"])
+    expenses_yesterday_val = int(bs_yesterday["expenses"])
+
+    cash_movements = get_cash_movements()
+    cash_by_date = {}
+    for movement in cash_movements:
+        movement_date = movement.get("date") or today
+        direction = 1 if movement.get("type") == "cash_in" else -1
+        amount = int(movement.get("amount") or 0)
+        cash_by_date.setdefault(movement_date, {"in": 0, "out": 0, "net": 0})
+        if direction > 0:
+            cash_by_date[movement_date]["in"] += amount
+        else:
+            cash_by_date[movement_date]["out"] += amount
+        cash_by_date[movement_date]["net"] += direction * amount
+
+    today_cash = cash_by_date.get(today, {"in": 0, "out": 0, "net": 0})
+    yesterday_cash = cash_by_date.get(yesterday, {"in": 0, "out": 0, "net": 0})
+
+    daily_labels = []
+    orders_data = []
+    sales_data = []
+    profit_data = []
+    expenses_data = []
+    cashflow_data = []
+    cash_balance_data = []
+    daily_credit_sales = []
+    running_cash_balance = 0
+    movement_dates = sorted(cash_by_date)
+
+    for i in range(6, -1, -1):
+        d = today - timedelta(days=i)
+        daily_labels.append(d.strftime("%d %b"))
+        bs = beauty_summary(d, d)
+        d_sales = int(bs["revenue"])
+        d_profit = int(bs["profit"])
+        d_expenses = int(bs["expenses"])
+        d_orders = sessions_count_for(d)
+        d_credit = max(0, d_sales - int(bs["paid"]))
+
+        while movement_dates and movement_dates[0] <= d:
+            running_cash_balance += cash_by_date[movement_dates.pop(0)]["net"]
+
+        orders_data.append(int(d_orders))
+        sales_data.append(d_sales)
+        profit_data.append(d_profit)
+        expenses_data.append(d_expenses)
+        cashflow_data.append(int(cash_by_date.get(d, {}).get("net", 0)))
+        cash_balance_data.append(int(running_cash_balance))
+        daily_credit_sales.append(d_credit)
+
+    done_rows = BeautyAppointment.query.filter(BeautyAppointment.status == "done").all()
+    receivables_total = sum(appointment_receivable(row) for row in done_rows)
+    customer_ar = int(receivables_total)
+    shipping_receivables = 0
+    shipping_opening_balance = 0
+    supplier_debts = calculate_supplier_debts()
+    liabilities = int(supplier_debts)
+    inventory_value = 0
+
+    collected_total = sum(int(row.paid_amount or 0) for row in done_rows)
+    collection_base = collected_total + int(receivables_total or 0)
+    debt_collection_rate = round((collected_total / collection_base) * 100) if collection_base > 0 else 0
+
+    days_passed = today.day
+    sales_this_month = int(beauty_summary(month_start, today)["revenue"])
+    avg_daily_sales = sales_this_month / days_passed if days_passed > 0 else 0
+
+    treasury = get_treasury_summary()
+    total_liquidity = treasury["total_liquidity"]
+    bank_total = treasury["bank_total"]
+    cash_box_balance = treasury["cash_box_balance"]
+    cash_balance = calculate_cash_balance()
+
+    receivables_breakdown = {
+        "customer_ar": customer_ar,
+        "shipping_receivables": 0,
+        "shipping_opening_balance": 0,
+    }
+    credit_summary = get_credit_executive_summary(today, debt_collection_rate, receivables_total)
+    credit_summary["overdue_installments_count"] = 0
+    credit_summary["overdue_installments_amount"] = 0
+
+    liabilities_breakdown = {
+        "supplier_debts": liabilities,
+        "shipping_due": 0,
+        "shipping_receivables": 0,
+        "shipping_opening_balance": 0,
+        "total": liabilities,
+    }
+    net_financial_position = int(total_liquidity) + int(receivables_total) - liabilities
+    receivables_proxy = build_receivables_proxy_series(daily_credit_sales, receivables_total)
+    daily_net_position = build_daily_net_position_series(cash_balance_data, receivables_proxy, liabilities)
+
+    new_customers = db.session.query(func.count(Customer.id)).filter(
+        func.date(Customer.created_at) >= today - timedelta(days=7)
+    ).scalar() or 0
+
+    profitability_score = 0
+    if sales_today_val > 0:
+        profitability_score = max(0, min(100, round((profit_today / sales_today_val) * 100)))
+    liquidity_score = 100 if liabilities <= 0 and int(total_liquidity or 0) >= 0 else 0
+    if liabilities > 0:
+        liquidity_score = max(0, min(100, round((int(total_liquidity or 0) / liabilities) * 100)))
+    sales_score = 0
+    if avg_daily_sales > 0:
+        sales_score = max(0, min(100, round((sales_today_val / avg_daily_sales) * 100)))
+    customer_score = max(0, min(100, int(new_customers or 0) * 10))
+    business_health = round(
+        (profitability_score + liquidity_score + sales_score + customer_score) / 4
+    )
+
+    cash_t = int(bs_today["paid"])
+    credit_t = max(0, sales_today_val - cash_t)
+    cash_y = int(bs_yesterday["paid"])
+    credit_y = max(0, sales_yesterday_val - cash_y)
+    rate_t = round(cash_t / (cash_t + credit_t) * 100) if (cash_t + credit_t) > 0 else int(debt_collection_rate)
+    rate_y = round(cash_y / (cash_y + credit_y) * 100) if (cash_y + credit_y) > 0 else 0
+
+    return {
+        "dashboard_mode": "beauty_center",
+        "orders_today": orders_today,
+        "purchases_today": 0,
+        "cash_balance": int(cash_balance),
+        "balance": int(cash_balance),
+        "profit_today": profit_today,
+        "sales_today": sales_today_val,
+        "expenses_today": expenses_today_val,
+        "cash_in_today": int(today_cash["in"]),
+        "cash_out_today": int(today_cash["out"]),
+        "cash_net_today": int(today_cash["net"]),
+        "daily_labels": daily_labels,
+        "daily_orders": orders_data,
+        "daily_purchases": [0] * 7,
+        "daily_sales": sales_data,
+        "daily_profit": profit_data,
+        "daily_expenses": expenses_data,
+        "daily_cashflow": cashflow_data,
+        "daily_cash_balance": cash_balance_data,
+        "daily_credit_sales": daily_credit_sales,
+        "daily_net_position": daily_net_position,
+        "chart_labels": daily_labels,
+        "chart_sales": sales_data,
+        "chart_profit": profit_data,
+        "chart_expenses": expenses_data,
+        "chart_cashflow": cashflow_data,
+        "box_balance": int(cash_balance),
+        "cash_available": int(total_liquidity),
+        "cash_box_balance": int(cash_box_balance),
+        "total_liquidity": int(total_liquidity),
+        "bank_total": int(bank_total),
+        "treasury_accounts": treasury["treasury_accounts"],
+        "receivables": int(receivables_total),
+        "receivables_breakdown": receivables_breakdown,
+        "liabilities": liabilities,
+        "liabilities_breakdown": liabilities_breakdown,
+        "credit_summary": credit_summary,
+        "net_financial_position": net_financial_position,
+        "alerts": get_executive_alerts(overdue_orders_fn=_dashboard_overdue_invoices),
+        "inventory_value": inventory_value,
+        "new_customers": new_customers,
+        "avg_daily_sales": int(avg_daily_sales),
+        "debt_collection_rate": int(debt_collection_rate),
+        "trends": {
+            "orders": percent_change(orders_today, orders_yesterday),
+            "purchases": 0,
+            "cash": percent_change(today_cash["net"], yesterday_cash["net"]),
+            "profit": percent_change(profit_today, profit_yesterday),
+            "sales": percent_change(sales_today_val, sales_yesterday_val),
+            "collection": percent_change(rate_t, rate_y),
+        },
+        "health": {
+            "score": int(business_health),
+            "profitability": int(profitability_score),
+            "liquidity": int(liquidity_score),
+            "sales": int(sales_score),
+            "inventory": 0,
+            "customers": int(customer_score),
+        },
+    }
+
+
 @index_bp.route("/executive-dashboard")
 @admin_required
 def executive_dashboard():
@@ -1031,6 +1255,9 @@ def api_executive_dashboard_data():
         if previous == 0:
             return 100 if current > 0 else 0
         return max(-999, min(999, round(((current - previous) / previous) * 100)))
+
+    if _is_beauty_center_session():
+        return jsonify(_executive_dashboard_beauty_response(today, yesterday, month_start, percent_change))
 
     purchase_columns = {
         column["name"] for column in inspect(db.session.get_bind()).get_columns(Purchase.__tablename__)
@@ -1091,6 +1318,7 @@ def api_executive_dashboard_data():
     expenses_data = []
     cashflow_data = []
     cash_balance_data = []
+    daily_credit_sales = []
     running_cash_balance = 0
     movement_dates = sorted(cash_by_date)
     for i in range(6, -1, -1):
@@ -1102,6 +1330,7 @@ def api_executive_dashboard_data():
         d_sales = db.session.query(func.sum(Invoice.total)).filter(func.date(Invoice.created_at) == d, Invoice.status != 'ملغي').scalar() or 0
         d_profit = net_profit_for_order_calendar_day(d)
         d_expenses = _expenses_sum_for_range(d, d)
+        _, d_credit = _cash_credit_split(_invoices_for_range(d, d))
 
         while movement_dates and movement_dates[0] <= d:
             running_cash_balance += cash_by_date[movement_dates.pop(0)]["net"]
@@ -1113,14 +1342,21 @@ def api_executive_dashboard_data():
         expenses_data.append(int(d_expenses))
         cashflow_data.append(int(cash_by_date.get(d, {}).get("net", 0)))
         cash_balance_data.append(int(running_cash_balance))
+        daily_credit_sales.append(int(d_credit))
         
     # 7. Financial Status
     supplier_debts = calculate_supplier_debts()
     shipping_receivables = calculate_shipping_due()
     shipping_opening_balance = calculate_shipping_opening_balance()
+    customer_ar = int(calculate_accounts_receivable() or 0)
+    receivables_total = customer_ar + int(shipping_opening_balance)
     liabilities = supplier_debts
     inventory_value = calculate_inventory_value()
-    receivables = calculate_accounts_receivable() + shipping_opening_balance
+    receivables_breakdown = {
+        "customer_ar": customer_ar,
+        "shipping_receivables": int(shipping_receivables),
+        "shipping_opening_balance": int(shipping_opening_balance),
+    }
 
     paid_rows = db.session.query(
         Invoice.id,
@@ -1133,7 +1369,7 @@ def api_executive_dashboard_data():
         Invoice.payment_status != "مرتجع",
     ).all()
     collected_total = sum(_effective_paid_amount(row) for row in paid_rows)
-    collection_base = collected_total + int(receivables or 0)
+    collection_base = collected_total + int(receivables_total or 0)
     debt_collection_rate = round((collected_total / collection_base) * 100) if collection_base > 0 else 0
     
     new_customers = db.session.query(func.count(Customer.id)).filter(
@@ -1154,7 +1390,7 @@ def api_executive_dashboard_data():
     bank_total = treasury["bank_total"]
     cash_box_balance = treasury["cash_box_balance"]
 
-    credit_summary = get_credit_executive_summary(today, debt_collection_rate)
+    credit_summary = get_credit_executive_summary(today, debt_collection_rate, receivables_total)
     liabilities_breakdown = {
         "supplier_debts": int(supplier_debts),
         "shipping_due": 0,
@@ -1162,7 +1398,9 @@ def api_executive_dashboard_data():
         "shipping_opening_balance": int(shipping_opening_balance),
         "total": int(liabilities),
     }
-    net_financial_position = int(total_liquidity) + int(receivables) - int(liabilities)
+    net_financial_position = int(total_liquidity) + int(receivables_total) - int(liabilities)
+    receivables_proxy = build_receivables_proxy_series(daily_credit_sales, receivables_total)
+    daily_net_position = build_daily_net_position_series(cash_balance_data, receivables_proxy, liabilities)
     alerts = get_executive_alerts(
         overdue_installments_count=credit_summary["overdue_installments_count"],
         overdue_installments_amount=credit_summary["overdue_installments_amount"],
@@ -1186,6 +1424,11 @@ def api_executive_dashboard_data():
     business_health = round(
         (profitability_score + liquidity_score + sales_score + inventory_score + customer_score) / 5
     )
+
+    cash_t, credit_t = _cash_credit_split(_invoices_for_range(today, today))
+    cash_y, credit_y = _cash_credit_split(_invoices_for_range(yesterday, yesterday))
+    rate_t = round(cash_t / (cash_t + credit_t) * 100) if (cash_t + credit_t) > 0 else int(debt_collection_rate)
+    rate_y = round(cash_y / (cash_y + credit_y) * 100) if (cash_y + credit_y) > 0 else 0
     
     return jsonify({
         "orders_today": orders_today,
@@ -1206,6 +1449,8 @@ def api_executive_dashboard_data():
         "daily_expenses": expenses_data,
         "daily_cashflow": cashflow_data,
         "daily_cash_balance": cash_balance_data,
+        "daily_credit_sales": daily_credit_sales,
+        "daily_net_position": daily_net_position,
         "chart_labels": daily_labels,
         "chart_sales": sales_data,
         "chart_profit": profit_data,
@@ -1217,7 +1462,8 @@ def api_executive_dashboard_data():
         "total_liquidity": int(total_liquidity),
         "bank_total": int(bank_total),
         "treasury_accounts": treasury["treasury_accounts"],
-        "receivables": int(receivables),
+        "receivables": int(receivables_total),
+        "receivables_breakdown": receivables_breakdown,
         "liabilities": int(liabilities),
         "liabilities_breakdown": liabilities_breakdown,
         "credit_summary": credit_summary,
@@ -1233,6 +1479,7 @@ def api_executive_dashboard_data():
             "cash": percent_change(today_cash["net"], yesterday_cash["net"]),
             "profit": percent_change(profit_today, profit_yesterday),
             "sales": percent_change(sales_today_val, sales_yesterday_val),
+            "collection": percent_change(rate_t, rate_y),
         },
         "health": {
             "score": int(business_health),
@@ -1836,11 +2083,12 @@ def index_execute():
         from utils.shipping_branch_schedule import apply_shipping_branch_schedule
 
         try:
+            ensure_stock_for_transition(invoice, target_status="جاري الشحن")
             apply_shipping_branch_schedule(invoice, previous_status=invoice.status)
             invoice.status = "جاري الشحن"
-        except BranchStockError as exc:
+        except (BranchStockError, OrderStockError) as exc:
             db.session.rollback()
-            return jsonify({"success": False, "error": str(exc)}), 400
+            return jsonify({"success": False, "code": "INSUFFICIENT_STOCK", "error": getattr(exc, "message", str(exc)), "shortages": getattr(exc, "shortages", [])}), 409
 
     elif action == "delivered":
         from utils.delivery_expense_service import sync_delivery_expense_for_invoice
@@ -1851,6 +2099,11 @@ def index_execute():
         except (TypeError, ValueError):
             delivery_fee = 0
 
+        try:
+            ensure_stock_for_transition(invoice, target_status="تم التوصيل", target_payment_status="مسدد")
+        except OrderStockError as exc:
+            db.session.rollback()
+            return jsonify({"success": False, "code": "INSUFFICIENT_STOCK", "error": exc.message, "shortages": exc.shortages}), 409
         prev_eff = _effective_paid_amount(invoice)
         invoice.status = "تم التوصيل"
         invoice.payment_status = "مسدد"
@@ -1859,17 +2112,24 @@ def index_execute():
         apply_manual_delivery_fee_on_payment(invoice, delivery_fee, tenant_id)
         if delivery_fee <= 0:
             invoice.paid_amount = int(invoice.total or 0)
+        ensure_paid_shipping_order_settled(invoice)
         append_payment_ledger_delta(invoice.id, _effective_paid_amount(invoice) - prev_eff)
         sync_delivery_expense_for_invoice(invoice)
 
     elif action == "paid":
         from utils.delivery_expense_service import sync_delivery_expense_for_invoice
 
+        try:
+            ensure_stock_for_transition(invoice, target_status="مسدد", target_payment_status="مسدد")
+        except OrderStockError as exc:
+            db.session.rollback()
+            return jsonify({"success": False, "code": "INSUFFICIENT_STOCK", "error": exc.message, "shortages": exc.shortages}), 409
         prev_eff = _effective_paid_amount(invoice)
         invoice.status = "مسدد"
         invoice.payment_status = "مسدد"
         invoice.paid_amount = int(invoice.total or 0)
         invoice.shipping_status = "تم التسديد"
+        ensure_paid_shipping_order_settled(invoice)
         append_payment_ledger_delta(invoice.id, _effective_paid_amount(invoice) - prev_eff)
         sync_delivery_expense_for_invoice(invoice)
 
@@ -1929,6 +2189,7 @@ def index_execute_bulk():
             elif action == "shipping":
                 from utils.shipping_branch_schedule import apply_shipping_branch_schedule
 
+                ensure_stock_for_transition(invoice, target_status="جاري الشحن")
                 apply_shipping_branch_schedule(invoice, previous_status=invoice.status)
                 invoice.status = "جاري الشحن"
             elif action == "delivered":
@@ -1940,6 +2201,7 @@ def index_execute_bulk():
                 except (TypeError, ValueError):
                     delivery_fee = 0
 
+                ensure_stock_for_transition(invoice, target_status="تم التوصيل", target_payment_status="مسدد")
                 prev_eff = _effective_paid_amount(invoice)
                 invoice.status = "تم التوصيل"
                 invoice.payment_status = "مسدد"
@@ -1948,16 +2210,19 @@ def index_execute_bulk():
                 apply_manual_delivery_fee_on_payment(invoice, delivery_fee, tenant_id)
                 if delivery_fee <= 0:
                     invoice.paid_amount = int(invoice.total or 0)
+                ensure_paid_shipping_order_settled(invoice)
                 append_payment_ledger_delta(invoice.id, _effective_paid_amount(invoice) - prev_eff)
                 sync_delivery_expense_for_invoice(invoice)
             elif action == "paid":
                 from utils.delivery_expense_service import sync_delivery_expense_for_invoice
 
+                ensure_stock_for_transition(invoice, target_status="مسدد", target_payment_status="مسدد")
                 prev_eff = _effective_paid_amount(invoice)
                 invoice.status = "مسدد"
                 invoice.payment_status = "مسدد"
                 invoice.paid_amount = int(invoice.total or 0)
                 invoice.shipping_status = "تم التسديد"
+                ensure_paid_shipping_order_settled(invoice)
                 append_payment_ledger_delta(invoice.id, _effective_paid_amount(invoice) - prev_eff)
                 sync_delivery_expense_for_invoice(invoice)
             elif action == "returned":
@@ -1978,6 +2243,9 @@ def index_execute_bulk():
             
             executed += 1
             executed_ids.append(int(order_id))
+        except OrderStockError as e:
+            db.session.rollback()
+            return jsonify({"success": False, "code": "INSUFFICIENT_STOCK", "error": e.message, "shortages": e.shortages}), 409
         except Exception as e:
             errors.append(f"طلب {order_id}: {str(e)}")
             continue
@@ -2106,43 +2374,7 @@ def index_alerts():
                 "action": "/inventory"
             })
 
-        # تنبيهات الربح والمصاريف
-        # تستخدم نفس منطق صفحة الحسابات حتى لا يظهر تحذير خسارة عند وجود ربح محاسبي فعلي.
-        from utils.accounting_calculations import (
-            calculate_total_revenue,
-            calculate_total_cogs,
-            calculate_total_expenses,
-            calculate_net_profit,
-        )
-        booked_sales = calculate_total_revenue()
-        total_cost = calculate_total_cogs()
-        total_expenses = calculate_total_expenses()
-        gross_profit = booked_sales - total_cost
-        net_profit = calculate_net_profit()
-        expense_ratio = (total_expenses / gross_profit * 100) if gross_profit > 0 else 0
-        profit_ratio = (net_profit / booked_sales * 100) if booked_sales > 0 else 0
-
-        if net_profit < 0:
-            alerts.append({
-                "type": "danger",
-                "icon": "🚨",
-                "message": f"خسارة! المصاريف ({total_expenses:,} د.ع) أعلى من الربح ({gross_profit:,} د.ع)",
-                "action": "/accounts"
-            })
-        elif expense_ratio >= 80 and gross_profit > 0:
-            alerts.append({
-                "type": "warning",
-                "icon": "⚠️",
-                "message": f"المصاريف ({total_expenses:,} د.ع) تمثل {expense_ratio:.1f}% من الربح ({gross_profit:,} د.ع) - قريبة جداً من الخسارة!",
-                "action": "/accounts"
-            })
-        elif profit_ratio < 20 and booked_sales > 0:
-            alerts.append({
-                "type": "info",
-                "icon": "💡",
-                "message": f"الربح الصافي ({net_profit:,} د.ع) يمثل {profit_ratio:.1f}% فقط من المبيعات ({booked_sales:,} د.ع) - ربح قليل",
-                "action": "/accounts"
-            })
+        # تنبيهات الربح والمصاريف — تُغطى عبر مراقب مالي (get_watchdog_ephemeral_alerts)
 
         pending_orders = db.session.query(func.count(Invoice.id)).filter(Invoice.status == "تم الطلب").scalar() or 0
         if pending_orders > 10:
@@ -2154,17 +2386,17 @@ def index_alerts():
             })
 
         try:
-            from routes.reports import _build_monitor_data
+            from utils.monitor_service import MONITORS_HUB_URL, build_performance_monitor_data
             from utils.permission_checks import check_permission
 
             now = datetime.utcnow()
-            monitor = _build_monitor_data(now - timedelta(days=30), now, 5, 0)
+            monitor = build_performance_monitor_data(now - timedelta(days=30), now, 5, 0)
             weak_employees = monitor.get("weak_employees") or []
             page_alerts = monitor.get("alerts") or []
             can_open_monitor = check_permission("can_see_reports")
-            monitor_action = "/reports/monitor" if can_open_monitor else "/"
+            monitor_action = f"{MONITORS_HUB_URL}?tab=performance" if can_open_monitor else "/"
             monitor_decisions = (
-                [{"label": "فتح المراقب", "href": "/reports/monitor", "kind": "navigate"}]
+                [{"label": "فتح مركز المراقبة", "href": f"{MONITORS_HUB_URL}?tab=performance", "kind": "navigate"}]
                 if can_open_monitor
                 else []
             )

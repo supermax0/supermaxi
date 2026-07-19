@@ -173,6 +173,19 @@ class Invoice(db.Model):
     )
 
     # =====================
+    # Stock lock
+    # =====================
+    is_stock_locked = db.Column(db.Boolean, default=False, nullable=False)
+    stock_lock_reason = db.Column(db.Text, nullable=True)
+    stock_locked_at = db.Column(db.DateTime, nullable=True)
+    stock_unlocked_at = db.Column(db.DateTime, nullable=True)
+    # True only while this invoice's physical items are currently deducted.
+    # The timestamps preserve the inventory audit trail after cancel/return.
+    stock_is_deducted = db.Column(db.Boolean, default=True, nullable=False)
+    stock_deducted_at = db.Column(db.DateTime, nullable=True)
+    stock_restored_at = db.Column(db.DateTime, nullable=True)
+
+    # =====================
     # Time
     # =====================
     created_at = db.Column(

@@ -1,0 +1,99 @@
+{% extends "mobile_app/_layout.html" %}
+{% block mobile_app_body %}
+<div class="ma-stack">
+  <div class="ma-page-head">
+    <h2 class="ma-page-title">كوبونات التطبيق</h2>
+    <p class="ma-page-subtitle">إنشاء وإدارة أكواد الخصم</p>
+  </div>
+
+  <div class="ma-card">
+    <div class="ma-card-head">
+      <div class="ma-card-icon is-gold"><i class="fas fa-ticket-alt"></i></div>
+      <div>
+        <h3 class="ma-card-title">إنشاء كوبون</h3>
+        <p class="ma-card-desc">كوبون خصم جديد للمستخدمين</p>
+      </div>
+    </div>
+    <form method="post" class="ma-form-grid" style="max-width:560px">
+      <input type="hidden" name="action" value="create">
+      <div class="ma-form-grid-2">
+        <label class="ma-field">
+          <span class="ma-field-label">رمز الكوبون</span>
+          <input class="ma-input" name="code" placeholder="FINORA10" required style="direction:ltr;text-align:left">
+        </label>
+        <label class="ma-field">
+          <span class="ma-field-label">الاسم التعريفي</span>
+          <input class="ma-input" name="name" placeholder="خصم الافتتاح">
+        </label>
+      </div>
+      <div class="ma-form-grid-2">
+        <label class="ma-field">
+          <span class="ma-field-label">نوع الخصم</span>
+          <select class="ma-input" name="discount_type">
+            <option value="percent">نسبة مئوية</option>
+            <option value="fixed">مبلغ ثابت</option>
+          </select>
+        </label>
+        <label class="ma-field">
+          <span class="ma-field-label">القيمة</span>
+          <input class="ma-input" type="number" name="value" placeholder="10" min="1" required>
+        </label>
+      </div>
+      <div class="ma-form-grid-2">
+        <label class="ma-field">
+          <span class="ma-field-label">الحد الأدنى للسلة</span>
+          <input class="ma-input" type="number" name="min_subtotal" value="0">
+        </label>
+        <label class="ma-field">
+          <span class="ma-field-label">أقصى استخدامات <em>(اختياري)</em></span>
+          <input class="ma-input" type="number" name="max_uses" placeholder="غير محدود">
+        </label>
+      </div>
+      <div class="ma-upload-actions">
+        <button class="ma-btn ma-btn-primary" type="submit"><i class="fas fa-plus"></i> إنشاء</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="ma-table-wrap" style="background:var(--card)">
+    <table class="ma-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>الرمز</th>
+          <th>النوع</th>
+          <th>القيمة</th>
+          <th>الحالة</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in coupons %}
+        <tr>
+          <td class="ma-muted">{{ c.id }}</td>
+          <td><span class="ma-code">{{ c.code }}</span></td>
+          <td>{{ 'نسبة مئوية' if c.discount_type == 'percent' else 'مبلغ ثابت' }}</td>
+          <td class="ma-table-title">{{ c.value }}{% if c.discount_type == 'percent' %}%{% else %} د.ع{% endif %}</td>
+          <td>
+            <span class="ma-badge {{ 'ma-badge-active' if c.is_active else 'ma-badge-inactive' }}">
+              {{ 'نشط' if c.is_active else 'معطّل' }}
+            </span>
+          </td>
+          <td class="ma-row-actions">
+            <form method="post">
+              <input type="hidden" name="action" value="toggle">
+              <input type="hidden" name="coupon_id" value="{{ c.id }}">
+              <button class="ma-btn ma-btn-sm ma-btn-ghost" type="submit">
+                {{ 'تعطيل' if c.is_active else 'تفعيل' }}
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="ma-empty">لا توجد كوبونات — أنشئ أول كوبون من الأعلى</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

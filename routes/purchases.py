@@ -552,13 +552,22 @@ def _get_purchase_stats():
             int(p.grand_total or p.total or 0)
             for p in Purchase.query.filter(Purchase.purchase_date >= current_month_start).all()
         )
-        supplier_remaining = [
-            max(
-                int(getattr(s, "total_debt", 0) or 0) - int(getattr(s, "total_paid", 0) or 0),
-                0,
-            )
-            for s in suppliers
-        ]
+        try:
+            from utils.supplier_accounting_repair import expected_supplier_totals
+
+            supplier_remaining = []
+            for s in suppliers:
+                expected_debt, expected_paid = expected_supplier_totals(int(s.id))
+                supplier_remaining.append(max(expected_debt - expected_paid, 0))
+        except Exception:
+            db.session.rollback()
+            supplier_remaining = [
+                max(
+                    int(getattr(s, "total_debt", 0) or 0) - int(getattr(s, "total_paid", 0) or 0),
+                    0,
+                )
+                for s in suppliers
+            ]
         total_supplier_debts = sum(supplier_remaining)
         suppliers_with_debt = len([remaining for remaining in supplier_remaining if remaining > 0])
     except Exception:

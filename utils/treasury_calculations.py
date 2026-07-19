@@ -3,12 +3,13 @@ Treasury balance calculations per account (cash + banks).
 """
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, time
 
 from sqlalchemy import func, or_, and_
 
 from extensions import db
 from models.account_transaction import AccountTransaction
+from models.invoice_payment_ledger import InvoicePaymentLedger
 from models.invoice import Invoice
 from models.shipping_payment import ShippingPayment
 from models.supplier_payment import SupplierPayment
@@ -282,7 +283,58 @@ def get_treasury_movements(account_id: int | None = None):
     movements = []
     current_balance = 0
 
+    def _movement_datetime(value):
+        if isinstance(value, datetime):
+            return value
+        if isinstance(value, date):
+            return datetime.combine(value, time.min)
+        return datetime.combine(date.today(), time.min)
+
     if account.is_cash and account.is_default:
+        shipping_invoice_ids = set(_shipping_settled_invoice_ids())
+        ledger_query = (
+            db.session.query(
+                InvoicePaymentLedger.id,
+                InvoicePaymentLedger.invoice_id,
+                InvoicePaymentLedger.amount_delta,
+                InvoicePaymentLedger.recorded_at,
+                Invoice.customer_name,
+            )
+            .join(Invoice, Invoice.id == InvoicePaymentLedger.invoice_id)
+            .filter(InvoicePaymentLedger.amount_delta != 0)
+        )
+        if shipping_invoice_ids:
+            ledger_query = ledger_query.filter(~InvoicePaymentLedger.invoice_id.in_(shipping_invoice_ids))
+
+        ledger_invoice_ids = set()
+        for entry in ledger_query.order_by(InvoicePaymentLedger.recorded_at, InvoicePaymentLedger.id).all():
+            amount_delta = int(entry.amount_delta or 0)
+            if amount_delta == 0:
+                continue
+            ledger_invoice_ids.add(int(entry.invoice_id))
+            movement_dt = _movement_datetime(entry.recorded_at)
+            movement_type = "cash_in" if amount_delta > 0 else "cash_out"
+            movement_amount = abs(amount_delta)
+            reason = "بيع / تحصيل" if amount_delta > 0 else "تعديل تحصيل"
+            current_balance += amount_delta
+            movements.append(
+                {
+                    "date": movement_dt.date(),
+                    "datetime": movement_dt,
+                    "type": movement_type,
+                    "type_ar": "قبض" if amount_delta > 0 else "صرف",
+                    "reason": reason,
+                    "amount": movement_amount,
+                    "balance_after": current_balance,
+                    "reference_type": "invoice_payment_ledger",
+                    "reference_id": entry.id,
+                    "description": (
+                        f"{reason} - فاتورة #{entry.invoice_id} - "
+                        f"{entry.customer_name or ''} - {movement_amount:,} د.ع"
+                    ),
+                }
+            )
+
         invoice_query = (
             db.session.query(
                 Invoice.id,
@@ -302,18 +354,21 @@ def get_treasury_movements(account_id: int | None = None):
                 ),
             )
         )
-        shipping_invoice_ids = _shipping_settled_invoice_ids()
         if shipping_invoice_ids:
             invoice_query = invoice_query.filter(~Invoice.id.in_(shipping_invoice_ids))
+        if ledger_invoice_ids:
+            invoice_query = invoice_query.filter(~Invoice.id.in_(ledger_invoice_ids))
         paid_invoices = invoice_query.order_by(Invoice.created_at).all()
         for invoice in paid_invoices:
             payment_amount = _effective_paid_amount(invoice)
             if payment_amount <= 0:
                 continue
+            movement_dt = _movement_datetime(invoice.created_at)
             current_balance += payment_amount
             movements.append(
                 {
-                    "date": invoice.created_at.date() if invoice.created_at else date.today(),
+                    "date": movement_dt.date(),
+                    "datetime": movement_dt,
                     "type": "cash_in",
                     "type_ar": "قبض",
                     "reason": "بيع / تحصيل",
@@ -340,6 +395,7 @@ def get_treasury_movements(account_id: int | None = None):
         .all()
     )
     for tx in deposits:
+        movement_dt = _movement_datetime(tx.created_at)
         current_balance += tx.amount
         reason = "إيداع"
         if tx.note and tx.note.startswith("صندوق -"):
@@ -350,7 +406,8 @@ def get_treasury_movements(account_id: int | None = None):
             reason = "تحويل وارد"
         movements.append(
             {
-                "date": tx.created_at.date() if tx.created_at else date.today(),
+                "date": movement_dt.date(),
+                "datetime": movement_dt,
                 "type": "cash_in",
                 "type_ar": "قبض",
                 "reason": reason,
@@ -370,10 +427,12 @@ def get_treasury_movements(account_id: int | None = None):
         .all()
     )
     for payment in supplier_payments:
+        movement_dt = _movement_datetime(payment.created_at)
         current_balance -= payment.amount
         movements.append(
             {
-                "date": payment.created_at.date() if payment.created_at else date.today(),
+                "date": movement_dt.date(),
+                "datetime": movement_dt,
                 "type": "cash_out",
                 "type_ar": "صرف",
                 "reason": "دفع مورد",
@@ -408,10 +467,12 @@ def get_treasury_movements(account_id: int | None = None):
         .all()
     )
     for payment in shipping_payments:
+        movement_dt = _movement_datetime(payment.created_at)
         current_balance += payment.amount
         movements.append(
             {
-                "date": payment.created_at.date() if payment.created_at else date.today(),
+                "date": movement_dt.date(),
+                "datetime": movement_dt,
                 "type": "cash_in",
                 "type_ar": "قبض",
                 "reason": "قبض من شركة نقل",
@@ -436,10 +497,13 @@ def get_treasury_movements(account_id: int | None = None):
         .all()
     )
     for tx in withdrawals:
+        movement_dt = _movement_datetime(tx.created_at)
         current_balance -= tx.amount
         reason = "صرف"
         if tx.note:
-            if "صندوق - شراء نقدي" in tx.note or "شراء نقدي" in tx.note or "دفعة شراء" in tx.note:
+            if "شراء أصل" in tx.note:
+                reason = "شراء أصل"
+            elif "صندوق - شراء نقدي" in tx.note or "شراء نقدي" in tx.note or "دفعة شراء" in tx.note:
                 reason = "شراء"
             elif "مصروف" in tx.note:
                 reason = "مصروف"
@@ -451,7 +515,8 @@ def get_treasury_movements(account_id: int | None = None):
             reason = "سحب مالك"
         movements.append(
             {
-                "date": tx.created_at.date() if tx.created_at else date.today(),
+                "date": movement_dt.date(),
+                "datetime": movement_dt,
                 "type": "cash_out",
                 "type_ar": "صرف",
                 "reason": reason,
@@ -463,7 +528,7 @@ def get_treasury_movements(account_id: int | None = None):
             }
         )
 
-    movements.sort(key=lambda x: (x["date"], x.get("reference_type", ""), x.get("reference_id", 0)))
+    movements.sort(key=lambda x: (x.get("datetime") or datetime.combine(x["date"], time.min), x.get("reference_type", ""), x.get("reference_id", 0)))
     running_balance = 0
     for movement in movements:
         amount = int(movement.get("amount") or 0)

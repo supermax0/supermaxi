@@ -68,7 +68,44 @@ def chat():
         "manage_ai_schedules": is_admin or check_permission("manage_ai_schedules"),
         "view_ai_audit_logs": is_admin or check_permission("view_ai_audit_logs"),
     }
-    return render_template("assistant/chat.html", session=session, assistant_permissions=assistant_permissions)
+    monitor_context = None
+    if request.args.get("context") == "monitor" and check_permission("can_see_reports"):
+        from utils.monitor_service import (
+            build_monitor_assistant_context,
+            build_monitors_hub_data,
+            parse_monitor_filters,
+            resolve_monitor_date_range,
+        )
+
+        tab = (request.args.get("tab") or "overview").strip()
+        date_from, date_to, period_key = resolve_monitor_date_range(
+            period=request.args.get("period"),
+            date_from_raw=request.args.get("date_from"),
+            date_to_raw=request.args.get("date_to"),
+        )
+        filters = parse_monitor_filters(
+            branch_id=request.args.get("branch_id", type=int),
+            page_id=request.args.get("page_id", type=int),
+            employee_id=request.args.get("employee_id", type=int),
+        )
+        hub_data = build_monitors_hub_data(
+            tab,
+            date_from=date_from,
+            date_to=date_to,
+            period_key=period_key,
+            overdue_min_days=request.args.get("overdue_min_days", type=int),
+            stuck_days=request.args.get("stuck_days", type=int),
+            min_orders=request.args.get("min_orders", type=int),
+            min_sales=request.args.get("min_sales", type=int),
+            filters=filters,
+        )
+        monitor_context = build_monitor_assistant_context(hub_data)
+    return render_template(
+        "assistant/chat.html",
+        session=session,
+        assistant_permissions=assistant_permissions,
+        monitor_context=monitor_context,
+    )
 
 
 def _require_assistant_json(permission_name: str = "use_ai_assistant"):

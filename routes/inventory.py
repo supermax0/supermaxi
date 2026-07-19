@@ -2,7 +2,7 @@ import json
 import os
 from io import BytesIO
 
-from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify, current_app, g, send_file
+from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify, current_app, g, send_file, flash
 from werkzeug.utils import secure_filename
 from extensions import db
 from models.product import Product
@@ -989,6 +989,9 @@ def add_product_page():
             p.shipping_cost = max(0, int(meta.get("delivery_default_fee") or 0))
             p.marketing_cost = 0
             p.active = not not_for_sale_flag
+            # لا تلمس الظهور في المتجر عند حفظ الوسائط/التعديل — يُغيَّر فقط من زر العين
+            if getattr(p, "store_visible", None) is None:
+                p.store_visible = True
 
             if image_url:
                 p.image_url = image_url
@@ -1188,10 +1191,14 @@ def add_supplier():
 # ======================================
 # Toggle Product
 # ======================================
-@inventory_bp.route("/toggle/<int:id>")
+@inventory_bp.route("/toggle/<int:id>", methods=["POST", "GET"])
 def toggle_product(id):
     if not check_permission("can_manage_inventory"):
         return redirect("/pos"), 403
+    # ارفض GET القادم من prefetch/الزواحف حتى لا يُقلَب الحالة بالخطأ
+    if request.method != "POST":
+        flash("لتغيير حالة المنتج استخدم زر القائمة (POST).", "warning")
+        return redirect(url_for("inventory.inventory"))
 
     p = Product.query.get_or_404(id)
     p.active = not p.active
@@ -1199,10 +1206,14 @@ def toggle_product(id):
     return redirect(url_for("inventory.inventory"))
 
 
-@inventory_bp.route("/toggle-store/<int:id>")
+@inventory_bp.route("/toggle-store/<int:id>", methods=["POST", "GET"])
 def toggle_product_store_visibility(id):
     if not check_permission("can_manage_inventory"):
         return redirect("/pos"), 403
+    # GET على روابط العين كان يقلّب الظهور بعد حفظ الصور بسبب prefetch المتصفح
+    if request.method != "POST":
+        flash("لإظهار/إخفاء المنتج من المتجر استخدم زر العين في القائمة.", "warning")
+        return redirect(url_for("inventory.inventory"))
 
     p = Product.query.get_or_404(id)
     p.store_visible = not bool(p.store_visible)

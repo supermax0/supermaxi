@@ -446,7 +446,7 @@
           ${!badge.overlay ? `<span class="pos-stock-badge ${badge.cls}">${badge.text}</span>` : ""}
         </div>
         <div class="pos-product-stock">${stockLabel}</div>
-        <button type="button" class="pos-btn-add" ${qty <= 0 ? "disabled" : ""}
+        <button type="button" class="pos-btn-add"
           onclick="PosWP.addItemById(${p.id})"><i class="fas fa-cart-plus"></i> إضافة</button>
       </article>`;
     }).join("");
@@ -494,8 +494,7 @@
       list.innerHTML = colors.map((c) => {
         const name = (c.name || c).toString().replace(/"/g, "&quot;");
         const qty = Number(c.qty ?? c.quantity) || 0;
-        const disabled = qty <= 0 ? "disabled" : "";
-        return `<button type="button" class="pos-color-option" ${disabled} data-color="${name}" onclick="PosWP.selectColor('${name.replace(/'/g, "\\'")}')">
+        return `<button type="button" class="pos-color-option" data-color="${name}" onclick="PosWP.selectColor('${name.replace(/'/g, "\\'")}')">
           <span>${name}</span><small>${qty > 0 ? "متوفر: " + fmt(qty) : "نفد"}</small>
         </button>`;
       }).join("");
@@ -592,17 +591,13 @@
       : stockNum;
 
     if (item) {
-      if (item.qty + 1 > effectiveItemStock({ ...item, stock: maxStock, color_stock: maxStock })) {
-        toast("الكمية المطلوبة أكبر من المخزون (" + fmt(maxStock) + ")");
-        return;
-      }
       item.qty++;
-      toast("تم زيادة كمية " + name + (colorName ? " — " + colorName : ""));
-    } else {
-      if (maxStock <= 0) {
-        toast(colorName ? "اللون غير متوفر في المخزون" : "المنتج غير متوفر في المخزون");
-        return;
+      if (maxStock <= 0 || item.qty > maxStock) {
+        toast("تمت زيادة الكمية وسيقفل الطلب بانتظار المخزون");
+      } else {
+        toast("تم زيادة كمية " + name + (colorName ? " — " + colorName : ""));
       }
+    } else {
       items.push({
         product_id: idNum,
         name: name || "",
@@ -615,7 +610,11 @@
         image_url: img,
         sku: itemSku,
       });
-      toast("تم إضافة " + (name || "منتج") + (colorName ? " — " + colorName : "") + " للسلة");
+      if (maxStock <= 0) {
+        toast("تمت الإضافة وسيقفل الطلب بانتظار المخزون");
+      } else {
+        toast("تم إضافة " + (name || "منتج") + (colorName ? " — " + colorName : "") + " للسلة");
+      }
     }
     const sp = $("searchProduct");
     if (sp) sp.value = "";
@@ -628,10 +627,6 @@
     const item = items[i];
     if (!item) return;
     const newQty = item.qty + d;
-    if (newQty > effectiveItemStock(item)) {
-      toast("الكمية المطلوبة أكبر من المخزون (" + fmt(effectiveItemStock(item)) + ")");
-      return;
-    }
     if (newQty <= 0) {
       if (confirm("حذف " + item.name + " من السلة؟")) {
         items.splice(i, 1);
@@ -639,6 +634,10 @@
       }
     } else {
       item.qty = newQty;
+      const available = effectiveItemStock(item);
+      if (d > 0 && (available <= 0 || newQty > available)) {
+        toast("الكمية أكبر من المخزون، سيقفل الطلب بانتظار المخزون");
+      }
     }
     renderItems();
   }
@@ -811,12 +810,12 @@
     }
     const addressValue = ($("address")?.value || "").trim();
     if (!addressValue) { toast("يرجى إدخال العنوان"); $("address")?.focus(); return; }
+    const cityValue = ($("city")?.value || "").trim();
+    if (!cityValue) { toast("يرجى اختيار المحافظة"); $("city")?.focus(); return; }
 
     const saveBtn = document.querySelector("#customerModal .pos-btn-primary");
     if (saveBtn?.dataset.busy === "1") return;
     if (saveBtn) saveBtn.dataset.busy = "1";
-
-    const cityValue = ($("city")?.value || "").trim();
 
     fetch("/pos/add-customer", {
       method: "POST",
@@ -945,8 +944,8 @@
           updateStats();
           return;
         }
-        toast(editingOrderId ? "تم حفظ التعديل" : "تم تنفيذ البيع وإنشاء الفاتورة");
-        items.forEach((i) => syncLocalStock(i.product_id, i.qty));
+        toast(d.stock_locked ? "تم إنشاء الطلب مقفلاً بانتظار المخزون" : (editingOrderId ? "تم حفظ التعديل" : "تم تنفيذ البيع وإنشاء الفاتورة"));
+        if (!d.stock_locked) items.forEach((i) => syncLocalStock(i.product_id, i.qty));
         closeOrderNotesModal();
         printServerInvoice(d.invoice_id);
         if (!editingOrderId) {
@@ -1026,8 +1025,8 @@
         activeSubmissionToken = null;
         setSubmitBusy(false);
         if (d.error) { toast(d.error); return; }
-        items.forEach((i) => syncLocalStock(i.product_id, i.qty));
-        toast("تم تأجيل الطلب — رقم " + d.invoice_id);
+        if (!d.stock_locked) items.forEach((i) => syncLocalStock(i.product_id, i.qty));
+        toast(d.stock_locked ? "تم تأجيل الطلب مقفلاً بانتظار المخزون" : "تم تأجيل الطلب — رقم " + d.invoice_id);
         closeScheduleModal();
         items = [];
         selectedCustomerId = null;

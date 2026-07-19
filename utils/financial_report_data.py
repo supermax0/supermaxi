@@ -24,9 +24,14 @@ from utils.accounting_calculations import (
     calculate_shipping_opening_balance,
     calculate_accounts_receivable,
 )
-from utils.cash_calculations import calculate_cash_balance
 from utils.expense_queries import posted_expense_filter, sum_posted_expenses
 from utils.order_item_costs import exclude_delivery_fee_items
+from utils.order_stock_lock import stock_unlocked_filter
+from utils.treasury_calculations import (
+    calculate_total_liquidity,
+    calculate_treasury_balance,
+    list_treasury_accounts,
+)
 
 RETURN_STATUSES = list(ORDER_RETURN_STATUSES)
 CANCELED_STATUSES = list(ORDER_CANCELED_STATUSES)
@@ -123,6 +128,8 @@ def _effective_paid_amount(inv):
     total = int(getattr(inv, "total", 0) or 0)
     ps = getattr(inv, "payment_status", None)
     st = getattr(inv, "status", None)
+    if getattr(inv, "is_stock_locked", False):
+        return 0
     if ps in ("مرتجع", "ملغي", "راجع", "راجعة") or st in ("مرتجع", "ملغي", "راجع", "راجعة"):
         return 0
     if ps == "مسدد":
@@ -159,6 +166,7 @@ def get_financial_report_data(period_type="this_month", custom_date_from=None, c
         func.date(Invoice.created_at) >= date_from,
         func.date(Invoice.created_at) <= date_to,
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
+        stock_unlocked_filter(Invoice),
         _valid_invoice_payment_status_filter(),
     ).all()
 
@@ -198,7 +206,22 @@ def get_financial_report_data(period_type="this_month", custom_date_from=None, c
     net_profit_period = int(total_revenue - cogs_period - expenses_period)
 
     # ─── أرصدة كما في نهاية الفترة (نستخدم الحالية من النظام) ───
-    cash_balance = calculate_cash_balance()
+    treasury_accounts = list_treasury_accounts()
+    treasury_balances = [
+        {
+            "account_id": int(acc.id),
+            "name": acc.name,
+            "account_type": acc.account_type,
+            "is_cash": bool(acc.is_cash),
+            "is_default": bool(acc.is_default),
+            "balance": int(calculate_treasury_balance(acc.id)),
+        }
+        for acc in treasury_accounts
+    ]
+    cash_balance = sum(row["balance"] for row in treasury_balances if row["is_cash"])
+    bank_balances = [row for row in treasury_balances if not row["is_cash"]]
+    bank_balance_total = sum(row["balance"] for row in bank_balances)
+    total_liquidity = int(calculate_total_liquidity())
     inventory_value = calculate_inventory_value()
     cc_summary = _credit_plan_financial_summary()
     installment_debt_total = cc_summary["installment_debt_total"]
@@ -242,6 +265,7 @@ def get_financial_report_data(period_type="this_month", custom_date_from=None, c
             func.date(Invoice.created_at) >= prev_start,
             func.date(Invoice.created_at) <= prev_end,
             Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
+            stock_unlocked_filter(Invoice),
             _valid_invoice_payment_status_filter(),
         ).all()
         prev_revenue = sum(int(inv.total or 0) for inv in prev_invoices)
@@ -277,7 +301,7 @@ def get_financial_report_data(period_type="this_month", custom_date_from=None, c
     fixed_assets_depreciation_period = fa_summary["fixed_assets_depreciation_period"]
 
     total_assets = int(
-        cash_balance
+        total_liquidity
         + inventory_value
         + accounts_receivable
         + fixed_assets_book_value
@@ -304,6 +328,7 @@ def get_financial_report_data(period_type="this_month", custom_date_from=None, c
         func.date(Invoice.created_at) >= date_from,
         func.date(Invoice.created_at) <= date_to,
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
+        stock_unlocked_filter(Invoice),
         _valid_invoice_payment_status_filter(),
         exclude_delivery_fee_items(OrderItem),
     ).group_by(OrderItem.product_name).order_by(func.sum(OrderItem.total).desc()).limit(10).all()
@@ -323,6 +348,7 @@ def get_financial_report_data(period_type="this_month", custom_date_from=None, c
         func.date(Invoice.created_at) >= date_from,
         func.date(Invoice.created_at) <= date_to,
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
+        stock_unlocked_filter(Invoice),
         _valid_invoice_payment_status_filter(),
     ).group_by(Invoice.customer_name).order_by(func.sum(Invoice.total).desc()).limit(10).all()
     top_customers = [{
@@ -377,20 +403,29 @@ def get_financial_report_data(period_type="this_month", custom_date_from=None, c
     )[:10]
 
     # ─── الموردون (أعلى الأرصدة المستحقة) ───
-    ts_rows = Supplier.query.order_by(
-        (Supplier.total_debt - Supplier.total_paid).desc()
-    ).limit(10).all()
+    try:
+        from utils.supplier_accounting_repair import expected_supplier_totals
+    except Exception:
+        expected_supplier_totals = None
+
+    ts_rows = Supplier.query.all()
     top_suppliers = []
     for s in ts_rows:
-        remaining = int((s.total_debt or 0) - (s.total_paid or 0))
+        if expected_supplier_totals:
+            expected_debt, expected_paid = expected_supplier_totals(int(s.id))
+        else:
+            expected_debt = int(s.total_debt or 0)
+            expected_paid = int(s.total_paid or 0)
+        remaining = int(expected_debt - expected_paid)
         if remaining <= 0:
             continue
         top_suppliers.append({
             "name": s.name or "غير محدد",
-            "total_debt": int(s.total_debt or 0),
-            "total_paid": int(s.total_paid or 0),
+            "total_debt": int(expected_debt),
+            "total_paid": int(expected_paid),
             "remaining": remaining,
         })
+    top_suppliers = sorted(top_suppliers, key=lambda row: row["remaining"], reverse=True)[:10]
 
     # ─── سلسلة زمنية للرسوم البيانية (يومية إذا الفترة قصيرة، شهرية إن طالت) ───
     span_days = (date_to - date_from).days
@@ -455,6 +490,10 @@ def get_financial_report_data(period_type="this_month", custom_date_from=None, c
         "invoices_count": len(period_invoices),
         # ميزانية / أرصدة
         "cash_balance": int(cash_balance),
+        "bank_balances": bank_balances,
+        "bank_balance_total": int(bank_balance_total),
+        "total_liquidity": int(total_liquidity),
+        "treasury_balances": treasury_balances,
         "inventory_value": int(inventory_value),
         "accounts_receivable": int(accounts_receivable),
         "customer_receivables": int(customer_receivables),

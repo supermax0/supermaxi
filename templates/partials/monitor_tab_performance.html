@@ -1,0 +1,97 @@
+{% set s = performance.summary %}
+<div class="monitor-summary">
+  <div class="monitor-stat"><span>صحة الأداء</span><strong>{{ performance.health_score }}/100</strong></div>
+  <div class="monitor-stat"><span>طلبات البيجات</span><strong>{{ s.page_orders }}</strong></div>
+  <div class="monitor-stat"><span>مبيعات البيجات</span><strong>{{ s.page_sales_display }}</strong></div>
+  <div class="monitor-stat"><span>موظفون ضعفاء</span><strong>{{ s.weak_employees_count }} / {{ s.employees_count }}</strong></div>
+  <div class="monitor-stat"><span>مبيعات الموظفين</span><strong>{{ s.employee_sales_display }}</strong></div>
+</div>
+
+{% if performance.alerts %}
+<div class="monitor-alerts">
+  {% for alert in performance.alerts %}
+  <div class="monitor-alert warning">
+    <strong>{{ alert.name }}</strong>
+    <span>{{ alert.note }} — {{ alert.orders_count }} طلب</span>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<section class="monitor-section">
+  <div class="monitor-section-head">
+    <div><h2>مراقبة البيجات</h2></div>
+    <a class="monitor-btn secondary" href="{{ url_for('reports.monitors_export_api', tab='performance', table='weak', period=period, date_from=date_from.strftime('%Y-%m-%d'), date_to=date_to.strftime('%Y-%m-%d'), min_orders=performance.min_orders, min_sales=performance.min_sales) }}"><i class="fas fa-download"></i> CSV ضعفاء</a>
+  </div>
+  <div class="monitor-table-wrap">
+    <table class="monitor-table" data-monitor-table data-page-size="25">
+      <thead>
+        <tr><th>البيج</th><th>الحالة</th><th>طلبات</th><th>مبيعات</th><th>واصل%</th><th>راجع%</th><th>ملاحظة</th></tr>
+      </thead>
+      <tbody>
+        {% for page in performance.page_monitor %}
+        <tr>
+          <td><strong>{{ page.name }}</strong></td>
+          <td><span class="monitor-badge {{ page.health_class }}">{{ page.health }}</span></td>
+          <td>{{ page.orders_count }}</td>
+          <td>{{ page.sales_display }}</td>
+          <td>{{ page.delivered_rate }}%</td>
+          <td>{{ page.return_rate }}%</td>
+          <td>{{ page.note }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="monitor-empty">لا بيانات.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="monitor-section">
+  <div class="monitor-section-head"><div><h2>الموظفون الضعيفون</h2></div></div>
+  <div class="monitor-table-wrap">
+    <table class="monitor-table" data-monitor-table data-page-size="25">
+      <thead>
+        <tr><th>الموظف</th><th>الحالة</th><th>طلبات</th><th>مبيعات</th><th>راجع%</th><th>آخر طلب</th><th>السبب</th></tr>
+      </thead>
+      <tbody>
+        {% for employee in performance.weak_employees %}
+        <tr>
+          <td><strong>{{ employee.name }}</strong></td>
+          <td><span class="monitor-badge {{ employee.status_class }}">{{ employee.status }}</span></td>
+          <td>{{ employee.orders_count }}</td>
+          <td>{{ employee.sales_display }}</td>
+          <td>{{ employee.return_rate }}%</td>
+          <td>{{ employee.last_order_display }}</td>
+          <td>{{ employee.reason }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="monitor-empty">لا موظفين ضعفاء.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="monitor-section">
+  <div class="monitor-section-head"><div><h2>كل الموظفين</h2></div></div>
+  <div class="monitor-table-wrap">
+    <table class="monitor-table" data-monitor-table data-page-size="25">
+      <thead>
+        <tr><th>الموظف</th><th>الحالة</th><th>طلبات</th><th>مبيعات</th><th>واصل</th><th>راجع</th></tr>
+      </thead>
+      <tbody>
+        {% for employee in performance.employee_monitor %}
+        <tr>
+          <td>{{ employee.name }}</td>
+          <td><span class="monitor-badge {{ employee.status_class }}">{{ employee.status }}</span></td>
+          <td>{{ employee.orders_count }}</td>
+          <td>{{ employee.sales_display }}</td>
+          <td>{{ employee.delivered_count }}</td>
+          <td>{{ employee.returned_count }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>

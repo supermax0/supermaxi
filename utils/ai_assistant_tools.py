@@ -14,6 +14,7 @@
 """
 from __future__ import annotations
 
+import json
 from datetime import date, datetime, time, timedelta, timezone
 from typing import Any, Callable
 
@@ -26,12 +27,15 @@ from models.customer import Customer
 from models.customer_credit import CustomerCreditPlan, CustomerInstallment
 from models.employee import Employee
 from models.expense import Expense
+from models.fixed_asset import FixedAsset
 from models.invoice import Invoice
 from models.invoice_payment_ledger import InvoicePaymentLedger
 from models.order_item import OrderItem
 from models.product import Product
 from models.purchase import Purchase
 from models.shipping import ShippingCompany
+from models.shipping_payment import ShippingPayment
+from models.shipping_report import ShippingReport
 from models.supplier import Supplier
 from models.supplier_payment import SupplierPayment
 from models.treasury_account import TreasuryAccount
@@ -1018,6 +1022,170 @@ def tool_get_shipping_companies_dues(args: dict, scope: dict) -> dict:
     }
 
 
+def tool_get_shipping_payments(args: dict, scope: dict) -> dict:
+    """Read shipping collections and flag exact duplicate groups."""
+    query = ShippingPayment.query
+    company_id = int(args.get("company_id") or 0)
+    amount = _money(args.get("amount"))
+    if company_id:
+        query = query.filter(ShippingPayment.shipping_company_id == company_id)
+    if amount > 0:
+        query = query.filter(ShippingPayment.amount == amount)
+    start_utc, end_utc, label = _utc_window(
+        args.get("date_from"), args.get("date_to"), default_today=False
+    )
+    if start_utc:
+        query = query.filter(ShippingPayment.created_at >= start_utc)
+    if end_utc:
+        query = query.filter(ShippingPayment.created_at <= end_utc)
+    limit = min(max(int(args.get("limit") or 80), 1), 200)
+    rows = query.order_by(ShippingPayment.created_at.desc(), ShippingPayment.id.desc()).limit(limit).all()
+    company_names = {
+        row.id: row.name
+        for row in ShippingCompany.query.filter(
+            ShippingCompany.id.in_({p.shipping_company_id for p in rows})
+        ).all()
+    } if rows else {}
+    payments = [
+        {
+            "payment_id": p.id,
+            "company_id": p.shipping_company_id,
+            "company": company_names.get(p.shipping_company_id, ""),
+            "invoice_id": p.invoice_id,
+            "amount": _money(p.amount),
+            "action": p.action or "",
+            "note": p.note or "",
+            "treasury_account_id": p.treasury_account_id,
+            "created_at": _utc_to_local_str(p.created_at),
+        }
+        for p in rows
+    ]
+    groups: dict[tuple, list[dict]] = {}
+    for row in payments:
+        key = (
+            row["company_id"], row["invoice_id"], row["amount"],
+            row["action"], row["treasury_account_id"], (row["created_at"] or "")[:10],
+        )
+        groups.setdefault(key, []).append(row)
+    duplicates = [
+        {
+            "company_id": key[0],
+            "company": company_names.get(key[0], ""),
+            "invoice_id": key[1],
+            "amount": key[2],
+            "action": key[3],
+            "treasury_account_id": key[4],
+            "date": key[5],
+            "count": len(items),
+            "payment_ids": [item["payment_id"] for item in items],
+        }
+        for key, items in groups.items()
+        if len(items) > 1
+    ]
+    return {
+        "period": label,
+        "payments": payments,
+        "duplicate_groups": duplicates,
+        "count": len(payments),
+        "currency": "د.ع",
+    }
+
+
+def tool_get_agent_report_details(args: dict, scope: dict) -> dict:
+    report_number = (args.get("report_number") or "").strip()
+    query = ShippingReport.query
+    if report_number:
+        query = query.filter(ShippingReport.report_number == report_number)
+    else:
+        query = query.filter(ShippingReport.report_number.like("AGT-%"))
+    reports = query.order_by(ShippingReport.created_at.desc()).limit(10 if not report_number else 1).all()
+    result = []
+    for report in reports:
+        try:
+            order_rows = json.loads(report.orders_data or "[]")
+        except Exception:
+            order_rows = []
+        order_ids = [int(row.get("id") or row.get("order_id")) for row in order_rows if row.get("id") or row.get("order_id")]
+        invoices = {row.id: row for row in Invoice.query.filter(Invoice.id.in_(order_ids)).all()} if order_ids else {}
+        ledgers = (
+            InvoicePaymentLedger.query.filter(InvoicePaymentLedger.invoice_id.in_(order_ids))
+            .order_by(InvoicePaymentLedger.recorded_at.asc()).all()
+            if order_ids else []
+        )
+        ledger_by_invoice: dict[int, list[dict]] = {}
+        for ledger in ledgers:
+            ledger_by_invoice.setdefault(ledger.invoice_id, []).append(
+                {
+                    "amount_delta": _money(ledger.amount_delta),
+                    "recorded_at": _utc_to_local_str(ledger.recorded_at),
+                }
+            )
+        orders = []
+        for order_id in order_ids:
+            invoice = invoices.get(order_id)
+            orders.append(
+                {
+                    "invoice_id": order_id,
+                    "status": invoice.status if invoice else "غير موجود",
+                    "payment_status": invoice.payment_status if invoice else "",
+                    "total": _money(invoice.total) if invoice else 0,
+                    "paid_amount": _money(invoice.paid_amount) if invoice else 0,
+                    "invoice_created_at": _utc_to_local_str(invoice.created_at) if invoice else None,
+                    "payment_ledger": ledger_by_invoice.get(order_id, []),
+                }
+            )
+        result.append(
+            {
+                "report_id": report.id,
+                "report_number": report.report_number,
+                "created_at": _utc_to_local_str(report.created_at),
+                "is_executed": bool(report.is_executed),
+                "orders_count": report.orders_count,
+                "total_amount": _money(report.total_amount),
+                "orders": orders,
+            }
+        )
+    return {
+        "reports": result,
+        "count": len(result),
+        "note": "تقرير اليوم يعتمد وقت تسجيل حركة التحصيل في payment_ledger، وليس تاريخ إنشاء الكشف وحده.",
+        "currency": "د.ع",
+    }
+
+
+def tool_search_fixed_assets(args: dict, scope: dict) -> dict:
+    query = FixedAsset.query
+    search = (args.get("search") or "").strip()
+    if search:
+        like = f"%{search}%"
+        query = query.filter(or_(FixedAsset.name.ilike(like), FixedAsset.asset_code.ilike(like)))
+    status = (args.get("status") or "").strip()
+    if status:
+        query = query.filter(FixedAsset.status == status)
+    rows = query.order_by(FixedAsset.created_at.desc()).limit(80).all()
+    return {
+        "assets": [
+            {
+                "asset_id": asset.id,
+                "asset_code": asset.asset_code,
+                "name": asset.name,
+                "category": asset.category.name if asset.category else "",
+                "status": asset.status,
+                "purchase_date": asset.purchase_date.isoformat() if asset.purchase_date else None,
+                "total_cost": _money(asset.total_cost),
+                "book_value": _money(asset.book_value),
+                "payment_method": asset.payment_method,
+                "paid_amount": _money(asset.paid_amount),
+                "credit_amount": _money(asset.credit_amount),
+                "posted": bool(asset.acquisition_journal_entry_id),
+            }
+            for asset in rows
+        ],
+        "count": len(rows),
+        "currency": "د.ع",
+    }
+
+
 def tool_get_financial_overview(args: dict, scope: dict) -> dict:
     from utils.accounting_calculations import (
         calculate_accounts_receivable,
@@ -1266,6 +1434,44 @@ TOOL_REGISTRY: dict[str, dict[str, Any]] = {
         "scopes": ["shipping", "financial"],
         "description": "مستحقاتنا عند شركات النقل: الرصيد الافتتاحي + المتبقي من الطلبات لكل شركة.",
         "parameters": _params({}),
+    },
+    "get_shipping_payments": {
+        "handler": tool_get_shipping_payments,
+        "scopes": ["shipping", "financial"],
+        "description": (
+            "حركات قبض وتسديد شركات النقل مع أرقام السجلات وكشف المجموعات المكررة تماماً. "
+            "استخدمها عند السؤال عن قبض مكرر أو حركة صندوق مصدرها شركة نقل."
+        ),
+        "parameters": _params(
+            {
+                **_DATE_PROPS,
+                "company_id": {"type": "integer"},
+                "amount": {"type": "integer"},
+                "limit": {"type": "integer"},
+            }
+        ),
+    },
+    "get_agent_report_details": {
+        "handler": tool_get_agent_report_details,
+        "scopes": ["shipping", "reports", "financial"],
+        "description": (
+            "تفاصيل كشف مندوب توصيل AGT: حالة التنفيذ، الطلبات، وحركات تحصيل كل طلب مع وقت تسجيلها. "
+            "استخدمها لتفسير لماذا قبض المندوب ظهر أو لم يظهر في تقرير يوم معين."
+        ),
+        "parameters": _params(
+            {"report_number": {"type": "string", "description": "مثل AGT-1-20260711-0001"}}
+        ),
+    },
+    "search_fixed_assets": {
+        "handler": tool_search_fixed_assets,
+        "scopes": ["assets", "financial"],
+        "description": "البحث في الأصول الثابتة وقراءة حالتها وتكلفتها وطريقة تمويلها وهل رُحّلت محاسبياً.",
+        "parameters": _params(
+            {
+                "search": {"type": "string", "description": "اسم الأصل أو الكود"},
+                "status": {"type": "string"},
+            }
+        ),
     },
     "get_financial_overview": {
         "handler": tool_get_financial_overview,

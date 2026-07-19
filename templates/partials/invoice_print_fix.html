@@ -1,0 +1,43 @@
+{# Shared professional print rules for all invoice templates #}
+<style id="finoraInvoicePrintFix">
+  @media print {
+    html, body {
+      height: auto !important;
+      min-height: 0 !important;
+      overflow: visible !important;
+      background: #fff !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+
+    .no-print,
+    .invoice-actions,
+    .actions,
+    .toolbar {
+      display: none !important;
+    }
+
+    .invoice,
+    .invoice-container,
+    .page-shell {
+      box-shadow: none !important;
+      max-width: 100% !important;
+      width: 100% !important;
+      margin: 0 !important;
+    }
+
+    .invoice-footer,
+    .codes,
+    .barcode-area {
+      page-break-inside: avoid;
+      break-inside: avoid;
+      page-break-before: avoid;
+      break-before: avoid;
+    }
+
+    @page {
+      size: auto;
+      margin: 8mm;
+    }
+  }
+</style>

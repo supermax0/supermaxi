@@ -1019,46 +1019,119 @@
 
     .inv-actions-grid {
       display: flex;
-      gap: 5px;
       justify-content: center;
       align-items: center;
+      width: 100%;
       height: 100%;
-      flex-wrap: wrap;
     }
 
-    .inventory-page .inv-actions-grid .action-btn {
+    .inventory-page .inv-actions-trigger {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 30px;
-      height: 30px;
-      min-height: 30px !important;
-      border-radius: 8px;
+      gap: 6px;
+      min-width: 88px;
+      height: 34px;
+      min-height: 34px !important;
+      padding: 0 12px;
+      border-radius: 10px !important;
       border: 1px solid var(--border-light);
       background: var(--surface, #fff);
-      color: var(--text-muted);
-      text-decoration: none;
-      font-size: 13px;
-      transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-      flex-shrink: 0;
+      color: var(--text-muted, #64748b);
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1;
+      cursor: pointer;
+      box-shadow: none;
+      transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
     }
 
-    .inventory-page .inv-actions-grid .action-btn:hover {
+    .inventory-page .inv-actions-trigger i {
+      font-size: 13px;
+    }
+
+    .inventory-page .inv-actions-trigger:hover,
+    .inventory-page .inv-actions-trigger[aria-expanded="true"] {
       border-color: #93c5fd;
       color: #2563eb;
       background: #eff6ff;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
     }
 
-    .inventory-page .inv-actions-grid .action-btn.inv-action--edit:hover {
-      color: #0ea5e9;
-      background: #e0f2fe;
-      border-color: #7dd3fc;
+    .inv-actions-menu {
+      position: fixed;
+      z-index: 10080;
+      min-width: 210px;
+      max-width: min(260px, calc(100vw - 16px));
+      padding: 6px;
+      margin: 0;
+      list-style: none;
+      border: 1px solid var(--border-light, #e2e8f0);
+      border-radius: 12px;
+      background: var(--surface, #fff);
+      box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
+      direction: rtl;
     }
 
-    .inventory-page .inv-actions-grid .action-btn.delete:hover {
+    .inv-actions-menu[hidden] {
+      display: none !important;
+    }
+
+    .inv-actions-menu-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 10px 12px;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--text, #0f172a);
+      font-size: 13px;
+      font-weight: 600;
+      text-align: right;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background 0.12s ease, color 0.12s ease;
+    }
+
+    .inv-actions-menu-item i {
+      width: 16px;
+      text-align: center;
+      color: #64748b;
+      font-size: 13px;
+    }
+
+    .inv-actions-menu-item:hover,
+    .inv-actions-menu-item:focus-visible {
+      background: #f1f5f9;
+      color: #0f172a;
+      outline: none;
+    }
+
+    .inv-actions-menu-item:hover i,
+    .inv-actions-menu-item:focus-visible i {
+      color: #2563eb;
+    }
+
+    .inv-actions-menu-item.is-danger {
       color: #dc2626;
+    }
+
+    .inv-actions-menu-item.is-danger i {
+      color: #dc2626;
+    }
+
+    .inv-actions-menu-item.is-danger:hover,
+    .inv-actions-menu-item.is-danger:focus-visible {
       background: #fef2f2;
-      border-color: #fca5a5;
+      color: #b91c1c;
+    }
+
+    .inv-actions-menu-sep {
+      height: 1px;
+      margin: 4px 8px;
+      background: var(--border-light, #e2e8f0);
     }
 
     .inv-product-name {
@@ -1231,8 +1304,11 @@
         justify-content: center;
       }
 
-      .inv-actions-grid {
-        gap: 6px !important;
+      .inventory-page .inv-actions-trigger {
+        min-width: 78px;
+        height: 32px;
+        min-height: 32px !important;
+        padding: 0 10px;
       }
     }
 
@@ -1884,6 +1960,7 @@
       "quantity": {{ branch_stock_map.get(p.id, p.quantity or 0) }},
       "low_stock_threshold": {{ p.low_stock_threshold or 5 }},
       "active": {{ 'true' if p.active else 'false' }},
+      "store_visible": {{ 'true' if p.store_visible else 'false' }},
       "product_url": {{ (url_for('storefront.product_detail', tenant_slug=_store_tslug, product_id=p.id) if _store_tslug else '')|tojson }},
       "description": {{ (p.description or '')|tojson }},
       "image_url": {{ (p.image_url or '')|tojson }},
@@ -2216,21 +2293,34 @@
       {
         headerName: "{{ _('inventory_col_actions') }}",
         field: "actions",
-        width: 200,
+        width: 120,
+        minWidth: 110,
+        maxWidth: 140,
         sortable: false,
         filter: false,
+        pinned: null,
         cellRenderer: params => {
           const p = params.data;
-          const nameEscaped = String(p.name || '').replace(/'/g, "\\'");
+          const nameAttr = escapeHtml(String(p.name || ''));
+          const storeVisible = p.store_visible ? '1' : '0';
 
           return `
               <div class="inv-actions-grid">
-                <a class="action-btn" href="/inventory/report/${p.id}" title="{{ _('inventory_action_report') }}"><i class="fas fa-file-invoice"></i></a>
-                <a class="action-btn" href="#" onclick="viewMovements(${p.id}); return false;" title="{{ _('inventory_action_movements') }}"><i class="fas fa-list"></i></a>
-                <a class="action-btn" href="#" onclick="openAdjustModal(${p.id}, '${nameEscaped}', ${p.quantity}); return false;" title="{{ _('inventory_action_adjust_stock') }}"><i class="fas fa-wrench"></i></a>
-                <a class="action-btn inv-action--edit" href="/inventory/add?edit=${p.id}" title="{{ _('inventory_action_edit') }}"><i class="fas fa-edit"></i></a>
-                <a class="action-btn" href="/inventory/toggle/${p.id}" title="{{ _('inventory_action_toggle') }}"><i class="fas fa-power-off"></i></a>
-                <a class="action-btn delete" href="/inventory/delete/${p.id}" data-inventory-delete="1" title="{{ _('inventory_action_delete') }}"><i class="fas fa-trash"></i></a>
+                <button
+                  type="button"
+                  class="inv-actions-trigger"
+                  data-inv-actions-trigger="1"
+                  data-product-id="${p.id}"
+                  data-product-name="${nameAttr}"
+                  data-quantity="${Number(p.quantity) || 0}"
+                  data-store-visible="${storeVisible}"
+                  aria-haspopup="menu"
+                  aria-expanded="false"
+                  title="{{ _('inventory_col_actions') }}"
+                >
+                  <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
+                  <span>إجراءات</span>
+                </button>
               </div>
             `;
         }
@@ -2246,6 +2336,7 @@
           return `
               <strong class="inv-product-name ${!active ? 'is-inactive' : ''}">${name}</strong>
               ${!active ? '<span class="inv-product-state">({{ _('inventory_inactive_short') }})</span>' : ''}
+              ${!params.data.store_visible ? '<span class="inv-product-state">(مخفي من المتجر)</span>' : ''}
             `;
         }
       },
@@ -2329,6 +2420,7 @@
         filter: false,
         cellRenderer: params => {
           const url = params.value;
+          if (!params.data.store_visible) return '<span class="inv-product-state">مخفي</span>';
           if (!url) return '--';
           return `<a class="action-btn" href="${escapeHtml(url)}" target="_blank" rel="noopener" title="فتح صفحة المنتج"><i class="fas fa-external-link-alt"></i></a>`;
         }
@@ -2771,6 +2863,180 @@
   function viewMovements(productId) {
     window.location.href = `/inventory/ledger?product_id=${productId}`;
   }
+
+  let invActionsMenuEl = null;
+  let invActionsActiveTrigger = null;
+
+  function ensureInvActionsMenu() {
+    if (invActionsMenuEl) return invActionsMenuEl;
+    invActionsMenuEl = document.createElement('div');
+    invActionsMenuEl.className = 'inv-actions-menu';
+    invActionsMenuEl.id = 'invActionsMenu';
+    invActionsMenuEl.setAttribute('role', 'menu');
+    invActionsMenuEl.hidden = true;
+    document.body.appendChild(invActionsMenuEl);
+    return invActionsMenuEl;
+  }
+
+  function closeInvActionsMenu() {
+    const menu = invActionsMenuEl || document.getElementById('invActionsMenu');
+    if (menu) menu.hidden = true;
+    if (invActionsActiveTrigger) {
+      invActionsActiveTrigger.setAttribute('aria-expanded', 'false');
+      invActionsActiveTrigger = null;
+    }
+  }
+
+  function positionInvActionsMenu(trigger) {
+    const menu = ensureInvActionsMenu();
+    const rect = trigger.getBoundingClientRect();
+    const gap = 6;
+    const viewportPad = 8;
+
+    // Measure after content is visible
+    menu.hidden = false;
+    menu.style.visibility = 'hidden';
+    menu.style.left = '0px';
+    menu.style.top = '0px';
+
+    const menuRect = menu.getBoundingClientRect();
+    let left = rect.right - menuRect.width;
+    let top = rect.bottom + gap;
+
+    if (left < viewportPad) left = viewportPad;
+    if (left + menuRect.width > window.innerWidth - viewportPad) {
+      left = Math.max(viewportPad, window.innerWidth - menuRect.width - viewportPad);
+    }
+
+    if (top + menuRect.height > window.innerHeight - viewportPad) {
+      top = rect.top - menuRect.height - gap;
+    }
+    if (top < viewportPad) top = viewportPad;
+
+    menu.style.left = Math.round(left) + 'px';
+    menu.style.top = Math.round(top) + 'px';
+    menu.style.visibility = '';
+  }
+
+  function submitInvPostAction(url) {
+    const form = document.createElement('form');
+    form.method = 'post';
+    form.action = url;
+    form.style.display = 'none';
+    document.body.appendChild(form);
+    form.submit();
+  }
+
+  function openInvActionsMenu(trigger) {
+    const productId = trigger.getAttribute('data-product-id');
+    const productName = trigger.getAttribute('data-product-name') || '';
+    const quantity = Number(trigger.getAttribute('data-quantity') || 0);
+    const storeVisible = trigger.getAttribute('data-store-visible') === '1';
+    if (!productId) return;
+
+    if (invActionsActiveTrigger === trigger && invActionsMenuEl && !invActionsMenuEl.hidden) {
+      closeInvActionsMenu();
+      return;
+    }
+
+    closeInvActionsMenu();
+    const menu = ensureInvActionsMenu();
+    const storeLabel = storeVisible ? 'إخفاء من المتجر' : 'إظهار في المتجر';
+    const storeIcon = storeVisible ? 'fa-eye-slash' : 'fa-eye';
+
+    menu.innerHTML = `
+      <button type="button" class="inv-actions-menu-item" role="menuitem" data-inv-action="report">
+        <i class="fas fa-file-invoice" aria-hidden="true"></i><span>{{ _('inventory_action_report') }}</span>
+      </button>
+      <button type="button" class="inv-actions-menu-item" role="menuitem" data-inv-action="movements">
+        <i class="fas fa-list" aria-hidden="true"></i><span>{{ _('inventory_action_movements') }}</span>
+      </button>
+      <button type="button" class="inv-actions-menu-item" role="menuitem" data-inv-action="adjust">
+        <i class="fas fa-wrench" aria-hidden="true"></i><span>{{ _('inventory_action_adjust_stock') }}</span>
+      </button>
+      <a class="inv-actions-menu-item" role="menuitem" href="/inventory/add?edit=${encodeURIComponent(productId)}">
+        <i class="fas fa-edit" aria-hidden="true"></i><span>{{ _('inventory_action_edit') }}</span>
+      </a>
+      <button type="button" class="inv-actions-menu-item" role="menuitem" data-inv-action="toggle">
+        <i class="fas fa-power-off" aria-hidden="true"></i><span>{{ _('inventory_action_toggle') }}</span>
+      </button>
+      <button type="button" class="inv-actions-menu-item" role="menuitem" data-inv-action="toggle-store">
+        <i class="fas ${storeIcon}" aria-hidden="true"></i><span>${storeLabel}</span>
+      </button>
+      <div class="inv-actions-menu-sep" role="separator"></div>
+      <a class="inv-actions-menu-item is-danger" role="menuitem" href="/inventory/delete/${encodeURIComponent(productId)}" data-inventory-delete="1">
+        <i class="fas fa-trash" aria-hidden="true"></i><span>{{ _('inventory_action_delete') }}</span>
+      </a>
+    `;
+
+    menu.onclick = function (event) {
+      const item = event.target.closest('[data-inv-action], [data-inventory-delete], a.inv-actions-menu-item');
+      if (!item || !menu.contains(item)) return;
+
+      const action = item.getAttribute('data-inv-action');
+      if (action === 'report') {
+        event.preventDefault();
+        closeInvActionsMenu();
+        window.location.href = `/inventory/report/${productId}`;
+        return;
+      }
+      if (action === 'movements') {
+        event.preventDefault();
+        closeInvActionsMenu();
+        viewMovements(productId);
+        return;
+      }
+      if (action === 'adjust') {
+        event.preventDefault();
+        closeInvActionsMenu();
+        openAdjustModal(productId, productName, quantity);
+        return;
+      }
+      if (action === 'toggle') {
+        event.preventDefault();
+        closeInvActionsMenu();
+        submitInvPostAction(`/inventory/toggle/${productId}`);
+        return;
+      }
+      if (action === 'toggle-store') {
+        event.preventDefault();
+        closeInvActionsMenu();
+        submitInvPostAction(`/inventory/toggle-store/${productId}`);
+        return;
+      }
+      if (item.getAttribute('data-inventory-delete') === '1') {
+        // Leave navigation to the global delete confirm handler;
+        // just close the menu so it is out of the way.
+        closeInvActionsMenu();
+        return;
+      }
+      closeInvActionsMenu();
+    };
+
+    invActionsActiveTrigger = trigger;
+    trigger.setAttribute('aria-expanded', 'true');
+    positionInvActionsMenu(trigger);
+  }
+
+  document.addEventListener('click', function (event) {
+    const trigger = event.target.closest ? event.target.closest('[data-inv-actions-trigger]') : null;
+    if (trigger) {
+      event.preventDefault();
+      event.stopPropagation();
+      openInvActionsMenu(trigger);
+      return;
+    }
+    if (invActionsMenuEl && !invActionsMenuEl.hidden) {
+      if (!invActionsMenuEl.contains(event.target)) closeInvActionsMenu();
+    }
+  }, true);
+
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape') closeInvActionsMenu();
+  });
+
+  window.addEventListener('resize', closeInvActionsMenu);
+  window.addEventListener('scroll', closeInvActionsMenu, true);
 
   function updateAdjustPreview() {
     const current = parseInt(document.getElementById('adjustCurrentQuantity').textContent) || 0;

@@ -1,0 +1,105 @@
+{% extends "mobile_app/_layout.html" %}
+{% block mobile_app_body %}
+<div class="ma-stack">
+  <div class="ma-page-head">
+    <h2 class="ma-page-title">تعليقات الفيديو</h2>
+    <p class="ma-page-subtitle">مراجعة التعليقات والرد باسم الشركة</p>
+  </div>
+
+  <form method="get" class="ma-toolbar">
+    <select class="ma-input" name="status" style="max-width:220px">
+      <option value="">كل الحالات</option>
+      {% for s, label in [('visible', 'ظاهر'), ('reported', 'مُبلّغ عنه'), ('hidden', 'مخفي'), ('pending_review', 'قيد المراجعة')] %}
+      <option value="{{ s }}" {% if status == s %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button class="ma-btn ma-btn-primary" type="submit"><i class="fas fa-filter"></i> تصفية</button>
+  </form>
+
+  <div class="ma-card">
+    <div class="ma-card-head">
+      <div class="ma-card-icon is-green"><i class="fas fa-reply"></i></div>
+      <div>
+        <h3 class="ma-card-title">رد الشركة</h3>
+        <p class="ma-card-desc">أرسل رداً رسمياً على تعليق أو فيديو</p>
+      </div>
+    </div>
+    <form method="post" class="ma-form-grid">
+      <input type="hidden" name="action" value="reply">
+      <div class="ma-form-grid-2">
+        <label class="ma-field">
+          <span class="ma-field-label">معرف الفيديو</span>
+          <input class="ma-input" type="number" name="video_id" placeholder="مثال: 12" required>
+        </label>
+        <label class="ma-field">
+          <span class="ma-field-label">معرف التعليق الأصلي <em>(اختياري)</em></span>
+          <input class="ma-input" type="number" name="parent_id" placeholder="للرد على تعليق محدد">
+        </label>
+      </div>
+      <label class="ma-field">
+        <span class="ma-field-label">نص الرد</span>
+        <textarea class="ma-input ma-textarea" name="body" rows="2" placeholder="اكتب رد الشركة هنا" required></textarea>
+      </label>
+      <div class="ma-upload-actions">
+        <button class="ma-btn ma-btn-primary" type="submit"><i class="fas fa-paper-plane"></i> إرسال الرد</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="ma-table-wrap" style="background:var(--card)">
+    <table class="ma-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>فيديو</th>
+          <th>الكاتب</th>
+          <th>النص</th>
+          <th>الحالة</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in comments %}
+        <tr>
+          <td class="ma-muted">{{ c.id }}</td>
+          <td class="ma-muted">{{ c.video_id }}</td>
+          <td class="ma-table-title">
+            {{ c.author }}
+            {% if c.is_company_reply %}<span class="ma-badge ma-badge-uploaded">شركة</span>{% endif %}
+          </td>
+          <td style="max-width:280px">{{ c.body }}</td>
+          <td>
+            {% set st = (c.status or '')|lower %}
+            <span class="ma-badge ma-badge-{{ st if st in ['visible','reported','hidden','pending_review'] else 'default' }}">{{ c.status }}</span>
+            {% if c.is_pinned %}<span class="ma-badge ma-badge-uploaded"><i class="fas fa-thumbtack"></i> مثبت</span>{% endif %}
+            {% if c.reports_count %}<span class="ma-badge ma-badge-reported">بلاغات {{ c.reports_count }}</span>{% endif %}
+          </td>
+          <td class="ma-row-actions">
+            <form method="post">
+              <input type="hidden" name="comment_id" value="{{ c.id }}">
+              <input type="hidden" name="action" value="hide">
+              <button class="ma-btn ma-btn-sm ma-btn-ghost" type="submit"><i class="fas fa-eye-slash"></i> إخفاء</button>
+            </form>
+            {% if not c.is_pinned %}
+            <form method="post">
+              <input type="hidden" name="comment_id" value="{{ c.id }}">
+              <input type="hidden" name="action" value="pin">
+              <button class="ma-btn ma-btn-sm ma-btn-ghost" type="submit"><i class="fas fa-thumbtack"></i> تثبيت</button>
+            </form>
+            {% else %}
+            <form method="post">
+              <input type="hidden" name="comment_id" value="{{ c.id }}">
+              <input type="hidden" name="action" value="unpin">
+              <button class="ma-btn ma-btn-sm ma-btn-ghost" type="submit">إلغاء تثبيت</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="ma-empty">لا توجد تعليقات</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

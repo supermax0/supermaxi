@@ -1124,6 +1124,21 @@
 
 <!-- ================= DASHBOARD ================= -->
 <div class="reports-grid">
+  <a href="/reports/daily" class="report-card blue">
+    <div class="card-content">
+      <div>
+        <span>تقرير اليوم</span>
+        <strong>وارد · صادر · بضاعة · تدقيق</strong>
+      </div>
+      <div class="card-icon">
+        <i class="fas fa-clipboard-check"></i>
+      </div>
+    </div>
+    <div class="view-more">
+      فتح التقرير اليومي <i class="fas fa-external-link-alt"></i>
+    </div>
+  </a>
+
   <div class="report-card blue" onclick="loadReport('sales', reportsTitleSales)">
     <div class="card-content">
       <div>
@@ -1261,18 +1276,24 @@
     </div>
   </a>
 
-  <a href="/reports/monitor" class="report-card orange">
+  <a href="/reports/monitors" class="report-card orange">
     <div class="card-content">
       <div>
-        <span>مراقب البيجات والموظفين</span>
-        <strong>تنبيهات الأداء</strong>
+        <span>مركز المراقبة</span>
+        <strong>مالي · تشغيلي · أداء</strong>
       </div>
       <div class="card-icon">
-        <i class="fas fa-user-clock"></i>
+        <i class="fas fa-tachometer-alt"></i>
       </div>
     </div>
     <div class="view-more">
-      فتح المراقب <i class="fas fa-external-link-alt"></i>
+      فتح المركز
+      <span style="display:block;font-size:12px;margin-top:4px;opacity:.85;">
+        <a href="/reports/monitors?tab=financial" style="color:inherit;">مالي</a> ·
+        <a href="/reports/monitors?tab=operational" style="color:inherit;">تشغيلي</a> ·
+        <a href="/reports/monitors?tab=performance" style="color:inherit;">أداء</a>
+      </span>
+      <i class="fas fa-external-link-alt"></i>
     </div>
   </a>
 </div>

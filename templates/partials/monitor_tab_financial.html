@@ -1,0 +1,111 @@
+{% set s = financial.summary %}
+<div class="monitor-summary">
+  <div class="monitor-stat">
+    <span>صحة مالية</span>
+    <strong>{{ financial.health_score }}/100</strong>
+  </div>
+  <div class="monitor-stat">
+    <span>إيرادات الفترة</span>
+    <strong>{{ s.revenue_display }}</strong>
+    {% if s.delta_revenue_pct is not none %}
+    <small class="{{ 'up' if s.delta_revenue_pct >= 0 else 'down' }}">{{ '↑' if s.delta_revenue_pct >= 0 else '↓' }} {{ s.delta_revenue_pct|abs }}% vs السابق</small>
+    {% endif %}
+  </div>
+  <div class="monitor-stat">
+    <span>ربح صافي الفترة</span>
+    <strong>{{ s.booked_profit_display }}</strong>
+    {% if s.delta_profit_pct is not none %}
+    <small class="{{ 'up' if s.delta_profit_pct >= 0 else 'down' }}">{{ '↑' if s.delta_profit_pct >= 0 else '↓' }} {{ s.delta_profit_pct|abs }}%</small>
+    {% endif %}
+  </div>
+  <div class="monitor-stat">
+    <span>مصاريف الفترة</span>
+    <strong>{{ s.expenses_display }}</strong>
+  </div>
+  <div class="monitor-stat">
+    <span>مبيعات مسددة</span>
+    <strong>{{ s.paid_sales_display }}</strong>
+  </div>
+  <div class="monitor-stat">
+    <span>طلبات حرجة / تحذير</span>
+    <strong>{{ s.critical_count }} / {{ s.warning_count }}</strong>
+  </div>
+  <div class="monitor-stat">
+    <span>ذمم مدينة</span>
+    <strong>{{ s.receivables_display }}</strong>
+  </div>
+  <div class="monitor-stat">
+    <span>ديون موردين</span>
+    <strong>{{ s.supplier_debts_display }}</strong>
+  </div>
+</div>
+
+{% if financial.alerts %}
+<div class="monitor-alerts">
+  {% for alert in financial.alerts %}
+  <div class="monitor-alert {{ alert.type }}">
+    <strong>{{ alert.icon }} {{ alert.title }}</strong>
+    <span>{{ alert.message }}</span>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<section class="monitor-section">
+  <div class="monitor-section-head">
+    <div><h2>إيرادات vs مصاريف (يومي)</h2></div>
+    <a class="monitor-btn secondary" href="{{ url_for('reports.monitors_export_api', tab='financial', table='overdue', period=period, date_from=date_from.strftime('%Y-%m-%d'), date_to=date_to.strftime('%Y-%m-%d')) }}"><i class="fas fa-download"></i> CSV متأخرات</a>
+  </div>
+  <div class="monitor-chart-box"><canvas id="financialMonitorChart" height="120"></canvas></div>
+</section>
+
+<section class="monitor-section">
+  <div class="monitor-section-head">
+    <div><h2>أعلى فئات المصاريف</h2></div>
+    <a class="monitor-btn secondary" href="{{ url_for('reports.monitors_export_api', tab='financial', table='expenses', period=period, date_from=date_from.strftime('%Y-%m-%d'), date_to=date_to.strftime('%Y-%m-%d')) }}"><i class="fas fa-download"></i> CSV</a>
+  </div>
+  <div class="monitor-table-wrap">
+    <table class="monitor-table" id="financialExpensesTable">
+      <thead><tr><th>الفئة</th><th>المبلغ</th></tr></thead>
+      <tbody>
+        {% for row in financial.top_expenses %}
+        <tr><td>{{ row.category }}</td><td>{{ row.amount_display }}</td></tr>
+        {% else %}
+        <tr><td colspan="2" class="monitor-empty">لا مصاريف في الفترة.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="monitor-section">
+  <div class="monitor-section-head">
+    <div><h2>الطلبات المتأخرة</h2><p>عتبة التأخير: {{ financial.overdue_min_days }}+ يوم</p></div>
+  </div>
+  <div class="monitor-table-wrap">
+    <table class="monitor-table" id="financialOverdueTable" data-monitor-table data-page-size="25">
+      <thead>
+        <tr><th>#</th><th>العميل</th><th>الهاتف</th><th>الحالة</th><th>أيام</th><th>الشدة</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for order in financial.overdue_orders %}
+        <tr>
+          <td><strong>#{{ order.id }}</strong></td>
+          <td>{{ order.customer }}</td>
+          <td>{{ order.phone }}</td>
+          <td>{{ order.status }}</td>
+          <td>{{ order.days_overdue }}</td>
+          <td><span class="monitor-badge {{ order.severity_class }}">{{ order.severity_label }}</span></td>
+          <td><a class="monitor-link" href="{{ order.order_url }}">فتح</a></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="monitor-empty">لا متأخرات ضمن العتبة.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<script>
+window.__financialChartData = {{ financial.chart | tojson }};
+</script>

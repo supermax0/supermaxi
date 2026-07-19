@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% block title %}تقرير الخطة الاستثمارية{% endblock %}
+{% block page_title %}تقرير الخطة الاستثمارية{% endblock %}
+
+{% block content %}
+<style>
+.pdf-actions{max-width:1050px;margin:0 auto 12px;display:flex;gap:10px;justify-content:flex-end;direction:rtl}.pdf-btn{border:0;border-radius:8px;padding:11px 13px;font-weight:900;text-decoration:none;display:inline-flex;gap:8px;align-items:center;cursor:pointer}.pdf-primary{background:#0f766e;color:#fff}.pdf-soft{background:#e5e7eb;color:#111827}
+.pdf-wrap{max-width:1050px;margin:0 auto;background:#fff;color:#111827;padding:30px;direction:rtl;border-radius:8px;box-shadow:0 20px 55px rgba(15,23,42,.10)}
+.cover{min-height:300px;border-bottom:4px solid #0f766e;margin-bottom:22px;display:grid;align-content:center;gap:12px}.cover h1{font-size:34px;margin:0;color:#0f172a}.cover p{font-size:15px;color:#475569;line-height:1.9;margin:0}.logo{max-height:76px;max-width:190px;object-fit:contain;margin-bottom:12px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0}.kpi{border:1px solid #d1d5db;padding:12px;border-radius:8px;background:#f8fafc}.kpi span{display:block;color:#64748b;font-size:12px}.kpi b{display:block;margin-top:6px;font-size:16px;color:#0f172a}
+.section{page-break-inside:avoid;margin-top:22px}.section h2{border-bottom:1px solid #cbd5e1;padding-bottom:8px;margin:0 0 12px;color:#0f766e;font-size:21px}.section h3{margin:0 0 8px;color:#0f172a;font-size:16px}.section p{line-height:1.9;color:#334155}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.box{border:1px solid #dbe3ef;border-radius:8px;background:#f8fafc;padding:12px}.list{margin:8px 0;padding:0 20px 0 0;line-height:1.9;color:#334155}.chart{height:250px;margin-top:12px}
+.table{width:100%;border-collapse:collapse;margin-top:8px}.table th,.table td{border:1px solid #d1d5db;padding:9px;text-align:right;vertical-align:top}.table th{background:#f1f5f9;color:#334155}.disclaimer{background:#fffbeb;border:1px solid #f59e0b;color:#92400e;border-radius:8px;padding:12px;margin-top:22px;line-height:1.9}
+@media print{.sidebar,.topbar,.pdf-actions{display:none!important}.content{margin:0!important}.pdf-wrap{box-shadow:none;max-width:none;border-radius:0}}
+</style>
+{% macro money(v) -%}{{ "{:,.0f}".format((v or 0)|float) }} د.ع{%- endmacro %}
+
+<div class="pdf-actions">
+  <a class="pdf-btn pdf-soft" href="{{ url_for('investments.detail', proposal_id=proposal.id) }}"><i class="fa fa-arrow-right"></i> رجوع</a>
+  <button class="pdf-btn pdf-primary" id="downloadPdfBtn" type="button"><i class="fa fa-file-pdf"></i> تنزيل PDF</button>
+</div>
+
+<main class="pdf-wrap" id="investmentPdfRoot">
+  <section class="cover">
+    {% if snapshot.company.report_logo %}<img class="logo" src="{{ snapshot.company.report_logo }}" alt="Logo">{% endif %}
+    <h1>{{ selected.title or proposal.title }}</h1>
+    <p>{{ snapshot.company.company_name }} — {{ snapshot.period.label }}</p>
+    <p>{{ payload.executive_summary }}</p>
+  </section>
+
+  <section class="kpis">
+    <div class="kpi"><span>السيولة</span><b>{{ money(snapshot.financial.total_liquidity) }}</b></div>
+    <div class="kpi"><span>صافي الربح</span><b>{{ money(snapshot.financial.net_profit_period) }}</b></div>
+    <div class="kpi"><span>رأس المال المقترح</span><b>{{ money(selected.required_capital) }}</b></div>
+    <div class="kpi"><span>ربح شهري متوقع</span><b>{{ money(selected.expected_monthly_profit) }}</b></div>
+  </section>
+
+  {% if numbers_corrected or payload.number_audit %}
+  <div class="disclaimer">
+    تمت مراجعة الأرقام وربط الإيراد والربح بسقف الاستثمار الآمن ومبيعات/ربحية الفترة. أي رقم قديم غير منطقي تم تصحيحه تلقائياً قبل تصدير التقرير.
+  </div>
+  {% endif %}
+
+  <section class="section">
+    <h2>1. تشخيص القدرة الاستثمارية</h2>
+    <div class="grid">
+      <div class="box">
+        <h3>{{ (payload.investment_capacity or {}).level }} — {{ (payload.investment_capacity or {}).posture }}</h3>
+        <ul class="list">
+          <li>سقف الاستثمار الآمن: {{ money((payload.investment_capacity or {}).safe_budget) }}</li>
+          <li>الحد الأعلى للمشروع الواحد: {{ money((payload.investment_capacity or {}).max_single_project_capital) }}</li>
+          <li>غطاء التشغيل: {{ (payload.investment_capacity or {}).runway_months or "—" }} شهر</li>
+          <li>{{ (payload.investment_capacity or {}).decision_rule }}</li>
+        </ul>
+      </div>
+      <div class="box"><h3>ملخص الإدارة</h3><ul class="list">{% for row in payload.board_brief or [] %}<li>{{ row }}</li>{% endfor %}</ul></div>
+    </div>
+    <div class="grid">
+      <div class="box"><h3>نقاط القوة</h3><ul class="list">{% for row in (payload.investment_capacity or {}).strengths or [] %}<li>{{ row }}</li>{% endfor %}</ul></div>
+      <div class="box"><h3>القيود المالية</h3><ul class="list">{% for row in (payload.investment_capacity or {}).constraints or [] %}<li>{{ row }}</li>{% else %}<li>لا توجد قيود حرجة ظاهرة من بيانات الفترة.</li>{% endfor %}</ul></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>2. الوضع المالي الحالي</h2>
+    <div class="grid">
+      <div class="box"><ul class="list">{% for line in payload.financial_position or [] %}<li>{{ line }}</li>{% endfor %}<li>المصاريف: {{ money(snapshot.financial.expenses_period) }}</li><li>ديون الموردين: {{ money(snapshot.financial.supplier_debts) }}</li></ul></div>
+      <div class="box"><ul class="list"><li>قيمة المخزون: {{ money(snapshot.financial.inventory_value) }}</li><li>الذمم: {{ money(snapshot.financial.accounts_receivable) }}</li><li>صافي التدفق النقدي: {{ money(snapshot.financial.net_cash_flow) }}</li><li>هامش الربح: {{ snapshot.financial.profit_margin_pct if snapshot.financial.profit_margin_pct is not none else "—" }}%</li></ul></div>
+    </div>
+    <div class="chart"><canvas id="pdfCompareChart"></canvas></div>
+  </section>
+
+  <section class="section">
+    <h2>3. ملخص المقترحات الثلاثة</h2>
+    <table class="table">
+      <thead><tr><th>المشروع</th><th>رأس المال</th><th>إيراد شهري</th><th>ربح شهري</th><th>استرداد</th><th>مخاطرة</th></tr></thead>
+      <tbody>{% for item in payload.proposals or [] %}<tr><td>{{ item.title }}</td><td>{{ money(item.required_capital) }}</td><td>{{ money(item.expected_monthly_revenue) }}</td><td>{{ money(item.expected_monthly_profit) }}</td><td>{{ item.payback_months or "—" }} شهر</td><td>{{ item.risk_level }}</td></tr>{% endfor %}</tbody>
+    </table>
+  </section>
+
+  <section class="section">
+    <h2>4. التوصية التنفيذية</h2>
+    <p>{{ (payload.recommendation or {}).reason }}</p>
+    <p>{{ selected.why_now }}</p>
+  </section>
+
+  <section class="section">
+    <h2>5. بحث السوق ومتطلبات التنفيذ</h2>
+    <div class="grid">
+      <div class="box"><h3>بحث السوق</h3><ul class="list">{% for row in selected.market_research or [] %}<li>{{ row }}</li>{% endfor %}</ul></div>
+      <div class="box"><h3>المتطلبات</h3><ul class="list">{% for row in selected.requirements or [] %}<li>{{ row }}</li>{% endfor %}</ul></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>6. منطق الخروج من التخصص</h2>
+    <p>{{ selected.outside_specialty_reason }}</p>
+    <div class="grid">
+      <div class="box"><h3>فجوات القدرة</h3><ul class="list">{% for row in selected.capability_gap or [] %}<li>{{ row }}</li>{% endfor %}</ul></div>
+      <div class="box"><h3>خطة التحقق</h3><ul class="list">{% for row in selected.validation_plan or [] %}<li>{{ row }}</li>{% endfor %}</ul></div>
+      <div class="box"><h3>كلفة التعلم</h3><ul class="list"><li>{{ money(selected.learning_cost) }}</li><li>تبقى كتجربة ولا تتحول إلى صرف دائم إلا بعد تحقق بوابات القرار.</li></ul></div>
+      <div class="box"><h3>الشركاء الخارجيون</h3><ul class="list">{% for row in selected.external_partners or [] %}<li>{{ row.name }} — {{ row.type }} — {{ row.reason }}</li>{% endfor %}</ul></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>7. السيناريوهات المالية ومنطق العائد</h2>
+    <p>{{ selected.capacity_fit }}</p>
+    <table class="table">
+      <thead><tr><th>الحالة</th><th>إيراد شهري</th><th>ربح شهري</th><th>استرداد</th></tr></thead>
+      <tbody>{% for row in selected.financial_scenarios or [] %}<tr><td>{{ row.case }}</td><td>{{ money(row.monthly_revenue) }}</td><td>{{ money(row.monthly_profit) }}</td><td>{{ row.payback_months or "—" }} شهر</td></tr>{% endfor %}</tbody>
+    </table>
+    <div class="grid">
+      <div class="box"><h3>منطق العائد</h3><ul class="list">{% for row in selected.roi_logic or [] %}<li>{{ row }}</li>{% endfor %}</ul></div>
+      <div class="box"><h3>سياسة التمويل</h3><ul class="list">{% for row in selected.funding_plan or payload.funding_policy or [] %}<li>{{ row }}</li>{% endfor %}</ul></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>8. توزيع رأس المال والفريق والعلاقات</h2>
+    <div class="grid-3">
+      <div class="box"><h3>توزيع المبلغ</h3><ul class="list">{% for row in selected.budget_breakdown or [] %}<li>{{ row.label }}: {{ money(row.amount) }}</li>{% endfor %}</ul></div>
+      <div class="box"><h3>الموظفون</h3><ul class="list">{% for row in selected.staffing or [] %}<li>{{ row.role }} × {{ row.count }} — {{ row.responsibility }}</li>{% endfor %}</ul></div>
+      <div class="box"><h3>الشركات والعلاقات</h3><ul class="list">{% for row in selected.partners or [] %}<li>{{ row.name }} — {{ row.relationship or row.type }} — {{ row.reason }}</li>{% endfor %}</ul></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>9. نموذج التشغيل وخطة 30 / 60 / 90 يوم</h2>
+    <div class="box"><h3>نموذج التشغيل</h3><ul class="list">{% for row in selected.operating_model or [] %}<li>{{ row }}</li>{% endfor %}</ul></div>
+    <div class="grid">
+      <div class="box"><h3>خطة الشراء</h3><ul class="list">{% for row in selected.procurement_plan or [] %}<li>{{ row }}</li>{% endfor %}</ul></div>
+      <div class="box"><h3>قنوات البيع</h3><ul class="list">{% for row in selected.sales_channels or [] %}<li>{{ row }}</li>{% endfor %}</ul></div>
+    </div>
+    <table class="table">
+      {% for phase in selected.implementation_plan or [] %}<tr><th>{{ phase.phase }}</th><td>{{ (phase.actions or [])|join("، ") }}</td></tr>{% endfor %}
+    </table>
+  </section>
+
+  <section class="section">
+    <h2>10. التسويق والمؤشرات وبوابات القرار</h2>
+    <div class="grid-3">
+      <div class="box"><h3>التسويق</h3><ul class="list">{% for row in selected.marketing_plan or [] %}<li>{{ row }}</li>{% endfor %}</ul></div>
+      <div class="box"><h3>KPIs</h3><ul class="list">{% for row in selected.kpis or [] %}<li>{{ row }}</li>{% endfor %}</ul></div>
+      <div class="box"><h3>بوابات القرار</h3><ul class="list">{% for row in selected.decision_gates or [] %}<li>{{ row }}</li>{% endfor %}</ul></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>11. المخاطر والافتراضات وقواعد الإيقاف</h2>
+    <div class="grid">
+      <div class="box"><h3>المخاطر</h3><ul class="list">{% for row in selected.risks or [] %}<li>{{ row }}</li>{% endfor %}</ul></div>
+      <div class="box"><h3>الافتراضات</h3><ul class="list">{% for row in selected.assumptions or [] %}<li>{{ row }}</li>{% endfor %}</ul></div>
+    </div>
+    <div class="grid">
+      <div class="box"><h3>قواعد الإيقاف</h3><ul class="list">{% for row in selected.stop_loss_rules or [] %}<li>{{ row }}</li>{% endfor %}</ul></div>
+      <div class="box"><h3>بدائل مرفوضة</h3><ul class="list">{% for row in payload.rejected_options or [] %}<li>{{ row.title }}: {{ row.reason }}</li>{% endfor %}</ul></div>
+    </div>
+  </section>
+
+  {% set source_rows = (payload.sources or []) + (selected.sources or []) %}
+  {% if source_rows %}
+  <section class="section">
+    <h2>12. الروابط والمصادر</h2>
+    <ul class="list">{% for src in source_rows %}<li>{% if src.url %}<a href="{{ src.url }}">{{ src.title or src.url }}</a>{% else %}{{ src.title or src }}{% endif %} — {{ src.note or "" }}</li>{% endfor %}</ul>
+  </section>
+  {% endif %}
+
+  <div class="disclaimer">تنبيه: هذه خطة تقديرية مبنية على بيانات النظام والفترة المختارة. لا تعتبر وعداً بالأرباح ولا تنفذ أي حركة مالية تلقائياً. أي قرار استثماري يحتاج مراجعة الإدارة والمحاسب ومقارنة السوق قبل الصرف.</div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
+<script>
+(function(){
+  const data = {{ chart_payload|tojson }};
+  const chartEl = document.getElementById("pdfCompareChart");
+  if (chartEl && window.Chart) {
+    new Chart(chartEl,{type:"bar",data:{labels:data.labels||[],datasets:[
+      {label:"رأس المال",data:data.capital||[],backgroundColor:"rgba(15,118,110,.76)"},
+      {label:"الربح الشهري",data:data.profit||[],backgroundColor:"rgba(37,99,235,.72)"}
+    ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom"}},scales:{y:{ticks:{callback:v=>new Intl.NumberFormat("en-US").format(v)}}}}});
+  }
+  const btn = document.getElementById("downloadPdfBtn");
+  if (!btn || !window.html2pdf) return;
+  btn.addEventListener("click", function(){
+    const root = document.getElementById("investmentPdfRoot");
+    const swaps = Array.from(root.querySelectorAll("canvas")).map(c => {
+      const img = document.createElement("img");
+      img.src = c.toDataURL("image/png");
+      img.style.maxWidth = "100%";
+      img.style.height = c.offsetHeight + "px";
+      c.parentNode.insertBefore(img, c);
+      c.style.display = "none";
+      return [c, img];
+    });
+    html2pdf().set({margin:[8,8,8,8],filename:"investment_plan_{{ proposal.id }}.pdf",image:{type:"jpeg",quality:.98},html2canvas:{scale:2,useCORS:true,backgroundColor:"#ffffff"},jsPDF:{unit:"mm",format:"a4",orientation:"portrait"},pagebreak:{mode:["css","legacy"]}}).from(root).save().finally(function(){swaps.forEach(([c,img])=>{c.style.display="";img.remove();});});
+  });
+})();
+</script>
+{% endblock %}

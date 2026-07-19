@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Super Max — شاشات ذكية</title>
+  <meta name="description" content="سوبر ماكس — متخصصون في الشاشات الذكية والأجهزة المنزلية. جودة، ضمان، وتوصيل داخل العراق. تواصل: 07711272744">
+  <meta name="theme-color" content="#0a0a0b">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Orbitron:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #070708;
+      --ink: #f4f1ea;
+      --muted: #a8a29a;
+      --accent: #e8b84a;
+      --accent-deep: #c4922a;
+      --line: rgba(244, 241, 234, 0.12);
+      --panel: rgba(18, 18, 20, 0.72);
+      --safe-b: env(safe-area-inset-bottom, 0px);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: "Cairo", sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.7;
+      overflow-x: hidden;
+    }
+    a { color: inherit; text-decoration: none; }
+    img { max-width: 100%; display: block; }
+
+    .hero {
+      position: relative;
+      min-height: 100svh;
+      display: grid;
+      align-items: end;
+      isolation: isolate;
+    }
+    .hero-media {
+      position: absolute;
+      inset: 0;
+      z-index: -2;
+      background:
+        linear-gradient(180deg, rgba(7,7,8,0.35) 0%, rgba(7,7,8,0.55) 42%, rgba(7,7,8,0.96) 100%),
+        url("https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?auto=format&fit=crop&w=1920&q=80") center / cover no-repeat;
+      transform: scale(1.04);
+      animation: heroZoom 14s ease-out forwards;
+    }
+    .hero-glow {
+      position: absolute;
+      inset: auto 10% 18% 10%;
+      height: 28%;
+      z-index: -1;
+      background: radial-gradient(ellipse at center, rgba(232,184,74,0.22), transparent 70%);
+      filter: blur(18px);
+      animation: glowPulse 4.5s ease-in-out infinite;
+    }
+    .hero-inner {
+      width: min(1120px, calc(100% - 2.5rem));
+      margin: 0 auto;
+      padding: 0 0 calc(4.5rem + var(--safe-b));
+    }
+    .brand {
+      font-family: "Orbitron", "Cairo", sans-serif;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      font-size: clamp(2.6rem, 9vw, 5.6rem);
+      line-height: 0.95;
+      text-transform: uppercase;
+      text-shadow: 0 10px 40px rgba(0,0,0,0.55);
+      animation: riseIn 0.9s cubic-bezier(.2,.8,.2,1) both;
+    }
+    .brand span {
+      display: block;
+      color: var(--accent);
+    }
+    .hero h1 {
+      margin-top: 1.1rem;
+      max-width: 16ch;
+      font-size: clamp(1.35rem, 3.4vw, 2.15rem);
+      font-weight: 800;
+      line-height: 1.35;
+      animation: riseIn 0.9s 0.12s cubic-bezier(.2,.8,.2,1) both;
+    }
+    .hero p {
+      margin-top: 0.85rem;
+      max-width: 34ch;
+      color: var(--muted);
+      font-size: clamp(1rem, 2.2vw, 1.15rem);
+      animation: riseIn 0.9s 0.22s cubic-bezier(.2,.8,.2,1) both;
+    }
+    .cta-row {
+      margin-top: 1.75rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      animation: riseIn 0.9s 0.32s cubic-bezier(.2,.8,.2,1) both;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.55rem;
+      min-height: 3.1rem;
+      padding: 0.8rem 1.35rem;
+      border-radius: 999px;
+      font-weight: 800;
+      font-size: 1rem;
+      transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-deep));
+      color: #1a1305;
+      box-shadow: 0 12px 30px rgba(232,184,74,0.28);
+    }
+    .btn-primary:hover { transform: translateY(-2px); }
+    .btn-ghost {
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.04);
+      backdrop-filter: blur(8px);
+    }
+    .btn-ghost:hover {
+      border-color: rgba(232,184,74,0.45);
+      transform: translateY(-2px);
+    }
+
+    .section {
+      width: min(1120px, calc(100% - 2.5rem));
+      margin: 0 auto;
+      padding: 4.5rem 0;
+    }
+    .section-head {
+      max-width: 38rem;
+      margin-bottom: 2rem;
+    }
+    .section-head h2 {
+      font-size: clamp(1.55rem, 3vw, 2.1rem);
+      font-weight: 900;
+      line-height: 1.3;
+    }
+    .section-head p {
+      margin-top: 0.7rem;
+      color: var(--muted);
+      font-size: 1.05rem;
+    }
+    .about-grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 1.5rem;
+      align-items: stretch;
+    }
+    .about-copy {
+      padding: 0.25rem 0;
+    }
+    .about-copy p + p { margin-top: 1rem; color: var(--muted); }
+    .about-visual {
+      position: relative;
+      min-height: 280px;
+      border-radius: 1.25rem;
+      overflow: hidden;
+      background:
+        linear-gradient(160deg, rgba(7,7,8,0.15), rgba(7,7,8,0.55)),
+        url("https://images.unsplash.com/photo-1461151304267-38535e780c79?auto=format&fit=crop&w=1200&q=80") center / cover no-repeat;
+      border: 1px solid var(--line);
+    }
+    .about-visual::after {
+      content: "";
+      position: absolute;
+      inset: auto 0 0 0;
+      height: 45%;
+      background: linear-gradient(transparent, rgba(7,7,8,0.85));
+    }
+
+    .contact {
+      border-top: 1px solid var(--line);
+      background:
+        radial-gradient(ellipse at 80% 0%, rgba(232,184,74,0.08), transparent 45%),
+        var(--bg);
+    }
+    .contact-panel {
+      display: grid;
+      gap: 1.25rem;
+      padding: 1.5rem;
+      border: 1px solid var(--line);
+      border-radius: 1.25rem;
+      background: var(--panel);
+      backdrop-filter: blur(10px);
+    }
+    .phone-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-family: "Orbitron", "Cairo", sans-serif;
+      font-size: clamp(1.45rem, 4vw, 2rem);
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--accent);
+      direction: ltr;
+    }
+    .phone-link:hover { color: #f0c96a; }
+    .contact-meta {
+      color: var(--muted);
+      font-size: 0.98rem;
+    }
+    .contact-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.7rem;
+    }
+
+    footer {
+      border-top: 1px solid var(--line);
+      padding: 1.4rem 1.25rem calc(1.4rem + var(--safe-b));
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    @keyframes riseIn {
+      from { opacity: 0; transform: translateY(22px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes heroZoom {
+      from { transform: scale(1.08); }
+      to { transform: scale(1); }
+    }
+    @keyframes glowPulse {
+      0%, 100% { opacity: 0.55; }
+      50% { opacity: 1; }
+    }
+
+    @media (max-width: 820px) {
+      .about-grid { grid-template-columns: 1fr; }
+      .about-visual { min-height: 220px; order: -1; }
+      .hero-inner { padding-bottom: calc(3.5rem + var(--safe-b)); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation: none !important;
+        transition: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="hero-media" aria-hidden="true"></div>
+    <div class="hero-glow" aria-hidden="true"></div>
+    <div class="hero-inner">
+      <div class="brand">Super <span>Max</span></div>
+      <h1>شاشات ذكية تملأ بيتك صورة وصوت</h1>
+      <p>خبرة محلية، تشكيلة حديثة، وضمان واضح — من العرض حتى التوصيل.</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="tel:07711272744">اتصل الآن: 07711272744</a>
+        <a class="btn btn-ghost" href="#about">تعرّف علينا</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="section" id="about">
+      <div class="section-head">
+        <h2>من نحن</h2>
+        <p>سوبر ماكس شركة عراقية متخصصة في الشاشات الذكية والأجهزة المنزلية.</p>
+      </div>
+      <div class="about-grid">
+        <div class="about-copy">
+          <p>
+            نقدّم لعملائنا شاشات ذكية بمقاسات وتقنيات حديثة، مع تركيز على جودة الصورة،
+            سهولة الاستخدام، والدعم بعد البيع.
+          </p>
+          <p>
+            هدفنا أن تختار جهازك بثقة: استشارة واضحة، أسعار مناسبة، وتجربة شراء سلسة
+            داخل العراق — من الاستفسار إلى الاستلام.
+          </p>
+        </div>
+        <div class="about-visual" role="img" aria-label="شاشة ذكية في غرفة معيشة حديثة"></div>
+      </div>
+    </section>
+
+    <section class="contact" id="contact">
+      <div class="section">
+        <div class="section-head">
+          <h2>تواصل معنا</h2>
+          <p>فريق سوبر ماكس جاهز لمساعدتك في اختيار الشاشة المناسبة.</p>
+        </div>
+        <div class="contact-panel">
+          <a class="phone-link" href="tel:07711272744" aria-label="الاتصال على 07711272744">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M6.6 3.2c.4-.4 1-.5 1.5-.3l2.4 1c.5.2.8.7.8 1.2v2.3c0 .4-.2.8-.5 1.1l-1.3 1.3a12.5 12.5 0 0 0 5.7 5.7l1.3-1.3c.3-.3.7-.5 1.1-.5h2.3c.5 0 1 .3 1.2.8l1 2.4c.2.5.1 1.1-.3 1.5l-1.4 1.4c-.4.4-1 .6-1.6.5C11.7 20.5 3.5 12.3 2.7 5.2c-.1-.6.1-1.2.5-1.6L6.6 3.2Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+            </svg>
+            0771 127 2744
+          </a>
+          <p class="contact-meta">العراق — بغداد · واتساب ومكالمات مباشرة</p>
+          <div class="contact-actions">
+            <a class="btn btn-primary" href="https://wa.me/9647711272744" target="_blank" rel="noopener">واتساب</a>
+            <a class="btn btn-ghost" href="tel:07711272744">اتصال مباشر</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    © <span id="y"></span> Super Max — جميع الحقوق محفوظة
+  </footer>
+  <script>
+    document.getElementById("y").textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>

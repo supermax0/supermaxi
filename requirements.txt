@@ -15,3 +15,5 @@ Flask-Compress
 psycopg2-binary
 APScheduler
 requests
+redis>=5,<7
+openai

@@ -1,0 +1,115 @@
+{% extends "mobile_app/_layout.html" %}
+{% block mobile_app_body %}
+<div class="ma-stack">
+  <div class="ma-page-head">
+    <h2 class="ma-page-title">تحليلات التحويل</h2>
+    <p class="ma-page-subtitle">أداء التطبيق خلال الفترة المحددة</p>
+  </div>
+
+  <form method="get" class="ma-toolbar">
+    <label class="ma-field" style="flex-direction:row;align-items:center;gap:10px">
+      <span class="ma-field-label" style="margin:0">الفترة</span>
+      <select name="days" class="ma-input" style="max-width:140px" onchange="this.form.submit()">
+        {% for d in [1, 7, 14, 30] %}
+        <option value="{{ d }}" {% if days == d %}selected{% endif %}>{{ d }} {{ 'يوم' if d == 1 else 'أيام' }}</option>
+        {% endfor %}
+      </select>
+    </label>
+  </form>
+
+  {% set f = summary.funnel %}
+  {% set peak = [f.views, f.add_to_cart, f.checkout_started, f.order_placed, 1] | max %}
+
+  <div class="ma-grid-cards">
+    <div class="ma-card">
+      <div class="ma-card-head">
+        <div class="ma-card-icon"><i class="fas fa-filter"></i></div>
+        <div>
+          <h3 class="ma-card-title">قمع التحويل</h3>
+          <p class="ma-card-desc">من المشاهدة حتى الطلب</p>
+        </div>
+      </div>
+      <div class="ma-funnel">
+        <div class="ma-funnel-row">
+          <span class="ma-funnel-label">مشاهدات</span>
+          <div class="ma-funnel-track"><div class="ma-funnel-bar" style="width:{{ (f.views / peak * 100) | round(1) }}%"></div></div>
+          <span class="ma-funnel-value">{{ f.views }}</span>
+        </div>
+        <div class="ma-funnel-row">
+          <span class="ma-funnel-label">إضافة للعربة</span>
+          <div class="ma-funnel-track"><div class="ma-funnel-bar" style="width:{{ (f.add_to_cart / peak * 100) | round(1) }}%"></div></div>
+          <span class="ma-funnel-value">{{ f.add_to_cart }}</span>
+        </div>
+        <div class="ma-funnel-row">
+          <span class="ma-funnel-label">بدء الدفع</span>
+          <div class="ma-funnel-track"><div class="ma-funnel-bar" style="width:{{ (f.checkout_started / peak * 100) | round(1) }}%"></div></div>
+          <span class="ma-funnel-value">{{ f.checkout_started }}</span>
+        </div>
+        <div class="ma-funnel-row">
+          <span class="ma-funnel-label">طلبات</span>
+          <div class="ma-funnel-track"><div class="ma-funnel-bar" style="width:{{ (f.order_placed / peak * 100) | round(1) }}%"></div></div>
+          <span class="ma-funnel-value">{{ f.order_placed }}</span>
+        </div>
+      </div>
+    </div>
+
+    {% if summary.engagement %}
+    <div class="ma-card">
+      <div class="ma-card-head">
+        <div class="ma-card-icon is-purple"><i class="fas fa-heart"></i></div>
+        <div>
+          <h3 class="ma-card-title">تفاعل الفيديو</h3>
+          <p class="ma-card-desc">أداء المحتوى المنشور</p>
+        </div>
+      </div>
+      <div class="ma-kv">
+        <div class="ma-kv-row">
+          <span class="ma-kv-key">فيديوهات منشورة</span>
+          <span class="ma-kv-value">{{ summary.engagement.published_videos }}</span>
+        </div>
+        <div class="ma-kv-row">
+          <span class="ma-kv-key">مشاهدات فيديو</span>
+          <span class="ma-kv-value">{{ summary.engagement.video_views }}</span>
+        </div>
+        <div class="ma-kv-row">
+          <span class="ma-kv-key">إعجابات</span>
+          <span class="ma-kv-value">{{ summary.engagement.likes }}</span>
+        </div>
+        <div class="ma-kv-row">
+          <span class="ma-kv-key">مشاركات</span>
+          <span class="ma-kv-value">{{ summary.engagement.shares }}</span>
+        </div>
+        <div class="ma-kv-row">
+          <span class="ma-kv-key">تعليقات</span>
+          <span class="ma-kv-value">{{ summary.engagement.comments }}</span>
+        </div>
+        <div class="ma-kv-row">
+          <span class="ma-kv-key">طلبات منسوبة</span>
+          <span class="ma-kv-value">{{ summary.engagement.attributed_orders }}</span>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="ma-card">
+      <div class="ma-card-head">
+        <div class="ma-card-icon is-green"><i class="fas fa-chart-bar"></i></div>
+        <div>
+          <h3 class="ma-card-title">الأحداث</h3>
+          <p class="ma-card-desc">كل الأحداث المسجلة في الفترة</p>
+        </div>
+      </div>
+      <div class="ma-kv">
+        {% for name, cnt in summary.counts.items()|sort %}
+        <div class="ma-kv-row">
+          <span class="ma-kv-key"><span class="ma-code">{{ name }}</span></span>
+          <span class="ma-kv-value">{{ cnt }}</span>
+        </div>
+        {% else %}
+        <p class="ma-hint">لا توجد أحداث بعد</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

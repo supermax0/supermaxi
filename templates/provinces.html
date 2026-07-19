@@ -8,6 +8,16 @@
   .prov-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 20px; }
   .prov-head a { color: var(--primary); text-decoration: none; }
   .prov-note { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px; line-height: 1.6; }
+  .prov-summary {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px; margin-bottom: 18px;
+  }
+  .prov-summary-card {
+    border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px;
+    background: var(--card);
+  }
+  .prov-summary-card .label { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 6px; }
+  .prov-summary-card .value { font-size: 1.25rem; font-weight: 800; color: #34d399; }
   .prov-add { display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
   .prov-add input {
     flex: 1; min-width: 200px; padding: 10px 14px; border-radius: 10px;
@@ -24,6 +34,10 @@
   .prov-table th, .prov-table td { padding: 12px 14px; text-align: right; border-bottom: 1px solid var(--border); }
   .prov-table th { background: var(--card-alt); font-weight: 600; }
   .prov-table tr:hover { background: rgba(59, 130, 246, 0.06); }
+  .prov-table tfoot td {
+    background: var(--card-alt); font-weight: 700; border-bottom: none;
+    border-top: 2px solid var(--border);
+  }
   .prov-amount { font-weight: 700; color: #34d399; white-space: nowrap; }
   .prov-returns { font-weight: 700; color: #f87171; }
   .prov-badge {
@@ -50,6 +64,17 @@
     <strong>{{ provinces_group_label }}</strong>
   </p>
 
+  <div class="prov-summary">
+    <div class="prov-summary-card">
+      <div class="label" id="provPrimaryLabel">{{ _('provinces_profit_primary').replace('{name}', primary_province) }}</div>
+      <div class="value" id="provPrimaryTotal">{{ "{:,.0f}".format(primary_profit_total) }} {{ _('customers_currency_iqd') }}</div>
+    </div>
+    <div class="prov-summary-card">
+      <div class="label">{{ _('provinces_profit_group') }}</div>
+      <div class="value" id="provGroupTotal">{{ "{:,.0f}".format(group_profit_total) }} {{ _('customers_currency_iqd') }}</div>
+    </div>
+  </div>
+
   <div class="prov-add">
     <input type="text" id="newProvinceName" placeholder="{{ _('provinces_add_placeholder') }}" maxlength="100">
     <button type="button" class="prov-btn prov-btn-primary" onclick="addProvince()">
@@ -66,6 +91,7 @@
           <th>{{ _('provinces_col_orders') }}</th>
           <th>{{ _('provinces_col_returns') }}</th>
           <th>{{ _('provinces_col_amount') }}</th>
+          <th>{{ _('provinces_col_profit') }}</th>
           <th>{{ _('provinces_col_role') }}</th>
           <th>{{ _('customers_col_actions') }}</th>
         </tr>
@@ -78,6 +104,7 @@
           <td><span class="prov-count">{{ p.orders_count }}</span></td>
           <td><span class="prov-returns">{{ p.returns_count }}</span></td>
           <td><span class="prov-amount">{{ "{:,.0f}".format(p.total_amount) }} {{ _('customers_currency_iqd') }}</span></td>
+          <td><span class="prov-amount">{{ "{:,.0f}".format(p.profit) }} {{ _('customers_currency_iqd') }}</span></td>
           <td>
             {% if p.is_primary %}
             <span class="prov-badge">{{ _('provinces_primary_badge') }}</span>
@@ -100,6 +127,14 @@
         </tr>
         {% endfor %}
       </tbody>
+      <tfoot>
+        <tr id="provincesGroupFooter">
+          <td colspan="4" id="provGroupTotalLabel">{{ _('provinces_group_total_label').replace('{name}', primary_province) }}</td>
+          <td><span class="prov-amount" id="provFooterGroupTotal">{{ "{:,.0f}".format(group_total) }} {{ _('customers_currency_iqd') }}</span></td>
+          <td><span class="prov-amount" id="provFooterGroupProfit">{{ "{:,.0f}".format(group_profit_total) }} {{ _('customers_currency_iqd') }}</span></td>
+          <td colspan="2"></td>
+        </tr>
+      </tfoot>
     </table>
   </div>
 </div>
@@ -129,9 +164,30 @@ async function provApi(url, body) {
 }
 
   const currencyLabel = {{ _('customers_currency_iqd')|tojson }};
+  const profitPrimaryTpl = {{ _('provinces_profit_primary')|tojson }};
+  const groupTotalTpl = {{ _('provinces_group_total_label')|tojson }};
 
   function formatProvAmount(n) {
     return (Number(n) || 0).toLocaleString('ar-IQ') + ' ' + currencyLabel;
+  }
+
+  function updateProvSummaries(data) {
+    const primaryName = data.primary || {{ primary_province|tojson }};
+    const primaryProfitTotal = data.primary_profit_total || 0;
+    const groupTotal = data.group_total || 0;
+    const groupProfitTotal = data.group_profit_total || 0;
+    const primaryLabel = document.getElementById('provPrimaryLabel');
+    const primaryEl = document.getElementById('provPrimaryTotal');
+    const groupEl = document.getElementById('provGroupTotal');
+    const footerLabel = document.getElementById('provGroupTotalLabel');
+    const footerEl = document.getElementById('provFooterGroupTotal');
+    const footerProfitEl = document.getElementById('provFooterGroupProfit');
+    if (primaryLabel) primaryLabel.textContent = profitPrimaryTpl.replace('{name}', primaryName);
+    if (primaryEl) primaryEl.textContent = formatProvAmount(primaryProfitTotal);
+    if (groupEl) groupEl.textContent = formatProvAmount(groupProfitTotal);
+    if (footerLabel) footerLabel.textContent = groupTotalTpl.replace('{name}', primaryName);
+    if (footerEl) footerEl.textContent = formatProvAmount(groupTotal);
+    if (footerProfitEl) footerProfitEl.textContent = formatProvAmount(groupProfitTotal);
   }
 
   async function reloadProvinces() {
@@ -139,7 +195,7 @@ async function provApi(url, body) {
   const data = await res.json();
   if (!data.success) return;
   const tbody = document.getElementById('provincesTableBody');
-  const groupLabel = {{ provinces_group_label|tojson }};
+  const groupLabel = data.group_label || {{ provinces_group_label|tojson }};
   const primaryBadge = {{ _('provinces_primary_badge')|tojson }};
   const setPrimaryLabel = {{ _('provinces_set_primary')|tojson }};
   const deleteLabel = {{ _('provinces_delete')|tojson }};
@@ -156,10 +212,12 @@ async function provApi(url, body) {
       <td><span class="prov-count">${p.orders_count || 0}</span></td>
       <td><span class="prov-returns">${p.returns_count || 0}</span></td>
       <td><span class="prov-amount">${formatProvAmount(p.total_amount)}</span></td>
+      <td><span class="prov-amount">${formatProvAmount(p.profit)}</span></td>
       <td>${role}</td>
       <td><div class="prov-actions">${actions}</div></td>
     </tr>`;
   }).join('');
+  updateProvSummaries(data);
 }
 
 async function addProvince() {

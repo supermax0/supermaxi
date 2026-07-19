@@ -163,10 +163,10 @@ def _reassign_item_to_branch(item: OrderItem, order, target_branch_id: int) -> b
 def apply_shipping_branch_schedule(order, *, previous_status: str | None = None) -> None:
     """
     Reassign fulfillment branch for all line items when entering «جاري الشحن».
-    Only runs on first transition from «تم الطلب».
+    Only runs on first transition from a pre-shipping status.
     """
     prev = (previous_status or getattr(order, "status", None) or "").strip()
-    if prev != "تم الطلب":
+    if prev not in {"تم الطلب", "معباة"}:
         return
 
     target_branch_id = resolve_shipping_branch_for_now()

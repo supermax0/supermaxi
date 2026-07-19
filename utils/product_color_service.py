@@ -173,10 +173,19 @@ def deduct_color_stock(product_id: int, color_name: str, qty: int) -> ProductCol
     variant = ProductColorVariant.query.filter_by(product_id=product_id, color_name=color).first()
     if not variant:
         raise ProductColorError(f"اللون ({color}) غير معرّف لهذا المنتج")
-    available = int(variant.quantity or 0)
-    if available < qty:
+    updated = (
+        db.session.query(ProductColorVariant)
+        .filter(ProductColorVariant.id == variant.id, ProductColorVariant.quantity >= qty)
+        .update(
+            {ProductColorVariant.quantity: ProductColorVariant.quantity - qty},
+            synchronize_session=False,
+        )
+    )
+    if updated != 1:
+        db.session.expire(variant)
+        available = int(variant.quantity or 0)
         raise ProductColorError(f"مخزون اللون ({color}) غير كافٍ. المتاح: {available}")
-    variant.quantity = available - qty
+    db.session.expire(variant)
     sync_product_total_from_colors(product_id)
     db.session.flush()
     return variant
@@ -187,7 +196,11 @@ def receive_color_stock(product_id: int, color_name: str, qty: int) -> ProductCo
     if qty <= 0:
         raise ProductColorError("الكمية يجب أن تكون أكبر من صفر")
     variant = ensure_color_variant(product_id, color_name, initial_qty=0)
-    variant.quantity = int(variant.quantity or 0) + qty
+    db.session.query(ProductColorVariant).filter(ProductColorVariant.id == variant.id).update(
+        {ProductColorVariant.quantity: ProductColorVariant.quantity + qty},
+        synchronize_session=False,
+    )
+    db.session.expire(variant)
     sync_product_total_from_colors(product_id)
     db.session.flush()
     return variant

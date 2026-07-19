@@ -22,6 +22,7 @@
 <div class="admin-page-header">
   <div class="admin-page-header__meta"></div>
   <div class="admin-page-header__actions">
+    <a href="/employees/page-warnings" class="nav-crosslink"><i class="fab fa-whatsapp"></i> تحذير البيجات</a>
     <a href="/agents" class="nav-crosslink"><i class="fas fa-truck"></i> {{ _('delivery_agents') }}</a>
   </div>
 </div>
@@ -68,6 +69,10 @@
         <div class="emp-field">
           <label class="emp-field-label" for="emp_password">{{ _('employees_placeholder_password') }}</label>
           <input name="password" type="password" id="emp_password" placeholder="{{ _('employees_placeholder_password') }}" required>
+        </div>
+        <div class="emp-field">
+          <label class="emp-field-label" for="emp_phone">رقم الهاتف (واتساب)</label>
+          <input name="phone" id="emp_phone" type="tel" placeholder="07xxxxxxxxx" inputmode="tel">
         </div>
         <div class="emp-field">
           <label class="emp-field-label" for="emp_role">{{ _('employees_col_role') }}<span data-help="employees.role"></span></label>
@@ -258,6 +263,7 @@
     <input type="hidden" id="editEmpId">
     <input type="hidden" id="editEmpIsDelivery" value="0">
     <div class="team-modal-field"><label>الاسم</label><input id="editEmpName" type="text"></div>
+    <div class="team-modal-field" id="editEmpPhoneField"><label>رقم الهاتف (واتساب)</label><input id="editEmpPhone" type="tel" placeholder="07xxxxxxxxx" inputmode="tel"></div>
     <div class="team-modal-field"><label>الراتب</label><input id="editEmpSalary" type="number" min="0"></div>
     <div class="team-modal-field" id="editEmpCommissionField"><label>{{ _('employees_edit_commission_label') }}</label><input id="editEmpCommission" type="number" min="0" step="1" placeholder="0"><small>{{ _('employees_edit_commission_hint') }}</small></div>
     <div class="team-modal-field"><label>نوع الراتب</label>

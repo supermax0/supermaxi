@@ -9,6 +9,7 @@ from datetime import date, datetime, timedelta, timezone
 from sqlalchemy import func, inspect, or_
 
 from extensions import db
+from utils.order_stock_lock import stock_unlocked_filter
 
 # يوم العمل المحاسبي بتوقيت العراق (يتوافق مع عمل الشركات على finora.company)
 BUSINESS_TZ_NAME = "Asia/Baghdad"
@@ -178,6 +179,7 @@ def net_profit_for_collection_calendar_day(day: date) -> int:
     ).filter(
         func.date(Invoice.created_at) == day,
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
+        stock_unlocked_filter(Invoice),
         or_(
             Invoice.payment_status.is_(None),
             Invoice.payment_status.notin_(RETURN_STATUSES + CANCELED_STATUSES),

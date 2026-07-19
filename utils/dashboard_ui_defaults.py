@@ -6,6 +6,7 @@ from typing import Dict
 
 # Most cards off; only agent pending reports queue on by default.
 DEFAULT_DASHBOARD_UI_FLAGS: Dict[str, bool] = {
+    "defer_pending_order_stock": True,
     "show_dash_cash_balance": False,
     "show_dash_period_profit": False,
     "show_dash_total_sales": False,

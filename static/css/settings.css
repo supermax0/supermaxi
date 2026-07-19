@@ -227,6 +227,74 @@
   padding: 8px 12px;
 }
 
+.settings-social-release {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding: 16px 18px;
+  border: 1px solid rgba(245, 158, 11, 0.38);
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.16), rgba(59, 130, 246, 0.1));
+  box-shadow: 0 10px 30px rgba(120, 75, 0, 0.08);
+}
+
+.settings-social-release-icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+  border-radius: 15px;
+  color: #fff;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  font-size: 18px;
+}
+
+.settings-social-release-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+
+.settings-social-release-copy strong {
+  color: var(--text-main, var(--text));
+  font-size: 16px;
+}
+
+.settings-social-release-copy span {
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.settings-hub-card.is-social-app {
+  border-color: rgba(245, 158, 11, 0.48);
+  background: linear-gradient(145deg, rgba(245, 158, 11, 0.09), var(--card, var(--surface)) 55%);
+}
+
+.settings-social-badge {
+  padding: 5px 9px;
+  border-radius: 999px;
+  color: #7c4a03;
+  background: #fef3c7;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+@media (max-width: 700px) {
+  .settings-social-release {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+
+  .settings-social-release .settings-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 .settings-status-card {
   display: grid;
   gap: 14px;

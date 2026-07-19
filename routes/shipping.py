@@ -15,6 +15,8 @@ from utils.permission_checks import guard_permission
 from utils.activity_logger import log_activity
 from utils.treasury_helpers import resolve_treasury_account_id
 from utils.treasury_schema_guard import ensure_treasury_schema
+from utils.shipping_settlement_service import ensure_paid_shipping_order_settled
+from utils.order_stock_policy import OrderStockError, ensure_stock_for_transition
 
 shipping_bp = Blueprint("shipping", __name__, url_prefix="/shipping")
 
@@ -309,10 +311,18 @@ def settle_order(order_id):
 
     amount = remaining_amount(order)
     if amount <= 0:
+        if ensure_paid_shipping_order_settled(order, treasury_account_id=treasury_account_id):
+            db.session.commit()
+            return jsonify({"success": True, "message": "تم تسجيل تسديد شركة الشحن للطلب المسدد مسبقاً"})
         return jsonify({"success": True, "message": "الطلب مسدد مسبقاً"})
 
     delivery_fee = max(0, int(data.get("delivery_fee") or 0))
 
+    try:
+        ensure_stock_for_transition(order, target_payment_status="مسدد")
+    except OrderStockError as exc:
+        db.session.rollback()
+        return jsonify({"success": False, "code": "INSUFFICIENT_STOCK", "error": exc.message, "shortages": exc.shortages}), 409
     prev_eff = _effective_paid_amount_inv(order)
     order.payment_status = "مسدد"
     order.paid_amount = order.total
@@ -323,16 +333,7 @@ def settle_order(order_id):
     if delivery_fee <= 0:
         order.paid_amount = order.total
 
-    db.session.add(
-        ShippingPayment(
-            shipping_company_id=order.shipping_company_id,
-            invoice_id=order.id,
-            amount=int(order.paid_amount or 0),
-            action="تسديد",
-            note=f"قبض من شركة الشحن عن الطلب #{order.id}",
-            treasury_account_id=treasury_account_id,
-        )
-    )
+    ensure_paid_shipping_order_settled(order, treasury_account_id=treasury_account_id)
 
     append_payment_ledger_delta(order.id, _effective_paid_amount_inv(order) - prev_eff)
     sync_delivery_expense_for_invoice(order)

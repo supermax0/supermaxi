@@ -144,7 +144,7 @@ def match_products(
     query_blob = _query_blob_from_message(message, history)
     q = Product.query.order_by(Product.name.asc(), Product.id.asc())
     if not include_inactive:
-        q = q.filter(Product.active == True)  # noqa: E712
+        q = q.filter(Product.active == True, Product.store_visible == True)  # noqa: E712
     products = q.limit(max(50, min(pool_limit, 5000))).all()
 
     if not query_blob.strip():

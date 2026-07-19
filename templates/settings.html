@@ -105,6 +105,16 @@
 
 <section class="settings-hub-section" aria-labelledby="settingsHubApps">
   <h2 id="settingsHubApps" class="settings-hub-section-label">{{ _('settings_app_downloads_title') }}</h2>
+  <div class="settings-social-release" role="note">
+    <div class="settings-social-release-icon"><i class="fas fa-rocket"></i></div>
+    <div class="settings-social-release-copy">
+      <strong>{{ _('settings_social_app_new_title') }}</strong>
+      <span>{{ _('settings_social_app_new_desc') }} — v{{ social_app_version }} ({{ social_app_build }})</span>
+    </div>
+    <a href="{{ app_downloads.social }}" class="settings-btn settings-btn-primary" download="finora-social-v{{ social_app_version }}.apk">
+      <i class="fas fa-download"></i> {{ _('settings_social_app_download_new') }}
+    </a>
+  </div>
   <div class="settings-hub-grid">
     <div class="settings-hub-card is-download">
       <div class="settings-hub-card-head">
@@ -145,6 +155,19 @@
           <i class="fas fa-external-link-alt"></i> {{ _('settings_delivery_agent_open_portal') }}
         </a>
         {% endif %}
+      </div>
+    </div>
+    <div class="settings-hub-card is-download is-social-app">
+      <div class="settings-hub-card-head">
+        <div class="settings-hub-card-icon"><i class="fas fa-play-circle"></i></div>
+        <span class="settings-social-badge">{{ _('settings_social_app_new_badge') }}</span>
+      </div>
+      <h3>{{ _('settings_social_app_title') }}</h3>
+      <p>{{ _('settings_social_app_desc') }}</p>
+      <div class="settings-hub-card-actions">
+        <a href="{{ app_downloads.social }}" class="settings-btn settings-btn-primary" download="finora-social-v{{ social_app_version }}.apk">
+          <i class="fas fa-download"></i> {{ _('settings_social_app_download_new') }}
+        </a>
       </div>
     </div>
   </div>

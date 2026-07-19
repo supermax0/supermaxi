@@ -1,0 +1,49 @@
+{% extends "mobile_app/_layout.html" %}
+{% block mobile_app_body %}
+<div class="ma-stack">
+  <div class="ma-page-head">
+    <h2 class="ma-page-title">الإشعارات</h2>
+    <p class="ma-page-subtitle">إرسال إشعارات فورية لمستخدمي التطبيق</p>
+  </div>
+
+  <div class="ma-card" style="max-width:680px">
+    <div class="ma-card-head">
+      <div class="ma-card-icon"><i class="fas fa-bell"></i></div>
+      <div>
+        <h3 class="ma-card-title">إرسال إشعار</h3>
+        <p class="ma-card-desc">لمستخدم محدد أو لجمهور كامل</p>
+      </div>
+    </div>
+    <form method="post" class="ma-form-grid">
+      <label class="ma-field">
+        <span class="ma-field-label">العنوان</span>
+        <input class="ma-input" name="title" placeholder="مثال: عرض اليوم" required>
+      </label>
+      <label class="ma-field">
+        <span class="ma-field-label">نص الإشعار</span>
+        <textarea class="ma-input ma-textarea" name="body" rows="4" placeholder="اكتب محتوى الإشعار" required></textarea>
+      </label>
+      <div class="ma-form-grid-2">
+        <label class="ma-field">
+          <span class="ma-field-label">معرّف مستخدم محدد <em>(اختياري)</em></span>
+          <input class="ma-input" name="user_id" placeholder="يُرسل له فوراً">
+        </label>
+        <label class="ma-field">
+          <span class="ma-field-label">الجمهور</span>
+          <select class="ma-input" name="audience">
+            <option value="all">كل المستخدمين</option>
+            <option value="gold">مستوى Gold</option>
+            <option value="vip">مستوى VIP</option>
+          </select>
+        </label>
+      </div>
+      <div class="ma-upload-actions">
+        <button class="ma-btn ma-btn-primary" type="submit"><i class="fas fa-paper-plane"></i> إرسال / جدولة</button>
+      </div>
+      <p class="ma-hint">
+        إذا أدخلت معرّف مستخدم يُرسل الإشعار له وحده فوراً، وإلا يُبث للجمهور المحدد في الخلفية.
+      </p>
+    </form>
+  </div>
+</div>
+{% endblock %}

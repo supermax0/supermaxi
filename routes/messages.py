@@ -73,6 +73,13 @@ def _save_uploaded_file(file):
     return file_type, file_path, filename
 
 
+def _default_attachment_content(file_type, file_name):
+    """نص تلقائي للمرفقات — الصور والفيديو والصوت بدون نص إضافي."""
+    if file_type in ("audio", "image", "video"):
+        return ""
+    return f"📎 {file_name}" if file_name else ""
+
+
 def _is_admin(user):
     return bool(user and getattr(user, "role", None) == "admin")
 
@@ -282,7 +289,7 @@ def send_message():
         message = Message(
             sender_id=current_user_id,
             receiver_id=receiver_id,
-            content=content or ("" if file_type == "audio" else (f"📎 {file_name}" if file_name else "")),
+            content=content or _default_attachment_content(file_type, file_name),
             file_type=file_type,
             file_path=file_path,
             file_name=file_name,
@@ -503,6 +510,7 @@ def get_conversations():
                 "user_name": other_user.name if hasattr(other_user, 'name') else (other_user.username if hasattr(other_user, 'username') else ""),
                 "user_role": user_role,
                 "last_message": msg.content,
+                "file_type": msg.file_type,
                 "last_message_time": (msg.created_at.isoformat() + "Z") if msg.created_at else "",
                 "unread_count": unread_count
             })
@@ -609,7 +617,7 @@ def send_channel_message():
 
         message = ChannelMessage(
             sender_id=current_user_id,
-            content=content or (f"📎 {file_name}" if file_name else ""),
+            content=content or _default_attachment_content(file_type, file_name),
             file_type=file_type,
             file_path=file_path,
             file_name=file_name

@@ -1,0 +1,1898 @@
+[2026-07-10 20:44:18,280] INFO in __init__: Workspace module schema ready.
+[2026-07-10 20:44:18,284] WARNING in app: BOT_TOKEN / TELEGRAM_BOT_TOKEN not set; Telegram bot will not send replies. Set in systemd Environment= or .env.
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5008
+ * Running on http://192.168.1.109:5008
+Press CTRL+C to quit
+127.0.0.1 - - [10/Jul/2026 20:44:41] "HEAD /investments/ HTTP/1.1" 302 -
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlite3.OperationalError: no such column: publisher_posts.visibility
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 335, in _publish_due_posts
+    posts = query.all()
+            ^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2704, in all
+    return self._iter().all()  # type: ignore
+           ^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2857, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2351, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2249, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) no such column: publisher_posts.visibility
+[SQL: SELECT publisher_posts.id AS publisher_posts_id, publisher_posts.tenant_slug AS publisher_posts_tenant_slug, publisher_posts.text AS publisher_posts_text, publisher_posts.media_ids AS publisher_posts_media_ids, publisher_posts.page_ids AS publisher_posts_page_ids, publisher_posts.facebook_post_ids AS publisher_posts_facebook_post_ids, publisher_posts.status AS publisher_posts_status, publisher_posts.publish_type AS publisher_posts_publish_type, publisher_posts.publish_time AS publisher_posts_publish_time, publisher_posts.visibility AS publisher_posts_visibility, publisher_posts.error_message AS publisher_posts_error_message, publisher_posts.created_at AS publisher_posts_created_at 
+FROM publisher_posts 
+WHERE publisher_posts.status IN (?, ?) AND publisher_posts.tenant_slug = ?]
+[parameters: ('queued', 'scheduled', 'test')]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\logging\__init__.py", line 1113, in emit
+    stream.write(msg + self.terminator)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 1064-1067: character maps to <undefined>
+Call stack:
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1002, in _bootstrap
+    self._bootstrap_inner()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1045, in _bootstrap_inner
+    self.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 982, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 83, in _worker
+    work_item.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\apscheduler\executors\base.py", line 131, in run_job
+    retval = job.func(*job.args, **job.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 363, in _publish_due_posts
+    logging.getLogger("publisher").exception("Scheduler job error: %s", exc)
+Message: 'Scheduler job error: %s'
+Arguments: (OperationalError('(sqlite3.OperationalError) no such column: publisher_posts.visibility'),)
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlite3.OperationalError: no such column: publisher_posts.visibility
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 335, in _publish_due_posts
+    posts = query.all()
+            ^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2704, in all
+    return self._iter().all()  # type: ignore
+           ^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2857, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2351, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2249, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) no such column: publisher_posts.visibility
+[SQL: SELECT publisher_posts.id AS publisher_posts_id, publisher_posts.tenant_slug AS publisher_posts_tenant_slug, publisher_posts.text AS publisher_posts_text, publisher_posts.media_ids AS publisher_posts_media_ids, publisher_posts.page_ids AS publisher_posts_page_ids, publisher_posts.facebook_post_ids AS publisher_posts_facebook_post_ids, publisher_posts.status AS publisher_posts_status, publisher_posts.publish_type AS publisher_posts_publish_type, publisher_posts.publish_time AS publisher_posts_publish_time, publisher_posts.visibility AS publisher_posts_visibility, publisher_posts.error_message AS publisher_posts_error_message, publisher_posts.created_at AS publisher_posts_created_at 
+FROM publisher_posts 
+WHERE publisher_posts.status IN (?, ?) AND publisher_posts.tenant_slug = ?]
+[parameters: ('queued', 'scheduled', 'test')]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\logging\__init__.py", line 1113, in emit
+    stream.write(msg + self.terminator)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 1064-1067: character maps to <undefined>
+Call stack:
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1002, in _bootstrap
+    self._bootstrap_inner()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1045, in _bootstrap_inner
+    self.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 982, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 83, in _worker
+    work_item.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\apscheduler\executors\base.py", line 131, in run_job
+    retval = job.func(*job.args, **job.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 363, in _publish_due_posts
+    logging.getLogger("publisher").exception("Scheduler job error: %s", exc)
+Message: 'Scheduler job error: %s'
+Arguments: (OperationalError('(sqlite3.OperationalError) no such column: publisher_posts.visibility'),)
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlite3.OperationalError: no such column: publisher_posts.visibility
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 335, in _publish_due_posts
+    posts = query.all()
+            ^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2704, in all
+    return self._iter().all()  # type: ignore
+           ^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2857, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2351, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2249, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) no such column: publisher_posts.visibility
+[SQL: SELECT publisher_posts.id AS publisher_posts_id, publisher_posts.tenant_slug AS publisher_posts_tenant_slug, publisher_posts.text AS publisher_posts_text, publisher_posts.media_ids AS publisher_posts_media_ids, publisher_posts.page_ids AS publisher_posts_page_ids, publisher_posts.facebook_post_ids AS publisher_posts_facebook_post_ids, publisher_posts.status AS publisher_posts_status, publisher_posts.publish_type AS publisher_posts_publish_type, publisher_posts.publish_time AS publisher_posts_publish_time, publisher_posts.visibility AS publisher_posts_visibility, publisher_posts.error_message AS publisher_posts_error_message, publisher_posts.created_at AS publisher_posts_created_at 
+FROM publisher_posts 
+WHERE publisher_posts.status IN (?, ?) AND publisher_posts.tenant_slug = ?]
+[parameters: ('queued', 'scheduled', 'test')]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\logging\__init__.py", line 1113, in emit
+    stream.write(msg + self.terminator)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 1064-1067: character maps to <undefined>
+Call stack:
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1002, in _bootstrap
+    self._bootstrap_inner()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1045, in _bootstrap_inner
+    self.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 982, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 83, in _worker
+    work_item.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\apscheduler\executors\base.py", line 131, in run_job
+    retval = job.func(*job.args, **job.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 363, in _publish_due_posts
+    logging.getLogger("publisher").exception("Scheduler job error: %s", exc)
+Message: 'Scheduler job error: %s'
+Arguments: (OperationalError('(sqlite3.OperationalError) no such column: publisher_posts.visibility'),)
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlite3.OperationalError: no such column: publisher_posts.visibility
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 335, in _publish_due_posts
+    posts = query.all()
+            ^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2704, in all
+    return self._iter().all()  # type: ignore
+           ^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2857, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2351, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2249, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) no such column: publisher_posts.visibility
+[SQL: SELECT publisher_posts.id AS publisher_posts_id, publisher_posts.tenant_slug AS publisher_posts_tenant_slug, publisher_posts.text AS publisher_posts_text, publisher_posts.media_ids AS publisher_posts_media_ids, publisher_posts.page_ids AS publisher_posts_page_ids, publisher_posts.facebook_post_ids AS publisher_posts_facebook_post_ids, publisher_posts.status AS publisher_posts_status, publisher_posts.publish_type AS publisher_posts_publish_type, publisher_posts.publish_time AS publisher_posts_publish_time, publisher_posts.visibility AS publisher_posts_visibility, publisher_posts.error_message AS publisher_posts_error_message, publisher_posts.created_at AS publisher_posts_created_at 
+FROM publisher_posts 
+WHERE publisher_posts.status IN (?, ?) AND publisher_posts.tenant_slug = ?]
+[parameters: ('queued', 'scheduled', 'test')]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\logging\__init__.py", line 1113, in emit
+    stream.write(msg + self.terminator)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 1064-1067: character maps to <undefined>
+Call stack:
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1002, in _bootstrap
+    self._bootstrap_inner()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1045, in _bootstrap_inner
+    self.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 982, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 83, in _worker
+    work_item.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\apscheduler\executors\base.py", line 131, in run_job
+    retval = job.func(*job.args, **job.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 363, in _publish_due_posts
+    logging.getLogger("publisher").exception("Scheduler job error: %s", exc)
+Message: 'Scheduler job error: %s'
+Arguments: (OperationalError('(sqlite3.OperationalError) no such column: publisher_posts.visibility'),)
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlite3.OperationalError: no such column: publisher_posts.visibility
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 335, in _publish_due_posts
+    posts = query.all()
+            ^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2704, in all
+    return self._iter().all()  # type: ignore
+           ^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2857, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2351, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2249, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) no such column: publisher_posts.visibility
+[SQL: SELECT publisher_posts.id AS publisher_posts_id, publisher_posts.tenant_slug AS publisher_posts_tenant_slug, publisher_posts.text AS publisher_posts_text, publisher_posts.media_ids AS publisher_posts_media_ids, publisher_posts.page_ids AS publisher_posts_page_ids, publisher_posts.facebook_post_ids AS publisher_posts_facebook_post_ids, publisher_posts.status AS publisher_posts_status, publisher_posts.publish_type AS publisher_posts_publish_type, publisher_posts.publish_time AS publisher_posts_publish_time, publisher_posts.visibility AS publisher_posts_visibility, publisher_posts.error_message AS publisher_posts_error_message, publisher_posts.created_at AS publisher_posts_created_at 
+FROM publisher_posts 
+WHERE publisher_posts.status IN (?, ?) AND publisher_posts.tenant_slug = ?]
+[parameters: ('queued', 'scheduled', 'test')]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\logging\__init__.py", line 1113, in emit
+    stream.write(msg + self.terminator)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 1064-1067: character maps to <undefined>
+Call stack:
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1002, in _bootstrap
+    self._bootstrap_inner()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1045, in _bootstrap_inner
+    self.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 982, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 83, in _worker
+    work_item.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\apscheduler\executors\base.py", line 131, in run_job
+    retval = job.func(*job.args, **job.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 363, in _publish_due_posts
+    logging.getLogger("publisher").exception("Scheduler job error: %s", exc)
+Message: 'Scheduler job error: %s'
+Arguments: (OperationalError('(sqlite3.OperationalError) no such column: publisher_posts.visibility'),)
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlite3.OperationalError: no such column: publisher_posts.visibility
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 335, in _publish_due_posts
+    posts = query.all()
+            ^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2704, in all
+    return self._iter().all()  # type: ignore
+           ^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2857, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2351, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2249, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) no such column: publisher_posts.visibility
+[SQL: SELECT publisher_posts.id AS publisher_posts_id, publisher_posts.tenant_slug AS publisher_posts_tenant_slug, publisher_posts.text AS publisher_posts_text, publisher_posts.media_ids AS publisher_posts_media_ids, publisher_posts.page_ids AS publisher_posts_page_ids, publisher_posts.facebook_post_ids AS publisher_posts_facebook_post_ids, publisher_posts.status AS publisher_posts_status, publisher_posts.publish_type AS publisher_posts_publish_type, publisher_posts.publish_time AS publisher_posts_publish_time, publisher_posts.visibility AS publisher_posts_visibility, publisher_posts.error_message AS publisher_posts_error_message, publisher_posts.created_at AS publisher_posts_created_at 
+FROM publisher_posts 
+WHERE publisher_posts.status IN (?, ?) AND publisher_posts.tenant_slug = ?]
+[parameters: ('queued', 'scheduled', 'test')]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\logging\__init__.py", line 1113, in emit
+    stream.write(msg + self.terminator)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 1064-1067: character maps to <undefined>
+Call stack:
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1002, in _bootstrap
+    self._bootstrap_inner()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1045, in _bootstrap_inner
+    self.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 982, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 83, in _worker
+    work_item.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\apscheduler\executors\base.py", line 131, in run_job
+    retval = job.func(*job.args, **job.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 363, in _publish_due_posts
+    logging.getLogger("publisher").exception("Scheduler job error: %s", exc)
+Message: 'Scheduler job error: %s'
+Arguments: (OperationalError('(sqlite3.OperationalError) no such column: publisher_posts.visibility'),)
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlite3.OperationalError: no such column: publisher_posts.visibility
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 335, in _publish_due_posts
+    posts = query.all()
+            ^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2704, in all
+    return self._iter().all()  # type: ignore
+           ^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2857, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2351, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2249, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) no such column: publisher_posts.visibility
+[SQL: SELECT publisher_posts.id AS publisher_posts_id, publisher_posts.tenant_slug AS publisher_posts_tenant_slug, publisher_posts.text AS publisher_posts_text, publisher_posts.media_ids AS publisher_posts_media_ids, publisher_posts.page_ids AS publisher_posts_page_ids, publisher_posts.facebook_post_ids AS publisher_posts_facebook_post_ids, publisher_posts.status AS publisher_posts_status, publisher_posts.publish_type AS publisher_posts_publish_type, publisher_posts.publish_time AS publisher_posts_publish_time, publisher_posts.visibility AS publisher_posts_visibility, publisher_posts.error_message AS publisher_posts_error_message, publisher_posts.created_at AS publisher_posts_created_at 
+FROM publisher_posts 
+WHERE publisher_posts.status IN (?, ?) AND publisher_posts.tenant_slug = ?]
+[parameters: ('queued', 'scheduled', 'test')]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\logging\__init__.py", line 1113, in emit
+    stream.write(msg + self.terminator)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 1064-1067: character maps to <undefined>
+Call stack:
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1002, in _bootstrap
+    self._bootstrap_inner()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1045, in _bootstrap_inner
+    self.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 982, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 83, in _worker
+    work_item.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\apscheduler\executors\base.py", line 131, in run_job
+    retval = job.func(*job.args, **job.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 363, in _publish_due_posts
+    logging.getLogger("publisher").exception("Scheduler job error: %s", exc)
+Message: 'Scheduler job error: %s'
+Arguments: (OperationalError('(sqlite3.OperationalError) no such column: publisher_posts.visibility'),)
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlite3.OperationalError: no such column: publisher_posts.visibility
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 335, in _publish_due_posts
+    posts = query.all()
+            ^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2704, in all
+    return self._iter().all()  # type: ignore
+           ^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2857, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2351, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2249, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) no such column: publisher_posts.visibility
+[SQL: SELECT publisher_posts.id AS publisher_posts_id, publisher_posts.tenant_slug AS publisher_posts_tenant_slug, publisher_posts.text AS publisher_posts_text, publisher_posts.media_ids AS publisher_posts_media_ids, publisher_posts.page_ids AS publisher_posts_page_ids, publisher_posts.facebook_post_ids AS publisher_posts_facebook_post_ids, publisher_posts.status AS publisher_posts_status, publisher_posts.publish_type AS publisher_posts_publish_type, publisher_posts.publish_time AS publisher_posts_publish_time, publisher_posts.visibility AS publisher_posts_visibility, publisher_posts.error_message AS publisher_posts_error_message, publisher_posts.created_at AS publisher_posts_created_at 
+FROM publisher_posts 
+WHERE publisher_posts.status IN (?, ?) AND publisher_posts.tenant_slug = ?]
+[parameters: ('queued', 'scheduled', 'test')]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\logging\__init__.py", line 1113, in emit
+    stream.write(msg + self.terminator)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 1064-1067: character maps to <undefined>
+Call stack:
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1002, in _bootstrap
+    self._bootstrap_inner()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1045, in _bootstrap_inner
+    self.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 982, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 83, in _worker
+    work_item.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\apscheduler\executors\base.py", line 131, in run_job
+    retval = job.func(*job.args, **job.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 363, in _publish_due_posts
+    logging.getLogger("publisher").exception("Scheduler job error: %s", exc)
+Message: 'Scheduler job error: %s'
+Arguments: (OperationalError('(sqlite3.OperationalError) no such column: publisher_posts.visibility'),)
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlite3.OperationalError: no such column: publisher_posts.visibility
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 335, in _publish_due_posts
+    posts = query.all()
+            ^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2704, in all
+    return self._iter().all()  # type: ignore
+           ^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2857, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2351, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2249, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) no such column: publisher_posts.visibility
+[SQL: SELECT publisher_posts.id AS publisher_posts_id, publisher_posts.tenant_slug AS publisher_posts_tenant_slug, publisher_posts.text AS publisher_posts_text, publisher_posts.media_ids AS publisher_posts_media_ids, publisher_posts.page_ids AS publisher_posts_page_ids, publisher_posts.facebook_post_ids AS publisher_posts_facebook_post_ids, publisher_posts.status AS publisher_posts_status, publisher_posts.publish_type AS publisher_posts_publish_type, publisher_posts.publish_time AS publisher_posts_publish_time, publisher_posts.visibility AS publisher_posts_visibility, publisher_posts.error_message AS publisher_posts_error_message, publisher_posts.created_at AS publisher_posts_created_at 
+FROM publisher_posts 
+WHERE publisher_posts.status IN (?, ?) AND publisher_posts.tenant_slug = ?]
+[parameters: ('queued', 'scheduled', 'test')]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\logging\__init__.py", line 1113, in emit
+    stream.write(msg + self.terminator)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 1064-1067: character maps to <undefined>
+Call stack:
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1002, in _bootstrap
+    self._bootstrap_inner()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1045, in _bootstrap_inner
+    self.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 982, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 83, in _worker
+    work_item.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\apscheduler\executors\base.py", line 131, in run_job
+    retval = job.func(*job.args, **job.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 363, in _publish_due_posts
+    logging.getLogger("publisher").exception("Scheduler job error: %s", exc)
+Message: 'Scheduler job error: %s'
+Arguments: (OperationalError('(sqlite3.OperationalError) no such column: publisher_posts.visibility'),)
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlite3.OperationalError: no such column: publisher_posts.visibility
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 335, in _publish_due_posts
+    posts = query.all()
+            ^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2704, in all
+    return self._iter().all()  # type: ignore
+           ^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2857, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2351, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2249, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) no such column: publisher_posts.visibility
+[SQL: SELECT publisher_posts.id AS publisher_posts_id, publisher_posts.tenant_slug AS publisher_posts_tenant_slug, publisher_posts.text AS publisher_posts_text, publisher_posts.media_ids AS publisher_posts_media_ids, publisher_posts.page_ids AS publisher_posts_page_ids, publisher_posts.facebook_post_ids AS publisher_posts_facebook_post_ids, publisher_posts.status AS publisher_posts_status, publisher_posts.publish_type AS publisher_posts_publish_type, publisher_posts.publish_time AS publisher_posts_publish_time, publisher_posts.visibility AS publisher_posts_visibility, publisher_posts.error_message AS publisher_posts_error_message, publisher_posts.created_at AS publisher_posts_created_at 
+FROM publisher_posts 
+WHERE publisher_posts.status IN (?, ?) AND publisher_posts.tenant_slug = ?]
+[parameters: ('queued', 'scheduled', 'test')]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\logging\__init__.py", line 1113, in emit
+    stream.write(msg + self.terminator)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 1064-1067: character maps to <undefined>
+Call stack:
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1002, in _bootstrap
+    self._bootstrap_inner()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1045, in _bootstrap_inner
+    self.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 982, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 83, in _worker
+    work_item.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\apscheduler\executors\base.py", line 131, in run_job
+    retval = job.func(*job.args, **job.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 363, in _publish_due_posts
+    logging.getLogger("publisher").exception("Scheduler job error: %s", exc)
+Message: 'Scheduler job error: %s'
+Arguments: (OperationalError('(sqlite3.OperationalError) no such column: publisher_posts.visibility'),)
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlite3.OperationalError: no such column: publisher_posts.visibility
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 335, in _publish_due_posts
+    posts = query.all()
+            ^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2704, in all
+    return self._iter().all()  # type: ignore
+           ^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2857, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2351, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2249, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) no such column: publisher_posts.visibility
+[SQL: SELECT publisher_posts.id AS publisher_posts_id, publisher_posts.tenant_slug AS publisher_posts_tenant_slug, publisher_posts.text AS publisher_posts_text, publisher_posts.media_ids AS publisher_posts_media_ids, publisher_posts.page_ids AS publisher_posts_page_ids, publisher_posts.facebook_post_ids AS publisher_posts_facebook_post_ids, publisher_posts.status AS publisher_posts_status, publisher_posts.publish_type AS publisher_posts_publish_type, publisher_posts.publish_time AS publisher_posts_publish_time, publisher_posts.visibility AS publisher_posts_visibility, publisher_posts.error_message AS publisher_posts_error_message, publisher_posts.created_at AS publisher_posts_created_at 
+FROM publisher_posts 
+WHERE publisher_posts.status IN (?, ?) AND publisher_posts.tenant_slug = ?]
+[parameters: ('queued', 'scheduled', 'test')]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\logging\__init__.py", line 1113, in emit
+    stream.write(msg + self.terminator)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 1064-1067: character maps to <undefined>
+Call stack:
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1002, in _bootstrap
+    self._bootstrap_inner()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1045, in _bootstrap_inner
+    self.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 982, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 83, in _worker
+    work_item.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\apscheduler\executors\base.py", line 131, in run_job
+    retval = job.func(*job.args, **job.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 363, in _publish_due_posts
+    logging.getLogger("publisher").exception("Scheduler job error: %s", exc)
+Message: 'Scheduler job error: %s'
+Arguments: (OperationalError('(sqlite3.OperationalError) no such column: publisher_posts.visibility'),)
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlite3.OperationalError: no such column: publisher_posts.visibility
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 335, in _publish_due_posts
+    posts = query.all()
+            ^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2704, in all
+    return self._iter().all()  # type: ignore
+           ^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2857, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2351, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2249, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) no such column: publisher_posts.visibility
+[SQL: SELECT publisher_posts.id AS publisher_posts_id, publisher_posts.tenant_slug AS publisher_posts_tenant_slug, publisher_posts.text AS publisher_posts_text, publisher_posts.media_ids AS publisher_posts_media_ids, publisher_posts.page_ids AS publisher_posts_page_ids, publisher_posts.facebook_post_ids AS publisher_posts_facebook_post_ids, publisher_posts.status AS publisher_posts_status, publisher_posts.publish_type AS publisher_posts_publish_type, publisher_posts.publish_time AS publisher_posts_publish_time, publisher_posts.visibility AS publisher_posts_visibility, publisher_posts.error_message AS publisher_posts_error_message, publisher_posts.created_at AS publisher_posts_created_at 
+FROM publisher_posts 
+WHERE publisher_posts.status IN (?, ?) AND publisher_posts.tenant_slug = ?]
+[parameters: ('queued', 'scheduled', 'test')]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\logging\__init__.py", line 1113, in emit
+    stream.write(msg + self.terminator)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 1064-1067: character maps to <undefined>
+Call stack:
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1002, in _bootstrap
+    self._bootstrap_inner()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1045, in _bootstrap_inner
+    self.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 982, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 83, in _worker
+    work_item.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\apscheduler\executors\base.py", line 131, in run_job
+    retval = job.func(*job.args, **job.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 363, in _publish_due_posts
+    logging.getLogger("publisher").exception("Scheduler job error: %s", exc)
+Message: 'Scheduler job error: %s'
+Arguments: (OperationalError('(sqlite3.OperationalError) no such column: publisher_posts.visibility'),)
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlite3.OperationalError: no such column: publisher_posts.visibility
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 335, in _publish_due_posts
+    posts = query.all()
+            ^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2704, in all
+    return self._iter().all()  # type: ignore
+           ^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2857, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2351, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2249, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) no such column: publisher_posts.visibility
+[SQL: SELECT publisher_posts.id AS publisher_posts_id, publisher_posts.tenant_slug AS publisher_posts_tenant_slug, publisher_posts.text AS publisher_posts_text, publisher_posts.media_ids AS publisher_posts_media_ids, publisher_posts.page_ids AS publisher_posts_page_ids, publisher_posts.facebook_post_ids AS publisher_posts_facebook_post_ids, publisher_posts.status AS publisher_posts_status, publisher_posts.publish_type AS publisher_posts_publish_type, publisher_posts.publish_time AS publisher_posts_publish_time, publisher_posts.visibility AS publisher_posts_visibility, publisher_posts.error_message AS publisher_posts_error_message, publisher_posts.created_at AS publisher_posts_created_at 
+FROM publisher_posts 
+WHERE publisher_posts.status IN (?, ?) AND publisher_posts.tenant_slug = ?]
+[parameters: ('queued', 'scheduled', 'test')]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\logging\__init__.py", line 1113, in emit
+    stream.write(msg + self.terminator)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 1064-1067: character maps to <undefined>
+Call stack:
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1002, in _bootstrap
+    self._bootstrap_inner()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1045, in _bootstrap_inner
+    self.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 982, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 83, in _worker
+    work_item.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\apscheduler\executors\base.py", line 131, in run_job
+    retval = job.func(*job.args, **job.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 363, in _publish_due_posts
+    logging.getLogger("publisher").exception("Scheduler job error: %s", exc)
+Message: 'Scheduler job error: %s'
+Arguments: (OperationalError('(sqlite3.OperationalError) no such column: publisher_posts.visibility'),)
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlite3.OperationalError: no such column: publisher_posts.visibility
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 335, in _publish_due_posts
+    posts = query.all()
+            ^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2704, in all
+    return self._iter().all()  # type: ignore
+           ^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2857, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2351, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2249, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) no such column: publisher_posts.visibility
+[SQL: SELECT publisher_posts.id AS publisher_posts_id, publisher_posts.tenant_slug AS publisher_posts_tenant_slug, publisher_posts.text AS publisher_posts_text, publisher_posts.media_ids AS publisher_posts_media_ids, publisher_posts.page_ids AS publisher_posts_page_ids, publisher_posts.facebook_post_ids AS publisher_posts_facebook_post_ids, publisher_posts.status AS publisher_posts_status, publisher_posts.publish_type AS publisher_posts_publish_type, publisher_posts.publish_time AS publisher_posts_publish_time, publisher_posts.visibility AS publisher_posts_visibility, publisher_posts.error_message AS publisher_posts_error_message, publisher_posts.created_at AS publisher_posts_created_at 
+FROM publisher_posts 
+WHERE publisher_posts.status IN (?, ?) AND publisher_posts.tenant_slug = ?]
+[parameters: ('queued', 'scheduled', 'test')]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\logging\__init__.py", line 1113, in emit
+    stream.write(msg + self.terminator)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 1064-1067: character maps to <undefined>
+Call stack:
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1002, in _bootstrap
+    self._bootstrap_inner()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1045, in _bootstrap_inner
+    self.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 982, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 83, in _worker
+    work_item.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\apscheduler\executors\base.py", line 131, in run_job
+    retval = job.func(*job.args, **job.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 363, in _publish_due_posts
+    logging.getLogger("publisher").exception("Scheduler job error: %s", exc)
+Message: 'Scheduler job error: %s'
+Arguments: (OperationalError('(sqlite3.OperationalError) no such column: publisher_posts.visibility'),)
+Run time of job "_start_ai_agent_scheduler.<locals>._run_ai_agent_workflows (trigger: interval[0:00:05], next run at: 2026-07-10 21:08:53 +03)" was missed by 0:00:01.717077
+Run time of job "_publish_due_posts (trigger: interval[0:01:00], next run at: 2026-07-10 21:09:14 +03)" was missed by 0:00:57.318204
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlite3.OperationalError: no such column: publisher_posts.visibility
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 335, in _publish_due_posts
+    posts = query.all()
+            ^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2704, in all
+    return self._iter().all()  # type: ignore
+           ^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2857, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2351, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2249, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) no such column: publisher_posts.visibility
+[SQL: SELECT publisher_posts.id AS publisher_posts_id, publisher_posts.tenant_slug AS publisher_posts_tenant_slug, publisher_posts.text AS publisher_posts_text, publisher_posts.media_ids AS publisher_posts_media_ids, publisher_posts.page_ids AS publisher_posts_page_ids, publisher_posts.facebook_post_ids AS publisher_posts_facebook_post_ids, publisher_posts.status AS publisher_posts_status, publisher_posts.publish_type AS publisher_posts_publish_type, publisher_posts.publish_time AS publisher_posts_publish_time, publisher_posts.visibility AS publisher_posts_visibility, publisher_posts.error_message AS publisher_posts_error_message, publisher_posts.created_at AS publisher_posts_created_at 
+FROM publisher_posts 
+WHERE publisher_posts.status IN (?, ?) AND publisher_posts.tenant_slug = ?]
+[parameters: ('queued', 'scheduled', 'test')]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\logging\__init__.py", line 1113, in emit
+    stream.write(msg + self.terminator)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 1064-1067: character maps to <undefined>
+Call stack:
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1002, in _bootstrap
+    self._bootstrap_inner()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1045, in _bootstrap_inner
+    self.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 982, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 83, in _worker
+    work_item.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\apscheduler\executors\base.py", line 131, in run_job
+    retval = job.func(*job.args, **job.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 363, in _publish_due_posts
+    logging.getLogger("publisher").exception("Scheduler job error: %s", exc)
+Message: 'Scheduler job error: %s'
+Arguments: (OperationalError('(sqlite3.OperationalError) no such column: publisher_posts.visibility'),)
+Run time of job "_start_social_ai_scheduler.<locals>._run_social_ai_scheduled (trigger: interval[0:01:00], next run at: 2026-07-10 21:09:18 +03)" was missed by 0:00:57.306156
+Run time of job "_start_ai_assistant_audit_scheduler.<locals>._run_ai_assistant_audits (trigger: interval[0:01:00], next run at: 2026-07-10 21:09:18 +03)" was missed by 0:00:57.310380
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlite3.OperationalError: no such column: publisher_posts.visibility
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 335, in _publish_due_posts
+    posts = query.all()
+            ^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2704, in all
+    return self._iter().all()  # type: ignore
+           ^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2857, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2351, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2249, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) no such column: publisher_posts.visibility
+[SQL: SELECT publisher_posts.id AS publisher_posts_id, publisher_posts.tenant_slug AS publisher_posts_tenant_slug, publisher_posts.text AS publisher_posts_text, publisher_posts.media_ids AS publisher_posts_media_ids, publisher_posts.page_ids AS publisher_posts_page_ids, publisher_posts.facebook_post_ids AS publisher_posts_facebook_post_ids, publisher_posts.status AS publisher_posts_status, publisher_posts.publish_type AS publisher_posts_publish_type, publisher_posts.publish_time AS publisher_posts_publish_time, publisher_posts.visibility AS publisher_posts_visibility, publisher_posts.error_message AS publisher_posts_error_message, publisher_posts.created_at AS publisher_posts_created_at 
+FROM publisher_posts 
+WHERE publisher_posts.status IN (?, ?) AND publisher_posts.tenant_slug = ?]
+[parameters: ('queued', 'scheduled', 'test')]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\logging\__init__.py", line 1113, in emit
+    stream.write(msg + self.terminator)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 1064-1067: character maps to <undefined>
+Call stack:
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1002, in _bootstrap
+    self._bootstrap_inner()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1045, in _bootstrap_inner
+    self.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 982, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 83, in _worker
+    work_item.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\apscheduler\executors\base.py", line 131, in run_job
+    retval = job.func(*job.args, **job.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 363, in _publish_due_posts
+    logging.getLogger("publisher").exception("Scheduler job error: %s", exc)
+Message: 'Scheduler job error: %s'
+Arguments: (OperationalError('(sqlite3.OperationalError) no such column: publisher_posts.visibility'),)
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlite3.OperationalError: no such column: publisher_posts.visibility
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 335, in _publish_due_posts
+    posts = query.all()
+            ^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2704, in all
+    return self._iter().all()  # type: ignore
+           ^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2857, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2351, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2249, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) no such column: publisher_posts.visibility
+[SQL: SELECT publisher_posts.id AS publisher_posts_id, publisher_posts.tenant_slug AS publisher_posts_tenant_slug, publisher_posts.text AS publisher_posts_text, publisher_posts.media_ids AS publisher_posts_media_ids, publisher_posts.page_ids AS publisher_posts_page_ids, publisher_posts.facebook_post_ids AS publisher_posts_facebook_post_ids, publisher_posts.status AS publisher_posts_status, publisher_posts.publish_type AS publisher_posts_publish_type, publisher_posts.publish_time AS publisher_posts_publish_time, publisher_posts.visibility AS publisher_posts_visibility, publisher_posts.error_message AS publisher_posts_error_message, publisher_posts.created_at AS publisher_posts_created_at 
+FROM publisher_posts 
+WHERE publisher_posts.status IN (?, ?) AND publisher_posts.tenant_slug = ?]
+[parameters: ('queued', 'scheduled', 'test')]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\logging\__init__.py", line 1113, in emit
+    stream.write(msg + self.terminator)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 1064-1067: character maps to <undefined>
+Call stack:
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1002, in _bootstrap
+    self._bootstrap_inner()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1045, in _bootstrap_inner
+    self.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 982, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 83, in _worker
+    work_item.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\apscheduler\executors\base.py", line 131, in run_job
+    retval = job.func(*job.args, **job.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 363, in _publish_due_posts
+    logging.getLogger("publisher").exception("Scheduler job error: %s", exc)
+Message: 'Scheduler job error: %s'
+Arguments: (OperationalError('(sqlite3.OperationalError) no such column: publisher_posts.visibility'),)
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlite3.OperationalError: no such column: publisher_posts.visibility
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 335, in _publish_due_posts
+    posts = query.all()
+            ^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2704, in all
+    return self._iter().all()  # type: ignore
+           ^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2857, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2351, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2249, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) no such column: publisher_posts.visibility
+[SQL: SELECT publisher_posts.id AS publisher_posts_id, publisher_posts.tenant_slug AS publisher_posts_tenant_slug, publisher_posts.text AS publisher_posts_text, publisher_posts.media_ids AS publisher_posts_media_ids, publisher_posts.page_ids AS publisher_posts_page_ids, publisher_posts.facebook_post_ids AS publisher_posts_facebook_post_ids, publisher_posts.status AS publisher_posts_status, publisher_posts.publish_type AS publisher_posts_publish_type, publisher_posts.publish_time AS publisher_posts_publish_time, publisher_posts.visibility AS publisher_posts_visibility, publisher_posts.error_message AS publisher_posts_error_message, publisher_posts.created_at AS publisher_posts_created_at 
+FROM publisher_posts 
+WHERE publisher_posts.status IN (?, ?) AND publisher_posts.tenant_slug = ?]
+[parameters: ('queued', 'scheduled', 'test')]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\logging\__init__.py", line 1113, in emit
+    stream.write(msg + self.terminator)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 1064-1067: character maps to <undefined>
+Call stack:
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1002, in _bootstrap
+    self._bootstrap_inner()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1045, in _bootstrap_inner
+    self.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 982, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 83, in _worker
+    work_item.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\apscheduler\executors\base.py", line 131, in run_job
+    retval = job.func(*job.args, **job.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 363, in _publish_due_posts
+    logging.getLogger("publisher").exception("Scheduler job error: %s", exc)
+Message: 'Scheduler job error: %s'
+Arguments: (OperationalError('(sqlite3.OperationalError) no such column: publisher_posts.visibility'),)
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlite3.OperationalError: no such column: publisher_posts.visibility
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 335, in _publish_due_posts
+    posts = query.all()
+            ^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2704, in all
+    return self._iter().all()  # type: ignore
+           ^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2857, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2351, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2249, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) no such column: publisher_posts.visibility
+[SQL: SELECT publisher_posts.id AS publisher_posts_id, publisher_posts.tenant_slug AS publisher_posts_tenant_slug, publisher_posts.text AS publisher_posts_text, publisher_posts.media_ids AS publisher_posts_media_ids, publisher_posts.page_ids AS publisher_posts_page_ids, publisher_posts.facebook_post_ids AS publisher_posts_facebook_post_ids, publisher_posts.status AS publisher_posts_status, publisher_posts.publish_type AS publisher_posts_publish_type, publisher_posts.publish_time AS publisher_posts_publish_time, publisher_posts.visibility AS publisher_posts_visibility, publisher_posts.error_message AS publisher_posts_error_message, publisher_posts.created_at AS publisher_posts_created_at 
+FROM publisher_posts 
+WHERE publisher_posts.status IN (?, ?) AND publisher_posts.tenant_slug = ?]
+[parameters: ('queued', 'scheduled', 'test')]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\logging\__init__.py", line 1113, in emit
+    stream.write(msg + self.terminator)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 1064-1067: character maps to <undefined>
+Call stack:
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1002, in _bootstrap
+    self._bootstrap_inner()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1045, in _bootstrap_inner
+    self.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 982, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 83, in _worker
+    work_item.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\apscheduler\executors\base.py", line 131, in run_job
+    retval = job.func(*job.args, **job.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 363, in _publish_due_posts
+    logging.getLogger("publisher").exception("Scheduler job error: %s", exc)
+Message: 'Scheduler job error: %s'
+Arguments: (OperationalError('(sqlite3.OperationalError) no such column: publisher_posts.visibility'),)
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlite3.OperationalError: no such column: publisher_posts.visibility
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 335, in _publish_due_posts
+    posts = query.all()
+            ^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2704, in all
+    return self._iter().all()  # type: ignore
+           ^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2857, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2351, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2249, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) no such column: publisher_posts.visibility
+[SQL: SELECT publisher_posts.id AS publisher_posts_id, publisher_posts.tenant_slug AS publisher_posts_tenant_slug, publisher_posts.text AS publisher_posts_text, publisher_posts.media_ids AS publisher_posts_media_ids, publisher_posts.page_ids AS publisher_posts_page_ids, publisher_posts.facebook_post_ids AS publisher_posts_facebook_post_ids, publisher_posts.status AS publisher_posts_status, publisher_posts.publish_type AS publisher_posts_publish_type, publisher_posts.publish_time AS publisher_posts_publish_time, publisher_posts.visibility AS publisher_posts_visibility, publisher_posts.error_message AS publisher_posts_error_message, publisher_posts.created_at AS publisher_posts_created_at 
+FROM publisher_posts 
+WHERE publisher_posts.status IN (?, ?) AND publisher_posts.tenant_slug = ?]
+[parameters: ('queued', 'scheduled', 'test')]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\logging\__init__.py", line 1113, in emit
+    stream.write(msg + self.terminator)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 1064-1067: character maps to <undefined>
+Call stack:
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1002, in _bootstrap
+    self._bootstrap_inner()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1045, in _bootstrap_inner
+    self.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 982, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 83, in _worker
+    work_item.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\apscheduler\executors\base.py", line 131, in run_job
+    retval = job.func(*job.args, **job.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 363, in _publish_due_posts
+    logging.getLogger("publisher").exception("Scheduler job error: %s", exc)
+Message: 'Scheduler job error: %s'
+Arguments: (OperationalError('(sqlite3.OperationalError) no such column: publisher_posts.visibility'),)
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlite3.OperationalError: no such column: publisher_posts.visibility
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 335, in _publish_due_posts
+    posts = query.all()
+            ^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2704, in all
+    return self._iter().all()  # type: ignore
+           ^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2857, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2351, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2249, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) no such column: publisher_posts.visibility
+[SQL: SELECT publisher_posts.id AS publisher_posts_id, publisher_posts.tenant_slug AS publisher_posts_tenant_slug, publisher_posts.text AS publisher_posts_text, publisher_posts.media_ids AS publisher_posts_media_ids, publisher_posts.page_ids AS publisher_posts_page_ids, publisher_posts.facebook_post_ids AS publisher_posts_facebook_post_ids, publisher_posts.status AS publisher_posts_status, publisher_posts.publish_type AS publisher_posts_publish_type, publisher_posts.publish_time AS publisher_posts_publish_time, publisher_posts.visibility AS publisher_posts_visibility, publisher_posts.error_message AS publisher_posts_error_message, publisher_posts.created_at AS publisher_posts_created_at 
+FROM publisher_posts 
+WHERE publisher_posts.status IN (?, ?) AND publisher_posts.tenant_slug = ?]
+[parameters: ('queued', 'scheduled', 'test')]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\logging\__init__.py", line 1113, in emit
+    stream.write(msg + self.terminator)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 1064-1067: character maps to <undefined>
+Call stack:
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1002, in _bootstrap
+    self._bootstrap_inner()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1045, in _bootstrap_inner
+    self.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 982, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 83, in _worker
+    work_item.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\apscheduler\executors\base.py", line 131, in run_job
+    retval = job.func(*job.args, **job.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 363, in _publish_due_posts
+    logging.getLogger("publisher").exception("Scheduler job error: %s", exc)
+Message: 'Scheduler job error: %s'
+Arguments: (OperationalError('(sqlite3.OperationalError) no such column: publisher_posts.visibility'),)
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlite3.OperationalError: no such column: publisher_posts.visibility
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 335, in _publish_due_posts
+    posts = query.all()
+            ^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2704, in all
+    return self._iter().all()  # type: ignore
+           ^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2857, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2351, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2249, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) no such column: publisher_posts.visibility
+[SQL: SELECT publisher_posts.id AS publisher_posts_id, publisher_posts.tenant_slug AS publisher_posts_tenant_slug, publisher_posts.text AS publisher_posts_text, publisher_posts.media_ids AS publisher_posts_media_ids, publisher_posts.page_ids AS publisher_posts_page_ids, publisher_posts.facebook_post_ids AS publisher_posts_facebook_post_ids, publisher_posts.status AS publisher_posts_status, publisher_posts.publish_type AS publisher_posts_publish_type, publisher_posts.publish_time AS publisher_posts_publish_time, publisher_posts.visibility AS publisher_posts_visibility, publisher_posts.error_message AS publisher_posts_error_message, publisher_posts.created_at AS publisher_posts_created_at 
+FROM publisher_posts 
+WHERE publisher_posts.status IN (?, ?) AND publisher_posts.tenant_slug = ?]
+[parameters: ('queued', 'scheduled', 'test')]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\logging\__init__.py", line 1113, in emit
+    stream.write(msg + self.terminator)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 1064-1067: character maps to <undefined>
+Call stack:
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1002, in _bootstrap
+    self._bootstrap_inner()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1045, in _bootstrap_inner
+    self.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 982, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 83, in _worker
+    work_item.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\apscheduler\executors\base.py", line 131, in run_job
+    retval = job.func(*job.args, **job.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 363, in _publish_due_posts
+    logging.getLogger("publisher").exception("Scheduler job error: %s", exc)
+Message: 'Scheduler job error: %s'
+Arguments: (OperationalError('(sqlite3.OperationalError) no such column: publisher_posts.visibility'),)
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlite3.OperationalError: no such column: publisher_posts.visibility
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 335, in _publish_due_posts
+    posts = query.all()
+            ^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2704, in all
+    return self._iter().all()  # type: ignore
+           ^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2857, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2351, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2249, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) no such column: publisher_posts.visibility
+[SQL: SELECT publisher_posts.id AS publisher_posts_id, publisher_posts.tenant_slug AS publisher_posts_tenant_slug, publisher_posts.text AS publisher_posts_text, publisher_posts.media_ids AS publisher_posts_media_ids, publisher_posts.page_ids AS publisher_posts_page_ids, publisher_posts.facebook_post_ids AS publisher_posts_facebook_post_ids, publisher_posts.status AS publisher_posts_status, publisher_posts.publish_type AS publisher_posts_publish_type, publisher_posts.publish_time AS publisher_posts_publish_time, publisher_posts.visibility AS publisher_posts_visibility, publisher_posts.error_message AS publisher_posts_error_message, publisher_posts.created_at AS publisher_posts_created_at 
+FROM publisher_posts 
+WHERE publisher_posts.status IN (?, ?) AND publisher_posts.tenant_slug = ?]
+[parameters: ('queued', 'scheduled', 'test')]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\logging\__init__.py", line 1113, in emit
+    stream.write(msg + self.terminator)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 1064-1067: character maps to <undefined>
+Call stack:
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1002, in _bootstrap
+    self._bootstrap_inner()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1045, in _bootstrap_inner
+    self.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 982, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 83, in _worker
+    work_item.run()
+  File "C:\Users\msi\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\venv\Lib\site-packages\apscheduler\executors\base.py", line 131, in run_job
+    retval = job.func(*job.args, **job.kwargs)
+  File "C:\Users\msi\Desktop\\u0645\u062c\u0644\u062f \u062c\u062f\u064a\u062f (2)\accounting_system\modules\publisher\services\scheduler_service.py", line 363, in _publish_due_posts
+    logging.getLogger("publisher").exception("Scheduler job error: %s", exc)
+Message: 'Scheduler job error: %s'
+Arguments: (OperationalError('(sqlite3.OperationalError) no such column: publisher_posts.visibility'),)

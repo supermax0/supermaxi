@@ -7,20 +7,24 @@
 
 <style>
   :root {
-    --exec-bg: #f7f9fc;
+    --exec-bg: #eef2f8;
     --exec-surface: #ffffff;
-    --exec-soft: #f3f6fb;
-    --exec-border: #e6edf5;
-    --exec-text: #101828;
-    --exec-muted: #667085;
-    --exec-blue: #2f80ed;
-    --exec-green: #17b26a;
-    --exec-red: #f04438;
-    --exec-orange: #f79009;
+    --exec-soft: #f6f8fc;
+    --exec-border: #e2e8f0;
+    --exec-text: #0f172a;
+    --exec-muted: #64748b;
+    --exec-blue: #2563eb;
+    --exec-green: #059669;
+    --exec-red: #dc2626;
+    --exec-orange: #d97706;
     --exec-purple: #7c3aed;
-    --exec-cyan: #0ea5e9;
-    --exec-shadow: 0 10px 28px rgba(16, 24, 40, 0.06);
-    --exec-shadow-soft: 0 8px 18px rgba(16, 24, 40, 0.045);
+    --exec-cyan: #0284c7;
+    --exec-teal: #0d9488;
+    --exec-shadow: 0 4px 24px rgba(15, 23, 42, 0.06);
+    --exec-shadow-hover: 0 12px 32px rgba(15, 23, 42, 0.1);
+    --exec-shadow-soft: 0 2px 10px rgba(15, 23, 42, 0.04);
+    --exec-radius: 18px;
+    --exec-radius-sm: 14px;
   }
 
   .topbar { display: none !important; }
@@ -31,30 +35,41 @@
     padding: 0 !important;
     overflow: visible !important;
     background:
-      radial-gradient(circle at 4% 86%, rgba(124, 58, 237, 0.08), transparent 22%),
-      radial-gradient(circle at 92% 8%, rgba(14, 165, 233, 0.08), transparent 24%),
+      radial-gradient(ellipse 80% 50% at 0% 100%, rgba(124, 58, 237, 0.07), transparent 50%),
+      radial-gradient(ellipse 60% 40% at 100% 0%, rgba(37, 99, 235, 0.08), transparent 45%),
+      radial-gradient(ellipse 40% 30% at 50% 50%, rgba(5, 150, 105, 0.03), transparent 60%),
       var(--exec-bg) !important;
   }
 
   .exec-board {
     direction: rtl;
     min-height: 100vh;
-    padding: 0 10px 18px;
+    padding: 12px 14px 22px;
     color: var(--exec-text);
     font-family: "Tajawal", sans-serif;
     overflow: visible;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.45s ease, transform 0.45s ease;
+  }
+
+  .exec-board.is-ready {
+    opacity: 1;
+    transform: none;
   }
 
   .exec-shell {
-    max-width: 1700px;
-    min-height: calc(100vh - 18px);
+    max-width: 1680px;
+    min-height: calc(100vh - 34px);
     margin: 0 auto;
-    border: 1px solid rgba(230, 237, 245, 0.82);
-    border-radius: 18px;
-    background: rgba(255, 255, 255, 0.72);
-    box-shadow: 0 22px 70px rgba(16, 24, 40, 0.08);
-    backdrop-filter: blur(14px);
-    padding: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.65);
+    border-radius: 22px;
+    background: linear-gradient(165deg, rgba(255, 255, 255, 0.92) 0%, rgba(248, 250, 252, 0.88) 100%);
+    box-shadow:
+      0 0 0 1px rgba(226, 232, 240, 0.5),
+      0 24px 64px rgba(15, 23, 42, 0.07);
+    backdrop-filter: blur(20px);
+    padding: 18px 18px 16px;
     overflow: visible;
   }
 
@@ -62,68 +77,106 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 12px;
+    gap: 14px;
+    margin-bottom: 16px;
     flex-wrap: wrap;
+    padding-bottom: 14px;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.85);
   }
 
   .exec-title-block {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 14px;
+    flex-wrap: wrap;
   }
 
   .exec-title-block h1 {
     margin: 0;
-    font-size: 20px;
+    font-size: clamp(18px, 2vw, 22px);
     font-weight: 900;
-    color: #111827;
+    color: #0f172a;
+    letter-spacing: -0.02em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .exec-title-block h1 .crown-badge {
+    display: inline-grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    background: linear-gradient(145deg, #fde68a, #f59e0b);
+    color: #fff;
+    font-size: 16px;
+    box-shadow: 0 6px 16px rgba(245, 158, 11, 0.35);
   }
 
   .exec-back-link {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 8px 14px;
+    gap: 7px;
+    padding: 9px 16px;
     border-radius: 999px;
     border: 1px solid var(--exec-border);
     background: #fff;
-    color: #344054;
+    color: #475569;
     font-weight: 800;
     font-size: 12px;
     text-decoration: none;
     box-shadow: var(--exec-shadow-soft);
+    transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.2s;
   }
 
-  .exec-back-link:hover { background: var(--exec-soft); color: var(--exec-blue); }
+  .exec-back-link:hover {
+    background: #f8fafc;
+    color: var(--exec-blue);
+    border-color: #bfdbfe;
+    transform: translateX(-2px);
+  }
+
+  .exec-meta-pills {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
 
   .exec-pill {
-    height: 36px;
+    height: 38px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 9px;
+    gap: 8px;
     border-radius: 999px;
     border: 1px solid var(--exec-border);
-    background: rgba(255, 255, 255, 0.88);
-    color: #1f2937;
+    background: #fff;
+    color: #334155;
     box-shadow: var(--exec-shadow-soft);
-    padding: 0 14px;
+    padding: 0 15px;
     font-weight: 800;
     font-size: 12px;
     white-space: nowrap;
   }
 
+  .exec-pill i { color: var(--exec-muted); font-size: 13px; }
+
+  #execRefreshPill.is-loading {
+    border-color: #bfdbfe;
+    background: #f0f7ff;
+  }
+
   .exec-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 360px;
-    gap: 10px;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    gap: 14px;
   }
 
   .exec-main {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 14px;
     min-width: 0;
   }
 
@@ -131,88 +184,120 @@
     display: grid;
     grid-template-rows: auto auto auto;
     align-content: start;
-    gap: 10px;
+    gap: 14px;
     min-width: 0;
   }
 
   .kpi-row {
     display: grid;
     grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 10px;
+    gap: 12px;
   }
 
   .exec-card {
     background: var(--exec-surface);
     border: 1px solid var(--exec-border);
-    border-radius: 16px;
+    border-radius: var(--exec-radius);
     box-shadow: var(--exec-shadow);
     position: relative;
     overflow: hidden;
+    transition: box-shadow 0.25s ease, transform 0.25s ease, border-color 0.25s ease;
+  }
+
+  .exec-card:hover {
+    box-shadow: var(--exec-shadow-hover);
+    transform: translateY(-2px);
+    border-color: #cbd5e1;
   }
 
   .kpi-card {
-    min-height: 108px;
-    padding: 12px 12px 9px;
+    min-height: 118px;
+    padding: 14px 14px 11px;
     display: grid;
     grid-template-rows: auto auto 1fr;
-    gap: 3px;
+    gap: 4px;
   }
+
+  .kpi-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 3px;
+    border-radius: var(--exec-radius) var(--exec-radius) 0 0;
+    opacity: 0.9;
+  }
+
+  .kpi-card--purple::before { background: linear-gradient(90deg, #a78bfa, #7c3aed); }
+  .kpi-card--green::before { background: linear-gradient(90deg, #34d399, #059669); }
+  .kpi-card--blue::before { background: linear-gradient(90deg, #60a5fa, #2563eb); }
+  .kpi-card--orange::before { background: linear-gradient(90deg, #fbbf24, #d97706); }
+  .kpi-card--red::before { background: linear-gradient(90deg, #f87171, #dc2626); }
+  .kpi-card--teal::before { background: linear-gradient(90deg, #2dd4bf, #0d9488); }
 
   .kpi-top {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 8px;
   }
 
   .kpi-title {
-    color: #1f2937;
-    font-weight: 900;
-    font-size: 12px;
-    line-height: 1.2;
+    color: #475569;
+    font-weight: 800;
+    font-size: 11.5px;
+    line-height: 1.35;
+    padding-top: 2px;
   }
 
   .kpi-icon {
-    width: 38px;
-    height: 38px;
-    border-radius: 13px;
+    width: 40px;
+    height: 40px;
+    border-radius: 14px;
     display: grid;
     place-items: center;
     color: #fff;
     font-size: 16px;
-    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.14);
     flex-shrink: 0;
   }
 
-  .kpi-icon.blue { background: linear-gradient(145deg, #38bdf8, #2563eb); }
-  .kpi-icon.green { background: linear-gradient(145deg, #4ade80, #10b981); }
+  .kpi-icon.blue { background: linear-gradient(145deg, #60a5fa, #2563eb); }
+  .kpi-icon.green { background: linear-gradient(145deg, #34d399, #059669); }
   .kpi-icon.purple { background: linear-gradient(145deg, #a78bfa, #7c3aed); }
-  .kpi-icon.orange { background: linear-gradient(145deg, #fbbf24, #f97316); }
-  .kpi-icon.cyan { background: linear-gradient(145deg, #7dd3fc, #0ea5e9); }
-  .kpi-icon.red { background: linear-gradient(145deg, #fca5a5, #ef4444); }
-  .kpi-icon.teal { background: linear-gradient(145deg, #5eead4, #14b8a6); }
+  .kpi-icon.orange { background: linear-gradient(145deg, #fbbf24, #d97706); }
+  .kpi-icon.cyan { background: linear-gradient(145deg, #38bdf8, #0284c7); }
+  .kpi-icon.red { background: linear-gradient(145deg, #f87171, #dc2626); }
+  .kpi-icon.teal { background: linear-gradient(145deg, #2dd4bf, #0d9488); }
 
   .kpi-value {
     direction: rtl;
     text-align: right;
-    font-size: 18px;
+    font-size: clamp(16px, 1.4vw, 20px);
     font-weight: 900;
-    color: #111827;
+    color: #0f172a;
     font-variant-numeric: tabular-nums;
-    line-height: 1.15;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
   }
 
+  .kpi-value.is-negative { color: var(--exec-red); }
+  .kpi-value.is-positive { color: var(--exec-green); }
+
   .kpi-unit {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 800;
     margin-inline-start: 3px;
+    color: var(--exec-muted);
   }
 
   .kpi-sub {
     font-size: 10px;
     font-weight: 800;
     color: var(--exec-muted);
-    margin-top: 2px;
+    margin-top: 1px;
+    line-height: 1.3;
   }
 
   .kpi-bottom {
@@ -220,9 +305,10 @@
     grid-template-columns: 1fr auto;
     align-items: end;
     gap: 8px;
+    margin-top: 2px;
   }
 
-  .kpi-spark { height: 28px; min-width: 0; }
+  .kpi-spark { height: 32px; min-width: 0; opacity: 0.95; }
 
   .trend {
     font-size: 10px;
@@ -236,40 +322,90 @@
   .trend b { font-size: 12px; }
   .trend.up b { color: var(--exec-green); }
   .trend.down b { color: var(--exec-red); }
-  .trend span { color: var(--exec-muted); font-weight: 700; }
+  .trend span { color: var(--exec-muted); font-weight: 700; font-size: 9px; }
 
   .detail-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    gap: 14px;
   }
 
   .detail-card {
-    padding: 13px;
-    min-height: 220px;
+    padding: 16px;
+    min-height: 228px;
     display: flex;
     flex-direction: column;
   }
 
-  .detail-card.bank-card { border-top: 3px solid var(--exec-blue); }
-  .detail-card.credit-card { border-top: 3px solid var(--exec-orange); }
+  .detail-card.bank-card {
+    border-top: none;
+    background: linear-gradient(180deg, #f8fbff 0%, #fff 28%);
+  }
+
+  .detail-card.bank-card::before {
+    content: "";
+    position: absolute;
+    top: 0; right: 0; left: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #60a5fa, #2563eb);
+    border-radius: var(--exec-radius) var(--exec-radius) 0 0;
+  }
+
+  .detail-card.credit-card {
+    border-top: none;
+    background: linear-gradient(180deg, #fffbf5 0%, #fff 28%);
+  }
+
+  .detail-card.credit-card::before {
+    content: "";
+    position: absolute;
+    top: 0; right: 0; left: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #fbbf24, #d97706);
+    border-radius: var(--exec-radius) var(--exec-radius) 0 0;
+  }
 
   .panel-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
   }
 
   .panel-title {
     margin: 0;
-    color: #111827;
+    color: #0f172a;
     font-size: 15px;
     font-weight: 900;
     display: flex;
     align-items: center;
     gap: 8px;
+    letter-spacing: -0.01em;
+  }
+
+  .panel-title-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    font-size: 14px;
+  }
+
+  .panel-title-icon.blue { background: #eff6ff; color: var(--exec-blue); }
+  .panel-title-icon.orange { background: #fff7ed; color: var(--exec-orange); }
+  .panel-title-icon.chart { background: #f5f3ff; color: var(--exec-purple); }
+  .panel-title-icon.health { background: #ecfdf5; color: var(--exec-green); }
+  .panel-title-icon.alert { background: #fff7ed; color: var(--exec-orange); }
+
+  .panel-links {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--exec-muted);
   }
 
   .panel-link {
@@ -277,100 +413,125 @@
     font-weight: 800;
     color: var(--exec-blue);
     text-decoration: none;
+    padding: 4px 8px;
+    border-radius: 8px;
+    transition: background 0.15s;
   }
 
-  .panel-link:hover { text-decoration: underline; }
+  .panel-link:hover { background: #eff6ff; text-decoration: none; }
 
   .detail-stats {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    margin-bottom: 10px;
+    gap: 10px;
+    margin-bottom: 12px;
   }
 
   .detail-stat {
     border: 1px solid var(--exec-border);
-    border-radius: 12px;
-    background: #fbfdff;
-    padding: 9px 10px;
+    border-radius: var(--exec-radius-sm);
+    background: #fff;
+    padding: 10px 12px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .detail-stat:hover {
+    border-color: #cbd5e1;
+    box-shadow: var(--exec-shadow-soft);
   }
 
   .detail-stat-label {
     color: var(--exec-muted);
-    font-size: 11px;
+    font-size: 10.5px;
     font-weight: 800;
-    margin-bottom: 3px;
+    margin-bottom: 4px;
   }
 
   .detail-stat-value {
-    color: #111827;
+    color: #0f172a;
     font-size: 14px;
     font-weight: 900;
     font-variant-numeric: tabular-nums;
+    line-height: 1.2;
   }
+
+  .detail-stat-value.positive { color: var(--exec-green); }
+  .detail-stat-value.negative { color: var(--exec-red); }
 
   .account-list {
     flex: 1;
     overflow-y: auto;
-    max-height: 110px;
+    max-height: 116px;
     display: grid;
-    gap: 6px;
+    gap: 7px;
     margin-top: auto;
+    padding-left: 2px;
   }
+
+  .account-list::-webkit-scrollbar { width: 4px; }
+  .account-list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
 
   .account-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    padding: 7px 10px;
-    border-radius: 10px;
+    padding: 8px 11px;
+    border-radius: 12px;
     background: var(--exec-soft);
+    border: 1px solid transparent;
     font-size: 12px;
     font-weight: 800;
+    transition: background 0.15s, border-color 0.15s;
+  }
+
+  .account-row:hover {
+    background: #fff;
+    border-color: var(--exec-border);
   }
 
   .account-row .acc-name {
     display: flex;
     align-items: center;
-    gap: 6px;
-    color: #344054;
+    gap: 7px;
+    color: #334155;
     min-width: 0;
   }
 
   .account-row .acc-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   .account-row .acc-balance {
-    color: #111827;
+    color: #0f172a;
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
 
   .acc-badge {
     font-size: 9px;
-    padding: 2px 6px;
+    padding: 2px 7px;
     border-radius: 999px;
     font-weight: 900;
   }
 
-  .acc-badge.cash { background: #eafbf0; color: #17b26a; }
-  .acc-badge.bank { background: #eaf1ff; color: #2563eb; }
+  .acc-badge.cash { background: #dcfce7; color: #059669; }
+  .acc-badge.bank { background: #dbeafe; color: #2563eb; }
 
   .overdue-badge {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 3px 8px;
+    gap: 5px;
+    padding: 5px 10px;
     border-radius: 999px;
-    background: #fff0f3;
+    background: #fef2f2;
     color: var(--exec-red);
     font-size: 11px;
     font-weight: 900;
+    border: 1px solid #fecaca;
   }
 
   .credit-split {
     display: flex;
-    gap: 6px;
+    gap: 8px;
     margin-top: 4px;
     flex-wrap: wrap;
   }
@@ -378,54 +539,89 @@
   .split-chip {
     font-size: 10px;
     font-weight: 800;
-    padding: 3px 8px;
+    padding: 4px 10px;
     border-radius: 999px;
     background: var(--exec-soft);
-    color: #475467;
+    color: #475569;
   }
 
-  .split-chip.cash { background: #eafbf0; color: #17b26a; }
-  .split-chip.credit { background: #fff7e6; color: #f79009; }
+  .split-chip.cash { background: #dcfce7; color: #059669; }
+  .split-chip.credit { background: #ffedd5; color: #c2410c; }
 
-  .panel { padding: 13px; }
+  .panel { padding: 16px; }
+
+  .chart-panel {
+    background: linear-gradient(180deg, #fafbff 0%, #fff 35%);
+  }
+
+  .chart-panel::before {
+    content: "";
+    position: absolute;
+    top: 0; right: 0; left: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #a78bfa, #2563eb, #059669);
+    border-radius: var(--exec-radius) var(--exec-radius) 0 0;
+  }
 
   .legend-row {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 18px;
-    margin: 0 0 8px;
+    gap: 16px;
+    margin: 0 0 10px;
+    padding: 8px 12px;
+    background: var(--exec-soft);
+    border-radius: 12px;
+    border: 1px solid var(--exec-border);
   }
 
   .legend-item {
     display: inline-flex;
     align-items: center;
     gap: 7px;
-    color: #344054;
-    font-size: 13px;
+    color: #475569;
+    font-size: 12px;
     font-weight: 800;
   }
 
-  .legend-dot { width: 9px; height: 9px; border-radius: 50%; }
-
-  .main-chart-wrap {
-    height: clamp(230px, 32vh, 292px);
-    position: relative;
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.8);
   }
 
-  .health-card { min-height: 0; }
+  .main-chart-wrap {
+    height: clamp(240px, 32vh, 300px);
+    position: relative;
+    padding: 4px 2px 0;
+  }
 
-  .health-wave { width: 68px; height: 26px; }
+  .health-card {
+    min-height: 0;
+    background: linear-gradient(180deg, #f0fdf9 0%, #fff 30%);
+  }
+
+  .health-card::before {
+    content: "";
+    position: absolute;
+    top: 0; right: 0; left: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #34d399, #0d9488);
+    border-radius: var(--exec-radius) var(--exec-radius) 0 0;
+  }
+
+  .health-wave { width: 72px; height: 28px; opacity: 0.85; }
 
   .health-body {
     display: grid;
-    grid-template-columns: 112px minmax(0, 1fr);
-    gap: 9px;
+    grid-template-columns: 118px minmax(0, 1fr);
+    gap: 12px;
     align-items: center;
-    min-height: 134px;
+    min-height: 138px;
   }
 
-  .gauge { position: relative; width: 112px; height: 112px; }
+  .gauge { position: relative; width: 118px; height: 118px; }
 
   .gauge-center {
     position: absolute;
@@ -436,113 +632,155 @@
   }
 
   .gauge-score {
-    font-size: 30px;
+    font-size: 32px;
     line-height: 1;
     font-weight: 900;
-    color: #111827;
+    color: #0f172a;
+    letter-spacing: -0.03em;
   }
 
   .gauge-label {
     margin-top: 6px;
     color: var(--exec-green);
     font-weight: 900;
-    font-size: 12px;
+    font-size: 11.5px;
   }
 
-  .health-list { display: grid; gap: 7px; }
+  .gauge-label.is-warn { color: var(--exec-orange); }
+  .gauge-label.is-bad { color: var(--exec-red); }
+
+  .health-list { display: grid; gap: 8px; }
 
   .health-row {
     display: grid;
-    grid-template-columns: 68px 1fr 36px;
+    grid-template-columns: 64px 1fr 34px;
     align-items: center;
-    gap: 7px;
-    font-size: 12px;
-    font-weight: 900;
-    color: #344054;
-  }
-
-  .health-name {
-    display: inline-flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 6px;
+    gap: 8px;
+    font-size: 11.5px;
+    font-weight: 800;
+    color: #475569;
   }
 
   .health-bar {
-    height: 5px;
-    background: #edf2f7;
+    height: 6px;
+    background: #e2e8f0;
     border-radius: 999px;
     overflow: hidden;
   }
 
-  .health-fill { height: 100%; border-radius: inherit; }
+  .health-fill {
+    height: 100%;
+    border-radius: inherit;
+    transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  }
 
-  .quick-card { padding: 7px 8px; }
+  .quick-card { padding: 10px; }
 
   .quick-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0;
+    gap: 8px;
   }
 
   .quick-item {
-    min-height: 58px;
-    display: grid;
-    justify-items: center;
-    align-content: center;
+    position: relative;
+    min-height: 72px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     text-align: center;
-    gap: 3px;
-    border-left: 1px solid var(--exec-border);
-    padding: 6px 4px;
+    gap: 2px;
+    padding: 10px 8px 8px;
+    border-radius: var(--exec-radius-sm);
+    border: 1px solid var(--exec-border);
+    background: #fff;
+    transition: border-color 0.2s, box-shadow 0.2s;
   }
 
-  .quick-item:nth-child(2n) { border-left: 0; }
-  .quick-item:nth-child(-n+2) { border-bottom: 1px solid var(--exec-border); }
+  .quick-item:hover {
+    border-color: #cbd5e1;
+    box-shadow: var(--exec-shadow-soft);
+  }
 
   .quick-label {
     color: var(--exec-muted);
-    font-size: 9px;
-    font-weight: 900;
-    line-height: 1.15;
-    min-height: 20px;
+    font-size: 9.5px;
+    font-weight: 800;
+    line-height: 1.2;
   }
 
   .quick-value {
-    color: #111827;
-    font-size: 13px;
+    color: #0f172a;
+    font-size: 14px;
     font-weight: 900;
     font-variant-numeric: tabular-nums;
   }
 
-  .quick-trend { color: var(--exec-green); font-size: 10px; font-weight: 900; }
-  .quick-icon { font-size: 16px; color: #98a2b3; }
+  .quick-trend { color: var(--exec-green); font-size: 10px; font-weight: 900; margin-top: 1px; }
+  .quick-trend.down { color: var(--exec-red); }
 
-  .alerts-card { padding: 12px; }
+  .quick-icon {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    font-size: 14px;
+    color: #cbd5e1;
+    opacity: 0.9;
+  }
 
-  .alerts-list { display: grid; gap: 7px; }
+  .alerts-card { padding: 14px; }
+
+  .alerts-list { display: grid; gap: 8px; max-height: 180px; overflow-y: auto; }
 
   .alert-item {
     display: flex;
     align-items: flex-start;
-    gap: 8px;
-    padding: 9px 10px;
-    border-radius: 12px;
+    gap: 9px;
+    padding: 10px 12px;
+    border-radius: var(--exec-radius-sm);
     font-size: 12px;
     font-weight: 800;
-    line-height: 1.35;
+    line-height: 1.4;
   }
 
-  .alert-item.warning { background: #fff7e6; color: #b54708; border: 1px solid #fedf89; }
-  .alert-item.critical { background: #fef3f2; color: #b42318; border: 1px solid #fecdca; }
+  a.alert-item {
+    text-decoration: none;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
 
-  .alert-item i { margin-top: 2px; }
+  a.alert-item:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--exec-shadow-soft);
+  }
+
+  a.alert-item::after {
+    content: "\f053";
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    margin-right: auto;
+    margin-top: 2px;
+    opacity: 0.45;
+    font-size: 10px;
+  }
+
+  .exec-refresh-icon.fa-spin { animation-duration: 0.9s; }
+
+  .alert-item.warning { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+  .alert-item.critical { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+
+  .alert-item i { margin-top: 2px; flex-shrink: 0; }
 
   .alerts-empty {
     color: var(--exec-muted);
     font-size: 12px;
     font-weight: 800;
     text-align: center;
-    padding: 12px;
+    padding: 16px;
+    background: var(--exec-soft);
+    border-radius: var(--exec-radius-sm);
+    border: 1px dashed var(--exec-border);
   }
 
   @media (max-width: 1400px) {
@@ -557,20 +795,25 @@
   }
 
   @media (max-width: 900px) {
-    .exec-board { padding: 12px; }
-    .exec-shell { padding: 14px; }
+    .exec-board { padding: 10px; }
+    .exec-shell { padding: 14px; border-radius: 18px; }
     .kpi-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .detail-row, .exec-side { grid-template-columns: 1fr; }
     .health-body { grid-template-columns: 1fr; justify-items: center; }
     .main-chart-wrap { height: 260px; }
+    .exec-card:hover { transform: none; }
   }
 
   @media (max-width: 560px) {
     .kpi-row { grid-template-columns: 1fr; }
     .detail-stats { grid-template-columns: 1fr; }
     .quick-grid { grid-template-columns: 1fr; }
-    .quick-item { border-left: 0 !important; border-bottom: 1px solid var(--exec-border); }
-    .quick-item:last-child { border-bottom: 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .exec-board { transition: none; opacity: 1; transform: none; }
+    .exec-card:hover { transform: none; }
+    .health-fill { transition: none; }
   }
 </style>
 
@@ -579,11 +822,17 @@
     <div class="exec-top-controls">
       <div class="exec-title-block">
         <a href="/" class="exec-back-link"><i class="fas fa-arrow-right"></i> لوحة التحكم</a>
-        <h1><i class="fas fa-crown" style="color:var(--exec-orange)"></i> لوحة المدير التنفيذي</h1>
+        <h1><span class="crown-badge"><i class="fas fa-crown"></i></span> لوحة المدير التنفيذي</h1>
       </div>
-      <div class="exec-pill">
-        <span id="execDate"></span>
-        <i class="far fa-calendar"></i>
+      <div class="exec-meta-pills">
+        <div class="exec-pill">
+          <span id="execDate"></span>
+          <i class="far fa-calendar"></i>
+        </div>
+        <div class="exec-pill" id="execRefreshPill" title="تحديث تلقائي كل 3 دقائق">
+          <span id="execLastUpdated">جاري التحميل...</span>
+          <i class="fas fa-sync exec-refresh-icon" id="execRefreshIcon"></i>
+        </div>
       </div>
     </div>
 
@@ -592,34 +841,34 @@
 
         <!-- الطبقة 1: مؤشرات تنفيذية عليا -->
         <section class="kpi-row" aria-label="المؤشرات التنفيذية">
-          <article class="exec-card kpi-card">
+          <article class="exec-card kpi-card kpi-card--purple">
             <div class="kpi-top">
-              <span class="kpi-icon purple"><i class="fas fa-coins"></i></span>
               <span class="kpi-title">إجمالي السيولة</span>
+              <span class="kpi-icon purple"><i class="fas fa-coins"></i></span>
             </div>
-            <div class="kpi-value"><span id="totalLiquidity">0</span><span class="kpi-unit">د.ع</span></div>
+            <div class="kpi-value" id="totalLiquidityWrap"><span id="totalLiquidity">0</span><span class="kpi-unit">د.ع</span></div>
             <div class="kpi-bottom">
               <div class="kpi-spark"><canvas id="sparkLiquidity"></canvas></div>
-              <div class="trend up" id="liquidityTrend"><b>—</b><span>صندوق+بنك</span></div>
+              <div class="trend up" id="liquidityTrend"><b>—</b><span>من أمس</span></div>
             </div>
           </article>
 
-          <article class="exec-card kpi-card">
+          <article class="exec-card kpi-card kpi-card--green">
             <div class="kpi-top">
-              <span class="kpi-icon green"><i class="fas fa-arrow-trend-up"></i></span>
               <span class="kpi-title">صافي الربح اليوم</span>
+              <span class="kpi-icon green"><i class="fas fa-arrow-trend-up"></i></span>
             </div>
-            <div class="kpi-value"><span id="profitToday">0</span><span class="kpi-unit">د.ع</span></div>
+            <div class="kpi-value" id="profitTodayWrap"><span id="profitToday">0</span><span class="kpi-unit">د.ع</span></div>
             <div class="kpi-bottom">
               <div class="kpi-spark"><canvas id="sparkProfit"></canvas></div>
               <div class="trend up" id="profitTrend"><b>0%</b><span>من أمس</span></div>
             </div>
           </article>
 
-          <article class="exec-card kpi-card">
+          <article class="exec-card kpi-card kpi-card--blue">
             <div class="kpi-top">
-              <span class="kpi-icon blue"><i class="fas fa-cart-shopping"></i></span>
               <span class="kpi-title">المبيعات اليوم</span>
+              <span class="kpi-icon blue"><i class="fas fa-cart-shopping"></i></span>
             </div>
             <div class="kpi-value"><span id="salesToday">0</span><span class="kpi-unit">د.ع</span></div>
             <div class="kpi-sub" id="salesCashCreditSplit">نقدي 0 · آجل 0</div>
@@ -629,22 +878,23 @@
             </div>
           </article>
 
-          <article class="exec-card kpi-card">
+          <article class="exec-card kpi-card kpi-card--orange">
             <div class="kpi-top">
-              <span class="kpi-icon orange"><i class="fas fa-file-invoice-dollar"></i></span>
               <span class="kpi-title">الذمم المدينة (آجل + نقل)</span>
+              <span class="kpi-icon orange"><i class="fas fa-file-invoice-dollar"></i></span>
             </div>
             <div class="kpi-value"><span id="creditReceivables">0</span><span class="kpi-unit">د.ع</span></div>
+            <div class="kpi-sub" id="receivablesBreakdown">آجل 0 · نقل 0</div>
             <div class="kpi-bottom">
               <div class="kpi-spark"><canvas id="sparkReceivables"></canvas></div>
-              <div class="trend up" id="collectionTrend"><b id="debtRateKpi">0%</b><span>تحصيل</span></div>
+              <div class="trend up" id="collectionTrend"><b id="debtRateKpi">0%</b><span id="collectionTrendLabel">تحصيل</span></div>
             </div>
           </article>
 
-          <article class="exec-card kpi-card">
+          <article class="exec-card kpi-card kpi-card--red">
             <div class="kpi-top">
-              <span class="kpi-icon red"><i class="fas fa-arrow-trend-down"></i></span>
               <span class="kpi-title">الالتزامات</span>
+              <span class="kpi-icon red"><i class="fas fa-arrow-trend-down"></i></span>
             </div>
             <div class="kpi-value"><span id="liabilitiesTotal">0</span><span class="kpi-unit">د.ع</span></div>
             <div class="kpi-sub" id="liabilitiesBreakdown">موردين 0</div>
@@ -654,12 +904,12 @@
             </div>
           </article>
 
-          <article class="exec-card kpi-card">
+          <article class="exec-card kpi-card kpi-card--teal">
             <div class="kpi-top">
-              <span class="kpi-icon teal"><i class="fas fa-scale-balanced"></i></span>
               <span class="kpi-title">صافي المركز المالي</span>
+              <span class="kpi-icon teal"><i class="fas fa-scale-balanced"></i></span>
             </div>
-            <div class="kpi-value"><span id="netPosition">0</span><span class="kpi-unit">د.ع</span></div>
+            <div class="kpi-value" id="netPositionWrap"><span id="netPosition">0</span><span class="kpi-unit">د.ع</span></div>
             <div class="kpi-sub">سيولة + ذمم − التزامات</div>
             <div class="kpi-bottom">
               <div class="kpi-spark"><canvas id="sparkPosition"></canvas></div>
@@ -672,10 +922,13 @@
         <section class="detail-row">
           <article class="exec-card detail-card bank-card">
             <div class="panel-head">
-              <h2 class="panel-title"><i class="fas fa-building-columns" style="color:var(--exec-blue)"></i> البنك والصندوق</h2>
-              <div>
+              <h2 class="panel-title">
+                <span class="panel-title-icon blue"><i class="fas fa-building-columns"></i></span>
+                البنك والصندوق
+              </h2>
+              <div class="panel-links">
                 <a href="/cash" class="panel-link">الصندوق</a>
-                ·
+                <span>·</span>
                 <a href="/accounts" class="panel-link">الحسابات</a>
               </div>
             </div>
@@ -690,11 +943,11 @@
               </div>
               <div class="detail-stat">
                 <div class="detail-stat-label">وارد اليوم</div>
-                <div class="detail-stat-value" style="color:var(--exec-green)"><span id="cashInToday">0</span> د.ع</div>
+                <div class="detail-stat-value positive"><span id="cashInToday">0</span> د.ع</div>
               </div>
               <div class="detail-stat">
                 <div class="detail-stat-label">صادر اليوم</div>
-                <div class="detail-stat-value" style="color:var(--exec-red)"><span id="cashOutToday">0</span> د.ع</div>
+                <div class="detail-stat-value negative"><span id="cashOutToday">0</span> د.ع</div>
               </div>
             </div>
             <div class="account-list" id="treasuryAccountsList">
@@ -704,7 +957,10 @@
 
           <article class="exec-card detail-card credit-card">
             <div class="panel-head">
-              <h2 class="panel-title"><i class="fas fa-clock" style="color:var(--exec-orange)"></i> الآجل والتحصيل</h2>
+              <h2 class="panel-title">
+                <span class="panel-title-icon orange"><i class="fas fa-clock"></i></span>
+                الآجل والتحصيل
+              </h2>
               <a href="/customers/credit/" class="panel-link">إدارة الآجل</a>
             </div>
             <div class="detail-stats">
@@ -741,9 +997,12 @@
         </section>
 
         <!-- الطبقة 3: رسم الأداء -->
-        <section class="exec-card panel">
+        <section class="exec-card panel chart-panel">
           <div class="panel-head">
-            <h2 class="panel-title">الأداء خلال آخر 7 أيام</h2>
+            <h2 class="panel-title">
+              <span class="panel-title-icon chart"><i class="fas fa-chart-area"></i></span>
+              الأداء خلال آخر 7 أيام
+            </h2>
           </div>
           <div class="legend-row">
             <span class="legend-item"><i class="legend-dot" style="background:#2f80ed"></i>المبيعات</span>
@@ -760,7 +1019,10 @@
       <aside class="exec-side">
         <section class="exec-card panel health-card">
           <div class="panel-head">
-            <h2 class="panel-title">صحة الأعمال</h2>
+            <h2 class="panel-title">
+              <span class="panel-title-icon health"><i class="fas fa-heart-pulse"></i></span>
+              صحة الأعمال
+            </h2>
             <svg class="health-wave" viewBox="0 0 100 36" aria-hidden="true">
               <path d="M2 20 H18 L25 8 L32 29 L40 14 L49 21 H62 L68 11 L75 23 H98" fill="none" stroke="#2f80ed" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
@@ -771,7 +1033,7 @@
               <div class="gauge-center">
                 <div>
                   <div class="gauge-score"><span id="healthScore">0</span><span style="font-size:22px">%</span></div>
-                  <div class="gauge-label"><span id="healthLabel">غير متاح</span> <i class="fas fa-star"></i></div>
+                  <div class="gauge-label" id="healthLabelWrap"><span id="healthLabel">غير متاح</span> <i class="fas fa-star"></i></div>
                 </div>
               </div>
             </div>
@@ -790,11 +1052,13 @@
             <div class="quick-item">
               <div class="quick-label">الطلبات اليوم</div>
               <div class="quick-value" id="ordersToday">0</div>
+              <div class="quick-trend" id="ordersTrend">—</div>
               <div class="quick-icon"><i class="fas fa-clipboard-list"></i></div>
             </div>
             <div class="quick-item">
               <div class="quick-label">المشتريات اليوم</div>
               <div class="quick-value"><span id="purchasesToday">0</span> د.ع</div>
+              <div class="quick-trend" id="purchasesTrend">—</div>
               <div class="quick-icon" style="color:#f79009"><i class="fas fa-bag-shopping"></i></div>
             </div>
             <div class="quick-item">
@@ -812,7 +1076,10 @@
 
         <section class="exec-card alerts-card">
           <div class="panel-head" style="margin-bottom:8px">
-            <h2 class="panel-title"><i class="fas fa-bell" style="color:var(--exec-orange)"></i> تنبيهات</h2>
+            <h2 class="panel-title">
+              <span class="panel-title-icon alert"><i class="fas fa-bell"></i></span>
+              تنبيهات
+            </h2>
           </div>
           <div class="alerts-list" id="alertsList">
             <div class="alerts-empty">لا توجد تنبيهات</div>
@@ -854,6 +1121,24 @@
     return "غير متاح";
   }
 
+  function setKpiTone(wrapId, value) {
+    const el = document.getElementById(wrapId);
+    if (!el) return;
+    el.classList.remove("is-negative", "is-positive");
+    const num = Number(value || 0);
+    if (num < 0) el.classList.add("is-negative");
+    else if (num > 0 && wrapId === "profitTodayWrap") el.classList.add("is-positive");
+  }
+
+  function setHealthLabelTone(score) {
+    const el = document.getElementById("healthLabelWrap");
+    if (!el) return;
+    el.classList.remove("is-warn", "is-bad");
+    if (score >= 70) return;
+    if (score >= 50) el.classList.add("is-warn");
+    else if (score > 0) el.classList.add("is-bad");
+  }
+
   function setPercentMetric(barId, textId, value) {
     const percent = clampPercent(value);
     const bar = document.getElementById(barId);
@@ -870,6 +1155,26 @@
     const label = percent > 0 ? "↑ " : percent < 0 ? "↓ " : "";
     const b = el.querySelector("b");
     if (b) b.textContent = label + nf.format(Math.abs(percent)) + "%";
+  }
+
+  function setQuickTrend(id, value) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const percent = Math.round(Number(value || 0));
+    el.classList.toggle("down", percent < 0);
+    const label = percent > 0 ? "↑ " : percent < 0 ? "↓ " : "";
+    el.textContent = percent === 0 ? "—" : label + nf.format(Math.abs(percent)) + "%";
+  }
+
+  function setCollectionTrendLabel(value) {
+    const el = document.getElementById("collectionTrendLabel");
+    if (!el) return;
+    const percent = Math.round(Number(value || 0));
+    if (percent === 0) {
+      el.textContent = "تحصيل";
+      return;
+    }
+    el.textContent = (percent > 0 ? "↑ " : "↓ ") + nf.format(Math.abs(percent)) + "% من أمس";
   }
 
   function gradient(ctx, color) {
@@ -989,7 +1294,9 @@
     list.innerHTML = alerts.map((a) => {
       const sev = a.severity === "critical" ? "critical" : "warning";
       const icon = sev === "critical" ? "fa-circle-exclamation" : "fa-triangle-exclamation";
-      return `<div class="alert-item ${sev}"><i class="fas ${icon}"></i><span>${a.message}</span></div>`;
+      const tag = a.href ? "a" : "div";
+      const href = a.href ? ` href="${a.href}"` : "";
+      return `<${tag} class="alert-item ${sev}"${href}><i class="fas ${icon}"></i><span>${a.message}</span></${tag}>`;
     }).join("");
   }
 
@@ -997,10 +1304,11 @@
     const treasury = data.treasury_accounts || [];
     const credit = data.credit_summary || {};
     const liabilities = data.liabilities_breakdown || {};
+    const recvBreakdown = data.receivables_breakdown || {};
     const totalLiquidity = data.total_liquidity ?? data.cash_available ?? 0;
     const cashBox = data.cash_box_balance ?? data.cash_balance ?? 0;
     const bankTotal = data.bank_total ?? 0;
-    const receivables = credit.receivables ?? data.receivables ?? 0;
+    const receivables = data.receivables ?? credit.receivables ?? 0;
     const liabilitiesTotal = liabilities.total ?? data.liabilities ?? 0;
     const netPosition = data.net_financial_position ?? (totalLiquidity + receivables - liabilitiesTotal);
     const sales = data.sales_today ?? 0;
@@ -1021,8 +1329,15 @@
     setText("creditReceivables", money(receivables));
     setText("debtRateKpi", nf.format(clampPercent(collectionRate)) + "%");
     setText("liabilitiesTotal", money(liabilitiesTotal));
-    setText("liabilitiesBreakdown", `موردين ${money(liabilities.supplier_debts)}`);
+    setText("liabilitiesBreakdown", `موردين ${money(liabilities.supplier_debts ?? 0)}`);
     setText("netPosition", money(netPosition));
+    setKpiTone("profitTodayWrap", data.profit_today);
+    setKpiTone("netPositionWrap", netPosition);
+
+    const recvParts = [];
+    if (Number(recvBreakdown.customer_ar || 0) > 0) recvParts.push(`آجل ${money(recvBreakdown.customer_ar)}`);
+    if (Number(recvBreakdown.shipping_receivables || 0) > 0) recvParts.push(`نقل ${money(recvBreakdown.shipping_receivables)}`);
+    setText("receivablesBreakdown", recvParts.length ? recvParts.join(" · ") : "—");
 
     setText("cashBoxBalance", money(cashBox));
     setText("bankTotal", money(bankTotal));
@@ -1057,6 +1372,7 @@
     setText("avgDailySales", money(data.avg_daily_sales));
     setText("healthScore", nf.format(healthScore));
     setText("healthLabel", healthLabel(healthScore));
+    setHealthLabelTone(healthScore);
     setPercentMetric("healthProfitBar", "healthProfitText", health.profitability);
     setPercentMetric("healthLiquidityBar", "healthLiquidityText", health.liquidity);
     setPercentMetric("healthSalesBar", "healthSalesText", health.sales);
@@ -1065,6 +1381,13 @@
 
     setTrend("profitTrend", trends.profit);
     setTrend("salesTrend", trends.sales);
+    setTrend("liquidityTrend", trends.cash);
+    setQuickTrend("ordersTrend", trends.orders);
+    setQuickTrend("purchasesTrend", trends.purchases);
+    setCollectionTrendLabel(trends.collection);
+
+    const liquiditySpan = document.querySelector("#liquidityTrend span");
+    if (liquiditySpan) liquiditySpan.textContent = "من أمس";
 
     renderAlerts(data.alerts || []);
 
@@ -1073,57 +1396,109 @@
     const expenseSeries = data.daily_expenses || [0, 0, 0, 0, 0, 0, expenses];
     const cashSeries = data.daily_cashflow || salesSeries.map((v, i) => Number(v || 0) - Number(expenseSeries[i] || 0));
     const balanceSeries = data.daily_cash_balance || cashSeries;
+    const creditSeries = data.daily_credit_sales || salesSeries.map(() => 0);
+    const positionSeries = data.daily_net_position || balanceSeries;
 
     drawSpark("sparkLiquidity", "#7c3aed", balanceSeries);
     drawSpark("sparkProfit", "#17b26a", profitSeries);
     drawSpark("sparkSales", "#2f80ed", salesSeries);
-    drawSpark("sparkReceivables", "#f79009", salesSeries.map((v) => Math.round(v * 0.3)));
-    drawSpark("sparkPosition", "#14b8a6", balanceSeries);
+    drawSpark("sparkReceivables", "#f79009", creditSeries);
+    drawSpark("sparkPosition", "#14b8a6", positionSeries);
 
     drawPerformance({ ...data, daily_sales: salesSeries, daily_profit: profitSeries, daily_expenses: expenseSeries, daily_cashflow: cashSeries });
     drawHealth(healthScore);
   }
 
-  fetch("/api/executive_dashboard_data", { headers: { "Accept": "application/json" } })
-    .then((res) => {
-      if (!res.ok) throw new Error("HTTP " + res.status);
-      return res.json();
-    })
-    .then(hydrate)
-    .catch((err) => {
-      console.error("Executive dashboard data failed:", err);
-      hydrate({
-        orders_today: 0,
-        purchases_today: 0,
-        cash_balance: 0,
-        total_liquidity: 0,
-        bank_total: 0,
-        cash_box_balance: 0,
-        treasury_accounts: [],
-        profit_today: 0,
-        sales_today: 0,
-        expenses_today: 0,
-        receivables: 0,
-        liabilities: 0,
-        liabilities_breakdown: { supplier_debts: 0, shipping_due: 0, shipping_receivables: 0, total: 0 },
-        credit_summary: { receivables: 0, credit_sales_today: 0, credit_sales_month: 0, cash_sales_today: 0, overdue_installments_count: 0, overdue_installments_amount: 0, collection_rate: 0 },
-        net_financial_position: 0,
-        alerts: [],
-        cash_in_today: 0,
-        cash_out_today: 0,
-        daily_labels: [],
-        daily_sales: [0, 0, 0, 0, 0, 0, 0],
-        daily_profit: [0, 0, 0, 0, 0, 0, 0],
-        daily_expenses: [0, 0, 0, 0, 0, 0, 0],
-        daily_cashflow: [0, 0, 0, 0, 0, 0, 0],
-        daily_cash_balance: [0, 0, 0, 0, 0, 0, 0],
-        health: { score: 0, profitability: 0, liquidity: 0, sales: 0, inventory: 0, customers: 0 },
-        trends: { profit: 0, sales: 0 },
-        inventory_value: 0,
-        avg_daily_sales: 0,
-        debt_collection_rate: 0
-      });
+  const REFRESH_MS = 3 * 60 * 1000;
+  let refreshTimer = null;
+
+  function setLoading(loading) {
+    const icon = document.getElementById("execRefreshIcon");
+    const pill = document.getElementById("execRefreshPill");
+    if (icon) icon.classList.toggle("fa-spin", !!loading);
+    if (pill) pill.classList.toggle("is-loading", !!loading);
+  }
+
+  function markUpdated() {
+    const el = document.getElementById("execLastUpdated");
+    if (!el) return;
+    el.textContent = "آخر تحديث: " + new Date().toLocaleTimeString("ar-IQ", {
+      hour: "2-digit",
+      minute: "2-digit",
+      numberingSystem: "latn",
     });
+  }
+
+  function emptyDashboardPayload() {
+    return {
+      orders_today: 0,
+      purchases_today: 0,
+      cash_balance: 0,
+      total_liquidity: 0,
+      bank_total: 0,
+      cash_box_balance: 0,
+      treasury_accounts: [],
+      profit_today: 0,
+      sales_today: 0,
+      expenses_today: 0,
+      receivables: 0,
+      receivables_breakdown: { customer_ar: 0, shipping_receivables: 0, shipping_opening_balance: 0 },
+      liabilities: 0,
+      liabilities_breakdown: { supplier_debts: 0, shipping_due: 0, shipping_receivables: 0, total: 0 },
+      credit_summary: { receivables: 0, credit_sales_today: 0, credit_sales_month: 0, cash_sales_today: 0, overdue_installments_count: 0, overdue_installments_amount: 0, collection_rate: 0 },
+      net_financial_position: 0,
+      alerts: [],
+      cash_in_today: 0,
+      cash_out_today: 0,
+      daily_labels: [],
+      daily_sales: [0, 0, 0, 0, 0, 0, 0],
+      daily_profit: [0, 0, 0, 0, 0, 0, 0],
+      daily_expenses: [0, 0, 0, 0, 0, 0, 0],
+      daily_cashflow: [0, 0, 0, 0, 0, 0, 0],
+      daily_cash_balance: [0, 0, 0, 0, 0, 0, 0],
+      daily_credit_sales: [0, 0, 0, 0, 0, 0, 0],
+      daily_net_position: [0, 0, 0, 0, 0, 0, 0],
+      health: { score: 0, profitability: 0, liquidity: 0, sales: 0, inventory: 0, customers: 0 },
+      trends: { profit: 0, sales: 0, cash: 0, orders: 0, purchases: 0, collection: 0 },
+      inventory_value: 0,
+      avg_daily_sales: 0,
+      debt_collection_rate: 0,
+    };
+  }
+
+  function loadDashboard() {
+    setLoading(true);
+    return fetch("/api/executive_dashboard_data", { headers: { "Accept": "application/json" } })
+      .then((res) => {
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.json();
+      })
+      .then((data) => {
+        hydrate(data);
+        markUpdated();
+        document.querySelector(".exec-board")?.classList.add("is-ready");
+      })
+      .catch((err) => {
+        console.error("Executive dashboard data failed:", err);
+        hydrate(emptyDashboardPayload());
+        const el = document.getElementById("execLastUpdated");
+        if (el) el.textContent = "تعذّر التحديث";
+      })
+      .finally(() => setLoading(false));
+  }
+
+  function startAutoRefresh() {
+    if (refreshTimer) clearInterval(refreshTimer);
+    refreshTimer = setInterval(() => {
+      if (!document.hidden) loadDashboard();
+    }, REFRESH_MS);
+  }
+
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) loadDashboard();
+  });
+
+  loadDashboard().finally(startAutoRefresh);
 </script>
 
 {% endblock %}

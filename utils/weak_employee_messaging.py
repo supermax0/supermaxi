@@ -137,7 +137,7 @@ def _admin_sender_id() -> int | None:
 
 def send_weak_employee_messages(*, force: bool = False, now: datetime | None = None) -> dict:
     """Send reminders to weak employees when due."""
-    from routes.reports import _build_monitor_data
+    from utils.monitor_service import build_performance_monitor_data
 
     now = now or datetime.utcnow()
     settings = SystemSettings.get_settings()
@@ -164,7 +164,7 @@ def send_weak_employee_messages(*, force: bool = False, now: datetime | None = N
         return {"success": False, "skipped": True, "reason": "no_admin_sender", "sent": 0}
 
     period_days = int(config.get("period_days") or 30)
-    monitor = _build_monitor_data(
+    monitor = build_performance_monitor_data(
         now - timedelta(days=period_days),
         now,
         int(config.get("min_orders") or 0),

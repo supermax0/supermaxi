@@ -53,17 +53,41 @@
       width: 100%;
       border: 0;
       display: block;
-      min-height: 900px;
+      min-height: 480px;
+      background: #fff;
     }
     @media print {
-      body { background: #fff; }
-      .toolbar { display: none !important; }
-      .frames-wrap { padding: 0; }
+      html, body {
+        background: #fff !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        height: auto !important;
+        min-height: 0 !important;
+        overflow: visible !important;
+      }
+      .toolbar, .no-print { display: none !important; }
+      .frames-wrap { padding: 0 !important; margin: 0 !important; }
       .invoice-frame-wrap {
-        box-shadow: none;
-        margin: 0;
-        max-width: none;
-        border-radius: 0;
+        box-shadow: none !important;
+        margin: 0 !important;
+        max-width: none !important;
+        border-radius: 0 !important;
+        overflow: visible !important;
+        page-break-after: always !important;
+        break-after: page !important;
+      }
+      .invoice-frame-wrap:last-child {
+        page-break-after: auto !important;
+        break-after: auto !important;
+      }
+      .invoice-frame {
+        min-height: 0 !important;
+        overflow: visible !important;
+        /* Keep explicit height from JS so browser paints iframe content */
+      }
+      @page {
+        size: auto;
+        margin: 8mm;
       }
     }
   </style>
@@ -72,9 +96,9 @@
   <div class="toolbar no-print">
     <span class="load-status" id="load-status">جاري تحميل {{ ids|length }} فاتورة...</span>
     <button type="button" class="btn-close" onclick="window.close()">إغلاق</button>
-    <button type="button" class="btn-print" onclick="window.print()">طباعة</button>
+    <button type="button" class="btn-print" id="btn-print" onclick="window.print()">طباعة</button>
   </div>
-  <div class="frames-wrap">
+  <div class="frames-wrap" id="frames-wrap">
     {% for oid in ids %}
     <div class="invoice-frame-wrap">
       <iframe class="invoice-frame" src="{{ url_for('orders.invoice_page', order_id=oid) }}" title="فاتورة {{ oid }}"></iframe>
@@ -83,38 +107,89 @@
   </div>
   <script>
     (function () {
-      const frames = document.querySelectorAll('.invoice-frame');
+      const frames = Array.prototype.slice.call(document.querySelectorAll('.invoice-frame'));
       const status = document.getElementById('load-status');
-      let loaded = 0;
       const total = frames.length;
+      let loaded = 0;
+      let printed = false;
+      const ready = new WeakSet();
+      const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
+
+      if (!total) {
+        status.textContent = 'لا توجد فواتير';
+        return;
+      }
 
       function resizeFrame(frame) {
         try {
           const doc = frame.contentDocument;
           if (!doc) return;
+          const body = doc.body;
+          const html = doc.documentElement;
           const height = Math.max(
-            doc.body ? doc.body.scrollHeight : 0,
-            doc.documentElement ? doc.documentElement.scrollHeight : 0
+            body ? body.scrollHeight : 0,
+            body ? body.offsetHeight : 0,
+            html ? html.scrollHeight : 0,
+            html ? html.offsetHeight : 0,
+            400
           );
-          if (height > 0) frame.style.height = height + 'px';
+          frame.style.height = height + 'px';
+
+          try {
+            if (doc.getElementById('finora-batch-print-fix')) return;
+            const style = doc.createElement('style');
+            style.id = 'finora-batch-print-fix';
+            style.textContent = [
+              '@media print{',
+              'html,body{height:auto!important;min-height:0!important;overflow:visible!important;margin:0!important;padding:0!important;background:#fff!important;}',
+              '.no-print,.invoice-actions,.actions,.toolbar{display:none!important;}',
+              '.invoice,.invoice-container,.page-shell{box-shadow:none!important;margin:0!important;max-width:100%!important;width:100%!important;}',
+              '@page{size:auto;margin:8mm;}',
+              '}'
+            ].join('');
+            (doc.head || doc.documentElement).appendChild(style);
+          } catch (e) {}
         } catch (e) {}
       }
 
-      function onReady() {
+      function doPrint() {
+        if (printed) return;
+        printed = true;
+        status.textContent = 'تم التحميل — ' + total + ' فاتورة';
+        frames.forEach(resizeFrame);
+        setTimeout(function () {
+          frames.forEach(resizeFrame);
+          window.focus();
+          window.print();
+        }, isMobile ? 500 : 250);
+      }
+
+      function onReady(frame) {
+        if (ready.has(frame)) return;
+        ready.add(frame);
         loaded += 1;
+        resizeFrame(frame);
         status.textContent = 'تحميل ' + loaded + ' / ' + total;
         if (loaded >= total) {
-          status.textContent = 'تم التحميل — ' + total + ' فاتورة';
-          setTimeout(function () { window.print(); }, 600);
+          setTimeout(doPrint, isMobile ? 600 : 350);
         }
       }
 
       frames.forEach(function (frame) {
         frame.addEventListener('load', function () {
-          resizeFrame(frame);
-          onReady();
+          onReady(frame);
         });
+        try {
+          if (frame.contentDocument && frame.contentDocument.readyState === 'complete') {
+            onReady(frame);
+          }
+        } catch (e) {}
       });
+
+      // Safety fallback if some frames never fire load
+      setTimeout(function () {
+        if (!printed && loaded > 0) doPrint();
+      }, 12000 + total * 800);
     })();
   </script>
 </body>

@@ -31,7 +31,8 @@ def _unique_strings(values: list[str]) -> list[str]:
     return items
 
 
-def product_gallery(product: Product, meta: dict) -> list[str]:
+def product_gallery(product: Product, meta: dict, *, max_images: int = 5) -> list[str]:
+    """Main image + up to 4 extras (5 total) for the product page."""
     gallery: list[str] = []
     if product.image_url:
         gallery.append(str(product.image_url))
@@ -39,7 +40,7 @@ def product_gallery(product: Product, meta: dict) -> list[str]:
         value = meta.get(key)
         if isinstance(value, list):
             gallery.extend(str(item or "").strip() for item in value)
-    return _unique_strings(gallery)
+    return _unique_strings(gallery)[: max(1, int(max_images or 5))]
 
 
 def product_specs(meta: dict) -> list[dict[str, str]]:
@@ -155,7 +156,7 @@ def product_card(product: Product, shop_slug: str) -> dict:
         "short_specs": " | ".join(f"{item['label']}: {item['value']}" for item in specs[:3]),
         "badge": badge,
         "stock": int(product.quantity or 0),
-        "is_available": bool(product.active and int(product.quantity or 0) > 0),
+        "is_available": bool(product.active and product.store_visible and int(product.quantity or 0) > 0),
         "url": detail,
     }
 

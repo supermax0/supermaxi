@@ -352,7 +352,8 @@
 {{ template_styles.custom_css | safe }}
 {% endif %}
 
-    @media (max-width: 760px) {
+    /* screen only — must NOT apply during print or phone print stacks to 2 pages */
+    @media screen and (max-width: 760px) {
       .invoice { padding: 18px 14px; }
       .invoice-header,
       .meta-grid,
@@ -365,33 +366,28 @@
     }
 
     @media print {
-      /*
-        لا نثبت A4 هنا — المتصفح يترك حجم الورق من إعدادات الطباعة (A4/Letter).
-        هوامش متساوية فقط حتى المحتوى يملأ العرض وما يميل يمين/يسار.
-      */
       @page {
-        margin: 0.5in;
+        size: auto;
+        margin: 8mm;
       }
 
-      html {
-        width: 100% !important;
-        margin: 0 !important;
-        padding: 0 !important;
-      }
-
-      body {
+      html, body {
         width: 100% !important;
         max-width: none !important;
         height: auto !important;
+        min-height: 0 !important;
         margin: 0 !important;
         padding: 0 !important;
         background: #fff !important;
+        overflow: visible !important;
         direction: rtl !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
+        font-size: 11px !important;
+        line-height: 1.35 !important;
       }
 
-      .actions { display: none !important; }
+      .actions, .no-print { display: none !important; }
 
       .page-shell,
       .invoice {
@@ -407,35 +403,71 @@
         position: static !important;
         inset: auto !important;
         transform: none !important;
+        page-break-inside: auto !important;
+        break-inside: auto !important;
       }
 
       .invoice::before {
+        height: 2px !important;
         print-color-adjust: exact;
         -webkit-print-color-adjust: exact;
       }
 
-      .items-table thead th,
-      .totals__row--grand,
+      /* Keep desktop multi-column layout while printing from phones */
+      .invoice-header {
+        display: flex !important;
+        justify-content: space-between !important;
+        gap: 10px !important;
+        align-items: flex-start !important;
+        padding-bottom: 8px !important;
+        margin: 0 !important;
+      }
+
+      .brand { gap: 8px !important; }
+      .brand__logo,
+      .brand__logo-fallback {
+        width: 44px !important;
+        height: 44px !important;
+        font-size: 12px !important;
+      }
+      .brand__name { font-size: 16px !important; }
+      .brand__activity { font-size: 10px !important; margin-top: 0 !important; }
+      .invoice-title { font-size: 18px !important; margin-bottom: 2px !important; }
+      .invoice-number { font-size: 11px !important; }
       .status-badge {
-        print-color-adjust: exact;
-        -webkit-print-color-adjust: exact;
+        margin-top: 4px !important;
+        padding: 2px 7px !important;
+        font-size: 10px !important;
       }
 
-      .invoice-header,
-      .meta-grid,
-      .bottom-grid,
-      .signatures,
-      .items-wrap,
-      .totals,
-      .warranty,
-      .info-card {
-        width: 100% !important;
-        max-width: none !important;
-        box-sizing: border-box !important;
+      .meta-grid {
+        display: grid !important;
+        grid-template-columns: 1.2fr 1fr !important;
+        gap: 8px !important;
+        margin: 8px 0 10px !important;
+      }
+
+      .info-card { padding: 8px 10px !important; }
+      .info-card__label { font-size: 10px !important; margin-bottom: 4px !important; }
+      .info-row { font-size: 11px !important; margin-bottom: 3px !important; gap: 6px !important; }
+      .info-row__key { min-width: 72px !important; }
+
+      .risk-info {
+        padding: 6px 8px !important;
+        font-size: 11px !important;
+        margin-bottom: 8px !important;
+      }
+
+      .section-heading {
+        font-size: 12px !important;
+        margin-bottom: 6px !important;
+        padding-right: 6px !important;
       }
 
       .items-wrap {
         overflow: visible !important;
+        margin-bottom: 8px !important;
+        width: 100% !important;
       }
 
       .items-table {
@@ -443,6 +475,19 @@
         min-width: 0 !important;
         max-width: none !important;
         table-layout: fixed !important;
+        font-size: 11px !important;
+      }
+
+      .items-table thead th {
+        padding: 6px 6px !important;
+        font-size: 10px !important;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+      }
+
+      .items-table tbody td {
+        padding: 6px !important;
+        vertical-align: middle !important;
       }
 
       .items-table th,
@@ -451,12 +496,70 @@
         overflow-wrap: anywhere;
       }
 
+      .bottom-grid {
+        display: grid !important;
+        grid-template-columns: 1.1fr 0.9fr !important;
+        gap: 8px !important;
+        margin-bottom: 8px !important;
+        align-items: start !important;
+      }
+
+      .totals__row { padding: 5px 8px !important; font-size: 11px !important; }
+      .totals__row--grand {
+        font-size: 13px !important;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+      }
+      .status-badge {
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+      }
+
+      .warranty { padding: 8px 10px !important; font-size: 10px !important; }
+      .warranty__title { margin-bottom: 3px !important; }
+      .notes-box { margin-top: 6px !important; font-size: 10px !important; }
+
+      /* Compact signatures — large empty signature blocks caused page 2 */
+      .signatures {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 16px !important;
+        margin: 10px 0 6px !important;
+      }
+      .signature { padding-top: 18px !important; }
+      .signature__label { font-size: 10px !important; }
+
+      .invoice-footer {
+        padding-top: 6px !important;
+        font-size: 10px !important;
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+      .invoice-footer__gold { margin-top: 2px !important; }
+
+      .codes {
+        gap: 10px !important;
+        margin-top: 6px !important;
+        align-items: center !important;
+      }
+
+      .barcode-svg {
+        max-width: 160px !important;
+        height: 28px !important;
+        opacity: 0.7 !important;
+      }
+
+      .invoice-qr-addon {
+        margin-top: 0 !important;
+      }
+
       .col-num,
       .totals__value {
         text-align: end;
       }
     }
   </style>
+  {% include 'partials/invoice_print_fix.html' %}
 </head>
 <body>
 {% set company_name = (settings.store_name if settings and settings.store_name else (settings.company_name if settings and settings.company_name else 'سوبر ماكس')) %}
@@ -637,8 +740,8 @@
     try {
       JsBarcode("#barcode-luxury-invoice", "{{ order.id }}", {
         format: "CODE128",
-        width: 1.2,
-        height: 42,
+        width: 1.1,
+        height: 28,
         displayValue: false,
         margin: 0,
         lineColor: "#111111"

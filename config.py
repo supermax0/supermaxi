@@ -47,7 +47,15 @@ class Config:
 
     # الذكاء الاصطناعي (AI Agent / OpenAI / Gemini)
     OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "").strip()
-    OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
+    OPENAI_CHAT_MODEL = os.environ.get("OPENAI_CHAT_MODEL", os.environ.get("OPENAI_MODEL", "gpt-5.4-mini"))
+    OPENAI_MODEL = OPENAI_CHAT_MODEL
+    OPENAI_TTS_MODEL = os.environ.get("OPENAI_TTS_MODEL", "gpt-4o-mini-tts")
+    OPENAI_TRANSCRIBE_MODEL = os.environ.get("OPENAI_TRANSCRIBE_MODEL", "gpt-4o-mini-transcribe")
+    OPENAI_REALTIME_MODEL = os.environ.get("OPENAI_REALTIME_MODEL", "gpt-realtime-2.1")
+    OPENAI_TTS_VOICE = os.environ.get("OPENAI_TTS_VOICE", "coral")
+    OPENAI_TTS_FORMAT = os.environ.get("OPENAI_TTS_FORMAT", "mp3")
+    OPENAI_TTS_INSTRUCTIONS = os.environ.get("OPENAI_TTS_INSTRUCTIONS", "").strip()
+    OPENAI_VISION_MODEL = os.environ.get("OPENAI_VISION_MODEL", "gpt-5.4-mini")
     OPENAI_IMAGE_MODEL = os.environ.get("OPENAI_IMAGE_MODEL", "dall-e-3")
     GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
     GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")

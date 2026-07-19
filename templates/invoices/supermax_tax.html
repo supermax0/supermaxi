@@ -861,7 +861,7 @@
 {{ template_styles.custom_css | safe }}
         {% endif %}
 
-        @media (max-width: 920px) {
+        @media screen and (max-width: 920px) {
             .top,
             .cards-row,
             .summary-row,
@@ -944,6 +944,7 @@
             }
         }
     </style>
+  {% include 'partials/invoice_print_fix.html' %}
 </head>
 
 <body>

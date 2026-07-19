@@ -1,0 +1,646 @@
+{% extends "base.html" %}
+
+{% block title %}مركز المراقبة{% endblock %}
+
+{% block page_title %}مركز المراقبة{% endblock %}
+
+
+
+{% block content %}
+
+{% include "partials/monitor_shared_styles.html" %}
+
+<div class="monitor-page" id="monitorsHub"
+     data-auto-refresh="{{ settings.auto_refresh_sec }}"
+     data-tab="{{ tab }}"
+     data-data-url="{{ url_for('reports.monitors_data_api') }}">
+  <div class="monitor-nav" aria-label="ألسنة المراقبة">
+    <a href="{{ hub_tab_urls.overview }}" class="{{ 'active' if tab == 'overview' else '' }}"><i class="fas fa-gauge-high"></i> نظرة عامة</a>
+    <a href="{{ hub_tab_urls.financial }}" class="{{ 'active' if tab == 'financial' else '' }}"><i class="fas fa-chart-line"></i> مالي</a>
+    <a href="{{ hub_tab_urls.operational }}" class="{{ 'active' if tab == 'operational' else '' }}"><i class="fas fa-truck"></i> تشغيلي</a>
+    <a href="{{ hub_tab_urls.performance }}" class="{{ 'active' if tab == 'performance' else '' }}"><i class="fas fa-user-clock"></i> أداء</a>
+    <a href="{{ url_for('reports.reports_dashboard') }}"><i class="fas fa-arrow-right"></i> التقارير</a>
+    <span class="monitor-health" id="monitorHealthBadge">صحة: {{ tab_data.health_score or tab_data.summary.health_score }}/100</span>
+    <span class="monitor-last-update" id="monitorLastUpdate">آخر تحديث: الآن</span>
+    <button type="button" class="monitor-btn secondary" id="monitorManualRefresh"><i class="fas fa-rotate"></i> تحديث</button>
+    <a class="monitor-btn secondary" href="{{ assistant_monitor_url }}"><i class="fas fa-robot"></i> حلل الوضع</a>
+
+    <button type="button" class="monitor-btn secondary" onclick="window.print()"><i class="fas fa-print"></i> طباعة</button>
+
+  </div>
+
+
+
+  <form class="monitor-toolbar" method="get" action="{{ url_for('reports.monitors_hub') }}">
+
+    <input type="hidden" name="tab" value="{{ tab }}">
+
+    <div class="monitor-filter-grid">
+
+      <div class="monitor-field">
+
+        <label for="period">الفترة</label>
+
+        <select id="period" name="period" onchange="this.form.submit()">
+
+          <option value="today" {% if period == 'today' %}selected{% endif %}>اليوم</option>
+
+          <option value="last_7_days" {% if period == 'last_7_days' %}selected{% endif %}>7 أيام</option>
+
+          <option value="last_30_days" {% if period == 'last_30_days' %}selected{% endif %}>30 يوم</option>
+
+          <option value="this_month" {% if period == 'this_month' %}selected{% endif %}>هذا الشهر</option>
+
+          <option value="custom" {% if period == 'custom' %}selected{% endif %}>مخصص</option>
+
+        </select>
+
+      </div>
+
+      <div class="monitor-field">
+
+        <label for="date_from">من</label>
+
+        <input id="date_from" type="date" name="date_from" value="{{ date_from.strftime('%Y-%m-%d') }}">
+
+      </div>
+
+      <div class="monitor-field">
+
+        <label for="date_to">إلى</label>
+
+        <input id="date_to" type="date" name="date_to" value="{{ date_to.strftime('%Y-%m-%d') }}">
+
+      </div>
+
+      <div class="monitor-field">
+
+        <label for="branch_id">الفرع</label>
+
+        <select id="branch_id" name="branch_id">
+
+          <option value="">كل الفروع</option>
+
+          {% for b in filter_options.branches %}
+
+          <option value="{{ b.id }}" {% if filters.branch_id == b.id %}selected{% endif %}>{{ b.name }}</option>
+
+          {% endfor %}
+
+        </select>
+
+      </div>
+
+      <div class="monitor-field">
+
+        <label for="page_id">البيج</label>
+
+        <select id="page_id" name="page_id">
+
+          <option value="">كل البيجات</option>
+
+          {% for p in filter_options.pages %}
+
+          <option value="{{ p.id }}" {% if filters.page_id == p.id %}selected{% endif %}>{{ p.name }}</option>
+
+          {% endfor %}
+
+        </select>
+
+      </div>
+
+      <div class="monitor-field">
+
+        <label for="employee_id">الموظف</label>
+
+        <select id="employee_id" name="employee_id">
+
+          <option value="">كل الموظفين</option>
+
+          {% for e in filter_options.employees %}
+
+          <option value="{{ e.id }}" {% if filters.employee_id == e.id %}selected{% endif %}>{{ e.name }}</option>
+
+          {% endfor %}
+
+        </select>
+
+      </div>
+
+      {% if tab == 'financial' %}
+
+      <div class="monitor-field">
+
+        <label for="overdue_min_days">حد تأخير (يوم)</label>
+
+        <input id="overdue_min_days" type="number" min="1" name="overdue_min_days" value="{{ financial.overdue_min_days }}">
+
+      </div>
+
+      {% elif tab == 'operational' %}
+
+      <div class="monitor-field">
+
+        <label for="stuck_days">شحن عالق (يوم)</label>
+
+        <input id="stuck_days" type="number" min="1" name="stuck_days" value="{{ operational.stuck_days }}">
+
+      </div>
+
+      {% elif tab == 'performance' %}
+
+      <div class="monitor-field">
+
+        <label for="min_orders">حد ضعف الطلبات</label>
+
+        <input id="min_orders" type="number" min="0" name="min_orders" value="{{ performance.min_orders }}">
+
+      </div>
+
+      <div class="monitor-field">
+
+        <label for="min_sales">حد ضعف المبيعات</label>
+
+        <input id="min_sales" type="number" min="0" step="1000" name="min_sales" value="{{ performance.min_sales }}">
+
+      </div>
+
+      {% endif %}
+
+    </div>
+
+    <div class="monitor-actions">
+
+      <button class="monitor-btn" type="submit"><i class="fas fa-filter"></i> تطبيق</button>
+
+    </div>
+
+  </form>
+
+
+
+  <div id="monitorTabContent">
+
+    {% if tab == 'overview' %}
+
+      {% include "partials/monitor_tab_overview.html" %}
+
+    {% elif tab == 'financial' %}
+
+      {% include "partials/monitor_tab_financial.html" %}
+
+    {% elif tab == 'operational' %}
+
+      {% include "partials/monitor_tab_operational.html" %}
+
+    {% else %}
+
+      {% include "partials/monitor_tab_performance.html" %}
+
+    {% endif %}
+
+  </div>
+
+</div>
+
+
+
+{% include "partials/monitor_table_tools.html" %}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<script>
+
+(function () {
+
+  const hub = document.getElementById('monitorsHub');
+
+  const refreshSec = parseInt(hub?.dataset.autoRefresh || '0', 10);
+
+  const currentTab = hub?.dataset.tab || 'overview';
+
+  let finChart = null;
+
+  let opChart = null;
+
+
+
+  function esc(s) {
+
+    return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  }
+
+
+
+  function fmtMoney(n) {
+
+    return (parseInt(n, 10) || 0).toLocaleString('en-US') + ' د.ع';
+
+  }
+
+
+
+  function updateLastRefresh() {
+
+    const el = document.getElementById('monitorLastUpdate');
+
+    if (el) el.textContent = 'آخر تحديث: ' + new Date().toLocaleTimeString('ar-IQ');
+
+  }
+
+
+
+  function initCharts() {
+
+    if (window.__financialChartData && document.getElementById('financialMonitorChart')) {
+
+      const d = window.__financialChartData;
+
+      if (finChart) finChart.destroy();
+
+      finChart = new Chart(document.getElementById('financialMonitorChart'), {
+
+        type: 'line',
+
+        data: {
+
+          labels: d.labels || [],
+
+          datasets: [
+
+            { label: 'إيرادات', data: d.revenue || [], borderColor: '#3b82f6', tension: 0.25 },
+
+            { label: 'مصاريف', data: d.expenses || [], borderColor: '#ef4444', tension: 0.25 }
+
+          ]
+
+        },
+
+        options: { responsive: true, maintainAspectRatio: false }
+
+      });
+
+    }
+
+    if (window.__operationalChartData && document.getElementById('operationalMonitorChart')) {
+
+      const d = window.__operationalChartData;
+
+      if (opChart) opChart.destroy();
+
+      opChart = new Chart(document.getElementById('operationalMonitorChart'), {
+
+        type: 'bar',
+
+        data: {
+
+          labels: d.labels || [],
+
+          datasets: [
+
+            { label: 'جديد', data: d.new_orders || [], backgroundColor: '#3b82f6' },
+
+            { label: 'مُسلَّم', data: d.delivered || [], backgroundColor: '#10b981' }
+
+          ]
+
+        },
+
+        options: { responsive: true, maintainAspectRatio: false }
+
+      });
+
+    }
+
+  }
+
+
+
+  function updateChart(chart, canvasId, type, datasets, labels) {
+
+    const canvas = document.getElementById(canvasId);
+
+    if (!canvas || !labels) return;
+
+    if (chart) chart.destroy();
+
+    const cfg = {
+
+      type: type,
+
+      data: { labels: labels, datasets: datasets },
+
+      options: { responsive: true, maintainAspectRatio: false }
+
+    };
+
+    return new Chart(canvas, cfg);
+
+  }
+
+
+
+  function renderSummaryStats(container, summary) {
+
+    if (!container || !summary) return;
+
+    container.querySelectorAll('.monitor-stat strong').forEach(function (el) {
+
+      const label = el.previousElementSibling?.textContent || '';
+
+      if (label.includes('صحة') && summary.health_score != null) el.textContent = summary.health_score + '/100';
+
+    });
+
+  }
+
+
+
+  function renderAlerts(container, alerts) {
+    if (!container) return;
+
+    if (!alerts || !alerts.length) { container.innerHTML = ''; return; }
+
+    container.innerHTML = alerts.map(function (a) {
+
+      const title = a.title || a.name || 'تنبيه';
+
+      const msg = a.message || a.note || '';
+
+      const icon = a.icon || '⚠️';
+
+      return '<div class="monitor-alert ' + esc(a.type || 'info') + '"><strong>' + esc(icon) + ' ' + esc(title) + '</strong><span>' + esc(msg) + '</span></div>';
+
+    }).join('');
+
+  }
+
+
+
+  function reinitTable(tableId) {
+    const table = document.getElementById(tableId);
+    if (!table) return;
+    const root = table.closest('.monitor-section') || table.parentElement;
+    if (window.initMonitorTables) window.initMonitorTables(root, true);
+  }
+
+  function renderFinancialTables(tables) {
+
+    const overdueBody = document.querySelector('#financialOverdueTable tbody');
+
+    if (overdueBody && tables.overdue_orders) {
+
+      overdueBody.innerHTML = tables.overdue_orders.length ? tables.overdue_orders.map(function (o) {
+
+        return '<tr><td><strong>#' + esc(o.id) + '</strong></td><td>' + esc(o.customer) + '</td><td>' + esc(o.phone) + '</td><td>' + esc(o.status) + '</td><td>' + esc(o.days_overdue) + '</td><td><span class="monitor-badge ' + esc(o.severity_class) + '">' + esc(o.severity_label) + '</span></td><td><a class="monitor-link" href="' + esc(o.order_url) + '">فتح</a></td></tr>';
+
+      }).join('') : '<tr><td colspan="7" class="monitor-empty">لا متأخرات ضمن العتبة.</td></tr>';
+
+      reinitTable('financialOverdueTable');
+
+    }
+
+    const expBody = document.querySelector('#financialExpensesTable tbody');
+
+    if (expBody && tables.top_expenses) {
+
+      expBody.innerHTML = tables.top_expenses.length ? tables.top_expenses.map(function (r) {
+
+        return '<tr><td>' + esc(r.category) + '</td><td>' + esc(r.amount_display || fmtMoney(r.amount)) + '</td></tr>';
+
+      }).join('') : '<tr><td colspan="2" class="monitor-empty">لا مصاريف في الفترة.</td></tr>';
+
+    }
+
+  }
+
+
+
+  function renderOperationalTables(tables) {
+
+    const pendingBody = document.querySelector('#operationalPendingTable tbody');
+
+    if (pendingBody && tables.pending_orders) {
+
+      pendingBody.innerHTML = tables.pending_orders.length ? tables.pending_orders.map(function (o) {
+
+        return '<tr><td><strong>#' + esc(o.id) + '</strong></td><td>' + esc(o.customer) + '</td><td>' + esc(o.employee) + '</td><td>' + esc(o.total_display) + '</td><td><span class="monitor-badge ' + esc(o.status_class) + '">' + esc(o.age_days) + '</span></td><td><a class="monitor-link" href="' + esc(o.order_url) + '">فتح</a></td></tr>';
+
+      }).join('') : '<tr><td colspan="6" class="monitor-empty">لا طلبات معلقة.</td></tr>';
+
+      reinitTable('operationalPendingTable');
+
+    }
+
+    const stuckBody = document.querySelector('#operationalStuckTable tbody');
+
+    if (stuckBody && tables.stuck_shipping) {
+
+      stuckBody.innerHTML = tables.stuck_shipping.length ? tables.stuck_shipping.map(function (o) {
+
+        return '<tr><td><strong>#' + esc(o.id) + '</strong></td><td>' + esc(o.customer) + '</td><td>' + esc(o.employee) + '</td><td>' + esc(o.shipping_company) + '</td><td>' + esc(o.last_update_display) + '</td><td><span class="monitor-badge ' + esc(o.status_class) + '">' + esc(o.days_in_status) + '</span></td><td><a class="monitor-link" href="' + esc(o.order_url) + '">فتح</a></td></tr>';
+
+      }).join('') : '<tr><td colspan="7" class="monitor-empty">لا شحن عالق.</td></tr>';
+
+      reinitTable('operationalStuckTable');
+
+    }
+
+  }
+
+
+
+  function renderOverview(data) {
+
+    const ov = data.overview || {};
+
+    Object.entries(ov.health_scores || {}).forEach(function (pair) {
+
+      const el = document.querySelector('[data-overview-health="' + pair[0] + '"]');
+
+      if (el) el.textContent = (pair[1].score || 0) + '/100';
+
+    });
+
+    Object.entries(ov.quick_stats || {}).forEach(function (pair) {
+
+      const el = document.querySelector('[data-stat="' + pair[0] + '"]');
+
+      if (el) el.textContent = pair[1];
+
+    });
+
+    const alertsBox = document.getElementById('overviewTopAlerts');
+
+    if (alertsBox && ov.top_alerts) {
+
+      alertsBox.innerHTML = ov.top_alerts.map(function (a) {
+
+        return '<div class="monitor-alert ' + esc(a.type) + '"><strong>' + esc(a.icon || '⚠️') + ' ' + esc(a.title) + ' <small>(' + esc(a.source_label) + ')</small></strong><span>' + esc(a.message) + '</span></div>';
+
+      }).join('');
+
+    }
+
+  }
+
+
+
+  function renderSavedAlerts(alerts) {
+
+    const box = document.getElementById('savedWatchdogAlerts');
+
+    if (!box || !alerts) return;
+
+    if (!alerts.length) {
+
+      box.innerHTML = '<div class="monitor-empty">لا تنبيهات محفوظة حالياً.</div>';
+
+      return;
+
+    }
+
+    box.innerHTML = alerts.map(function (a) {
+
+      return '<div class="monitor-saved-alert ' + (a.is_read ? 'read' : 'unread') + '" data-alert-id="' + a.id + '"><div class="monitor-saved-alert-head"><strong>' + esc(a.title) + '</strong><span class="monitor-badge ' + (a.is_read ? 'success' : 'warning') + '">' + esc(a.created_display) + '</span></div><p>' + esc(a.message) + '</p><div class="monitor-saved-alert-actions">' +
+
+        (a.is_read ? '' : '<button type="button" class="monitor-btn secondary" data-alert-read="' + a.id + '">قراءة</button>') +
+
+        '<button type="button" class="monitor-btn secondary" data-alert-dismiss="' + a.id + '">تجاهل</button></div></div>';
+
+    }).join('');
+
+  }
+
+
+
+  function applyLiveData(data) {
+
+    const badge = document.getElementById('monitorHealthBadge');
+
+    if (badge && data.health_score != null) badge.textContent = 'صحة: ' + data.health_score + '/100';
+
+
+
+    if (currentTab === 'overview') renderOverview(data);
+
+    if (currentTab === 'financial') {
+
+      renderSummaryStats(document.querySelector('.monitor-summary'), data.summary);
+
+      renderAlerts(document.querySelector('.monitor-alerts'), data.alerts);
+
+      if (data.tables) renderFinancialTables(data.tables);
+
+      if (data.chart) {
+
+        window.__financialChartData = data.chart;
+
+        finChart = updateChart(finChart, 'financialMonitorChart', 'line', [
+
+          { label: 'إيرادات', data: data.chart.revenue || [], borderColor: '#3b82f6', tension: 0.25 },
+
+          { label: 'مصاريف', data: data.chart.expenses || [], borderColor: '#ef4444', tension: 0.25 }
+
+        ], data.chart.labels || []);
+
+      }
+
+    }
+
+    if (currentTab === 'operational') {
+
+      renderSummaryStats(document.querySelector('.monitor-summary'), data.summary);
+
+      renderAlerts(document.querySelector('.monitor-alerts'), data.alerts);
+
+      if (data.tables) renderOperationalTables(data.tables);
+
+      if (data.chart) {
+
+        window.__operationalChartData = data.chart;
+
+        opChart = updateChart(opChart, 'operationalMonitorChart', 'bar', [
+
+          { label: 'جديد', data: data.chart.new_orders || [], backgroundColor: '#3b82f6' },
+
+          { label: 'مُسلَّم', data: data.chart.delivered || [], backgroundColor: '#10b981' }
+
+        ], data.chart.labels || []);
+
+      }
+
+    }
+
+    if (data.saved_alerts) renderSavedAlerts(data.saved_alerts);
+
+    updateLastRefresh();
+
+  }
+
+
+
+  async function refreshMonitorData() {
+
+    try {
+
+      const base = hub?.dataset.dataUrl || '';
+
+      const res = await fetch(base + window.location.search, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+
+      if (!res.ok) return;
+
+      const data = await res.json();
+
+      applyLiveData(data);
+
+    } catch (e) {}
+
+  }
+
+
+
+  document.getElementById('monitorManualRefresh')?.addEventListener('click', refreshMonitorData);
+
+
+
+  document.getElementById('savedWatchdogAlerts')?.addEventListener('click', async function (e) {
+
+    const readId = e.target.closest('[data-alert-read]')?.getAttribute('data-alert-read');
+
+    const dismissId = e.target.closest('[data-alert-dismiss]')?.getAttribute('data-alert-dismiss');
+
+    try {
+
+      if (readId) {
+
+        await fetch('/assistant/alerts/' + readId + '/read', { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+
+      }
+
+      if (dismissId) {
+
+        await fetch('/assistant/alerts/' + dismissId + '/dismiss', { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+
+      }
+
+      if (readId || dismissId) refreshMonitorData();
+
+    } catch (err) {}
+
+  });
+
+
+
+  initCharts();
+
+  if (refreshSec > 0) setInterval(refreshMonitorData, refreshSec * 1000);
+
+})();
+
+</script>
+
+{% endblock %}
+
+

@@ -156,6 +156,14 @@ def get_product_inventory_movements(product_id, branch_id=None):
         invoice = item.invoice
         if not invoice:
             continue
+        from utils.order_stock_policy import is_physical_order_item
+
+        if not is_physical_order_item(item):
+            continue
+        deducted_at = getattr(invoice, "stock_deducted_at", None)
+        currently_deducted = bool(getattr(invoice, "stock_is_deducted", False))
+        if not deducted_at and not currently_deducted:
+            continue
         line_branch_id = item.fulfillment_branch_id or getattr(invoice, "branch_id", None)
         if branch_id and line_branch_id != branch_id:
             continue
@@ -163,7 +171,7 @@ def get_product_inventory_movements(product_id, branch_id=None):
         qty = int(item.quantity or 0)
         current_balance -= qty
         movements.append({
-            "date": invoice.created_at.date() if invoice.created_at else date.today(),
+            "date": (deducted_at or invoice.created_at).date() if (deducted_at or invoice.created_at) else date.today(),
             "type": "sale",
             "type_ar": "بيع",
             "quantity_in": 0,
@@ -176,10 +184,11 @@ def get_product_inventory_movements(product_id, branch_id=None):
             "description": f"بيع - فاتورة #{invoice.id} - {qty} قطعة"
         })
 
-        if is_returned(invoice.status, invoice.payment_status) or is_canceled(invoice.status, invoice.payment_status):
+        restored_at = getattr(invoice, "stock_restored_at", None)
+        if restored_at or is_returned(invoice.status, invoice.payment_status) or is_canceled(invoice.status, invoice.payment_status):
             current_balance += qty
             movements.append({
-                "date": invoice.created_at.date() if invoice.created_at else date.today(),
+                "date": (restored_at or invoice.created_at).date() if (restored_at or invoice.created_at) else date.today(),
                 "type": "return_sale",
                 "type_ar": "إرجاع مخزون",
                 "quantity_in": qty,

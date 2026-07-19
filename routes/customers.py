@@ -8,7 +8,12 @@ from sqlalchemy import case, func, or_
 from extensions import db
 from models.customer import Customer
 from models.invoice import Invoice
-from utils.order_status import invoice_returned_condition
+from utils.order_item_costs import exclude_delivery_fee_items
+from utils.order_status import (
+    CANCELED_STATUSES,
+    RETURN_STATUSES,
+    invoice_returned_condition,
+)
 from utils.product_schema_guard import ensure_customer_blacklist_columns
 from utils.permission_checks import guard_permission
 from utils.activity_logger import CUSTOMER_SNAPSHOT_FIELDS, log_activity, log_mutation, snapshot_attrs
@@ -521,8 +526,67 @@ def _province_order_stats():
             "orders_count": int(orders_count or 0),
             "returns_count": int(returns_count or 0),
             "total_amount": float(total_amount or 0),
+            "profit": 0.0,
         }
+    _attach_province_gross_profit(stats)
     return stats
+
+
+def _province_eligible_invoice_filter():
+    excluded = list(CANCELED_STATUSES) + list(RETURN_STATUSES)
+    return (
+        Invoice.status.notin_(excluded),
+        or_(
+            Invoice.payment_status.is_(None),
+            Invoice.payment_status.notin_(excluded),
+        ),
+    )
+
+
+def _attach_province_gross_profit(stats: dict) -> None:
+    """مجمل الربح = مبيعات − COGS (بدون مصاريف)، للطلبات غير الراجعة/الملغاة."""
+    from models.order_item import OrderItem
+
+    city_ok = (Customer.city.isnot(None), Customer.city != "")
+    eligible = _province_eligible_invoice_filter()
+
+    sales_rows = (
+        db.session.query(
+            Customer.city,
+            func.coalesce(func.sum(Invoice.total), 0),
+        )
+        .join(Customer, Invoice.customer_id == Customer.id)
+        .filter(*city_ok, *eligible)
+        .group_by(Customer.city)
+        .all()
+    )
+    sales_by_city = {city: float(total or 0) for city, total in sales_rows}
+
+    cogs_rows = (
+        db.session.query(
+            Customer.city,
+            func.coalesce(func.sum(OrderItem.cost * OrderItem.quantity), 0),
+        )
+        .select_from(OrderItem)
+        .join(Invoice, OrderItem.invoice_id == Invoice.id)
+        .join(Customer, Invoice.customer_id == Customer.id)
+        .filter(*city_ok, *eligible, exclude_delivery_fee_items(OrderItem))
+        .group_by(Customer.city)
+        .all()
+    )
+    cogs_by_city = {city: float(cogs or 0) for city, cogs in cogs_rows}
+
+    for city in set(sales_by_city) | set(cogs_by_city) | set(stats):
+        entry = stats.setdefault(
+            city,
+            {
+                "orders_count": 0,
+                "returns_count": 0,
+                "total_amount": 0.0,
+                "profit": 0.0,
+            },
+        )
+        entry["profit"] = float(sales_by_city.get(city, 0) - cogs_by_city.get(city, 0))
 
 
 def _provinces_rows():
@@ -530,37 +594,59 @@ def _provinces_rows():
     counts = _province_customer_counts()
     order_stats = _province_order_stats()
     rows = []
+    primary_total = 0.0
+    group_total = 0.0
+    primary_profit_total = 0.0
+    group_profit_total = 0.0
     for name in cfg["list"]:
         o = order_stats.get(name, {})
+        amount = float(o.get("total_amount", 0) or 0)
+        profit = float(o.get("profit", 0) or 0)
+        is_primary = name == cfg["primary"]
+        if is_primary:
+            primary_total += amount
+            primary_profit_total += profit
+        else:
+            group_total += amount
+            group_profit_total += profit
         rows.append({
             "name": name,
             "count": counts.get(name, 0),
             "orders_count": o.get("orders_count", 0),
             "returns_count": o.get("returns_count", 0),
-            "total_amount": o.get("total_amount", 0),
-            "is_primary": name == cfg["primary"],
+            "total_amount": amount,
+            "profit": profit,
+            "is_primary": is_primary,
         })
-    return rows, cfg
+    return rows, cfg, primary_total, group_total, primary_profit_total, group_profit_total
 
 
 @customers_bp.route("/provinces")
 def customers_provinces_page():
-    rows, cfg = _provinces_rows()
+    rows, cfg, primary_total, group_total, primary_profit_total, group_profit_total = _provinces_rows()
     return render_template(
         "provinces.html",
         provinces=rows,
         primary_province=cfg["primary"],
         provinces_group_label=cfg.get("group_label") or "محافظات",
+        primary_total=primary_total,
+        group_total=group_total,
+        primary_profit_total=primary_profit_total,
+        group_profit_total=group_profit_total,
     )
 
 
 @customers_bp.route("/provinces/api")
 def customers_provinces_api():
-    rows, cfg = _provinces_rows()
+    rows, cfg, primary_total, group_total, primary_profit_total, group_profit_total = _provinces_rows()
     return jsonify({
         "success": True,
         "primary": cfg["primary"],
         "group_label": cfg.get("group_label") or "محافظات",
+        "primary_total": primary_total,
+        "group_total": group_total,
+        "primary_profit_total": primary_profit_total,
+        "group_profit_total": group_profit_total,
         "provinces": rows,
     })
 

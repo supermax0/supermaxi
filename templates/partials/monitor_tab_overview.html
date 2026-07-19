@@ -1,0 +1,54 @@
+{% set o = overview %}
+<div class="monitor-overview-grid">
+  {% for key, card in o.health_scores.items() %}
+  <a class="monitor-health-card {{ card.class }}" href="{{ hub_tab_urls[card.tab] }}">
+    <span>{{ card.label }}</span>
+    <strong data-overview-health="{{ key }}">{{ card.score }}/100</strong>
+    <small>اضغط للتفاصيل</small>
+  </a>
+  {% endfor %}
+</div>
+
+<div class="monitor-summary" id="overviewQuickStats">
+  <div class="monitor-stat"><span>طلبات حرجة</span><strong data-stat="critical_orders">{{ o.quick_stats.critical_orders }}</strong></div>
+  <div class="monitor-stat"><span>تراكم «تم الطلب»</span><strong data-stat="pending_backlog">{{ o.quick_stats.pending_backlog }}</strong></div>
+  <div class="monitor-stat"><span>شحن عالق</span><strong data-stat="shipping_stuck">{{ o.quick_stats.shipping_stuck }}</strong></div>
+  <div class="monitor-stat"><span>موظفون ضعفاء</span><strong data-stat="weak_employees">{{ o.quick_stats.weak_employees }}</strong></div>
+</div>
+
+{% if o.top_alerts %}
+<div class="monitor-alerts" id="overviewTopAlerts">
+  {% for alert in o.top_alerts %}
+  <div class="monitor-alert {{ alert.type }}">
+    <strong>{{ alert.icon or '⚠️' }} {{ alert.title }} <small>({{ alert.source_label }})</small></strong>
+    <span>{{ alert.message }}</span>
+    <a class="monitor-link" href="{{ hub_tab_urls[alert.source_tab] }}">انتقال للسان</a>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<section class="monitor-section">
+  <div class="monitor-section-head">
+    <div><h2>تنبيهات محفوظة (watchdog)</h2><p>آخر 15 تنبيهاً من النظام</p></div>
+  </div>
+  <div class="monitor-saved-alerts" id="savedWatchdogAlerts">
+    {% for alert in saved_alerts %}
+    <div class="monitor-saved-alert {{ 'read' if alert.is_read else 'unread' }}" data-alert-id="{{ alert.id }}">
+      <div class="monitor-saved-alert-head">
+        <strong>{{ alert.title }}</strong>
+        <span class="monitor-badge {{ 'success' if alert.is_read else 'warning' }}">{{ alert.created_display }}</span>
+      </div>
+      <p>{{ alert.message }}</p>
+      <div class="monitor-saved-alert-actions">
+        {% if not alert.is_read %}
+        <button type="button" class="monitor-btn secondary" data-alert-read="{{ alert.id }}">قراءة</button>
+        {% endif %}
+        <button type="button" class="monitor-btn secondary" data-alert-dismiss="{{ alert.id }}">تجاهل</button>
+      </div>
+    </div>
+    {% else %}
+    <div class="monitor-empty">لا تنبيهات محفوظة حالياً.</div>
+    {% endfor %}
+  </div>
+</section>

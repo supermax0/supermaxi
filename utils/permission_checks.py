@@ -10,6 +10,7 @@ from utils.order_status import RETURN_STATUS
 LEGACY_TO_RBAC: dict[str, str] = {
     "can_see_orders": "view_orders",
     "can_see_orders_placed": "view_orders_placed",
+    "can_see_orders_packed": "view_orders_packed",
     "can_see_orders_delivered": "view_orders_delivered",
     "can_see_orders_returned": "view_orders_returned",
     "can_see_orders_shipped": "view_orders_shipped",
@@ -43,6 +44,7 @@ LEGACY_TO_RBAC: dict[str, str] = {
 
 ORDER_STATUS_PERMISSIONS = (
     "view_orders_placed",
+    "view_orders_packed",
     "view_orders_delivered",
     "view_orders_returned",
     "view_orders_shipped",
@@ -50,6 +52,7 @@ ORDER_STATUS_PERMISSIONS = (
 
 _STATUS_TO_PERMISSION: dict[str, str] = {
     "تم الطلب": "view_orders_placed",
+    "معباة": "view_orders_packed",
     "واصل": "view_orders_delivered",
     "واصلة": "view_orders_delivered",
     "تم التوصيل": "view_orders_delivered",
@@ -97,7 +100,7 @@ def employee_can(employee: Employee | None, permission_name: str) -> bool:
         return True
     rbac_name = LEGACY_TO_RBAC.get(permission_name, permission_name)
     if employee.role == "cashier" and not list(employee.roles or []):
-        if rbac_name in ("view_pos", "view_messages"):
+        if rbac_name in ("view_pos", "view_my_orders", "view_messages"):
             return True
     return employee.has_permission(rbac_name)
 
@@ -139,6 +142,8 @@ def allowed_order_statuses_for(employee: Employee | None) -> list[str]:
     allowed: list[str] = []
     if employee_can(employee, "view_orders_placed"):
         allowed.append("تم الطلب")
+    if employee_can(employee, "view_orders_packed"):
+        allowed.append("معباة")
     if employee_can(employee, "view_orders_delivered"):
         allowed.extend(["واصل", "واصلة", "تم التوصيل"])
     if employee_can(employee, "view_orders_returned"):

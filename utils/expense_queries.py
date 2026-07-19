@@ -10,7 +10,7 @@ from models.expense import Expense
 
 
 def posted_expense_filter():
-    """SQLAlchemy filter: expense was actually withdrawn from treasury."""
+    """SQLAlchemy filter for posted expenses that affect profit reports."""
     return Expense.cash_posted.is_(True)
 
 

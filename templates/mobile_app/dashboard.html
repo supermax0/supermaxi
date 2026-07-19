@@ -1,0 +1,120 @@
+{% extends "mobile_app/_layout.html" %}
+{% block mobile_app_body %}
+<div class="ma-stack">
+  <div class="ma-page-head">
+    <h2 class="ma-page-title">لوحة تطبيق الهاتف</h2>
+    <p class="ma-page-subtitle">نظرة عامة على أداء التطبيق والمحتوى</p>
+  </div>
+
+  <div class="ma-stats">
+    <div class="ma-stat">
+      <div class="ma-stat-icon"><i class="fas fa-video"></i></div>
+      <div>
+        <div class="ma-stat-label">الفيديوهات</div>
+        <div class="ma-stat-value">{{ videos_count }}</div>
+      </div>
+    </div>
+    <div class="ma-stat">
+      <div class="ma-stat-icon" style="background:rgba(16,185,129,.14);color:#34d399"><i class="fas fa-users"></i></div>
+      <div>
+        <div class="ma-stat-label">المستخدمون</div>
+        <div class="ma-stat-value">{{ users_count }}</div>
+      </div>
+    </div>
+    <div class="ma-stat">
+      <div class="ma-stat-icon" style="background:rgba(139,92,246,.14);color:#a78bfa"><i class="fas fa-chart-bar"></i></div>
+      <div>
+        <div class="ma-stat-label">أحداث التحليلات</div>
+        <div class="ma-stat-value">{{ events_count }}</div>
+      </div>
+    </div>
+    <div class="ma-stat">
+      <div class="ma-stat-icon" style="background:rgba(245,158,11,.14);color:#fbbf24"><i class="fas fa-shopping-bag"></i></div>
+      <div>
+        <div class="ma-stat-label">طلبات (7 أيام)</div>
+        <div class="ma-stat-value">{{ summary.funnel.order_placed }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ma-grid-2">
+    <div class="ma-card">
+      <div class="ma-card-head">
+        <div class="ma-card-icon"><i class="fas fa-filter"></i></div>
+        <div>
+          <h3 class="ma-card-title">قمع التحويل (7 أيام)</h3>
+          <p class="ma-card-desc">من المشاهدة حتى الطلب</p>
+        </div>
+      </div>
+      {% set f = summary.funnel %}
+      {% set peak = [f.views, f.add_to_cart, f.checkout_started, f.order_placed, 1] | max %}
+      <div class="ma-funnel">
+        <div class="ma-funnel-row">
+          <span class="ma-funnel-label">مشاهدات</span>
+          <div class="ma-funnel-track"><div class="ma-funnel-bar" style="width:{{ (f.views / peak * 100) | round(1) }}%"></div></div>
+          <span class="ma-funnel-value">{{ f.views }}</span>
+        </div>
+        <div class="ma-funnel-row">
+          <span class="ma-funnel-label">إضافة للعربة</span>
+          <div class="ma-funnel-track"><div class="ma-funnel-bar" style="width:{{ (f.add_to_cart / peak * 100) | round(1) }}%"></div></div>
+          <span class="ma-funnel-value">{{ f.add_to_cart }}</span>
+        </div>
+        <div class="ma-funnel-row">
+          <span class="ma-funnel-label">بدء الدفع</span>
+          <div class="ma-funnel-track"><div class="ma-funnel-bar" style="width:{{ (f.checkout_started / peak * 100) | round(1) }}%"></div></div>
+          <span class="ma-funnel-value">{{ f.checkout_started }}</span>
+        </div>
+        <div class="ma-funnel-row">
+          <span class="ma-funnel-label">طلبات</span>
+          <div class="ma-funnel-track"><div class="ma-funnel-bar" style="width:{{ (f.order_placed / peak * 100) | round(1) }}%"></div></div>
+          <span class="ma-funnel-value">{{ f.order_placed }}</span>
+        </div>
+      </div>
+      <div class="ma-kv" style="margin-top:14px">
+        <div class="ma-kv-row">
+          <span class="ma-kv-key">معدل مشاهدة → عربة</span>
+          <span class="ma-kv-value">{{ f.view_to_cart_rate }}</span>
+        </div>
+        <div class="ma-kv-row">
+          <span class="ma-kv-key">معدل عربة → طلب</span>
+          <span class="ma-kv-value">{{ f.cart_to_order_rate }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ma-card">
+      <div class="ma-card-head">
+        <div class="ma-card-icon is-gold"><i class="fas fa-gem"></i></div>
+        <div>
+          <h3 class="ma-card-title">الهوية</h3>
+          <p class="ma-card-desc">إعدادات مظهر التطبيق</p>
+        </div>
+      </div>
+      <div class="ma-kv">
+        <div class="ma-kv-row">
+          <span class="ma-kv-key">اسم التطبيق</span>
+          <span class="ma-kv-value">{{ design.app_name }}</span>
+        </div>
+        <div class="ma-kv-row">
+          <span class="ma-kv-key">اللون الذهبي</span>
+          <span class="ma-kv-value" style="display:inline-flex;align-items:center;gap:8px">
+            <span style="width:16px;height:16px;border-radius:5px;background:{{ design.gold_accent }};display:inline-block;border:1px solid rgba(255,255,255,.2)"></span>
+            <span class="ma-code">{{ design.gold_accent }}</span>
+          </span>
+        </div>
+        <div class="ma-kv-row">
+          <span class="ma-kv-key">وضع الصيانة</span>
+          <span class="ma-badge {{ 'ma-badge-reported' if design.maintenance_mode else 'ma-badge-active' }}">
+            {{ 'مفعّل' if design.maintenance_mode else 'معطّل' }}
+          </span>
+        </div>
+      </div>
+      <div style="margin-top:16px">
+        <a class="ma-btn ma-btn-sm ma-btn-primary" href="{{ url_for('mobile_admin.design_page') }}">
+          <i class="fas fa-palette"></i> تعديل التصميم
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

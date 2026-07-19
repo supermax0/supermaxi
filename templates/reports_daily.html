@@ -1,0 +1,647 @@
+{% extends "base.html" %}
+{% block title %}تقرير اليوم{% endblock %}
+{% block page_title %}تقرير اليوم{% endblock %}
+
+{% macro money(value) -%}
+  {{ "{:,}".format((value or 0)|int) }} د.ع
+{%- endmacro %}
+
+{% block content %}
+<style>
+  .daily-report {
+    direction: rtl;
+    color: var(--text, #111827);
+    max-width: 1220px;
+    margin: 0 auto;
+  }
+  .daily-toolbar,
+  .daily-section,
+  .audit-strip {
+    background: var(--card, #fff);
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 8px;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+  }
+  .daily-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .daily-title h2 {
+    margin: 0 0 4px;
+    font-size: 22px;
+    font-weight: 800;
+  }
+  .daily-title p {
+    margin: 0;
+    color: var(--text-muted, #64748b);
+    font-size: 13px;
+  }
+  .toolbar-actions,
+  .date-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .daily-btn,
+  .date-input,
+  .audit-choice {
+    min-height: 38px;
+    border-radius: 8px;
+    border: 1px solid var(--border, #dbe3ef);
+    background: var(--card, #fff);
+    color: inherit;
+    padding: 8px 12px;
+    font-weight: 700;
+    text-decoration: none;
+  }
+  .daily-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    cursor: pointer;
+  }
+  .daily-btn.primary {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #fff;
+  }
+  .daily-btn.success {
+    background: #16a34a;
+    border-color: #16a34a;
+    color: #fff;
+  }
+  .daily-btn.warning {
+    background: #f59e0b;
+    border-color: #f59e0b;
+    color: #111827;
+  }
+  .audit-strip {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 14px;
+    align-items: center;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+  }
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border-radius: 999px;
+    padding: 7px 12px;
+    font-size: 13px;
+    font-weight: 800;
+  }
+  .status-pending { background: rgba(245, 158, 11, .15); color: #b45309; }
+  .status-matched { background: rgba(22, 163, 74, .15); color: #15803d; }
+  .status-mismatch { background: rgba(220, 38, 38, .14); color: #b91c1c; }
+  .time-scrubber {
+    background: var(--card, #fff);
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 14px;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+  }
+  .time-scrubber-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .time-scrubber-head h3 {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 900;
+  }
+  .time-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border-radius: 999px;
+    background: rgba(37, 99, 235, .12);
+    color: #1d4ed8;
+    padding: 8px 13px;
+    font-weight: 900;
+    font-size: 14px;
+  }
+  .time-range-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 12px;
+    align-items: center;
+    direction: ltr;
+  }
+  .time-edge {
+    color: var(--text-muted, #64748b);
+    font-size: 12px;
+    font-weight: 900;
+    min-width: 44px;
+    text-align: center;
+  }
+  .time-range {
+    width: 100%;
+    accent-color: #2563eb;
+    direction: ltr;
+  }
+  .time-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(120px, 1fr));
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .time-stat {
+    border: 1px solid var(--border, #edf2f7);
+    border-radius: 8px;
+    padding: 10px 12px;
+    background: rgba(148, 163, 184, .06);
+  }
+  .time-stat span {
+    display: block;
+    color: var(--text-muted, #64748b);
+    font-size: 12px;
+    font-weight: 800;
+    margin-bottom: 6px;
+  }
+  .time-stat strong {
+    font-size: 18px;
+    font-weight: 900;
+  }
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(140px, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .kpi {
+    background: var(--card, #fff);
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 8px;
+    padding: 14px;
+    min-height: 98px;
+  }
+  .kpi span {
+    display: block;
+    color: var(--text-muted, #64748b);
+    font-size: 12px;
+    font-weight: 800;
+    margin-bottom: 10px;
+  }
+  .kpi strong {
+    display: block;
+    font-size: clamp(18px, 2vw, 25px);
+    line-height: 1.2;
+    color: var(--text, #111827);
+    overflow-wrap: anywhere;
+  }
+  .kpi.in strong { color: #16a34a; }
+  .kpi.out strong { color: #dc2626; }
+  .daily-section {
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border-bottom: 1px solid var(--border, #e5e7eb);
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+  }
+  .section-head h3 {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 900;
+  }
+  .mini-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 10px;
+  }
+  .reason-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border, #edf2f7);
+    font-weight: 700;
+  }
+  .table-wrap {
+    overflow-x: auto;
+  }
+  .daily-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 720px;
+  }
+  .daily-table th,
+  .daily-table td {
+    padding: 11px 10px;
+    border-bottom: 1px solid var(--border, #edf2f7);
+    text-align: right;
+    vertical-align: top;
+    white-space: nowrap;
+  }
+  .daily-table th {
+    color: var(--text-muted, #64748b);
+    font-size: 12px;
+    font-weight: 900;
+    background: rgba(148, 163, 184, .08);
+  }
+  .daily-table td.desc {
+    white-space: normal;
+    min-width: 280px;
+  }
+  .amount-in { color: #16a34a; font-weight: 900; }
+  .amount-out { color: #dc2626; font-weight: 900; }
+  .empty-state {
+    padding: 22px;
+    text-align: center;
+    color: var(--text-muted, #64748b);
+    font-weight: 700;
+  }
+  .audit-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(15, 23, 42, .55);
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+  }
+  .audit-modal.show { display: flex; }
+  .audit-box {
+    width: min(560px, 100%);
+    background: var(--card, #fff);
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 8px;
+    padding: 18px;
+  }
+  .audit-box h3 { margin: 0 0 12px; font-size: 19px; }
+  .audit-choices {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .audit-choice {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+  }
+  .audit-field {
+    display: grid;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .audit-field label {
+    font-weight: 800;
+    font-size: 13px;
+  }
+  .audit-field input,
+  .audit-field textarea {
+    border: 1px solid var(--border, #dbe3ef);
+    border-radius: 8px;
+    background: var(--card, #fff);
+    color: inherit;
+    padding: 10px 12px;
+    width: 100%;
+  }
+  .audit-field textarea { min-height: 92px; resize: vertical; }
+  .modal-actions {
+    display: flex;
+    justify-content: flex-start;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  @media (max-width: 980px) {
+    .daily-toolbar,
+    .audit-strip { grid-template-columns: 1fr; display: grid; }
+    .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 560px) {
+    .kpi-grid,
+    .audit-choices,
+    .time-stats { grid-template-columns: 1fr; }
+    .time-range-row { grid-template-columns: 1fr; }
+    .daily-title h2 { font-size: 18px; }
+  }
+  @media print {
+    body { background: #fff !important; }
+    .sidebar,
+    .topbar,
+    .daily-toolbar .toolbar-actions,
+    .daily-btn,
+    .time-scrubber,
+    .audit-modal,
+    .no-print { display: none !important; }
+    .daily-report { max-width: none; }
+    .daily-section,
+    .audit-strip,
+    .kpi {
+      box-shadow: none !important;
+      border-color: #ddd !important;
+      break-inside: avoid;
+    }
+    .daily-table { min-width: 0; }
+  }
+</style>
+
+<div class="daily-report">
+  <div class="daily-toolbar">
+    <div class="daily-title">
+      <h2><i class="fa fa-clipboard-check"></i> تقرير اليوم</h2>
+      <p>تفاصيل وارد وصادر الصندوق، البضاعة الداخلة والخارجة، وحالة التدقيق ليوم {{ report_date.strftime("%Y-%m-%d") }}</p>
+    </div>
+    <div class="toolbar-actions">
+      <form class="date-nav" method="get" action="/reports/daily">
+        <a class="daily-btn" href="/reports/daily?date={{ prev_date.isoformat() }}" title="اليوم السابق"><i class="fa fa-chevron-right"></i></a>
+        <input class="date-input" type="date" name="date" value="{{ report_date.isoformat() }}" onchange="this.form.submit()">
+        <a class="daily-btn" href="/reports/daily?date={{ next_date.isoformat() }}" title="اليوم التالي"><i class="fa fa-chevron-left"></i></a>
+      </form>
+      <a class="daily-btn" href="/reports/daily"><i class="fa fa-plus"></i> تقرير جديد</a>
+      <a class="daily-btn" href="/reports/daily/archive"><i class="fa fa-clock-rotate-left"></i> القديم</a>
+      <button class="daily-btn primary" type="button" onclick="window.print()"><i class="fa fa-print"></i> طباعة</button>
+    </div>
+  </div>
+
+  <div class="audit-strip">
+    <div>
+      <span class="status-pill status-{{ audit_status }}"><i class="fa fa-circle-check"></i> {{ audit_status_label }}</span>
+      {% if audit %}
+        <span style="color:var(--text-muted,#64748b);font-weight:700;margin-inline-start:8px;">
+          آخر تدقيق: {{ audit.reviewed_at.strftime("%Y-%m-%d %H:%M") if audit.reviewed_at else "-" }}
+          {% if audit.reviewer %} - {{ audit.reviewer.name }}{% endif %}
+        </span>
+      {% endif %}
+    </div>
+    <button class="daily-btn success no-print" type="button" onclick="openAuditModal()"><i class="fa fa-check-double"></i> تم التدقيق</button>
+  </div>
+
+  <div class="time-scrubber no-print">
+    <div class="time-scrubber-head">
+      <h3><i class="fa fa-clock"></i> عداد وقت اليوم</h3>
+      <span class="time-badge"><i class="fa fa-stopwatch"></i> إلى الساعة <strong id="selectedTimeLabel">23:59</strong></span>
+    </div>
+    <div class="time-range-row">
+      <span class="time-edge">00:00</span>
+      <input class="time-range" id="dayTimeRange" type="range" min="0" max="1439" step="1" value="1439" aria-label="عداد وقت اليوم">
+      <span class="time-edge">23:59</span>
+    </div>
+    <div class="time-stats">
+      <div class="time-stat"><span>رصيد هذا الوقت</span><strong id="timelineBalance">{{ money(cash.closing_balance) }}</strong></div>
+      <div class="time-stat"><span>الوارد إلى الوقت</span><strong id="timelineIn" class="amount-in">{{ money(cash.cash_in) }}</strong></div>
+      <div class="time-stat"><span>الصادر إلى الوقت</span><strong id="timelineOut" class="amount-out">{{ money(cash.cash_out) }}</strong></div>
+    </div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi"><span>رصيد بداية اليوم</span><strong id="kpiOpening">{{ money(cash.opening_balance) }}</strong></div>
+    <div class="kpi in"><span>فلوس دخلت</span><strong id="kpiCashIn">{{ money(cash.cash_in) }}</strong></div>
+    <div class="kpi out"><span>فلوس طلعت</span><strong id="kpiCashOut">{{ money(cash.cash_out) }}</strong></div>
+    <div class="kpi"><span>صافي حركة اليوم</span><strong id="kpiNetCash">{{ money(cash.net_cash) }}</strong></div>
+    <div class="kpi"><span>رصيد الوقت المحدد</span><strong id="kpiClosing">{{ money(cash.closing_balance) }}</strong></div>
+    <div class="kpi"><span>عدد حركات الصندوق</span><strong id="kpiMovementCount">{{ cash.movement_count }}</strong></div>
+  </div>
+
+  <div class="daily-section">
+    <div class="section-head">
+      <h3><i class="fa fa-route"></i> وين راحت الفلوس ومنين دخلت</h3>
+      <span><strong id="timelineSectionCount">{{ cash.movement_count }}</strong> حركة</span>
+    </div>
+    <div class="mini-grid">
+      <div>
+        <h4>الوارد</h4>
+        {% for row in cash.cash_in_by_reason %}
+          <div class="reason-row"><span>{{ row.reason }}</span><strong class="amount-in">{{ money(row.amount) }}</strong></div>
+        {% else %}
+          <div class="empty-state">لا يوجد وارد بهذا اليوم</div>
+        {% endfor %}
+      </div>
+      <div>
+        <h4>الصادر</h4>
+        {% for row in cash.cash_out_by_reason %}
+          <div class="reason-row"><span>{{ row.reason }}</span><strong class="amount-out">{{ money(row.amount) }}</strong></div>
+        {% else %}
+          <div class="empty-state">لا يوجد صادر بهذا اليوم</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="daily-section">
+    <div class="section-head">
+      <h3><i class="fa fa-arrow-down"></i> تفاصيل الوارد</h3>
+      <strong class="amount-in">{{ money(cash.cash_in) }}</strong>
+    </div>
+    <div class="table-wrap">
+      <table class="daily-table">
+        <thead><tr><th>السبب</th><th>الوصف</th><th>المصدر</th><th>المبلغ</th><th>الرصيد بعد الحركة</th></tr></thead>
+        <tbody>
+        {% for movement in cash.cash_in_movements %}
+          <tr>
+            <td>{{ movement.reason }}</td>
+            <td class="desc">{{ movement.description }}</td>
+            <td>{{ movement.reference_type }} #{{ movement.reference_id }}</td>
+            <td class="amount-in">{{ money(movement.amount) }}</td>
+            <td>{{ money(movement.balance_after) }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="5" class="empty-state">لا توجد حركات وارد</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="daily-section">
+    <div class="section-head">
+      <h3><i class="fa fa-arrow-up"></i> تفاصيل الصادر</h3>
+      <strong class="amount-out">{{ money(cash.cash_out) }}</strong>
+    </div>
+    <div class="table-wrap">
+      <table class="daily-table">
+        <thead><tr><th>السبب</th><th>الوصف</th><th>المصدر</th><th>المبلغ</th><th>الرصيد بعد الحركة</th></tr></thead>
+        <tbody>
+        {% for movement in cash.cash_out_movements %}
+          <tr>
+            <td>{{ movement.reason }}</td>
+            <td class="desc">{{ movement.description }}</td>
+            <td>{{ movement.reference_type }} #{{ movement.reference_id }}</td>
+            <td class="amount-out">{{ money(movement.amount) }}</td>
+            <td>{{ money(movement.balance_after) }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="5" class="empty-state">لا توجد حركات صادر</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="daily-section">
+    <div class="section-head">
+      <h3><i class="fa fa-box-open"></i> المنتجات الطلعت</h3>
+      <span>{{ products_out_total_qty }} قطعة - {{ money(products_out_total_sales) }}</span>
+    </div>
+    <div class="table-wrap">
+      <table class="daily-table">
+        <thead><tr><th>المنتج</th><th>اللون</th><th>الكمية</th><th>عدد الفواتير</th><th>مبيعات</th><th>كلفة</th></tr></thead>
+        <tbody>
+        {% for item in products_out %}
+          <tr>
+            <td>{{ item.product_name }}</td>
+            <td>{{ item.variant_color or "-" }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>{{ item.invoice_count }}</td>
+            <td>{{ money(item.total_sales) }}</td>
+            <td>{{ money(item.total_cost) }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="6" class="empty-state">لا توجد منتجات خارجة بهذا اليوم</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="daily-section">
+    <div class="section-head">
+      <h3><i class="fa fa-dolly"></i> المنتجات الطبت</h3>
+      <span>{{ products_in_total_qty }} قطعة - {{ money(products_in_total_cost) }}</span>
+    </div>
+    <div class="table-wrap">
+      <table class="daily-table">
+        <thead><tr><th>المنتج</th><th>اللون</th><th>الكمية</th><th>عدد الشراءات</th><th>كلفة الدخول</th></tr></thead>
+        <tbody>
+        {% for item in products_in %}
+          <tr>
+            <td>{{ item.product_name }}</td>
+            <td>{{ item.variant_color or "-" }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>{{ item.purchase_count }}</td>
+            <td>{{ money(item.total_cost) }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="5" class="empty-state">لا توجد منتجات داخلة بهذا اليوم</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="audit-modal" id="auditModal" onclick="closeAuditOnBackdrop(event)">
+  <form class="audit-box" method="post" action="/reports/daily/audit">
+    <h3><i class="fa fa-check-double"></i> تدقيق اليوم</h3>
+    <input type="hidden" name="report_date" value="{{ report_date.isoformat() }}">
+    <div class="audit-choices">
+      <label class="audit-choice"><input type="radio" name="status" value="matched" {% if audit_status == "matched" %}checked{% endif %}> مطابق</label>
+      <label class="audit-choice"><input type="radio" name="status" value="mismatch" {% if audit_status == "mismatch" %}checked{% endif %}> يوجد خلل</label>
+    </div>
+    <div class="audit-field">
+      <label>الرصيد المتوقع حسب التقرير</label>
+      <input type="text" value="{{ money(cash.closing_balance) }}" readonly>
+    </div>
+    <div class="audit-field">
+      <label>العد الفعلي للصندوق</label>
+      <input type="number" name="actual_cash_count" value="{{ audit.actual_cash_count if audit and audit.actual_cash_count is not none else cash.closing_balance }}" required>
+    </div>
+    <div class="audit-field">
+      <label>ملاحظة الخلل أو التصحيح</label>
+      <textarea name="notes" placeholder="إذا يوجد خلل اكتب السبب أو الإجراء المطلوب للتصحيح">{{ audit.notes if audit and audit.notes else "" }}</textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="daily-btn success" type="submit"><i class="fa fa-save"></i> حفظ التدقيق</button>
+      <button class="daily-btn" type="button" onclick="closeAuditModal()"><i class="fa fa-xmark"></i> إلغاء</button>
+    </div>
+  </form>
+</div>
+
+<script>
+  const dailyTimelineMovements = {{ cash.timeline_movements|tojson }};
+  const dailyOpeningBalance = {{ (cash.opening_balance or 0)|int }};
+
+  function formatIqd(value) {
+    return `${Number(value || 0).toLocaleString('en-US')} د.ع`;
+  }
+
+  function minuteToTime(minute) {
+    const safeMinute = Math.max(0, Math.min(1439, Number(minute || 0)));
+    const hours = Math.floor(safeMinute / 60);
+    const minutes = safeMinute % 60;
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+  }
+
+  function setText(id, value) {
+    const node = document.getElementById(id);
+    if (node) node.textContent = value;
+  }
+
+  function updateDailyTimeline(minute) {
+    const selectedMinute = Number(minute || 0);
+    let cashIn = 0;
+    let cashOut = 0;
+    let balance = dailyOpeningBalance;
+    let count = 0;
+
+    dailyTimelineMovements.forEach((movement) => {
+      if (Number(movement.minute || 0) > selectedMinute) return;
+      const amount = Number(movement.amount || 0);
+      count += 1;
+      if (movement.type === 'cash_in') {
+        cashIn += amount;
+        balance += amount;
+      } else {
+        cashOut += amount;
+        balance -= amount;
+      }
+    });
+
+    const netCash = cashIn - cashOut;
+    const timeLabel = minuteToTime(selectedMinute);
+
+    setText('selectedTimeLabel', timeLabel);
+    setText('timelineBalance', formatIqd(balance));
+    setText('timelineIn', formatIqd(cashIn));
+    setText('timelineOut', formatIqd(cashOut));
+    setText('kpiOpening', formatIqd(dailyOpeningBalance));
+    setText('kpiCashIn', formatIqd(cashIn));
+    setText('kpiCashOut', formatIqd(cashOut));
+    setText('kpiNetCash', formatIqd(netCash));
+    setText('kpiClosing', formatIqd(balance));
+    setText('kpiMovementCount', String(count));
+    setText('timelineSectionCount', String(count));
+  }
+
+  const dayTimeRange = document.getElementById('dayTimeRange');
+  if (dayTimeRange) {
+    dayTimeRange.addEventListener('input', function () {
+      updateDailyTimeline(this.value);
+    });
+    updateDailyTimeline(dayTimeRange.value);
+  }
+
+  function openAuditModal() {
+    document.getElementById('auditModal').classList.add('show');
+  }
+  function closeAuditModal() {
+    document.getElementById('auditModal').classList.remove('show');
+  }
+  function closeAuditOnBackdrop(event) {
+    if (event.target.id === 'auditModal') closeAuditModal();
+  }
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape') closeAuditModal();
+  });
+</script>
+{% endblock %}

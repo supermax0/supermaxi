@@ -2241,8 +2241,12 @@ or request.path.startswith('/superadmin') %}
             {% endif %}
             {% if show_contacts_employees %}
             <a href="/employees"
-              class="{% if request.path.startswith('/employees') %}active{% endif %}">
+              class="{% if request.path.startswith('/employees') and not request.path.startswith('/employees/page-warnings') %}active{% endif %}">
               <i class="fa fa-user-tie"></i> {{ _('employees') }}
+            </a>
+            <a href="/employees/page-warnings"
+              class="{% if request.path.startswith('/employees/page-warnings') %}active{% endif %}">
+              <i class="fab fa-whatsapp"></i> تحذير البيجات
             </a>
             <a href="/payroll"
               class="{% if request.path.startswith('/payroll') %}active{% endif %}">
@@ -2275,6 +2279,11 @@ or request.path.startswith('/superadmin') %}
             {% if is_admin or (current_employee and current_employee.has_permission('view_orders_placed')) %}
             <a href="/orders/ordered" class="{% if '/orders/ordered' in request.path %}active{% endif %}">
               <i class="fa fa-box-open"></i> {{ _('orders_status_ordered') }}
+            </a>
+            {% endif %}
+            {% if is_admin or (current_employee and current_employee.has_permission('view_orders_packed')) %}
+            <a href="/orders/packed" class="{% if '/orders/packed' in request.path %}active{% endif %}">
+              <i class="fa fa-box"></i> {{ _('orders_status_packed') }}
             </a>
             {% endif %}
             {% if is_admin or (current_employee and current_employee.has_permission('view_orders_shipped')) %}
@@ -2333,6 +2342,8 @@ or request.path.startswith('/superadmin') %}
         {% if (is_admin or (current_employee and can_see_reports)) and business_allows('reports') %}
         {% if plan_has("reports_adv") %}
         <a href="/reports"><i class="fa fa-chart-pie"></i> {{ _('reports') }}</a>
+        <a href="/reports/daily" class="{% if request.path.startswith('/reports/daily') %}active{% endif %}"><i class="fa fa-clipboard-check"></i> تقرير اليوم</a>
+        <a href="/reports/monitors" class="{% if request.path.startswith('/reports/monitors') %}active{% endif %}"><i class="fa fa-gauge-high"></i> مركز المراقبة</a>
         {% else %}
         <a href="/upgrade" style="opacity:.55" title="{{ _('upgrade_plan') }}"><i class="fa fa-chart-pie"></i> {{
           _('reports') }} <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
@@ -2341,6 +2352,9 @@ or request.path.startswith('/superadmin') %}
         {% set can_use_ai_assistant = is_admin or (current_employee and current_employee.has_permission('use_ai_assistant')) %}
         {% if can_use_ai_assistant %}
         {% if plan_has("ai_assistant") %}
+        <a href="/investments" class="{% if request.path.startswith('/investments') %}active{% endif %}">
+          <i class="fa fa-lightbulb"></i> مستشار الاستثمار
+        </a>
         <a href="/assistant/chat" class="{% if request.path.startswith('/assistant') %}active{% endif %}">
           <i class="fa fa-robot"></i> المساعد الذكي
         </a>
@@ -2350,6 +2364,12 @@ or request.path.startswith('/superadmin') %}
           <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i>
         </a>
         {% endif %}
+        {% endif %}
+        {% set can_use_ai_sales = is_admin or has_assigned_ai_sales_page or (current_employee and current_employee.has_permission('use_ai_sales')) %}
+        {% if can_use_ai_sales %}
+        <a href="/ai-sales/inbox" class="{% if request.path.startswith('/ai-sales') %}active{% endif %}">
+          <i class="fa fa-comments"></i> موظف المبيعات AI
+        </a>
         {% endif %}
         {% if is_admin and business_allows('permissions') %}
         {% if plan_has("rbac") %}
@@ -2385,6 +2405,11 @@ or request.path.startswith('/superadmin') %}
         <a href="/upgrade" style="opacity:.55" title="{{ _('upgrade_plan') }}"><i class="fa fa-layer-group"></i> مساحة
           LEON <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
         {% endif %}
+        {% endif %}
+        {% if is_admin or (current_employee and (current_employee.has_permission('mobile_app.manage_videos') or current_employee.has_permission('mobile_app.manage_settings') or current_employee.has_permission('mobile_app.manage_design') or current_employee.has_permission('mobile_app.send_notifications') or current_employee.has_permission('mobile_app.view_analytics'))) %}
+        <a href="/mobile-app/" class="{% if request.path.startswith('/mobile-app') %}active{% endif %}">
+          <i class="fa fa-mobile-alt"></i> تطبيق الهاتف
+        </a>
         {% endif %}
       </nav>
 
@@ -3109,6 +3134,14 @@ or request.path.startswith('/superadmin') %}
     const msgsNotifyChannel = {{ _('messages_channel_notify')|tojson }};
     let msgsBadgeInitialized = false;
     let msgsLastUnreadCount = 0;
+    let msgsBadgeFailures = 0;
+    let msgsBadgeTimer = null;
+
+    function scheduleMessagesBadgeUpdate() {
+      clearTimeout(msgsBadgeTimer);
+      const delay = Math.min(30000, 5000 * (2 ** Math.min(msgsBadgeFailures, 3)));
+      msgsBadgeTimer = setTimeout(updateMessagesBadge, delay);
+    }
 
     function _msgPreview(item) {
       if (!item) return '';
@@ -3139,11 +3172,14 @@ or request.path.startswith('/superadmin') %}
       fetch('/messages/unread-count')
         .then(r => {
           if (!r.ok) {
-            throw new Error('Network response was not ok');
+            const error = new Error('Network response was not ok');
+            error.status = r.status;
+            throw error;
           }
           return r.json();
         })
         .then(data => {
+          msgsBadgeFailures = 0;
           const badge = document.getElementById('messagesBadge');
           if (badge) {
             if (data.unread_count > 0) {
@@ -3170,22 +3206,19 @@ or request.path.startswith('/superadmin') %}
           msgsLastUnreadCount = data.unread_count || 0;
         })
         .catch(error => {
-          // إخفاء الأخطاء الصامتة - الخادم غير متاح
-          // Silently ignore connection errors
-          if (error.name !== 'TypeError' || !error.message.includes('fetch')) {
-            // فقط سجل الأخطاء غير المتعلقة بالاتصال
-            // Only log non-connection errors
+          msgsBadgeFailures += 1;
+          const transient = error.name === 'TypeError' || [408, 425, 429, 502, 503, 504].includes(error.status);
+          if (!transient && msgsBadgeFailures === 1) {
             console.error('Error updating messages badge:', error);
           }
-        });
+        })
+        .finally(scheduleMessagesBadgeUpdate);
     }
 
     // Update badge on page load
     document.addEventListener('DOMContentLoaded', function () {
       if (window.FinoraMsgNotify) window.FinoraMsgNotify.requestPermission();
       updateMessagesBadge();
-      // Update every 5 seconds (also when tab is hidden)
-      setInterval(updateMessagesBadge, 5000);
     });
   </script>
 

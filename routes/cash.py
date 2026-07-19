@@ -17,6 +17,7 @@ from utils.cash_calculations import (
 )
 from utils.permission_checks import check_permission
 from utils.activity_logger import log_activity
+from utils.delivery_expense_service import restore_missing_delivery_fee_withdrawals
 from utils.treasury_helpers import get_default_cash_account
 from utils.treasury_calculations import (
     list_treasury_accounts,
@@ -51,6 +52,14 @@ def cash():
     # فحص الصلاحية
     if not check_permission("can_see_accounts"):
         return redirect("/pos"), 403
+
+    ensure_treasury_schema()
+    restored_delivery = restore_missing_delivery_fee_withdrawals()
+    if restored_delivery["count"] > 0:
+        flash(
+            f"تم إرجاع {restored_delivery['count']} حركة أجور توصيل بقيمة {restored_delivery['total']:,} د.ع إلى الصندوق.",
+            "success",
+        )
     
     # ==========================
     # إضافة حركة نقدية يدوياً
@@ -118,7 +127,6 @@ def cash():
     # آخر 50 حركة للعرض
     recent_movements = cash_movements[-50:] if cash_movements else []
     
-    ensure_treasury_schema()
     bank_balances = [
         {"account": acc, "balance": calculate_treasury_balance(acc.id)}
         for acc in list_treasury_accounts()

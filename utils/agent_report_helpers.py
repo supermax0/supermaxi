@@ -134,6 +134,84 @@ def enrich_orders_data_payment_fields(orders_data: list) -> list:
     return orders_data
 
 
+def enrich_orders_data_display_fields(orders_data: list, *, refresh_live: bool = True) -> list:
+    """أملأ العنوان والحالة الحالية من الفاتورة الحية لعرض الكشف."""
+    orders_data = enrich_orders_data_payment_fields(orders_data)
+    if not orders_data or not refresh_live:
+        # حتى بدون تحديث حي: وحّد مفتاح العنوان للعرض
+        for row in orders_data or []:
+            if not isinstance(row, dict):
+                continue
+            address = (row.get("customer_address") or row.get("address") or "").strip()
+            if address:
+                row["customer_address"] = address
+                row.setdefault("address", address)
+        return orders_data
+
+    from models.invoice import Invoice
+
+    order_ids: list[int] = []
+    for row in orders_data:
+        if not isinstance(row, dict):
+            continue
+        oid = row.get("id") or row.get("order_id")
+        if oid is None:
+            continue
+        try:
+            order_ids.append(int(oid))
+        except (TypeError, ValueError):
+            pass
+
+    if not order_ids:
+        return orders_data
+
+    invoices = {
+        inv.id: inv
+        for inv in Invoice.query.filter(Invoice.id.in_(order_ids)).all()
+    }
+    for row in orders_data:
+        if not isinstance(row, dict):
+            continue
+        oid = row.get("id") or row.get("order_id")
+        try:
+            oid_int = int(oid)
+        except (TypeError, ValueError):
+            continue
+        invoice = invoices.get(oid_int)
+        if not invoice:
+            address = (row.get("customer_address") or row.get("address") or "").strip()
+            if address:
+                row["customer_address"] = address
+                row.setdefault("address", address)
+            continue
+
+        # الحالة الأصلية الحالية من الفاتورة (وليس لقطة الإنشاء فقط)
+        if invoice.status:
+            row["status"] = invoice.status
+        if invoice.payment_status:
+            row["payment_status"] = invoice.payment_status
+
+        customer = invoice.customer
+        if customer:
+            address = (customer.address or "").strip()
+            if address:
+                row["customer_address"] = address
+                row["address"] = address
+            city = (customer.city or "").strip()
+            if city:
+                row["customer_city"] = city
+            if customer.phone:
+                row["customer_phone"] = customer.phone
+            if customer.name:
+                row["customer_name"] = customer.name
+        else:
+            address = (row.get("customer_address") or row.get("address") or "").strip()
+            if address:
+                row["customer_address"] = address
+                row.setdefault("address", address)
+    return orders_data
+
+
 def compute_report_delivered_amount(report) -> int:
     """مجموع الباقي (أو الإجمالي للكشوف القديمة) للطلبات المحددة «واصل» فقط."""
     total = 0

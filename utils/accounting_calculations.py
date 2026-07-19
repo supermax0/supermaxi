@@ -22,6 +22,7 @@ from models.expense import Expense
 from models.supplier import Supplier
 from models.shipping import ShippingCompany
 from utils.order_item_costs import exclude_delivery_fee_items
+from utils.order_stock_lock import stock_unlocked_filter
 from utils.order_status import CANCELED_STATUSES as ORDER_CANCELED_STATUSES
 from utils.order_status import RETURN_STATUSES as ORDER_RETURN_STATUSES
 
@@ -35,15 +36,19 @@ CANCELED_STATUSES = list(ORDER_CANCELED_STATUSES)
 
 def _valid_revenue_payment_status_filter():
     """Payment status filter for booked revenue: NULL/unknown is allowed, returns/cancels are not."""
-    return or_(
-        Invoice.payment_status.is_(None),
-        Invoice.payment_status.notin_(RETURN_STATUSES + CANCELED_STATUSES),
+    return and_(
+        stock_unlocked_filter(Invoice),
+        or_(
+            Invoice.payment_status.is_(None),
+            Invoice.payment_status.notin_(RETURN_STATUSES + CANCELED_STATUSES),
+        ),
     )
 
 
 def _paid_invoice_filter():
     """Cash-basis invoice filter: explicit payment status wins; delivered NULL is legacy-paid."""
     return and_(
+        stock_unlocked_filter(Invoice),
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
         or_(
             Invoice.payment_status.is_(None),
@@ -414,13 +419,24 @@ def calculate_supplier_debts():
     Returns:
         int: إجمالي ديون الموردين
     """
-    suppliers = db.session.query(Supplier.total_debt, Supplier.total_paid).all()
-    return int(
-        sum(
-            max(int((total_debt or 0) - (total_paid or 0)), 0)
-            for total_debt, total_paid in suppliers
+    try:
+        from utils.supplier_accounting_repair import expected_supplier_totals
+
+        suppliers = db.session.query(Supplier.id).all()
+        total = 0
+        for (supplier_id,) in suppliers:
+            expected_debt, expected_paid = expected_supplier_totals(int(supplier_id))
+            total += max(expected_debt - expected_paid, 0)
+        return int(total)
+    except Exception:
+        db.session.rollback()
+        suppliers = db.session.query(Supplier.total_debt, Supplier.total_paid).all()
+        return int(
+            sum(
+                max(int((total_debt or 0) - (total_paid or 0)), 0)
+                for total_debt, total_paid in suppliers
+            )
         )
-    )
 
 def calculate_shipping_due():
     """

@@ -212,9 +212,10 @@
       <div class="kpi-value {{ 'pos' if net_profit_period >= 0 else 'neg' }}">{{ money(net_profit_period) }} <span class="kpi-unit">د.ع</span></div>
       {% if profit_margin_pct is not none %}<div class="kpi-trend">هامش صافي {{ profit_margin_pct }}%</div>{% endif %}
     </div>
-    <div class="kpi-card {{ 'teal' if cash_balance >= 0 else 'red' }}">
-      <div class="kpi-label">الرصيد النقدي</div>
-      <div class="kpi-value {{ 'neg' if cash_balance < 0 else '' }}">{{ money(cash_balance) }} <span class="kpi-unit">د.ع</span></div>
+    <div class="kpi-card {{ 'teal' if total_liquidity >= 0 else 'red' }}">
+      <div class="kpi-label">إجمالي السيولة</div>
+      <div class="kpi-value {{ 'neg' if total_liquidity < 0 else '' }}">{{ money(total_liquidity) }} <span class="kpi-unit">د.ع</span></div>
+      <div class="kpi-trend">الصندوق {{ money(cash_balance) }}{% if bank_balance_total %} · البنوك {{ money(bank_balance_total) }}{% endif %}</div>
     </div>
     <div class="kpi-card purple">
       <div class="kpi-label">قيمة المخزون</div>
@@ -312,7 +313,13 @@
       <thead><tr><th>البند</th><th>المبلغ (د.ع)</th></tr></thead>
       <tbody>
         <tr><td colspan="2"><strong>الأصول</strong></td></tr>
-        <tr><td>النقدية</td><td class="amount">{{ money(cash_balance) }}</td></tr>
+        <tr><td>الصندوق</td><td class="amount">{{ money(cash_balance) }}</td></tr>
+        {% for bank in bank_balances|default([]) %}
+        <tr><td>البنك — {{ bank.name }}</td><td class="amount {{ 'neg' if bank.balance < 0 else '' }}">{{ money(bank.balance) }}</td></tr>
+        {% endfor %}
+        {% if bank_balances|default([]) %}
+        <tr><td>إجمالي السيولة (الصندوق + البنوك)</td><td class="amount {{ 'neg' if total_liquidity < 0 else '' }}">{{ money(total_liquidity) }}</td></tr>
+        {% endif %}
         <tr><td>المخزون</td><td class="amount">{{ money(inventory_value) }}</td></tr>
         <tr>
           <td>
@@ -351,7 +358,13 @@
         {% endif %}
         <tr class="total-row"><td>إجمالي الأصول</td><td class="amount">{{ money(total_assets) }}</td></tr>
         <tr><td colspan="2"><strong>الالتزامات</strong></td></tr>
-        <tr><td>ديون الموردين</td><td class="amount">{{ money(supplier_debts) }}</td></tr>
+        <tr>
+          <td>
+            ديون الموردين (المتبقي فقط)
+            <small> — إجمالي فواتير الموردين ناقص المسدد والتسويات</small>
+          </td>
+          <td class="amount">{{ money(supplier_debts) }}</td>
+        </tr>
         {% if rotating_savings_liability %}
         <tr><td>التزامات جمعيات دوّارة</td><td class="amount">{{ money(rotating_savings_liability) }}</td></tr>
         {% endif %}
@@ -373,7 +386,11 @@
         <tr><td>المقبوضات النقدية من المبيعات (خلال الفترة)</td><td class="amount pos">{{ money(cash_inflow) }}</td></tr>
         <tr><td>المدفوعات (المصاريف خلال الفترة)</td><td class="amount neg">({{ money(cash_outflow) }})</td></tr>
         <tr class="total-row"><td>صافي التدفق النقدي للفترة</td><td class="amount {{ 'pos' if net_cash_flow >= 0 else 'neg' }}">{{ money(net_cash_flow) }}</td></tr>
-        <tr><td>الرصيد النقدي الحالي (كما في النظام)</td><td class="amount {{ 'neg' if cash_balance < 0 else '' }}">{{ money(cash_balance) }}</td></tr>
+        <tr><td>رصيد الصندوق الحالي (كما في النظام)</td><td class="amount {{ 'neg' if cash_balance < 0 else '' }}">{{ money(cash_balance) }}</td></tr>
+        {% if bank_balances|default([]) %}
+        <tr><td>رصيد البنوك الحالي</td><td class="amount {{ 'neg' if bank_balance_total < 0 else '' }}">{{ money(bank_balance_total) }}</td></tr>
+        <tr><td>إجمالي السيولة الحالي</td><td class="amount {{ 'neg' if total_liquidity < 0 else '' }}">{{ money(total_liquidity) }}</td></tr>
+        {% endif %}
       </tbody>
     </table>
     <p class="report-no-data">المقبوضات محسوبة من المبالغ المسددة فعلياً على فواتير الفترة، والمدفوعات من مصاريف الفترة المسجّلة.</p>
@@ -458,7 +475,7 @@
     <h2><span class="sec-num">11</span> أرصدة الموردين المستحقة</h2>
     {% if top_suppliers %}
     <table class="report-table">
-      <thead><tr><th>#</th><th>المورد</th><th>إجمالي الديون (د.ع)</th><th>المسدد (د.ع)</th><th>المتبقي (د.ع)</th></tr></thead>
+      <thead><tr><th>#</th><th>المورد</th><th>إجمالي الفواتير/الافتتاحي (د.ع)</th><th>المسدد/المسوّى (د.ع)</th><th>المتبقي كالتزام (د.ع)</th></tr></thead>
       <tbody>
         {% for s in top_suppliers %}
         <tr><td>{{ loop.index }}</td><td>{{ s.name }}</td><td class="amount">{{ money(s.total_debt) }}</td><td class="amount">{{ money(s.total_paid) }}</td><td class="amount neg">{{ money(s.remaining) }}</td></tr>
@@ -489,7 +506,7 @@
     <ul>
       <li>جميع الأرقام مستخرجة من سجلات النظام الرسمية (فواتير، مصاريف، مخزون، موردين، نقدية) دون تقدير أو افتراض.</li>
       {% if net_profit_period < 0 %}<li class="neg"><strong>تحذير:</strong> صافي الربح للفترة سالب (خسارة). يُنصح بمراجعة المصاريف والإيرادات.</li>{% endif %}
-      {% if cash_balance < 0 %}<li class="neg"><strong>تحذير:</strong> عجز نقدي حسب السجلات. يُنصح بمراجعة التحصيلات والمدفوعات.</li>{% endif %}
+      {% if cash_balance < 0 %}<li class="neg"><strong>تحذير:</strong> عجز في الصندوق حسب السجلات. يُنصح بمراجعة التحصيلات والمدفوعات.</li>{% endif %}
       {% if accounts_receivable > 0 %}<li>لديك ذمم مدينة بقيمة {{ money(accounts_receivable) }} د.ع؛ منها {{ money(shipping_receivables if shipping_receivables is defined else 0) }} د.ع عند شركات النقل، ومتابعة التحصيل تحسّن التدفق النقدي.</li>{% endif %}
       {% if liquidity_ratio is not none and liquidity_ratio < 1 %}<li class="neg">نسبة السيولة أقل من 1، ما يشير إلى ضغط على القدرة على سداد الالتزامات.</li>{% endif %}
       <li>توصية: مراجعة المنتجات ذات المخزون المنخفض والذمم المدينة لتحسين رأس المال العامل.</li>

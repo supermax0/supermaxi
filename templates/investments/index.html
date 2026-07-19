@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+{% block title %}مستشار الاستثمار{% endblock %}
+{% block page_title %}مستشار الاستثمار{% endblock %}
+
+{% block content %}
+<style>
+.advisor-page{max-width:1320px;margin:0 auto;padding:12px 0 32px;direction:rtl;color:#0f172a}
+.advisor-hero{display:grid;grid-template-columns:1.05fr .95fr;gap:18px;align-items:stretch;margin-bottom:18px}
+.advisor-panel,.advisor-history,.live-panel{background:#fff;border:1px solid #dbe3ef;border-radius:8px;box-shadow:0 18px 45px rgba(15,23,42,.07)}
+.advisor-panel{padding:22px}.advisor-history{padding:20px}.advisor-title{display:flex;align-items:center;gap:10px;margin:0 0 8px;font-size:24px;color:#0f172a}
+.advisor-copy{margin:0;color:#64748b;line-height:1.85;font-size:14px}.advisor-form{margin-top:18px;display:grid;gap:12px}
+.advisor-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.advisor-field label{display:block;margin-bottom:6px;color:#475569;font-size:12px;font-weight:800}
+.advisor-field select,.advisor-field input{width:100%;border:1px solid #cbd5e1;border-radius:8px;background:#f8fafc;color:#0f172a;padding:12px;min-height:44px}
+.advisor-check{display:flex;align-items:center;gap:10px;color:#334155;font-weight:800}.advisor-check input{width:18px;height:18px}
+.advisor-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:4px}.advisor-btn{border:0;border-radius:8px;padding:12px 14px;font-weight:900;text-decoration:none;display:inline-flex;gap:8px;align-items:center;cursor:pointer}
+.advisor-primary{background:#0f766e;color:#fff}.advisor-primary:disabled{opacity:.65;cursor:wait}.advisor-soft{background:#ecfdf5;color:#047857;border:1px solid #a7f3d0}
+.live-panel{padding:18px;display:flex;flex-direction:column;min-height:100%}.live-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:12px}
+.live-head h2{margin:0;font-size:18px}.live-status{font-size:12px;color:#0f766e;background:#ccfbf1;border:1px solid #99f6e4;border-radius:999px;padding:6px 10px;font-weight:900}
+.live-stream{flex:1;border:1px solid #e2e8f0;background:#f8fafc;border-radius:8px;padding:14px;min-height:260px;white-space:pre-wrap;color:#334155;line-height:1.9;font-family:inherit}
+.live-caret{display:inline-block;width:8px;height:18px;background:#0f766e;margin-right:4px;vertical-align:middle;animation:blink 1s infinite}@keyframes blink{50%{opacity:.15}}
+.history-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}
+.history-card{border:1px solid #e2e8f0;border-radius:8px;padding:14px;background:#f8fafc;display:grid;gap:8px}.history-card h3{margin:0;font-size:16px;color:#0f172a}
+.history-meta{display:flex;gap:8px;flex-wrap:wrap;color:#64748b;font-size:12px}.history-summary{color:#475569;line-height:1.75;font-size:13px;margin:0}
+.advisor-empty{border:1px dashed #cbd5e1;border-radius:8px;padding:28px;text-align:center;color:#64748b;background:#f8fafc;margin-top:12px}.advisor-error{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:8px;padding:12px;margin-top:12px}
+:root[data-theme="dark"] .advisor-page{color:#e5e7eb}:root[data-theme="dark"] .advisor-panel,:root[data-theme="dark"] .advisor-history,:root[data-theme="dark"] .live-panel{background:#111827;border-color:#334155}
+:root[data-theme="dark"] .advisor-title,:root[data-theme="dark"] .live-head h2,:root[data-theme="dark"] .history-card h3{color:#f8fafc}:root[data-theme="dark"] .advisor-copy,:root[data-theme="dark"] .history-summary{color:#cbd5e1}
+:root[data-theme="dark"] .advisor-field select,:root[data-theme="dark"] .advisor-field input,:root[data-theme="dark"] .live-stream,:root[data-theme="dark"] .history-card,:root[data-theme="dark"] .advisor-empty{background:#0f172a;border-color:#334155;color:#e5e7eb}
+@media(max-width:1050px){.advisor-hero{grid-template-columns:1fr}.history-grid{grid-template-columns:1fr}}@media(max-width:640px){.advisor-row{grid-template-columns:1fr}}
+</style>
+
+<div class="advisor-page">
+  <div class="advisor-hero">
+    <section class="advisor-panel">
+      <h1 class="advisor-title"><i class="fa fa-lightbulb"></i> مستشار الاستثمار التنفيذي</h1>
+      <p class="advisor-copy">يحلل السيولة، الربح، الذمم، المخزون، الموردين، أفضل المنتجات وقنوات البيع، ثم يكتب خطة طويلة قابلة للتنفيذ بثلاث بدائل وسيناريوهات مالية ومخاطر وبوابات قرار.</p>
+      {% if error_message %}<div class="advisor-error">{{ error_message }}</div>{% endif %}
+      <form class="advisor-form" id="investmentGenerateForm" method="post" action="{{ url_for('investments.generate') }}">
+        <div class="advisor-row">
+          <div class="advisor-field">
+            <label>الفترة المالية</label>
+            <select name="period_type">
+              <option value="last_30_days" selected>آخر 30 يوم</option>
+              <option value="this_month">هذا الشهر</option>
+              <option value="last_month">الشهر الماضي</option>
+              <option value="this_year">السنة الحالية</option>
+              <option value="custom">نطاق مخصص</option>
+            </select>
+          </div>
+          <div class="advisor-field">
+            <label>درجة المخاطرة</label>
+            <select name="risk_profile">
+              <option value="balanced" selected>متوازنة</option>
+              <option value="conservative">محافظة</option>
+              <option value="growth">نمو أعلى</option>
+            </select>
+          </div>
+        </div>
+        <div class="advisor-row">
+          <div class="advisor-field"><label>من تاريخ</label><input type="date" name="date_from"></div>
+          <div class="advisor-field"><label>إلى تاريخ</label><input type="date" name="date_to"></div>
+        </div>
+        <div class="advisor-field">
+          <label>هدف الإدارة</label>
+          <select name="objective">
+            <option value="growth" selected>زيادة النمو والمبيعات</option>
+            <option value="cashflow">تحسين التدفق النقدي</option>
+            <option value="profit">رفع هامش الربح</option>
+            <option value="expansion">فتح قناة/فرع جديد</option>
+          </select>
+        </div>
+        <div class="advisor-field">
+          <label>نطاق المشاريع</label>
+          <select name="project_scope">
+            <option value="mixed" selected>محفظة مختلطة: داخل + مجاور + خارج التخصص</option>
+            <option value="outside">خارج التخصص بالكامل</option>
+            <option value="adjacent">قريب من النشاط الحالي</option>
+          </select>
+        </div>
+        <label class="advisor-check"><input type="checkbox" name="external_research" value="1"> بحث خارجي وروابط داعمة، حتى لو أخذ وقت أطول</label>
+        <div class="advisor-actions">
+          <button class="advisor-btn advisor-primary" id="generateBtn" type="submit"><i class="fa fa-wand-magic-sparkles"></i> ابدأ البحث وكتابة التقرير</button>
+        </div>
+      </form>
+    </section>
+
+    <aside class="live-panel">
+      <div class="live-head">
+        <h2><i class="fa fa-pen-nib"></i> الكتابة المباشرة</h2>
+        <span class="live-status" id="liveStatus">جاهز</span>
+      </div>
+      <div class="live-stream" id="liveStream">اختر الإعدادات واضغط ابدأ. أثناء التوليد ستظهر أمامك مراحل البحث والتحليل خطوة بخطوة.<span class="live-caret"></span></div>
+    </aside>
+  </div>
+
+  <section class="advisor-history">
+    <h2 class="advisor-title"><i class="fa fa-folder-open"></i> الخطط المحفوظة</h2>
+    {% if proposals %}
+    <div class="history-grid">
+      {% for item in proposals %}
+      <article class="history-card">
+        <h3>{{ item.title }}</h3>
+        <div class="history-meta">
+          <span>{{ item.created_at.strftime('%Y-%m-%d %H:%M') if item.created_at else '' }}</span>
+          <span>{{ item.risk_profile }}</span>
+          <span>{{ item.status }}</span>
+        </div>
+        <p class="history-summary">{{ item.summary }}</p>
+        <a class="advisor-btn advisor-soft" href="{{ url_for('investments.detail', proposal_id=item.id) }}"><i class="fa fa-eye"></i> فتح التقرير</a>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="advisor-empty">لا توجد خطط محفوظة بعد.</div>
+    {% endif %}
+  </section>
+</div>
+
+<script>
+(function(){
+  const form = document.getElementById("investmentGenerateForm");
+  const stream = document.getElementById("liveStream");
+  const status = document.getElementById("liveStatus");
+  const btn = document.getElementById("generateBtn");
+  if (!form || !stream || !status || !btn) return;
+
+  const steps = [
+    "أقرأ التقرير المالي: السيولة، الربح، الذمم، المخزون والالتزامات...",
+    "أحسب سقف الاستثمار الآمن حتى لا نخنق التشغيل اليومي...",
+    "أحلل أفضل المنتجات والموظفين وقنوات البيع الحالية...",
+    "أبني 3 مقترحات واقعية مع رأس مال، أرباح، مخاطر، موظفين وعلاقات...",
+    "أكتب سيناريو محافظ ومتوقع ومتفائل لكل مشروع...",
+    "أراجع بوابات القرار: متى نستمر، متى نوقف، ومتى نزيد رأس المال...",
+    "أجهز التقرير التنفيذي الطويل للعرض والطباعة..."
+  ];
+
+  function typeLine(text, done) {
+    let i = 0;
+    const line = document.createElement("div");
+    stream.appendChild(line);
+    const timer = setInterval(function(){
+      line.textContent = text.slice(0, i++);
+      stream.scrollTop = stream.scrollHeight;
+      if (i > text.length) {
+        clearInterval(timer);
+        if (done) done();
+      }
+    }, 18);
+  }
+
+  function runSteps() {
+    stream.innerHTML = "";
+    let idx = 0;
+    const loop = function(){
+      if (idx >= steps.length) return;
+      typeLine("• " + steps[idx], function(){
+        idx += 1;
+        setTimeout(loop, 420);
+      });
+    };
+    loop();
+  }
+
+  function waitForResearch(statusUrl, detailUrl) {
+    let attempts = 0;
+    let lastStatus = "";
+    status.textContent = "بحث خارجي";
+    typeLine("• تم تجهيز التقرير الأولي. أبحث الآن خارجياً عن روابط وملاحظات سوق داعمة بدون تعطيل الصفحة...");
+    const timer = setInterval(function(){
+      attempts += 1;
+      fetch(statusUrl, {headers: {"Accept": "application/json", "X-Requested-With": "XMLHttpRequest"}})
+        .then(r => r.json())
+        .then(data => {
+          if (!data.success) throw new Error(data.error || "تعذر قراءة حالة البحث الخارجي");
+          if (data.status !== lastStatus) {
+            lastStatus = data.status;
+            if (data.status === "research_running") typeLine("• البحث الخارجي يعمل الآن: جمع روابط ومؤشرات سوق وملاحظات لكل مشروع...");
+            if (data.status === "research_enriched") {
+              clearInterval(timer);
+              status.textContent = "اكتمل البحث";
+              typeLine("✓ اكتمل البحث الخارجي وتم إثراء التقرير بالمصادر. أفتح الخطة الآن...", function(){ window.location.href = data.url || detailUrl; });
+            }
+            if (data.status === "research_failed") {
+              clearInterval(timer);
+              status.textContent = "اكتمل بدون بحث";
+              typeLine("• لم يكتمل البحث الخارجي: " + (data.error_message || "انتهت المهلة أو لم ترجع الخدمة مصادر كافية.") + " أفتح التقرير الداخلي الآن...", function(){ window.location.href = data.url || detailUrl; });
+            }
+          }
+        })
+        .catch(err => {
+          if (attempts % 4 === 0) typeLine("• ما زلت أحاول قراءة حالة البحث الخارجي: " + err.message);
+        });
+      if (attempts >= 50) {
+        clearInterval(timer);
+        status.textContent = "فتح التقرير";
+        typeLine("• البحث الخارجي أخذ وقتاً أطول من المتوقع. أفتح التقرير الآن ويمكنك تحديثه لاحقاً لرؤية النتائج إذا اكتملت.", function(){ window.location.href = detailUrl; });
+      }
+    }, 3000);
+  }
+
+  form.addEventListener("submit", function(ev){
+    ev.preventDefault();
+    btn.disabled = true;
+    status.textContent = "يبحث ويكتب";
+    runSteps();
+    fetch(form.action, {
+      method: "POST",
+      body: new FormData(form),
+      headers: {"X-Requested-With": "XMLHttpRequest", "Accept": "application/json"}
+    }).then(async r => {
+      const text = await r.text();
+      let data = null;
+      try { data = JSON.parse(text); } catch (e) {}
+      if (!r.ok) {
+        const msg = data && (data.error || data.message)
+          ? (data.error || data.message)
+          : (r.status === 504 ? "انتهت مهلة السيرفر أثناء البحث الخارجي. جرّب التوليد بدون البحث الخارجي أو أعد المحاولة." : "رجع السيرفر رد غير متوقع أثناء التوليد.");
+        throw new Error(msg);
+      }
+      if (!data) throw new Error("رجع السيرفر رد غير قابل للقراءة. أعد المحاولة.");
+      return data;
+    }).then(data => {
+      if (!data.success) throw new Error(data.error || "فشل توليد التقرير");
+      if (data.research_pending && data.status_url) {
+        waitForResearch(data.status_url, data.url);
+      } else {
+        typeLine("✓ اكتمل التقرير. أفتح الخطة الآن...", function(){ window.location.href = data.url; });
+      }
+    }).catch(err => {
+      status.textContent = "تعذر التوليد";
+      btn.disabled = false;
+      typeLine("✕ " + err.message);
+    });
+  });
+})();
+</script>
+{% endblock %}

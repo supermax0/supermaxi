@@ -1,0 +1,98 @@
+{% extends "mobile_app/_layout.html" %}
+{% block mobile_app_body %}
+<div class="ma-stack">
+  <div class="ma-page-head">
+    <h2 class="ma-page-title">المكافآت والنقاط</h2>
+    <p class="ma-page-subtitle">إدارة نقاط الولاء وقواعدها ومستوياتها</p>
+  </div>
+
+  <div class="ma-card">
+    <div class="ma-card-head">
+      <div class="ma-card-icon is-gold"><i class="fas fa-coins"></i></div>
+      <div>
+        <h3 class="ma-card-title">تعديل نقاط يدوي</h3>
+        <p class="ma-card-desc">إضافة أو خصم نقاط لمستخدم محدد</p>
+      </div>
+    </div>
+    <form method="post" class="ma-form-grid">
+      <div class="ma-form-grid-2">
+        <label class="ma-field">
+          <span class="ma-field-label">معرف المستخدم</span>
+          <input class="ma-input" type="number" name="user_id" placeholder="مثال: 5" required>
+        </label>
+        <label class="ma-field">
+          <span class="ma-field-label">عدد النقاط</span>
+          <input class="ma-input" type="number" name="points" placeholder="مثال: 100" min="1" required>
+        </label>
+      </div>
+      <div class="ma-form-grid-2">
+        <label class="ma-field">
+          <span class="ma-field-label">العملية</span>
+          <select class="ma-input" name="direction">
+            <option value="credit">إضافة نقاط</option>
+            <option value="debit">خصم نقاط</option>
+          </select>
+        </label>
+        <label class="ma-field">
+          <span class="ma-field-label">الوصف</span>
+          <input class="ma-input" type="text" name="description" value="تعديل يدوي من لوحة التحكم">
+        </label>
+      </div>
+      <div class="ma-upload-actions">
+        <button class="ma-btn ma-btn-primary" type="submit"><i class="fas fa-check"></i> تطبيق التعديل</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="ma-grid-cards">
+    <div class="ma-card">
+      <div class="ma-card-head">
+        <div class="ma-card-icon"><i class="fas fa-list-check"></i></div>
+        <div>
+          <h3 class="ma-card-title">قواعد النقاط</h3>
+          <p class="ma-card-desc">كيف يكسب المستخدمون النقاط</p>
+        </div>
+      </div>
+      {% if rules %}
+      <div class="ma-tile-grid">
+        {% for r in rules %}
+        <div class="ma-tile">
+          <div class="ma-tile-top">
+            <div class="ma-tile-name">{{ r.name }}</div>
+            <span class="ma-code">{{ r.key }}</span>
+          </div>
+          <div class="ma-tile-points">{{ r.points }}<span>نقطة</span></div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="ma-empty-box">لا توجد قواعد نشطة</div>
+      {% endif %}
+    </div>
+
+    <div class="ma-card">
+      <div class="ma-card-head">
+        <div class="ma-card-icon is-purple"><i class="fas fa-layer-group"></i></div>
+        <div>
+          <h3 class="ma-card-title">المستويات</h3>
+          <p class="ma-card-desc">مستويات الولاء حسب النقاط التراكمية</p>
+        </div>
+      </div>
+      {% if tiers %}
+      <div class="ma-tile-grid">
+        {% for t in tiers %}
+        <div class="ma-tile">
+          <div class="ma-tile-top">
+            <div class="ma-tile-name">{{ t.name }}</div>
+          </div>
+          <div class="ma-tile-points">{{ t.min_lifetime_points }}<span>نقطة للوصول</span></div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="ma-empty-box">لا توجد مستويات بعد</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

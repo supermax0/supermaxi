@@ -6,6 +6,21 @@ from models.product import Product
 from modules.storefront.services.product_presenter import product_badge, product_card, product_meta
 
 
+PREFERRED_CATEGORY_ORDER = ("شاشات", "ثلاجات", "سبالت", "براد", "تبريد")
+
+
+def _storefront_visible_query():
+    return Product.query.filter(Product.active == True, Product.store_visible == True)  # noqa: E712
+
+
+def _category_sort_key(value: str) -> tuple[int, str]:
+    clean = str(value or "").strip()
+    try:
+        return (PREFERRED_CATEGORY_ORDER.index(clean), clean)
+    except ValueError:
+        return (len(PREFERRED_CATEGORY_ORDER), clean)
+
+
 class StorefrontCatalogService:
     def list_products(
         self,
@@ -18,7 +33,7 @@ class StorefrontCatalogService:
         badge_filter: str = "",
         sort: str = "latest",
     ) -> tuple[list[dict], list[str]]:
-        query = Product.query.filter(Product.active == True)  # noqa: E712
+        query = _storefront_visible_query()
 
         if min_price > 0:
             query = query.filter(Product.sale_price >= min_price)
@@ -49,7 +64,10 @@ class StorefrontCatalogService:
         if badge_filter:
             cards = [c for c in cards if c["badge"] == badge_filter]
 
-        badges = sorted({product_badge(product_meta(p)) for p in products if product_badge(product_meta(p))})
+        badges = sorted(
+            {product_badge(product_meta(p)) for p in products if product_badge(product_meta(p))},
+            key=_category_sort_key,
+        )
         return cards, badges
 
     def featured_products(self, cards: list[dict], limit: int = 6) -> list[dict]:
@@ -57,7 +75,8 @@ class StorefrontCatalogService:
 
     def related_products(self, product_id: int, shop_slug: str, limit: int = 4) -> list[dict]:
         related = (
-            Product.query.filter(Product.active == True, Product.id != product_id)  # noqa: E712
+            _storefront_visible_query()
+            .filter(Product.id != product_id)
             .order_by(Product.id.desc())
             .limit(limit)
             .all()

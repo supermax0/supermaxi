@@ -1,0 +1,150 @@
+{% set s = operational.summary %}
+<div class="monitor-summary">
+  <div class="monitor-stat"><span>صحة تشغيلية</span><strong>{{ operational.health_score }}/100</strong></div>
+  <div class="monitor-stat"><span>تم الطلب</span><strong>{{ s.pending_count }}</strong></div>
+  <div class="monitor-stat"><span>جاري الشحن</span><strong>{{ s.shipping_count }}</strong></div>
+  <div class="monitor-stat"><span>شحن عالق {{ operational.stuck_days }}+ يوم</span><strong>{{ s.shipping_stuck_count }}</strong></div>
+  <div class="monitor-stat"><span>نسبة الواصل</span><strong>{{ s.delivered_rate }}%</strong></div>
+  <div class="monitor-stat"><span>ذمم شحن</span><strong>{{ s.shipping_due_display }}</strong></div>
+</div>
+
+{% if operational.alerts %}
+<div class="monitor-alerts">
+  {% for alert in operational.alerts %}
+  <div class="monitor-alert {{ alert.type }}">
+    <strong>{{ alert.icon }} {{ alert.title }}</strong>
+    <span>{{ alert.message }}</span>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<section class="monitor-section">
+  <div class="monitor-section-head"><div><h2>طلبات جديدة vs مُسلَّمة (يومي)</h2></div></div>
+  <div class="monitor-chart-box"><canvas id="operationalMonitorChart" height="120"></canvas></div>
+</section>
+
+<section class="monitor-section">
+  <div class="monitor-section-head"><div><h2>قمع التشغيل (الفترة)</h2></div></div>
+  <div class="funnel-grid">
+    <div class="funnel-step"><span>تم الطلب</span><strong>{{ operational.funnel.ordered }}</strong></div>
+    <div class="funnel-step"><span>جاري الشحن</span><strong>{{ operational.funnel.shipping }}</strong></div>
+    <div class="funnel-step"><span>واصل/مسدد</span><strong>{{ operational.funnel.delivered }}</strong></div>
+    <div class="funnel-step"><span>راجع/ملغي</span><strong>{{ operational.funnel.returned }}</strong></div>
+  </div>
+</section>
+
+<section class="monitor-section">
+  <div class="monitor-section-head">
+    <div><h2>أولوية — تم الطلب</h2></div>
+    <a class="monitor-btn secondary" href="{{ url_for('reports.monitors_export_api', tab='operational', table='pending', period=period, date_from=date_from.strftime('%Y-%m-%d'), date_to=date_to.strftime('%Y-%m-%d')) }}"><i class="fas fa-download"></i> CSV</a>
+  </div>
+  <div class="monitor-table-wrap">
+    <table class="monitor-table" id="operationalPendingTable" data-monitor-table data-page-size="25">
+      <thead><tr><th>#</th><th>العميل</th><th>الموظف</th><th>المبلغ</th><th>العمر</th><th></th></tr></thead>
+      <tbody>
+        {% for order in operational.pending_orders %}
+        <tr>
+          <td><strong>#{{ order.id }}</strong></td>
+          <td>{{ order.customer }}</td>
+          <td>{{ order.employee }}</td>
+          <td>{{ order.total_display }}</td>
+          <td><span class="monitor-badge {{ order.status_class }}">{{ order.age_days }}</span></td>
+          <td><a class="monitor-link" href="{{ order.order_url }}">فتح</a></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="monitor-empty">لا طلبات معلقة.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="monitor-section">
+  <div class="monitor-section-head">
+    <div><h2>شحن عالق</h2></div>
+    <a class="monitor-btn secondary" href="{{ url_for('reports.monitors_export_api', tab='operational', table='shipping', period=period, date_from=date_from.strftime('%Y-%m-%d'), date_to=date_to.strftime('%Y-%m-%d')) }}"><i class="fas fa-download"></i> CSV شركات</a>
+  </div>
+  <div class="monitor-table-wrap">
+    <table class="monitor-table" id="operationalStuckTable" data-monitor-table data-page-size="25">
+      <thead><tr><th>#</th><th>العميل</th><th>الموظف</th><th>شركة الشحن</th><th>آخر تحديث</th><th>أيام</th><th></th></tr></thead>
+      <tbody>
+        {% for order in operational.stuck_shipping %}
+        <tr>
+          <td><strong>#{{ order.id }}</strong></td>
+          <td>{{ order.customer }}</td>
+          <td>{{ order.employee }}</td>
+          <td>{{ order.shipping_company }}</td>
+          <td>{{ order.last_update_display }}</td>
+          <td><span class="monitor-badge {{ order.status_class }}">{{ order.days_in_status }}</span></td>
+          <td><a class="monitor-link" href="{{ order.order_url }}">فتح</a></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="monitor-empty">لا شحن عالق.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="monitor-section">
+  <div class="monitor-section-head">
+    <div><h2>حسب شركة الشحن</h2></div>
+  </div>
+  <div class="monitor-table-wrap">
+    <table class="monitor-table">
+      <thead><tr><th>الشركة</th><th>جاري الشحن</th><th>مفتوح</th><th>عالق</th></tr></thead>
+      <tbody>
+        {% for row in operational.shipping_breakdown %}
+        <tr>
+          <td>{{ row.name }}</td>
+          <td>{{ row.active_shipping }}</td>
+          <td>{{ row.total_open }}</td>
+          <td>{{ row.stuck_count }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="monitor-empty">لا بيانات.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="monitor-section">
+  <div class="monitor-section-head">
+    <div><h2>حسب الموظف</h2></div>
+    <a class="monitor-btn secondary" href="{{ url_for('reports.monitors_export_api', tab='operational', table='employees', period=period, date_from=date_from.strftime('%Y-%m-%d'), date_to=date_to.strftime('%Y-%m-%d')) }}"><i class="fas fa-download"></i> CSV</a>
+  </div>
+  <div class="monitor-table-wrap">
+    <table class="monitor-table">
+      <thead><tr><th>الموظف</th><th>تم الطلب</th><th>جاري الشحن</th><th>أقدم (يوم)</th></tr></thead>
+      <tbody>
+        {% for row in operational.employee_breakdown %}
+        <tr>
+          <td>{{ row.name }}</td>
+          <td>{{ row.pending_count }}</td>
+          <td>{{ row.shipping_count }}</td>
+          <td>{{ row.oldest_pending_days }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="monitor-empty">لا بيانات.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="monitor-section">
+  <div class="monitor-section-head"><div><h2>توزيع الحالات</h2></div></div>
+  <div class="status-bars">
+    {% for row in operational.status_distribution %}
+    <div class="status-bar-row">
+      <div>{{ row.status }}</div>
+      <div class="status-bar-track"><div class="status-bar-fill" style="width: {{ row.pct }}%;"></div></div>
+      <div>{{ row.pct }}%</div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<script>window.__operationalChartData = {{ operational.chart | tojson }};</script>

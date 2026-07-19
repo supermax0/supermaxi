@@ -1,0 +1,128 @@
+<script>
+(function () {
+  function parseCellValue(text) {
+    const t = (text || '').trim().replace(/,/g, '');
+    const n = parseFloat(t.replace(/[^\d.-]/g, ''));
+    return Number.isFinite(n) && /[\d]/.test(t) ? n : (text || '').trim().toLowerCase();
+  }
+
+  function initMonitorTable(table, force) {
+    if (!table) return;
+    const section = table.closest('.monitor-section');
+    const tableKey = table.id || 'monitor-table-' + Math.random().toString(36).slice(2);
+    if (!force && table.dataset.monitorTableInit === '1') return;
+    if (section) {
+      section.querySelectorAll('.monitor-table-controls[data-for-table="' + tableKey + '"], .monitor-table-pager[data-for-table="' + tableKey + '"]').forEach(function (el) {
+        el.remove();
+      });
+    }
+    table.dataset.monitorTableInit = '1';
+    const wrap = table.closest('.monitor-table-wrap');
+    const pageSize = parseInt(table.dataset.pageSize || '25', 10);
+    const tbody = table.querySelector('tbody');
+    if (!tbody) return;
+
+    const allRows = Array.from(tbody.querySelectorAll('tr')).filter(function (tr) {
+      return !tr.querySelector('.monitor-empty');
+    });
+    if (!allRows.length) return;
+
+    let sortCol = -1;
+    let sortAsc = true;
+    let page = 0;
+    let filtered = allRows.slice();
+
+    const controls = document.createElement('div');
+    controls.className = 'monitor-table-controls';
+    controls.dataset.forTable = tableKey;
+    controls.innerHTML = '<input type="search" data-table-search placeholder="بحث في الجدول..." aria-label="بحث">';
+    if (section) {
+      const head = section.querySelector('.monitor-section-head');
+      if (head && head.nextElementSibling === wrap) {
+        section.insertBefore(controls, wrap);
+      } else if (wrap) {
+        wrap.parentNode.insertBefore(controls, wrap);
+      }
+    }
+
+    const pager = document.createElement('div');
+    pager.className = 'monitor-table-pager';
+    pager.dataset.forTable = tableKey;
+    if (wrap) wrap.after(pager);
+
+    const searchInput = controls.querySelector('[data-table-search]');
+
+    function render() {
+      tbody.innerHTML = '';
+      if (!filtered.length) {
+        const empty = document.createElement('tr');
+        empty.innerHTML = '<td colspan="' + (table.querySelectorAll('thead th').length || 1) + '" class="monitor-empty">لا نتائج.</td>';
+        tbody.appendChild(empty);
+        pager.innerHTML = '';
+        return;
+      }
+      const usePager = filtered.length > pageSize;
+      const start = usePager ? page * pageSize : 0;
+      const slice = usePager ? filtered.slice(start, start + pageSize) : filtered;
+      slice.forEach(function (tr) { tbody.appendChild(tr); });
+      if (usePager) {
+        const pages = Math.ceil(filtered.length / pageSize);
+        pager.innerHTML = '<button type="button" data-page-prev ' + (page <= 0 ? 'disabled' : '') + '>السابق</button>' +
+          '<span>صفحة ' + (page + 1) + ' / ' + pages + ' (' + filtered.length + ')</span>' +
+          '<button type="button" data-page-next ' + (page >= pages - 1 ? 'disabled' : '') + '>التالي</button>';
+      } else {
+        pager.innerHTML = '';
+      }
+    }
+
+    function applyFilter() {
+      const q = (searchInput.value || '').trim().toLowerCase();
+      filtered = allRows.filter(function (tr) {
+        if (!q) return true;
+        return tr.textContent.toLowerCase().indexOf(q) !== -1;
+      });
+      if (sortCol >= 0) {
+        filtered.sort(function (a, b) {
+          const av = parseCellValue(a.children[sortCol]?.textContent);
+          const bv = parseCellValue(b.children[sortCol]?.textContent);
+          if (av < bv) return sortAsc ? -1 : 1;
+          if (av > bv) return sortAsc ? 1 : -1;
+          return 0;
+        });
+      }
+      page = 0;
+      render();
+    }
+
+    table.querySelectorAll('thead th').forEach(function (th, idx) {
+      th.style.cursor = 'pointer';
+      th.title = 'ترتيب';
+      th.addEventListener('click', function () {
+        if (sortCol === idx) sortAsc = !sortAsc;
+        else { sortCol = idx; sortAsc = true; }
+        applyFilter();
+      });
+    });
+
+    searchInput.addEventListener('input', applyFilter);
+    pager.addEventListener('click', function (e) {
+      if (e.target.matches('[data-page-prev]') && page > 0) { page--; render(); }
+      if (e.target.matches('[data-page-next]')) {
+        const pages = Math.ceil(filtered.length / pageSize);
+        if (page < pages - 1) { page++; render(); }
+      }
+    });
+
+    applyFilter();
+  }
+
+  window.initMonitorTables = function (root, force) {
+    (root || document).querySelectorAll('table[data-monitor-table]').forEach(function (table) {
+      initMonitorTable(table, !!force);
+    });
+  };
+  document.addEventListener('DOMContentLoaded', function () {
+    window.initMonitorTables(document.getElementById('monitorTabContent'));
+  });
+})();
+</script>

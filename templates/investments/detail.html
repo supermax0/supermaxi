@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% block title %}تفاصيل الخطة الاستثمارية{% endblock %}
+{% block page_title %}تفاصيل الخطة الاستثمارية{% endblock %}
+
+{% block content %}
+<style>
+.exec-plan{max-width:1360px;margin:0 auto;padding:12px 0 34px;direction:rtl;color:#0f172a}.plan-hero,.plan-section,.proposal-card{background:#fff;border:1px solid #dbe3ef;border-radius:8px;box-shadow:0 16px 42px rgba(15,23,42,.06)}
+.plan-hero{padding:22px;margin-bottom:14px;display:flex;justify-content:space-between;gap:18px;align-items:flex-start}.plan-title{margin:0;font-size:26px;color:#0f172a}.plan-summary{margin:10px 0 0;color:#475569;line-height:1.9;max-width:900px}
+.plan-actions{display:flex;gap:10px;flex-wrap:wrap}.plan-btn{border:0;border-radius:8px;padding:11px 13px;font-weight:900;text-decoration:none;display:inline-flex;gap:8px;align-items:center;cursor:pointer;white-space:nowrap}.btn-main{background:#0f766e;color:#fff}.btn-blue{background:#2563eb;color:#fff}.btn-soft{background:#f1f5f9;color:#0f172a;border:1px solid #cbd5e1}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}.kpi{background:#fff;border:1px solid #dbe3ef;border-radius:8px;padding:14px}.kpi span{display:block;color:#64748b;font-size:12px}.kpi b{display:block;margin-top:6px;font-size:18px;color:#0f172a}
+.plan-section{padding:18px;margin-bottom:14px}.section-title{margin:0 0 12px;font-size:20px;color:#0f172a;display:flex;gap:8px;align-items:center}.chart-box{height:300px}
+.proposal-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px}.proposal-card{padding:16px;display:flex;flex-direction:column;gap:10px}.proposal-card.selected{border-color:#0f766e;box-shadow:0 0 0 2px rgba(15,118,110,.18),0 18px 42px rgba(15,23,42,.08)}.proposal-card h3{margin:0;color:#0f172a;font-size:18px}
+.pill-row{display:flex;gap:6px;flex-wrap:wrap}.pill{font-size:12px;font-weight:900;border-radius:999px;padding:6px 9px;background:#eff6ff;color:#1d4ed8}.pill.green{background:#ecfdf5;color:#047857}.pill.amber{background:#fffbeb;color:#b45309}
+.muted{color:#64748b;line-height:1.8}.table{width:100%;border-collapse:collapse}.table th,.table td{border-bottom:1px solid #e2e8f0;padding:9px;text-align:right;color:#0f172a}.table th{color:#64748b;font-size:12px}.deep-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.mini-box{border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;padding:14px}.mini-box h3{margin:0 0 8px;font-size:16px;color:#0f172a}.list{margin:0;padding:0 20px 0 0;color:#475569;line-height:1.9}.warning{border:1px solid #fbbf24;background:#fffbeb;color:#92400e;border-radius:8px;padding:12px;margin-bottom:14px}
+:root[data-theme="dark"] .exec-plan{color:#e5e7eb}:root[data-theme="dark"] .plan-hero,:root[data-theme="dark"] .plan-section,:root[data-theme="dark"] .proposal-card,:root[data-theme="dark"] .kpi{background:#111827;border-color:#334155}:root[data-theme="dark"] .plan-title,:root[data-theme="dark"] .section-title,:root[data-theme="dark"] .proposal-card h3,:root[data-theme="dark"] .kpi b,:root[data-theme="dark"] .table td,:root[data-theme="dark"] .table th,:root[data-theme="dark"] .mini-box h3{color:#f8fafc}:root[data-theme="dark"] .plan-summary,:root[data-theme="dark"] .muted,:root[data-theme="dark"] .list{color:#cbd5e1}:root[data-theme="dark"] .mini-box{background:#0f172a;border-color:#334155}
+@media(max-width:1050px){.plan-hero{display:block}.plan-actions{margin-top:12px}.kpi-grid,.proposal-grid,.deep-grid{grid-template-columns:1fr}}
+</style>
+{% set proposals = payload.proposals or [] %}
+{% set budget = snapshot.budget or {} %}
+{% set selected = proposal.selected_proposal() %}
+{% macro money(v) -%}{{ "{:,.0f}".format((v or 0)|float) }} د.ع{%- endmacro %}
+
+<div class="exec-plan">
+  <section class="plan-hero">
+    <div>
+      <h1 class="plan-title">{{ proposal.title }}</h1>
+      <p class="plan-summary">{{ payload.executive_summary }}</p>
+    </div>
+    <div class="plan-actions">
+      <a class="plan-btn btn-soft" href="{{ url_for('investments.index') }}"><i class="fa fa-arrow-right"></i> رجوع</a>
+      <a class="plan-btn btn-main" href="{{ url_for('investments.pdf_view', proposal_id=proposal.id) }}"><i class="fa fa-file-pdf"></i> تقرير PDF طويل</a>
+      <a class="plan-btn btn-blue" href="{{ url_for('investments.index') }}"><i class="fa fa-plus"></i> توليد جديد</a>
+    </div>
+  </section>
+
+  {% if proposal.error_message %}<div class="warning">تم استخدام تحليل احتياطي لأن خدمة AI رجعت: {{ proposal.error_message }}</div>{% endif %}
+  {% if proposal.status in ["research_pending", "research_running"] %}
+  <div class="warning" id="researchStatusBox" data-status-url="{{ url_for('investments.research_status', proposal_id=proposal.id) }}">
+    البحث الخارجي قيد التنفيذ بالخلفية. يمكنك البقاء هنا، وعند اكتماله حدّث الصفحة لتظهر الروابط والملاحظات الجديدة داخل التقرير.
+  </div>
+  {% elif proposal.status == "research_enriched" %}
+  <div class="warning">اكتمل البحث الخارجي وتم إثراء التقرير بالمصادر والملاحظات السوقية.</div>
+  {% elif proposal.status == "research_failed" %}
+  <div class="warning">لم يكتمل البحث الخارجي، لكن التقرير الداخلي جاهز ومبني على بيانات الشركة.</div>
+  {% endif %}
+  {% if numbers_corrected or payload.number_audit %}
+  <div class="warning">
+    تمت مراجعة الأرقام وربط الإيراد والربح بسقف الاستثمار الآمن ومبيعات/ربحية الفترة. أي رقم قديم غير منطقي تم تصحيحه تلقائياً قبل عرض التقرير.
+  </div>
+  {% endif %}
+
+  <section class="kpi-grid">
+    <div class="kpi"><span>السيولة</span><b>{{ money(snapshot.financial.total_liquidity) }}</b></div>
+    <div class="kpi"><span>صافي ربح الفترة</span><b>{{ money(snapshot.financial.net_profit_period) }}</b></div>
+    <div class="kpi"><span>سقف الاستثمار الآمن</span><b>{{ money(budget.recommended_budget) }}</b></div>
+    <div class="kpi"><span>هامش صافي الربح</span><b>{{ snapshot.financial.profit_margin_pct if snapshot.financial.profit_margin_pct is not none else "—" }}%</b></div>
+  </section>
+
+  <section class="plan-section">
+    <h2 class="section-title"><i class="fa fa-gauge-high"></i> تشخيص القدرة الاستثمارية</h2>
+    <div class="deep-grid">
+      <div class="mini-box">
+        <h3>{{ (payload.investment_capacity or {}).level }} — {{ (payload.investment_capacity or {}).posture }}</h3>
+        <ul class="list">
+          <li>الحد الأعلى للمشروع الواحد: {{ money((payload.investment_capacity or {}).max_single_project_capital) }}</li>
+          <li>غطاء التشغيل التقريبي: {{ (payload.investment_capacity or {}).runway_months or "—" }} شهر</li>
+          <li>قاعدة القرار: {{ (payload.investment_capacity or {}).decision_rule }}</li>
+        </ul>
+      </div>
+      <div class="mini-box"><h3>ملخص الإدارة</h3><ul class="list">{% for row in payload.board_brief or [] %}<li>{{ row }}</li>{% endfor %}</ul></div>
+      <div class="mini-box"><h3>نقاط القوة</h3><ul class="list">{% for row in (payload.investment_capacity or {}).strengths or [] %}<li>{{ row }}</li>{% endfor %}</ul></div>
+      <div class="mini-box"><h3>القيود المالية</h3><ul class="list">{% for row in (payload.investment_capacity or {}).constraints or [] %}<li>{{ row }}</li>{% else %}<li>لا توجد قيود حرجة ظاهرة من بيانات الفترة.</li>{% endfor %}</ul></div>
+    </div>
+  </section>
+
+  <section class="plan-section">
+    <h2 class="section-title"><i class="fa fa-chart-column"></i> مقارنة المقترحات</h2>
+    <div class="chart-box"><canvas id="investmentCompareChart"></canvas></div>
+  </section>
+
+  <div class="proposal-grid">
+    {% for item in proposals %}
+    <article class="proposal-card {% if loop.index0 == proposal.selected_index %}selected{% endif %}">
+      <h3>{{ item.title }}</h3>
+      <div class="pill-row"><span class="pill">{{ item.category }}</span><span class="pill green">ملاءمة {{ item.fit_score }}%</span><span class="pill amber">{{ item.risk_level }}</span></div>
+      <p class="muted">{{ item.summary }}</p>
+      <table class="table">
+        <tr><th>رأس المال</th><td>{{ money(item.required_capital) }}</td></tr>
+        <tr><th>إيراد شهري</th><td>{{ money(item.expected_monthly_revenue) }}</td></tr>
+        <tr><th>ربح شهري</th><td>{{ money(item.expected_monthly_profit) }}</td></tr>
+        <tr><th>استرداد</th><td>{{ item.payback_months or "—" }} شهر</td></tr>
+      </table>
+      <form method="post" action="{{ url_for('investments.select', proposal_id=proposal.id) }}">
+        <input type="hidden" name="selected_index" value="{{ loop.index0 }}">
+        <button class="plan-btn btn-soft" type="submit"><i class="fa fa-check"></i> اعتماده للتقرير</button>
+      </form>
+    </article>
+    {% endfor %}
+  </div>
+
+  <section class="plan-section">
+    <h2 class="section-title"><i class="fa fa-star"></i> الخطة المختارة: {{ selected.title }}</h2>
+    <p class="muted">{{ selected.why_now }}</p>
+    <div class="deep-grid">
+      <div class="mini-box"><h3>بحث السوق</h3><ul class="list">{% for row in selected.market_research or [] %}<li>{{ row }}</li>{% endfor %}</ul></div>
+      <div class="mini-box"><h3>متطلبات التنفيذ</h3><ul class="list">{% for row in selected.requirements or [] %}<li>{{ row }}</li>{% endfor %}</ul></div>
+      <div class="mini-box"><h3>نموذج التشغيل</h3><ul class="list">{% for row in selected.operating_model or [] %}<li>{{ row }}</li>{% endfor %}</ul></div>
+      <div class="mini-box"><h3>بوابات القرار</h3><ul class="list">{% for row in selected.decision_gates or [] %}<li>{{ row }}</li>{% endfor %}</ul></div>
+    </div>
+  </section>
+
+  <section class="plan-section">
+    <h2 class="section-title"><i class="fa fa-compass"></i> منطق الخروج من التخصص</h2>
+    <p class="muted">{{ selected.outside_specialty_reason }}</p>
+    <div class="deep-grid">
+      <div class="mini-box"><h3>فجوات القدرة</h3><ul class="list">{% for row in selected.capability_gap or [] %}<li>{{ row }}</li>{% endfor %}</ul></div>
+      <div class="mini-box"><h3>خطة التحقق</h3><ul class="list">{% for row in selected.validation_plan or [] %}<li>{{ row }}</li>{% endfor %}</ul></div>
+      <div class="mini-box"><h3>كلفة التعلم</h3><ul class="list"><li>{{ money(selected.learning_cost) }}</li><li>لا تتحول إلى صرف دائم إلا بعد تحقق بوابات القرار.</li></ul></div>
+      <div class="mini-box"><h3>الشركاء الخارجيون</h3><ul class="list">{% for row in selected.external_partners or [] %}<li>{{ row.name }} — {{ row.type }} — {{ row.reason }}</li>{% endfor %}</ul></div>
+    </div>
+  </section>
+
+  <section class="plan-section">
+    <h2 class="section-title"><i class="fa fa-scale-balanced"></i> السيناريوهات المالية</h2>
+    <p class="muted">{{ selected.capacity_fit }}</p>
+    <table class="table">
+      <thead><tr><th>الحالة</th><th>إيراد شهري</th><th>ربح شهري</th><th>استرداد</th></tr></thead>
+      <tbody>{% for row in selected.financial_scenarios or [] %}<tr><td>{{ row.case }}</td><td>{{ money(row.monthly_revenue) }}</td><td>{{ money(row.monthly_profit) }}</td><td>{{ row.payback_months or "—" }} شهر</td></tr>{% endfor %}</tbody>
+    </table>
+  </section>
+
+  <section class="plan-section">
+    <h2 class="section-title"><i class="fa fa-filter-circle-dollar"></i> منطق العائد وسياسة التمويل</h2>
+    <div class="deep-grid">
+      <div class="mini-box"><h3>منطق العائد</h3><ul class="list">{% for row in selected.roi_logic or [] %}<li>{{ row }}</li>{% endfor %}</ul></div>
+      <div class="mini-box"><h3>خطة التمويل المرحلي</h3><ul class="list">{% for row in selected.funding_plan or payload.funding_policy or [] %}<li>{{ row }}</li>{% endfor %}</ul></div>
+      <div class="mini-box"><h3>خطة الشراء</h3><ul class="list">{% for row in selected.procurement_plan or [] %}<li>{{ row }}</li>{% endfor %}</ul></div>
+      <div class="mini-box"><h3>قنوات البيع</h3><ul class="list">{% for row in selected.sales_channels or [] %}<li>{{ row }}</li>{% endfor %}</ul></div>
+    </div>
+  </section>
+
+  <section class="plan-section">
+    <h2 class="section-title"><i class="fa fa-people-group"></i> الميزانية والفريق والعلاقات</h2>
+    <div class="deep-grid">
+      <div class="mini-box"><h3>توزيع المبلغ</h3><ul class="list">{% for row in selected.budget_breakdown or [] %}<li>{{ row.label }}: {{ money(row.amount) }}</li>{% endfor %}</ul></div>
+      <div class="mini-box"><h3>الموظفون المطلوبون</h3><ul class="list">{% for row in selected.staffing or [] %}<li>{{ row.role }} × {{ row.count }} — {{ row.responsibility }}</li>{% endfor %}</ul></div>
+      <div class="mini-box"><h3>العلاقات والشركات</h3><ul class="list">{% for row in selected.partners or [] %}<li>{{ row.name }} — {{ row.type }} — {{ row.reason }}</li>{% endfor %}</ul></div>
+      <div class="mini-box"><h3>التسويق والمؤشرات</h3><ul class="list">{% for row in selected.marketing_plan or [] %}<li>{{ row }}</li>{% endfor %}{% for row in selected.kpis or [] %}<li>مؤشر: {{ row }}</li>{% endfor %}</ul></div>
+    </div>
+  </section>
+
+  <section class="plan-section">
+    <h2 class="section-title"><i class="fa fa-calendar-days"></i> خطة 30 / 60 / 90 يوم</h2>
+    <table class="table">
+      <thead><tr><th>المرحلة</th><th>الإجراءات</th></tr></thead>
+      <tbody>{% for phase in selected.implementation_plan or [] %}<tr><td>{{ phase.phase }}</td><td>{{ (phase.actions or [])|join("، ") }}</td></tr>{% endfor %}</tbody>
+    </table>
+  </section>
+
+  <section class="plan-section">
+    <h2 class="section-title"><i class="fa fa-triangle-exclamation"></i> المخاطر والافتراضات</h2>
+    <div class="deep-grid">
+      <div class="mini-box"><h3>المخاطر</h3><ul class="list">{% for row in selected.risks or [] %}<li>{{ row }}</li>{% endfor %}</ul></div>
+      <div class="mini-box"><h3>الافتراضات</h3><ul class="list">{% for row in selected.assumptions or [] %}<li>{{ row }}</li>{% endfor %}</ul></div>
+      <div class="mini-box"><h3>قواعد الإيقاف</h3><ul class="list">{% for row in selected.stop_loss_rules or [] %}<li>{{ row }}</li>{% endfor %}</ul></div>
+      <div class="mini-box"><h3>بدائل مرفوضة</h3><ul class="list">{% for row in payload.rejected_options or [] %}<li>{{ row.title }}: {{ row.reason }}</li>{% endfor %}</ul></div>
+    </div>
+  </section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function(){
+  const data = {{ chart_payload|tojson }};
+  const el = document.getElementById("investmentCompareChart");
+  if (!el || !window.Chart) return;
+  new Chart(el,{type:"bar",data:{labels:data.labels||[],datasets:[
+    {label:"رأس المال",data:data.capital||[],backgroundColor:"rgba(15,118,110,.72)"},
+    {label:"الربح الشهري",data:data.profit||[],backgroundColor:"rgba(37,99,235,.72)"},
+    {label:"الإيراد الشهري",data:data.revenue||[],backgroundColor:"rgba(245,158,11,.72)"}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom"}},scales:{y:{ticks:{callback:v=>new Intl.NumberFormat("en-US").format(v)}}}}});
+
+  const statusBox = document.getElementById("researchStatusBox");
+  if (statusBox) {
+    const statusUrl = statusBox.dataset.statusUrl;
+    const timer = setInterval(function(){
+      fetch(statusUrl, {headers: {"Accept": "application/json", "X-Requested-With": "XMLHttpRequest"}})
+        .then(r => r.json())
+        .then(data => {
+          if (data.status === "research_enriched") {
+            clearInterval(timer);
+            statusBox.textContent = "اكتمل البحث الخارجي. يتم تحديث الصفحة لعرض المصادر والملاحظات الجديدة...";
+            setTimeout(function(){ window.location.reload(); }, 900);
+          }
+          if (data.status === "research_failed") {
+            clearInterval(timer);
+            statusBox.textContent = "لم يكتمل البحث الخارجي، لكن التقرير الداخلي جاهز ومبني على بيانات الشركة.";
+          }
+        })
+        .catch(function(){});
+    }, 4000);
+  }
+})();
+</script>
+{% endblock %}

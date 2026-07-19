@@ -1,0 +1,1 @@
+﻿SELECT id, direction, message_type, substr(COALESCE(text_content,''),1,80) AS txt, substr(COALESCE(external_media_id,''),1,100) AS media_id, mime_type, status, substr(COALESCE(failure_message,''),1,150) AS fail, created_at FROM ai_sales_message WHERE conversation_id=1091 ORDER BY id DESC LIMIT 12;

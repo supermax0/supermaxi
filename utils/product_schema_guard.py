@@ -46,6 +46,7 @@ def ensure_product_schema() -> None:
         existing_cols = {col["name"] for col in inspector.get_columns("product")}
         dialect = engine.dialect.name
         bool_default = "BOOLEAN DEFAULT false" if dialect == "postgresql" else "BOOLEAN DEFAULT 0"
+        bool_true_default = "BOOLEAN DEFAULT true" if dialect == "postgresql" else "BOOLEAN DEFAULT 1"
 
         # Columns introduced for the advanced product page.
         additions = {
@@ -72,6 +73,11 @@ def ensure_product_schema() -> None:
             "requires_patch_test",
             f"ALTER TABLE product ADD COLUMN requires_patch_test {bool_default}",
         )
+        additions.setdefault(
+            "store_visible",
+            f"ALTER TABLE product ADD COLUMN store_visible {bool_true_default}",
+        )
+        additions.setdefault("catalog_category", "ALTER TABLE product ADD COLUMN catalog_category VARCHAR(120)")
         additions.setdefault("expiry_date", "ALTER TABLE product ADD COLUMN expiry_date DATE")
         additions.setdefault("opened_date", "ALTER TABLE product ADD COLUMN opened_date DATE")
         additions.setdefault("batch_number", "ALTER TABLE product ADD COLUMN batch_number VARCHAR(100)")

@@ -25,6 +25,16 @@ _SKIP_PREFIXES = (
 _SKIP_EXACT = {
     "/activity",
     "/activity/",
+    "/messages/unread-count",
+}
+
+_SKIP_GET_PREFIXES = (
+    "/ai-sales/api/",
+)
+
+_SKIP_MUTATION_EXACT = {
+    # Automated Meta reconciliation is operational traffic, not a user action.
+    "/ai-sales/api/meta/auto-sync",
 }
 
 _SKIP_EXTENSIONS = (".js", ".css", ".map", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".woff", ".woff2")
@@ -34,6 +44,10 @@ def should_skip_request(path: str, method: str) -> bool:
     if not path:
         return True
     if path in _SKIP_EXACT:
+        return True
+    if path in _SKIP_MUTATION_EXACT:
+        return True
+    if method == "GET" and any(path.startswith(prefix) for prefix in _SKIP_GET_PREFIXES):
         return True
     if path.startswith("/activity") and path != "/activity":
         return True

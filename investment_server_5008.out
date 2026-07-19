@@ -1,0 +1,20 @@
+=== FINORA APP STARTING - V1.1 (i18n check) ===
+Loaded translations for: ['ar', 'en', 'ku', 'tr']
+Database connection OK.
+Ensured telegram_chat_profiles + telegram_booking_sessions tables exist.
+Added access_token, username, password columns to shipping_company table.
+Shipping report table already exists.
+Added permission columns to employee table.
+Added username and password columns to delivery_agent table.
+Added page_id and page_name columns to invoice table.
+Added visibility columns to page table.
+Added order video / shipping barcode columns to invoice table.
+Current columns in 'employee': ['id', 'tenant_id', 'name', 'username', 'password', 'role', 'is_active', 'profile_pic', 'language', 'theme_preference', 'can_see_orders', 'can_see_orders_placed', 'can_see_orders_delivered', 'can_see_orders_returned', 'can_see_orders_shipped', 'can_edit_price', 'can_see_reports', 'can_manage_inventory', 'can_see_expenses', 'can_manage_suppliers', 'can_manage_customers', 'can_see_accounts', 'can_see_financial', 'shipping_company_id', 'commission_percent', 'salary', 'total_orders', 'total_sales', 'created_at', 'last_active', 'branch_id', 'pay_type', 'pay_day_of_month', 'pay_weekday', 'payroll_effective_from', 'last_salary_paid_at']
+Employee table is up to date.
+Current columns in 'subscription_plans': ['id', 'plan_key', 'name', 'price_monthly', 'price_yearly', 'original_price_monthly', 'original_price_yearly', 'max_users', 'max_orders_monthly', 'features_json', 'created_at', 'updated_at']
+subscription_plans table is up to date.
+Publisher scheduler started (PID 27052)
+Publisher module loaded.
+Workspace module loaded.
+ * Serving Flask app 'app'
+ * Debug mode: off

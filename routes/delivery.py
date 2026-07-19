@@ -13,7 +13,7 @@ import json
 from utils.shipping_report_execute import execute_shipping_report
 from utils.agent_report_helpers import (
     compute_report_delivered_amount,
-    enrich_orders_data_payment_fields,
+    enrich_orders_data_display_fields,
     row_collectible_amount,
 )
 
@@ -291,10 +291,11 @@ def view_report(report_id):
         return jsonify({"error": "غير مصرح"}), 403
     
     orders_data = json.loads(report.orders_data) if report.orders_data else []
-    # إثراء المدفوع/الباقي للكشوف غير المنفّذة فقط (بعد التنفيذ تكون الفاتورة مسددة)
+    # إثراء المدفوع/الباقي + العنوان والحالة الحالية للكشوف غير المنفّذة
     if not report.is_executed:
-        orders_data = enrich_orders_data_payment_fields(orders_data)
+        orders_data = enrich_orders_data_display_fields(orders_data, refresh_live=True)
     else:
+        orders_data = enrich_orders_data_display_fields(orders_data, refresh_live=False)
         for row in orders_data:
             if isinstance(row, dict) and "remaining" not in row:
                 row.setdefault("paid_amount", 0)

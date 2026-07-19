@@ -38,6 +38,9 @@ def _effective_paid_amount(invoice: Invoice) -> int:
     payment_status = getattr(invoice, "payment_status", None)
     status = getattr(invoice, "status", None)
 
+    if getattr(invoice, "is_stock_locked", False):
+        return 0
+
     if payment_status in ("مرتجع", "ملغي", "راجع", "راجعة"):
         return 0
     if status in ("مرتجع", "ملغي", "راجع", "راجعة"):

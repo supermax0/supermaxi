@@ -1,0 +1,181 @@
+.epw-page .epw-subtitle {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.epw-message-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg, 16px);
+  padding: 16px 18px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow-card);
+}
+
+.epw-message-box label {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--text-main);
+}
+
+.epw-message-box textarea {
+  width: 100%;
+  min-height: 110px;
+  resize: vertical;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  background: var(--bg, #fff);
+  color: var(--text-main);
+  font-family: inherit;
+  line-height: 1.6;
+}
+
+.epw-message-box small {
+  display: block;
+  margin-top: 8px;
+  color: var(--text-muted);
+}
+
+.epw-empty {
+  padding: 40px 16px;
+  text-align: center;
+  color: var(--text-muted);
+  border: 1px dashed var(--border);
+  border-radius: 16px;
+}
+
+.epw-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.epw-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: var(--shadow-card);
+}
+
+.epw-card__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.epw-card__head h3 {
+  margin: 0 0 4px;
+  font-size: 18px;
+  color: var(--text-main);
+}
+
+.epw-username {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.epw-card__meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.epw-phone-row {
+  display: flex;
+  gap: 8px;
+}
+
+.epw-phone-input {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--bg, #fff);
+  color: var(--text-main);
+}
+
+.epw-pages {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.epw-pages li {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--primary) 6%, transparent);
+  border: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.epw-pages li strong {
+  color: var(--text-main);
+}
+
+.epw-sales {
+  font-weight: 700;
+  color: var(--success, #16a34a);
+}
+
+.epw-pages--empty {
+  display: block !important;
+  color: var(--text-muted);
+  background: transparent !important;
+  border-style: dashed !important;
+}
+
+.epw-send-btn {
+  margin-top: auto;
+  width: 100%;
+  background: #128c7e;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.epw-send-btn:hover {
+  background: #0f7a6e;
+}
+
+.epw-send-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .epw-card__head {
+    flex-direction: column;
+  }
+  .epw-card__meta {
+    align-items: flex-start;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .epw-pages li {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}تحذير البيجات — واتساب{% endblock %}
+{% block page_title %}تحذير سحب البيج{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/team-admin.css') }}?v=20260702g">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/employee-page-warnings.css') }}?v=20260712b">
+
+<div class="team-admin-page epw-page">
+  <div class="admin-page-header">
+    <div class="admin-page-header__meta">
+      <p class="epw-subtitle">بطاقات الموظفين والبيجات — إرسال تبليغ ضعف الأداء عبر واتساب</p>
+    </div>
+    <div class="admin-page-header__actions">
+      <a href="/employees" class="nav-crosslink"><i class="fas fa-users"></i> الموظفون</a>
+      <a href="/pages" class="nav-crosslink"><i class="fas fa-th-large"></i> البيجات</a>
+    </div>
+  </div>
+
+  <div class="epw-message-box">
+    <label for="epwMessage">نص رسالة التحذير</label>
+    <textarea id="epwMessage" rows="8">{{ default_message }}</textarea>
+    <small>المتغيرات: {employee_name} · {pages_details} · {pages_count} · {total_orders}</small>
+  </div>
+
+  {% if not cards %}
+  <div class="epw-empty">لا يوجد موظفون نشطون حالياً.</div>
+  {% else %}
+  <div class="epw-cards">
+    {% for card in cards %}
+    <article
+      class="epw-card"
+      data-employee-id="{{ card.id }}"
+      data-wa="{{ card.wa_digits }}"
+      data-pages-count="{{ card.pages_count }}"
+      data-total-orders="{{ card.total_orders }}"
+      data-total-sales="{{ card.total_sales }}"
+    >
+      <script type="application/json" class="epw-pages-data">{{ card.pages|tojson }}</script>
+      <header class="epw-card__head">
+        <div>
+          <h3>{{ card.name }}</h3>
+          <span class="epw-username">@{{ card.username }}</span>
+        </div>
+        <div class="epw-card__meta">
+          <span>{{ card.pages_count }} بيج</span>
+          <span>{{ "{:,}".format(card.total_orders) }} طلب</span>
+          <span>{{ "{:,}".format(card.total_sales) }} د.ع</span>
+        </div>
+      </header>
+
+      <div class="epw-phone-row">
+        <input
+          type="tel"
+          class="epw-phone-input"
+          value="{{ card.phone }}"
+          placeholder="رقم واتساب الموظف"
+          inputmode="tel"
+          data-employee-id="{{ card.id }}"
+        >
+        <button type="button" class="btn btn-light epw-save-phone" data-employee-id="{{ card.id }}">حفظ الرقم</button>
+      </div>
+
+      <ul class="epw-pages">
+        {% if card.pages %}
+          {% for page in card.pages %}
+          <li>
+            <strong>{{ page.name }}</strong>
+            <span>{{ "{:,}".format(page.orders_count) }} طلب</span>
+            <span class="epw-sales">{{ "{:,}".format(page.sales) }} د.ع</span>
+          </li>
+          {% endfor %}
+        {% else %}
+          <li class="epw-pages--empty">لا توجد بيجات معيّنة لهذا الموظف</li>
+        {% endif %}
+      </ul>
+
+      <button
+        type="button"
+        class="btn epw-send-btn"
+        data-employee-id="{{ card.id }}"
+        data-employee-name="{{ card.name }}"
+      >
+        <i class="fab fa-whatsapp"></i> إرسال تحذير واتساب
+      </button>
+    </article>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+
+<script src="{{ url_for('static', filename='js/employee-page-warnings.js') }}?v=20260712c"></script>
+{% endblock %}

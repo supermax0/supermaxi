@@ -204,6 +204,12 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
     document.getElementById('editEmpId').value = data.id;
     document.getElementById('editEmpIsDelivery').value = data.is_delivery ? '1' : '0';
     document.getElementById('editEmpName').value = cleanName;
+    const phoneField = document.getElementById('editEmpPhoneField');
+    const phoneInput = document.getElementById('editEmpPhone');
+    if (phoneField && phoneInput) {
+      phoneField.style.display = data.is_delivery ? 'none' : '';
+      phoneInput.value = data.phone || '';
+    }
     document.getElementById('editEmpSalary').value = data.salary || 0;
     const payTypeEl = document.getElementById('editEmpPayType');
     const payDayEl = document.getElementById('editEmpPayDay');
@@ -235,6 +241,8 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
       pay_weekday: document.getElementById('editEmpPayWeekday')?.value,
     };
     if (!isDelivery) {
+      const phoneInput = document.getElementById('editEmpPhone');
+      if (phoneInput) body.phone = phoneInput.value.trim();
       const commissionInput = document.getElementById('editEmpCommission');
       if (commissionInput) {
         body.commission = commissionInput.value;

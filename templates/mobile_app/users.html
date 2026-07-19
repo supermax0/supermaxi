@@ -1,0 +1,60 @@
+{% extends "mobile_app/_layout.html" %}
+{% block mobile_app_body %}
+<div class="ma-stack">
+  <div class="ma-page-head">
+    <h2 class="ma-page-title">مستخدمو التطبيق</h2>
+    <p class="ma-page-subtitle">إدارة حسابات مستخدمي تطبيق الهاتف</p>
+  </div>
+
+  <form method="get" class="ma-toolbar">
+    <input class="ma-input" type="search" name="q" value="{{ q or '' }}" placeholder="بحث بالاسم أو الهاتف">
+    <button class="ma-btn ma-btn-primary" type="submit"><i class="fas fa-search"></i> بحث</button>
+  </form>
+
+  <div class="ma-table-wrap" style="background:var(--card)">
+    <table class="ma-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>الاسم</th>
+          <th>الهاتف</th>
+          <th>الحالة</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td class="ma-muted">{{ u.id }}</td>
+          <td class="ma-table-title">{{ u.name or '—' }}</td>
+          <td><span class="ma-code">{{ u.phone }}</span></td>
+          <td>
+            {% if u.banned_at %}
+            <span class="ma-badge ma-badge-banned">محظور</span>
+            {% elif u.is_active %}
+            <span class="ma-badge ma-badge-active">نشط</span>
+            {% else %}
+            <span class="ma-badge ma-badge-inactive">غير نشط</span>
+            {% endif %}
+          </td>
+          <td class="ma-row-actions">
+            {% if u.banned_at or not u.is_active %}
+            <form method="post" action="{{ url_for('mobile_admin.users_unban', user_id=u.id) }}">
+              <button class="ma-btn ma-btn-sm ma-btn-success" type="submit"><i class="fas fa-unlock"></i> إلغاء الحظر</button>
+            </form>
+            {% else %}
+            <form method="post" action="{{ url_for('mobile_admin.users_ban', user_id=u.id) }}">
+              <input type="hidden" name="reason" value="حظر إداري">
+              <button class="ma-btn ma-btn-sm ma-btn-danger" type="submit"><i class="fas fa-ban"></i> حظر</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="ma-empty">لا يوجد مستخدمون</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

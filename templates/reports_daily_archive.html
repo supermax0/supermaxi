@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% block title %}أرشيف التقارير اليومية{% endblock %}
+{% block page_title %}أرشيف التقارير اليومية{% endblock %}
+
+{% macro money(value) -%}
+  {{ "{:,}".format((value or 0)|int) }} د.ع
+{%- endmacro %}
+
+{% block content %}
+<style>
+  .daily-archive {
+    direction: rtl;
+    max-width: 1120px;
+    margin: 0 auto;
+    color: var(--text, #111827);
+  }
+  .archive-head,
+  .archive-table-wrap {
+    background: var(--card, #fff);
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 8px;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+  }
+  .archive-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .archive-head h2 {
+    margin: 0 0 4px;
+    font-size: 22px;
+    font-weight: 900;
+  }
+  .archive-head p {
+    margin: 0;
+    color: var(--text-muted, #64748b);
+    font-weight: 700;
+    font-size: 13px;
+  }
+  .archive-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .archive-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 38px;
+    border-radius: 8px;
+    border: 1px solid var(--border, #dbe3ef);
+    background: var(--card, #fff);
+    color: inherit;
+    padding: 8px 12px;
+    font-weight: 800;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .archive-btn.primary {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #fff;
+  }
+  .archive-table-wrap {
+    overflow-x: auto;
+    padding: 16px;
+  }
+  .archive-table {
+    width: 100%;
+    min-width: 860px;
+    border-collapse: collapse;
+  }
+  .archive-table th,
+  .archive-table td {
+    padding: 11px 10px;
+    border-bottom: 1px solid var(--border, #edf2f7);
+    text-align: right;
+    vertical-align: top;
+    white-space: nowrap;
+  }
+  .archive-table th {
+    color: var(--text-muted, #64748b);
+    background: rgba(148, 163, 184, .08);
+    font-size: 12px;
+    font-weight: 900;
+  }
+  .archive-table td.note {
+    white-space: normal;
+    min-width: 220px;
+  }
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-weight: 900;
+    font-size: 12px;
+  }
+  .status-pending { background: rgba(245, 158, 11, .15); color: #b45309; }
+  .status-matched { background: rgba(22, 163, 74, .15); color: #15803d; }
+  .status-mismatch { background: rgba(220, 38, 38, .14); color: #b91c1c; }
+  .diff-positive { color: #16a34a; font-weight: 900; }
+  .diff-negative { color: #dc2626; font-weight: 900; }
+  .empty-state {
+    padding: 26px;
+    text-align: center;
+    color: var(--text-muted, #64748b);
+    font-weight: 800;
+  }
+  @media (max-width: 720px) {
+    .archive-head {
+      display: grid;
+      grid-template-columns: 1fr;
+    }
+  }
+  @media print {
+    .sidebar,
+    .topbar,
+    .archive-actions,
+    .archive-btn { display: none !important; }
+    .archive-head,
+    .archive-table-wrap {
+      box-shadow: none !important;
+      border-color: #ddd !important;
+    }
+  }
+</style>
+
+<div class="daily-archive">
+  <div class="archive-head">
+    <div>
+      <h2><i class="fa fa-clock-rotate-left"></i> القديم والجديد</h2>
+      <p>أرشيف التدقيقات اليومية، ومنه تفتح أي تقرير قديم أو ترجع لتقرير اليوم الجديد.</p>
+    </div>
+    <div class="archive-actions">
+      <a class="archive-btn primary" href="/reports/daily"><i class="fa fa-plus"></i> تقرير جديد</a>
+      <button class="archive-btn" type="button" onclick="window.print()"><i class="fa fa-print"></i> طباعة</button>
+      <a class="archive-btn" href="/reports"><i class="fa fa-chart-pie"></i> التقارير</a>
+    </div>
+  </div>
+
+  <div class="archive-table-wrap">
+    <table class="archive-table">
+      <thead>
+        <tr>
+          <th>التاريخ</th>
+          <th>الحالة</th>
+          <th>المتوقع</th>
+          <th>العد الفعلي</th>
+          <th>الفرق</th>
+          <th>المدقق</th>
+          <th>وقت التدقيق</th>
+          <th>الملاحظة</th>
+          <th>فتح</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for audit in audits %}
+          <tr>
+            <td>{{ audit.report_date.strftime("%Y-%m-%d") }}</td>
+            <td><span class="status-pill status-{{ audit.status }}"><i class="fa fa-circle"></i> {{ audit.status_label }}</span></td>
+            <td>{{ money(audit.expected_cash_balance) }}</td>
+            <td>{{ money(audit.actual_cash_count) if audit.actual_cash_count is not none else "-" }}</td>
+            <td class="{% if audit.difference > 0 %}diff-positive{% elif audit.difference < 0 %}diff-negative{% endif %}">{{ money(audit.difference) }}</td>
+            <td>{{ audit.reviewer.name if audit.reviewer else "-" }}</td>
+            <td>{{ audit.reviewed_at.strftime("%Y-%m-%d %H:%M") if audit.reviewed_at else "-" }}</td>
+            <td class="note">{{ audit.notes or "-" }}</td>
+            <td><a class="archive-btn" href="/reports/daily?date={{ audit.report_date.isoformat() }}"><i class="fa fa-eye"></i> عرض</a></td>
+          </tr>
+        {% else %}
+          <tr><td colspan="9" class="empty-state">بعد ماكو تدقيقات محفوظة.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

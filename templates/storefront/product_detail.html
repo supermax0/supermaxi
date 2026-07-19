@@ -2,6 +2,14 @@
 {% block title %}{{ product.name }} - {{ store_design.store_name }}{% endblock %}
 {% block content %}
 
+{% set gallery_images = product.gallery[:5] if product.gallery else [] %}
+{% set video_url = product.video_url or '' %}
+{% set is_youtube = video_url and ('youtube.com' in video_url or 'youtu.be' in video_url) %}
+{% set youtube_embed = '' %}
+{% if is_youtube %}
+  {% set youtube_embed = video_url | replace('watch?v=', 'embed/') | replace('youtu.be/', 'youtube.com/embed/') %}
+{% endif %}
+
 <nav class="lux-pd-breadcrumb" aria-label="مسار التنقل">
   <a href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">الرئيسية</a>
   <span class="lux-pd-breadcrumb-sep" aria-hidden="true">›</span>
@@ -14,7 +22,8 @@
   <span class="lux-pd-breadcrumb-current">{{ product.name }}</span>
 </nav>
 
-<section class="lux-pd" id="luxProductDetail">
+<section class="lux-pd lux-pd--stack" id="luxProductDetail">
+  {# —— 1) معرض كبير أولاً —— #}
   <div class="lux-pd-gallery-wrap">
     <div class="lux-pd-gallery">
       <div class="lux-pd-badges" aria-label="شارات المنتج">
@@ -22,25 +31,61 @@
         {% if product.is_new %}<span class="lux-badge lux-badge-new">جديد</span>{% endif %}
         {% if not product.is_available %}<span class="lux-badge lux-badge-out">غير متوفر</span>{% endif %}
       </div>
-      <div class="lux-pd-media" id="luxPdMedia">
-        {% if product.image_url %}
-        <img id="sfMainImage" class="lux-pd-main-img" src="{{ product.image_url }}" alt="{{ product.name }}" loading="eager">
+
+      <div class="lux-pd-media" id="luxPdMedia" data-mode="image">
+        {% if gallery_images %}
+        <img id="sfMainImage" class="lux-pd-main-img" src="{{ gallery_images[0] }}" alt="{{ product.name }}" loading="eager">
         {% else %}
-        <span class="lux-pd-placeholder">{{ product.name[:1] }}</span>
+        <span class="lux-pd-placeholder" id="sfMainPlaceholder">{{ product.name[:1] }}</span>
+        {% endif %}
+
+        {% if video_url %}
+        <div class="lux-pd-video-stage" id="sfVideoStage" hidden>
+          {% if is_youtube %}
+          <div class="lux-pd-video-frame lux-pd-video-frame--inline">
+            <iframe id="sfVideoFrame" data-src="{{ youtube_embed }}" title="فيديو {{ product.name }}" allowfullscreen loading="lazy"></iframe>
+          </div>
+          {% else %}
+          <video id="sfProductVideo" class="lux-pd-native-video" controls playsinline preload="metadata" poster="{{ gallery_images[0] if gallery_images else '' }}">
+            <source src="{{ video_url }}" type="video/mp4">
+          </video>
+          {% endif %}
+        </div>
         {% endif %}
       </div>
-      {% if product.gallery and product.gallery|length > 1 %}
-      <div class="lux-pd-thumbs" role="tablist" aria-label="صور المنتج">
-        {% for image in product.gallery %}
-        <button class="lux-pd-thumb sf-thumb{% if loop.first %} is-active{% endif %}" type="button" data-full="{{ image }}" aria-label="صورة {{ loop.index }}"{% if loop.first %} aria-selected="true"{% endif %}>
+
+      {% if gallery_images|length > 1 or video_url %}
+      <div class="lux-pd-thumbs" role="tablist" aria-label="صور وفيديو المنتج">
+        {% for image in gallery_images %}
+        <button
+          class="lux-pd-thumb sf-thumb{% if loop.first %} is-active{% endif %}"
+          type="button"
+          data-media="image"
+          data-full="{{ image }}"
+          aria-label="صورة {{ loop.index }}"
+          {% if loop.first %}aria-selected="true"{% else %}aria-selected="false"{% endif %}
+        >
           <img src="{{ image }}" alt="" loading="lazy">
         </button>
         {% endfor %}
+        {% if video_url %}
+        <button
+          class="lux-pd-thumb lux-pd-thumb--video"
+          type="button"
+          data-media="video"
+          aria-label="فيديو المنتج"
+          aria-selected="false"
+        >
+          <span class="lux-pd-thumb-play" aria-hidden="true">▶</span>
+          <span class="lux-pd-thumb-video-label">فيديو</span>
+        </button>
+        {% endif %}
       </div>
       {% endif %}
     </div>
   </div>
 
+  {# —— 2) ملخص المنتج —— #}
   <div class="lux-pd-info">
     {% if product.badge and product.badge != product.category %}
     <span class="lux-pd-category">{{ product.badge }}</span>
@@ -84,22 +129,24 @@
       {% endif %}
     </div>
 
-    {% if product.short_specs %}
-    <ul class="lux-pd-highlights">
-      {% for part in product.short_specs.split(' | ') %}
-      <li>{{ part }}</li>
-      {% endfor %}
-    </ul>
-    {% endif %}
-
-    {% if product.description %}
-    <div class="lux-pd-desc">
-      <h2>الوصف</h2>
-      <p>{{ product.description }}</p>
+    {% if product.specs %}
+    <div class="lux-pd-specs lux-pd-specs--inline">
+      <h2>المواصفات التقنية</h2>
+      <table class="lux-pd-spec-table">
+        <tbody>
+          {% for item in product.specs %}
+          <tr class="lux-pd-spec-row">
+            <th scope="row" class="lux-pd-spec-label">{{ item.label }}</th>
+            <td class="lux-pd-spec-value">{{ item.value }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
     {% endif %}
 
-    <div class="lux-pd-buy">
+    {# —— الشراء —— #}
+    <div class="lux-pd-buy" id="luxPdBuy">
       <div class="lux-pd-qty-wrap">
         <span class="lux-pd-qty-label">الكمية</span>
         <div class="lux-pd-qty" role="group" aria-label="الكمية">
@@ -124,36 +171,19 @@
   </div>
 </section>
 
-{% if product.video_url %}
-<section class="lux-pd-video">
-  <div class="lux-pd-video-inner">
-    <h2>فيديو المنتج</h2>
-    {% if 'youtube.com' in product.video_url or 'youtu.be' in product.video_url %}
-    <div class="lux-pd-video-frame">
-      <iframe src="{{ product.video_url | replace('watch?v=', 'embed/') | replace('youtu.be/', 'youtube.com/embed/') }}" title="فيديو {{ product.name }}" allowfullscreen loading="lazy"></iframe>
-    </div>
+{# شريط شراء ثابت للهاتف #}
+<div class="lux-pd-mobile-bar" id="luxPdMobileBar" aria-label="شراء سريع">
+  <div class="lux-pd-mobile-bar-price">
+    {% if product.price and product.price > 0 %}
+    <strong>{{ "{:,.0f}".format(product.price) }}</strong> <span>د.ع</span>
     {% else %}
-    <a class="lux-btn lux-btn-gold" href="{{ product.video_url }}" target="_blank" rel="noopener">مشاهدة الفيديو</a>
+    <strong>السعر لاحقاً</strong>
     {% endif %}
   </div>
-</section>
-{% endif %}
-
-{% if product.specs %}
-<section class="lux-pd-specs">
-  <div class="lux-pd-specs-inner">
-    <h2>المواصفات التقنية</h2>
-    <div class="lux-pd-spec-grid">
-      {% for item in product.specs %}
-      <div class="lux-pd-spec-row">
-        <span class="lux-pd-spec-label">{{ item.label }}</span>
-        <span class="lux-pd-spec-value">{{ item.value }}</span>
-      </div>
-      {% endfor %}
-    </div>
-  </div>
-</section>
-{% endif %}
+  <button class="lux-btn-cart lux-pd-mobile-add" type="button" data-sf-add-cart="{{ product.id }}" {% if not product.is_available %}disabled{% endif %}>
+    {% if product.is_available %}أضف للسلة{% else %}غير متوفر{% endif %}
+  </button>
+</div>
 
 {% if related_products %}
 <section class="lux-products-section lux-pd-related">

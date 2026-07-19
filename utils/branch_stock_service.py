@@ -67,7 +67,10 @@ def receive_stock(branch_id: int, product_id: int, qty: int, *, sync_product: bo
     if qty <= 0:
         raise BranchStockError("كمية الاستلام يجب أن تكون أكبر من صفر")
     bs = get_or_create_branch_stock(branch_id, product_id)
-    bs.quantity = int(bs.quantity or 0) + qty
+    db.session.query(BranchStock).filter(BranchStock.id == bs.id).update(
+        {BranchStock.quantity: BranchStock.quantity + qty}, synchronize_session=False
+    )
+    db.session.expire(bs)
     if sync_product:
         sync_product_total(product_id)
     return bs
@@ -78,12 +81,24 @@ def deduct_stock(branch_id: int, product_id: int, qty: int, *, sync_product: boo
     if qty <= 0:
         raise BranchStockError("كمية الخصم يجب أن تكون أكبر من صفر")
     bs = get_or_create_branch_stock(branch_id, product_id)
-    available = int(bs.quantity or 0)
-    if available < qty:
+    # Conditional UPDATE prevents two concurrent order transitions from both
+    # consuming the same last unit (works on SQLite and PostgreSQL).
+    updated = (
+        db.session.query(BranchStock)
+        .filter(BranchStock.id == bs.id, BranchStock.quantity >= qty)
+        .update({BranchStock.quantity: BranchStock.quantity - qty}, synchronize_session=False)
+    )
+    if updated != 1:
+        db.session.expire(bs)
+        available = int(bs.quantity or 0)
         branch = Branch.query.get(branch_id)
         branch_name = branch.name if branch else str(branch_id)
-        raise BranchStockError(f"المخزون غير كافٍ في {branch_name}. المتاح: {available}")
-    bs.quantity = available - qty
+        product = Product.query.get(product_id)
+        product_name = (product.name if product else None) or f"#{product_id}"
+        raise BranchStockError(
+            f"المخزون غير كافٍ للمنتج «{product_name}» في {branch_name}. المتاح: {available}"
+        )
+    db.session.expire(bs)
     if sync_product:
         sync_product_total(product_id)
     return bs
@@ -95,7 +110,9 @@ def validate_branch_sale(branch_id: int, product_id: int, qty: int) -> tuple[boo
         return False, "الكمية غير صالحة"
     available = get_branch_stock(branch_id, product_id)
     if available < qty:
-        return False, f"المخزون غير كافٍ. المتاح: {available}"
+        product = Product.query.get(product_id)
+        product_name = (product.name if product else None) or f"#{product_id}"
+        return False, f"المخزون غير كافٍ للمنتج «{product_name}». المتاح: {available}"
     return True, ""
 
 

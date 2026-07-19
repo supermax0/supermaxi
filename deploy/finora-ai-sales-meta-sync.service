@@ -1,0 +1,21 @@
+[Unit]
+Description=Finora Sales AI Meta conversation sync
+After=network-online.target finora.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/finora/supermaxi
+Environment="PATH=/var/www/finora/supermaxi/venv/bin"
+Environment="SERVER_SOFTWARE=gunicorn/finora-meta-sync"
+Environment="PYTHONUNBUFFERED=1"
+ExecStart=/var/www/finora/supermaxi/venv/bin/python /var/www/finora/supermaxi/scripts/ai_sales_meta_sync.py --loop --interval 60 --full-interval 300
+Restart=always
+RestartSec=3
+TimeoutStopSec=30
+Nice=5
+
+[Install]
+WantedBy=multi-user.target

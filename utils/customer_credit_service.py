@@ -107,6 +107,14 @@ def sync_invoice_from_plan(plan: CustomerCreditPlan):
     prev_eff = _effective_paid_amount_inv(invoice)
     paid = int(plan.paid_amount or 0)
     total = int(plan.total_amount or 0)
+    if paid > 0:
+        from utils.order_stock_policy import ensure_stock_for_transition
+
+        ensure_stock_for_transition(
+            invoice,
+            target_status="تم التوصيل" if paid >= total and total > 0 else invoice.status,
+            target_payment_status="مسدد" if paid >= total and total > 0 else "جزئي",
+        )
     invoice.paid_amount = min(paid, total)
     if paid >= total and total > 0:
         invoice.payment_status = "مسدد"
@@ -123,6 +131,9 @@ def sync_invoice_from_plan(plan: CustomerCreditPlan):
 
 
 def create_credit_invoice(customer: Customer, employee: Employee | None, items: list[dict], note: str = ""):
+    from utils.order_stock_policy import deferred_stock_enabled
+
+    defer_stock = deferred_stock_enabled()
     invoice = Invoice(
         customer_id=customer.id,
         customer_name=customer.name,
@@ -134,6 +145,7 @@ def create_credit_invoice(customer: Customer, employee: Employee | None, items: 
         paid_amount=0,
         note=note or "بيع آجل — أقساط",
         created_at=datetime.utcnow(),
+        stock_is_deducted=False,
     )
     db.session.add(invoice)
     db.session.flush()
@@ -144,11 +156,12 @@ def create_credit_invoice(customer: Customer, employee: Employee | None, items: 
         if not product:
             raise ValueError("منتج غير موجود")
         qty = max(1, int(row.get("qty") or 1))
-        validation = validate_sale_quantity(product.id, qty)
-        if not validation.get("valid"):
-            raise ValueError(validation.get("message") or "كمية غير متاحة")
-        if product.quantity < qty:
-            raise ValueError(f"الكمية المتوفرة ({product.quantity}) أقل من المطلوب ({qty})")
+        if not defer_stock:
+            validation = validate_sale_quantity(product.id, qty)
+            if not validation.get("valid"):
+                raise ValueError(validation.get("message") or "كمية غير متاحة")
+            if product.quantity < qty:
+                raise ValueError(f"الكمية المتوفرة ({product.quantity}) أقل من المطلوب ({qty})")
 
         custom_price = row.get("price")
         if custom_price and int(custom_price) > 0:
@@ -166,11 +179,15 @@ def create_credit_invoice(customer: Customer, employee: Employee | None, items: 
             cost=int(product.buy_price or 0),
             total=item_total,
         )
-        product.quantity -= qty
+        if not defer_stock:
+            product.quantity -= qty
         total += item_total
         db.session.add(order_item)
 
     invoice.total = total
+    if not defer_stock:
+        invoice.stock_is_deducted = True
+        invoice.stock_deducted_at = datetime.utcnow()
     return invoice
 
 

@@ -106,6 +106,13 @@
 
         </button>
 
+        {% if can_view_my_orders %}
+        <a href="{{ url_for('pos.my_orders') }}" class="pos-my-orders-link" title="طلباتي" aria-label="طلباتي">
+          <i class="fas fa-receipt"></i>
+          <span>طلباتي</span>
+        </a>
+        {% endif %}
+
         {% if pos_return.url %}
         <a href="{{ pos_return.url }}" class="pos-btn-icon" title="رجوع" aria-label="رجوع"><i class="fas fa-arrow-right"></i></a>
         {% endif %}
@@ -446,7 +453,8 @@
 
         <input id="phone2" class="pos-input" type="tel" inputmode="numeric" pattern="[0-9]{11}" maxlength="11" placeholder="07xxxxxxxxx (اختياري)" autocomplete="tel" data-digits-en>
 
-        <select id="city" class="pos-select">
+        <select id="city" class="pos-select" required>
+          <option value="" selected disabled>اختر المحافظة *</option>
           <option value="{{ primary_province }}">{{ primary_province }}</option>
           {% for p in tenant_group_provinces %}
           <option value="{{ p }}">{{ p }}</option>
@@ -471,6 +479,7 @@
           <input id="ocrAddress" class="pos-input" placeholder="العنوان">
 
           <select id="ocrCity" class="pos-select">
+            <option value="" selected disabled>اختر المحافظة *</option>
             <option value="{{ primary_province }}">{{ primary_province }}</option>
             {% for p in tenant_group_provinces %}
             <option value="{{ p }}">{{ p }}</option>

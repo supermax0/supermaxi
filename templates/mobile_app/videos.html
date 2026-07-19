@@ -1,0 +1,345 @@
+{% extends "mobile_app/_layout.html" %}
+{% block mobile_app_body %}
+{% set max_mb = max_upload_mb|default(200) %}
+<div class="ma-videos">
+  <header class="ma-videos-header">
+    <div>
+      <h2 class="ma-videos-title">الفيديوهات</h2>
+      <p class="ma-videos-subtitle">ارفع فيديوهات التطبيق للمعالجة والنشر</p>
+    </div>
+  </header>
+
+  {% if request.args.get('uploaded') == '1' %}
+  <div class="ma-upload-success" role="status">
+    <i class="fas fa-check-circle"></i>
+    تم رفع الفيديو وبدأت المعالجة
+  </div>
+  {% endif %}
+
+  <form
+    id="maVideoUploadForm"
+    class="ma-upload-card"
+    method="post"
+    action="{{ url_for('mobile_admin.videos_upload') }}"
+    enctype="multipart/form-data"
+    data-max-mb="{{ max_mb }}"
+    novalidate
+  >
+    <div class="ma-upload-card-head">
+      <div class="ma-upload-card-icon"><i class="fas fa-cloud-upload-alt"></i></div>
+      <div>
+        <h3 class="ma-upload-card-title">رفع فيديو جديد</h3>
+        <p class="ma-upload-card-desc">اسحب الملف هنا أو اختره من جهازك</p>
+      </div>
+    </div>
+
+    <div
+      class="ma-dropzone"
+      id="maDropzone"
+      role="button"
+      tabindex="0"
+      aria-label="اختر ملف فيديو أو اسحبه إلى هنا"
+    >
+      <input
+        class="ma-dropzone-input"
+        id="maVideoFile"
+        type="file"
+        name="file"
+        accept="video/mp4,video/quicktime,video/webm,video/x-matroska,.mp4,.mov,.webm,.m4v,.mkv"
+        required
+      >
+      <div class="ma-dropzone-idle" id="maDropzoneIdle">
+        <div class="ma-dropzone-icon"><i class="fas fa-film"></i></div>
+        <div class="ma-dropzone-text">
+          <strong>اسحب الفيديو وأفلته هنا</strong>
+          <span>أو انقر للاختيار من الجهاز</span>
+        </div>
+        <div class="ma-dropzone-meta">MP4 · MOV · WEBM · MKV · حتى {{ max_mb }} ميجابايت</div>
+      </div>
+      <div class="ma-dropzone-file is-hidden" id="maDropzoneFile">
+        <div class="ma-file-preview">
+          <div class="ma-file-thumb"><i class="fas fa-play"></i></div>
+          <div class="ma-file-meta">
+            <div class="ma-file-name" id="maFileName">—</div>
+            <div class="ma-file-size" id="maFileSize">—</div>
+          </div>
+          <button type="button" class="ma-file-clear" id="maFileClear" aria-label="إزالة الملف">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="ma-upload-fields">
+      <label class="ma-field">
+        <span class="ma-field-label">عنوان الفيديو</span>
+        <input class="ma-input" type="text" name="title" id="maVideoTitle" placeholder="مثال: عرض منتج جديد" required>
+      </label>
+      <label class="ma-field">
+        <span class="ma-field-label">وصف مختصر <em>(اختياري)</em></span>
+        <textarea class="ma-input ma-textarea" name="description" rows="2" placeholder="وصف يظهر مع الفيديو في التطبيق"></textarea>
+      </label>
+      <label class="ma-check">
+        <input type="checkbox" name="publish_now" value="1" checked>
+        <span>نشر مباشرة بعد اكتمال المعالجة</span>
+      </label>
+    </div>
+
+    <div class="ma-upload-progress is-hidden" id="maUploadProgress" aria-live="polite">
+      <div class="ma-upload-progress-top">
+        <span id="maUploadStatus">جاري الرفع…</span>
+        <span id="maUploadPercent">0%</span>
+      </div>
+      <div class="ma-progress-track">
+        <div class="ma-progress-bar" id="maProgressBar" style="width:0%"></div>
+      </div>
+    </div>
+
+    <div class="ma-upload-error is-hidden" id="maUploadError" role="alert"></div>
+
+    <div class="ma-upload-actions">
+      <button class="ma-btn ma-btn-primary" type="submit" id="maUploadBtn">
+        <i class="fas fa-upload"></i>
+        <span>رفع ومعالجة</span>
+      </button>
+    </div>
+  </form>
+
+  <section class="ma-videos-list-card">
+    <div class="ma-videos-list-head">
+      <h3>المكتبة</h3>
+      <span class="ma-videos-count">{{ videos|length }} فيديو</span>
+    </div>
+    <div class="ma-table-wrap">
+      <table class="ma-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>العنوان</th>
+            <th>الحالة</th>
+            <th>المعالجة</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for v in videos %}
+          <tr>
+            <td class="ma-muted">{{ v.id }}</td>
+            <td class="ma-table-title">{{ v.title or 'بدون عنوان' }}</td>
+            <td>
+              {% set st = (v.status or '')|lower %}
+              <span class="ma-badge ma-badge-{{ st if st in ['published','hidden','uploaded','draft'] else 'default' }}">
+                {{ v.status }}
+              </span>
+            </td>
+            <td>
+              <div class="ma-proc">
+                <span>{{ v.processing_status }}</span>
+                <div class="ma-proc-track">
+                  <div class="ma-proc-bar" style="width:{{ v.processing_progress or 0 }}%"></div>
+                </div>
+                <span class="ma-muted">{{ v.processing_progress or 0 }}%</span>
+              </div>
+            </td>
+            <td class="ma-row-actions">
+              <form method="post" action="{{ url_for('mobile_admin.videos_publish', video_id=v.id) }}">
+                <button class="ma-btn ma-btn-sm ma-btn-success" type="submit">نشر</button>
+              </form>
+              <form method="post" action="{{ url_for('mobile_admin.videos_hide', video_id=v.id) }}">
+                <button class="ma-btn ma-btn-sm ma-btn-ghost" type="submit">إخفاء</button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="5" class="ma-empty">لا توجد فيديوهات بعد — ارفع أول فيديو من الأعلى</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  var form = document.getElementById("maVideoUploadForm");
+  if (!form) return;
+
+  var dropzone = document.getElementById("maDropzone");
+  var fileInput = document.getElementById("maVideoFile");
+  var idle = document.getElementById("maDropzoneIdle");
+  var filePanel = document.getElementById("maDropzoneFile");
+  var fileNameEl = document.getElementById("maFileName");
+  var fileSizeEl = document.getElementById("maFileSize");
+  var clearBtn = document.getElementById("maFileClear");
+  var titleInput = document.getElementById("maVideoTitle");
+  var progressWrap = document.getElementById("maUploadProgress");
+  var progressBar = document.getElementById("maProgressBar");
+  var percentEl = document.getElementById("maUploadPercent");
+  var statusEl = document.getElementById("maUploadStatus");
+  var errorEl = document.getElementById("maUploadError");
+  var submitBtn = document.getElementById("maUploadBtn");
+  var maxMb = parseInt(form.getAttribute("data-max-mb") || "200", 10) || 200;
+  var maxBytes = maxMb * 1024 * 1024;
+  var allowedExt = { ".mp4": 1, ".mov": 1, ".webm": 1, ".m4v": 1, ".mkv": 1 };
+
+  function formatSize(bytes) {
+    if (bytes < 1024) return bytes + " بايت";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " كيلوبايت";
+    return (bytes / (1024 * 1024)).toFixed(1) + " ميجابايت";
+  }
+
+  function extOf(name) {
+    var i = (name || "").lastIndexOf(".");
+    return i >= 0 ? name.slice(i).toLowerCase() : "";
+  }
+
+  function showError(msg) {
+    errorEl.textContent = msg || "";
+    errorEl.classList.toggle("is-hidden", !msg);
+  }
+
+  function setFile(file) {
+    showError("");
+    if (!file) {
+      fileInput.value = "";
+      idle.classList.remove("is-hidden");
+      filePanel.classList.add("is-hidden");
+      dropzone.classList.remove("has-file");
+      return;
+    }
+    var ext = extOf(file.name);
+    if (!allowedExt[ext]) {
+      showError("امتداد الملف غير مدعوم. استخدم MP4 أو MOV أو WEBM أو MKV.");
+      fileInput.value = "";
+      return;
+    }
+    if (file.size > maxBytes) {
+      showError("حجم الفيديو يتجاوز الحد المسموح (" + maxMb + " ميجابايت).");
+      fileInput.value = "";
+      return;
+    }
+    idle.classList.add("is-hidden");
+    filePanel.classList.remove("is-hidden");
+    dropzone.classList.add("has-file");
+    fileNameEl.textContent = file.name;
+    fileSizeEl.textContent = formatSize(file.size);
+    if (!titleInput.value.trim()) {
+      var base = file.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim();
+      if (base) titleInput.value = base;
+    }
+  }
+
+  function openPicker() {
+    fileInput.click();
+  }
+
+  dropzone.addEventListener("click", function (e) {
+    if (e.target.closest("#maFileClear")) return;
+    openPicker();
+  });
+  dropzone.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      openPicker();
+    }
+  });
+  fileInput.addEventListener("click", function (e) {
+    e.stopPropagation();
+  });
+  fileInput.addEventListener("change", function () {
+    setFile(fileInput.files && fileInput.files[0]);
+  });
+  clearBtn.addEventListener("click", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    setFile(null);
+  });
+
+  ["dragenter", "dragover"].forEach(function (evt) {
+    dropzone.addEventListener(evt, function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      dropzone.classList.add("is-dragover");
+    });
+  });
+  ["dragleave", "drop"].forEach(function (evt) {
+    dropzone.addEventListener(evt, function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      dropzone.classList.remove("is-dragover");
+    });
+  });
+  dropzone.addEventListener("drop", function (e) {
+    var files = e.dataTransfer && e.dataTransfer.files;
+    if (!files || !files.length) return;
+    try {
+      var dt = new DataTransfer();
+      dt.items.add(files[0]);
+      fileInput.files = dt.files;
+    } catch (err) {
+      /* DataTransfer may be unavailable; fallback message */
+      showError("تعذر إرفاق الملف بالسحب. استخدم زر الاختيار.");
+      return;
+    }
+    setFile(files[0]);
+  });
+
+  function setProgress(pct, label) {
+    progressWrap.classList.remove("is-hidden");
+    var n = Math.max(0, Math.min(100, Math.round(pct)));
+    progressBar.style.width = n + "%";
+    percentEl.textContent = n + "%";
+    if (label) statusEl.textContent = label;
+  }
+
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    showError("");
+    var file = fileInput.files && fileInput.files[0];
+    if (!file) {
+      showError("اختر ملف فيديو أولاً.");
+      return;
+    }
+    if (!titleInput.value.trim()) {
+      showError("أدخل عنواناً للفيديو.");
+      titleInput.focus();
+      return;
+    }
+
+    var data = new FormData(form);
+    submitBtn.disabled = true;
+    submitBtn.classList.add("is-loading");
+    setProgress(0, "جاري الرفع…");
+
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", form.action, true);
+    xhr.upload.onprogress = function (ev) {
+      if (!ev.lengthComputable) return;
+      var pct = (ev.loaded / ev.total) * 100;
+      setProgress(pct, pct >= 99 ? "جاري حفظ الملف…" : "جاري الرفع…");
+    };
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState !== 4) return;
+      if (xhr.status >= 200 && xhr.status < 400) {
+        setProgress(100, "اكتمل الرفع — جاري التحويل…");
+        window.location.href = "{{ url_for('mobile_admin.videos_page') }}?uploaded=1";
+        return;
+      }
+      submitBtn.disabled = false;
+      submitBtn.classList.remove("is-loading");
+      progressWrap.classList.add("is-hidden");
+      showError("فشل رفع الفيديو. حاول مرة أخرى.");
+    };
+    xhr.onerror = function () {
+      submitBtn.disabled = false;
+      submitBtn.classList.remove("is-loading");
+      progressWrap.classList.add("is-hidden");
+      showError("تعذر الاتصال أثناء الرفع.");
+    };
+    xhr.send(data);
+  });
+})();
+</script>
+{% endblock %}

@@ -21,6 +21,7 @@ def test_delivery_fee_counts_once_in_profit_and_cash():
     from flask import g
     from extensions import db
     from extensions_tenant import init_tenant_db
+    from models.account_transaction import AccountTransaction
     from models.customer import Customer
     from models.expense import Expense
     from models.invoice import Invoice
@@ -28,7 +29,7 @@ def test_delivery_fee_counts_once_in_profit_and_cash():
     from models.product import Product
     from utils.accounting_calculations import calculate_net_profit
     from utils.cash_calculations import calculate_cash_balance
-    from utils.delivery_expense_service import sync_delivery_expense_for_invoice
+    from utils.delivery_expense_service import restore_missing_delivery_fee_withdrawals, sync_delivery_expense_for_invoice
     from utils.order_shipping import apply_manual_delivery_fee_on_payment, get_shipping_fee_from_invoice
 
     with app.app_context():
@@ -72,6 +73,16 @@ def test_delivery_fee_counts_once_in_profit_and_cash():
         assert Expense.query.filter_by(amount=6000).count() == 1
 
         assert calculate_net_profit() == 89000
+        assert Expense.query.filter_by(amount=6000, cash_posted=True).count() == 1
+        assert calculate_cash_balance() == 189000
+
+        AccountTransaction.query.filter_by(type="withdraw", amount=6000).delete()
+        db.session.commit()
+        assert calculate_cash_balance() == 195000
+
+        restored = restore_missing_delivery_fee_withdrawals()
+        assert restored == {"count": 1, "total": 6000}
+        assert AccountTransaction.query.filter_by(type="withdraw", amount=6000).count() == 1
         assert calculate_cash_balance() == 189000
 
 

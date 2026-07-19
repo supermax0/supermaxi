@@ -28,12 +28,15 @@ from models.ai_assistant_control import (
 )
 from models.branch import Branch, BranchStock, StockTransfer, StockTransferLine
 from models.employee import Employee
+from models.fixed_asset import FixedAsset
+from models.fixed_asset_category import FixedAssetCategory
 from models.invoice import Invoice
 from models.message import Message
 from models.order_item import OrderItem
 from models.product import Product
 from models.role import Permission
 from models.shipping import ShippingCompany
+from models.shipping_payment import ShippingPayment
 from models.supplier import Supplier
 from models.system_alert import SystemAlert
 from models.system_analytics import SystemAnalytics
@@ -42,6 +45,7 @@ from utils.branch_migration import ensure_branch_schema, get_default_branch
 from utils.cash_calculations import _effective_paid_amount
 from utils.delivery_expense_service import sync_delivery_expense_for_invoice
 from utils.order_lifecycle import OrderLifecycleError, process_order_cancel, process_order_return
+from utils.order_stock_policy import ensure_stock_for_transition
 from utils.branch_stock_service import (
     BranchStockError,
     adjust_branch_stock,
@@ -62,6 +66,13 @@ from utils.payment_ledger import append_payment_ledger_delta
 from utils.permission_checks import employee_can
 from utils.product_schema_guard import ensure_product_schema
 from utils.supplier_accounting_repair import audit_and_repair_supplier_ledgers
+from utils.fixed_assets_service import (
+    build_asset_from_form,
+    post_asset_acquisition,
+    seed_default_categories,
+)
+from utils.treasury_calculations import calculate_treasury_balance
+from utils.treasury_helpers import get_default_cash_account
 
 
 AI_PERMISSION_DEFS = [
@@ -216,6 +227,7 @@ def _assistant_read_scope(employee_id: int | None = None) -> dict:
             "inventory": True,
             "suppliers": True,
             "shipping": True,
+            "assets": True,
             "order_manage": True,
         }
     is_admin = employee.role == "admin"
@@ -227,6 +239,7 @@ def _assistant_read_scope(employee_id: int | None = None) -> dict:
         "inventory": is_admin or employee_can(employee, "manage_inventory"),
         "suppliers": is_admin or employee_can(employee, "manage_suppliers"),
         "shipping": is_admin or employee_can(employee, "view_shipping") or employee_can(employee, "manage_shipping"),
+        "assets": is_admin or employee_can(employee, "view_fixed_assets") or employee_can(employee, "manage_fixed_assets"),
         "order_manage": is_admin or employee_can(employee, "manage_orders"),
     }
 
@@ -1148,6 +1161,8 @@ def build_shipping_opening_balance_plan(
     session_id: int | None = None,
 ) -> AIActionPlan | None:
     text = message or ""
+    if not any(word in text for word in ("افتتاحي", "الرصيد الافتتاحي", "رصيد افتتاحي")):
+        return None
     if not any(word in text for word in ("شركة النقل", "شركات النقل", "شحن", "النقل")):
         return None
     amount_match = re.search(r"(\d[\d,]{4,})", text)
@@ -1207,6 +1222,266 @@ def build_shipping_opening_balance_plan(
         mode="plan",
     )
     return plan
+
+
+def _extract_iqd_amount(message: str) -> int:
+    text_value = (message or "").replace(",", "")
+    scaled = re.findall(r"(\d+(?:\.\d+)?)\s*(مليون|الف|ألف)", text_value)
+    if scaled:
+        value, unit = scaled[-1]
+        factor = 1_000_000 if unit == "مليون" else 1_000
+        return int(float(value) * factor)
+    values = []
+    for raw in re.findall(r"(?<![\w-])(\d{4,12})(?![\w-])", text_value):
+        try:
+            values.append(int(raw))
+        except ValueError:
+            continue
+    return max(values) if values else 0
+
+
+def build_shipping_duplicate_payment_plan(
+    message: str,
+    *,
+    employee_id: int | None,
+    session_id: int | None = None,
+) -> tuple[AIActionPlan | None, dict]:
+    text_value = message or ""
+    shipping_words = ("شركة النقل", "شركة الشحن", "النقل", "الشحن")
+    duplicate_words = ("مرتين", "مكرر", "مكررة", "بالغلط", "بالخطأ", "احذف وحدة", "حذف وحدة")
+    if not any(word in text_value for word in shipping_words) or not any(word in text_value for word in duplicate_words):
+        return None, {}
+
+    amount = _extract_iqd_amount(text_value)
+    query = ShippingPayment.query
+    if amount > 0:
+        query = query.filter(ShippingPayment.amount == amount)
+    rows = query.order_by(ShippingPayment.created_at.desc(), ShippingPayment.id.desc()).limit(100).all()
+    groups: dict[tuple, list[ShippingPayment]] = defaultdict(list)
+    for payment in rows:
+        key = (
+            int(payment.shipping_company_id),
+            int(payment.invoice_id) if payment.invoice_id else None,
+            int(payment.amount or 0),
+            payment.action or "",
+            int(payment.treasury_account_id) if payment.treasury_account_id else None,
+            payment.created_at.date().isoformat() if payment.created_at else "",
+        )
+        groups[key].append(payment)
+    duplicate_groups = [(key, items) for key, items in groups.items() if len(items) > 1]
+    if len(duplicate_groups) != 1:
+        return None, {
+            "matched_groups": len(duplicate_groups),
+            "amount": amount,
+            "message": "لم أجد تكراراً واحداً مؤكداً" if not duplicate_groups else "وجدت أكثر من مجموعة مكررة؛ حدد الشركة أو رقم الحركة",
+        }
+
+    key, payments = duplicate_groups[0]
+    company = ShippingCompany.query.get(key[0])
+    payment = max(payments, key=lambda row: row.id)
+    restores_opening = payment.invoice_id is None and (payment.action or "").strip() == "قبض"
+    plan = AIActionPlan(
+        session_id=session_id,
+        created_by_id=employee_id,
+        title="حذف قبض مكرر من شركة نقل",
+        plan_type="shipping_duplicate_payment",
+        status="draft",
+        summary=(
+            f"حذف الحركة الأحدث #{payment.id} بمبلغ {int(payment.amount or 0):,} د.ع من "
+            f"{company.name if company else 'شركة النقل'}، بعد موافقة المدير."
+        ),
+        risk_level="high",
+    )
+    plan.set_impact(
+        {
+            "shipping_company_id": payment.shipping_company_id,
+            "shipping_company": company.name if company else "",
+            "amount": int(payment.amount or 0),
+            "duplicate_payment_ids": [row.id for row in payments],
+            "cash_effect": -int(payment.amount or 0),
+            "opening_balance_restore": int(payment.amount or 0) if restores_opening else 0,
+        }
+    )
+    db.session.add(plan)
+    db.session.flush()
+    item = AIActionItem(
+        plan_id=plan.id,
+        item_type="shipping_payment_delete_duplicate",
+        target_type="shipping_payment",
+        target_id=payment.id,
+        title=f"حذف حركة القبض المكررة #{payment.id}",
+        description=f"الإبقاء على الحركة #{min(row.id for row in payments)} وحذف الأحدث فقط.",
+    )
+    item.set_before(
+        {
+            "shipping_company_id": payment.shipping_company_id,
+            "invoice_id": payment.invoice_id,
+            "amount": int(payment.amount or 0),
+            "action": payment.action or "",
+            "treasury_account_id": payment.treasury_account_id,
+            "duplicate_count": len(payments),
+            "opening_balance": int(company.opening_balance or 0) if company else None,
+        }
+    )
+    item.set_after({"deleted": True, "remaining_duplicate_count": len(payments) - 1})
+    item.set_payload(
+        {
+            "payment_id": payment.id,
+            "duplicate_payment_ids": [row.id for row in payments],
+            "restore_opening_balance": restores_opening,
+        }
+    )
+    db.session.add(item)
+    _log_tool(
+        "shipping.build_duplicate_payment_plan",
+        session_id=session_id,
+        plan_id=plan.id,
+        employee_id=employee_id,
+        input_data={"amount": amount},
+        output_data={"payment_id": payment.id, "duplicates": len(payments)},
+        mode="plan",
+    )
+    return plan, {"matched_groups": 1, "payment_id": payment.id, "duplicate_ids": [row.id for row in payments]}
+
+
+def _asset_category_for_name(name: str) -> FixedAssetCategory | None:
+    seed_default_categories()
+    category_hint = "سيارات" if any(word in name for word in ("سيارة", "سياره")) else "أجهزة ومعدات"
+    return (
+        FixedAssetCategory.query.filter(FixedAssetCategory.name.ilike(f"%{category_hint}%")).first()
+        or FixedAssetCategory.query.filter_by(is_active=True).order_by(FixedAssetCategory.id.asc()).first()
+    )
+
+
+def build_fixed_asset_action_plan(
+    message: str,
+    *,
+    employee_id: int | None,
+    session_id: int | None = None,
+) -> tuple[AIActionPlan | None, dict]:
+    text_value = message or ""
+    if not any(word in text_value for word in ("أصل", "الاصل", "الأصل", "سيارة", "سياره", "راوتر", "لابتوب", "حاسبة")):
+        return None, {}
+
+    pending_items: list[dict] = []
+    non_cash = any(
+        phrase in text_value
+        for phrase in ("ما ياخذ من الصندوق", "ماياخذ من الصندوق", "ماريده ياخذ من الصندوق", "بدون سحب من الصندوق")
+    )
+    if non_cash and any(word in text_value for word in ("سيارة", "سياره")):
+        candidates = FixedAsset.query.filter(
+            or_(FixedAsset.name.ilike("%سيارة%"), FixedAsset.name.ilike("%سياره%")),
+            FixedAsset.acquisition_journal_entry_id.is_(None),
+        ).order_by(FixedAsset.id.desc()).all()
+        if len(candidates) == 1:
+            asset = candidates[0]
+            pending_items.append({"kind": "funding", "asset": asset})
+        elif len(candidates) != 1:
+            return None, {"message": "حدد أصل السيارة بالاسم أو الكود" if candidates else "لم أجد أصل سيارة غير مرحّل"}
+
+    purchased = any(word in text_value for word in ("اشتريت", "شراء", "شريت"))
+    amount = _extract_iqd_amount(text_value)
+    asset_name = ""
+    for keyword, label in (("راوتر", "راوتر"), ("لابتوب", "لابتوب"), ("حاسبة", "حاسبة")):
+        if keyword in text_value:
+            asset_name = label
+            break
+    if purchased and asset_name and amount > 0:
+        category = _asset_category_for_name(asset_name)
+        if not category:
+            return None, {"message": "لا يوجد تصنيف أصول نشط"}
+        pending_items.append(
+            {
+                "kind": "create",
+                "name": asset_name,
+                "amount": amount,
+                "category": category,
+                "payment_method": "cash" if any(word in text_value for word in ("الصندوق", "نقد", "كاش", "سحب")) else "credit",
+            }
+        )
+
+    if not pending_items:
+        return None, {"message": "أحتاج اسم الأصل، المبلغ، وهل الدفع من الصندوق أو آجل"}
+
+    plan = AIActionPlan(
+        session_id=session_id,
+        created_by_id=employee_id,
+        title="ترتيب الأصول الثابتة",
+        plan_type="fixed_asset_actions",
+        status="draft",
+        summary=f"خطة من {len(pending_items)} إجراء على الأصول، ولا تنفذ إلا بعد فحص وموافقة المدير.",
+        risk_level="high",
+    )
+    db.session.add(plan)
+    db.session.flush()
+    cash_delta = 0
+    for pending in pending_items:
+        if pending["kind"] == "funding":
+            asset = pending["asset"]
+            item = AIActionItem(
+                plan_id=plan.id,
+                item_type="fixed_asset_set_capital_and_post",
+                target_type="fixed_asset",
+                target_id=asset.id,
+                title=f"ترحيل {asset.name} بدون سحب من الصندوق",
+                description=f"ترحيل الأصل كإضافة مالك/رصيد افتتاحي بقيمة {int(asset.total_cost or 0):,} د.ع، بدون صندوق وبدون دين مورد.",
+            )
+            item.set_before(
+                {
+                    "status": asset.status,
+                    "payment_method": asset.payment_method,
+                    "paid_amount": int(asset.paid_amount or 0),
+                    "credit_amount": int(asset.credit_amount or 0),
+                    "total_cost": int(asset.total_cost or 0),
+                    "posted": bool(asset.acquisition_journal_entry_id),
+                }
+            )
+            item.set_after(
+                {
+                    "status": "active",
+                    "payment_method": "capital",
+                    "paid_amount": 0,
+                    "credit_amount": 0,
+                    "cash_effect": 0,
+                }
+            )
+            item.set_payload({"asset_id": asset.id})
+        else:
+            amount = int(pending["amount"])
+            payment_method = pending["payment_method"]
+            cash_delta -= amount if payment_method == "cash" else 0
+            item = AIActionItem(
+                plan_id=plan.id,
+                item_type="fixed_asset_create_and_post",
+                target_type="fixed_asset",
+                title=f"إضافة وترحيل أصل {pending['name']}",
+                description=(
+                    f"شراء {pending['name']} بقيمة {amount:,} د.ع "
+                    + ("وسحبها من الصندوق." if payment_method == "cash" else "كشراء آجل بدون سحب من الصندوق.")
+                ),
+            )
+            item.set_before({"matching_assets": 0})
+            item.set_after({"name": pending["name"], "total_cost": amount, "payment_method": payment_method, "posted": True})
+            item.set_payload(
+                {
+                    "name": pending["name"],
+                    "category_id": pending["category"].id,
+                    "purchase_price": amount,
+                    "purchase_date": business_now_local().date().isoformat(),
+                    "payment_method": payment_method,
+                }
+            )
+        db.session.add(item)
+    plan.set_impact({"items": len(pending_items), "cash_effect": cash_delta, "requires_admin_approval": True})
+    _log_tool(
+        "assets.build_action_plan",
+        session_id=session_id,
+        plan_id=plan.id,
+        employee_id=employee_id,
+        output_data={"items": len(pending_items), "cash_effect": cash_delta},
+        mode="plan",
+    )
+    return plan, {"items": len(pending_items), "cash_effect": cash_delta}
 
 
 def _get_openai_key() -> str:
@@ -1316,6 +1591,10 @@ def _assistant_system_prompt() -> str:
         "لا تعيد جواب سؤال قديم ولا تكمل على موضوع سابق إلا إذا السؤال الأخير يشير له صراحة.\n"
         "9. إذا السؤال غامض أو ما عندك أداة تجاوب عليه، قل ذلك بوضوح واذكر شنو تقدر تجاوب عليه، "
         "بدل ما تجاوب على شي ثاني.\n"
+        "10. افهم أوامر اللهجة العراقية مثل: رتبلي، صلّح، احذف وحدة، رجعها، ماريده ياخذ من الصندوق، "
+        "وسحبها من الصندوق. إذا الطلب تعديل، اشرح خطة التنفيذ التي أنشأها النظام ولا تقل إنه تم التنفيذ.\n"
+        "11. عند سؤال (ليش ما مبين؟) ابحث عن السجل ورقم الحركة وتاريخ تسجيلها، وميّز بين تاريخ إنشاء الطلب أو الكشف "
+        "وتاريخ حركة التحصيل التي يعتمدها التقرير اليومي.\n"
         "\n"
         "قواعد Finora المحاسبية الخاصة:\n"
         "- الجرد الفعلي يشمل الطلبات بحالة «تم الطلب» و«جاري الشحن»؛ القابل للبيع = كمية النظام - المحجوز.\n"
@@ -1546,12 +1825,44 @@ def handle_chat_send(
     elif any(word in (message or "") for word in ("مورد", "موردين", "الموردين", "ديون المورد")):
         local_findings["supplier_plan"] = {"restricted": True, "message": "تحليل أرصدة الموردين يحتاج صلاحية الموردين."}
 
-    shipping_plan = build_shipping_opening_balance_plan(message, employee_id=employee_id, session_id=chat.id) if scope["shipping"] else None
+    duplicate_shipping_plan = None
+    duplicate_shipping_meta = {}
+    if scope["shipping"]:
+        duplicate_shipping_plan, duplicate_shipping_meta = build_shipping_duplicate_payment_plan(
+            message, employee_id=employee_id, session_id=chat.id
+        )
+    if duplicate_shipping_plan:
+        plan = duplicate_shipping_plan
+        local_findings["shipping_duplicate_plan"] = {
+            "id": duplicate_shipping_plan.id,
+            "items": len(duplicate_shipping_plan.items),
+            **duplicate_shipping_meta,
+        }
+    elif duplicate_shipping_meta:
+        local_findings["shipping_duplicate_plan"] = duplicate_shipping_meta
+
+    shipping_plan = None
+    if plan is None and scope["shipping"]:
+        shipping_plan = build_shipping_opening_balance_plan(message, employee_id=employee_id, session_id=chat.id)
     if shipping_plan:
         plan = shipping_plan
         local_findings["shipping_plan"] = {"id": shipping_plan.id, "items": len(shipping_plan.items)}
     elif any(word in (message or "") for word in ("نقل", "شحن", "شركة النقل", "شركات النقل")) and not scope["shipping"]:
         local_findings["shipping_plan"] = {"restricted": True, "message": "تحليل شركات النقل يحتاج صلاحية الشحن."}
+
+    asset_plan = None
+    asset_meta = {}
+    if plan is None and scope["assets"]:
+        asset_plan, asset_meta = build_fixed_asset_action_plan(
+            message, employee_id=employee_id, session_id=chat.id
+        )
+    if asset_plan:
+        plan = asset_plan
+        local_findings["fixed_asset_plan"] = {"id": asset_plan.id, **asset_meta}
+    elif asset_meta:
+        local_findings["fixed_asset_plan"] = asset_meta
+    elif any(word in (message or "") for word in ("أصل", "الاصل", "الأصل", "سيارة", "سياره", "راوتر")) and not scope["assets"]:
+        local_findings["fixed_asset_plan"] = {"restricted": True, "message": "إدارة الأصول تحتاج صلاحية الأصول الثابتة."}
 
     if any(word in (message or "") for word in ("محاسبي", "حساب", "هامش", "سالب", "تقرير", "اخطاء", "أخطاء", "صندوق", "كاش", "نقد", "فروقات")) and (scope["financial"] or scope["reports"]):
         audit = audit_accounting_integrity(limit=120)
@@ -1877,6 +2188,70 @@ def _preflight_action_item(item: AIActionItem) -> dict:
         else:
             changed("الرصيد الافتتاحي", int(company.opening_balance or 0), int(before.get("opening_balance") or 0))
 
+    elif item.item_type == "shipping_payment_delete_duplicate":
+        payment = ShippingPayment.query.get(int(payload.get("payment_id") or 0))
+        if not payment:
+            errors.append(f"{item.title}: حركة القبض غير موجودة أو حذفت مسبقاً")
+        else:
+            changed("شركة النقل", payment.shipping_company_id, before.get("shipping_company_id"))
+            changed("رقم الطلب", payment.invoice_id, before.get("invoice_id"))
+            changed("المبلغ", int(payment.amount or 0), int(before.get("amount") or 0))
+            changed("نوع الحركة", payment.action or "", before.get("action") or "")
+            duplicate_ids = [int(value) for value in payload.get("duplicate_payment_ids") or []]
+            matching = ShippingPayment.query.filter(ShippingPayment.id.in_(duplicate_ids)).all()
+            exact = [
+                row for row in matching
+                if row.shipping_company_id == payment.shipping_company_id
+                and row.invoice_id == payment.invoice_id
+                and int(row.amount or 0) == int(payment.amount or 0)
+                and (row.action or "") == (payment.action or "")
+                and row.treasury_account_id == payment.treasury_account_id
+            ]
+            if len(exact) < 2:
+                errors.append(f"{item.title}: لم تعد الحركة مكررة؛ تم إيقاف الحذف")
+            if payload.get("restore_opening_balance"):
+                company = ShippingCompany.query.get(payment.shipping_company_id)
+                if not company:
+                    errors.append(f"{item.title}: شركة النقل غير موجودة")
+                else:
+                    changed("الرصيد الافتتاحي", int(company.opening_balance or 0), int(before.get("opening_balance") or 0))
+
+    elif item.item_type == "fixed_asset_set_capital_and_post":
+        asset = FixedAsset.query.get(int(payload.get("asset_id") or 0))
+        if not asset:
+            errors.append(f"{item.title}: الأصل غير موجود")
+        else:
+            changed("حالة الأصل", asset.status, before.get("status"))
+            changed("طريقة الدفع", asset.payment_method, before.get("payment_method"))
+            changed("المدفوع", int(asset.paid_amount or 0), int(before.get("paid_amount") or 0))
+            changed("الآجل", int(asset.credit_amount or 0), int(before.get("credit_amount") or 0))
+            changed("التكلفة", int(asset.total_cost or 0), int(before.get("total_cost") or 0))
+            if asset.acquisition_journal_entry_id:
+                errors.append(f"{item.title}: الأصل مرحّل مسبقاً ولا يمكن تغيير تمويله بهذه الخطة")
+            if int(asset.total_cost or 0) <= 0:
+                errors.append(f"{item.title}: تكلفة الأصل غير صالحة")
+
+    elif item.item_type == "fixed_asset_create_and_post":
+        category = FixedAssetCategory.query.get(int(payload.get("category_id") or 0))
+        if not category or not category.is_active:
+            errors.append(f"{item.title}: تصنيف الأصل غير موجود أو غير نشط")
+        amount = int(payload.get("purchase_price") or 0)
+        if amount <= 0:
+            errors.append(f"{item.title}: مبلغ شراء الأصل غير صالح")
+        purchase_date = datetime.strptime(payload.get("purchase_date"), "%Y-%m-%d").date()
+        duplicates = FixedAsset.query.filter(
+            FixedAsset.name == payload.get("name"),
+            FixedAsset.purchase_price == amount,
+            FixedAsset.purchase_date == purchase_date,
+        ).count()
+        if duplicates:
+            errors.append(f"{item.title}: يوجد أصل مطابق بالاسم والمبلغ والتاريخ؛ أوقفنا التكرار")
+        if payload.get("payment_method") == "cash":
+            cash = get_default_cash_account()
+            balance = int(calculate_treasury_balance(cash.id) or 0)
+            if balance < amount:
+                errors.append(f"{item.title}: رصيد الصندوق {balance:,} أقل من مبلغ الأصل {amount:,} د.ع")
+
     elif item.item_type == "review_task":
         warnings.append(f"{item.title}: مهمة مراجعة فقط ولا تعدل بيانات")
 
@@ -1938,6 +2313,7 @@ def _execute_action_item(item: AIActionItem, *, employee_id: int) -> dict:
         action = payload.get("action")
         prev_effective_paid = _effective_paid_amount(invoice)
         if action == "mark_paid":
+            ensure_stock_for_transition(invoice, target_status="تم التوصيل", target_payment_status="مسدد")
             invoice.payment_status = "مسدد"
             invoice.paid_amount = int(invoice.total or 0)
             if invoice.status not in {"تم التوصيل", "مرتجع", "راجع", "راجعة"}:
@@ -1981,6 +2357,101 @@ def _execute_action_item(item: AIActionItem, *, employee_id: int) -> dict:
         company.opening_balance = int(payload["opening_balance"])
         after = {"opening_balance": int(company.opening_balance or 0)}
         return {"shipping_company_id": company.id, "before": before, "after": after}
+
+    if item.item_type == "shipping_payment_delete_duplicate":
+        payment = ShippingPayment.query.get(int(payload["payment_id"]))
+        if not payment:
+            raise ValueError("حركة القبض غير موجودة")
+        company = ShippingCompany.query.get(payment.shipping_company_id)
+        before = {
+            "payment_id": payment.id,
+            "amount": int(payment.amount or 0),
+            "opening_balance": int(company.opening_balance or 0) if company else None,
+        }
+        if payload.get("restore_opening_balance"):
+            if not company:
+                raise ValueError("شركة النقل غير موجودة")
+            company.opening_balance = int(company.opening_balance or 0) + int(payment.amount or 0)
+        deleted_id = payment.id
+        amount = int(payment.amount or 0)
+        db.session.delete(payment)
+        db.session.flush()
+        still_exists = ShippingPayment.query.get(deleted_id) is not None
+        return {
+            "payment_id": deleted_id,
+            "deleted": not still_exists,
+            "amount": amount,
+            "before": before,
+            "after": {
+                "payment_exists": still_exists,
+                "opening_balance": int(company.opening_balance or 0) if company else None,
+            },
+        }
+
+    if item.item_type == "fixed_asset_set_capital_and_post":
+        asset = FixedAsset.query.get(int(payload["asset_id"]))
+        if not asset:
+            raise ValueError("الأصل غير موجود")
+        cash = get_default_cash_account()
+        cash_before = int(calculate_treasury_balance(cash.id) or 0)
+        before = {
+            "status": asset.status,
+            "payment_method": asset.payment_method,
+            "paid_amount": int(asset.paid_amount or 0),
+            "credit_amount": int(asset.credit_amount or 0),
+        }
+        asset.payment_method = "capital"
+        asset.treasury_account_id = None
+        asset.paid_amount = 0
+        asset.credit_amount = 0
+        post_asset_acquisition(asset, user_id=employee_id)
+        db.session.flush()
+        cash_after = int(calculate_treasury_balance(cash.id) or 0)
+        return {
+            "asset_id": asset.id,
+            "asset_code": asset.asset_code,
+            "before": before,
+            "after": {
+                "status": asset.status,
+                "payment_method": asset.payment_method,
+                "paid_amount": int(asset.paid_amount or 0),
+                "credit_amount": int(asset.credit_amount or 0),
+                "posted": bool(asset.acquisition_journal_entry_id),
+                "cash_before": cash_before,
+                "cash_after": cash_after,
+            },
+        }
+
+    if item.item_type == "fixed_asset_create_and_post":
+        payment_method = payload.get("payment_method") or "credit"
+        cash = get_default_cash_account()
+        cash_before = int(calculate_treasury_balance(cash.id) or 0)
+        form_data = {
+            "name": payload["name"],
+            "category_id": payload["category_id"],
+            "purchase_price": payload["purchase_price"],
+            "purchase_date": payload["purchase_date"],
+            "payment_method": payment_method,
+            "treasury_account_id": cash.id if payment_method == "cash" else None,
+        }
+        asset = build_asset_from_form(form_data, user_id=employee_id, as_draft=True)
+        post_asset_acquisition(asset, user_id=employee_id)
+        db.session.flush()
+        cash_after = int(calculate_treasury_balance(cash.id) or 0)
+        return {
+            "asset_id": asset.id,
+            "asset_code": asset.asset_code,
+            "after": {
+                "name": asset.name,
+                "status": asset.status,
+                "total_cost": int(asset.total_cost or 0),
+                "payment_method": asset.payment_method,
+                "posted": bool(asset.acquisition_journal_entry_id),
+                "cash_before": cash_before,
+                "cash_after": cash_after,
+                "cash_effect": cash_after - cash_before,
+            },
+        }
 
     if item.item_type == "review_task":
         return {"review_only": True, "message": "هذه مهمة مراجعة فقط ولا تعدل بيانات النظام."}

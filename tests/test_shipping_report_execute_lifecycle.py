@@ -9,6 +9,7 @@ sys.path.insert(0, str(ROOT))
 
 TENANT_CANCEL = f"test_shipping_report_cancel_lifecycle_{os.getpid()}"
 TENANT_DELAY = f"test_shipping_report_delay_lifecycle_{os.getpid()}"
+TENANT_DELIVERED = f"test_shipping_report_delivered_settlement_{os.getpid()}"
 
 
 def _fresh_tenant_db(tenant: str):
@@ -105,7 +106,11 @@ def test_shipping_report_delay_reverses_previous_payment():
     from models.customer import Customer
     from models.invoice import Invoice
     from models.invoice_payment_ledger import InvoicePaymentLedger
+    from models.order_item import OrderItem
+    from models.product import Product
     from models.shipping_report import ShippingReport
+    from utils.branch_migration import get_default_branch
+    from utils.branch_stock_service import get_branch_stock, set_branch_stock
     from utils.payment_ledger import append_payment_ledger_delta
     from utils.shipping_report_execute import execute_shipping_report
 
@@ -114,18 +119,35 @@ def test_shipping_report_delay_reverses_previous_payment():
         init_tenant_db(TENANT_DELAY)
 
         customer = Customer(name="Delay Customer", phone="07750000000")
-        db.session.add(customer)
+        product = Product(name="Delay Stock Item", buy_price=250, sale_price=750, quantity=0, active=True)
+        db.session.add_all([customer, product])
         db.session.flush()
+        branch = get_default_branch()
+        set_branch_stock(branch.id, product.id, 0)
         invoice = Invoice(
             customer_id=customer.id,
             customer_name=customer.name,
+            branch_id=branch.id,
             total=750,
             paid_amount=750,
             status="\u062a\u0645 \u0627\u0644\u062a\u0648\u0635\u064a\u0644",
             payment_status="\u0645\u0633\u062f\u062f",
+            stock_is_deducted=True,
         )
         db.session.add(invoice)
         db.session.flush()
+        db.session.add(
+            OrderItem(
+                invoice_id=invoice.id,
+                product_id=product.id,
+                product_name=product.name,
+                quantity=1,
+                price=750,
+                cost=250,
+                total=750,
+                fulfillment_branch_id=branch.id,
+            )
+        )
         append_payment_ledger_delta(invoice.id, 750)
         report = ShippingReport(
             report_number="SR-DELAY-LIFECYCLE",
@@ -142,6 +164,7 @@ def test_shipping_report_delay_reverses_previous_payment():
         assert result["success"], result
 
         db.session.refresh(invoice)
+        db.session.refresh(product)
         ledger_amounts = [
             int(row.amount_delta)
             for row in InvoicePaymentLedger.query.filter_by(invoice_id=invoice.id).order_by(InvoicePaymentLedger.id).all()
@@ -150,10 +173,70 @@ def test_shipping_report_delay_reverses_previous_payment():
         assert invoice.status == "\u062a\u0645 \u0627\u0644\u0637\u0644\u0628"
         assert invoice.payment_status == "\u063a\u064a\u0631 \u0645\u0633\u062f\u062f"
         assert int(invoice.paid_amount or 0) == 0
+        assert invoice.stock_is_deducted is False
+        assert get_branch_stock(branch.id, product.id) == 1
         assert ledger_amounts == [750, -750]
+
+
+def test_shipping_report_delivered_creates_shipping_collection():
+    _fresh_tenant_db(TENANT_DELIVERED)
+    from app import app
+    from flask import g
+    from extensions import db
+    from extensions_tenant import init_tenant_db
+    from models.customer import Customer
+    from models.invoice import Invoice
+    from models.shipping import ShippingCompany
+    from models.shipping_payment import ShippingPayment
+    from models.shipping_report import ShippingReport
+    from utils.shipping_report_execute import execute_shipping_report
+
+    with app.app_context():
+        g.tenant = TENANT_DELIVERED
+        init_tenant_db(TENANT_DELIVERED)
+
+        customer = Customer(name="Delivered Customer", phone="07760000000")
+        company = ShippingCompany(name="Courier", phone="07770000000")
+        db.session.add_all([customer, company])
+        db.session.flush()
+        invoice = Invoice(
+            customer_id=customer.id,
+            customer_name=customer.name,
+            shipping_company_id=company.id,
+            total=460000,
+            paid_amount=0,
+            status="\u062c\u0627\u0631\u064a \u0627\u0644\u0634\u062d\u0646",
+            payment_status="\u063a\u064a\u0631 \u0645\u0633\u062f\u062f",
+        )
+        db.session.add(invoice)
+        db.session.flush()
+        report = ShippingReport(
+            report_number="SR-DELIVERED-SETTLEMENT",
+            shipping_company_name="Courier",
+            orders_data=json.dumps([{"id": invoice.id}]),
+            total_amount=460000,
+            orders_count=1,
+            order_status_selections=json.dumps({str(invoice.id): "\u0648\u0627\u0635\u0644"}),
+        )
+        db.session.add(report)
+        db.session.commit()
+
+        result = execute_shipping_report(report)
+        assert result["success"], result
+
+        db.session.refresh(invoice)
+        settlement = ShippingPayment.query.filter_by(
+            invoice_id=invoice.id,
+            action="\u062a\u0633\u062f\u064a\u062f",
+        ).one()
+        assert invoice.payment_status == "\u0645\u0633\u062f\u062f"
+        assert invoice.shipping_status == "\u062a\u0645 \u0627\u0644\u062a\u0633\u062f\u064a\u062f"
+        assert settlement.shipping_company_id == company.id
+        assert settlement.amount == 460000
 
 
 if __name__ == "__main__":
     test_shipping_report_cancel_reverses_payment_and_restores_color_stock()
     test_shipping_report_delay_reverses_previous_payment()
+    test_shipping_report_delivered_creates_shipping_collection()
     print("shipping report lifecycle tests passed")

@@ -26,21 +26,17 @@
     --chat-danger: #ef4444;
     --chat-warning: #f59e0b;
 
-    /* Dynamic Theme */
-    --chat-bg: var(--emp-bg);
-    --chat-surface: var(--emp-surface);
-    --chat-surface-light: var(--emp-surface-hover);
-    --chat-surface-dark: var(--emp-bg-secondary);
-
-    /* Glass Effect */
-    --glass-bg: var(--emp-surface);
-    --glass-border: var(--emp-border);
-    --glass-hover: var(--emp-surface-hover);
-
-    /* Text Colors */
-    --chat-text: var(--emp-text);
-    --chat-text-secondary: var(--emp-text-secondary);
-    --chat-muted: var(--emp-text-muted);
+    /* Chat light theme (WhatsApp-style white) */
+    --chat-bg: #ffffff;
+    --chat-surface: #ffffff;
+    --chat-surface-light: #f0f2f5;
+    --chat-surface-dark: #e9edef;
+    --glass-bg: #ffffff;
+    --glass-border: #e9edef;
+    --glass-hover: #f5f6f6;
+    --chat-text: #111b21;
+    --chat-text-secondary: #3b4a54;
+    --chat-muted: #667781;
 
     /* Spacing System (8px base) */
     --spacing-xs: 4px;
@@ -71,7 +67,7 @@
   }
 
   .content {
-    background: var(--chat-bg) !important;
+    background: #ffffff !important;
   }
 
   .page-main,
@@ -89,6 +85,7 @@
     width: 100%;
     position: relative;
     z-index: 1;
+    background: #ffffff;
   }
 
   /* Remove radius for full-screen edge-to-edge look */
@@ -101,10 +98,10 @@
 
   /* ================= USERS LIST ================= */
   .users-list {
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid var(--glass-border);
+    background: #ffffff;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border: 1px solid #e9edef;
     border-radius: var(--radius-lg);
     overflow: hidden;
     display: flex;
@@ -169,11 +166,25 @@
   .users-list-search {
     padding: var(--spacing-md);
     border-bottom: 1px solid var(--glass-border);
+    position: relative;
+  }
+
+  .users-list-search::before {
+    content: '\f002';
+    font-family: 'FontAwesome';
+    position: absolute;
+    inset-inline-end: 28px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--chat-muted);
+    font-size: 13px;
+    pointer-events: none;
+    opacity: 0.7;
   }
 
   .users-list-search input {
     width: 100%;
-    padding: var(--spacing-md);
+    padding: 11px 40px 11px 14px;
     border-radius: var(--radius-md);
     border: 1px solid var(--glass-border);
     background: var(--glass-hover);
@@ -194,91 +205,193 @@
   .users-list-items {
     flex: 1;
     overflow-y: auto;
-    padding: var(--spacing-md);
+    padding: 0;
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
   }
 
   .user-item {
-    padding: 14px;
-    border-radius: var(--radius-md);
-    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
     cursor: pointer;
-    transition: all 0.2s ease;
-    border: 1px solid transparent;
-    background: var(--glass-hover);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    transition: background 0.2s ease, transform 0.15s ease;
+    border: none;
+    border-bottom: 1px solid var(--glass-border);
+    border-inline-start: 3px solid transparent;
+    background: transparent;
     position: relative;
     pointer-events: auto;
   }
 
   .user-item:hover {
-    background: rgba(99, 102, 241, 0.15);
-    border-color: rgba(99, 102, 241, 0.3);
-    transform: translateX(-4px);
+    background: var(--glass-hover);
+  }
+
+  .user-item:active {
+    transform: scale(0.985);
   }
 
   .user-item.active {
-    background: rgba(99, 102, 241, 0.2);
-    border-color: var(--chat-primary);
-    box-shadow: var(--shadow-glow);
+    background: rgba(99, 102, 241, 0.1);
+    border-inline-start-color: var(--chat-primary);
   }
 
-  .user-item-info {
+  .user-item.has-unread {
+    background: rgba(99, 102, 241, 0.06);
+  }
+
+  .user-item.has-unread.active {
+    background: rgba(99, 102, 241, 0.12);
+  }
+
+  .user-item-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-full);
+    background: var(--avatar-bg, linear-gradient(135deg, var(--chat-primary), var(--chat-primary-light)));
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 12px;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: 700;
+    font-size: 17px;
+    flex-shrink: 0;
+    box-shadow: var(--shadow-sm);
     pointer-events: none;
   }
 
-  .user-item-main {
+  .user-item-body {
     flex: 1;
     min-width: 0;
+    pointer-events: none;
+  }
+
+  .user-item-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 4px;
   }
 
   .user-item-name {
+    flex: 1;
+    min-width: 0;
     font-weight: 600;
     color: var(--chat-text);
     font-size: 15px;
-    line-height: 1.35;
-    margin-bottom: 6px;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .user-item.has-unread .user-item-name {
+    font-weight: 700;
+  }
+
+  .user-item-time {
+    flex-shrink: 0;
+    font-size: 11px;
+    color: var(--chat-muted);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .user-item.has-unread .user-item-time {
+    color: var(--chat-primary);
+    font-weight: 600;
+  }
+
+  .user-item-bottom {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
   }
 
   .user-item-preview {
+    flex: 1;
+    min-width: 0;
     display: -webkit-box;
-    font-size: 12.5px;
-    line-height: 1.55;
+    font-size: 13px;
+    line-height: 1.45;
     color: var(--chat-muted);
     overflow: hidden;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
     overflow-wrap: anywhere;
-    text-align: right;
     white-space: normal;
   }
 
-  .user-item-time {
-    font-size: 11px;
+  .user-item-preview.is-empty {
+    font-style: italic;
+    opacity: 0.75;
+  }
+
+  .user-item.has-unread .user-item-preview:not(.is-empty) {
+    color: var(--chat-text-secondary);
+    font-weight: 500;
+  }
+
+  .user-item-preview.is-attachment {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    -webkit-line-clamp: 1;
+  }
+
+  .user-item-preview .preview-attach-icon {
     color: var(--chat-muted);
-    margin-top: var(--spacing-xs);
+    font-size: 11px;
+    flex-shrink: 0;
+    opacity: 0.85;
+  }
+
+  .user-item-preview.is-order {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    -webkit-line-clamp: unset;
+    max-height: 2.9em;
+    overflow: hidden;
+  }
+
+  .user-item-preview .preview-order-main {
+    font-weight: 600;
+    color: var(--chat-text-secondary);
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+  }
+
+  .user-item-preview .preview-order-sub {
+    font-size: 11.5px;
+    color: var(--chat-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
   }
 
   .user-item-badge {
-    background: var(--chat-danger);
+    background: var(--chat-primary);
     color: white;
     border-radius: var(--radius-full);
-    width: 22px;
-    height: 22px;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 700;
-    min-width: 22px;
-    box-shadow: var(--shadow-md);
+    flex-shrink: 0;
+    margin-top: 2px;
+    box-shadow: var(--shadow-sm);
     pointer-events: none;
   }
 
@@ -288,10 +401,10 @@
 
   /* ================= CHAT AREA ================= */
   .chat-area {
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid var(--glass-border);
+    background: #ffffff;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border: 1px solid #e9edef;
     border-radius: var(--radius-lg);
     display: flex;
     flex-direction: column;
@@ -303,10 +416,8 @@
 
   .chat-header {
     padding: var(--spacing-md) var(--spacing-lg);
-    border-bottom: 1px solid var(--glass-border);
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid #e9edef;
+    background: #ffffff;
     display: flex;
     align-items: center;
     position: sticky;
@@ -394,34 +505,45 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    background: var(--chat-bg);
+    background: #ffffff;
     position: relative;
     scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+    scrollbar-color: rgba(0, 0, 0, 0.12) transparent;
     overflow-x: hidden;
+  }
+
+  .chat-messages.chat-enter {
+    animation: chatPaneIn 0.38s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .message {
     display: flex;
+    flex-direction: row;
     gap: 10px;
     align-items: flex-end;
     position: relative;
     z-index: 1;
-    animation: fadeInUp 0.3s ease-out;
     pointer-events: auto;
     margin-bottom: 6px;
     width: 100%;
   }
 
-  /* RTL: المستلم يمين، المرسل يسار (مثل واتساب) */
-  .message.received {
+  .message.sent {
     justify-content: flex-start;
-    flex-direction: row;
+    animation: msgSlideSent 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
-  .message.sent {
-    justify-content: flex-end;
-    flex-direction: row-reverse;
+  .message.received {
+    justify-content: flex-start;
+    animation: msgSlideReceived 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .message.message-new {
+    animation-duration: 0.26s;
+  }
+
+  .message.sent .message-wrapper {
+    margin-inline-start: auto;
   }
 
   .message-wrapper {
@@ -469,17 +591,17 @@
   }
 
   .message.received .message-content {
-    background: var(--emp-surface-hover);
-    border: 1px solid var(--emp-border);
-    color: var(--emp-text);
-    border-top-left-radius: 4px;
-    box-shadow: var(--shadow-sm);
+    background: #ffffff;
+    border: 1px solid #e9edef;
+    color: #111b21;
+    border-start-start-radius: 4px;
+    box-shadow: 0 1px 2px rgba(11, 20, 26, 0.06);
   }
 
   .message.sent .message-content {
     background: linear-gradient(135deg, var(--chat-primary), var(--chat-primary-light));
     color: white;
-    border-top-right-radius: 4px;
+    border-end-start-radius: 4px;
     box-shadow: var(--shadow-md);
   }
 
@@ -546,74 +668,17 @@
     display: none;
   }
 
-  .message-actions {
-    position: absolute;
-    top: -8px;
-    left: -6px;
-    opacity: 0;
-    transition: all 0.2s ease;
-    display: flex;
-    gap: var(--spacing-xs);
-    transform: translateY(2px);
-    pointer-events: auto;
-    z-index: 10;
-  }
-
-  .message:hover .message-actions {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
-  .message-action-btn {
-    background: var(--chat-danger);
-    color: white;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: var(--radius-sm);
-    width: 24px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-size: 11px;
-    transition: all 0.2s ease;
-    box-shadow: var(--shadow-md);
-    pointer-events: auto;
-  }
-
-  .message-action-btn:hover {
-    transform: scale(1.1);
-    box-shadow: var(--shadow-lg);
-  }
-
-  /* ================= CONTEXT MENU ================= */
+  /* ================= CONTEXT MENU (WhatsApp-style toolbar) ================= */
   .message-context-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
+    background: rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
     z-index: 1000;
     display: none;
     opacity: 0;
-    transition: opacity 0.2s ease;
-  }
-
-  .message-context-menu {
-    position: fixed;
-    bottom: -100%;
-    left: 0;
-    right: 0;
-    background: var(--glass-bg);
-    border-top: 1px solid var(--glass-border);
-    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-    padding: var(--spacing-lg) var(--spacing-md);
-    z-index: 1001;
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-sm);
-    transition: bottom 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.3);
+    transition: opacity 0.18s ease;
   }
 
   .message-context-overlay.active {
@@ -621,11 +686,111 @@
     opacity: 1;
   }
 
-  .message-context-menu.active {
-    bottom: 0;
+  .message.message-context-active .message-content {
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.45), 0 4px 16px rgba(11, 20, 26, 0.1);
+    transform: scale(1.015);
+    transition: box-shadow 0.18s ease, transform 0.18s ease;
   }
 
-  /* Edit Mode Active */
+  .msg-action-toolbar {
+    position: fixed;
+    z-index: 1001;
+    display: none;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 8px 10px;
+    background: #ffffff;
+    border: 1px solid #e9edef;
+    border-radius: 999px;
+    box-shadow: 0 8px 28px rgba(11, 20, 26, 0.14);
+    opacity: 0;
+    pointer-events: auto;
+    max-width: calc(100vw - 24px);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .msg-action-toolbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .msg-action-toolbar.active {
+    display: flex;
+    opacity: 1;
+    animation: toolbarPop 0.24s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+  }
+
+  .msg-action-btn:hover {
+    background: #f0f2f5;
+  }
+
+  .msg-action-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 4px 8px;
+    min-width: 58px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 14px;
+    transition: background 0.15s ease, transform 0.12s ease;
+    flex-shrink: 0;
+  }
+
+  .msg-action-btn:active {
+    transform: scale(0.92);
+    background: #e9edef;
+  }
+
+  .msg-action-btn.hidden {
+    display: none;
+  }
+
+  .msg-action-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+  }
+
+  .msg-action-icon.reply {
+    background: rgba(16, 185, 129, 0.14);
+    color: #10b981;
+  }
+
+  .msg-action-icon.copy {
+    background: rgba(99, 102, 241, 0.14);
+    color: var(--chat-primary-light);
+  }
+
+  .msg-action-icon.edit {
+    background: rgba(245, 158, 11, 0.14);
+    color: #f59e0b;
+  }
+
+  .msg-action-icon.delete {
+    background: rgba(239, 68, 68, 0.14);
+    color: #ef4444;
+  }
+
+  .msg-action-label {
+    font-size: 10.5px;
+    color: var(--chat-text-secondary);
+    font-weight: 600;
+    white-space: nowrap;
+    line-height: 1;
+  }
+
+  .msg-action-btn.danger .msg-action-label {
+    color: #ef4444;
+  }
   .edit-mode-indicator {
     display: none;
     align-items: center;
@@ -643,37 +808,6 @@
     display: flex;
   }
 
-  .context-menu-item {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-md);
-    padding: var(--spacing-md);
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: var(--radius-md);
-    color: var(--chat-text);
-    font-size: 16px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .context-menu-item:hover,
-  .context-menu-item:active {
-    background: rgba(255, 255, 255, 0.1);
-    transform: scale(0.98);
-  }
-
-  .context-menu-item.danger {
-    color: #ef4444;
-  }
-
-  .context-menu-item i {
-    font-size: 20px;
-    width: 24px;
-    text-align: center;
-  }
-
   .message-edited-badge {
     font-size: 10px;
     opacity: 0.6;
@@ -684,10 +818,10 @@
   /* ================= INPUT AREA ================= */
   .chat-input-area {
     padding: var(--spacing-md) var(--spacing-lg);
-    border-top: 1px solid var(--glass-border);
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid #e9edef;
+    background: #ffffff;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
     position: sticky;
     bottom: 0;
     z-index: 100;
@@ -701,11 +835,11 @@
     pointer-events: auto;
     width: 100%;
     flex-wrap: nowrap;
-    background: var(--emp-surface-hover);
-    border: 1px solid var(--emp-border);
+    background: #f0f2f5;
+    border: 1px solid #e9edef;
     border-radius: var(--radius-xl);
     padding: 4px 6px;
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
+    box-shadow: none;
   }
 
   /* Attachment button integrated into input bar */
@@ -1105,6 +1239,77 @@
     }
   }
 
+  @keyframes chatPaneIn {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes msgSlideSent {
+    from {
+      opacity: 0;
+      transform: translateX(-14px) scale(0.96);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateX(0) scale(1);
+    }
+  }
+
+  @keyframes msgSlideReceived {
+    from {
+      opacity: 0;
+      transform: translateX(14px) scale(0.96);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateX(0) scale(1);
+    }
+  }
+
+  @keyframes toolbarPop {
+    from {
+      opacity: 0;
+      transform: scale(0.72);
+    }
+
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes fadeInScale {
+    from {
+      opacity: 0;
+      transform: scale(0.92);
+    }
+
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .message,
+    .chat-messages.chat-enter,
+    .msg-action-toolbar.active,
+    .date-separator,
+    .user-item {
+      animation: none !important;
+      transition: none !important;
+    }
+  }
+
   @keyframes float {
 
     0%,
@@ -1275,6 +1480,30 @@
       height: 100dvh !important;
     }
 
+    .user-item {
+      padding: 11px 14px;
+      gap: 10px;
+    }
+
+    .user-item-avatar {
+      width: 44px;
+      height: 44px;
+      font-size: 16px;
+    }
+
+    .user-item-name {
+      font-size: 14px;
+    }
+
+    .user-item-preview {
+      font-size: 12.5px;
+    }
+
+    .channel-item {
+      margin: 8px 10px 4px;
+      padding: 12px 14px;
+    }
+
     .chat-header {
       padding: 10px 14px;
     }
@@ -1354,17 +1583,18 @@
     margin: var(--spacing-md) 0 var(--spacing-sm);
     position: relative;
     z-index: 1;
+    animation: fadeInScale 0.4s ease both;
   }
 
   .date-separator span {
-    background: var(--emp-surface-hover);
-    color: var(--chat-muted);
+    background: #ffffff;
+    color: #667781;
     font-size: 11.5px;
     font-weight: 600;
     padding: 5px 14px;
     border-radius: var(--radius-full);
-    border: 1px solid var(--glass-border);
-    box-shadow: var(--shadow-sm);
+    border: 1px solid #e9edef;
+    box-shadow: 0 1px 3px rgba(11, 20, 26, 0.06);
     letter-spacing: 0.2px;
   }
 
@@ -1607,26 +1837,26 @@
 
   /* ================= CHANNEL ITEM ================= */
   .channel-item {
-    padding: var(--spacing-md);
+    padding: 14px 16px;
+    margin: 10px 12px 6px;
     border-radius: var(--radius-md);
-    margin-bottom: var(--spacing-sm);
     cursor: pointer;
-    transition: all 0.2s ease;
-    border: 1px solid rgba(245, 158, 11, 0.3);
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(99, 102, 241, 0.08));
+    transition: background 0.18s ease, box-shadow 0.18s ease;
+    border: 1px solid rgba(245, 158, 11, 0.25);
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(99, 102, 241, 0.06));
     display: flex;
     align-items: center;
     gap: 12px;
+    flex-shrink: 0;
   }
 
   .channel-item:hover {
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(99, 102, 241, 0.12));
-    transform: translateX(-4px);
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.16), rgba(99, 102, 241, 0.1));
   }
 
   .channel-item.active {
     border-color: var(--chat-warning);
-    box-shadow: 0 0 20px rgba(245, 158, 11, 0.2);
+    box-shadow: 0 2px 12px rgba(245, 158, 11, 0.18);
   }
 
   .channel-item-icon {
@@ -2092,14 +2322,17 @@
       </div>
       {% for user in chat_users %}
       <div class="user-item" onclick="selectUser({{ user.id }}, '{{ user.name }}', '{{ user.role }}')"
-        data-user-id="{{ user.id }}" data-user-name="{{ user.name|lower }}">
-        <div class="user-item-info">
-          <div class="user-item-main">
+        data-user-id="{{ user.id }}" data-user-name="{{ user.name|lower }}" data-last-time="0">
+        <div class="user-item-avatar">{{ user.name[0] if user.name else '?' }}</div>
+        <div class="user-item-body">
+          <div class="user-item-top">
             <div class="user-item-name">{{ user.name }}</div>
-            <div class="user-item-preview" id="preview-{{ user.id }}">{{ _('messages_no_messages') }}</div>
             <div class="user-item-time" id="time-{{ user.id }}"></div>
           </div>
-          <div class="user-item-badge hidden" id="badge-{{ user.id }}">0</div>
+          <div class="user-item-bottom">
+            <div class="user-item-preview is-empty" id="preview-{{ user.id }}">{{ _('messages_no_messages') }}</div>
+            <div class="user-item-badge hidden" id="badge-{{ user.id }}">0</div>
+          </div>
         </div>
       </div>
       {% endfor %}
@@ -2189,19 +2422,23 @@
 
 <!-- Context Menu Overlay -->
 <div class="message-context-overlay" id="contextOverlay" onclick="closeContextMenu()"></div>
-<div class="message-context-menu" id="contextMenu">
-  <div class="context-menu-item" id="menuReplyBtn" onclick="handleReplyContext()">
-    <i class="fa fa-reply" style="color: var(--chat-success)"></i> رد
-  </div>
-  <div class="context-menu-item" id="menuCopyBtn" onclick="handleCopyContext()">
-    <i class="fa fa-copy" style="color: var(--chat-primary-light)"></i> {{ _('messages_copy') }}
-  </div>
-  <div class="context-menu-item" id="menuEditBtn" onclick="handleEditContext()">
-    <i class="fa fa-pencil" style="color: #f59e0b"></i> {{ _('messages_edit') }}
-  </div>
-  <div class="context-menu-item danger" id="menuDeleteBtn" onclick="handleDeleteContext()">
-    <i class="fa fa-trash"></i> {{ _('messages_delete') }}
-  </div>
+<div class="msg-action-toolbar" id="contextMenu" role="menu" onclick="event.stopPropagation()">
+  <button type="button" class="msg-action-btn" id="menuReplyBtn" onclick="handleReplyContext()" role="menuitem">
+    <span class="msg-action-icon reply"><i class="fa fa-reply"></i></span>
+    <span class="msg-action-label">رد</span>
+  </button>
+  <button type="button" class="msg-action-btn" id="menuCopyBtn" onclick="handleCopyContext()" role="menuitem">
+    <span class="msg-action-icon copy"><i class="fa fa-copy"></i></span>
+    <span class="msg-action-label">{{ _('messages_copy') }}</span>
+  </button>
+  <button type="button" class="msg-action-btn" id="menuEditBtn" onclick="handleEditContext()" role="menuitem">
+    <span class="msg-action-icon edit"><i class="fa fa-pencil"></i></span>
+    <span class="msg-action-label">{{ _('messages_edit') }}</span>
+  </button>
+  <button type="button" class="msg-action-btn danger" id="menuDeleteBtn" onclick="handleDeleteContext()" role="menuitem">
+    <span class="msg-action-icon delete"><i class="fa fa-trash"></i></span>
+    <span class="msg-action-label">{{ _('messages_delete') }}</span>
+  </button>
 </div>
 
 <!-- Image Viewer Modal -->
@@ -2418,7 +2655,7 @@
   let recSeconds = 0;
 
   let inboxNotifyInitialized = false;
-  let msgsLastUnreadCount = 0;
+  let inboxPageLastUnreadCount = 0;
 
   function applyUnreadBadgeData(data) {
     const badge = document.getElementById('messagesBadge');
@@ -2454,7 +2691,7 @@
 
         if (!inboxNotifyInitialized) {
           inboxNotifyInitialized = true;
-          msgsLastUnreadCount = data.unread_count || 0;
+          inboxPageLastUnreadCount = data.unread_count || 0;
           if (window.FinoraMsgNotify) {
             if (data.latest_unread) window.FinoraMsgNotify.markNotified(data.latest_unread.id);
             if (data.latest_channel) window.FinoraMsgNotify.markNotified(data.latest_channel.id);
@@ -2462,8 +2699,8 @@
           return;
         }
 
-        if ((data.unread_count || 0) <= msgsLastUnreadCount) {
-          msgsLastUnreadCount = data.unread_count || 0;
+        if ((data.unread_count || 0) <= inboxPageLastUnreadCount) {
+          inboxPageLastUnreadCount = data.unread_count || 0;
           return;
         }
 
@@ -2484,7 +2721,7 @@
           notifyMessageReceived(item);
         });
 
-        msgsLastUnreadCount = data.unread_count || 0;
+        inboxPageLastUnreadCount = data.unread_count || 0;
       })
       .catch(error => {
         if (error.name !== 'TypeError' || !error.message.includes('fetch')) {
@@ -2520,6 +2757,142 @@
     return `linear-gradient(135deg, ${pair[0]}, ${pair[1]})`;
   }
 
+  function initConversationAvatars() {
+    document.querySelectorAll('.user-item').forEach(item => {
+      const name = item.querySelector('.user-item-name')?.textContent || '';
+      const av = item.querySelector('.user-item-avatar');
+      if (av) {
+        av.style.setProperty('--avatar-bg', avatarGradientFor(name));
+        if (!av.textContent.trim()) av.textContent = name.charAt(0) || '?';
+      }
+    });
+  }
+
+  function looksLikeRawFilename(text) {
+    const t = String(text || '').trim();
+    if (!t) return false;
+    if (/^[a-f0-9-]{16,}\.(jpe?g|png|gif|webp|mp4|webm|mov|pdf|docx?|xlsx?)$/i.test(t)) return true;
+    if (/^voice_.*\.webm$/i.test(t)) return true;
+    return t.startsWith('📎') && /\.[a-z0-9]{2,5}$/i.test(t);
+  }
+
+  function formatConversationPreview(conv) {
+    const content = String(conv.last_message || '').trim();
+    const fileType = conv.file_type || '';
+    const attachmentLabels = {
+      image: '📷 صورة',
+      video: '🎥 فيديو',
+      audio: '🎤 رسالة صوتية',
+      file: '📎 ملف'
+    };
+
+    if (!content && !fileType) {
+      return { text: msgsNoMessages, empty: true };
+    }
+
+    if (!content && fileType) {
+      return { text: attachmentLabels[fileType] || '📎 مرفق', attachment: true };
+    }
+
+    if (looksLikeRawFilename(content) || (fileType && !content.replace(/^📎\s*/, '').trim())) {
+      if (fileType === 'image' || /\.(jpe?g|png|gif|webp)$/i.test(content)) {
+        return { text: '📷 صورة', attachment: true };
+      }
+      if (fileType === 'video' || /\.(mp4|webm|mov)$/i.test(content)) {
+        return { text: '🎥 فيديو', attachment: true };
+      }
+      if (fileType === 'audio' || /voice_/i.test(content)) {
+        return { text: '🎤 رسالة صوتية', attachment: true };
+      }
+      return { text: '📎 مرفق', attachment: true };
+    }
+
+    if (content.includes('تبليغ بخصوص الطلب') || content.includes('📦')) {
+      return { text: content, order: true };
+    }
+
+    return { text: content, empty: false };
+  }
+
+  function renderConversationPreview(el, conv) {
+    if (!el) return;
+    const fmt = formatConversationPreview(conv);
+    el.className = 'user-item-preview'
+      + (fmt.empty ? ' is-empty' : '')
+      + (fmt.order ? ' is-order' : '')
+      + (fmt.attachment ? ' is-attachment' : '');
+
+    if (fmt.attachment) {
+      el.innerHTML = '<span class="preview-attach-icon"><i class="fa fa-paperclip"></i></span><span>' + escapeHtml(fmt.text) + '</span>';
+    } else if (fmt.order) {
+      const lines = fmt.text.split('\n').map(l => l.trim()).filter(Boolean);
+      const main = lines[0] || fmt.text;
+      const sub = lines[1] || '';
+      el.innerHTML = '<span class="preview-order-main">' + escapeHtml(main) + '</span>'
+        + (sub ? '<span class="preview-order-sub">' + escapeHtml(sub) + '</span>' : '');
+    } else {
+      el.textContent = fmt.text;
+    }
+  }
+
+  function applyConversationUpdate(conv) {
+    const item = document.querySelector(`.user-item[data-user-id="${conv.user_id}"]`);
+    const previewEl = document.getElementById(`preview-${conv.user_id}`);
+    const timeEl = document.getElementById(`time-${conv.user_id}`);
+    const badgeEl = document.getElementById(`badge-${conv.user_id}`);
+
+    if (item && conv.last_message_time) {
+      const ts = parseServerDate(conv.last_message_time);
+      item.dataset.lastTime = ts && !isNaN(ts.getTime()) ? String(ts.getTime()) : '0';
+    }
+
+    renderConversationPreview(previewEl, conv);
+
+    if (timeEl) {
+      timeEl.textContent = conv.last_message_time ? formatMessageTime(conv.last_message_time) : '';
+    }
+
+    if (badgeEl) {
+      if (conv.unread_count > 0) {
+        badgeEl.textContent = conv.unread_count > 99 ? '99+' : conv.unread_count;
+        badgeEl.classList.remove('hidden');
+      } else {
+        badgeEl.classList.add('hidden');
+      }
+    }
+
+    if (item) {
+      item.classList.toggle('has-unread', (conv.unread_count || 0) > 0);
+    }
+  }
+
+  function sortConversationList() {
+    const container = document.getElementById('usersListItems');
+    const channelItem = document.getElementById('channelItem');
+    if (!container) return;
+
+    const items = Array.from(container.querySelectorAll('.user-item'));
+    items.sort((a, b) => {
+      const ta = parseInt(a.dataset.lastTime || '0', 10);
+      const tb = parseInt(b.dataset.lastTime || '0', 10);
+      if (tb !== ta) return tb - ta;
+      const na = a.querySelector('.user-item-name')?.textContent || '';
+      const nb = b.querySelector('.user-item-name')?.textContent || '';
+      return na.localeCompare(nb, 'ar');
+    });
+
+    let insertAfter = channelItem;
+    items.forEach(item => {
+      if (insertAfter) {
+        insertAfter.insertAdjacentElement('afterend', item);
+        insertAfter = item;
+      } else {
+        container.appendChild(item);
+        insertAfter = item;
+      }
+    });
+  }
+
   // ==================== DATE HELPERS ====================
   function dateKey(dateString) {
     if (!dateString) return '';
@@ -2542,6 +2915,14 @@
 
   // ==================== UI FUNCTIONS ====================
   let currentChatUserRole = '';
+
+  function animateChatPane() {
+    const container = document.getElementById('chatMessages');
+    if (!container) return;
+    container.classList.remove('chat-enter');
+    void container.offsetWidth;
+    container.classList.add('chat-enter');
+  }
 
   function selectUser(userId, userName, userRole) {
     inChannel = false;
@@ -2574,6 +2955,7 @@
     });
 
     updateMobileUI();
+    animateChatPane();
     lastMessageId = 0;
     loadMessages();
     startPresence();
@@ -2656,10 +3038,48 @@
     return name.includes('voice_') && name.endsWith('.webm');
   }
 
+  function isImagePath(path) {
+    return /\.(jpe?g|png|gif|webp|bmp)(\?|$)/i.test(String(path || ''));
+  }
+
+  function isVideoPath(path) {
+    return /\.(mp4|webm|mov)(\?|$)/i.test(String(path || ''));
+  }
+
+  function isAttachmentOnlyCaption(msg, text) {
+    const t = String(text || '').trim();
+    if (!t) return true;
+    const fileName = String(msg.file_name || '').trim();
+    if (t === '📷 صورة' || t === '🎥 فيديو' || t === '🎤 تسجيل صوتي' || t === '📎 مرفق') return true;
+    if (fileName && (t === fileName || t === `📎 ${fileName}`)) return true;
+    if (/^📎\s+\S+$/.test(t) && !t.includes('\n')) return true;
+    if (/^[a-f0-9-]{16,}\.(jpe?g|png|gif|webp|mp4|webm|pdf)$/i.test(t)) return true;
+    const filePath = String(msg.file_path || '');
+    if (filePath && (t === filePath || filePath.endsWith('/' + t) || filePath.endsWith(t))) return true;
+    return false;
+  }
+
+  function getMessageTextContent(msg) {
+    let textContent = msg.content || '';
+    if (isVoiceMessage(msg)) {
+      const t = textContent.trim();
+      if (!t || t.startsWith('📎') || t.includes('voice_') || t === '🎤 تسجيل صوتي') {
+        return '';
+      }
+    }
+    const isVisualMedia = msg.file_type === 'image' || msg.file_type === 'video'
+      || (msg.file_path && (isImagePath(msg.file_path) || isVideoPath(msg.file_path)));
+    if (isVisualMedia && isAttachmentOnlyCaption(msg, textContent)) {
+      return '';
+    }
+    return textContent;
+  }
+
   function buildFileContent(msg) {
     if (!msg.file_path) return '';
-    if (msg.file_type === 'image') {
-      return `<div class="message-media"><div class="message-file-image"><img src="${msg.file_path}" alt="" onclick="openImageViewer('${msg.file_path}')" loading="lazy"></div></div>`;
+    const path = msg.file_path;
+    if (msg.file_type === 'image' || (!msg.file_type && isImagePath(path))) {
+      return `<div class="message-media"><div class="message-file-image"><img src="${path}" alt="" onclick="openImageViewer('${path}')" loading="lazy"></div></div>`;
     }
     if (isVoiceMessage(msg) || msg.file_type === 'audio') {
       return `<div class="message-voice-player">
@@ -2667,8 +3087,8 @@
         <audio controls preload="metadata"><source src="${msg.file_path}" type="audio/webm"><source src="${msg.file_path}"></audio>
       </div>`;
     }
-    if (msg.file_type === 'video') {
-      return `<div class="message-media"><div class="message-file-video"><video controls onclick="event.stopPropagation()"><source src="${msg.file_path}"></video></div></div>`;
+    if (msg.file_type === 'video' || (!msg.file_type && isVideoPath(path))) {
+      return `<div class="message-media"><div class="message-file-video"><video controls onclick="event.stopPropagation()"><source src="${path}"></video></div></div>`;
     }
     return `<div class="message-file-download"><a href="${msg.file_path}" download="${escapeHtml(msg.file_name || '')}"><i class="fa fa-download"></i> ${escapeHtml(msg.file_name || msgsFileLabel)}</a></div>`;
   }
@@ -2703,22 +3123,7 @@
     const showAvatar = !isSent && !grouped;
     const avatarStyle = `style="--avatar-bg:${avatarGradientFor(senderName)}"`;
 
-    // لا نعرض اسم الملف كنص تحت مشغّل الصوت
-    let textContent = msg.content || '';
-    if (isVoiceMessage(msg)) {
-      const t = textContent.trim();
-      if (!t || t.startsWith('📎') || t.includes('voice_') || t === '🎤 تسجيل صوتي') {
-        textContent = '';
-      }
-    }
-
-    // Action buttons: DM -> own messages; Channel -> admin only
-    const canControl = inChannel ? isAdmin : isSent;
-    let actionsHtml = '';
-    if (canControl) {
-      const delFn = inChannel ? `deleteChannelMessage(${msg.id})` : `deleteMessage(${msg.id})`;
-      actionsHtml = `<button class="message-action-btn" onclick="${delFn}" title="${msgsDeleteTitle}"><i class="fa fa-trash"></i></button>`;
-    }
+    const textContent = getMessageTextContent(msg);
 
     const dsep = (!prevMsg || dateKey(prevMsg.created_at) !== dateKey(msg.created_at))
       ? buildDateSeparator(msg.created_at) : '';
@@ -2729,16 +3134,15 @@
            data-content="${escapeHtml(msg.content || '')}"
            data-sender-name="${escapeHtml(senderName)}"
            data-is-sent="${isSent}"
-           style="animation: fadeInUp 0.3s ease-out"
            onmousedown="handleTouchStart(event, ${msg.id})"
            onmouseup="handleTouchEnd(event)"
            onmouseleave="handleTouchEnd(event)"
            ontouchstart="handleTouchStart(event, ${msg.id})"
            ontouchend="handleTouchEnd(event)"
-           ontouchcancel="handleTouchEnd(event)">
+           ontouchcancel="handleTouchEnd(event)"
+           oncontextmenu="handleMessageContextMenu(event, ${msg.id})">
         ${showAvatar ? `<div class="message-avatar" ${avatarStyle}>${senderInitial}</div>` : ''}
         <div class="message-wrapper">
-          <div class="message-actions">${actionsHtml}</div>
           <div class="message-content">
             ${showAvatar ? `<div class="message-sender">${escapeHtml(senderName)}</div>` : ''}
             ${replyHtml}
@@ -2774,6 +3178,7 @@
       html += buildMessageHtml(messages[i], i > 0 ? messages[i - 1] : null);
     }
     container.innerHTML = html;
+    animateChatPane();
 
     setTimeout(() => container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' }), 100);
   }
@@ -2789,6 +3194,8 @@
       // buildMessageHtml handles it based on prev message within this batch.
       const prev = idx > 0 ? newMessages[idx - 1] : (hasExisting ? { created_at: msg.created_at, sender_id: -999 } : null);
       container.insertAdjacentHTML('beforeend', buildMessageHtml(msg, prev));
+      const lastMsg = container.querySelector('.message:last-child');
+      if (lastMsg) lastMsg.classList.add('message-new');
     });
 
     setTimeout(() => container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' }), 100);
@@ -2812,6 +3219,7 @@
             lastMessageId = Math.max(...data.messages.map(m => m.id));
           }
           updateUnreadCount();
+          updateConversations();
         } else {
           renderMessagesList([]);
         }
@@ -3002,6 +3410,7 @@
     document.getElementById('channelItem').classList.add('active');
 
     updateMobileUI();
+    animateChatPane();
     stopDmPolling();
     stopPresence();
     loadChannel();
@@ -3284,21 +3693,31 @@
   }
 
   // ==================== LONG PRESS & CONTEXT MENU FUNCTIONS ====================
-  function handleTouchStart(e, messageId) {
-    // Only react on mobile touches or long mouse down
-    if (e.type === 'mousedown' && e.button !== 0) return; // Only left click
-
-    const messageEl = e.currentTarget;
+  function setContextMenuTarget(messageEl, messageId) {
     contextMenuTargetId = messageId;
     contextMenuTargetContent = messageEl.dataset.content || '';
     contextMenuTargetIsSent = messageEl.dataset.isSent === 'true';
+  }
+
+  function handleTouchStart(e, messageId) {
+    if (e.type === 'mousedown' && e.button !== 0) return;
+
+    const messageEl = e.currentTarget;
+    setContextMenuTarget(messageEl, messageId);
     isDragging = false;
 
     pressTimer = setTimeout(() => {
       if (!isDragging) {
         openContextMenu();
       }
-    }, 1000); // 1s long press
+    }, 500);
+  }
+
+  function handleMessageContextMenu(e, messageId) {
+    e.preventDefault();
+    handleTouchEnd(e);
+    setContextMenuTarget(e.currentTarget, messageId);
+    openContextMenu();
   }
 
   function handleTouchEnd(e) {
@@ -3317,32 +3736,82 @@
     }
   }, { passive: true });
 
+  function positionContextMenu() {
+    const menu = document.getElementById('contextMenu');
+    const el = contextMenuTargetId
+      ? document.querySelector(`.message[data-message-id="${contextMenuTargetId}"]`)
+      : null;
+    if (!menu || !el) return;
+
+    document.querySelectorAll('.message-context-active').forEach(m => m.classList.remove('message-context-active'));
+    el.classList.add('message-context-active');
+
+    const bubble = el.querySelector('.message-wrapper') || el;
+    const isSent = el.classList.contains('sent');
+
+    menu.style.visibility = 'hidden';
+    menu.classList.add('active');
+
+    const rect = bubble.getBoundingClientRect();
+    const menuW = menu.offsetWidth;
+    const menuH = menu.offsetHeight;
+    const pad = 8;
+    const edgePad = 12;
+
+    let top = rect.top - menuH - pad;
+
+    // محاذاة الشريط مع حافة فقاعة الرسالة (مو بمنتصف الشاشة)
+    let left;
+    if (isSent) {
+      left = rect.left;
+    } else {
+      left = rect.right - menuW;
+    }
+
+    left = Math.max(edgePad, Math.min(left, window.innerWidth - menuW - edgePad));
+
+    if (top < 72) {
+      top = rect.bottom + pad;
+    }
+    if (top + menuH > window.innerHeight - edgePad) {
+      top = Math.max(edgePad, window.innerHeight - menuH - edgePad);
+    }
+
+    menu.style.top = top + 'px';
+    menu.style.left = left + 'px';
+    menu.style.right = 'auto';
+    menu.style.visibility = 'visible';
+  }
+
   function openContextMenu() {
-    // Vibrate to indicate success on mobile
     if (navigator.vibrate) {
       navigator.vibrate(50);
     }
 
-    // Setup menu options
     const editBtn = document.getElementById('menuEditBtn');
     const deleteBtn = document.getElementById('menuDeleteBtn');
     const replyBtn = document.getElementById('menuReplyBtn');
+    const copyBtn = document.getElementById('menuCopyBtn');
 
-    // Reply: allowed in DM only (not read-only channel)
-    replyBtn.style.display = inChannel ? 'none' : 'flex';
-
-    // Edit/Delete: own messages in DM, or admin in channel
     const canControl = inChannel ? isAdmin : contextMenuTargetIsSent;
-    editBtn.style.display = canControl ? 'flex' : 'none';
-    deleteBtn.style.display = canControl ? 'flex' : 'none';
+
+    replyBtn.classList.toggle('hidden', inChannel);
+    copyBtn.classList.toggle('hidden', !String(contextMenuTargetContent || '').trim());
+    editBtn.classList.toggle('hidden', !canControl);
+    deleteBtn.classList.toggle('hidden', !canControl);
 
     document.getElementById('contextOverlay').classList.add('active');
-    document.getElementById('contextMenu').classList.add('active');
+    requestAnimationFrame(() => positionContextMenu());
   }
 
   function closeContextMenu() {
+    document.querySelectorAll('.message-context-active').forEach(m => m.classList.remove('message-context-active'));
     document.getElementById('contextOverlay').classList.remove('active');
-    document.getElementById('contextMenu').classList.remove('active');
+    const menu = document.getElementById('contextMenu');
+    menu.classList.remove('active');
+    menu.style.visibility = '';
+    menu.style.top = '';
+    menu.style.left = '';
   }
 
   function handleCopyContext() {
@@ -3473,26 +3942,8 @@
       .then(r => r.json())
       .then(data => {
         if (data.success && data.conversations) {
-          data.conversations.forEach(conv => {
-            const previewEl = document.getElementById(`preview-${conv.user_id}`);
-            const timeEl = document.getElementById(`time-${conv.user_id}`);
-            const badgeEl = document.getElementById(`badge-${conv.user_id}`);
-
-            if (previewEl) {
-              previewEl.textContent = conv.last_message || msgsNoMessages;
-            }
-            if (timeEl) {
-              timeEl.textContent = conv.last_message_time ? formatMessageTime(conv.last_message_time) : '';
-            }
-            if (badgeEl) {
-              if (conv.unread_count > 0) {
-                badgeEl.textContent = conv.unread_count;
-                badgeEl.classList.remove('hidden');
-              } else {
-                badgeEl.classList.add('hidden');
-              }
-            }
-          });
+          data.conversations.forEach(conv => applyConversationUpdate(conv));
+          sortConversationList();
         }
       })
       .catch(error => {
@@ -4044,6 +4495,7 @@
   }
 
   document.addEventListener('DOMContentLoaded', function () {
+    initConversationAvatars();
     updateMobileUI();
     updateUnreadCount();
     updateConversations();

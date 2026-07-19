@@ -206,17 +206,17 @@ function renderCart() {
             <strong>${item.name}${item.color ? `<span class="cart-color">${item.color}</span>` : ""}</strong>
             <div class="cart-price-wrap">
               <small class="${item.basePrice != null && item.price !== item.basePrice ? 'cart-price-custom' : ''}">${money(item.price)}</small>
-              <button type="button" class="cart-price-edit" onclick="editCartPrice(${key})" title="تعديل السعر"><i class="fa fa-pen"></i></button>
+              <button type="button" class="cart-price-edit" onclick='editCartPrice(${key})' title="تعديل السعر"><i class="fa fa-pen"></i></button>
             </div>
           </div>
           <div class="cart-controls">
             <div class="qty-control">
-              <button type="button" onclick="changeQty(${key}, -1)">-</button>
-              <input type="number" min="1" max="${item.stock}" value="${item.qty}" onchange="updateQty(${key}, this.value)">
-              <button type="button" onclick="changeQty(${key}, 1)">+</button>
+              <button type="button" onclick='changeQty(${key}, -1)'>-</button>
+              <input type="number" min="1" max="${item.stock}" value="${item.qty}" onchange='updateQty(${key}, this.value)'>
+              <button type="button" onclick='changeQty(${key}, 1)'>+</button>
             </div>
             <span class="cart-line-total">${money(line)}</span>
-            <button class="remove" type="button" onclick="removeFromCart(${key})">حذف</button>
+            <button class="remove" type="button" onclick='removeFromCart(${key})'>حذف</button>
           </div>
         </div>
       </div>

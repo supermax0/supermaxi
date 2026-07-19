@@ -22,6 +22,7 @@ class Employee(db.Model):
     name = db.Column(db.String(100), nullable=False)
     username = db.Column(db.String(50), nullable=False)
     password = db.Column(db.String(200), nullable=False)
+    phone = db.Column(db.String(20), nullable=True)
 
     __table_args__ = (
         db.UniqueConstraint('tenant_id', 'username', name='_username_tenant_uc'),

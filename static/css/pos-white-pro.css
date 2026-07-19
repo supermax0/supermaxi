@@ -130,6 +130,28 @@ body.pos-white-pro {
   border-color: var(--border-strong);
 }
 
+.pos-my-orders-link {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 14px;
+  border: 1px solid #bfdbfe;
+  border-radius: var(--radius-btn);
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-weight: 700;
+  text-decoration: none;
+  transition: background .15s, border-color .15s, transform .15s;
+}
+
+.pos-my-orders-link:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  transform: translateY(-1px);
+}
+
 /* Layout: cart left, products right (visual) */
 .pos-layout {
   display: grid;
@@ -1135,6 +1157,7 @@ body.pos-white-pro {
   .pos-header-title-wrap h1 { font-size: 14px; }
   .pos-badge { font-size: 9px; padding: 2px 6px; }
   .pos-btn-icon { width: 32px; height: 32px; font-size: 13px; border-radius: 8px; }
+  .pos-my-orders-link { min-height: 32px; padding: 0 10px; border-radius: 8px; font-size: 12px; }
 
   .pos-layout {
     display: flex;

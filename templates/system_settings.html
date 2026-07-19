@@ -69,6 +69,28 @@
 
 <div class="settings-section-card">
   <div class="settings-section-header">
+    <h2><i class="fas fa-boxes-stacked"></i> سياسة خصم مخزون الطلبات</h2>
+    <p>عند التفعيل لا يُخصم مخزون الطلب «تم الطلب» إلا عند التعبئة أو الشحن أو التوصيل أو التسديد.</p>
+  </div>
+  <div class="settings-switch-row">
+    <div class="settings-switch-label">
+      <strong>تأجيل خصم مخزون «تم الطلب»</strong>
+      <span>تفعيل الخيار يعيد مخزون الطلبات القديمة غير المسددة، ثم يخصم عند مغادرة «تم الطلب».</span>
+    </div>
+    <label class="settings-toggle">
+      <input type="checkbox" id="deferredOrderStockEnabled" {% if deferred_order_stock_enabled %}checked{% endif %}>
+      <span class="settings-toggle-slider"></span>
+    </label>
+  </div>
+  <div class="weak-message-actions">
+    <button class="settings-btn settings-btn-primary" type="button" onclick="saveOrderStockPolicy()">
+      <i class="fas fa-save"></i> حفظ سياسة المخزون
+    </button>
+  </div>
+</div>
+
+<div class="settings-section-card">
+  <div class="settings-section-header">
     <h2><i class="fas fa-user-clock"></i> رسالة الموظفين الضعيفين</h2>
     <p>إرسال رسالة داخل نظام المراسلة تلقائياً كل 3 أيام للموظفين الذين يظهرون كضعفاء في مراقب الأداء.</p>
   </div>
@@ -125,6 +147,52 @@
     {{ weak_employee_message_settings.last_run_at or 'لم يتم التشغيل بعد' }}
     — آخر عدد مرسل:
     {{ weak_employee_message_settings.last_sent_count or 0 }}
+  </div>
+</div>
+
+<div class="settings-section-card">
+  <div class="settings-section-header">
+    <h2><i class="fas fa-chart-line"></i> عتبات مركز المراقبة</h2>
+    <p>تتحكم في تنبيهات المراقب المالي والتشغيلي وتحديث الصفحة التلقائي.</p>
+  </div>
+  <div class="weak-message-grid">
+    <div class="sys-form-group">
+      <label>تأخير تحذير (يوم)</label>
+      <input type="number" min="1" id="monitorOverdueWarning" value="{{ monitor_settings.overdue_warning_days }}">
+    </div>
+    <div class="sys-form-group">
+      <label>تأخير حرج (يوم)</label>
+      <input type="number" min="1" id="monitorOverdueCritical" value="{{ monitor_settings.overdue_critical_days }}">
+    </div>
+    <div class="sys-form-group">
+      <label>شحن عالق (يوم)</label>
+      <input type="number" min="1" id="monitorStuckDays" value="{{ monitor_settings.shipping_stuck_days }}">
+    </div>
+    <div class="sys-form-group">
+      <label>حد تنبيه شحن عالق</label>
+      <input type="number" min="1" id="monitorStuckMin" value="{{ monitor_settings.shipping_stuck_alert_min }}">
+    </div>
+    <div class="sys-form-group">
+      <label>حد تراكم «تم الطلب»</label>
+      <input type="number" min="1" id="monitorPendingMin" value="{{ monitor_settings.pending_backlog_alert_min }}">
+    </div>
+    <div class="sys-form-group">
+      <label>حد خسارة (مبيعات مسددة)</label>
+      <input type="number" min="0" step="1000" id="monitorLossThreshold" value="{{ monitor_settings.paid_sales_loss_threshold }}">
+    </div>
+    <div class="sys-form-group">
+      <label>تحديث تلقائي (ثانية، 0=معطّل)</label>
+      <input type="number" min="0" step="30" id="monitorAutoRefresh" value="{{ monitor_settings.auto_refresh_sec }}">
+    </div>
+    <div class="sys-form-group">
+      <label>حد ضعف طلبات (أداء)</label>
+      <input type="number" min="0" id="monitorPerfMinOrders" value="{{ monitor_settings.performance_min_orders }}">
+    </div>
+  </div>
+  <div class="weak-message-actions">
+    <button class="settings-btn settings-btn-primary" type="button" onclick="saveMonitorSettings()">
+      <i class="fas fa-save"></i> حفظ عتبات المراقب
+    </button>
   </div>
 </div>
 
@@ -395,6 +463,61 @@ function collectWeakMessageSettings() {
     min_sales: parseInt(document.getElementById("weakMessageMinSales")?.value || "0", 10),
     message: document.getElementById("weakMessageText")?.value || ""
   };
+}
+
+function saveMonitorSettings() {
+  const payload = {
+    overdue_warning_days: parseInt(document.getElementById("monitorOverdueWarning")?.value || "7", 10),
+    overdue_critical_days: parseInt(document.getElementById("monitorOverdueCritical")?.value || "10", 10),
+    shipping_stuck_days: parseInt(document.getElementById("monitorStuckDays")?.value || "5", 10),
+    shipping_stuck_alert_min: parseInt(document.getElementById("monitorStuckMin")?.value || "3", 10),
+    pending_backlog_alert_min: parseInt(document.getElementById("monitorPendingMin")?.value || "18", 10),
+    paid_sales_loss_threshold: parseInt(document.getElementById("monitorLossThreshold")?.value || "500000", 10),
+    auto_refresh_sec: parseInt(document.getElementById("monitorAutoRefresh")?.value || "300", 10),
+    performance_min_orders: parseInt(document.getElementById("monitorPerfMinOrders")?.value || "5", 10),
+  };
+  showLoading();
+  fetch("/settings/system/monitor-settings", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  })
+    .then(r => r.json())
+    .then(data => {
+      hideLoading();
+      if (data.success) showToast(data.message || "تم الحفظ", "success");
+      else showToast(data.error || "تعذر الحفظ", "error");
+    })
+    .catch(() => { hideLoading(); showToast("حدث خطأ في الاتصال", "error"); });
+}
+
+function saveOrderStockPolicy() {
+  const checkbox = document.getElementById("deferredOrderStockEnabled");
+  const enabled = !!checkbox?.checked;
+  if (enabled && !confirm("سيتم إرجاع مخزون طلبات «تم الطلب» غير المسددة التي خُصمت سابقاً. هل تريد المتابعة؟")) {
+    if (checkbox) checkbox.checked = false;
+    return;
+  }
+  showLoading();
+  fetch("/settings/system/order-stock-policy", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ enabled })
+  })
+    .then(async r => ({ ok: r.ok, data: await r.json() }))
+    .then(({ ok, data }) => {
+      hideLoading();
+      if (!ok || !data.success) throw new Error(data.error || "تعذر حفظ السياسة");
+      const details = enabled
+        ? ` — أُعيد ${Number(data.restored_orders || 0)} طلب (${Number(data.restored_units || 0)} قطعة)`
+        : "";
+      showToast((data.message || "تم الحفظ") + details, "success");
+    })
+    .catch(err => {
+      hideLoading();
+      if (checkbox) checkbox.checked = !enabled;
+      showToast(err.message || "حدث خطأ", "error");
+    });
 }
 
 function saveWeakMessageSettings() {

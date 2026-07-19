@@ -1886,6 +1886,41 @@ body.ai-assistant-report-collapsed #aiCloseReportBtn {
     const issuesHtml = issues.slice(0, 5).map(issue => `
       <div class="ai-section-kicker">تحذير: ${escapeHtml(issue.message || '')}</div>
     `).join('');
+    const statusLabels = {
+      draft: 'بانتظار الموافقة', approved: 'تمت الموافقة', executed: 'منفذة',
+      rejected: 'مرفوضة', failed: 'فشلت'
+    };
+    const impactRows = [];
+    if (Number.isFinite(Number(impact.amount)) && Number(impact.amount) !== 0) {
+      impactRows.push(`المبلغ: ${money(impact.amount)} د.ع`);
+    }
+    if (Number.isFinite(Number(impact.cash_effect)) && Number(impact.cash_effect) !== 0) {
+      const direction = Number(impact.cash_effect) < 0 ? 'ينقص الصندوق' : 'يزيد الصندوق';
+      impactRows.push(`${direction}: ${money(Math.abs(Number(impact.cash_effect)))} د.ع`);
+    }
+    if (Number(impact.opening_balance_restore || 0) > 0) {
+      impactRows.push(`يرجع لذمة شركة النقل: ${money(impact.opening_balance_restore)} د.ع`);
+    }
+    if (impact.shipping_company) impactRows.push(`شركة النقل: ${escapeHtml(impact.shipping_company)}`);
+    const impactHtml = impactRows.length
+      ? `<div class="ai-report-kv" style="margin-top:10px">${impactRows.map(row => `<span>${row}</span>`).join('')}</div>`
+      : '';
+    const executionItems = (((plan.execution_result || {}).items) || []);
+    const executionHtml = executionItems.length ? `
+      <div class="ai-plan-item" style="margin-top:10px">
+        <div>
+          <strong>نتيجة التحقق بعد التنفيذ</strong>
+          <div class="ai-section-kicker" style="margin:4px 0 0">
+            ${escapeHtml(executionItems.map(row => {
+              const after = row.after || {};
+              if (row.deleted) return `حذفت الحركة #${row.payment_id} وتأكد النظام أنها لم تعد موجودة`;
+              if (after.name) return `${after.name}: ${after.posted ? 'مُرحّل' : 'غير مُرحّل'}، أثر الصندوق ${money(after.cash_effect || 0)} د.ع`;
+              if (row.asset_code) return `${row.asset_code}: ${after.posted ? 'مُرحّل' : 'غير مُرحّل'}، الصندوق ${money(after.cash_before)} ← ${money(after.cash_after)} د.ع`;
+              return `تم الإجراء #${row.item_id}`;
+            }).join(' | '))}
+          </div>
+        </div>
+      </div>` : '';
     const buttons = `
       <div class="ai-plan-buttons">
         <button type="button" class="btn btn-secondary" data-plan-action="refresh">تحديث</button>
@@ -1901,10 +1936,12 @@ body.ai-assistant-report-collapsed #aiCloseReportBtn {
           <h4 class="ai-plan-title">${escapeHtml(plan.title || 'خطة تنفيذ')}</h4>
           <div class="ai-section-kicker">${escapeHtml(plan.summary || '')}</div>
         </div>
-        <span class="ai-plan-status">${escapeHtml(plan.status || '')}</span>
+        <span class="ai-plan-status">${escapeHtml(statusLabels[plan.status] || plan.status || '')}</span>
       </div>
+      ${impactHtml}
       ${issuesHtml}
       ${itemHtml || '<div class="ai-section-kicker">لا توجد إجراءات تنفيذية داخل هذه الخطة.</div>'}
+      ${executionHtml}
       ${buttons}
     `;
     renderLiveReport();
@@ -2516,6 +2553,17 @@ body.ai-assistant-report-collapsed #aiCloseReportBtn {
   if (permissions.view_ai_audit_logs && els.schedulesList) loadSchedules();
   if (permissions.view_ai_audit_logs && els.overviewList) loadOverview();
   scrollToBottom();
+
+  {% if monitor_context %}
+  (function () {
+    const monitorPrompt = {{ monitor_context | tojson }};
+    if (monitorPrompt && !sessionStorage.getItem('monitor_context_sent')) {
+      sessionStorage.setItem('monitor_context_sent', '1');
+      els.input.value = 'حلّل وضع مركز المراقبة الحالي بناءً على هذا الملخص:\n\n' + monitorPrompt;
+      setTimeout(function () { send(); }, 600);
+    }
+  })();
+  {% endif %}
 })();
 </script>
 {% endblock %}

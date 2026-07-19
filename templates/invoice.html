@@ -369,44 +369,45 @@
     
     /* ==================== Print Styles ==================== */
     @media print {
-      body {
-        background: white;
-        padding: 0;
+      html, body {
+        background: #fff !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        height: auto !important;
+        min-height: 0 !important;
+        overflow: visible !important;
       }
       
       .invoice-container {
-        box-shadow: none;
-        padding: 15px;
-        max-width: 100%;
+        box-shadow: none !important;
+        padding: 8px !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        margin: 0 !important;
       }
       
-      .invoice-actions {
+      .invoice-actions,
+      .no-print {
         display: none !important;
       }
       
       @page {
-        size: A4;
-        margin: 0.8cm;
+        size: auto;
+        margin: 8mm;
       }
       
-      .summary-customer-section {
-        page-break-inside: avoid;
-      }
-      
-      .products-section {
-        page-break-inside: avoid;
-      }
-      
-      .bottom-summary {
-        page-break-inside: avoid;
-      }
-      
+      /* avoid blank pages on mobile: do not force large blocks onto new sheets */
+      .summary-customer-section,
+      .products-section,
+      .bottom-summary,
       .invoice-footer {
-        page-break-inside: avoid;
+        page-break-inside: auto;
+        break-inside: auto;
       }
     }
   </style>
   {% include 'partials/invoice_capture_styles.html' %}
+  {% include 'partials/invoice_print_fix.html' %}
 </head>
 <body>
   <div class="invoice-container">

@@ -444,7 +444,7 @@
 {{ template_styles.custom_css | safe }}
 {% endif %}
 
-        @media (max-width: 640px) {
+        @media screen and (max-width: 640px) {
             .invoice-body {
                 padding: 24px 20px 28px;
             }
@@ -504,6 +504,7 @@
         }
     </style>
     {% include 'partials/invoice_capture_styles.html' %}
+  {% include 'partials/invoice_print_fix.html' %}
 </head>
 
 <body>

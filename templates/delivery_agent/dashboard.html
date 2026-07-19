@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#2563eb">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <script src="/static/js/no-zoom.js"></script>
@@ -25,61 +26,86 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    :root {
+      --da-primary: #2563eb;
+      --da-primary-soft: rgba(37, 99, 235, 0.12);
+      --da-success: #059669;
+      --da-danger: #dc2626;
+    }
+
     body {
       font-family: 'Tajawal', sans-serif;
       background:
-        radial-gradient(900px 420px at 120% -10%, rgba(59, 130, 246, 0.14), transparent 60%),
-        radial-gradient(760px 360px at -20% 0%, rgba(16, 185, 129, 0.1), transparent 56%),
+        radial-gradient(900px 420px at 120% -10%, rgba(59, 130, 246, 0.12), transparent 60%),
+        radial-gradient(760px 360px at -20% 0%, rgba(16, 185, 129, 0.08), transparent 56%),
         var(--bg);
       color: var(--text);
       min-height: 100vh;
-      padding: 16px;
-      padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+      min-height: 100dvh;
+      padding: 0;
+      padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
     }
 
-    .da-page { max-width: 1100px; margin: 0 auto; }
+    .da-page {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 14px 20px;
+    }
 
+    /* ── Sticky app header ── */
     .da-topbar {
+      position: sticky;
+      top: 0;
+      z-index: 80;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
-      margin-bottom: 20px;
+      gap: 10px;
+      margin: 0 -14px 14px;
+      padding: calc(10px + env(safe-area-inset-top, 0px)) 14px 12px;
+      background: color-mix(in srgb, var(--card) 92%, transparent);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-light);
     }
 
     .da-brand {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 10px;
+      min-width: 0;
     }
 
     .da-avatar {
-      width: 52px;
-      height: 52px;
-      border-radius: 16px;
+      width: 40px;
+      height: 40px;
+      flex-shrink: 0;
+      border-radius: 12px;
       background: linear-gradient(135deg, #3b82f6, #2563eb);
       color: #fff;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 22px;
-      box-shadow: 0 8px 24px rgba(59, 130, 246, 0.35);
+      font-size: 16px;
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
     }
 
     .da-brand h1 {
-      font-size: 1.35rem;
+      font-size: 1.05rem;
       font-weight: 800;
-      line-height: 1.2;
+      line-height: 1.25;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .da-brand p {
       color: var(--muted);
-      font-size: 0.85rem;
-      margin-top: 2px;
+      font-size: 0.78rem;
+      margin-top: 1px;
     }
 
-    .da-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .da-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
 
     .da-btn {
       border: none;
@@ -94,6 +120,7 @@
       gap: 8px;
       text-decoration: none;
       transition: transform 0.15s ease, box-shadow 0.15s ease;
+      min-height: 44px;
     }
 
     .da-btn:hover { transform: translateY(-1px); }
@@ -101,39 +128,75 @@
     .da-btn-ghost { background: var(--card); color: var(--text); border: 1px solid var(--border-light); }
     .da-btn-danger { background: linear-gradient(135deg, #ef4444, #dc2626); color: #fff; }
 
+    .da-btn-icon {
+      width: 44px;
+      height: 44px;
+      padding: 0;
+      border-radius: 14px;
+      justify-content: center;
+      background: rgba(239, 68, 68, 0.12);
+      color: #dc2626;
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      box-shadow: none;
+    }
+
+    .da-btn-icon:hover { transform: none; background: rgba(239, 68, 68, 0.18); }
+
+    .da-btn-label { display: inline; }
+
+    /* ── Compact stats ── */
     .da-stats {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-      margin-bottom: 20px;
+      gap: 8px;
+      margin-bottom: 14px;
+      transition: opacity 0.2s ease, max-height 0.25s ease, margin 0.25s ease;
     }
 
-    @media (max-width: 640px) {
-      .da-stats { grid-template-columns: 1fr; }
+    .da-stats.is-hidden {
+      display: none;
     }
 
     .da-stat {
       background: linear-gradient(145deg, var(--card), var(--card-alt));
       border: 1px solid var(--border-light);
-      border-radius: 16px;
-      padding: 16px 18px;
+      border-radius: 14px;
+      padding: 10px 10px 12px;
       box-shadow: var(--shadow-1);
+      text-align: center;
+      min-height: 72px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
     }
 
     .da-stat-label {
       color: var(--muted);
-      font-size: 0.8rem;
-      font-weight: 600;
-      margin-bottom: 6px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      margin-bottom: 4px;
       display: flex;
       align-items: center;
-      gap: 6px;
+      justify-content: center;
+      gap: 4px;
+      line-height: 1.3;
     }
 
+    .da-stat-label i { font-size: 0.7rem; opacity: 0.85; }
+
     .da-stat-value {
-      font-size: 1.5rem;
+      font-size: 1.15rem;
       font-weight: 800;
-      line-height: 1.1;
+      line-height: 1.15;
+      word-break: break-word;
+    }
+
+    .da-stat-value .da-currency {
+      display: block;
+      font-size: 0.65rem;
+      font-weight: 600;
+      opacity: 0.75;
+      margin-top: 2px;
     }
 
     .da-stat-value.blue { color: #3b82f6; }
@@ -143,24 +206,22 @@
     .da-panel {
       background: linear-gradient(145deg, var(--card), var(--card-alt));
       border: 1px solid var(--border-light);
-      border-radius: 20px;
-      padding: 20px;
+      border-radius: 18px;
+      padding: 14px;
       box-shadow: var(--shadow-2);
     }
 
     .da-panel-head {
       display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
+      flex-direction: column;
       gap: 12px;
-      flex-wrap: wrap;
-      margin-bottom: 18px;
-      padding-bottom: 16px;
+      margin-bottom: 14px;
+      padding-bottom: 12px;
       border-bottom: 1px solid var(--border-light);
     }
 
     .da-panel-head h2 {
-      font-size: 1.15rem;
+      font-size: 1.05rem;
       font-weight: 800;
       display: flex;
       align-items: center;
@@ -169,49 +230,55 @@
 
     .da-panel-head p {
       color: var(--muted);
-      font-size: 0.85rem;
-      margin-top: 4px;
+      font-size: 0.8rem;
+      margin-top: 3px;
+      line-height: 1.45;
+    }
+
+    .da-search-wrap {
+      position: relative;
+      width: 100%;
     }
 
     .da-search {
       width: 100%;
-      max-width: 280px;
-      padding: 10px 14px 10px 38px;
-      border-radius: 12px;
+      padding: 12px 14px 12px 38px;
+      border-radius: 14px;
       border: 1px solid var(--border-light);
       background: var(--bg);
       color: var(--text);
       font-family: inherit;
-      font-size: 0.9rem;
+      font-size: 0.95rem;
+      min-height: 46px;
     }
 
-    .da-search-wrap { position: relative; }
     .da-search-wrap i {
       position: absolute;
-      right: 12px;
+      right: 14px;
       top: 50%;
       transform: translateY(-50%);
       color: var(--muted);
-      font-size: 0.85rem;
+      font-size: 0.9rem;
+      pointer-events: none;
     }
 
     .da-empty {
       text-align: center;
-      padding: 48px 20px;
+      padding: 40px 16px;
       color: var(--muted);
     }
 
     .da-empty i {
-      font-size: 3rem;
+      font-size: 2.5rem;
       color: #3b82f6;
       opacity: 0.5;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
     }
 
     .da-empty h3 {
       color: var(--text);
-      font-size: 1.1rem;
-      margin-bottom: 8px;
+      font-size: 1.05rem;
+      margin-bottom: 6px;
     }
 
     /* Desktop table */
@@ -273,8 +340,9 @@
       gap: 4px;
       padding: 4px 10px;
       border-radius: 999px;
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       font-weight: 700;
+      line-height: 1.3;
     }
 
     .da-badge-pending { background: rgba(59,130,246,0.15); color: #3b82f6; }
@@ -283,7 +351,11 @@
     .da-badge-applied { background: rgba(16,185,129,0.15); color: #059669; }
     .da-badge-delivered { background: rgba(16,185,129,0.15); color: #059669; }
     .da-badge-canceled { background: rgba(239,68,68,0.15); color: #dc2626; }
-    .da-apply-btn.is-applied { opacity: 0.65; cursor: default; }
+    .da-apply-btn.is-applied {
+      background: linear-gradient(135deg, #059669, #047857);
+      opacity: 1;
+      cursor: pointer;
+    }
 
     .da-tab-panel { display: none; }
     .da-tab-panel.is-active { display: block; }
@@ -307,6 +379,7 @@
       display: inline-flex;
       align-items: center;
       gap: 8px;
+      min-height: 44px;
     }
 
     .da-desktop-tab.is-active {
@@ -315,6 +388,7 @@
       border-color: transparent;
     }
 
+    /* ── Bottom nav ── */
     .da-bottom-nav {
       display: none;
       position: fixed;
@@ -322,10 +396,12 @@
       left: 0;
       right: 0;
       z-index: 900;
-      background: linear-gradient(145deg, var(--card), var(--card-alt));
+      background: color-mix(in srgb, var(--card) 94%, transparent);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
       border-top: 1px solid var(--border-light);
-      padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px));
-      box-shadow: 0 -4px 24px rgba(0,0,0,0.12);
+      padding: 6px 10px calc(6px + env(safe-area-inset-bottom, 0px));
+      box-shadow: 0 -6px 28px rgba(0,0,0,0.1);
     }
 
     .da-bottom-nav-inner {
@@ -333,40 +409,51 @@
       margin: 0 auto;
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 6px;
+      gap: 4px;
     }
 
     .da-bottom-nav-btn {
+      position: relative;
       border: none;
       background: transparent;
       color: var(--muted);
       font-family: inherit;
-      font-size: 0.72rem;
+      font-size: 0.7rem;
       font-weight: 700;
-      padding: 8px 4px;
-      border-radius: 12px;
+      padding: 8px 4px 6px;
+      border-radius: 14px;
       cursor: pointer;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 4px;
+      gap: 3px;
+      min-height: 52px;
+      -webkit-tap-highlight-color: transparent;
     }
 
-    .da-bottom-nav-btn i { font-size: 1.15rem; }
+    .da-bottom-nav-btn i { font-size: 1.2rem; }
 
     .da-bottom-nav-btn.is-active {
-      color: #3b82f6;
-      background: rgba(59,130,246,0.1);
+      color: var(--da-primary);
+      background: var(--da-primary-soft);
     }
 
-    @media (max-width: 768px) {
-      .da-bottom-nav { display: block; }
-      .da-topbar .da-btn-primary { display: none; }
-      .da-desktop-tabs { display: none; }
-    }
-
-    @media (min-width: 769px) {
-      body { padding-bottom: 32px; }
+    .da-nav-badge {
+      position: absolute;
+      top: 4px;
+      left: 50%;
+      transform: translateX(10px);
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      border-radius: 999px;
+      background: #ef4444;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 18px;
+      text-align: center;
+      display: none;
     }
 
     .da-table-completed { min-width: 920px; }
@@ -387,55 +474,54 @@
     .da-status-select {
       flex: 1;
       min-width: 110px;
-      padding: 8px 10px;
-      border-radius: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
       border: 1px solid var(--border-light);
       background: var(--bg);
       color: var(--text);
       font-family: inherit;
-      font-size: 0.85rem;
+      font-size: 0.9rem;
+      min-height: 46px;
     }
 
     .da-apply-btn {
-      padding: 8px 14px;
+      padding: 10px 16px;
       border: none;
-      border-radius: 10px;
+      border-radius: 12px;
       background: linear-gradient(135deg, #3b82f6, #2563eb);
       color: #fff;
       font-family: inherit;
       font-weight: 700;
-      font-size: 0.8rem;
+      font-size: 0.875rem;
       cursor: pointer;
       white-space: nowrap;
+      min-height: 46px;
     }
 
     .da-apply-btn:disabled { opacity: 0.6; cursor: wait; }
 
     .da-date-input {
-      padding: 8px 10px;
-      border-radius: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
       border: 1px solid var(--border-light);
       background: var(--bg);
       color: var(--text);
       font-family: inherit;
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       width: 100%;
-      max-width: 160px;
+      max-width: 100%;
+      min-height: 46px;
     }
 
-    /* Mobile cards */
-    .da-cards { display: none; gap: 12px; flex-direction: column; }
-
-    @media (max-width: 768px) {
-      .da-table-desktop { display: none; }
-      .da-cards { display: flex; }
-    }
+    /* Mobile order cards */
+    .da-cards { display: none; gap: 10px; flex-direction: column; }
 
     .da-card {
       border: 1px solid var(--border-light);
       border-radius: 16px;
-      padding: 16px;
+      padding: 14px;
       background: var(--bg);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.04);
     }
 
     .da-card-top {
@@ -443,18 +529,91 @@
       justify-content: space-between;
       align-items: flex-start;
       gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .da-card-top-main {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .da-card-id-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .da-card-customer {
+      font-size: 1rem;
+      font-weight: 800;
+      line-height: 1.3;
+    }
+
+    .da-card-amount {
+      font-size: 1rem;
+      font-weight: 800;
+      color: #10b981;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .da-card-address {
+      color: var(--muted);
+      font-size: 0.82rem;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
       margin-bottom: 12px;
+    }
+
+    .da-card-address i {
+      margin-left: 4px;
+      opacity: 0.7;
     }
 
     .da-card-meta {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 8px 12px;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
       font-size: 0.85rem;
     }
 
-    .da-card-meta span { color: var(--muted); display: block; font-size: 0.75rem; margin-bottom: 2px; }
+    .da-card-meta span { color: var(--muted); display: block; font-size: 0.72rem; margin-bottom: 2px; font-weight: 600; }
+
+    .da-card-quick {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .da-call-btn {
+      flex: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 46px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: rgba(16, 185, 129, 0.12);
+      color: #059669;
+      border: 1px solid rgba(16, 185, 129, 0.22);
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 0.875rem;
+      font-family: inherit;
+    }
+
+    .da-call-btn.is-disabled {
+      opacity: 0.45;
+      pointer-events: none;
+    }
 
     .da-card-actions {
       padding-top: 12px;
@@ -469,10 +628,25 @@
       margin-bottom: 6px;
     }
 
+    .da-card-actions .da-status-row {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .da-card-actions .da-status-select,
+    .da-card-actions .da-apply-btn {
+      width: 100%;
+      flex: none;
+    }
+
+    .da-postpone-wrap {
+      margin-top: 10px;
+    }
+
     /* Toast */
     .da-toast {
       position: fixed;
-      top: 20px;
+      top: calc(16px + env(safe-area-inset-top, 0px));
       left: 50%;
       transform: translateX(-50%);
       background: linear-gradient(135deg, #10b981, #059669);
@@ -483,6 +657,8 @@
       z-index: 10001;
       box-shadow: 0 10px 30px rgba(0,0,0,0.25);
       animation: daFadeIn 0.25s ease;
+      max-width: calc(100% - 32px);
+      text-align: center;
     }
 
     @keyframes daFadeIn {
@@ -490,7 +666,7 @@
       to { opacity: 1; transform: translateX(-50%) translateY(0); }
     }
 
-    /* Chat modal */
+    /* Chat modal leftovers */
     .da-modal-overlay {
       display: none;
       position: fixed;
@@ -520,25 +696,99 @@
       border-bottom: 1px solid var(--border-light);
     }
 
-    .da-nav-badge {
-      position: absolute;
-      top: 2px;
-      left: 50%;
-      transform: translateX(8px);
-      min-width: 18px;
-      height: 18px;
-      padding: 0 5px;
-      border-radius: 999px;
-      background: #ef4444;
-      color: #fff;
-      font-size: 11px;
-      font-weight: 800;
-      line-height: 18px;
-      text-align: center;
-      display: none;
+    /* ── Mobile / APK ── */
+    @media (max-width: 768px) {
+      .da-bottom-nav { display: block; }
+      .da-topbar .da-btn-primary { display: none; }
+      .da-desktop-tabs { display: none; }
+      .da-brand p { display: none; }
+      .da-btn-danger .da-btn-label { display: none; }
+      .da-btn-danger {
+        width: 44px;
+        height: 44px;
+        padding: 0;
+        border-radius: 14px;
+        justify-content: center;
+        background: rgba(239, 68, 68, 0.12);
+        color: #dc2626;
+        border: 1px solid rgba(239, 68, 68, 0.2);
+        box-shadow: none;
+      }
+      .da-table-desktop { display: none; }
+      .da-cards { display: flex; }
+      .da-stat-value { font-size: 1.05rem; }
+      .da-panel-head p { display: none; }
     }
 
-    .da-bottom-nav-btn { position: relative; }
+    @media (max-width: 380px) {
+      .da-stat-label { font-size: 0.62rem; }
+      .da-stat-value { font-size: 0.95rem; }
+      .da-page { padding-left: 10px; padding-right: 10px; }
+      .da-topbar { margin-left: -10px; margin-right: -10px; padding-left: 10px; padding-right: 10px; }
+    }
+
+    @media (min-width: 769px) {
+      body {
+        padding: 16px;
+        padding-bottom: 32px;
+      }
+      .da-page { padding: 0; }
+      .da-topbar {
+        position: static;
+        margin: 0 0 20px;
+        padding: 0;
+        background: transparent;
+        backdrop-filter: none;
+        border-bottom: none;
+      }
+      .da-avatar {
+        width: 52px;
+        height: 52px;
+        border-radius: 16px;
+        font-size: 22px;
+      }
+      .da-brand { gap: 14px; }
+      .da-brand h1 { font-size: 1.35rem; }
+      .da-stats {
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+      .da-stat {
+        text-align: right;
+        padding: 16px 18px;
+        border-radius: 16px;
+        min-height: auto;
+        align-items: flex-start;
+      }
+      .da-stat-label {
+        justify-content: flex-start;
+        font-size: 0.8rem;
+        margin-bottom: 6px;
+      }
+      .da-stat-value {
+        font-size: 1.5rem;
+      }
+      .da-stat-value .da-currency {
+        display: inline;
+        font-size: 0.85rem;
+        margin-top: 0;
+        margin-right: 4px;
+      }
+      .da-panel {
+        padding: 20px;
+        border-radius: 20px;
+      }
+      .da-panel-head {
+        flex-direction: row;
+        align-items: flex-start;
+        justify-content: space-between;
+        margin-bottom: 18px;
+        padding-bottom: 16px;
+      }
+      .da-search-wrap { max-width: 280px; }
+      .da-search { max-width: 280px; }
+      .da-stats.is-hidden { display: grid; }
+    }
   </style>
 </head>
 <body>
@@ -555,24 +805,25 @@
         <a href="/delivery-agent/messages" class="da-btn da-btn-primary">
           <i class="fa-solid fa-comments"></i> محادثة
         </a>
-        <a href="/delivery-agent/logout" class="da-btn da-btn-danger">
-          <i class="fa-solid fa-right-from-bracket"></i> خروج
+        <a href="/delivery-agent/logout" class="da-btn da-btn-danger" title="خروج" aria-label="خروج">
+          <i class="fa-solid fa-right-from-bracket"></i>
+          <span class="da-btn-label">خروج</span>
         </a>
       </div>
     </header>
 
-    <section class="da-stats">
+    <section class="da-stats" id="daStats">
       <article class="da-stat">
-        <div class="da-stat-label"><i class="fa-solid fa-box"></i> طلبات قيد التوصيل</div>
+        <div class="da-stat-label"><i class="fa-solid fa-box"></i> قيد التوصيل</div>
         <div class="da-stat-value blue">{{ stats.pending_count }}</div>
       </article>
       <article class="da-stat">
-        <div class="da-stat-label"><i class="fa-solid fa-coins"></i> إجمالي المبالغ</div>
-        <div class="da-stat-value green">{{ "{:,}".format(stats.pending_total) }} <span style="font-size:0.85rem;font-weight:600;">د.ع</span></div>
+        <div class="da-stat-label"><i class="fa-solid fa-wallet"></i> إجمالي المبالغ</div>
+        <div class="da-stat-value green">{{ "{:,}".format(stats.pending_total) }}<span class="da-currency">د.ع</span></div>
       </article>
       <article class="da-stat">
-        <div class="da-stat-label"><i class="fa-solid fa-circle-check"></i> تم التوصيل اليوم</div>
-        <div class="da-stat-value purple">{{ "{:,}".format(stats.delivered_total) }} <span style="font-size:0.85rem;font-weight:600;">د.ع</span></div>
+        <div class="da-stat-label"><i class="fa-solid fa-circle-check"></i> توصيل اليوم</div>
+        <div class="da-stat-value purple">{{ "{:,}".format(stats.delivered_total) }}<span class="da-currency">د.ع</span></div>
       </article>
     </section>
 
@@ -591,12 +842,12 @@
       <div class="da-panel-head">
         <div>
           <h2><i class="fa-solid fa-clipboard-list"></i> كشف طلباتي</h2>
-          <p>الطلبات المربوطة بك مباشرة — غيّر الحالة ثم اضغط تطبيق</p>
+          <p>الطلبات المربوطة بك مباشرة — غيّر الحالة ثم اضغط تطبيق أو تعديل</p>
         </div>
         {% if orders %}
         <div class="da-search-wrap">
           <i class="fa-solid fa-magnifying-glass"></i>
-          <input type="search" class="da-search" id="orderSearch" placeholder="بحث بالاسم أو الرقم..." oninput="filterOrders(this.value)">
+          <input type="search" class="da-search" id="orderSearch" placeholder="بحث بالاسم أو الرقم..." oninput="filterOrders(this.value)" enterkeyhint="search">
         </div>
         {% endif %}
       </div>
@@ -610,7 +861,7 @@
               <th>الطلب</th>
               <th>الزبون</th>
               <th>الهاتف</th>
-              <th>المحافظة</th>
+              <th>العنوان</th>
               <th>المبلغ</th>
               <th>الحالة</th>
               <th>تحديث</th>
@@ -619,12 +870,12 @@
           </thead>
           <tbody id="ordersTableBody">
             {% for order in orders %}
-            <tr class="da-order-row da-order-row-active" data-search="{{ order.customer_name }} {{ order.id }} {{ order.phone }} {{ order.city }}">
+            <tr class="da-order-row da-order-row-active" data-search="{{ order.customer_name }} {{ order.id }} {{ order.phone }} {{ order.address }}">
               <td>{{ loop.index }}</td>
               <td><span class="da-order-id">#{{ order.id }}</span><br><small style="color:var(--muted);">{{ order.created_at }}</small></td>
               <td><strong>{{ order.customer_name }}</strong>{% if order.address %}<br><small style="color:var(--muted);">{{ order.address[:40] }}{% if order.address|length > 40 %}...{% endif %}</small>{% endif %}</td>
               <td>{% if order.phone %}<a class="da-phone-link" href="tel:{{ order.phone }}">{{ order.phone }}</a>{% else %}—{% endif %}</td>
-              <td>{{ order.city or '—' }}</td>
+              <td>{% if order.address %}{{ order.address[:50] }}{% if order.address|length > 50 %}...{% endif %}{% else %}—{% endif %}</td>
               <td class="da-amount">{{ "{:,}".format(order.total|int) }} د.ع</td>
               <td>
                 {% if order.applied_status %}
@@ -639,13 +890,13 @@
               </td>
               <td>
                 <div class="da-status-row">
-                  <select class="da-status-select status-select" id="status-{{ order.id }}" data-order-id="{{ order.id }}" {% if order.applied_status %}disabled{% endif %}>
+                  <select class="da-status-select status-select" id="status-{{ order.id }}" data-order-id="{{ order.id }}">
                     <option value="تم الطلب" {% if order.status == 'تم الطلب' and order.note != 'مؤجل' and not order.applied_status %}selected{% endif %}>تم الطلب</option>
                     <option value="واصل" {% if order.applied_status == 'واصل' %}selected{% endif %}>واصل</option>
                     <option value="ملغي" {% if order.applied_status == 'ملغي' %}selected{% endif %}>ملغي</option>
                     <option value="مؤجل" {% if order.applied_status == 'مؤجل' or (order.note == 'مؤجل' and not order.applied_status) %}selected{% endif %}>مؤجل</option>
                   </select>
-                  <button type="button" class="da-apply-btn{% if order.applied_status %} is-applied{% endif %}" id="apply-btn-{{ order.id }}" onclick="applyStatusChange({{ order.id }})" {% if order.applied_status %}disabled{% endif %}>{% if order.applied_status %}تم التطبيق{% else %}تطبيق{% endif %}</button>
+                  <button type="button" class="da-apply-btn{% if order.applied_status %} is-applied{% endif %}" id="apply-btn-{{ order.id }}" onclick="applyStatusChange({{ order.id }})">{% if order.applied_status %}تعديل{% else %}تطبيق{% endif %}</button>
                 </div>
               </td>
               <td>
@@ -666,39 +917,54 @@
 
       <div class="da-cards" id="ordersCards">
         {% for order in orders %}
-        <article class="da-order-row da-order-row-active da-card" data-search="{{ order.customer_name }} {{ order.id }} {{ order.phone }} {{ order.city }}">
+        <article class="da-order-row da-order-row-active da-card" data-search="{{ order.customer_name }} {{ order.id }} {{ order.phone }} {{ order.address }}">
           <div class="da-card-top">
-            <div>
-              <span class="da-order-id">#{{ order.id }}</span>
-              <strong style="display:block;margin-top:4px;">{{ order.customer_name }}</strong>
+            <div class="da-card-top-main">
+              <div class="da-card-id-row">
+                <span class="da-order-id">#{{ order.id }}</span>
+                {% if order.applied_status %}
+                <span class="da-badge da-badge-applied">{{ order.applied_status }} — بانتظار المحاسب</span>
+                {% elif order.note == 'مؤجل' %}
+                <span class="da-badge da-badge-delay"><i class="fa-solid fa-clock"></i> مؤجل</span>
+                {% elif order.status == 'جاري الشحن' or order.status == 'قيد الشحن' %}
+                <span class="da-badge da-badge-shipping">{{ order.status }}</span>
+                {% else %}
+                <span class="da-badge da-badge-pending">{{ order.status }}</span>
+                {% endif %}
+              </div>
+              <div class="da-card-customer">{{ order.customer_name }}</div>
             </div>
-            <span class="da-amount">{{ "{:,}".format(order.total|int) }} د.ع</span>
+            <span class="da-card-amount">{{ "{:,}".format(order.total|int) }} د.ع</span>
           </div>
-          <div class="da-card-meta">
-            <div><span>الهاتف</span>{% if order.phone %}<a class="da-phone-link" href="tel:{{ order.phone }}">{{ order.phone }}</a>{% else %}—{% endif %}</div>
-            <div><span>المحافظة</span>{{ order.city or '—' }}</div>
-            <div><span>التاريخ</span>{{ order.created_at }}</div>
-            <div><span>الحالة</span>
-              {% if order.applied_status %}
-              <span class="da-badge da-badge-applied">{{ order.applied_status }} — بانتظار المحاسب</span>
-              {% elif order.note == 'مؤجل' %}مؤجل{% else %}{{ order.status }}{% endif %}
-            </div>
+
+          {% if order.address %}
+          <div class="da-card-address"><i class="fa-solid fa-location-dot"></i>{{ order.address }}</div>
+          {% endif %}
+
+          <div class="da-card-quick">
+            {% if order.phone %}
+            <a class="da-call-btn" href="tel:{{ order.phone }}">
+              <i class="fa-solid fa-phone"></i> اتصال
+            </a>
+            {% else %}
+            <span class="da-call-btn is-disabled"><i class="fa-solid fa-phone"></i> لا يوجد رقم</span>
+            {% endif %}
           </div>
+
           <div class="da-card-actions">
             <label>تحديث الحالة</label>
             <div class="da-status-row">
-              <select class="da-status-select status-select" id="status-m-{{ order.id }}" data-order-id="{{ order.id }}" data-sync="status-{{ order.id }}" {% if order.applied_status %}disabled{% endif %}>
+              <select class="da-status-select status-select" id="status-m-{{ order.id }}" data-order-id="{{ order.id }}" data-sync="status-{{ order.id }}">
                 <option value="تم الطلب" {% if order.status == 'تم الطلب' and order.note != 'مؤجل' and not order.applied_status %}selected{% endif %}>تم الطلب</option>
                 <option value="واصل" {% if order.applied_status == 'واصل' %}selected{% endif %}>واصل</option>
                 <option value="ملغي" {% if order.applied_status == 'ملغي' %}selected{% endif %}>ملغي</option>
                 <option value="مؤجل" {% if order.applied_status == 'مؤجل' or (order.note == 'مؤجل' and not order.applied_status) %}selected{% endif %}>مؤجل</option>
               </select>
-              <button type="button" class="da-apply-btn{% if order.applied_status %} is-applied{% endif %}" onclick="applyStatusChange({{ order.id }})" {% if order.applied_status %}disabled{% endif %}>{% if order.applied_status %}تم التطبيق{% else %}تطبيق{% endif %}</button>
+              <button type="button" class="da-apply-btn{% if order.applied_status %} is-applied{% endif %}" onclick="applyStatusChange({{ order.id }})">{% if order.applied_status %}تعديل{% else %}تطبيق{% endif %}</button>
             </div>
-            <div style="margin-top:10px;">
+            <div class="da-postpone-wrap" style="display:{% if order.note == 'مؤجل' or order.scheduled_date %}block{% else %}none{% endif %};">
               <label>تاريخ التأجيل</label>
               <input type="date" class="da-date-input date-input" id="date-m-{{ order.id }}"
-                style="display:{% if order.note == 'مؤجل' or order.scheduled_date %}block{% else %}none{% endif %};margin-top:4px;"
                 onchange="postponeOrder({{ order.id }}, this.value)">
             </div>
           </div>
@@ -725,7 +991,7 @@
         {% if completed_orders %}
         <div class="da-search-wrap">
           <i class="fa-solid fa-magnifying-glass"></i>
-          <input type="search" class="da-search" id="completedSearch" placeholder="بحث في المنفذة..." oninput="filterCompletedOrders(this.value)">
+          <input type="search" class="da-search" id="completedSearch" placeholder="بحث في المنفذة..." oninput="filterCompletedOrders(this.value)" enterkeyhint="search">
         </div>
         {% endif %}
       </div>
@@ -739,7 +1005,7 @@
               <th>الطلب</th>
               <th>الزبون</th>
               <th>الهاتف</th>
-              <th>المحافظة</th>
+              <th>العنوان</th>
               <th>المبلغ</th>
               <th>نتيجة المندوب</th>
               <th>الحالة الحالية</th>
@@ -749,12 +1015,12 @@
           </thead>
           <tbody>
             {% for order in completed_orders %}
-            <tr class="da-completed-row" data-search="{{ order.customer_name }} {{ order.id }} {{ order.phone }} {{ order.city }} {{ order.report_number }}">
+            <tr class="da-completed-row" data-search="{{ order.customer_name }} {{ order.id }} {{ order.phone }} {{ order.address }} {{ order.report_number }}">
               <td>{{ loop.index }}</td>
               <td><span class="da-order-id">#{{ order.id }}</span></td>
               <td><strong>{{ order.customer_name }}</strong></td>
               <td>{% if order.phone %}<a class="da-phone-link" href="tel:{{ order.phone }}">{{ order.phone }}</a>{% else %}—{% endif %}</td>
-              <td>{{ order.city or '—' }}</td>
+              <td>{% if order.address %}{{ order.address[:50] }}{% if order.address|length > 50 %}...{% endif %}{% else %}—{% endif %}</td>
               <td class="da-amount">{{ "{:,}".format(order.total|int) }} د.ع</td>
               <td>
                 {% if order.final_status == 'واصل' %}
@@ -778,26 +1044,30 @@
 
       <div class="da-cards" id="completedCards">
         {% for order in completed_orders %}
-        <article class="da-completed-row da-card" data-search="{{ order.customer_name }} {{ order.id }} {{ order.phone }} {{ order.city }} {{ order.report_number }}">
+        <article class="da-completed-row da-card" data-search="{{ order.customer_name }} {{ order.id }} {{ order.phone }} {{ order.address }} {{ order.report_number }}">
           <div class="da-card-top">
-            <div>
-              <span class="da-order-id">#{{ order.id }}</span>
-              <strong style="display:block;margin-top:4px;">{{ order.customer_name }}</strong>
+            <div class="da-card-top-main">
+              <div class="da-card-id-row">
+                <span class="da-order-id">#{{ order.id }}</span>
+                {% if order.final_status == 'واصل' %}
+                <span class="da-badge da-badge-delivered"><i class="fa-solid fa-check"></i> واصل</span>
+                {% elif order.final_status == 'ملغي' %}
+                <span class="da-badge da-badge-canceled"><i class="fa-solid fa-xmark"></i> ملغي</span>
+                {% elif order.final_status == 'مؤجل' %}
+                <span class="da-badge da-badge-delay"><i class="fa-solid fa-clock"></i> مؤجل</span>
+                {% else %}
+                <span class="da-badge da-badge-pending">{{ order.final_status }}</span>
+                {% endif %}
+              </div>
+              <div class="da-card-customer">{{ order.customer_name }}</div>
             </div>
-            <span class="da-amount">{{ "{:,}".format(order.total|int) }} د.ع</span>
+            <span class="da-card-amount">{{ "{:,}".format(order.total|int) }} د.ع</span>
           </div>
+          {% if order.address %}
+          <div class="da-card-address"><i class="fa-solid fa-location-dot"></i>{{ order.address }}</div>
+          {% endif %}
           <div class="da-card-meta">
             <div><span>الهاتف</span>{% if order.phone %}<a class="da-phone-link" href="tel:{{ order.phone }}">{{ order.phone }}</a>{% else %}—{% endif %}</div>
-            <div><span>المحافظة</span>{{ order.city or '—' }}</div>
-            <div><span>نتيجة المندوب</span>
-              {% if order.final_status == 'واصل' %}
-              <span class="da-badge da-badge-delivered">واصل</span>
-              {% elif order.final_status == 'ملغي' %}
-              <span class="da-badge da-badge-canceled">ملغي</span>
-              {% elif order.final_status == 'مؤجل' %}
-              <span class="da-badge da-badge-delay">مؤجل</span>
-              {% else %}{{ order.final_status }}{% endif %}
-            </div>
             <div><span>الحالة الحالية</span>{{ order.invoice_status }}</div>
             <div><span>تاريخ التنفيذ</span>{{ order.executed_at }}</div>
             <div><span>رقم الكشف</span><span class="da-report-num">{{ order.report_number }}</span></div>
@@ -844,6 +1114,11 @@
     }
 
     function getStatusSelect(orderId) {
+      var cards = document.getElementById('ordersCards');
+      var mobileVisible = cards && window.getComputedStyle(cards).display !== 'none';
+      if (mobileVisible) {
+        return document.getElementById('status-m-' + orderId) || document.getElementById('status-' + orderId);
+      }
       return document.getElementById('status-' + orderId) || document.getElementById('status-m-' + orderId);
     }
 
@@ -851,6 +1126,33 @@
       ['status-' + orderId, 'status-m-' + orderId].forEach(function(id) {
         var el = document.getElementById(id);
         if (el) el.value = value;
+      });
+    }
+
+    function setPostponeVisible(orderId, visible) {
+      var display = visible ? 'block' : 'none';
+      var desktopDate = document.getElementById('date-' + orderId);
+      if (desktopDate) desktopDate.style.display = display;
+      var mobileDate = document.getElementById('date-m-' + orderId);
+      if (mobileDate) {
+        var wrap = mobileDate.closest('.da-postpone-wrap');
+        if (wrap) wrap.style.display = display;
+      }
+    }
+
+    function getPostponeDateInput(orderId) {
+      var cards = document.getElementById('ordersCards');
+      var mobileVisible = cards && window.getComputedStyle(cards).display !== 'none';
+      var mobileDate = document.getElementById('date-m-' + orderId);
+      var desktopDate = document.getElementById('date-' + orderId);
+      if (mobileVisible) return mobileDate || desktopDate;
+      return desktopDate || mobileDate;
+    }
+
+    function syncPostponeDates(orderId, value) {
+      ['date-' + orderId, 'date-m-' + orderId].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.value = value || '';
       });
     }
 
@@ -878,8 +1180,15 @@
       if (panel) panel.classList.add('is-active');
 
       document.querySelectorAll('.da-desktop-tab, .da-bottom-nav-btn').forEach(function(btn) {
-        btn.classList.toggle('is-active', btn.getAttribute('data-tab') === tab);
+        var btnTab = btn.getAttribute('data-tab');
+        if (btnTab === 'chat') return;
+        btn.classList.toggle('is-active', btnTab === tab);
       });
+
+      var stats = document.getElementById('daStats');
+      if (stats) {
+        stats.classList.toggle('is-hidden', tab === 'completed');
+      }
     }
 
     function openAgentMessages() {
@@ -914,21 +1223,46 @@
       pullStartY = 0;
     }, { passive: true });
 
+    function updateAppliedStatusBadge(orderId, status) {
+      var badgeHtml = '<span class="da-badge da-badge-applied"><i class="fa-solid fa-hourglass-half"></i> ' + status + ' — بانتظار المحاسب</span>';
+      var desktopSelect = document.getElementById('status-' + orderId);
+      if (desktopSelect) {
+        var row = desktopSelect.closest('tr');
+        if (row) {
+          var statusCell = row.children[6];
+          if (statusCell) statusCell.innerHTML = badgeHtml;
+        }
+      }
+      var mobileSelect = document.getElementById('status-m-' + orderId);
+      if (mobileSelect) {
+        var card = mobileSelect.closest('.da-card');
+        if (card) {
+          var idRow = card.querySelector('.da-card-id-row');
+          if (idRow) {
+            var existing = idRow.querySelector('.da-badge');
+            if (existing) {
+              existing.outerHTML = '<span class="da-badge da-badge-applied">' + status + ' — بانتظار المحاسب</span>';
+            } else {
+              idRow.insertAdjacentHTML('beforeend', '<span class="da-badge da-badge-applied">' + status + ' — بانتظار المحاسب</span>');
+            }
+          }
+        }
+      }
+    }
+
     function markOrderApplied(orderId, status, allComplete) {
       syncStatusSelects(orderId, status);
       ['status-' + orderId, 'status-m-' + orderId].forEach(function(id) {
         var el = document.getElementById(id);
-        if (el) el.disabled = true;
-      });
-      document.querySelectorAll('.da-order-row[data-search]').forEach(function(row) {
-        if (row.getAttribute('data-search').indexOf(' ' + orderId + ' ') === -1 && row.getAttribute('data-search').indexOf('#' + orderId) === -1) return;
+        if (el) el.disabled = false;
       });
       var applyBtns = document.querySelectorAll('[onclick="applyStatusChange(' + orderId + ')"]');
       applyBtns.forEach(function(btn) {
-        btn.disabled = true;
-        btn.textContent = 'تم التطبيق';
+        btn.disabled = false;
+        btn.textContent = 'تعديل';
         btn.classList.add('is-applied');
       });
+      updateAppliedStatusBadge(orderId, status);
       showToast('تم حفظ الحالة — بانتظار تنفيذ المحاسب');
       if (allComplete) {
         setTimeout(function() {
@@ -943,9 +1277,9 @@
       var status = selectElement.value;
 
       if (status === 'مؤجل') {
-        var dateInput = document.getElementById('date-' + orderId) || document.getElementById('date-m-' + orderId);
+        setPostponeVisible(orderId, true);
+        var dateInput = getPostponeDateInput(orderId);
         if (dateInput) {
-          dateInput.style.display = 'block';
           dateInput.focus();
           if (dateInput.value) {
             postponeOrder(orderId, dateInput.value);
@@ -984,6 +1318,7 @@
 
     function postponeOrder(orderId, date) {
       if (!date) return;
+      syncPostponeDates(orderId, date);
       var selectElement = getStatusSelect(orderId);
       var btn = selectElement ? selectElement.closest('.da-status-row').querySelector('.da-apply-btn') : null;
       if (btn) { btn.disabled = true; btn.textContent = 'جاري...'; }
@@ -1014,14 +1349,20 @@
       document.querySelectorAll('.status-select').forEach(function(select) {
         select.addEventListener('change', function() {
           var orderId = this.dataset.orderId;
-          if (this.value === 'مؤجل') {
-            var dateInput = document.getElementById('date-' + orderId) || document.getElementById('date-m-' + orderId);
-            if (dateInput) dateInput.style.display = 'block';
+          var isPostponed = this.value === 'مؤجل';
+          setPostponeVisible(orderId, isPostponed);
+          if (isPostponed) {
+            var dateInput = getPostponeDateInput(orderId);
+            if (dateInput) dateInput.focus();
           }
-          if (this.dataset.sync) {
-            var other = document.getElementById(this.dataset.sync);
-            if (other) other.value = this.value;
-          }
+          syncStatusSelects(orderId, this.value);
+        });
+      });
+
+      document.querySelectorAll('.date-input').forEach(function(input) {
+        input.addEventListener('change', function() {
+          var orderId = (this.id || '').replace(/^date-m-/, '').replace(/^date-/, '');
+          if (orderId) syncPostponeDates(orderId, this.value);
         });
       });
     });

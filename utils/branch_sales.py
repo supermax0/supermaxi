@@ -204,8 +204,13 @@ def reassign_item_fulfillment_branch(item: OrderItem, new_branch_id: int) -> Non
     product_id = item.product_id
     available = get_branch_stock(new_branch_id, product_id)
     if available < qty:
+        product_name = (
+            getattr(item, "product_name", None)
+            or (item.product.name if getattr(item, "product", None) else None)
+            or f"#{product_id}"
+        )
         raise BranchStockError(
-            f"المخزون غير كافٍ في {new_branch.name}. المتاح: {available}"
+            f"المخزون غير كافٍ للمنتج «{product_name}» في {new_branch.name}. المتاح: {available}"
         )
 
     if old_branch_id:

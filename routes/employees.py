@@ -26,6 +26,15 @@ from utils.activity_logger import EMPLOYEE_SNAPSHOT_FIELDS, log_activity, log_mu
 
 employees_bp = Blueprint("employees", __name__)
 
+_EMPLOYEE_PROFILE_SCHEMA_ENSURED: set[str] = set()
+
+
+def _employee_schema_bind_key(engine) -> str:
+    try:
+        return f"{engine.dialect.name}:{engine.url}"
+    except Exception:
+        return str(id(engine))
+
 
 def _ensure_employee_profile_schema():
     from flask import g
@@ -37,7 +46,15 @@ def _ensure_employee_profile_schema():
             engine = get_tenant_engine(g.tenant)
         else:
             engine = db.engine
+    except Exception as e:
+        print(f"[employees] profile schema engine resolve failed: {e}")
+        return
 
+    bind_key = _employee_schema_bind_key(engine)
+    if bind_key in _EMPLOYEE_PROFILE_SCHEMA_ENSURED:
+        return
+
+    try:
         inspector = inspect(engine)
         if "employee" not in inspector.get_table_names():
             return
@@ -54,12 +71,108 @@ def _ensure_employee_profile_schema():
             if "theme_preference" not in columns:
                 conn.execute(text("ALTER TABLE employee ADD COLUMN theme_preference VARCHAR(20) DEFAULT 'dark'"))
                 changed = True
+            if "phone" not in columns:
+                conn.execute(text("ALTER TABLE employee ADD COLUMN phone VARCHAR(20)"))
+                changed = True
             if changed:
                 conn.commit()
+        _EMPLOYEE_PROFILE_SCHEMA_ENSURED.add(bind_key)
     except Exception as e:
         msg = str(e).lower()
-        if "duplicate column" not in msg:
-            print(f"[employees] profile schema ensure failed: {e}")
+        if "duplicate column" in msg:
+            _EMPLOYEE_PROFILE_SCHEMA_ENSURED.add(bind_key)
+            return
+        print(f"[employees] profile schema ensure failed: {e}")
+
+
+def _normalize_employee_phone(raw) -> str | None:
+    phone = str(raw or "").strip()
+    if not phone:
+        return None
+    digits = "".join(ch for ch in phone if ch.isdigit() or ch == "+")
+    return digits[:20] or None
+
+
+DEFAULT_PAGE_WITHDRAWAL_WARNING = (
+    "مرحباً {employee_name}،\n"
+    "\n"
+    "نود إبلاغك بضعف أدائك على البيجات المعيّنة لك.\n"
+    "\n"
+    "──────────────\n"
+    "تفاصيل البيجات\n"
+    "──────────────\n"
+    "{pages_details}\n"
+    "──────────────\n"
+    "المجموع: {pages_count} بيج — {total_orders} طلب\n"
+    "──────────────\n"
+    "\n"
+    "في حال استمرار الأداء الضعيف سيتم سحب البيج من عندك.\n"
+    "يرجى تحسين المتابعة ورفع النشاط.\n"
+    "\n"
+    "شكراً لك."
+)
+
+
+def _wa_digits(phone: str | None) -> str:
+    digits = "".join(ch for ch in str(phone or "") if ch.isdigit())
+    if not digits:
+        return ""
+    if digits.startswith("0"):
+        return "964" + digits[1:]
+    if not digits.startswith("964"):
+        return "964" + digits
+    return digits
+
+
+def _build_employee_page_cards():
+    """Active employees with assigned pages + per-page order/sales totals."""
+    employees_list = (
+        Employee.query.filter(Employee.is_active.is_(True))
+        .order_by(Employee.name.asc())
+        .all()
+    )
+    cards = []
+    for emp in employees_list:
+        pages = list(emp.pages.all())
+        page_rows = []
+        total_orders = 0
+        total_sales = 0
+        for page in pages:
+            row = (
+                db.session.query(
+                    func.count(Invoice.id).label("orders_count"),
+                    func.coalesce(func.sum(Invoice.total), 0).label("sales"),
+                )
+                .filter(Invoice.employee_id == emp.id, Invoice.page_id == page.id)
+                .one()
+            )
+            orders_count = int(row.orders_count or 0)
+            sales = int(row.sales or 0)
+            total_orders += orders_count
+            total_sales += sales
+            page_rows.append(
+                {
+                    "id": page.id,
+                    "name": page.name,
+                    "orders_count": orders_count,
+                    "sales": sales,
+                }
+            )
+        cards.append(
+            {
+                "id": emp.id,
+                "name": emp.name,
+                "username": emp.username,
+                "phone": getattr(emp, "phone", None) or "",
+                "role": emp.role,
+                "pages_count": len(page_rows),
+                "total_orders": total_orders,
+                "total_sales": total_sales,
+                "pages": page_rows,
+                "wa_digits": _wa_digits(getattr(emp, "phone", None)),
+            }
+        )
+    return cards
 
 
 def _require_manage_employees():
@@ -133,6 +246,7 @@ def employees():
             name=request.form["name"],
             username=request.form["username"],
             password=generate_password_hash(request.form["password"]),
+            phone=_normalize_employee_phone(request.form.get("phone")),
             role=role_name,
             salary=int(request.form.get("salary", 0)),
             commission_percent=max(
@@ -322,6 +436,8 @@ def update_employee(id):
     name = str(data.get("name") or "").strip()
     if name:
         emp.name = name
+    if "phone" in data:
+        emp.phone = _normalize_employee_phone(data.get("phone"))
     if "salary" in data:
         emp.salary = int(data.get("salary") or 0)
     if "commission" in data:
@@ -475,6 +591,34 @@ def view_employee_orders(employee_id):
             "orders_without_page": [
                 {"id": o.id, "total": o.total, "customer_name": o.customer_name} for o in orders_without_page
             ],
+        }
+    )
+
+
+@employees_bp.route("/page-warnings")
+@permission_required("manage_employees")
+def page_warnings():
+    cards = _build_employee_page_cards()
+    return render_template(
+        "employee_page_warnings.html",
+        cards=cards,
+        default_message=DEFAULT_PAGE_WITHDRAWAL_WARNING,
+    )
+
+
+@employees_bp.route("/page-warnings/update-phone/<int:employee_id>", methods=["POST"])
+@permission_required("manage_employees")
+def update_employee_phone_for_warnings(employee_id):
+    emp = Employee.query.get_or_404(employee_id)
+    data = request.get_json(silent=True) or {}
+    emp.phone = _normalize_employee_phone(data.get("phone"))
+    db.session.commit()
+    return jsonify(
+        {
+            "success": True,
+            "phone": emp.phone or "",
+            "wa_digits": _wa_digits(emp.phone),
+            "message": "تم حفظ رقم الهاتف",
         }
     )
 

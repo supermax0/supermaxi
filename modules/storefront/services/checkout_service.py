@@ -10,8 +10,10 @@ from models.invoice import Invoice
 from models.order_item import OrderItem
 from models.product import Product
 from utils.branch_migration import get_default_branch
-from utils.branch_stock_service import deduct_stock, BranchStockError
-from utils.branch_sales import resolve_sale_fulfillment
+from utils.branch_stock_service import BranchStockError
+from utils.order_stock_lock import apply_stock_actions, check_stock_rows, mark_order_stock_locked
+from utils.order_stock_lock import clear_order_stock_lock
+from utils.order_stock_policy import deferred_stock_enabled
 
 SERVICE_SHIPPING_BARCODE = "__SF_SHIPPING__"
 SERVICE_DISCOUNT_BARCODE = "__SF_DISCOUNT__"
@@ -66,16 +68,6 @@ class StorefrontCheckoutService:
         if not cart_items:
             return False, "سلة الطلب فارغة."
 
-        default_branch = get_default_branch()
-        preferred = default_branch.id if default_branch else None
-        for item in cart_items:
-            _branch_id, check = resolve_sale_fulfillment(
-                item["id"],
-                item["quantity"],
-                preferred_branch_id=preferred,
-            )
-            if not check.get("valid") or not _branch_id:
-                return False, f"المنتج {item['name']}: {str(check.get('message') or 'الكمية غير متوفرة.')}"
         return True, ""
 
     def create_invoice_from_cart(
@@ -126,6 +118,18 @@ class StorefrontCheckoutService:
 
         default_branch = get_default_branch()
         preferred_branch_id = default_branch.id if default_branch else None
+        stock_rows = []
+        for item in cart_items:
+            product = Product.query.get(item["id"])
+            if not product:
+                return False, f"المنتج غير موجود: {item['name']}", {}
+            stock_rows.append({
+                "product": product,
+                "product_id": product.id,
+                "quantity": int(item["quantity"]),
+            })
+        defer_stock = deferred_stock_enabled()
+        stock_check = check_stock_rows(stock_rows, preferred_branch_id=preferred_branch_id) if not defer_stock else None
 
         invoice = Invoice(
             customer_id=customer.id,
@@ -142,24 +146,22 @@ class StorefrontCheckoutService:
                 f"shipping={shipping_fee} | discount={discount_amount} | notes={notes}"
             ),
             created_at=datetime.utcnow(),
+            stock_is_deducted=False,
         )
         db.session.add(invoice)
         db.session.flush()
 
         invoice_branch_id = preferred_branch_id
-        for item in cart_items:
+        for idx, item in enumerate(cart_items):
             product = Product.query.get(item["id"])
             if not product:
                 db.session.rollback()
                 return False, f"المنتج غير موجود: {item['name']}", {}
-            fulfillment_branch_id, check = resolve_sale_fulfillment(
-                product.id,
-                item["quantity"],
-                preferred_branch_id=preferred_branch_id,
+            fulfillment_branch_id = (
+                stock_check.actions[idx].fulfillment_branch_id
+                if stock_check and stock_check.can_fulfill and idx < len(stock_check.actions)
+                else None
             )
-            if not check.get("valid") or not fulfillment_branch_id:
-                db.session.rollback()
-                return False, f"المنتج {product.name}: {str(check.get('message') or 'الكمية غير متوفرة.')}", {}
             if invoice_branch_id is None:
                 invoice_branch_id = fulfillment_branch_id
             line_total = int(product.sale_price or 0) * int(item["quantity"])
@@ -175,11 +177,18 @@ class StorefrontCheckoutService:
                     fulfillment_branch_id=fulfillment_branch_id,
                 )
             )
+        if defer_stock:
+            clear_order_stock_lock(invoice)
+        elif stock_check.can_fulfill:
             try:
-                deduct_stock(fulfillment_branch_id, product.id, int(item["quantity"]))
+                apply_stock_actions(stock_check.actions, invoice=invoice)
+                invoice.stock_is_deducted = True
+                invoice.stock_deducted_at = datetime.utcnow()
             except BranchStockError as exc:
                 db.session.rollback()
                 return False, str(exc), {}
+        else:
+            mark_order_stock_locked(invoice, stock_check.reason_text)
         if invoice_branch_id:
             invoice.branch_id = invoice_branch_id
 
@@ -208,4 +217,6 @@ class StorefrontCheckoutService:
             "shipping_fee": shipping_fee,
             "grand_total": grand_total,
             "customer_name": customer.name,
+            "stock_locked": bool(getattr(invoice, "is_stock_locked", False)),
+            "stock_lock_reason": getattr(invoice, "stock_lock_reason", None),
         }

@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>طلباتي — Finora POS</title>
+  <link rel="icon" type="image/png" href="{{ platform_logo_url }}">
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --surface: #ffffff;
+      --surface-soft: #f8fafc;
+      --text: #101828;
+      --muted: #667085;
+      --border: #e4eaf2;
+      --primary: #2563eb;
+      --primary-soft: #eff6ff;
+      --success: #15803d;
+      --success-soft: #ecfdf3;
+      --warning: #b54708;
+      --warning-soft: #fffaeb;
+      --danger: #b42318;
+      --danger-soft: #fef3f2;
+      --shadow: 0 18px 50px rgba(16, 24, 40, .08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      font-family: 'Tajawal', system-ui, sans-serif;
+      background:
+        radial-gradient(circle at 90% 0, rgba(37, 99, 235, .10), transparent 28%),
+        radial-gradient(circle at 0 100%, rgba(14, 165, 233, .08), transparent 25%),
+        var(--bg);
+      font-variant-numeric: tabular-nums;
+    }
+
+    a { color: inherit; }
+
+    .page {
+      width: min(1280px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0 48px;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      padding: 28px;
+      border-radius: 24px;
+      color: #fff;
+      background: linear-gradient(135deg, #1d4ed8, #2563eb 56%, #0284c7);
+      box-shadow: 0 20px 46px rgba(37, 99, 235, .22);
+    }
+
+    .hero::after {
+      content: '';
+      position: absolute;
+      width: 250px;
+      height: 250px;
+      left: -75px;
+      top: -120px;
+      border: 44px solid rgba(255,255,255,.09);
+      border-radius: 50%;
+    }
+
+    .hero-copy, .hero-actions { position: relative; z-index: 1; }
+    .hero-eyebrow { margin: 0 0 6px; font-size: 13px; font-weight: 700; opacity: .78; }
+    .hero h1 { margin: 0; font-size: clamp(26px, 4vw, 38px); font-weight: 800; }
+    .hero-subtitle { margin: 8px 0 0; color: rgba(255,255,255,.82); font-size: 15px; }
+
+    .back-btn {
+      min-height: 46px;
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      padding: 0 17px;
+      border: 1px solid rgba(255,255,255,.35);
+      border-radius: 13px;
+      color: #fff;
+      background: rgba(255,255,255,.13);
+      backdrop-filter: blur(8px);
+      text-decoration: none;
+      font-weight: 700;
+      transition: transform .18s, background .18s;
+    }
+    .back-btn:hover { background: rgba(255,255,255,.22); transform: translateY(-1px); }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin: 18px 0;
+    }
+
+    .summary-card {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 18px 20px;
+      border: 1px solid rgba(228,234,242,.9);
+      border-radius: 18px;
+      background: rgba(255,255,255,.9);
+      box-shadow: 0 9px 28px rgba(16,24,40,.05);
+    }
+
+    .summary-icon {
+      width: 46px;
+      height: 46px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      border-radius: 14px;
+      background: var(--primary-soft);
+      color: var(--primary);
+      font-size: 18px;
+    }
+    .summary-card:nth-child(2) .summary-icon { background: #ecfeff; color: #0891b2; }
+    .summary-label { color: var(--muted); font-size: 13px; font-weight: 600; }
+    .summary-value { margin-top: 2px; font-size: 22px; font-weight: 800; }
+
+    .panel {
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .filters {
+      display: grid;
+      grid-template-columns: minmax(240px, 1fr) minmax(190px, .36fr) auto;
+      gap: 12px;
+      padding: 18px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, #fff, #fbfcfe);
+    }
+
+    .field { position: relative; }
+    .field i {
+      position: absolute;
+      right: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #98a2b3;
+      pointer-events: none;
+    }
+
+    input, select {
+      width: 100%;
+      min-height: 46px;
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      outline: none;
+      background: #fff;
+      color: var(--text);
+      font: inherit;
+      font-size: 14px;
+      transition: border-color .18s, box-shadow .18s;
+    }
+    input { padding: 0 43px 0 14px; }
+    select { padding: 0 14px; cursor: pointer; }
+    input:focus, select:focus { border-color: #93b4f8; box-shadow: 0 0 0 4px rgba(37,99,235,.10); }
+
+    .filter-btn {
+      min-height: 46px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 20px;
+      border: 0;
+      border-radius: 13px;
+      color: #fff;
+      background: var(--primary);
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 8px 18px rgba(37,99,235,.18);
+    }
+
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      padding: 14px 18px;
+      color: var(--muted);
+      background: var(--surface-soft);
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      font-weight: 700;
+      text-align: right;
+      white-space: nowrap;
+    }
+    td { padding: 17px 18px; border-bottom: 1px solid #edf1f6; vertical-align: middle; font-size: 14px; }
+    tbody tr { transition: background .15s; }
+    tbody tr:hover { background: #fbfdff; }
+    tbody tr:last-child td { border-bottom: 0; }
+
+    .order-number { display: inline-flex; align-items: center; gap: 7px; color: var(--primary); font-weight: 800; direction: ltr; }
+    .customer-name { font-weight: 700; }
+    .phone { display: inline-flex; align-items: center; gap: 7px; color: #344054; text-decoration: none; direction: ltr; }
+    .phone:hover { color: var(--primary); }
+    .products { display: flex; flex-wrap: wrap; gap: 6px; max-width: 420px; }
+    .product-chip { display: inline-block; padding: 5px 9px; border: 1px solid #dbe7f7; border-radius: 9px; background: #f6f9fd; color: #344054; font-size: 12px; font-weight: 600; }
+    .status { display: inline-flex; align-items: center; gap: 7px; padding: 7px 11px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+    .status::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+    .status--primary { color: #1d4ed8; background: var(--primary-soft); }
+    .status--success { color: var(--success); background: var(--success-soft); }
+    .status--warning { color: var(--warning); background: var(--warning-soft); }
+    .status--danger { color: var(--danger); background: var(--danger-soft); }
+
+    .empty { padding: 70px 20px; text-align: center; }
+    .empty-icon { width: 64px; height: 64px; display: grid; place-items: center; margin: 0 auto 14px; border-radius: 20px; background: var(--primary-soft); color: var(--primary); font-size: 25px; }
+    .empty h3 { margin: 0 0 6px; font-size: 19px; }
+    .empty p { margin: 0; color: var(--muted); }
+
+    .panel-footer { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 15px 18px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; }
+    .pagination { display: flex; align-items: center; gap: 6px; }
+    .page-link { min-width: 35px; height: 35px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--border); border-radius: 10px; background: #fff; color: #344054; text-decoration: none; font-weight: 700; }
+    .page-link:hover { border-color: #abc3f5; color: var(--primary); }
+    .page-link.active { border-color: var(--primary); background: var(--primary); color: #fff; }
+    .page-link.disabled { opacity: .45; pointer-events: none; }
+
+    @media (max-width: 760px) {
+      .page { width: min(100% - 20px, 1280px); padding: 10px 0 28px; }
+      .hero { align-items: flex-start; padding: 21px 18px; border-radius: 19px; }
+      .hero h1 { font-size: 27px; }
+      .hero-subtitle { font-size: 13px; }
+      .back-btn { width: 43px; height: 43px; min-height: 43px; padding: 0; justify-content: center; flex: 0 0 auto; }
+      .back-btn span { display: none; }
+      .summary-grid { gap: 9px; margin: 12px 0; }
+      .summary-card { padding: 13px; gap: 10px; border-radius: 15px; }
+      .summary-icon { width: 39px; height: 39px; border-radius: 11px; }
+      .summary-value { font-size: 17px; }
+      .panel { border-radius: 18px; }
+      .filters { grid-template-columns: 1fr; gap: 9px; padding: 13px; }
+      .table-wrap { overflow: visible; padding: 8px 12px 12px; }
+      table, tbody { display: block; }
+      thead { display: none; }
+      tr { display: grid; grid-template-columns: 1fr 1fr; gap: 13px 10px; margin: 10px 0; padding: 16px; border: 1px solid var(--border); border-radius: 15px; background: #fff; box-shadow: 0 5px 18px rgba(16,24,40,.04); }
+      td { display: block; padding: 0; border: 0; min-width: 0; }
+      td::before { content: attr(data-label); display: block; margin-bottom: 4px; color: var(--muted); font-size: 11px; font-weight: 600; }
+      td[data-cell="products"] { grid-column: 1 / -1; }
+      .products { max-width: none; }
+      .panel-footer { flex-direction: column; align-items: stretch; text-align: center; }
+      .pagination { justify-content: center; flex-wrap: wrap; }
+    }
+
+    @media (max-width: 390px) {
+      .summary-grid { grid-template-columns: 1fr; }
+      tr { grid-template-columns: 1fr; }
+      td[data-cell="products"] { grid-column: auto; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="hero-eyebrow">نقطة البيع · {{ employee.name }}</p>
+        <h1>طلباتي</h1>
+        <p class="hero-subtitle">كل الطلبات التي سجلتها في مكان واحد</p>
+      </div>
+      <div class="hero-actions">
+        <a href="{{ url_for('pos.pos') }}" class="back-btn" title="العودة إلى نقطة البيع">
+          <i class="fas fa-arrow-right"></i>
+          <span>نقطة البيع</span>
+        </a>
+      </div>
+    </section>
+
+    <section class="summary-grid" aria-label="ملخص الطلبات">
+      <article class="summary-card">
+        <span class="summary-icon"><i class="fas fa-receipt"></i></span>
+        <div>
+          <div class="summary-label">إجمالي طلباتي</div>
+          <div class="summary-value">{{ total_orders }}</div>
+        </div>
+      </article>
+      <article class="summary-card">
+        <span class="summary-icon"><i class="fas fa-list-check"></i></span>
+        <div>
+          <div class="summary-label">نتائج البحث الحالية</div>
+          <div class="summary-value">{{ pagination.total }}</div>
+        </div>
+      </article>
+    </section>
+
+    <section class="panel">
+      <form method="get" action="{{ url_for('pos.my_orders') }}" class="filters">
+        <div class="field">
+          <i class="fas fa-search"></i>
+          <input name="q" value="{{ search }}" placeholder="ابحث برقم الطلب أو الزبون أو الهاتف أو المنتج" aria-label="بحث">
+        </div>
+        <div class="field">
+          <select name="status" aria-label="فلترة حسب الحالة">
+            <option value="">كل الحالات</option>
+            {% for status in statuses %}
+            <option value="{{ status }}"{% if selected_status == status %} selected{% endif %}>{{ status }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <button class="filter-btn" type="submit"><i class="fas fa-sliders"></i> تطبيق</button>
+      </form>
+
+      {% if orders %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>رقم الطلب</th>
+              <th>اسم الزبون</th>
+              <th>رقم الهاتف</th>
+              <th>اسم المنتج</th>
+              <th>الحالة</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for order in orders %}
+            <tr>
+              <td data-label="رقم الطلب"><span class="order-number"><i class="fas fa-hashtag"></i>{{ order.id }}</span></td>
+              <td data-label="اسم الزبون"><span class="customer-name">{{ order.customer_name }}</span></td>
+              <td data-label="رقم الهاتف">
+                {% if order.phone != '—' %}
+                <a class="phone" href="tel:{{ order.phone }}"><i class="fas fa-phone"></i>{{ order.phone }}</a>
+                {% else %}—{% endif %}
+              </td>
+              <td data-label="اسم المنتج" data-cell="products">
+                <div class="products">
+                  {% for product_name in order.product_names %}<span class="product-chip">{{ product_name }}</span>{% endfor %}
+                </div>
+              </td>
+              <td data-label="الحالة"><span class="status status--{{ order.status_tone }}">{{ order.status }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty">
+        <div class="empty-icon"><i class="fas fa-inbox"></i></div>
+        <h3>{% if search or selected_status %}لا توجد نتائج مطابقة{% else %}لا توجد طلبات حتى الآن{% endif %}</h3>
+        <p>{% if search or selected_status %}جرّب تغيير كلمات البحث أو الحالة المحددة.{% else %}ستظهر هنا الطلبات التي تسجلها من نقطة البيع.{% endif %}</p>
+      </div>
+      {% endif %}
+
+      {% if pagination.pages > 1 %}
+      <footer class="panel-footer">
+        <span>صفحة {{ pagination.page }} من {{ pagination.pages }}</span>
+        <nav class="pagination" aria-label="صفحات الطلبات">
+          <a class="page-link{% if not pagination.has_prev %} disabled{% endif %}" href="{{ url_for('pos.my_orders', page=pagination.prev_num, q=search, status=selected_status) }}" aria-label="السابق"><i class="fas fa-chevron-right"></i></a>
+          {% for page_number in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+            {% if page_number %}
+            <a class="page-link{% if page_number == pagination.page %} active{% endif %}" href="{{ url_for('pos.my_orders', page=page_number, q=search, status=selected_status) }}">{{ page_number }}</a>
+            {% else %}<span class="page-link disabled">…</span>{% endif %}
+          {% endfor %}
+          <a class="page-link{% if not pagination.has_next %} disabled{% endif %}" href="{{ url_for('pos.my_orders', page=pagination.next_num, q=search, status=selected_status) }}" aria-label="التالي"><i class="fas fa-chevron-left"></i></a>
+        </nav>
+      </footer>
+      {% endif %}
+    </section>
+  </main>
+</body>
+</html>

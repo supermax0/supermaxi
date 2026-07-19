@@ -23,10 +23,11 @@ def find_delivery_expense(invoice_id: int) -> Expense | None:
 
 def _find_delivery_withdraw_tx(invoice_id: int) -> AccountTransaction | None:
     marker = f"أجور توصيل — فاتورة #{invoice_id}"
+    legacy_marker = f"Ø£Ø¬ÙˆØ± ØªÙˆØµÙŠÙ„ â€” ÙØ§ØªÙˆØ±Ø© #{invoice_id}"
     return (
         AccountTransaction.query.filter(
             AccountTransaction.type == "withdraw",
-            AccountTransaction.note == marker,
+            AccountTransaction.note.in_([marker, legacy_marker]),
         )
         .order_by(AccountTransaction.id.desc())
         .first()
@@ -40,6 +41,58 @@ def remove_delivery_expense_for_invoice(invoice_id: int) -> None:
     withdraw_tx = _find_delivery_withdraw_tx(invoice_id)
     if withdraw_tx:
         db.session.delete(withdraw_tx)
+
+
+def restore_missing_delivery_fee_withdrawals() -> dict[str, int]:
+    """Recreate delivery-fee withdraw rows when their expense rows still exist."""
+    expenses = Expense.query.filter(Expense.note.like(f"{_DELIVERY_EXPENSE_NOTE_PREFIX}%")).all()
+    restored_count = 0
+    restored_total = 0
+    changed = False
+
+    for expense in expenses:
+        note = expense.note or ""
+        raw_invoice_id = note.removeprefix(_DELIVERY_EXPENSE_NOTE_PREFIX)
+        try:
+            invoice_id = int(raw_invoice_id)
+        except (TypeError, ValueError):
+            continue
+
+        fee = int(expense.amount or 0)
+        if fee <= 0:
+            continue
+
+        title = f"أجور توصيل — فاتورة #{invoice_id}"
+        if not expense.cash_posted:
+            expense.cash_posted = True
+            changed = True
+        withdraw_tx = _find_delivery_withdraw_tx(invoice_id)
+        if withdraw_tx:
+            if int(withdraw_tx.amount or 0) != fee:
+                withdraw_tx.amount = fee
+                changed = True
+            if withdraw_tx.note != title:
+                withdraw_tx.note = title
+                changed = True
+            continue
+
+        db.session.add(
+            AccountTransaction(
+                type="withdraw",
+                amount=fee,
+                note=title,
+            )
+        )
+        restored_count += 1
+        restored_total += fee
+        changed = True
+
+    if changed:
+        db.session.commit()
+    else:
+        db.session.flush()
+
+    return {"count": restored_count, "total": restored_total}
 
 
 def sync_delivery_expense_for_invoice(invoice) -> Expense | None:
@@ -69,6 +122,7 @@ def sync_delivery_expense_for_invoice(invoice) -> Expense | None:
         expense.amount = fee
         expense.category = expense.category or "توصيل"
         expense.expense_date = expense.expense_date or datetime.utcnow().date()
+        expense.cash_posted = True
     else:
         expense = Expense(
             title=title,
@@ -76,16 +130,23 @@ def sync_delivery_expense_for_invoice(invoice) -> Expense | None:
             amount=fee,
             note=note,
             expense_date=datetime.utcnow().date(),
+            cash_posted=True,
         )
         db.session.add(expense)
         db.session.flush()
 
+    withdraw_tx = _find_delivery_withdraw_tx(invoice_id)
+    if withdraw_tx:
+        withdraw_tx.amount = fee
+        withdraw_tx.note = title
+    else:
         withdraw_tx = AccountTransaction(
             type="withdraw",
             amount=fee,
             note=title,
         )
         db.session.add(withdraw_tx)
+
     try:
         from utils.payroll_service import sync_commission_line_for_invoice
 

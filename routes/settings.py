@@ -15,6 +15,12 @@ from datetime import datetime
 from types import SimpleNamespace
 from utils.permission_checks import guard_permission
 from utils.activity_logger import log_activity, log_mutation
+from utils.invoice_schema_guard import ensure_invoice_schema
+from utils.order_stock_policy import (
+    deferred_stock_enabled,
+    ensure_policy_initialized,
+    set_deferred_stock_policy,
+)
 
 settings_bp = Blueprint("settings", __name__, url_prefix="/settings")
 
@@ -143,6 +149,15 @@ def settings():
 
     invoice_settings = InvoiceSettings.get_settings()
     first_order = Invoice.query.order_by(Invoice.id.desc()).first()
+    social_app_version = os.environ.get("APP_SOCIAL_APK_VERSION", "1.2.0").strip() or "1.2.0"
+    social_app_build = os.environ.get("APP_SOCIAL_APK_BUILD", "3").strip() or "3"
+    social_app_url = os.environ.get(
+        "APP_SOCIAL_APK_URL",
+        "/static/downloads/Finora-Social-REDESIGN-v1.2.0.apk",
+    ).strip()
+    social_app_cache_tag = f"{social_app_version}-{social_app_build}"
+    social_app_url += ("&" if "?" in social_app_url else "?") + f"v={social_app_cache_tag}"
+
     app_downloads = {
         "webview": os.environ.get("APP_WEBVIEW_APK_URL", "/static/downloads/finora-pos-webview.apk"),
         "native": os.environ.get("APP_NATIVE_APK_URL", "/static/downloads/finora-pos-native.apk"),
@@ -150,6 +165,7 @@ def settings():
             "APP_DELIVERY_AGENT_APK_URL",
             "/static/downloads/finora-delivery-agent.apk",
         ),
+        "social": social_app_url,
     }
     tenant_slug = _session_tenant_slug()
     portal_base = request.host_url.rstrip("/")
@@ -163,6 +179,8 @@ def settings():
             invoice_settings=invoice_settings,
             first_order=first_order,
             app_downloads=app_downloads,
+            social_app_version=social_app_version,
+            social_app_build=social_app_build,
             delivery_agent_portal_url=delivery_agent_portal_url,
             tenant_slug=tenant_slug,
         ),
@@ -179,11 +197,16 @@ def system_settings():
     from utils.weak_employee_messaging import get_weak_employee_message_settings
 
     ensure_branch_schema()
+    ensure_invoice_schema()
+    ensure_policy_initialized()
     ensure_default_permissions()
     employees = Employee.query.order_by(Employee.created_at.desc()).all()
     branches = Branch.query.filter_by(is_active=True).order_by(Branch.name.asc()).all()
     rbac_roles = Role.query.order_by(Role.name.asc()).all()
     weak_employee_message_settings = get_weak_employee_message_settings()
+    from utils.monitor_settings import get_monitor_settings
+
+    monitor_settings = get_monitor_settings()
     return render_template(
         "system_settings.html",
         **_settings_ctx(
@@ -192,8 +215,36 @@ def system_settings():
             branches=branches,
             rbac_roles=rbac_roles,
             weak_employee_message_settings=weak_employee_message_settings,
+            monitor_settings=monitor_settings,
+            deferred_order_stock_enabled=deferred_stock_enabled(),
         ),
     )
+
+
+@settings_bp.route("/system/order-stock-policy", methods=["POST"])
+def update_order_stock_policy():
+    """Enable/disable deferred deduction for pending unpaid orders."""
+    try:
+        ensure_invoice_schema()
+        ensure_policy_initialized()
+        data = request.get_json(silent=True) or {}
+        if "enabled" not in data:
+            return jsonify({"success": False, "error": "قيمة التفعيل مطلوبة"}), 400
+        result = set_deferred_stock_policy(bool(data.get("enabled")))
+        try:
+            log_activity(
+                "update",
+                "settings",
+                "تحديث سياسة خصم مخزون الطلبات",
+                entity_type="system_settings",
+                payload=result,
+            )
+        except Exception:
+            pass
+        return jsonify({"success": True, "message": "تم حفظ سياسة مخزون الطلبات", **result})
+    except Exception as exc:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(exc)}), 400
 
 
 @settings_bp.route("/system/weak-employee-message", methods=["POST"])
@@ -243,6 +294,20 @@ def send_weak_employee_message_now():
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 400
+
+
+@settings_bp.route("/system/monitor-settings", methods=["POST"])
+def update_monitor_settings():
+    try:
+        from utils.monitor_settings import save_monitor_settings
+
+        data = request.get_json(silent=True) or {}
+        config = save_monitor_settings(data)
+        return jsonify({"success": True, "message": "تم حفظ إعدادات المراقب", "config": config})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
+
 
 @settings_bp.route("/system/update-role", methods=["POST"])
 def update_employee_role():

@@ -13,6 +13,8 @@ from utils.cash_calculations import _effective_paid_amount as _effective_paid_am
 from utils.delivery_expense_service import sync_delivery_expense_for_invoice
 from utils.order_lifecycle import clear_order_barcodes, restore_order_stock_once
 from utils.payment_ledger import append_payment_ledger_delta
+from utils.shipping_settlement_service import ensure_paid_shipping_order_settled
+from utils.order_stock_policy import OrderStockError, ensure_stock_for_transition
 
 
 def execute_shipping_report(report, expense_amount: int = 0) -> dict:
@@ -87,11 +89,13 @@ def execute_shipping_report(report, expense_amount: int = 0) -> dict:
                 continue
 
             if selected_status in ("واصل", "Delivered"):
+                ensure_stock_for_transition(order, target_status="تم التوصيل", target_payment_status="مسدد")
                 prev_eff = _effective_paid_amount_inv(order)
                 order.status = "تم التوصيل"
                 order.payment_status = "مسدد"
                 if not order.paid_amount or int(order.paid_amount or 0) < int(order.total or 0):
                     order.paid_amount = order.total
+                ensure_paid_shipping_order_settled(order)
                 delta_pay = _effective_paid_amount_inv(order) - prev_eff
                 append_payment_ledger_delta(order.id, delta_pay)
                 sync_delivery_expense_for_invoice(order)
@@ -138,6 +142,9 @@ def execute_shipping_report(report, expense_amount: int = 0) -> dict:
             "canceled_count": canceled_count,
             "delayed_count": delayed_count,
         }
+    except OrderStockError as e:
+        db.session.rollback()
+        return {"error": e.message, "code": "INSUFFICIENT_STOCK", "shortages": e.shortages}
     except Exception as e:
         db.session.rollback()
         return {"error": f"حدث خطأ أثناء التنفيذ: {str(e)}"}

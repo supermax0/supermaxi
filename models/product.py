@@ -1,5 +1,20 @@
+import json
+
+from sqlalchemy.orm import validates
+
 from extensions import db
 from datetime import datetime
+
+
+def catalog_category_from_meta(raw: str | None) -> str:
+    """Extract the normalized mobile/store category from legacy product JSON."""
+    try:
+        parsed = json.loads((raw or "").strip())
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return ""
+    if not isinstance(parsed, dict):
+        return ""
+    return str(parsed.get("category") or parsed.get("store_badge") or "").strip()[:120]
 
 class Product(db.Model):
     __tablename__ = "product"
@@ -29,6 +44,7 @@ class Product(db.Model):
     opening_stock = db.Column(db.Integer, default=0)  # المخزون الافتتاحي
     quantity = db.Column(db.Integer, default=0)  # المخزون الحالي (يتم حسابه تلقائياً)
     active = db.Column(db.Boolean, default=True)
+    store_visible = db.Column(db.Boolean, default=True)
     
     # حد التنبيه لانخفاض المخزون (الرقم الذي إذا وصل إليه المخزون أو قل عنه يظهر التنبيه)
     low_stock_threshold = db.Column(db.Integer, default=5)
@@ -43,6 +59,9 @@ class Product(db.Model):
     batch_number = db.Column(db.String(100), nullable=True)
     # حقول إضافية من نموذج الإدخال المتقدم (وحدة، ضريبة، رف، …) JSON
     meta_json = db.Column(db.Text, nullable=True)
+    # Indexed projection of the category kept in meta_json for fast mobile
+    # filtering and correct pagination on large catalogs.
+    catalog_category = db.Column(db.String(120), nullable=True, index=True)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -88,6 +107,11 @@ class Product(db.Model):
 )
 
 
+
+    @validates("meta_json")
+    def _sync_catalog_category(self, _key, value):
+        self.catalog_category = catalog_category_from_meta(value)
+        return value
 
     def __repr__(self):
         return f"<Product {self.name}>"

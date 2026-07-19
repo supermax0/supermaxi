@@ -19,7 +19,7 @@ RETURN_STATUS_LEGACY: set[str] = {"مرتجع", "راجعة", "راجعه"}
 RETURN_STATUSES: set[str] = {RETURN_STATUS} | RETURN_STATUS_LEGACY
 
 CANCELED_STATUSES: set[str] = {"ملغي"}
-PENDING_STATUSES: set[str] = {"تم الطلب", "جاري الشحن"}
+PENDING_STATUSES: set[str] = {"تم الطلب", "معباة", "جاري الشحن"}
 COMPLETED_STATUSES: set[str] = {"تم التوصيل", "مسدد"}
 
 _RETURN_STATUS_UNIFIED_BINDS: set[str] = set()

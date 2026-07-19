@@ -435,6 +435,9 @@ def build_asset_from_form(data, user_id=None, as_draft=True):
     elif payment_method == "credit":
         paid_amount = 0
         credit_amount = total_cost
+    elif payment_method == "capital":
+        paid_amount = 0
+        credit_amount = 0
     elif payment_method == "mixed":
         if paid_amount + credit_amount != total_cost:
             raise FixedAssetError("مجموع المدفوع والآجل يجب أن يساوي تكلفة الأصل")
@@ -572,6 +575,9 @@ def post_asset_acquisition(asset: FixedAsset, user_id=None):
     elif payment_method == "credit":
         paid = 0
         credit = total
+    elif payment_method == "capital":
+        paid = 0
+        credit = 0
     else:
         if paid + credit != total:
             raise FixedAssetError("مجموع المدفوع والآجل لا يساوي تكلفة الأصل")
@@ -626,6 +632,24 @@ def post_asset_acquisition(asset: FixedAsset, user_id=None):
             ap_account.id,
             credit,
             f"{desc_base} (جزء آجل)",
+            reference_type="fixed_asset_acquisition",
+            reference_id=asset.id,
+            created_by=user_id,
+        )
+        first_entry = first_entry or entry
+
+    if payment_method == "capital":
+        capital_account = Account.query.filter_by(code=ACCOUNT_CODES["CAPITAL"]).first()
+        if not capital_account:
+            initialize_accounts()
+            capital_account = Account.query.filter_by(code=ACCOUNT_CODES["CAPITAL"]).first()
+        if not capital_account:
+            raise FixedAssetError("حساب رأس المال غير متوفر")
+        entry = _journal_by_ids(
+            asset_account_id,
+            capital_account.id,
+            total,
+            f"{desc_base} (إضافة مالك / رصيد افتتاحي)",
             reference_type="fixed_asset_acquisition",
             reference_id=asset.id,
             created_by=user_id,

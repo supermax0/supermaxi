@@ -50,7 +50,7 @@ class StorefrontCartService:
 
     def try_add(self, product_id: int, quantity: int = 1) -> tuple[bool, str]:
         product = Product.query.get(product_id)
-        if not product or not product.active:
+        if not product or not product.active or not product.store_visible:
             return False, "المنتج غير متاح."
         available = max(0, self._safe_int(product.quantity, 0))
         requested = max(1, min(self._safe_int(quantity, 1), 999))
@@ -78,7 +78,11 @@ class StorefrontCartService:
         if not updates:
             return True, "تم تحديث السلة."
         product_ids = [pid for pid in updates.keys() if pid > 0]
-        products = Product.query.filter(Product.id.in_(product_ids), Product.active == True).all()  # noqa: E712
+        products = Product.query.filter(
+            Product.id.in_(product_ids),
+            Product.active == True,  # noqa: E712
+            Product.store_visible == True,  # noqa: E712
+        ).all()
         product_by_id = {product.id: product for product in products}
         clean: dict[int, int] = {}
         for pid, qty in updates.items():
@@ -106,7 +110,11 @@ class StorefrontCartService:
         if not raw:
             return []
         ids = [self._safe_int(k, 0) for k in raw.keys()]
-        products = Product.query.filter(Product.id.in_(ids), Product.active == True).all()  # noqa: E712
+        products = Product.query.filter(
+            Product.id.in_(ids),
+            Product.active == True,  # noqa: E712
+            Product.store_visible == True,  # noqa: E712
+        ).all()
         product_by_id = {p.id: p for p in products}
         items = []
         for sid, qty in raw.items():

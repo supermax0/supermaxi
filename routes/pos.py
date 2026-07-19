@@ -5,6 +5,7 @@ from urllib.parse import parse_qs, urlparse
 
 from flask import Blueprint, render_template, request, jsonify, session, redirect, g
 from jinja2 import TemplateNotFound
+from sqlalchemy.orm import selectinload
 from extensions import db
 from datetime import datetime
 
@@ -19,20 +20,32 @@ from utils.order_item_schema_guard import ensure_order_item_schema
 from utils.invoice_schema_guard import ensure_invoice_schema
 from utils.product_color_service import (
     colors_for_product_dict,
-    deduct_color_stock,
     get_color_quantity,
     product_has_colors,
-    restore_color_stock,
-    validate_color_sale,
     ProductColorError,
 )
 from utils.customer_blacklist import is_phone_blacklisted_for_new_customer
-from utils.permission_checks import guard_permission
+from utils.permission_checks import employee_can, guard_permission
 from utils.activity_logger import INVOICE_SNAPSHOT_FIELDS, log_activity, snapshot_attrs
 from utils.branch_migration import ensure_branch_schema, get_default_branch
 from utils.branch_context import current_branch_id, init_branch_context
-from utils.branch_stock_service import deduct_stock, get_branch_stock, get_total_stock, receive_stock, BranchStockError
+from utils.branch_stock_service import get_branch_stock, get_total_stock, BranchStockError
 from utils.order_shipping import is_shipping_item
+from utils.order_stock_lock import (
+    apply_stock_actions,
+    check_stock_rows,
+    clear_order_stock_lock,
+    mark_order_stock_locked,
+)
+from utils.order_stock_policy import (
+    deduct_order_stock,
+    deferred_stock_enabled,
+    ensure_policy_initialized,
+    OrderStockError,
+    order_needs_stock,
+    restore_order_stock,
+    stock_is_deducted,
+)
 
 pos_bp = Blueprint("pos", __name__, url_prefix="/pos")
 _POS_SUBMISSION_LOCK = threading.Lock()
@@ -203,6 +216,7 @@ def pos_use_tenant_db():
         ensure_customer_blacklist_columns()
         ensure_branch_schema()
         init_branch_context()
+        ensure_policy_initialized()
 
 
 @pos_bp.before_request
@@ -283,20 +297,21 @@ def pos():
                 # إنشاء list من dictionaries للعناصر
                 items_list = []
                 for item in items:
-                    # جلب المنتج المتصل للحصول على الكمية الحالية في المخزن
+                    # لا نضيف كمية الطلب إلى المتاح إلا إذا كانت مخصومة فعلاً.
+                    # الطلب المؤجل لا يحجز مخزوناً، وإضافتها هنا تعرض رصيداً وهمياً.
                     product_stock = 0
                     item_branch_id = item.fulfillment_branch_id or _fallback_fulfillment_branch_id(invoice)
+                    reserved_qty = int(item.quantity or 0) if stock_is_deducted(invoice) else 0
                     if item.product:
-                        # الكمية المتاحة للتعديل = الكمية في المخزن + الكمية المحجوزة في هذا الطلب
                         if item_branch_id:
-                            product_stock = get_branch_stock(item_branch_id, item.product.id) + (item.quantity or 0)
+                            product_stock = get_branch_stock(item_branch_id, item.product.id) + reserved_qty
                         else:
-                            product_stock = (item.product.quantity or 0) + (item.quantity or 0)
+                            product_stock = int(item.product.quantity or 0) + reserved_qty
                     
                     color_name = (getattr(item, "variant_color", None) or "").strip()
                     color_stock = 0
                     if color_name and item.product:
-                        color_stock = get_color_quantity(item.product.id, color_name) + (item.quantity or 0)
+                        color_stock = get_color_quantity(item.product.id, color_name) + reserved_qty
 
                     items_list.append({
                         "product_id": int(item.product_id),
@@ -365,6 +380,7 @@ def pos():
         employee=employee,
         pages=pages,
         can_edit_price=can_edit_price,
+        can_view_my_orders=employee_can(employee, "view_my_orders"),
         order_data=order_data,
         cash_balance=cash_balance,
         company_name=session.get("tenant_slug") or session.get("name") or "Finora",
@@ -377,6 +393,105 @@ def pos():
             pass
 
     return render_template("pos.html", **ctx)
+
+
+def _my_order_status_tone(status):
+    """Return a presentation-only color tone for an order status."""
+    value = (status or "").strip().lower()
+    if any(word in value for word in ("راجع", "مرتجع", "ملغي", "مرفوض", "cancel", "return", "reject")):
+        return "danger"
+    if any(word in value for word in ("واصل", "تم التوصيل", "مكتمل", "مسدد", "deliver", "complete", "paid")):
+        return "success"
+    if any(word in value for word in ("شحن", "تجهيز", "قيد", "pending", "ship", "process")):
+        return "warning"
+    return "primary"
+
+
+def _my_order_row(invoice):
+    product_names = []
+    for item in invoice.items:
+        if is_shipping_item(item):
+            continue
+        name = (item.product_name or "").strip()
+        if name and name not in product_names:
+            product_names.append(name)
+
+    customer = invoice.customer
+    return {
+        "id": invoice.id,
+        "customer_name": (customer.name if customer else invoice.customer_name) or "—",
+        "phone": (customer.phone if customer else "") or "—",
+        "status": (invoice.status or "غير محدد").strip(),
+        "status_tone": _my_order_status_tone(invoice.status),
+        "product_names": product_names or ["—"],
+    }
+
+
+@pos_bp.route("/my-orders")
+def my_orders():
+    """Show only the orders created by the employee in the active session."""
+    if "user_id" not in session:
+        return redirect("/pos/login")
+
+    employee = Employee.query.get(session["user_id"])
+    if not employee:
+        session.clear()
+        return redirect("/pos/login")
+    if not employee_can(employee, "view_my_orders"):
+        return redirect("/pos"), 403
+
+    search = (request.args.get("q") or "").strip()
+    selected_status = (request.args.get("status") or "").strip()
+    page = request.args.get("page", 1, type=int) or 1
+    page = max(page, 1)
+
+    employee_filter = Invoice.employee_id == employee.id
+    query = (
+        Invoice.query
+        .options(selectinload(Invoice.customer), selectinload(Invoice.items))
+        .filter(employee_filter)
+    )
+
+    if selected_status:
+        query = query.filter(Invoice.status == selected_status)
+
+    if search:
+        pattern = f"%{search}%"
+        query = query.filter(db.or_(
+            db.cast(Invoice.id, db.String).ilike(pattern),
+            Invoice.customer_name.ilike(pattern),
+            Invoice.customer.has(Customer.phone.ilike(pattern)),
+            Invoice.items.any(OrderItem.product_name.ilike(pattern)),
+        ))
+
+    pagination = query.order_by(Invoice.created_at.desc(), Invoice.id.desc()).paginate(
+        page=page,
+        per_page=20,
+        error_out=False,
+    )
+    rows = [_my_order_row(invoice) for invoice in pagination.items]
+    statuses = [
+        status
+        for (status,) in (
+            db.session.query(Invoice.status)
+            .filter(employee_filter, Invoice.status.isnot(None), Invoice.status != "")
+            .distinct()
+            .order_by(Invoice.status.asc())
+            .all()
+        )
+    ]
+    total_orders = Invoice.query.filter(employee_filter).count()
+
+    return render_template(
+        "pos_my_orders.html",
+        employee=employee,
+        orders=rows,
+        pagination=pagination,
+        statuses=statuses,
+        selected_status=selected_status,
+        search=search,
+        total_orders=total_orders,
+    )
 
 
 # =================================================
@@ -459,6 +574,12 @@ def add_customer():
             return jsonify({
                 "status": "fail",
                 "msg": "العنوان مطلوب"
+            }), 400
+
+        if not city:
+            return jsonify({
+                "status": "fail",
+                "msg": "المحافظة مطلوبة"
             }), 400
 
         if is_phone_blacklisted_for_new_customer(phone, phone2):
@@ -690,6 +811,7 @@ def create_order():
         submission_started = bool(submission_token)
 
     invoice = None
+    was_stock_deducted = False
     if editing_order_id:
         try:
             invoice = Invoice.query.get(int(editing_order_id))
@@ -700,22 +822,13 @@ def create_order():
         if (invoice.status or "") in ("تم التوصيل", "مسدد", "ملغي", "راجع", "مرتجع", "راجعة"):
             return jsonify({"error": "لا يمكن تعديل طلب مكتمل أو ملغي أو راجع"}), 400
 
-        # إرجاع مخزون عناصر الطلب القديمة داخل نفس المعاملة قبل فحص الكميات الجديدة.
+        # تحرير الطلب المخصوم يعيد مخزونه أولاً داخل نفس المعاملة. أما الطلب
+        # المؤجل فلا يلمس المخزون إطلاقاً أثناء حذف/إعادة بناء بنوده.
+        was_stock_deducted = stock_is_deducted(invoice)
+        if was_stock_deducted:
+            restore_order_stock(invoice)
         old_items = OrderItem.query.filter_by(invoice_id=invoice.id).all()
         for old_item in old_items:
-            if is_shipping_item(old_item):
-                db.session.delete(old_item)
-                continue
-            if old_item.product:
-                old_qty = int(old_item.quantity or 0)
-                old_branch_id = old_item.fulfillment_branch_id or _fallback_fulfillment_branch_id(invoice)
-                if old_branch_id:
-                    receive_stock(old_branch_id, old_item.product.id, old_qty)
-                else:
-                    old_item.product.quantity = int(old_item.product.quantity or 0) + old_qty
-                old_color = (getattr(old_item, "variant_color", None) or "").strip()
-                if old_color:
-                    restore_color_stock(old_item.product.id, old_color, old_qty)
             db.session.delete(old_item)
         db.session.flush()
 
@@ -742,7 +855,8 @@ def create_order():
             scheduled_date=scheduled_date,
             page_id=page_id,
             page_name=page_name,
-            created_at=datetime.utcnow()
+            created_at=datetime.utcnow(),
+            stock_is_deducted=False,
         )
 
     db.session.add(invoice)
@@ -752,6 +866,9 @@ def create_order():
     # عناصر الفاتورة
     # ===============================
     total = 0
+    pending_items = []
+    stock_rows = []
+    preferred_branch_id = current_branch_id() or _fallback_fulfillment_branch_id(invoice)
 
     for i in items:
         product = Product.query.get(i.get("product_id"))
@@ -762,17 +879,22 @@ def create_order():
                 _finish_pos_submission(submission_token)
             return jsonify({"error": "منتج غير موجود"}), 400
 
-        qty = i.get("qty", 0)
-        variant_color = (i.get("color") or i.get("variant_color") or "").strip()
-        if product_has_colors(product):
-            ok, msg = validate_color_sale(product.id, variant_color, qty)
-            if not ok:
-                db.session.rollback()
-                if submission_started:
-                    _finish_pos_submission(submission_token)
-                return jsonify({"error": msg}), 400
+        try:
+            qty = int(i.get("qty", 0) or 0)
+        except (TypeError, ValueError):
+            qty = 0
+        if qty <= 0:
+            db.session.rollback()
+            if submission_started:
+                _finish_pos_submission(submission_token)
+            return jsonify({"error": "كمية المنتج غير صالحة"}), 400
 
-        from utils.branch_sales import resolve_sale_fulfillment
+        variant_color = (i.get("color") or i.get("variant_color") or "").strip()
+        if product_has_colors(product) and not variant_color:
+            db.session.rollback()
+            if submission_started:
+                _finish_pos_submission(submission_token)
+            return jsonify({"error": f"يجب اختيار لون للمنتج: {product.name}"}), 400
 
         explicit_branch = i.get("fulfillment_branch_id")
         try:
@@ -780,7 +902,6 @@ def create_order():
         except (TypeError, ValueError):
             explicit_branch = None
 
-        preferred_branch_id = current_branch_id() or _fallback_fulfillment_branch_id(invoice)
         if editing_order_id:
             stock_branch_id = _branch_with_enough_stock(
                 product.id,
@@ -791,26 +912,10 @@ def create_order():
             if stock_branch_id:
                 explicit_branch = stock_branch_id
 
-        fulfillment_branch_id, validation = resolve_sale_fulfillment(
-            product.id,
-            qty,
-            preferred_branch_id=preferred_branch_id,
-            explicit_branch_id=explicit_branch,
-        )
-        if not validation.get("valid") or not fulfillment_branch_id:
-            db.session.rollback()
-            if submission_started:
-                _finish_pos_submission(submission_token)
-            return jsonify({
-                "error": validation.get("message") or f"الكمية غير متوفرة - المنتج: {product.name}",
-                "available": validation.get("available", 0),
-            }), 400
-
-        # استخدام السعر المعدل من الواجهة إذا كان موجوداً، وإلا استخدم السعر الافتراضي
         custom_price = i.get("price")
-        if custom_price and custom_price > 0:
-            item_price = float(custom_price)
-        else:
+        try:
+            item_price = float(custom_price) if custom_price and float(custom_price) > 0 else product.sale_price
+        except (TypeError, ValueError):
             item_price = product.sale_price
 
         item_total = item_price * qty
@@ -820,25 +925,72 @@ def create_order():
             product_id=product.id,
             product_name=product.name,
             quantity=qty,
-            price=item_price,  # استخدام السعر المعدل
+            price=item_price,
             cost=product.buy_price,
             total=item_total,
-            fulfillment_branch_id=fulfillment_branch_id,
+            fulfillment_branch_id=explicit_branch,
             variant_color=variant_color or None,
         )
 
+        total += item_total
+        pending_items.append(order_item)
+        stock_rows.append({
+            "product": product,
+            "product_id": product.id,
+            "quantity": qty,
+            "variant_color": variant_color or None,
+            "fulfillment_branch_id": explicit_branch,
+        })
+        db.session.add(order_item)
+
+    target_needs_stock = order_needs_stock(
+        status=invoice.status,
+        payment_status=invoice.payment_status,
+    )
+    # عند إطفاء السياسة تبقى الطلبات المؤجلة الموجودة مؤجلة حتى تتغير حالتها
+    # أو دفعها. مجرد تعديل البنود لا يحولها إلى طلبات مخصومة.
+    existing_deferred_order = bool(
+        editing_order_id and not was_stock_deducted and not target_needs_stock
+    )
+    should_deduct_now = target_needs_stock or (
+        not deferred_stock_enabled() and not existing_deferred_order
+    )
+    stock_check = (
+        check_stock_rows(stock_rows, preferred_branch_id=preferred_branch_id)
+        if should_deduct_now and not editing_order_id
+        else None
+    )
+    if not should_deduct_now:
+        invoice.stock_is_deducted = False
+        clear_order_stock_lock(invoice)
+    elif editing_order_id:
         try:
-            deduct_stock(fulfillment_branch_id, product.id, qty)
-            if variant_color:
-                deduct_color_stock(product.id, variant_color, qty)
+            db.session.flush()
+            deduct_order_stock(invoice)
+        except OrderStockError as exc:
+            db.session.rollback()
+            return jsonify({
+                "success": False,
+                "code": "INSUFFICIENT_STOCK",
+                "error": exc.message,
+                "shortages": exc.shortages,
+            }), 409
+    elif stock_check.can_fulfill:
+        try:
+            for order_item, action in zip(pending_items, stock_check.actions):
+                order_item.fulfillment_branch_id = action.fulfillment_branch_id
+            apply_stock_actions(stock_check.actions, invoice=invoice)
+            invoice.stock_is_deducted = True
+            invoice.stock_deducted_at = datetime.utcnow()
+            invoice.stock_restored_at = None
+            clear_order_stock_lock(invoice)
         except (BranchStockError, ProductColorError) as exc:
             db.session.rollback()
             if submission_started:
                 _finish_pos_submission(submission_token)
             return jsonify({"error": str(exc)}), 400
-        total += item_total
-
-        db.session.add(order_item)
+    else:
+        mark_order_stock_locked(invoice, stock_check.reason_text)
 
     # ===============================
     # تحديث الإجمالي
@@ -880,6 +1032,8 @@ def create_order():
             "invoice_id": invoice.id,
             "total": invoice.total,
             "updated": bool(editing_order_id),
+            "stock_locked": bool(getattr(invoice, "is_stock_locked", False)),
+            "stock_lock_reason": getattr(invoice, "stock_lock_reason", None),
         }
         if submission_started:
             _finish_pos_submission(submission_token, response_payload, success=True)

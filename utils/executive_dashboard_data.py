@@ -3,7 +3,7 @@ Executive dashboard data helpers — treasury, credit, alerts.
 """
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 
 from sqlalchemy import func, or_
 
@@ -12,6 +12,7 @@ from models.customer_credit import CustomerInstallment
 from models.invoice import Invoice
 from utils.accounting_calculations import calculate_accounts_receivable
 from utils.cash_calculations import _effective_paid_amount
+from utils.order_stock_lock import stock_unlocked_filter
 from utils.customer_credit_service import compute_installment_status
 from utils.treasury_calculations import (
     calculate_total_liquidity,
@@ -67,6 +68,7 @@ def _invoices_for_range(date_from: date, date_to: date):
         func.date(Invoice.created_at) >= date_from,
         func.date(Invoice.created_at) <= date_to,
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
+        stock_unlocked_filter(Invoice),
         or_(
             Invoice.payment_status.is_(None),
             Invoice.payment_status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
@@ -83,12 +85,60 @@ def _cash_credit_split(invoices) -> tuple[int, int]:
     return int(cash_sales), int(credit_sales)
 
 
-def get_credit_executive_summary(today: date | None = None, collection_rate: int = 0) -> dict:
+def build_daily_credit_sales_series(today: date, days: int = 7) -> list[int]:
+    """Daily credit (آجل) sales for sparkline / receivables proxy."""
+    series: list[int] = []
+    for i in range(days - 1, -1, -1):
+        d = today - timedelta(days=i)
+        _, credit_sales = _cash_credit_split(_invoices_for_range(d, d))
+        series.append(int(credit_sales))
+    return series
+
+
+def build_receivables_proxy_series(
+    daily_credit_sales: list[int],
+    current_receivables: int,
+) -> list[int]:
+    """Estimate receivables balance backwards from today's total."""
+    if not daily_credit_sales:
+        return [int(current_receivables or 0)]
+    proxy = [0] * len(daily_credit_sales)
+    running = int(current_receivables or 0)
+    for idx in range(len(daily_credit_sales) - 1, -1, -1):
+        proxy[idx] = max(0, running)
+        if idx > 0:
+            running = max(0, running - int(daily_credit_sales[idx] or 0))
+    return proxy
+
+
+def build_daily_net_position_series(
+    daily_cash_balance: list[int],
+    receivables_proxy: list[int],
+    liabilities: int,
+) -> list[int]:
+    """Net position per day: cash + receivables proxy − liabilities."""
+    liabilities = int(liabilities or 0)
+    length = min(len(daily_cash_balance), len(receivables_proxy))
+    return [
+        int(daily_cash_balance[i] or 0) + int(receivables_proxy[i] or 0) - liabilities
+        for i in range(length)
+    ]
+
+
+def get_credit_executive_summary(
+    today: date | None = None,
+    collection_rate: int = 0,
+    receivables_total: int | None = None,
+) -> dict:
     """Receivables, cash/credit sales today & month, overdue installments."""
     today = today or date.today()
     month_start = today.replace(day=1)
 
-    receivables = int(calculate_accounts_receivable() or 0)
+    receivables = (
+        int(receivables_total)
+        if receivables_total is not None
+        else int(calculate_accounts_receivable() or 0)
+    )
 
     today_invoices = _invoices_for_range(today, today)
     month_invoices = _invoices_for_range(month_start, today)
@@ -130,6 +180,7 @@ def get_executive_alerts(
             "type": "credit_overdue",
             "message": f"{overdue_installments_count} قسط متأخر بمبلغ {overdue_installments_amount:,} د.ع",
             "severity": "critical" if overdue_installments_count >= 3 else "warning",
+            "href": "/customers/credit/",
         })
 
     if overdue_orders_fn:
@@ -142,6 +193,7 @@ def get_executive_alerts(
                     "type": "orders_overdue",
                     "message": f"{count} طلب متأخر{' (' + str(critical) + ' حرج)' if critical else ''}",
                     "severity": "critical" if critical else "warning",
+                    "href": "/orders?status=ordered",
                 })
         except Exception:
             pass

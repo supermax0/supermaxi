@@ -17,6 +17,8 @@ from modules.storefront.services.tracking_service import build_tracking_steps, l
 from modules.storefront.template_utils import storefront_template
 from routes.orders import build_public_order_view_token
 from utils.product_schema_guard import ensure_product_schema
+from utils.invoice_schema_guard import ensure_invoice_schema
+from utils.order_stock_policy import ensure_policy_initialized
 
 
 storefront_bp = Blueprint("storefront", __name__, url_prefix="/shop")
@@ -37,6 +39,8 @@ def _storefront_bind_tenant():
         abort(404)
     g.tenant = slug
     ensure_product_schema()
+    ensure_invoice_schema()
+    ensure_policy_initialized()
 
 
 def _resolved_shop_slug(tenant_slug_from_url: str | None) -> str:
@@ -67,7 +71,7 @@ def _preserve_dev_query(endpoint: str, **kwargs):
 
 def _run_product_detail(product_id: int, shop_slug: str):
     product = Product.query.get_or_404(product_id)
-    if not product.active:
+    if not product.active or not product.store_visible:
         abort(404)
 
     cart = _cart(shop_slug)
@@ -261,7 +265,7 @@ def cart_add(tenant_slug: str, product_id: int):
     slug = _resolved_shop_slug(tenant_slug)
     qty = max(1, min(safe_int(request.form.get("quantity"), 1), 999))
     product = Product.query.get_or_404(product_id)
-    if not product.active:
+    if not product.active or not product.store_visible:
         if request.is_json or request.headers.get("X-Requested-With") == "XMLHttpRequest":
             return jsonify({"success": False, "error": "المنتج غير متاح"}), 400
         abort(400)
@@ -326,7 +330,7 @@ def api_cart_add(tenant_slug: str):
     if product_id <= 0:
         return jsonify({"success": False, "error": "معرّف المنتج غير صالح"}), 400
     product = Product.query.get(product_id)
-    if not product or not product.active:
+    if not product or not product.active or not product.store_visible:
         return jsonify({"success": False, "error": "المنتج غير متاح"}), 400
     cart = _cart(slug)
     ok, msg = cart.try_add(product_id, qty)

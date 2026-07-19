@@ -307,37 +307,37 @@
     
     /* ==================== Print Styles ==================== */
     @media print {
-      body {
-        background: white;
+      html, body {
+        background: #fff !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        height: auto !important;
+        min-height: 0 !important;
+        overflow: visible !important;
       }
       
       .invoice-container {
-        padding: 15px;
-        max-width: 100%;
+        padding: 8px !important;
+        max-width: 100% !important;
+        box-shadow: none !important;
+        margin: 0 0 4mm !important;
       }
       
       @page {
-        size: A4;
-        margin: 0.8cm;
+        size: auto;
+        margin: 8mm;
       }
       
-      .summary-customer-section {
-        page-break-inside: avoid;
-      }
-      
-      .products-section {
-        page-break-inside: avoid;
-      }
-      
-      .bottom-summary {
-        page-break-inside: avoid;
-      }
-      
+      .summary-customer-section,
+      .products-section,
+      .bottom-summary,
       .invoice-footer {
-        page-break-inside: avoid;
+        page-break-inside: auto;
+        break-inside: auto;
       }
     }
   </style>
+  {% include 'partials/invoice_print_fix.html' %}
 </head>
 <body>
   {% for inv in batch %}
