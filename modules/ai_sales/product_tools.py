@@ -60,6 +60,60 @@ def _normalize(value: str) -> str:
     return re.sub(r"\s+", " ", (value or "").translate(table).lower()).strip()
 
 
+def filter_products_by_manager_instructions(
+    products: list[dict[str, Any]],
+    customer_message: str,
+    instructions: str | None,
+) -> list[dict[str, Any]]:
+    """Apply simple manager rules like: if customer asks X, do not mention Y."""
+    rows = list(products or [])
+    instruction_text = str(instructions or "").strip()
+    if not rows or not instruction_text:
+        return rows
+    normalized_message = _normalize(customer_message)
+    if not normalized_message:
+        return rows
+    active_forbidden: set[str] = set()
+    for line in re.split(r"[\r\n؛;]+", instruction_text):
+        normalized_line = _normalize(line)
+        if not normalized_line or "لا تذكر" not in normalized_line:
+            continue
+        before, after = normalized_line.split("لا تذكر", 1)
+        if not re.search(r"\b(اذا|إذا|لو|عند|من)\b", before) or not re.search(r"\b(طلب|سأل|سال|يسأل|يريد|ذكر|كتب)\b", before):
+            continue
+        trigger_numbers = re.findall(r"\d+", before)
+        trigger_words = [
+            token for token in re.findall(r"[\w\u0600-\u06ff]+", before)
+            if len(token) >= 2 and token not in {"اذا", "إذا", "لو", "عند", "من", "طلب", "سأل", "سال", "يسأل", "يريد", "ذكر", "كتب"}
+        ]
+        triggers = trigger_numbers or trigger_words[-4:]
+        if not any(trigger and trigger in normalized_message for trigger in triggers):
+            continue
+        forbidden_numbers = re.findall(r"\d+", after)
+        forbidden_words = [
+            token for token in re.findall(r"[\w\u0600-\u06ff]+", after)
+            if len(token) >= 2 and token not in {"موديل", "نموذج", "منتج", "هذا", "هاي", "ذلك"}
+        ][:4]
+        active_forbidden.update(forbidden_numbers or forbidden_words)
+    if not active_forbidden:
+        return rows
+
+    def product_text(row: dict[str, Any]) -> str:
+        values = [
+            row.get("name"),
+            row.get("official_name"),
+            row.get("model"),
+            row.get("description"),
+            " ".join(str(value) for value in row.get("selling_points") or []),
+        ]
+        return _normalize(" ".join(str(value or "") for value in values))
+
+    return [
+        row for row in rows
+        if not any(forbidden and forbidden in product_text(row) for forbidden in active_forbidden)
+    ]
+
+
 _FOOT_WORD_SIZES = {
     "ثلاث": 3, "ثلاثه": 3, "ثلاثة": 3,
     "اربع": 4, "اربعه": 4, "اربعة": 4, "أربع": 4, "أربعه": 4, "أربعة": 4,

@@ -55,6 +55,7 @@ from .order_service import (
 )
 from .product_tools import (
     filter_products_by_features,
+    filter_products_by_manager_instructions,
     find_nearest_smaller_foot_products,
     get_available_screen_products,
     get_fridge_products,
@@ -1332,6 +1333,14 @@ def _merge_products(*groups: list[dict], limit: int = 3) -> list[dict]:
     return rows
 
 
+def _instruction_filtered_products(products: list[dict], message: str, profile: AISalesAgentProfile | None) -> list[dict]:
+    return filter_products_by_manager_instructions(
+        products or [],
+        message,
+        getattr(profile, "system_instructions", "") if profile else "",
+    )
+
+
 def _conversation_summary(context: dict, result: dict, products: list[dict]) -> str:
     parts = []
     need = str(result.get("main_need") or context.get("main_need") or "").strip()
@@ -1985,6 +1994,9 @@ def process_inbound_message(message_id: int, *, send_external: bool = True) -> A
                     "الإجابة عن أسئلة المنتج الحالية فقط ثم سؤال هل يناسب الزبون، "
                     "بدون افتراض كمية أو إكمال طلب سابق"
                 )
+        products = _instruction_filtered_products(products, text, profile)
+        focused_products = _instruction_filtered_products(focused_products, text, profile)
+        previous_products = _instruction_filtered_products(previous_products, text, profile)
         log_product_search(conversation.id, inbound.id, search_query, products)
     requested_media_product = products[0] if requested_media and products else None
     requested_media_product_id = int((requested_media_product or {}).get("product_id") or 0)
@@ -2064,7 +2076,7 @@ def process_inbound_message(message_id: int, *, send_external: bool = True) -> A
         result = _price_fixed_ack_result(ack_product)
     elif direct_screen_size_price:
         exact_screen_products = get_available_screen_products(size=direct_screen_size_price, limit=12)
-        screen_products = exact_screen_products
+        screen_products = _instruction_filtered_products(exact_screen_products, text, profile)
         if screen_products:
             result = _direct_size_price_result(screen_products, direct_screen_size_price)
         else:
@@ -2081,6 +2093,7 @@ def process_inbound_message(message_id: int, *, send_external: bool = True) -> A
     elif requested_foot_size and active_product_family in {"", "refrigerator"}:
         fridge_products = get_fridge_products(foot_size=requested_foot_size, in_stock_only=False, limit=10)
         fridge_products = filter_products_by_features(fridge_products, requested_features)
+        fridge_products = _instruction_filtered_products(fridge_products, text, profile)
         result = _direct_foot_size_result(
             fridge_products,
             requested_foot_size,

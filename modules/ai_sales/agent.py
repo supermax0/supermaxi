@@ -19,6 +19,7 @@ from .learning import retrieve_reply_examples
 from .knowledge import retrieve_business_knowledge
 from .models import AISalesAgentProfile, AISalesUsageLog
 from .openai_service import create_response, get_openai_api_key, settings_for_profile
+from .product_tools import filter_products_by_manager_instructions
 
 
 INTELLIGENCE_LEVELS: dict[str, dict[str, Any]] = {
@@ -1135,6 +1136,11 @@ def generate_sales_reply(
             return (True, 0)
 
     # Keep the first recommendations affordable and leave products without a live price last.
+    products = filter_products_by_manager_instructions(
+        products or [],
+        customer_message,
+        profile.system_instructions or "",
+    )
     products = sorted(products or [], key=_price_key)[:max_products]
     quick_reply = _quick_greeting_reply(customer_message, conversation_context)
     if quick_reply:
