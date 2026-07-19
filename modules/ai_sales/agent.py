@@ -674,6 +674,35 @@ def _quick_gratitude_reply(message: str, conversation_context: dict | None = Non
     }
 
 
+def _quick_decline_reply(message: str, conversation_context: dict | None = None) -> dict | None:
+    """Close a declined offer without replaying the previous product."""
+    from .message_guard import classify_customer_message
+
+    guard = classify_customer_message(message)
+    if not guard.is_decline:
+        return None
+
+    context = conversation_context or {}
+    return {
+        "reply": "ماكو مشكلة عيني، بالخدمة بأي وقت.",
+        "sales_stage": "lost",
+        "lead_score": min(int(context.get("lead_score") or 0), 10),
+        "lead_temperature": "cold",
+        "should_handoff": False,
+        "handoff_reason": "",
+        "product_ids": [],
+        "main_need": "إنهاء المحادثة بدون ضغط بيع",
+        "primary_objection": "",
+        "next_action": "انتظار طلب جديد من الزبون",
+        "customer_intent": "decline",
+        "customer_sentiment": "neutral",
+        "sales_strategy": "close_politely",
+        "missing_information": [],
+        "customer_data": {},
+        "confidence": 100,
+    }
+
+
 def _size_from_text(value: str) -> int | None:
     numbers = [int(item) for item in re.findall(r"(?<!\d)(\d{2,3})(?!\d)", _normalize_digits(value))]
     return next((item for item in numbers if 20 <= item <= 100), None)

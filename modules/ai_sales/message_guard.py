@@ -56,6 +56,7 @@ class MessageGuardResult:
     needs_product_context: bool = False
     is_gratitude: bool = False
     is_greeting: bool = False
+    is_decline: bool = False
     is_media_request: bool = False
     is_accessory_request: bool = False
     confidence: float = 0.5
@@ -77,6 +78,7 @@ class MessageGuardResult:
             "needs_product_context": self.needs_product_context,
             "is_gratitude": self.is_gratitude,
             "is_greeting": self.is_greeting,
+            "is_decline": self.is_decline,
             "is_media_request": self.is_media_request,
             "is_accessory_request": self.is_accessory_request,
             "confidence": self.confidence,
@@ -167,6 +169,10 @@ class CustomerMessageGuard:
             normalized,
         ))
         result.is_greeting = bool(re.fullmatch(r"(?:السلام عليكم|سلام عليكم|هلا|هلو|مرحبا|اهلا|صباح الخير|مساء الخير)[\s!.؟]*", normalized))
+        result.is_decline = bool(re.fullmatch(
+            r"(?:اعتذر|اني اعتذر|لا شكرا|لا مشكور|مو لازم|خلاص|ما اريد|الغيت|الغاء)[\s!.؟]*",
+            normalized,
+        ))
         result.is_media_request = bool(re.search(r"صوره|صور|فيديو|فديو|مقطع|دزلي|ارسل", normalized))
         price_word = bool(re.search(r"سعر|سعره|سعرها|بكم|بشكد|شكد|بيش|كم|ناشر|ناشره|ناشرها|ناشرين|ناشرينها|منشور|نشر|اعلان|اعلانكم|بالاعلان", normalized))
         result.mentioned_price = parse_price_reference(normalized) if price_word else None
@@ -222,6 +228,8 @@ class CustomerMessageGuard:
             result.intent = "gratitude"
         elif result.is_greeting:
             result.intent = "greeting"
+        elif result.is_decline:
+            result.intent = "decline"
         if result.family or result.intent not in {"general", "greeting"}:
             result.confidence = 0.9
         return result

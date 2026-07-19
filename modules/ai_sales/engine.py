@@ -18,6 +18,7 @@ from .agent import (
     intelligence_policy,
     _quick_greeting_reply,
     _quick_gratitude_reply,
+    _quick_decline_reply,
     is_affirmative_to_specs_offer,
     is_greeting_message,
     is_mid_range_preference,
@@ -709,13 +710,17 @@ def _latest_message_needs_product_answer(
     The reply may still use conversation history for tone and pronouns, but stale
     products must not drive answers to greetings, thanks, or general chat.
     """
-    if getattr(message_guard, "is_greeting", False) or getattr(message_guard, "is_gratitude", False):
+    if (
+        getattr(message_guard, "is_greeting", False)
+        or getattr(message_guard, "is_gratitude", False)
+        or getattr(message_guard, "is_decline", False)
+    ):
         return False
     if visual_reference_active or requested_media or purchase_intent or price_objection or price_flexibility_question:
         return True
     if mid_range_preference or show_all_options or advertised_dollar_amount:
         return True
-    if current_product_family or direct_screen_size_price or requested_foot_size or requested_features:
+    if direct_screen_size_price or requested_features:
         return True
     if getattr(message_guard, "family", "") or getattr(message_guard, "needs_product_context", False):
         return True
@@ -724,6 +729,11 @@ def _latest_message_needs_product_answer(
     if previous_products and _latest_message_mentions_current_product(text):
         return True
     return False
+
+
+def _external_auto_reply_enabled() -> bool:
+    """Production kill switch. It must be explicitly enabled after validation."""
+    return bool(current_app.config.get("AI_SALES_AUTOREPLY_ENABLED", False))
 
 
 def _pending_has_explicit_selection(pending: dict) -> bool:
@@ -1564,7 +1574,7 @@ def _media_failure_reply(
     )
     db.session.add(outbound)
     db.session.flush()
-    if send_external and bool(current_app.config.get("AI_SALES_TRAINING_ONLY", False)):
+    if send_external and _external_auto_reply_enabled():
         try:
             recipient = conversation.external_phone if conversation.channel.channel_type == "whatsapp" else conversation.external_contact_id
             body = channel_client(conversation.channel).send_text(recipient, fallback_text)
@@ -1595,16 +1605,16 @@ def process_inbound_message(message_id: int, *, send_external: bool = True) -> A
     original_status = str(inbound.status or "")
     if original_status not in claimable_statuses:
         return None
-    if send_external:
+    if send_external and not _external_auto_reply_enabled():
         inbound.status = "handled_by_human"
         conversation = inbound.conversation
         if conversation:
             conversation.ai_enabled = False
             conversation.human_takeover = True
             conversation.status = "waiting_employee"
-            conversation.handoff_reason = "Sales AI reset: training-only mode"
+            conversation.handoff_reason = "Sales AI auto reply is disabled"
         db.session.commit()
-        current_app.logger.info("AI_SALES_TRAINING_ONLY skipped auto reply message_id=%s", message_id)
+        current_app.logger.info("AI_SALES_AUTOREPLY_DISABLED skipped message_id=%s", message_id)
         return None
     if send_external and _defer_to_newer_burst_message(inbound):
         return None
@@ -1843,8 +1853,10 @@ def process_inbound_message(message_id: int, *, send_external: bool = True) -> A
             "customer_data": {},
             "confidence": 100,
         }
-    effective_customer_text = " ".join(part for part in (ad_search_anchor, text) if part).strip()
-    message_guard = raw_message_guard if gratitude_reply else classify_customer_message(effective_customer_text, context=context)
+    # Intent and product family are always classified from the latest turn only.
+    # Ad/history anchors are allowed later for a relevant product search, never here.
+    effective_customer_text = text
+    message_guard = raw_message_guard
     context["last_message_guard"] = message_guard.as_dict()
     current_product_family = message_guard.family or _product_family(effective_customer_text)
     if current_product_family == "cooler":
@@ -2004,6 +2016,11 @@ def process_inbound_message(message_id: int, *, send_external: bool = True) -> A
     unavailable_requested_size = None
     if gratitude_reply:
         result = gratitude_reply
+    elif message_guard.is_decline:
+        result = _quick_decline_reply(
+            latest_customer_text or text,
+            {**context, "current_sales_stage": conversation.sales_stage},
+        )
     elif deterministic_order_action:
         products = pending_live_products
         recommended_next_action = "انتظار تأكيد صريح لإنشاء الطلب"
@@ -2158,6 +2175,11 @@ def process_inbound_message(message_id: int, *, send_external: bool = True) -> A
     ai_started_at = time.monotonic()
     if gratitude_reply:
         result = gratitude_reply
+    elif message_guard.is_decline:
+        result = _quick_decline_reply(
+            latest_customer_text or text,
+            {**context, "current_sales_stage": conversation.sales_stage},
+        )
     elif greeting_only:
         result = _quick_greeting_reply(
             latest_customer_text or text,
