@@ -328,9 +328,42 @@ def _fallback_reply(
     known_facts: dict[str, Any] | None = None,
     recommended_next_action: str = "",
     history: list[dict] | None = None,
+    conversation_context: dict[str, Any] | None = None,
 ) -> dict:
     known_facts = known_facts or {}
     history = history or []
+    context = conversation_context or {}
+    latest_priority = context.get("latest_message_priority") or {}
+    if not products and latest_priority.get("needs_product_answer") is False:
+        normalized = _normalize_arabic(message)
+        if re.search(r"(?:شلونك|شخبارك|اخبارك|عامل ايه|كيفك)", normalized):
+            reply = "الحمد لله، وياك حاضر. شنو تحب أساعدك بيه؟"
+        elif re.search(r"(?:منو انتم|شنو شركتكم|وينكم|موقعكم)", normalized):
+            reply = "حاضر، أجاوبك حسب سؤالك. إذا تقصد العنوان أو التوصيل اكتبلي منطقتك حتى أوضحلك المتاح."
+        elif re.search(r"(?:دوام|مفتوح|فاتحين|تفتحون)", normalized):
+            reply = "أكدر أساعدك هنا حالياً. اكتبلي شنو تحتاج وإذا الموضوع يحتاج موظف أحوله للمتابعة."
+        elif re.search(r"(?:اقساط|قسط|دفع)", normalized):
+            reply = "فهمت عليك. حتى أجاوبك مضبوط، تقصد طريقة الدفع لهذا الطلب لو تريد تعرف خيارات الدفع بشكل عام؟"
+        else:
+            reply = "أكيد وياك. اكتبلي سؤالك أو شنو تحتاج بالضبط وأنا أجاوبك مباشرة."
+        return {
+            "reply": reply,
+            "sales_stage": "discovery",
+            "lead_score": 18,
+            "lead_temperature": "cold",
+            "should_handoff": False,
+            "handoff_reason": "",
+            "product_ids": [],
+            "main_need": message[:220],
+            "primary_objection": "",
+            "next_action": recommended_next_action or "فهم آخر رسالة للزبون قبل اقتراح أي منتج",
+            "customer_intent": "conversation",
+            "customer_sentiment": "neutral",
+            "sales_strategy": "human_conversation",
+            "missing_information": [],
+            "customer_data": {},
+            "confidence": 70,
+        }
     latest_link = str(known_facts.get("آخر رابط شاركه الزبون") or "").strip()
     location_link = str(known_facts.get("رابط الموقع") or "").strip()
     if latest_link and latest_link != location_link and "http" in (message or "").lower():
@@ -867,6 +900,11 @@ def _sales_instructions(profile: AISalesAgentProfile, policy: dict[str, Any], ma
     persuasion = PERSUASION_POLICIES.get(profile.persuasion_style or "balanced", PERSUASION_POLICIES["balanced"])
     dialect = "اللهجة العراقية الطبيعية" if (profile.dialect or "iraqi") == "iraqi" else "العربية الواضحة"
     return (
+        "قاعدة حاسمة: آخر رسالة من الزبون هي السؤال الحالي. افهمها وحدها أولاً، وجاوب عليها في بداية الرد، "
+        "ثم استخدم تاريخ المحادثة فقط لتفسير الضمائر مثل هذا/هاي أو لمعرفة المنتج السابق إذا آخر رسالة تشير له بوضوح. "
+        "إذا آخر رسالة تحية أو شكر أو سؤال عام، لا تعرض منتجاً سابقاً ولا تكرر سعره. "
+        "إذا آخر رسالة تغيّر الموضوع أو تطلب فئة جديدة، اترك سياق المنتج القديم وابدأ من قصد الرسالة الأخيرة. "
+        "تكلم كبائع بشري مختصر: خذ وطي، اعترف بكلام الزبون، اسأل سؤال متابعة واحد عند الحاجة، ولا تجعل كل رد عرض منتجات. "
         f"أنت {profile.name}، مستشار مبيعات داخل Finora وتتحدث بـ{dialect}. "
         "هدفك مساعدة الزبون يختار المنتج الأنسب وإكمال البيع بصدق، مو مجرد الإجابة. "
         f"مستوى الذكاء الحالي يطلب منك: {policy['behavior']} {persuasion} "
@@ -1121,14 +1159,16 @@ def generate_sales_reply(
     history: list[dict],
     products: list[dict],
     conversation_context: dict | None = None,
+    profile: AISalesAgentProfile | None = None,
+    product_limit: int | None = None,
 ) -> dict[str, Any]:
-    profile = AISalesAgentProfile.query.filter_by(is_active=True).order_by(AISalesAgentProfile.id.asc()).first()
+    profile = profile or AISalesAgentProfile.query.filter_by(is_active=True).order_by(AISalesAgentProfile.id.asc()).first()
     if not profile:
         profile = AISalesAgentProfile()
         db.session.add(profile)
         db.session.flush()
     policy = intelligence_policy(profile.intelligence_level)
-    max_products = max(1, min(int(profile.max_products or 3), int(policy["product_limit"]), 3))
+    max_products = max(1, min(int(profile.max_products or 3), int(policy["product_limit"]), int(product_limit or 3), 3))
     def _price_key(row: dict[str, Any]) -> tuple[bool, int]:
         try:
             return (row.get("price") is None, int(row.get("price") or 0))
@@ -1169,6 +1209,7 @@ def generate_sales_reply(
             known_facts=known_facts,
             recommended_next_action=recommended_next_action,
             history=history,
+            conversation_context=conversation_context,
         )
 
     context_json = json.dumps(conversation_context or {}, ensure_ascii=False, default=str)
@@ -1194,6 +1235,8 @@ def generate_sales_reply(
     input_rows.append({
         "role": "user",
         "content": (
+            "LATEST_MESSAGE_PRIORITY:\n"
+            "جاوب رسالة الزبون الأخيرة أولاً. التاريخ والذاكرة مساعدان فقط، ولا تسمح لهما بتغيير قصد الرسالة الأخيرة.\n\n"
             f"رسالة الزبون الأخيرة:\n{customer_message}\n\n"
             f"KNOWN_CUSTOMER_FACTS (حقائق مؤكدة؛ لا تسأل عنها مجدداً):\n{known_facts_json}\n\n"
             f"CONVERSATION_MEMORY:\n{context_json}\n\n"
@@ -1326,6 +1369,7 @@ def generate_sales_reply(
         known_facts=known_facts,
         recommended_next_action=recommended_next_action,
         history=history,
+        conversation_context=conversation_context,
     )
 
 

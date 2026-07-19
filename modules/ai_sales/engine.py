@@ -674,6 +674,58 @@ def _advertised_dollar_price_result(product: dict, amount: int) -> dict:
     }
 
 
+def _latest_message_mentions_current_product(text: str) -> bool:
+    normalized = normalize_arabic(text or "")
+    if not normalized:
+        return False
+    return bool(re.search(
+        r"(?:هذا|هاذا|هاي|هذه|هذي|بي|بيه|بيها|عليه|عليها|سعره|سعرها|شكد|بيش|بكم|"
+        r"ضمان|كفاله|كفالة|مواصفات|مميزاته|صورته|صورتها|فيديو|الوان|ألوان|قياس|حجم|"
+        r"توصيل|يوصل|متوفر|متوفرة|اخذه|آخذه|احجز|اطلب|يناسب|تنصح)",
+        normalized,
+    ))
+
+
+def _latest_message_needs_product_answer(
+    text: str,
+    message_guard,
+    *,
+    current_product_family: str,
+    direct_screen_size_price: int | None,
+    requested_foot_size: int | None,
+    requested_features: list[str] | None,
+    requested_media: str | None,
+    purchase_intent: bool,
+    price_objection: bool,
+    price_flexibility_question: bool,
+    mid_range_preference: bool,
+    show_all_options: bool,
+    advertised_dollar_amount: int | None,
+    visual_reference_active: bool,
+    previous_products: list[dict],
+) -> bool:
+    """Decide whether the latest customer message should pull product context.
+
+    The reply may still use conversation history for tone and pronouns, but stale
+    products must not drive answers to greetings, thanks, or general chat.
+    """
+    if getattr(message_guard, "is_greeting", False) or getattr(message_guard, "is_gratitude", False):
+        return False
+    if visual_reference_active or requested_media or purchase_intent or price_objection or price_flexibility_question:
+        return True
+    if mid_range_preference or show_all_options or advertised_dollar_amount:
+        return True
+    if current_product_family or direct_screen_size_price or requested_foot_size or requested_features:
+        return True
+    if getattr(message_guard, "family", "") or getattr(message_guard, "needs_product_context", False):
+        return True
+    if getattr(message_guard, "intent", "") in {"product_search", "price_inquiry"}:
+        return True
+    if previous_products and _latest_message_mentions_current_product(text):
+        return True
+    return False
+
+
 def _pending_has_explicit_selection(pending: dict) -> bool:
     product_id = int(pending.get("product_id") or 0)
     return bool(
@@ -1878,6 +1930,29 @@ def process_inbound_message(message_id: int, *, send_external: bool = True) -> A
     mid_range_preference = is_mid_range_preference(text)
     show_all_options = is_show_all_options_request(text)
     specific_product_query = has_product_query(text) and not mid_range_preference and not show_all_options
+    latest_message_needs_product_answer = _latest_message_needs_product_answer(
+        text,
+        message_guard,
+        current_product_family=current_product_family,
+        direct_screen_size_price=direct_screen_size_price,
+        requested_foot_size=requested_foot_size,
+        requested_features=requested_features,
+        requested_media=requested_media,
+        purchase_intent=purchase_intent,
+        price_objection=price_objection,
+        price_flexibility_question=price_flexibility_question,
+        mid_range_preference=mid_range_preference,
+        show_all_options=show_all_options,
+        advertised_dollar_amount=advertised_dollar_amount,
+        visual_reference_active=visual_reference_active,
+        previous_products=previous_products,
+    )
+    context["latest_message_priority"] = {
+        "text": latest_customer_text or text,
+        "needs_product_answer": latest_message_needs_product_answer,
+        "intent": message_guard.intent,
+        "family": message_guard.family or current_product_family or "",
+    }
     if (
         specific_product_query
         and not deterministic_order_action
@@ -1903,6 +1978,15 @@ def process_inbound_message(message_id: int, *, send_external: bool = True) -> A
             context.get("recommended_next_action")
             or context.get("next_action")
             or "معرفة المنتج المطلوب"
+        )
+    elif not latest_message_needs_product_answer:
+        products = []
+        focused_products = []
+        previous_products = []
+        active_product_family = ""
+        requested_media = None
+        recommended_next_action = (
+            "جاوب آخر رسالة للزبون مباشرة وبأسلوب طبيعي، ولا تعرض منتجاً أو سعراً إلا إذا طلبه في آخر رسالة."
         )
     elif mid_range_preference and (focused_products or previous_products or active_product_family == "screen"):
         products = (focused_products or previous_products)[:product_limit]
