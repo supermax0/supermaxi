@@ -16,6 +16,7 @@ from .agent import (
     extract_budget,
     generate_sales_reply,
     intelligence_policy,
+    _quick_greeting_reply,
     _quick_gratitude_reply,
     is_affirmative_to_specs_offer,
     is_greeting_message,
@@ -1052,6 +1053,28 @@ def _fridge_recommendation_result(products: list[dict], customer_message: str) -
     )
     if not choices:
         return {}
+    requested_size = _loose_fridge_foot_size(customer_message or "")
+    if not requested_size:
+        lines = ["هذني بعض الثلاجات المتوفرة حالياً:"]
+        for product in choices:
+            lines.append(f"• {product.get('name')} — {int(product.get('price') or 0):,} د.ع")
+        lines.append("تحب أي قياس بالقدم أو شكد ميزانيتك حتى أرشحلك الأنسب؟")
+        return {
+            "reply": "\n".join(lines),
+            "product_ids": [int(row.get("product_id") or 0) for row in choices if int(row.get("product_id") or 0)],
+            "customer_intent": "product_search",
+            "customer_sentiment": "interested",
+            "sales_stage": "product_selection",
+            "sales_strategy": "fridge_catalog_options",
+            "main_need": "ثلاجة",
+            "primary_objection": "",
+            "next_action": "معرفة القياس أو الميزانية لاختيار ثلاجة مناسبة",
+            "missing_information": ["القياس أو الميزانية"],
+            "customer_data": {},
+            "confidence": 100,
+            "should_handoff": False,
+            "handoff_reason": "",
+        }
     lead = choices[0]
     lead_size = _foot_size_from_product(lead)
     lines = [f"أرشحلك {lead_size} قدم كبداية:" if lead_size else "أرشحلك هذا الخيار:"]
@@ -1746,6 +1769,8 @@ def process_inbound_message(message_id: int, *, send_external: bool = True) -> A
     message_guard = raw_message_guard if gratitude_reply else classify_customer_message(effective_customer_text, context=context)
     context["last_message_guard"] = message_guard.as_dict()
     current_product_family = message_guard.family or _product_family(effective_customer_text)
+    if not current_product_family and re.search(r"\u062a\u0644\u0627\u062c(?:\u0647|\u0629|\u0627\u062a)", effective_customer_text or ""):
+        current_product_family = "refrigerator"
     previous_product_family = str(context.get("product_family") or "") or _product_family(
         " ".join((str(context.get("main_need") or ""), conversation.summary or ""))
     )
@@ -2012,7 +2037,31 @@ def process_inbound_message(message_id: int, *, send_external: bool = True) -> A
     if response_delay_ms:
         time.sleep(response_delay_ms / 1000)
     ai_started_at = time.monotonic()
-    if deterministic_order_action:
+    if gratitude_reply:
+        result = gratitude_reply
+    elif greeting_only:
+        result = _quick_greeting_reply(
+            latest_customer_text or text,
+            {**context, "current_sales_stage": conversation.sales_stage},
+        ) or {
+            "reply": "هلا بيك، شنو المنتج اللي تحب تعرف عنه؟",
+            "sales_stage": "discovery",
+            "lead_score": 15,
+            "lead_temperature": "cold",
+            "should_handoff": False,
+            "handoff_reason": "",
+            "product_ids": [],
+            "main_need": "ترحيب",
+            "primary_objection": "",
+            "next_action": "معرفة المنتج المطلوب",
+            "customer_intent": "greeting",
+            "customer_sentiment": "neutral",
+            "sales_strategy": "discover",
+            "missing_information": ["المنتج المطلوب"],
+            "customer_data": {},
+            "confidence": 100,
+        }
+    elif deterministic_order_action:
         deterministic_reply = (
             "وصلتني الصورة وضفتها للمحادثة. الطلب بعده محفوظ بنفس المنتج والسعر. "
             "لعرضه اكتب: اعرض الملخص، ولتثبيته بعد المراجعة اكتب: أكد الطلب."
@@ -2112,7 +2161,12 @@ def process_inbound_message(message_id: int, *, send_external: bool = True) -> A
         auto_media_type = "video"
     elif active_product_family == "refrigerator" and products and re.search(r"ثلاجه|ثلاجة|ثلاجات|براد|قدم|قدام", text):
         result = _fridge_recommendation_result(products, text)
-        auto_media_type = "video"
+        if requested_foot_size:
+            auto_media_type = "video"
+    elif current_product_family == "refrigerator" and products:
+        result = _fridge_recommendation_result(products, text)
+        if requested_foot_size:
+            auto_media_type = "video"
     elif requested_foot_size and products:
         filtered_products = filter_products_by_features(products, requested_features)
         result = _direct_foot_size_result(

@@ -183,7 +183,10 @@ class CustomerMessageGuard:
 
         result.is_accessory_request = bool(re.search(r"ستاند|حامل|ريموت|قاعده|كيبل", normalized))
         water_or_air_cooler = bool(re.search(r"براد\s+ماء|براده\s+ماء|مبرد\s+ماء|براد\s+هواء|مبرده|مبرد|كولر", normalized))
-        fridge_word = bool(re.search(r"ثلاجه|ثلاجات|فريزر", normalized) or (re.search(r"براد", normalized) and not water_or_air_cooler))
+        fridge_word = bool(
+            re.search(r"ثلاجه|ثلاجة|ثلاجات|تلاجه|تلاجة|تلاجات|فريزر", normalized)
+            or (re.search(r"براد", normalized) and not water_or_air_cooler)
+        )
         screen_word = bool(re.search(r"شاشه|شاشات|تلفزيون|تلفاز|\btv\b", normalized))
 
         context_family = _context_family(context)
