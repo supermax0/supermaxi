@@ -534,7 +534,8 @@ class AISalesAgentProfile(db.Model):
     persuasion_style = db.Column(db.String(30), default="balanced", nullable=False)
     max_reply_length = db.Column(db.Integer, default=650, nullable=False)
     emoji_level = db.Column(db.String(20), default="low", nullable=False)
-    text_model = db.Column(db.String(80), default="gpt-5.6-sol", nullable=False)
+    text_model = db.Column(db.String(80), default="gpt-5.4-mini", nullable=False)
+    vision_model = db.Column(db.String(100), default="gpt-5.4-mini", nullable=False)
     tts_model = db.Column(db.String(100), default="gpt-4o-mini-tts", nullable=False)
     transcription_model = db.Column(db.String(100), default="gpt-4o-mini-transcribe", nullable=False)
     realtime_model = db.Column(db.String(100), default="gpt-realtime-2.1", nullable=False)
@@ -572,7 +573,8 @@ class AISalesAgentProfile(db.Model):
             "persuasion_style": self.persuasion_style or "balanced",
             "max_reply_length": self.max_reply_length,
             "emoji_level": self.emoji_level,
-            "text_model": self.text_model,
+            "text_model": self.text_model or "gpt-5.4-mini",
+            "vision_model": self.vision_model or "gpt-5.4-mini",
             "tts_model": self.tts_model or "gpt-4o-mini-tts",
             "transcription_model": self.transcription_model or "gpt-4o-mini-transcribe",
             "realtime_model": self.realtime_model or "gpt-realtime-2.1",

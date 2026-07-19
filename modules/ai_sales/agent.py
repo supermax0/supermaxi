@@ -413,6 +413,9 @@ def _fallback_reply(
         elif "الاستخدام" not in known_facts:
             missing_information = ["الاستخدام"]
             next_action = "معرفة الاستخدام"
+        elif known_facts.get("الأولوية"):
+            missing_information = ["الخيار المفضل"]
+            next_action = "مقارنة الخيارات وتحديد الخيار المفضل"
         else:
             missing_information = []
             next_action = "عرض ميزات المنتج وسؤال هل يناسب الزبون"
@@ -775,6 +778,13 @@ def _structured_product_reply(
     products_already_presented = bool(recent_assistant_text) and all(
         str(product.get("name") or "") in recent_assistant_text for product in products
     )
+    normalized_message = _normalize_arabic(message)
+    if products_already_presented and known_facts.get("الاستخدام") and re.fullmatch(
+        r"(?:للبيت|للمنزل|للمحل|للمكتب|للغرفه|للغرفة)",
+        normalized_message,
+    ):
+        usage = str(known_facts.get("الاستخدام") or "").strip()
+        return f"ثبت عندي نوع الاستخدام: {usage}. شنو أهم ميزة تحتاجها حتى أحددلك الأنسب؟"
     show_all = is_show_all_options_request(message)
     if show_all:
         intro = "هذني الخيارات الموجودة حالياً (حد أقصى 3):"
@@ -995,7 +1005,12 @@ def _sales_instructions(profile: AISalesAgentProfile, policy: dict[str, Any], ma
         "لا تدّعي أنك أنشأت الطلب بنفسك؛ Finora ينشئه برمجياً فقط بعد عرض الملخص واستلام تأكيد صريح من الزبون. "
         f"الرد النهائي للزبون مختصر ومقروء، بحد أقصى {min(int(profile.max_reply_length or 650), 420)} حرف للرد العادي، "
         "حتى لو كان التفكير الداخلي عميقاً. "
-        + (profile.system_instructions or "")
+        + (
+            "\n\nMANAGER_INSTRUCTIONS (حقائق وسياسات موثوقة من مسؤول الشركة؛ طبّق المطابق للسؤال الحالي):\n"
+            + profile.system_instructions.strip()
+            if (profile.system_instructions or "").strip()
+            else ""
+        )
     )
 
 
@@ -1050,6 +1065,7 @@ def _grounded_reply(
     products: list[dict],
     known_facts: dict[str, Any] | None = None,
     recommended_next_action: str = "",
+    business_instructions: str = "",
 ) -> bool:
     budget = _budget(customer_message)
     allowed_amounts = {int(row.get("price") or 0) for row in products if row.get("price") is not None}
@@ -1070,9 +1086,12 @@ def _grounded_reply(
     lower = (reply or "").lower()
     if not products and any(word in lower for word in ("متوفر", "متوفرة", "عدنا", "لدينا")):
         return False
-    if "ضمان" in lower and not any((row.get("warranty") or "").strip() for row in products):
+    normalized_instructions = _normalize_arabic(business_instructions)
+    instruction_has_warranty = "ضمان" in normalized_instructions
+    instruction_has_delivery = bool(re.search(r"توصيل|نوصل|الشحن", normalized_instructions))
+    if "ضمان" in lower and not instruction_has_warranty and not any((row.get("warranty") or "").strip() for row in products):
         return False
-    if "توصيل" in lower and not any((row.get("delivery") or "").strip() for row in products):
+    if "توصيل" in lower and not instruction_has_delivery and not any((row.get("delivery") or "").strip() for row in products):
         normalized_delivery = _normalize_arabic(reply)
         delivery_unknown = bool(re.search(r"(?:مو|غير|ما).{0,24}(?:مسجل|معروف|متوفر).{0,18}(?:التوصيل|سياس)", normalized_delivery))
         delivery_claim = bool(re.search(
@@ -1096,7 +1115,7 @@ def _grounded_reply(
             r"(?:براند|ماركة).{0,15}(?:قوي|ممتاز|موثوق|معروف)",
             r"(?:جودته|جودتها|جودة).{0,15}(?:أفضل|اعلى|أعلى|ممتاز|قوي)",
             r"(?:قيمة|خيار).{0,12}(?:ممتاز|رائع|خرافي|قوي)",
-            r"(?:مناسب|مثالي|يناسب)",
+            r"(?:مناسب|مثالي).{0,15}(?:للاستخدام|للبيت|للمحل|للألعاب|للعمل)",
         )
         if any(re.search(pattern, lower) for pattern in unsupported_patterns):
             return False
@@ -1329,6 +1348,7 @@ def generate_sales_reply(
             products,
             known_facts,
             recommended_next_action,
+            profile.system_instructions or "",
         ):
             current_app.logger.warning(
                 "Finora Sales AI rejected ungrounded response attempt=%s conversation_id=%s message_id=%s candidate=%r",

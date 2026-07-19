@@ -124,11 +124,12 @@ def transcribe_audio(message: AISalesMessage, *, profile: AISalesAgentProfile | 
         raise
 
 
-def analyze_image(message: AISalesMessage) -> str:
+def analyze_image(message: AISalesMessage, *, profile: AISalesAgentProfile | None = None) -> str:
     path = download_inbound_media(message)
     mime_type = message.mime_type or "image/jpeg"
     data_url = f"data:{mime_type};base64,{base64.b64encode(Path(path).read_bytes()).decode('ascii')}"
-    vision_model = str(current_app.config.get("OPENAI_VISION_MODEL") or "gpt-4o-mini")
+    settings = settings_for_profile(profile or _active_profile())
+    vision_model = settings.vision_model
     response = create_response(
         model=vision_model,
         instructions=(
@@ -142,7 +143,7 @@ def analyze_image(message: AISalesMessage) -> str:
                 "role": "user",
                 "content": [
                     {"type": "input_text", "text": message.text_content or "أريد منتجاً مشابهاً لهذه الصورة"},
-                    {"type": "input_image", "image_url": data_url, "detail": "high"},
+                    {"type": "input_image", "image_url": data_url, "detail": "low"},
                 ],
             }
         ],

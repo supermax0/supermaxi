@@ -72,13 +72,17 @@ from .training import approve_training_feedback, generate_training_reply
 from .openai_service import (
     AIServiceError,
     DEFAULT_VOICE_INSTRUCTIONS,
+    SUPPORTED_CHAT_MODELS,
+    SUPPORTED_TRANSCRIPTION_MODELS,
     SUPPORTED_TTS_VOICES,
+    SUPPORTED_VISION_MODELS,
     create_realtime_client_secret,
     generate_speech_file,
     get_ffmpeg_binary,
     get_openai_api_key,
     get_openai_client,
     is_corrupted_text,
+    probe_openai_services,
     settings_for_profile,
 )
 
@@ -2337,13 +2341,19 @@ def api_profile():
         return jsonify({"success": True, "profile": payload})
     data = request.get_json(silent=True) or {}
     text_fields = (
-        "name", "dialect", "tone", "sales_style", "text_model", "tts_model",
+        "name", "dialect", "tone", "sales_style", "text_model", "vision_model", "tts_model",
         "transcription_model", "realtime_model", "voice_reply_mode", "voice_name",
         "audio_format", "audio_quality", "voice_instructions", "system_instructions",
     )
     for field in text_fields:
         if field in data:
             setattr(profile, field, str(data[field] or "").strip())
+    if profile.text_model not in SUPPORTED_CHAT_MODELS:
+        return jsonify({"success": False, "error": "موديل المحادثة غير مدعوم"}), 400
+    if profile.vision_model not in SUPPORTED_VISION_MODELS:
+        return jsonify({"success": False, "error": "موديل تحليل الصور غير مدعوم"}), 400
+    if profile.transcription_model not in SUPPORTED_TRANSCRIPTION_MODELS:
+        return jsonify({"success": False, "error": "موديل فهم الصوت غير مدعوم"}), 400
     if is_corrupted_text(profile.voice_instructions or ""):
         return jsonify({"success": False, "error": "تعليمات نبرة الصوت تحتوي نصاً تالفاً"}), 400
     if profile.voice_reply_mode not in {"match_customer", "text_and_voice", "text_only", "voice_only"}:
@@ -2406,12 +2416,9 @@ def api_openai_health():
         "validated": False,
     }
     if request.args.get("validate") in {"1", "true"} and payload["configured"]:
-        try:
-            get_openai_client().models.retrieve(settings.chat_model)
-            payload["validated"] = True
-        except Exception as exc:
-            error = exc if isinstance(exc, AIServiceError) else AIServiceError("model_validation_failed", "health", str(exc))
-            return jsonify({**payload, "success": False, "error": error.to_dict()}), 400
+        checks = probe_openai_services(settings)
+        payload["checks"] = checks
+        payload["validated"] = all(check.get("ok") for check in checks.values())
     return jsonify(payload)
 
 

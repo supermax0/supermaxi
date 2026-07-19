@@ -534,30 +534,48 @@ def search_products(
     exclude_ids: list[int] | None = None,
 ) -> list[dict[str, Any]]:
     q = Product.query.outerjoin(AISalesProductProfile, AISalesProductProfile.product_id == Product.id).filter(Product.active.is_(True))
+    excluded = {int(value) for value in exclude_ids or [] if str(value).isdigit()}
+
+    def constrained(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        result = []
+        for row in rows:
+            if max_price and int(row.get("price") or 0) > int(max_price):
+                continue
+            if in_stock_only and int(row.get("stock") or 0) <= 0:
+                continue
+            if int(row.get("product_id") or 0) in excluded:
+                continue
+            result.append(row)
+        return result[: min(max(int(limit or 3), 1), 20)]
+
     guard = classify_customer_message(query)
     if guard.family == "screen" and guard.screen_size and not guard.requested_brand and not guard.is_accessory_request:
-        return get_available_screen_products(
+        direct_screen_rows = constrained(get_available_screen_products(
             size=guard.screen_size,
             in_stock_only=in_stock_only,
-            limit=limit,
-        )
+            limit=20,
+        ))
+        if direct_screen_rows:
+            return direct_screen_rows
     if guard.family == "refrigerator" and (guard.foot_size or guard.preferred_foot_size):
-        return get_fridge_products(
+        direct_fridge_rows = constrained(get_fridge_products(
             foot_size=guard.foot_size or guard.preferred_foot_size,
             in_stock_only=False,
-            limit=limit,
-        )
+            limit=20,
+        ))
+        if direct_fridge_rows:
+            return direct_fridge_rows
     terms = _terms(query)
     wanted_size = _requested_size(query)
     wanted_foot_size = _requested_foot_size(query)
     if not terms and wanted_size is None and wanted_foot_size is None:
         return []
     if wanted_foot_size is not None and not terms and wanted_size is None:
-        return get_fridge_products(
+        return constrained(get_fridge_products(
             foot_size=wanted_foot_size,
             in_stock_only=in_stock_only,
-            limit=limit,
-        )
+            limit=20,
+        ))
     if terms:
         variants = {variant for term in terms for variant in _term_variants(term)}
         search_columns = []
@@ -574,9 +592,8 @@ def search_products(
         q = q.filter(Product.sale_price <= int(max_price))
     if in_stock_only:
         q = q.filter(Product.quantity > 0)
-    excluded = [int(value) for value in exclude_ids or [] if str(value).isdigit()]
     if excluded:
-        q = q.filter(~Product.id.in_(excluded))
+        q = q.filter(~Product.id.in_(list(excluded)))
     candidates = q.order_by(Product.sale_price.asc(), Product.quantity.desc()).limit(300).all()
     candidate_profiles = {
         row.product_id: row

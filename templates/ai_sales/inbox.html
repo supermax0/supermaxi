@@ -212,7 +212,8 @@
           </fieldset>
           <div class="sales-ai-form-grid">
             <div class="sales-ai-field"><label for="agentName">اسم الموظف</label><input id="agentName"></div>
-            <div class="sales-ai-field"><label for="agentModel">موديل المحادثة</label><input id="agentModel" dir="ltr" placeholder="gpt-5.6-sol"></div>
+            <div class="sales-ai-field"><label for="agentModel">موديل المحادثة</label><select id="agentModel" dir="ltr"><option value="gpt-5.4-mini">gpt-5.4-mini · اقتصادي</option><option value="gpt-4o-mini">gpt-4o-mini · أوفر</option></select></div>
+            <div class="sales-ai-field"><label for="agentVisionModel">موديل تحليل الصور</label><select id="agentVisionModel" dir="ltr"><option value="gpt-5.4-mini">gpt-5.4-mini · اقتصادي</option><option value="gpt-4o-mini">gpt-4o-mini · أوفر</option></select></div>
             <div class="sales-ai-field"><label for="agentDialect">اللهجة</label><select id="agentDialect"><option value="iraqi">عراقية</option><option value="arabic">عربية</option></select></div>
             <div class="sales-ai-field"><label for="agentStyle">أسلوب البيع</label><select id="agentStyle"><option value="consultative">استشاري</option><option value="direct">مباشر</option></select></div>
             <div class="sales-ai-field"><label for="agentPersuasion">قوة الإقناع</label><select id="agentPersuasion"><option value="gentle">هادئ</option><option value="balanced">متوازن</option><option value="assertive">حازم بدون ضغط</option></select></div>
@@ -224,8 +225,8 @@
             <div class="sales-ai-field"><label for="agentResponseDelay">تأخير الرد الطبيعي</label><input id="agentResponseDelay" type="number" min="0" max="3000" step="100"><small>بالمللي ثانية؛ اتركه 0 لأسرع رد.</small></div>
             <div class="sales-ai-field"><label for="agentVoiceMode">طريقة الرد الصوتي</label><select id="agentVoiceMode"><option value="match_customer">صوت مقابل صوت</option><option value="text_and_voice">نص وصوت دائماً</option><option value="voice_only">صوت فقط</option><option value="text_only">نص فقط</option></select></div>
             <div class="sales-ai-field"><label for="agentVoice">الصوت</label><select id="agentVoice"><option value="marin">Marin · أعلى جودة</option><option value="cedar">Cedar · أعلى جودة</option><option value="coral">Coral</option><option value="nova">Nova</option><option value="shimmer">Shimmer</option><option value="alloy">Alloy</option><option value="ash">Ash</option><option value="ballad">Ballad</option><option value="echo">Echo</option><option value="fable">Fable</option><option value="onyx">Onyx</option><option value="sage">Sage</option><option value="verse">Verse</option></select><small>Marin وCedar هما الخياران الموصى بهما لأفضل جودة.</small></div>
-            <div class="sales-ai-field"><label for="agentTtsModel">موديل توليد الصوت</label><input id="agentTtsModel" dir="ltr" placeholder="gpt-4o-mini-tts"></div>
-            <div class="sales-ai-field"><label for="agentTranscribeModel">موديل فهم الصوت</label><input id="agentTranscribeModel" dir="ltr" placeholder="gpt-4o-mini-transcribe"></div>
+            <div class="sales-ai-field"><label for="agentTtsModel">موديل توليد الصوت</label><select id="agentTtsModel" dir="ltr"><option value="gpt-4o-mini-tts">gpt-4o-mini-tts</option></select></div>
+            <div class="sales-ai-field"><label for="agentTranscribeModel">موديل فهم الصوت</label><select id="agentTranscribeModel" dir="ltr"><option value="gpt-4o-mini-transcribe">gpt-4o-mini-transcribe · اقتصادي</option><option value="gpt-4o-transcribe">gpt-4o-transcribe · أدق</option></select></div>
             <div class="sales-ai-field"><label for="agentRealtimeModel">موديل المكالمات المباشرة</label><input id="agentRealtimeModel" dir="ltr" placeholder="gpt-realtime-2.1"></div>
             <div class="sales-ai-field"><label for="agentAudioQuality">معالجة الجودة</label><select id="agentAudioQuality"><option value="professional">احترافية · تنقية وتوحيد الصوت</option><option value="standard">قياسية · ترميز فقط</option><option value="original">أصلية · بدون mastering</option></select></div>
             <div class="sales-ai-field"><label for="agentVoiceSpeed">سرعة الكلام <output id="agentVoiceSpeedValue">0.96×</output></label><input id="agentVoiceSpeed" type="range" min="0.75" max="1.25" step="0.01" value="0.96"><small>السرعة 0.96 تعطي نطقاً عراقياً أهدأ وأكثر طبيعية.</small></div>
@@ -239,6 +240,7 @@
             <section class="sales-ai-tts-test full" aria-labelledby="ttsTestTitle">
               <div><strong id="ttsTestTitle"><i class="fa-solid fa-volume-high"></i> تجربة الصوت الاحترافي</strong><small>تُطبّق السرعة والنبرة والمعالجة نفسها المستخدمة مع الزبائن.</small></div>
               <div class="sales-ai-tts-test-controls"><input id="agentTtsTestText" value="هلا بيك، متوفرة شاشة حجم خمسين بسعر ميتين وسبعين ألف دينار، وضمانها سنة."><button class="sales-ai-btn" id="agentTtsTestBtn" type="button"><i class="fa-solid fa-play"></i>تجربة</button></div>
+              <button class="sales-ai-btn" id="agentOpenAiTestBtn" type="button"><i class="fa-solid fa-stethoscope"></i>فحص المفتاح والنص والصورة وفهم الصوت</button>
               <audio id="agentTtsTestAudio" controls hidden></audio>
               <p id="agentOpenAiStatus" aria-live="polite"></p>
             </section>

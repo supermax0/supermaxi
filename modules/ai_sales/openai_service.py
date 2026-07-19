@@ -1,12 +1,18 @@
 """Central OpenAI configuration and media services for Finora Sales AI."""
 from __future__ import annotations
 
+import base64
+import io
+import math
 import os
 import re
 import shutil
+import struct
 import subprocess
 import tempfile
 import time
+import wave
+import zlib
 from dataclasses import dataclass
 from pathlib import Path
 from threading import Lock
@@ -16,7 +22,8 @@ import requests
 from flask import current_app, g, has_app_context
 
 
-DEFAULT_CHAT_MODEL = "gpt-5.6-sol"
+DEFAULT_CHAT_MODEL = "gpt-5.4-mini"
+DEFAULT_VISION_MODEL = "gpt-5.4-mini"
 DEFAULT_TTS_MODEL = "gpt-4o-mini-tts"
 DEFAULT_TRANSCRIBE_MODEL = "gpt-4o-mini-transcribe"
 DEFAULT_REALTIME_MODEL = "gpt-realtime-2.1"
@@ -28,6 +35,9 @@ SUPPORTED_TTS_VOICES = {
     "alloy", "ash", "ballad", "coral", "echo", "fable", "nova", "onyx",
     "sage", "shimmer", "verse", "marin", "cedar",
 }
+SUPPORTED_CHAT_MODELS = {"gpt-5.4-mini", "gpt-4o-mini"}
+SUPPORTED_VISION_MODELS = {"gpt-5.4-mini", "gpt-4o-mini"}
+SUPPORTED_TRANSCRIPTION_MODELS = {"gpt-4o-mini-transcribe", "gpt-4o-transcribe"}
 DEFAULT_VOICE_INSTRUCTIONS = (
     "تكلم باللهجة العراقية الطبيعية بصوت بشري دافئ وواضح وواثق. "
     "انطق أسماء المنتجات والأسعار بوضوح، واستعمل وقفات قصيرة طبيعية بين الجمل. "
@@ -60,6 +70,7 @@ class AIServiceError(RuntimeError):
 @dataclass(frozen=True)
 class OpenAISettings:
     chat_model: str = DEFAULT_CHAT_MODEL
+    vision_model: str = DEFAULT_VISION_MODEL
     tts_model: str = DEFAULT_TTS_MODEL
     transcription_model: str = DEFAULT_TRANSCRIBE_MODEL
     realtime_model: str = DEFAULT_REALTIME_MODEL
@@ -73,6 +84,7 @@ class OpenAISettings:
     def public_dict(self) -> dict[str, Any]:
         return {
             "chat_model": self.chat_model,
+            "vision_model": self.vision_model,
             "tts_model": self.tts_model,
             "transcription_model": self.transcription_model,
             "realtime_model": self.realtime_model,
@@ -132,6 +144,10 @@ def settings_for_profile(profile=None) -> OpenAISettings:
         chat_model=(
             profile_value("text_model")
             or str(config.get("OPENAI_CHAT_MODEL") or config.get("OPENAI_MODEL") or DEFAULT_CHAT_MODEL).strip()
+        ),
+        vision_model=(
+            profile_value("vision_model")
+            or str(config.get("OPENAI_VISION_MODEL") or DEFAULT_VISION_MODEL).strip()
         ),
         tts_model=(
             profile_value("tts_model")
@@ -202,6 +218,99 @@ def create_response(*, api_key: str | None = None, **kwargs):
         raise
     except Exception as exc:
         raise _safe_provider_error(exc, "response") from exc
+
+
+def _health_probe_image_data_url() -> str:
+    """Build a regular 128px RGB PNG without adding an image-library dependency."""
+    width = height = 128
+    rows = bytearray()
+    for y in range(height):
+        rows.append(0)
+        for x in range(width):
+            rows.extend((30, 110, 230) if 16 <= x < 112 and 16 <= y < 112 else (255, 255, 255))
+
+    def chunk(kind: bytes, data: bytes) -> bytes:
+        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF)
+
+    png = (
+        b"\x89PNG\r\n\x1a\n"
+        + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
+        + chunk(b"IDAT", zlib.compress(bytes(rows), 9))
+        + chunk(b"IEND", b"")
+    )
+    return "data:image/png;base64," + base64.b64encode(png).decode("ascii")
+
+
+def probe_openai_services(settings: OpenAISettings) -> dict[str, dict[str, Any]]:
+    """Run small real requests so settings can distinguish access from usable quota."""
+    client = get_openai_client()
+    checks: dict[str, dict[str, Any]] = {}
+
+    def record(name: str, model: str, callback) -> None:
+        started = time.monotonic()
+        try:
+            callback()
+            checks[name] = {
+                "ok": True,
+                "model": model,
+                "duration_ms": round((time.monotonic() - started) * 1000),
+            }
+        except Exception as exc:
+            error = exc if isinstance(exc, AIServiceError) else _safe_provider_error(exc, name)
+            checks[name] = {
+                "ok": False,
+                "model": model,
+                "duration_ms": round((time.monotonic() - started) * 1000),
+                "error": error.to_dict(),
+            }
+
+    def response_probe(model: str, *, with_image: bool = False) -> None:
+        content: list[dict[str, Any]] = [{"type": "input_text", "text": "أجب بكلمة OK فقط."}]
+        if with_image:
+            content.append({
+                "type": "input_image",
+                "image_url": _health_probe_image_data_url(),
+                "detail": "low",
+            })
+        kwargs: dict[str, Any] = {
+            "model": model,
+            "instructions": "هذا فحص اتصال. أرجع OK فقط.",
+            "input": [{"role": "user", "content": content}],
+            "max_output_tokens": 20,
+            "store": False,
+            "timeout": 25,
+        }
+        if model.startswith("gpt-5"):
+            kwargs["reasoning"] = {"effort": "none"}
+        response = client.responses.create(**kwargs)
+        if not str(getattr(response, "output_text", "") or "").strip():
+            raise AIServiceError("empty_probe_response", "health", "لم يرجع نموذج OpenAI نصاً")
+
+    def transcription_probe() -> None:
+        sample_rate = 16_000
+        frames = bytearray()
+        for index in range(sample_rate // 2):
+            sample = int(900 * math.sin(2 * math.pi * 440 * index / sample_rate))
+            frames.extend(struct.pack("<h", sample))
+        buffer = io.BytesIO()
+        with wave.open(buffer, "wb") as wav:
+            wav.setnchannels(1)
+            wav.setsampwidth(2)
+            wav.setframerate(sample_rate)
+            wav.writeframes(bytes(frames))
+        buffer.seek(0)
+        buffer.name = "finora-openai-health.wav"
+        client.audio.transcriptions.create(
+            model=settings.transcription_model,
+            file=buffer,
+            language="ar",
+            timeout=30,
+        )
+
+    record("text", settings.chat_model, lambda: response_probe(settings.chat_model))
+    record("vision", settings.vision_model, lambda: response_probe(settings.vision_model, with_image=True))
+    record("transcription", settings.transcription_model, transcription_probe)
+    return checks
 
 
 def transcribe_file(path: str, settings: OpenAISettings, *, language: str = "ar") -> dict[str, Any]:
@@ -493,6 +602,17 @@ def _safe_provider_error(exc: Exception, operation: str) -> AIServiceError:
     provider_code = str(getattr(exc, "code", "") or "").strip()
     message = str(getattr(exc, "message", "") or str(exc) or "فشل طلب OpenAI")
     message = re.sub(r"sk-[A-Za-z0-9_-]+", "[REDACTED]", message)
+    normalized = message.lower()
+    if provider_code == "insufficient_quota" or "insufficient_quota" in normalized:
+        provider_code = "insufficient_quota"
+        message = "رصيد OpenAI أو حد الصرف منتهي. راجع الفوترة وحدود الاستخدام ثم أعد الفحص."
+    elif provider_code == "invalid_api_key" or status_code == 401:
+        provider_code = "invalid_api_key"
+        message = "مفتاح OpenAI غير صالح أو لا يملك صلاحية لهذا المشروع."
+    elif provider_code == "rate_limit_exceeded":
+        message = "تم تجاوز معدل طلبات OpenAI مؤقتاً. انتظر قليلاً ثم أعد المحاولة."
+    elif status_code == 403 or provider_code in {"model_not_found", "permission_denied"}:
+        message = "المفتاح لا يملك صلاحية استخدام النموذج المحدد. اختر نموذجاً متاحاً للمشروع."
     if len(message) > 700:
         message = message[:700]
     return AIServiceError(provider_code or f"openai_{operation}_failed", operation, message, status_code=status_code)

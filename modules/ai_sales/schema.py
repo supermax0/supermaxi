@@ -87,6 +87,7 @@ def ensure_ai_sales_schema() -> None:
     profile_additive_columns = {
         "intelligence_level": "VARCHAR(30) NOT NULL DEFAULT 'expert'",
         "persuasion_style": "VARCHAR(30) NOT NULL DEFAULT 'balanced'",
+        "vision_model": "VARCHAR(100) NOT NULL DEFAULT 'gpt-5.4-mini'",
         "tts_model": "VARCHAR(100) NOT NULL DEFAULT 'gpt-4o-mini-tts'",
         "transcription_model": "VARCHAR(100) NOT NULL DEFAULT 'gpt-4o-mini-transcribe'",
         "realtime_model": "VARCHAR(100) NOT NULL DEFAULT 'gpt-realtime-2.1'",
@@ -106,6 +107,12 @@ def ensure_ai_sales_schema() -> None:
     for name, definition in profile_additive_columns.items():
         if name not in profile_columns:
             db.session.execute(text(f"ALTER TABLE ai_sales_agent_profile ADD COLUMN {name} {definition}"))
+            changed = True
+    migrated_profiles = AISalesAgentProfile.query.filter(
+        AISalesAgentProfile.text_model.in_(("gpt-5.6-sol", "gpt-5.6")),
+    ).update({"text_model": "gpt-5.4-mini"}, synchronize_session=False)
+    if migrated_profiles:
+        changed = True
     product_profile_columns = {column["name"] for column in inspector.get_columns("ai_sales_product_profile")}
     product_profile_additive_columns = {
         "colors_json": "TEXT",

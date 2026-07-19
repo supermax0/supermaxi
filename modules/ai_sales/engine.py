@@ -205,7 +205,7 @@ def _product_family(value: str) -> str:
     normalized = (value or "").translate(str.maketrans({"أ": "ا", "إ": "ا", "آ": "ا", "ة": "ه", "ى": "ي"})).lower()
     if re.search(r"ثلاجه|ثلاجات|فريزر|براد\s*(?:كهرب|كهرباء|كمبرسر|\d|قدم|ft)", normalized):
         return "refrigerator"
-    if re.search(r"مبرد|كولر|براد\s*(?:ماء|هواء)", normalized):
+    if re.search(r"مبرد|كولر|براد\s*(?:ماء|هواء|كهرمان(?:ه|ة))", normalized):
         return "air_cooler"
     families = (
         # شاسة / شاسه are common typos for شاشة
@@ -871,6 +871,27 @@ def _claim_burst_messages(inbound: AISalesMessage) -> list[AISalesMessage]:
             [row.id for row in rows],
         )
     return rows
+
+
+def _latest_turn_analysis_text(latest_text: str, combined_text: str, burst_count: int) -> tuple[str, bool]:
+    """Keep the latest message authoritative, joining a burst only for clear fragments."""
+    latest = str(latest_text or "").strip()
+    combined = str(combined_text or latest).strip()
+    if burst_count <= 1 or not latest or latest == combined:
+        return latest or combined, False
+    guard = classify_customer_message(latest)
+    if guard.is_greeting or guard.is_gratitude:
+        return latest, False
+    normalized = normalize_arabic(latest)
+    fragment = bool(
+        guard.needs_product_context
+        or re.fullmatch(r"(?:\d{1,3}|قدم|قدام|فوت|ft|انج|بوصه|بوصة|سعر|سعره|سعرها|بيش|بكم|شكد|كم)", normalized)
+        or re.fullmatch(
+            r"(?:هذا|هاي|هذاك|نفسه|نفسها|عليه|عليها)\s*(?:سعره|سعرها|بيش|بكم|متوفر|موجود|ضمان|توصيل|صوره|صورة|فيديو)?",
+            normalized,
+        )
+    )
+    return (combined, True) if fragment else (latest, False)
 
 
 def _newer_customer_message(inbound: AISalesMessage) -> AISalesMessage | None:
@@ -1543,7 +1564,7 @@ def _media_failure_reply(
     )
     db.session.add(outbound)
     db.session.flush()
-    if send_external:
+    if send_external and bool(current_app.config.get("AI_SALES_TRAINING_ONLY", False)):
         try:
             recipient = conversation.external_phone if conversation.channel.channel_type == "whatsapp" else conversation.external_contact_id
             body = channel_client(conversation.channel).send_text(recipient, fallback_text)
@@ -1636,7 +1657,7 @@ def process_inbound_message(message_id: int, *, send_external: bool = True) -> A
                 text = "أرسل الزبون صورة مرفقة للطلب بدون طلب جديد."
             else:
                 try:
-                    vision = analyze_image(inbound)
+                    vision = analyze_image(inbound, profile=profile)
                     visual_reference_active = True
                     visual_reference_analysis = vision
                     text = " | ".join(part for part in (inbound.text_content, vision) if part)
@@ -1710,8 +1731,13 @@ def process_inbound_message(message_id: int, *, send_external: bool = True) -> A
         if burst_messages
         else str(text or "").strip()
     )
+    text, burst_continuation = _latest_turn_analysis_text(
+        latest_customer_text or text,
+        text,
+        len(burst_messages),
+    )
 
-    greeting_only = is_greeting_message(text)
+    greeting_only = is_greeting_message(latest_customer_text or text)
     policy = intelligence_policy(profile.intelligence_level if profile else "expert")
     product_limit = max(1, min(int(profile.max_products or 3) if profile else 3, int(policy["product_limit"]), 3))
     history_limit = max(6, min(int(getattr(profile, "max_context_messages", 18) or 18), 30))
@@ -1821,6 +1847,8 @@ def process_inbound_message(message_id: int, *, send_external: bool = True) -> A
     message_guard = raw_message_guard if gratitude_reply else classify_customer_message(effective_customer_text, context=context)
     context["last_message_guard"] = message_guard.as_dict()
     current_product_family = message_guard.family or _product_family(effective_customer_text)
+    if current_product_family == "cooler":
+        current_product_family = "air_cooler"
     if not current_product_family and re.search(r"\u062a\u0644\u0627\u062c(?:\u0647|\u0629|\u0627\u062a)", effective_customer_text or ""):
         current_product_family = "refrigerator"
     previous_product_family = str(context.get("product_family") or "") or _product_family(
@@ -1880,10 +1908,16 @@ def process_inbound_message(message_id: int, *, send_external: bool = True) -> A
     if not direct_screen_size_price and not current_product_family:
         direct_screen_size_price = _bare_screen_size(text)
     # Follow-ups like "سعر" after "شاشه 65" / "شاسة٦٥" should keep the size.
-    if not direct_screen_size_price and history_screen_size and (
+    if (
+        not direct_screen_size_price
+        and not price_objection
+        and current_product_family in {"", "screen"}
+        and history_screen_size
+        and (
         _is_generic_price_request(text)
         or current_product_family == "screen"
         or previous_product_family == "screen"
+        )
     ):
         direct_screen_size_price = history_screen_size
     if direct_screen_size_price and current_product_family not in {
@@ -1952,6 +1986,7 @@ def process_inbound_message(message_id: int, *, send_external: bool = True) -> A
         "needs_product_answer": latest_message_needs_product_answer,
         "intent": message_guard.intent,
         "family": message_guard.family or current_product_family or "",
+        "burst_continuation": burst_continuation,
     }
     if (
         specific_product_query

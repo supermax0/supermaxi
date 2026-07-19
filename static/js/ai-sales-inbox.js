@@ -1353,7 +1353,8 @@
     state.products = productData.products || [];
     const profile = profileData.profile;
     $("agentName").value = profile.name || "";
-    $("agentModel").value = profile.text_model || "";
+    $("agentModel").value = profile.text_model || "gpt-5.4-mini";
+    $("agentVisionModel").value = profile.vision_model || "gpt-5.4-mini";
     $("agentTtsModel").value = profile.tts_model || "gpt-4o-mini-tts";
     $("agentTranscribeModel").value = profile.transcription_model || "gpt-4o-mini-transcribe";
     $("agentRealtimeModel").value = profile.realtime_model || "gpt-realtime-2.1";
@@ -1753,6 +1754,7 @@
         body: JSON.stringify({
           name: $("agentName").value,
           text_model: $("agentModel").value,
+          vision_model: $("agentVisionModel").value,
           tts_model: $("agentTtsModel").value,
           transcription_model: $("agentTranscribeModel").value,
           realtime_model: $("agentRealtimeModel").value,
@@ -1785,20 +1787,35 @@
     }
   }
 
-  async function checkOpenAiHealth() {
+  async function checkOpenAiHealth(validate = false) {
     const status = $("agentOpenAiStatus");
+    const button = $("agentOpenAiTestBtn");
     if (!status) return;
+    if (button) button.disabled = validate;
     status.className = "";
-    status.textContent = "جاري فحص إعداد OpenAI...";
+    status.textContent = validate ? "جاري اختبار النص والصورة وفهم الصوت..." : "جاري فحص إعداد OpenAI...";
     try {
-      const data = await api("/ai-sales/api/openai/health");
-      status.className = data.configured ? "success" : "error";
-      status.textContent = data.configured
-        ? `OpenAI مضبوط · ${data.models.chat_model} · ${data.models.tts_model}`
-        : "مفتاح OpenAI غير مضبوط على الخادم";
+      const data = await api(`/ai-sales/api/openai/health${validate ? "?validate=1" : ""}`);
+      if (!data.configured) {
+        status.className = "error";
+        status.textContent = "مفتاح OpenAI غير مضبوط على الخادم";
+      } else if (!validate) {
+        status.className = "success";
+        status.textContent = `المفتاح موجود · المحادثة ${data.models.chat_model} · الصور ${data.models.vision_model}`;
+      } else {
+        const labels = { text: "النص", vision: "الصور", transcription: "فهم الصوت" };
+        const rows = Object.entries(data.checks || {}).map(([name, check]) => `${labels[name] || name} ${check.ok ? "نجح" : "فشل"}`);
+        const failure = Object.values(data.checks || {}).find(check => !check.ok);
+        status.className = data.validated ? "success" : "error";
+        status.textContent = data.validated
+          ? `كل الخدمات تعمل · ${rows.join(" · ")}`
+          : `${rows.join(" · ")} · ${failure?.error?.message || "راجع إعداد OpenAI"}`;
+      }
     } catch (error) {
       status.className = "error";
       status.textContent = error.message;
+    } finally {
+      if (button) button.disabled = false;
     }
   }
 
@@ -2273,6 +2290,7 @@
     $("closeSettingsBackdrop").addEventListener("click", closeSettings);
     $("agentForm").addEventListener("submit", saveAgent);
     $("agentTtsTestBtn").addEventListener("click", testAgentSpeech);
+    $("agentOpenAiTestBtn").addEventListener("click", () => checkOpenAiHealth(true));
     $("agentVoiceSpeed").addEventListener("input", event => {
       $("agentVoiceSpeedValue").textContent = `${Number(event.target.value || 0.96).toFixed(2)}×`;
     });

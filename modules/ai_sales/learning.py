@@ -477,7 +477,7 @@ def curate_reply_examples_with_ai(*, batch_size: int = 35, minimum_quality: int 
     if not api_key:
         raise RuntimeError("OpenAI API key is not configured")
     profile = AISalesAgentProfile.query.filter_by(is_active=True).order_by(AISalesAgentProfile.id.asc()).first()
-    model = settings_for_profile(profile).chat_model if profile else "gpt-5.6-sol"
+    model = settings_for_profile(profile).chat_model if profile else "gpt-5.4-mini"
     rows = (
         AISalesReplyExample.query
         .filter(AISalesReplyExample.source_type == "employee_history")
@@ -639,7 +639,7 @@ def _reply_product_family(value: str) -> str:
         "refrigerator": (
             "(?:\u062b\u0644\u0627\u062c\u0647|\u062b\u0644\u0627\u062c\u0629|\u062b\u0644\u0627\u062c\u0627\u062a|\u0641\u0631\u064a\u0632\u0631|"
             "\u0628\u0631\u0627\u062f\\s*(?:\u0643\u0647\u0631\u0628|\u0643\u0647\u0631\u0628\u0627\u0621|\u0643\u0645\u0628\u0631\u0633\u0631|\\d|\u0642\u062f\u0645|ft)|"
-            "refrigerator|fridge|freezer"
+            "refrigerator|fridge|freezer)"
         ),
         "screen": "(?:\u0634\u0627\u0634\u0647|\u0634\u0627\u0634\u0629|\u0634\u0627\u0634\u0627\u062a|\u062a\u0644\u0641\u0632\u064a\u0648\u0646|\u062a\u0644\u0641\u0627\u0632|\\btv\\b|screen|television)",
         "air_conditioner": "(?:\u0633\u0628\u0644\u062a|\u0645\u0643\u064a\u0641|\u062a\u0643\u064a\u064a\u0641|air\\s*conditioner)",

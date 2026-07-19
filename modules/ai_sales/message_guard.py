@@ -182,7 +182,10 @@ class CustomerMessageGuard:
             result.requested_brand = "جنرال"
 
         result.is_accessory_request = bool(re.search(r"ستاند|حامل|ريموت|قاعده|كيبل", normalized))
-        water_or_air_cooler = bool(re.search(r"براد\s+ماء|براده\s+ماء|مبرد\s+ماء|براد\s+هواء|مبرده|مبرد|كولر", normalized))
+        water_or_air_cooler = bool(re.search(
+            r"براد\s+ماء|براده\s+ماء|مبرد\s+ماء|براد\s+هواء|براد\s+كهرمان(?:ه|ة)|مبرده|مبرد|كولر",
+            normalized,
+        ))
         fridge_word = bool(
             re.search(r"ثلاجه|ثلاجة|ثلاجات|تلاجه|تلاجة|تلاجات|فريزر", normalized)
             or (re.search(r"براد", normalized) and not water_or_air_cooler)
