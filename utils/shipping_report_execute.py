@@ -116,6 +116,7 @@ def execute_shipping_report(report, expense_amount: int = 0) -> dict:
                 prev_eff = _effective_paid_amount_inv(order)
                 restore_order_stock_once(order)
                 order.status = "تم الطلب"
+                order.shipping_status = "تم الطلب"
                 order.payment_status = "غير مسدد"
                 order.paid_amount = 0
                 order.note = order.note or "مؤجل"
