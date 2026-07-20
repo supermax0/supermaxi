@@ -27,10 +27,11 @@
 <script src="/static/js/delivery-fee-pay-modal.js"></script>
 
 <link rel="stylesheet" href="/static/css/global-improvements.css">
-<link rel="stylesheet" href="/static/css/orders-mobile.css?v=20260720c-actions">
+<link rel="stylesheet" href="/static/css/orders-mobile.css?v=20260720e-actions">
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
-<script>window.__ORDERS_UI_BUILD = "20260720c";</script>
+<script>window.__ORDERS_UI_BUILD = "20260720g";</script>
+<div id="ordersUiBuildBadge" style="display:none" data-build="20260720g"></div>
 
 
 <!-- ==================== Toast & Loading ==================== -->
@@ -71,13 +72,14 @@
   </div>
 </div>
 
-<!-- ==================== Filters & Actions Sections ==================== -->
-<div class="collapsible-group" id="filtersSection">
-  <div class="group-header" onclick="toggleSection('filtersSection')">
-    <h3 class="group-title">🔍 {{ _('orders_filters_title') }}<span data-help="orders.filter_date"></span></h3>
-    <span class="toggle-icon">▼</span>
+<!-- ==================== Compact Orders Toolbar ==================== -->
+<div class="orders-toolbar no-print" id="ordersToolbar">
+  <div class="orders-toolbar-search">
+    <input id="searchInput" placeholder="{{ _('orders_search_placeholder') }}">
   </div>
-  <div class="group-content">
+
+  <div class="orders-toolbar-block" id="filtersSection">
+    <div class="orders-toolbar-kicker">{{ _('orders_filters_title') }}</div>
     <div class="filters-grid">
       <select id="filterCity">
         <option value="">{{ _('orders_filter_all_cities') }}</option>
@@ -121,17 +123,12 @@
       <input type="date" id="filterScheduledDate" placeholder="{{ _('orders_filter_scheduled_date') }}"
         class="date-filter">
 
-      <span id="activeShippingScanBadge" style="display:none;align-items:center;padding:10px 14px;border-radius:12px;font-size:13px;background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.25);color:var(--orders-text);white-space:nowrap;"></span>
+      <span id="activeShippingScanBadge" class="orders-scan-badge" style="display:none;"></span>
     </div>
   </div>
-</div>
 
-<div class="collapsible-group collapsed" id="bulkActionsSection">
-  <div class="group-header" onclick="toggleSection('bulkActionsSection')">
-    <h3 class="group-title">⚡ {{ _('orders_bulk_title') }}</h3>
-    <span class="toggle-icon">▼</span>
-  </div>
-  <div class="group-content">
+  <div class="orders-toolbar-block" id="bulkActionsSection">
+    <div class="orders-toolbar-kicker">{{ _('orders_bulk_title') }}</div>
     <div class="bulk-actions">
       <div class="action-group">
         <select id="bulkStatus">
@@ -141,7 +138,7 @@
           <option>{{ _('orders_status_shipping') }}</option>
           <option>{{ _('orders_status_delivered') }}</option>
         </select>
-        <button class="btn btn-primary" onclick="applyStatus()">{{ _('orders_bulk_apply') }}</button>
+        <button class="btn btn-primary" type="button" onclick="applyStatus()">{{ _('orders_bulk_apply') }}</button>
       </div>
 
       <div class="action-group">
@@ -150,7 +147,7 @@
           <option value="none">{{ _('orders_option_none') }}</option>
           {% for s in shippings %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
         </select>
-        <button class="btn btn-primary" onclick="applyShipping()">{{ _('orders_bulk_apply') }}</button>
+        <button class="btn btn-primary" type="button" onclick="applyShipping()">{{ _('orders_bulk_apply') }}</button>
       </div>
 
       <div class="action-group">
@@ -159,10 +156,27 @@
           <option value="none">{{ _('orders_option_none') }}</option>
           {% for agent in delivery_agents or [] %}<option value="{{ agent.id }}">{{ agent.name }}</option>{% endfor %}
         </select>
-        <button class="btn btn-primary" onclick="applyDeliveryAgent()">{{ _('orders_bulk_apply') }}</button>
+        <button class="btn btn-primary" type="button" onclick="applyDeliveryAgent()">{{ _('orders_bulk_apply') }}</button>
       </div>
     </div>
   </div>
+
+  <div class="orders-toolbar-block orders-toolbar-block--tools" id="reportsSection">
+    <div class="orders-toolbar-kicker">{{ _('orders_reports_title') }}</div>
+    <div class="report-section">
+      <select id="reportShippingCompany">
+        <option value="">{{ _('orders_reports_select_shipping') }}</option>
+        {% for s in shippings %}
+        <option value="{{ s.id }}" data-name="{{ s.name }}">{{ s.name }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn btn-success" type="button" onclick="createShippingReport()">
+        <span>📋</span>
+        <span>{{ _('orders_reports_print_statement') }}</span>
+      </button>
+    </div>
+  </div>
+
 </div>
 
 <div id="stockAllocationModal" class="vis-modal" onclick="if(event.target === this) closeStockAllocationModal();">
@@ -182,63 +196,29 @@
   </div>
 </div>
 
-<div class="collapsible-group collapsed" id="reportsSection">
-  <div class="group-header" onclick="toggleSection('reportsSection')">
-    <h3 class="group-title">📊 {{ _('orders_reports_title') }}</h3>
-    <span class="toggle-icon">▼</span>
-  </div>
-  <div class="group-content">
-    <div class="report-section">
-      <select id="reportShippingCompany">
-        <option value="">{{ _('orders_reports_select_shipping') }}</option>
-        {% for s in shippings %}
-        <option value="{{ s.id }}" data-name="{{ s.name }}">{{ s.name }}</option>
-        {% endfor %}
-      </select>
-      <button class="btn btn-success" onclick="createShippingReport()">
-        <span>📋</span>
-        <span>{{ _('orders_reports_print_statement') }}</span>
-      </button>
-    </div>
-  </div>
-</div>
-
-<div class="collapsible-group collapsed" id="selectionActionsSection">
-  <div class="group-header" onclick="toggleSection('selectionActionsSection')">
-    <h3 class="group-title">☑️ {{ _('orders_selected_actions_title') }}</h3>
-    <span class="toggle-icon">▼</span>
-  </div>
-  <div class="group-content">
-    <div class="selected-actions-grid">
-      <button class="btn btn-primary" onclick="printSelectedInvoices()">
-        <span>🖨️</span>
-        <span>{{ _('orders_selected_print_selected') }}</span>
-      </button>
-      <button class="btn btn-success" onclick="printSelectedReport()">
-        <span>📋</span>
-        <span>{{ _('orders_selected_print_statement') }}</span>
-      </button>
-      <button class="btn btn-purple" onclick="printAgentReport()">
-        <span>👤</span>
-        <span>{{ _('orders_selected_print_agent') }}</span>
-      </button>
-      <button class="btn btn-warning" onclick="sendWhatsAppToSelected()">
-        <span>📱</span>
-        <span>{{ _('orders_selected_send_message') }}</span>
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- ==================== Search Box ==================== -->
-<div class="search-box no-print">
-  <input id="searchInput" placeholder="{{ _('orders_search_placeholder') }}">
-</div>
-
 <!-- ==================== Orders Table ==================== -->
 <div class="orders-card" data-print-date="">
-  <h3 class="section-title orders-section-title-row">
-    <span>📋 {{ _('orders_list_title') }}</span>
+  <div class="section-title orders-section-title-row" id="selectionActionsSection">
+    <div class="orders-title-actions">
+      <div class="selected-actions-grid">
+        <button class="btn btn-primary" type="button" onclick="printSelectedInvoices()">
+          <span>🖨️</span>
+          <span>{{ _('orders_selected_print_selected') }}</span>
+        </button>
+        <button class="btn btn-success" type="button" onclick="printSelectedReport()">
+          <span>📋</span>
+          <span>{{ _('orders_selected_print_statement') }}</span>
+        </button>
+        <button class="btn btn-purple" type="button" onclick="printAgentReport()">
+          <span>👤</span>
+          <span>{{ _('orders_selected_print_agent') }}</span>
+        </button>
+        <button class="btn btn-warning" type="button" onclick="sendWhatsAppToSelected()">
+          <span>📱</span>
+          <span>{{ _('orders_selected_send_message') }}</span>
+        </button>
+      </div>
+    </div>
     <span class="orders-section-actions">
       <button class="btn btn-success orders-toggle-btn" type="button" onclick="exportOrdersPdf()"
         title="تصدير PDF">
@@ -250,14 +230,10 @@
         <span>👁️</span>
         <span>{{ _('orders_columns_button') }}</span>
       </button>
-      <button class="btn btn-secondary orders-toggle-btn" onclick="toggleSelectAll()" id="toggleSelectAllBtn">
-        <span>☑️</span>
-        <span>{{ _('orders_select_all') }}</span>
-      </button>
       <span id="selectedCount" class="selected-count orders-selected-count"></span>
-      <span id="tableStats" class="table-stats"></span>
+      <span id="tableStats" class="table-stats" hidden aria-hidden="true"></span>
     </span>
-  </h3>
+  </div>
 
   <div class="table-container" id="print-area">
     <div id="ordersTable" class="ag-theme-quartz-dark" style="height: 600px; width: 100%;"></div>
@@ -544,76 +520,249 @@
     color: white;
   }
 
+  /* ===== Compact Orders Toolbar ===== */
+  .orders-toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  }
+
+  .orders-toolbar-search input {
+    width: 100%;
+    min-height: 40px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    background: #fff;
+    color: #0f172a;
+    font-size: 14px;
+  }
+
+  .orders-toolbar-search input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+  }
+
+  .orders-toolbar-block {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(226, 232, 240, 0.95);
+  }
+
+  .orders-toolbar-block:first-of-type {
+    border-top: 0;
+    padding-top: 0;
+  }
+
+  .orders-toolbar-kicker {
+    flex: 0 0 auto;
+    min-width: 7.5rem;
+    font-size: 12px;
+    font-weight: 800;
+    color: #64748b;
+    letter-spacing: 0.01em;
+  }
+
+  .orders-scan-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 700;
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.28);
+    color: #047857;
+    white-space: nowrap;
+  }
+
   /* Filters */
   .filters-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-    gap: 18px;
-    margin-bottom: 24px;
+    display: flex;
+    flex: 1 1 0;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0;
+    align-items: center;
   }
 
   .filters-grid select,
   .date-filter {
-    width: 100%;
-    padding: 14px 16px;
-    border-radius: 14px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(15, 23, 42, 0.7);
-    color: var(--orders-text);
-    font-size: 15px;
-    transition: all 0.3s ease;
+    width: auto;
+    min-width: 148px;
+    flex: 0 1 160px;
+    padding: 8px 12px !important;
+    min-height: 38px !important;
+    border-radius: 10px !important;
+    border: 1px solid rgba(148, 163, 184, 0.35) !important;
+    background: #fff !important;
+    color: #0f172a !important;
+    font-size: 13px !important;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
     cursor: pointer;
   }
 
   .filters-grid select:focus,
   .date-filter:focus {
     outline: none;
-    border-color: var(--orders-primary);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
-    background: rgba(15, 23, 42, 0.85);
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
   }
 
   /* Bulk Actions */
   .bulk-actions {
     display: flex;
-    gap: 12px;
-    margin-top: 20px;
+    flex: 1 1 0;
+    gap: 8px;
+    margin: 0;
     flex-wrap: wrap;
+    align-items: center;
   }
 
   .action-group {
-    display: flex;
-    gap: 8px;
-    flex: 1;
-    min-width: 200px;
+    display: inline-flex;
+    gap: 6px;
+    flex: 0 1 auto;
+    min-width: 0;
+    align-items: center;
   }
 
   .action-group select {
-    flex: 1;
+    flex: 0 1 170px;
+    min-width: 140px;
+    width: auto;
+  }
+
+  .action-group .btn {
+    flex: 0 0 auto;
+    min-height: 38px !important;
+    height: 38px !important;
+    padding: 0 12px !important;
+    border-radius: 10px !important;
+    font-size: 13px !important;
+    white-space: nowrap;
   }
 
   /* Bulk selects should match filters styling */
   .bulk-actions select,
   .report-section select {
-    width: 100%;
-    padding: 14px 16px;
-    border-radius: 14px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(15, 23, 42, 0.7);
-    color: var(--orders-text);
-    font-size: 15px;
-    transition: all 0.3s ease;
+    width: auto;
+    min-width: 150px;
+    padding: 8px 12px !important;
+    min-height: 38px !important;
+    border-radius: 10px !important;
+    border: 1px solid rgba(148, 163, 184, 0.35) !important;
+    background: #fff !important;
+    color: #0f172a !important;
+    font-size: 13px !important;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
   }
 
   .bulk-actions select:focus,
   .report-section select:focus {
     outline: none;
-    border-color: var(--orders-primary);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
-    background: rgba(15, 23, 42, 0.85);
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
   }
 
-  /* Search */
+  .report-section {
+    display: flex;
+    flex: 1 1 0;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin: 0;
+  }
+
+  .report-section select {
+    flex: 0 1 220px;
+    max-width: 320px;
+  }
+
+  .report-section .btn {
+    flex: 0 0 auto;
+    min-height: 38px !important;
+    height: 38px !important;
+    padding: 0 12px !important;
+    border-radius: 10px !important;
+    font-size: 13px !important;
+  }
+
+  /* Selected Actions */
+  .selected-actions-grid {
+    display: flex;
+    flex: 1 1 0;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .selected-actions-grid .btn {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    min-height: 38px !important;
+    height: 38px !important;
+    padding: 0 12px !important;
+    border-radius: 10px !important;
+    font-size: 13px !important;
+    white-space: nowrap;
+    box-shadow: none !important;
+  }
+
+  .selected-actions-grid .btn:hover {
+    transform: none !important;
+  }
+
+  @media (max-width: 900px) {
+    .orders-toolbar-kicker {
+      width: 100%;
+      min-width: 0;
+    }
+
+    .filters-grid select,
+    .date-filter,
+    .bulk-actions select,
+    .report-section select {
+      flex: 1 1 calc(50% - 8px);
+      min-width: 0;
+      max-width: none;
+    }
+
+    .action-group {
+      width: 100%;
+    }
+
+    .action-group select {
+      flex: 1 1 auto;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .filters-grid select,
+    .date-filter,
+    .bulk-actions select,
+    .report-section select {
+      flex-basis: 100%;
+    }
+
+    .selected-actions-grid .btn {
+      flex: 1 1 calc(50% - 8px) !important;
+      justify-content: center;
+    }
+  }
+
+  /* Search (legacy class kept for compatibility) */
   .search-box {
     margin: 20px 0;
     position: relative;
@@ -813,10 +962,30 @@
     justify-content: space-between;
   }
 
+  .orders-section-title-row {
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .orders-title-actions {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .orders-title-actions .selected-actions-grid {
+    flex: 0 1 auto;
+  }
+
+  .orders-section-actions {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+
   .table-stats {
-    font-size: 14px;
-    color: var(--orders-muted);
-    font-weight: normal;
+    display: none;
   }
 
   .selected-count {
@@ -829,36 +998,17 @@
   }
 
   /* Report Section */
-  .report-section {
-    display: flex;
-    gap: 12px;
-    margin-top: 16px;
-    padding-top: 16px;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-  }
-
-  .report-section select {
-    flex: 1;
-    min-width: 250px;
-    padding: 14px 16px;
-    border-radius: 14px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(15, 23, 42, 0.6);
-    color: var(--orders-text);
-    font-size: 15px;
+  .orders-toolbar .report-section {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
   }
 
   /* Selected Actions Section */
   .selected-actions-section {
-    margin-top: 24px;
-    padding-top: 24px;
-    border-top: 2px solid rgba(59, 130, 246, 0.3);
-  }
-
-  .selected-actions-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 12px;
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
   }
 
   .btn-purple {
@@ -879,14 +1029,10 @@
 
   .btn-secondary:hover {
     background: linear-gradient(135deg, #475569, #334155);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(100, 116, 139, 0.4);
   }
 
   .btn-warning:hover {
     background: linear-gradient(135deg, #d97706, #b45309);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(245, 158, 11, 0.4);
   }
 
   /* Loading Overlay */
@@ -936,9 +1082,16 @@
   }
 
   .orders-actions-cell {
-    display: flex;
-    align-items: center;
-    overflow: visible;
+    display: flex !important;
+    align-items: center !important;
+    overflow: visible !important;
+  }
+
+  .ag-theme-quartz-dark .ag-cell.orders-actions-cell,
+  .ag-theme-alpine-dark .ag-cell.orders-actions-cell,
+  .ag-theme-quartz .ag-cell.orders-actions-cell {
+    overflow: visible !important;
+    min-width: 190px !important;
   }
 
   .orders-row-actions button.action-btn-small,
@@ -1825,6 +1978,13 @@
     color: #4f46e5 !important;
   }
 
+  .orders-row-actions button.action-btn-small.cancel-btn,
+  .orders-row-actions .action-btn-small.cancel-btn {
+    background: rgba(239, 68, 68, 0.12) !important;
+    border-color: rgba(239, 68, 68, 0.28) !important;
+    color: #dc2626 !important;
+  }
+
   .orders-actions-menu-item.is-danger {
     color: #dc2626;
   }
@@ -1884,6 +2044,13 @@
   .orders-row-actions .action-btn-small.return-btn:hover:not(:disabled):not(.is-disabled) {
     background: #b45309 !important;
     border-color: #b45309 !important;
+    color: #ffffff !important;
+  }
+
+  .orders-row-actions button.action-btn-small.cancel-btn:hover:not(:disabled):not(.is-disabled),
+  .orders-row-actions .action-btn-small.cancel-btn:hover:not(:disabled):not(.is-disabled) {
+    background: #dc2626 !important;
+    border-color: #dc2626 !important;
     color: #ffffff !important;
   }
 
@@ -2406,63 +2573,72 @@
       text-align: center;
     }
 
+    .orders-toolbar {
+      padding: 12px;
+      gap: 10px;
+    }
+
     .filters-grid {
-      grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
-      margin-bottom: 16px;
+      gap: 8px;
+      margin-bottom: 0;
     }
 
     .filters-grid select,
     .date-filter {
-      padding: 12px 14px;
-      font-size: 14px;
+      padding: 8px 12px !important;
+      font-size: 13px !important;
     }
 
     .bulk-actions {
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .action-group {
-      min-width: 100%;
-      flex-direction: column;
+      flex-direction: row;
+      flex-wrap: wrap;
       gap: 8px;
     }
 
+    .action-group {
+      min-width: 0;
+      flex-direction: row;
+      gap: 6px;
+      width: auto;
+    }
+
     .action-group select {
-      width: 100%;
+      width: auto;
+      flex: 1 1 auto;
     }
 
     .action-group button {
-      width: 100%;
+      width: auto;
     }
 
     .report-section {
-      flex-direction: column;
-      gap: 12px;
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 8px;
     }
 
     .report-section select {
-      width: 100%;
-      min-width: 0;
+      width: auto;
+      min-width: 140px;
     }
 
     .report-section button {
-      width: 100%;
+      width: auto;
     }
 
     .selected-actions-section {
-      margin-top: 16px;
-      padding-top: 16px;
+      margin-top: 0;
+      padding-top: 0;
     }
 
     .selected-actions-grid {
-      grid-template-columns: 1fr;
-      gap: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
     }
 
     .selected-actions-grid .btn {
-      width: 100%;
+      width: auto !important;
       justify-content: center;
     }
 
@@ -2536,7 +2712,6 @@
     }
 
     .filters-grid {
-      grid-template-columns: 1fr;
       gap: 10px;
     }
 
@@ -2828,6 +3003,7 @@
   let gridApi;
   let stockShortageOrderIds = new Set();
   const ORDERS_USER_CAN_MANAGE = {{ 'true' if can_manage_orders else 'false' }};
+  const ORDERS_PAGE_TYPE = {{ (page_type or 'all')|tojson }};
   let allOrders = [];
   const RETURN_STATUS = {{ _('orders_status_returned')|tojson }};
   const STOCK_LOCKED_STATUS = 'مقفل - بانتظار المخزون';
@@ -5344,6 +5520,10 @@
     const canReturn = !collapsed && !isStockLocked && !!(ORDERS_USER_CAN_MANAGE && row && !isReturned && row.status !== 'تم الطلب');
     const canCancel = !collapsed && !isStockLocked && !!(ORDERS_USER_CAN_MANAGE && row && row.can_cancel);
 
+    // Page-specific primary buttons (outside the menu)
+    const showCancelOutside = canCancel && (ORDERS_PAGE_TYPE === 'ordered' || (row && row.status === 'تم الطلب'));
+    const showReturnOutside = canReturn && (ORDERS_PAGE_TYPE === 'shipping' || (row && row.status === 'جاري الشحن'));
+
     function actionBtn(className, action, label, title, extraAttrs, disabled) {
       const disClass = disabled ? ' is-disabled' : '';
       const disAttr = disabled ? ' disabled' : '';
@@ -5353,21 +5533,27 @@
     }
 
     let html = '<div class="orders-row-actions">';
-    // Menu trigger first, print stays outside; pay/return live in the menu
+    // Menu trigger first; print + page primary action stay outside
     html += '<button type="button" class="orders-actions-trigger"' +
       ' data-orders-actions-trigger="1"' +
-      ' data-ui-build="20260720c"' +
+      ' data-ui-build="20260720e"' +
       ' data-order-id="' + id + '"' +
       ' data-phone="' + phoneEnc + '"' +
       ' data-has-phone="' + (phoneRaw ? '1' : '0') + '"' +
       ' data-stock-locked="' + (isStockLocked ? '1' : '0') + '"' +
       ' data-can-pay="' + (canPay ? '1' : '0') + '"' +
-      ' data-can-return="' + (canReturn ? '1' : '0') + '"' +
-      ' data-can-cancel="' + (canCancel ? '1' : '0') + '"' +
+      ' data-can-return="' + (canReturn && !showReturnOutside ? '1' : '0') + '"' +
+      ' data-can-cancel="' + (canCancel && !showCancelOutside ? '1' : '0') + '"' +
       ' aria-haspopup="menu"' +
       ' aria-expanded="false"' +
       ' aria-label="إجراءات"' +
       ' title="إجراءات"></button>';
+    if (showCancelOutside) {
+      html += actionBtn('cancel-btn', 'cancel', 'إلغاء', 'إلغاء الطلب', '', false);
+    }
+    if (showReturnOutside) {
+      html += actionBtn('return-btn', 'return', 'الراجع', 'إرجاع الطلب', '', false);
+    }
     html += actionBtn('print-btn', 'invoice', 'طباعة', 'طباعة الفاتورة', '', false);
     html += '</div>';
     return html;
@@ -5679,9 +5865,9 @@
       {
         headerName: "إجراءات",
         field: "actions",
-        width: 120,
-        minWidth: 100,
-        maxWidth: 150,
+        width: 210,
+        minWidth: 190,
+        maxWidth: 260,
         cellClass: "orders-actions-cell",
         cellRenderer: ActionsRenderer,
         suppressMovable: true,
@@ -5764,6 +5950,10 @@
       },
       onGridReady: (params) => {
         gridApi = params.api;
+        try {
+          // Keep actions wide enough for ⋮ + primary + print (avoid clipping into #)
+          params.api.setColumnWidths([{ key: 'actions', newWidth: 210 }], false);
+        } catch (e) { /* older AG Grid */ try { params.api.setColumnWidth('actions', 210); } catch (e2) {} }
         updateStats();
 
         // تطبيق الأعمدة المحفوظة
@@ -5917,12 +6107,11 @@
       const states = JSON.parse(localStorage.getItem('orders_sections_states') || '{}');
       for (const [id, isCollapsed] of Object.entries(states)) {
         const section = document.getElementById(id);
-        if (section) {
-          if (isCollapsed) {
-            section.classList.add('collapsed');
-          } else {
-            section.classList.remove('collapsed');
-          }
+        if (!section || !section.classList.contains('collapsible-group')) continue;
+        if (isCollapsed) {
+          section.classList.add('collapsed');
+        } else {
+          section.classList.remove('collapsed');
         }
       }
     } catch (e) {

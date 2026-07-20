@@ -676,6 +676,19 @@ body.pos-white-pro {
 
 .pos-qty-btn:hover { background: var(--surface-hover); }
 
+.pos-cart-price-editable {
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+  transition: color 0.15s ease;
+}
+
+.pos-cart-price-editable:hover,
+.pos-cart-price-editable:focus-visible {
+  color: var(--primary);
+  outline: none;
+}
+
 .pos-btn-remove {
   border: none;
   background: var(--danger-soft);

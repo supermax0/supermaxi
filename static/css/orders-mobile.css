@@ -7,10 +7,13 @@
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 
-  .filters-grid,
-  .bulk-actions,
-  .selected-actions-grid {
-    grid-template-columns: 1fr !important;
+  .orders-toolbar .filters-grid,
+  .orders-toolbar .bulk-actions,
+  .orders-toolbar .selected-actions-grid,
+  .orders-toolbar .report-section {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
   }
 
   .ag-root-wrapper {

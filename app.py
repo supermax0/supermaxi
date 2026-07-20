@@ -190,13 +190,12 @@ app.config["MAX_CONTENT_LENGTH"] = 500 * 1024 * 1024  # 500MB
 # مجلد وسائط الأوتوبوستر: إن لم يُعيَّن = جذر التطبيق/media (على السيرفر: /var/www/finora/supermaxi/media)
 app.config["AUTOPOSTER_MEDIA_ROOT"] = os.environ.get("AUTOPOSTER_MEDIA_ROOT") or os.path.join(app.root_path, "media")
 
-# في التطوير فقط: إعادة تحميل القوالب وتقليل كاش الملفات
+# Reload templates from disk after Smart Deploy (workers restart still recommended)
+app.config["TEMPLATES_AUTO_RELOAD"] = True
+app.jinja_env.auto_reload = True
 if not app.config.get("DEBUG"):
-    app.config["TEMPLATES_AUTO_RELOAD"] = False
-    app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 3600
+    app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 300
 else:
-    app.config["TEMPLATES_AUTO_RELOAD"] = True
-    app.jinja_env.auto_reload = True
     app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
 
 db.init_app(app)

@@ -102,7 +102,7 @@ def _orders_no_store_cache(response):
             response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
             response.headers["Pragma"] = "no-cache"
             response.headers["Expires"] = "0"
-            response.headers["X-Orders-UI-Build"] = "20260720c"
+            response.headers["X-Orders-UI-Build"] = "20260720g"
     return response
 
 

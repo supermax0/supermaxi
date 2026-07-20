@@ -279,6 +279,13 @@
     updateStats();
   }
 
+  function cartPriceHtml(price, idx, extraClass) {
+    const text = fmt(price) + " د.ع";
+    const cls = ["pos-cart-price", extraClass].filter(Boolean).join(" ");
+    if (!canEditPrice) return `<span class="${cls}">${text}</span>`;
+    return `<span class="${cls} pos-cart-price-editable" role="button" tabindex="0" onclick="PosWP.changePrice(${idx})" title="اضغط لتعديل السعر">${text}</span>`;
+  }
+
   function renderItems() {
     const tbody = $("orderItems");
     const mobileList = $("cartMobileList");
@@ -293,9 +300,7 @@
       const colorBadge = color
         ? `<button type="button" class="pos-color-badge" onclick="PosWP.changeCartColor(${idx})" title="تغيير اللون">${color}</button>`
         : "";
-      const priceEdit = canEditPrice
-        ? `<button type="button" class="pos-qty-btn" onclick="PosWP.changePrice(${idx})" title="تعديل السعر"><i class="fas fa-pen"></i></button>`
-        : "";
+      const priceLabel = cartPriceHtml(i.price, idx);
       return `<tr>
         <td>
           <div class="pos-cart-product-cell">
@@ -307,7 +312,7 @@
             </div>
           </div>
         </td>
-        <td>${fmt(i.price)} د.ع ${priceEdit}</td>
+        <td>${priceLabel}</td>
         <td>
           <div class="pos-qty-stepper">
             <button type="button" class="pos-qty-btn" onclick="PosWP.updateQty(${idx},-1)">−</button>
@@ -332,7 +337,7 @@
           <div class="pos-cart-mobile-meta">
             ${color ? `<span class="pos-color-badge pos-color-badge--sm" onclick="PosWP.changeCartColor(${idx})">${color}</span>` : ""}
             ${i.sku ? `<span class="pos-cart-sku">${i.sku}</span>` : "<span></span>"}
-            <span class="pos-cart-mobile-unit">${fmt(i.price)} د.ع</span>
+            ${cartPriceHtml(i.price, idx, "pos-cart-mobile-unit")}
           </div>
           <div class="pos-cart-mobile-controls">
             <div class="pos-qty-stepper pos-qty-stepper--sm">
