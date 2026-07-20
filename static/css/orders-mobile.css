@@ -3,10 +3,6 @@
     padding: 12px !important;
   }
 
-  .orders-stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  }
-
   .orders-toolbar-block--collapsible {
     flex-direction: column !important;
     align-items: stretch !important;
@@ -70,18 +66,23 @@
   }
 
   .orders-toolbar-search {
-    order: 0;
     width: 100%;
-    margin-top: 0;
-    padding-top: 0;
-    border-top: 0;
   }
 
-  .orders-toolbar-search input {
+  .orders-table-toolbar {
+    gap: 8px !important;
+    margin-bottom: 10px !important;
+  }
+
+  .orders-table-search input {
     min-height: 36px !important;
     padding: 8px 12px !important;
     font-size: 16px !important;
     border-radius: 8px !important;
+  }
+
+  .orders-table-actions-row {
+    padding-bottom: 8px !important;
   }
 
   .orders-toolbar-block:not(.orders-toolbar-block--collapsible) {
@@ -100,10 +101,36 @@
   .orders-toolbar {
     gap: 8px !important;
     padding: 10px 12px !important;
+    max-width: 100%;
+    overflow-x: hidden;
   }
 
-  .orders-toolbar .filters-grid,
-  .orders-toolbar .bulk-actions,
+  .orders-toolbar .filters-grid {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    width: 100%;
+  }
+
+  #bulkActionsSection {
+    align-items: stretch !important;
+  }
+
+  #bulkActionsSection .orders-toolbar-kicker {
+    width: 100% !important;
+    margin-bottom: 2px;
+  }
+
+  .orders-toolbar .bulk-actions {
+    display: flex !important;
+    flex-direction: column !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+    width: 100% !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+  }
+
   .orders-toolbar .report-section {
     display: flex !important;
     flex-wrap: wrap !important;
@@ -136,30 +163,34 @@
     display: flex !important;
     flex-direction: row !important;
     flex-wrap: nowrap !important;
-    align-items: center !important;
-    width: 100%;
-    gap: 4px !important;
+    align-items: stretch !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 1 1 100% !important;
+    gap: 6px !important;
+    min-width: 0 !important;
   }
 
   .orders-toolbar .action-group select {
-    flex: 1 1 auto !important;
-    flex-basis: auto !important;
+    flex: 1 1 0 !important;
     min-width: 0 !important;
     max-width: none !important;
     width: auto !important;
+    font-size: 16px !important;
   }
 
   .orders-toolbar .action-group .btn {
     flex: 0 0 auto !important;
     width: auto !important;
-    min-width: 52px !important;
-    max-width: 72px !important;
-    padding: 0 8px !important;
+    min-width: 64px !important;
+    max-width: none !important;
+    padding: 0 10px !important;
+    white-space: nowrap !important;
   }
 
   .orders-toolbar .report-section {
     flex-direction: row !important;
-    flex-wrap: nowrap !important;
+    flex-wrap: wrap !important;
     align-items: center !important;
   }
 
@@ -177,11 +208,37 @@
 
   .orders-toolbar .action-group .btn,
   .orders-toolbar .report-section .btn {
-    min-height: 32px !important;
-    height: 32px !important;
-    font-size: 11px !important;
+    min-height: 36px !important;
+    height: 36px !important;
+    font-size: 12px !important;
     border-radius: 8px !important;
     box-shadow: none !important;
+  }
+
+  .orders-toolbar .bulk-actions select {
+    min-height: 36px !important;
+    height: 36px !important;
+    font-size: 16px !important;
+  }
+
+  @media (max-width: 420px) {
+    .orders-toolbar .action-group {
+      flex-direction: column !important;
+      align-items: stretch !important;
+      gap: 4px !important;
+    }
+
+    .orders-toolbar .action-group select,
+    .orders-toolbar .action-group .btn {
+      width: 100% !important;
+      max-width: none !important;
+    }
+
+    .orders-toolbar .report-section select,
+    .orders-toolbar .report-section .btn {
+      flex: 1 1 100% !important;
+      width: 100% !important;
+    }
   }
 
   /* أزرار إجراءات الطلبات المختارة */
@@ -260,18 +317,13 @@
     min-height: 520px;
   }
 
-  /* منع اختفاء عمود التحديد — AG Grid يدير التمرير داخلياً */
+  /* الجدول — AG Grid يدير التمرير */
   .table-container {
-    overflow: hidden !important;
+    overflow: auto !important;
   }
 
   #ordersTable {
     width: 100% !important;
-  }
-
-  .ag-pinned-right-cols-container,
-  .ag-pinned-right-header {
-    z-index: 3 !important;
   }
 
   .ag-header-cell[col-id="checkbox"],

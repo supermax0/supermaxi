@@ -3,1274 +3,493 @@
 {% block page_title %}💰 {{ _('expenses_page_title') }}{% endblock %}
 
 {% block content %}
-<script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.js"></script>
-
-<!-- Toast Container -->
 <div class="toast-container" id="toastContainer"></div>
-
-<!-- Loading Overlay -->
-<div class="loading-overlay" id="loadingOverlay">
-  <div class="loading-spinner"></div>
-</div>
+<div class="loading-overlay" id="loadingOverlay"><div class="loading-spinner"></div></div>
 
 <style>
-  /* ================= VARIABLES ================= */
-  :root {
-    --expenses-primary: var(--danger);
-    --expenses-secondary: var(--warning);
-    --expenses-success: var(--success);
-    --expenses-danger: var(--danger);
-    --expenses-warning: var(--warning);
-    --expenses-info: var(--primary);
-    --expenses-card: var(--card);
-    --expenses-text: var(--text);
-    --expenses-muted: var(--text-muted);
-    --expenses-border: var(--border-light);
-  }
-
-  /* ================= PAGE SCOPE ================= */
-  .expenses-page {
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  .expenses-page button,
-  .expenses-page a,
-  .expenses-page input,
-  .expenses-page select,
-  .expenses-page textarea {
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  /* ================= SUMMARY CARDS ================= */
+  .exp-page { max-width: 1280px; margin: 0 auto; padding: 12px 16px 80px; }
   .exp-summary {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 20px;
-    margin-bottom: 30px;
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px; margin-bottom: 12px;
   }
-
-  .exp-summary-card {
-    background: var(--expenses-card);
-    padding: 24px;
-    border-radius: 16px;
-    border: 1px solid var(--expenses-border);
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-    pointer-events: auto;
+  .exp-sum-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 12px 14px; position: relative; overflow: hidden;
   }
+  .exp-sum-card::before { content: ""; position: absolute; top: 0; right: 0; left: 0; height: 3px; }
+  .exp-sum-card.total::before { background: linear-gradient(90deg, #ef4444, #f97316); }
+  .exp-sum-card.month::before { background: linear-gradient(90deg, #f59e0b, #eab308); }
+  .exp-sum-card.today::before { background: linear-gradient(90deg, #3b82f6, #06b6d4); }
+  .exp-sum-card .lbl { font-size: 11px; color: var(--text-muted); font-weight: 600; margin-bottom: 4px; }
+  .exp-sum-card .val { font-size: 1.1rem; font-weight: 800; line-height: 1.2; }
+  .exp-sum-card.total .val { color: #ef4444; }
+  .exp-sum-card.month .val { color: #d97706; }
+  .exp-sum-card.today .val { color: #2563eb; }
+  .exp-sum-card .sub { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
 
-  .exp-summary-card::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, var(--expenses-primary), var(--expenses-secondary));
-    pointer-events: none;
+  .exp-layout { display: grid; grid-template-columns: 1fr 360px; gap: 14px; align-items: start; }
+  .exp-panel {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px;
   }
-
-  .exp-summary-card h4 {
-    color: var(--expenses-muted);
-    font-size: 13px;
-    font-weight: 500;
-    margin-bottom: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+  .exp-panel h3 {
+    margin: 0 0 12px; font-size: 16px; font-weight: 800;
+    display: flex; align-items: center; gap: 8px; padding-bottom: 10px; border-bottom: 1px solid var(--border);
   }
-
-  .exp-summary-card .value {
-    font-size: 32px;
-    font-weight: 700;
-    color: var(--expenses-text);
-    margin: 8px 0;
+  .exp-form { display: grid; gap: 10px; }
+  .exp-form input, .exp-form select, .exp-form textarea {
+    width: 100%; padding: 11px 14px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--bg, #fff); color: var(--text);
+    font-size: 14px; font-family: inherit; box-sizing: border-box; min-height: 44px;
+  }
+  .exp-form textarea { min-height: 72px; resize: vertical; }
+  .exp-btn {
+    border: none; border-radius: 10px; padding: 10px 14px; font-weight: 700;
+    font-size: 13px; cursor: pointer; font-family: inherit; width: auto;
     line-height: 1.2;
   }
-
-  .exp-summary-card.total .value {
-    color: var(--expenses-danger);
-  }
-
-  .exp-summary-card.month .value {
-    color: var(--expenses-warning);
-  }
-
-  .exp-summary-card.today .value {
-    color: var(--expenses-info);
-  }
-
-  .exp-summary-card .subtitle {
-    color: var(--expenses-muted);
-    font-size: 12px;
-    margin-top: 4px;
-  }
-
-  /* ================= GRID LAYOUT ================= */
-  .exp-grid {
-    display: grid;
-    grid-template-columns: 1fr 2fr;
-    gap: 24px;
-    margin-top: 24px;
-  }
-
-  /* ================= FORM CARD ================= */
-  .exp-form-card {
-    background: var(--expenses-card);
-    padding: 24px;
-    border-radius: 16px;
-    border: 1px solid var(--expenses-border);
-    position: relative;
-    overflow: hidden;
-    pointer-events: auto;
-  }
-
-  .exp-form-card h3 {
-    color: var(--expenses-text);
-    font-size: 18px;
-    font-weight: 600;
-    margin: 0 0 20px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .exp-form-card .form-grid {
-    display: grid;
-    gap: 16px;
-  }
-
-  .exp-form-card input,
-  .exp-form-card select,
-  .exp-form-card textarea {
-    width: 100%;
-    padding: 12px 16px;
-    border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(255, 255, 255, 0.05);
-    color: var(--expenses-text);
-    font-size: 15px;
-    transition: all 0.2s ease;
-    font-family: inherit;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
-    min-height: 44px;
-    box-sizing: border-box;
-    pointer-events: auto;
-  }
-
-  .exp-form-card input::placeholder,
-  .exp-form-card textarea::placeholder {
-    color: var(--expenses-muted);
-    opacity: 0.6;
-  }
-
-  .exp-form-card input:focus,
-  .exp-form-card select:focus,
-  .exp-form-card textarea:focus {
-    outline: none;
-    border-color: var(--expenses-primary);
-    background: rgba(255, 255, 255, 0.08);
-    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
-  }
-
-  .exp-form-card textarea {
-    resize: vertical;
-    min-height: 80px;
-  }
-
-  .exp-form-card .btn-premium {
-    width: 60%;
-    margin: 10px auto;
-  }
-
-  .exp-form-card button:hover {
-    opacity: 0.9;
-    transform: translateY(-1px);
-  }
-
-  .exp-form-card button:active {
-    transform: translateY(0);
+  .exp-btn-primary { background: var(--primary); color: #fff; width: 100%; }
+  .exp-btn-muted { background: var(--card-alt, #f8fafc); color: var(--text); border: 1px solid var(--border); }
+  .exp-btn-icon {
+    width: 36px; height: 36px; min-width: 36px; padding: 0; border-radius: 10px;
+    display: inline-flex; align-items: center; justify-content: center; font-size: 14px;
   }
 
   .exp-repeat-box {
-    display: grid;
-    gap: 12px;
-    padding: 14px;
-    border-radius: 14px;
-    background: rgba(255, 255, 255, 0.035);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    display: grid; gap: 8px; padding: 12px; border-radius: 12px;
+    border: 1px solid var(--border); background: var(--card-alt, #f8fafc);
   }
+  .exp-repeat-toggle label { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 13px; }
+  .exp-repeat-fields { display: none; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .exp-repeat-box.is-active .exp-repeat-fields { display: grid; }
+  .exp-repeat-help { font-size: 11px; color: var(--text-muted); line-height: 1.5; }
 
-  .exp-repeat-toggle {
-    display: flex;
+  .exp-quick-add {
+    display: flex; gap: 6px; margin-bottom: 10px; padding: 8px;
+    border-radius: 12px; border: 1px dashed var(--border); background: var(--card-alt, #f8fafc);
     align-items: center;
-    justify-content: space-between;
-    gap: 12px;
+  }
+  .exp-quick-add input {
+    flex: 1; min-width: 0; padding: 8px 10px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--card); font-size: 13px; min-height: 36px;
+  }
+  .exp-quick-add .exp-btn { flex: 0 0 auto; padding: 8px 12px; font-size: 12px; white-space: nowrap; }
+  .exp-filters-row {
+    display: grid; grid-template-columns: 1fr auto auto; gap: 6px; margin-bottom: 8px; align-items: center;
+  }
+  .exp-filters-row input, .exp-filters-row select {
+    min-width: 0; padding: 8px 10px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--bg, #fff); font-size: 13px; min-height: 36px;
+  }
+  .exp-filters-row select { max-width: 110px; }
+  .exp-filters-more { display: none; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .exp-filters-more.is-open { display: flex; }
+  .exp-filters-more input { flex: 1; min-width: 120px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); font-size: 13px; }
+  .exp-filter-toggle {
+    padding: 0; width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--card-alt); font-size: 14px; font-weight: 700; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
   }
 
-  .exp-repeat-toggle label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: var(--expenses-text);
-    font-weight: 600;
+  .exp-cat-list { display: flex; flex-direction: column; gap: 12px; }
+  .exp-cat-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    overflow: hidden; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+    border-right: 4px solid var(--cat-accent, #94a3b8);
+  }
+  .exp-cat-card.has-items { border-right-color: #ef4444; }
+  .exp-cat-card.is-collapsed .exp-cat-body { display: none; }
+  .exp-cat-head {
+    display: flex; align-items: center; gap: 10px; padding: 14px;
+    cursor: pointer; user-select: none;
+  }
+  .exp-cat-icon {
+    width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center;
+    justify-content: center; font-size: 20px; flex-shrink: 0;
+  }
+  .exp-cat-meta { flex: 1; min-width: 0; }
+  .exp-cat-name { font-size: 16px; font-weight: 800; }
+  .exp-cat-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .exp-cat-total { text-align: left; flex-shrink: 0; }
+  .exp-cat-total .amt { font-size: 14px; font-weight: 800; color: #ef4444; white-space: nowrap; }
+  .exp-cat-total .cnt { font-size: 10px; color: var(--text-muted); }
+  .exp-cat-chevron { color: var(--text-muted); font-size: 11px; transition: transform .2s; flex-shrink: 0; }
+  .exp-cat-card.is-collapsed .exp-cat-chevron { transform: rotate(-90deg); }
+  .exp-cat-del { border: none; background: #fef2f2; color: #dc2626; cursor: pointer; font-size: 14px; padding: 6px 8px; border-radius: 8px; flex-shrink: 0; }
+
+  .exp-cat-body { border-top: 1px solid var(--border); background: var(--card-alt, #f8fafc); }
+  .exp-item {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+    padding: 12px 14px; border-bottom: 1px solid var(--border); background: var(--card);
+  }
+  .exp-item:last-child { border-bottom: none; }
+  .exp-item-main { flex: 1; min-width: 0; }
+  .exp-item-title { font-weight: 700; font-size: 14px; word-break: break-word; }
+  .exp-item-meta { font-size: 11px; color: var(--text-muted); margin-top: 4px; line-height: 1.4; }
+  .exp-item-side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+  .exp-item-amt { font-weight: 800; color: #ef4444; font-size: 13px; white-space: nowrap; }
+  .exp-item-del {
+    padding: 5px 10px; border-radius: 8px; font-size: 11px; font-weight: 700;
+    background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; text-decoration: none;
+  }
+  .exp-cat-empty { padding: 20px 14px; text-align: center; color: var(--text-muted); font-size: 13px; background: var(--card); }
+  .exp-cat-empty-btn {
+    margin-top: 8px; padding: 8px 14px; border-radius: 8px; border: 1px dashed var(--border);
+    background: transparent; color: var(--primary); font-weight: 700; font-size: 12px; cursor: pointer;
   }
 
-  .exp-repeat-toggle input[type="checkbox"] {
-    width: 18px;
-    height: 18px;
-    min-height: auto;
-    accent-color: var(--expenses-primary);
-  }
+  .exp-cat-icon.rent { background: rgba(139,92,246,.15); }
+  .exp-cat-icon.salary { background: rgba(59,130,246,.15); }
+  .exp-cat-icon.electricity { background: rgba(251,191,36,.18); }
+  .exp-cat-icon.internet { background: rgba(16,185,129,.15); }
+  .exp-cat-icon.advertising { background: rgba(236,72,153,.15); }
+  .exp-cat-icon.maintenance { background: rgba(245,158,11,.15); }
+  .exp-cat-icon.other { background: rgba(107,114,128,.15); }
+  .exp-cat-icon.c1 { background: rgba(14,165,233,.15); }
+  .exp-cat-icon.c2 { background: rgba(168,85,247,.15); }
+  .exp-cat-icon.c3 { background: rgba(34,197,94,.15); }
+  .exp-cat-icon.c4 { background: rgba(244,63,94,.15); }
+  .exp-cat-icon.c5 { background: rgba(99,102,241,.15); }
+  .exp-cat-icon.c6 { background: rgba(20,184,166,.15); }
+  .exp-cat-icon.c7 { background: rgba(234,179,8,.15); }
+  .exp-cat-icon.c8 { background: rgba(249,115,22,.15); }
 
-  .exp-repeat-fields {
-    display: none;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
+  /* Mobile form sheet */
+  .exp-form-panel { }
+  .exp-fab {
+    display: none; position: fixed; bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    left: 16px; z-index: 10200;
+    width: 52px; height: 52px; border-radius: 50%; border: none;
+    background: var(--primary); color: #fff; font-size: 28px; font-weight: 400; line-height: 1;
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45); cursor: pointer;
+    pointer-events: auto; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
   }
-
-  .exp-repeat-box.is-active .exp-repeat-fields {
-    display: grid;
+  .exp-sheet-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 10210;
+    opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .2s ease;
   }
-
-  .exp-repeat-help {
-    color: var(--expenses-muted);
-    font-size: 12px;
-    line-height: 1.6;
+  .exp-sheet-backdrop.is-open { opacity: 1; visibility: visible; pointer-events: auto; }
+  .exp-sheet {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 10220;
+    background: var(--card); border-radius: 20px 20px 0 0; padding: 16px 16px 24px;
+    max-height: 90vh; overflow-y: auto; box-shadow: 0 -8px 32px rgba(0,0,0,.2);
+    transform: translateY(100%); transition: transform .25s ease;
+    visibility: hidden; pointer-events: none;
   }
+  .exp-sheet.is-open { transform: translateY(0); visibility: visible; pointer-events: auto; }
+  .exp-sheet-handle { width: 40px; height: 4px; background: var(--border); border-radius: 99px; margin: 0 auto 12px; }
+  .exp-sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .exp-sheet-head h3 { margin: 0; font-size: 16px; font-weight: 800; }
+  .exp-sheet-close { border: none; background: var(--card-alt); border-radius: 10px; padding: 8px 12px; font-weight: 700; cursor: pointer; }
 
-  /* AG Grid Custom Styles for Expenses */
-  .ag-theme-quartz-dark .ag-row {
-    cursor: pointer;
-  }
+  .loading-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: none; align-items: center; justify-content: center; z-index: 9999; }
+  .loading-overlay.active { display: flex; }
+  .loading-spinner { width: 48px; height: 48px; border: 4px solid rgba(255,255,255,.2); border-top-color: #fff; border-radius: 50%; animation: expSpin .8s linear infinite; }
+  @keyframes expSpin { to { transform: rotate(360deg); } }
+  .toast-container { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 10000; width: calc(100% - 24px); max-width: 420px; }
+  .toast { padding: 12px 16px; border-radius: 12px; color: #fff; font-weight: 600; margin-bottom: 8px; }
+  .toast.success { background: #059669; }
+  .toast.error { background: #dc2626; }
+  .toast.warning { background: #d97706; }
 
-  .ag-theme-quartz-dark .ag-header-cell-label {
-    justify-content: flex-end;
-  }
-
-  .ag-theme-quartz-dark .ag-cell {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-  }
-
-  .exp-actions-grid {
-    display: flex;
-    gap: 4px;
-    justify-content: center;
-    align-items: center;
-    height: 100%;
-    padding: 4px 0;
-  }
-
-  .exp-actions-grid .delete-btn {
-    padding: 4px 12px;
-    font-size: 11px;
-    border-radius: 6px;
-    background: rgba(239, 68, 68, 0.2);
-    color: var(--expenses-danger);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    text-decoration: none;
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  .exp-actions-grid .delete-btn:hover {
-    background: rgba(239, 68, 68, 0.3);
-    transform: translateY(-1px);
-  }
-
-  /* ================= TABLE CARD ================= */
-  .exp-table-card {
-    background: var(--expenses-card);
-    padding: 24px;
-    border-radius: 16px;
-    border: 1px solid var(--expenses-border);
-    position: relative;
-    overflow: hidden;
-    pointer-events: auto;
-  }
-
-  .exp-table-card h3 {
-    color: var(--expenses-text);
-    font-size: 18px;
-    font-weight: 600;
-    margin: 0 0 20px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  /* ================= FILTERS ================= */
-  .exp-filters {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 12px;
-    margin-bottom: 20px;
-    padding: 16px;
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-  }
-
-  .exp-filters input,
-  .exp-filters select {
-    padding: 12px 16px;
-    border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(255, 255, 255, 0.05);
-    color: var(--expenses-text);
-    font-size: 14px;
-    transition: all 0.2s ease;
-    font-family: inherit;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
-    min-height: 44px;
-    box-sizing: border-box;
-    pointer-events: auto;
-  }
-
-  .exp-filters input::placeholder {
-    color: var(--expenses-muted);
-    opacity: 0.6;
-  }
-
-  .exp-filters input:focus,
-  .exp-filters select:focus {
-    outline: none;
-    border-color: var(--expenses-primary);
-    background: rgba(255, 255, 255, 0.08);
-    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
-  }
-
-  .exp-filters button {
-    padding: 12px 20px;
-    background: rgba(239, 68, 68, 0.2);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    border-radius: 10px;
-    color: var(--expenses-danger);
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    min-height: 44px;
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
-    pointer-events: auto;
-  }
-
-  .exp-filters button:hover {
-    background: rgba(239, 68, 68, 0.3);
-    transform: translateY(-1px);
-  }
-
-  /* ================= TABLE ================= */
-  .exp-table-wrapper {
-    overflow-x: auto;
-    overflow-y: auto;
-    max-height: 600px;
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(255, 255, 255, 0.02);
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .exp-table-wrapper::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-
-  .exp-table-wrapper::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .exp-table-wrapper::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 3px;
-  }
-
-  .exp-table-wrapper::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.3);
-  }
-
-  .exp-table {
-    width: 100%;
-    border-collapse: collapse;
-    background: transparent;
-    font-size: 14px;
-    min-width: 800px;
-  }
-
-  .exp-table thead {
-    background: rgba(255, 255, 255, 0.05);
-    position: sticky;
-    top: 0;
-    z-index: 10;
-  }
-
-  .exp-table th {
-    padding: 16px;
-    text-align: right;
-    color: var(--expenses-muted);
-    font-weight: 600;
-    font-size: 13px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    white-space: nowrap;
-    letter-spacing: 0.2px;
-    pointer-events: auto;
-  }
-
-  .exp-table td {
-    padding: 16px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    color: var(--expenses-text);
-    font-size: 14px;
-  }
-
-  .exp-table tbody tr {
-    transition: background 0.2s ease;
-  }
-
-  .exp-table tbody tr:hover {
-    background: rgba(255, 255, 255, 0.05);
-  }
-
-  .exp-table td strong {
-    font-weight: 600;
-    color: var(--expenses-text);
-  }
-
-  /* ================= CATEGORY BADGES ================= */
-  .exp-category-badge {
-    display: inline-block;
-    padding: 6px 12px;
-    border-radius: 8px;
-    font-size: 12px;
-    font-weight: 500;
-    white-space: nowrap;
-  }
-
-  .exp-category-badge.rent {
-    background: rgba(139, 92, 246, 0.2);
-    color: #a78bfa;
-    border: 1px solid rgba(139, 92, 246, 0.3);
-  }
-
-  .exp-category-badge.salary {
-    background: rgba(59, 130, 246, 0.2);
-    color: #60a5fa;
-    border: 1px solid rgba(59, 130, 246, 0.3);
-  }
-
-  .exp-category-badge.electricity {
-    background: rgba(251, 191, 36, 0.2);
-    color: #fbbf24;
-    border: 1px solid rgba(251, 191, 36, 0.3);
-  }
-
-  .exp-category-badge.internet {
-    background: rgba(16, 185, 129, 0.2);
-    color: #34d399;
-    border: 1px solid rgba(16, 185, 129, 0.3);
-  }
-
-  .exp-category-badge.advertising {
-    background: rgba(236, 72, 153, 0.2);
-    color: #f472b6;
-    border: 1px solid rgba(236, 72, 153, 0.3);
-  }
-
-  .exp-category-badge.maintenance {
-    background: rgba(245, 158, 11, 0.2);
-    color: #fbbf24;
-    border: 1px solid rgba(245, 158, 11, 0.3);
-  }
-
-  .exp-category-badge.other {
-    background: rgba(107, 114, 128, 0.2);
-    color: #9ca3af;
-    border: 1px solid rgba(107, 114, 128, 0.3);
-  }
-
-  .exp-amount {
-    font-weight: 600;
-    color: var(--expenses-danger);
-    font-size: 15px;
-  }
-
-  /* ================= ACTIONS ================= */
-  .exp-actions {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-
-  .exp-actions a {
-    padding: 8px 16px;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 500;
-    text-decoration: none;
-    transition: all 0.2s ease;
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
-    pointer-events: auto;
-  }
-
-  .exp-actions .delete-btn {
-    background: rgba(239, 68, 68, 0.2);
-    color: var(--expenses-danger);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-  }
-
-  .exp-actions .delete-btn:hover {
-    background: rgba(239, 68, 68, 0.3);
-    transform: translateY(-1px);
-  }
-
-  /* ================= EMPTY STATE ================= */
-  .exp-empty {
-    text-align: center;
-    padding: 60px 20px;
-    color: var(--expenses-muted);
-  }
-
-  .exp-empty-icon {
-    font-size: 64px;
-    margin-bottom: 16px;
-    opacity: 0.5;
-  }
-
-  .exp-empty-text {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--expenses-text);
-  }
-
-  /* ================= RESPONSIVE ================= */
-  @media (max-width: 1024px) {
-    .exp-grid {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  @media (max-width: 768px) {
+  @media (max-width: 960px) {
+    .exp-page { padding: 8px 10px 90px; }
+    .exp-layout { grid-template-columns: 1fr; }
+    .exp-form-panel { display: none; }
+    .exp-fab { display: flex; align-items: center; justify-content: center; }
     .exp-summary {
-      grid-template-columns: repeat(2, 1fr);
-      gap: 16px;
+      display: flex; overflow-x: auto; gap: 8px; scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch; padding-bottom: 4px;
     }
-
-    .exp-form-card,
-    .exp-table-card {
-      padding: 16px;
-    }
-
-    .exp-form-card h3,
-    .exp-table-card h3 {
-      font-size: 16px;
-    }
-
-    .exp-filters {
-      grid-template-columns: 1fr;
-      padding: 12px;
-    }
-
-    .exp-table-wrapper {
-      max-height: 500px;
-    }
-
-    .exp-table {
-      min-width: 700px;
-    }
-
-    .exp-table th,
-    .exp-table td {
-      padding: 12px;
-      font-size: 13px;
-    }
-
-    .exp-actions {
-      flex-direction: column;
-      width: 100%;
-    }
-
-    .exp-actions a {
-      width: 100%;
-    }
-  }
-
-  @media (max-width: 480px) {
-    .exp-summary {
-      grid-template-columns: 1fr;
-    }
-
-    .exp-form-card,
-    .exp-table-card {
-      padding: 12px;
-    }
-
-    .exp-filters {
-      padding: 10px;
-    }
-
-    .exp-table-wrapper {
-      max-height: 400px;
-    }
-
-    .exp-table {
-      min-width: 600px;
-    }
-
-    .exp-table th,
-    .exp-table td {
-      padding: 10px;
-      font-size: 12px;
-    }
-
-    /* Loading Overlay Mobile */
-    .loading-overlay {
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-    }
-
-    .loading-spinner {
-      width: 70px;
-      height: 70px;
-      border-width: 6px;
-    }
-
-    .loading-spinner::after {
-      width: 50px;
-      height: 50px;
-      margin: -25px 0 0 -25px;
-    }
-
-    /* Toast Mobile */
-    .toast-container {
-      top: 12px;
-      left: 12px;
-      right: 12px;
-      width: auto;
-      max-width: none;
-      transform: none;
-      gap: 10px;
-    }
-
-    .toast {
-      min-width: auto;
-      padding: 16px 18px;
-      font-size: 14px;
-      border-radius: 12px;
-    }
-  }
-
-  /* ================= LOADING & TOAST ================= */
-  .loading-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.8);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-    touch-action: none;
-    -webkit-tap-highlight-color: transparent;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-  }
-
-  .loading-overlay.active {
-    display: flex;
-    opacity: 1;
-    animation: fadeIn 0.3s ease;
-  }
-
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-    }
-
-    to {
-      opacity: 1;
-    }
-  }
-
-  .loading-spinner {
-    width: 60px;
-    height: 60px;
-    border: 5px solid rgba(239, 68, 68, 0.15);
-    border-top-color: var(--expenses-primary);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    box-shadow: 0 8px 24px rgba(239, 68, 68, 0.3), 0 0 0 4px rgba(239, 68, 68, 0.1);
-    position: relative;
-  }
-
-  .loading-spinner::after {
-    content: "";
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 40px;
-    height: 40px;
-    margin: -20px 0 0 -20px;
-    border: 3px solid rgba(239, 68, 68, 0.1);
-    border-top-color: rgba(239, 68, 68, 0.5);
-    border-radius: 50%;
-    animation: spin 0.6s linear infinite reverse;
-  }
-
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
-
-  .button-loading {
-    position: relative;
-    color: transparent !important;
-    pointer-events: none;
-  }
-
-  .button-loading::after {
-    content: "";
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 20px;
-    height: 20px;
-    margin: -10px 0 0 -10px;
-    border: 3px solid rgba(255, 255, 255, 0.3);
-    border-top-color: #fff;
-    border-radius: 50%;
-    animation: spin 0.6s linear infinite;
-    pointer-events: none;
-  }
-
-  .toast-container {
-    position: fixed;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 10000;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    width: calc(100% - 32px);
-    max-width: 500px;
-    pointer-events: none;
-  }
-
-  .toast {
-    min-width: 280px;
-    max-width: 100%;
-    width: 100%;
-    padding: 16px 20px;
-    border-radius: 14px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3);
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    animation: slideInDown 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    pointer-events: auto;
-    box-sizing: border-box;
-    position: relative;
-    overflow: hidden;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-
-  .toast::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-    opacity: 0.6;
-  }
-
-  .expenses-page .loading-overlay {
-    pointer-events: auto;
-  }
-
-  /* ================= LIGHT MODE FIXES ================= */
-  :root[data-theme="light"] .expenses-page .exp-summary-card,
-  :root[data-theme="light"] .expenses-page .exp-form-card,
-  :root[data-theme="light"] .expenses-page .exp-table-card {
-    background: rgba(255, 255, 255, 0.92);
-    border-color: rgba(2, 6, 23, 0.08);
-    box-shadow: 0 16px 34px rgba(2, 6, 23, 0.08);
-  }
-
-  :root[data-theme="light"] .expenses-page .exp-form-card h3,
-  :root[data-theme="light"] .expenses-page .exp-table-card h3,
-  :root[data-theme="light"] .expenses-page .exp-summary-card h4,
-  :root[data-theme="light"] .expenses-page .exp-summary-card .subtitle {
-    color: rgba(15, 23, 42, 0.70);
-  }
-
-  :root[data-theme="light"] .expenses-page .exp-form-card input,
-  :root[data-theme="light"] .expenses-page .exp-form-card select,
-  :root[data-theme="light"] .expenses-page .exp-form-card textarea,
-  :root[data-theme="light"] .expenses-page .exp-filters input,
-  :root[data-theme="light"] .expenses-page .exp-filters select {
-    background: rgba(255, 255, 255, 0.94);
-    border-color: rgba(2, 6, 23, 0.10);
-    color: #0f172a;
-  }
-
-  :root[data-theme="light"] .expenses-page .exp-filters {
-    background: rgba(2, 6, 23, 0.03);
-    border-color: rgba(2, 6, 23, 0.08);
-  }
-
-  :root[data-theme="light"] .expenses-page .exp-table-wrapper {
-    background: rgba(255, 255, 255, 0.94);
-    border-color: rgba(2, 6, 23, 0.08);
-  }
-
-  :root[data-theme="light"] .expenses-page .exp-table thead {
-    background: rgba(241, 245, 249, 0.96);
-  }
-
-  :root[data-theme="light"] .expenses-page .exp-table th {
-    color: rgba(15, 23, 42, 0.75);
-    border-bottom-color: rgba(2, 6, 23, 0.10);
-  }
-
-  :root[data-theme="light"] .expenses-page .exp-table td {
-    color: #0f172a;
-    border-bottom-color: rgba(2, 6, 23, 0.08);
-  }
-
-  :root[data-theme="light"] .expenses-page .exp-table tbody tr:hover {
-    background: rgba(37, 99, 235, 0.05);
-  }
-
-  :root[data-theme="light"] .expenses-page .exp-actions .delete-btn {
-    background: rgba(239, 68, 68, 0.10);
-    border-color: rgba(239, 68, 68, 0.25);
-  }
-
-  .toast.success {
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(5, 150, 105, 0.95));
-    color: #fff;
-    border-color: rgba(16, 185, 129, 0.3);
-  }
-
-  .toast.error {
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.95), rgba(220, 38, 38, 0.95));
-    color: #fff;
-    border-color: rgba(239, 68, 68, 0.3);
-  }
-
-  .toast.warning {
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.95), rgba(217, 119, 6, 0.95));
-    color: #fff;
-    border-color: rgba(245, 158, 11, 0.3);
-  }
-
-  @keyframes slideInDown {
-    from {
-      opacity: 0;
-      transform: translateX(-50%) translateY(-30px) scale(0.95);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateX(-50%) translateY(0) scale(1);
-    }
+    .exp-sum-card { min-width: 120px; flex: 0 0 auto; scroll-snap-align: start; padding: 10px 12px; }
+    .exp-sum-card .val { font-size: 0.95rem; }
+    .exp-panel { padding: 12px; }
+    .exp-panel h3 { font-size: 15px; margin-bottom: 10px; padding-bottom: 8px; }
+    .exp-cat-head { padding: 10px 12px; }
+    .exp-cat-icon { width: 38px; height: 38px; font-size: 18px; }
+    .exp-cat-name { font-size: 14px; }
+    .exp-filters-row select { display: none; }
+    .exp-filters-row { grid-template-columns: 1fr 36px; }
   }
 </style>
 
-<div class="expenses-page">
-  <!-- ================= SUMMARY CARDS ================= -->
+<div class="exp-page">
   <div class="exp-summary">
-    <div class="exp-summary-card total">
-      <h4>{{ _('expenses_stat_total') }}</h4>
-      <div class="value">{{ "{:,.0f}".format(total) }}</div>
-      <div class="subtitle">{{ _('expenses_stat_total_subtitle') }}</div>
+    <div class="exp-sum-card total">
+      <div class="lbl">{{ _('expenses_stat_total') }}</div>
+      <div class="val">{{ "{:,.0f}".format(total) }}</div>
+      <div class="sub">{{ _('expenses_stat_total_subtitle') }}</div>
     </div>
-    <div class="exp-summary-card month">
-      <h4>{{ _('expenses_stat_month') }}</h4>
-      <div class="value">{{ "{:,.0f}".format(month_total) }}</div>
-      <div class="subtitle">{{ current_month_name }}</div>
+    <div class="exp-sum-card month">
+      <div class="lbl">{{ _('expenses_stat_month') }}</div>
+      <div class="val">{{ "{:,.0f}".format(month_total) }}</div>
+      <div class="sub">{{ current_month_name }}</div>
     </div>
-    <div class="exp-summary-card today">
-      <h4>{{ _('expenses_stat_today') }}</h4>
-      <div class="value">{{ "{:,.0f}".format(today_total) }}</div>
-      <div class="subtitle">{{ today_date }}</div>
+    <div class="exp-sum-card today">
+      <div class="lbl">{{ _('expenses_stat_today') }}</div>
+      <div class="val">{{ "{:,.0f}".format(today_total) }}</div>
+      <div class="sub">{{ today_date }}</div>
     </div>
   </div>
 
-  <div class="exp-grid">
-    <!-- ================= ADD EXPENSE FORM ================= -->
-    <div class="exp-form-card">
-      <h3>
-        <span>➕</span>
-        <span>{{ _('expenses_add_title') }}</span>
-      </h3>
+  <div class="exp-layout">
+    <!-- الفئات أولاً -->
+    <div class="exp-panel exp-categories-panel">
+      <h3>📂 فئات المصاريف</h3>
 
-      <form method="post" class="form-grid">
-        <input name="title" placeholder="{{ _('expenses_field_title_placeholder') }}" required>
+      <div class="exp-quick-add">
+        <input type="text" id="newCategoryName" placeholder="فئة جديدة..." maxlength="80">
+        <button type="button" class="exp-btn exp-btn-muted" id="addCategoryBtn">➕ فئة</button>
+      </div>
 
-        <select name="category" required data-help="expenses.category">
-          <option value="">{{ _('expenses_field_category_placeholder') }}</option>
-          <option value="rent">🏠 {{ _('expenses_cat_rent') }}</option>
-          <option value="salary">💰 {{ _('expenses_cat_salary') }}</option>
-          <option value="electricity">⚡ {{ _('expenses_cat_electricity') }}</option>
-          <option value="internet">🌐 {{ _('expenses_cat_internet') }}</option>
-          <option value="advertising">📢 {{ _('expenses_cat_advertising') }}</option>
-          <option value="maintenance">🔧 {{ _('expenses_cat_maintenance') }}</option>
-          <option value="other">📦 {{ _('expenses_cat_other') }}</option>
-        </select>
-
-        <select name="treasury_account_id" required data-help="expenses.account">
-          {% for acc in treasury_choices|default([]) %}
-          <option value="{{ acc.id }}">{{ _('pay_from_account') }}: {{ acc.name }}</option>
-          {% endfor %}
-        </select>
-
-        <input name="amount" type="number" step="0.01" min="0" placeholder="{{ _('expenses_field_amount_placeholder') }}" data-help="expenses.amount" required>
-
-        <input name="expense_date" type="date" value="{{ default_date }}" data-help="expenses.date" required>
-
-        <div class="exp-repeat-box" id="expenseRepeatBox">
-          <div class="exp-repeat-toggle">
-            <label>
-              <input type="checkbox" id="repeatEnabled" name="repeat_enabled" value="1">
-              <span>تكرار المصروف</span>
-            </label>
-            <span class="exp-repeat-help">المستحق فقط يُخصم من الصندوق — المجدول لاحقاً بدون خصم حتى موعده</span>
-          </div>
-          <div class="exp-repeat-fields">
-            <div>
-              <input name="repeat_interval" id="repeatInterval" type="number" min="1" max="365" value="1" placeholder="الفاصل الزمني للتكرار">
-              <div class="exp-repeat-help">كل كم فترة (مثال: 1 = كل شهر)</div>
-            </div>
-            <div>
-              <select name="repeat_unit" id="repeatUnit">
-                <option value="months" selected>الأشهر</option>
-                <option value="weeks">الأسابيع</option>
-                <option value="days">الأيام</option>
-                <option value="years">السنوات</option>
-              </select>
-              <div class="exp-repeat-help">وحدة التكرار (افتراضي: شهري)</div>
-            </div>
-            <div>
-              <input name="repeat_count" id="repeatCount" type="number" min="1" max="120" value="12" placeholder="عدد التكرار">
-              <div class="exp-repeat-help">عدد مرات التكرار — التواريخ المستقبلية تُجدول فقط بدون سحب من الصندوق</div>
-            </div>
-          </div>
-        </div>
-
-        <textarea name="note" placeholder="{{ _('expenses_field_note_placeholder') }}"></textarea>
-
-        <button type="submit" class="btn-premium">
-          <span>💾</span>
-          <span>{{ _('expenses_save_button') }}</span>
-        </button>
-      </form>
-    </div>
-
-    <!-- ================= EXPENSES TABLE ================= -->
-    <div class="exp-table-card">
-      <h3>
-        <span>📋</span>
-        <span>{{ _('expenses_table_title') }}</span>
-      </h3>
-
-      <!-- Filters -->
-      <div class="exp-filters">
-        <input type="text" id="searchInput" placeholder="{{ _('expenses_filter_search_placeholder') }}">
+      <div class="exp-filters-row">
+        <input type="text" id="searchInput" placeholder="🔍 بحث...">
         <select id="filterCategory">
           <option value="">{{ _('expenses_filter_category_all') }}</option>
-          <option value="rent">{{ _('expenses_cat_rent') }}</option>
-          <option value="salary">{{ _('expenses_cat_salary') }}</option>
-          <option value="electricity">{{ _('expenses_cat_electricity') }}</option>
-          <option value="internet">{{ _('expenses_cat_internet') }}</option>
-          <option value="advertising">{{ _('expenses_cat_advertising') }}</option>
-          <option value="maintenance">{{ _('expenses_cat_maintenance') }}</option>
-          <option value="other">{{ _('expenses_cat_other') }}</option>
+          {% for cat in expense_categories %}
+          <option value="{{ cat.key }}">{{ cat.icon }} {{ cat.label }}</option>
+          {% endfor %}
         </select>
-        <input type="date" id="filterDateFrom" placeholder="{{ _('expenses_filter_date_from') }}">
-        <input type="date" id="filterDateTo" placeholder="{{ _('expenses_filter_date_to') }}">
-        <button onclick="clearFilters()">🗑️ {{ _('expenses_filter_clear') }}</button>
+        <button type="button" class="exp-filter-toggle" id="filterToggleBtn" title="فلتر التاريخ">📅</button>
+      </div>
+      <div class="exp-filters-more" id="filtersMore">
+        <input type="date" id="filterDateFrom">
+        <input type="date" id="filterDateTo">
+        <button type="button" class="exp-btn exp-btn-muted" onclick="clearFilters()" style="flex:0;">🗑️ مسح</button>
       </div>
 
-      <!-- Desktop Table View -->
-      <div class="exp-table-wrapper" style="height: 600px;">
-        <div id="expensesTable" class="ag-theme-finora" style="height: 100%; width: 100%;"></div>
+      <div class="exp-cat-list" id="expenseCategoryList">
+        {% for group in category_groups %}
+        <div class="exp-cat-card{% if group.count > 0 %} has-items{% else %} is-collapsed{% endif %}"
+          data-category="{{ group.key }}" data-has-items="{{ group.count }}">
+          <div class="exp-cat-head" onclick="toggleCategoryCard(this)">
+            <div class="exp-cat-icon {{ group.color }}">{{ group.icon }}</div>
+            <div class="exp-cat-meta">
+              <div class="exp-cat-name">{{ group.label }}</div>
+              <div class="exp-cat-sub">{{ group.count }} مصروف</div>
+            </div>
+            <div class="exp-cat-total">
+              <div class="amt">{{ "{:,.0f}".format(group.total) }}</div>
+              <div class="cnt">د.ع</div>
+            </div>
+            {% if not group.builtin %}
+            <button type="button" class="exp-cat-del" onclick="event.stopPropagation(); removeExpenseCategory('{{ group.key }}')">🗑️</button>
+            {% endif %}
+            <span class="exp-cat-chevron">▼</span>
+          </div>
+          <div class="exp-cat-body">
+            {% if group.expenses %}
+              {% for e in group.expenses %}
+              <div class="exp-item"
+                data-title="{{ (e.title or '')|lower }}"
+                data-note="{{ (e.note or '')|lower }}"
+                data-date="{{ e.expense_date.strftime('%Y-%m-%d') if e.expense_date else '' }}">
+                <div class="exp-item-main">
+                  <div class="exp-item-title">{{ e.title }}</div>
+                  <div class="exp-item-meta">
+                    {{ e.expense_date.strftime('%Y-%m-%d') if e.expense_date else '—' }}
+                    {% if e.note %} · {{ e.note }}{% endif %}
+                    {% if not e.cash_posted %} · <span style="color:#d97706;">مجدول</span>{% endif %}
+                  </div>
+                </div>
+                <div class="exp-item-side">
+                  <div class="exp-item-amt">{{ "{:,.0f}".format(e.amount or 0) }}</div>
+                  <a href="/expenses/delete/{{ e.id }}" class="exp-item-del" data-expense-delete="1">حذف</a>
+                </div>
+              </div>
+              {% endfor %}
+            {% else %}
+              <div class="exp-cat-empty">
+                لا مصاريف بعد
+                <button type="button" class="exp-cat-empty-btn" data-cat="{{ group.key }}">➕ أضف مصروف</button>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
       </div>
+    </div>
 
-      <!-- ================= EXPENSES DATA (JSON) ================= -->
-      <script type="application/json" id="expensesData">
-[
-  {% for e in expenses %}
-  {{ {
-    "id": e.id,
-    "date": e.expense_date.strftime('%Y-%m-%d') if e.expense_date else '',
-    "category": e.category,
-    "category_name": (
-      _('expenses_cat_rent') if e.category == 'rent' else
-      _('expenses_cat_salary') if e.category == 'salary' else
-      _('expenses_cat_electricity') if e.category == 'electricity' else
-      _('expenses_cat_internet') if e.category == 'internet' else
-      _('expenses_cat_advertising') if e.category == 'advertising' else
-      _('expenses_cat_maintenance') if e.category == 'maintenance' else
-      _('expenses_cat_other')
-    ),
-    "title": e.title or '',
-    "amount": (e.amount or 0)|int,
-    "employee_name": (e.employee.name if e.employee else 'النظام'),
-    "notes": e.note or e.notes or ''
-  }|tojson }}{% if not loop.last %},{% endif %}
-  {% endfor %}
-]
-      </script>
+    <!-- نموذج الديسكتوب -->
+    <div class="exp-panel exp-form-panel">
+      <h3>➕ {{ _('expenses_add_title') }}</h3>
+      {% include 'expenses/_add_form.html' %}
     </div>
   </div>
+</div>
 
-  <script>
-    // ==================== AG Grid Initialization ====================
-    let gridApi;
+<!-- زر عائم + نموذج منبثق للهاتف -->
+<button type="button" class="exp-fab" id="expFabBtn" aria-label="إضافة مصروف">+</button>
+<div class="exp-sheet-backdrop" id="expSheetBackdrop"></div>
+<div class="exp-sheet" id="expSheet">
+  <div class="exp-sheet-handle"></div>
+  <div class="exp-sheet-head">
+    <h3>➕ {{ _('expenses_add_title') }}</h3>
+    <button type="button" class="exp-sheet-close" id="expSheetCloseBtn">إغلاق</button>
+  </div>
+  {% include 'expenses/_add_form.html' %}
+</div>
 
-    function initAgGrid() {
-      const expensesDataElement = document.getElementById("expensesData");
-      if (!expensesDataElement) return;
+<script>
+function showToast(message, type = 'info') {
+  const c = document.getElementById('toastContainer');
+  if (!c) return;
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = message;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 3200);
+}
 
-      let rowData = [];
-      try {
-        rowData = JSON.parse(expensesDataElement.textContent.trim());
-      } catch (e) {
-        console.error("Error parsing expenses data:", e);
-        return;
-      }
+function openAddExpense(categoryKey) {
+  const sheet = document.getElementById('expSheet');
+  const backdrop = document.getElementById('expSheetBackdrop');
+  if (!sheet || !backdrop) return;
+  if (categoryKey) {
+    const sheetForm = sheet.querySelector('.expense-category-select');
+    if (sheetForm) sheetForm.value = categoryKey;
+  }
+  backdrop.classList.add('is-open');
+  sheet.classList.add('is-open');
+  document.body.style.overflow = 'hidden';
+  const firstInput = sheet.querySelector('input[name="title"]');
+  if (firstInput) setTimeout(() => firstInput.focus(), 120);
+}
 
-      const columnDefs = [
-        {
-          headerName: "{{ _('expenses_col_date') }}",
-          field: "date",
-          width: 120,
-          cellRenderer: params => `<span style="color: var(--expenses-muted);">${params.value}</span>`
-        },
-        {
-          headerName: "{{ _('expenses_col_category') }}",
-          field: "category_name",
-          width: 120,
-          cellRenderer: params => {
-            const cat = params.data.category;
-            return `<span class="exp-category-badge ${cat}">${params.value}</span>`;
-          }
-        },
-        {
-          headerName: "{{ _('expenses_col_title') }}",
-          field: "title",
-          flex: 1.5,
-          minWidth: 150,
-          cellRenderer: params => `<strong>${params.value}</strong>`
-        },
-        {
-          headerName: "{{ _('expenses_col_amount') }}",
-          field: "amount",
-          width: 130,
-          type: 'numericColumn',
-          cellRenderer: params => `<span class="exp-amount">${params.value.toLocaleString()} {{ _('expenses_currency_iqd') }}</span>`
-        },
-        { headerName: "{{ _('expenses_col_employee') }}", field: "employee_name", width: 120, cellStyle: { color: 'var(--expenses-muted)' } },
-        {
-          headerName: "{{ _('expenses_col_notes') }}",
-          field: "notes",
-          flex: 1,
-          minWidth: 150,
-          cellStyle: { color: 'var(--expenses-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-          tooltipField: 'notes'
-        },
-        {
-          headerName: "{{ _('expenses_col_actions') }}",
-          field: "actions",
-          width: 100,
-          sortable: false,
-          filter: false,
-          cellRenderer: params => {
-            const e = params.data;
-            return `
-              <div class="exp-actions-grid">
-                <a href="/expenses/delete/${e.id}" class="delete-btn" data-expense-delete="1">{{ _('expenses_action_delete') }}</a>
-              </div>
-            `;
-          }
-        }
-      ];
+function closeAddExpense() {
+  document.getElementById('expSheet')?.classList.remove('is-open');
+  document.getElementById('expSheetBackdrop')?.classList.remove('is-open');
+  document.body.style.overflow = '';
+}
 
-      const gridOptions = {
-        columnDefs: columnDefs,
-        rowData: rowData,
-        rowHeight: 52,
-        headerHeight: 48,
-        pagination: true,
-        paginationPageSize: 20,
-        paginationPageSizeSelector: [10, 20, 50, 100],
-        enableRtl: true,
-        animateRows: true,
-        defaultColDef: {
-          sortable: true,
-          filter: true,
-          resizable: true,
-          floatingFilter: true
-        },
-        onGridReady: (params) => {
-          gridApi = params.api;
-        },
-        isExternalFilterPresent: () => {
-          const categoryFilter = document.getElementById('filterCategory').value;
-          const dateFrom = document.getElementById('filterDateFrom').value;
-          const dateTo = document.getElementById('filterDateTo').value;
-          return categoryFilter !== '' || dateFrom !== '' || dateTo !== '';
-        },
-        doesExternalFilterPass: (node) => {
-          const categoryFilter = document.getElementById('filterCategory').value;
-          const dateFrom = document.getElementById('filterDateFrom').value;
-          const dateTo = document.getElementById('filterDateTo').value;
+window.openAddExpense = openAddExpense;
+window.closeAddExpense = closeAddExpense;
 
-          const matchesCategory = !categoryFilter || node.data.category === categoryFilter;
-          const date = node.data.date;
-          const matchesDateFrom = !dateFrom || date >= dateFrom;
-          const matchesDateTo = !dateTo || date <= dateTo;
+function toggleFiltersMore() {
+  document.getElementById('filtersMore')?.classList.toggle('is-open');
+}
 
-          return matchesCategory && matchesDateFrom && matchesDateTo;
-        }
-      };
+function toggleCategoryCard(headEl) {
+  headEl.closest('.exp-cat-card')?.classList.toggle('is-collapsed');
+}
 
-      const eGridDiv = document.querySelector('#expensesTable');
-      agGrid.createGrid(eGridDiv, gridOptions);
+function applyFilters() {
+  const q = (document.getElementById('searchInput')?.value || '').trim().toLowerCase();
+  const cat = document.getElementById('filterCategory')?.value || '';
+  const from = document.getElementById('filterDateFrom')?.value || '';
+  const to = document.getElementById('filterDateTo')?.value || '';
+  const anyFilter = !!(q || from || to || cat);
 
-      document.addEventListener("click", async function (event) {
-        const deleteLink = event.target && event.target.closest ? event.target.closest("[data-expense-delete]") : null;
-        if (!deleteLink) return;
-        event.preventDefault();
-        const ok = window.finoraConfirmImpact
-          ? await window.finoraConfirmImpact({
-              tone: "danger",
-              title: "حذف مصروف",
-              message: "راجع الأثر قبل حذف المصروف.",
-              impact: [
-                "سيتم حذف سجل المصروف من القائمة.",
-                "قد يتغير إجمالي المصروفات والتقارير المرتبطة مباشرة.",
-                "إذا كان الحذف غير مقصود، استخدم الإلغاء الآن وراجع السجل أولاً."
-              ],
-              confirmText: "حذف المصروف"
-            })
-          : confirm({{ _('expenses_confirm_delete')|tojson }});
-        if (ok) window.location.href = deleteLink.href;
-      });
-      eGridDiv.classList.add('ag-theme-finora');
-      eGridDiv.classList.remove('ag-theme-quartz-dark');
-    }
+  document.querySelectorAll('.exp-cat-card').forEach(card => {
+    const cardKey = card.getAttribute('data-category') || '';
+    if (cat && cat !== cardKey) { card.style.display = 'none'; return; }
 
-    function applyFilters() {
-      const searchTerm = document.getElementById("searchInput")?.value || '';
-      if (gridApi) {
-        gridApi.setGridOption('quickFilterText', searchTerm);
-        gridApi.onFilterChanged();
-      }
-    }
-
-    function clearFilters() {
-      if (document.getElementById("searchInput")) document.getElementById("searchInput").value = '';
-      if (document.getElementById("filterCategory")) document.getElementById("filterCategory").value = '';
-      if (document.getElementById("filterDateFrom")) document.getElementById("filterDateFrom").value = '';
-      if (document.getElementById("filterDateTo")) document.getElementById("filterDateTo").value = '';
-      applyFilters();
-    }
-
-    // Event listeners
-    document.addEventListener("DOMContentLoaded", function () {
-      if (document.getElementById('expensesTable')) {
-        initAgGrid();
-      }
-
-      const searchInput = document.getElementById("searchInput");
-      const filterCategory = document.getElementById("filterCategory");
-      const filterDateFrom = document.getElementById("filterDateFrom");
-      const filterDateTo = document.getElementById("filterDateTo");
-
-      if (searchInput) searchInput.addEventListener("keyup", applyFilters);
-      if (filterCategory) filterCategory.addEventListener("change", applyFilters);
-      if (filterDateFrom) filterDateFrom.addEventListener("change", applyFilters);
-      if (filterDateTo) filterDateTo.addEventListener("change", applyFilters);
-
-      const repeatEnabled = document.getElementById("repeatEnabled");
-      const repeatBox = document.getElementById("expenseRepeatBox");
-      if (repeatEnabled && repeatBox) {
-        const syncRepeatBox = () => repeatBox.classList.toggle("is-active", repeatEnabled.checked);
-        repeatEnabled.addEventListener("change", syncRepeatBox);
-        syncRepeatBox();
-      }
+    let visible = 0;
+    card.querySelectorAll('.exp-item').forEach(item => {
+      const title = item.getAttribute('data-title') || '';
+      const note = item.getAttribute('data-note') || '';
+      const date = item.getAttribute('data-date') || '';
+      const ok = (!q || title.includes(q) || note.includes(q))
+        && (!from || date >= from) && (!to || date <= to);
+      item.style.display = ok ? '' : 'none';
+      if (ok) visible++;
     });
 
-    // ==================== Toast Notifications ====================
-    function showToast(message, type = 'info') {
-      const container = document.getElementById('toastContainer');
-      if (!container) return;
-
-      const toast = document.createElement('div');
-      toast.className = `toast ${type}`;
-
-      const icons = {
-        success: '✅',
-        error: '❌',
-        warning: '⚠️',
-        info: 'ℹ️'
-      };
-
-      toast.innerHTML = `
-    <span style="font-size: 18px;">${icons[type] || icons.info}</span>
-    <span style="flex: 1;">${message}</span>
-  `;
-
-      container.appendChild(toast);
-
-      setTimeout(() => {
-        toast.style.animation = 'slideInDown 0.3s ease reverse';
-        setTimeout(() => toast.remove(), 300);
-      }, 3000);
+    const hasItems = Number(card.getAttribute('data-has-items') || 0) > 0;
+    if (anyFilter) {
+      card.style.display = visible > 0 ? '' : 'none';
+      if (visible > 0) card.classList.remove('is-collapsed');
+    } else {
+      card.style.display = '';
     }
+  });
+}
 
-    // ==================== Loading Overlay ====================
-    function showLoading() {
-      const overlay = document.getElementById('loadingOverlay');
-      if (overlay) {
-        overlay.classList.add('active');
-      }
-    }
+function clearFilters() {
+  ['searchInput', 'filterCategory', 'filterDateFrom', 'filterDateTo'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('filtersMore')?.classList.remove('is-open');
+  applyFilters();
+}
 
-    function hideLoading() {
-      const overlay = document.getElementById('loadingOverlay');
-      if (overlay) {
-        overlay.classList.remove('active');
-      }
-    }
-  </script>
+async function addExpenseCategory() {
+  const input = document.getElementById('newCategoryName');
+  const name = (input?.value || '').trim();
+  if (!name) { showToast('أدخل اسم الفئة', 'warning'); return; }
+  try {
+    const res = await fetch('/expenses/categories/add', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name })
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'تعذر إضافة الفئة');
+    showToast('تمت إضافة الفئة', 'success');
+    setTimeout(() => location.reload(), 500);
+  } catch (e) { showToast(e.message, 'error'); }
+}
 
-</div>
+async function removeExpenseCategory(key) {
+  if (!confirm('حذف هذه الفئة؟')) return;
+  try {
+    const res = await fetch('/expenses/categories/remove', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key })
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'تعذر الحذف');
+    showToast('تم الحذف', 'success');
+    setTimeout(() => location.reload(), 500);
+  } catch (e) { showToast(e.message, 'error'); }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  // انقل العناصر الثابتة إلى body لتجنب مشاكل الطبقات
+  ['expFabBtn', 'expSheet', 'expSheetBackdrop'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && el.parentElement !== document.body) document.body.appendChild(el);
+  });
+
+  document.getElementById('expFabBtn')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    openAddExpense();
+  });
+  document.getElementById('expSheetBackdrop')?.addEventListener('click', closeAddExpense);
+  document.getElementById('expSheetCloseBtn')?.addEventListener('click', closeAddExpense);
+  document.getElementById('addCategoryBtn')?.addEventListener('click', addExpenseCategory);
+  document.getElementById('filterToggleBtn')?.addEventListener('click', toggleFiltersMore);
+
+  document.querySelectorAll('.exp-cat-empty-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openAddExpense(btn.getAttribute('data-cat') || '');
+    });
+  });
+  ['searchInput', 'filterCategory', 'filterDateFrom', 'filterDateTo'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('change', applyFilters);
+    el.addEventListener('input', applyFilters);
+  });
+
+  document.querySelectorAll('.exp-repeat-box').forEach(box => {
+    const cb = box.querySelector('#repeatEnabled, [name="repeat_enabled"]');
+    if (!cb) return;
+    const sync = () => box.classList.toggle('is-active', cb.checked);
+    cb.addEventListener('change', sync);
+    sync();
+  });
+
+  document.addEventListener('click', async (e) => {
+    const link = e.target?.closest?.('[data-expense-delete]');
+    if (!link) return;
+    e.preventDefault();
+    const ok = window.finoraConfirmImpact
+      ? await window.finoraConfirmImpact({ tone: 'danger', title: 'حذف مصروف', message: 'هل تريد حذف هذا المصروف؟', confirmText: 'حذف' })
+      : confirm({{ _('expenses_confirm_delete')|tojson }});
+    if (ok) window.location.href = link.href;
+  });
+});
+</script>
 {% endblock %}

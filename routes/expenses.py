@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from extensions import db
 from models.expense import Expense
 from models.account_transaction import AccountTransaction
@@ -11,6 +11,12 @@ from utils.expense_queries import sum_posted_expenses
 from utils.treasury_helpers import resolve_treasury_account_id, treasury_choices_for_form
 from utils.treasury_calculations import assert_sufficient_balance, InsufficientTreasuryBalance
 from utils.treasury_schema_guard import ensure_treasury_schema
+from utils.expense_categories import (
+    get_expense_categories,
+    add_expense_category,
+    remove_expense_category,
+    build_category_groups,
+)
 
 expenses_bp = Blueprint("expenses", __name__)
 
@@ -219,6 +225,8 @@ def expenses():
     return render_template(
         "expenses.html",
         expenses=expenses,
+        category_groups=build_category_groups(expenses),
+        expense_categories=get_expense_categories(),
         total=total,
         month_total=month_total,
         today_total=today_total,
@@ -227,6 +235,41 @@ def expenses():
         default_date=default_date,
         treasury_choices=treasury_choices_for_form(),
     )
+
+
+@expenses_bp.route("/categories/add", methods=["POST"])
+@feature_required("expenses")
+def add_expense_category_route():
+    if not check_permission("can_see_expenses"):
+        return jsonify({"success": False, "error": "غير مصرح"}), 403
+    data = request.get_json(silent=True) or {}
+    name = (data.get("name") or request.form.get("name") or "").strip()
+    icon = (data.get("icon") or request.form.get("icon") or "").strip() or None
+    try:
+        cat = add_expense_category(name, icon)
+        return jsonify({"success": True, "category": cat})
+    except ValueError as exc:
+        return jsonify({"success": False, "error": str(exc)}), 400
+    except Exception:
+        db.session.rollback()
+        return jsonify({"success": False, "error": "تعذر إضافة الفئة"}), 500
+
+
+@expenses_bp.route("/categories/remove", methods=["POST"])
+@feature_required("expenses")
+def remove_expense_category_route():
+    if not check_permission("can_see_expenses"):
+        return jsonify({"success": False, "error": "غير مصرح"}), 403
+    data = request.get_json(silent=True) or {}
+    key = (data.get("key") or request.form.get("key") or "").strip()
+    try:
+        remove_expense_category(key)
+        return jsonify({"success": True})
+    except ValueError as exc:
+        return jsonify({"success": False, "error": str(exc)}), 400
+    except Exception:
+        db.session.rollback()
+        return jsonify({"success": False, "error": "تعذر حذف الفئة"}), 500
 
 
 @expenses_bp.route("/delete/<int:id>")

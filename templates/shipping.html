@@ -409,6 +409,85 @@
     padding-inline: 4px;
   }
 
+  /* Dropdown menu (admin-actions-menu.js) */
+  .admin-actions-menu {
+    position: fixed;
+    z-index: 10080;
+    min-width: 200px;
+    max-width: min(260px, calc(100vw - 16px));
+    padding: 6px;
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 12px;
+    background: var(--card, #fff);
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
+    direction: rtl;
+  }
+  .admin-actions-menu[hidden] { display: none !important; }
+  .admin-actions-menu-item {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 10px 12px; border: 0; border-radius: 8px; background: transparent;
+    color: var(--text, #0f172a); font-size: 13px; font-weight: 600;
+    text-align: right; text-decoration: none; cursor: pointer; font-family: inherit;
+  }
+  .admin-actions-menu-item:hover,
+  .admin-actions-menu-item:focus-visible {
+    background: var(--card-alt, #f1f5f9); outline: none;
+  }
+  .admin-actions-menu-item.is-danger { color: #dc2626; }
+  .admin-actions-menu-item.is-danger:hover { background: #fef2f2; }
+  .admin-actions-menu-sep { height: 1px; margin: 4px 6px; background: var(--border, #e2e8f0); }
+  .compact-actions-emoji { width: 16px; text-align: center; flex-shrink: 0; }
+
+  /* Desktop / mobile views */
+  .ship-desktop { display: block; }
+  .ship-mobile { display: none; }
+
+  .ship-m-list { display: flex; flex-direction: column; gap: 10px; }
+  .ship-m-card {
+    background: var(--card, #fff); border: 1px solid var(--border, #e2e8f0);
+    border-radius: 16px; overflow: hidden;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  }
+  .ship-m-head {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+    padding: 14px 16px 10px; border-bottom: 1px solid var(--border, #e2e8f0);
+  }
+  .ship-m-name { font-size: 1rem; font-weight: 800; color: var(--text); word-break: break-word; }
+  .ship-m-due { font-size: 13px; font-weight: 800; white-space: nowrap; flex-shrink: 0; }
+  .ship-m-due.positive { color: #ef4444; }
+  .ship-m-due.zero { color: #10b981; }
+  .ship-m-stats {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1px; background: var(--border, #e2e8f0);
+  }
+  .ship-m-stat { background: var(--card, #fff); padding: 10px 8px; text-align: center; }
+  .ship-m-stat .lbl { display: block; font-size: 10px; color: var(--text-muted); font-weight: 600; margin-bottom: 3px; }
+  .ship-m-stat .val { display: block; font-size: 14px; font-weight: 800; color: var(--text); }
+  .ship-m-stat .val.warn { color: #d97706; font-size: 12px; }
+  .ship-m-note {
+    padding: 8px 14px; font-size: 11px; color: var(--text-muted);
+    border-top: 1px solid var(--border, #e2e8f0); background: var(--card-alt, #f8fafc);
+  }
+  .ship-m-actions {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;
+    padding: 10px 12px 12px; border-top: 1px solid var(--border, #e2e8f0);
+  }
+  .ship-m-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 10px 8px; border-radius: 10px; border: 1px solid var(--border, #e2e8f0);
+    background: var(--card-alt, #f8fafc); color: var(--text);
+    font-size: 12px; font-weight: 700; text-decoration: none; cursor: pointer;
+    font-family: inherit; text-align: center;
+  }
+  .ship-m-btn.primary { background: rgba(37, 99, 235, 0.1); color: #2563eb; border-color: rgba(37, 99, 235, 0.2); }
+  .ship-m-btn.success { background: rgba(16, 185, 129, 0.1); color: #059669; border-color: rgba(16, 185, 129, 0.2); }
+  .ship-m-btn.warn { background: rgba(245, 158, 11, 0.1); color: #d97706; border-color: rgba(245, 158, 11, 0.2); }
+  .ship-m-btn.danger { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+  .ship-m-empty {
+    text-align: center; padding: 40px 20px; color: var(--text-muted);
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+  }
+
   /* ================= ANIMATIONS ================= */
   @keyframes fade {
     from {
@@ -424,96 +503,28 @@
 
   /* ================= RESPONSIVE ================= */
   @media (max-width: 900px) {
-    .shipping-page .card {
-      padding: 20px;
-    }
-
-    .shipping-page .add-company-form {
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .shipping-page #companyName {
-      min-width: 100%;
-    }
-
-    .shipping-page table thead {
-      display: none;
-    }
-
-    .shipping-page table tr {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-bottom: 20px;
-      padding: 20px;
-      background: rgba(30, 41, 59, 0.4);
-      border-radius: 18px;
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .shipping-page table tr::before {
-      content: "";
-      position: absolute;
-      top: 0;
-      right: 0;
-      width: 6px;
-      height: 100%;
-      background: linear-gradient(180deg, var(--shipping-primary), var(--shipping-success));
-      opacity: 0.5;
-    }
-
-    .shipping-page table td {
-      padding: 0;
-      border: none;
-      text-align: right;
-    }
-
-    .shipping-page table td::before {
-      content: attr(data-label);
-      display: block;
-      font-size: 12px;
-      color: var(--shipping-muted);
-      margin-bottom: 6px;
-      font-weight: 500;
-    }
-
-    .shipping-page table td:last-child {
-      grid-column: 1 / -1;
-      display: flex;
-      gap: 10px;
-      justify-content: center;
-      padding-top: 16px;
-      margin-top: 16px;
-      border-top: 1px solid rgba(255, 255, 255, 0.05);
-    }
-
-    .shipping-page .modal-box {
-      padding: 20px;
-      margin: 20px;
-    }
+    .shipping-page .card { padding: 16px; }
+    .shipping-page .card::before { width: 4px; }
+    .shipping-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
+    .stat-card { padding: 12px; border-radius: 14px; gap: 10px; }
+    .stat-icon { width: 40px; height: 40px; font-size: 18px; border-radius: 10px; }
+    .stat-value { font-size: 16px; }
+    .stat-label { font-size: 11px; }
+    .group-content { padding: 14px; }
+    .group-content > div { flex-direction: column !important; gap: 10px !important; }
+    .shipping-page #companyName,
+    .shipping-page #companyOpeningBalance { min-width: 0 !important; width: 100% !important; }
+    .shipping-page .group-content .btn { width: 100%; }
+    .ship-desktop { display: none !important; }
+    .ship-mobile { display: block !important; }
+    .shipping-page .modal-box { padding: 16px; margin: 12px; width: calc(100% - 24px); }
   }
 
   @media (max-width: 480px) {
-    .shipping-page .card {
-      padding: 16px;
-    }
-
-    .shipping-page table tr {
-      grid-template-columns: 1fr;
-      padding: 16px;
-    }
-
-    .shipping-page .btn {
-      padding: 10px 16px;
-      font-size: 14px;
-    }
-
-    .shipping-page td .btn {
-      flex: 1;
-    }
+    .shipping-page .card { padding: 12px; }
+    .shipping-stats { grid-template-columns: 1fr; }
+    .ship-m-actions { grid-template-columns: 1fr; }
+    .shipping-page .btn { padding: 10px 16px; font-size: 14px; }
   }
 
   /* ================= PRINT STYLES ================= */
@@ -610,6 +621,21 @@
     color: #2563eb;
     background: rgba(37, 99, 235, 0.08);
   }
+
+  :root[data-theme="light"] .ship-m-card {
+    background: #fff;
+    border-color: rgba(2, 6, 23, 0.08);
+  }
+
+  :root[data-theme="light"] .ship-m-stat {
+    background: #fff;
+  }
+
+  :root[data-theme="light"] .ship-m-btn {
+    background: #f8fafc;
+    border-color: rgba(2, 6, 23, 0.1);
+    color: #334155;
+  }
 </style>
 
 <div class="shipping-page">
@@ -673,7 +699,7 @@
       </div>
     </div>
 
-    <div class="table-wrap table-mobile-scroll">
+    <div class="table-wrap table-mobile-scroll ship-desktop">
       <table class="responsive-table" id="companiesTable">
         <thead>
           <tr>
@@ -745,6 +771,54 @@
         </tbody>
       </table>
     </div>
+
+    <!-- Mobile cards -->
+    <div class="ship-mobile ship-m-list" id="companiesMobileList">
+      {% if companies|length == 0 %}
+      <div class="ship-m-empty">
+        <div style="font-size:36px;margin-bottom:8px;">📭</div>
+        {{ _('shipping_empty_state') }}
+      </div>
+      {% else %}
+      {% for c in companies %}
+      <div class="ship-m-card" data-company-id="{{ c.id }}" data-company-name="{{ c.name }}" data-opening-balance="{{ c.opening_balance or 0 }}">
+        <div class="ship-m-head">
+          <span class="ship-m-name">{{ c.name }}</span>
+          <span class="ship-m-due {% if c.due > 0 %}positive{% else %}zero{% endif %}">
+            {{ "{:,.0f}".format(c.due) }} {{ _('shipping_currency_iqd') }}
+          </span>
+        </div>
+        <div class="ship-m-stats">
+          <div class="ship-m-stat">
+            <span class="lbl">{{ _('shipping_th_orders_count') }}</span>
+            <span class="val">{{ c.orders_count }}</span>
+          </div>
+          <div class="ship-m-stat">
+            <span class="lbl">{{ _('shipping_opening_balance') }}</span>
+            <span class="val{% if c.opening_balance %} warn{% endif %}">
+              {% if c.opening_balance %}{{ "{:,.0f}".format(c.opening_balance) }}{% else %}—{% endif %}
+            </span>
+          </div>
+          <div class="ship-m-stat">
+            <span class="lbl">{{ _('shipping_th_due') }}</span>
+            <span class="val"{% if c.due > 0 %} style="color:#ef4444"{% endif %}>{{ "{:,.0f}".format(c.due) }}</span>
+          </div>
+        </div>
+        {% if c.opening_balance and c.orders_due %}
+        <div class="ship-m-note">{{ _('shipping_due_breakdown') }}: {{ "{:,.0f}".format(c.orders_due) }} + {{ "{:,.0f}".format(c.opening_balance) }}</div>
+        {% endif %}
+        <div class="ship-m-actions">
+          <a href="/delivery/archive?company_id={{ c.id }}" class="ship-m-btn success">📋 {{ _('shipping_action_statement') }}</a>
+          <button type="button" class="ship-m-btn warn" onclick="editCompany({{ c.id }}, {{ c.name|tojson }}, {{ c.opening_balance or 0 }})">✏️ تعديل</button>
+          {% if c.opening_balance and c.opening_balance > 0 %}
+          <button type="button" class="ship-m-btn primary" onclick="collectOpeningBalance({{ c.id }}, {{ c.opening_balance }}, this)">💵 استلام</button>
+          {% endif %}
+          <button type="button" class="ship-m-btn danger" onclick="deleteCompany({{ c.id }})">🗑️ {{ _('shipping_action_delete') }}</button>
+        </div>
+      </div>
+      {% endfor %}
+      {% endif %}
+    </div>
   </div>
 
   <!-- Edit Company Modal -->
@@ -809,7 +883,7 @@
     </div>
   </div>
 
-  <script src="/static/js/admin-actions-menu.js?v=20260720a"></script>
+  <script src="/static/js/admin-actions-menu.js?v=20260720b"></script>
   <script src="/static/js/delivery-fee-pay-modal.js"></script>
   <script>
     let currentCompany = null;
@@ -824,14 +898,9 @@
 
     function filterCompanies() {
       const q = document.getElementById("companySearch").value.toLowerCase();
-      const rows = document.querySelectorAll("#companiesTable tbody tr");
-
-      rows.forEach(row => {
-        // Skip the "No data" row if it exists
-        if (row.cells.length === 1) return;
-
-        const text = row.querySelector("td:first-child").innerText.toLowerCase();
-        row.style.display = text.includes(q) ? "" : "none";
+      document.querySelectorAll("#companiesTable tbody tr[data-company-id], .ship-m-card").forEach(el => {
+        const name = (el.getAttribute("data-company-name") || "").toLowerCase();
+        el.style.display = name.includes(q) ? "" : "none";
       });
     }
 
@@ -895,7 +964,7 @@
     }
 
     function editCompanyFromRow(btn) {
-      const row = btn && btn.closest ? btn.closest('tr') : null;
+      const row = btn && btn.closest ? btn.closest('tr, .ship-m-card') : null;
       if (!row) return;
       editCompany(
         Number(row.getAttribute('data-company-id')),
@@ -976,7 +1045,7 @@
     }
 
     function collectOpeningBalance(companyId, maxAmount, triggerEl) {
-      const row = triggerEl && triggerEl.closest ? triggerEl.closest("tr") : null;
+      const row = triggerEl && triggerEl.closest ? triggerEl.closest("tr, .ship-m-card") : null;
       const companyName = row
         ? (row.getAttribute("data-company-name") || "")
         : String(triggerEl || "");

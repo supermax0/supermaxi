@@ -30,50 +30,18 @@
 <script src="/static/js/delivery-fee-pay-modal.js"></script>
 
 <link rel="stylesheet" href="/static/css/global-improvements.css">
-<link rel="stylesheet" href="/static/css/orders-mobile.css?v=20260720i-filters-collapse">
-<link rel="stylesheet" href="/static/css/orders-legacy.css?v=20260720">
+<link rel="stylesheet" href="/static/css/orders-mobile.css?v=20260720m-bulk-mobile">
+<link rel="stylesheet" href="/static/css/orders-legacy.css?v=20260720j">
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
-<script>window.__ORDERS_UI_BUILD = "20260720i";</script>
-<div id="ordersUiBuildBadge" style="display:none" data-build="20260720i"></div>
+<script>window.__ORDERS_UI_BUILD = "20260720m";</script>
+<div id="ordersUiBuildBadge" style="display:none" data-build="20260720j"></div>
 
 
 <!-- ==================== Toast & Loading ==================== -->
 <div class="toast-container" id="toastContainer"></div>
 <div class="loading-overlay" id="loadingOverlay">
   <div class="loading-spinner"></div>
-</div>
-
-<!-- ==================== Statistics Cards ==================== -->
-<div class="orders-stats no-print">
-  <div class="stat-card">
-    <div class="stat-icon orders-stat-icon-primary">📦</div>
-    <div class="stat-content">
-      <div class="stat-label">{{ _('orders_stat_total_orders') }}</div>
-      <div class="stat-value" id="statTotal">0</div>
-    </div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-icon orders-stat-icon-success">💰</div>
-    <div class="stat-content">
-      <div class="stat-label">{{ _('orders_stat_total_sales') }}</div>
-      <div class="stat-value" id="statSales">0</div>
-    </div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-icon orders-stat-icon-warning">⏳</div>
-    <div class="stat-content">
-      <div class="stat-label">{{ _('orders_stat_pending') }}</div>
-      <div class="stat-value" id="statPending">0</div>
-    </div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-icon orders-stat-icon-danger">↩️</div>
-    <div class="stat-content">
-      <div class="stat-label">{{ _('orders_stat_returns') }}</div>
-      <div class="stat-value" id="statReturns">0</div>
-    </div>
-  </div>
 </div>
 
 <!-- ==================== Compact Orders Toolbar ==================== -->
@@ -85,9 +53,6 @@
       <span class="orders-toolbar-toggle-icon" aria-hidden="true">▾</span>
     </button>
     <div class="orders-toolbar-panel" id="filtersSectionPanel">
-      <div class="orders-toolbar-search">
-        <input id="searchInput" placeholder="{{ _('orders_search_placeholder') }}">
-      </div>
       <div class="filters-grid">
       <select id="filterCity">
         <option value="">{{ _('orders_filter_all_cities') }}</option>
@@ -207,7 +172,11 @@
 
 <!-- ==================== Orders Table ==================== -->
 <div class="orders-card" data-print-date="">
-  <div class="section-title orders-section-title-row" id="selectionActionsSection">
+  <div class="orders-table-toolbar no-print" id="selectionActionsSection">
+    <div class="orders-toolbar-search orders-table-search">
+      <input id="searchInput" placeholder="{{ _('orders_search_placeholder') }}">
+    </div>
+    <div class="section-title orders-section-title-row orders-table-actions-row">
     <div class="orders-title-actions">
       <div class="selected-actions-grid">
         <button class="btn btn-primary" type="button" onclick="printSelectedInvoices()">
@@ -242,10 +211,11 @@
       <span id="selectedCount" class="selected-count orders-selected-count"></span>
       <span id="tableStats" class="table-stats" hidden aria-hidden="true"></span>
     </span>
+    </div>
   </div>
 
   <div class="table-container" id="print-area">
-    <div id="ordersTable" class="ag-theme-quartz-dark" style="height: 600px; width: 100%;"></div>
+    <div id="ordersTable" class="ag-theme-quartz" style="height: 600px; width: 100%;"></div>
   </div>
 
 </div>
@@ -431,64 +401,6 @@
     border-top-color: transparent;
   }
 
-  /* Statistics */
-  .orders-stats {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 20px;
-    margin-bottom: 24px;
-  }
-
-  .stat-card {
-    background: linear-gradient(145deg, rgba(15, 23, 42, 0.8), rgba(30, 41, 59, 0.6));
-    border: 1px solid rgba(59, 130, 246, 0.2);
-    border-radius: 20px;
-    padding: 24px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    transition: all 0.3s ease;
-    backdrop-filter: blur(10px);
-  }
-
-  .stat-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 15px 35px rgba(59, 130, 246, 0.2);
-    border-color: rgba(59, 130, 246, 0.4);
-  }
-
-  .stat-icon {
-    width: 64px;
-    height: 64px;
-    border-radius: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 28px;
-    flex-shrink: 0;
-  }
-
-  .stat-content {
-    flex: 1;
-  }
-
-  .stat-label {
-    font-size: 13px;
-    color: var(--orders-muted);
-    margin-bottom: 6px;
-    font-weight: 500;
-  }
-
-  .stat-value {
-    font-size: 30px;
-    font-weight: 700;
-    color: var(--orders-text);
-    background: linear-gradient(135deg, #f1f5f9, #cbd5e1);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-
   /* Cards */
   .orders-card {
     background: linear-gradient(145deg, rgba(15, 23, 42, 0.8), rgba(30, 41, 59, 0.6));
@@ -613,10 +525,55 @@
   .orders-toolbar-panel {
     display: flex;
     flex: 1 1 auto;
-    flex-wrap: wrap;
-    align-items: center;
+    flex-direction: column;
+    align-items: stretch;
     gap: 8px;
     min-width: 0;
+  }
+
+  .orders-toolbar-block--collapsible .filters-grid {
+    width: 100%;
+  }
+
+  .orders-table-toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .orders-table-search {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    border-top: 0;
+  }
+
+  .orders-table-search input {
+    width: 100%;
+    min-height: 40px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    background: #fff;
+    color: #0f172a;
+    font-size: 14px;
+  }
+
+  .orders-table-search input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+  }
+
+  .orders-table-actions-row {
+    margin: 0;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.95);
+  }
+
+  :root[data-theme="dark"] .orders-table-actions-row {
+    border-bottom-color: rgba(255, 255, 255, 0.08);
   }
 
   .orders-toolbar-block--collapsible > .orders-toolbar-kicker {
@@ -639,15 +596,6 @@
 
     .orders-toolbar-toggle-icon {
       display: none;
-    }
-
-    .orders-toolbar-block--collapsible .orders-toolbar-search {
-      flex: 1 1 220px;
-      min-width: 180px;
-    }
-
-    .orders-toolbar-block--collapsible .filters-grid {
-      flex: 1 1 0;
     }
   }
 
@@ -937,19 +885,10 @@
   /* ======================================================
    Light mode readability fixes (Orders)
 ====================================================== */
-  :root[data-theme="light"] .stat-card,
   :root[data-theme="light"] .orders-card {
     background: white;
     border-color: rgba(59, 130, 246, 0.1);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  }
-
-  :root[data-theme="light"] .stat-value {
-    background: none;
-    -webkit-background-clip: initial;
-    background-clip: initial;
-    -webkit-text-fill-color: currentColor;
-    color: #1e293b;
   }
 
   :root[data-theme="light"] .section-title {
@@ -2628,31 +2567,6 @@
 
   /* Responsive */
   @media (max-width: 768px) {
-    .orders-stats {
-      grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
-      margin-bottom: 16px;
-    }
-
-    .stat-card {
-      padding: 16px;
-      border-radius: 16px;
-    }
-
-    .stat-icon {
-      width: 48px;
-      height: 48px;
-      font-size: 24px;
-    }
-
-    .stat-value {
-      font-size: 24px;
-    }
-
-    .stat-label {
-      font-size: 12px;
-    }
-
     .orders-card {
       padding: 16px;
       margin-bottom: 16px;
@@ -2764,29 +2678,6 @@
   }
 
   @media (max-width: 480px) {
-    .orders-stats {
-      grid-template-columns: 1fr;
-      gap: 10px;
-    }
-
-    .stat-card {
-      padding: 14px;
-    }
-
-    .stat-icon {
-      width: 44px;
-      height: 44px;
-      font-size: 22px;
-    }
-
-    .stat-value {
-      font-size: 22px;
-    }
-
-    .stat-label {
-      font-size: 11px;
-    }
-
     .orders-card {
       padding: 14px;
       margin-bottom: 14px;
@@ -2827,8 +2718,14 @@
     }
   }
 
-  /* Orders AG Grid — theme-aware palette */
-  :root[data-theme="light"] #ordersTable.ag-theme-quartz {
+  /* Orders AG Grid — stable light/dark palette */
+  #ordersTable {
+    width: 100%;
+    font-family: "Tajawal", Tahoma, Arial, sans-serif;
+  }
+
+  :root[data-theme="light"] #ordersTable.ag-theme-quartz,
+  :root[data-theme="light"] #ordersTable.ag-theme-quartz-dark {
     --ag-background-color: #ffffff;
     --ag-foreground-color: #0f172a;
     --ag-border-color: #e2e8f0;
@@ -2838,6 +2735,44 @@
     --ag-row-hover-color: #eff6ff;
     --ag-selected-row-background-color: #dbeafe;
     --ag-font-family: "Tajawal", Tahoma, Arial, sans-serif;
+  }
+
+  :root[data-theme="light"] #ordersTable .ag-row .ag-cell {
+    color: #0f172a !important;
+  }
+
+  :root[data-theme="light"] #ordersTable .ag-row-odd .ag-cell {
+    background-color: #f8fafc !important;
+  }
+
+  :root[data-theme="light"] #ordersTable .ag-row-even .ag-cell {
+    background-color: #ffffff !important;
+  }
+
+  :root[data-theme="light"] #ordersTable .ag-row-selected .ag-cell {
+    background-color: #dbeafe !important;
+    color: #0f172a !important;
+  }
+
+  :root[data-theme="light"] #ordersTable .ag-row:hover .ag-cell {
+    background-color: #eff6ff !important;
+  }
+
+  :root[data-theme="light"] #ordersTable .ag-header-cell,
+  :root[data-theme="light"] #ordersTable .ag-header-group-cell {
+    background-color: #f1f5f9 !important;
+    color: #475569 !important;
+  }
+
+  #ordersTable .ag-root-wrapper {
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  #ordersTable .ag-cell.orders-actions-cell {
+    display: flex !important;
+    align-items: center !important;
+    overflow: hidden !important;
   }
 
   :root[data-theme="light"] .table-container {
@@ -2854,16 +2789,8 @@
     --ag-header-foreground-color: #cbd5e1;
     --ag-odd-row-background-color: #111827;
     --ag-row-hover-color: rgba(59, 130, 246, 0.12);
-    --ag-selected-row-background-color: rgba(59, 130, 246, 0.2);
+    --ag-selected-row-background-color: rgba(59, 130, 246, 0.22);
     --ag-font-family: "Tajawal", Tahoma, Arial, sans-serif;
-  }
-
-  #ordersTable .ag-row .ag-cell {
-    color: inherit;
-  }
-
-  :root[data-theme="light"] #ordersTable .ag-row-selected .ag-cell {
-    color: #0f172a !important;
   }
 
   :root[data-theme="dark"] #ordersTable .ag-row-selected .ag-cell,
@@ -3593,7 +3520,6 @@
   function updateStats() {
     if (!gridApi) return;
 
-    let totalSales = 0, pendingCount = 0, returnsCount = 0;
     let totalCount = 0;
     let totalAmount = 0;
     let totalQty = 0;
@@ -3604,22 +3530,7 @@
       const total = parseFloat(order.total) || 0;
       totalAmount += total;
       totalQty += parseFloat(order.quantity) || 0;
-
-      if (order.status === "تم التوصيل" || order.status === "مسدد") {
-        totalSales += total;
-      }
-      if (order.status === "تم الطلب" || order.status === "معباة" || order.status === "جاري الشحن") {
-        pendingCount++;
-      }
-      if (isReturnedStatus(order.status) || order.status === "ملغي") {
-        returnsCount++;
-      }
     });
-
-    document.getElementById("statTotal").textContent = totalCount.toLocaleString();
-    document.getElementById("statSales").textContent = totalSales.toLocaleString() + " {{ _('orders_currency_iqd') }}";
-    document.getElementById("statPending").textContent = pendingCount.toLocaleString();
-    document.getElementById("statReturns").textContent = returnsCount.toLocaleString();
 
     const tableStats = document.getElementById("tableStats");
     if (tableStats) {
@@ -5810,8 +5721,6 @@
   });
 
   window.addEventListener('resize', closeOrdersActionsMenu);
-  window.addEventListener('resize', scheduleEnsureEssentialColumns);
-  window.addEventListener('orientationchange', scheduleEnsureEssentialColumns);
   window.addEventListener('scroll', closeOrdersActionsMenu, true);
 
   document.addEventListener('click', (e) => {
@@ -6005,12 +5914,8 @@
     }
 
     ORDERS_GRID_LEGACY = isOrdersLegacyBrowser();
-    if (ORDERS_GRID_LEGACY) {
-      showToast("⚠️ وضع توافق قديم مفعّل لعرض الجدول على Windows 7/8", "warning");
-    }
 
     const isOrdersMobile = window.matchMedia("(max-width: 768px)").matches;
-    const pinSide = ORDERS_GRID_LEGACY ? null : "right";
 
     const actionsCol = {
       headerName: "إجراءات",
@@ -6019,9 +5924,7 @@
       width: isOrdersMobile ? 165 : 210,
       minWidth: isOrdersMobile ? 150 : 190,
       maxWidth: isOrdersMobile ? 180 : 260,
-      pinned: pinSide,
       lockVisible: true,
-      lockPinned: !ORDERS_GRID_LEGACY,
       cellClass: "orders-actions-cell",
       cellRenderer: ActionsRenderer,
       suppressMovable: true,
@@ -6037,10 +5940,7 @@
       width: 44,
       minWidth: 44,
       maxWidth: 44,
-      pinned: pinSide,
       lockVisible: true,
-      lockPinned: !ORDERS_GRID_LEGACY,
-      lockPosition: !ORDERS_GRID_LEGACY,
       checkboxSelection: true,
       headerCheckboxSelection: true,
       headerCheckboxSelectionFilteredOnly: true,
@@ -6095,9 +5995,7 @@
       { headerName: "الملاحظات", field: "note", width: 200 },
     ];
 
-    const columnDefs = ORDERS_GRID_LEGACY
-      ? [checkboxCol, actionsCol].concat(dataCols)
-      : dataCols.concat([actionsCol, checkboxCol]);
+    const columnDefs = [checkboxCol, actionsCol].concat(dataCols);
 
     const gridEl = document.querySelector("#ordersTable");
     const tableWrap = document.querySelector(".table-container");
@@ -6114,7 +6012,6 @@
       columnDefs: columnDefs,
       rowData: allOrders,
       pinnedBottomRowData: [],
-      suppressColumnVirtualisation: !ORDERS_GRID_LEGACY,
       getRowId: (params) => String(orderRowId(params.data) || params.data?.order_id || ''),
       getRowClass: (params) => {
         if (!params.data || params.node?.rowPinned) return undefined;
@@ -6122,7 +6019,6 @@
         return undefined;
       },
       rowHeight: window.matchMedia("(max-width: 768px)").matches ? 52 : 46,
-      headerHeight: 40,
       pagination: true,
 
       paginationPageSize: 20,
@@ -6130,12 +6026,13 @@
       rowSelection: 'multiple',
       isRowSelectable: (node) => !node.rowPinned,
       enableRtl: true,
-      animateRows: !ORDERS_GRID_LEGACY,
+      animateRows: false,
+      suppressRowTransform: true,
       defaultColDef: {
         sortable: true,
         filter: true,
         resizable: true,
-        floatingFilter: !ORDERS_GRID_LEGACY,
+        floatingFilter: false,
         flex: 0,
         minWidth: 80
       },
@@ -6160,13 +6057,11 @@
             gridApi.setColumnsVisible(hideCols, false);
           }
         } catch (e) { console.error("Error applying visible columns:", e); }
-        scheduleEnsureEssentialColumns();
+        ensureEssentialColumnsVisible();
         if (ORDERS_GRID_LEGACY) {
           try { params.api.sizeColumnsToFit(); } catch (e) { /* ignore */ }
         }
       },
-      onGridSizeChanged: scheduleEnsureEssentialColumns,
-      onFirstDataRendered: scheduleEnsureEssentialColumns,
       onSelectionChanged: () => {
         updateSelectionCount();
       },
@@ -6203,28 +6098,14 @@
 
   var ORDERS_COLUMN_VISIBILITY_KEY = "orders_table_visible_columns";
   var ORDERS_ESSENTIAL_COLUMNS = ["checkbox", "actions"];
-  var ensureEssentialColsTimer = null;
 
   function ensureEssentialColumnsVisible() {
     if (!gridApi) return;
     try {
       gridApi.setColumnsVisible(ORDERS_ESSENTIAL_COLUMNS, true);
-      if (!ORDERS_GRID_LEGACY) {
-        gridApi.applyColumnState({
-          state: ORDERS_ESSENTIAL_COLUMNS.map(function (colId) {
-            return { colId: colId, pinned: "right", hide: false };
-          }),
-          applyOrder: false,
-        });
-      }
     } catch (e) {
       console.warn("ensureEssentialColumnsVisible:", e);
     }
-  }
-
-  function scheduleEnsureEssentialColumns() {
-    if (ensureEssentialColsTimer) clearTimeout(ensureEssentialColsTimer);
-    ensureEssentialColsTimer = setTimeout(ensureEssentialColumnsVisible, 80);
   }
 
   function openColumnVisibilityModal() {
@@ -6296,7 +6177,7 @@
 
     if (showCols.length > 0) gridApi.setColumnsVisible(showCols, true);
     if (hideCols.length > 0) gridApi.setColumnsVisible(hideCols, false);
-    scheduleEnsureEssentialColumns();
+    ensureEssentialColumnsVisible();
 
     try {
       localStorage.setItem(ORDERS_COLUMN_VISIBILITY_KEY, JSON.stringify(visibleFields));

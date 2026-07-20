@@ -17,11 +17,13 @@ from extensions import db
 from sqlalchemy import func, or_, and_
 from models.invoice import Invoice
 from models.order_item import OrderItem
+from models.inventory_lot import OrderItemCostLayer
 from models.product import Product
 from models.expense import Expense
 from models.supplier import Supplier
 from models.shipping import ShippingCompany
 from utils.order_item_costs import exclude_delivery_fee_items
+from utils.inventory_lots import current_lot_inventory_value, ensure_inventory_lot_schema
 from utils.order_stock_lock import stock_unlocked_filter
 from utils.order_status import CANCELED_STATUSES as ORDER_CANCELED_STATUSES
 from utils.order_status import RETURN_STATUSES as ORDER_RETURN_STATUSES
@@ -32,6 +34,22 @@ from utils.order_status import RETURN_STATUSES as ORDER_RETURN_STATUSES
 
 RETURN_STATUSES = list(ORDER_RETURN_STATUSES)
 CANCELED_STATUSES = list(ORDER_CANCELED_STATUSES)
+
+
+def _order_item_layer_costs_subquery():
+    ensure_inventory_lot_schema()
+    return (
+        db.session.query(
+            OrderItemCostLayer.order_item_id.label("order_item_id"),
+            func.sum(OrderItemCostLayer.quantity * OrderItemCostLayer.unit_cost).label("layer_cogs"),
+        )
+        .group_by(OrderItemCostLayer.order_item_id)
+        .subquery()
+    )
+
+
+def _order_item_cogs_expr(layer_costs):
+    return func.coalesce(layer_costs.c.layer_cogs, OrderItem.cost * OrderItem.quantity)
 
 
 def _valid_revenue_payment_status_filter():
@@ -163,8 +181,11 @@ def calculate_total_cogs():
         int: إجمالي COGS
     """
     # COGS = تكلفة العناصر للطلبات غير الملغاة وغير المرتجعة
+    layer_costs = _order_item_layer_costs_subquery()
     total_cogs = db.session.query(
-        func.sum(OrderItem.cost * OrderItem.quantity)
+        func.sum(_order_item_cogs_expr(layer_costs))
+    ).select_from(OrderItem).outerjoin(
+        layer_costs, layer_costs.c.order_item_id == OrderItem.id
     ).join(
         Invoice, Invoice.id == OrderItem.invoice_id
     ).filter(
@@ -195,14 +216,7 @@ def calculate_inventory_value():
     Returns:
         int: قيمة المخزون الحالي
     """
-    # قيمة المخزون = الكمية الحالية × سعر الشراء
-    inventory_value = db.session.query(
-        func.sum(Product.quantity * Product.buy_price)
-    ).filter(
-        Product.active == True
-    ).scalar() or 0
-    
-    return inventory_value
+    return current_lot_inventory_value()
 
 # ======================================================
 # 4️⃣ حساب المصاريف (Expenses)
@@ -263,8 +277,11 @@ def calculate_returns_cogs():
     Returns:
         int: إجمالي COGS للمرتجعات
     """
+    layer_costs = _order_item_layer_costs_subquery()
     returns_cogs = db.session.query(
-        func.sum(OrderItem.cost * OrderItem.quantity)
+        func.sum(_order_item_cogs_expr(layer_costs))
+    ).select_from(OrderItem).outerjoin(
+        layer_costs, layer_costs.c.order_item_id == OrderItem.id
     ).join(
         Invoice, Invoice.id == OrderItem.invoice_id
     ).filter(
@@ -381,9 +398,12 @@ def calculate_operational_profit():
 
     paid_cogs = 0
     if ratios:
+        layer_costs = _order_item_layer_costs_subquery()
         rows = db.session.query(
             OrderItem.invoice_id,
-            func.sum(OrderItem.cost * OrderItem.quantity).label("cogs_sum"),
+            func.sum(_order_item_cogs_expr(layer_costs)).label("cogs_sum"),
+        ).select_from(OrderItem).outerjoin(
+            layer_costs, layer_costs.c.order_item_id == OrderItem.id
         ).filter(
             OrderItem.invoice_id.in_(list(ratios.keys())),
             exclude_delivery_fee_items(OrderItem),
@@ -580,9 +600,12 @@ def calculate_paid_cogs():
 
     paid_cogs = 0
     if ratios:
+        layer_costs = _order_item_layer_costs_subquery()
         rows = db.session.query(
             OrderItem.invoice_id,
-            func.sum(OrderItem.cost * OrderItem.quantity).label("cogs_sum"),
+            func.sum(_order_item_cogs_expr(layer_costs)).label("cogs_sum"),
+        ).select_from(OrderItem).outerjoin(
+            layer_costs, layer_costs.c.order_item_id == OrderItem.id
         ).filter(
             OrderItem.invoice_id.in_(list(ratios.keys())),
             exclude_delivery_fee_items(OrderItem),

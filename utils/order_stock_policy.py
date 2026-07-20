@@ -163,6 +163,9 @@ def restore_order_stock(order: Invoice, *, release_fulfillment: bool = False) ->
         product = Product.query.get(item.product_id)
         if not product:
             continue
+        from utils.inventory_lots import restore_order_item_lots
+
+        restore_order_item_lots(item)
         qty = int(item.quantity or 0)
         branch_id = item.fulfillment_branch_id or getattr(order, "branch_id", None)
         if branch_id:

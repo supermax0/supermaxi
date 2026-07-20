@@ -14,6 +14,7 @@ from utils.branch_context import current_branch_id
 from utils.branch_migration import get_default_branch
 from utils.branch_sales import pick_fulfillment_branch
 from utils.branch_stock_service import BranchStockError, deduct_stock, get_branch_stock, get_total_stock
+from utils.inventory_lots import consume_lots_for_order_item, ensure_inventory_lot_schema
 from utils.order_shipping import is_shipping_item
 from utils.product_color_service import (
     ProductColorError,
@@ -168,6 +169,7 @@ def clear_order_stock_lock(order: Invoice) -> None:
 
 
 def apply_stock_actions(actions: Iterable[StockAction], *, invoice: Invoice | None = None) -> None:
+    ensure_inventory_lot_schema()
     items_by_product: dict[tuple[int, str | None], list[OrderItem]] = {}
     if invoice is not None and getattr(invoice, "id", None):
         for item in OrderItem.query.filter_by(invoice_id=invoice.id).all():
@@ -191,11 +193,19 @@ def apply_stock_actions(actions: Iterable[StockAction], *, invoice: Invoice | No
         if invoice is not None:
             key = (int(action.product_id), (action.variant_color or "").strip() or None)
             candidates = items_by_product.get(key) or []
+            selected_item = None
             for item in candidates:
                 if int(item.quantity or 0) == int(action.quantity or 0):
+                    selected_item = item
                     item.fulfillment_branch_id = action.fulfillment_branch_id
                     candidates.remove(item)
                     break
+            if selected_item is not None:
+                consume_lots_for_order_item(
+                    selected_item,
+                    branch_id=action.fulfillment_branch_id,
+                    variant_color=action.variant_color,
+                )
 
 
 def unlock_order_if_possible(order: Invoice) -> bool:

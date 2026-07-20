@@ -4,64 +4,145 @@
 
 {% block content %}
 <style>
-  .prov-wrap { max-width: 1200px; margin: 0 auto; padding: 20px; }
-  .prov-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 20px; }
-  .prov-head a { color: var(--primary); text-decoration: none; }
-  .prov-note { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px; line-height: 1.6; }
+  .prov-page { max-width: 1200px; margin: 0 auto; padding: 20px; }
+  .prov-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+  .prov-back {
+    display: inline-flex; align-items: center; gap: 6px;
+    color: var(--primary); text-decoration: none; font-weight: 700; font-size: 14px;
+  }
+  .prov-note {
+    color: var(--text-muted); font-size: 0.88rem; line-height: 1.65;
+    padding: 12px 14px; border-radius: 12px;
+    background: rgba(59, 130, 246, 0.06); border: 1px solid rgba(59, 130, 246, 0.12);
+    margin-bottom: 14px;
+  }
+  .prov-note strong { color: var(--text); }
   .prov-summary {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 12px; margin-bottom: 18px;
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px; margin-bottom: 14px;
   }
   .prov-summary-card {
-    border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px;
+    border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px;
     background: var(--card);
   }
-  .prov-summary-card .label { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 6px; }
-  .prov-summary-card .value { font-size: 1.25rem; font-weight: 800; color: #34d399; }
-  .prov-add { display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
+  .prov-summary-card .label { color: var(--text-muted); font-size: 12px; margin-bottom: 6px; font-weight: 600; }
+  .prov-summary-card .value { font-size: 1.15rem; font-weight: 800; color: #10b981; line-height: 1.3; }
+  .prov-add {
+    display: flex; gap: 8px; margin-bottom: 16px;
+    padding: 10px; border-radius: 14px;
+    border: 1px solid var(--border); background: var(--card);
+  }
   .prov-add input {
-    flex: 1; min-width: 200px; padding: 10px 14px; border-radius: 10px;
-    border: 1px solid var(--border); background: var(--card); color: var(--text);
+    flex: 1; min-width: 0; padding: 11px 14px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--bg, #fff); color: var(--text);
+    font-size: 15px;
   }
   .prov-btn {
-    border: none; border-radius: 10px; padding: 10px 16px; cursor: pointer; font-weight: 600;
+    border: none; border-radius: 10px; padding: 10px 16px; cursor: pointer; font-weight: 700;
+    font-size: 14px; white-space: nowrap;
   }
   .prov-btn-primary { background: var(--primary); color: #fff; }
-  .prov-btn-danger { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.35); }
-  .prov-btn-muted { background: rgba(148, 163, 184, 0.12); color: var(--text); border: 1px solid var(--border); }
-  .prov-table-wrap { overflow: auto; border: 1px solid var(--border); border-radius: 12px; }
+  .prov-btn-danger { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+  .prov-btn-muted { background: var(--card-alt, #f8fafc); color: var(--text); border: 1px solid var(--border); }
+
+  /* Desktop table */
+  .prov-desktop { display: block; }
+  .prov-mobile { display: none; }
+  .prov-table-wrap { overflow: auto; border: 1px solid var(--border); border-radius: 14px; }
   .prov-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  .prov-table th, .prov-table td { padding: 12px 14px; text-align: right; border-bottom: 1px solid var(--border); }
-  .prov-table th { background: var(--card-alt); font-weight: 600; }
-  .prov-table tr:hover { background: rgba(59, 130, 246, 0.06); }
-  .prov-table tfoot td {
-    background: var(--card-alt); font-weight: 700; border-bottom: none;
-    border-top: 2px solid var(--border);
-  }
-  .prov-amount { font-weight: 700; color: #34d399; white-space: nowrap; }
-  .prov-returns { font-weight: 700; color: #f87171; }
+  .prov-table th, .prov-table td { padding: 12px 14px; text-align: right; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .prov-table th { background: var(--card-alt); font-weight: 700; font-size: 13px; }
+  .prov-table tbody tr:hover { background: rgba(59, 130, 246, 0.04); }
+  .prov-table tfoot td { background: var(--card-alt); font-weight: 700; border-bottom: none; border-top: 2px solid var(--border); }
+  .prov-amount { font-weight: 700; color: #10b981; }
+  .prov-returns { font-weight: 700; color: #ef4444; }
   .prov-badge {
-    display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700;
-    background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3);
+    display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px;
+    font-size: 11px; font-weight: 700;
+    background: rgba(16, 185, 129, 0.12); color: #059669; border: 1px solid rgba(16, 185, 129, 0.25);
   }
-  .prov-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+  /* Mobile cards */
+  .prov-m-list { display: flex; flex-direction: column; gap: 12px; }
+  .prov-m-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    overflow: hidden; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  }
+  .prov-m-card.is-primary { border-color: rgba(16, 185, 129, 0.35); }
+  .prov-m-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 14px 16px 10px; border-bottom: 1px solid var(--border);
+  }
+  .prov-m-name { font-size: 1.1rem; font-weight: 800; color: var(--text); }
+  .prov-m-stats {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1px; background: var(--border);
+  }
+  .prov-m-stat {
+    background: var(--card); padding: 12px 10px; text-align: center;
+  }
+  .prov-m-stat .lbl {
+    display: block; font-size: 10px; color: var(--text-muted); font-weight: 600;
+    margin-bottom: 4px; line-height: 1.3;
+  }
+  .prov-m-stat .val { display: block; font-size: 15px; font-weight: 800; color: var(--text); }
+  .prov-m-stat .val.is-money { font-size: 12px; color: #10b981; line-height: 1.35; }
+  .prov-m-stat .val.is-returns { color: #ef4444; }
+  .prov-m-stat.wide { grid-column: span 3; }
+  .prov-m-foot {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 10px 14px; background: var(--card-alt, #f8fafc);
+    font-size: 12px; color: var(--text-muted); font-weight: 600;
+  }
+  .prov-m-actions {
+    display: flex; gap: 8px; padding: 10px 12px 12px;
+    border-top: 1px solid var(--border);
+  }
+  .prov-m-actions .prov-btn { flex: 1; padding: 11px 8px; font-size: 13px; text-align: center; }
+  .prov-m-total {
+    background: var(--card-alt); border: 1px dashed var(--border); border-radius: 16px;
+    padding: 14px 16px;
+  }
+  .prov-m-total .title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 10px; }
+  .prov-m-total .row { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; margin-top: 6px; }
+  .prov-m-total .row span:last-child { font-weight: 800; color: #10b981; }
+
   .prov-toast {
     position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
     padding: 12px 20px; border-radius: 12px; font-weight: 600; z-index: 9999; display: none;
+    max-width: calc(100vw - 32px); text-align: center;
   }
-  .prov-toast.ok { background: rgba(16, 185, 129, 0.9); color: #fff; }
-  .prov-toast.err { background: rgba(239, 68, 68, 0.9); color: #fff; }
+  .prov-toast.ok { background: rgba(16, 185, 129, 0.95); color: #fff; }
+  .prov-toast.err { background: rgba(239, 68, 68, 0.95); color: #fff; }
+
+  @media (max-width: 768px) {
+    .prov-page { padding: 10px 12px 20px; }
+    .prov-desktop { display: none !important; }
+    .prov-mobile { display: block !important; }
+    .prov-summary { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .prov-summary-card { padding: 12px; }
+    .prov-summary-card .value { font-size: 0.95rem; }
+    .prov-add { flex-direction: column; padding: 12px; gap: 10px; }
+    .prov-add .prov-btn { width: 100%; padding: 13px; }
+    .prov-toast { left: 12px; right: 12px; transform: none; }
+  }
+
+  @media (max-width: 380px) {
+    .prov-m-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .prov-m-stat.wide { grid-column: span 2; }
+  }
 </style>
 
-<div class="prov-wrap">
-  <div class="prov-head">
-    <a href="/customers">← {{ _('customers') }}</a>
+<div class="prov-page">
+  <div class="prov-top">
+    <a class="prov-back" href="/customers">← {{ _('customers') }}</a>
   </div>
-  <p class="prov-note">{{ _('provinces_intro') }}</p>
+
   <p class="prov-note">
+    {{ _('provinces_intro') }}
+    <br>
     {{ _('provinces_filter_hint') }}
-    <strong>{{ primary_province }}</strong> /
-    <strong>{{ provinces_group_label }}</strong>
+    <strong>{{ primary_province }}</strong> / <strong>{{ provinces_group_label }}</strong>
   </p>
 
   <div class="prov-summary">
@@ -76,13 +157,12 @@
   </div>
 
   <div class="prov-add">
-    <input type="text" id="newProvinceName" placeholder="{{ _('provinces_add_placeholder') }}" maxlength="100">
-    <button type="button" class="prov-btn prov-btn-primary" onclick="addProvince()">
-      {{ _('provinces_add') }}
-    </button>
+    <input type="text" id="newProvinceName" placeholder="{{ _('provinces_add_placeholder') }}" maxlength="100" autocomplete="off">
+    <button type="button" class="prov-btn prov-btn-primary" onclick="addProvince()">{{ _('provinces_add') }}</button>
   </div>
 
-  <div class="prov-table-wrap">
+  <!-- Desktop -->
+  <div class="prov-desktop prov-table-wrap">
     <table class="prov-table">
       <thead>
         <tr>
@@ -99,36 +179,24 @@
       <tbody id="provincesTableBody">
         {% for p in provinces %}
         <tr data-name="{{ p.name }}">
-          <td>{{ p.name }}</td>
-          <td><span class="prov-count">{{ p.count }}</span></td>
-          <td><span class="prov-count">{{ p.orders_count }}</span></td>
+          <td><strong>{{ p.name }}</strong></td>
+          <td>{{ p.count }}</td>
+          <td>{{ p.orders_count }}</td>
           <td><span class="prov-returns">{{ p.returns_count }}</span></td>
           <td><span class="prov-amount">{{ "{:,.0f}".format(p.total_amount) }} {{ _('customers_currency_iqd') }}</span></td>
           <td><span class="prov-amount">{{ "{:,.0f}".format(p.profit) }} {{ _('customers_currency_iqd') }}</span></td>
+          <td>{% if p.is_primary %}<span class="prov-badge">{{ _('provinces_primary_badge') }}</span>{% else %}{{ provinces_group_label }}{% endif %}</td>
           <td>
-            {% if p.is_primary %}
-            <span class="prov-badge">{{ _('provinces_primary_badge') }}</span>
-            {% else %}
-            {{ provinces_group_label }}
+            {% if not p.is_primary %}
+            <button type="button" class="prov-btn prov-btn-muted" onclick="setPrimary('{{ p.name|e }}')">{{ _('provinces_set_primary') }}</button>
+            <button type="button" class="prov-btn prov-btn-danger" onclick="removeProvince('{{ p.name|e }}')">{{ _('provinces_delete') }}</button>
             {% endif %}
-          </td>
-          <td>
-            <div class="prov-actions">
-              {% if not p.is_primary %}
-              <button type="button" class="prov-btn prov-btn-muted" onclick="setPrimary('{{ p.name|e }}')">
-                {{ _('provinces_set_primary') }}
-              </button>
-              <button type="button" class="prov-btn prov-btn-danger" onclick="removeProvince('{{ p.name|e }}')">
-                {{ _('provinces_delete') }}
-              </button>
-              {% endif %}
-            </div>
           </td>
         </tr>
         {% endfor %}
       </tbody>
       <tfoot>
-        <tr id="provincesGroupFooter">
+        <tr>
           <td colspan="4" id="provGroupTotalLabel">{{ _('provinces_group_total_label').replace('{name}', primary_province) }}</td>
           <td><span class="prov-amount" id="provFooterGroupTotal">{{ "{:,.0f}".format(group_total) }} {{ _('customers_currency_iqd') }}</span></td>
           <td><span class="prov-amount" id="provFooterGroupProfit">{{ "{:,.0f}".format(group_profit_total) }} {{ _('customers_currency_iqd') }}</span></td>
@@ -136,6 +204,54 @@
         </tr>
       </tfoot>
     </table>
+  </div>
+
+  <!-- Mobile -->
+  <div class="prov-mobile">
+    <div class="prov-m-list" id="provincesMobileList">
+      {% for p in provinces %}
+      <div class="prov-m-card{% if p.is_primary %} is-primary{% endif %}" data-name="{{ p.name }}">
+        <div class="prov-m-head">
+          <span class="prov-m-name">{{ p.name }}</span>
+          {% if p.is_primary %}<span class="prov-badge">{{ _('provinces_primary_badge') }}</span>{% endif %}
+        </div>
+        <div class="prov-m-stats">
+          <div class="prov-m-stat">
+            <span class="lbl">{{ _('provinces_col_customers') }}</span>
+            <span class="val">{{ p.count }}</span>
+          </div>
+          <div class="prov-m-stat">
+            <span class="lbl">{{ _('provinces_col_orders') }}</span>
+            <span class="val">{{ p.orders_count }}</span>
+          </div>
+          <div class="prov-m-stat">
+            <span class="lbl">{{ _('provinces_col_returns') }}</span>
+            <span class="val is-returns">{{ p.returns_count }}</span>
+          </div>
+          <div class="prov-m-stat wide">
+            <span class="lbl">{{ _('provinces_col_amount') }}</span>
+            <span class="val is-money">{{ "{:,.0f}".format(p.total_amount) }} {{ _('customers_currency_iqd') }}</span>
+          </div>
+          <div class="prov-m-stat wide">
+            <span class="lbl">{{ _('provinces_col_profit') }}</span>
+            <span class="val is-money">{{ "{:,.0f}".format(p.profit) }} {{ _('customers_currency_iqd') }}</span>
+          </div>
+        </div>
+        {% if not p.is_primary %}
+        <div class="prov-m-foot">{{ _('provinces_col_role') }}: {{ provinces_group_label }}</div>
+        <div class="prov-m-actions">
+          <button type="button" class="prov-btn prov-btn-muted" onclick="setPrimary('{{ p.name|e }}')">{{ _('provinces_set_primary') }}</button>
+          <button type="button" class="prov-btn prov-btn-danger" onclick="removeProvince('{{ p.name|e }}')">{{ _('provinces_delete') }}</button>
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    <div class="prov-m-total" style="margin-top:12px;">
+      <div class="title" id="provMobileTotalLabel">{{ _('provinces_group_total_label').replace('{name}', primary_province) }}</div>
+      <div class="row"><span>{{ _('provinces_col_amount') }}</span><span id="provMobileFooterTotal">{{ "{:,.0f}".format(group_total) }} {{ _('customers_currency_iqd') }}</span></div>
+      <div class="row"><span>{{ _('provinces_col_profit') }}</span><span id="provMobileFooterProfit">{{ "{:,.0f}".format(group_profit_total) }} {{ _('customers_currency_iqd') }}</span></div>
+    </div>
   </div>
 </div>
 
@@ -157,66 +273,92 @@ async function provApi(url, body) {
     body: JSON.stringify(body || {}),
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok || !data.success) {
-    throw new Error(data.error || '{{ _("provinces_err_generic") }}');
-  }
+  if (!res.ok || !data.success) throw new Error(data.error || {{ _('provinces_err_generic')|tojson }});
   return data;
 }
 
-  const currencyLabel = {{ _('customers_currency_iqd')|tojson }};
-  const profitPrimaryTpl = {{ _('provinces_profit_primary')|tojson }};
-  const groupTotalTpl = {{ _('provinces_group_total_label')|tojson }};
+const currencyLabel = {{ _('customers_currency_iqd')|tojson }};
+const profitPrimaryTpl = {{ _('provinces_profit_primary')|tojson }};
+const groupTotalTpl = {{ _('provinces_group_total_label')|tojson }};
+const provLabels = {
+  customers: {{ _('provinces_col_customers')|tojson }},
+  orders: {{ _('provinces_col_orders')|tojson }},
+  returns: {{ _('provinces_col_returns')|tojson }},
+  amount: {{ _('provinces_col_amount')|tojson }},
+  profit: {{ _('provinces_col_profit')|tojson }},
+  role: {{ _('provinces_col_role')|tojson }},
+};
+const setPrimaryLabel = {{ _('provinces_set_primary')|tojson }};
+const deleteLabel = {{ _('provinces_delete')|tojson }};
+const primaryBadge = {{ _('provinces_primary_badge')|tojson }};
 
-  function formatProvAmount(n) {
-    return (Number(n) || 0).toLocaleString('ar-IQ') + ' ' + currencyLabel;
-  }
+function formatProvAmount(n) {
+  return (Number(n) || 0).toLocaleString('ar-IQ') + ' ' + currencyLabel;
+}
 
-  function updateProvSummaries(data) {
-    const primaryName = data.primary || {{ primary_province|tojson }};
-    const primaryProfitTotal = data.primary_profit_total || 0;
-    const groupTotal = data.group_total || 0;
-    const groupProfitTotal = data.group_profit_total || 0;
-    const primaryLabel = document.getElementById('provPrimaryLabel');
-    const primaryEl = document.getElementById('provPrimaryTotal');
-    const groupEl = document.getElementById('provGroupTotal');
-    const footerLabel = document.getElementById('provGroupTotalLabel');
-    const footerEl = document.getElementById('provFooterGroupTotal');
-    const footerProfitEl = document.getElementById('provFooterGroupProfit');
-    if (primaryLabel) primaryLabel.textContent = profitPrimaryTpl.replace('{name}', primaryName);
-    if (primaryEl) primaryEl.textContent = formatProvAmount(primaryProfitTotal);
-    if (groupEl) groupEl.textContent = formatProvAmount(groupProfitTotal);
-    if (footerLabel) footerLabel.textContent = groupTotalTpl.replace('{name}', primaryName);
-    if (footerEl) footerEl.textContent = formatProvAmount(groupTotal);
-    if (footerProfitEl) footerProfitEl.textContent = formatProvAmount(groupProfitTotal);
-  }
+function updateProvSummaries(data) {
+  const primaryName = data.primary || {{ primary_province|tojson }};
+  const groupTotal = data.group_total || 0;
+  const groupProfitTotal = data.group_profit_total || 0;
+  const primaryProfitTotal = data.primary_profit_total || 0;
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  set('provPrimaryLabel', profitPrimaryTpl.replace('{name}', primaryName));
+  set('provPrimaryTotal', formatProvAmount(primaryProfitTotal));
+  set('provGroupTotal', formatProvAmount(groupProfitTotal));
+  set('provGroupTotalLabel', groupTotalTpl.replace('{name}', primaryName));
+  set('provFooterGroupTotal', formatProvAmount(groupTotal));
+  set('provFooterGroupProfit', formatProvAmount(groupProfitTotal));
+  set('provMobileTotalLabel', groupTotalTpl.replace('{name}', primaryName));
+  set('provMobileFooterTotal', formatProvAmount(groupTotal));
+  set('provMobileFooterProfit', formatProvAmount(groupProfitTotal));
+}
 
-  async function reloadProvinces() {
+function buildDesktopRow(p, groupLabel) {
+  const actions = p.is_primary ? '' : `
+    <button type="button" class="prov-btn prov-btn-muted" onclick="setPrimary(${JSON.stringify(p.name)})">${setPrimaryLabel}</button>
+    <button type="button" class="prov-btn prov-btn-danger" onclick="removeProvince(${JSON.stringify(p.name)})">${deleteLabel}</button>`;
+  const role = p.is_primary ? `<span class="prov-badge">${primaryBadge}</span>` : groupLabel;
+  return `<tr data-name="${p.name}">
+    <td><strong>${p.name}</strong></td>
+    <td>${p.count}</td>
+    <td>${p.orders_count || 0}</td>
+    <td><span class="prov-returns">${p.returns_count || 0}</span></td>
+    <td><span class="prov-amount">${formatProvAmount(p.total_amount)}</span></td>
+    <td><span class="prov-amount">${formatProvAmount(p.profit)}</span></td>
+    <td>${role}</td>
+    <td>${actions}</td>
+  </tr>`;
+}
+
+function buildMobileCard(p, groupLabel) {
+  const primaryCls = p.is_primary ? ' is-primary' : '';
+  const badge = p.is_primary ? `<span class="prov-badge">${primaryBadge}</span>` : '';
+  const foot = p.is_primary ? '' : `
+    <div class="prov-m-foot">${provLabels.role}: ${groupLabel}</div>
+    <div class="prov-m-actions">
+      <button type="button" class="prov-btn prov-btn-muted" onclick="setPrimary(${JSON.stringify(p.name)})">${setPrimaryLabel}</button>
+      <button type="button" class="prov-btn prov-btn-danger" onclick="removeProvince(${JSON.stringify(p.name)})">${deleteLabel}</button>
+    </div>`;
+  return `<div class="prov-m-card${primaryCls}" data-name="${p.name}">
+    <div class="prov-m-head"><span class="prov-m-name">${p.name}</span>${badge}</div>
+    <div class="prov-m-stats">
+      <div class="prov-m-stat"><span class="lbl">${provLabels.customers}</span><span class="val">${p.count}</span></div>
+      <div class="prov-m-stat"><span class="lbl">${provLabels.orders}</span><span class="val">${p.orders_count || 0}</span></div>
+      <div class="prov-m-stat"><span class="lbl">${provLabels.returns}</span><span class="val is-returns">${p.returns_count || 0}</span></div>
+      <div class="prov-m-stat wide"><span class="lbl">${provLabels.amount}</span><span class="val is-money">${formatProvAmount(p.total_amount)}</span></div>
+      <div class="prov-m-stat wide"><span class="lbl">${provLabels.profit}</span><span class="val is-money">${formatProvAmount(p.profit)}</span></div>
+    </div>${foot}
+  </div>`;
+}
+
+async function reloadProvinces() {
   const res = await fetch('/customers/provinces/api');
   const data = await res.json();
   if (!data.success) return;
-  const tbody = document.getElementById('provincesTableBody');
   const groupLabel = data.group_label || {{ provinces_group_label|tojson }};
-  const primaryBadge = {{ _('provinces_primary_badge')|tojson }};
-  const setPrimaryLabel = {{ _('provinces_set_primary')|tojson }};
-  const deleteLabel = {{ _('provinces_delete')|tojson }};
-  tbody.innerHTML = (data.provinces || []).map(p => {
-    const actions = p.is_primary ? '' : `
-      <button type="button" class="prov-btn prov-btn-muted" onclick="setPrimary(${JSON.stringify(p.name)})">${setPrimaryLabel}</button>
-      <button type="button" class="prov-btn prov-btn-danger" onclick="removeProvince(${JSON.stringify(p.name)})">${deleteLabel}</button>`;
-    const role = p.is_primary
-      ? `<span class="prov-badge">${primaryBadge}</span>`
-      : groupLabel;
-    return `<tr data-name="${p.name}">
-      <td>${p.name}</td>
-      <td><span class="prov-count">${p.count}</span></td>
-      <td><span class="prov-count">${p.orders_count || 0}</span></td>
-      <td><span class="prov-returns">${p.returns_count || 0}</span></td>
-      <td><span class="prov-amount">${formatProvAmount(p.total_amount)}</span></td>
-      <td><span class="prov-amount">${formatProvAmount(p.profit)}</span></td>
-      <td>${role}</td>
-      <td><div class="prov-actions">${actions}</div></td>
-    </tr>`;
-  }).join('');
+  const provinces = data.provinces || [];
+  document.getElementById('provincesTableBody').innerHTML = provinces.map(p => buildDesktopRow(p, groupLabel)).join('');
+  document.getElementById('provincesMobileList').innerHTML = provinces.map(p => buildMobileCard(p, groupLabel)).join('');
   updateProvSummaries(data);
 }
 
@@ -229,9 +371,7 @@ async function addProvince() {
     input.value = '';
     showProvToast({{ _('provinces_toast_added')|tojson }}, true);
     await reloadProvinces();
-  } catch (e) {
-    showProvToast(e.message, false);
-  }
+  } catch (e) { showProvToast(e.message, false); }
 }
 
 async function removeProvince(name) {
@@ -240,9 +380,7 @@ async function removeProvince(name) {
     await provApi('/customers/provinces/remove', { name });
     showProvToast({{ _('provinces_toast_removed')|tojson }}, true);
     await reloadProvinces();
-  } catch (e) {
-    showProvToast(e.message, false);
-  }
+  } catch (e) { showProvToast(e.message, false); }
 }
 
 async function setPrimary(name) {
@@ -250,9 +388,7 @@ async function setPrimary(name) {
     await provApi('/customers/provinces/set-primary', { name });
     showProvToast({{ _('provinces_toast_primary_set')|tojson }}, true);
     await reloadProvinces();
-  } catch (e) {
-    showProvToast(e.message, false);
-  }
+  } catch (e) { showProvToast(e.message, false); }
 }
 
 document.getElementById('newProvinceName')?.addEventListener('keydown', (e) => {

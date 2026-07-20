@@ -4,38 +4,116 @@
 
 {% block content %}
 <style>
-  .bl-wrap { max-width: 1100px; margin: 0 auto; padding: 20px; }
-  .bl-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 20px; }
-  .bl-head a { color: var(--primary); text-decoration: none; }
-  .bl-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .bl-table-wrap { overflow: auto; border: 1px solid var(--border); border-radius: 12px; }
+  .bl-page { max-width: 1100px; margin: 0 auto; padding: 20px; }
+  .bl-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+  .bl-back { color: var(--primary); text-decoration: none; font-weight: 700; font-size: 14px; }
+  .bl-note {
+    color: var(--text-muted); font-size: 0.88rem; line-height: 1.65;
+    padding: 12px 14px; border-radius: 12px; margin-bottom: 14px;
+    background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.12);
+  }
+  .bl-toolbar {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    flex-wrap: wrap; margin-bottom: 14px;
+  }
+  .bl-toolbar label {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 14px; font-weight: 600; cursor: pointer;
+    padding: 8px 12px; border-radius: 10px;
+    background: var(--card); border: 1px solid var(--border);
+  }
+  .bl-toolbar input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); }
+  .bl-count {
+    display: inline-flex; align-items: center; justify-content: center; min-width: 28px;
+    padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 800;
+    background: rgba(239, 68, 68, 0.12); color: #dc2626;
+  }
+  .bl-btn {
+    border: none; border-radius: 10px; padding: 10px 16px; cursor: pointer; font-weight: 700;
+    font-size: 14px;
+  }
+  .bl-btn-danger { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+  .bl-btn-danger:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  .bl-desktop { display: block; }
+  .bl-mobile { display: none; }
+  .bl-table-wrap { overflow: auto; border: 1px solid var(--border); border-radius: 14px; }
   .bl-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  .bl-table th, .bl-table td { padding: 12px 14px; text-align: right; border-bottom: 1px solid var(--border); }
-  .bl-table th { background: var(--card-alt); font-weight: 600; }
-  .bl-table tr:hover { background: rgba(59, 130, 246, 0.06); }
-  .bl-note { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px; line-height: 1.6; }
-  .bl-btn { border: none; border-radius: 10px; padding: 8px 14px; cursor: pointer; font-weight: 600; }
-  .bl-btn-danger { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.35); }
+  .bl-table th, .bl-table td { padding: 12px 14px; text-align: right; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .bl-table th { background: var(--card-alt); font-weight: 700; }
+
+  .bl-empty {
+    text-align: center; padding: 48px 24px;
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+  }
+  .bl-empty .icon { font-size: 40px; margin-bottom: 10px; opacity: 0.7; }
+  .bl-empty .msg { color: var(--text-muted); font-size: 15px; font-weight: 600; }
+
+  .bl-m-list { display: flex; flex-direction: column; gap: 10px; }
+  .bl-m-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    overflow: hidden; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+  }
+  .bl-m-head {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 14px 14px 10px; border-bottom: 1px solid var(--border);
+  }
+  .bl-m-head input[type="checkbox"] { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--primary); flex-shrink: 0; }
+  .bl-m-info { flex: 1; min-width: 0; }
+  .bl-m-name { font-size: 1rem; font-weight: 800; color: var(--text); margin-bottom: 4px; word-break: break-word; }
+  .bl-m-phone { font-size: 13px; color: var(--text-muted); direction: ltr; text-align: right; }
+  .bl-m-body { padding: 10px 14px 12px; display: grid; gap: 8px; }
+  .bl-m-row { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; }
+  .bl-m-row .lbl { color: var(--text-muted); font-weight: 600; flex-shrink: 0; }
+  .bl-m-row .val { color: var(--text); font-weight: 600; text-align: left; word-break: break-word; }
+  .bl-m-actions { padding: 0 12px 12px; }
+  .bl-m-actions .bl-btn { width: 100%; padding: 11px; text-align: center; }
+
+  @media (max-width: 768px) {
+    .bl-page { padding: 10px 12px 20px; }
+    .bl-desktop { display: none !important; }
+    .bl-mobile { display: block !important; }
+    .bl-top { flex-direction: column; align-items: stretch; }
+    .bl-toolbar .bl-btn { flex: 1; text-align: center; }
+  }
 </style>
 
-<div class="bl-wrap">
-  <div class="bl-head">
-    <a href="/customers">← {{ _('customers_blacklist_back') }}</a>
-    <div class="bl-actions">
-      <button type="button" class="bl-btn bl-btn-danger" onclick="removeSelectedBlacklist()">
-        إزالة المحدد من القائمة السوداء
-      </button>
-    </div>
+<div class="bl-page">
+  <div class="bl-top">
+    <a class="bl-back" href="/customers">← {{ _('customers_blacklist_back') }}</a>
+    {% if customers|length %}
+    <span class="bl-count">{{ customers|length }}</span>
+    {% endif %}
   </div>
+
   <p class="bl-note">{{ _('customers_blacklist_intro') }}</p>
 
-  <div class="bl-table-wrap">
+  {% if customers|length %}
+  <div class="bl-toolbar">
+    <label>
+      <input type="checkbox" id="selectAllBlacklist" onchange="toggleAllBlacklist(this.checked)">
+      <span>{{ _('orders_select_all') }}</span>
+      <span class="bl-count" id="blSelectedCount">0</span>
+    </label>
+    <button type="button" class="bl-btn bl-btn-danger" id="blRemoveSelectedBtn" onclick="removeSelectedBlacklist()" disabled>
+      إزالة المحدد
+    </button>
+  </div>
+  {% endif %}
+
+  {% if not customers|length %}
+  <div class="bl-empty">
+    <div class="icon">✅</div>
+    <div class="msg">{{ _('customers_blacklist_empty') }}</div>
+  </div>
+  {% else %}
+
+  <!-- Desktop -->
+  <div class="bl-desktop bl-table-wrap">
     <table class="bl-table">
       <thead>
         <tr>
-          <th style="width:44px;">
-            <input type="checkbox" id="selectAllBlacklist" onchange="toggleAllBlacklist(this.checked)">
-          </th>
+          <th style="width:44px;"><input type="checkbox" onchange="toggleAllBlacklist(this.checked)"></th>
           <th>#</th>
           <th>{{ _('customers_col_name') }}</th>
           <th>{{ _('customers_col_phone') }}</th>
@@ -47,82 +125,105 @@
       <tbody>
         {% for c in customers %}
         <tr>
-          <td>
-            <input type="checkbox" class="bl-select-item" value="{{ c.id }}">
-          </td>
+          <td><input type="checkbox" class="bl-select-item" value="{{ c.id }}"></td>
           <td>{{ c.id }}</td>
           <td><strong>{{ c.name }}</strong></td>
           <td>{{ c.phone }}{% if c.phone2 %} / {{ c.phone2 }}{% endif %}</td>
-          <td style="max-width:280px;word-break:break-word;">{{ c.blacklist_reason or '—' }}</td>
+          <td>{{ c.blacklist_reason or '—' }}</td>
           <td>{% if c.blacklisted_at %}{{ c.blacklisted_at.strftime('%Y-%m-%d %H:%M') }}{% else %}—{% endif %}</td>
           <td>
-            <button type="button" class="bl-btn bl-btn-danger" data-id="{{ c.id }}" onclick="removeBlacklist({{ c.id }})">
-              {{ _('customers_blacklist_remove') }}
-            </button>
+            <button type="button" class="bl-btn bl-btn-danger" onclick="removeBlacklist({{ c.id }})">{{ _('customers_blacklist_remove') }}</button>
           </td>
         </tr>
-        {% else %}
-        <tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text-muted);">{{ _('customers_blacklist_empty') }}</td></tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
+
+  <!-- Mobile -->
+  <div class="bl-mobile bl-m-list">
+    {% for c in customers %}
+    <div class="bl-m-card">
+      <div class="bl-m-head">
+        <input type="checkbox" class="bl-select-item" value="{{ c.id }}">
+        <div class="bl-m-info">
+          <div class="bl-m-name">{{ c.name }}</div>
+          <div class="bl-m-phone">{{ c.phone }}{% if c.phone2 %} · {{ c.phone2 }}{% endif %}</div>
+        </div>
+      </div>
+      <div class="bl-m-body">
+        <div class="bl-m-row"><span class="lbl">{{ _('customers_blacklist_col_reason') }}</span><span class="val">{{ c.blacklist_reason or '—' }}</span></div>
+        <div class="bl-m-row"><span class="lbl">{{ _('customers_blacklist_col_date') }}</span><span class="val">{% if c.blacklisted_at %}{{ c.blacklisted_at.strftime('%Y-%m-%d %H:%M') }}{% else %}—{% endif %}</span></div>
+      </div>
+      <div class="bl-m-actions">
+        <button type="button" class="bl-btn bl-btn-danger" onclick="removeBlacklist({{ c.id }})">{{ _('customers_blacklist_remove') }}</button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
 </div>
 
 <script>
-async function removeBlacklist(id) {
-  if (!confirm({{ _('customers_blacklist_confirm_remove')|tojson }})) return;
-  try {
-    const r = await fetch('/customers/blacklist/remove', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ customer_ids: [id] })
-    });
-    const d = await r.json();
-    if (!d.success) {
-      alert(d.error || 'Error');
-      return;
-    }
-    location.reload();
-  } catch (e) {
-    alert(String(e));
-  }
-}
+const blMsgs = {
+  confirmRemove: {{ _('customers_blacklist_confirm_remove')|tojson }},
+  confirmRemoveSelected: {{ _('customers_blacklist_confirm_remove_selected')|tojson }} || 'سيتم إزالة {count} زبون من القائمة السوداء، هل أنت متأكد؟',
+  selectFirst: {{ _('customers_blacklist_select_first')|tojson }},
+};
 
 function selectedBlacklistIds() {
-  return Array.from(document.querySelectorAll('.bl-select-item:checked'))
-    .map(el => Number(el.value))
-    .filter(Boolean);
+  return Array.from(document.querySelectorAll('.bl-select-item:checked')).map(el => Number(el.value)).filter(Boolean);
+}
+
+function updateBlacklistSelection() {
+  const items = document.querySelectorAll('.bl-select-item');
+  const checked = selectedBlacklistIds().length;
+  const total = items.length;
+  const allChecked = total > 0 && checked === total;
+  document.querySelectorAll('#selectAllBlacklist, .bl-toolbar input[type="checkbox"]').forEach(el => {
+    if (el.id === 'selectAllBlacklist' || el.closest('.bl-toolbar')) el.checked = allChecked;
+  });
+  const counter = document.getElementById('blSelectedCount');
+  if (counter) counter.textContent = String(checked);
+  const btn = document.getElementById('blRemoveSelectedBtn');
+  if (btn) btn.disabled = checked === 0;
 }
 
 function toggleAllBlacklist(checked) {
-  document.querySelectorAll('.bl-select-item').forEach(el => {
-    el.checked = !!checked;
-  });
+  document.querySelectorAll('.bl-select-item').forEach(el => { el.checked = !!checked; });
+  updateBlacklistSelection();
+}
+
+async function removeBlacklist(id) {
+  if (!confirm(blMsgs.confirmRemove)) return;
+  try {
+    const r = await fetch('/customers/blacklist/remove', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ customer_ids: [id] })
+    });
+    const d = await r.json();
+    if (!d.success) { alert(d.error || 'Error'); return; }
+    location.reload();
+  } catch (e) { alert(String(e)); }
 }
 
 async function removeSelectedBlacklist() {
   const ids = selectedBlacklistIds();
-  if (!ids.length) {
-    alert('حدد زبون واحد على الأقل');
-    return;
-  }
-  if (!confirm(`سيتم إزالة ${ids.length} زبون من القائمة السوداء، هل أنت متأكد؟`)) return;
+  if (!ids.length) { alert(blMsgs.selectFirst); return; }
+  const msg = (blMsgs.confirmRemoveSelected || '').replace('{count}', String(ids.length));
+  if (!confirm(msg)) return;
   try {
     const r = await fetch('/customers/blacklist/remove', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ customer_ids: ids })
     });
     const d = await r.json();
-    if (!d.success) {
-      alert(d.error || 'Error');
-      return;
-    }
+    if (!d.success) { alert(d.error || 'Error'); return; }
     location.reload();
-  } catch (e) {
-    alert(String(e));
-  }
+  } catch (e) { alert(String(e)); }
 }
+
+document.querySelectorAll('.bl-select-item').forEach(el => el.addEventListener('change', updateBlacklistSelection));
+updateBlacklistSelection();
 </script>
 {% endblock %}

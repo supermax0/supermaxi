@@ -22,6 +22,7 @@ from models.purchase_attachment import PurchaseAttachment
 from models.purchase_item import PurchaseItem
 from models.purchase_payment import PurchasePayment
 from models.supplier import Supplier
+from utils.inventory_lots import create_purchase_lot, ensure_inventory_lot_schema, reverse_purchase_lot
 from utils.permission_checks import check_permission
 from utils.activity_logger import log_activity
 from utils.treasury_helpers import resolve_treasury_account_id, get_default_cash_account, treasury_choices_for_form
@@ -114,6 +115,7 @@ def _ensure_purchase_schema():
     PurchaseItem.__table__.create(bind=bind, checkfirst=True)
     PurchasePayment.__table__.create(bind=bind, checkfirst=True)
     PurchaseAttachment.__table__.create(bind=bind, checkfirst=True)
+    ensure_inventory_lot_schema()
     ensure_order_item_schema()
 
 
@@ -156,6 +158,7 @@ def _reverse_purchase_item_stock(it, branch_id: int | None) -> None:
     qty = _safe_int(it.quantity, 0)
     if qty <= 0:
         return
+    reverse_purchase_lot(it)
     if branch_id:
         deduct_stock(branch_id, it.product.id, qty)
     else:
@@ -494,22 +497,24 @@ def _create_purchase_from_payload(payload, files):
     db.session.flush()
 
     for product, qty, unit_before, item_discount, final_unit, line_total, variant_color in parsed_items:
-        db.session.add(
-            PurchaseItem(
-                purchase_id=purchase.id,
-                product_id=product.id,
-                quantity=qty,
-                unit_cost_before_discount=unit_before,
-                discount_value=item_discount,
-                final_unit_cost=final_unit,
-                line_total=line_total,
-                variant_color=variant_color or None,
-            )
+        purchase_item = PurchaseItem(
+            purchase_id=purchase.id,
+            product_id=product.id,
+            quantity=qty,
+            unit_cost_before_discount=unit_before,
+            discount_value=item_discount,
+            final_unit_cost=final_unit,
+            line_total=line_total,
+            variant_color=variant_color or None,
         )
+        db.session.add(purchase_item)
+        db.session.flush()
         try:
             _apply_purchase_item_stock(product, qty, variant_color, branch_id, apply_stock)
         except ProductColorError as exc:
             return None, str(exc)
+        if apply_stock:
+            create_purchase_lot(purchase_item, branch_id)
         product.buy_price = final_unit
 
     accounting_applied = _purchase_accounting_applied(purchase)
@@ -1114,23 +1119,25 @@ def update_purchase(purchase_id):
         purchase.purchase_date = purchase_date
 
         for product, qty, unit_before, item_discount, final_unit, line_total, variant_color in parsed_items:
-            db.session.add(
-                PurchaseItem(
-                    purchase_id=purchase.id,
-                    product_id=product.id,
-                    quantity=qty,
-                    unit_cost_before_discount=unit_before,
-                    discount_value=item_discount,
-                    final_unit_cost=final_unit,
-                    line_total=line_total,
-                    variant_color=variant_color or None,
-                )
+            purchase_item = PurchaseItem(
+                purchase_id=purchase.id,
+                product_id=product.id,
+                quantity=qty,
+                unit_cost_before_discount=unit_before,
+                discount_value=item_discount,
+                final_unit_cost=final_unit,
+                line_total=line_total,
+                variant_color=variant_color or None,
             )
+            db.session.add(purchase_item)
+            db.session.flush()
             try:
                 _apply_purchase_item_stock(product, qty, variant_color, branch_id, apply_stock)
             except ProductColorError as exc:
                 db.session.rollback()
                 return jsonify({"success": False, "error": str(exc)}), 400
+            if apply_stock:
+                create_purchase_lot(purchase_item, branch_id)
             product.buy_price = final_unit
 
         if hasattr(purchase, "stock_applied"):

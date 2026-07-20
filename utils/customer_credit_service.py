@@ -13,6 +13,7 @@ from models.employee import Employee
 from utils.cash_calculations import _effective_paid_amount as _effective_paid_amount_inv
 from utils.payment_ledger import append_payment_ledger_delta
 from utils.inventory_movements import validate_sale_quantity
+from utils.inventory_lots import consume_lots_for_order_item
 
 
 ENTRY_TYPES = ("opening", "products", "manual")
@@ -183,6 +184,9 @@ def create_credit_invoice(customer: Customer, employee: Employee | None, items: 
             product.quantity -= qty
         total += item_total
         db.session.add(order_item)
+        db.session.flush()
+        if not defer_stock:
+            consume_lots_for_order_item(order_item)
 
     invoice.total = total
     if not defer_stock:
