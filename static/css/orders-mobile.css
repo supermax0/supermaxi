@@ -7,17 +7,285 @@
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 
+  .orders-toolbar-block--collapsible {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0 !important;
+    padding-top: 8px !important;
+  }
+
+  .orders-toolbar-toggle {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    min-height: 32px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    text-align: inherit;
+  }
+
+  .orders-toolbar-block--collapsible .orders-toolbar-kicker {
+    width: auto !important;
+    font-size: 11px !important;
+    min-width: 0 !important;
+    margin-bottom: 0;
+  }
+
+  .orders-toolbar-toggle-icon {
+    flex: 0 0 auto;
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.18);
+    color: #64748b;
+    font-size: 12px;
+    line-height: 1;
+    transition: transform 0.2s ease;
+  }
+
+  .orders-toolbar-block--collapsible.collapsed .orders-toolbar-toggle-icon {
+    transform: rotate(-90deg);
+  }
+
+  .orders-toolbar-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 6px !important;
+    width: 100%;
+    padding-top: 6px;
+  }
+
+  .orders-toolbar-block--collapsible.collapsed .orders-toolbar-panel {
+    display: none !important;
+  }
+
+  .orders-toolbar-search {
+    order: 0;
+    width: 100%;
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .orders-toolbar-search input {
+    min-height: 36px !important;
+    padding: 8px 12px !important;
+    font-size: 16px !important;
+    border-radius: 8px !important;
+  }
+
+  .orders-toolbar-block:not(.orders-toolbar-block--collapsible) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px !important;
+    padding-top: 8px !important;
+  }
+
+  .orders-toolbar-block:not(.orders-toolbar-block--collapsible) .orders-toolbar-kicker {
+    font-size: 11px !important;
+    min-width: 0 !important;
+    margin-bottom: 0;
+  }
+
+  .orders-toolbar {
+    gap: 8px !important;
+    padding: 10px 12px !important;
+  }
+
   .orders-toolbar .filters-grid,
   .orders-toolbar .bulk-actions,
-  .orders-toolbar .selected-actions-grid,
   .orders-toolbar .report-section {
     display: flex !important;
     flex-wrap: wrap !important;
+    gap: 6px !important;
+    width: 100%;
+  }
+
+  .orders-toolbar .filters-grid select,
+  .orders-toolbar .date-filter {
+    min-height: 32px !important;
+    height: 32px !important;
+    padding: 4px 8px !important;
+    font-size: 12px !important;
+    border-radius: 8px !important;
+    flex: 1 1 calc(50% - 6px) !important;
+    min-width: 0 !important;
+  }
+
+  .orders-toolbar .bulk-actions select,
+  .orders-toolbar .report-section select {
+    min-height: 32px !important;
+    height: 32px !important;
+    padding: 4px 8px !important;
+    font-size: 12px !important;
+    border-radius: 8px !important;
+    min-width: 0 !important;
+  }
+
+  .orders-toolbar .action-group {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    width: 100%;
+    gap: 4px !important;
+  }
+
+  .orders-toolbar .action-group select {
+    flex: 1 1 auto !important;
+    flex-basis: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    width: auto !important;
+  }
+
+  .orders-toolbar .action-group .btn {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    min-width: 52px !important;
+    max-width: 72px !important;
+    padding: 0 8px !important;
+  }
+
+  .orders-toolbar .report-section {
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+  }
+
+  .orders-toolbar .report-section select {
+    flex: 1 1 auto !important;
+    flex-basis: auto !important;
+    min-width: 0 !important;
+  }
+
+  .orders-toolbar .report-section .btn {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    white-space: nowrap;
+  }
+
+  .orders-toolbar .action-group .btn,
+  .orders-toolbar .report-section .btn {
+    min-height: 32px !important;
+    height: 32px !important;
+    font-size: 11px !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+  }
+
+  /* أزرار إجراءات الطلبات المختارة */
+  .orders-section-title-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
     gap: 8px !important;
+    margin-bottom: 10px !important;
+    padding-bottom: 10px !important;
+  }
+
+  .orders-title-actions,
+  .orders-section-actions {
+    width: 100%;
+  }
+
+  .selected-actions-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+    width: 100%;
+  }
+
+  .selected-actions-grid .btn {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 34px !important;
+    height: auto !important;
+    padding: 5px 6px !important;
+    font-size: 10px !important;
+    border-radius: 8px !important;
+    flex: none !important;
+    gap: 3px !important;
+    box-shadow: none !important;
+    justify-content: center !important;
+  }
+
+  .selected-actions-grid .btn > span:first-child {
+    font-size: 13px !important;
+    line-height: 1 !important;
+  }
+
+  .selected-actions-grid .btn > span:last-child {
+    line-height: 1.2 !important;
+  }
+
+  .orders-section-actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+  }
+
+  .orders-section-actions .orders-toggle-btn {
+    width: 100% !important;
+    min-height: 34px !important;
+    height: auto !important;
+    padding: 5px 8px !important;
+    font-size: 10px !important;
+    border-radius: 8px !important;
+    justify-content: center !important;
+    box-shadow: none !important;
+  }
+
+  .orders-section-actions .orders-toggle-btn > span:first-child {
+    font-size: 13px !important;
+  }
+
+  .orders-selected-count {
+    grid-column: 1 / -1;
+    text-align: center;
+    font-size: 11px !important;
+    padding: 3px 8px !important;
   }
 
   .ag-root-wrapper {
     min-height: 520px;
+  }
+
+  /* منع اختفاء عمود التحديد — AG Grid يدير التمرير داخلياً */
+  .table-container {
+    overflow: hidden !important;
+  }
+
+  #ordersTable {
+    width: 100% !important;
+  }
+
+  .ag-pinned-right-cols-container,
+  .ag-pinned-right-header {
+    z-index: 3 !important;
+  }
+
+  .ag-header-cell[col-id="checkbox"],
+  .ag-cell[col-id="checkbox"] {
+    min-width: 44px !important;
+    max-width: 44px !important;
+    width: 44px !important;
+    flex: none !important;
+  }
+
+  .ag-theme-quartz-dark .ag-cell.orders-actions-cell,
+  .ag-theme-alpine-dark .ag-cell.orders-actions-cell,
+  .ag-theme-quartz .ag-cell.orders-actions-cell {
+    min-width: 150px !important;
   }
 
   .orders-row-actions {

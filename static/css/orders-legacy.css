@@ -1,0 +1,64 @@
+/* AG Grid compatibility for Windows 7/8 and older browsers */
+
+.orders-table-legacy {
+  overflow: auto !important;
+}
+
+.orders-legacy-grid.ag-theme-alpine-dark,
+.orders-legacy-grid.ag-theme-alpine {
+  font-family: "Tajawal", Tahoma, Arial, sans-serif;
+}
+
+.orders-legacy-grid .ag-root-wrapper {
+  height: 600px !important;
+  min-height: 600px;
+}
+
+.orders-legacy-grid .ag-root-wrapper-body,
+.orders-legacy-grid .ag-body-viewport,
+.orders-legacy-grid .ag-center-cols-viewport,
+.orders-legacy-grid .ag-header-viewport {
+  overflow-x: auto !important;
+  -ms-overflow-style: auto;
+}
+
+.orders-legacy-grid .ag-header-row,
+.orders-legacy-grid .ag-row {
+  transform: none !important;
+}
+
+.orders-legacy-grid .ag-cell,
+.orders-legacy-grid .ag-header-cell {
+  box-sizing: border-box !important;
+}
+
+.orders-legacy-grid .ag-header-cell[col-id="checkbox"],
+.orders-legacy-grid .ag-cell[col-id="checkbox"] {
+  min-width: 44px !important;
+  max-width: 44px !important;
+  width: 44px !important;
+}
+
+.orders-legacy-grid .ag-floating-filter,
+.orders-legacy-grid .ag-floating-filter-body {
+  display: none !important;
+}
+
+.orders-legacy-grid .ag-header-row-column-filter {
+  display: none !important;
+}
+
+.orders-legacy-grid .ag-header {
+  min-height: 40px !important;
+}
+
+.orders-legacy-grid .ag-paging-panel {
+  flex-wrap: wrap;
+  height: auto !important;
+  min-height: 42px;
+  padding: 6px 8px;
+}
+
+.orders-legacy-grid .ag-cell.orders-actions-cell {
+  min-width: 150px !important;
+}

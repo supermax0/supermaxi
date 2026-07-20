@@ -22,16 +22,20 @@
 
 {% block content %}
 
-<script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/ag-grid-community@31.3.4/dist/ag-grid-community.min.noStyle.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.3.4/styles/ag-grid.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.3.4/styles/ag-theme-quartz.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.3.4/styles/ag-theme-alpine.css">
 <script src="/static/js/barcode-scanner.js"></script>
 <script src="/static/js/delivery-fee-pay-modal.js"></script>
 
 <link rel="stylesheet" href="/static/css/global-improvements.css">
-<link rel="stylesheet" href="/static/css/orders-mobile.css?v=20260720e-actions">
+<link rel="stylesheet" href="/static/css/orders-mobile.css?v=20260720i-filters-collapse">
+<link rel="stylesheet" href="/static/css/orders-legacy.css?v=20260720">
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
-<script>window.__ORDERS_UI_BUILD = "20260720g";</script>
-<div id="ordersUiBuildBadge" style="display:none" data-build="20260720g"></div>
+<script>window.__ORDERS_UI_BUILD = "20260720i";</script>
+<div id="ordersUiBuildBadge" style="display:none" data-build="20260720i"></div>
 
 
 <!-- ==================== Toast & Loading ==================== -->
@@ -74,13 +78,17 @@
 
 <!-- ==================== Compact Orders Toolbar ==================== -->
 <div class="orders-toolbar no-print" id="ordersToolbar">
-  <div class="orders-toolbar-search">
-    <input id="searchInput" placeholder="{{ _('orders_search_placeholder') }}">
-  </div>
-
-  <div class="orders-toolbar-block" id="filtersSection">
-    <div class="orders-toolbar-kicker">{{ _('orders_filters_title') }}</div>
-    <div class="filters-grid">
+  <div class="orders-toolbar-block orders-toolbar-block--collapsible collapsed" id="filtersSection">
+    <button type="button" class="orders-toolbar-toggle" onclick="toggleSection('filtersSection')"
+      aria-expanded="false" aria-controls="filtersSectionPanel">
+      <span class="orders-toolbar-kicker">{{ _('orders_filters_title') }}</span>
+      <span class="orders-toolbar-toggle-icon" aria-hidden="true">▾</span>
+    </button>
+    <div class="orders-toolbar-panel" id="filtersSectionPanel">
+      <div class="orders-toolbar-search">
+        <input id="searchInput" placeholder="{{ _('orders_search_placeholder') }}">
+      </div>
+      <div class="filters-grid">
       <select id="filterCity">
         <option value="">{{ _('orders_filter_all_cities') }}</option>
         <option value="{{ province_filter_primary }}">{{ primary_province }}</option>
@@ -124,6 +132,7 @@
         class="date-filter">
 
       <span id="activeShippingScanBadge" class="orders-scan-badge" style="display:none;"></span>
+      </div>
     </div>
   </div>
 
@@ -205,11 +214,11 @@
           <span>🖨️</span>
           <span>{{ _('orders_selected_print_selected') }}</span>
         </button>
-        <button class="btn btn-success" type="button" onclick="printSelectedReport()">
+        <button class="btn btn-primary" type="button" onclick="printSelectedReport()">
           <span>📋</span>
           <span>{{ _('orders_selected_print_statement') }}</span>
         </button>
-        <button class="btn btn-purple" type="button" onclick="printAgentReport()">
+        <button class="btn btn-primary" type="button" onclick="printAgentReport()">
           <span>👤</span>
           <span>{{ _('orders_selected_print_agent') }}</span>
         </button>
@@ -564,6 +573,84 @@
     padding-top: 0;
   }
 
+  .orders-toolbar-block--collapsible {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .orders-toolbar-toggle {
+    display: none;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    text-align: inherit;
+  }
+
+  .orders-toolbar-toggle-icon {
+    flex: 0 0 auto;
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.18);
+    color: #64748b;
+    font-size: 12px;
+    line-height: 1;
+    transition: transform 0.2s ease;
+  }
+
+  .orders-toolbar-block--collapsible.collapsed .orders-toolbar-toggle-icon {
+    transform: rotate(-90deg);
+  }
+
+  .orders-toolbar-panel {
+    display: flex;
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .orders-toolbar-block--collapsible > .orders-toolbar-kicker {
+    display: none;
+  }
+
+  @media (min-width: 721px) {
+    .orders-toolbar-block--collapsible {
+      flex-direction: row;
+      align-items: center;
+    }
+
+    .orders-toolbar-block--collapsible.collapsed .orders-toolbar-panel {
+      display: flex;
+    }
+
+    .orders-toolbar-toggle {
+      display: contents;
+    }
+
+    .orders-toolbar-toggle-icon {
+      display: none;
+    }
+
+    .orders-toolbar-block--collapsible .orders-toolbar-search {
+      flex: 1 1 220px;
+      min-width: 180px;
+    }
+
+    .orders-toolbar-block--collapsible .filters-grid {
+      flex: 1 1 0;
+    }
+  }
+
   .orders-toolbar-kicker {
     flex: 0 0 auto;
     min-width: 7.5rem;
@@ -732,26 +819,37 @@
 
     .filters-grid select,
     .date-filter,
-    .bulk-actions select,
     .report-section select {
       flex: 1 1 calc(50% - 8px);
       min-width: 0;
       max-width: none;
     }
 
+    .bulk-actions {
+      width: 100%;
+    }
+
     .action-group {
       width: 100%;
+      flex-direction: row;
+      align-items: center;
     }
 
     .action-group select {
       flex: 1 1 auto;
+      min-width: 0;
+      max-width: none;
+    }
+
+    .action-group .btn {
+      flex: 0 0 auto;
+      width: auto;
     }
   }
 
   @media (max-width: 560px) {
     .filters-grid select,
     .date-filter,
-    .bulk-actions select,
     .report-section select {
       flex-basis: 100%;
     }
@@ -1946,9 +2044,9 @@
   }
 
   .action-btn-small.print-btn {
-    --action-bg: rgba(99, 102, 241, 0.13);
-    --action-border: rgba(99, 102, 241, 0.3);
-    --action-color: #4f46e5;
+    --action-bg: rgba(59, 130, 246, 0.12);
+    --action-border: rgba(59, 130, 246, 0.28);
+    --action-color: #2563eb;
   }
 
   .action-btn-small.whatsapp-btn {
@@ -1973,9 +2071,9 @@
 
   .orders-row-actions button.action-btn-small.print-btn,
   .orders-row-actions .action-btn-small.print-btn {
-    background: rgba(99, 102, 241, 0.13) !important;
-    border-color: rgba(99, 102, 241, 0.3) !important;
-    color: #4f46e5 !important;
+    background: rgba(59, 130, 246, 0.12) !important;
+    border-color: rgba(59, 130, 246, 0.28) !important;
+    color: #2563eb !important;
   }
 
   .orders-row-actions button.action-btn-small.cancel-btn,
@@ -2056,8 +2154,8 @@
 
   .orders-row-actions button.action-btn-small.print-btn:hover:not(:disabled):not(.is-disabled),
   .orders-row-actions .action-btn-small.print-btn:hover:not(:disabled):not(.is-disabled) {
-    background: #4f46e5 !important;
-    border-color: #4f46e5 !important;
+    background: #2563eb !important;
+    border-color: #2563eb !important;
     color: #ffffff !important;
   }
 
@@ -2574,72 +2672,57 @@
     }
 
     .orders-toolbar {
-      padding: 12px;
-      gap: 10px;
+      padding: 10px 12px;
+      gap: 8px;
     }
 
     .filters-grid {
-      gap: 8px;
+      gap: 6px;
       margin-bottom: 0;
     }
 
-    .filters-grid select,
-    .date-filter {
-      padding: 8px 12px !important;
-      font-size: 13px !important;
-    }
-
     .bulk-actions {
-      flex-direction: row;
-      flex-wrap: wrap;
-      gap: 8px;
+      flex-direction: column;
+      flex-wrap: nowrap;
+      gap: 6px;
+      width: 100%;
     }
 
     .action-group {
       min-width: 0;
       flex-direction: row;
       gap: 6px;
-      width: auto;
+      width: 100%;
     }
 
     .action-group select {
-      width: auto;
       flex: 1 1 auto;
+      min-width: 0;
+      width: auto;
     }
 
-    .action-group button {
+    .action-group button,
+    .action-group .btn {
+      flex: 0 0 auto;
       width: auto;
     }
 
     .report-section {
       flex-direction: row;
       flex-wrap: wrap;
-      gap: 8px;
+      gap: 6px;
+      width: 100%;
     }
 
     .report-section select {
+      flex: 1 1 auto;
+      min-width: 0;
       width: auto;
-      min-width: 140px;
     }
 
     .report-section button {
+      flex: 0 0 auto;
       width: auto;
-    }
-
-    .selected-actions-section {
-      margin-top: 0;
-      padding-top: 0;
-    }
-
-    .selected-actions-grid {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
-    .selected-actions-grid .btn {
-      width: auto !important;
-      justify-content: center;
     }
 
     .search-box {
@@ -2668,6 +2751,15 @@
       padding: 10px 18px;
       font-size: 14px;
       min-width: auto;
+    }
+
+    .orders-toolbar .btn,
+    .orders-toolbar .action-group .btn,
+    .orders-toolbar .report-section .btn {
+      padding: 0 8px !important;
+      min-height: 32px !important;
+      height: 32px !important;
+      font-size: 11px !important;
     }
   }
 
@@ -2711,32 +2803,6 @@
       padding: 12px;
     }
 
-    .filters-grid {
-      gap: 10px;
-    }
-
-    .filters-grid select,
-    .date-filter {
-      padding: 12px;
-      font-size: 14px;
-    }
-
-    .bulk-actions {
-      gap: 10px;
-    }
-
-    .action-group {
-      gap: 8px;
-    }
-
-    .report-section {
-      gap: 10px;
-    }
-
-    .selected-actions-grid {
-      gap: 8px;
-    }
-
     .search-box {
       margin: 14px 0;
     }
@@ -2761,51 +2827,113 @@
     }
   }
 
+  /* Orders AG Grid — theme-aware palette */
+  :root[data-theme="light"] #ordersTable.ag-theme-quartz {
+    --ag-background-color: #ffffff;
+    --ag-foreground-color: #0f172a;
+    --ag-border-color: #e2e8f0;
+    --ag-header-background-color: #f1f5f9;
+    --ag-header-foreground-color: #475569;
+    --ag-odd-row-background-color: #f8fafc;
+    --ag-row-hover-color: #eff6ff;
+    --ag-selected-row-background-color: #dbeafe;
+    --ag-font-family: "Tajawal", Tahoma, Arial, sans-serif;
+  }
+
+  :root[data-theme="light"] .table-container {
+    background: #ffffff;
+    border-color: #e2e8f0;
+  }
+
+  :root[data-theme="dark"] #ordersTable.ag-theme-quartz-dark,
+  :root:not([data-theme="light"]) #ordersTable.ag-theme-quartz-dark {
+    --ag-background-color: #0f172a;
+    --ag-foreground-color: #e2e8f0;
+    --ag-border-color: rgba(148, 163, 184, 0.22);
+    --ag-header-background-color: #1e293b;
+    --ag-header-foreground-color: #cbd5e1;
+    --ag-odd-row-background-color: #111827;
+    --ag-row-hover-color: rgba(59, 130, 246, 0.12);
+    --ag-selected-row-background-color: rgba(59, 130, 246, 0.2);
+    --ag-font-family: "Tajawal", Tahoma, Arial, sans-serif;
+  }
+
+  #ordersTable .ag-row .ag-cell {
+    color: inherit;
+  }
+
+  :root[data-theme="light"] #ordersTable .ag-row-selected .ag-cell {
+    color: #0f172a !important;
+  }
+
+  :root[data-theme="dark"] #ordersTable .ag-row-selected .ag-cell,
+  :root:not([data-theme="light"]) #ordersTable .ag-row-selected .ag-cell {
+    color: #e2e8f0 !important;
+  }
+
+  #ordersTable .ag-header-cell-label {
+    font-weight: 700;
+  }
+
   /* Row hover cursor */
   .ag-theme-quartz-dark .ag-row,
-  .ag-theme-alpine-dark .ag-row {
+  .ag-theme-alpine-dark .ag-row,
+  .ag-theme-quartz .ag-row {
     cursor: pointer;
   }
 
   .ag-theme-quartz-dark .ag-row-pinned,
-  .ag-theme-alpine-dark .ag-row-pinned {
+  .ag-theme-alpine-dark .ag-row-pinned,
+  .ag-theme-quartz .ag-row-pinned {
     cursor: default;
     font-weight: 700;
-    background: rgba(16, 185, 129, 0.12) !important;
-    border-top: 2px solid rgba(16, 185, 129, 0.45) !important;
+    background: rgba(16, 185, 129, 0.08) !important;
+    border-top: 2px solid rgba(16, 185, 129, 0.28) !important;
   }
 
   .ag-theme-quartz-dark .ag-row-pinned .ag-cell,
-  .ag-theme-alpine-dark .ag-row-pinned .ag-cell {
-    color: #34d399;
+  .ag-theme-alpine-dark .ag-row-pinned .ag-cell,
+  .ag-theme-quartz .ag-row-pinned .ag-cell {
+    font-weight: 700;
   }
 
+  :root[data-theme="light"] .ag-theme-quartz .ag-row-pinned,
   :root[data-theme="light"] .ag-theme-quartz-dark .ag-row-pinned,
   :root[data-theme="light"] .ag-theme-alpine-dark .ag-row-pinned {
-    background: rgba(16, 185, 129, 0.1) !important;
-    border-top-color: rgba(16, 185, 129, 0.35) !important;
+    background: #ecfdf5 !important;
+    border-top-color: #a7f3d0 !important;
   }
 
+  :root[data-theme="light"] .ag-theme-quartz .ag-row-pinned .ag-cell,
   :root[data-theme="light"] .ag-theme-quartz-dark .ag-row-pinned .ag-cell,
   :root[data-theme="light"] .ag-theme-alpine-dark .ag-row-pinned .ag-cell {
     color: #047857;
   }
 
+  :root[data-theme="dark"] .ag-theme-quartz-dark .ag-row-pinned .ag-cell,
+  :root:not([data-theme="light"]) .ag-theme-quartz-dark .ag-row-pinned .ag-cell {
+    color: #6ee7b7;
+  }
+
   .ag-theme-quartz-dark .ag-row.order-row-stock-shortage,
-  .ag-theme-alpine-dark .ag-row.order-row-stock-shortage {
+  .ag-theme-alpine-dark .ag-row.order-row-stock-shortage,
+  .ag-theme-quartz .ag-row.order-row-stock-shortage {
     background: rgba(239, 68, 68, 0.28) !important;
     box-shadow: inset 0 0 0 1px rgba(220, 38, 38, 0.55);
   }
   .ag-theme-quartz-dark .ag-row.order-row-stock-shortage .ag-cell,
-  .ag-theme-alpine-dark .ag-row.order-row-stock-shortage .ag-cell {
+  .ag-theme-alpine-dark .ag-row.order-row-stock-shortage .ag-cell,
+  .ag-theme-quartz .ag-row.order-row-stock-shortage .ag-cell {
     background: transparent !important;
     color: #fecaca !important;
   }
+  :root[data-theme="light"] .ag-theme-quartz .ag-row.order-row-stock-shortage,
   :root[data-theme="light"] .ag-theme-quartz-dark .ag-row.order-row-stock-shortage,
   :root[data-theme="light"] .ag-theme-alpine-dark .ag-row.order-row-stock-shortage {
-    background: rgba(254, 226, 226, 0.95) !important;
-    box-shadow: inset 0 0 0 1px rgba(220, 38, 38, 0.45);
+    background: #fef2f2 !important;
+    box-shadow: inset 0 0 0 1px rgba(220, 38, 38, 0.35);
   }
+  :root[data-theme="light"] .ag-theme-quartz .ag-row.order-row-stock-shortage .ag-cell,
   :root[data-theme="light"] .ag-theme-quartz-dark .ag-row.order-row-stock-shortage .ag-cell,
   :root[data-theme="light"] .ag-theme-alpine-dark .ag-row.order-row-stock-shortage .ag-cell {
     color: #991b1b !important;
@@ -5682,6 +5810,8 @@
   });
 
   window.addEventListener('resize', closeOrdersActionsMenu);
+  window.addEventListener('resize', scheduleEnsureEssentialColumns);
+  window.addEventListener('orientationchange', scheduleEnsureEssentialColumns);
   window.addEventListener('scroll', closeOrdersActionsMenu, true);
 
   document.addEventListener('click', (e) => {
@@ -5819,6 +5949,27 @@
 
 
   // ============= Initialize AG Grid =============
+  var ORDERS_GRID_LEGACY = false;
+
+  function isOrdersLegacyBrowser() {
+    var ua = navigator.userAgent || "";
+    if (/MSIE |Trident\//.test(ua)) return true;
+    if (/Edge\//.test(ua)) return true;
+    var m = ua.match(/Chrome\/(\d+)/);
+    if (m && parseInt(m[1], 10) < 80) return true;
+    m = ua.match(/Firefox\/(\d+)/);
+    if (m && parseInt(m[1], 10) < 78) return true;
+    return false;
+  }
+
+  function getOrdersGridThemeClass() {
+    var isLight = document.documentElement.getAttribute("data-theme") === "light";
+    if (ORDERS_GRID_LEGACY) {
+      return isLight ? "ag-theme-alpine orders-legacy-grid" : "ag-theme-alpine-dark orders-legacy-grid";
+    }
+    return isLight ? "ag-theme-quartz" : "ag-theme-quartz-dark";
+  }
+
   function initAgGrid() {
     const ordersDataElement = document.getElementById("ordersData");
     if (!ordersDataElement) {
@@ -5848,34 +5999,58 @@
       return order;
     }).sort((a, b) => (b.order_id || 0) - (a.order_id || 0));
 
-    const columnDefs = [
-      {
-        headerName: "",
-        field: "checkbox",
-        width: 50,
-        pinned: 'right',
-        checkboxSelection: true,
-        headerCheckboxSelection: true,
-        headerCheckboxSelectionFilteredOnly: true,
-        suppressHeaderMenuButton: true,
-        suppressHeaderContextMenu: true,
-        filter: false,
-        sortable: false
-      },
-      {
-        headerName: "إجراءات",
-        field: "actions",
-        width: 210,
-        minWidth: 190,
-        maxWidth: 260,
-        cellClass: "orders-actions-cell",
-        cellRenderer: ActionsRenderer,
-        suppressMovable: true,
-        sortable: false,
-        filter: false,
-        suppressHeaderMenuButton: true
-      },
+    if (typeof agGrid === "undefined" || typeof agGrid.createGrid !== "function") {
+      showToast("⚠️ المتصفح قديم ولا يدعم الجدول. يُفضّل Chrome أو Firefox حديث", "error");
+      return;
+    }
 
+    ORDERS_GRID_LEGACY = isOrdersLegacyBrowser();
+    if (ORDERS_GRID_LEGACY) {
+      showToast("⚠️ وضع توافق قديم مفعّل لعرض الجدول على Windows 7/8", "warning");
+    }
+
+    const isOrdersMobile = window.matchMedia("(max-width: 768px)").matches;
+    const pinSide = ORDERS_GRID_LEGACY ? null : "right";
+
+    const actionsCol = {
+      headerName: "إجراءات",
+      colId: "actions",
+      field: "actions",
+      width: isOrdersMobile ? 165 : 210,
+      minWidth: isOrdersMobile ? 150 : 190,
+      maxWidth: isOrdersMobile ? 180 : 260,
+      pinned: pinSide,
+      lockVisible: true,
+      lockPinned: !ORDERS_GRID_LEGACY,
+      cellClass: "orders-actions-cell",
+      cellRenderer: ActionsRenderer,
+      suppressMovable: true,
+      sortable: false,
+      filter: false,
+      suppressHeaderMenuButton: true
+    };
+
+    const checkboxCol = {
+      headerName: "",
+      colId: "checkbox",
+      field: "checkbox",
+      width: 44,
+      minWidth: 44,
+      maxWidth: 44,
+      pinned: pinSide,
+      lockVisible: true,
+      lockPinned: !ORDERS_GRID_LEGACY,
+      lockPosition: !ORDERS_GRID_LEGACY,
+      checkboxSelection: true,
+      headerCheckboxSelection: true,
+      headerCheckboxSelectionFilteredOnly: true,
+      suppressHeaderMenuButton: true,
+      suppressHeaderContextMenu: true,
+      filter: false,
+      sortable: false
+    };
+
+    const dataCols = [
       { headerName: "#", field: "order_id", width: 90, sort: 'desc', filter: 'agNumberColumnFilter' },
       { headerName: "التاريخ", field: "date", width: 160 },
       { headerName: "الباركود", field: "barcode", width: 140 },
@@ -5920,10 +6095,26 @@
       { headerName: "الملاحظات", field: "note", width: 200 },
     ];
 
+    const columnDefs = ORDERS_GRID_LEGACY
+      ? [checkboxCol, actionsCol].concat(dataCols)
+      : dataCols.concat([actionsCol, checkboxCol]);
+
+    const gridEl = document.querySelector("#ordersTable");
+    const tableWrap = document.querySelector(".table-container");
+    if (gridEl) {
+      gridEl.className = getOrdersGridThemeClass();
+      gridEl.style.height = "600px";
+      gridEl.style.width = "100%";
+    }
+    if (tableWrap && ORDERS_GRID_LEGACY) {
+      tableWrap.classList.add("orders-table-legacy");
+    }
+
     const gridOptions = {
       columnDefs: columnDefs,
       rowData: allOrders,
       pinnedBottomRowData: [],
+      suppressColumnVirtualisation: !ORDERS_GRID_LEGACY,
       getRowId: (params) => String(orderRowId(params.data) || params.data?.order_id || ''),
       getRowClass: (params) => {
         if (!params.data || params.node?.rowPinned) return undefined;
@@ -5939,12 +6130,12 @@
       rowSelection: 'multiple',
       isRowSelectable: (node) => !node.rowPinned,
       enableRtl: true,
-      animateRows: true,
+      animateRows: !ORDERS_GRID_LEGACY,
       defaultColDef: {
         sortable: true,
         filter: true,
         resizable: true,
-        floatingFilter: true,
+        floatingFilter: !ORDERS_GRID_LEGACY,
         flex: 0,
         minWidth: 80
       },
@@ -5960,7 +6151,6 @@
         try {
           const savedVisible = JSON.parse(localStorage.getItem("orders_table_visible_columns") || "[]");
           if (Array.isArray(savedVisible) && savedVisible.length > 0) {
-            if (!savedVisible.includes("shipping_barcode")) savedVisible.push("shipping_barcode");
             const allCols = gridApi.getColumns();
             const hideCols = allCols.filter(c => {
               const id = c.getColId();
@@ -5970,7 +6160,13 @@
             gridApi.setColumnsVisible(hideCols, false);
           }
         } catch (e) { console.error("Error applying visible columns:", e); }
+        scheduleEnsureEssentialColumns();
+        if (ORDERS_GRID_LEGACY) {
+          try { params.api.sizeColumnsToFit(); } catch (e) { /* ignore */ }
+        }
       },
+      onGridSizeChanged: scheduleEnsureEssentialColumns,
+      onFirstDataRendered: scheduleEnsureEssentialColumns,
       onSelectionChanged: () => {
         updateSelectionCount();
       },
@@ -6001,11 +6197,35 @@
     };
 
     const eGridDiv = document.querySelector('#ordersTable');
-    agGrid.createGrid(eGridDiv, gridOptions);
+    if (eGridDiv) agGrid.createGrid(eGridDiv, gridOptions);
   }
 
 
   var ORDERS_COLUMN_VISIBILITY_KEY = "orders_table_visible_columns";
+  var ORDERS_ESSENTIAL_COLUMNS = ["checkbox", "actions"];
+  var ensureEssentialColsTimer = null;
+
+  function ensureEssentialColumnsVisible() {
+    if (!gridApi) return;
+    try {
+      gridApi.setColumnsVisible(ORDERS_ESSENTIAL_COLUMNS, true);
+      if (!ORDERS_GRID_LEGACY) {
+        gridApi.applyColumnState({
+          state: ORDERS_ESSENTIAL_COLUMNS.map(function (colId) {
+            return { colId: colId, pinned: "right", hide: false };
+          }),
+          applyOrder: false,
+        });
+      }
+    } catch (e) {
+      console.warn("ensureEssentialColumnsVisible:", e);
+    }
+  }
+
+  function scheduleEnsureEssentialColumns() {
+    if (ensureEssentialColsTimer) clearTimeout(ensureEssentialColsTimer);
+    ensureEssentialColsTimer = setTimeout(ensureEssentialColumnsVisible, 80);
+  }
 
   function openColumnVisibilityModal() {
     var modal = document.getElementById("ordersColumnVisibilityModal");
@@ -6023,11 +6243,11 @@
       var field = col.getColId();
       var def = col.getColDef();
 
-      var title = def.title || field || "—";
+      var title = def.headerName || def.title || field || "—";
 
       if (!field || excludedFields.includes(field)) return;
 
-      var visible = (def.visible !== false);
+      var visible = col.isVisible();
       var id = "col_vis_" + field.replace(/\W/g, "_");
 
       var item = document.createElement("div");
@@ -6076,6 +6296,7 @@
 
     if (showCols.length > 0) gridApi.setColumnsVisible(showCols, true);
     if (hideCols.length > 0) gridApi.setColumnsVisible(hideCols, false);
+    scheduleEnsureEssentialColumns();
 
     try {
       localStorage.setItem(ORDERS_COLUMN_VISIBILITY_KEY, JSON.stringify(visibleFields));
@@ -6091,6 +6312,10 @@
     if (!section) return;
 
     const isCollapsed = section.classList.toggle('collapsed');
+    const toggleBtn = section.querySelector('.orders-toolbar-toggle');
+    if (toggleBtn) {
+      toggleBtn.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+    }
 
     // Save state to localStorage
     try {
@@ -6105,14 +6330,28 @@
   function restoreSectionStates() {
     try {
       const states = JSON.parse(localStorage.getItem('orders_sections_states') || '{}');
+      const isMobile = window.matchMedia('(max-width: 720px)').matches;
       for (const [id, isCollapsed] of Object.entries(states)) {
         const section = document.getElementById(id);
-        if (!section || !section.classList.contains('collapsible-group')) continue;
+        if (!section) continue;
+        const collapsible = section.classList.contains('collapsible-group')
+          || section.classList.contains('orders-toolbar-block--collapsible');
+        if (!collapsible) continue;
         if (isCollapsed) {
           section.classList.add('collapsed');
         } else {
           section.classList.remove('collapsed');
         }
+        const toggleBtn = section.querySelector('.orders-toolbar-toggle');
+        if (toggleBtn) {
+          toggleBtn.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+        }
+      }
+      const filtersSection = document.getElementById('filtersSection');
+      if (filtersSection && isMobile && states.filtersSection === undefined) {
+        filtersSection.classList.add('collapsed');
+        const toggleBtn = filtersSection.querySelector('.orders-toolbar-toggle');
+        if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'false');
       }
     } catch (e) {
       console.warn('Error restoring section states:', e);
