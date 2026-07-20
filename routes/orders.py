@@ -94,6 +94,18 @@ _ORDERS_PUBLIC_PREFIXES = ("/orders/p/o/", "/orders/invoice-video/")
 _ORDERS_GRID_LIMIT = 500
 
 
+@orders_bp.after_request
+def _orders_no_store_cache(response):
+    """Prevent browsers from keeping stale orders table UI/JS."""
+    if request.endpoint and str(request.endpoint).startswith("orders."):
+        if response.mimetype and "html" in response.mimetype:
+            response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+            response.headers["X-Orders-UI-Build"] = "20260720c"
+    return response
+
+
 def _orders_grid_rows(q, limit=_ORDERS_GRID_LIMIT):
     """Load a bounded newest-first slice for the AG Grid page (avoids full-table dumps)."""
     return q.limit(int(limit)).all()

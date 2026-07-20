@@ -27,7 +27,10 @@
 <script src="/static/js/delivery-fee-pay-modal.js"></script>
 
 <link rel="stylesheet" href="/static/css/global-improvements.css">
-<link rel="stylesheet" href="/static/css/orders-mobile.css?v=20260707-mobile-details-white2">
+<link rel="stylesheet" href="/static/css/orders-mobile.css?v=20260720c-actions">
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<script>window.__ORDERS_UI_BUILD = "20260720c";</script>
 
 
 <!-- ==================== Toast & Loading ==================== -->
@@ -919,15 +922,17 @@
 
   /* Action Buttons */
   .orders-row-actions {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(42px, 1fr));
+    display: flex;
+    flex-wrap: nowrap;
     gap: 4px;
-    justify-content: center;
+    justify-content: flex-start;
     align-items: center;
+    direction: rtl;
     min-height: 0 !important;
     height: 100%;
-    min-width: 252px;
-    padding: 5px 4px;
+    min-width: 0;
+    width: 100%;
+    padding: 2px 4px;
   }
 
   .orders-actions-cell {
@@ -936,51 +941,187 @@
     overflow: visible;
   }
 
+  .orders-row-actions button.action-btn-small,
   .orders-row-actions .action-btn-small {
     --action-bg: rgba(100, 116, 139, 0.1);
     --action-border: rgba(100, 116, 139, 0.22);
     --action-color: #64748b;
-    padding: 0 6px !important;
-    border-radius: 7px !important;
-    border: 1px solid var(--action-border);
-    background: var(--action-bg);
-    color: var(--action-color);
+    padding: 0 7px !important;
+    border-radius: 6px !important;
+    border: 1px solid var(--action-border) !important;
+    background: var(--action-bg) !important;
+    color: var(--action-color) !important;
     cursor: pointer;
-    font-size: 10px !important;
-    font-weight: 800;
-    transition: all 0.2s ease;
-    display: inline-flex;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease !important;
+    display: inline-flex !important;
     align-items: center;
     justify-content: center;
-    gap: 4px;
-    min-width: 42px !important;
-    width: 100% !important;
-    min-height: 30px !important;
-    height: 30px !important;
-    line-height: 1;
+    gap: 0;
+    min-width: 0 !important;
+    width: auto !important;
+    flex: 0 0 auto;
+    min-height: 24px !important;
+    height: 24px !important;
+    max-height: 24px !important;
+    line-height: 1 !important;
     white-space: nowrap;
-    box-shadow: none;
+    box-shadow: none !important;
+    transform: none !important;
   }
 
+  .orders-row-actions button.action-btn-small i,
   .orders-row-actions .action-btn-small i {
-    font-size: 11px;
-    line-height: 1;
+    display: none !important;
   }
 
+  .orders-row-actions button.action-btn-small .action-label,
   .orders-row-actions .action-btn-small .action-label {
     display: block;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
   }
 
+  .orders-row-actions button.action-btn-small.is-disabled,
+  .orders-row-actions button.action-btn-small:disabled,
   .orders-row-actions .action-btn-small.is-disabled,
   .orders-row-actions .action-btn-small:disabled {
     opacity: 0.32;
     cursor: not-allowed;
     pointer-events: none;
     filter: grayscale(0.35);
-    box-shadow: none;
+    box-shadow: none !important;
+  }
+
+  .orders-row-actions button.orders-actions-trigger,
+  .orders-row-actions .orders-actions-trigger {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    min-width: 28px !important;
+    width: 28px !important;
+    max-width: 28px !important;
+    height: 28px !important;
+    min-height: 28px !important;
+    max-height: 28px !important;
+    padding: 0 !important;
+    border-radius: 7px !important;
+    border: 1px solid rgba(148, 163, 184, 0.45) !important;
+    background: #fff !important;
+    color: #334155 !important;
+    font-size: 0 !important; /* prevent any residual label text from showing */
+    font-weight: 800 !important;
+    line-height: 1 !important;
+    letter-spacing: 0 !important;
+    cursor: pointer;
+    flex: 0 0 28px !important;
+    box-shadow: none !important;
+    transform: none !important;
+    overflow: hidden !important;
+    text-indent: 0 !important;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease !important;
+  }
+
+  .orders-row-actions button.orders-actions-trigger::before,
+  .orders-row-actions .orders-actions-trigger::before {
+    content: "⋮";
+    display: block;
+    font-size: 18px !important;
+    font-weight: 900 !important;
+    line-height: 1 !important;
+    color: inherit;
+    font-family: Arial, "Segoe UI", Tahoma, sans-serif !important;
+  }
+
+  .orders-row-actions button.orders-actions-trigger > *,
+  .orders-row-actions .orders-actions-trigger > * {
+    display: none !important;
+  }
+
+  .orders-row-actions button.orders-actions-trigger i,
+  .orders-row-actions .orders-actions-trigger i,
+  .orders-row-actions button.orders-actions-trigger .orders-actions-trigger-label,
+  .orders-row-actions .orders-actions-trigger .orders-actions-trigger-label {
+    display: none !important;
+  }
+
+  .orders-row-actions button.orders-actions-trigger:hover,
+  .orders-row-actions button.orders-actions-trigger[aria-expanded="true"],
+  .orders-row-actions .orders-actions-trigger:hover,
+  .orders-row-actions .orders-actions-trigger[aria-expanded="true"] {
+    border-color: #93c5fd !important;
+    color: #2563eb !important;
+    background: #eff6ff !important;
+    box-shadow: none !important;
+  }
+
+  .orders-actions-menu {
+    position: fixed;
+    z-index: 10080;
+    min-width: 180px;
+    max-width: min(240px, calc(100vw - 16px));
+    padding: 6px;
+    margin: 0;
+    list-style: none;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
+    direction: rtl;
+  }
+
+  .orders-actions-menu[hidden] {
+    display: none !important;
+  }
+
+  .orders-actions-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 11px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #0f172a;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: right;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.12s ease, color 0.12s ease;
+  }
+
+  .orders-actions-menu-item i {
+    width: 14px;
+    text-align: center;
+    color: #64748b;
+    font-size: 12px;
+  }
+
+  .orders-actions-menu-item:hover,
+  .orders-actions-menu-item:focus-visible {
+    background: #f1f5f9;
+    color: #0f172a;
+    outline: none;
+  }
+
+  .orders-actions-menu-item:hover i,
+  .orders-actions-menu-item:focus-visible i {
+    color: #2563eb;
+  }
+
+  .orders-actions-menu-item.is-disabled,
+  .orders-actions-menu-item:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
   }
 
   /* Order details modal */
@@ -1646,9 +1787,9 @@
   }
 
   .action-btn-small.cancel-btn {
-    --action-bg: rgba(100, 116, 139, 0.13);
-    --action-border: rgba(100, 116, 139, 0.28);
-    --action-color: #475569;
+    --action-bg: rgba(239, 68, 68, 0.12);
+    --action-border: rgba(239, 68, 68, 0.28);
+    --action-color: #dc2626;
   }
 
   .action-btn-small.print-btn {
@@ -1663,29 +1804,133 @@
     --action-color: #128c4a;
   }
 
-  .orders-row-actions .action-btn-small:hover:not(:disabled):not(.is-disabled) {
-    transform: translateY(-1px);
-    background: var(--action-color);
-    color: #ffffff;
-    box-shadow: 0 5px 14px rgba(15, 23, 42, 0.14);
+  .orders-row-actions button.action-btn-small.pay-btn,
+  .orders-row-actions .action-btn-small.pay-btn {
+    background: rgba(16, 185, 129, 0.14) !important;
+    border-color: rgba(16, 185, 129, 0.32) !important;
+    color: #059669 !important;
   }
 
-  /* Mobile: larger tap targets for row action buttons */
+  .orders-row-actions button.action-btn-small.return-btn,
+  .orders-row-actions .action-btn-small.return-btn {
+    background: rgba(245, 158, 11, 0.16) !important;
+    border-color: rgba(245, 158, 11, 0.36) !important;
+    color: #b45309 !important;
+  }
+
+  .orders-row-actions button.action-btn-small.print-btn,
+  .orders-row-actions .action-btn-small.print-btn {
+    background: rgba(99, 102, 241, 0.13) !important;
+    border-color: rgba(99, 102, 241, 0.3) !important;
+    color: #4f46e5 !important;
+  }
+
+  .orders-actions-menu-item.is-danger {
+    color: #dc2626;
+  }
+
+  .orders-actions-menu-item.is-danger i {
+    color: #dc2626;
+  }
+
+  .orders-actions-menu-item.is-danger:hover,
+  .orders-actions-menu-item.is-danger:focus-visible {
+    background: #fef2f2;
+    color: #b91c1c;
+  }
+
+  .orders-actions-menu-item.is-pay {
+    color: #059669;
+  }
+
+  .orders-actions-menu-item.is-pay i {
+    color: #059669;
+  }
+
+  .orders-actions-menu-item.is-pay:hover,
+  .orders-actions-menu-item.is-pay:focus-visible {
+    background: #ecfdf5;
+    color: #047857;
+  }
+
+  .orders-actions-menu-item.is-return {
+    color: #b45309;
+  }
+
+  .orders-actions-menu-item.is-return i {
+    color: #b45309;
+  }
+
+  .orders-actions-menu-item.is-return:hover,
+  .orders-actions-menu-item.is-return:focus-visible {
+    background: #fffbeb;
+    color: #92400e;
+  }
+
+  .orders-actions-menu-sep {
+    height: 1px;
+    margin: 4px 8px;
+    background: #e2e8f0;
+  }
+
+  .orders-row-actions button.action-btn-small.pay-btn:hover:not(:disabled):not(.is-disabled),
+  .orders-row-actions .action-btn-small.pay-btn:hover:not(:disabled):not(.is-disabled) {
+    background: #059669 !important;
+    border-color: #059669 !important;
+    color: #ffffff !important;
+  }
+
+  .orders-row-actions button.action-btn-small.return-btn:hover:not(:disabled):not(.is-disabled),
+  .orders-row-actions .action-btn-small.return-btn:hover:not(:disabled):not(.is-disabled) {
+    background: #b45309 !important;
+    border-color: #b45309 !important;
+    color: #ffffff !important;
+  }
+
+  .orders-row-actions button.action-btn-small.print-btn:hover:not(:disabled):not(.is-disabled),
+  .orders-row-actions .action-btn-small.print-btn:hover:not(:disabled):not(.is-disabled) {
+    background: #4f46e5 !important;
+    border-color: #4f46e5 !important;
+    color: #ffffff !important;
+  }
+
+  .orders-row-actions button.action-btn-small:hover:not(:disabled):not(.is-disabled),
+  .orders-row-actions .action-btn-small:hover:not(:disabled):not(.is-disabled) {
+    transform: none !important;
+    background: var(--action-color) !important;
+    color: #ffffff !important;
+    border-color: var(--action-color) !important;
+    box-shadow: none !important;
+  }
+
+  /* Mobile: compact row action buttons */
   @media (max-width: 768px) {
     .orders-row-actions {
-      grid-template-columns: repeat(5, minmax(40px, 1fr));
-      gap: 4px;
-      min-width: 240px;
-      padding: 6px 4px;
+      gap: 3px;
+      padding: 2px;
     }
 
+    .orders-row-actions button.action-btn-small,
     .orders-row-actions .action-btn-small {
-      min-height: 32px !important;
-      height: 32px !important;
+      min-height: 24px !important;
+      height: 24px !important;
+      max-height: 24px !important;
       font-size: 10px !important;
-      padding: 4px 6px !important;
-      border-radius: 6px !important;
-      letter-spacing: 0;
+      padding: 0 6px !important;
+      border-radius: 5px !important;
+    }
+
+    .orders-row-actions button.orders-actions-trigger,
+    .orders-row-actions .orders-actions-trigger {
+      min-width: 28px !important;
+      width: 28px !important;
+      max-width: 28px !important;
+      min-height: 28px !important;
+      height: 28px !important;
+      max-height: 28px !important;
+      padding: 0 !important;
+      flex: 0 0 28px !important;
+      font-size: 0 !important;
     }
 
     .ag-cell .orders-row-actions {
@@ -5093,39 +5338,165 @@
     const phoneEnc = encodeURIComponent(phoneRaw);
 
     const isReturned = row && (isReturnedStatus(row.status) || row.status === "ملغي");
-    const isPaid = row && row.payment_status === "مسدد";
     const collapsed = !!(row && row.actions_collapsed);
     const isStockLocked = !!(row && row.is_stock_locked);
     const canPay = !collapsed && !isStockLocked && !!(ORDERS_USER_CAN_MANAGE && row && row.can_pay);
     const canReturn = !collapsed && !isStockLocked && !!(ORDERS_USER_CAN_MANAGE && row && !isReturned && row.status !== 'تم الطلب');
     const canCancel = !collapsed && !isStockLocked && !!(ORDERS_USER_CAN_MANAGE && row && row.can_cancel);
 
-    function actionBtn(className, action, iconClass, label, title, extraAttrs, disabled) {
+    function actionBtn(className, action, label, title, extraAttrs, disabled) {
       const disClass = disabled ? ' is-disabled' : '';
       const disAttr = disabled ? ' disabled' : '';
       return '<button type="button" class="action-btn-small ' + className + disClass + '" data-action="' + action + '" data-order-id="' + id + '"' + (extraAttrs || '') + ' title="' + title + '"' + disAttr + '>' +
-        '<i class="' + iconClass + '" aria-hidden="true"></i>' +
         '<span class="action-label">' + label + '</span>' +
         '</button>';
     }
 
     let html = '<div class="orders-row-actions">';
-    if (!isStockLocked) {
-      html += actionBtn('whatsapp-btn', 'whatsapp', 'fa-brands fa-whatsapp', 'واتساب', 'إرسال واتساب', ' data-phone="' + phoneEnc + '"', !phoneRaw);
-    }
-    html += actionBtn('print-btn', 'invoice', 'fa fa-print', 'طباعة', 'طباعة الفاتورة', '', false);
-    if (canPay) {
-      html += actionBtn('pay-btn', 'pay', 'fa fa-wallet', 'تسديد', 'تسديد الطلب', '', false);
-    }
-    if (canReturn) {
-      html += actionBtn('return-btn', 'return', 'fa fa-rotate-left', RETURN_STATUS, 'إرجاع الطلب', '', false);
-    }
-    if (canCancel) {
-      html += actionBtn('cancel-btn', 'cancel', 'fa fa-ban', 'إلغاء', 'إلغاء الطلب', '', false);
-    }
+    // Menu trigger first, print stays outside; pay/return live in the menu
+    html += '<button type="button" class="orders-actions-trigger"' +
+      ' data-orders-actions-trigger="1"' +
+      ' data-ui-build="20260720c"' +
+      ' data-order-id="' + id + '"' +
+      ' data-phone="' + phoneEnc + '"' +
+      ' data-has-phone="' + (phoneRaw ? '1' : '0') + '"' +
+      ' data-stock-locked="' + (isStockLocked ? '1' : '0') + '"' +
+      ' data-can-pay="' + (canPay ? '1' : '0') + '"' +
+      ' data-can-return="' + (canReturn ? '1' : '0') + '"' +
+      ' data-can-cancel="' + (canCancel ? '1' : '0') + '"' +
+      ' aria-haspopup="menu"' +
+      ' aria-expanded="false"' +
+      ' aria-label="إجراءات"' +
+      ' title="إجراءات"></button>';
+    html += actionBtn('print-btn', 'invoice', 'طباعة', 'طباعة الفاتورة', '', false);
     html += '</div>';
     return html;
   }
+
+  let ordersActionsMenuEl = null;
+  let ordersActionsActiveTrigger = null;
+
+  function ensureOrdersActionsMenu() {
+    if (ordersActionsMenuEl) return ordersActionsMenuEl;
+    ordersActionsMenuEl = document.createElement('div');
+    ordersActionsMenuEl.className = 'orders-actions-menu';
+    ordersActionsMenuEl.id = 'ordersActionsMenu';
+    ordersActionsMenuEl.setAttribute('role', 'menu');
+    ordersActionsMenuEl.hidden = true;
+    document.body.appendChild(ordersActionsMenuEl);
+    return ordersActionsMenuEl;
+  }
+
+  function closeOrdersActionsMenu() {
+    const menu = ordersActionsMenuEl || document.getElementById('ordersActionsMenu');
+    if (menu) menu.hidden = true;
+    if (ordersActionsActiveTrigger) {
+      ordersActionsActiveTrigger.setAttribute('aria-expanded', 'false');
+      ordersActionsActiveTrigger = null;
+    }
+  }
+
+  function positionOrdersActionsMenu(trigger) {
+    const menu = ensureOrdersActionsMenu();
+    const rect = trigger.getBoundingClientRect();
+    const gap = 6;
+    const viewportPad = 8;
+
+    menu.hidden = false;
+    menu.style.visibility = 'hidden';
+    menu.style.left = '0px';
+    menu.style.top = '0px';
+
+    const menuRect = menu.getBoundingClientRect();
+    let left = rect.right - menuRect.width;
+    let top = rect.bottom + gap;
+
+    if (left < viewportPad) left = viewportPad;
+    if (left + menuRect.width > window.innerWidth - viewportPad) {
+      left = Math.max(viewportPad, window.innerWidth - menuRect.width - viewportPad);
+    }
+    if (top + menuRect.height > window.innerHeight - viewportPad) {
+      top = rect.top - menuRect.height - gap;
+    }
+    if (top < viewportPad) top = viewportPad;
+
+    menu.style.left = Math.round(left) + 'px';
+    menu.style.top = Math.round(top) + 'px';
+    menu.style.visibility = '';
+  }
+
+  function openOrdersActionsMenu(trigger) {
+    const orderId = trigger.getAttribute('data-order-id');
+    const phoneEnc = trigger.getAttribute('data-phone') || '';
+    const hasPhone = trigger.getAttribute('data-has-phone') === '1';
+    const isStockLocked = trigger.getAttribute('data-stock-locked') === '1';
+    const canPay = trigger.getAttribute('data-can-pay') === '1';
+    const canReturn = trigger.getAttribute('data-can-return') === '1';
+    const canCancel = trigger.getAttribute('data-can-cancel') === '1';
+    if (!orderId) return;
+
+    if (ordersActionsActiveTrigger === trigger && ordersActionsMenuEl && !ordersActionsMenuEl.hidden) {
+      closeOrdersActionsMenu();
+      return;
+    }
+
+    closeOrdersActionsMenu();
+    const menu = ensureOrdersActionsMenu();
+    const whatsappDisabled = isStockLocked || !hasPhone;
+
+    let html =
+      '<button type="button" class="orders-actions-menu-item" role="menuitem" data-action="details" data-order-id="' + orderId + '">' +
+      '<i class="fa fa-eye" aria-hidden="true"></i><span>تفاصيل</span></button>';
+
+    if (canPay) {
+      html += '<button type="button" class="orders-actions-menu-item is-pay" role="menuitem" data-action="pay" data-order-id="' + orderId + '">' +
+        '<i class="fa fa-wallet" aria-hidden="true"></i><span>تسديد</span></button>';
+    }
+    if (canReturn) {
+      html += '<button type="button" class="orders-actions-menu-item is-return" role="menuitem" data-action="return" data-order-id="' + orderId + '">' +
+        '<i class="fa fa-rotate-left" aria-hidden="true"></i><span>الراجع</span></button>';
+    }
+    if (!isStockLocked) {
+      html += '<button type="button" class="orders-actions-menu-item' + (whatsappDisabled ? ' is-disabled' : '') + '" role="menuitem" data-action="whatsapp" data-order-id="' + orderId + '" data-phone="' + phoneEnc + '"' + (whatsappDisabled ? ' disabled' : '') + '>' +
+        '<i class="fa-brands fa-whatsapp" aria-hidden="true"></i><span>واتساب</span></button>';
+    }
+    if (canCancel) {
+      html += '<div class="orders-actions-menu-sep" role="separator"></div>';
+      html += '<button type="button" class="orders-actions-menu-item is-danger" role="menuitem" data-action="cancel" data-order-id="' + orderId + '">' +
+        '<i class="fa fa-ban" aria-hidden="true"></i><span>إلغاء</span></button>';
+    }
+
+    menu.innerHTML = html;
+    ordersActionsActiveTrigger = trigger;
+    trigger.setAttribute('aria-expanded', 'true');
+    positionOrdersActionsMenu(trigger);
+  }
+
+  document.addEventListener('click', function (event) {
+    const trigger = event.target.closest ? event.target.closest('[data-orders-actions-trigger]') : null;
+    if (trigger) {
+      event.preventDefault();
+      event.stopPropagation();
+      openOrdersActionsMenu(trigger);
+      return;
+    }
+    if (ordersActionsMenuEl && !ordersActionsMenuEl.hidden) {
+      const menuItem = event.target.closest ? event.target.closest('.orders-actions-menu [data-action]') : null;
+      if (menuItem) {
+        // Let the shared [data-action] handler run; just close the floating menu.
+        closeOrdersActionsMenu();
+        return;
+      }
+      if (!ordersActionsMenuEl.contains(event.target)) closeOrdersActionsMenu();
+    }
+  }, true);
+
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape') closeOrdersActionsMenu();
+  });
+
+  window.addEventListener('resize', closeOrdersActionsMenu);
+  window.addEventListener('scroll', closeOrdersActionsMenu, true);
 
   document.addEventListener('click', (e) => {
     const actionEl = e.target && e.target.closest ? e.target.closest('[data-action]') : null;
@@ -5308,9 +5679,9 @@
       {
         headerName: "إجراءات",
         field: "actions",
-        width: 285,
-        minWidth: 285,
-        maxWidth: 310,
+        width: 120,
+        minWidth: 100,
+        maxWidth: 150,
         cellClass: "orders-actions-cell",
         cellRenderer: ActionsRenderer,
         suppressMovable: true,
@@ -5425,7 +5796,14 @@
       onRowClicked: (event) => {
         if (event.node.rowPinned) return;
         // Only trigger if not clicking an action button (handled by stopPropagation in listener, but being safe)
-        if (event.event.target.closest('.action-btn-small') || event.event.target.closest('.ag-selection-checkbox')) {
+        const t = event.event && event.event.target;
+        if (!t || !t.closest) return;
+        if (
+          t.closest('.action-btn-small') ||
+          t.closest('[data-orders-actions-trigger]') ||
+          t.closest('.orders-actions-menu') ||
+          t.closest('.ag-selection-checkbox')
+        ) {
           return;
         }
         showDetails(event.data.id);

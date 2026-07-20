@@ -66,103 +66,148 @@
 
   .cust-actions-grid {
     display: flex;
-    gap: 6px;
     justify-content: center;
     align-items: center;
+    width: 100%;
     height: 100%;
-    padding: 2px 4px;
-    flex-wrap: nowrap;
   }
 
-  .cust-actions-grid .cust-action {
-    padding: 0 11px;
-    min-height: 34px;
-    font-size: 12px;
-    border-radius: 10px;
+  .cust-actions-grid .cust-actions-trigger {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    text-decoration: none;
-    transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
-    font-weight: 700;
-    border: 1px solid transparent;
-    cursor: pointer;
-    white-space: nowrap;
+    gap: 0;
+    min-width: 26px !important;
+    width: 26px !important;
+    height: 26px;
+    min-height: 26px !important;
+    max-height: 26px !important;
+    padding: 0 !important;
+    border-radius: 7px !important;
+    border: 1px solid var(--glass-border, rgba(148, 163, 184, 0.45));
+    background: var(--glass-bg, #fff);
+    color: #334155;
+    font-size: 16px;
+    font-weight: 800;
     line-height: 1;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+    cursor: pointer;
+    box-shadow: none;
     font-family: inherit;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   }
 
-  .cust-actions-grid .cust-action i {
-    font-size: 13px;
-    flex-shrink: 0;
+  .cust-actions-grid .cust-actions-trigger i,
+  .cust-actions-grid .cust-actions-trigger .cust-actions-trigger-label {
+    display: none !important;
   }
 
-  .cust-actions-grid .btn-orders {
-    background: linear-gradient(180deg, rgba(99, 102, 241, 0.16), rgba(99, 102, 241, 0.08));
-    color: #4338ca;
-    border-color: rgba(99, 102, 241, 0.28);
-  }
-
-  .cust-actions-grid .btn-edit {
-    background: linear-gradient(180deg, rgba(16, 185, 129, 0.16), rgba(16, 185, 129, 0.08));
-    color: #047857;
-    border-color: rgba(16, 185, 129, 0.28);
-  }
-
-  .cust-actions-grid .btn-delete {
-    background: linear-gradient(180deg, rgba(239, 68, 68, 0.14), rgba(239, 68, 68, 0.07));
-    color: #b91c1c;
-    border-color: rgba(239, 68, 68, 0.26);
-  }
-
-  :root[data-theme="dark"] .cust-actions-grid .btn-orders {
-    color: #a5b4fc;
-    border-color: rgba(129, 140, 248, 0.35);
-    background: linear-gradient(180deg, rgba(99, 102, 241, 0.22), rgba(99, 102, 241, 0.1));
-  }
-
-  :root[data-theme="dark"] .cust-actions-grid .btn-edit {
-    color: #6ee7b7;
-    border-color: rgba(52, 211, 153, 0.35);
-    background: linear-gradient(180deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.1));
-  }
-
-  :root[data-theme="dark"] .cust-actions-grid .btn-delete {
-    color: #fca5a5;
-    border-color: rgba(248, 113, 113, 0.35);
-    background: linear-gradient(180deg, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.1));
-  }
-
-  .cust-actions-grid .btn-orders:hover {
-    background: rgba(99, 102, 241, 0.22);
-    border-color: rgba(99, 102, 241, 0.45);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.18);
-  }
-
-  .cust-actions-grid .btn-edit:hover {
-    background: rgba(16, 185, 129, 0.2);
-    border-color: rgba(16, 185, 129, 0.45);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.16);
-  }
-
-  .cust-actions-grid .btn-delete:hover {
-    background: rgba(239, 68, 68, 0.18);
-    border-color: rgba(239, 68, 68, 0.42);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.16);
-  }
-
-  .cust-actions-grid .cust-action:active {
-    transform: translateY(0);
+  .cust-actions-grid .cust-actions-trigger:hover,
+  .cust-actions-grid .cust-actions-trigger[aria-expanded="true"] {
+    border-color: #93c5fd;
+    color: #2563eb;
+    background: #eff6ff;
     box-shadow: none;
   }
 
-  .cust-actions-grid .action-label {
-    display: inline;
+  .cust-actions-menu {
+    position: fixed;
+    z-index: 10080;
+    min-width: 170px;
+    max-width: min(240px, calc(100vw - 16px));
+    padding: 6px;
+    margin: 0;
+    list-style: none;
+    border: 1px solid var(--glass-border, #e2e8f0);
+    border-radius: 12px;
+    background: var(--glass-bg, #fff);
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
+    direction: rtl;
+  }
+
+  .cust-actions-menu[hidden] {
+    display: none !important;
+  }
+
+  .cust-actions-menu-item {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 10px 12px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text, #0f172a);
+    font-size: 13px;
+    font-weight: 600;
+    text-align: right;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.12s ease, color 0.12s ease;
+  }
+
+  .cust-actions-menu-item:hover,
+  .cust-actions-menu-item:focus-visible {
+    outline: none;
+  }
+
+  .cust-actions-menu-item.is-orders {
+    color: #4338ca;
+  }
+
+  .cust-actions-menu-item.is-orders:hover,
+  .cust-actions-menu-item.is-orders:focus-visible {
+    background: rgba(99, 102, 241, 0.12);
+    color: #4338ca;
+  }
+
+  .cust-actions-menu-item.is-edit {
+    color: #047857;
+  }
+
+  .cust-actions-menu-item.is-edit:hover,
+  .cust-actions-menu-item.is-edit:focus-visible {
+    background: rgba(16, 185, 129, 0.12);
+    color: #047857;
+  }
+
+  .cust-actions-menu-item.is-danger {
+    color: #dc2626;
+  }
+
+  .cust-actions-menu-item.is-danger:hover,
+  .cust-actions-menu-item.is-danger:focus-visible {
+    background: #fef2f2;
+    color: #b91c1c;
+  }
+
+  :root[data-theme="dark"] .cust-actions-menu-item.is-orders {
+    color: #a5b4fc;
+  }
+
+  :root[data-theme="dark"] .cust-actions-menu-item.is-orders:hover,
+  :root[data-theme="dark"] .cust-actions-menu-item.is-orders:focus-visible {
+    background: rgba(99, 102, 241, 0.18);
+    color: #c7d2fe;
+  }
+
+  :root[data-theme="dark"] .cust-actions-menu-item.is-edit {
+    color: #6ee7b7;
+  }
+
+  :root[data-theme="dark"] .cust-actions-menu-item.is-edit:hover,
+  :root[data-theme="dark"] .cust-actions-menu-item.is-edit:focus-visible {
+    background: rgba(16, 185, 129, 0.16);
+    color: #a7f3d0;
+  }
+
+  :root[data-theme="dark"] .cust-actions-menu-item.is-danger {
+    color: #fca5a5;
+  }
+
+  :root[data-theme="dark"] .cust-actions-menu-item.is-danger:hover,
+  :root[data-theme="dark"] .cust-actions-menu-item.is-danger:focus-visible {
+    background: rgba(239, 68, 68, 0.16);
+    color: #fecaca;
   }
 
   .ag-theme-finora .ag-header-cell.actions-col .ag-header-cell-label {
@@ -1062,19 +1107,13 @@
       margin: var(--spacing-md);
     }
 
-    .cust-actions-grid {
-      gap: 4px;
-    }
-
-    .cust-actions-grid .cust-action {
-      min-width: 36px;
-      min-height: 36px;
-      padding: 0 10px;
-      border-radius: 9px;
-    }
-
-    .cust-actions-grid .action-label {
-      display: none;
+    .cust-actions-grid .cust-actions-trigger {
+      min-width: 24px !important;
+      width: 24px !important;
+      height: 24px;
+      min-height: 24px !important;
+      max-height: 24px !important;
+      border-radius: 6px !important;
     }
 
     .toast-container {
@@ -1570,6 +1609,148 @@
     }
   }
 
+  function escapeAttr(str) {
+    return String(str || '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('"', '&quot;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;');
+  }
+
+  let custActionsMenuEl = null;
+  let custActionsActiveTrigger = null;
+
+  function ensureCustActionsMenu() {
+    if (custActionsMenuEl) return custActionsMenuEl;
+    custActionsMenuEl = document.createElement('div');
+    custActionsMenuEl.className = 'cust-actions-menu';
+    custActionsMenuEl.id = 'custActionsMenu';
+    custActionsMenuEl.setAttribute('role', 'menu');
+    custActionsMenuEl.hidden = true;
+    document.body.appendChild(custActionsMenuEl);
+    return custActionsMenuEl;
+  }
+
+  function closeCustActionsMenu() {
+    const menu = custActionsMenuEl || document.getElementById('custActionsMenu');
+    if (menu) menu.hidden = true;
+    if (custActionsActiveTrigger) {
+      custActionsActiveTrigger.setAttribute('aria-expanded', 'false');
+      custActionsActiveTrigger = null;
+    }
+  }
+
+  function positionCustActionsMenu(trigger) {
+    const menu = ensureCustActionsMenu();
+    const rect = trigger.getBoundingClientRect();
+    const gap = 6;
+    const viewportPad = 8;
+
+    menu.hidden = false;
+    menu.style.visibility = 'hidden';
+    menu.style.left = '0px';
+    menu.style.top = '0px';
+
+    const menuRect = menu.getBoundingClientRect();
+    let left = rect.right - menuRect.width;
+    let top = rect.bottom + gap;
+
+    if (left < viewportPad) left = viewportPad;
+    if (left + menuRect.width > window.innerWidth - viewportPad) {
+      left = Math.max(viewportPad, window.innerWidth - menuRect.width - viewportPad);
+    }
+
+    if (top + menuRect.height > window.innerHeight - viewportPad) {
+      top = rect.top - menuRect.height - gap;
+    }
+    if (top < viewportPad) top = viewportPad;
+
+    menu.style.left = Math.round(left) + 'px';
+    menu.style.top = Math.round(top) + 'px';
+    menu.style.visibility = '';
+  }
+
+  function openCustActionsMenu(trigger) {
+    const customerId = trigger.getAttribute('data-customer-id');
+    if (!customerId) return;
+
+    if (custActionsActiveTrigger === trigger && custActionsMenuEl && !custActionsMenuEl.hidden) {
+      closeCustActionsMenu();
+      return;
+    }
+
+    closeCustActionsMenu();
+    const menu = ensureCustActionsMenu();
+
+    menu.innerHTML = `
+      <button type="button" class="cust-actions-menu-item is-orders" role="menuitem" data-cust-action="orders">
+        <span>{{ _('customers_action_orders') }}</span>
+      </button>
+      <button type="button" class="cust-actions-menu-item is-edit" role="menuitem" data-cust-action="edit">
+        <span>{{ _('customers_action_edit') }}</span>
+      </button>
+      <button type="button" class="cust-actions-menu-item is-danger" role="menuitem" data-cust-action="delete">
+        <span>{{ _('customers_action_delete') }}</span>
+      </button>
+    `;
+
+    menu.onclick = function (event) {
+      const item = event.target.closest('[data-cust-action]');
+      if (!item || !menu.contains(item)) return;
+
+      const activeTrigger = custActionsActiveTrigger;
+      if (!activeTrigger) return;
+
+      const id = Number(activeTrigger.getAttribute('data-customer-id'));
+      const name = activeTrigger.getAttribute('data-customer-name') || '';
+      const phone = activeTrigger.getAttribute('data-phone') || '';
+      const phone2 = activeTrigger.getAttribute('data-phone2') || '';
+      const city = activeTrigger.getAttribute('data-city') || '';
+      const address = activeTrigger.getAttribute('data-address') || '';
+      const notes = activeTrigger.getAttribute('data-notes') || '';
+      const action = item.getAttribute('data-cust-action');
+
+      event.preventDefault();
+      closeCustActionsMenu();
+
+      if (action === 'orders') {
+        viewOrders(id);
+        return;
+      }
+      if (action === 'edit') {
+        editCustomer(id, name, phone, phone2, city, address, notes);
+        return;
+      }
+      if (action === 'delete') {
+        deleteCustomer(id, name);
+      }
+    };
+
+    custActionsActiveTrigger = trigger;
+    trigger.setAttribute('aria-expanded', 'true');
+    positionCustActionsMenu(trigger);
+  }
+
+  document.addEventListener('click', function (event) {
+    const trigger = event.target.closest ? event.target.closest('[data-cust-actions-trigger]') : null;
+    if (trigger) {
+      event.preventDefault();
+      event.stopPropagation();
+      openCustActionsMenu(trigger);
+      return;
+    }
+    if (custActionsMenuEl && !custActionsMenuEl.hidden) {
+      if (!custActionsMenuEl.contains(event.target)) closeCustActionsMenu();
+    }
+  }, true);
+
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape') closeCustActionsMenu();
+  });
+
+  window.addEventListener('resize', closeCustActionsMenu);
+  window.addEventListener('scroll', closeCustActionsMenu, true);
+
   // ==================== AG Grid Initialization ====================
   let gridApi;
 
@@ -1600,7 +1781,9 @@
       {
         headerName: "{{ _('customers_col_actions') }}",
         field: "actions",
-        width: 292,
+        width: 80,
+        minWidth: 70,
+        maxWidth: 90,
         sortable: false,
         filter: false,
         suppressMovable: true,
@@ -1608,24 +1791,25 @@
         headerClass: 'actions-col',
         cellRenderer: params => {
           const c = params.data;
-          const nameEscaped = (c.name || '').replace(/'/g, "\\'");
-          const phoneEscaped = (c.phone || '').replace(/'/g, "\\'");
-          const phone2Escaped = (c.phone2 || '').replace(/'/g, "\\'");
-          const cityEscaped = (c.city || '').replace(/'/g, "\\'");
-          const addressEscaped = (c.address || '').replace(/'/g, "\\'");
-          const notesEscaped = (c.notes || '').replace(/'/g, "\\'");
 
           return `
           <div class="cust-actions-grid">
-            <button type="button" class="cust-action btn-orders" onclick="viewOrders(${c.id})" title="{{ _('customers_action_view_orders') }}">
-              <i class="fa fa-shopping-cart" aria-hidden="true"></i><span class="action-label">{{ _('customers_action_orders') }}</span>
-            </button>
-            <button type="button" class="cust-action btn-edit" onclick="editCustomer(${c.id}, '${nameEscaped}', '${phoneEscaped}', '${phone2Escaped}', '${cityEscaped}', '${addressEscaped}', '${notesEscaped}')" title="{{ _('customers_action_edit') }}">
-              <i class="fa fa-pen-to-square" aria-hidden="true"></i><span class="action-label">{{ _('customers_action_edit') }}</span>
-            </button>
-            <button type="button" class="cust-action btn-delete" onclick="deleteCustomer(${c.id}, '${nameEscaped}')" title="{{ _('customers_action_delete') }}">
-              <i class="fa fa-trash-can" aria-hidden="true"></i><span class="action-label">{{ _('customers_action_delete') }}</span>
-            </button>
+            <button
+              type="button"
+              class="cust-actions-trigger"
+              data-cust-actions-trigger="1"
+              data-customer-id="${c.id}"
+              data-customer-name="${escapeAttr(c.name)}"
+              data-phone="${escapeAttr(c.phone)}"
+              data-phone2="${escapeAttr(c.phone2)}"
+              data-city="${escapeAttr(c.city)}"
+              data-address="${escapeAttr(c.address)}"
+              data-notes="${escapeAttr(c.notes)}"
+              aria-haspopup="menu"
+              aria-expanded="false"
+              aria-label="{{ _('customers_col_actions') }}"
+              title="{{ _('customers_col_actions') }}"
+            >&#8942;</button>
           </div>
         `;
         }

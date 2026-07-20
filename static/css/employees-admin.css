@@ -88,30 +88,126 @@
   overflow: visible;
 }
 
-.team-admin-page .ag-theme-finora .ag-cell.actions-col .admin-actions {
+.team-admin-page .ag-theme-finora .ag-cell.actions-col .admin-actions.emp-actions-grid {
   display: flex;
-  flex-wrap: nowrap;
-  gap: 6px;
   align-items: center;
   justify-content: center;
   width: 100%;
 }
 
-.team-admin-page .admin-actions .action-btn {
-  min-height: 36px;
-  min-width: 36px;
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  flex-shrink: 0;
+.team-admin-page .emp-actions-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px !important;
+  width: 32px !important;
+  height: 32px;
+  min-height: 32px !important;
+  max-height: 32px !important;
+  padding: 0 !important;
+  border-radius: 8px !important;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-main);
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: none;
   outline: none !important;
   box-sizing: border-box;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
-.team-admin-page .admin-actions .action-btn:focus,
-.team-admin-page .admin-actions .action-btn:focus-visible {
+.team-admin-page .emp-actions-trigger:hover,
+.team-admin-page .emp-actions-trigger[aria-expanded="true"] {
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+  color: var(--primary);
+  background: var(--primary-soft);
+  box-shadow: none;
+}
+
+.team-admin-page .emp-actions-trigger:focus,
+.team-admin-page .emp-actions-trigger:focus-visible {
   outline: none !important;
   box-shadow: 0 0 0 2px var(--primary-soft);
+}
+
+.emp-actions-menu {
+  position: fixed;
+  z-index: 10080;
+  min-width: 200px;
+  max-width: min(260px, calc(100vw - 16px));
+  padding: 6px;
+  margin: 0;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
+  direction: rtl;
+}
+
+.emp-actions-menu[hidden] {
+  display: none !important;
+}
+
+.emp-actions-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-main);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: right;
+  text-decoration: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.emp-actions-menu-item i {
+  width: 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.emp-actions-menu-item:hover,
+.emp-actions-menu-item:focus-visible {
+  background: var(--surface-soft);
+  color: var(--text-main);
+  outline: none;
+}
+
+.emp-actions-menu-item:hover i,
+.emp-actions-menu-item:focus-visible i {
+  color: var(--primary);
+}
+
+.emp-actions-menu-item.is-danger {
+  color: var(--danger);
+}
+
+.emp-actions-menu-item.is-danger i {
+  color: var(--danger);
+}
+
+.emp-actions-menu-item.is-danger:hover,
+.emp-actions-menu-item.is-danger:focus-visible {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.emp-actions-menu-sep {
+  height: 1px;
+  margin: 4px 8px;
+  background: var(--border);
 }
 
 .team-admin-page .ag-theme-finora .ag-paging-panel {
@@ -604,16 +700,6 @@
 
 .team-admin-page .emp-pages-modal-actions .btn-light:hover {
   background: var(--surface-hover);
-}
-
-.team-admin-page .admin-actions .action-btn.action-btn-delete {
-  color: var(--danger);
-  border-color: rgba(220, 38, 38, 0.25);
-}
-
-.team-admin-page .admin-actions .action-btn.action-btn-delete:hover {
-  background: var(--danger-soft);
-  border-color: var(--danger);
 }
 
 .team-admin-page .modal-content .close-btn {

@@ -107,6 +107,10 @@ def test_runtime_learning_memory_is_never_uploaded() -> None:
     assert studio.is_safe_push_path("mobile/finora_social/lib/main.dart") is False
     assert studio.is_safe_push_path("mobile/finora_social/build/output.bin") is False
     assert studio.is_safe_push_path("backups/old/app.py") is False
+    assert studio.is_safe_push_path("tenants/test_deferred_stock_3356.db-wal") is False
+    assert studio.is_safe_push_path("tenants/demo.db-shm") is False
+    assert studio.is_safe_push_path("investment_server_5008.err") is False
+    assert studio.is_safe_push_path("investment_server_5008.out") is False
 
 
 def test_publish_apk_uploads_only_the_selected_artifact(tmp_path: Path) -> None:

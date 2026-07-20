@@ -267,6 +267,163 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
 
   let gridApi;
 
+  let empActionsMenuEl = null;
+  let empActionsActiveTrigger = null;
+
+  function ensureEmpActionsMenu() {
+    if (empActionsMenuEl) return empActionsMenuEl;
+    empActionsMenuEl = document.createElement('div');
+    empActionsMenuEl.className = 'emp-actions-menu';
+    empActionsMenuEl.id = 'empActionsMenu';
+    empActionsMenuEl.setAttribute('role', 'menu');
+    empActionsMenuEl.hidden = true;
+    document.body.appendChild(empActionsMenuEl);
+    return empActionsMenuEl;
+  }
+
+  function closeEmpActionsMenu() {
+    const menu = empActionsMenuEl || document.getElementById('empActionsMenu');
+    if (menu) menu.hidden = true;
+    if (empActionsActiveTrigger) {
+      empActionsActiveTrigger.setAttribute('aria-expanded', 'false');
+      empActionsActiveTrigger = null;
+    }
+  }
+
+  function positionEmpActionsMenu(trigger) {
+    const menu = ensureEmpActionsMenu();
+    const rect = trigger.getBoundingClientRect();
+    const gap = 6;
+    const viewportPad = 8;
+
+    menu.hidden = false;
+    menu.style.visibility = 'hidden';
+    menu.style.left = '0px';
+    menu.style.top = '0px';
+
+    const menuRect = menu.getBoundingClientRect();
+    let left = rect.right - menuRect.width;
+    let top = rect.bottom + gap;
+
+    if (left < viewportPad) left = viewportPad;
+    if (left + menuRect.width > window.innerWidth - viewportPad) {
+      left = Math.max(viewportPad, window.innerWidth - menuRect.width - viewportPad);
+    }
+
+    if (top + menuRect.height > window.innerHeight - viewportPad) {
+      top = rect.top - menuRect.height - gap;
+    }
+    if (top < viewportPad) top = viewportPad;
+
+    menu.style.left = Math.round(left) + 'px';
+    menu.style.top = Math.round(top) + 'px';
+    menu.style.visibility = '';
+  }
+
+  function openEmpActionsMenu(trigger) {
+    const gridId = trigger.getAttribute('data-grid-id');
+    const row = gridApi ? gridApi.getRowNode(String(gridId)) : null;
+    const e = row ? row.data : null;
+    if (!e) return;
+
+    if (empActionsActiveTrigger === trigger && empActionsMenuEl && !empActionsMenuEl.hidden) {
+      closeEmpActionsMenu();
+      return;
+    }
+
+    closeEmpActionsMenu();
+    const menu = ensureEmpActionsMenu();
+
+    if (e.is_delivery) {
+      menu.innerHTML = `
+        <button type="button" class="emp-actions-menu-item" role="menuitem" data-emp-action="edit">
+          <i class="fas fa-pen" aria-hidden="true"></i><span>تعديل الراتب</span>
+        </button>
+        <a class="emp-actions-menu-item" role="menuitem" href="/delivery-agent/login" target="_blank" rel="noopener">
+          <i class="fas fa-truck" aria-hidden="true"></i><span>${__t('employees_action_agent_page')}</span>
+        </a>
+      `;
+    } else {
+      const isActive = e.status === 'active';
+      const toggleLabel = isActive ? empActionDisable : empActionEnable;
+      const toggleIcon = isActive ? 'fa-user-slash' : 'fa-user-check';
+      menu.innerHTML = `
+        <button type="button" class="emp-actions-menu-item" role="menuitem" data-emp-action="toggle">
+          <i class="fas ${toggleIcon}" aria-hidden="true"></i><span>${toggleLabel}</span>
+        </button>
+        <button type="button" class="emp-actions-menu-item" role="menuitem" data-emp-action="edit">
+          <i class="fas fa-pen" aria-hidden="true"></i><span>تعديل</span>
+        </button>
+        <a class="emp-actions-menu-item" role="menuitem" href="/admin/permissions/employee/${encodeURIComponent(e.id)}/roles">
+          <i class="fas fa-user-shield" aria-hidden="true"></i><span>${__t('employees_action_roles')}</span>
+        </a>
+        <button type="button" class="emp-actions-menu-item" role="menuitem" data-emp-action="view">
+          <i class="fas fa-eye" aria-hidden="true"></i><span>${__t('employees_action_view')}</span>
+        </button>
+        <div class="emp-actions-menu-sep" role="separator"></div>
+        <button type="button" class="emp-actions-menu-item is-danger" role="menuitem" data-emp-action="delete">
+          <i class="fas fa-trash" aria-hidden="true"></i><span>${empActionDelete}</span>
+        </button>
+      `;
+    }
+
+    menu.onclick = function (event) {
+      const item = event.target.closest('[data-emp-action], a.emp-actions-menu-item');
+      if (!item || !menu.contains(item)) return;
+
+      const action = item.getAttribute('data-emp-action');
+      if (action === 'toggle') {
+        event.preventDefault();
+        closeEmpActionsMenu();
+        toggleEmployeeStatus(e.id, e.name, e.status === 'active');
+        return;
+      }
+      if (action === 'edit') {
+        event.preventDefault();
+        closeEmpActionsMenu();
+        openEditEmployeeModal(e.grid_id);
+        return;
+      }
+      if (action === 'view') {
+        event.preventDefault();
+        closeEmpActionsMenu();
+        viewEmployeeOrders(e.id, e.name);
+        return;
+      }
+      if (action === 'delete') {
+        event.preventDefault();
+        closeEmpActionsMenu();
+        deleteEmployee(e.id, e.name);
+        return;
+      }
+      closeEmpActionsMenu();
+    };
+
+    empActionsActiveTrigger = trigger;
+    trigger.setAttribute('aria-expanded', 'true');
+    positionEmpActionsMenu(trigger);
+  }
+
+  document.addEventListener('click', function (event) {
+    const trigger = event.target.closest ? event.target.closest('[data-emp-actions-trigger]') : null;
+    if (trigger) {
+      event.preventDefault();
+      event.stopPropagation();
+      openEmpActionsMenu(trigger);
+      return;
+    }
+    if (empActionsMenuEl && !empActionsMenuEl.hidden) {
+      if (!empActionsMenuEl.contains(event.target)) closeEmpActionsMenu();
+    }
+  }, true);
+
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape') closeEmpActionsMenu();
+  });
+
+  window.addEventListener('resize', closeEmpActionsMenu);
+  window.addEventListener('scroll', closeEmpActionsMenu, true);
+
   function initAgGrid() {
     const employeesDataElement = document.getElementById("employeesData");
     if (!employeesDataElement) return;
@@ -384,7 +541,7 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
       {
         headerName: __t('employees_col_actions'),
         field: "actions",
-        width: 220,
+        width: 56,
         sortable: false,
         filter: false,
         suppressMovable: true,
@@ -393,50 +550,19 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
         cellRenderer: params => {
           const e = params.data;
           const wrap = document.createElement('div');
-          wrap.className = 'admin-actions';
+          wrap.className = 'admin-actions emp-actions-grid';
 
-          if (e.is_delivery) {
-            wrap.appendChild(createActionButton({
-              icon: 'fa-pen',
-              title: 'تعديل الراتب',
-              onClick: () => openEditEmployeeModal(e.grid_id),
-            }));
-            wrap.appendChild(createActionButton({
-              icon: 'fa-truck',
-              title: __t('employees_action_agent_page'),
-              href: '/delivery-agent/login',
-              target: '_blank',
-            }));
-            return wrap;
-          }
+          const trigger = document.createElement('button');
+          trigger.type = 'button';
+          trigger.className = 'emp-actions-trigger';
+          trigger.setAttribute('data-emp-actions-trigger', '1');
+          trigger.setAttribute('data-grid-id', String(e.grid_id));
+          trigger.setAttribute('aria-haspopup', 'menu');
+          trigger.setAttribute('aria-expanded', 'false');
+          trigger.setAttribute('aria-label', __t('employees_col_actions') || 'إجراءات');
+          trigger.innerHTML = '&#8942;';
 
-          const isActive = e.status === 'active';
-          wrap.appendChild(createActionButton({
-            icon: isActive ? 'fa-user-slash' : 'fa-user-check',
-            title: isActive ? empActionDisable : empActionEnable,
-            onClick: () => toggleEmployeeStatus(e.id, e.name, isActive),
-          }));
-          wrap.appendChild(createActionButton({
-            icon: 'fa-pen',
-            title: 'تعديل',
-            onClick: () => openEditEmployeeModal(e.grid_id),
-          }));
-          wrap.appendChild(createActionButton({
-            icon: 'fa-user-shield',
-            title: __t('employees_action_roles'),
-            href: `/admin/permissions/employee/${e.id}/roles`,
-          }));
-          wrap.appendChild(createActionButton({
-            icon: 'fa-eye',
-            title: __t('employees_action_view'),
-            onClick: () => viewEmployeeOrders(e.id, e.name),
-          }));
-          wrap.appendChild(createActionButton({
-            icon: 'fa-trash',
-            title: empActionDelete,
-            className: 'action-btn-delete',
-            onClick: () => deleteEmployee(e.id, e.name),
-          }));
+          wrap.appendChild(trigger);
           return wrap;
         }
       }

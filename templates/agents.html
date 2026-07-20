@@ -97,7 +97,7 @@
           <th>{{ _('agents_th_orders') }}</th>
           <th>{{ _('agents_th_total_amount') }}</th>
           <th>الدخول</th>
-          <th>{{ _('agents_th_actions') }}</th>
+          <th class="actions-col">{{ _('agents_th_actions') }}</th>
         </tr>
       </thead>
       <tbody id="agentsTableBody">
@@ -115,28 +115,32 @@
             <span class="admin-metric admin-metric--neutral">غير مُعد</span>
             {% endif %}
           </td>
-          <td>
-            <div class="admin-actions">
-              <a href="/agents/{{ data.agent.id }}/reports" class="action-btn action-btn--text" title="كشف حساب المندوب">
-                <i class="fas fa-file-invoice"></i><span>كشف</span>
-              </a>
-              <a href="/delivery-agent/login/{% if session.get('tenant_slug') %}{{ session.get('tenant_slug') }}{% endif %}" target="_blank" rel="noopener" class="action-btn action-btn--text" title="بوابة المندوب">
-                <i class="fas fa-external-link-alt"></i><span>بوابة</span>
-              </a>
-              {% if can_manage_agents %}
-              <button type="button" class="action-btn" title="بيانات الدخول"
-                onclick='setAgentCredentials({{ data.agent.id }}, {{ data.agent.name|tojson }}, {{ (data.agent.username or "")|tojson }})'>
-                <i class="fas fa-key"></i>
-              </button>
-              <button type="button" class="action-btn" title="تعديل"
-                onclick='editAgent({{ data.agent.id }}, {{ data.agent.name|tojson }}, {{ (data.agent.phone or "")|tojson }}, {{ (data.agent.notes or "")|tojson }})'>
-                <i class="fas fa-pen"></i>
-              </button>
-              <button type="button" class="action-btn danger" title="{{ _('agents_action_delete') if _('agents_action_delete') != 'agents_action_delete' else 'حذف' }}"
-                onclick='deleteAgent({{ data.agent.id }}, {{ data.agent.name|tojson }})'>
-                <i class="fas fa-trash"></i>
-              </button>
-              {% endif %}
+          <td class="actions-col">
+            <div class="admin-actions" data-compact-actions>
+              <button type="button" class="admin-actions-trigger" data-compact-actions-trigger="1"
+                aria-haspopup="menu" aria-expanded="false" aria-label="{{ _('agents_th_actions') }}" title="{{ _('agents_th_actions') }}">&#8942;</button>
+              <div class="compact-actions-source" hidden>
+                <a href="/agents/{{ data.agent.id }}/reports" class="action-btn action-btn--text" title="كشف حساب المندوب">
+                  <i class="fas fa-file-invoice"></i><span>كشف</span>
+                </a>
+                <a href="/delivery-agent/login/{% if session.get('tenant_slug') %}{{ session.get('tenant_slug') }}{% endif %}" target="_blank" rel="noopener" class="action-btn action-btn--text" title="بوابة المندوب">
+                  <i class="fas fa-external-link-alt"></i><span>بوابة</span>
+                </a>
+                {% if can_manage_agents %}
+                <button type="button" class="action-btn" title="بيانات الدخول"
+                  onclick='setAgentCredentials({{ data.agent.id }}, {{ data.agent.name|tojson }}, {{ (data.agent.username or "")|tojson }})'>
+                  <i class="fas fa-key"></i>
+                </button>
+                <button type="button" class="action-btn" title="تعديل"
+                  onclick='editAgent({{ data.agent.id }}, {{ data.agent.name|tojson }}, {{ (data.agent.phone or "")|tojson }}, {{ (data.agent.notes or "")|tojson }})'>
+                  <i class="fas fa-pen"></i>
+                </button>
+                <button type="button" class="action-btn danger" title="{{ _('agents_action_delete') if _('agents_action_delete') != 'agents_action_delete' else 'حذف' }}"
+                  onclick='deleteAgent({{ data.agent.id }}, {{ data.agent.name|tojson }})'>
+                  <i class="fas fa-trash"></i>
+                </button>
+                {% endif %}
+              </div>
             </div>
           </td>
         </tr>
@@ -172,5 +176,6 @@
     prompt_notes: {{ 'ملاحظات'|tojson }}
   };
 </script>
+<script src="{{ url_for('static', filename='js/admin-actions-menu.js') }}?v=20260720a"></script>
 <script src="{{ url_for('static', filename='js/agents-admin.js') }}"></script>
 {% endblock %}

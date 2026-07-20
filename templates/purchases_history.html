@@ -34,8 +34,48 @@
     .status-confirmed { background: rgba(16,185,129,0.2); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.4); }
     .status-cancelled { background: rgba(239,68,68,0.2); color: #fca5a5; border: 1px solid rgba(239,68,68,0.4); }
     .muted { color: var(--text-muted); font-size: 12px; }
-    .pur-actions { display: flex; gap: 6px; flex-wrap: wrap; }
-    .pur-actions .pur-btn { padding: 6px 10px; font-size: 12px; }
+    table.pur-table th.pur-col-actions,
+    table.pur-table td.pur-col-actions { width: 48px; max-width: 48px; text-align: center; padding-inline: 4px; }
+    .pur-actions { display: flex; justify-content: center; align-items: center; }
+    .pur-history-page .pur-actions-trigger {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 28px; width: 28px; height: 28px; padding: 0;
+      border-radius: 7px; border: 1px solid var(--border-light);
+      background: var(--card-alt); color: #334155;
+      font-size: 16px; font-weight: 800; line-height: 1; cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    }
+    .pur-history-page .pur-actions-trigger:hover,
+    .pur-history-page .pur-actions-trigger[aria-expanded="true"] {
+      border-color: #93c5fd; color: #2563eb; background: #eff6ff;
+    }
+    .pur-actions-menu {
+      position: fixed; z-index: 10080;
+      min-width: 190px; max-width: min(240px, calc(100vw - 16px));
+      padding: 6px; margin: 0; list-style: none;
+      border: 1px solid var(--border-light); border-radius: 12px;
+      background: var(--card, #fff);
+      box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
+      direction: rtl;
+    }
+    .pur-actions-menu[hidden] { display: none !important; }
+    .pur-actions-menu-item {
+      display: flex; align-items: center; gap: 10px; width: 100%;
+      padding: 10px 12px; border: 0; border-radius: 8px;
+      background: transparent; color: var(--text, #0f172a);
+      font-size: 13px; font-weight: 600; text-align: right;
+      text-decoration: none; cursor: pointer;
+      transition: background 0.12s ease, color 0.12s ease;
+    }
+    .pur-actions-menu-item i { width: 16px; text-align: center; color: #64748b; font-size: 13px; }
+    .pur-actions-menu-item:hover,
+    .pur-actions-menu-item:focus-visible { background: #f1f5f9; color: #0f172a; outline: none; }
+    .pur-actions-menu-item:hover i,
+    .pur-actions-menu-item:focus-visible i { color: #2563eb; }
+    .pur-actions-menu-item.is-danger { color: #dc2626; }
+    .pur-actions-menu-item.is-danger i { color: #dc2626; }
+    .pur-actions-menu-item.is-danger:hover,
+    .pur-actions-menu-item.is-danger:focus-visible { background: #fef2f2; color: #b91c1c; }
     .status-chips { display: flex; gap: 8px; flex-wrap: wrap; }
     .chip-btn { border: 1px solid var(--border-light); background: var(--card-alt); color: var(--text); border-radius: 999px; padding: 6px 14px; font-size: 13px; font-weight: 700; cursor: pointer; }
     .chip-btn.active { background: var(--primary); color: #fff; border-color: transparent; }
@@ -109,7 +149,7 @@
             <th>المدفوع</th>
             <th>المتبقي</th>
             <th>الحالة</th>
-            <th>إجراءات</th>
+            <th class="pur-col-actions">إجراءات</th>
           </tr>
         </thead>
         <tbody id="historyBody">
@@ -153,6 +193,7 @@
   }
 
   function renderHistoryTable() {
+    closePurActionsMenu();
     const tbody = byId("historyBody");
     let rows = historyData;
     if (statusFilter) rows = rows.filter(p => (p.status || "") === statusFilter);
@@ -170,26 +211,165 @@
         <td>${fmt(p.paid_total)}</td>
         <td>${fmt(p.remaining_total)}</td>
         <td><span class="status-badge ${statusClass(p.status)}">${statusLabel[p.status] || p.status || "-"}</span></td>
-        <td>
+        <td class="pur-col-actions">
           <div class="pur-actions">
-            ${p.status !== "confirmed" ? `<a class="pur-btn pur-btn-primary" href="/purchases/edit/${p.id}"><i class="fa fa-pen"></i></a>` : ""}
-            ${p.status === "confirmed" ? `<button class="pur-btn pur-btn-muted" type="button" data-unlock-id="${p.id}" title="فتح للتحرير"><i class="fa fa-lock-open"></i></button>` : ""}
-            <button class="pur-btn pur-btn-muted" type="button" data-clone-id="${p.id}" title="استنساخ"><i class="fa fa-copy"></i></button>
-            ${p.status !== "cancelled" ? `<button class="pur-btn pur-btn-muted" type="button" data-cancel-id="${p.id}" title="إلغاء"><i class="fa fa-ban"></i></button>` : ""}
-            ${p.status === "cancelled" ? `<button class="pur-btn pur-btn-muted" type="button" data-reopen-id="${p.id}" title="إعادة فتح"><i class="fa fa-rotate-left"></i></button>` : ""}
-            <button class="pur-btn pur-btn-danger" type="button" data-delete-id="${p.id}" title="حذف"><i class="fa fa-trash"></i></button>
-            <a class="pur-btn pur-btn-muted" href="/purchases/print/${p.id}" data-finora-print title="طباعة"><i class="fa fa-print"></i></a>
+            <button type="button" class="pur-actions-trigger" data-pur-actions-trigger="1"
+              data-purchase-id="${p.id}" data-status="${p.status || ""}"
+              aria-haspopup="menu" aria-expanded="false" aria-label="إجراءات" title="إجراءات">&#8942;</button>
           </div>
         </td>
       </tr>
     `).join("");
 
-    tbody.querySelectorAll("[data-clone-id]").forEach(btn => btn.addEventListener("click", () => clonePurchase(Number(btn.dataset.cloneId))));
-    tbody.querySelectorAll("[data-cancel-id]").forEach(btn => btn.addEventListener("click", () => cancelPurchase(Number(btn.dataset.cancelId))));
-    tbody.querySelectorAll("[data-delete-id]").forEach(btn => btn.addEventListener("click", () => deletePurchase(Number(btn.dataset.deleteId))));
-    tbody.querySelectorAll("[data-unlock-id]").forEach(btn => btn.addEventListener("click", () => unlockPurchaseForEdit(Number(btn.dataset.unlockId))));
-    tbody.querySelectorAll("[data-reopen-id]").forEach(btn => btn.addEventListener("click", () => reopenPurchase(Number(btn.dataset.reopenId))));
   }
+
+  let purActionsMenuEl = null;
+  let purActionsActiveTrigger = null;
+
+  function ensurePurActionsMenu() {
+    if (purActionsMenuEl) return purActionsMenuEl;
+    purActionsMenuEl = document.createElement("div");
+    purActionsMenuEl.className = "pur-actions-menu";
+    purActionsMenuEl.id = "purActionsMenu";
+    purActionsMenuEl.setAttribute("role", "menu");
+    purActionsMenuEl.hidden = true;
+    document.body.appendChild(purActionsMenuEl);
+    return purActionsMenuEl;
+  }
+
+  function closePurActionsMenu() {
+    const menu = purActionsMenuEl || document.getElementById("purActionsMenu");
+    if (menu) menu.hidden = true;
+    if (purActionsActiveTrigger) {
+      purActionsActiveTrigger.setAttribute("aria-expanded", "false");
+      purActionsActiveTrigger = null;
+    }
+  }
+
+  function positionPurActionsMenu(trigger) {
+    const menu = ensurePurActionsMenu();
+    const rect = trigger.getBoundingClientRect();
+    const gap = 6;
+    const viewportPad = 8;
+
+    menu.hidden = false;
+    menu.style.visibility = "hidden";
+    menu.style.left = "0px";
+    menu.style.top = "0px";
+
+    const menuRect = menu.getBoundingClientRect();
+    let left = rect.right - menuRect.width;
+    let top = rect.bottom + gap;
+
+    if (left < viewportPad) left = viewportPad;
+    if (left + menuRect.width > window.innerWidth - viewportPad) {
+      left = Math.max(viewportPad, window.innerWidth - menuRect.width - viewportPad);
+    }
+    if (top + menuRect.height > window.innerHeight - viewportPad) {
+      top = rect.top - menuRect.height - gap;
+    }
+    if (top < viewportPad) top = viewportPad;
+
+    menu.style.left = Math.round(left) + "px";
+    menu.style.top = Math.round(top) + "px";
+    menu.style.visibility = "";
+  }
+
+  function openPurActionsMenu(trigger) {
+    const purchaseId = trigger.getAttribute("data-purchase-id");
+    const status = trigger.getAttribute("data-status") || "";
+    if (!purchaseId) return;
+
+    if (purActionsActiveTrigger === trigger && purActionsMenuEl && !purActionsMenuEl.hidden) {
+      closePurActionsMenu();
+      return;
+    }
+
+    closePurActionsMenu();
+    const menu = ensurePurActionsMenu();
+    const id = Number(purchaseId);
+    let items = "";
+
+    if (status !== "confirmed") {
+      items += `<a class="pur-actions-menu-item" role="menuitem" href="/purchases/edit/${id}"><i class="fa fa-pen" aria-hidden="true"></i><span>تحرير</span></a>`;
+    }
+    if (status === "confirmed") {
+      items += `<button type="button" class="pur-actions-menu-item" role="menuitem" data-pur-action="unlock"><i class="fa fa-lock-open" aria-hidden="true"></i><span>فتح للتحرير</span></button>`;
+    }
+    items += `<button type="button" class="pur-actions-menu-item" role="menuitem" data-pur-action="clone"><i class="fa fa-copy" aria-hidden="true"></i><span>استنساخ</span></button>`;
+    if (status !== "cancelled") {
+      items += `<button type="button" class="pur-actions-menu-item" role="menuitem" data-pur-action="cancel"><i class="fa fa-ban" aria-hidden="true"></i><span>إلغاء</span></button>`;
+    }
+    if (status === "cancelled") {
+      items += `<button type="button" class="pur-actions-menu-item" role="menuitem" data-pur-action="reopen"><i class="fa fa-rotate-left" aria-hidden="true"></i><span>إعادة فتح</span></button>`;
+    }
+    items += `<button type="button" class="pur-actions-menu-item is-danger" role="menuitem" data-pur-action="delete"><i class="fa fa-trash" aria-hidden="true"></i><span>حذف</span></button>`;
+    items += `<a class="pur-actions-menu-item" role="menuitem" href="/purchases/print/${id}" data-finora-print><i class="fa fa-print" aria-hidden="true"></i><span>طباعة</span></a>`;
+
+    menu.innerHTML = items;
+
+    menu.onclick = function (event) {
+      const item = event.target.closest("[data-pur-action], a.pur-actions-menu-item");
+      if (!item || !menu.contains(item)) return;
+
+      const action = item.getAttribute("data-pur-action");
+      if (action === "unlock") {
+        event.preventDefault();
+        closePurActionsMenu();
+        unlockPurchaseForEdit(id);
+        return;
+      }
+      if (action === "clone") {
+        event.preventDefault();
+        closePurActionsMenu();
+        clonePurchase(id);
+        return;
+      }
+      if (action === "cancel") {
+        event.preventDefault();
+        closePurActionsMenu();
+        cancelPurchase(id);
+        return;
+      }
+      if (action === "reopen") {
+        event.preventDefault();
+        closePurActionsMenu();
+        reopenPurchase(id);
+        return;
+      }
+      if (action === "delete") {
+        event.preventDefault();
+        closePurActionsMenu();
+        deletePurchase(id);
+        return;
+      }
+      closePurActionsMenu();
+    };
+
+    purActionsActiveTrigger = trigger;
+    trigger.setAttribute("aria-expanded", "true");
+    positionPurActionsMenu(trigger);
+  }
+
+  document.addEventListener("click", function (event) {
+    const trigger = event.target.closest ? event.target.closest("[data-pur-actions-trigger]") : null;
+    if (trigger) {
+      event.preventDefault();
+      event.stopPropagation();
+      openPurActionsMenu(trigger);
+      return;
+    }
+    if (purActionsMenuEl && !purActionsMenuEl.hidden) {
+      if (!purActionsMenuEl.contains(event.target)) closePurActionsMenu();
+    }
+  }, true);
+
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape") closePurActionsMenu();
+  });
+
+  window.addEventListener("resize", closePurActionsMenu);
+  window.addEventListener("scroll", closePurActionsMenu, true);
 
   async function cancelPurchase(id) {
     const ok = await purchaseImpactConfirm({

@@ -18,18 +18,36 @@
   }
 
   .orders-row-actions {
+    display: flex;
     flex-wrap: nowrap;
     justify-content: center;
-    gap: 4px;
+    align-items: center;
+    gap: 3px;
     padding: 0 2px;
   }
 
-  .orders-row-actions .action-btn-small {
-    min-height: 28px !important;
-    height: 28px !important;
-    font-size: 11px !important;
-    padding: 4px 8px !important;
-    border-radius: 6px !important;
+  .orders-row-actions .action-btn-small,
+  .orders-row-actions button.action-btn-small {
+    min-height: 24px !important;
+    height: 24px !important;
+    max-height: 24px !important;
+    min-width: 0 !important;
+    width: auto !important;
+    font-size: 10px !important;
+    padding: 0 6px !important;
+    border-radius: 5px !important;
+  }
+
+  .orders-row-actions .orders-actions-trigger,
+  .orders-row-actions button.orders-actions-trigger {
+    min-width: 24px !important;
+    width: 24px !important;
+    max-width: 24px !important;
+    min-height: 24px !important;
+    height: 24px !important;
+    max-height: 24px !important;
+    padding: 0 !important;
+    flex: 0 0 24px !important;
   }
 
   /* Order details modal - mobile polish */

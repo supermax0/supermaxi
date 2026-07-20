@@ -76,7 +76,7 @@
           <th>{{ _('pages_th_delivered') }}</th>
           <th>{{ _('pages_th_cashier') if _('pages_th_cashier') != 'pages_th_cashier' else 'كاشير' }}</th>
           <th>{{ _('pages_th_admin') if _('pages_th_admin') != 'pages_th_admin' else 'أدمن' }}</th>
-          {% if can_manage_pages %}<th>{{ _('pages_th_actions') }}</th>{% endif %}
+          {% if can_manage_pages %}<th class="actions-col">{{ _('pages_th_actions') }}</th>{% endif %}
         </tr>
       </thead>
       <tbody>
@@ -116,20 +116,24 @@
             {% endif %}
           </td>
           {% if can_manage_pages %}
-          <td>
-            <div class="admin-actions">
-              <button type="button" class="action-btn primary js-rename-page-btn" title="تعديل الاسم"
-                data-page-id="{{ data.page.id }}" data-page-name="{{ data.page.name|e }}">
-                <i class="fas fa-pen"></i>
-              </button>
-              <button type="button" class="action-btn success js-assign-employees-btn" title="{{ _('pages_assign_employees') if _('pages_assign_employees') != 'pages_assign_employees' else 'تعيين موظفين' }}"
-                data-page-id="{{ data.page.id }}" data-page-name="{{ data.page.name|e }}">
-                <i class="fas fa-users"></i>
-              </button>
-              <button type="button" class="action-btn danger js-delete-page-btn" title="{{ _('pages_delete') if _('pages_delete') != 'pages_delete' else 'حذف' }}"
-                data-page-id="{{ data.page.id }}">
-                <i class="fas fa-trash"></i>
-              </button>
+          <td class="actions-col">
+            <div class="admin-actions" data-compact-actions>
+              <button type="button" class="admin-actions-trigger" data-compact-actions-trigger="1"
+                aria-haspopup="menu" aria-expanded="false" aria-label="{{ _('pages_th_actions') }}" title="{{ _('pages_th_actions') }}">&#8942;</button>
+              <div class="compact-actions-source" hidden>
+                <button type="button" class="action-btn primary js-rename-page-btn" title="تعديل الاسم"
+                  data-page-id="{{ data.page.id }}" data-page-name="{{ data.page.name|e }}">
+                  <i class="fas fa-pen"></i>
+                </button>
+                <button type="button" class="action-btn success js-assign-employees-btn" title="{{ _('pages_assign_employees') if _('pages_assign_employees') != 'pages_assign_employees' else 'تعيين موظفين' }}"
+                  data-page-id="{{ data.page.id }}" data-page-name="{{ data.page.name|e }}">
+                  <i class="fas fa-users"></i>
+                </button>
+                <button type="button" class="action-btn danger js-delete-page-btn" title="{{ _('pages_delete') if _('pages_delete') != 'pages_delete' else 'حذف' }}"
+                  data-page-id="{{ data.page.id }}">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
             </div>
           </td>
           {% endif %}
@@ -197,5 +201,6 @@
     pages_toast_renamed: {{ 'تم تحديث اسم البيج'|tojson }}
   };
 </script>
+<script src="{{ url_for('static', filename='js/admin-actions-menu.js') }}?v=20260720a"></script>
 <script src="{{ url_for('static', filename='js/pages-admin.js') }}?v=20260704a"></script>
 {% endblock %}

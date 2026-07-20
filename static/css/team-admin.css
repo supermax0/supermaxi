@@ -447,11 +447,142 @@
   color: var(--danger);
 }
 
+.team-admin-page .admin-table th.actions-col,
+.team-admin-page .admin-table td.actions-col {
+  width: 56px;
+  min-width: 56px;
+  max-width: 56px;
+  text-align: center;
+  padding-inline: 4px;
+}
+
 .team-admin-page .admin-actions {
   display: inline-flex;
   gap: 6px;
   align-items: center;
   justify-content: center;
+}
+
+.team-admin-page .admin-actions[data-compact-actions] {
+  width: 100%;
+}
+
+.team-admin-page .admin-actions-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px !important;
+  width: 32px !important;
+  height: 32px;
+  min-height: 32px !important;
+  max-height: 32px !important;
+  padding: 0 !important;
+  border-radius: 8px !important;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-main);
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: none;
+  outline: none !important;
+  box-sizing: border-box;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.team-admin-page .admin-actions-trigger:hover,
+.team-admin-page .admin-actions-trigger[aria-expanded="true"] {
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+  color: var(--primary);
+  background: var(--primary-soft);
+  box-shadow: none;
+}
+
+.team-admin-page .admin-actions-trigger:focus,
+.team-admin-page .admin-actions-trigger:focus-visible {
+  outline: none !important;
+  box-shadow: 0 0 0 2px var(--primary-soft);
+}
+
+.admin-actions-menu {
+  position: fixed;
+  z-index: 10080;
+  min-width: 200px;
+  max-width: min(260px, calc(100vw - 16px));
+  padding: 6px;
+  margin: 0;
+  list-style: none;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 12px;
+  background: var(--surface, #fff);
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
+  direction: rtl;
+}
+
+.admin-actions-menu[hidden] {
+  display: none !important;
+}
+
+.admin-actions-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-main, #0f172a);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: right;
+  text-decoration: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.admin-actions-menu-item i,
+.admin-actions-menu-item .compact-actions-emoji {
+  width: 16px;
+  text-align: center;
+  color: var(--text-muted, #64748b);
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.admin-actions-menu-item:hover,
+.admin-actions-menu-item:focus-visible {
+  background: var(--surface-soft, #f1f5f9);
+  color: var(--text-main, #0f172a);
+  outline: none;
+}
+
+.admin-actions-menu-item:hover i,
+.admin-actions-menu-item:focus-visible i {
+  color: var(--primary, #2563eb);
+}
+
+.admin-actions-menu-item.is-danger {
+  color: var(--danger, #dc2626);
+}
+
+.admin-actions-menu-item.is-danger i,
+.admin-actions-menu-item.is-danger .compact-actions-emoji {
+  color: var(--danger, #dc2626);
+}
+
+.admin-actions-menu-item.is-danger:hover,
+.admin-actions-menu-item.is-danger:focus-visible {
+  background: var(--danger-soft, #fef2f2);
+  color: var(--danger, #b91c1c);
+}
+
+.admin-actions-menu-sep {
+  height: 1px;
+  margin: 4px 8px;
+  background: var(--border, #e2e8f0);
 }
 
 .team-admin-page .admin-actions .action-btn.danger {

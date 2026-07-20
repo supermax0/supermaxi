@@ -1029,25 +1029,28 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
-      min-width: 88px;
-      height: 34px;
-      min-height: 34px !important;
-      padding: 0 12px;
-      border-radius: 10px !important;
+      gap: 0;
+      min-width: 28px !important;
+      width: 28px !important;
+      height: 28px;
+      min-height: 28px !important;
+      max-height: 28px !important;
+      padding: 0 !important;
+      border-radius: 7px !important;
       border: 1px solid var(--border-light);
       background: var(--surface, #fff);
-      color: var(--text-muted, #64748b);
-      font-size: 12px;
-      font-weight: 700;
+      color: #334155;
+      font-size: 16px;
+      font-weight: 800;
       line-height: 1;
       cursor: pointer;
       box-shadow: none;
-      transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+      transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
     }
 
-    .inventory-page .inv-actions-trigger i {
-      font-size: 13px;
+    .inventory-page .inv-actions-trigger i,
+    .inventory-page .inv-actions-trigger .inv-actions-trigger-label {
+      display: none !important;
     }
 
     .inventory-page .inv-actions-trigger:hover,
@@ -1055,7 +1058,7 @@
       border-color: #93c5fd;
       color: #2563eb;
       background: #eff6ff;
-      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+      box-shadow: none;
     }
 
     .inv-actions-menu {
@@ -1305,10 +1308,11 @@
       }
 
       .inventory-page .inv-actions-trigger {
-        min-width: 78px;
-        height: 32px;
-        min-height: 32px !important;
-        padding: 0 10px;
+        min-width: 28px !important;
+        width: 28px !important;
+        height: 28px !important;
+        min-height: 28px !important;
+        padding: 0 !important;
       }
     }
 
@@ -2293,9 +2297,9 @@
       {
         headerName: "{{ _('inventory_col_actions') }}",
         field: "actions",
-        width: 120,
-        minWidth: 110,
-        maxWidth: 140,
+        width: 72,
+        minWidth: 64,
+        maxWidth: 90,
         sortable: false,
         filter: false,
         pinned: null,
@@ -2316,11 +2320,9 @@
                   data-store-visible="${storeVisible}"
                   aria-haspopup="menu"
                   aria-expanded="false"
+                  aria-label="{{ _('inventory_col_actions') }}"
                   title="{{ _('inventory_col_actions') }}"
-                >
-                  <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
-                  <span>إجراءات</span>
-                </button>
+                >&#8942;</button>
               </div>
             `;
         }

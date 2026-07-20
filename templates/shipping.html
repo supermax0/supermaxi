@@ -369,9 +369,44 @@
 
   .shipping-page .ship-actions {
     display: flex;
-    gap: 4px;
+    align-items: center;
     justify-content: center;
-    flex-wrap: wrap;
+  }
+
+  .shipping-page .ship-actions-trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(15, 23, 42, 0.55);
+    color: var(--shipping-text);
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: none;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+
+  .shipping-page .ship-actions-trigger:hover,
+  .shipping-page .ship-actions-trigger[aria-expanded="true"] {
+    border-color: rgba(59, 130, 246, 0.45);
+    color: #93c5fd;
+    background: rgba(37, 99, 235, 0.18);
+  }
+
+  .shipping-page .responsive-table th.ship-actions-col,
+  .shipping-page td.ship-actions-col {
+    width: 56px;
+    min-width: 56px;
+    max-width: 56px;
+    text-align: center;
+    padding-inline: 4px;
   }
 
   /* ================= ANIMATIONS ================= */
@@ -562,6 +597,19 @@
     background: rgba(0, 0, 0, 0.05);
     color: #64748b;
   }
+
+  :root[data-theme="light"] .shipping-page .ship-actions-trigger {
+    border-color: rgba(2, 6, 23, 0.12);
+    background: rgba(255, 255, 255, 0.92);
+    color: #334155;
+  }
+
+  :root[data-theme="light"] .shipping-page .ship-actions-trigger:hover,
+  :root[data-theme="light"] .shipping-page .ship-actions-trigger[aria-expanded="true"] {
+    border-color: rgba(37, 99, 235, 0.35);
+    color: #2563eb;
+    background: rgba(37, 99, 235, 0.08);
+  }
 </style>
 
 <div class="shipping-page">
@@ -633,7 +681,7 @@
             <th>📦 {{ _('shipping_th_orders_count') }}</th>
             <th>📊 {{ _('shipping_opening_balance') }}</th>
             <th>💰 {{ _('shipping_th_due') }}</th>
-            <th>⚙️ {{ _('shipping_th_actions') }}</th>
+            <th class="ship-actions-col">⚙️ {{ _('shipping_th_actions') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -663,28 +711,32 @@
               <div style="font-size:11px;color:var(--shipping-muted);margin-top:4px;">{{ _('shipping_due_breakdown') }}: {{ "{:,.0f}".format(c.orders_due) }} + {{ "{:,.0f}".format(c.opening_balance) }}</div>
               {% endif %}
             </td>
-            <td data-label="{{ _('shipping_th_actions') }}">
-              <div class="ship-actions">
-                <a href="/delivery/archive?company_id={{ c.id }}" class="btn btn-success btn-sm"
-                  style="text-decoration:none;">
-                  <span>📋</span>
-                  <span>{{ _('shipping_action_statement') }}</span>
-                </a>
-                <button class="btn btn-warning btn-sm" type="button" onclick="editCompanyFromRow(this)">
-                  <span>✏️</span>
-                  <span>تعديل</span>
-                </button>
-                {% if c.opening_balance and c.opening_balance > 0 %}
-                <button class="btn btn-primary btn-sm" type="button"
-                  onclick="collectOpeningBalance({{ c.id }}, {{ c.opening_balance }}, this)">
-                  <span>💵</span>
-                  <span>استلام</span>
-                </button>
-                {% endif %}
-                <button class="btn btn-outline-danger btn-sm" onclick="deleteCompany({{ c.id }})">
-                  <span>🗑️</span>
-                  <span>{{ _('shipping_action_delete') }}</span>
-                </button>
+            <td class="ship-actions-col" data-label="{{ _('shipping_th_actions') }}">
+              <div class="ship-actions" data-compact-actions>
+                <button type="button" class="ship-actions-trigger" data-compact-actions-trigger="1"
+                  aria-haspopup="menu" aria-expanded="false" aria-label="{{ _('shipping_th_actions') }}" title="{{ _('shipping_th_actions') }}">&#8942;</button>
+                <div class="compact-actions-source" hidden>
+                  <a href="/delivery/archive?company_id={{ c.id }}" class="btn btn-success btn-sm"
+                    style="text-decoration:none;">
+                    <span>📋</span>
+                    <span>{{ _('shipping_action_statement') }}</span>
+                  </a>
+                  <button class="btn btn-warning btn-sm" type="button" onclick="editCompanyFromRow(this)">
+                    <span>✏️</span>
+                    <span>تعديل</span>
+                  </button>
+                  {% if c.opening_balance and c.opening_balance > 0 %}
+                  <button class="btn btn-primary btn-sm" type="button"
+                    onclick="collectOpeningBalance({{ c.id }}, {{ c.opening_balance }}, this)">
+                    <span>💵</span>
+                    <span>استلام</span>
+                  </button>
+                  {% endif %}
+                  <button class="btn btn-outline-danger btn-sm" onclick="deleteCompany({{ c.id }})">
+                    <span>🗑️</span>
+                    <span>{{ _('shipping_action_delete') }}</span>
+                  </button>
+                </div>
               </div>
             </td>
           </tr>
@@ -757,6 +809,7 @@
     </div>
   </div>
 
+  <script src="/static/js/admin-actions-menu.js?v=20260720a"></script>
   <script src="/static/js/delivery-fee-pay-modal.js"></script>
   <script>
     let currentCompany = null;
@@ -995,7 +1048,7 @@
           <th>{{ _('shipping_orders_th_phone') }}</th>
           <th>{{ _('shipping_orders_th_amount') }}</th>
           <th>{{ _('shipping_orders_th_status') }}</th>
-          <th>{{ _('shipping_orders_th_actions') }}</th>
+          <th class="ship-actions-col">{{ _('shipping_orders_th_actions') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -1040,31 +1093,45 @@
 
           // تحديد الأزرار المتاحة
           let actionButtons = "";
+          let actionSource = "";
 
           if (o.status !== "راجع" && o.status !== "ملغي") {
             if (o.payment !== "مسدد") {
-              actionButtons += `
-            <button class="btn btn-success" onclick="settle(${o.id})" style="padding:8px 16px;font-size:14px">
-              ✅ {{ _('shipping_orders_action_settle') }}
+              actionSource += `
+            <button class="btn btn-success" type="button" onclick="settle(${o.id})">
+              <span>✅</span>
+              <span>{{ _('shipping_orders_action_settle') }}</span>
             </button>
           `;
             }
 
             if (o.status === "تم التوصيل" || o.status === "جاري الشحن") {
-              actionButtons += `
-            <button class="btn btn-danger" onclick="returnOrder(${o.id})" style="padding:8px 16px;font-size:14px">
-              ↩️ {{ _('shipping_orders_action_return') }}
+              actionSource += `
+            <button class="btn btn-danger" type="button" onclick="returnOrder(${o.id})">
+              <span>↩️</span>
+              <span>{{ _('shipping_orders_action_return') }}</span>
             </button>
           `;
             }
 
             if (o.status === "تم الطلب") {
-              actionButtons += `
-          <button class="btn btn-danger" onclick="cancelOrder(${o.id})" style="padding:8px 16px;font-size:14px;background:linear-gradient(135deg, #64748b, #475569);">
-            ❌ {{ _('shipping_orders_action_cancel') }}
+              actionSource += `
+          <button class="btn btn-danger" type="button" onclick="cancelOrder(${o.id})" style="background:linear-gradient(135deg, #64748b, #475569);">
+            <span>❌</span>
+            <span>{{ _('shipping_orders_action_cancel') }}</span>
           </button>
         `;
             }
+          }
+
+          if (actionSource) {
+            actionButtons = `
+            <div class="ship-actions" data-compact-actions>
+              <button type="button" class="ship-actions-trigger" data-compact-actions-trigger="1"
+                aria-haspopup="menu" aria-expanded="false" aria-label="{{ _('shipping_orders_th_actions') }}" title="{{ _('shipping_orders_th_actions') }}">&#8942;</button>
+              <div class="compact-actions-source" hidden>${actionSource}</div>
+            </div>
+          `;
           } else {
             actionButtons = `
           <span style="color:var(--shipping-muted);font-size:13px">لا توجد إجراءات</span>
@@ -1085,8 +1152,8 @@
               ${paymentBadge ? `<span style="color:var(--shipping-muted);font-size:11px">${paymentBadge} ${o.payment}</span>` : ""}
             </div>
           </td>
-          <td>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+          <td class="ship-actions-col">
+            <div style="display:flex;justify-content:center">
               ${actionButtons}
             </div>
           </td>
