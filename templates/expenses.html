@@ -7,208 +7,311 @@
 <div class="loading-overlay" id="loadingOverlay"><div class="loading-spinner"></div></div>
 
 <style>
-  .exp-page { max-width: 1280px; margin: 0 auto; padding: 12px 16px 80px; }
-  .exp-summary {
-    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px; margin-bottom: 12px;
-  }
+  .exp-page { max-width: 1280px; margin: 0 auto; padding: 12px 16px 80px; box-sizing: border-box; }
+  .exp-page *, .exp-page *::before, .exp-page *::after { box-sizing: border-box; }
+
+  .exp-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
   .exp-sum-card {
-    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
-    padding: 12px 14px; position: relative; overflow: hidden;
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 10px 12px; position: relative; overflow: hidden;
   }
   .exp-sum-card::before { content: ""; position: absolute; top: 0; right: 0; left: 0; height: 3px; }
-  .exp-sum-card.total::before { background: linear-gradient(90deg, #ef4444, #f97316); }
-  .exp-sum-card.month::before { background: linear-gradient(90deg, #f59e0b, #eab308); }
-  .exp-sum-card.today::before { background: linear-gradient(90deg, #3b82f6, #06b6d4); }
-  .exp-sum-card .lbl { font-size: 11px; color: var(--text-muted); font-weight: 600; margin-bottom: 4px; }
-  .exp-sum-card .val { font-size: 1.1rem; font-weight: 800; line-height: 1.2; }
+  .exp-sum-card.total::before { background: #ef4444; }
+  .exp-sum-card.month::before { background: #f59e0b; }
+  .exp-sum-card.today::before { background: #3b82f6; }
+  .exp-sum-card .lbl { font-size: 10px; color: var(--text-muted); font-weight: 600; }
+  .exp-sum-card .val { font-size: 1.05rem; font-weight: 800; line-height: 1.2; margin-top: 2px; }
   .exp-sum-card.total .val { color: #ef4444; }
   .exp-sum-card.month .val { color: #d97706; }
   .exp-sum-card.today .val { color: #2563eb; }
-  .exp-sum-card .sub { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+  .exp-sum-card .sub { font-size: 9px; color: var(--text-muted); }
 
-  .exp-layout { display: grid; grid-template-columns: 1fr 360px; gap: 14px; align-items: start; }
-  .exp-panel {
-    background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px;
-  }
-  .exp-panel h3 {
-    margin: 0 0 12px; font-size: 16px; font-weight: 800;
-    display: flex; align-items: center; gap: 8px; padding-bottom: 10px; border-bottom: 1px solid var(--border);
-  }
-  .exp-form { display: grid; gap: 10px; }
-  .exp-form input, .exp-form select, .exp-form textarea {
-    width: 100%; padding: 11px 14px; border-radius: 10px;
-    border: 1px solid var(--border); background: var(--bg, #fff); color: var(--text);
-    font-size: 14px; font-family: inherit; box-sizing: border-box; min-height: 44px;
-  }
-  .exp-form textarea { min-height: 72px; resize: vertical; }
-  .exp-btn {
-    border: none; border-radius: 10px; padding: 10px 14px; font-weight: 700;
-    font-size: 13px; cursor: pointer; font-family: inherit; width: auto;
-    line-height: 1.2;
-  }
-  .exp-btn-primary { background: var(--primary); color: #fff; width: 100%; }
-  .exp-btn-muted { background: var(--card-alt, #f8fafc); color: var(--text); border: 1px solid var(--border); }
-  .exp-btn-icon {
-    width: 36px; height: 36px; min-width: 36px; padding: 0; border-radius: 10px;
-    display: inline-flex; align-items: center; justify-content: center; font-size: 14px;
-  }
+  .exp-layout { display: grid; grid-template-columns: 1fr 340px; gap: 14px; align-items: start; }
+  .exp-panel { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px; }
+  .exp-panel-title { margin: 0 0 10px; font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 6px; }
 
-  .exp-repeat-box {
-    display: grid; gap: 8px; padding: 12px; border-radius: 12px;
-    border: 1px solid var(--border); background: var(--card-alt, #f8fafc);
+  .exp-toolbar { display: flex; gap: 6px; margin-bottom: 10px; align-items: center; }
+  .exp-toolbar input, .exp-toolbar select {
+    flex: 1; min-width: 0; height: 36px; padding: 0 10px; border-radius: 9px;
+    border: 1px solid var(--border); background: var(--bg, #fff); font-size: 13px;
   }
-  .exp-repeat-toggle label { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 13px; }
-  .exp-repeat-fields { display: none; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .exp-repeat-box.is-active .exp-repeat-fields { display: grid; }
-  .exp-repeat-help { font-size: 11px; color: var(--text-muted); line-height: 1.5; }
-
-  .exp-quick-add {
-    display: flex; gap: 6px; margin-bottom: 10px; padding: 8px;
-    border-radius: 12px; border: 1px dashed var(--border); background: var(--card-alt, #f8fafc);
-    align-items: center;
+  .exp-tool-btn {
+    width: 36px !important; height: 36px !important; min-width: 36px !important;
+    padding: 0 !important; border-radius: 9px; border: 1px solid var(--border);
+    background: var(--card-alt, #f8fafc); font-size: 15px; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
   }
-  .exp-quick-add input {
-    flex: 1; min-width: 0; padding: 8px 10px; border-radius: 8px;
-    border: 1px solid var(--border); background: var(--card); font-size: 13px; min-height: 36px;
-  }
-  .exp-quick-add .exp-btn { flex: 0 0 auto; padding: 8px 12px; font-size: 12px; white-space: nowrap; }
-  .exp-filters-row {
-    display: grid; grid-template-columns: 1fr auto auto; gap: 6px; margin-bottom: 8px; align-items: center;
-  }
-  .exp-filters-row input, .exp-filters-row select {
-    min-width: 0; padding: 8px 10px; border-radius: 8px;
-    border: 1px solid var(--border); background: var(--bg, #fff); font-size: 13px; min-height: 36px;
-  }
-  .exp-filters-row select { max-width: 110px; }
-  .exp-filters-more { display: none; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .exp-filters-more { display: none; gap: 6px; margin-bottom: 10px; }
   .exp-filters-more.is-open { display: flex; }
-  .exp-filters-more input { flex: 1; min-width: 120px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); font-size: 13px; }
-  .exp-filter-toggle {
-    padding: 0; width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border);
-    background: var(--card-alt); font-size: 14px; font-weight: 700; cursor: pointer;
-    display: inline-flex; align-items: center; justify-content: center;
-  }
+  .exp-filters-more input { flex: 1; height: 36px; padding: 0 10px; border-radius: 9px; border: 1px solid var(--border); font-size: 13px; }
+  .exp-filters-more .exp-tool-btn { width: auto !important; min-width: 0 !important; padding: 0 10px !important; font-size: 12px; }
 
-  .exp-cat-list { display: flex; flex-direction: column; gap: 12px; }
+  .exp-cat-list { display: flex; flex-direction: column; gap: 8px; }
   .exp-cat-card {
-    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
-    overflow: hidden; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
-    border-right: 4px solid var(--cat-accent, #94a3b8);
+    border: 1px solid var(--border); border-radius: 14px; overflow: hidden;
+    background: var(--card); box-shadow: 0 1px 3px rgba(15,23,42,.05);
+    transition: transform .15s, box-shadow .15s;
   }
-  .exp-cat-card.has-items { border-right-color: #ef4444; }
-  .exp-cat-card.is-collapsed .exp-cat-body { display: none; }
+  .exp-cat-card.has-items { cursor: pointer; }
+  .exp-cat-card.has-items:active { transform: scale(.985); }
+  .exp-cat-card.has-items:hover { box-shadow: 0 4px 14px rgba(15,23,42,.08); }
   .exp-cat-head {
-    display: flex; align-items: center; gap: 10px; padding: 14px;
-    cursor: pointer; user-select: none;
+    display: grid; grid-template-columns: 44px 1fr auto 20px; grid-template-rows: auto auto;
+    gap: 2px 10px; align-items: center; padding: 12px 14px;
   }
   .exp-cat-icon {
-    width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center;
-    justify-content: center; font-size: 20px; flex-shrink: 0;
+    width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center;
+    justify-content: center; font-size: 20px; grid-row: 1 / 3;
   }
-  .exp-cat-meta { flex: 1; min-width: 0; }
-  .exp-cat-name { font-size: 16px; font-weight: 800; }
-  .exp-cat-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
-  .exp-cat-total { text-align: left; flex-shrink: 0; }
-  .exp-cat-total .amt { font-size: 14px; font-weight: 800; color: #ef4444; white-space: nowrap; }
-  .exp-cat-total .cnt { font-size: 10px; color: var(--text-muted); }
-  .exp-cat-chevron { color: var(--text-muted); font-size: 11px; transition: transform .2s; flex-shrink: 0; }
-  .exp-cat-card.is-collapsed .exp-cat-chevron { transform: rotate(-90deg); }
-  .exp-cat-del { border: none; background: #fef2f2; color: #dc2626; cursor: pointer; font-size: 14px; padding: 6px 8px; border-radius: 8px; flex-shrink: 0; }
+  .exp-cat-name { font-size: 14px; font-weight: 800; line-height: 1.3; grid-column: 2; grid-row: 1; }
+  .exp-cat-sub { font-size: 11px; color: var(--text-muted); grid-column: 2; grid-row: 2; }
+  .exp-cat-total { text-align: left; grid-column: 3; grid-row: 1 / 3; align-self: center; }
+  .exp-cat-total .amt { font-size: 14px; font-weight: 800; color: #ef4444; }
+  .exp-cat-total .cnt { font-size: 9px; color: var(--text-muted); text-align: left; }
+  .exp-cat-arrow { grid-column: 4; grid-row: 1 / 3; color: var(--text-muted); font-size: 18px; align-self: center; }
+  .exp-cat-body { display: none; }
 
-  .exp-cat-body { border-top: 1px solid var(--border); background: var(--card-alt, #f8fafc); }
-  .exp-item {
-    display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
-    padding: 12px 14px; border-bottom: 1px solid var(--border); background: var(--card);
-  }
+  .exp-item { padding: 12px 14px; border-bottom: 1px solid var(--border); background: var(--card); }
   .exp-item:last-child { border-bottom: none; }
-  .exp-item-main { flex: 1; min-width: 0; }
-  .exp-item-title { font-weight: 700; font-size: 14px; word-break: break-word; }
-  .exp-item-meta { font-size: 11px; color: var(--text-muted); margin-top: 4px; line-height: 1.4; }
-  .exp-item-side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
-  .exp-item-amt { font-weight: 800; color: #ef4444; font-size: 13px; white-space: nowrap; }
-  .exp-item-del {
-    padding: 5px 10px; border-radius: 8px; font-size: 11px; font-weight: 700;
-    background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; text-decoration: none;
-  }
-  .exp-cat-empty { padding: 20px 14px; text-align: center; color: var(--text-muted); font-size: 13px; background: var(--card); }
-  .exp-cat-empty-btn {
-    margin-top: 8px; padding: 8px 14px; border-radius: 8px; border: 1px dashed var(--border);
-    background: transparent; color: var(--primary); font-weight: 700; font-size: 12px; cursor: pointer;
-  }
+  .exp-item-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  .exp-item-title { font-size: 14px; font-weight: 700; line-height: 1.4; flex: 1; min-width: 0; word-break: break-word; }
+  .exp-item-amt { font-size: 14px; font-weight: 800; color: #ef4444; white-space: nowrap; flex-shrink: 0; }
+  .exp-item-meta { font-size: 11px; color: var(--text-muted); line-height: 1.4; margin-top: 5px; word-break: break-word; }
+  .exp-cat-empty { padding: 24px 16px; text-align: center; font-size: 13px; color: var(--text-muted); }
 
-  .exp-cat-icon.rent { background: rgba(139,92,246,.15); }
-  .exp-cat-icon.salary { background: rgba(59,130,246,.15); }
-  .exp-cat-icon.electricity { background: rgba(251,191,36,.18); }
-  .exp-cat-icon.internet { background: rgba(16,185,129,.15); }
-  .exp-cat-icon.advertising { background: rgba(236,72,153,.15); }
-  .exp-cat-icon.maintenance { background: rgba(245,158,11,.15); }
-  .exp-cat-icon.other { background: rgba(107,114,128,.15); }
-  .exp-cat-icon.c1 { background: rgba(14,165,233,.15); }
-  .exp-cat-icon.c2 { background: rgba(168,85,247,.15); }
-  .exp-cat-icon.c3 { background: rgba(34,197,94,.15); }
-  .exp-cat-icon.c4 { background: rgba(244,63,94,.15); }
-  .exp-cat-icon.c5 { background: rgba(99,102,241,.15); }
-  .exp-cat-icon.c6 { background: rgba(20,184,166,.15); }
-  .exp-cat-icon.c7 { background: rgba(234,179,8,.15); }
-  .exp-cat-icon.c8 { background: rgba(249,115,22,.15); }
+  .exp-cat-icon.rent { background: rgba(139,92,246,.14); }
+  .exp-cat-icon.salary { background: rgba(59,130,246,.14); }
+  .exp-cat-icon.electricity { background: rgba(251,191,36,.16); }
+  .exp-cat-icon.internet { background: rgba(16,185,129,.14); }
+  .exp-cat-icon.advertising { background: rgba(236,72,153,.14); }
+  .exp-cat-icon.maintenance { background: rgba(245,158,11,.14); }
+  .exp-cat-icon.other { background: rgba(107,114,128,.14); }
+  .exp-cat-icon.c1 { background: rgba(14,165,233,.14); }
+  .exp-cat-icon.c2 { background: rgba(168,85,247,.14); }
+  .exp-cat-icon.c3 { background: rgba(34,197,94,.14); }
+  .exp-cat-icon.c4 { background: rgba(244,63,94,.14); }
+  .exp-cat-icon.c5 { background: rgba(99,102,241,.14); }
+  .exp-cat-icon.c6 { background: rgba(20,184,166,.14); }
+  .exp-cat-icon.c7 { background: rgba(234,179,8,.14); }
+  .exp-cat-icon.c8 { background: rgba(249,115,22,.14); }
 
-  /* Mobile form sheet */
-  .exp-form-panel { }
+  .exp-form { display: grid; gap: 10px; }
+  .exp-f-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .exp-f-full { grid-column: 1 / -1; }
+  .exp-form input, .exp-form select, .exp-form textarea {
+    width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--bg, #fff); font-size: 14px; min-height: 42px;
+  }
+  .exp-form textarea { min-height: 70px; resize: vertical; }
+  .exp-btn-primary {
+    width: 100%; border: none; border-radius: 10px; padding: 12px; font-weight: 700;
+    background: var(--primary); color: #fff; font-size: 14px; cursor: pointer;
+  }
+  .exp-repeat-box { padding: 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--card-alt, #f8fafc); }
+  .exp-repeat-toggle {
+    display: flex; align-items: flex-start; gap: 8px; cursor: pointer; margin: 0;
+  }
+  .exp-repeat-toggle input[type="checkbox"] {
+    width: 16px; height: 16px; margin: 2px 0 0; flex-shrink: 0; accent-color: var(--primary);
+  }
+  .exp-repeat-label { display: flex; flex-direction: column; gap: 1px; line-height: 1.3; }
+  .exp-repeat-label strong { font-size: 13px; font-weight: 700; }
+  .exp-repeat-label small { font-size: 10px; color: var(--text-muted); font-weight: 400; }
+  .exp-repeat-fields { display: none; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+  .exp-repeat-box.is-active .exp-repeat-fields { display: grid; }
+
   .exp-fab {
-    display: none; position: fixed; bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-    left: 16px; z-index: 10200;
-    width: 52px; height: 52px; border-radius: 50%; border: none;
-    background: var(--primary); color: #fff; font-size: 28px; font-weight: 400; line-height: 1;
-    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45); cursor: pointer;
-    pointer-events: auto; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+    display: none; position: fixed; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); left: 14px;
+    z-index: 10200; width: 50px; height: 50px; border-radius: 50%; border: none;
+    background: var(--primary); color: #fff; font-size: 26px; line-height: 1;
+    box-shadow: 0 4px 16px rgba(37,99,235,.4); cursor: pointer;
+    touch-action: manipulation; -webkit-tap-highlight-color: transparent;
   }
-  .exp-sheet-backdrop {
-    position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 10210;
-    opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .2s ease;
+
+  .exp-overlay {
+    position: fixed; inset: 0; background: rgba(15,23,42,.5); z-index: 10210;
+    opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .22s;
+    backdrop-filter: blur(2px);
   }
-  .exp-sheet-backdrop.is-open { opacity: 1; visibility: visible; pointer-events: auto; }
+  .exp-overlay.is-open { opacity: 1; visibility: visible; pointer-events: auto; }
+
   .exp-sheet {
-    position: fixed; bottom: 0; left: 0; right: 0; z-index: 10220;
-    background: var(--card); border-radius: 20px 20px 0 0; padding: 16px 16px 24px;
-    max-height: 90vh; overflow-y: auto; box-shadow: 0 -8px 32px rgba(0,0,0,.2);
-    transform: translateY(100%); transition: transform .25s ease;
-    visibility: hidden; pointer-events: none;
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 10220; background: var(--card);
+    border-radius: 20px 20px 0 0; max-height: 92vh; overflow: hidden;
+    transform: translateY(105%); transition: transform .25s cubic-bezier(.32,.72,0,1);
+    visibility: hidden; pointer-events: none; display: flex; flex-direction: column;
   }
   .exp-sheet.is-open { transform: translateY(0); visibility: visible; pointer-events: auto; }
-  .exp-sheet-handle { width: 40px; height: 4px; background: var(--border); border-radius: 99px; margin: 0 auto 12px; }
-  .exp-sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-  .exp-sheet-head h3 { margin: 0; font-size: 16px; font-weight: 800; }
-  .exp-sheet-close { border: none; background: var(--card-alt); border-radius: 10px; padding: 8px 12px; font-weight: 700; cursor: pointer; }
+  .exp-sheet-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px 8px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .exp-sheet-head h3 { margin: 0; font-size: 14px; font-weight: 800; }
+  .exp-sheet-close { border: none; background: var(--card-alt); border-radius: 8px; padding: 5px 9px; font-weight: 700; font-size: 13px; cursor: pointer; width: auto !important; }
+  .exp-sheet-body { overflow-y: auto; padding: 10px 12px 12px; flex: 1; -webkit-overflow-scrolling: touch; }
+  .exp-sheet .exp-form { gap: 7px; }
+  .exp-sheet .exp-form input,
+  .exp-sheet .exp-form select,
+  .exp-sheet .exp-form textarea {
+    min-height: 36px; padding: 7px 10px; font-size: 13px; border-radius: 8px;
+  }
+  .exp-sheet .exp-form textarea { min-height: 52px; max-height: 72px; }
+  .exp-sheet .exp-f-row { gap: 6px; }
+  .exp-sheet .exp-repeat-box { padding: 8px 10px; border-radius: 8px; }
+  .exp-sheet .exp-repeat-label strong { font-size: 12px; }
+  .exp-sheet .exp-repeat-label small { font-size: 9px; }
+  .exp-sheet .exp-repeat-toggle input[type="checkbox"] { width: 15px; height: 15px; }
+  .exp-sheet .exp-repeat-fields { gap: 6px; margin-top: 6px; }
+  .exp-sheet .exp-repeat-fields input,
+  .exp-sheet .exp-repeat-fields select { min-height: 34px; padding: 6px 8px; font-size: 12px; }
+  .exp-sheet .exp-btn-primary {
+    padding: 10px; font-size: 13px; border-radius: 9px; margin-top: 2px;
+    position: sticky; bottom: 0; z-index: 1;
+  }
 
-  .loading-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: none; align-items: center; justify-content: center; z-index: 9999; }
+  .exp-cat-modal {
+    position: fixed; z-index: 10225; background: var(--card); overflow: hidden;
+    display: flex; flex-direction: column;
+    bottom: 0; left: 0; right: 0; max-height: 88vh; border-radius: 20px 20px 0 0;
+    transform: translateY(105%); transition: transform .28s cubic-bezier(.32,.72,0,1);
+    visibility: hidden; pointer-events: none;
+  }
+  .exp-cat-modal.is-open { transform: translateY(0); visibility: visible; pointer-events: auto; }
+  .exp-cat-modal-hero {
+    padding: 20px 16px 16px; background: linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #60a5fa 100%);
+    color: #fff; position: relative; flex-shrink: 0;
+  }
+  .exp-cat-modal-hero::after {
+    content: ""; position: absolute; bottom: -1px; left: 0; right: 0; height: 16px;
+    background: var(--card); border-radius: 16px 16px 0 0;
+  }
+  .exp-cat-modal-top { display: flex; align-items: flex-start; gap: 12px; position: relative; z-index: 1; }
+  .exp-cat-modal-icon {
+    width: 52px; height: 52px; border-radius: 14px; background: rgba(255,255,255,.2);
+    display: flex; align-items: center; justify-content: center; font-size: 26px; flex-shrink: 0;
+  }
+  .exp-cat-modal-info { flex: 1; min-width: 0; }
+  .exp-cat-modal-info h3 { margin: 0 0 4px; font-size: 18px; font-weight: 800; }
+  .exp-cat-modal-info p { margin: 0; font-size: 12px; opacity: .85; }
+  .exp-cat-modal-total { margin-top: 14px; position: relative; z-index: 1; }
+  .exp-cat-modal-total .lbl { font-size: 11px; opacity: .8; }
+  .exp-cat-modal-total .val { font-size: 26px; font-weight: 900; letter-spacing: -.5px; }
+  .exp-cat-modal-close {
+    position: absolute; top: 14px; left: 14px; z-index: 2;
+    width: 34px !important; height: 34px !important; border-radius: 50%; border: none;
+    background: rgba(255,255,255,.2); color: #fff; font-size: 16px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .exp-cat-modal-list { overflow-y: auto; flex: 1; padding: 8px 0 0; }
+  .exp-cat-modal-list .exp-item { border-bottom: 1px solid var(--border); }
+  .exp-cat-modal-foot {
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--border); flex-shrink: 0; background: var(--card);
+  }
+  .exp-cat-modal-add {
+    width: 100%; border: none; border-radius: 12px; padding: 13px;
+    background: var(--primary); color: #fff; font-weight: 800; font-size: 14px; cursor: pointer;
+  }
+
+  .loading-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; align-items: center; justify-content: center; z-index: 9999; }
   .loading-overlay.active { display: flex; }
-  .loading-spinner { width: 48px; height: 48px; border: 4px solid rgba(255,255,255,.2); border-top-color: #fff; border-radius: 50%; animation: expSpin .8s linear infinite; }
+  .loading-spinner { width: 44px; height: 44px; border: 3px solid rgba(255,255,255,.2); border-top-color: #fff; border-radius: 50%; animation: expSpin .7s linear infinite; }
   @keyframes expSpin { to { transform: rotate(360deg); } }
-  .toast-container { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 10000; width: calc(100% - 24px); max-width: 420px; }
-  .toast { padding: 12px 16px; border-radius: 12px; color: #fff; font-weight: 600; margin-bottom: 8px; }
-  .toast.success { background: #059669; }
-  .toast.error { background: #dc2626; }
-  .toast.warning { background: #d97706; }
+  .toast-container { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 10000; width: calc(100% - 20px); max-width: 400px; }
+  .toast { padding: 10px 14px; border-radius: 10px; color: #fff; font-weight: 600; margin-bottom: 6px; font-size: 13px; }
+  .toast.success { background: #059669; } .toast.error { background: #dc2626; } .toast.warning { background: #d97706; }
+
+  @media (min-width: 640px) {
+    .exp-cat-modal {
+      bottom: auto; top: 50%; left: 50%; right: auto;
+      width: min(480px, calc(100vw - 32px)); max-height: 80vh;
+      border-radius: 20px; transform: translate(-50%, -50%) scale(.92);
+      opacity: 0; transition: transform .25s cubic-bezier(.32,.72,0,1), opacity .2s;
+    }
+    .exp-cat-modal.is-open { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    .exp-cat-modal-hero { border-radius: 20px 20px 0 0; }
+  }
 
   @media (max-width: 960px) {
-    .exp-page { padding: 8px 10px 90px; }
+    .exp-page {
+      padding: 10px 12px 92px;
+      overflow-x: hidden;
+      font-size: 16px;
+    }
+    .exp-page button:not(.exp-btn-primary):not(.exp-cat-modal-add) { width: auto !important; min-height: 0 !important; }
     .exp-layout { grid-template-columns: 1fr; }
     .exp-form-panel { display: none; }
-    .exp-fab { display: flex; align-items: center; justify-content: center; }
-    .exp-summary {
-      display: flex; overflow-x: auto; gap: 8px; scroll-snap-type: x mandatory;
-      -webkit-overflow-scrolling: touch; padding-bottom: 4px;
+    .exp-fab {
+      display: flex; align-items: center; justify-content: center;
+      width: 56px; height: 56px; font-size: 28px;
     }
-    .exp-sum-card { min-width: 120px; flex: 0 0 auto; scroll-snap-align: start; padding: 10px 12px; }
-    .exp-sum-card .val { font-size: 0.95rem; }
-    .exp-panel { padding: 12px; }
-    .exp-panel h3 { font-size: 15px; margin-bottom: 10px; padding-bottom: 8px; }
-    .exp-cat-head { padding: 10px 12px; }
-    .exp-cat-icon { width: 38px; height: 38px; font-size: 18px; }
-    .exp-cat-name { font-size: 14px; }
-    .exp-filters-row select { display: none; }
-    .exp-filters-row { grid-template-columns: 1fr 36px; }
+    .exp-panel { padding: 0; border: none; background: transparent; }
+    .exp-panel-title { font-size: 18px; margin-bottom: 12px; }
+
+    /* إحصائيات في صف واحد مضغوط */
+    .exp-summary {
+      display: grid !important;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 14px;
+      overflow: visible;
+    }
+    .exp-sum-card {
+      min-width: 0;
+      padding: 10px 8px;
+      border-radius: 12px;
+    }
+    .exp-sum-card .lbl { font-size: 10px; line-height: 1.25; }
+    .exp-sum-card .val { font-size: clamp(14px, 3.8vw, 17px); margin-top: 4px; }
+    .exp-sum-card .sub { display: none; }
+
+    .exp-toolbar { gap: 8px; margin-bottom: 12px; }
+    .exp-toolbar input {
+      height: 44px;
+      padding: 0 12px;
+      font-size: 15px;
+      border-radius: 10px;
+    }
+    .exp-tool-btn {
+      width: 44px !important;
+      height: 44px !important;
+      min-width: 44px !important;
+      font-size: 18px;
+      border-radius: 10px;
+    }
+    .exp-filters-more input { height: 44px; font-size: 15px; }
+
+    .exp-cat-card.is-empty { display: none; }
+    .exp-cat-list { gap: 10px; }
+    .exp-cat-card { border-radius: 16px; }
+    .exp-cat-head {
+      grid-template-columns: 56px 1fr auto 22px;
+      gap: 6px 12px;
+      padding: 16px 14px;
+      min-height: 84px;
+    }
+    .exp-cat-icon { width: 56px; height: 56px; border-radius: 14px; font-size: 26px; }
+    .exp-cat-name { font-size: 17px; }
+    .exp-cat-sub { font-size: 13px; margin-top: 2px; }
+    .exp-cat-total .amt { font-size: 17px; }
+    .exp-cat-total .cnt { font-size: 11px; }
+    .exp-cat-arrow { font-size: 24px; }
+
+    .exp-cat-modal-list .exp-item { padding: 14px 16px; }
+    .exp-cat-modal-list .exp-item-title { font-size: 15px; }
+    .exp-cat-modal-list .exp-item-amt { font-size: 15px; }
+    .exp-cat-modal-list .exp-item-meta { font-size: 12px; }
+
+    .exp-sheet-head h3 { font-size: 16px; }
+    .exp-sheet .exp-form input,
+    .exp-sheet .exp-form select,
+    .exp-sheet .exp-form textarea {
+      min-height: 44px;
+      padding: 10px 12px;
+      font-size: 16px;
+      border-radius: 10px;
+    }
+    .exp-sheet .exp-form textarea { min-height: 64px; max-height: 90px; }
+    .exp-sheet .exp-repeat-label strong { font-size: 14px; }
+    .exp-sheet .exp-repeat-label small { font-size: 11px; }
+    .exp-sheet .exp-btn-primary { padding: 12px; font-size: 15px; }
   }
 </style>
 
@@ -232,49 +335,39 @@
   </div>
 
   <div class="exp-layout">
-    <!-- الفئات أولاً -->
-    <div class="exp-panel exp-categories-panel">
-      <h3>📂 فئات المصاريف</h3>
+    <div class="exp-panel">
+      <h3 class="exp-panel-title">📂 فئات المصاريف</h3>
 
-      <div class="exp-quick-add">
-        <input type="text" id="newCategoryName" placeholder="فئة جديدة..." maxlength="80">
-        <button type="button" class="exp-btn exp-btn-muted" id="addCategoryBtn">➕ فئة</button>
-      </div>
-
-      <div class="exp-filters-row">
-        <input type="text" id="searchInput" placeholder="🔍 بحث...">
-        <select id="filterCategory">
-          <option value="">{{ _('expenses_filter_category_all') }}</option>
-          {% for cat in expense_categories %}
-          <option value="{{ cat.key }}">{{ cat.icon }} {{ cat.label }}</option>
-          {% endfor %}
-        </select>
-        <button type="button" class="exp-filter-toggle" id="filterToggleBtn" title="فلتر التاريخ">📅</button>
+      <div class="exp-toolbar">
+        <input type="text" id="searchInput" placeholder="بحث...">
+        <button type="button" class="exp-tool-btn" id="addCategoryBtn" title="فئة جديدة">📁</button>
+        <button type="button" class="exp-tool-btn" id="filterToggleBtn" title="فلتر">📅</button>
       </div>
       <div class="exp-filters-more" id="filtersMore">
         <input type="date" id="filterDateFrom">
         <input type="date" id="filterDateTo">
-        <button type="button" class="exp-btn exp-btn-muted" onclick="clearFilters()" style="flex:0;">🗑️ مسح</button>
+        <button type="button" class="exp-tool-btn" id="clearFiltersBtn">مسح</button>
       </div>
 
-      <div class="exp-cat-list" id="expenseCategoryList">
+      <div class="exp-cat-list">
         {% for group in category_groups %}
-        <div class="exp-cat-card{% if group.count > 0 %} has-items{% else %} is-collapsed{% endif %}"
-          data-category="{{ group.key }}" data-has-items="{{ group.count }}">
-          <div class="exp-cat-head" onclick="toggleCategoryCard(this)">
+        <div class="exp-cat-card{% if group.count > 0 %} has-items{% else %} is-empty{% endif %}"
+          data-category="{{ group.key }}"
+          data-label="{{ group.label }}"
+          data-icon="{{ group.icon }}"
+          data-total="{{ group.total }}"
+          data-count="{{ group.count }}">
+          <div class="exp-cat-head" data-open-cat>
             <div class="exp-cat-icon {{ group.color }}">{{ group.icon }}</div>
-            <div class="exp-cat-meta">
-              <div class="exp-cat-name">{{ group.label }}</div>
-              <div class="exp-cat-sub">{{ group.count }} مصروف</div>
-            </div>
+            <div class="exp-cat-name">{{ group.label }}</div>
+            <div class="exp-cat-sub">{{ group.count }} مصروف</div>
             <div class="exp-cat-total">
               <div class="amt">{{ "{:,.0f}".format(group.total) }}</div>
               <div class="cnt">د.ع</div>
             </div>
-            {% if not group.builtin %}
-            <button type="button" class="exp-cat-del" onclick="event.stopPropagation(); removeExpenseCategory('{{ group.key }}')">🗑️</button>
+            {% if group.count > 0 %}
+            <div class="exp-cat-arrow">‹</div>
             {% endif %}
-            <span class="exp-cat-chevron">▼</span>
           </div>
           <div class="exp-cat-body">
             {% if group.expenses %}
@@ -283,25 +376,19 @@
                 data-title="{{ (e.title or '')|lower }}"
                 data-note="{{ (e.note or '')|lower }}"
                 data-date="{{ e.expense_date.strftime('%Y-%m-%d') if e.expense_date else '' }}">
-                <div class="exp-item-main">
+                <div class="exp-item-top">
                   <div class="exp-item-title">{{ e.title }}</div>
-                  <div class="exp-item-meta">
-                    {{ e.expense_date.strftime('%Y-%m-%d') if e.expense_date else '—' }}
-                    {% if e.note %} · {{ e.note }}{% endif %}
-                    {% if not e.cash_posted %} · <span style="color:#d97706;">مجدول</span>{% endif %}
-                  </div>
-                </div>
-                <div class="exp-item-side">
                   <div class="exp-item-amt">{{ "{:,.0f}".format(e.amount or 0) }}</div>
-                  <a href="/expenses/delete/{{ e.id }}" class="exp-item-del" data-expense-delete="1">حذف</a>
+                </div>
+                <div class="exp-item-meta">
+                  {{ e.expense_date.strftime('%Y-%m-%d') if e.expense_date else '—' }}
+                  {% if e.note %} · {{ e.note }}{% endif %}
+                  {% if not e.cash_posted %} · <span style="color:#d97706">مجدول</span>{% endif %}
                 </div>
               </div>
               {% endfor %}
             {% else %}
-              <div class="exp-cat-empty">
-                لا مصاريف بعد
-                <button type="button" class="exp-cat-empty-btn" data-cat="{{ group.key }}">➕ أضف مصروف</button>
-              </div>
+              <div class="exp-cat-empty">لا مصاريف في هذه الفئة</div>
             {% endif %}
           </div>
         </div>
@@ -309,187 +396,217 @@
       </div>
     </div>
 
-    <!-- نموذج الديسكتوب -->
     <div class="exp-panel exp-form-panel">
-      <h3>➕ {{ _('expenses_add_title') }}</h3>
+      <h3 class="exp-panel-title">➕ {{ _('expenses_add_title') }}</h3>
       {% include 'expenses/_add_form.html' %}
     </div>
   </div>
 </div>
 
-<!-- زر عائم + نموذج منبثق للهاتف -->
-<button type="button" class="exp-fab" id="expFabBtn" aria-label="إضافة مصروف">+</button>
-<div class="exp-sheet-backdrop" id="expSheetBackdrop"></div>
+<button type="button" class="exp-fab" id="expFabBtn" aria-label="إضافة">+</button>
+
+<div class="exp-overlay" id="expOverlay"></div>
+
 <div class="exp-sheet" id="expSheet">
-  <div class="exp-sheet-handle"></div>
   <div class="exp-sheet-head">
     <h3>➕ {{ _('expenses_add_title') }}</h3>
-    <button type="button" class="exp-sheet-close" id="expSheetCloseBtn">إغلاق</button>
+    <button type="button" class="exp-sheet-close" id="expSheetCloseBtn">✕</button>
   </div>
-  {% include 'expenses/_add_form.html' %}
+  <div class="exp-sheet-body">
+    {% include 'expenses/_add_form.html' %}
+  </div>
+</div>
+
+<div class="exp-cat-modal" id="catModal">
+  <button type="button" class="exp-cat-modal-close" id="catModalCloseBtn">✕</button>
+  <div class="exp-cat-modal-hero">
+    <div class="exp-cat-modal-top">
+      <div class="exp-cat-modal-icon" id="catModalIcon">📦</div>
+      <div class="exp-cat-modal-info">
+        <h3 id="catModalTitle">—</h3>
+        <p id="catModalSub">0 مصروف</p>
+      </div>
+    </div>
+    <div class="exp-cat-modal-total">
+      <div class="lbl">إجمالي الفئة</div>
+      <div class="val" id="catModalTotal">0</div>
+    </div>
+  </div>
+  <div class="exp-cat-modal-list" id="catModalList"></div>
+  <div class="exp-cat-modal-foot">
+    <button type="button" class="exp-cat-modal-add" id="catModalAddBtn">➕ إضافة مصروف لهذه الفئة</button>
+  </div>
 </div>
 
 <script>
-function showToast(message, type = 'info') {
+function showToast(msg, type) {
   const c = document.getElementById('toastContainer');
   if (!c) return;
   const t = document.createElement('div');
-  t.className = `toast ${type}`;
-  t.textContent = message;
+  t.className = 'toast ' + (type || 'info');
+  t.textContent = msg;
   c.appendChild(t);
-  setTimeout(() => t.remove(), 3200);
+  setTimeout(() => t.remove(), 3000);
 }
 
-function openAddExpense(categoryKey) {
-  const sheet = document.getElementById('expSheet');
-  const backdrop = document.getElementById('expSheetBackdrop');
-  if (!sheet || !backdrop) return;
-  if (categoryKey) {
-    const sheetForm = sheet.querySelector('.expense-category-select');
-    if (sheetForm) sheetForm.value = categoryKey;
-  }
-  backdrop.classList.add('is-open');
-  sheet.classList.add('is-open');
+function fmtNum(n) {
+  return Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
+}
+
+let activeCatKey = null;
+
+function openOverlay() {
+  document.getElementById('expOverlay')?.classList.add('is-open');
   document.body.style.overflow = 'hidden';
-  const firstInput = sheet.querySelector('input[name="title"]');
-  if (firstInput) setTimeout(() => firstInput.focus(), 120);
+}
+function closeOverlay() {
+  document.getElementById('expOverlay')?.classList.remove('is-open');
+  if (!document.getElementById('expSheet')?.classList.contains('is-open')
+      && !document.getElementById('catModal')?.classList.contains('is-open')) {
+    document.body.style.overflow = '';
+  }
+}
+
+function openAddExpense(catKey) {
+  const sheet = document.getElementById('expSheet');
+  if (!sheet) return;
+  if (catKey) {
+    const sel = sheet.querySelector('.expense-category-select');
+    if (sel) sel.value = catKey;
+  }
+  openOverlay();
+  sheet.classList.add('is-open');
 }
 
 function closeAddExpense() {
   document.getElementById('expSheet')?.classList.remove('is-open');
-  document.getElementById('expSheetBackdrop')?.classList.remove('is-open');
-  document.body.style.overflow = '';
+  closeOverlay();
 }
 
-window.openAddExpense = openAddExpense;
-window.closeAddExpense = closeAddExpense;
+function openCategoryModal(card) {
+  if (!card || !card.classList.contains('has-items')) return;
+  activeCatKey = card.dataset.category;
+  document.getElementById('catModalIcon').textContent = card.dataset.icon || '📦';
+  document.getElementById('catModalTitle').textContent = card.dataset.label || '—';
+  document.getElementById('catModalSub').textContent = (card.dataset.count || '0') + ' مصروف';
+  document.getElementById('catModalTotal').textContent = fmtNum(card.dataset.total) + ' د.ع';
 
-function toggleFiltersMore() {
-  document.getElementById('filtersMore')?.classList.toggle('is-open');
+  const list = document.getElementById('catModalList');
+  const body = card.querySelector('.exp-cat-body');
+  list.innerHTML = '';
+  if (body) {
+    const items = body.querySelectorAll('.exp-item');
+    if (items.length) {
+      items.forEach(item => {
+        if (item.style.display === 'none') return;
+        list.appendChild(item.cloneNode(true));
+      });
+    } else {
+      list.innerHTML = '<div class="exp-cat-empty">لا مصاريف في هذه الفئة</div>';
+    }
+  }
+
+  openOverlay();
+  document.getElementById('catModal')?.classList.add('is-open');
 }
 
-function toggleCategoryCard(headEl) {
-  headEl.closest('.exp-cat-card')?.classList.toggle('is-collapsed');
+function closeCategoryModal() {
+  document.getElementById('catModal')?.classList.remove('is-open');
+  activeCatKey = null;
+  closeOverlay();
 }
 
 function applyFilters() {
   const q = (document.getElementById('searchInput')?.value || '').trim().toLowerCase();
-  const cat = document.getElementById('filterCategory')?.value || '';
   const from = document.getElementById('filterDateFrom')?.value || '';
   const to = document.getElementById('filterDateTo')?.value || '';
-  const anyFilter = !!(q || from || to || cat);
-
   document.querySelectorAll('.exp-cat-card').forEach(card => {
-    const cardKey = card.getAttribute('data-category') || '';
-    if (cat && cat !== cardKey) { card.style.display = 'none'; return; }
-
     let visible = 0;
     card.querySelectorAll('.exp-item').forEach(item => {
-      const title = item.getAttribute('data-title') || '';
-      const note = item.getAttribute('data-note') || '';
-      const date = item.getAttribute('data-date') || '';
-      const ok = (!q || title.includes(q) || note.includes(q))
-        && (!from || date >= from) && (!to || date <= to);
+      const ok = (!q || (item.dataset.title || '').includes(q) || (item.dataset.note || '').includes(q))
+        && (!from || (item.dataset.date || '') >= from)
+        && (!to || (item.dataset.date || '') <= to);
       item.style.display = ok ? '' : 'none';
       if (ok) visible++;
     });
-
-    const hasItems = Number(card.getAttribute('data-has-items') || 0) > 0;
-    if (anyFilter) {
+    const hasItems = Number(card.dataset.count || 0) > 0;
+    if (q || from || to) {
       card.style.display = visible > 0 ? '' : 'none';
-      if (visible > 0) card.classList.remove('is-collapsed');
     } else {
-      card.style.display = '';
+      card.style.display = hasItems || !card.classList.contains('is-empty') ? '' : (window.innerWidth > 960 ? '' : 'none');
     }
   });
 }
 
-function clearFilters() {
-  ['searchInput', 'filterCategory', 'filterDateFrom', 'filterDateTo'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
+async function addExpenseCategory(name) {
+  const n = (name || '').trim();
+  if (!n) { showToast('أدخل اسم الفئة', 'warning'); return; }
+  const res = await fetch('/expenses/categories/add', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: n })
   });
-  document.getElementById('filtersMore')?.classList.remove('is-open');
-  applyFilters();
-}
-
-async function addExpenseCategory() {
-  const input = document.getElementById('newCategoryName');
-  const name = (input?.value || '').trim();
-  if (!name) { showToast('أدخل اسم الفئة', 'warning'); return; }
-  try {
-    const res = await fetch('/expenses/categories/add', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name })
-    });
-    const data = await res.json();
-    if (!data.success) throw new Error(data.error || 'تعذر إضافة الفئة');
-    showToast('تمت إضافة الفئة', 'success');
-    setTimeout(() => location.reload(), 500);
-  } catch (e) { showToast(e.message, 'error'); }
-}
-
-async function removeExpenseCategory(key) {
-  if (!confirm('حذف هذه الفئة؟')) return;
-  try {
-    const res = await fetch('/expenses/categories/remove', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key })
-    });
-    const data = await res.json();
-    if (!data.success) throw new Error(data.error || 'تعذر الحذف');
-    showToast('تم الحذف', 'success');
-    setTimeout(() => location.reload(), 500);
-  } catch (e) { showToast(e.message, 'error'); }
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error || 'خطأ');
+  showToast('تمت الإضافة', 'success');
+  setTimeout(() => location.reload(), 400);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  // انقل العناصر الثابتة إلى body لتجنب مشاكل الطبقات
-  ['expFabBtn', 'expSheet', 'expSheetBackdrop'].forEach(id => {
+  ['expFabBtn', 'expSheet', 'expOverlay', 'catModal'].forEach(id => {
     const el = document.getElementById(id);
     if (el && el.parentElement !== document.body) document.body.appendChild(el);
   });
 
-  document.getElementById('expFabBtn')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    openAddExpense();
+  document.getElementById('expFabBtn')?.addEventListener('click', e => { e.preventDefault(); openAddExpense(); });
+  document.getElementById('expOverlay')?.addEventListener('click', () => {
+    closeAddExpense();
+    closeCategoryModal();
   });
-  document.getElementById('expSheetBackdrop')?.addEventListener('click', closeAddExpense);
   document.getElementById('expSheetCloseBtn')?.addEventListener('click', closeAddExpense);
-  document.getElementById('addCategoryBtn')?.addEventListener('click', addExpenseCategory);
-  document.getElementById('filterToggleBtn')?.addEventListener('click', toggleFiltersMore);
+  document.getElementById('catModalCloseBtn')?.addEventListener('click', closeCategoryModal);
+  document.getElementById('catModalAddBtn')?.addEventListener('click', () => {
+    const key = activeCatKey;
+    closeCategoryModal();
+    openAddExpense(key);
+  });
 
-  document.querySelectorAll('.exp-cat-empty-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      openAddExpense(btn.getAttribute('data-cat') || '');
+  document.getElementById('addCategoryBtn')?.addEventListener('click', async () => {
+    const name = window.prompt('اسم الفئة الجديدة:');
+    if (!name) return;
+    try { await addExpenseCategory(name); } catch (e) { showToast(e.message, 'error'); }
+  });
+
+  document.getElementById('filterToggleBtn')?.addEventListener('click', () => {
+    document.getElementById('filtersMore')?.classList.toggle('is-open');
+  });
+  document.getElementById('clearFiltersBtn')?.addEventListener('click', () => {
+    ['searchInput', 'filterDateFrom', 'filterDateTo'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = '';
+    });
+    document.getElementById('filtersMore')?.classList.remove('is-open');
+    applyFilters();
+  });
+
+  document.querySelectorAll('[data-open-cat]').forEach(head => {
+    head.addEventListener('click', () => {
+      const card = head.closest('.exp-cat-card');
+      if (card?.classList.contains('has-items')) openCategoryModal(card);
     });
   });
-  ['searchInput', 'filterCategory', 'filterDateFrom', 'filterDateTo'].forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.addEventListener('change', applyFilters);
-    el.addEventListener('input', applyFilters);
+
+  ['searchInput', 'filterDateFrom', 'filterDateTo'].forEach(id => {
+    document.getElementById(id)?.addEventListener('input', applyFilters);
   });
 
   document.querySelectorAll('.exp-repeat-box').forEach(box => {
-    const cb = box.querySelector('#repeatEnabled, [name="repeat_enabled"]');
+    const cb = box.querySelector('[name="repeat_enabled"]');
     if (!cb) return;
     const sync = () => box.classList.toggle('is-active', cb.checked);
     cb.addEventListener('change', sync);
     sync();
   });
 
-  document.addEventListener('click', async (e) => {
-    const link = e.target?.closest?.('[data-expense-delete]');
-    if (!link) return;
-    e.preventDefault();
-    const ok = window.finoraConfirmImpact
-      ? await window.finoraConfirmImpact({ tone: 'danger', title: 'حذف مصروف', message: 'هل تريد حذف هذا المصروف؟', confirmText: 'حذف' })
-      : confirm({{ _('expenses_confirm_delete')|tojson }});
-    if (ok) window.location.href = link.href;
-  });
+  applyFilters();
 });
 </script>
 {% endblock %}
