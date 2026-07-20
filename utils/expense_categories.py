@@ -12,6 +12,7 @@ DEFAULT_EXPENSE_CATEGORIES = [
     {"key": "internet", "label": "إنترنت", "icon": "🌐", "builtin": True},
     {"key": "advertising", "label": "إعلان", "icon": "📢", "builtin": True},
     {"key": "maintenance", "label": "صيانة", "icon": "🔧", "builtin": True},
+    {"key": "توصيل", "label": "توصيل", "icon": "🚚", "builtin": True},
     {"key": "other", "label": "أخرى", "icon": "📦", "builtin": True},
 ]
 
@@ -88,8 +89,40 @@ def get_category_map() -> dict[str, dict]:
     return {c["key"]: c for c in get_expense_categories()}
 
 
+def normalize_category_key(key: str | None, category_map: dict[str, dict] | None = None) -> str:
+    """Map legacy/raw category values to configured category keys."""
+    raw = (key or "").strip() or "other"
+    aliases = {
+        "أخرى": "other",
+        "other": "other",
+        "رواتب": "salary",
+        "salary": "salary",
+        "إيجار": "rent",
+        "rent": "rent",
+        "كهرباء": "electricity",
+        "electricity": "electricity",
+        "إنترنت": "internet",
+        "internet": "internet",
+        "إعلان": "advertising",
+        "advertising": "advertising",
+        "صيانة": "maintenance",
+        "maintenance": "maintenance",
+    }
+    if raw in aliases:
+        return aliases[raw]
+
+    cmap = category_map or get_category_map()
+    folded = raw.casefold()
+    for cat_key, cat in cmap.items():
+        if cat_key.casefold() == folded:
+            return cat_key
+        if (cat.get("label") or "").casefold() == folded:
+            return cat_key
+    return raw
+
+
 def resolve_category_label(key: str | None, category_map: dict[str, dict] | None = None) -> str:
-    k = (key or "").strip() or "other"
+    k = normalize_category_key(key, category_map)
     cmap = category_map or get_category_map()
     if k in cmap:
         return cmap[k]["label"]
@@ -97,7 +130,7 @@ def resolve_category_label(key: str | None, category_map: dict[str, dict] | None
 
 
 def resolve_category_meta(key: str | None, category_map: dict[str, dict] | None = None) -> dict:
-    k = (key or "").strip() or "other"
+    k = normalize_category_key(key, category_map)
     cmap = category_map or get_category_map()
     if k in cmap:
         return dict(cmap[k])
@@ -168,7 +201,7 @@ def build_category_groups(expenses, include_empty: bool = True) -> list[dict]:
         }
 
     for expense in expenses or []:
-        key = (expense.category or "other").strip() or "other"
+        key = normalize_category_key(expense.category, cmap)
         if key not in groups:
             meta = resolve_category_meta(key, cmap)
             groups[key] = {

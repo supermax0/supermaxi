@@ -1,9 +1,10 @@
 <section class="lux-hero" id="luxHero" aria-label="بانر المتجر">
   <div class="lux-hero-glow" aria-hidden="true"></div>
   <div class="lux-hero-track">
+    <div class="lux-hero-slider" id="luxHeroSlider">
     {% for slide in hero_slides %}
     {% set slide_first = loop.first %}
-    <article class="lux-hero-slide{% if slide_first %} is-active{% endif %}" data-slide="{{ loop.index0 }}" data-layout="{{ slide.layout }}">
+    <article class="lux-hero-slide" data-slide="{{ loop.index0 }}" data-layout="{{ slide.layout }}">
       <div class="lux-hero-copy">
         <p class="lux-hero-kicker">{{ slide.kicker }}</p>
         <h1>{{ slide.title }}</h1>
@@ -66,6 +67,7 @@
       </div>
     </article>
     {% endfor %}
+    </div>
   </div>
   {% if hero_slides|length > 1 %}
   <button type="button" class="lux-hero-nav lux-hero-prev" aria-label="السابق">&#10094;</button>

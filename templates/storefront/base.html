@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='storefront/css/store.css') }}?v=20260709-cards2">
-  <link rel="stylesheet" href="{{ url_for('static', filename='storefront/css/store-luxury.css') }}?v=20260719-specs2">
+  <link rel="stylesheet" href="{{ url_for('static', filename='storefront/css/store-luxury.css') }}?v=20260720-hero-polish">
   {% if store_design.ai_assistant_enabled %}
   <link rel="stylesheet" href="{{ url_for('static', filename='storefront/css/ai-chat.css') }}?v=20260709-pro">
   {% endif %}
@@ -63,7 +63,7 @@
   <script id="finora-help-fields" type="application/json">{{ help_fields_json|safe }}</script>
   <script src="{{ url_for('static', filename='js/help-system.js') }}" defer></script>
   <script src="{{ url_for('static', filename='storefront/js/store.js') }}?v=20260719-rotate2"></script>
-  <script src="{{ url_for('static', filename='storefront/js/store-luxury.js') }}?v=20260709-cards2"></script>
+  <script src="{{ url_for('static', filename='storefront/js/store-luxury.js') }}?v=20260720-hero-slide"></script>
   {% if store_design.ai_assistant_enabled %}
   <script src="{{ url_for('static', filename='storefront/js/ai-chat.js') }}"></script>
   {% endif %}

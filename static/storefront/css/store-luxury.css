@@ -227,14 +227,15 @@ html, body.lux-body {
 .lux-hero {
   position: relative;
   background:
-    radial-gradient(ellipse 60% 80% at 18% 30%, rgba(214, 168, 79, 0.14), transparent 60%),
-    radial-gradient(ellipse 40% 60% at 80% 75%, rgba(214, 168, 79, 0.08), transparent 65%),
-    linear-gradient(150deg, #101010 0%, var(--lux-black-2) 45%, #000 100%);
+    radial-gradient(ellipse 55% 75% at 82% 28%, rgba(214, 168, 79, 0.16), transparent 58%),
+    radial-gradient(ellipse 45% 55% at 12% 72%, rgba(214, 168, 79, 0.1), transparent 62%),
+    linear-gradient(145deg, #121212 0%, var(--lux-black-2) 48%, #060606 100%);
   color: #fff;
-  border-radius: calc(var(--lux-radius) + 6px);
+  border-radius: calc(var(--lux-radius) + 8px);
   overflow: hidden;
   margin-bottom: 1.4rem;
-  box-shadow: var(--lux-shadow);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(214, 168, 79, 0.14);
 }
 
 .lux-hero::before {
@@ -262,38 +263,48 @@ html, body.lux-body {
 
 .lux-hero-track {
   position: relative;
-  min-height: 380px;
+  min-height: 360px;
   z-index: 1;
+  overflow: hidden;
+}
+
+.lux-hero-slider {
+  display: flex;
+  direction: ltr;
+  width: 100%;
+  transition: transform 0.62s cubic-bezier(0.33, 1, 0.68, 1);
+  will-change: transform;
 }
 
 .lux-hero-slide {
-  display: none;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
-  padding: 3rem 4.4rem 2.4rem;
-  align-items: center;
-}
-
-.lux-hero-slide.is-active {
+  flex: 0 0 100%;
+  width: 100%;
+  min-width: 100%;
   display: grid;
-  animation: luxHeroSlideIn 0.65s ease;
+  grid-template-columns: 1.05fr 0.95fr;
+  gap: 1.25rem 2rem;
+  padding: 2.1rem 3.4rem 2.2rem;
+  align-items: center;
+  box-sizing: border-box;
+  direction: rtl;
 }
 
-.lux-hero-slide.is-active .lux-hero-copy {
-  animation: luxHeroCopyIn 0.7s ease 0.05s both;
+.lux-hero-copy {
+  position: relative;
+  z-index: 1;
+  max-width: 560px;
 }
 
-.lux-hero-slide.is-active .lux-hero-visual {
-  animation: luxHeroVisualIn 0.8s ease 0.12s both;
+.lux-hero-slide.is-entering .lux-hero-copy {
+  animation: luxHeroCopyIn 0.55s ease 0.08s both;
 }
 
-@keyframes luxHeroSlideIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+.lux-hero-slide.is-entering .lux-hero-visual {
+  animation: luxHeroVisualIn 0.6s ease 0.12s both;
 }
 
 @keyframes luxHeroCopyIn {
-  from { opacity: 0; transform: translateX(18px); }
+  from { opacity: 0; transform: translateX(-24px); }
   to { opacity: 1; transform: none; }
 }
 
@@ -308,34 +319,31 @@ html, body.lux-body {
 }
 
 .lux-hero-kicker {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 0.55rem;
   color: var(--lux-gold-light);
   font-weight: 700;
-  font-size: 0.95rem;
-  margin: 0 0 0.8rem;
-  letter-spacing: 0.03em;
+  font-size: 0.88rem;
+  margin: 0 0 0.65rem;
+  letter-spacing: 0.04em;
+  padding: 0.28rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(214, 168, 79, 0.1);
+  border: 1px solid rgba(214, 168, 79, 0.22);
 }
 
 .lux-hero-kicker::before,
 .lux-hero-kicker::after {
-  content: "";
-  height: 1px;
-  width: 42px;
-  background: linear-gradient(90deg, transparent, var(--lux-gold));
-}
-
-.lux-hero-kicker::after {
-  background: linear-gradient(90deg, var(--lux-gold), transparent);
+  display: none;
 }
 
 .lux-hero-slide h1 {
-  margin: 0 0 0.3rem;
-  font-size: clamp(2rem, 4.2vw, 3.3rem);
+  margin: 0 0 0.35rem;
+  font-size: clamp(1.7rem, 3.1vw, 2.45rem);
   font-weight: 800;
-  line-height: 1.18;
-  background: linear-gradient(120deg, var(--lux-gold-light) 10%, var(--lux-gold) 55%, #c2924000 160%),
+  line-height: 1.22;
+  background: linear-gradient(120deg, var(--lux-gold-light) 8%, var(--lux-gold) 52%, #e8c878 100%),
     linear-gradient(#fff, #fff);
   background-clip: text;
   -webkit-background-clip: text;
@@ -343,27 +351,28 @@ html, body.lux-body {
 }
 
 .lux-hero-sub {
-  color: #fff;
-  font-size: clamp(1.15rem, 2vw, 1.65rem);
-  font-weight: 800;
-  margin: 0 0 1.4rem;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: clamp(1rem, 1.7vw, 1.3rem);
+  font-weight: 700;
+  margin: 0 0 1rem;
+  line-height: 1.45;
 }
 
 .lux-hero-features {
-  margin: 0 0 1.6rem;
+  margin: 0 0 1.15rem;
   padding: 0;
   list-style: none;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.6rem 1.6rem;
+  gap: 0.5rem 1.1rem;
 }
 
 .lux-hero-features li {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
-  color: #ddd;
-  font-size: 0.88rem;
+  gap: 0.4rem;
+  color: #e8e8e8;
+  font-size: 0.84rem;
   font-weight: 600;
 }
 
@@ -372,8 +381,8 @@ html, body.lux-body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   border: 1px solid rgba(214, 168, 79, 0.55);
   color: var(--lux-gold-light);
@@ -409,13 +418,29 @@ html, body.lux-body {
   box-shadow: 0 12px 30px rgba(214, 168, 79, 0.5);
 }
 
+.lux-hero-cta {
+  padding: 0.72rem 1.55rem !important;
+  font-size: 0.95rem;
+  min-width: 158px;
+  border-radius: 14px !important;
+}
+
 /* ============ Hero visual ============ */
 .lux-hero-visual {
   position: relative;
-  min-height: 280px;
+  min-height: 270px;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.lux-hero-visual::before {
+  content: "";
+  position: absolute;
+  inset: 8% 5%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%, rgba(240, 211, 138, 0.12), transparent 68%);
+  pointer-events: none;
 }
 
 .lux-hero-products {
@@ -427,7 +452,7 @@ html, body.lux-body {
 
 .lux-hero-product-link {
   position: absolute;
-  width: 46%;
+  width: 50%;
   aspect-ratio: 1;
   text-decoration: none;
   animation-delay: calc(var(--lux-hero-i, 0) * 1.1s);
@@ -437,11 +462,11 @@ html, body.lux-body {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  border-radius: 16px;
-  background: linear-gradient(180deg, #ffffff 72%, #f7f4ec);
-  border: 1px solid rgba(240, 211, 138, 0.45);
-  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.55);
-  padding: 10px;
+  border-radius: 18px;
+  background: linear-gradient(165deg, #ffffff 70%, #f3efe4);
+  border: 1px solid rgba(240, 211, 138, 0.5);
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+  padding: 12px;
   transition: transform 0.25s ease, box-shadow 0.25s ease;
   animation: luxFloat 5.5s ease-in-out infinite;
   animation-delay: calc(var(--lux-hero-i, 0) * 1.1s);
@@ -470,10 +495,10 @@ html, body.lux-body {
   50% { transform: translateY(-10px); }
 }
 
-.lux-hero-product-link:nth-child(1) { top: 2%; inset-inline-end: 2%; z-index: 4; transform: rotate(2deg); }
-.lux-hero-product-link:nth-child(2) { top: 12%; inset-inline-start: 4%; z-index: 3; width: 40%; transform: rotate(-3deg); }
-.lux-hero-product-link:nth-child(3) { bottom: 2%; inset-inline-end: 18%; z-index: 2; width: 38%; transform: rotate(1.5deg); }
-.lux-hero-product-link:nth-child(4) { bottom: 8%; inset-inline-start: 0; z-index: 1; width: 34%; transform: rotate(-2deg); }
+.lux-hero-product-link:nth-child(1) { top: 0; inset-inline-end: 0; z-index: 4; width: 52%; transform: rotate(2deg); }
+.lux-hero-product-link:nth-child(2) { top: 10%; inset-inline-start: 0; z-index: 3; width: 44%; transform: rotate(-3deg); }
+.lux-hero-product-link:nth-child(3) { bottom: 0; inset-inline-end: 14%; z-index: 2; width: 40%; transform: rotate(1.5deg); }
+.lux-hero-product-link:nth-child(4) { bottom: 6%; inset-inline-start: 2%; z-index: 1; width: 36%; transform: rotate(-2deg); }
 
 .lux-hero-product-link:nth-child(1):hover,
 .lux-hero-product-link:nth-child(2):hover,
@@ -486,7 +511,7 @@ html, body.lux-body {
 .lux-hero-spotlight {
   position: relative;
   width: 100%;
-  min-height: 280px;
+  min-height: 270px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -494,7 +519,7 @@ html, body.lux-body {
 
 .lux-hero-stage {
   position: relative;
-  width: min(100%, 340px);
+  width: min(100%, 280px);
   aspect-ratio: 1;
   display: flex;
   align-items: center;
@@ -628,10 +653,6 @@ html, body.lux-body {
   box-shadow: 0 20px 48px rgba(214, 168, 79, 0.35);
 }
 
-.lux-hero-cta {
-  min-width: 168px;
-}
-
 /* legacy fallback initial */
 .lux-hero-logo-fallback {
   position: absolute;
@@ -740,48 +761,50 @@ html, body.lux-body {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  width: 42px; height: 42px;
+  width: 44px; height: 44px;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  background: rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(10, 10, 10, 0.35);
+  backdrop-filter: blur(8px);
   color: #fff;
-  font-size: 1rem;
+  font-size: 1.05rem;
   cursor: pointer;
   z-index: 2;
-  transition: background 0.2s, border-color 0.2s;
+  transition: background 0.2s, border-color 0.2s, transform 0.2s;
 }
 
 .lux-hero-nav:hover {
-  background: rgba(214, 168, 79, 0.25);
+  background: rgba(214, 168, 79, 0.3);
   border-color: var(--lux-gold);
+  transform: translateY(-50%) scale(1.05);
 }
 
-.lux-hero-prev { inset-inline-start: 0.9rem; }
-.lux-hero-next { inset-inline-end: 0.9rem; }
+.lux-hero-prev { inset-inline-start: 1rem; }
+.lux-hero-next { inset-inline-end: 1rem; }
 
 .lux-hero-dots {
   position: relative;
   display: flex;
   justify-content: center;
-  gap: 0.5rem;
-  padding: 0 0 1.1rem;
+  gap: 0.45rem;
+  padding: 0 0 1rem;
   z-index: 2;
+  margin-top: -0.35rem;
 }
 
 .lux-hero-dot {
   width: 8px; height: 8px;
-  border-radius: 50%;
+  border-radius: 999px;
   border: none;
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.28);
   cursor: pointer;
   padding: 0;
-  transition: background 0.2s, transform 0.2s;
+  transition: width 0.25s ease, background 0.25s ease;
 }
 
 .lux-hero-dot.is-active {
-  background: var(--lux-gold);
-  transform: scale(1.3);
+  width: 26px;
+  background: linear-gradient(90deg, var(--lux-gold-light), var(--lux-gold));
 }
 
 /* ============ Toolbar ============ */
@@ -3109,25 +3132,29 @@ body.lux-body .sf-empty {
 @media (max-width: 1200px) {
   .lux-grid, .lux-skeleton-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .lux-benefits-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .lux-hero-slide { padding: 2.2rem 3.4rem 2rem; }
+  .lux-hero-slide { padding: 1.9rem 2.6rem 1.6rem; }
 }
 
 @media (max-width: 992px) {
   .lux-grid, .lux-skeleton-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .lux-hero-track { min-height: 340px; }
 }
 
 @media (max-width: 900px) {
+  .lux-hero-track { min-height: auto; }
   .lux-hero-slide {
     grid-template-columns: 1fr;
-    padding: 1.9rem 2.6rem 1.6rem;
+    padding: 1.7rem 1.6rem 1.3rem;
     text-align: center;
+    gap: 1rem;
   }
+  .lux-hero-copy { max-width: none; margin: 0 auto; }
   .lux-hero-kicker { justify-content: center; }
   .lux-hero-features { justify-content: center; }
-  .lux-hero-visual { min-height: 190px; }
+  .lux-hero-visual { min-height: 220px; }
+  .lux-hero-products { min-height: 220px; }
   .lux-hero-spotlight { min-height: 220px; }
-  .lux-hero-stage { width: min(100%, 260px); }
-  .lux-hero-product-link { width: 52%; }
+  .lux-hero-stage { width: min(100%, 240px); }
   .lux-nav {
     order: 3;
     width: 100%;

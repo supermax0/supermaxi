@@ -493,33 +493,63 @@
     }
   }
 
+  var HERO_AUTO_MS = 5000;
+
   function initHeroCarousel() {
     var hero = document.getElementById("luxHero");
     if (!hero) return;
+    var slider = document.getElementById("luxHeroSlider");
     var slides = hero.querySelectorAll(".lux-hero-slide");
+    if (!slider || slides.length <= 1) return;
     var dotsWrap = document.getElementById("luxHeroDots");
     var prev = hero.querySelector(".lux-hero-prev");
     var next = hero.querySelector(".lux-hero-next");
     var index = 0;
+    var autoTimer = null;
+    var animTimer = null;
+
+    function setPosition(i) {
+      slider.style.transform = "translate3d(-" + (i * 100) + "%, 0, 0)";
+    }
+
+    function playEnterAnimation() {
+      slides.forEach(function (slide) { slide.classList.remove("is-entering"); });
+      var active = slides[index];
+      if (!active) return;
+      if (animTimer) clearTimeout(animTimer);
+      active.classList.add("is-entering");
+      animTimer = setTimeout(function () {
+        active.classList.remove("is-entering");
+      }, 700);
+    }
 
     function go(to) {
-      if (!slides.length) return;
-      index = (to + slides.length) % slides.length;
-      slides.forEach(function (slide, i) {
-        var active = i === index;
-        slide.classList.toggle("is-active", active);
-        if (active) {
-          slide.style.animation = "none";
-          void slide.offsetWidth;
-          slide.style.animation = "";
-        }
-      });
+      var nextIndex = (to + slides.length) % slides.length;
+      if (nextIndex === index) return;
+      index = nextIndex;
+      setPosition(index);
+      playEnterAnimation();
       if (dotsWrap) {
         dotsWrap.querySelectorAll(".lux-hero-dot").forEach(function (dot, i) {
           dot.classList.toggle("is-active", i === index);
         });
       }
     }
+
+    function stopAuto() {
+      if (autoTimer) {
+        clearInterval(autoTimer);
+        autoTimer = null;
+      }
+    }
+
+    function startAuto() {
+      stopAuto();
+      autoTimer = setInterval(function () { go(index + 1); }, HERO_AUTO_MS);
+    }
+
+    setPosition(0);
+    playEnterAnimation();
 
     if (dotsWrap) {
       dotsWrap.innerHTML = "";
@@ -528,20 +558,27 @@
         dot.type = "button";
         dot.className = "lux-hero-dot" + (i === 0 ? " is-active" : "");
         dot.setAttribute("aria-label", "الشريحة " + (i + 1));
-        dot.addEventListener("click", function () { go(i); });
+        dot.addEventListener("click", function () { go(i); startAuto(); });
         dotsWrap.appendChild(dot);
       });
     }
 
-    if (prev) prev.addEventListener("click", function () { go(index - 1); });
-    if (next) next.addEventListener("click", function () { go(index + 1); });
+    if (prev) prev.addEventListener("click", function () { go(index - 1); startAuto(); });
+    if (next) next.addEventListener("click", function () { go(index + 1); startAuto(); });
 
-    var autoTimer = setInterval(function () { go(index + 1); }, 7000);
-    hero.addEventListener("mouseenter", function () { clearInterval(autoTimer); });
-    hero.addEventListener("mouseleave", function () {
-      clearInterval(autoTimer);
-      autoTimer = setInterval(function () { go(index + 1); }, 7000);
+    hero.addEventListener("mouseenter", stopAuto);
+    hero.addEventListener("mouseleave", startAuto);
+    hero.addEventListener("touchstart", stopAuto, { passive: true });
+    hero.addEventListener("touchend", function () {
+      setTimeout(startAuto, HERO_AUTO_MS);
+    }, { passive: true });
+
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden) stopAuto();
+      else startAuto();
     });
+
+    startAuto();
   }
 
   function boot() {
