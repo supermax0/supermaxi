@@ -6,7 +6,21 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/team-admin.css') }}">
 
 <style>
-.activity-page { direction: rtl; max-width: 1400px; margin: 0 auto; }
+.activity-page {
+  direction: rtl;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+.activity-page *, .activity-page *::before, .activity-page *::after { box-sizing: border-box; }
+.activity-page .stats-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.activity-page .activity-cat-panel { width: 100%; }
 .activity-filters {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -46,7 +60,7 @@
 }
 .pagination-bar button:disabled { opacity: 0.4; cursor: not-allowed; }
 .modal-overlay {
-  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 9999;
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 10230;
   align-items: center; justify-content: center; padding: 20px;
 }
 .modal-overlay.open { display: flex; }
@@ -104,6 +118,118 @@
 }
 .detail-json-raw.open { display: block; }
 
+/* ── Category list (same style as expenses page) ── */
+.activity-cat-panel { background: var(--card); border: 1px solid var(--border-light); border-radius: 14px; padding: 14px; margin-bottom: 8px; }
+.activity-cat-panel-title { margin: 0 0 10px; font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 6px; }
+.activity-cat-list { display: flex; flex-direction: column; gap: 8px; }
+.activity-cat-card {
+  border: 1px solid var(--border-light); border-radius: 14px; overflow: hidden;
+  background: var(--card); box-shadow: 0 1px 3px rgba(15,23,42,.05);
+  transition: transform .15s, box-shadow .15s;
+}
+.activity-cat-card.has-items { cursor: pointer; }
+.activity-cat-card.has-items:active { transform: scale(.985); }
+.activity-cat-card.has-items:hover { box-shadow: 0 4px 14px rgba(15,23,42,.08); }
+.activity-cat-head {
+  display: grid; grid-template-columns: 44px 1fr auto 20px; grid-template-rows: auto auto;
+  gap: 2px 10px; align-items: center; padding: 12px 14px;
+}
+.activity-cat-icon {
+  width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center;
+  justify-content: center; font-size: 18px; grid-row: 1 / 3;
+}
+.activity-cat-name { font-size: 14px; font-weight: 800; line-height: 1.3; grid-column: 2; grid-row: 1; }
+.activity-cat-sub { font-size: 11px; color: var(--text-muted); grid-column: 2; grid-row: 2; }
+.activity-cat-total { text-align: left; grid-column: 3; grid-row: 1 / 3; align-self: center; }
+.activity-cat-total .amt { font-size: 14px; font-weight: 800; color: var(--primary); }
+.activity-cat-total .cnt { font-size: 9px; color: var(--text-muted); text-align: left; }
+.activity-cat-arrow { grid-column: 4; grid-row: 1 / 3; color: var(--text-muted); font-size: 18px; align-self: center; }
+.activity-cat-empty {
+  padding: 24px 16px; text-align: center; font-size: 13px; color: var(--text-muted);
+  border: 1px dashed var(--border-light); border-radius: 14px;
+}
+
+.activity-cat-icon.c1 { background: rgba(14,165,233,.14); color: #0284c7; }
+.activity-cat-icon.c2 { background: rgba(168,85,247,.14); color: #7c3aed; }
+.activity-cat-icon.c3 { background: rgba(34,197,94,.14); color: #16a34a; }
+.activity-cat-icon.c4 { background: rgba(244,63,94,.14); color: #e11d48; }
+.activity-cat-icon.c5 { background: rgba(99,102,241,.14); color: #4f46e5; }
+.activity-cat-icon.c6 { background: rgba(20,184,166,.14); color: #0d9488; }
+.activity-cat-icon.c7 { background: rgba(234,179,8,.14); color: #ca8a04; }
+.activity-cat-icon.c8 { background: rgba(249,115,22,.14); color: #ea580c; }
+
+.activity-overlay {
+  position: fixed; inset: 0; background: rgba(15,23,42,.5); z-index: 10210;
+  opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .22s;
+  backdrop-filter: blur(2px);
+}
+.activity-overlay.is-open { opacity: 1; visibility: visible; pointer-events: auto; }
+
+.activity-cat-modal {
+  position: fixed; z-index: 10225; background: var(--card); overflow: hidden;
+  display: flex; flex-direction: column;
+  bottom: 0; left: 0; right: 0; max-height: 88vh; border-radius: 20px 20px 0 0;
+  transform: translateY(105%); transition: transform .28s cubic-bezier(.32,.72,0,1);
+  visibility: hidden; pointer-events: none;
+}
+.activity-cat-modal.is-open { transform: translateY(0); visibility: visible; pointer-events: auto; }
+.activity-cat-modal-hero {
+  padding: 20px 16px 16px; background: linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #60a5fa 100%);
+  color: #fff; position: relative; flex-shrink: 0;
+}
+.activity-cat-modal-hero::after {
+  content: ""; position: absolute; bottom: -1px; left: 0; right: 0; height: 16px;
+  background: var(--card); border-radius: 16px 16px 0 0;
+}
+.activity-cat-modal-top { display: flex; align-items: flex-start; gap: 12px; position: relative; z-index: 1; }
+.activity-cat-modal-icon {
+  width: 52px; height: 52px; border-radius: 14px; background: rgba(255,255,255,.2);
+  display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0;
+}
+.activity-cat-modal-info { flex: 1; min-width: 0; }
+.activity-cat-modal-info h3 { margin: 0 0 4px; font-size: 18px; font-weight: 800; }
+.activity-cat-modal-info p { margin: 0; font-size: 12px; opacity: .85; }
+.activity-cat-modal-total { margin-top: 14px; position: relative; z-index: 1; }
+.activity-cat-modal-total .lbl { font-size: 11px; opacity: .8; }
+.activity-cat-modal-total .val { font-size: 26px; font-weight: 900; letter-spacing: -.5px; }
+.activity-cat-modal-close {
+  position: absolute; top: 14px; left: 14px; z-index: 2;
+  width: 34px !important; height: 34px !important; border-radius: 50%; border: none;
+  background: rgba(255,255,255,.2); color: #fff; font-size: 16px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.activity-cat-modal-list { overflow-y: auto; flex: 1; padding: 8px 0 0; -webkit-overflow-scrolling: touch; }
+.activity-cat-modal-list .activity-item { padding: 12px 14px; border-bottom: 1px solid var(--border-light); background: var(--card); }
+.activity-cat-modal-list .activity-item:last-child { border-bottom: none; }
+.activity-item-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.activity-item-title { font-size: 14px; font-weight: 700; line-height: 1.4; flex: 1; min-width: 0; word-break: break-word; }
+.activity-item-meta { font-size: 11px; color: var(--text-muted); line-height: 1.4; margin-top: 5px; word-break: break-word; }
+.activity-item-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; }
+.activity-cat-modal-foot {
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--border-light); flex-shrink: 0; background: var(--card);
+}
+.activity-cat-modal-pagination {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+}
+.activity-cat-modal-pagination span { font-size: 12px; color: var(--text-muted); }
+.activity-cat-modal-pagination button {
+  padding: 8px 14px; border-radius: 10px; border: 1px solid var(--border-light);
+  background: var(--card); cursor: pointer; color: var(--text); font-size: 13px;
+}
+.activity-cat-modal-pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+@media (min-width: 640px) {
+  .activity-cat-modal {
+    bottom: auto; top: 50%; left: 50%; right: auto;
+    width: min(520px, calc(100vw - 32px)); max-height: 80vh;
+    border-radius: 20px; transform: translate(-50%, -50%) scale(.92);
+    opacity: 0; transition: transform .25s cubic-bezier(.32,.72,0,1), opacity .2s;
+  }
+  .activity-cat-modal.is-open { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  .activity-cat-modal-hero { border-radius: 20px 20px 0 0; }
+}
+
 /* ── Mobile cards (hidden on desktop) ── */
 .activity-cards { display: none; flex-direction: column; gap: 12px; }
 .activity-card {
@@ -140,8 +266,12 @@
 .filters-toggle i { transition: transform 0.2s; }
 .filters-toggle.open i { transform: rotate(180deg); }
 
+@media (max-width: 1100px) {
+  .activity-page .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 @media (max-width: 768px) {
-  .activity-page { padding: 0 2px; }
+  .activity-page { padding: 0 2px 24px; }
   .activity-page .admin-page-header__meta p { font-size: 13px; line-height: 1.5; }
 
   .activity-page .stats-grid {
@@ -152,6 +282,26 @@
   .activity-page .stat-card { padding: 12px 14px; }
   .activity-page .stat-label { font-size: 11px; }
   .activity-page .stat-value { font-size: 20px; }
+
+  .category-cards-grid,
+  .activity-cat-list { gap: 10px; }
+  .activity-cat-card { border-radius: 16px; }
+  .activity-cat-head {
+    grid-template-columns: 56px 1fr auto 22px;
+    gap: 6px 12px;
+    padding: 16px 14px;
+    min-height: 84px;
+  }
+  .activity-cat-icon { width: 56px; height: 56px; border-radius: 14px; font-size: 22px; }
+  .activity-cat-name { font-size: 17px; }
+  .activity-cat-sub { font-size: 13px; margin-top: 2px; }
+  .activity-cat-total .amt { font-size: 17px; }
+  .activity-cat-total .cnt { font-size: 11px; }
+  .activity-cat-arrow { font-size: 24px; }
+
+  .activity-cat-modal-list .activity-item { padding: 14px 16px; }
+  .activity-cat-modal-list .activity-item-title { font-size: 15px; }
+  .activity-cat-modal-list .activity-item-meta { font-size: 12px; }
 
   .filters-toggle { display: flex; }
   .activity-filters {
@@ -173,6 +323,9 @@
   }
   .activity-filters label { font-size: 13px; margin-bottom: 6px; }
   #btnApplyFilters { min-height: 48px; font-size: 15px; }
+
+  .activity-item-foot { flex-wrap: wrap; }
+  .activity-item-foot .btn-detail { flex: 1; min-height: 44px; padding: 10px 14px; font-size: 14px; }
 
   .activity-table-wrap { display: none; }
   .activity-cards { display: flex; }
@@ -305,22 +458,20 @@
         {% endfor %}
       </select>
     </div>
-    <div>
-      <label>{{ _('activity_filter_category') }}</label>
-      <select id="filterCategory">
-        <option value="">{{ _('activity_filter_all') }}</option>
-        {% for key, label in category_labels.items() %}
-        <option value="{{ key }}">{{ label }}</option>
-        {% endfor %}
-      </select>
-    </div>
     <div><label>{{ _('activity_filter_search') }}</label><input type="text" id="filterSearch" placeholder="{{ _('activity_search_placeholder') }}"></div>
     <div style="display:flex;align-items:flex-end;">
       <button type="button" class="btn btn-primary" id="btnApplyFilters" style="width:100%;">{{ _('activity_apply_filters') }}</button>
     </div>
   </div>
 
-  <div class="activity-table-wrap">
+  <div class="activity-cat-panel">
+    <h3 class="activity-cat-panel-title">📂 فئات النشاط</h3>
+    <div class="activity-cat-list" id="categoryCardsGrid">
+      <div class="activity-cat-empty">{{ _('activity_loading') }}</div>
+    </div>
+  </div>
+
+  <div class="activity-table-wrap" style="display:none;">
     <table class="activity-table admin-table">
       <thead>
         <tr>
@@ -338,15 +489,46 @@
     </table>
   </div>
 
-  <div class="activity-cards" id="activityCards">
+  <div class="activity-cards" id="activityCards" style="display:none;">
     <div class="empty-state">{{ _('activity_loading') }}</div>
   </div>
 
-  <div class="pagination-bar">
+  <div class="pagination-bar" style="display:none;">
     <span id="paginationInfo">—</span>
     <div>
       <button type="button" id="btnPrev">{{ _('activity_prev') }}</button>
       <button type="button" id="btnNext">{{ _('activity_next') }}</button>
+    </div>
+  </div>
+</div>
+
+<div class="activity-overlay" id="activityOverlay"></div>
+
+<div class="activity-cat-modal" id="categoryModal">
+  <button type="button" class="activity-cat-modal-close" id="categoryModalCloseBtn">✕</button>
+  <div class="activity-cat-modal-hero">
+    <div class="activity-cat-modal-top">
+      <div class="activity-cat-modal-icon" id="categoryModalIcon"><i class="fas fa-folder-open"></i></div>
+      <div class="activity-cat-modal-info">
+        <h3 id="categoryModalTitle">—</h3>
+        <p id="categoryModalSub">0 إجراء</p>
+      </div>
+    </div>
+    <div class="activity-cat-modal-total">
+      <div class="lbl">إجمالي الإجراءات</div>
+      <div class="val" id="categoryModalTotal">0</div>
+    </div>
+  </div>
+  <div class="activity-cat-modal-list" id="categoryModalList">
+    <div class="activity-cat-empty">{{ _('activity_loading') }}</div>
+  </div>
+  <div class="activity-cat-modal-foot">
+    <div class="activity-cat-modal-pagination">
+      <span id="categoryModalPaginationInfo">—</span>
+      <div>
+        <button type="button" id="categoryModalPrev">{{ _('activity_prev') }}</button>
+        <button type="button" id="categoryModalNext">{{ _('activity_next') }}</button>
+      </div>
     </div>
   </div>
 </div>
@@ -367,12 +549,38 @@
 
 <script>
 (function () {
-  let currentPage = 1;
-  let totalPages = 1;
-  let lastItems = [];
+  let categoryModalPage = 1;
+  let categoryModalTotalPages = 1;
+  let activeCategory = null;
+  let activeCategoryLabel = '';
+  let categoryModalItems = [];
 
   const ACTION_LABELS = {{ action_labels | tojson }};
   const CATEGORY_LABELS = {{ category_labels | tojson }};
+
+  const CATEGORY_ICONS = {
+    orders: 'fa-shopping-cart',
+    pos: 'fa-cash-register',
+    inventory: 'fa-boxes',
+    purchases: 'fa-truck',
+    finance: 'fa-money-bill-wave',
+    reports: 'fa-chart-bar',
+    employees: 'fa-users',
+    customers: 'fa-user-friends',
+    shipping: 'fa-shipping-fast',
+    settings: 'fa-cog',
+    messages: 'fa-envelope',
+    pages: 'fa-file-alt',
+    suppliers: 'fa-industry',
+    beauty: 'fa-spa',
+    publisher: 'fa-broadcast-tower',
+    workspace: 'fa-briefcase',
+    social: 'fa-share-alt',
+    auth: 'fa-key',
+    system: 'fa-server',
+  };
+
+  const CATEGORY_COLOR_CLASS = ['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8'];
 
   const FIELD_LABELS = {
     id: 'رقم السجل', employee: 'الموظف', employee_name: 'الموظف', action: 'الإجراء',
@@ -554,7 +762,7 @@
       .catch(() => {});
   }
 
-  function buildQuery(page) {
+  function buildQuery(page, category) {
     const p = new URLSearchParams();
     p.set('page', page);
     p.set('per_page', 50);
@@ -562,84 +770,185 @@
     const dt = document.getElementById('filterDateTo').value;
     const emp = document.getElementById('filterEmployee').value;
     const act = document.getElementById('filterAction').value;
-    const cat = document.getElementById('filterCategory').value;
     const q = document.getElementById('filterSearch').value.trim();
     if (df) p.set('date_from', df);
     if (dt) p.set('date_to', dt);
     if (emp) p.set('employee_id', emp);
     if (act) p.set('action', act);
-    if (cat) p.set('category', cat);
+    if (category) p.set('category', category);
     if (q) p.set('q', q);
     return p.toString();
   }
 
-  function renderActivityList(items) {
-    const tbody = document.getElementById('activityTableBody');
-    const cards = document.getElementById('activityCards');
+  function buildFilterQuery() {
+    const p = new URLSearchParams();
+    const df = document.getElementById('filterDateFrom').value;
+    const dt = document.getElementById('filterDateTo').value;
+    const emp = document.getElementById('filterEmployee').value;
+    const act = document.getElementById('filterAction').value;
+    const q = document.getElementById('filterSearch').value.trim();
+    if (df) p.set('date_from', df);
+    if (dt) p.set('date_to', dt);
+    if (emp) p.set('employee_id', emp);
+    if (act) p.set('action', act);
+    if (q) p.set('q', q);
+    return p.toString();
+  }
 
+  function categoryIcon(cat) {
+    return CATEGORY_ICONS[cat] || 'fa-folder-open';
+  }
+
+  function fmtNum(n) {
+    return Number(n || 0).toLocaleString('ar-IQ', { maximumFractionDigits: 0 });
+  }
+
+  function openOverlay() {
+    document.getElementById('activityOverlay')?.classList.add('is-open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeOverlay() {
+    document.getElementById('activityOverlay')?.classList.remove('is-open');
+    if (!document.getElementById('categoryModal')?.classList.contains('is-open')
+        && !document.getElementById('detailModal')?.classList.contains('open')) {
+      document.body.style.overflow = '';
+    }
+  }
+
+  function categoryColorClass(cat, index) {
+    const palette = CATEGORY_COLOR_CLASS;
+    if (!palette.length) return 'c1';
+    let hash = index;
+    if (cat) {
+      for (let i = 0; i < cat.length; i++) hash = (hash + cat.charCodeAt(i)) % palette.length;
+    }
+    return palette[hash] || 'c1';
+  }
+
+  function renderCategoryCards(items) {
+    const list = document.getElementById('categoryCardsGrid');
     if (!items.length) {
-      const empty = '<div class="empty-state">{{ _("activity_empty") }}</div>';
-      tbody.innerHTML = '<tr><td colspan="6" class="empty-state">{{ _("activity_empty") }}</td></tr>';
-      cards.innerHTML = empty;
+      list.innerHTML = '<div class="activity-cat-empty">{{ _("activity_empty") }}</div>';
       return;
     }
 
-    tbody.innerHTML = items.map((row, idx) => `
-      <tr>
-        <td>${fmtDate(row.created_at)}</td>
-        <td>${esc(row.employee_name || '—')}</td>
-        <td>${esc(row.category_label || row.category)}</td>
-        <td><span class="${badgeClass(row.action)}">${esc(row.action_label || row.action)}</span></td>
-        <td>${esc(readableSummary(row))}</td>
-        <td><button type="button" class="btn-detail" data-idx="${idx}">{{ _('activity_view_details') }}</button></td>
-      </tr>
-    `).join('');
-
-    cards.innerHTML = items.map((row, idx) => `
-      <article class="activity-card">
-        <div class="activity-card-top">
-          <span class="${badgeClass(row.action)}">${esc(row.action_label || row.action)}</span>
-          <span class="activity-card-meta">${fmtDate(row.created_at)}</span>
+    list.innerHTML = items.map((item, index) => {
+      const icon = categoryIcon(item.category);
+      const colorClass = categoryColorClass(item.category, index);
+      const count = Number(item.count || 0);
+      return `
+        <div class="activity-cat-card has-items" data-category="${esc(item.category)}"
+          data-label="${esc(item.category_label || item.category)}"
+          data-count="${count}"
+          data-icon="${esc(icon)}"
+          data-color="${esc(colorClass)}">
+          <div class="activity-cat-head" data-open-cat>
+            <div class="activity-cat-icon ${esc(colorClass)}"><i class="fas ${esc(icon)}"></i></div>
+            <div class="activity-cat-name">${esc(item.category_label || item.category)}</div>
+            <div class="activity-cat-sub">اضغط لعرض الإجراءات</div>
+            <div class="activity-cat-total">
+              <div class="amt">${fmtNum(count)}</div>
+              <div class="cnt">إجراء</div>
+            </div>
+            <div class="activity-cat-arrow">‹</div>
+          </div>
         </div>
-        <div class="activity-card-summary">${esc(readableSummary(row))}</div>
-        <div class="activity-card-meta">${esc(row.employee_name || '—')} · ${esc(row.category_label || row.category)}</div>
-        <div class="activity-card-footer">
+      `;
+    }).join('');
+
+    list.querySelectorAll('[data-open-cat]').forEach(head => {
+      head.addEventListener('click', () => {
+        const card = head.closest('.activity-cat-card');
+        if (card) openCategoryModal(card);
+      });
+    });
+  }
+
+  function loadCategories() {
+    const list = document.getElementById('categoryCardsGrid');
+    list.innerHTML = '<div class="activity-cat-empty">{{ _("activity_loading") }}</div>';
+    fetch('/activity/api/categories?' + buildFilterQuery())
+      .then(r => r.json())
+      .then(data => renderCategoryCards(data.items || []))
+      .catch(() => {
+        list.innerHTML = '<div class="activity-cat-empty">{{ _("activity_load_error") }}</div>';
+      });
+  }
+
+  function renderCategoryModalList(items) {
+    const list = document.getElementById('categoryModalList');
+    if (!items.length) {
+      list.innerHTML = '<div class="activity-cat-empty">{{ _("activity_empty") }}</div>';
+      return;
+    }
+
+    list.innerHTML = items.map((row, idx) => `
+      <div class="activity-item">
+        <div class="activity-item-top">
+          <div class="activity-item-title">${esc(readableSummary(row))}</div>
+          <span class="${badgeClass(row.action)}">${esc(row.action_label || row.action)}</span>
+        </div>
+        <div class="activity-item-meta">${esc(row.employee_name || '—')} · ${fmtDate(row.created_at)}</div>
+        <div class="activity-item-foot">
+          <span></span>
           <button type="button" class="btn-detail" data-idx="${idx}">{{ _('activity_view_details') }}</button>
         </div>
-      </article>
+      </div>
     `).join('');
 
-    document.querySelectorAll('.btn-detail').forEach(btn => {
+    list.querySelectorAll('.btn-detail').forEach(btn => {
       btn.addEventListener('click', () => showDetail(parseInt(btn.dataset.idx, 10)));
     });
   }
 
-  function loadList(page) {
-    currentPage = page;
-    const tbody = document.getElementById('activityTableBody');
-    const cards = document.getElementById('activityCards');
-    const loading = '<tr><td colspan="6" class="empty-state">{{ _("activity_loading") }}</td></tr>';
-    tbody.innerHTML = loading;
-    cards.innerHTML = '<div class="empty-state">{{ _("activity_loading") }}</div>';
-    fetch('/activity/api/list?' + buildQuery(page))
+  function loadCategoryModalList(page) {
+    if (!activeCategory) return;
+    categoryModalPage = page;
+    const list = document.getElementById('categoryModalList');
+    list.innerHTML = '<div class="activity-cat-empty">{{ _("activity_loading") }}</div>';
+
+    fetch('/activity/api/list?' + buildQuery(page, activeCategory))
       .then(r => r.json())
       .then(data => {
-        lastItems = data.items || [];
-        totalPages = data.pages || 1;
-        document.getElementById('paginationInfo').textContent =
-          'صفحة ' + data.page + ' من ' + totalPages + ' — ' + (data.total || 0) + ' سجل';
-        document.getElementById('btnPrev').disabled = data.page <= 1;
-        document.getElementById('btnNext').disabled = data.page >= totalPages;
-        renderActivityList(lastItems);
+        categoryModalItems = data.items || [];
+        categoryModalTotalPages = data.pages || 1;
+        document.getElementById('categoryModalPaginationInfo').textContent =
+          'صفحة ' + data.page + ' من ' + categoryModalTotalPages + ' — ' + (data.total || 0) + ' سجل';
+        document.getElementById('categoryModalPrev').disabled = data.page <= 1;
+        document.getElementById('categoryModalNext').disabled = data.page >= categoryModalTotalPages;
+        renderCategoryModalList(categoryModalItems);
       })
       .catch(() => {
-        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">{{ _("activity_load_error") }}</td></tr>';
-        cards.innerHTML = '<div class="empty-state">{{ _("activity_load_error") }}</div>';
+        list.innerHTML = '<div class="activity-cat-empty">{{ _("activity_load_error") }}</div>';
       });
   }
 
+  function openCategoryModal(card) {
+    if (!card) return;
+    activeCategory = card.dataset.category;
+    activeCategoryLabel = card.dataset.label || CATEGORY_LABELS[activeCategory] || activeCategory;
+    const count = card.dataset.count || '0';
+    const icon = card.dataset.icon || 'fa-folder-open';
+
+    document.getElementById('categoryModalIcon').innerHTML = `<i class="fas ${esc(icon)}"></i>`;
+    document.getElementById('categoryModalTitle').textContent = activeCategoryLabel;
+    document.getElementById('categoryModalSub').textContent = fmtNum(count) + ' إجراء';
+    document.getElementById('categoryModalTotal').textContent = fmtNum(count);
+
+    openOverlay();
+    document.getElementById('categoryModal').classList.add('is-open');
+    loadCategoryModalList(1);
+  }
+
+  function closeCategoryModal() {
+    document.getElementById('categoryModal').classList.remove('is-open');
+    activeCategory = null;
+    closeOverlay();
+  }
+
   function showDetail(idx) {
-    const row = lastItems[idx];
+    const row = categoryModalItems[idx];
     if (!row) return;
     document.getElementById('modalTitle').textContent = readableSummary(row);
     document.getElementById('modalContent').innerHTML = renderDetailHtml(row);
@@ -652,8 +961,17 @@
 
   function closeModal() {
     document.getElementById('detailModal').classList.remove('open');
-    document.body.style.overflow = '';
+    if (!document.getElementById('categoryModal').classList.contains('is-open')) {
+      document.body.style.overflow = '';
+    } else {
+      document.body.style.overflow = 'hidden';
+    }
   }
+
+  ['activityOverlay', 'categoryModal', 'detailModal'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && el.parentElement !== document.body) document.body.appendChild(el);
+  });
 
   document.getElementById('btnToggleFilters').addEventListener('click', function () {
     const panel = document.getElementById('activityFilters');
@@ -669,7 +987,8 @@
   });
 
   document.getElementById('btnApplyFilters').addEventListener('click', () => {
-    loadList(1);
+    loadCategories();
+    if (activeCategory) loadCategoryModalList(1);
     if (window.matchMedia('(max-width: 768px)').matches) {
       const panel = document.getElementById('activityFilters');
       const toggle = document.getElementById('btnToggleFilters');
@@ -678,18 +997,30 @@
       toggle.setAttribute('aria-expanded', 'false');
     }
   });
-  document.getElementById('btnPrev').addEventListener('click', () => { if (currentPage > 1) loadList(currentPage - 1); });
-  document.getElementById('btnNext').addEventListener('click', () => { if (currentPage < totalPages) loadList(currentPage + 1); });
+  document.getElementById('categoryModalPrev').addEventListener('click', () => {
+    if (categoryModalPage > 1) loadCategoryModalList(categoryModalPage - 1);
+  });
+  document.getElementById('categoryModalNext').addEventListener('click', () => {
+    if (categoryModalPage < categoryModalTotalPages) loadCategoryModalList(categoryModalPage + 1);
+  });
+  document.getElementById('activityOverlay')?.addEventListener('click', () => {
+    closeCategoryModal();
+    closeModal();
+  });
+  document.getElementById('categoryModalCloseBtn').addEventListener('click', closeCategoryModal);
   document.getElementById('modalClose').addEventListener('click', closeModal);
   document.getElementById('detailModal').addEventListener('click', (e) => {
     if (e.target.id === 'detailModal') closeModal();
   });
   document.getElementById('filterSearch').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') loadList(1);
+    if (e.key === 'Enter') {
+      loadCategories();
+      if (activeCategory) loadCategoryModalList(1);
+    }
   });
 
   loadStats();
-  loadList(1);
+  loadCategories();
 })();
 </script>
 {% endblock %}

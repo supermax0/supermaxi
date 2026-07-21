@@ -65,8 +65,35 @@ def activity_list_api():
     page = max(1, request.args.get("page", 1, type=int) or 1)
     per_page = min(100, max(10, request.args.get("per_page", 50, type=int) or 50))
 
-    q = ActivityLog.query
+    q = _apply_activity_filters(ActivityLog.query)
 
+    category = (request.args.get("category") or "").strip()
+    if category:
+        q = q.filter(ActivityLog.category == category)
+
+    q = q.order_by(ActivityLog.created_at.desc(), ActivityLog.id.desc())
+    pagination = q.paginate(page=page, per_page=per_page, error_out=False)
+
+    items = []
+    for row in pagination.items:
+        d = row.to_dict()
+        d["action_label"] = ACTION_LABELS.get(row.action, row.action)
+        d["category_label"] = CATEGORY_LABELS.get(row.category, row.category)
+        items.append(d)
+
+    return jsonify(
+        {
+            "items": items,
+            "page": pagination.page,
+            "per_page": pagination.per_page,
+            "total": pagination.total,
+            "pages": pagination.pages,
+        }
+    )
+
+
+def _apply_activity_filters(q):
+    """Apply shared list filters (except category) to an ActivityLog query."""
     employee_id = request.args.get("employee_id", type=int)
     if employee_id:
         q = q.filter(ActivityLog.employee_id == employee_id)
@@ -74,10 +101,6 @@ def activity_list_api():
     action = (request.args.get("action") or "").strip()
     if action:
         q = q.filter(ActivityLog.action == action)
-
-    category = (request.args.get("category") or "").strip()
-    if category:
-        q = q.filter(ActivityLog.category == category)
 
     search = (request.args.get("q") or "").strip()
     if search:
@@ -100,25 +123,33 @@ def activity_list_api():
         except ValueError:
             pass
 
-    q = q.order_by(ActivityLog.created_at.desc(), ActivityLog.id.desc())
-    pagination = q.paginate(page=page, per_page=per_page, error_out=False)
+    return q
+
+
+@activity_bp.route("/api/categories")
+@permission_required("view_activity")
+def activity_categories_api():
+    from sqlalchemy import func
+
+    q = _apply_activity_filters(ActivityLog.query)
+    rows = (
+        q.with_entities(ActivityLog.category, func.count(ActivityLog.id))
+        .group_by(ActivityLog.category)
+        .order_by(func.count(ActivityLog.id).desc())
+        .all()
+    )
 
     items = []
-    for row in pagination.items:
-        d = row.to_dict()
-        d["action_label"] = ACTION_LABELS.get(row.action, row.action)
-        d["category_label"] = CATEGORY_LABELS.get(row.category, row.category)
-        items.append(d)
+    for category, count in rows:
+        items.append(
+            {
+                "category": category,
+                "category_label": CATEGORY_LABELS.get(category, category),
+                "count": int(count or 0),
+            }
+        )
 
-    return jsonify(
-        {
-            "items": items,
-            "page": pagination.page,
-            "per_page": pagination.per_page,
-            "total": pagination.total,
-            "pages": pagination.pages,
-        }
-    )
+    return jsonify({"items": items, "total": sum(item["count"] for item in items)})
 
 
 @activity_bp.route("/api/stats")

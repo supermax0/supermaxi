@@ -52,3 +52,38 @@
 #pub-settings-pages {
   scroll-margin-top: 88px;
 }
+
+@media (max-width: 1024px) {
+  .pub-settings-hub__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .pub-settings-hub__card {
+    padding: 16px;
+  }
+
+  .pub-settings-hub + .settings-grid .section-title {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .pub-settings-hub + .settings-grid .settings-actions,
+  .pub-settings-hub + .settings-grid .settings-card .btn,
+  .pub-settings-hub + .settings-grid .settings-card .btn-primary,
+  .pub-settings-hub + .settings-grid .settings-card .btn-outline {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .pub-settings-hub + .settings-grid .input-group {
+    flex-direction: column;
+  }
+
+  .pub-settings-hub + .settings-grid .eye-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

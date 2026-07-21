@@ -2,6 +2,14 @@
 {% block title %}{{ _('cash_box') }}{% endblock %}
 {% block page_title %}{{ _('cash_box_page_title') }}{% endblock %}
 
+{% block topbar_actions %}
+<button type="button" class="dq-btn cash-notif-btn" id="cashNotifBtn" title="الإشعارات" aria-label="الإشعارات" aria-expanded="false">
+  <i class="fas fa-bell"></i>
+  <span class="cash-notif-badge" id="cashNotifBadge" hidden>0</span>
+</button>
+{{ super() }}
+{% endblock %}
+
 {% block content %}
 <script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.js"></script>
 <div class="cash-page">
@@ -15,23 +23,597 @@
       --cash-warning: var(--warning);
     }
 
-    /* ================= Main Container ================= */
+    /* ================= Main Container — full viewport ================= */
+    body:has(.cash-page) main.page-main {
+      padding: 0;
+      max-width: none;
+      width: 100%;
+      min-width: 0;
+      overflow-x: clip;
+    }
+
+    body:has(.cash-page) .content {
+      min-width: 0;
+      overflow-x: clip;
+    }
+
+    body.cash-notif-open {
+      overflow: hidden;
+    }
+
     .cash-page {
-      padding: 20px;
+      width: 100%;
+      max-width: 100%;
+      min-height: calc(100dvh - 64px);
+      padding: clamp(12px, 2.5vw, 28px);
+      padding-bottom: max(clamp(12px, 2.5vw, 28px), env(safe-area-inset-bottom, 0px));
       direction: rtl;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      gap: clamp(12px, 2vw, 20px);
+      overflow-x: clip;
+    }
+
+    .cash-page *,
+    .cash-page *::before,
+    .cash-page *::after {
+      box-sizing: border-box;
+    }
+
+    /* ================= Notification Bell (Topbar) ================= */
+    .cash-notif-btn {
+      position: relative;
+      background: rgba(59, 130, 246, 0.12) !important;
+      border-color: rgba(59, 130, 246, 0.25) !important;
+      color: var(--primary) !important;
+    }
+
+    .cash-notif-badge {
+      position: absolute;
+      top: -4px;
+      inset-inline-start: -4px;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      border-radius: 999px;
+      background: #ef4444;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 18px;
+      text-align: center;
+      box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
+    }
+
+    /* ================= Notification Panel ================= */
+    .cash-notif-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(2, 6, 23, 0.5);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      z-index: 900;
+      display: none;
+      opacity: 0;
+      transition: opacity 0.22s ease;
+    }
+
+    .cash-notif-overlay.open {
+      display: block;
+      opacity: 1;
+    }
+
+    .cash-notif-panel {
+      position: fixed;
+      z-index: 901;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--card, rgba(17, 24, 39, 0.98));
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+      box-shadow: 0 28px 60px rgba(0, 0, 0, 0.28);
+      opacity: 0;
+      transform: translateY(8px) scale(0.98);
+      transition: opacity 0.22s ease, transform 0.22s ease;
+    }
+
+    .cash-notif-panel.open {
+      display: flex;
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .cash-notif-drag-handle {
+      display: none;
+      width: 40px;
+      height: 4px;
+      border-radius: 999px;
+      background: var(--border, rgba(255, 255, 255, 0.2));
+      margin: 10px auto 0;
+      flex-shrink: 0;
+    }
+
+    .cash-notif-panel-header {
+      padding: 16px 18px 12px;
+      border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+      flex-shrink: 0;
+    }
+
+    .cash-notif-head-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .cash-notif-panel-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .cash-notif-title-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.18), rgba(37, 99, 235, 0.08));
+      color: var(--primary, #3b82f6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 17px;
+      flex-shrink: 0;
+    }
+
+    .cash-notif-title-text {
+      display: block;
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text, #f1f5f9);
+      line-height: 1.2;
+    }
+
+    .cash-notif-title-sub {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted, #64748b);
+      margin-top: 2px;
+    }
+
+    .cash-notif-close-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 11px;
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+      background: transparent;
+      color: var(--text-muted, #94a3b8);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+      transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    }
+
+    .cash-notif-close-btn:hover {
+      background: rgba(239, 68, 68, 0.1);
+      border-color: rgba(239, 68, 68, 0.25);
+      color: #ef4444;
+    }
+
+    .cash-notif-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.06));
+      background: rgba(255, 255, 255, 0.02);
+      flex-shrink: 0;
+    }
+
+    .cash-notif-tool-btn {
+      flex: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-height: 40px;
+      padding: 0 12px;
+      border-radius: 11px;
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+      background: transparent;
+      color: var(--text-muted, #94a3b8);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+
+    .cash-notif-tool-btn i {
+      font-size: 13px;
+    }
+
+    .cash-notif-tool-btn:hover:not(:disabled) {
+      background: rgba(59, 130, 246, 0.1);
+      color: var(--primary, #3b82f6);
+      border-color: rgba(59, 130, 246, 0.25);
+    }
+
+    .cash-notif-tool-btn--danger:hover:not(:disabled) {
+      background: rgba(239, 68, 68, 0.1);
+      color: #ef4444;
+      border-color: rgba(239, 68, 68, 0.25);
+    }
+
+    .cash-notif-tool-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .cash-notif-list {
+      overflow-y: auto;
+      flex: 1;
+      padding: 10px 12px 14px;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .cash-notif-list::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .cash-notif-list::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.35);
+      border-radius: 999px;
+    }
+
+    .cash-notif-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px;
+      border-radius: 14px;
+      margin-bottom: 8px;
+      border: 1px solid transparent;
+      transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+      cursor: default;
+      position: relative;
+    }
+
+    .cash-notif-item:last-child {
+      margin-bottom: 0;
+    }
+
+    @media (hover: hover) {
+      .cash-notif-item:hover {
+        background: rgba(255, 255, 255, 0.04);
+        border-color: var(--border, rgba(255, 255, 255, 0.08));
+      }
+    }
+
+    .cash-notif-item.unread {
+      background: rgba(59, 130, 246, 0.07);
+      border-color: rgba(59, 130, 246, 0.18);
+    }
+
+    .cash-notif-item.unread::before {
+      content: "";
+      position: absolute;
+      top: 16px;
+      inset-inline-end: 12px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    }
+
+    .cash-notif-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 15px;
+    }
+
+    .cash-notif-icon.success { background: rgba(16, 185, 129, 0.14); color: #10b981; }
+    .cash-notif-icon.error { background: rgba(239, 68, 68, 0.14); color: #ef4444; }
+    .cash-notif-icon.warning { background: rgba(245, 158, 11, 0.14); color: #f59e0b; }
+    .cash-notif-icon.order { background: rgba(245, 158, 11, 0.14); color: #d97706; }
+    .cash-notif-icon.agent { background: rgba(234, 179, 8, 0.16); color: #ca8a04; }
+    .cash-notif-icon.info { background: rgba(59, 130, 246, 0.12); color: #3b82f6; }
+
+    .cash-notif-body {
+      flex: 1;
+      min-width: 0;
+      padding-inline-end: 14px;
+    }
+
+    .cash-notif-msg {
+      flex: 1;
+      min-width: 0;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text, #e2e8f0);
+      word-break: break-word;
+    }
+
+    .cash-notif-title {
+      font-weight: 700;
+      font-size: 13.5px;
+      color: var(--text, #e2e8f0);
+      margin-bottom: 2px;
+    }
+
+    .cash-notif-detail {
+      font-size: 12.5px;
+      color: var(--text-muted, #94a3b8);
+      margin-top: 2px;
+    }
+
+    .cash-notif-employee {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 6px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(59, 130, 246, 0.12);
+      color: #60a5fa;
+      font-size: 11.5px;
+      font-weight: 600;
+    }
+
+    .cash-notif-employee i {
+      font-size: 10px;
+      opacity: 0.85;
+    }
+
+    .cash-notif-time {
+      font-size: 11px;
+      color: var(--text-muted, #64748b);
+      margin-top: 6px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .cash-notif-delete {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+      border-radius: 9px;
+      color: var(--text-muted, #64748b);
+      cursor: pointer;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+      transition: all 0.2s ease;
+    }
+
+    .cash-notif-delete:hover {
+      background: rgba(239, 68, 68, 0.12);
+      border-color: rgba(239, 68, 68, 0.25);
+      color: #ef4444;
+    }
+
+    .cash-notif-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 56px 24px 48px;
+      min-height: 240px;
+    }
+
+    .cash-notif-empty-icon {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: rgba(148, 163, 184, 0.12);
+      color: var(--text-muted, #94a3b8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      margin-bottom: 16px;
+    }
+
+    .cash-notif-empty-title {
+      margin: 0 0 6px;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text, #e2e8f0);
+    }
+
+    .cash-notif-empty-desc {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--text-muted, #64748b);
+      max-width: 260px;
+    }
+
+    /* Desktop dropdown */
+    @media (min-width: 768px) {
+      .cash-notif-panel {
+        width: min(400px, calc(100vw - 24px));
+        max-height: min(72dvh, 580px);
+        border-radius: 18px;
+      }
+    }
+
+    /* Mobile bottom sheet */
+    @media (max-width: 767px) {
+      .cash-notif-panel {
+        inset-inline: 0;
+        bottom: 0;
+        top: auto !important;
+        width: 100%;
+        max-height: min(88dvh, 720px);
+        border-radius: 22px 22px 0 0;
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        transform: translateY(100%);
+      }
+
+      .cash-notif-panel.open {
+        transform: translateY(0);
+      }
+
+      .cash-notif-drag-handle {
+        display: block;
+      }
+
+      .cash-notif-panel-header {
+        padding: 8px 16px 12px;
+      }
+
+      .cash-notif-toolbar {
+        padding: 8px 12px;
+      }
+
+      .cash-notif-tool-btn {
+        min-height: 44px;
+        font-size: 13px;
+      }
+
+      .cash-notif-list {
+        padding: 8px 12px 16px;
+      }
+
+      .cash-notif-delete {
+        width: 36px;
+        height: 36px;
+      }
+
+      .cash-notif-empty {
+        min-height: 200px;
+        padding: 40px 20px 32px;
+      }
+    }
+
+    /* ================= Hero Layout ================= */
+    .cash-hero {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: clamp(10px, 1.5vw, 16px);
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+    }
+
+    @media (min-width: 768px) {
+      .cash-hero {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .cash-balance-card {
+        grid-column: 1 / -1;
+      }
+
+      .cash-hero-stats {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: clamp(10px, 1.5vw, 16px);
+      }
+    }
+
+    @media (min-width: 1100px) {
+      .cash-hero {
+        grid-template-columns: 1.4fr repeat(3, minmax(0, 1fr));
+        align-items: stretch;
+      }
+
+      .cash-balance-card {
+        grid-column: auto;
+        grid-row: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+
+      .cash-hero-stats {
+        display: contents;
+      }
+
+      .cash-hero-stats .cash-stat {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+    }
+
+    /* ================= Body Grid (form + history) ================= */
+    .cash-body-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: clamp(12px, 2vw, 20px);
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+    }
+
+    .cash-side-stack,
+    .cash-history-card {
+      min-width: 0;
+      max-width: 100%;
+    }
+
+    @media (min-width: 1024px) {
+      .cash-body-grid {
+        grid-template-columns: minmax(280px, 380px) minmax(0, 1fr);
+        align-items: stretch;
+      }
+
+      .cash-history-card {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+
+      .cash-history-card .cash-section-header {
+        flex-shrink: 0;
+      }
+
+      .cash-history-card .cash-table-wrap {
+        flex: 1 1 auto;
+        height: min(560px, calc(100dvh - 300px)) !important;
+        min-height: 360px;
+        max-height: 560px;
+      }
+    }
+
+    @media (min-width: 1024px) and (max-width: 1280px) {
+      .cash-body-grid {
+        grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+      }
     }
 
     /* ================= Cards ================= */
     .cash-card {
-      background: linear-gradient(145deg, rgba(17, 24, 39, 0.9), rgba(11, 18, 32, 0.9));
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 20px;
-      padding: 28px;
-      margin-bottom: 24px;
+      background: var(--card, linear-gradient(145deg, rgba(17, 24, 39, 0.9), rgba(11, 18, 32, 0.9)));
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+      border-radius: clamp(14px, 2vw, 18px);
+      padding: clamp(16px, 2.5vw, 24px);
       backdrop-filter: blur(10px);
-      transition: all 0.3s ease;
+      transition: box-shadow 0.25s ease, border-color 0.25s ease;
       position: relative;
       overflow: hidden;
+      width: 100%;
     }
 
     .cash-card::before {
@@ -39,83 +621,110 @@
       position: absolute;
       top: 0;
       right: 0;
-      width: 6px;
+      width: 4px;
       height: 100%;
       background: linear-gradient(180deg, #10b981, #3b82f6);
-      border-radius: 0 20px 20px 0;
-      opacity: 0.8;
+      border-radius: 0 clamp(14px, 2vw, 18px) clamp(14px, 2vw, 18px) 0;
+      opacity: 0.85;
     }
 
-    .cash-card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    @media (hover: hover) {
+      .cash-card:hover {
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+        border-color: rgba(59, 130, 246, 0.2);
+      }
+    }
+
+    .cash-card--compact {
+      padding: clamp(14px, 2vw, 18px);
+    }
+
+    .cash-card--flush {
+      margin-bottom: 0;
     }
 
     /* ================= Cash Balance Card ================= */
     .cash-balance-card {
-      background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.1));
-      border: 2px solid rgba(16, 185, 129, 0.3);
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.18), rgba(5, 150, 105, 0.08));
+      border: 1px solid rgba(16, 185, 129, 0.28);
       text-align: center;
-      padding: 40px;
+      padding: clamp(20px, 4vw, 36px);
     }
 
     .cash-balance-label {
-      color: #94a3b8;
-      font-size: 18px;
+      color: var(--text-muted, #94a3b8);
+      font-size: clamp(14px, 2vw, 17px);
       font-weight: 600;
-      margin-bottom: 16px;
+      margin-bottom: 10px;
       display: block;
     }
 
     .cash-balance-value {
-      font-size: 48px;
-      font-weight: 700;
+      font-size: clamp(28px, 5vw, 44px);
+      font-weight: 800;
       color: var(--cash-success);
       background: linear-gradient(135deg, #10b981, #059669);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
+      line-height: 1.15;
+      word-break: break-word;
     }
 
     .cash-balance-subtitle {
-      color: #64748b;
-      font-size: 14px;
+      color: var(--text-muted, #64748b);
+      font-size: clamp(12px, 1.8vw, 14px);
+    }
+
+    .cash-balance-subtitle a {
+      color: var(--primary, #3b82f6);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .cash-balance-subtitle a:hover {
+      text-decoration: underline;
     }
 
     /* ================= Stats ================= */
     .cash-stats {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 16px;
-      margin-bottom: 24px;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+      gap: clamp(10px, 1.5vw, 14px);
+      width: 100%;
     }
 
     .cash-stat {
-      background: linear-gradient(145deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.7));
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 18px;
-      padding: 20px;
+      background: var(--card, linear-gradient(145deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.7)));
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+      border-radius: clamp(12px, 2vw, 16px);
+      padding: clamp(14px, 2vw, 18px);
       text-align: center;
-      transition: all 0.3s ease;
+      transition: box-shadow 0.2s ease;
+      min-width: 0;
     }
 
-    .cash-stat:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    @media (hover: hover) {
+      .cash-stat:hover {
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+      }
     }
 
     .cash-stat-label {
-      color: #94a3b8;
-      font-size: 13px;
-      margin-bottom: 8px;
+      color: var(--text-muted, #94a3b8);
+      font-size: clamp(11px, 1.6vw, 13px);
+      margin-bottom: 6px;
       font-weight: 500;
+      line-height: 1.35;
     }
 
     .cash-stat-value {
-      font-size: 28px;
+      font-size: clamp(18px, 3vw, 26px);
       font-weight: 700;
-      color: #f1f5f9;
+      color: var(--text, #f1f5f9);
+      word-break: break-word;
+      line-height: 1.2;
     }
 
     .cash-stat-value.in {
@@ -127,23 +736,56 @@
     }
 
     /* ================= Forms ================= */
+    .cash-side-stack {
+      display: flex;
+      flex-direction: column;
+      gap: clamp(12px, 2vw, 16px);
+      width: 100%;
+    }
+
     .cash-form {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 20px;
-      margin-top: 20px;
+      grid-template-columns: 1fr;
+      gap: clamp(12px, 2vw, 16px);
+      margin-top: 4px;
+      width: 100%;
+    }
+
+    @media (min-width: 640px) {
+      .cash-form {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .cash-form .cash-field--full,
+      .cash-form .cash-form-submit {
+        grid-column: 1 / -1;
+      }
+    }
+
+    .cash-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .cash-field-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted, #94a3b8);
     }
 
     .cash-form input,
     .cash-form select,
     .cash-form textarea {
-      padding: 16px;
-      border-radius: 14px;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      background: rgba(15, 23, 42, 0.6);
-      color: #f1f5f9;
-      font-size: 15px;
-      transition: all 0.3s ease;
+      width: 100%;
+      padding: clamp(12px, 2vw, 14px) clamp(14px, 2vw, 16px);
+      border-radius: 12px;
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+      background: var(--surface, rgba(15, 23, 42, 0.5));
+      color: var(--text, #f1f5f9);
+      font-size: clamp(14px, 2vw, 15px);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
       font-family: inherit;
     }
 
@@ -152,45 +794,79 @@
     .cash-form textarea:focus {
       outline: none;
       border-color: var(--cash-primary);
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-      background: rgba(15, 23, 42, 0.8);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
     }
 
     .cash-form textarea {
       resize: vertical;
-      min-height: 80px;
+      min-height: 72px;
+    }
+
+    .cash-form-submit {
+      margin-top: 4px;
+    }
+
+    .cash-form-submit .btn-premium,
+    .cash-form-submit .cash-btn {
+      width: 100%;
+      min-height: 48px;
+      font-size: 15px;
     }
 
     .cash-btn {
-      padding: 14px 28px;
-      border-radius: 14px;
+      padding: 12px 20px;
+      border-radius: 12px;
       border: none;
       font-weight: 600;
-      font-size: 15px;
+      font-size: 14px;
       cursor: pointer;
-      transition: all 0.3s ease;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
+      min-height: 44px;
     }
 
     .cash-btn-primary {
       background: linear-gradient(135deg, #10b981, #059669);
       color: white;
-      box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25);
     }
 
-    .cash-btn-primary:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 15px 30px rgba(16, 185, 129, 0.4);
+    .cash-btn--block {
+      width: 100%;
     }
 
-    /* ================= Tables ================= */
+    @media (hover: hover) {
+      .cash-btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 8px 20px rgba(16, 185, 129, 0.35);
+      }
+    }
+
+    /* ================= Tables / AG Grid ================= */
     .cash-table-wrap {
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      margin-top: 20px;
+      position: relative;
+      overflow: hidden;
+      margin-top: 12px;
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      border-radius: 12px;
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+      contain: inline-size;
+    }
+
+    .cash-table-wrap .ag-theme-finora,
+    .cash-table-wrap #cashTable {
+      width: 100% !important;
+      max-width: 100%;
+      min-width: 0;
+    }
+
+    .cash-history-card {
+      overflow: hidden;
     }
 
     .cash-table {
@@ -339,80 +1015,38 @@
 
     /* ================= Section Headers ================= */
     .cash-section-header {
-      color: #f1f5f9;
-      font-size: 22px;
+      color: var(--text, #f1f5f9);
+      font-size: clamp(16px, 2.5vw, 19px);
       font-weight: 700;
-      margin-bottom: 20px;
-      padding-bottom: 15px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      margin: 0 0 clamp(14px, 2vw, 18px);
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.1));
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
+      flex-wrap: wrap;
     }
 
-    /* ================= Flash Messages ================= */
-    .cash-flash-messages {
-      margin-bottom: 20px;
-    }
-
-    .cash-toast {
-      position: relative;
-      animation: slideDown 0.3s ease;
-      background: linear-gradient(135deg, #10b981, #059669);
-      color: white;
-      padding: 16px 24px;
-      border-radius: 12px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-      margin-bottom: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-    }
-
-    .cash-toast.error {
-      background: linear-gradient(135deg, #ef4444, #dc2626);
-    }
-
-    @keyframes slideDown {
-      from {
-        opacity: 0;
-        transform: translateY(-20px);
-      }
-
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+    .cash-section-header .cash-section-sub {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted, #64748b);
+      margin-inline-start: auto;
     }
 
     /* ================= Responsive ================= */
-    @media (max-width: 768px) {
-      .cash-page {
-        padding: 16px;
+    @media (max-width: 767px) {
+      .cash-hero-stats {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
-      .cash-card {
-        padding: 20px;
-        border-radius: 16px;
+      .cash-hero-stats .cash-stat:last-child {
+        grid-column: 1 / -1;
       }
 
-      .cash-balance-card {
-        padding: 30px 20px;
-      }
-
-      .cash-balance-value {
-        font-size: 36px;
-      }
-
-      .cash-stats {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
-      }
-
-      .cash-form {
-        grid-template-columns: 1fr;
-        gap: 16px;
+      .cash-card::before {
+        width: 3px;
       }
 
       .cash-table-wrap {
@@ -421,6 +1055,32 @@
 
       .cash-cards-view {
         display: grid;
+      }
+
+      .cash-movement-card {
+        padding: 16px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .cash-page {
+        padding: 10px;
+        gap: 10px;
+      }
+
+      .cash-hero-stats {
+        grid-template-columns: 1fr;
+      }
+
+      .cash-hero-stats .cash-stat:last-child {
+        grid-column: auto;
+      }
+    }
+
+    @media (min-width: 768px) and (max-width: 1023px) {
+      .cash-table-wrap {
+        height: min(480px, 55dvh) !important;
+        min-height: 320px;
       }
     }
 
@@ -478,9 +1138,17 @@
     :root[data-theme="light"] .cash-form input,
     :root[data-theme="light"] .cash-form select,
     :root[data-theme="light"] .cash-form textarea {
-      background: rgba(255, 255, 255, 0.94);
-      border-color: rgba(2, 6, 23, 0.10);
+      background: #fff;
+      border-color: rgba(2, 6, 23, 0.12);
       color: #0f172a;
+    }
+
+    :root[data-theme="light"] .cash-field-label {
+      color: rgba(15, 23, 42, 0.62);
+    }
+
+    :root[data-theme="light"] .cash-table-wrap {
+      border-color: rgba(2, 6, 23, 0.08);
     }
 
     :root[data-theme="light"] .cash-section-header {
@@ -517,32 +1185,120 @@
     :root[data-theme="light"] .cash-card-date {
       color: rgba(15, 23, 42, 0.60);
     }
+
+    :root[data-theme="light"] .cash-notif-panel {
+      background: #fff;
+      border-color: rgba(2, 6, 23, 0.1);
+      box-shadow: 0 24px 48px rgba(2, 6, 23, 0.12);
+    }
+
+    :root[data-theme="light"] .cash-notif-title-text,
+    :root[data-theme="light"] .cash-notif-msg,
+    :root[data-theme="light"] .cash-notif-title,
+    :root[data-theme="light"] .cash-notif-empty-title {
+      color: #0f172a;
+    }
+
+    :root[data-theme="light"] .cash-notif-detail,
+    :root[data-theme="light"] .cash-notif-time {
+      color: rgba(15, 23, 42, 0.55);
+    }
+
+    :root[data-theme="light"] .cash-notif-employee {
+      background: rgba(37, 99, 235, 0.1);
+      color: #2563eb;
+    }
+
+    :root[data-theme="light"] .cash-notif-toolbar {
+      background: rgba(2, 6, 23, 0.02);
+      border-bottom-color: rgba(2, 6, 23, 0.06);
+    }
+
+    :root[data-theme="light"] .cash-notif-tool-btn {
+      border-color: rgba(2, 6, 23, 0.1);
+      color: rgba(15, 23, 42, 0.62);
+    }
+
+    :root[data-theme="light"] .cash-notif-item.unread {
+      background: rgba(37, 99, 235, 0.06);
+      border-color: rgba(37, 99, 235, 0.15);
+    }
+
+    :root[data-theme="light"] .cash-notif-item:hover {
+      background: rgba(2, 6, 23, 0.03);
+    }
+
+    :root[data-theme="light"] .cash-notif-empty-icon {
+      background: rgba(2, 6, 23, 0.05);
+    }
+
+    :root[data-theme="light"] .cash-notif-delete {
+      background: rgba(2, 6, 23, 0.03);
+      border-color: rgba(2, 6, 23, 0.08);
+    }
   </style>
 
-  <!-- ================= Flash Messages ================= -->
   {% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-  <div class="cash-flash-messages">
-    {% for category, message in messages %}
-    <div class="cash-toast {% if category == 'error' %}error{% endif %}">
-      <span>{{ message }}</span>
-      <button onclick="this.parentElement.remove()" class="action-btn"
-        style="color: white; background: rgba(255,255,255,0.1);">&times;</button>
-    </div>
-    {% endfor %}
-  </div>
-  {% endif %}
+  <script type="application/json" id="cashFlashData">{{ messages | tojson }}</script>
   {% endwith %}
 
-  <!-- ================= Cash Balance Card ================= -->
-  <div class="cash-card cash-balance-card">
-    <span class="cash-balance-label">💰 {{ _('cash_balance_title') }}<span data-help="cash.balance"></span></span>
-    <div class="cash-balance-value">{{ "{:,.0f}".format(cash_balance) }} {{ _('cash_currency_iqd') }}</div>
-    <span class="cash-balance-subtitle">{{ _('cash_balance_subtitle') }} · <a href="/accounts" style="color:#60a5fa;text-decoration:none;">{{ _('treasury_manage_link') }}</a></span>
+  <!-- Notification Panel -->
+  <div class="cash-notif-overlay" id="cashNotifOverlay"></div>
+  <div class="cash-notif-panel" id="cashNotifPanel" role="dialog" aria-modal="true" aria-label="الإشعارات">
+    <div class="cash-notif-drag-handle" aria-hidden="true"></div>
+    <div class="cash-notif-panel-header">
+      <div class="cash-notif-head-top">
+        <div class="cash-notif-panel-title">
+          <span class="cash-notif-title-icon"><i class="fas fa-bell"></i></span>
+          <div>
+            <span class="cash-notif-title-text">الإشعارات</span>
+            <span class="cash-notif-title-sub" id="cashNotifSubtitle">لا توجد إشعارات جديدة</span>
+          </div>
+        </div>
+        <button type="button" class="cash-notif-close-btn" id="cashNotifClose" aria-label="إغلاق">
+          <i class="fas fa-xmark"></i>
+        </button>
+      </div>
+    </div>
+    <div class="cash-notif-toolbar">
+      <button type="button" class="cash-notif-tool-btn" id="cashNotifMarkRead" disabled>
+        <i class="fas fa-check-double"></i>
+        <span>تعليم كمقروء</span>
+      </button>
+      <button type="button" class="cash-notif-tool-btn cash-notif-tool-btn--danger" id="cashNotifClear" disabled>
+        <i class="fas fa-trash-can"></i>
+        <span>مسح الكل</span>
+      </button>
+    </div>
+    <div class="cash-notif-list" id="cashNotifList"></div>
+  </div>
+
+  <!-- ================= Hero: Balance + Stats ================= -->
+  <div class="cash-hero">
+    <div class="cash-card cash-balance-card">
+      <span class="cash-balance-label">💰 {{ _('cash_balance_title') }}<span data-help="cash.balance"></span></span>
+      <div class="cash-balance-value">{{ "{:,.0f}".format(cash_balance) }} {{ _('cash_currency_iqd') }}</div>
+      <span class="cash-balance-subtitle">{{ _('cash_balance_subtitle') }} · <a href="/accounts">{{ _('treasury_manage_link') }}</a></span>
+    </div>
+
+    <div class="cash-hero-stats">
+      <div class="cash-stat">
+        <div class="cash-stat-label">{{ _('cash_stat_total_in') }}</div>
+        <div class="cash-stat-value in">{{ "{:,.0f}".format(cash_summary.total_in) }} {{ _('cash_currency_iqd') }}</div>
+      </div>
+      <div class="cash-stat">
+        <div class="cash-stat-label">{{ _('cash_stat_total_out') }}</div>
+        <div class="cash-stat-value out">{{ "{:,.0f}".format(cash_summary.total_out) }} {{ _('cash_currency_iqd') }}</div>
+      </div>
+      <div class="cash-stat">
+        <div class="cash-stat-label">{{ _('cash_stat_movements_count') }}</div>
+        <div class="cash-stat-value">{{ cash_summary.movements_count }}</div>
+      </div>
+    </div>
   </div>
 
   {% if bank_balances|default([]) %}
-  <div class="cash-card">
+  <div class="cash-card cash-card--compact">
     <h3 class="cash-section-header">
       <span>🏦</span>
       <span>{{ _('treasury_banks_summary') }}</span>
@@ -562,80 +1318,60 @@
   </div>
   {% endif %}
 
-  <!-- ================= Stats ================= -->
-  <div class="cash-stats">
-    <div class="cash-stat">
-      <div class="cash-stat-label">{{ _('cash_stat_total_in') }}</div>
-      <div class="cash-stat-value in">{{ "{:,.0f}".format(cash_summary.total_in) }} {{ _('cash_currency_iqd') }}</div>
+  <div class="cash-body-grid">
+    <div class="cash-side-stack">
+      <div class="cash-card">
+        <h3 class="cash-section-header">
+          <span>➕</span>
+          <span>{{ _('cash_add_title') }}</span>
+        </h3>
+
+        <form method="post" class="cash-form" id="cashTransactionForm" onsubmit="return validateCashForm(event)">
+          <input type="hidden" name="form_type" value="cash_transaction">
+
+          <div class="cash-field">
+            <label class="cash-field-label" for="transaction_type">نوع الحركة</label>
+            <select name="transaction_type" id="transaction_type" required data-help="cash.income">
+              <option value="cash_in">💰 {{ _('cash_type_in') }}</option>
+              <option value="cash_out">💸 {{ _('cash_type_out') }}</option>
+            </select>
+          </div>
+
+          <div class="cash-field">
+            <label class="cash-field-label" for="amount">{{ _('cash_field_amount_placeholder') }}</label>
+            <input name="amount" type="number" id="amount" placeholder="0" required min="1" inputmode="numeric">
+          </div>
+
+          <div class="cash-field cash-field--full">
+            <label class="cash-field-label" for="reason">{{ _('cash_field_reason_placeholder') }}</label>
+            <input name="reason" id="reason" placeholder="{{ _('cash_field_reason_placeholder') }}" required>
+          </div>
+
+          <div class="cash-field cash-field--full">
+            <label class="cash-field-label" for="note">{{ _('cash_field_note_placeholder') }}</label>
+            <textarea name="note" id="note" placeholder="{{ _('cash_field_note_placeholder') }}"></textarea>
+          </div>
+
+          <div class="cash-form-submit">
+            <button type="submit" class="btn-premium">
+              <span>✅</span>
+              <span>{{ _('cash_save_button') }}</span>
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
-    <div class="cash-stat">
-      <div class="cash-stat-label">{{ _('cash_stat_total_out') }}</div>
-      <div class="cash-stat-value out">{{ "{:,.0f}".format(cash_summary.total_out) }} {{ _('cash_currency_iqd') }}</div>
-    </div>
-    <div class="cash-stat">
-      <div class="cash-stat-label">{{ _('cash_stat_movements_count') }}</div>
-      <div class="cash-stat-value">{{ cash_summary.movements_count }}</div>
-    </div>
-  </div>
 
-  {% if inventory_non_cash_count|default(0) > 0 %}
-  <div class="cash-card">
-    <h3 class="cash-section-header">
-      <span>🧹</span>
-      <span>تنظيف حركات مخزون غير نقدية</span>
-    </h3>
-    <p style="color:#94a3b8;margin:0 0 16px;">
-      توجد {{ inventory_non_cash_count }} حركة مخزون محفوظة كسجل نقدي قديم. حذفها لا يغير المنتجات أو كميات المخزون.
-    </p>
-    <form method="post" action="{{ url_for('cash.cleanup_inventory_noncash') }}"
-      onsubmit="return confirm('حذف حركات المخزون غير النقدية من سجل الصندوق؟');">
-      <button type="submit" class="cash-btn cash-btn-primary">
-        <span>🧹</span>
-        <span>حذف حركات المخزون غير النقدية</span>
-      </button>
-    </form>
-  </div>
-  {% endif %}
+    <div class="cash-card cash-history-card">
+      <h3 class="cash-section-header">
+        <span>📋</span>
+        <span>{{ _('cash_history_title') }}</span>
+        <span class="cash-section-sub">{{ cash_summary.movements_count }} حركة</span>
+      </h3>
 
-  <!-- ================= Add Cash Transaction ================= -->
-  <div class="cash-card">
-    <h3 class="cash-section-header">
-      <span>➕</span>
-      <span>{{ _('cash_add_title') }}</span>
-    </h3>
-
-    <form method="post" class="cash-form" id="cashTransactionForm" onsubmit="return validateCashForm(event)">
-      <input type="hidden" name="form_type" value="cash_transaction">
-
-      <select name="transaction_type" id="transaction_type" required data-help="cash.income">
-        <option value="cash_in">💰 {{ _('cash_type_in') }}</option>
-        <option value="cash_out">💸 {{ _('cash_type_out') }}</option>
-      </select>
-
-      <input name="reason" id="reason" placeholder="{{ _('cash_field_reason_placeholder') }}" required>
-
-      <input name="amount" type="number" id="amount" placeholder="{{ _('cash_field_amount_placeholder') }}" required min="1">
-
-      <textarea name="note" id="note" placeholder="{{ _('cash_field_note_placeholder') }}"></textarea>
-
-      <button type="submit" class="btn-premium">
-        <span>✅</span>
-        <span>{{ _('cash_save_button') }}</span>
-      </button>
-    </form>
-  </div>
-
-  <!-- ================= Cash Movements History ================= -->
-  <div class="cash-card">
-    <h3 class="cash-section-header">
-      <span>📋</span>
-      <span>{{ _('cash_history_title') }}</span>
-    </h3>
-
-    <!-- Desktop Table View -->
-    <div class="cash-table-wrap" style="height: 600px;">
-      <div id="cashTable" class="ag-theme-finora" style="height: 100%; width: 100%;"></div>
-    </div>
+      <div class="cash-table-wrap">
+        <div id="cashTable" class="ag-theme-finora" style="height: 100%; width: 100%;"></div>
+      </div>
 
     <!-- ================= CASH DATA (JSON) ================= -->
     <script type="application/json" id="cashData">
@@ -694,6 +1430,7 @@
       </div>
       {% endif %}
     </div>
+    </div>
   </div>
 
   <script>
@@ -725,11 +1462,12 @@
           width: 100,
           cellRenderer: params => `<span class="cash-movement-type ${params.data.type}">${params.value}</span>`
         },
-        { headerName: "{{ _('cash_col_reason') }}", field: "reason", flex: 1.2, minWidth: 150 },
+        { headerName: "{{ _('cash_col_reason') }}", field: "reason", flex: 1.5, minWidth: 120 },
         {
           headerName: "{{ _('cash_col_amount') }}",
           field: "amount",
-          width: 140,
+          flex: 1,
+          minWidth: 110,
           type: 'numericColumn',
           cellRenderer: params => {
             const sign = params.data.type === 'cash_in' ? '+' : '-';
@@ -740,15 +1478,16 @@
         {
           headerName: "{{ _('cash_col_balance_after') }}",
           field: "balance_after",
-          width: 140,
+          flex: 1,
+          minWidth: 110,
           type: 'numericColumn',
           cellRenderer: params => `<strong>${params.value.toLocaleString()} {{ _('cash_currency_iqd') }}</strong>`
         },
         {
           headerName: "{{ _('cash_col_description') }}",
           field: "description",
-          flex: 1,
-          minWidth: 150,
+          flex: 1.2,
+          minWidth: 100,
           cellStyle: { color: '#94a3b8', fontSize: '13px' }
         }
       ];
@@ -767,15 +1506,24 @@
           sortable: true,
           filter: true,
           resizable: true,
-          floatingFilter: true
+          floatingFilter: false,
+          suppressSizeToFit: false,
         },
         onGridReady: (params) => {
           gridApi = params.api;
+          resizeCashGrid();
         }
       };
 
       const eGridDiv = document.querySelector('#cashTable');
       agGrid.createGrid(eGridDiv, gridOptions);
+
+      if (typeof ResizeObserver !== "undefined") {
+        const wrap = eGridDiv.closest(".cash-table-wrap");
+        if (wrap) {
+          new ResizeObserver(() => resizeCashGrid()).observe(wrap);
+        }
+      }
     }
 
     // ================= Form Validation =================
@@ -824,11 +1572,55 @@
       return false;
     }
 
+    // ================= Cash Notifications =================
+    if (window.FinoraNotificationCenter) {
+      FinoraNotificationCenter.bindPanel({
+        prefix: "cash",
+        flashDataId: "cashFlashData",
+        positionPanel: function (els) {
+          if (!els.panel || !els.btn || window.innerWidth < 768) {
+            if (els.panel) {
+              els.panel.style.top = "";
+              els.panel.style.right = "";
+              els.panel.style.left = "";
+            }
+            return;
+          }
+          const rect = els.btn.getBoundingClientRect();
+          const panelWidth = Math.min(400, window.innerWidth - 24);
+          const gap = 10;
+          let top = rect.bottom + gap;
+          let right = window.innerWidth - rect.right;
+          if (top + 420 > window.innerHeight) top = Math.max(gap, rect.top - 420 - gap);
+          if (right + panelWidth > window.innerWidth - 12) right = window.innerWidth - panelWidth - 12;
+          if (right < 12) right = 12;
+          els.panel.style.top = top + "px";
+          els.panel.style.right = right + "px";
+          els.panel.style.left = "auto";
+        },
+      });
+    }
+
     // ================= Initialize =================
+    function resizeCashGrid() {
+      if (!gridApi) return;
+      try {
+        if (typeof gridApi.sizeColumnsToFit === "function") {
+          gridApi.sizeColumnsToFit();
+        }
+      } catch (_) { /* ignore */ }
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
+      document.body.classList.remove("cash-notif-open");
       if (document.getElementById('cashTable')) {
         initAgGrid();
       }
+      window.addEventListener("resize", resizeCashGrid, { passive: true });
+    });
+
+    window.addEventListener("beforeunload", function () {
+      document.body.classList.remove("cash-notif-open");
     });
   </script>
 

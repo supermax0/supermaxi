@@ -89,6 +89,11 @@ def process_order_cancel(order) -> None:
         raise OrderLifecycleError("يمكن إلغاء الطلب فقط عندما تكون حالته «تم الطلب»")
 
     if is_canceled(order.status, order.payment_status):
+        if status != "ملغي":
+            order.status = "ملغي"
+            order.payment_status = "ملغي"
+            order.paid_amount = 0
+            clear_order_barcodes(order)
         return
 
     restore_order_stock_once(order)

@@ -1983,10 +1983,34 @@ audio.sales-ai-chat-media {
   font-weight: 800;
 }
 
+.sales-ai-settings-field-group + .sales-ai-settings-field-group {
+  margin-top: 14px;
+}
+
 .sales-ai-intelligence-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
+}
+
+@media (max-width: 480px) {
+  .sales-ai-meta-bulk {
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .sales-ai-meta-bulk > div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    width: 100%;
+    overflow-x: visible;
+  }
+
+  .sales-ai-meta-bulk button {
+    min-width: 36px;
+    padding: 0 10px;
+  }
 }
 
 .sales-ai-intelligence-option {
@@ -3348,6 +3372,10 @@ audio.sales-ai-chat-media {
 }
 
 @media (max-width: 380px) {
+  .sales-ai-intelligence-grid {
+    grid-template-columns: 1fr;
+  }
+
   .sales-ai-app {
     padding: 6px;
   }

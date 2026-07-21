@@ -188,8 +188,277 @@
   border-color: rgba(2, 6, 23, 0.12);
 }
 
+/* ================= MOBILE CARDS ================= */
+.agent-reports-page .reports-mobile {
+  display: none;
+}
+
+.agent-reports-page .report-m-card {
+  border: 1px solid rgba(59, 130, 246, 0.14);
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.45);
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.agent-reports-page .report-m-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.agent-reports-page .report-m-index {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(59, 130, 246, 0.14);
+  color: var(--reports-primary);
+  font-size: 12px;
+  font-weight: 800;
+  margin-top: 1px;
+}
+
+.agent-reports-page .report-m-head-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.agent-reports-page .report-m-num {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--reports-text);
+  word-break: break-all;
+  line-height: 1.3;
+}
+
+.agent-reports-page .report-m-status {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(148, 163, 184, 0.12);
+  line-height: 1.3;
+}
+
+.agent-reports-page .report-m-status.ready { color: #10b981; background: rgba(16, 185, 129, 0.12); }
+.agent-reports-page .report-m-status.progress { color: #f59e0b; background: rgba(245, 158, 11, 0.12); }
+.agent-reports-page .report-m-status.done { color: #94a3b8; background: rgba(148, 163, 184, 0.12); }
+.agent-reports-page .report-m-status.wait { color: #64748b; background: rgba(100, 116, 139, 0.12); }
+
+.agent-reports-page .report-m-stats {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.agent-reports-page .report-m-tile {
+  border-radius: 12px;
+  padding: 10px 10px 9px;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  min-width: 0;
+}
+
+.agent-reports-page .report-m-tile .label {
+  font-size: 10px;
+  color: var(--reports-muted);
+  margin-bottom: 4px;
+  font-weight: 700;
+}
+
+.agent-reports-page .report-m-tile .value {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--reports-text);
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.agent-reports-page .report-m-tile .value.amount {
+  color: var(--reports-success);
+  font-size: 14px;
+}
+
+.agent-reports-page .report-m-meta {
+  display: grid;
+  grid-template-columns: 1.35fr 0.65fr;
+  gap: 8px;
+  margin-bottom: 10px;
+  border-radius: 12px;
+  padding: 8px 10px;
+  background: rgba(30, 41, 59, 0.35);
+  border: 1px solid rgba(148, 163, 184, 0.10);
+}
+
+.agent-reports-page .report-m-meta-item {
+  min-width: 0;
+}
+
+.agent-reports-page .report-m-meta-item .label {
+  font-size: 10px;
+  color: var(--reports-muted);
+  margin-bottom: 2px;
+  font-weight: 700;
+}
+
+.agent-reports-page .report-m-meta-item .value {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--reports-text);
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.agent-reports-page .report-m-actions .btn {
+  width: 100%;
+  margin: 0;
+  justify-content: center;
+  padding: 11px 14px;
+  font-size: 13px;
+  border-radius: 11px;
+}
+
+.agent-reports-page .reports-mobile-empty {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--reports-muted);
+  border: 1px dashed rgba(148, 163, 184, 0.28);
+  border-radius: 14px;
+}
+
+:root[data-theme="light"] .agent-reports-page .report-m-card {
+  background: #fff;
+  border-color: rgba(2, 6, 23, 0.08);
+  box-shadow: 0 8px 18px rgba(2, 6, 23, 0.05);
+}
+
+:root[data-theme="light"] .agent-reports-page .report-m-index {
+  background: rgba(37, 99, 235, 0.1);
+}
+
+:root[data-theme="light"] .agent-reports-page .report-m-tile {
+  background: rgba(248, 250, 252, 0.95);
+  border-color: rgba(2, 6, 23, 0.07);
+}
+
+:root[data-theme="light"] .agent-reports-page .report-m-meta {
+  background: rgba(241, 245, 249, 0.85);
+  border-color: rgba(2, 6, 23, 0.06);
+}
+
 @media (max-width: 720px) {
-  .agent-reports-page .report-add-row { grid-template-columns: 1fr; }
+  .agent-reports-page .card {
+    padding: 14px;
+    border-radius: 16px;
+    margin-bottom: 14px;
+  }
+
+  .agent-reports-page .info-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 14px;
+  }
+
+  .agent-reports-page .info-item {
+    padding: 12px;
+  }
+
+  .agent-reports-page .info-item .label {
+    font-size: 11px;
+  }
+
+  .agent-reports-page .info-item .value {
+    font-size: 15px;
+  }
+
+  .agent-reports-page .report-add-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin: 12px 0 14px;
+    padding: 12px;
+  }
+
+  .agent-reports-page .report-add-row > .btn {
+    width: 100%;
+    margin: 0;
+    justify-content: center;
+    padding: 13px 16px;
+  }
+
+  .agent-reports-page .report-add-field input {
+    font-size: 16px; /* يمنع تكبير iOS التلقائي */
+    padding: 12px;
+  }
+
+  .agent-reports-page .reports-table-wrap {
+    display: none;
+  }
+
+  .agent-reports-page .reports-mobile {
+    display: block;
+  }
+
+  .agent-reports-page .reports-head {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+
+  .agent-reports-page .reports-head-actions {
+    display: grid !important;
+    grid-template-columns: 1fr;
+    gap: 8px !important;
+  }
+
+  .agent-reports-page .reports-head-actions .btn {
+    width: 100%;
+    margin: 0;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 420px) {
+  .agent-reports-page .info-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .agent-reports-page .report-m-stats {
+    grid-template-columns: 0.85fr 1.15fr;
+    gap: 6px;
+  }
+
+  .agent-reports-page .report-m-tile {
+    padding: 8px;
+  }
+
+  .agent-reports-page .report-m-tile .value {
+    font-size: 14px;
+  }
+
+  .agent-reports-page .report-m-tile .value.amount {
+    font-size: 13px;
+  }
+
+  .agent-reports-page .report-m-meta {
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 6px;
+    padding: 7px 8px;
+  }
 }
 </style>
 
@@ -221,11 +490,11 @@
 </div>
 
 <div class="card">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+  <div class="reports-head" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
     <h3 style="color:var(--reports-text);margin:0;display:flex;align-items:center;gap:10px">
       📊 كشوفات المندوب
     </h3>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <div class="reports-head-actions" style="display:flex;gap:8px;flex-wrap:wrap">
       <a href="/delivery-agent/login" target="_blank" rel="noopener" class="btn btn-success">🚪 بوابة المندوب</a>
       <a href="/agents" class="btn btn-primary">← العودة للمندوبين</a>
     </div>
@@ -255,57 +524,114 @@
   </div>
   <div id="manualAddMessage" class="report-add-message"></div>
   
-  <table>
-    <thead>
-      <tr>
-        <th>#</th>
-        <th>رقم الكشف</th>
-        <th>عدد الطلبات</th>
-        <th>المبلغ</th>
-        <th>التاريخ</th>
-        <th>التقدم</th>
-        <th>الحالة</th>
-        <th>الإجراءات</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% if reports %}
-        {% for report in reports %}
-        {% set rd = reports_data[loop.index0] if reports_data else none %}
+  <div class="reports-table-wrap">
+    <table>
+      <thead>
         <tr>
-          <td>{{ loop.index }}</td>
-          <td><strong>{{ report.report_number }}</strong></td>
-          <td>{{ report.orders_count }}</td>
-          <td class="total-cell">{{ "{:,.0f}".format(report.total_amount) }} د.ع</td>
-          <td>{{ report.created_at.strftime('%Y-%m-%d %H:%M') if report.created_at else '—' }}</td>
-          <td>{{ rd.progress_label if rd else '—' }}</td>
-          <td>
+          <th>#</th>
+          <th>رقم الكشف</th>
+          <th>عدد الطلبات</th>
+          <th>المبلغ</th>
+          <th>التاريخ</th>
+          <th>التقدم</th>
+          <th>الحالة</th>
+          <th>الإجراءات</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if reports %}
+          {% for report in reports %}
+          {% set rd = reports_data[loop.index0] if reports_data else none %}
+          <tr>
+            <td>{{ loop.index }}</td>
+            <td><strong>{{ report.report_number }}</strong></td>
+            <td>{{ report.orders_count }}</td>
+            <td class="total-cell">{{ "{:,.0f}".format(report.total_amount) }} د.ع</td>
+            <td>{{ report.created_at.strftime('%Y-%m-%d %H:%M') if report.created_at else '—' }}</td>
+            <td>{{ rd.progress_label if rd else '—' }}</td>
+            <td>
+              {% if report.is_executed %}
+              <span style="color:#94a3b8;font-weight:600;">منفّذ</span>
+              {% elif rd and rd.ready_for_execution %}
+              <span style="color:#10b981;font-weight:600;">جاهز للتنفيذ</span>
+              {% elif rd and rd.applied_count > 0 %}
+              <span style="color:#f59e0b;font-weight:600;">قيد التطبيق</span>
+              {% else %}
+              <span style="color:#94a3b8;">بانتظار المندوب</span>
+              {% endif %}
+            </td>
+            <td>
+              <a href="/delivery/report/{{ report.id }}" class="btn btn-success" target="_blank">
+                👁️ عرض / تنفيذ
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="8" style="padding:40px;text-align:center;color:var(--reports-muted)">
+              لا توجد كشوفات لهذا المندوب
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="reports-mobile">
+    {% if reports %}
+      {% for report in reports %}
+      {% set rd = reports_data[loop.index0] if reports_data else none %}
+      <div class="report-m-card">
+        <div class="report-m-head">
+          <span class="report-m-index">{{ loop.index }}</span>
+          <div class="report-m-head-main">
+            <div class="report-m-num">{{ report.report_number }}</div>
             {% if report.is_executed %}
-            <span style="color:#94a3b8;font-weight:600;">منفّذ</span>
+            <span class="report-m-status done">منفّذ</span>
             {% elif rd and rd.ready_for_execution %}
-            <span style="color:#10b981;font-weight:600;">جاهز للتنفيذ</span>
+            <span class="report-m-status ready">جاهز للتنفيذ</span>
             {% elif rd and rd.applied_count > 0 %}
-            <span style="color:#f59e0b;font-weight:600;">قيد التطبيق</span>
+            <span class="report-m-status progress">قيد التطبيق</span>
             {% else %}
-            <span style="color:#94a3b8;">بانتظار المندوب</span>
+            <span class="report-m-status wait">بانتظار المندوب</span>
             {% endif %}
-          </td>
-          <td>
-            <a href="/delivery/report/{{ report.id }}" class="btn btn-success" target="_blank">
-              👁️ عرض / تنفيذ
-            </a>
-          </td>
-        </tr>
-        {% endfor %}
-      {% else %}
-        <tr>
-          <td colspan="8" style="padding:40px;text-align:center;color:var(--reports-muted)">
-            لا توجد كشوفات لهذا المندوب
-          </td>
-        </tr>
-      {% endif %}
-    </tbody>
-  </table>
+          </div>
+        </div>
+
+        <div class="report-m-stats">
+          <div class="report-m-tile">
+            <div class="label">الطلبات</div>
+            <div class="value">{{ report.orders_count }}</div>
+          </div>
+          <div class="report-m-tile">
+            <div class="label">المبلغ</div>
+            <div class="value amount">{{ "{:,.0f}".format(report.total_amount) }} د.ع</div>
+          </div>
+        </div>
+
+        <div class="report-m-meta">
+          <div class="report-m-meta-item">
+            <div class="label">التاريخ</div>
+            <div class="value">{{ report.created_at.strftime('%Y-%m-%d %H:%M') if report.created_at else '—' }}</div>
+          </div>
+          <div class="report-m-meta-item">
+            <div class="label">التقدم</div>
+            <div class="value">{{ rd.progress_label if rd else '—' }}</div>
+          </div>
+        </div>
+
+        <div class="report-m-actions">
+          <a href="/delivery/report/{{ report.id }}" class="btn btn-success" target="_blank">
+            👁️ عرض / تنفيذ
+          </a>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="reports-mobile-empty">لا توجد كشوفات لهذا المندوب</div>
+    {% endif %}
+  </div>
 </div>
 
 <script>

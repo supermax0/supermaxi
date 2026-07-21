@@ -176,6 +176,8 @@ def _dashboard_overdue_invoices(*, min_days: int = 7, limit: int = 40):
     يُحسب من تاريخ التأجيل إن وُجد وإلا من تاريخ الإنشاء.
     10+ أيام: severity=critical (أولوية العرض)، 7–9: severity=warning.
     """
+    from utils.shipping_barcodes import shipping_barcodes_display
+
     now = datetime.utcnow()
     q = (
         db.session.query(
@@ -185,7 +187,11 @@ def _dashboard_overdue_invoices(*, min_days: int = 7, limit: int = 40):
             Invoice.payment_status,
             Invoice.created_at,
             Invoice.scheduled_date,
+            Invoice.total,
+            Invoice.shipping_barcode,
+            Invoice.shipping_barcodes_json,
             Customer.phone.label("phone"),
+            Customer.address.label("address"),
         )
         .outerjoin(Customer, Invoice.customer_id == Customer.id)
         .filter(Invoice.status.in_(list(PENDING_STATUSES)))
@@ -212,6 +218,9 @@ def _dashboard_overdue_invoices(*, min_days: int = 7, limit: int = 40):
                 "id": inv.id,
                 "customer_name": (inv.customer_name or "").strip(),
                 "phone": str(inv.phone or "").strip(),
+                "address": str(getattr(inv, "address", None) or "").strip(),
+                "shipping_barcode": (shipping_barcodes_display(inv) or "").strip(),
+                "total": int(inv.total or 0),
                 "status": (inv.status or "").strip(),
                 "days": int(days),
                 "severity": sev,
@@ -299,6 +308,53 @@ def index():
         employee_name=session.get("name", ""),
         dashboard_overdue_orders=overdue_rows,
         system_settings=system_settings,
+    )
+
+
+@index_bp.route("/dashboard/overdue-statement")
+def dashboard_overdue_statement():
+    """كشف طباعة للطلبات المتأخرة (تم الطلب / جاري الشحن)."""
+    if "user_id" not in session:
+        return redirect("/login")
+    from utils.permission_checks import check_permission
+    if not check_permission("view_dashboard"):
+        return redirect("/pos")
+    if session.get("role") == "cashier":
+        return redirect("/")
+
+    company_name = "Finora"
+    overdue_rows = []
+    tenant_slug = (session.get("tenant_slug") or "").strip()
+    prev_tenant = getattr(g, "tenant", None)
+    if tenant_slug:
+        g.tenant = tenant_slug
+    try:
+        try:
+            from models.invoice_settings import InvoiceSettings
+            settings = InvoiceSettings.get_settings()
+            company_name = (
+                getattr(settings, "report_company_name", None)
+                or getattr(settings, "company_name", None)
+                or company_name
+            )
+        except Exception:
+            db.session.rollback()
+        overdue_rows = _dashboard_overdue_invoices(limit=200)
+    except Exception:
+        current_app.logger.exception("dashboard overdue statement failed")
+        overdue_rows = []
+    finally:
+        g.tenant = prev_tenant
+
+    total_amount = sum(int(r.get("total") or 0) for r in overdue_rows)
+    return render_template(
+        "dashboard_overdue_print.html",
+        orders=overdue_rows,
+        orders_count=len(overdue_rows),
+        total_amount=total_amount,
+        company_name=company_name,
+        printed_at=datetime.now(),
+        employee_name=session.get("name", ""),
     )
 
 
@@ -2487,6 +2543,7 @@ def check_new_orders():
     new_orders = db.session.query(
         Invoice.id,
         Invoice.customer_name,
+        Invoice.employee_name,
         Invoice.total,
         Invoice.status,
         Invoice.created_at,
@@ -2499,6 +2556,7 @@ def check_new_orders():
             {
                 "id": o.id,
                 "customer": o.customer_name,
+                "employee": (o.employee_name or "").strip() or None,
                 "total": o.total,
                 "status": o.status,
                 "time": o.created_at.strftime("%H:%M")

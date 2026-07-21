@@ -38,8 +38,7 @@
 <div id="ordersUiBuildBadge" style="display:none" data-build="20260720j"></div>
 
 
-<!-- ==================== Toast & Loading ==================== -->
-<div class="toast-container" id="toastContainer"></div>
+<!-- ==================== Loading ==================== -->
 <div class="loading-overlay" id="loadingOverlay">
   <div class="loading-spinner"></div>
 </div>
@@ -2995,58 +2994,26 @@
     localStorage.setItem('sounds_enabled', enabled ? 'true' : 'false');
   }
 
-  // تشغيل صوت النجاح (عند تسديد الطلب)
-  function playSuccessSound() {
-    if (!getSoundsEnabled()) return; // إذا كان الصوت معطل، لا نفعل شيئاً
-
-    try {
-      // استخدام Web Audio API لإنشاء صوت بسيط (بدون ملف صوتي خارجي)
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-
-      oscillator.frequency.value = 800; // تردد النجاح (نغمة عالية)
-      oscillator.type = 'sine';
-
-      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 0.3);
-    } catch (e) {
-      // إذا فشل Web Audio API، لا نفعل شيئاً (Silent Fail)
-      console.log("Sound not available:", e);
+  function playActionSound(soundType) {
+    if (!getSoundsEnabled()) return;
+    if (typeof window.playNotificationSound === "function") {
+      window.playNotificationSound(soundType, { soundType: soundType });
     }
   }
 
-  // تشغيل صوت التحذير/الإلغاء (عند إلغاء الطلب)
+  // صوت التسديد
+  function playSuccessSound() {
+    playActionSound("payment");
+  }
+
+  // صوت الإرجاع
+  function playReturnSound() {
+    playActionSound("return");
+  }
+
+  // صوت الإلغاء
   function playCancelSound() {
-    if (!getSoundsEnabled()) return; // إذا كان الصوت معطل، لا نفعل شيئاً
-
-    try {
-      // استخدام Web Audio API لإنشاء صوت بسيط (بدون ملف صوتي خارجي)
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-
-      oscillator.frequency.value = 400; // تردد الإلغاء (نغمة منخفضة)
-      oscillator.type = 'sawtooth';
-
-      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
-
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 0.4);
-    } catch (e) {
-      // إذا فشل Web Audio API، لا نفعل شيئاً (Silent Fail)
-      console.log("Sound not available:", e);
-    }
+    playActionSound("cancel");
   }
 
   // ========================
@@ -3123,71 +3090,6 @@
   }
 
 
-  // فحص إعدادات الصوت من localStorage (افتراضي: مفعل)
-  function getSoundsEnabled() {
-    const saved = localStorage.getItem('sounds_enabled');
-    return saved === null ? true : saved === 'true'; // افتراضي: مفعل
-  }
-
-  // حفظ إعدادات الصوت في localStorage
-  function setSoundsEnabled(enabled) {
-    localStorage.setItem('sounds_enabled', enabled ? 'true' : 'false');
-  }
-
-  // تشغيل صوت النجاح (عند تسديد الطلب)
-  function playSuccessSound() {
-    if (!getSoundsEnabled()) return; // إذا كان الصوت معطل، لا نفعل شيئاً
-
-    try {
-      // استخدام Web Audio API لإنشاء صوت بسيط (بدون ملف صوتي خارجي)
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-
-      oscillator.frequency.value = 800; // تردد النجاح (نغمة عالية)
-      oscillator.type = 'sine';
-
-      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 0.3);
-    } catch (e) {
-      // إذا فشل Web Audio API، لا نفعل شيئاً (Silent Fail)
-      console.log("Sound not available:", e);
-    }
-  }
-
-  // تشغيل صوت التحذير/الإلغاء (عند إلغاء الطلب)
-  function playCancelSound() {
-    if (!getSoundsEnabled()) return; // إذا كان الصوت معطل، لا نفعل شيئاً
-
-    try {
-      // استخدام Web Audio API لإنشاء صوت بسيط (بدون ملف صوتي خارجي)
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-
-      oscillator.frequency.value = 400; // تردد الإلغاء (نغمة منخفضة)
-      oscillator.type = 'sawtooth';
-
-      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
-
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 0.4);
-    } catch (e) {
-      // إذا فشل Web Audio API، لا نفعل شيئاً (Silent Fail)
-      console.log("Sound not available:", e);
-    }
-  }
-
   // ============= Global Variables =============
 
 
@@ -3200,26 +3102,17 @@
     document.getElementById("loadingOverlay")?.classList.remove("active");
   }
 
-  function showToast(message, type = "info") {
-    const container = document.getElementById("toastContainer");
-    if (!container) {
-      const newContainer = document.createElement("div");
-      newContainer.id = "toastContainer";
-      newContainer.className = "toast-container";
-      document.body.appendChild(newContainer);
-      return showToast(message, type);
+  function showToast(message, type = "info", duration, options) {
+    if (typeof window.showToast === "function" && window.showToast !== showToast) {
+      return window.showToast(message, type, duration, options);
     }
-
+    const container = document.getElementById("toastContainer");
+    if (!container) return;
     const toast = document.createElement("div");
-    toast.className = `toast toast-${type}`;
-    const icons = { success: "✅", error: "❌", warning: "⚠️", info: "ℹ️" };
-    toast.innerHTML = `<span style="font-size:20px">${icons[type] || icons.info}</span><span style="flex:1">${message}</span>`;
+    toast.className = `toast ${type || "info"}`;
+    toast.textContent = String(message || "");
     container.appendChild(toast);
-
-    setTimeout(() => {
-      toast.style.animation = "slideOut 0.3s ease-out";
-      setTimeout(() => toast.remove(), 300);
-    }, type === "error" ? 8000 : 4000);
+    setTimeout(() => toast.remove(), type === "error" ? 5000 : 3500);
   }
 
   function orderRowId(row) {
@@ -5187,7 +5080,7 @@
     return found;
   }
 
-  function submitOrderPayment(orderId, deliveryFee) {
+  function submitOrderPayment(orderId, deliveryFee, branchId) {
     collapseRowActions(orderId);
     showLoading();
     fetch(`/orders/payment`, {
@@ -5197,7 +5090,8 @@
         id: orderId,
         payment: "مسدد",
         paid_amount: null,
-        delivery_fee: deliveryFee || 0
+        delivery_fee: deliveryFee || 0,
+        branch_id: branchId || null
       })
     })
       .then(r => {
@@ -5212,7 +5106,7 @@
         hideLoading();
         if (data.success) {
           playSuccessSound();
-          showToast({{ _('orders_toast_pay_success')|tojson }}, "success");
+          showToast({{ _('orders_toast_pay_success')|tojson }}, "success", { silent: true, soundType: "payment" });
           if (gridApi) {
             const rowNode = gridApi.getRowNode(orderId);
             const paidOrder = data.order || {};
@@ -5270,8 +5164,8 @@
         orderTotal: orderTotal,
         customerCity: customerCity,
         items: details && Array.isArray(details.items) ? details.items : [],
-        onConfirm: function (deliveryFee) {
-          submitOrderPayment(orderId, deliveryFee);
+        onConfirm: function (deliveryFee, paymentOptions) {
+          submitOrderPayment(orderId, deliveryFee, paymentOptions && paymentOptions.branchId);
         }
       });
     };
@@ -5323,7 +5217,8 @@
         .then(data => {
           hideLoading();
           if (data.success) {
-            showToast(data.message || 'تم ترجيع الطلب', "success");
+            playReturnSound();
+            showToast(data.message || 'تم ترجيع الطلب', "success", { silent: true, soundType: "return" });
             if (gridApi) {
               const rowNode = gridApi.getRowNode(orderId);
               const updateRow = function (rd) {
@@ -5452,7 +5347,7 @@
         .then(data => {
           hideLoading();
           if (data.success) {
-            showToast({{ _('orders_partial_success')|tojson }}.replace('{amount}', amount.toLocaleString()), "success");
+            showToast({{ _('orders_partial_success')|tojson }}.replace('{amount}', amount.toLocaleString()), "success", { soundType: "payment" });
             // تحديث الصف في الجدول مباشرة
             if (gridApi) {
               gridApi.forEachNode(node => {
@@ -5486,7 +5381,6 @@
   }
 
   function cancelOrder(orderId) {
-    collapseRowActions(orderId);
     showLoading();
     fetch(`/orders/cancel/${orderId}`, {
       method: "POST",
@@ -5495,7 +5389,12 @@
       .then(r => {
         if (!r.ok) {
           return r.text().then(text => {
-            throw new Error(`HTTP ${r.status}: ${text.substring(0, 100)}`);
+            let message = `HTTP ${r.status}`;
+            try {
+              const parsed = JSON.parse(text);
+              if (parsed && parsed.error) message = parsed.error;
+            } catch (e) { /* keep HTTP message */ }
+            throw new Error(message);
           });
         }
         return r.json();
@@ -5504,20 +5403,30 @@
         hideLoading();
         if (data.success) {
           playCancelSound();
-          showToast({{ _('orders_toast_cancel_success')|tojson }}, "success");
+          showToast({{ _('orders_toast_cancel_success')|tojson }}, "success", { silent: true, soundType: "cancel" });
           if (gridApi) {
             gridApi.forEachNode(node => {
-              if (node.data.id === orderId) {
-                const rd = node.data;
-                rd.status = "ملغي";
-                rd.payment_status = "ملغي";
-                rd.can_pay = false;
-                rd.can_cancel = false;
-                rd.actions_collapsed = true;
-                gridApi.applyTransaction({ update: [rd] });
-                gridApi.refreshCells({ rowNodes: [node], columns: ['actions'], force: true });
+              if (!node.data || Number(node.data.id) !== Number(orderId)) return;
+              if (ORDERS_PAGE_TYPE === 'ordered') {
+                gridApi.applyTransaction({ remove: [node.data] });
+                return;
               }
+              const rd = node.data;
+              rd.status = "ملغي";
+              rd.payment_status = "ملغي";
+              rd.paid_amount = 0;
+              rd.remaining = Number(rd.total) || 0;
+              rd.can_pay = false;
+              rd.can_cancel = false;
+              rd.actions_collapsed = true;
+              gridApi.applyTransaction({ update: [rd] });
+              gridApi.refreshCells({
+                rowNodes: [node],
+                columns: ['status', 'payment_status', 'paid_amount', 'remaining', 'actions'],
+                force: true
+              });
             });
+            updateStats();
           }
         } else {
           showToast(data.error || {{ _('orders_err_generic')|tojson }}, "error");
@@ -5525,7 +5434,7 @@
       })
       .catch(error => {
         hideLoading();
-        showToast({{ _('orders_err_cancel')|tojson }}, "error");
+        showToast(String(error && error.message ? error.message : {{ _('orders_err_cancel')|tojson }}), "error");
         console.error("Cancel error:", error);
       });
   }
@@ -5773,7 +5682,7 @@
         hideLoading();
         if (data.success) {
           if (modal) modal.remove();
-          showToast({{ _('orders_toast_return_success')|tojson }}, "success");
+          showToast({{ _('orders_toast_return_success')|tojson }}, "success", { soundType: "return" });
           if (gridApi) {
             gridApi.forEachNode(function (node) {
               if (node.data.id === orderId) {
@@ -6359,7 +6268,7 @@
   // ============= Make functions globally available =============
   window.showLoading = showLoading;
   window.hideLoading = hideLoading;
-  window.showToast = showToast;
+  // showToast: use the shared compact toast from base.html
   window.selectedIds = selectedIds;
   window.showConfirm = showConfirm;
   window.toggleAll = toggleAll;

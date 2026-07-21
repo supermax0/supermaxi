@@ -256,7 +256,7 @@
 
 .settings-panel {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 20px;
 }
 
@@ -459,11 +459,11 @@
 }
 
 .preview-panel {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--card, #ffffff);
+  border: 1px solid var(--border-light, #e5e7eb);
   border-radius: 8px;
   padding: 24px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.1));
   margin-top: 30px;
   width: 100%;
 }
@@ -486,9 +486,36 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
   margin-bottom: 20px;
   padding-bottom: 15px;
-  border-bottom: 2px solid #e5e7eb;
+  border-bottom: 2px solid var(--border-light, #e5e7eb);
+}
+
+.preview-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.preview-toggle-btn span {
+  margin-inline-start: 6px;
+}
+
+.preview-panel.is-collapsible .preview-collapsible-body[hidden] {
+  display: none !important;
+}
+
+.preview-panel.is-collapsible.is-open .preview-header {
+  margin-bottom: 20px;
+}
+
+.preview-panel.is-collapsible:not(.is-open) .preview-header {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: 0;
 }
 
 .preview-header h3 {
@@ -498,13 +525,13 @@
 }
 
 .preview-container {
-  background: white;
+  background: var(--surface-soft, #f9fafb);
   border-radius: 8px;
   padding: 12px;
   min-height: 400px;
   max-height: 800px;
   overflow: hidden;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-light, #e5e7eb);
   position: relative;
 }
 
@@ -581,9 +608,36 @@
     flex-direction: column;
     align-items: stretch;
   }
-  
-  .invoice-preview-iframe {
+
+  .preview-panel.is-collapsible:not(.is-open) .preview-collapsible-body {
+    display: none !important;
+  }
+
+  .preview-panel.is-collapsible.is-open .invoice-preview-iframe {
     min-height: 360px;
     height: 55vh;
+  }
+
+  .preview-header-actions {
+    width: 100%;
+  }
+
+  .preview-header-actions .btn {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+@media (min-width: 769px) {
+  .preview-panel.is-collapsible .preview-toggle-btn {
+    display: none;
+  }
+
+  .preview-panel.is-collapsible .preview-collapsible-body {
+    display: block !important;
+  }
+
+  .preview-panel.is-collapsible .preview-collapsible-body[hidden] {
+    display: block !important;
   }
 }

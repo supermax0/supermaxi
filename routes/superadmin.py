@@ -18,6 +18,12 @@ from utils.tenant_registration import (
     registration_file_path,
     save_tenant_registration,
 )
+from utils.tenant_feature_flags import (
+    TENANT_FEATURE_LABELS,
+    ensure_tenant_feature_overrides_column,
+    feature_overrides_json,
+    normalize_feature_overrides,
+)
 
 superadmin_bp = Blueprint("superadmin", __name__, url_prefix="/superadmin")
 
@@ -102,9 +108,14 @@ def _ensure_tenant_business_type_column(engine):
     if "tenant" not in inspector.get_table_names():
         return
     columns = {col["name"] for col in inspector.get_columns("tenant")}
-    if "business_type" not in columns:
+    missing_business_type = "business_type" not in columns
+    missing_feature_overrides = "feature_overrides_json" not in columns
+    if missing_business_type or missing_feature_overrides:
         with engine.begin() as conn:
-            conn.execute(text("ALTER TABLE tenant ADD COLUMN business_type VARCHAR(50) DEFAULT 'general'"))
+            if missing_business_type:
+                conn.execute(text("ALTER TABLE tenant ADD COLUMN business_type VARCHAR(50) DEFAULT 'general'"))
+            if missing_feature_overrides:
+                conn.execute(text("ALTER TABLE tenant ADD COLUMN feature_overrides_json TEXT"))
 
 def is_superadmin():
     return session.get("is_superadmin") is True
@@ -120,10 +131,19 @@ def require_superadmin():
 
 @superadmin_bp.context_processor
 def inject_superadmin_data():
-    if is_superadmin():
+    if not is_superadmin():
+        return dict(pending_count=0)
+    try:
+        # Always read from Core DB; clear any aborted tenant txn first.
+        g.tenant = None
         pending_count = PaymentRequest.query.filter_by(status="pending").count()
         return dict(pending_count=pending_count)
-    return dict(pending_count=0)
+    except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        return dict(pending_count=0)
 
 
 def _ensure_invoice_owner_user(owner_id):
@@ -178,6 +198,13 @@ def logout():
 
 @superadmin_bp.route("/")
 def dashboard():
+    # Core DB only — reset tenant bind and clear any aborted SQL txn.
+    g.tenant = None
+    try:
+        db.session.rollback()
+    except Exception:
+        pass
+
     pending_count = PaymentRequest.query.filter_by(status="pending").count()
     active_tenants = Tenant.query.filter_by(is_active=True).count()
     total_revenue_query = db.session.query(db.func.sum(PaymentRequest.amount)).filter_by(status="approved").scalar()
@@ -198,7 +225,10 @@ def dashboard():
         finally:
             g.tenant = old_tenant
     except Exception:
-        pass
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
 
     recent_requests = PaymentRequest.query.order_by(PaymentRequest.created_at.desc()).limit(5).all()
     
@@ -360,6 +390,9 @@ def tenant_details(slug):
         plan_key = tenant_row.plan_key if tenant_row else "basic"
         plan_name = tenant_row.plan_name if tenant_row else "الخطة الأساسية"
         business_type = getattr(tenant, "business_type", None) or getattr(tenant_row, "business_type", None) or "general"
+        feature_overrides = normalize_feature_overrides(
+            getattr(tenant_row, "feature_overrides_json", None) if tenant_row else None
+        )
 
         # رابط تسجيل الدخول الخاص بالشركة
         try:
@@ -385,6 +418,8 @@ def tenant_details(slug):
             "admin_password": None,
             "plan_key": plan_key,
             "plan_name": plan_name,
+            "feature_overrides": feature_overrides,
+            "feature_labels": [{"key": key, "label": label} for key, label in TENANT_FEATURE_LABELS.items()],
             "login_url": login_url,
             "registration": _registration_json(
                 tenant, registration, admin_name=admin_name, admin_username=admin_username
@@ -1369,6 +1404,47 @@ def tenant_update_business_type(slug):
         })
     except Exception as e:
         db.session.rollback()
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@superadmin_bp.route("/tenants/update-features/<slug>", methods=["POST"])
+def tenant_update_features(slug):
+    from flask import request, jsonify
+    from sqlalchemy.orm import sessionmaker
+    from extensions_tenant import get_tenant_engine, clear_tenant_engine
+    from models.tenant import Tenant as TenantSpecific
+
+    try:
+        data = request.get_json() or {}
+        overrides = normalize_feature_overrides(data.get("features") or {})
+        slug_clean = (slug or "").strip().lower()
+        tenant_core = Tenant.query.filter(db.func.lower(Tenant.slug) == slug_clean).first()
+        if not tenant_core:
+            return jsonify({"ok": False, "error": "Ø§Ù„Ø´Ø±ÙƒØ© ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯Ø©"}), 404
+
+        engine = get_tenant_engine(tenant_core.slug)
+        ensure_tenant_feature_overrides_column(engine)
+        SessionLocal = sessionmaker(bind=engine)
+        tenant_session = SessionLocal()
+        try:
+            tenant_spec = tenant_session.query(TenantSpecific).first()
+            if not tenant_spec:
+                return jsonify({"ok": False, "error": "Ù„Ù… ÙŠØªÙ… Ø§Ù„Ø¹Ø«ÙˆØ± Ø¹Ù„Ù‰ Ø³Ø¬Ù„ Ø§Ù„Ø´Ø±ÙƒØ© Ø¯Ø§Ø®Ù„ Ù‚Ø§Ø¹Ø¯ØªÙ‡Ø§"}), 404
+            tenant_spec.feature_overrides_json = feature_overrides_json(overrides)
+            tenant_session.commit()
+        except Exception as te:
+            tenant_session.rollback()
+            return jsonify({"ok": False, "error": f"ÙØ´Ù„ ØªØ­Ø¯ÙŠØ« Ù‚Ø§Ø¹Ø¯Ø© Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø´Ø±ÙƒØ©: {str(te)}"}), 500
+        finally:
+            tenant_session.close()
+
+        clear_tenant_engine(tenant_core.slug)
+        return jsonify({
+            "ok": True,
+            "message": "ØªÙ… Ø­ÙØ¸ Ø¥Ø¹Ø¯Ø§Ø¯Ø§Øª Ø¸Ù‡ÙˆØ± Ø§Ù„Ù…ÙŠØ²Ø§Øª Ø¨Ù†Ø¬Ø§Ø­",
+            "feature_overrides": overrides,
+        })
+    except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
 

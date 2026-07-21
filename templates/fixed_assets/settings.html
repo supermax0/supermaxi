@@ -54,8 +54,8 @@
     </div>
   </div>
 
-  <div class="settings-actions-bar">
-    <button type="submit" class="settings-btn settings-btn-primary"><i class="fas fa-save"></i> {{ _('settings_save') }}</button>
+  <div class="settings-actions-bar settings-actions-bar-desktop">
+    <button type="submit" class="settings-btn settings-btn-primary" id="fixedAssetsSaveBtn"><i class="fas fa-save"></i> {{ _('settings_save') }}</button>
   </div>
 </form>
 
@@ -68,17 +68,17 @@
     <div class="settings-field"><label class="settings-field-label">{{ _('fa_settings_notes') }}</label><input class="settings-input" name="period_notes"></div>
     <button type="submit" class="settings-btn settings-btn-secondary" onclick="return confirm('{{ _('fa_settings_close_confirm') }}');">{{ _('fa_settings_close_period') }}</button>
   </form>
-  <div class="settings-table-wrap">
+  <div class="settings-table-wrap is-card-mobile">
     <table class="settings-table">
       <thead><tr><th>{{ _('fa_settings_period') }}</th><th>{{ _('fa_settings_closed_at') }}</th><th>{{ _('fa_settings_closed_by') }}</th><th>{{ _('fa_settings_notes') }}</th><th></th></tr></thead>
       <tbody>
         {% for p in closed_periods %}
         <tr>
-          <td>{{ p.period_label() }}</td>
-          <td>{{ p.closed_at.strftime('%Y-%m-%d %H:%M') if p.closed_at else '—' }}</td>
-          <td>{{ p.closer.name if p.closer else '—' }}</td>
-          <td>{{ p.notes or '—' }}</td>
-          <td>
+          <td data-label="{{ _('fa_settings_period') }}">{{ p.period_label() }}</td>
+          <td data-label="{{ _('fa_settings_closed_at') }}">{{ p.closed_at.strftime('%Y-%m-%d %H:%M') if p.closed_at else '—' }}</td>
+          <td data-label="{{ _('fa_settings_closed_by') }}">{{ p.closer.name if p.closer else '—' }}</td>
+          <td data-label="{{ _('fa_settings_notes') }}">{{ p.notes or '—' }}</td>
+          <td data-label="">
             <form method="post" style="display:inline;" onsubmit="return confirm('{{ _('fa_settings_reopen_confirm') }}');">
               <input type="hidden" name="form_action" value="reopen_period">
               <input type="hidden" name="period_year" value="{{ p.period_year }}">
@@ -90,6 +90,17 @@
         {% else %}<tr><td colspan="5">{{ _('fa_settings_no_closed_periods') }}</td></tr>{% endfor %}
       </tbody>
     </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block settings_sticky_actions %}
+<div class="settings-sticky-bar">
+  <div class="settings-sticky-bar-info">{{ _('settings_unsaved_hint') }}</div>
+  <div class="settings-sticky-bar-actions">
+    <button type="button" class="settings-btn settings-btn-primary" onclick="document.getElementById('fixedAssetsSaveBtn').click()">
+      <i class="fas fa-save"></i> {{ _('settings_save') }}
+    </button>
   </div>
 </div>
 {% endblock %}

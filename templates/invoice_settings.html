@@ -306,14 +306,19 @@
   </div>
 
   <!-- Preview Panel (Bottom) -->
-  <div class="preview-panel">
+  <div class="preview-panel is-collapsible" id="invoicePreviewPanel">
     <div class="preview-header">
       <h3>معاينة الفاتورة</h3>
-      <button class="btn btn-sm" onclick="refreshPreview()">
-        <i class="fas fa-sync"></i> تحديث
-      </button>
+      <div class="preview-header-actions">
+        <button type="button" class="btn btn-sm preview-toggle-btn" id="invoicePreviewToggle" aria-expanded="false" aria-controls="invoicePreviewBody">
+          <i class="fas fa-eye"></i> <span>عرض المعاينة</span>
+        </button>
+        <button class="btn btn-sm" onclick="refreshPreview()">
+          <i class="fas fa-sync"></i> تحديث
+        </button>
+      </div>
     </div>
-    <div class="preview-container" id="preview_container">
+    <div class="preview-container preview-collapsible-body" id="invoicePreviewBody" hidden>
       <div id="preview_error" class="preview-loading" style="display:none;"></div>
       <iframe id="invoice_preview_iframe" class="invoice-preview-iframe" title="معاينة الفاتورة"></iframe>
     </div>

@@ -380,11 +380,14 @@ def serialize_pending_report(report) -> dict[str, Any]:
         status_label = "جاهز للتنفيذ"
     elif progress["in_progress"]:
         status_label = "قيد التطبيق"
+    employee_name = (getattr(report, "created_by", None) or "").strip() or None
     return {
         "id": report.id,
         "report_number": report.report_number,
         "agent_name": get_agent_name_for_report(report),
         "agent_id": extract_agent_id_from_report(report.report_number),
+        "employee_name": employee_name,
+        "created_by": employee_name,
         "orders_count": progress["total"],
         "applied_count": progress["applied"],
         "progress_label": f"{progress['applied']}/{progress['total']}",

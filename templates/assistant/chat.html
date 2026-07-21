@@ -114,6 +114,18 @@
   min-height: 42px;
 }
 
+.ai-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.ai-action-btn i {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
 .ai-chat-layout {
   display: grid;
   grid-template-columns: 360px 1fr;
@@ -1451,6 +1463,421 @@ body.ai-assistant-report-collapsed #aiCloseReportBtn {
     writing-mode: horizontal-tb;
   }
 }
+
+/* Mobile: full-screen chat app feel */
+@media (max-width: 640px) {
+  main.page-main:has(.ai-chat-page) {
+    padding: 0 !important;
+    gap: 0 !important;
+  }
+
+  .ai-chat-page {
+    min-height: calc(100dvh - 58px);
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  .ai-chat-page > .ai-chat-card.card {
+    height: calc(100dvh - 58px);
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  :root[data-theme="light"] .ai-chat-page > .ai-chat-card.card {
+    background: var(--bg);
+  }
+
+  .ai-chat-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 10px 12px;
+    margin: 0;
+    border-radius: 0;
+    border: 0;
+    border-bottom: 1px solid var(--border-light);
+    min-height: 0;
+    flex-shrink: 0;
+    background: var(--card);
+  }
+
+  :root[data-theme="light"] .ai-chat-head {
+    background: var(--card);
+  }
+
+  .ai-chat-head > div:first-child {
+    flex: none;
+    min-width: 0;
+  }
+
+  .ai-chat-title {
+    font-size: 17px;
+    gap: 8px;
+  }
+
+  .ai-chat-title-mark {
+    width: 34px;
+    height: 34px;
+    font-size: 17px;
+    border-radius: 10px;
+  }
+
+  .ai-chat-subtitle,
+  .ai-chat-hero-stats {
+    display: none !important;
+  }
+
+  .ai-chat-actions {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    width: 100%;
+    flex-shrink: 0;
+  }
+
+  .ai-chat-actions .ai-action-btn {
+    width: auto !important;
+    min-height: 52px;
+    padding: 6px 4px;
+    border-radius: 12px;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 10px;
+    font-weight: 800;
+    line-height: 1.2;
+  }
+
+  .ai-chat-actions .ai-action-btn i {
+    font-size: 16px;
+  }
+
+  .ai-chat-actions .ai-action-btn span {
+    display: block;
+  }
+
+  .ai-chat-layout {
+    flex: 1;
+    min-height: 0;
+    height: auto !important;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .ai-settings,
+  .ai-live-report {
+    top: auto !important;
+    right: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    max-height: 92dvh !important;
+    min-height: 0;
+    z-index: 1201;
+    overflow: hidden;
+    border-radius: 20px 20px 0 0 !important;
+    transform: translateY(105%);
+    transition: transform .28s cubic-bezier(.32,.72,0,1), opacity .2s ease;
+    opacity: 1;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 -12px 40px rgba(15, 23, 42, 0.22);
+  }
+
+  body.ai-assistant-tools-open .ai-settings,
+  body:not(.ai-assistant-report-collapsed) .ai-live-report {
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+
+  body.ai-assistant-tools-open .ai-chat-card::before,
+  body:not(.ai-assistant-report-collapsed) .ai-chat-card::before {
+    display: block;
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    background: rgba(15, 23, 42, 0.42);
+    backdrop-filter: blur(2px);
+  }
+
+  body.ai-assistant-report-collapsed .ai-live-report {
+    transform: translateY(105%);
+    pointer-events: none;
+  }
+
+  .ai-live-report {
+    padding: 0;
+    background: var(--card);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ai-report-head {
+    margin: 0;
+    padding: 18px 16px 14px;
+    background: linear-gradient(135deg, #1e40af 0%, #3b82f6 55%, #60a5fa 100%);
+    color: #fff;
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .ai-report-head::after {
+    content: "";
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 14px;
+    background: var(--card);
+    border-radius: 14px 14px 0 0;
+  }
+
+  .ai-report-title,
+  .ai-report-subtitle {
+    color: #fff;
+  }
+
+  .ai-report-subtitle {
+    opacity: 0.88;
+    font-size: 11px;
+    line-height: 1.5;
+  }
+
+  .ai-report-status {
+    background: rgba(255, 255, 255, 0.18);
+    color: #fff;
+  }
+
+  .ai-report-actions .ai-icon-btn {
+    background: rgba(255, 255, 255, 0.18);
+    color: #fff;
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+  }
+
+  .ai-report-progress {
+    margin: 0 14px 8px;
+    flex-shrink: 0;
+  }
+
+  .ai-report-grid,
+  .ai-report-section,
+  .ai-report-list {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .ai-report-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding-top: 10px;
+  }
+
+  .ai-report-stat {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px;
+    border-radius: 14px;
+  }
+
+  .ai-report-stat span {
+    margin: 0;
+    font-size: 13px;
+  }
+
+  .ai-report-stat strong {
+    font-size: 20px;
+    white-space: nowrap;
+  }
+
+  .ai-report-section {
+    margin-top: 10px;
+    flex: none;
+    overflow: visible;
+    padding-bottom: 0;
+  }
+
+  .ai-report-section:last-child {
+    padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .ai-report-item {
+    padding: 12px;
+    font-size: 13px;
+    border-radius: 14px;
+  }
+
+  .ai-settings {
+    padding: 0;
+    background: var(--card);
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .ai-drawer-head {
+    margin: 0;
+    padding: 16px 14px 12px;
+    border: 0;
+    background: linear-gradient(135deg, #312e81 0%, #4f46e5 55%, #6366f1 100%);
+    color: #fff;
+    border-radius: 20px 20px 0 0;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+
+  .ai-drawer-head strong {
+    font-size: 16px;
+  }
+
+  .ai-drawer-head .ai-icon-btn {
+    background: rgba(255, 255, 255, 0.18);
+    color: #fff;
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+  }
+
+  .ai-settings > .ai-settings-section,
+  .ai-settings > .ai-note {
+    margin: 0 12px 12px;
+  }
+
+  .ai-settings-section {
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  .ai-field select,
+  .ai-field input,
+  .ai-input {
+    font-size: 16px;
+    min-height: 46px;
+  }
+
+  .ai-chip {
+    min-height: 42px;
+    display: inline-flex;
+    align-items: center;
+    font-size: 13px;
+    padding: 10px 12px;
+  }
+
+  .ai-chat {
+    flex: 1;
+    min-height: 0;
+    height: auto !important;
+    display: flex;
+    flex-direction: column;
+    padding: 8px 10px 10px;
+    border: 0;
+    background: transparent;
+  }
+
+  .ai-messages {
+    flex: 1;
+    min-height: 80px;
+    padding: 10px;
+    border-radius: 16px;
+  }
+
+  .ai-compose {
+    flex-shrink: 0;
+    margin-top: 8px;
+    padding: 8px;
+    padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    border-radius: 16px;
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    background: var(--card);
+    border: 1px solid var(--border-light);
+    box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.08);
+  }
+
+  .ai-input {
+    min-height: 46px;
+    max-height: 120px;
+    padding: 12px 14px;
+    font-size: 16px;
+    border-radius: 14px;
+    line-height: 1.5;
+  }
+
+  .ai-send {
+    width: auto !important;
+    min-width: 72px;
+    min-height: 46px;
+    padding-inline: 14px;
+    font-size: 14px;
+    border-radius: 14px;
+    align-self: end;
+  }
+
+  .ai-msg {
+    margin-bottom: 10px;
+    gap: 8px;
+  }
+
+  .ai-msg-avatar {
+    width: 30px;
+    height: 30px;
+    flex: 0 0 30px;
+    font-size: 12px;
+    border-radius: 10px;
+  }
+
+  .ai-bubble {
+    padding: 11px 13px;
+    font-size: 14px;
+    border-radius: 16px;
+    max-width: 94%;
+    line-height: 1.65;
+  }
+
+  .ai-msg.assistant .ai-msg-body {
+    width: 100%;
+  }
+
+  .ai-typing-row {
+    font-size: 12px;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+  }
+
+  .ai-plan-panel {
+    margin-top: 8px;
+    padding: 10px;
+  }
+}
+
+@media (max-width: 380px) {
+  .ai-chat-actions .ai-action-btn {
+    min-height: 48px;
+    font-size: 9px;
+  }
+
+  .ai-chat-actions .ai-action-btn i {
+    font-size: 15px;
+  }
+}
 </style>
 
 <div class="ai-chat-page">
@@ -1471,10 +1898,18 @@ body.ai-assistant-report-collapsed #aiCloseReportBtn {
         </div>
       </div>
       <div class="ai-chat-actions">
-        <button type="button" class="btn btn-secondary" id="aiToolsBtn">الأدوات</button>
-        <button type="button" class="btn btn-secondary" id="aiReportBtn">التقرير</button>
-        <button type="button" class="btn btn-secondary" id="aiClearBtn">مسح</button>
-        <button type="button" class="btn btn-ghost" id="aiExportBtn">نسخ</button>
+        <button type="button" class="btn btn-secondary ai-action-btn" id="aiToolsBtn" data-short="أدوات">
+          <i class="fas fa-sliders-h" aria-hidden="true"></i><span>الأدوات</span>
+        </button>
+        <button type="button" class="btn btn-secondary ai-action-btn" id="aiReportBtn" data-short="تقرير">
+          <i class="fas fa-chart-pie" aria-hidden="true"></i><span>التقرير</span>
+        </button>
+        <button type="button" class="btn btn-secondary ai-action-btn" id="aiClearBtn" data-short="مسح">
+          <i class="fas fa-eraser" aria-hidden="true"></i><span>مسح</span>
+        </button>
+        <button type="button" class="btn btn-ghost ai-action-btn" id="aiExportBtn" data-short="نسخ">
+          <i class="fas fa-copy" aria-hidden="true"></i><span>نسخ</span>
+        </button>
       </div>
     </div>
 
@@ -1788,6 +2223,10 @@ body.ai-assistant-report-collapsed #aiCloseReportBtn {
     els.custom.style.display = (els.period.value === 'custom') ? '' : 'none';
   }
 
+  function isMobileAssistant() {
+    return window.matchMedia('(max-width: 640px)').matches;
+  }
+
   function setToolsOpen(open) {
     document.body.classList.toggle('ai-assistant-tools-open', !!open);
   }
@@ -1795,10 +2234,14 @@ body.ai-assistant-report-collapsed #aiCloseReportBtn {
   function setReportOpen(open) {
     state.report_collapsed = !open;
     document.body.classList.toggle('ai-assistant-report-collapsed', !open);
-    document.body.classList.remove('ai-assistant-report-open');
+    if (isMobileAssistant()) {
+      document.body.classList.toggle('ai-assistant-report-open', !!open);
+    } else {
+      document.body.classList.remove('ai-assistant-report-open');
+    }
     if (els.closeReport) {
-      els.closeReport.textContent = open ? '‹' : '›';
-      els.closeReport.setAttribute('aria-label', open ? 'طي التقرير' : 'فتح التقرير');
+      els.closeReport.textContent = open ? '×' : '›';
+      els.closeReport.setAttribute('aria-label', open ? 'إغلاق التقرير' : 'فتح التقرير');
     }
     saveState(state);
   }
@@ -2481,13 +2924,18 @@ body.ai-assistant-report-collapsed #aiCloseReportBtn {
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
       setToolsOpen(false);
+      if (isMobileAssistant()) setReportOpen(false);
     }
   });
   document.addEventListener('click', function(e) {
-    if (!document.body.classList.contains('ai-assistant-tools-open')) return;
-    const insidePanel = e.target.closest('.ai-settings, #aiToolsBtn');
-    if (insidePanel) return;
-    setToolsOpen(false);
+    if (document.body.classList.contains('ai-assistant-tools-open')) {
+      const insideTools = e.target.closest('.ai-settings, #aiToolsBtn');
+      if (!insideTools) setToolsOpen(false);
+    }
+    if (isMobileAssistant() && !document.body.classList.contains('ai-assistant-report-collapsed')) {
+      const insideReport = e.target.closest('.ai-live-report, #aiReportBtn');
+      if (!insideReport) setReportOpen(false);
+    }
   });
   els.send.addEventListener('click', send);
   els.clear.addEventListener('click', clearChat);
@@ -2548,7 +2996,7 @@ body.ai-assistant-report-collapsed #aiCloseReportBtn {
   renderMessages();
   renderFiles();
   renderPlan(state.active_plan);
-  setReportOpen(state.report_collapsed !== true);
+  setReportOpen(isMobileAssistant() ? false : state.report_collapsed !== true);
   renderLiveReport(state.report_snapshot);
   if (permissions.view_ai_audit_logs && els.schedulesList) loadSchedules();
   if (permissions.view_ai_audit_logs && els.overviewList) loadOverview();

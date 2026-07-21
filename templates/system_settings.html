@@ -4,35 +4,6 @@
 
 {% block settings_extra_style %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/permissions-admin.css') }}">
-<style>
-  .sys-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.75); backdrop-filter: blur(4px); z-index: 1100; justify-content: center; align-items: center; }
-  .sys-modal.show { display: flex; }
-  .sys-modal-content { background: var(--card); border: 1px solid var(--border-light); border-radius: 20px; padding: 28px; width: min(480px, 92vw); color: var(--text); }
-  .sys-modal-content h3 { margin: 0 0 8px; font-size: 20px; font-weight: 800; }
-  .sys-modal-content p { margin: 0 0 20px; color: var(--text-muted); font-size: 14px; }
-  .sys-form-group { margin-bottom: 16px; }
-  .sys-form-group label { display: block; margin-bottom: 8px; font-size: 13px; font-weight: 700; color: var(--text-muted); }
-  .sys-form-group input, .sys-form-group select, .sys-form-group textarea { width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--border-light); background: var(--card-alt); color: var(--text); }
-  .sys-form-group textarea { min-height: 130px; resize: vertical; line-height: 1.7; }
-  .sys-modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
-  .rbac-link-card { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 18px; border-radius: 14px; border: 1px solid rgba(59,130,246,.25); background: rgba(59,130,246,.08); margin-bottom: 16px; }
-  .rbac-link-card a { color: var(--primary); font-weight: 700; text-decoration: none; }
-  .action-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
-  .btn-action.btn-password { background: rgba(245,158,11,.12); color: #f59e0b; border-color: rgba(245,158,11,.25); }
-  .btn-action.btn-status-off { background: rgba(239,68,68,.1); color: #ef4444; }
-  .btn-action.btn-status-on { background: rgba(16,185,129,.1); color: #10b981; }
-  .employees-table { width: 100%; border-collapse: collapse; }
-  .employees-table th { background: rgba(15,23,42,.6); padding: 14px 16px; text-align: right; border-bottom: 2px solid var(--border); }
-  .employees-table td { padding: 14px 16px; border-bottom: 1px solid var(--border); }
-  .employees-table tr:hover td { background: rgba(59,130,246,.05); }
-  .weak-message-grid { display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 12px; margin-top: 16px; }
-  .weak-message-help { margin-top: 8px; color: var(--text-muted); font-size: 12px; line-height: 1.7; }
-  .weak-message-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; margin-top: 16px; }
-  .weak-message-meta { color: var(--text-muted); font-size: 12px; margin-top: 10px; }
-  @media (max-width:768px) { .employees-table { font-size: 12px; } .action-buttons { flex-direction: column; } }
-  @media (max-width:900px) { .weak-message-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  @media (max-width:520px) { .weak-message-grid { grid-template-columns: 1fr; } }
-</style>
 {% endblock %}
 
 {% block settings_content %}
@@ -45,11 +16,13 @@
   <div class="rbac-link-card">
     <div>
       <strong>الصلاحيات المتقدمة (RBAC)</strong>
-      <p style="margin:4px 0 0;font-size:13px;color:var(--text-muted);">إدارة الأدوار والصلاحيات التفصيلية من مركز الصلاحيات.</p>
+      <p>إدارة الأدوار والصلاحيات التفصيلية من مركز الصلاحيات.</p>
     </div>
     <a href="/admin/permissions/roles">فتح مركز الصلاحيات <i class="fas fa-arrow-left"></i></a>
   </div>
+</div>
 
+<div class="settings-section-card">
   <div class="settings-section-header">
     <h2><i class="fas fa-bell"></i> تفضيلات التنبيهات</h2>
     <p>تشغيل نغمات صوتية عند إجراء العمليات الأساسية (تسديد / إلغاء).</p>
@@ -89,7 +62,7 @@
   </div>
 </div>
 
-<div class="settings-section-card">
+<div class="settings-section-card settings-span-full">
   <div class="settings-section-header">
     <h2><i class="fas fa-user-clock"></i> رسالة الموظفين الضعيفين</h2>
     <p>إرسال رسالة داخل نظام المراسلة تلقائياً كل 3 أيام للموظفين الذين يظهرون كضعفاء في مراقب الأداء.</p>
@@ -150,7 +123,7 @@
   </div>
 </div>
 
-<div class="settings-section-card">
+<div class="settings-section-card settings-span-full">
   <div class="settings-section-header">
     <h2><i class="fas fa-chart-line"></i> عتبات مركز المراقبة</h2>
     <p>تتحكم في تنبيهات المراقب المالي والتشغيلي وتحديث الصفحة التلقائي.</p>
@@ -196,8 +169,8 @@
   </div>
 </div>
 
-<div class="settings-section-card" style="padding:0;overflow:hidden;">
-  <div style="padding:24px 24px 12px;border-bottom:1px solid var(--border);">
+<div class="settings-section-card settings-span-full" style="padding:0;overflow:hidden;">
+  <div style="padding:20px 20px 12px;border-bottom:1px solid var(--border);">
     <div class="settings-section-header" style="margin:0;">
       <h2><i class="fas fa-users"></i> فريق العمل</h2>
       <p>تغيير الأدوار والصلاحيات، كلمة المرور، وحالة الحساب.</p>
@@ -205,7 +178,7 @@
   </div>
 
   {% if employees %}
-  <div style="overflow-x:auto;">
+  <div class="settings-table-wrap is-card-mobile">
     <table class="employees-table">
       <thead>
         <tr>
@@ -219,7 +192,7 @@
       <tbody>
         {% for employee in employees %}
         <tr>
-          <td>
+          <td data-label="الموظف">
             <div style="display:flex;align-items:center;gap:12px;">
               <div style="width:36px;height:36px;border-radius:10px;background:var(--card-alt);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--primary);font-weight:800;">
                 {{ employee.name[:1] }}
@@ -230,7 +203,7 @@
               </div>
             </div>
           </td>
-          <td>
+          <td data-label="الفرع">
             <select onchange="updateEmployeeBranch({{ employee.id }}, this.value)" style="padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--card-alt);color:var(--text);">
               <option value="">—</option>
               {% for branch in branches %}
@@ -238,7 +211,7 @@
               {% endfor %}
             </select>
           </td>
-          <td>
+          <td data-label="الدور">
             {% if employee.roles %}
               {% for role in employee.roles %}
               <span class="role-badge {% if role.name == 'admin' %}role-admin{% elif role.name == 'cashier' %}role-cashier{% else %}role-custom{% endif %}" style="margin:2px;">
@@ -251,13 +224,13 @@
               </span>
             {% endif %}
           </td>
-          <td>
+          <td data-label="الحالة">
             <span class="status-badge status-{% if employee.is_active %}active{% else %}inactive{% endif %}">
               <i class="fas {{ 'fa-check-circle' if employee.is_active else 'fa-minus-circle' }}"></i>
               {{ 'نشط' if employee.is_active else 'معطل' }}
             </span>
           </td>
-          <td>
+          <td data-label="الإجراءات">
             <div class="action-buttons">
               <button class="btn-action" onclick="openRoleModal({{ employee.id }}, {{ (employee.roles | map(attribute='id') | list) | tojson }}, '{{ employee.name|e }}')" title="تغيير الأدوار">
                 <i class="fas fa-user-tag"></i>
@@ -314,22 +287,22 @@
 </div>
 
 <div id="passwordModal" class="sys-modal">
-  <div class="sys-modal-content">
+  <form class="sys-modal-content" id="passwordModalForm" onsubmit="event.preventDefault(); savePassword();">
     <h3>تغيير كلمة المرور</h3>
     <p id="passwordModalEmployeeName"></p>
     <div class="sys-form-group">
-      <label>كلمة المرور الجديدة</label>
-      <input type="password" id="newPassword" placeholder="أدخل كلمة المرور الجديدة">
+      <label for="newPassword">كلمة المرور الجديدة</label>
+      <input type="password" id="newPassword" name="newPassword" autocomplete="new-password" placeholder="أدخل كلمة المرور الجديدة" required minlength="4">
     </div>
     <div class="sys-form-group">
-      <label>تأكيد كلمة المرور</label>
-      <input type="password" id="confirmPassword" placeholder="أكد كلمة المرور">
+      <label for="confirmPassword">تأكيد كلمة المرور</label>
+      <input type="password" id="confirmPassword" name="confirmPassword" autocomplete="new-password" placeholder="أكد كلمة المرور" required minlength="4">
     </div>
     <div class="sys-modal-footer">
-      <button class="settings-btn settings-btn-secondary" onclick="closePasswordModal()">إلغاء</button>
-      <button class="settings-btn settings-btn-primary" onclick="savePassword()">حفظ</button>
+      <button type="button" class="settings-btn settings-btn-secondary" onclick="closePasswordModal()">إلغاء</button>
+      <button type="submit" class="settings-btn settings-btn-primary">حفظ</button>
     </div>
-  </div>
+  </form>
 </div>
 {% endblock %}
 

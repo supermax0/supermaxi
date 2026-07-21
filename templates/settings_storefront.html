@@ -34,7 +34,15 @@
   <p>{{ _('settings_card_storefront_desc') }}</p>
 </div>
 
-<div class="settings-section-card">
+<div class="settings-section-card" data-settings-tabs>
+  <div class="settings-inner-tabs" role="tablist" aria-label="أقسام إعدادات المتجر">
+    <button type="button" class="settings-inner-tab active" data-tab="general" role="tab">عام</button>
+    <button type="button" class="settings-inner-tab" data-tab="hero" role="tab">Hero والشرائح</button>
+    <button type="button" class="settings-inner-tab" data-tab="sections" role="tab">الأقسام والمساعد</button>
+    <button type="button" class="settings-inner-tab" data-tab="shipping" role="tab">الشحن والمعاينة</button>
+  </div>
+
+  <div class="settings-inner-panel active" data-tab-panel="general">
   <div class="settings-section-header">
     <h2><i class="fas fa-store"></i> إعدادات المتجر</h2>
     <p>خصص لون المتجر، لون الشحن، شكل بطاقة المنتج، وأسعار الشحن التي تظهر في Checkout.</p>
@@ -119,8 +127,10 @@
       </select>
     </div>
   </div>
+  </div>
 
-  <div class="settings-section-subcard" style="margin-top:12px;">
+  <div class="settings-inner-panel" data-tab-panel="hero">
+  <div class="settings-section-subcard">
     <div class="settings-section-header" style="margin-bottom:10px;">
       <h3 style="margin:0;"><i class="fas fa-bullhorn"></i> شرائح المساحة الإعلانية (يدوي)</h3>
       <p style="margin:6px 0 0;">أضف شرائح إعلان خاصة (صورة + نص + زر). تُعرض حسب وضع الهيرو أعلاه.</p>
@@ -136,8 +146,10 @@
     <div id="heroSlidesList" class="settings-grid" style="grid-template-columns: repeat(2, minmax(0, 1fr)); gap:12px;"></div>
     <textarea id="storefrontHeroSlidesJson" style="display:none;">{{ storefront_hero_slides|tojson }}</textarea>
   </div>
+  </div>
 
-  <div class="settings-section-subcard" style="margin-top:12px;">
+  <div class="settings-inner-panel" data-tab-panel="sections">
+  <div class="settings-section-subcard">
     <div class="settings-section-header" style="margin-bottom:10px;">
       <h3 style="margin:0;"><i class="fas fa-th-large"></i> أقسام وقوالب بطاقات المنتجات</h3>
       <p style="margin:6px 0 0;">أضف أقسام متعددة داخل المتجر، اختر قالب البطاقة والحجم، ورتّب مكان كل قسم.</p>
@@ -178,7 +190,9 @@
       <textarea id="storefrontAiGreeting" class="settings-input" rows="3">{{ storefront_ai_greeting }}</textarea>
     </div>
   </div>
+  </div>
 
+  <div class="settings-inner-panel" data-tab-panel="shipping">
   {% if _store_tslug %}
   <div class="settings-actions-bar" style="margin-top:0;margin-bottom:14px;">
     <a class="settings-btn settings-btn-secondary" href="{{ url_for('storefront.store_index', tenant_slug=_store_tslug) }}" target="_blank" rel="noopener">فتح المتجر الحالي</a>
@@ -240,6 +254,7 @@
         </div>
       </div>
     </div>
+  </div>
   </div>
 </div>
 {% endblock %}

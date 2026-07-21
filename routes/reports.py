@@ -297,10 +297,15 @@ def save_daily_audit():
     audit.updated_at = datetime.utcnow()
     db.session.commit()
 
+    employee_name = (session.get("name") or "").strip()
+    employee_suffix = f" — الموظف: {employee_name}" if employee_name else ""
     if status == "matched":
-        flash("تم حفظ التدقيق: التقرير مطابق.", "success")
+        flash(f"تم حفظ التدقيق: التقرير مطابق.{employee_suffix}", "success")
     else:
-        flash("تم حفظ التدقيق مع وجود خلل. صحح البيانات ثم أعد التدقيق حتى يصير مطابق.", "warning")
+        flash(
+            f"تم حفظ التدقيق مع وجود خلل. صحح البيانات ثم أعد التدقيق حتى يصير مطابق.{employee_suffix}",
+            "warning",
+        )
     return redirect(f"/reports/daily?date={report_date.isoformat()}")
 
 

@@ -58,12 +58,17 @@
     };
   }
 
-  function toast(msg, type) {
+  let orderSuccessTimer = null;
+
+  function toast(msg, type, options) {
+    options = options || {};
     const t = $("posToast");
     if (!t) return;
     t.textContent = msg;
     t.classList.add("show");
     setTimeout(() => t.classList.remove("show"), 3000);
+
+    if (options.silent || options.sound === false) return;
 
     if (typeof window.playNotificationSound === "function") {
       var soundType = type;
@@ -78,6 +83,33 @@
       }
       window.playNotificationSound(soundType, { soundType: soundType });
     }
+  }
+
+  function showOrderCreatedNotification(invoiceId, stockLocked) {
+    const el = $("posOrderSuccess");
+    const detail = $("posOrderSuccessDetail");
+    const parts = [];
+    if (invoiceId) parts.push("رقم الفاتورة: " + invoiceId);
+    if (stockLocked) parts.push("مقفل بانتظار المخزون");
+
+    if (detail) detail.textContent = parts.join(" — ");
+
+    if (typeof window.playNotificationSound === "function") {
+      window.playNotificationSound("buzz", { soundType: "buzz" });
+    }
+
+    if (!el) {
+      toast(stockLocked ? "تم إنشاء الطلب مقفلاً بانتظار المخزون" : "تم إنشاء الطلب", "success", { silent: true });
+      return;
+    }
+
+    el.hidden = false;
+    el.classList.add("show");
+    clearTimeout(orderSuccessTimer);
+    orderSuccessTimer = setTimeout(function () {
+      el.classList.remove("show");
+      setTimeout(function () { el.hidden = true; }, 320);
+    }, 4500);
   }
 
   function fmt(n) {
@@ -949,7 +981,11 @@
           updateStats();
           return;
         }
-        toast(d.stock_locked ? "تم إنشاء الطلب مقفلاً بانتظار المخزون" : (editingOrderId ? "تم حفظ التعديل" : "تم تنفيذ البيع وإنشاء الفاتورة"));
+        if (editingOrderId) {
+          toast("تم حفظ التعديل", "success");
+        } else {
+          showOrderCreatedNotification(d.invoice_id, d.stock_locked);
+        }
         if (!d.stock_locked) items.forEach((i) => syncLocalStock(i.product_id, i.qty));
         closeOrderNotesModal();
         printServerInvoice(d.invoice_id);

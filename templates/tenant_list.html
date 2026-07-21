@@ -298,6 +298,45 @@
         border-color: var(--primary);
     }
 
+    .feature-toggle-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .feature-switch {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 10px 12px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        color: #fff;
+        font-size: 12px;
+        font-weight: 800;
+        cursor: pointer;
+    }
+
+    .feature-switch input {
+        width: 18px;
+        height: 18px;
+        accent-color: var(--primary);
+        flex: 0 0 auto;
+    }
+
+    .feature-switch span {
+        min-width: 0;
+        line-height: 1.4;
+    }
+
+    @media (max-width: 640px) {
+        .feature-toggle-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
     @keyframes fadeIn {
         from {
             opacity: 0;
@@ -474,6 +513,19 @@
                 </button>
             </div>
 
+            <div class="action-group"
+                style="background: rgba(20, 184, 166, 0.05); border-color: rgba(20, 184, 166, 0.22);">
+                <div class="action-title" style="color: #5eead4;"><i class="fas fa-toggle-on"></i> التحكم بظهور الصفحات والميزات</div>
+                <p style="margin:0 0 14px;color:var(--text-muted);font-size:12px;font-weight:700;line-height:1.7;">
+                    ألغِ التفعيل لإخفاء الصفحة أو الميزة من القائمة داخل نظام هذه الشركة فقط.
+                </p>
+                <div id="m-feature-grid" class="feature-toggle-grid"></div>
+                <button class="btn-update" id="m-save-features"
+                    style="background: rgba(20, 184, 166, 0.18); border-color: rgba(20, 184, 166, 0.35); color: #fff; margin-top: 14px;">
+                    <i class="fas fa-save"></i> حفظ ظهور الميزات
+                </button>
+            </div>
+
             <div class="action-group">
                 <div class="action-title"><i class="fas fa-tools"></i> أدوات الإدارة</div>
                 <div style="display: flex; flex-direction: column; gap: 12px;">
@@ -596,6 +648,41 @@
         const regLoading = document.getElementById('reg-modal-loading');
         const regContent = document.getElementById('reg-modal-content');
         const regError = document.getElementById('reg-modal-error');
+        const featureGrid = document.getElementById('m-feature-grid');
+        let currentFeatureLabels = [];
+        let currentFeatureOverrides = {};
+        const beautyAllowedFeatures = new Set([
+            'dashboard', 'executive_dashboard', 'beauty', 'beauty_accounts', 'inventory',
+            'inventory_audit', 'maintenance', 'customers', 'expenses', 'cash', 'accounts',
+            'employees', 'reports', 'settings', 'messages', 'activity'
+        ]);
+
+        function defaultFeatureState(key, businessType) {
+            return businessType === 'beauty_center' ? beautyAllowedFeatures.has(key) : true;
+        }
+
+        function renderFeatureToggles(labels, overrides, businessType) {
+            currentFeatureLabels = Array.isArray(labels) ? labels : [];
+            currentFeatureOverrides = overrides || {};
+            featureGrid.innerHTML = '';
+            if (!currentFeatureLabels.length) {
+                featureGrid.innerHTML = '<div style="color:var(--text-muted);font-weight:700;">لا توجد ميزات قابلة للتخصيص.</div>';
+                return;
+            }
+            currentFeatureLabels.forEach(item => {
+                const key = item.key;
+                const checked = Object.prototype.hasOwnProperty.call(currentFeatureOverrides, key)
+                    ? Boolean(currentFeatureOverrides[key])
+                    : defaultFeatureState(key, businessType);
+                const label = document.createElement('label');
+                label.className = 'feature-switch';
+                label.innerHTML = `
+                    <span>${item.label || key}</span>
+                    <input type="checkbox" data-feature-key="${key}" ${checked ? 'checked' : ''}>
+                `;
+                featureGrid.appendChild(label);
+            });
+        }
         const businessLabels = { general: 'شركة عامة', beauty_center: 'مركز تجميل' };
 
         function fillRegistrationModal(reg, fallbackName) {
@@ -677,6 +764,7 @@
                             // Plan info
                             document.getElementById('m-plan-select').value = data.plan_key || 'basic';
                             document.getElementById('m-end-input').value = data.subscription_end_date === '—' ? '' : data.subscription_end_date;
+                            renderFeatureToggles(data.feature_labels, data.feature_overrides, data.business_type || 'general');
 
                             // Status
                             const isExpired = data.subscription_end_date !== '—' && new Date(data.subscription_end_date) < new Date().setHours(0, 0, 0, 0);
@@ -780,6 +868,10 @@
         }
 
         // Save Business Type
+        document.getElementById('m-business-type-select').addEventListener('change', function () {
+            renderFeatureToggles(currentFeatureLabels, currentFeatureOverrides, this.value || 'general');
+        });
+
         document.getElementById('m-save-business-type').addEventListener('click', function () {
             const slug = document.getElementById('m-slug').textContent;
             const businessType = document.getElementById('m-business-type-select').value;
@@ -910,6 +1002,43 @@
                     alert('فشل الاتصال بالسيرفر');
                     this.disabled = false;
                     this.innerHTML = '<i class="fas fa-trash-alt"></i> حذف الشركة نهائياً من النظام';
+                });
+        });
+
+        document.getElementById('m-save-features').addEventListener('click', function () {
+            const slug = document.getElementById('m-slug').textContent;
+            if (!slug || slug === '—') return;
+
+            const features = {};
+            featureGrid.querySelectorAll('input[data-feature-key]').forEach(input => {
+                features[input.dataset.featureKey] = input.checked;
+            });
+
+            if (!confirm('هل تريد حفظ إعدادات ظهور الصفحات والميزات لهذه الشركة؟')) return;
+
+            this.disabled = true;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
+
+            fetch(`/superadmin/tenants/update-features/${slug}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ features })
+            })
+                .then(r => r.json())
+                .then(data => {
+                    this.disabled = false;
+                    this.innerHTML = '<i class="fas fa-save"></i> حفظ ظهور الميزات';
+                    if (data.ok) {
+                        currentFeatureOverrides = data.feature_overrides || features;
+                        alert(data.message || 'تم حفظ إعدادات ظهور الميزات بنجاح.');
+                    } else {
+                        alert('حدث خطأ: ' + (data.error || 'غير معروف'));
+                    }
+                })
+                .catch(() => {
+                    this.disabled = false;
+                    this.innerHTML = '<i class="fas fa-save"></i> حفظ ظهور الميزات';
+                    alert('فشل الاتصال بالسيرفر');
                 });
         });
 

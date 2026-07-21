@@ -1,0 +1,389 @@
+/* Superadmin platform settings — extracted from template */
+.superadmin-settings-page .settings-container {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 32px;
+  align-items: start;
+}
+
+.superadmin-settings-page .settings-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: sticky;
+  top: 40px;
+  padding: 24px;
+}
+
+.superadmin-settings-page .settings-tab {
+  padding: 16px 20px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  text-align: right;
+  border-radius: 16px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  outline: none;
+  white-space: nowrap;
+}
+
+.superadmin-settings-page .settings-tab i {
+  font-size: 18px;
+  width: 24px;
+  text-align: center;
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+.superadmin-settings-page .settings-tab:hover {
+  background: var(--surface-hover);
+  color: var(--text-main);
+  transform: translateX(-4px);
+}
+
+.superadmin-settings-page .settings-tab.active {
+  background: var(--primary-soft);
+  color: var(--primary);
+  box-shadow: none;
+  border: 1px solid var(--primary-soft);
+}
+
+.superadmin-settings-page .settings-tab.active i {
+  opacity: 1;
+}
+
+.superadmin-settings-page .settings-content-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  min-width: 0;
+}
+
+.superadmin-settings-page .settings-section {
+  display: none;
+  animation: saSettingsFadeIn 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.superadmin-settings-page .settings-section.active {
+  display: block;
+}
+
+.superadmin-settings-page .section-card {
+  padding: 32px;
+}
+
+.superadmin-settings-page .section-header {
+  margin-bottom: 28px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 20px;
+}
+
+.superadmin-settings-page .section-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.superadmin-settings-page .section-desc {
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.6;
+  margin-top: 8px;
+}
+
+.superadmin-settings-page .form-group {
+  margin-bottom: 24px;
+}
+
+.superadmin-settings-page .form-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: var(--text-muted);
+  padding-right: 4px;
+}
+
+.superadmin-settings-page .form-control {
+  width: 100%;
+  padding: 14px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  color: var(--text-main);
+  font-size: 15px;
+  font-weight: 600;
+  transition: var(--transition);
+  outline: none;
+}
+
+.superadmin-settings-page .form-control:focus {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+}
+
+.superadmin-settings-page .form-text {
+  display: block;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-dim);
+  font-weight: 500;
+}
+
+.superadmin-settings-page .toggle-container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 16px 20px;
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.superadmin-settings-page .toggle-container:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.superadmin-settings-page .toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.superadmin-settings-page .toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.superadmin-settings-page .slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background-color: rgba(255, 255, 255, 0.1);
+  transition: 0.4s;
+  border-radius: 34px;
+}
+
+.superadmin-settings-page .slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.4s;
+  border-radius: 50%;
+}
+
+.superadmin-settings-page input:checked + .slider {
+  background-color: var(--success);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+}
+
+.superadmin-settings-page input:checked + .slider:before {
+  transform: translateX(20px);
+}
+
+.superadmin-settings-page .btn-save {
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 16px 40px;
+  border-radius: 16px;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: var(--transition);
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3);
+}
+
+.superadmin-settings-page .btn-save:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 15px 30px rgba(99, 102, 241, 0.4);
+  filter: brightness(1.1);
+}
+
+.superadmin-settings-page .sa-form-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.superadmin-settings-page .logo-upload-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 20px;
+  padding: 20px;
+  border: 1px dashed var(--border-color);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.superadmin-settings-page .logo-preview-wrap {
+  width: 88px;
+  height: 88px;
+  border-radius: 18px;
+  border: 1px solid var(--border-color);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.superadmin-settings-page .logo-preview-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 8px;
+}
+
+.superadmin-settings-page .logo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.superadmin-settings-page .btn-logo {
+  border: 1px solid var(--border-color);
+  background: var(--surface);
+  color: var(--text-main);
+  padding: 12px 18px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.superadmin-settings-page .btn-logo:hover {
+  background: var(--surface-hover);
+}
+
+.superadmin-settings-page .btn-logo-danger {
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #f87171;
+}
+
+.superadmin-settings-page .sa-save-row {
+  margin-top: 40px;
+  display: flex;
+  justify-content: flex-end;
+  padding-bottom: 80px;
+}
+
+/* Desktop: hub cards, hide sidebar */
+.superadmin-settings-page .superadmin-settings-hub {
+  display: block;
+  margin-bottom: 28px;
+}
+
+.superadmin-settings-page .settings-nav.glass {
+  display: none;
+}
+
+@keyframes saSettingsFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 900px) {
+  .superadmin-settings-page .superadmin-settings-hub {
+    display: none;
+  }
+
+  .superadmin-settings-page .settings-container {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .superadmin-settings-page .settings-nav.glass {
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    position: static;
+    top: auto;
+    padding: 12px;
+    gap: 8px;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .superadmin-settings-page .settings-tab {
+    flex: 0 0 auto;
+    width: auto;
+    padding: 12px 16px;
+    scroll-snap-align: start;
+    transform: none;
+  }
+
+  .superadmin-settings-page .settings-tab:hover {
+    transform: none;
+  }
+
+  .superadmin-settings-page .section-card {
+    padding: 20px;
+  }
+
+  .superadmin-settings-page .sa-form-grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .superadmin-settings-page .logo-upload-box {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .superadmin-settings-page .btn-save {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .superadmin-settings-page .sa-save-row {
+    padding-bottom: 40px;
+  }
+}
+
+@media (max-width: 480px) {
+  .superadmin-settings-page .sa-tab-label-long {
+    display: none;
+  }
+
+  .superadmin-settings-page .sa-tab-label-short {
+    display: inline;
+  }
+}
+
+.superadmin-settings-page .sa-tab-label-short {
+  display: none;
+}

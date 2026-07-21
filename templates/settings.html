@@ -66,42 +66,42 @@
       <p>{{ _('settings_card_storefront_desc') }}</p>
     </a>
   </div>
-</section>
 
-<div class="settings-section-card settings-status-card">
-  <div class="settings-section-header">
-    <h2><i class="fas fa-file-invoice"></i> {{ _('settings_current_invoice_title') }}</h2>
-    <p>{{ _('settings_invoice_status_desc') }}</p>
-  </div>
-  <div class="settings-status-grid">
-    <div class="settings-status-item">
-      <label>{{ _('settings_label_company_name') }}</label>
-      <span>{{ invoice_settings.company_name or '—' }}</span>
+  <div class="settings-section-card settings-status-card" style="margin-top:14px;">
+    <div class="settings-section-header">
+      <h2><i class="fas fa-file-invoice"></i> {{ _('settings_current_invoice_title') }}</h2>
+      <p>{{ _('settings_invoice_status_desc') }}</p>
     </div>
-    <div class="settings-status-item">
-      <label>{{ _('settings_label_company_phone') }}</label>
-      <span>{{ invoice_settings.company_phone or '—' }}</span>
+    <div class="settings-status-grid">
+      <div class="settings-status-item">
+        <label>{{ _('settings_label_company_name') }}</label>
+        <span>{{ invoice_settings.company_name or '—' }}</span>
+      </div>
+      <div class="settings-status-item">
+        <label>{{ _('settings_label_company_phone') }}</label>
+        <span>{{ invoice_settings.company_phone or '—' }}</span>
+      </div>
+      <div class="settings-status-item">
+        <label>{{ _('settings_label_company_address') }}</label>
+        <span>{{ invoice_settings.company_address[:60] }}{% if invoice_settings.company_address|length > 60 %}…{% endif %}</span>
+      </div>
     </div>
-    <div class="settings-status-item">
-      <label>{{ _('settings_label_company_address') }}</label>
-      <span>{{ invoice_settings.company_address[:60] }}{% if invoice_settings.company_address|length > 60 %}…{% endif %}</span>
+    <div class="settings-quick-actions" style="margin-top:16px;">
+      <a href="/settings/invoice" class="settings-quick-action">
+        <i class="fas fa-edit"></i>
+        <span>{{ _('settings_edit_invoice') }}</span>
+      </a>
+      <a href="/orders/invoice/{{ first_order.id if first_order else 1 }}" class="settings-quick-action" target="_blank" rel="noopener">
+        <i class="fas fa-eye"></i>
+        <span>{{ _('settings_preview_invoice') }}</span>
+      </a>
+      <a href="/orders" class="settings-quick-action">
+        <i class="fas fa-list"></i>
+        <span>{{ _('settings_view_orders') }}</span>
+      </a>
     </div>
   </div>
-  <div class="settings-quick-actions" style="margin-top:16px;">
-    <a href="/settings/invoice" class="settings-quick-action">
-      <i class="fas fa-edit"></i>
-      <span>{{ _('settings_edit_invoice') }}</span>
-    </a>
-    <a href="/orders/invoice/{{ first_order.id if first_order else 1 }}" class="settings-quick-action" target="_blank" rel="noopener">
-      <i class="fas fa-eye"></i>
-      <span>{{ _('settings_preview_invoice') }}</span>
-    </a>
-    <a href="/orders" class="settings-quick-action">
-      <i class="fas fa-list"></i>
-      <span>{{ _('settings_view_orders') }}</span>
-    </a>
-  </div>
-</div>
+</section>
 
 <section class="settings-hub-section" aria-labelledby="settingsHubApps">
   <h2 id="settingsHubApps" class="settings-hub-section-label">{{ _('settings_app_downloads_title') }}</h2>
@@ -155,19 +155,6 @@
           <i class="fas fa-external-link-alt"></i> {{ _('settings_delivery_agent_open_portal') }}
         </a>
         {% endif %}
-      </div>
-    </div>
-    <div class="settings-hub-card is-download is-social-app">
-      <div class="settings-hub-card-head">
-        <div class="settings-hub-card-icon"><i class="fas fa-play-circle"></i></div>
-        <span class="settings-social-badge">{{ _('settings_social_app_new_badge') }}</span>
-      </div>
-      <h3>{{ _('settings_social_app_title') }}</h3>
-      <p>{{ _('settings_social_app_desc') }}</p>
-      <div class="settings-hub-card-actions">
-        <a href="{{ app_downloads.social }}" class="settings-btn settings-btn-primary" download="finora-social-v{{ social_app_version }}.apk">
-          <i class="fas fa-download"></i> {{ _('settings_social_app_download_new') }}
-        </a>
       </div>
     </div>
   </div>

@@ -7,7 +7,7 @@
 <div class="loading-overlay" id="loadingOverlay"><div class="loading-spinner"></div></div>
 
 <style>
-  .exp-page { max-width: 1280px; margin: 0 auto; padding: 12px 16px 80px; box-sizing: border-box; }
+  .exp-page { width: 100%; max-width: none; margin: 0; padding: 0 0 80px; box-sizing: border-box; }
   .exp-page *, .exp-page *::before, .exp-page *::after { box-sizing: border-box; }
 
   .exp-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
@@ -26,7 +26,7 @@
   .exp-sum-card.today .val { color: #2563eb; }
   .exp-sum-card .sub { font-size: 9px; color: var(--text-muted); }
 
-  .exp-layout { display: grid; grid-template-columns: 1fr 340px; gap: 14px; align-items: start; }
+  .exp-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 380px); gap: 14px; align-items: start; }
   .exp-panel { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px; }
   .exp-panel-title { margin: 0 0 10px; font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 6px; }
 

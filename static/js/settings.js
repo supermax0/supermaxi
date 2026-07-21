@@ -6,11 +6,33 @@
       var nav = wrap.querySelector(".settings-subnav");
       if (!nav) return;
       function updateHint() {
-        var atStart = nav.scrollLeft <= 2;
-        wrap.style.setProperty("--subnav-fade-opacity", atStart ? "0" : "1");
+        var maxScroll = nav.scrollWidth - nav.clientWidth;
+        var pos = Math.abs(nav.scrollLeft);
+        var atStart = pos <= 2;
+        var atEnd = maxScroll <= 2 || pos >= maxScroll - 2;
+        wrap.style.setProperty("--subnav-fade-start", atStart ? "0" : "1");
+        wrap.style.setProperty("--subnav-fade-end", atEnd ? "0" : "1");
       }
       nav.addEventListener("scroll", updateHint, { passive: true });
+      window.addEventListener("resize", updateHint, { passive: true });
       updateHint();
+    });
+  }
+
+  function initInnerTabs() {
+    document.querySelectorAll("[data-settings-tabs]").forEach(function (root) {
+      var tabs = root.querySelectorAll(".settings-inner-tab");
+      var panels = root.querySelectorAll(".settings-inner-panel");
+      tabs.forEach(function (tab) {
+        tab.addEventListener("click", function () {
+          var target = tab.getAttribute("data-tab");
+          tabs.forEach(function (t) { t.classList.remove("active"); });
+          panels.forEach(function (p) {
+            p.classList.toggle("active", p.getAttribute("data-tab-panel") === target);
+          });
+          tab.classList.add("active");
+        });
+      });
     });
   }
 
@@ -95,10 +117,23 @@
     });
   }
 
+  function initMobileSubnav() {
+    var select = document.getElementById("settingsSubnavMobile");
+    if (!select) return;
+    select.addEventListener("change", function () {
+      var url = select.value;
+      if (url && url !== window.location.pathname) {
+        window.location.href = url;
+      }
+    });
+  }
+
   function init() {
     initSubnavScrollHint();
     initStickyBar();
     initModals();
+    initInnerTabs();
+    initMobileSubnav();
   }
 
   if (document.readyState === "loading") {

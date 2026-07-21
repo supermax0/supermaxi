@@ -19,7 +19,20 @@ def _branch_api_guard():
 
 @branch_api_bp.route("/list", methods=["GET"])
 def list_branches():
-    return jsonify({"ok": True, "branches": branches_for_select(include_all=can_switch_branch())})
+    from utils.shipping_branch_schedule import (
+        get_shipping_branch_schedule_settings,
+        resolve_shipping_branch_for_now,
+    )
+
+    schedule = get_shipping_branch_schedule_settings()
+    return jsonify({
+        "ok": True,
+        "branches": branches_for_select(include_all=can_switch_branch()),
+        "scheduled_branch_id": resolve_shipping_branch_for_now(),
+        "branch_schedule_enabled": bool(schedule.get("enabled")),
+        "day_start": schedule.get("day_start"),
+        "day_end": schedule.get("day_end"),
+    })
 
 
 @branch_api_bp.route("/switch", methods=["POST"])

@@ -1,5 +1,6 @@
 from extensions import db
 from datetime import datetime, timedelta
+import json
 
 
 class Tenant(db.Model):
@@ -17,6 +18,7 @@ class Tenant(db.Model):
     contact_email = db.Column(db.String(150), nullable=True)
     contact_phone = db.Column(db.String(50), nullable=True)
     business_type = db.Column(db.String(50), nullable=False, default="general")
+    feature_overrides_json = db.Column(db.Text, nullable=True)
 
     # خطة الاشتراك
     plan_key = db.Column(db.String(50), nullable=False, default="basic")  # basic / pro / enterprise
@@ -70,6 +72,20 @@ class Tenant(db.Model):
             base = datetime.utcnow()
         self.subscription_start = datetime.utcnow()
         self.subscription_end = base + timedelta(days=30 * months)
+
+    def get_feature_overrides(self) -> dict:
+        try:
+            data = json.loads(self.feature_overrides_json or "{}")
+        except Exception:
+            return {}
+        if not isinstance(data, dict):
+            return {}
+        return {str(key): bool(value) for key, value in data.items()}
+
+    def set_feature_overrides(self, overrides: dict):
+        from utils.tenant_feature_flags import feature_overrides_json
+
+        self.feature_overrides_json = feature_overrides_json(overrides)
 
     def __repr__(self):
         return f"<Tenant {self.name} ({self.plan_key})>"

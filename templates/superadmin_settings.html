@@ -6,305 +6,12 @@
 
 {% block extra_style %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}">
-<style>
-    .settings-container {
-        display: grid;
-        grid-template-columns: 320px 1fr;
-        gap: 40px;
-        align-items: start;
-    }
-
-    .settings-nav {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        position: sticky;
-        top: 40px;
-        padding: 24px;
-    }
-
-    .settings-tab {
-        padding: 16px 20px;
-        background: transparent;
-        border: 1px solid transparent;
-        color: var(--text-muted);
-        text-align: right;
-        border-radius: 16px;
-        font-weight: 700;
-        font-size: 14px;
-        cursor: pointer;
-        transition: var(--transition);
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        width: 100%;
-        outline: none;
-    }
-
-    .settings-tab i {
-        font-size: 18px;
-        width: 24px;
-        text-align: center;
-        opacity: 0.7;
-    }
-
-    .settings-tab:hover {
-        background: var(--surface-hover);
-        color: var(--text-main);
-        transform: translateX(-4px);
-    }
-
-    .settings-tab.active {
-        background: var(--primary-soft);
-        color: var(--primary);
-        box-shadow: none;
-        border: 1px solid var(--primary-soft);
-    }
-
-    .settings-tab.active i {
-        opacity: 1;
-    }
-
-    .settings-content-wrapper {
-        display: flex;
-        flex-direction: column;
-        gap: 32px;
-    }
-
-    .settings-section {
-        display: none;
-        animation: fadeIn 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
-    }
-
-    .settings-section.active {
-        display: block;
-    }
-
-    .section-card {
-        padding: 40px;
-    }
-
-    .section-header {
-        margin-bottom: 32px;
-        border-bottom: 1px solid var(--border-color);
-        padding-bottom: 24px;
-    }
-
-    .section-title {
-        font-size: 22px;
-        font-weight: 800;
-        color: var(--text-main);
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .section-desc {
-        color: var(--text-muted);
-        font-size: 14px;
-        line-height: 1.6;
-    }
-
-    .form-group {
-        margin-bottom: 28px;
-    }
-
-    .form-group label {
-        display: block;
-        font-size: 14px;
-        font-weight: 700;
-        margin-bottom: 10px;
-        color: var(--text-muted);
-        padding-right: 4px;
-    }
-
-    .form-control {
-        width: 100%;
-        padding: 14px 20px;
-        background: var(--surface);
-        border: 1px solid var(--border-color);
-        border-radius: 14px;
-        color: var(--text-main);
-        font-size: 15px;
-        font-weight: 600;
-        transition: var(--transition);
-        outline: none;
-    }
-
-    .form-control:focus {
-        background: rgba(255, 255, 255, 0.06);
-        border-color: var(--primary);
-        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
-    }
-
-    .form-text {
-        display: block;
-        margin-top: 8px;
-        font-size: 12px;
-        color: var(--text-dim);
-        font-weight: 500;
-    }
-
-    /* Checkbox / Toggle Styling */
-    .toggle-container {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        background: rgba(255, 255, 255, 0.02);
-        padding: 16px 20px;
-        border-radius: 16px;
-        border: 1px solid var(--border-color);
-        cursor: pointer;
-        transition: var(--transition);
-    }
-
-    .toggle-container:hover {
-        background: rgba(255, 255, 255, 0.04);
-        border-color: rgba(255, 255, 255, 0.1);
-    }
-
-    .toggle-switch {
-        position: relative;
-        display: inline-block;
-        width: 44px;
-        height: 24px;
-    }
-
-    .toggle-switch input {
-        opacity: 0;
-        width: 0;
-        height: 0;
-    }
-
-    .slider {
-        position: absolute;
-        cursor: pointer;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: rgba(255, 255, 255, 0.1);
-        transition: .4s;
-        border-radius: 34px;
-    }
-
-    .slider:before {
-        position: absolute;
-        content: "";
-        height: 18px;
-        width: 18px;
-        left: 3px;
-        bottom: 3px;
-        background-color: white;
-        transition: .4s;
-        border-radius: 50%;
-    }
-
-    input:checked+.slider {
-        background-color: var(--success);
-        box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
-    }
-
-    input:checked+.slider:before {
-        transform: translateX(20px);
-    }
-
-    .btn-save {
-        background: var(--primary);
-        color: white;
-        border: none;
-        padding: 16px 40px;
-        border-radius: 16px;
-        font-size: 15px;
-        font-weight: 800;
-        cursor: pointer;
-        transition: var(--transition);
-        display: inline-flex;
-        align-items: center;
-        gap: 12px;
-        box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3);
-    }
-
-    .btn-save:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 15px 30px rgba(99, 102, 241, 0.4);
-        filter: brightness(1.1);
-    }
-
-    @keyframes fadeIn {
-        from {
-            opacity: 0;
-            transform: translateY(10px);
-        }
-
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-
-    .logo-upload-box {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 20px;
-        padding: 20px;
-        border: 1px dashed var(--border-color);
-        border-radius: 16px;
-        background: rgba(255, 255, 255, 0.02);
-    }
-
-    .logo-preview-wrap {
-        width: 88px;
-        height: 88px;
-        border-radius: 18px;
-        border: 1px solid var(--border-color);
-        background: var(--surface);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        overflow: hidden;
-        flex-shrink: 0;
-    }
-
-    .logo-preview-wrap img {
-        width: 100%;
-        height: 100%;
-        object-fit: contain;
-        padding: 8px;
-    }
-
-    .logo-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
-    }
-
-    .btn-logo {
-        border: 1px solid var(--border-color);
-        background: var(--surface);
-        color: var(--text-main);
-        padding: 12px 18px;
-        border-radius: 12px;
-        font-size: 14px;
-        font-weight: 700;
-        cursor: pointer;
-        transition: var(--transition);
-    }
-
-    .btn-logo:hover {
-        background: var(--surface-hover);
-    }
-
-    .btn-logo-danger {
-        border-color: rgba(239, 68, 68, 0.35);
-        color: #f87171;
-    }
-</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin-settings.css') }}">
 {% endblock %}
 
 {% block content %}
-<div class="superadmin-settings-hub" style="margin-bottom:28px;">
+<div class="superadmin-settings-page">
+<div class="superadmin-settings-hub">
   <div class="settings-hub-hero">
     <h1 style="font-size:28px;margin:0 0 8px;"><i class="fas fa-cog"></i> إعدادات المنصة</h1>
     <p style="margin:0;color:var(--text-muted);">اختر القسم الذي تريد ضبطه</p>
@@ -331,15 +38,15 @@
     <div class="premium-card settings-nav glass">
         <button class="settings-tab active" data-target="general-settings">
             <i class="fas fa-sliders-h"></i>
-            الإعدادات العامة
+            <span>الإعدادات العامة</span>
         </button>
         <button class="settings-tab" data-target="payment-settings">
             <i class="fas fa-credit-card"></i>
-            بوابات الدفع (ZainCash)
+            <span><span class="sa-tab-label-long">بوابات الدفع (ZainCash)</span><span class="sa-tab-label-short">ZainCash</span></span>
         </button>
         <button type="button" class="settings-tab" data-target="notification-settings">
             <i class="fas fa-bell"></i>
-            الإشعارات (SMTP/SMS)
+            <span><span class="sa-tab-label-long">الإشعارات (SMTP/SMS)</span><span class="sa-tab-label-short">الإشعارات</span></span>
         </button>
     </div>
 
@@ -465,7 +172,7 @@
                         </label>
                     </div>
 
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="sa-form-grid-2">
                         <div class="form-group">
                             <label>خادم SMTP (Host)</label>
                             <input type="text" name="SMTP_HOST" class="form-control"
@@ -504,7 +211,7 @@
                         </label>
                     </div>
 
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="sa-form-grid-2">
                         <div class="form-group">
                             <label>يوم الإرسال</label>
                             <select name="WEEKLY_ANNOUNCEMENT_DAY" class="form-control">
@@ -538,7 +245,7 @@
                 </div>
             </div>
 
-            <div style="margin-top: 40px; display: flex; justify-content: flex-end; padding-bottom: 80px;">
+            <div class="sa-save-row">
                 <button type="submit" class="btn-save">
                     <i class="fas fa-check-circle"></i>
                     حفظ جميع الإعدادات
@@ -547,6 +254,7 @@
 
         </form>
     </div>
+</div>
 </div>
 {% endblock %}
 
@@ -569,7 +277,7 @@
 
                 document.getElementById(targetId).style.animation = 'none';
                 document.getElementById(targetId).offsetHeight;
-                document.getElementById(targetId).style.animation = null;
+                document.getElementById(targetId).style.animation = 'saSettingsFadeIn 0.4s cubic-bezier(0.2, 0.8, 0.2, 1)';
             });
         });
 

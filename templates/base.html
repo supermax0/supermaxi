@@ -1234,31 +1234,70 @@
     }
 
     /* ======================================================
-   TOAST NOTIFICATIONS
+   TOAST NOTIFICATIONS — compact, non-blocking
 ====================================================== */
     .toast-container {
       position: fixed;
-      top: 20px;
-      left: 20px;
+      top: 14px;
+      left: 14px;
       z-index: 10000;
       display: flex;
       flex-direction: column;
-      gap: 12px;
-      max-width: 400px;
+      gap: 8px;
+      width: min(320px, calc(100vw - 28px));
+      max-height: min(38vh, 280px);
+      overflow-x: hidden;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      pointer-events: none;
+      scrollbar-width: thin;
+    }
+
+    .toast-container > * {
+      pointer-events: auto;
+    }
+
+    .toast-dismiss-all {
+      align-self: flex-start;
+      border: 1px solid var(--border);
+      background: rgba(15, 23, 42, 0.88);
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1;
+      padding: 6px 10px;
+      border-radius: 999px;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      transition: color 0.15s, background 0.15s, border-color 0.15s;
+    }
+
+    .toast-dismiss-all:hover {
+      color: var(--text);
+      border-color: rgba(255, 255, 255, 0.18);
+      background: rgba(30, 41, 59, 0.95);
     }
 
     .toast {
-      background: var(--card);
+      background: rgba(17, 24, 39, 0.92);
       border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 16px 20px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+      padding: 10px 10px 10px 12px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
       display: flex;
-      align-items: center;
-      gap: 12px;
-      animation: slideInLeft 0.3s ease-out;
+      align-items: flex-start;
+      gap: 10px;
+      animation: toastIn 0.28s ease-out;
       position: relative;
       overflow: hidden;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      cursor: default;
+    }
+
+    .toast.is-clickable {
+      cursor: pointer;
     }
 
     .toast::before {
@@ -1266,7 +1305,7 @@
       position: absolute;
       right: 0;
       top: 0;
-      width: 4px;
+      width: 3px;
       height: 100%;
       background: var(--primary);
     }
@@ -1287,57 +1326,70 @@
       background: var(--primary);
     }
 
-    @keyframes slideInLeft {
+    .toast-icon {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      background: var(--primary-glow);
+      color: var(--primary);
+      font-size: 13px;
+    }
+
+    .toast.success .toast-icon {
+      background: var(--success-glow);
+      color: var(--success);
+    }
+
+    .toast.error .toast-icon {
+      background: var(--danger-glow);
+      color: var(--danger);
+    }
+
+    .toast.warning .toast-icon {
+      background: rgba(245, 158, 11, 0.16);
+      color: var(--warning);
+    }
+
+    .toast.order .toast-icon {
+      background: var(--primary-glow);
+      color: var(--primary);
+    }
+
+    @keyframes toastIn {
       from {
-        transform: translateX(-100%);
+        transform: translateX(-12px) scale(0.98);
         opacity: 0;
       }
 
       to {
-        transform: translateX(0);
+        transform: translateX(0) scale(1);
         opacity: 1;
       }
     }
 
     .toast.fade-out {
-      animation: fadeOut 0.3s ease-out forwards;
+      animation: toastOut 0.22s ease-out forwards;
     }
 
-    @keyframes fadeOut {
+    @keyframes toastOut {
       to {
         opacity: 0;
-        transform: translateX(-100%);
+        transform: translateX(-10px) scale(0.98);
       }
-    }
-
-    .toast i {
-      font-size: 20px;
-    }
-
-    .toast.success i {
-      color: var(--success);
-    }
-
-    .toast.error i {
-      color: var(--danger);
-    }
-
-    .toast.warning i {
-      color: var(--warning);
-    }
-
-    .toast.info i {
-      color: var(--primary);
-    }
-
-    .toast.order i {
-      color: var(--primary);
     }
 
     .toast-message {
       flex: 1;
+      min-width: 0;
       color: var(--text);
-      font-size: 14px;
+      font-size: 12.5px;
+      line-height: 1.45;
+      white-space: pre-line;
+      word-break: break-word;
     }
 
     .toast-close {
@@ -1345,20 +1397,43 @@
       border: none;
       color: var(--text-muted);
       cursor: pointer;
-      font-size: 18px;
+      font-size: 16px;
+      line-height: 1;
       padding: 0;
-      width: 24px;
-      height: 24px;
+      width: 22px;
+      height: 22px;
+      margin-top: -1px;
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 4px;
-      transition: all 0.2s;
+      border-radius: 6px;
+      flex-shrink: 0;
+      transition: background 0.15s, color 0.15s;
     }
 
     .toast-close:hover {
-      background: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.08);
       color: var(--text);
+    }
+
+    :root[data-theme="light"] .toast {
+      background: rgba(255, 255, 255, 0.96);
+      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.12);
+    }
+
+    :root[data-theme="light"] .toast-dismiss-all {
+      background: rgba(255, 255, 255, 0.94);
+      color: #64748b;
+      border-color: rgba(15, 23, 42, 0.1);
+    }
+
+    :root[data-theme="light"] .toast-dismiss-all:hover {
+      color: #0f172a;
+      background: #fff;
+    }
+
+    :root[data-theme="light"] .toast-close:hover {
+      background: rgba(15, 23, 42, 0.06);
     }
 
     /* ======================================================
@@ -1589,9 +1664,10 @@
       }
 
       .toast-container {
-        left: 10px;
-        right: 10px;
-        max-width: none;
+        left: 12px;
+        right: auto;
+        width: min(300px, calc(100vw - 24px));
+        max-height: min(34vh, 240px);
       }
 
       .user-box {
@@ -1852,16 +1928,28 @@
       }
 
       .toast-container {
-        left: 8px;
-        right: 8px;
-        bottom: 20px;
+        left: 10px;
+        right: 10px;
+        bottom: max(14px, env(safe-area-inset-bottom, 0px));
         top: auto;
+        width: auto;
+        max-width: none;
+        max-height: min(30vh, 200px);
       }
 
       .toast {
-        padding: 14px 16px;
-        font-size: 13px;
-        border-radius: 12px;
+        padding: 9px 10px;
+        border-radius: 11px;
+      }
+
+      .toast-message {
+        font-size: 12px;
+      }
+
+      .toast-icon {
+        width: 28px;
+        height: 28px;
+        font-size: 12px;
       }
 
       .topbar {
@@ -2080,7 +2168,7 @@ or request.path.startswith('/signup')
 or request.path.startswith('/pricing')
 or request.path.startswith('/login')
 or request.path.startswith('/superadmin') %}
-<body class="{% block body_class %}{% endblock %}{% if session.get('user_id') and not is_payment_flow %} finora-app{% endif %}{% if session.get('agent_portal') and session.get('agent_id') %} agent-portal-mode{% endif %}">
+<body class="{% block body_class %}{% endblock %}{% if session.get('user_id') and not is_payment_flow %} finora-app{% endif %}{% if session.get('agent_portal') and session.get('agent_id') %} agent-portal-mode{% endif %}"{% if session.get('user_id') %} data-user-logged-in="1"{% endif %}>
 
   <div class="app">
 
@@ -2112,7 +2200,7 @@ or request.path.startswith('/superadmin') %}
         {% if is_admin and business_allows('executive_dashboard') %}
         <a href="/executive-dashboard" class="{% if request.path.startswith('/executive-dashboard') %}active{% endif %}"><i class="fa fa-crown"></i> لوحة المدير التنفيذي</a>
         {% endif %}
-        {% if is_beauty_center %}
+        {% if is_beauty_center and business_allows('beauty') %}
         <a href="/beauty" class="{% if request.path == '/beauty/' or request.path == '/beauty' %}active{% endif %}"><i class="fa fa-spa"></i> مركز التجميل</a>
         <a href="/beauty/appointments" class="{% if request.path.startswith('/beauty/appointments') %}active{% endif %}"><i class="fa fa-calendar-check"></i> المواعيد</a>
         <a href="/beauty/services" class="{% if request.path.startswith('/beauty/services') %}active{% endif %}"><i class="fa fa-list-check"></i> الخدمات</a>
@@ -2333,10 +2421,10 @@ or request.path.startswith('/superadmin') %}
           _('accounts') }} <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
         {% endif %}
         {% endif %}
-        {% if is_admin or (current_employee and (can_see_fixed_assets or can_see_accounts)) %}
+        {% if (is_admin or (current_employee and (can_see_fixed_assets or can_see_accounts))) and business_allows('fixed_assets') %}
         <a href="/assets/dashboard" class="{% if request.path.startswith('/assets') %}active{% endif %}"><i class="fa fa-building"></i> الأصول</a>
         {% endif %}
-        {% if is_admin or (current_employee and (can_see_rotating_savings or can_see_accounts)) %}
+        {% if (is_admin or (current_employee and (can_see_rotating_savings or can_see_accounts))) and business_allows('rotating_savings') %}
         <a href="/finance/rotating-savings" class="{% if request.path.startswith('/finance/rotating-savings') %}active{% endif %}"><i class="fa fa-sync-alt"></i> الجمعيات</a>
         {% endif %}
         {% if (is_admin or (current_employee and can_see_reports)) and business_allows('reports') %}
@@ -2350,7 +2438,7 @@ or request.path.startswith('/superadmin') %}
         {% endif %}
         {% endif %}
         {% set can_use_ai_assistant = is_admin or (current_employee and current_employee.has_permission('use_ai_assistant')) %}
-        {% if can_use_ai_assistant %}
+        {% if can_use_ai_assistant and business_allows('ai_assistant') %}
         {% if plan_has("ai_assistant") %}
         <a href="/investments" class="{% if request.path.startswith('/investments') %}active{% endif %}">
           <i class="fa fa-lightbulb"></i> مستشار الاستثمار
@@ -2366,7 +2454,7 @@ or request.path.startswith('/superadmin') %}
         {% endif %}
         {% endif %}
         {% set can_use_ai_sales = is_admin or has_assigned_ai_sales_page or (current_employee and current_employee.has_permission('use_ai_sales')) %}
-        {% if can_use_ai_sales %}
+        {% if can_use_ai_sales and business_allows('ai_sales') %}
         <a href="/ai-sales/inbox" class="{% if request.path.startswith('/ai-sales') %}active{% endif %}">
           <i class="fa fa-comments"></i> موظف المبيعات AI
         </a>
@@ -2397,7 +2485,7 @@ or request.path.startswith('/superadmin') %}
           _('messaging') }} <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
         {% endif %}
         {% endif %}
-        {% if is_admin or (current_employee and can_use_ai_workspace) %}
+        {% if (is_admin or (current_employee and can_use_ai_workspace)) and business_allows('ai_workspace') %}
         {% if plan_has("ai_workspace") %}
         <a href="/workspace/" class="{% if request.path.startswith('/workspace') %}active{% endif %}"><i
             class="fa fa-layer-group"></i> مساحة LEON</a>
@@ -2406,7 +2494,7 @@ or request.path.startswith('/superadmin') %}
           LEON <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
         {% endif %}
         {% endif %}
-        {% if is_admin or (current_employee and (current_employee.has_permission('mobile_app.manage_videos') or current_employee.has_permission('mobile_app.manage_settings') or current_employee.has_permission('mobile_app.manage_design') or current_employee.has_permission('mobile_app.send_notifications') or current_employee.has_permission('mobile_app.view_analytics'))) %}
+        {% if (is_admin or (current_employee and (current_employee.has_permission('mobile_app.manage_videos') or current_employee.has_permission('mobile_app.manage_settings') or current_employee.has_permission('mobile_app.manage_design') or current_employee.has_permission('mobile_app.send_notifications') or current_employee.has_permission('mobile_app.view_analytics')))) and business_allows('mobile_app') %}
         <a href="/mobile-app/" class="{% if request.path.startswith('/mobile-app') %}active{% endif %}">
           <i class="fa fa-mobile-alt"></i> تطبيق الهاتف
         </a>
@@ -2647,7 +2735,8 @@ or request.path.startswith('/superadmin') %}
     <div class="loading-spinner"></div>
   </div>
 
-  <script src="{{ url_for('static', filename='js/notification-sound.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/notification-sound.js') }}?v=20260721-action-sounds"></script>
+  <script src="{{ url_for('static', filename='js/finora-notification-center.js') }}?v=20260721-notif-employee"></script>
 
   <script>
     // ======================================================
@@ -2765,26 +2854,82 @@ or request.path.startswith('/superadmin') %}
     });
 
     // ======================================================
-    // TOAST NOTIFICATIONS
+    // TOAST NOTIFICATIONS — compact stack (desktop + mobile)
     // ======================================================
-    function showToast(message, type = "info", duration = 3000, options) {
+    var FINORA_TOAST_MAX = 3;
+
+    function finoraEscapeToastHtml(text) {
+      return String(text == null ? "" : text)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function finoraDismissToast(toast) {
+      if (!toast || !toast.parentElement) return;
+      toast.classList.add("fade-out");
+      setTimeout(function () {
+        if (toast.parentElement) toast.remove();
+        finoraSyncToastDismissAll();
+      }, 220);
+    }
+
+    function finoraSyncToastDismissAll() {
+      var container = document.getElementById("toastContainer");
+      if (!container) return;
+      var toasts = container.querySelectorAll(".toast");
+      var btn = container.querySelector(".toast-dismiss-all");
+      if (toasts.length >= 2) {
+        if (!btn) {
+          btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "toast-dismiss-all";
+          btn.textContent = "إخفاء الكل";
+          btn.addEventListener("click", function () {
+            Array.prototype.slice.call(container.querySelectorAll(".toast")).forEach(finoraDismissToast);
+            if (btn.parentElement) btn.remove();
+          });
+          container.insertBefore(btn, container.firstChild);
+        }
+      } else if (btn) {
+        btn.remove();
+      }
+    }
+
+    function showToast(message, type, duration, options) {
+      type = type || "info";
       if (typeof duration === "object" && duration !== null) {
         options = duration;
-        duration = options.duration != null ? options.duration : 3000;
+        duration = options.duration != null ? options.duration : 3500;
       }
       options = options || {};
+      if (duration == null) {
+        duration = options.duration != null ? options.duration : (type === "error" ? 5000 : 3500);
+      }
 
-      const container = document.getElementById("toastContainer");
+      var container = document.getElementById("toastContainer");
       if (!container) return;
 
       if (!options.silent && options.sound !== false && typeof window.playNotificationSound === "function") {
-        window.playNotificationSound(type, options);
+        var soundType = options.soundType;
+        if (!soundType && typeof window.finoraInferNotificationSound === "function") {
+          soundType = window.finoraInferNotificationSound(message, type);
+        }
+        window.playNotificationSound(soundType || type, {
+          soundType: soundType || type,
+          message: message
+        });
       }
 
-      const toast = document.createElement("div");
-      toast.className = `toast ${type}`;
+      if (options.groupKey) {
+        var key = String(options.groupKey);
+        Array.prototype.slice.call(container.querySelectorAll(".toast[data-group-key]")).forEach(function (el) {
+          if (el.getAttribute("data-group-key") === key) finoraDismissToast(el);
+        });
+      }
 
-      const icons = {
+      var icons = {
         success: "fa-check-circle",
         error: "fa-exclamation-circle",
         warning: "fa-exclamation-triangle",
@@ -2792,24 +2937,46 @@ or request.path.startswith('/superadmin') %}
         order: "fa-bell"
       };
 
-      toast.innerHTML = `
-    <i class="fa ${icons[type] || icons.info}"></i>
-    <span class="toast-message">${message}</span>
-    <button class="toast-close" onclick="this.parentElement.remove()">×</button>
-  `;
+      var toast = document.createElement("div");
+      toast.className = "toast " + type;
+      if (options.groupKey) toast.setAttribute("data-group-key", String(options.groupKey));
+      if (options.href) toast.classList.add("is-clickable");
+
+      toast.innerHTML =
+        '<span class="toast-icon" aria-hidden="true"><i class="fa ' + (icons[type] || icons.info) + '"></i></span>' +
+        '<span class="toast-message">' + finoraEscapeToastHtml(message) + "</span>" +
+        '<button type="button" class="toast-close" aria-label="إغلاق">×</button>';
+
+      var closeBtn = toast.querySelector(".toast-close");
+      closeBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        finoraDismissToast(toast);
+      });
+
+      if (options.href) {
+        toast.addEventListener("click", function (e) {
+          if (e.target.closest(".toast-close")) return;
+          window.location.href = options.href;
+        });
+      }
+
+      while (container.querySelectorAll(".toast").length >= FINORA_TOAST_MAX) {
+        var oldest = container.querySelector(".toast");
+        if (!oldest) break;
+        oldest.remove();
+      }
 
       container.appendChild(toast);
+      finoraSyncToastDismissAll();
 
-      // Auto remove after duration
-      setTimeout(() => {
-        toast.classList.add("fade-out");
-        setTimeout(() => toast.remove(), 300);
-      }, duration);
+      var hideMs = Number(duration) || 3500;
+      setTimeout(function () {
+        finoraDismissToast(toast);
+      }, hideMs);
 
       return toast;
     }
 
-    // Make toast function globally available
     window.showToast = showToast;
 
     function finoraConfirmImpact(options) {
@@ -2942,14 +3109,18 @@ or request.path.startswith('/superadmin') %}
     });
 
     // ======================================================
-    // AUTO-HIDE TOASTS ON MOBILE
+    // AUTO-HIDE TOASTS ON MOBILE / TABLET
     // ======================================================
     if (window.innerWidth <= 900) {
       const style = document.createElement("style");
       style.textContent = `
     .toast-container {
-      bottom: 20px;
+      bottom: max(14px, env(safe-area-inset-bottom, 0px));
       top: auto;
+      left: 10px;
+      right: 10px;
+      width: auto;
+      max-height: min(30vh, 200px);
     }
   `;
       document.head.appendChild(style);

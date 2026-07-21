@@ -110,7 +110,7 @@
     <div class="pur-grid-4">
       <div class="pur-field">
         <label>بحث</label>
-        <input type="text" id="qSearch" placeholder="رقم الفاتورة / المورد / المنتج">
+        <input type="text" id="qSearch" placeholder="رقم الفاتورة / فاتورة المورد / المورد / المنتج">
       </div>
       <div class="pur-field">
         <label>المورد</label>
@@ -142,6 +142,7 @@
         <thead>
           <tr>
             <th>الفاتورة</th>
+            <th>رقم فاتورة المورد</th>
             <th>التاريخ</th>
             <th>المورد</th>
             <th>العناصر</th>
@@ -153,7 +154,7 @@
           </tr>
         </thead>
         <tbody id="historyBody">
-          <tr><td colspan="9" class="pur-empty">جاري التحميل...</td></tr>
+          <tr><td colspan="10" class="pur-empty">جاري التحميل...</td></tr>
         </tbody>
       </table>
     </div>
@@ -198,12 +199,13 @@
     let rows = historyData;
     if (statusFilter) rows = rows.filter(p => (p.status || "") === statusFilter);
     if (!rows.length) {
-      tbody.innerHTML = `<tr><td colspan="9" class="pur-empty">لا توجد فواتير مطابقة.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="10" class="pur-empty">لا توجد فواتير مطابقة.</td></tr>`;
       return;
     }
     tbody.innerHTML = rows.map(p => `
       <tr>
         <td><strong>${p.invoice_no || ("LEG-" + p.id)}</strong></td>
+        <td>${p.supplier_invoice_no || "-"}</td>
         <td>${p.date || "-"}</td>
         <td>${p.supplier || "-"}</td>
         <td>${p.item_count || 0}</td>

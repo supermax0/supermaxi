@@ -1,6 +1,22 @@
 {% extends "base.html" %}
 {% block body_class %}page-dashboard{% endblock %}
 {% block page_title %}{{ _('dashboard') }}{% endblock %}
+
+{% block topbar_actions %}
+{% if show_data is not defined or show_data != False %}
+<button type="button" class="dq-btn dash-notif-btn" id="dashNotifBtn" title="الإشعارات" aria-label="الإشعارات" aria-expanded="false">
+  <i class="fas fa-bell"></i>
+  <span class="dash-notif-badge" id="dashNotifBadge" hidden>0</span>
+</button>
+<button type="button" class="dq-btn dash-alerts-top-btn" id="dashAlertsBtn" title="التنبيهات" aria-label="التنبيهات">
+  <i class="fas fa-triangle-exclamation"></i>
+  <span class="dash-notif-badge dash-alerts-badge" id="dashAlertsBadge" hidden>0</span>
+  <span class="dq-label">التنبيهات</span>
+</button>
+{% endif %}
+{{ super() }}
+{% endblock %}
+
 {% block content %}
 {% if show_data is defined and show_data == False %}
 <div class="dashboard-welcome">
@@ -697,6 +713,314 @@
   }
 
   /* =======================
+   TOPBAR — Alerts & Notifications
+======================= */
+  .dash-notif-btn,
+  .dash-alerts-top-btn {
+    position: relative;
+  }
+
+  .dash-notif-btn {
+    background: rgba(59, 130, 246, 0.12) !important;
+    border-color: rgba(59, 130, 246, 0.25) !important;
+    color: var(--primary) !important;
+  }
+
+  .dash-alerts-top-btn {
+    display: none;
+    background: rgba(245, 158, 11, 0.12) !important;
+    border-color: rgba(245, 158, 11, 0.28) !important;
+    color: #d97706 !important;
+  }
+
+  @media (min-width: 769px) {
+    .dash-alerts-top-btn {
+      display: inline-flex;
+    }
+  }
+
+  .dash-notif-badge {
+    position: absolute;
+    top: -4px;
+    inset-inline-start: -4px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 18px;
+    text-align: center;
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.35);
+  }
+
+  .dash-alerts-badge {
+    background: #f59e0b;
+    box-shadow: 0 2px 6px rgba(245, 158, 11, 0.35);
+  }
+
+  body.dash-notif-open {
+    overflow: hidden;
+  }
+
+  .dash-notif-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(2, 6, 23, 0.5);
+    backdrop-filter: blur(6px);
+    z-index: 900;
+    display: none;
+    opacity: 0;
+    transition: opacity 0.22s ease;
+  }
+
+  .dash-notif-overlay.open {
+    display: block;
+    opacity: 1;
+  }
+
+  .dash-notif-panel {
+    position: fixed;
+    z-index: 901;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--card);
+    border: 1px solid var(--border-light);
+    box-shadow: 0 28px 60px rgba(0, 0, 0, 0.28);
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+    transition: opacity 0.22s ease, transform 0.22s ease;
+  }
+
+  .dash-notif-panel.open {
+    display: flex;
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  @media (min-width: 768px) {
+    .dash-notif-panel {
+      top: 72px;
+      inset-inline-end: 16px;
+      width: min(400px, calc(100vw - 24px));
+      max-height: min(72dvh, 580px);
+      border-radius: 18px;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .dash-notif-panel {
+      inset-inline: 0;
+      bottom: 0;
+      width: 100%;
+      max-height: min(88dvh, 720px);
+      border-radius: 22px 22px 0 0;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      transform: translateY(100%);
+    }
+
+    .dash-notif-panel.open {
+      transform: translateY(0);
+    }
+  }
+
+  .dash-notif-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 18px 12px;
+    border-bottom: 1px solid var(--border-light);
+  }
+
+  .dash-notif-panel-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--dashboard-text);
+  }
+
+  .dash-notif-panel-title i {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: rgba(59, 130, 246, 0.12);
+    color: var(--primary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .dash-notif-panel-sub {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--dashboard-muted);
+    margin-top: 2px;
+  }
+
+  .dash-notif-close-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+    border: 1px solid var(--border-light);
+    background: transparent;
+    color: var(--dashboard-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .dash-notif-toolbar {
+    display: flex;
+    gap: 8px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-light);
+  }
+
+  .dash-notif-tool-btn {
+    flex: 1;
+    min-height: 40px;
+    border-radius: 11px;
+    border: 1px solid var(--border-light);
+    background: transparent;
+    color: var(--dashboard-muted);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .dash-notif-tool-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .dash-notif-list {
+    overflow-y: auto;
+    flex: 1;
+    padding: 10px 12px 14px;
+  }
+
+  .dash-notif-item {
+    display: flex;
+    gap: 12px;
+    padding: 14px;
+    border-radius: 14px;
+    margin-bottom: 8px;
+    border: 1px solid transparent;
+    background: rgba(59, 130, 246, 0.06);
+    align-items: flex-start;
+  }
+
+  .dash-notif-item.unread {
+    border-color: rgba(59, 130, 246, 0.18);
+  }
+
+  .dash-notif-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 14px;
+    background: rgba(59, 130, 246, 0.12);
+    color: #3b82f6;
+  }
+
+  .dash-notif-icon.order { background: rgba(245, 158, 11, 0.14); color: #d97706; }
+  .dash-notif-icon.agent { background: rgba(234, 179, 8, 0.16); color: #ca8a04; }
+  .dash-notif-icon.success { background: rgba(16, 185, 129, 0.14); color: #10b981; }
+  .dash-notif-icon.warning { background: rgba(245, 158, 11, 0.14); color: #f59e0b; }
+  .dash-notif-icon.error { background: rgba(239, 68, 68, 0.14); color: #ef4444; }
+  .dash-notif-icon.info { background: rgba(59, 130, 246, 0.12); color: #3b82f6; }
+
+  .dash-notif-msg {
+    flex: 1;
+    min-width: 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--dashboard-text);
+    word-break: break-word;
+  }
+
+  .dash-notif-title {
+    font-weight: 700;
+    font-size: 13.5px;
+    color: var(--dashboard-text);
+    margin-bottom: 2px;
+  }
+
+  .dash-notif-detail {
+    font-size: 12.5px;
+    color: var(--dashboard-muted);
+    margin-top: 2px;
+  }
+
+  .dash-notif-employee {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: rgba(59, 130, 246, 0.1);
+    color: #2563eb;
+    font-size: 11.5px;
+    font-weight: 600;
+  }
+
+  .dash-notif-employee i {
+    font-size: 10px;
+    opacity: 0.85;
+  }
+
+  .dash-notif-time {
+    font-size: 11px;
+    color: var(--dashboard-muted);
+    margin-top: 6px;
+  }
+
+  .dash-notif-empty {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--dashboard-muted);
+  }
+
+  .dash-notif-empty i {
+    font-size: 32px;
+    opacity: 0.35;
+    display: block;
+    margin-bottom: 12px;
+  }
+
+  #dashAlertsModal .finora-dash-modal__body {
+    max-height: min(68dvh, 620px);
+    overflow-y: auto;
+  }
+
+  #dashAlertsModal #alerts li {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  #dashAlertsModal #alerts .alert-message {
+    flex-basis: calc(100% - 40px);
+  }
+
+  .dashboard-insights-grid--single {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* =======================
    PROFIT MODAL (Enhanced)
 ======================= */
   #profitModal .finora-dash-modal__panel {
@@ -1367,6 +1691,40 @@
     align-items: center;
   }
 
+  .dashboard-overdue-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .dashboard-overdue-print-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(15, 23, 42, 0.18);
+    background: rgba(15, 23, 42, 0.92);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  }
+
+  .dashboard-overdue-print-btn:hover {
+    transform: translateY(-1px);
+    background: #1e293b;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.22);
+    color: #fff;
+  }
+
+  :root[data-theme="light"] .dashboard-overdue-print-btn {
+    background: #0f172a;
+    border-color: rgba(15, 23, 42, 0.2);
+  }
+
   .dashboard-overdue-legend span {
     font-size: 11px;
     font-weight: 700;
@@ -1738,6 +2096,7 @@
       align-items: stretch;
     }
 
+    .dashboard-overdue-actions,
     .dashboard-overdue-legend {
       justify-content: flex-start;
     }
@@ -2088,11 +2447,7 @@
   </section>
   {% endif %}
 
-  <section class="dashboard-insights-grid">
-    <div class="card dashboard-alerts-card">
-      <h4><i class="fas fa-bell"></i> {{ _('dashboard_alerts_title') }}</h4>
-      <ul id="alerts"></ul>
-    </div>
+  <section class="dashboard-insights-grid dashboard-insights-grid--single">
     <div class="card dashboard-quick-card">
       <div>
         <h3 class="dashboard-section-title" style="font-size:18px;">{% if is_beauty_center %}ملخص سريع — مركز التجميل{% else %}{{ _('dashboard_profit_today') }}{% endif %}</h3>
@@ -2118,6 +2473,48 @@
       </div>
     </div>
   </section>
+
+<!-- =======================
+     ALERTS MODAL (Desktop)
+======================= -->
+<div id="dashAlertsModal" class="modal finora-dash-modal" role="dialog" aria-modal="true" aria-labelledby="dashAlertsModalTitle" onclick="if(event.target===this) closeDashAlerts()">
+  <div class="finora-dash-modal__panel finora-dash-modal__panel--wide" onclick="event.stopPropagation()">
+    <div class="finora-dash-modal__head">
+      <h3 id="dashAlertsModalTitle"><i class="fas fa-triangle-exclamation"></i> {{ _('dashboard_alerts_title') }}</h3>
+      <button type="button" class="finora-dash-modal__close" onclick="closeDashAlerts()" aria-label="إغلاق">×</button>
+    </div>
+    <div class="finora-dash-modal__body">
+      <ul id="alerts"></ul>
+    </div>
+  </div>
+</div>
+
+<!-- =======================
+     NOTIFICATIONS PANEL
+======================= -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+<script type="application/json" id="dashFlashData">{{ messages | tojson }}</script>
+{% endwith %}
+<div class="dash-notif-overlay" id="dashNotifOverlay"></div>
+<div class="dash-notif-panel" id="dashNotifPanel" role="dialog" aria-modal="true" aria-label="الإشعارات">
+  <div class="dash-notif-panel-header">
+    <div>
+      <div class="dash-notif-panel-title">
+        <i class="fas fa-bell"></i>
+        <div>
+          <span>الإشعارات</span>
+          <span class="dash-notif-panel-sub" id="dashNotifSubtitle">لا توجد إشعارات جديدة</span>
+        </div>
+      </div>
+    </div>
+    <button type="button" class="dash-notif-close-btn" id="dashNotifClose" aria-label="إغلاق"><i class="fas fa-xmark"></i></button>
+  </div>
+  <div class="dash-notif-toolbar">
+    <button type="button" class="dash-notif-tool-btn" id="dashNotifMarkRead" disabled>تعليم كمقروء</button>
+    <button type="button" class="dash-notif-tool-btn" id="dashNotifClear" disabled>مسح الكل</button>
+  </div>
+  <div class="dash-notif-list" id="dashNotifList"></div>
+</div>
 
 <!-- =======================
      SEARCH MODAL
@@ -2767,9 +3164,17 @@
           </h2>
           <p class="dashboard-overdue-sub">{{ _('dashboard_overdue_subtitle') }}</p>
         </div>
-        <div class="dashboard-overdue-legend" role="list">
-          <span class="leg-crit" role="listitem">{{ _('dashboard_overdue_legend_critical') }}</span>
-          <span class="leg-warn" role="listitem">{{ _('dashboard_overdue_legend_warning') }}</span>
+        <div class="dashboard-overdue-actions">
+          {% if dashboard_overdue_orders|length > 0 %}
+          <a class="dashboard-overdue-print-btn" href="{{ url_for('index.dashboard_overdue_statement') }}" target="_blank" rel="noopener">
+            <i class="fas fa-print" aria-hidden="true"></i>
+            {{ _('dashboard_overdue_print_btn') }}
+          </a>
+          {% endif %}
+          <div class="dashboard-overdue-legend" role="list">
+            <span class="leg-crit" role="listitem">{{ _('dashboard_overdue_legend_critical') }}</span>
+            <span class="leg-warn" role="listitem">{{ _('dashboard_overdue_legend_warning') }}</span>
+          </div>
         </div>
       </div>
       {% if dashboard_overdue_orders|length > 0 %}
@@ -3058,64 +3463,111 @@
     }).catch(err => console.error("agent-reports-pending:", err));
 
     fetchJson("/api/index/alerts").then(list => {
-      const alertsContainer = document.getElementById("alerts");
-      if (!alertsContainer) return;
-      alertsContainer.innerHTML = "";
+      renderDashboardAlerts(list);
+    }).catch(err => console.error("alerts:", err));
+  }
 
-      if (list.length === 0) {
-        const li = document.createElement("li");
-        li.className = "alert-success";
-        li.innerHTML = `
+  function renderDashboardAlerts(list) {
+    const alertsContainer = document.getElementById("alerts");
+    const badge = document.getElementById("dashAlertsBadge");
+    const count = Array.isArray(list) ? list.length : 0;
+
+    if (badge) {
+      if (count > 0) {
+        badge.hidden = false;
+        badge.textContent = count > 99 ? "99+" : String(count);
+      } else {
+        badge.hidden = true;
+      }
+    }
+
+    if (!alertsContainer) return;
+    alertsContainer.innerHTML = "";
+
+    if (!count) {
+      const li = document.createElement("li");
+      li.className = "alert-success";
+      li.innerHTML = `
         <span class="alert-icon">✅</span>
         <span class="alert-message">لا توجد تنبيهات حالياً - كل شيء يعمل بشكل طبيعي</span>
       `;
-        alertsContainer.appendChild(li);
-      } else {
-        list.forEach(a => {
-          const li = document.createElement("li");
-          li.className = `alert-${a.type || "warning"}`;
+      alertsContainer.appendChild(li);
+      return;
+    }
 
-          const message = typeof a === "string" ? a : (a.message || "");
-          const icon = typeof a === "object" && a.icon ? a.icon : "⚠️";
+    list.forEach(a => {
+      const li = document.createElement("li");
+      li.className = `alert-${a.type || "warning"}`;
 
-          const iconEl = document.createElement("span");
-          iconEl.className = "alert-icon";
-          iconEl.textContent = icon;
-          const msgEl = document.createElement("span");
-          msgEl.className = "alert-message";
-          msgEl.textContent = message;
-          li.appendChild(iconEl);
-          li.appendChild(msgEl);
+      const message = typeof a === "string" ? a : (a.message || "");
+      const icon = typeof a === "object" && a.icon ? a.icon : "⚠️";
 
-          if (typeof a === "object" && Array.isArray(a.decisions) && a.decisions.length) {
-            const box = document.createElement("div");
-            box.className = "alert-decisions";
-            a.decisions.forEach(d => {
-              if (!d || !d.href) return;
-              const b = document.createElement("button");
-              b.type = "button";
-              b.className = "alert-dec-btn";
-              b.textContent = d.label || "انتقال";
-              b.addEventListener("click", function (e) {
-                e.stopPropagation();
-                window.location.href = d.href;
-              });
-              box.appendChild(b);
-            });
-            li.appendChild(box);
-          }
+      const iconEl = document.createElement("span");
+      iconEl.className = "alert-icon";
+      iconEl.textContent = icon;
+      const msgEl = document.createElement("span");
+      msgEl.className = "alert-message";
+      msgEl.textContent = message;
+      li.appendChild(iconEl);
+      li.appendChild(msgEl);
 
-          if (typeof a === "object" && a.action) {
-            li.style.cursor = "pointer";
-            li.addEventListener("click", function () {
-              if (a.action) window.location.href = a.action;
-            });
-          }
+      if (typeof a === "object" && Array.isArray(a.decisions) && a.decisions.length) {
+        const box = document.createElement("div");
+        box.className = "alert-decisions";
+        a.decisions.forEach(d => {
+          if (!d || !d.href) return;
+          const b = document.createElement("button");
+          b.type = "button";
+          b.className = "alert-dec-btn";
+          b.textContent = d.label || "انتقال";
+          b.addEventListener("click", function (e) {
+            e.stopPropagation();
+            window.location.href = d.href;
+          });
+          box.appendChild(b);
+        });
+        li.appendChild(box);
+      }
 
-          alertsContainer.appendChild(li);
+      if (typeof a === "object" && a.action) {
+        li.style.cursor = "pointer";
+        li.addEventListener("click", function () {
+          if (a.action) window.location.href = a.action;
         });
       }
-    }).catch(err => console.error("alerts:", err));
+
+      alertsContainer.appendChild(li);
+    });
+  }
+
+  function openDashAlerts() {
+    const modal = document.getElementById("dashAlertsModal");
+    if (!modal) return;
+    modal.style.display = "flex";
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeDashAlerts() {
+    const modal = document.getElementById("dashAlertsModal");
+    if (!modal) return;
+    modal.style.display = "none";
+    document.body.style.overflow = "";
+  }
+
+  (function initDashAlertsTopbar() {
+    const btn = document.getElementById("dashAlertsBtn");
+    if (!btn) return;
+    btn.addEventListener("click", openDashAlerts);
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") closeDashAlerts();
+    });
+  })();
+
+  if (window.FinoraNotificationCenter) {
+    FinoraNotificationCenter.bindPanel({
+      prefix: "dash",
+      flashDataId: "dashFlashData",
+    });
   }
 
   /* =======================
@@ -3722,21 +4174,24 @@
           // ==========================
           // التحقق من نوع الإجراء لتحديد الصوت المناسب
           const hasPaid = orders.some(o => o.action === "paid" || o.action === "delivered");
-          const hasCanceled = orders.some(o => o.action === "returned" || o.action === "cancel");
+          const hasReturned = orders.some(o => o.action === "returned");
+          const hasCanceled = orders.some(o => o.action === "cancel");
 
           if (hasPaid) {
-            playSuccessSound(); // صوت النجاح عند تسديد الطلب
+            playSuccessSound();
+          } else if (hasReturned) {
+            playReturnSound();
           } else if (hasCanceled) {
-            playCancelSound(); // صوت التحذير عند إلغاء الطلب
+            playCancelSound();
           }
 
           if (res.partial_success) {
-            showToast(`⚠️ تم تنفيذ ${res.executed || 0} طلب، وفشلت طلبات أخرى`, "warning");
+            showToast(`⚠️ تم تنفيذ ${res.executed || 0} طلب، وفشلت طلبات أخرى`, "warning", { silent: true });
             if (Array.isArray(res.errors) && res.errors.length) {
               console.warn("Bulk execution errors:", res.errors);
             }
           } else {
-            showToast(`✅ تم تنفيذ ${res.executed || selected.length} طلب بنجاح`, "success");
+            showToast(`✅ تم تنفيذ ${res.executed || selected.length} طلب بنجاح`, "success", { silent: true });
           }
           // إزالة الطلبات المنفذة
           const idsToRemove = Array.isArray(res.executed_ids) && res.executed_ids.length ? res.executed_ids : selected;
@@ -4039,66 +4494,17 @@
     obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
   })();
 
-  /* =======================
-     Real-time Notifications
-  ======================= */
-  let lastOrderId = null;
-  let knownReadyAgentReportIds = null;
+  document.addEventListener("finora:new-orders", function (e) {
+    if (typeof load === "function" && e.detail) {
+      load(currentPeriod.type, currentPeriod.date_from, currentPeriod.date_to);
+    }
+  });
 
-  function checkNewOrders() {
-    fetch("/api/index/new-orders")
-      .then(r => r.json())
-      .then(data => {
-        if (lastOrderId === null) {
-          lastOrderId = data.last_order_id;
-          return;
-        }
-
-        if (data.last_order_id && data.last_order_id > lastOrderId) {
-          // New orders detected
-          data.new_orders.forEach(order => {
-            if (order.id > lastOrderId) {
-              showToast(
-                `📦 طلب جديد #${order.id}\nالزبون: ${order.customer}\nالمبلغ: ${order.total} د.ع`,
-                "order",
-                5000
-              );
-            }
-          });
-
-          lastOrderId = data.last_order_id;
-          load(currentPeriod.type, currentPeriod.date_from, currentPeriod.date_to); // Refresh dashboard with current period
-        }
-      })
-      .catch(err => console.error("Error checking new orders:", err));
-  }
-
-  function checkAgentReportsReady() {
-    fetch("/api/index/agent-reports-pending")
-      .then(r => r.json())
-      .then(data => {
-        const ids = data.ready_report_ids || [];
-        setText("agentPendingReports", String(data.ready_count || 0));
-        if (knownReadyAgentReportIds === null) {
-          knownReadyAgentReportIds = new Set(ids);
-          return;
-        }
-        ids.forEach(function(id) {
-          if (!knownReadyAgentReportIds.has(id)) {
-            const report = (data.ready_reports || []).find(function(r) { return r.id === id; });
-            const label = report ? (report.report_number + " — " + report.agent_name) : ("#" + id);
-            showToast(
-              "🚚 كشف المندوب جاهز للتنفيذ\n" + label,
-              "order",
-              6000,
-              { soundType: "order" }
-            );
-          }
-        });
-        knownReadyAgentReportIds = new Set(ids);
-      })
-      .catch(err => console.error("Error checking agent reports:", err));
-  }
+  document.addEventListener("finora:agent-reports-changed", function (e) {
+    if (typeof setText === "function" && e.detail) {
+      setText("agentPendingReports", String(e.detail.ready_count || 0));
+    }
+  });
 
   /* =======================
      Format Number
@@ -4189,58 +4595,23 @@
     localStorage.setItem('sounds_enabled', enabled ? 'true' : 'false');
   }
 
-  // تشغيل صوت النجاح (عند تسديد الطلب)
-  function playSuccessSound() {
-    if (!getSoundsEnabled()) return; // إذا كان الصوت معطل، لا نفعل شيئاً
-
-    try {
-      // استخدام Web Audio API لإنشاء صوت بسيط (بدون ملف صوتي خارجي)
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-
-      oscillator.frequency.value = 800; // تردد النجاح (نغمة عالية)
-      oscillator.type = 'sine';
-
-      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 0.3);
-    } catch (e) {
-      // إذا فشل Web Audio API، لا نفعل شيئاً (Silent Fail)
-      console.log("Sound not available:", e);
+  function playActionSound(soundType) {
+    if (!getSoundsEnabled()) return;
+    if (typeof window.playNotificationSound === "function") {
+      window.playNotificationSound(soundType, { soundType: soundType });
     }
   }
 
-  // تشغيل صوت التحذير/الإلغاء (عند إلغاء الطلب)
+  function playSuccessSound() {
+    playActionSound("payment");
+  }
+
+  function playReturnSound() {
+    playActionSound("return");
+  }
+
   function playCancelSound() {
-    if (!getSoundsEnabled()) return; // إذا كان الصوت معطل، لا نفعل شيئاً
-
-    try {
-      // استخدام Web Audio API لإنشاء صوت بسيط (بدون ملف صوتي خارجي)
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-
-      oscillator.frequency.value = 400; // تردد الإلغاء (نغمة منخفضة)
-      oscillator.type = 'sawtooth';
-
-      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
-
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 0.4);
-    } catch (e) {
-      // إذا فشل Web Audio API، لا نفعل شيئاً (Silent Fail)
-      console.log("Sound not available:", e);
-    }
+    playActionSound("cancel");
   }
 
   // ========================
@@ -4425,10 +4796,6 @@
   // ==========================
   load();
   initCharts();
-  checkAgentReportsReady();
-  // setInterval(load, 5000); // تم إزالته - منع التحديث التلقائي
-  setInterval(checkNewOrders, 3000); // Check for new orders every 3 seconds (للطلبات الجديدة فقط)
-  setInterval(checkAgentReportsReady, 5000);
   setInterval(initCharts, 30000); // Refresh charts every 30 seconds (للرسوم فقط)
 
   // Close modals when clicking outside

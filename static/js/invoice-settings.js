@@ -46,6 +46,7 @@ document.addEventListener('DOMContentLoaded', function() {
   loadPreview();
   initSortable();
   syncSelectedTemplateCard();
+  initInvoicePreviewCollapse();
 
   const modal = document.getElementById('templatePickerOverlay');
   if (modal) {
@@ -54,6 +55,41 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 });
+
+function initInvoicePreviewCollapse() {
+  const panel = document.getElementById('invoicePreviewPanel');
+  const toggle = document.getElementById('invoicePreviewToggle');
+  const body = document.getElementById('invoicePreviewBody');
+  if (!panel || !toggle || !body) return;
+
+  function setOpen(open) {
+    panel.classList.toggle('is-open', open);
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    const label = toggle.querySelector('span');
+    if (label) label.textContent = open ? 'إخفاء المعاينة' : 'عرض المعاينة';
+    if (window.matchMedia('(max-width: 768px)').matches) {
+      body.hidden = !open;
+      if (open) syncInvoicePreviewIframe();
+    } else {
+      body.hidden = false;
+    }
+  }
+
+  toggle.addEventListener('click', function() {
+    setOpen(!panel.classList.contains('is-open'));
+  });
+
+  function applyMode() {
+    if (window.matchMedia('(max-width: 768px)').matches) {
+      setOpen(false);
+    } else {
+      setOpen(true);
+    }
+  }
+
+  applyMode();
+  window.addEventListener('resize', applyMode, { passive: true });
+}
 
 // تهيئة نظام السحب والإفلات
 function initSortable() {

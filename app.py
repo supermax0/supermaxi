@@ -376,6 +376,8 @@ with app.app_context():
                         tenant_cols = {row[1] for row in cur.fetchall()}
                         if "business_type" not in tenant_cols:
                             cur.execute("ALTER TABLE tenant ADD COLUMN business_type TEXT DEFAULT 'general'")
+                        if "feature_overrides_json" not in tenant_cols:
+                            cur.execute("ALTER TABLE tenant ADD COLUMN feature_overrides_json TEXT")
                     if "system_settings" in existing_tables:
                         cur.execute("PRAGMA table_info(system_settings)")
                         system_settings_cols = {row[1] for row in cur.fetchall()}
@@ -1417,6 +1419,12 @@ def inject_global_data():
     try:
         lang_now = session.get('language', 'ar')
         print(f"DEBUG: Session language is '{lang_now}'")
+
+        # Superadmin templates must not touch tenant Employee/RBAC queries.
+        # A leftover company session (user_id+tenant_slug) can abort the SQL txn
+        # and then break /superadmin/ with InFailedSqlTransaction.
+        if (request.path or "").startswith("/superadmin"):
+            return {**default, "_": translate, "current_lang": lang_now}
         
         if "user_id" not in session:
             return {**default, "_": translate, "current_lang": lang_now}
@@ -1494,6 +1502,10 @@ def inject_global_data():
         }
     except Exception as e:
         print(f"Error in context processor: {e}")
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
         return {**default, "_": translate}
 
 # =====================================
@@ -1597,6 +1609,14 @@ def require_login():
     ):
         restore_staff_session_from_agent()
 
+    # Superadmin routes use Core DB only. A leftover company session
+    # (user_id + tenant_slug) must not sync Employee / payroll schema here —
+    # that can abort the SQL transaction and 500 the dashboard.
+    # Auth for these paths is enforced by the superadmin blueprint.
+    if (request.path or "").startswith(("/superadmin", "/super-admin")):
+        g.tenant = None
+        return
+
     def sync_staff_session_from_db():
         if "user_id" not in session:
             return None
@@ -1610,8 +1630,18 @@ def require_login():
             ensure_payroll_schema()
             _ensure_employee_profile_schema()
         except Exception:
-            pass
-        employee = db.session.get(Employee, session["user_id"])
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
+        try:
+            employee = db.session.get(Employee, session["user_id"])
+        except Exception:
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
+            return None
         if not employee or not employee.is_active:
             session.clear()
             return None
@@ -1795,6 +1825,7 @@ def inject_platform_branding():
 def inject_business_context():
     """Expose the active company's business type to all tenant templates."""
     business_type = session.get("business_type") or "general"
+    feature_overrides = {}
     if request.path.startswith("/superadmin"):
         return {
             "business_type": "general",
@@ -1815,10 +1846,34 @@ def inject_business_context():
                     session["business_type"] = business_type
             finally:
                 g.tenant = old_tenant
+            try:
+                from extensions_tenant import get_tenant_engine
+                from models.tenant import Tenant as TenantModel
+                from utils.tenant_feature_flags import (
+                    ensure_tenant_feature_overrides_column,
+                    normalize_feature_overrides,
+                )
+
+                ensure_tenant_feature_overrides_column(get_tenant_engine(tenant_slug))
+                previous_tenant = getattr(g, "tenant", None)
+                g.tenant = tenant_slug
+                try:
+                    tenant_row = TenantModel.query.first()
+                    feature_overrides = normalize_feature_overrides(
+                        getattr(tenant_row, "feature_overrides_json", None) if tenant_row else None
+                    )
+                finally:
+                    g.tenant = previous_tenant
+            except Exception:
+                feature_overrides = {}
     except Exception:
         business_type = session.get("business_type") or "general"
+        feature_overrides = {}
 
     def business_allows(module):
+        module = str(module or "")
+        if module in feature_overrides:
+            return bool(feature_overrides[module])
         if business_type == "beauty_center":
             allowed_for_beauty = {
                 "dashboard",
@@ -1846,6 +1901,7 @@ def inject_business_context():
         "business_type": business_type,
         "is_beauty_center": business_type == "beauty_center",
         "business_allows": business_allows,
+        "tenant_feature_overrides": feature_overrides,
     }
 
 
@@ -2099,6 +2155,10 @@ def not_found(e):
 @app.errorhandler(500)
 def server_error(e):
     app.logger.exception("Server error: %s", e)
+    try:
+        db.session.rollback()
+    except Exception:
+        pass
     if request.accept_mimetypes.best == "application/json":
         return jsonify({"error": "Internal server error"}), 500
     tpl = os.path.join(app.root_path, "templates", "500.html")

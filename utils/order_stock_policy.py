@@ -94,6 +94,61 @@ def stock_is_deducted(order: Invoice | None) -> bool:
     return bool(order and getattr(order, "stock_is_deducted", False))
 
 
+def select_order_stock_branch(order: Invoice, branch_id: int | str | None) -> int | None:
+    """Assign one active fulfillment branch to every physical order line.
+
+    This is intentionally flush-only so callers can select the branch and
+    deduct stock in the same transaction as payment.
+    """
+    items = _physical_items(order.id)
+    if branch_id in (None, "", 0, "0") and stock_is_deducted(order):
+        used_branch_id = next(
+            (
+                int(item.fulfillment_branch_id)
+                for item in items
+                if getattr(item, "fulfillment_branch_id", None)
+            ),
+            None,
+        )
+        return used_branch_id or getattr(order, "branch_id", None)
+
+    if branch_id in (None, "", 0, "0"):
+        from utils.shipping_branch_schedule import resolve_shipping_branch_for_now
+
+        branch_id = resolve_shipping_branch_for_now()
+        if not branch_id:
+            return None
+    try:
+        branch_id = int(branch_id)
+    except (TypeError, ValueError) as exc:
+        raise OrderStockError("فرع خصم المخزون غير صالح", order_id=order.id) from exc
+
+    if stock_is_deducted(order):
+        used_branch_ids = {
+            int(item.fulfillment_branch_id)
+            for item in items
+            if getattr(item, "fulfillment_branch_id", None)
+        }
+        if used_branch_ids and used_branch_ids != {branch_id}:
+            raise OrderStockError(
+                "تم خصم مخزون هذا الطلب سابقاً ولا يمكن تغيير الفرع عند التسديد",
+                order_id=order.id,
+            )
+        return branch_id
+
+    from models.branch import Branch
+
+    branch = Branch.query.filter_by(id=branch_id, is_active=True).first()
+    if not branch:
+        raise OrderStockError("فرع خصم المخزون غير موجود أو غير نشط", order_id=order.id)
+
+    order.branch_id = branch_id
+    for item in items:
+        item.fulfillment_branch_id = branch_id
+    db.session.flush()
+    return branch_id
+
+
 def deduct_order_stock(order: Invoice) -> bool:
     """Deduct every physical line atomically in the caller's transaction."""
     if stock_is_deducted(order):

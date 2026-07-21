@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="{{ current_lang or 'ar' }}" dir="{{ 'rtl' if (current_lang or 'ar') == 'ar' else 'ltr' }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ _('dashboard_overdue_print_title') }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    @page {
+      size: A4 landscape;
+      margin: 0.7cm;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Tajawal', Tahoma, sans-serif;
+      background: #eef1f5;
+      color: #111;
+      padding: 24px;
+      line-height: 1.55;
+    }
+
+    .sheet {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: #fff;
+      padding: 28px 32px 24px;
+      border: 1px solid #d8dee8;
+      box-shadow: 0 8px 28px rgba(15, 23, 42, 0.08);
+    }
+
+    .print-btn {
+      position: fixed;
+      top: 18px;
+      left: 18px;
+      z-index: 20;
+      border: none;
+      border-radius: 12px;
+      padding: 12px 22px;
+      background: #0f172a;
+      color: #fff;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.25);
+    }
+
+    .print-btn:hover {
+      background: #1e293b;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 20px;
+      padding-bottom: 16px;
+      margin-bottom: 18px;
+      border-bottom: 3px solid #0f172a;
+    }
+
+    .brand {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: 0.3px;
+    }
+
+    .title {
+      font-size: 26px;
+      font-weight: 800;
+      margin-top: 4px;
+    }
+
+    .meta {
+      text-align: left;
+      font-size: 13px;
+      color: #475569;
+      line-height: 1.8;
+    }
+
+    .meta strong {
+      color: #0f172a;
+    }
+
+    .summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .summary-item {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .summary-item span {
+      color: #64748b;
+      font-weight: 600;
+      margin-inline-end: 6px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5px;
+    }
+
+    th {
+      background: #0f172a;
+      color: #fff;
+      padding: 11px 8px;
+      text-align: center;
+      font-weight: 700;
+      border: 1px solid #0f172a;
+      white-space: nowrap;
+    }
+
+    td {
+      border: 1px solid #cbd5e1;
+      padding: 9px 8px;
+      text-align: center;
+      vertical-align: middle;
+    }
+
+    tbody tr:nth-child(even) {
+      background: #f8fafc;
+    }
+
+    tr.row-crit td {
+      background: #fff1f2;
+    }
+
+    tr.row-warn td {
+      background: #fff7ed;
+    }
+
+    .order-id {
+      font-weight: 800;
+      font-size: 13px;
+    }
+
+    .barcode {
+      font-family: ui-monospace, Consolas, monospace;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      direction: ltr;
+      unicode-bidi: embed;
+    }
+
+    .phone {
+      direction: ltr;
+      unicode-bidi: embed;
+      font-weight: 600;
+    }
+
+    .address {
+      text-align: right;
+      max-width: 280px;
+      line-height: 1.45;
+    }
+
+    .days {
+      display: inline-block;
+      min-width: 54px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-weight: 800;
+      font-size: 12px;
+    }
+
+    .days-crit {
+      background: #fecaca;
+      color: #991b1b;
+    }
+
+    .days-warn {
+      background: #fed7aa;
+      color: #9a3412;
+    }
+
+    .amount {
+      font-weight: 800;
+      white-space: nowrap;
+      direction: ltr;
+      unicode-bidi: embed;
+    }
+
+    .totals td {
+      background: #0f172a !important;
+      color: #fff;
+      font-weight: 800;
+      font-size: 13.5px;
+      padding: 12px 8px;
+      border-color: #0f172a;
+    }
+
+    .footer {
+      margin-top: 18px;
+      padding-top: 12px;
+      border-top: 2px solid #0f172a;
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      font-size: 12px;
+      color: #64748b;
+    }
+
+    .empty {
+      text-align: center;
+      padding: 48px 20px;
+      color: #64748b;
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    @media print {
+      body {
+        background: #fff;
+        padding: 0;
+      }
+
+      .sheet {
+        max-width: none;
+        box-shadow: none;
+        border: none;
+        padding: 0;
+      }
+
+      .print-btn {
+        display: none !important;
+      }
+
+      tr.row-crit td,
+      tr.row-warn td,
+      tbody tr:nth-child(even) {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      th,
+      .totals td,
+      .days {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
+  </style>
+</head>
+<body>
+  <button type="button" class="print-btn" onclick="window.print()">🖨️ {{ _('dashboard_overdue_print_btn') }}</button>
+
+  <div class="sheet">
+    <div class="header">
+      <div>
+        <div class="brand">{{ company_name }}</div>
+        <h1 class="title">{{ _('dashboard_overdue_print_title') }}</h1>
+      </div>
+      <div class="meta">
+        <div>{{ _('dashboard_overdue_print_date') }}: <strong>{{ printed_at.strftime('%Y-%m-%d %H:%M') }}</strong></div>
+        {% if employee_name %}
+        <div>{{ _('dashboard_overdue_print_by') }}: <strong>{{ employee_name }}</strong></div>
+        {% endif %}
+        <div>{{ _('dashboard_overdue_print_note') }}</div>
+      </div>
+    </div>
+
+    <div class="summary">
+      <div class="summary-item">
+        <span>{{ _('dashboard_overdue_print_count') }}</span>
+        {{ orders_count }}
+      </div>
+      <div class="summary-item">
+        <span>{{ _('dashboard_overdue_print_total') }}</span>
+        {{ "{:,}".format(total_amount) }} {{ _('dashboard_overdue_print_currency') }}
+      </div>
+    </div>
+
+    {% if orders and orders|length > 0 %}
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>{{ _('dashboard_overdue_th_order') }}</th>
+          <th>{{ _('dashboard_overdue_print_th_barcode') }}</th>
+          <th>{{ _('dashboard_th_phone') }}</th>
+          <th>{{ _('dashboard_overdue_print_th_address') }}</th>
+          <th>{{ _('dashboard_overdue_print_th_age') }}</th>
+          <th>{{ _('dashboard_th_amount') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in orders %}
+        <tr class="{% if row.severity == 'critical' %}row-crit{% else %}row-warn{% endif %}">
+          <td>{{ loop.index }}</td>
+          <td><span class="order-id">#{{ row.id }}</span></td>
+          <td class="barcode">{{ row.shipping_barcode or '—' }}</td>
+          <td class="phone">{{ row.phone or '—' }}</td>
+          <td class="address">{{ row.address or '—' }}</td>
+          <td>
+            <span class="days {% if row.severity == 'critical' %}days-crit{% else %}days-warn{% endif %}">
+              {{ row.days }} {{ _('dashboard_overdue_days_suffix') }}
+            </span>
+          </td>
+          <td class="amount">{{ "{:,}".format(row.total or 0) }}</td>
+        </tr>
+        {% endfor %}
+        <tr class="totals">
+          <td colspan="5">{{ _('dashboard_overdue_print_footer_summary') }}</td>
+          <td>{{ orders_count }}</td>
+          <td>{{ "{:,}".format(total_amount) }} {{ _('dashboard_overdue_print_currency') }}</td>
+        </tr>
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">{{ _('dashboard_overdue_empty_title') }}</div>
+    {% endif %}
+
+    <div class="footer">
+      <div>{{ company_name }} — {{ _('dashboard_overdue_print_title') }}</div>
+      <div>{{ _('dashboard_overdue_print_auto') }}</div>
+    </div>
+  </div>
+
+  <script>
+    window.addEventListener('load', function () {
+      setTimeout(function () { window.print(); }, 400);
+    });
+  </script>
+</body>
+</html>

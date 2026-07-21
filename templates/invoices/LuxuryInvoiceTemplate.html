@@ -639,6 +639,7 @@
           <div class="info-card__label">بيانات الفاتورة</div>
           <div class="info-row"><span class="info-row__key">التاريخ</span><span class="info-row__val">{{ order.created_at.strftime('%Y-%m-%d %H:%M') if order.created_at else '—' }}</span></div>
           <div class="info-row"><span class="info-row__key">الموظف</span><span class="info-row__val">{{ order.employee_name or '—' }}</span></div>
+          <div class="info-row"><span class="info-row__key">البيج</span><span class="info-row__val">{{ (order.page_name or (order.page.name if order.page else '')) or '—' }}</span></div>
           {% if (returned_count or 0) > 0 %}
           <div class="info-row"><span class="info-row__key">عدد الراجع</span><span class="info-row__val" style="color:#a33b3b;">{{ returned_count }}</span></div>
           {% endif %}

@@ -16,7 +16,7 @@ from utils.activity_logger import log_activity
 from utils.treasury_helpers import resolve_treasury_account_id
 from utils.treasury_schema_guard import ensure_treasury_schema
 from utils.shipping_settlement_service import ensure_paid_shipping_order_settled
-from utils.order_stock_policy import OrderStockError, ensure_stock_for_transition
+from utils.order_stock_policy import OrderStockError, ensure_stock_for_transition, select_order_stock_branch
 
 shipping_bp = Blueprint("shipping", __name__, url_prefix="/shipping")
 
@@ -319,6 +319,7 @@ def settle_order(order_id):
     delivery_fee = max(0, int(data.get("delivery_fee") or 0))
 
     try:
+        select_order_stock_branch(order, data.get("branch_id"))
         ensure_stock_for_transition(order, target_payment_status="مسدد")
     except OrderStockError as exc:
         db.session.rollback()

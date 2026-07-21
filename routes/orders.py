@@ -71,6 +71,7 @@ from utils.order_stock_policy import (
     deferred_stock_enabled,
     ensure_policy_initialized,
     ensure_stock_for_transition,
+    select_order_stock_branch,
     stock_is_deducted,
 )
 from utils.cash_calculations import _effective_paid_amount
@@ -1311,6 +1312,7 @@ def payment():
 
         if payment_status in ["جزئي", "مسدد"]:
             try:
+                select_order_stock_branch(order, data.get("branch_id"))
                 ensure_stock_for_transition(order, target_payment_status=payment_status)
             except OrderStockError as exc:
                 db.session.rollback()
@@ -1455,9 +1457,18 @@ def cancel_order(order_id):
     if locked_response:
         return locked_response
     before = snapshot_attrs(order, *INVOICE_SNAPSHOT_FIELDS)
+    prev_effective_paid = _effective_paid_amount(order)
 
     try:
         process_order_cancel(order)
+        append_payment_ledger_delta(order.id, _effective_paid_amount(order) - prev_effective_paid)
+        sync_delivery_expense_for_invoice(order)
+        try:
+            from utils.payroll_service import sync_commission_line_for_invoice
+
+            sync_commission_line_for_invoice(order)
+        except Exception:
+            pass
         db.session.commit()
         try:
             log_mutation(

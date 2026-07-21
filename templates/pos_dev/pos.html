@@ -19,7 +19,7 @@
 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/pos-white-pro.css') }}?v=20260720-price-tap">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/pos-white-pro.css') }}?v=20260721-order-notif">
 
 </head>
 
@@ -411,6 +411,14 @@
 
   <div id="posToast" class="pos-toast"></div>
 
+  <div id="posOrderSuccess" class="pos-order-success" aria-live="polite" hidden>
+    <div class="pos-order-success__icon"><i class="fas fa-check-circle"></i></div>
+    <div class="pos-order-success__body">
+      <strong>تم إنشاء الطلب</strong>
+      <span id="posOrderSuccessDetail"></span>
+    </div>
+  </div>
+
   <!-- Discount modal (mobile + shared) -->
   <div id="discountModal" class="pos-modal">
     <div class="pos-modal-content">
@@ -774,7 +782,7 @@
   }</script>
 
   <script src="{{ url_for('static', filename='js/notification-sound.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/pos-white-pro.js') }}?v=20260720-price-tap"></script>
+  <script src="{{ url_for('static', filename='js/pos-white-pro.js') }}?v=20260721-order-notif"></script>
   <script>
     function openPosProfileModal() {
       document.getElementById('posProfileModal')?.classList.add('show');

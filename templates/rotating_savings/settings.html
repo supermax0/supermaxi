@@ -8,7 +8,7 @@
 </div>
 
 <div class="settings-section-card">
-  <form class="settings-grid" method="post" style="gap:16px;">
+  <form class="settings-grid" method="post" id="rotatingSavingsForm" style="gap:16px;">
     <div class="settings-switch-row">
       <div class="settings-switch-label"><strong>{{ _('rs_settings_enable') }}</strong></div>
       <label class="settings-toggle"><input type="checkbox" name="enabled" value="1" {% if settings.enabled %}checked{% endif %}><span class="settings-toggle-slider"></span></label>
@@ -28,9 +28,17 @@
         <option value="financing" {% if settings.cash_flow_classification == 'financing' %}selected{% endif %}>{{ _('rs_settings_financing') }}</option>
       </select>
     </div>
-    <div class="settings-actions-bar" style="grid-column:1/-1;margin-top:8px;">
-      <button type="submit" class="settings-btn settings-btn-primary"><i class="fas fa-save"></i> {{ _('settings_save') }}</button>
-    </div>
   </form>
+</div>
+{% endblock %}
+
+{% block settings_sticky_actions %}
+<div class="settings-sticky-bar">
+  <div class="settings-sticky-bar-info">{{ _('settings_unsaved_hint') }}</div>
+  <div class="settings-sticky-bar-actions">
+    <button type="submit" form="rotatingSavingsForm" class="settings-btn settings-btn-primary">
+      <i class="fas fa-save"></i> {{ _('settings_save') }}
+    </button>
+  </div>
 </div>
 {% endblock %}

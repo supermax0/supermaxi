@@ -5,11 +5,9 @@
 هذه الصفحة هي المصدر الوحيد لمعرفة الكاش الحقيقي
 """
 
-from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify, flash
-from sqlalchemy import or_
+from flask import Blueprint, render_template, request, redirect, url_for, jsonify, flash
 from extensions import db
 from models.account_transaction import AccountTransaction
-from models.employee import Employee
 from utils.cash_calculations import (
     calculate_cash_balance,
     get_cash_movements,
@@ -29,18 +27,6 @@ from utils.treasury_calculations import (
 from utils.treasury_schema_guard import ensure_treasury_schema
 
 cash_bp = Blueprint("cash", __name__, url_prefix="/cash")
-
-
-def _inventory_non_cash_transaction_filter():
-    return or_(
-        AccountTransaction.note.like("%مخزون افتتاحي%"),
-        AccountTransaction.note.like("%تسوية جرد%"),
-        AccountTransaction.note.like("%غير نقدي%"),
-    )
-
-
-def _inventory_non_cash_transactions_query():
-    return AccountTransaction.query.filter(_inventory_non_cash_transaction_filter())
 
 
 # ======================================
@@ -133,7 +119,6 @@ def cash():
         if not acc.is_cash
     ]
     total_liquidity = calculate_total_liquidity()
-    inventory_non_cash_count = _inventory_non_cash_transactions_query().count()
 
     return render_template(
         "cash.html",
@@ -142,36 +127,7 @@ def cash():
         movements=recent_movements,
         bank_balances=bank_balances,
         total_liquidity=total_liquidity,
-        inventory_non_cash_count=inventory_non_cash_count,
     )
-
-
-@cash_bp.route("/cleanup-inventory-noncash", methods=["POST"])
-def cleanup_inventory_noncash():
-    """Remove legacy inventory valuation rows that were incorrectly saved as cash movements."""
-    if not check_permission("can_see_accounts"):
-        return redirect("/pos"), 403
-
-    rows = _inventory_non_cash_transactions_query().all()
-    count = len(rows)
-    total = sum(int(row.amount or 0) for row in rows)
-    for row in rows:
-        db.session.delete(row)
-    db.session.commit()
-
-    try:
-        log_activity(
-            "delete",
-            "finance",
-            f"تنظيف حركات مخزون غير نقدية من الصندوق — {count} حركة",
-            entity_type="account_transaction",
-            payload={"count": count, "total": total},
-        )
-    except Exception:
-        pass
-
-    flash(f"تم حذف {count} حركة مخزون غير نقدية من سجل الصندوق.", "success")
-    return redirect(url_for("cash.cash"))
 
 
 # ======================================

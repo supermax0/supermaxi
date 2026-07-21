@@ -1247,18 +1247,21 @@
       openDeliveryFeePayModal({
         orderId: id,
         title: "تسديد الطلب #" + id,
-        onConfirm: function (deliveryFee) {
+        onConfirm: function (deliveryFee, paymentOptions) {
           showLoading();
           fetch("/shipping/settle/" + id, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ delivery_fee: deliveryFee || 0 })
+            body: JSON.stringify({
+              delivery_fee: deliveryFee || 0,
+              branch_id: paymentOptions && paymentOptions.branchId
+            })
           })
             .then(r => r.json())
             .then(data => {
               hideLoading();
               if (data.success) {
-                showToast("{{ _('shipping_toast_settle_success') }}", "success");
+                showToast("{{ _('shipping_toast_settle_success') }}", "success", { soundType: "payment" });
                 viewOrders(currentCompany);
                 updateCompanyDue();
               } else {
@@ -1292,7 +1295,7 @@
           hideLoading();
           if (data.success) {
             if (modal) modal.remove();
-            showToast("{{ _('shipping_toast_return_success') }}", "success");
+            showToast("{{ _('shipping_toast_return_success') }}", "success", { soundType: "return" });
             viewOrders(currentCompany);
             updateCompanyDue();
           } else {
@@ -1364,7 +1367,7 @@
         .then(data => {
           hideLoading();
           if (data.success) {
-            showToast("{{ _('shipping_toast_cancel_success') }}", "success");
+            showToast("{{ _('shipping_toast_cancel_success') }}", "success", { soundType: "cancel" });
             viewOrders(currentCompany);
             updateCompanyDue();
           } else {

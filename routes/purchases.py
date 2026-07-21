@@ -885,6 +885,7 @@ def get_purchases():
         data = [
             r for r in data
             if search in (r["invoice_no"] or "").lower()
+            or search in (r["supplier_invoice_no"] or "").lower()
             or search in (r["supplier"] or "").lower()
             or search in (r["first_product"] or "").lower()
         ]
@@ -960,12 +961,13 @@ def export_purchases():
     _ensure_purchase_schema()
 
     rows = Purchase.query.order_by(Purchase.created_at.desc()).all()
-    csv_lines = ["التاريخ,رقم الفاتورة,المورد,عدد العناصر,الإجمالي,المدفوع,المتبقي,حالة الشراء\n"]
+    csv_lines = ["التاريخ,رقم الفاتورة,رقم فاتورة المورد,المورد,عدد العناصر,الإجمالي,المدفوع,المتبقي,حالة الشراء\n"]
     for p in rows:
         item_count = len(p.items or []) if p.items else 1
         csv_lines.append(
             f"{(p.purchase_date.strftime('%Y-%m-%d') if p.purchase_date else '')},"
             f"{p.invoice_no or ('LEG-' + str(p.id))},"
+            f"{p.supplier_invoice_no or ''},"
             f"{(p.supplier.name if p.supplier else '')},"
             f"{item_count},"
             f"{int(p.grand_total or p.total or 0)},"
